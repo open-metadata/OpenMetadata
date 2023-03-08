@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Col, Row, Tabs } from 'antd';
+import { Card, Col, Row, Tabs } from 'antd';
 import AppState from 'AppState';
 import { AxiosError } from 'axios';
 import Description from 'components/common/description/Description';
@@ -19,6 +19,14 @@ import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlac
 import ContainerChildren from 'components/ContainerDetail/ContainerChildren/ContainerChildren';
 import ContainerDataModel from 'components/ContainerDetail/ContainerDataModel/ContainerDataModel';
 import PageContainerV1 from 'components/containers/PageContainerV1';
+import EntityLineageComponent from 'components/EntityLineage/EntityLineage.component';
+import {
+  Edge,
+  EdgeData,
+  LeafNodes,
+  LineagePos,
+  LoadingNodeState,
+} from 'components/EntityLineage/EntityLineage.interface';
 import Loader from 'components/Loader/Loader';
 import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
 import {
@@ -27,12 +35,15 @@ import {
 } from 'components/PermissionProvider/PermissionProvider.interface';
 import { FQN_SEPARATOR_CHAR } from 'constants/char.constants';
 import { getServiceDetailsPath } from 'constants/constants';
+import { ENTITY_CARD_CLASS } from 'constants/entity.constants';
 import { NO_PERMISSION_TO_VIEW } from 'constants/HelperTextUtil';
 import { EntityInfo, EntityType } from 'enums/entity.enum';
 import { ServiceCategory } from 'enums/service.enum';
 import { OwnerType } from 'enums/user.enum';
 import { compare } from 'fast-json-patch';
 import { Container } from 'generated/entity/data/container';
+import { EntityLineage } from 'generated/type/entityLineage';
+import { EntityReference } from 'generated/type/entityReference';
 import { LabelType, State, TagSource } from 'generated/type/tagLabel';
 import { isUndefined, omitBy } from 'lodash';
 import { observer } from 'mobx-react';
@@ -40,6 +51,8 @@ import { EntityTags, ExtraInfo } from 'Models';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
+import { getLineageByFQN } from 'rest/lineageAPI';
+import { addLineage, deleteLineageEdge } from 'rest/miscAPI';
 import {
   addContainerFollower,
   getContainerByName,
@@ -56,7 +69,9 @@ import {
   refreshPage,
 } from 'utils/CommonUtils';
 import { getContainerDetailPath } from 'utils/ContainerDetailUtils';
+import { getEntityLineage } from 'utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from 'utils/PermissionsUtils';
+import { getLineageViewPath } from 'utils/RouterUtils';
 import { serviceTypeLogo } from 'utils/ServiceUtils';
 import { getTagsWithoutTier, getTierTags } from 'utils/TableUtils';
 import { showErrorToast, showSuccessToast } from 'utils/ToastUtils';
@@ -75,19 +90,35 @@ const ContainerPage = () => {
   const { containerName, tab = CONTAINER_DETAILS_TABS.SCHEME } =
     useParams<{ containerName: string; tab: CONTAINER_DETAILS_TABS }>();
 
+  // Local states
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [isChildrenLoading, setIsChildrenLoading] = useState<boolean>(false);
   const [hasError, setHasError] = useState<boolean>(false);
+  const [isEditDescription, setIsEditDescription] = useState<boolean>(false);
+  const [isLineageLoading, setIsLineageLoading] = useState<boolean>(false);
+
   const [containerData, setContainerData] = useState<Container>();
+  const [containerChildrenData, setContainerChildrenData] = useState<
+    Container['children']
+  >([]);
   const [containerPermissions, setContainerPermissions] =
     useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
-  const [isEditDescription, setIsEditDescription] = useState<boolean>(false);
+  const [entityLineage, setEntityLineage] = useState<EntityLineage>(
+    {} as EntityLineage
+  );
+  const [leafNodes, setLeafNodes] = useState<LeafNodes>({} as LeafNodes);
+  const [isNodeLoading, setNodeLoading] = useState<LoadingNodeState>({
+    id: undefined,
+    state: false,
+  });
 
+  // data fetching methods
   const fetchContainerDetail = async (containerFQN: string) => {
     setIsLoading(true);
     try {
       const response = await getContainerByName(
         containerFQN,
-        'parent,children,dataModel,owner,tags,followers,extension'
+        'parent,dataModel,owner,tags,followers,extension'
       );
       setContainerData(response);
     } catch (error) {
@@ -95,6 +126,34 @@ const ContainerPage = () => {
       setHasError(true);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const fetchContainerChildren = async (containerFQN: string) => {
+    setIsChildrenLoading(true);
+    try {
+      const { children } = await getContainerByName(containerFQN, 'children');
+      setContainerChildrenData(children);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    } finally {
+      setIsChildrenLoading(false);
+    }
+  };
+
+  const fetchLineageData = async (containerFQN: string) => {
+    setIsLineageLoading(true);
+    try {
+      const response = await getLineageByFQN(
+        containerFQN,
+        EntityType.CONTAINER
+      );
+
+      setEntityLineage(response);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    } finally {
+      setIsLineageLoading(false);
     }
   };
 
@@ -374,6 +433,68 @@ const ContainerPage = () => {
     }
   };
 
+  // Lineage handlers
+  const handleAddLineage = async (edge: Edge) => {
+    try {
+      await addLineage(edge);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  };
+
+  const handleRemoveLineage = async (data: EdgeData) => {
+    try {
+      await deleteLineageEdge(
+        data.fromEntity,
+        data.fromId,
+        data.toEntity,
+        data.toId
+      );
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  };
+
+  const handleSetLeafNode = (val: EntityLineage, pos: LineagePos) => {
+    if (pos === 'to' && val.downstreamEdges?.length === 0) {
+      setLeafNodes((prev) => ({
+        ...prev,
+        downStreamNode: [...(prev.downStreamNode ?? []), val.entity.id],
+      }));
+    }
+    if (pos === 'from' && val.upstreamEdges?.length === 0) {
+      setLeafNodes((prev) => ({
+        ...prev,
+        upStreamNode: [...(prev.upStreamNode ?? []), val.entity.id],
+      }));
+    }
+  };
+
+  const handleLoadLineageNode = async (
+    node: EntityReference,
+    pos: LineagePos
+  ) => {
+    setNodeLoading({ id: node.id, state: true });
+
+    try {
+      const response = await getLineageByFQN(
+        node.fullyQualifiedName ?? '',
+        node.type
+      );
+      handleSetLeafNode(response, pos);
+      setEntityLineage(getEntityLineage(entityLineage, response, pos));
+      setTimeout(() => {
+        setNodeLoading((prev) => ({ ...prev, state: false }));
+      }, 500);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  };
+
+  const handleFullScreenClick = () =>
+    history.push(getLineageViewPath(EntityType.CONTAINER, containerName));
+
+  // Effects
   useEffect(() => {
     if (hasViewPermission) {
       fetchContainerDetail(containerName);
@@ -384,6 +505,16 @@ const ContainerPage = () => {
     fetchResourcePermission(containerName);
   }, [containerName]);
 
+  useEffect(() => {
+    if (tab === CONTAINER_DETAILS_TABS.Lineage) {
+      fetchLineageData(containerName);
+    }
+    if (tab === CONTAINER_DETAILS_TABS.CHILDREN) {
+      fetchContainerChildren(containerName);
+    }
+  }, [tab, containerName]);
+
+  // Rendering
   if (isLoading) {
     return <Loader />;
   }
@@ -491,7 +622,11 @@ const ContainerPage = () => {
               className="tw-bg-white tw-flex-grow tw-p-4 tw-shadow tw-rounded-md"
               gutter={[0, 16]}>
               <Col span={24}>
-                <ContainerChildren childrenList={containerData?.children} />
+                {isChildrenLoading ? (
+                  <Loader />
+                ) : (
+                  <ContainerChildren childrenList={containerChildrenData} />
+                )}
               </Col>
             </Row>
           </Tabs.TabPane>
@@ -502,11 +637,27 @@ const ContainerPage = () => {
                 {t('label.lineage')}
               </span>
             }>
-            <Row
-              className="tw-bg-white tw-flex-grow tw-p-4 tw-shadow tw-rounded-md"
-              gutter={[0, 16]}>
-              {t('label.lineage')}
-            </Row>
+            <Card
+              className={`${ENTITY_CARD_CLASS} card-body-full`}
+              data-testid="lineage-details">
+              <EntityLineageComponent
+                addLineageHandler={handleAddLineage}
+                deleted={deleted}
+                entityLineage={entityLineage}
+                entityLineageHandler={(lineage) => setEntityLineage(lineage)}
+                entityType={EntityType.CONTAINER}
+                hasEditAccess={
+                  containerPermissions.EditAll ||
+                  containerPermissions.EditLineage
+                }
+                isLoading={isLineageLoading}
+                isNodeLoading={isNodeLoading}
+                lineageLeafNodes={leafNodes}
+                loadNodeHandler={handleLoadLineageNode}
+                removeLineageHandler={handleRemoveLineage}
+                onFullScreenClick={handleFullScreenClick}
+              />
+            </Card>
           </Tabs.TabPane>
           <Tabs.TabPane
             key={CONTAINER_DETAILS_TABS.CUSTOM_PROPERTIES}
