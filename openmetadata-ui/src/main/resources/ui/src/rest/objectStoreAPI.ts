@@ -10,6 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { AxiosResponse } from 'axios';
+import { Operation } from 'fast-json-patch';
 import { Container } from 'generated/entity/data/container';
 import { Paging } from 'generated/type/paging';
 import { ServicePageData } from 'pages/service';
@@ -37,6 +39,20 @@ export const getContainers = async (
 export const getContainerByName = async (name: string, fields: string) => {
   const response = await APIClient.get<Container>(
     `containers/name/${name}?fields=${fields}`
+  );
+
+  return response.data;
+};
+
+export const patchContainerDetails = async (id: string, data: Operation[]) => {
+  const configOptions = {
+    headers: { 'Content-type': 'application/json-patch+json' },
+  };
+
+  const response = await APIClient.patch<Operation[], AxiosResponse<Container>>(
+    `/containers/${id}`,
+    data,
+    configOptions
   );
 
   return response.data;

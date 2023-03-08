@@ -30,13 +30,15 @@ import { NO_PERMISSION_TO_VIEW } from 'constants/HelperTextUtil';
 import { EntityInfo, EntityType } from 'enums/entity.enum';
 import { ServiceCategory } from 'enums/service.enum';
 import { OwnerType } from 'enums/user.enum';
+import { compare } from 'fast-json-patch';
 import { Container } from 'generated/entity/data/container';
+import { isUndefined, omitBy } from 'lodash';
 import { observer } from 'mobx-react';
 import { ExtraInfo } from 'Models';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
-import { getContainerByName } from 'rest/objectStoreAPI';
+import { getContainerByName, patchContainerDetails } from 'rest/objectStoreAPI';
 import {
   getCurrentUserId,
   getEntityMissingError,
@@ -69,6 +71,8 @@ const ContainerPage = () => {
 
   const [containerPermissions, setContainerPermissions] =
     useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
+
+  const [isEditDescription, setIsEditDescription] = useState<boolean>(false);
 
   const fetchContainerDetail = async (containerFQN: string) => {
     setIsLoading(true);
@@ -187,6 +191,28 @@ const ContainerPage = () => {
     }
   };
 
+  const handleUpdateContainerData = (updatedData: Container) => {
+    const jsonPatch = compare(omitBy(containerData, isUndefined), updatedData);
+
+    return patchContainerDetails(containerData?.id ?? '', jsonPatch);
+  };
+
+  const handleUpdateDescription = async (updatedDescription: string) => {
+    try {
+      const { description: newDescription } = await handleUpdateContainerData({
+        ...(containerData as Container),
+        description: updatedDescription,
+      });
+
+      setContainerData((prev) => ({
+        ...(prev as Container),
+        description: newDescription,
+      }));
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  };
+
   useEffect(() => {
     if (hasViewPermission) {
       fetchContainerDetail(containerName);
@@ -285,24 +311,16 @@ const ContainerPage = () => {
                     containerPermissions.EditAll ||
                     containerPermissions.EditDescription
                   }
-                  isEdit={false}
+                  isEdit={isEditDescription}
                   isReadOnly={deleted}
                   owner={owner}
-                  onCancel={tempFunction}
-                  onDescriptionEdit={tempFunction}
-                  onDescriptionUpdate={async () => tempFunction()}
+                  onCancel={() => setIsEditDescription(false)}
+                  onDescriptionEdit={() => setIsEditDescription(true)}
+                  onDescriptionUpdate={handleUpdateDescription}
                 />
               </Col>
               <Col span={24}>
-                {containerData?.dataModel ? (
-                  <ContainerDataModel dataModel={containerData.dataModel} />
-                ) : (
-                  <ErrorPlaceHolder>
-                    {t('message.no-entity-data-available', {
-                      entity: t('label.schema'),
-                    })}
-                  </ErrorPlaceHolder>
-                )}
+                <ContainerDataModel dataModel={containerData?.dataModel} />
               </Col>
             </Row>
           </Tabs.TabPane>
