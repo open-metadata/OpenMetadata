@@ -11,13 +11,13 @@
 """
 Lineage Parser configuration
 """
-import signal
 import traceback
 from collections import defaultdict
 from copy import deepcopy
 from logging.config import DictConfigurator
 from typing import Any, Dict, List, Optional, Tuple, Union
 
+import sqlparse
 from cached_property import cached_property
 from sqllineage import SQLPARSE_DIALECT
 from sqlparse.sql import Comparison, Identifier, Parenthesis, Statement
@@ -35,9 +35,11 @@ from metadata.utils.logger import ingestion_logger
 # Prevent sqllineage from modifying the logger config
 # Disable the DictConfigurator.configure method while importing LineageRunner
 # pylint: disable=wrong-import-position
+from metadata.utils.timeout import timeout
+
 configure = DictConfigurator.configure
 DictConfigurator.configure = lambda _: None
-from sqllineage.core.models import Column, Schema, Table
+from sqllineage.core.models import Column, Table
 from sqllineage.exceptions import SQLLineageException
 from sqllineage.runner import LineageRunner
 
@@ -50,8 +52,11 @@ logger = ingestion_logger()
 LINEAGE_PARSING_TIMEOUT = 10
 
 
-def handle_timeout(sig: int, frame: Any):
-    raise TimeoutError("Parser has been running for more than 10 seconds.")
+@timeout(seconds=LINEAGE_PARSING_TIMEOUT)
+def get_sqlfluff_lineage_runner(query: str, dialect: str) -> LineageRunner:
+    lr_sqlfluff = LineageRunner(query, dialect=dialect)
+    lr_sqlfluff.get_column_lineage()
+    return lr_sqlfluff
 
 
 class LineageParser:
@@ -261,15 +266,16 @@ class LineageParser:
     def stateful_add_joins_from_statement(
         self,
         join_data: Dict[str, List[TableColumnJoin]],
-        statement: Statement,
+        sql_statement: str,
     ) -> None:
         """
         Parse a single statement to pick up join information
         :param join_data: join data from previous statements
-        :param statement: Parsed sql statement to process
+        :param sql_statement: Parsed sql statement to process
         :return: for each table name, list all joins against other tables
         """
         # Here we want to get tokens such as `(tableA.col1 = tableB.col2)`
+        statement = sqlparse.parse(sql_statement)[0]
         comparisons: List[Comparison] = []
         for sub in statement.get_sublists():
             if isinstance(sub, Parenthesis):
@@ -315,8 +321,8 @@ class LineageParser:
         """
         join_data = defaultdict(list)
         # These are @lazy_property, not properly being picked up by IDEs. Ignore the warning
-        for statement in self.parser.statements_parsed:
-            self.stateful_add_joins_from_statement(join_data, statement=statement)
+        for statement in self.parser.statements():
+            self.stateful_add_joins_from_statement(join_data, sql_statement=statement)
 
         return join_data
 
@@ -366,9 +372,7 @@ class LineageParser:
     ) -> LineageRunner:
         sqlfluff_count = 0
         try:
-            signal.signal(signal.SIGALRM, handle_timeout)
-            signal.alarm(LINEAGE_PARSING_TIMEOUT)
-            lr_sqlfluff = LineageRunner(query, dialect=dialect.value)
+            lr_sqlfluff = get_sqlfluff_lineage_runner(query, dialect.value)
             sqlfluff_count = len(lr_sqlfluff.get_column_lineage()) + len(
                 set(lr_sqlfluff.source_tables).union(
                     set(lr_sqlfluff.target_tables).union(
@@ -376,10 +380,14 @@ class LineageParser:
                     )
                 )
             )
-            signal.alarm(0)
-        except Exception as exc:
+        except TimeoutError:
             logger.debug(
-                f"Lineage with SqlFluff failed for the [{dialect.value}] query: [{query}]: {exc}"
+                f"Lineage with SqlFluff failed for the [{dialect.value}] query: [{query}]: Parser has been running for more than {LINEAGE_PARSING_TIMEOUT} seconds."
+            )
+            lr_sqlfluff = None
+        except Exception:
+            logger.debug(
+                f"Lineage with SqlFluff failed for the [{dialect.value}] query: [{query}]"
             )
             lr_sqlfluff = None
 
