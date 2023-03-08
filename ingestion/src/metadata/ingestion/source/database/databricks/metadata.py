@@ -124,20 +124,20 @@ def get_columns(self, connection, table_name, schema=None, **kw):
             "comment": _comment,
         }
         if col_type in {"array", "struct", "map"}:
-            if db_name is not None:
+            if db_name and schema is not None:
                 rows = dict(
                     connection.execute(
                         f"DESCRIBE {db_name}.{schema}.{table_name} {col_name}"
                     ).fetchall()
                 )
-            else:
+            elif schema:
                 rows = dict(
                     connection.execute(
                         f"DESCRIBE {schema}.{table_name} {col_name}"
                     ).fetchall()
                 )
 
-            col_info["raw_data_type"] = rows["data_type"]
+            col_info["raw_data_type"] = rows["data_type"] if rows else None
         result.append(col_info)
     return result
 
