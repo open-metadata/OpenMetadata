@@ -21,6 +21,7 @@ from typing import List, Union
 
 import pandas as pd
 from avro.datafile import DataFileReader
+from avro.errors import InvalidAvroBinaryEncoding
 from avro.io import DatumReader
 
 from metadata.generated.schema.entity.data.table import Column
@@ -61,7 +62,7 @@ def read_from_avro(
                 dataframes=[pd.DataFrame.from_records(elements)],
             )
         return [pd.DataFrame.from_records(elements)]
-    except AssertionError:
+    except (AssertionError, InvalidAvroBinaryEncoding):
         columns = parse_avro_schema(schema=avro_text, cls=Column)
         field_map = {
             col.name.__root__: pd.Series(
