@@ -203,13 +203,14 @@ def get_table_comment(  # pylint: disable=unused-argument
 def get_view_definition(
     self, connection, table_name, schema=None, **kw  # pylint: disable=unused-argument
 ):
-    return get_view_definition_wrapper(
-        self,
-        connection,
-        table_name=table_name,
-        schema=schema,
-        query=DATABRICKS_VIEW_DEFINITIONS,
-    )
+    if schema in ("information_schema", "INFORMATION_SCHEMA"):
+        return get_view_definition_wrapper(
+            self,
+            connection,
+            table_name=table_name,
+            schema=schema,
+            query=DATABRICKS_VIEW_DEFINITIONS,
+        )
 
 
 DatabricksDialect.get_table_comment = get_table_comment
