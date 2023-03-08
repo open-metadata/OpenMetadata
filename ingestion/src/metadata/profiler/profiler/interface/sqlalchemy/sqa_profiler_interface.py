@@ -140,7 +140,7 @@ class SQAProfilerInterface(ProfilerProtocol, SQAInterfaceMixin):
                     metric(column).fn()
                     for metric in metrics
                     if not metric.is_window_metric()
-                    and not metric in {Sum, StdDev, Mean}
+                    and metric not in {Sum, StdDev, Mean}
                 ]
             )
             return dict(row)
@@ -222,16 +222,18 @@ class SQAProfilerInterface(ProfilerProtocol, SQAInterfaceMixin):
             )
             return dict(row)
         except Exception as exc:
-            if isinstance(exc, ProgrammingError):
-                if exc.orig and exc.orig.errno in OVERFLOW_ERROR_CODES.get(
-                    session.bind.dialect.name
-                ):
-                    logger.info(
-                        f"Computing metrics without sum for {runner.table.__tablename__}.{column.name}"
-                    )
-                    return self._compute_static_metrics_wo_sum(
-                        metrics, runner, session, column
-                    )
+            if (
+                isinstance(exc, ProgrammingError)
+                and exc.orig
+                and exc.orig.errno
+                in OVERFLOW_ERROR_CODES.get(session.bind.dialect.name)
+            ):
+                logger.info(
+                    f"Computing metrics without sum for {runner.table.__tablename__}.{column.name}"
+                )
+                return self._compute_static_metrics_wo_sum(
+                    metrics, runner, session, column
+                )
 
             msg = f"Error trying to compute profile for {runner.table.__tablename__}.{column.name}: {exc}"
             handle_query_exception(msg, exc, session)
@@ -300,14 +302,16 @@ class SQAProfilerInterface(ProfilerProtocol, SQAInterfaceMixin):
                 *[metric(column).fn() for metric in metrics]
             )
         except Exception as exc:
-            if isinstance(exc, ProgrammingError):
-                if exc.orig and exc.orig.errno in OVERFLOW_ERROR_CODES.get(
-                    session.bind.dialect.name
-                ):
-                    logger.info(
-                        f"Skipping window metrics for {runner.table.__tablename__}.{column.name} due to overflow"
-                    )
-                    return None
+            if (
+                isinstance(exc, ProgrammingError)
+                and exc.orig
+                and exc.orig.errno
+                in OVERFLOW_ERROR_CODES.get(session.bind.dialect.name)
+            ):
+                logger.info(
+                    f"Skipping window metrics for {runner.table.__tablename__}.{column.name} due to overflow"
+                )
+                return None
             msg = f"Error trying to compute profile for {runner.table.__tablename__}.{column.name}: {exc}"
             handle_query_exception(msg, exc, session)
         if row:
