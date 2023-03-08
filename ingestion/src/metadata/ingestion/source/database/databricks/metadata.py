@@ -127,12 +127,14 @@ def get_columns(self, connection, table_name, schema=None, **kw):
             if db_name is not None:
                 rows = dict(
                     connection.execute(
-                        f"DESCRIBE {db_name}.{table_name} {col_name}"
+                        f"DESCRIBE {db_name}.{schema}.{table_name} {col_name}"
                     ).fetchall()
                 )
             else:
                 rows = dict(
-                    connection.execute(f"DESCRIBE {table_name} {col_name}").fetchall()
+                    connection.execute(
+                        f"DESCRIBE {schema}.{table_name} {col_name}"
+                    ).fetchall()
                 )
 
             col_info["raw_data_type"] = rows["data_type"]
