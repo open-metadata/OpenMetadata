@@ -21,6 +21,7 @@ const mockAccountIdChange = jest.fn();
 const mockAuthTokenChange = jest.fn();
 const mockUpdateDescriptions = jest.fn();
 const mockDbtCloudProjectId = jest.fn();
+const mockDbtCloudJobId = jest.fn();
 const mockUpdateDBTClassification = jest.fn();
 const mockUpdateDBTCloudUrl = jest.fn();
 
@@ -37,6 +38,7 @@ const mockProps = {
   handleCloudAuthTokenChange: mockAuthTokenChange,
   handleUpdateDescriptions: mockUpdateDescriptions,
   handleDbtCloudProjectId: mockDbtCloudProjectId,
+  handleDbtCloudJobId: mockDbtCloudJobId,
   handleDbtCloudUrl: mockUpdateDBTCloudUrl,
   handleUpdateDBTClassification: mockUpdateDBTClassification,
 };
@@ -64,6 +66,15 @@ describe('Test DBT Cloud Config Form', () => {
     expect(inputAccountId).toHaveValue('Test_Id');
   });
 
+  it('Job Id should be displayed when passed as prop', async () => {
+    const { container } = render(
+      <DBTCloudConfig {...mockProps} dbtCloudJobId="Job_Id" />
+    );
+    const dbtCloudJobId = getByTestId(container, 'dbtCloudJobId');
+
+    expect(dbtCloudJobId).toHaveValue('Job_Id');
+  });
+
   it('Authorization Token should be displayed when passed as prop', async () => {
     const { container } = render(
       <DBTCloudConfig {...mockProps} dbtCloudAuthToken="Test_Token" />
@@ -84,6 +95,19 @@ describe('Test DBT Cloud Config Form', () => {
     });
 
     expect(mockAccountIdChange).toHaveBeenCalled();
+  });
+
+  it('Job Id should change with input', async () => {
+    const { container } = render(<DBTCloudConfig {...mockProps} />);
+    const dbtCloudJobId = getByTestId(container, 'dbtCloudJobId');
+
+    fireEvent.change(dbtCloudJobId, {
+      target: {
+        value: 'Job_Id',
+      },
+    });
+
+    expect(mockDbtCloudJobId).toHaveBeenCalledWith('Job_Id');
   });
 
   it('Authorization Token should change with input', async () => {
