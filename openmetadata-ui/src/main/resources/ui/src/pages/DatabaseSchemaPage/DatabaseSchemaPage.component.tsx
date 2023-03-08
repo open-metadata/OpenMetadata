@@ -11,19 +11,17 @@
  *  limitations under the License.
  */
 
-import { Card, Col, Row, Skeleton, Space, Table as TableAntd } from 'antd';
+import { Card, Col, Row, Skeleton, Table as TableAntd } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import ActivityFeedList from 'components/ActivityFeed/ActivityFeedList/ActivityFeedList';
 import ActivityThreadPanel from 'components/ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
 import Description from 'components/common/description/Description';
-import ManageButton from 'components/common/entityPageInfo/ManageButton/ManageButton';
-import EntitySummaryDetails from 'components/common/EntitySummaryDetails/EntitySummaryDetails';
+import EntityPageInfo from 'components/common/entityPageInfo/EntityPageInfo';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import NextPrevious from 'components/common/next-previous/NextPrevious';
 import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
 import TabsPane from 'components/common/TabsPane/TabsPane';
-import TitleBreadcrumb from 'components/common/title-breadcrumb/title-breadcrumb.component';
 import { TitleBreadcrumbProps } from 'components/common/title-breadcrumb/title-breadcrumb.interface';
 import PageContainerV1 from 'components/containers/PageContainerV1';
 import Loader from 'components/Loader/Loader';
@@ -33,9 +31,10 @@ import {
   ResourceEntity,
 } from 'components/PermissionProvider/PermissionProvider.interface';
 import { compare, Operation } from 'fast-json-patch';
+import { TagLabel } from 'generated/type/tagLabel';
 import { isUndefined, startCase, toNumber } from 'lodash';
 import { observer } from 'mobx-react';
-import { ExtraInfo } from 'Models';
+import { EntityTags, ExtraInfo } from 'Models';
 import React, {
   Fragment,
   FunctionComponent,
@@ -106,7 +105,11 @@ import {
   serviceTypeLogo,
 } from '../../utils/ServiceUtils';
 import { getErrorText } from '../../utils/StringsUtils';
-import { getEntityLink } from '../../utils/TableUtils';
+import {
+  getEntityLink,
+  getTagsWithoutTier,
+  getTierTags,
+} from '../../utils/TableUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
 const DatabaseSchemaPage: FunctionComponent = () => {
@@ -156,6 +159,9 @@ const DatabaseSchemaPage: FunctionComponent = () => {
 
   const [databaseSchemaPermission, setDatabaseSchemaPermission] =
     useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
+
+  const [tags, setTags] = useState<Array<EntityTags>>([]);
+  const [tier, setTier] = useState<TagLabel>();
 
   const fetchDatabaseSchemaPermission = async () => {
     setIsLoading(true);
@@ -253,7 +259,11 @@ const DatabaseSchemaPage: FunctionComponent = () => {
 
   const getDetailsByFQN = () => {
     setIsSchemaDetailsLoading(true);
-    getDatabaseSchemaDetailsByFQN(databaseSchemaFQN, ['owner', 'usageSummary'])
+    getDatabaseSchemaDetailsByFQN(databaseSchemaFQN, [
+      'owner',
+      'usageSummary',
+      'tags',
+    ])
       .then((res) => {
         if (res) {
           const {
@@ -263,11 +273,14 @@ const DatabaseSchemaPage: FunctionComponent = () => {
             service,
             serviceType,
             database,
+            tags,
           } = res;
           setDatabaseSchema(res);
           setDescription(schemaDescription);
           setDatabaseSchemaId(id);
           setDatabaseSchemaName(name);
+          setTags(getTagsWithoutTier(tags || []));
+          setTier(getTierTags(tags ?? []));
           setSlashedTableName([
             {
               name: startCase(ServiceCategory.DATABASE_SERVICES),
@@ -468,6 +481,40 @@ const DatabaseSchemaPage: FunctionComponent = () => {
           reject();
         });
     });
+  };
+
+  const onTagUpdate = (selectedTags?: Array<EntityTags>) => {
+    if (selectedTags) {
+      const updatedTags = [...(tier ? [tier] : []), ...selectedTags];
+      const updatedData = { ...databaseSchema, tags: updatedTags };
+
+      new Promise<void>((_, reject) => {
+        saveUpdatedDatabaseSchemaData(updatedData as DatabaseSchema)
+          .then((res) => {
+            if (res) {
+              setDatabaseSchema(res);
+              setTags(getTagsWithoutTier(res.tags || []));
+              setTier(getTierTags(res.tags ?? []));
+
+              getEntityFeedCount();
+              reject();
+            } else {
+              reject();
+
+              throw jsonData['api-error-messages'][
+                'unexpected-server-response'
+              ];
+            }
+          })
+          .catch((err: AxiosError) => {
+            showErrorToast(
+              err,
+              jsonData['api-error-messages']['update-databaseSchema-error']
+            );
+            reject();
+          });
+      });
+    }
   };
 
   const fetchActivityFeed = (after?: string) => {
@@ -711,40 +758,42 @@ const DatabaseSchemaPage: FunctionComponent = () => {
                 ) : (
                   <>
                     <Col span={24}>
-                      <Space align="center" className="justify-between w-full">
-                        <TitleBreadcrumb titleLinks={slashedTableName} />
-                        <ManageButton
-                          isRecursiveDelete
-                          allowSoftDelete={false}
-                          canDelete={databaseSchemaPermission.Delete}
-                          entityFQN={databaseSchemaFQN}
-                          entityId={databaseSchemaId}
-                          entityName={databaseSchemaName}
-                          entityType={EntityType.DATABASE_SCHEMA}
-                        />
-                      </Space>
-                    </Col>
-                    <Col span={24}>
-                      {extraInfo.map((info, index) => (
-                        <Space key={index}>
-                          <EntitySummaryDetails
-                            currentOwner={databaseSchema?.owner}
-                            data={info}
-                            removeOwner={
-                              databaseSchemaPermission.EditOwner ||
-                              databaseSchemaPermission.EditAll
-                                ? handleRemoveOwner
-                                : undefined
-                            }
-                            updateOwner={
-                              databaseSchemaPermission.EditOwner ||
-                              databaseSchemaPermission.EditAll
-                                ? handleUpdateOwner
-                                : undefined
-                            }
-                          />
-                        </Space>
-                      ))}
+                      <EntityPageInfo
+                        allowSoftDelete={false}
+                        canDelete={databaseSchemaPermission.Delete}
+                        currentOwner={databaseSchema?.owner}
+                        entityFieldThreads={getEntityFieldThreadCounts(
+                          EntityField.TAGS,
+                          entityFieldThreadCount
+                        )}
+                        entityFqn={databaseSchemaFQN}
+                        entityId={databaseSchemaId}
+                        entityName={databaseSchemaName}
+                        entityType={EntityType.DATABASE_SCHEMA}
+                        extraInfo={extraInfo}
+                        followersList={[]}
+                        isTagEditable={
+                          databaseSchemaPermission.EditAll ||
+                          databaseSchemaPermission.EditTags
+                        }
+                        removeOwner={
+                          databaseSchemaPermission.EditOwner ||
+                          databaseSchemaPermission.EditAll
+                            ? handleRemoveOwner
+                            : undefined
+                        }
+                        tags={tags}
+                        tagsHandler={onTagUpdate}
+                        tier={tier}
+                        titleLinks={slashedTableName}
+                        updateOwner={
+                          databaseSchemaPermission.EditOwner ||
+                          databaseSchemaPermission.EditAll
+                            ? handleUpdateOwner
+                            : undefined
+                        }
+                        onThreadLinkSelect={onThreadLinkSelect}
+                      />
                     </Col>
                     <Col data-testid="description-container" span={24}>
                       <Description
