@@ -34,7 +34,9 @@ public class TopicIndex implements ElasticSearchIndex {
       tags.addAll(topic.getTags());
     }
 
-    if (topic.getMessageSchema().getSchemaFields() != null && !topic.getMessageSchema().getSchemaFields().isEmpty()) {
+    if (topic.getMessageSchema() != null
+        && topic.getMessageSchema().getSchemaFields() != null
+        && !topic.getMessageSchema().getSchemaFields().isEmpty()) {
       List<FlattenSchemaField> flattenFields = new ArrayList<>();
       parseSchemaFields(topic.getMessageSchema().getSchemaFields(), flattenFields, null);
 
