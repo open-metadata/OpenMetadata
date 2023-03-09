@@ -22,84 +22,120 @@ class AvroParserTests(TestCase):
     Check methods from avro_parser.py
     """
 
-    sample_avro_schema = """{
-        "namespace": "example.avro",
-        "type": "record",
-        "name": "Order",
-        "fields": [
-            {
-            "name": "order_id",
-            "type": "int"
-            },
-            {
-            "name": "api_client_id",
-            "type": "int"
-            },
-            {
-            "name": "billing_address_id",
-            "type": "int"
-            },
-            {
-            "name": "customer_id",
-            "type": "int"
-            },
-            {
-            "name": "location_id",
-            "type": "int"
-            },
-            {
-            "name": "shipping_address_id",
-            "type": "int"
-            },
-            {
-            "name": "user_id",
-            "type": "int"
-            },
-            {
-            "name": "total_price",
-            "type": "double"
-            },
-            {
-            "name": "discount_code",
+    sample_avro_schema = """
+    {
+    "namespace": "openmetadata.kafka",
+    "name": "level",
+    "type": "record",
+    "doc": "This is a first level record",
+    "fields": [
+        {
+            "name": "uid",
+            "type": "int",
+            "doc": "The field represents unique id"
+        },
+        {
+            "name": "somefield",
             "type": "string"
-            },
-            {
-            "name": "processed_at",
-            "type": "int"
+        },
+        {
+            "name": "options",
+            "doc": "The field represents options array",
+            "type": {
+                "type": "array",
+                "items": {
+                    "type": "record",
+                    "name": "lvl2_record",
+                    "doc": "The field represents a level 2 record",
+                    "fields": [
+                        {
+                            "name": "item1_lvl2",
+                            "type": "string"
+                        },
+                        {
+                            "name": "item2_lvl2",
+                            "doc": "level 2 array",
+                            "type": {
+                                "type": "array",
+                                "items": {
+                                    "type": "record",
+                                    "name": "lvl3_record",
+                                    "fields": [
+                                        {
+                                            "name": "item1_lvl3",
+                                            "type": "string",
+                                            "doc": "The field represents level3 item"
+                                        },
+                                        {
+                                            "name": "item2_lvl3",
+                                            "type": "string"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    ]
+                }
             }
-        ]
-        }"""
+        }
+    ]
+}
+    """
 
     parsed_schema = parse_avro_schema(sample_avro_schema)
 
-    def test_schema_name(self):
-        self.assertEqual(self.parsed_schema[0].name.__root__, "Order")
-
-    def test_schema_type(self):
+    def test_first_level(self):
+        self.assertEqual(self.parsed_schema[0].name.__root__, "level")
+        self.assertEqual(
+            self.parsed_schema[0].description.__root__, "This is a first level record"
+        )
         self.assertEqual(self.parsed_schema[0].dataType.name, "RECORD")
 
-    def test_field_names(self):
-        field_names = {
-            str(field.name.__root__) for field in self.parsed_schema[0].children
-        }
+    def test_second_level(self):
+        children = self.parsed_schema[0].children
+        field_names = {str(field.name.__root__) for field in children}
         self.assertEqual(
             field_names,
+            {"uid", "somefield", "options"},
+        )
+
+        field_types = {str(field.dataType.name) for field in children}
+        self.assertEqual(field_types, {"INT", "STRING", "ARRAY"})
+
+        field_descriptions = {
+            field.description.__root__ if field.description else None
+            for field in children
+        }
+        self.assertEqual(
+            field_descriptions,
             {
-                "api_client_id",
-                "user_id",
-                "order_id",
-                "discount_code",
-                "location_id",
-                "processed_at",
-                "total_price",
-                "shipping_address_id",
-                "billing_address_id",
-                "customer_id",
+                "The field represents unique id",
+                None,
+                "The field represents options array",
             },
         )
 
-    def test_field_types(self):
-        field_types = {
-            str(field.dataType.name) for field in self.parsed_schema[0].children
+    def test_third_level(self):
+        level3_record = self.parsed_schema[0].children[2].children[0]
+        children = level3_record.children
+
+        self.assertEqual(level3_record.name.__root__, "lvl2_record")
+        self.assertEqual(
+            level3_record.description.__root__, "The field represents a level 2 record"
+        )
+        self.assertEqual(level3_record.dataType.name, "RECORD")
+
+        field_names = {str(field.name.__root__) for field in children}
+        self.assertEqual(
+            field_names,
+            {"item1_lvl2", "item2_lvl2"},
+        )
+
+        field_types = {str(field.dataType.name) for field in children}
+        self.assertEqual(field_types, {"STRING", "ARRAY"})
+
+        field_descriptions = {
+            field.description.__root__ if field.description else None
+            for field in children
         }
-        self.assertEqual(field_types, {"INT", "STRING", "DOUBLE"})
+        self.assertEqual(field_descriptions, {None, "level 2 array"})
