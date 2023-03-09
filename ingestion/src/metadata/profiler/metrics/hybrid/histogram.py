@@ -67,7 +67,12 @@ class Histogram(HybridMetric):
         if any(var is None for var in [res_iqr, res_row_count, res_min, res_max]):
             return None
 
-        return (res_iqr, res_row_count, res_min, res_max)
+        return (
+            float(res_iqr),
+            float(res_row_count),
+            float(res_min),
+            float(res_max),
+        )  # Decimal to float
 
     def fn(
         self,

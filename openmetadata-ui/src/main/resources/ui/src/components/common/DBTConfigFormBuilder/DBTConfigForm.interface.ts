@@ -45,6 +45,7 @@ export type DbtConfigCloud = Pick<
   | 'dbtCloudProjectId'
   | 'dbtClassificationName'
   | 'dbtCloudUrl'
+  | 'dbtCloudJobId'
 >;
 
 export type DbtConfigLocal = Pick<
