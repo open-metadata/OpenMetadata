@@ -53,6 +53,8 @@ class NonParametricSkew(ComposedMetric):
         res_median = res.get(Median.name())
 
         if res_mean is not None and res_stddev is not None and res_median is not None:
-            return (res_mean - float(res_median)) / res_stddev
+            return (float(res_mean) - float(res_median)) / float(
+                res_stddev
+            )  # convert from decimal
 
         return None

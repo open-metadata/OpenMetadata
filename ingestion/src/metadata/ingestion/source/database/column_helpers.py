@@ -9,17 +9,16 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 """
-Table related pydantic definitions
+Helpers functions to handle columns when we extract
+their raw information from the source
 """
-from typing import Optional
-
-from pydantic import BaseModel
-
-from metadata.generated.schema.entity.data.table import Table
 
 
-class DeleteTable(BaseModel):
-    """Entity Reference of a table to be deleted"""
+def remove_table_from_column_name(table_name: str, raw_column_name: str) -> str:
+    """
+    Given a column `table.column`, return only `column`.
 
-    table: Table
-    mark_deleted_tables: Optional[bool] = False
+    Note that we might have columns which have real dots
+    "." in the name, so we cannot just split.
+    """
+    return raw_column_name.replace(table_name + ".", "")
