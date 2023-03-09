@@ -21,7 +21,10 @@ import { deleteEntity } from 'rest/miscAPI';
 import { ENTITY_DELETE_STATE } from '../../../constants/entity.constants';
 import { EntityType } from '../../../enums/entity.enum';
 import jsonData from '../../../jsons/en';
-import { getEntityDeleteMessage } from '../../../utils/CommonUtils';
+import {
+  getEntityDeleteMessage,
+  Transi18next,
+} from '../../../utils/CommonUtils';
 import { getTitleCase } from '../../../utils/EntityUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { Button } from '../../buttons/Button/Button';
@@ -259,10 +262,13 @@ const DeleteWidgetModal = ({
         )}
       </Radio.Group>
       <div>
-        <p className="tw-mb-2">
-          {t('label.type')} <strong>{t('label.delete-uppercase')}</strong>{' '}
-          {t('label.to-lowercase')} {t('label.confirm-lowercase')}
-        </p>
+        <div className="m-b-xss">
+          <Transi18next
+            i18nKey="message.type-delete-to-confirm"
+            renderElement={<strong />}
+          />
+        </div>
+
         <input
           autoComplete="off"
           className="tw-form-inputs tw-form-inputs-padding"

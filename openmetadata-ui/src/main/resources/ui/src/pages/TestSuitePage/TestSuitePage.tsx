@@ -210,10 +210,7 @@ const TestSuitePage = () => {
             <Space align="center" className="w-full justify-between" size={16}>
               <TitleBreadcrumb titleLinks={TEST_SUITE_BREADCRUMB} />
 
-              <Space
-                align="center"
-                className="tw-w-full tw-justify-end"
-                size={16}>
+              <Space align="center" className="w-full justify-end" size={16}>
                 <Space align="end" size={5}>
                   <Switch
                     checked={showDeleted}

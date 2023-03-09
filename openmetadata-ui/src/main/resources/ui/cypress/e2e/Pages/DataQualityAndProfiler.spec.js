@@ -465,7 +465,7 @@ describe('Data Quality and Profiler should work properly', () => {
       .should('eq', 'No data');
   });
 
-  it('Delete Test suite should work properly', () => {
+  it('Soft Delete Test suite should work properly', () => {
     cy.get('[data-testid="appbar-item-data-quality"]')
       .should('be.visible')
       .click();
@@ -473,8 +473,101 @@ describe('Data Quality and Profiler should work properly', () => {
       .contains(NEW_TEST_SUITE.name)
       .should('be.visible')
       .click();
-    cy.get('[data-testid="test-suite-delete"]').should('be.visible').click();
-    cy.get('[data-testid="hard-delete-option"]').should('be.visible').click();
+
+    cy.get('[data-testid="manage-button"]').should('be.visible').click();
+
+    cy.get('[data-testid="delete-button"]').should('be.visible').click();
+
+    // Check if soft delete option is present
+    cy.get('[data-testid="soft-delete-option"]').should('exist');
+
+    // Click on Permanent delete option
+    cy.get('[data-testid="soft-delete-option"]')
+      .should('contain', NEW_TEST_SUITE.name)
+      .should('be.visible')
+      .click();
+
+    cy.get('[data-testid="confirm-button"]')
+      .should('exist')
+      .should('be.disabled');
+
+    cy.get('[data-testid="confirmation-text-input"]')
+      .should('be.visible')
+      .type(DELETE_TERM);
+    interceptURL(
+      'DELETE',
+      '/api/v1/testSuite/*?hardDelete=false&recursive=true',
+      'deleteTestSuite'
+    );
+    cy.get('[data-testid="confirm-button"]')
+      .should('be.visible')
+      .should('not.be.disabled')
+      .click();
+    verifyResponseStatusCode('@deleteTestSuite', 200);
+    cy.get('.Toastify__toast-body')
+      .contains('Test Suite deleted successfully!')
+      .should('be.visible')
+      .wait(200);
+  });
+
+  it('Restore Test suite should work properly', () => {
+    cy.get('[data-testid="appbar-item-data-quality"]')
+      .should('be.visible')
+      .click();
+
+    cy.get('[data-testid="switch-deleted"]').should('exist').click();
+
+    cy.get(`[data-row-key="${NEW_TEST_SUITE.name}"] > :nth-child(1) > a`)
+      .contains(NEW_TEST_SUITE.name)
+      .should('be.visible')
+      .click();
+
+    cy.get('[data-testid="deleted-badge"]').should('be.visible');
+
+    cy.get('[data-testid="manage-button"]').should('be.visible').click();
+
+    cy.get('[data-testid="restore-button"]').should('be.visible').click();
+
+    cy.get('[data-testid="restore-modal-body"]').contains(
+      `Are you sure you want to restore ${NEW_TEST_SUITE.name}`
+    );
+    interceptURL('PUT', '/api/v1/testSuite/restore', 'restoreTestSuite');
+
+    cy.get('.ant-modal-footer').contains('Restore').click();
+
+    verifyResponseStatusCode('@restoreTestSuite', 200);
+    cy.get('.Toastify__toast-body')
+      .contains('Test Suite restored successfully')
+      .should('be.visible')
+      .wait(200);
+  });
+
+  it('Hard Delete Test suite should work properly', () => {
+    cy.get('[data-testid="appbar-item-data-quality"]')
+      .should('be.visible')
+      .click();
+    cy.get(`[data-row-key="${NEW_TEST_SUITE.name}"] > :nth-child(1) > a`)
+      .contains(NEW_TEST_SUITE.name)
+      .should('be.visible')
+      .click();
+
+    cy.get('[data-testid="manage-button"]').should('be.visible').click();
+
+    cy.get('[data-testid="delete-button"]').should('be.visible').click();
+
+    // Check if soft delete option is not present
+    cy.get('[data-testid="soft-delete-option"]').should('not.exist');
+
+    // Click on Permanent delete option
+    cy.get('[data-testid="hard-delete-option"]')
+      .should('contain', NEW_TEST_SUITE.name)
+      .should('be.visible')
+      .click();
+
+    cy.get('[data-testid="confirm-button"]')
+      .should('exist')
+      .should('be.disabled');
+
     cy.get('[data-testid="confirmation-text-input"]')
       .should('be.visible')
       .type(DELETE_TERM);

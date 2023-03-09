@@ -387,14 +387,10 @@ const EntityPageInfo = ({
             }
           />
           {deleted && (
-            <>
-              <div
-                className="tw-rounded tw-bg-error-lite tw-text-error tw-font-medium tw-h-6 tw-px-2 tw-py-0.5 tw-ml-2"
-                data-testid="deleted-badge">
-                <ExclamationCircleOutlined className="tw-mr-1" />
-                {t('label.deleted')}
-              </div>
-            </>
+            <div className="deleted-badge-button" data-testid="deleted-badge">
+              <ExclamationCircleOutlined className="tw-mr-1" />
+              {t('label.deleted')}
+            </div>
           )}
         </Space>
         <Space align="center" id="version-and-follow-section">

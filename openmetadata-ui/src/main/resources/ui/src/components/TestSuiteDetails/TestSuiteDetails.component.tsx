@@ -53,7 +53,7 @@ const TestSuiteDetails = ({
             titleLinks={slashedBreadCrumb}
           />
           {testSuite?.deleted && (
-            <div className="deleted-button" data-testid="deleted-badge">
+            <div className="deleted-badge-button" data-testid="deleted-badge">
               <ExclamationCircleOutlined className="tw-mr-1" />
               {t('label.deleted')}
             </div>
@@ -61,6 +61,7 @@ const TestSuiteDetails = ({
         </Space>
 
         <ManageButton
+          isRecursiveDelete
           allowSoftDelete={!testSuite?.deleted}
           canDelete={hasAccess}
           deleted={testSuite?.deleted}

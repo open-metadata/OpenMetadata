@@ -1122,6 +1122,7 @@
     "tour-step-trace-path-across-tables": " With <0>{{text}}</0>, trace the path of data across tables, pipelines, & dashboards.",
     "tour-step-type-search-term": "In the search box, type <0>\"{{text}}\"</0>. Hit <0>{{enterText}}.</0>",
     "try-different-time-period-filtering": "No Results Available. Try filtering by a different time period.",
+    "type-delete-to-confirm": "Type <0>DELETE</0> to confirm",
     "unable-to-connect-to-your-dbt-cloud-instance": "URL to connect to your dbt cloud instance. E.g., \n https://cloud.getdbt.com or https://emea.dbt.com/",
     "unable-to-error-elasticsearch": "We are unable to {{error}}} Elasticsearch for entity indexes.",
     "usage-ingestion-description": "Usage ingestion can be configured and deployed after a metadata ingestion has been set up. The usage ingestion workflow obtains the query log and table creation details from the underlying database and feeds it to OpenMetadata. Metadata and usage can have only one pipeline for a database service. Define the Query Log Duration (in days), Stage File Location, and Result Limit to start.",

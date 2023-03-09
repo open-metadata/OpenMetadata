@@ -255,19 +255,14 @@ const TestSuiteDetailsPage = () => {
 
   const onRestoreTestSuite = async () => {
     try {
-      const res = await restoreTestSuite(testSuite?.id || '');
-      if (res) {
-        showSuccessToast(
-          t('message.entity-restored-success', {
-            entity: t('label.test-suite'),
-          })
-        );
-        history.push(ROUTES.TEST_SUITES);
-      } else {
-        throw t('message.entity-restored-error', {
+      await restoreTestSuite(testSuite?.id || '');
+
+      showSuccessToast(
+        t('message.entity-restored-success', {
           entity: t('label.test-suite'),
-        });
-      }
+        })
+      );
+      history.push(ROUTES.TEST_SUITES);
     } catch (error) {
       showErrorToast(
         error as AxiosError,
