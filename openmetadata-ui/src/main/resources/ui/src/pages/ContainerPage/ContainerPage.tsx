@@ -78,7 +78,7 @@ import { serviceTypeLogo } from 'utils/ServiceUtils';
 import { getTagsWithoutTier, getTierTags } from 'utils/TableUtils';
 import { showErrorToast, showSuccessToast } from 'utils/ToastUtils';
 
-export enum CONTAINER_DETAILS_TABS {
+enum CONTAINER_DETAILS_TABS {
   SCHEME = 'schema',
   CHILDREN = 'children',
   Lineage = 'lineage',
