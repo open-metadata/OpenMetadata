@@ -266,10 +266,10 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
       {editContainerColumnDescription && (
         <ModalWithMarkdownEditor
           header={`${t('label.edit-entity', {
-            entity: t('label.schema-field'),
+            entity: t('label.column'),
           })}: "${editContainerColumnDescription.name}"`}
           placeholder={t('label.enter-field-description', {
-            field: t('label.schema-field'),
+            field: t('label.column'),
           })}
           value={editContainerColumnDescription.description ?? ''}
           visible={Boolean(editContainerColumnDescription)}
