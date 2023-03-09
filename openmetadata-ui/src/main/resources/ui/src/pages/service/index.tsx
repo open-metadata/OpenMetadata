@@ -489,10 +489,10 @@ const ServicePage: FunctionComponent = () => {
 
       setData(response.data);
       setPaging(response.paging);
-      setIsLoading(false);
     } catch (error) {
       setData([]);
       setPaging(pagingObject);
+    } finally {
       setIsLoading(false);
     }
   };
@@ -629,7 +629,7 @@ const ServicePage: FunctionComponent = () => {
       case ServiceCategory.OBJECT_STORE_SERVICES: {
         const container = data as Container;
 
-        return container.tags && container.tags?.length > 0 ? (
+        return container.tags && container.tags.length > 0 ? (
           <TagsViewer
             showStartWith={false}
             sizeCap={-1}
