@@ -32,6 +32,7 @@ class NifiClient:
     Wrapper on top of Nifi REST API
     """
 
+    # pylint: disable=too-many-arguments
     def __init__(
         self,
         host_port: str,
@@ -52,7 +53,10 @@ class NifiClient:
 
         if all(setting for setting in [self.username, self.password]):
             self.verify = verify
-            self.headers = {"Authorization": f"Bearer {self.token}", **self.content_headers}
+            self.headers = {
+                "Authorization": f"Bearer {self.token}",
+                **self.content_headers,
+            }
             self.data = f"username={self.username}&password={self.password}"
             self.client_cert = None
         else:
@@ -62,7 +66,6 @@ class NifiClient:
             self.headers = self.content_headers
             access = self.get("access")
             logger.debug(access)
-
 
     @property
     def token(self) -> str:
@@ -103,7 +106,7 @@ class NifiClient:
 
         # Get the first `resources` key from the dict
         try:
-            return self._resources.get(RESOURCES) # Dict key
+            return self._resources.get(RESOURCES)  # Dict key
         except AttributeError:
             return []
 
@@ -117,7 +120,7 @@ class NifiClient:
                 verify=self.verify,
                 headers=self.headers,
                 timeout=REQUESTS_TIMEOUT,
-                cert=self.client_cert
+                cert=self.client_cert,
             )
 
             return res.json()

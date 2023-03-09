@@ -13,10 +13,10 @@
 Source connection handler
 """
 from metadata.generated.schema.entity.services.connections.pipeline.nifiConnection import (
-    NifiConnection, UsernamePassword
+    NifiConnection,
+    UsernamePassword,
 )
-from metadata.ingestion.connections.test_connections import \
-    SourceConnectionException
+from metadata.ingestion.connections.test_connections import SourceConnectionException
 from metadata.ingestion.source.pipeline.nifi.client import NifiClient
 
 
@@ -29,7 +29,7 @@ def get_connection(connection: NifiConnection) -> NifiClient:
             host_port=connection.hostPort,
             username=connection.nifiConfig.username,
             password=connection.nifiConfig.password.get_secret_value(),
-            verify=connection.nifiConfig.verifySSL
+            verify=connection.nifiConfig.verifySSL,
         )
 
     return NifiClient(
