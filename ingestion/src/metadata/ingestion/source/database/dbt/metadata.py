@@ -246,7 +246,7 @@ class DbtSource(DbtServiceSource):  # pylint: disable=too-many-public-methods
                 ),
                 labelType=LabelType.Automated,
                 state=State.Confirmed,
-                source=TagSource.Tag,
+                source=TagSource.Classification,
             )
             for tag in dbt_tags_list
         ] or None
