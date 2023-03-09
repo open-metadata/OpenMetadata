@@ -227,7 +227,9 @@ public class QueryRepository extends EntityRepository<Query> {
 
     @Override
     public void entitySpecificUpdate() throws IOException {
-      recordChange("vote", original.getVote(), updated.getVote());
+      if (operation.isPatch()) {
+        recordChange("vote", original.getVote(), updated.getVote());
+      }
       updateFromRelationships(
           "users",
           Entity.USER,
