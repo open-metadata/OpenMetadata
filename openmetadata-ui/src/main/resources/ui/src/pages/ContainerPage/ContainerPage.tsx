@@ -99,6 +99,7 @@ const ContainerPage = () => {
   const [isEditDescription, setIsEditDescription] = useState<boolean>(false);
   const [isLineageLoading, setIsLineageLoading] = useState<boolean>(false);
 
+  const [parentContainers, setParentContainers] = useState<Container[]>([]);
   const [containerData, setContainerData] = useState<Container>();
   const [containerChildrenData, setContainerChildrenData] = useState<
     Container['children']
@@ -115,6 +116,23 @@ const ContainerPage = () => {
   });
 
   // data fetching methods
+  const fetchContainerParent = async (
+    parentName: string,
+    newContainer = false
+  ) => {
+    try {
+      const response = await getContainerByName(parentName, 'parent');
+      setParentContainers((prev) =>
+        newContainer ? [response] : [response, ...prev]
+      );
+      if (response.parent && response.parent.fullyQualifiedName) {
+        await fetchContainerParent(response.parent.fullyQualifiedName);
+      }
+    } catch (error) {
+      showErrorToast(error as AxiosError, t('server.unexpected-response'));
+    }
+  };
+
   const fetchContainerDetail = async (containerFQN: string) => {
     setIsLoading(true);
     try {
@@ -123,6 +141,9 @@ const ContainerPage = () => {
         'parent,dataModel,owner,tags,followers,extension'
       );
       setContainerData(response);
+      if (response.parent && response.parent.fullyQualifiedName) {
+        await fetchContainerParent(response.parent.fullyQualifiedName, true);
+      }
     } catch (error) {
       showErrorToast(error as AxiosError);
       setHasError(true);
@@ -233,6 +254,11 @@ const ContainerPage = () => {
     const service = containerData?.service;
     const serviceName = service?.name;
 
+    const parentContainerItems = parentContainers.map((container) => ({
+      name: getEntityName(container),
+      url: getContainerDetailPath(container.fullyQualifiedName ?? ''),
+    }));
+
     return [
       {
         name: serviceName || '',
@@ -244,13 +270,14 @@ const ContainerPage = () => {
           : '',
         imgSrc: serviceType ? serviceTypeLogo(serviceType) : undefined,
       },
+      ...parentContainerItems,
       {
         name: entityName,
         url: '',
         activeTitle: true,
       },
     ];
-  }, [containerData, containerName, entityName]);
+  }, [containerData, containerName, entityName, parentContainers]);
 
   // get current user details
   const currentUser = useMemo(
@@ -514,6 +541,8 @@ const ContainerPage = () => {
 
   useEffect(() => {
     fetchResourcePermission(containerName);
+    // reset parent containers list on containername change
+    setParentContainers([]);
   }, [containerName]);
 
   useEffect(() => {
