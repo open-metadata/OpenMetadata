@@ -254,7 +254,7 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
       <Table
         bordered
         columns={columns}
-        data-testid="entity-table"
+        data-testid="container-data-model-table"
         dataSource={dataModel?.columns}
         expandable={{
           ...getTableExpandableConfig<Column>(),
