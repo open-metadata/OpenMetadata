@@ -308,7 +308,7 @@ class AtlasSource(Source):
                 ),
                 labelType="Automated",
                 state="Suggested",
-                source="Tag",
+                source="Classification",
             )
         ]
         return tags

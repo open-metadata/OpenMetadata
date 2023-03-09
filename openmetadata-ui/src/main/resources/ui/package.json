@@ -104,7 +104,7 @@
     "preinstall": "cd ../../../../.. && yarn install --frozen-lockfile",
     "postinstall": "yarn run build-check",
     "pre-commit": "lint-staged --concurrent false",
-    "test": "jest --passWithNoTests --maxWorkers=3 ",
+    "test": "jest --passWithNoTests --maxWorkers=3 --silent",
     "prepare": "cd ../../../../.. && husky install openmetadata-ui/src/main/resources/ui/.husky",
     "test:watch": "jest --passWithNoTests --watch --maxWorkers=3",
     "test:coverage": "jest --passWithNoTests --coverage --maxWorkers=3",

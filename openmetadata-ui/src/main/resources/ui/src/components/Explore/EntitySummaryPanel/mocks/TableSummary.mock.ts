@@ -47,7 +47,7 @@ export const mockTableEntityDetails: Table = {
           tagFQN: 'PersonalData.SpecialCategory',
           description:
             'GDPR special category data is personal information of data subjects that is especially sensitive.',
-          source: TagSource.Tag,
+          source: TagSource.Classification,
           labelType: LabelType.Manual,
           state: State.Confirmed,
         },
@@ -74,7 +74,7 @@ export const mockTableEntityDetails: Table = {
       tagFQN: 'PersonalData.SpecialCategory',
       description:
         'GDPR special category data is personal information of data subjects that is especially sensitive.',
-      source: TagSource.Tag,
+      source: TagSource.Classification,
       labelType: LabelType.Manual,
       state: State.Confirmed,
     },

@@ -281,7 +281,7 @@ class TableauSource(DashboardServiceSource):
                 ),
                 labelType="Automated",
                 state="Suggested",
-                source="Tag",
+                source="Classification",
             )
             for tag in tags
         ]
