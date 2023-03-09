@@ -11,6 +11,8 @@
 """
 Table related pydantic definitions
 """
+from typing import Optional
+
 from pydantic import BaseModel
 
 from metadata.generated.schema.entity.data.table import Table
@@ -20,3 +22,4 @@ class DeleteTable(BaseModel):
     """Entity Reference of a table to be deleted"""
 
     table: Table
+    mark_deleted_tables: Optional[bool] = False
