@@ -116,7 +116,7 @@ class DashboardServiceTopology(ServiceTopology):
             NodeStage(
                 type_=User,
                 context="owner",
-                processor="yield_owner",
+                processor="process_owner",
                 consumer=["dashboard_service"],
             ),
             NodeStage(

@@ -112,16 +112,16 @@ class DomodashboardSource(DashboardServiceSource):
                 )
         return None
 
-    def yield_owner(
+    def process_owner(
         self, dashboard_details: DomoDashboardDetails
     ) -> Optional[Dashboard]:
         owner = self.get_owner_details(owners=dashboard_details.owners)
-        if owner:
+        if owner and self.source_config.overrideOwner:
             self.metadata.patch_owner(
                 entity=Dashboard,
                 entity_id=self.context.dashboard.id,
                 owner=owner,
-                force=self.source_config.overrideOwner,
+                force=True,
             )
 
     def yield_dashboard(

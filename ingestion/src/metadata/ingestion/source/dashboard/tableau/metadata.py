@@ -251,16 +251,16 @@ class TableauSource(DashboardServiceSource):
                 return EntityReference(id=user.id.__root__, type="user")
         return None
 
-    def yield_owner(
+    def process_owner(
         self, dashboard_details: TableauDashboard
     ) -> Optional[LineageDashboard]:
         owner = self.get_owner_details(dashboard_details=dashboard_details)
-        if owner:
+        if owner and self.source_config.overrideOwner:
             self.metadata.patch_owner(
                 entity=LineageDashboard,
                 entity_id=self.context.dashboard.id,
                 owner=owner,
-                force=self.source_config.overrideOwner,
+                force=True,
             )
 
     def yield_tag(self, *_, **__) -> OMetaTagAndClassification:

@@ -182,16 +182,16 @@ class LookerSource(DashboardServiceSource):
 
         return self._owners_ref.get(dashboard_details.user_id)
 
-    def yield_owner(
+    def process_owner(
         self, dashboard_details: LookerDashboard
     ) -> Optional[MetadataDashboard]:
         owner = self.get_owner_details(dashboard_details=dashboard_details)
-        if owner:
+        if owner and self.source_config.overrideOwner:
             self.metadata.patch_owner(
                 entity=MetadataDashboard,
                 entity_id=self.context.dashboard.id,
                 owner=owner,
-                force=self.source_config.overrideOwner,
+                force=False,
             )
 
     def yield_dashboard(
