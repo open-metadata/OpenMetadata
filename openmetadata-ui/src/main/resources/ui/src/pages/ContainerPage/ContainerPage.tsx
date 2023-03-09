@@ -199,8 +199,31 @@ const ContainerPage = () => {
     }
   };
 
-  const hasViewPermission = useMemo(() => {
-    return containerPermissions?.ViewAll || containerPermissions?.ViewBasic;
+  const {
+    hasViewPermission,
+    hasEditDescriptionPermission,
+    hasEditOwnerPermission,
+    hasEditTagsPermission,
+    hasEditTierPermission,
+    hasEditCustomFieldsPermission,
+    hasEditLineagePermission,
+  } = useMemo(() => {
+    return {
+      hasViewPermission:
+        containerPermissions.ViewAll || containerPermissions.ViewBasic,
+      hasEditDescriptionPermission:
+        containerPermissions.EditAll || containerPermissions.EditDescription,
+      hasEditOwnerPermission:
+        containerPermissions.EditAll || containerPermissions.EditOwner,
+      hasEditTagsPermission:
+        containerPermissions.EditAll || containerPermissions.EditTags,
+      hasEditTierPermission:
+        containerPermissions.EditAll || containerPermissions.EditTier,
+      hasEditCustomFieldsPermission:
+        containerPermissions.EditAll || containerPermissions.EditCustomFields,
+      hasEditLineagePermission:
+        containerPermissions.EditAll || containerPermissions.EditLineage,
+    };
   }, [containerPermissions]);
 
   const {
@@ -607,33 +630,15 @@ const ContainerPage = () => {
           followers={followers.length}
           followersList={followers}
           isFollowing={isUserFollowing}
-          isTagEditable={
-            containerPermissions.EditAll || containerPermissions.EditTags
-          }
-          removeOwner={
-            containerPermissions.EditAll || containerPermissions.EditOwner
-              ? handleRemoveOwner
-              : undefined
-          }
-          removeTier={
-            containerPermissions.EditAll || containerPermissions.EditTier
-              ? handleRemoveTier
-              : undefined
-          }
+          isTagEditable={hasEditTagsPermission}
+          removeOwner={hasEditOwnerPermission ? handleRemoveOwner : undefined}
+          removeTier={hasEditTierPermission ? handleRemoveTier : undefined}
           tags={tags}
           tagsHandler={handleUpdateTags}
           tier={tier}
           titleLinks={breadcrumbTitles}
-          updateOwner={
-            containerPermissions.EditAll || containerPermissions.EditOwner
-              ? handleUpdateOwner
-              : undefined
-          }
-          updateTier={
-            containerPermissions.EditAll || containerPermissions.EditTier
-              ? handleUpdateTier
-              : undefined
-          }
+          updateOwner={hasEditOwnerPermission ? handleUpdateOwner : undefined}
+          updateTier={hasEditTierPermission ? handleUpdateTier : undefined}
           version={version + ''}
           onRestoreEntity={handleRestoreContainer}
         />
@@ -654,10 +659,7 @@ const ContainerPage = () => {
                   entityFqn={containerName}
                   entityName={entityName}
                   entityType={EntityType.CONTAINER}
-                  hasEditAccess={
-                    containerPermissions.EditAll ||
-                    containerPermissions.EditDescription
-                  }
+                  hasEditAccess={hasEditDescriptionPermission}
                   isEdit={isEditDescription}
                   isReadOnly={deleted}
                   owner={owner}
@@ -669,14 +671,8 @@ const ContainerPage = () => {
               <Col span={24}>
                 <ContainerDataModel
                   dataModel={containerData?.dataModel}
-                  hasDescriptionEditAccess={
-                    containerPermissions.EditAll ||
-                    containerPermissions.EditDescription
-                  }
-                  hasTagEditAccess={
-                    containerPermissions.EditAll ||
-                    containerPermissions.EditTags
-                  }
+                  hasDescriptionEditAccess={hasEditDescriptionPermission}
+                  hasTagEditAccess={hasEditTagsPermission}
                   isReadOnly={Boolean(deleted)}
                   onUpdate={handleUpdateDataModel}
                 />
@@ -718,10 +714,7 @@ const ContainerPage = () => {
                 entityLineage={entityLineage}
                 entityLineageHandler={(lineage) => setEntityLineage(lineage)}
                 entityType={EntityType.CONTAINER}
-                hasEditAccess={
-                  containerPermissions.EditAll ||
-                  containerPermissions.EditLineage
-                }
+                hasEditAccess={hasEditLineagePermission}
                 isLoading={isLineageLoading}
                 isNodeLoading={isNodeLoading}
                 lineageLeafNodes={leafNodes}
@@ -745,10 +738,7 @@ const ContainerPage = () => {
                 }
                 entityType={EntityType.CONTAINER}
                 handleExtensionUpdate={handleExtensionUpdate}
-                hasEditAccess={
-                  containerPermissions.EditAll ||
-                  containerPermissions.EditCustomFields
-                }
+                hasEditAccess={hasEditCustomFieldsPermission}
               />
             </Card>
           </Tabs.TabPane>
