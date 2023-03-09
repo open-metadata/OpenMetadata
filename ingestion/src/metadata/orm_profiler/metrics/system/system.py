@@ -322,7 +322,8 @@ def _(
         SELECT * FROM "SNOWFLAKE"."ACCOUNT_USAGE"."QUERY_HISTORY"
         WHERE
         start_time>= DATEADD('DAY', -1, CURRENT_TIMESTAMP)
-        AND QUERY_TYPE IN ('INSERT', 'MERGE', 'DELETE', 'UPDATE');
+        AND QUERY_TYPE IN ('INSERT', 'MERGE', 'DELETE', 'UPDATE')
+        AND EXECUTION_STATUS = 'SUCCESS';
     """
     result_scan = """
     SELECT *
