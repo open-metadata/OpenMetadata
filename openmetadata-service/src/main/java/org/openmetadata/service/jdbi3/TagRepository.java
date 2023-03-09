@@ -14,7 +14,6 @@
 package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.schema.type.Include.NON_DELETED;
-import static org.openmetadata.service.Entity.CLASSIFICATION;
 import static org.openmetadata.service.Entity.TAG;
 import static org.openmetadata.service.util.EntityUtil.entityReferenceMatch;
 import static org.openmetadata.service.util.EntityUtil.getId;
@@ -94,7 +93,7 @@ public class TagRepository extends EntityRepository<Tag> {
   @Override
   protected void postDelete(Tag entity) {
     // Cleanup all the tag labels using this tag
-    daoCollection.tagUsageDAO().deleteTagLabels(TagSource.TAG.ordinal(), entity.getFullyQualifiedName());
+    daoCollection.tagUsageDAO().deleteTagLabels(TagSource.CLASSIFICATION.ordinal(), entity.getFullyQualifiedName());
   }
 
   @Override
@@ -105,7 +104,7 @@ public class TagRepository extends EntityRepository<Tag> {
   }
 
   private Integer getUsageCount(Tag tag) {
-    return daoCollection.tagUsageDAO().getTagCount(TagSource.TAG.ordinal(), tag.getFullyQualifiedName());
+    return daoCollection.tagUsageDAO().getTagCount(TagSource.CLASSIFICATION.ordinal(), tag.getFullyQualifiedName());
   }
 
   private List<EntityReference> getChildren(Tag entity) throws IOException {
@@ -118,15 +117,16 @@ public class TagRepository extends EntityRepository<Tag> {
   }
 
   private EntityReference getClassification(Tag tag) throws IOException {
-    return getFromEntityRef(tag.getId(), Relationship.CONTAINS, CLASSIFICATION, true);
+    return getFromEntityRef(tag.getId(), Relationship.CONTAINS, Entity.CLASSIFICATION, true);
   }
 
   private void addClassificationRelationship(Tag term) {
-    addRelationship(term.getClassification().getId(), term.getId(), CLASSIFICATION, TAG, Relationship.CONTAINS);
+    addRelationship(term.getClassification().getId(), term.getId(), Entity.CLASSIFICATION, TAG, Relationship.CONTAINS);
   }
 
   private void deleteClassificationRelationship(Tag term) {
-    deleteRelationship(term.getClassification().getId(), CLASSIFICATION, term.getId(), TAG, Relationship.CONTAINS);
+    deleteRelationship(
+        term.getClassification().getId(), Entity.CLASSIFICATION, term.getId(), TAG, Relationship.CONTAINS);
   }
 
   private void updateClassificationRelationship(Tag orig, Tag updated) {
@@ -169,10 +169,13 @@ public class TagRepository extends EntityRepository<Tag> {
           throw new IllegalArgumentException(
               CatalogExceptionMessage.systemEntityRenameNotAllowed(original.getName(), entityType));
         }
-        // Category name changed - update tag names starting from category and all the children tags
+        // Category name changed - update tag names starting from classification and all the children tags
         LOG.info("Tag name changed from {} to {}", original.getName(), updated.getName());
         daoCollection.tagDAO().updateFqn(original.getFullyQualifiedName(), updated.getFullyQualifiedName());
-        daoCollection.tagUsageDAO().rename(original.getFullyQualifiedName(), updated.getFullyQualifiedName());
+        daoCollection
+            .tagUsageDAO()
+            .rename(
+                TagSource.CLASSIFICATION.ordinal(), original.getFullyQualifiedName(), updated.getFullyQualifiedName());
         recordChange("name", original.getName(), updated.getName());
       }
 
@@ -191,7 +194,10 @@ public class TagRepository extends EntityRepository<Tag> {
       boolean ClassificationChanged = !Objects.equals(oldCategoryId, newCategoryId);
 
       daoCollection.tagDAO().updateFqn(original.getFullyQualifiedName(), updated.getFullyQualifiedName());
-      daoCollection.tagUsageDAO().rename(original.getFullyQualifiedName(), updated.getFullyQualifiedName());
+      daoCollection
+          .tagUsageDAO()
+          .rename(
+              TagSource.CLASSIFICATION.ordinal(), original.getFullyQualifiedName(), updated.getFullyQualifiedName());
       if (ClassificationChanged) {
         updateClassificationRelationship(original, updated);
         recordChange(

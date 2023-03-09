@@ -152,7 +152,7 @@ EXPECTED_CREATED_PIPELINES = [
             TagLabel(
                 tagFQN="DagsterTags.hacker_new_repository",
                 description=None,
-                source="Tag",
+                source="Classification",
                 labelType="Automated",
                 state="Suggested",
                 href=None,
