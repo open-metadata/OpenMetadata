@@ -103,5 +103,5 @@
     }
   },
   "additionalProperties": false,
-  "required": ["id", "name", "workflowType", "request", "openMetadataServerConnection"]
+  "required": ["id", "name", "workflowType", "request"]
 }
