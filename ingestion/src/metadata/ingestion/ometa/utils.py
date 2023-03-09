@@ -15,7 +15,7 @@ Helper functions to handle OpenMetadata Entities' properties
 import re
 import string
 from functools import singledispatch
-from typing import List, Type, TypeVar, Union
+from typing import Type, TypeVar, Union
 
 from pydantic import BaseModel
 
@@ -77,11 +77,3 @@ def _(arg) -> str:
     Models with __root__
     """
     return str(arg.__root__)
-
-
-def convert_obj_list_to_json_str(object_list: List[BaseModel]) -> str:
-    """
-    Convert the pydentic object list into json array string
-    """
-    json_str = "[" + ",".join(obj.json() for obj in object_list) + "]"
-    return json_str
