@@ -14,15 +14,8 @@
 import { Card } from 'antd';
 import { AxiosError } from 'axios';
 import { ENTITY_CARD_CLASS } from 'constants/entity.constants';
-import { isEmpty } from 'lodash';
 import { EntityTags, ExtraInfo } from 'Models';
-import React, {
-  Fragment,
-  RefObject,
-  useCallback,
-  useEffect,
-  useState,
-} from 'react';
+import React, { RefObject, useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import { restoreTopic } from 'rest/topicsAPI';
@@ -382,26 +375,6 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
     }
   };
 
-  const getInfoBadge = (infos: Array<Record<string, string | number>>) => {
-    return (
-      <div className="tw-flex tw-justify-between">
-        <div className="tw-flex tw-gap-3">
-          {infos.map((info, index) => (
-            <div className="tw-mt-4" key={index}>
-              <span className="tw-py-1.5 tw-px-2 tw-rounded-l tw-bg-tag ">
-                {info.key}
-              </span>
-              <span className="tw-py-1.5 tw-px-2 tw-bg-primary-lite tw-font-normal tw-rounded-r">
-                {info.value}
-              </span>
-            </div>
-          ))}
-        </div>
-        <div />
-      </div>
-    );
-  };
-
   const handleFullScreenClick = () => {
     history.push(getLineageViewPath(EntityType.TOPIC, topicFQN));
   };
@@ -558,33 +531,17 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
                   />
                 </div>
               </div>
-              {!isEmpty(topicDetails.messageSchema?.schemaFields) ? (
-                <Fragment>
-                  {getInfoBadge([
-                    {
-                      key: t('label.schema'),
-                      value: topicDetails.messageSchema?.schemaType ?? '',
-                    },
-                  ])}
-                  <TopicSchemaFields
-                    className="mt-4"
-                    hasDescriptionEditAccess={
-                      topicPermissions.EditAll ||
-                      topicPermissions.EditDescription
-                    }
-                    hasTagEditAccess={
-                      topicPermissions.EditAll || topicPermissions.EditTags
-                    }
-                    isReadOnly={Boolean(deleted)}
-                    messageSchema={topicDetails.messageSchema}
-                    onUpdate={handleSchemaFieldsUpdate}
-                  />
-                </Fragment>
-              ) : (
-                <div className="tw-flex tw-justify-center tw-font-medium tw-items-center tw-border tw-border-main tw-rounded-md tw-p-8">
-                  {t('message.no-schema-data-available')}
-                </div>
-              )}
+              <TopicSchemaFields
+                hasDescriptionEditAccess={
+                  topicPermissions.EditAll || topicPermissions.EditDescription
+                }
+                hasTagEditAccess={
+                  topicPermissions.EditAll || topicPermissions.EditTags
+                }
+                isReadOnly={Boolean(deleted)}
+                messageSchema={topicDetails.messageSchema}
+                onUpdate={handleSchemaFieldsUpdate}
+              />
             </Card>
           )}
           {activeTab === 2 && (
