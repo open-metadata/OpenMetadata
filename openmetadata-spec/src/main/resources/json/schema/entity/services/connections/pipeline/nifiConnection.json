@@ -11,6 +11,52 @@
       "type": "string",
       "enum": ["Nifi"],
       "default": "Nifi"
+    },
+    "usernamePassword": {
+      "title": "Username/Password Authentication",
+      "description": "username/password auth",
+      "properties": {
+        "username": {
+          "title": "Username",
+          "description": "Nifi user to authenticate to the API.",
+          "type": "string"
+        },
+        "password": {
+          "title": "Password",
+          "description": "Nifi password to authenticate to the API.",
+          "type": "string",
+          "format": "password"
+        },
+        "verifySSL": {
+          "title": "Verify SSL",
+          "description": "Boolean marking if we need to verify the SSL certs for Nifi. False by default.",
+          "type": "boolean",
+          "default": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "clientCertificateAuthentication": {
+      "title": "Client Certificate Authentication",
+      "description": "client certificate auth",
+      "properties": {
+        "certificateAuthorityPath":{
+          "title":"Certificat Authority Path",
+          "description": "Path to the root CA certificate",
+          "type": "string"
+        },
+        "clientCertificatePath":{
+          "title":"Client Certificat",
+          "description": "Path to the client certificate",
+          "type": "string"
+        },
+        "clientkeyPath":{
+          "title":"Client Key",
+          "description": "Path to the client key",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
     }
   },
   "properties": {
@@ -27,22 +73,17 @@
       "type": "string",
       "format": "uri"
     },
-    "username": {
-      "title": "Username",
-      "description": "Nifi user to authenticate to the API.",
-      "type": "string"
-    },
-    "password": {
-      "title": "Password",
-      "description": "Nifi password to authenticate to the API.",
-      "type": "string",
-      "format": "password"
-    },
-    "verifySSL": {
-      "title": "Verify SSL",
-      "description": "Boolean marking if we need to verify the SSL certs for Nifi. False by default.",
-      "type": "boolean",
-      "default": false
+    "nifiConfig": {
+      "title": "Nifi Credentials Configuration",
+      "description": "We support username/password or client certificate authentication",
+      "oneOf": [
+        {
+          "$ref": "#/definitions/usernamePassword"
+        },
+        {
+          "$ref": "#/definitions/clientCertificateAuthentication"
+        }
+      ]
     },
     "supportsMetadataExtraction": {
       "title": "Supports Metadata Extraction",
@@ -50,5 +91,5 @@
     }
   },
   "additionalProperties": false,
-  "required": ["hostPort", "username", "password"]
+  "required": ["hostPort"]
 }
