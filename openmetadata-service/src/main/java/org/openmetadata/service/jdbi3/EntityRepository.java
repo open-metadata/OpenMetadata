@@ -80,6 +80,7 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TagLabel;
+import org.openmetadata.schema.type.TagLabel.TagSource;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
@@ -854,10 +855,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
   /** Apply tags {@code tagLabels} to the entity or field identified by {@code targetFQN} */
   public void applyTags(List<TagLabel> tagLabels, String targetFQN) {
     for (TagLabel tagLabel : listOrEmpty(tagLabels)) {
-      if (tagLabel.getSource() == TagLabel.TagSource.TAG) {
+      if (tagLabel.getSource() == TagSource.CLASSIFICATION) {
         Tag tag = daoCollection.tagDAO().findEntityByName(tagLabel.getTagFQN());
         tagLabel.withDescription(tag.getDescription());
-        tagLabel.setSource(TagLabel.TagSource.TAG);
+        tagLabel.setSource(TagSource.CLASSIFICATION);
       } else if (tagLabel.getSource() == TagLabel.TagSource.GLOSSARY) {
         GlossaryTerm term = daoCollection.glossaryTermDAO().findEntityByName(tagLabel.getTagFQN(), NON_DELETED);
         tagLabel.withDescription(term.getDescription());

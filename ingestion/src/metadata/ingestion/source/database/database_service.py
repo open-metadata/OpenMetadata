@@ -363,7 +363,7 @@ class DatabaseServiceSource(
                 ),
                 labelType=LabelType.Automated,
                 state=State.Suggested,
-                source=TagSource.Tag,
+                source=TagSource.Classification,
             )
             for tag_and_category in self.context.tags or []
             if tag_and_category.fqn.__root__ == entity_fqn

@@ -119,7 +119,7 @@ const EntityTable = ({
               ? tagList.map((tag) => {
                   return {
                     fqn: tag,
-                    source: 'Tag',
+                    source: 'Classification',
                   };
                 })
               : [];

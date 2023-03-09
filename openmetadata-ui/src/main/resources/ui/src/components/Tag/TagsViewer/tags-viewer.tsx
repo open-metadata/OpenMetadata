@@ -30,7 +30,8 @@ const TagsViewer: FunctionComponent<TagsViewerProps> = ({
   const getTagsElement = useCallback(
     (tag: EntityTags, index: number) => {
       // only show hasTag is tagSource is type of "Tag" and showStartWith is true
-      const showHasTag = tag.source === TagSource.Tag && showStartWith;
+      const showHasTag =
+        tag.source === TagSource.Classification && showStartWith;
 
       return (
         <Tags
