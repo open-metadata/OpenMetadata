@@ -18,7 +18,7 @@ slug: /main-concepts/metadata-standard/schemas/type/taglabel
 ## Definitions
 
 - **`tagFQN`** *(string)*
-- **`TagSource`** *(string)*: Must be one of: `['Tag', 'Glossary']`. Default: `Tag`.
+- **`TagSource`** *(string)*: Must be one of: `['Classification', 'Glossary']`. Default: `Classification`.
 
 
 Documentation file automatically generated at 2022-07-14 10:51:34.749986.
