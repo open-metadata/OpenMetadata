@@ -429,7 +429,10 @@ class DatabaseServiceSource(
         )
         for table in database_state:
             if str(table.fullyQualifiedName.__root__) not in self.database_source_state:
-                yield DeleteTable(table=table)
+                yield DeleteTable(
+                    table=table,
+                    mark_deleted_tables=self.source_config.markDeletedTables,
+                )
 
     def fetch_all_schema_and_delete_tables(self):
         """
