@@ -26,6 +26,7 @@ public class DashboardIndex implements ElasticSearchIndex {
     suggest.add(ElasticSearchSuggest.builder().input(dashboard.getDisplayName()).weight(10).build());
     serviceSuggest.add(ElasticSearchSuggest.builder().input(dashboard.getService().getName()).weight(5).build());
     ParseTags parseTags = new ParseTags(ElasticSearchIndexUtils.parseTags(dashboard.getTags()));
+
     if (dashboard.getCharts() != null) {
       for (EntityReference chart : dashboard.getCharts()) {
         chartSuggest.add(ElasticSearchSuggest.builder().input(chart.getDisplayName()).weight(5).build());

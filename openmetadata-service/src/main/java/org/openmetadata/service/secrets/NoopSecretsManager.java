@@ -29,7 +29,7 @@ public class NoopSecretsManager extends SecretsManager {
   }
 
   @Override
-  protected String storeValue(String fieldName, String value, String secretId) {
+  protected String storeValue(String fieldName, String value, String secretId, boolean store) {
     return value;
   }
 }
