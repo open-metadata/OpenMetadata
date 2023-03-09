@@ -74,7 +74,7 @@ describe('Test tags Component', () => {
     expect(mockCallback).toHaveBeenCalledTimes(1);
   });
 
-  it('Clicking on tag with source Tag should redirect to the proper tag category page', () => {
+  it('Clicking on tag with source Classification should redirect to the proper Classification page', () => {
     const { container } = render(
       <Tags
         editable
@@ -82,7 +82,7 @@ describe('Test tags Component', () => {
         startWith="#"
         tag={{
           labelType: LabelType.Manual,
-          source: TagSource.Tag,
+          source: TagSource.Classification,
           state: State.Confirmed,
           tagFQN: 'testTag.Test1',
         }}

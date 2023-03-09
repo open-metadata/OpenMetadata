@@ -267,10 +267,12 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
           throw new IllegalArgumentException(
               CatalogExceptionMessage.systemEntityRenameNotAllowed(original.getName(), entityType));
         }
-        // Category name changed - update tag names starting from category and all the children tags
+        // Glossary name changed - update tag names starting from glossary and all the children tags
         LOG.info("Glossary name changed from {} to {}", original.getName(), updated.getName());
         daoCollection.glossaryTermDAO().updateFqn(original.getName(), updated.getName());
-        daoCollection.tagUsageDAO().updateTagPrefix(original.getName(), updated.getName());
+        daoCollection
+            .tagUsageDAO()
+            .updateTagPrefix(TagSource.GLOSSARY.ordinal(), original.getName(), updated.getName());
         recordChange("name", original.getName(), updated.getName());
       }
     }

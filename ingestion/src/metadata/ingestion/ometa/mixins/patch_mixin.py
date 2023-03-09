@@ -253,7 +253,7 @@ class OMetaPatchMixin(Generic[T]):
                                 PATH: ENTITY_TAG.format(tag_index=tag_index),
                                 VALUE: {
                                     "labelType": LabelType.Automated.value,
-                                    "source": TagSource.Tag.value
+                                    "source": TagSource.Classification.value
                                     if not from_glossary
                                     else TagSource.Glossary.value,
                                     "state": State.Confirmed.value,
@@ -333,7 +333,7 @@ class OMetaPatchMixin(Generic[T]):
                                 ),
                                 VALUE: {
                                     "labelType": LabelType.Automated.value,
-                                    "source": TagSource.Tag.value
+                                    "source": TagSource.Classification.value
                                     if not from_glossary
                                     else TagSource.Glossary.value,
                                     "state": State.Suggested.value

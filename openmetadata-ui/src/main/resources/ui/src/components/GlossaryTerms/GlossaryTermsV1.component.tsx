@@ -114,7 +114,7 @@ const GlossaryTermsV1 = ({
         .map((tag) => ({
           labelType: LabelType.Manual,
           state: State.Confirmed,
-          source: TagSource.Tag,
+          source: TagSource.Classification,
           tagFQN: tag,
         }));
       const updatedTags = [...prevTags, ...newTags];
