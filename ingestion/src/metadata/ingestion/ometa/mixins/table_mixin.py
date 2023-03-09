@@ -35,14 +35,11 @@ from metadata.generated.schema.entity.data.table import (
     TableProfilerConfig,
 )
 from metadata.generated.schema.type.basic import FullyQualifiedEntityName, Uuid
-from metadata.generated.schema.type.entityReference import (
-    EntityReference,
-    EntityReferenceList,
-)
+from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.usageRequest import UsageRequest
 from metadata.ingestion.ometa.client import REST
 from metadata.ingestion.ometa.models import EntityList
-from metadata.ingestion.ometa.utils import convert_obj_list_to_json_str, model_str
+from metadata.ingestion.ometa.utils import model_str
 from metadata.utils.logger import ometa_logger
 from metadata.utils.uuid_encoder import UUIDEncoder
 
@@ -180,22 +177,15 @@ class OMetaTableMixin:
         :param table: Table Entity to update
         :param table_queries: SqlQuery to add
         """
-
-        table_reference = EntityReferenceList(
-            __root__=[
-                EntityReference(
-                    id=table.id.__root__,
-                    type="table",
-                    name=table.name.__root__,
-                    fullyQualifiedName=table.fullyQualifiedName.__root__,
+        for table_query in table_queries:
+            query = self.client.put("/query", data=table_query.json())
+            if query and query.get("id"):
+                table_ref = EntityReference(id=table.id.__root__, type="table")
+                # convert object to json array string
+                table_ref_json = "[" + table_ref.json() + "]"
+                self.client.put(
+                    f"/query/{query.get('id')}/addQueryUsage", data=table_ref_json
                 )
-            ]
-        )
-
-        for query in table_queries:
-            query.queryUsage = table_reference
-
-        self.client.put("/query/bulk", data=convert_obj_list_to_json_str(table_queries))
 
     def publish_table_usage(
         self, table: Table, table_usage_request: UsageRequest
