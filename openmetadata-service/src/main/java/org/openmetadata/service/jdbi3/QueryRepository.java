@@ -26,7 +26,7 @@ import org.openmetadata.service.util.ResultList;
 public class QueryRepository extends EntityRepository<Query> {
 
   private static final String QUERY_PATCH_FIELDS = "owner,tags,users,vote,queryUsedIn,followers";
-  private static final String QUERY_UPDATE_FIELDS = "owner,tags,users,vote,queryUsedIn,followers";
+  private static final String QUERY_UPDATE_FIELDS = "owner,tags,users,queryUsedIn,followers";
 
   public QueryRepository(CollectionDAO dao) {
     super(
