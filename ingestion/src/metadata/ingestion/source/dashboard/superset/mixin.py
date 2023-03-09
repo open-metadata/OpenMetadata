@@ -88,17 +88,25 @@ class SupersetSourceMixin(DashboardServiceSource):
 
         return None
 
+    def yield_owner(self, dashboard_details: dict) -> Optional[Lineage_Dashboard]:
+        owner = self.get_owner_details(dashboard_details=dashboard_details)
+        if owner:
+            self.metadata.patch_owner(
+                self.metadata,
+                entity=Lineage_Dashboard,
+                entity_id=self.context.dashboard.id,
+                force=self.source_config.overrideOwner,
+            )
+
     def get_owner_details(self, dashboard_details: dict) -> EntityReference:
-        if self.source_config.overrideOwner:
-            for owner in dashboard_details.get("owners", []):
-                user = self._get_user_by_email(owner["email"])
-                if user:
-                    return user
-            if dashboard_details.get("email"):
-                user = self._get_user_by_email(dashboard_details["email"])
-                if user:
-                    return user
-            return None
+        for owner in dashboard_details.get("owners", []):
+            user = self._get_user_by_email(owner["email"])
+            if user:
+                return user
+        if dashboard_details.get("email"):
+            user = self._get_user_by_email(dashboard_details["email"])
+            if user:
+                return user
         return None
 
     def _get_charts_of_dashboard(self, dashboard_details: dict) -> List[str]:

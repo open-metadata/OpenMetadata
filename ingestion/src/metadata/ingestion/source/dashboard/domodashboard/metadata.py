@@ -27,6 +27,7 @@ from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.chart import Chart
+from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.entity.services.connections.dashboard.domoDashboardConnection import (
     DomoDashboardConnection,
 )
@@ -95,22 +96,33 @@ class DomodashboardSource(DashboardServiceSource):
         return dashboard
 
     def get_owner_details(self, owners: List[DomoOwner]) -> Optional[EntityReference]:
-        if self.source_config.overrideOwner:
-            for owner in owners:
-                try:
-                    owner_details = self.client.users_get(owner.id)
-                    if owner_details.get("email"):
-                        user = self.metadata.get_user_by_email(owner_details["email"])
-                        if user:
-                            return EntityReference(id=user["id"], type="user")
-                        logger.debug(
-                            f"No user for found for email {owner_details['email']} in OMD"
-                        )
-                except Exception as exc:
+        for owner in owners:
+            try:
+                owner_details = self.client.users_get(owner.id)
+                if owner_details.get("email"):
+                    user = self.metadata.get_user_by_email(owner_details["email"])
+                    if user:
+                        return EntityReference(id=user.id.__root__, type="user")
                     logger.warning(
-                        f"Error while getting details of user {owner.displayName} - {exc}"
+                        f"No user for found for email {owner_details['email']} in OMD"
                     )
+            except Exception as exc:
+                logger.warning(
+                    f"Error while getting details of user {owner.displayName} - {exc}"
+                )
         return None
+
+    def yield_owner(
+        self, dashboard_details: DomoDashboardDetails
+    ) -> Optional[Dashboard]:
+        owner = self.get_owner_details(owners=dashboard_details.owners)
+        if owner:
+            self.metadata.patch_owner(
+                entity=Dashboard,
+                entity_id=self.context.dashboard.id,
+                owner=owner,
+                force=self.source_config.overrideOwner,
+            )
 
     def yield_dashboard(
         self, dashboard_details: DomoDashboardDetails
@@ -135,7 +147,6 @@ class DomodashboardSource(DashboardServiceSource):
                     for chart in self.context.charts
                 ],
                 service=self.context.dashboard_service.fullyQualifiedName.__root__,
-                owner=self.get_owner_details(dashboard_details.owners),
             )
         except KeyError as err:
             logger.warning(

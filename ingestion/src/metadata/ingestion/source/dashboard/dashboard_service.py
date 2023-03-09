@@ -30,6 +30,7 @@ from metadata.generated.schema.entity.services.dashboardService import (
     DashboardConnection,
     DashboardService,
 )
+from metadata.generated.schema.entity.teams.user import User
 from metadata.generated.schema.metadataIngestion.dashboardServiceMetadataPipeline import (
     DashboardServiceMetadataPipeline,
 )
@@ -110,6 +111,12 @@ class DashboardServiceTopology(ServiceTopology):
                 type_=Dashboard,
                 context="dashboard",
                 processor="yield_dashboard",
+                consumer=["dashboard_service"],
+            ),
+            NodeStage(
+                type_=User,
+                context="owner",
+                processor="yield_owner",
                 consumer=["dashboard_service"],
             ),
             NodeStage(
