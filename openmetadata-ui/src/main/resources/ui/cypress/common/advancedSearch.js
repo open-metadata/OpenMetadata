@@ -10,8 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { SEARCH_ENTITY_TABLE } from '../constants/constants';
 import { MYSQL } from '../constants/service.constants';
-import { interceptURL, verifyResponseStatusCode } from './common';
+import {
+  interceptURL,
+  verifyResponseStatusCode,
+  visitEntityDetailsPage,
+} from './common';
 
 export const CONDITIONS_MUST = {
   equalTo: {
@@ -47,9 +52,9 @@ export const FIELDS = {
   Owner: {
     name: 'Owner',
     testid: '[title="Owner"]',
-    searchTerm1: 'admin',
-    searchCriteriaFirstGroup: 'admin',
-    responseValueFirstGroup: `"displayName":"admin"`,
+    searchTerm1: 'Colin Ho',
+    searchCriteriaFirstGroup: 'Colin Ho',
+    responseValueFirstGroup: `"displayName":"Colin Ho"`,
     searchCriteriaSecondGroup: 'Aaron Singh',
     owner: true,
     responseValueSecondGroup: 'Aaron Singh',
@@ -249,45 +254,11 @@ export const checkmust_notPaths = (
 };
 
 export const addOwner = (searchTerm, ownerName) => {
-  cy.get(
-    '[data-testid="dropdown-profile"] > [data-testid="dropdown-item"] > :nth-child(1) > [data-testid="menu-button"]'
-  )
-    .should('exist')
-    .and('be.visible')
-    .click();
-
-  cy.get('[data-testid="user-name"]').should('exist').and('be.visible').click();
-
-  verifyResponseStatusCode('@userProfile', 200);
-
-  cy.get('[data-testid="hiden-layer"]').should('exist').click();
-
-  cy.get('[data-testid="edit-displayName"]')
-    .should('exist')
-    .and('be.visible')
-    .click();
-
-  cy.get('[data-testid="displayName"]')
-    .should('exist')
-    .and('be.visible')
-    .clear()
-    .type(ownerName);
-
-  cy.get('[data-testid="save-displayName"]')
-    .should('exist')
-    .and('be.visible')
-    .click();
-
-  cy.get('[data-testid="appbar-item-explore"]')
-    .should('exist')
-    .and('be.visible')
-    .click();
-
-  cy.get('#tabledatacard0-title')
-    .first()
-    .scrollIntoView()
-    .should('be.visible')
-    .click();
+  visitEntityDetailsPage(
+    SEARCH_ENTITY_TABLE.table_1.term,
+    SEARCH_ENTITY_TABLE.table_1.serviceName,
+    SEARCH_ENTITY_TABLE.table_1.entity
+  );
 
   interceptURL(
     'GET',
@@ -307,7 +278,7 @@ export const addOwner = (searchTerm, ownerName) => {
 
   interceptURL(
     'GET',
-    `api/v1/search/query?q=*${searchTerm}*&from=0&size=*&index=*`,
+    `api/v1/search/query?q=*${encodeURI(searchTerm)}*&from=0&size=*&index=*`,
     'searchOwner'
   );
   cy.get('[data-testid="searchInputText"]')
@@ -328,6 +299,8 @@ export const addOwner = (searchTerm, ownerName) => {
     .and('be.visible')
     .click();
 
+  verifyResponseStatusCode('@tablePatch', 200);
+
   cy.get('[data-testid="owner-link"]')
     .scrollIntoView()
     .invoke('text')
@@ -337,17 +310,11 @@ export const addOwner = (searchTerm, ownerName) => {
 };
 
 export const addTier = (tier) => {
-  cy.get('[data-testid="appbar-item-explore"]')
-    .scrollIntoView()
-    .should('exist')
-    .and('be.visible')
-    .click();
-
-  cy.get('#tabledatacard0-title')
-    .first()
-    .scrollIntoView()
-    .should('be.visible')
-    .click();
+  visitEntityDetailsPage(
+    SEARCH_ENTITY_TABLE.table_2.term,
+    SEARCH_ENTITY_TABLE.table_2.serviceName,
+    SEARCH_ENTITY_TABLE.table_2.entity
+  );
 
   cy.get('[data-testid="edit-Tier-icon"]')
     .scrollIntoView()
@@ -368,42 +335,29 @@ export const addTier = (tier) => {
 };
 
 export const addTag = (tag) => {
-  cy.intercept('/api/v1/testCase?fields=testCaseResult*').as('testCaseResults');
-  cy.intercept('/api/v1/feed?entityLink=*').as('entityLink');
+  visitEntityDetailsPage(
+    SEARCH_ENTITY_TABLE.table_3.term,
+    SEARCH_ENTITY_TABLE.table_3.serviceName,
+    SEARCH_ENTITY_TABLE.table_3.entity
+  );
 
-  cy.get('[data-testid="appbar-item-explore"]')
-    .should('exist')
-    .and('be.visible')
+  cy.get('[data-testid="tags"] > [data-testid="add-tag"]')
+    .eq(0)
+    .should('be.visible')
+    .scrollIntoView()
     .click();
 
-  cy.get('#tabledatacard0-title')
-    .first()
+  cy.get('[data-testid="tag-selector"]').should('be.visible').click().type(tag);
+
+  cy.get('.ant-select-item-option-content').should('be.visible').click();
+  cy.get(
+    '[data-testid="tags-wrapper"] > [data-testid="tag-container"]'
+  ).contains(tag);
+  cy.get('[data-testid="saveAssociatedTag"]').should('be.visible').click();
+  cy.get('[data-testid="entity-tags"]')
     .scrollIntoView()
     .should('be.visible')
-    .click();
-
-  cy.wait(['@testCaseResults', '@entityLink']).then(() => {
-    cy.get('[data-testid="tags"] > [data-testid="add-tag"]')
-      .eq(0)
-      .should('be.visible')
-      .scrollIntoView()
-      .click();
-
-    cy.get('[data-testid="tag-selector"]')
-      .should('be.visible')
-      .click()
-      .type(tag);
-
-    cy.get('.ant-select-item-option-content').should('be.visible').click();
-    cy.get(
-      '[data-testid="tags-wrapper"] > [data-testid="tag-container"]'
-    ).contains(tag);
-    cy.get('[data-testid="saveAssociatedTag"]').should('be.visible').click();
-    cy.get('[data-testid="entity-tags"]')
-      .scrollIntoView()
-      .should('be.visible')
-      .contains(tag);
-  });
+    .contains(tag);
 };
 
 export const checkAddGroupWithOperator = (
