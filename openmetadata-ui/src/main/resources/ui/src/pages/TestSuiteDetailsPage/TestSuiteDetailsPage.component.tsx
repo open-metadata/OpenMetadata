@@ -31,7 +31,7 @@ import { camelCase, startCase } from 'lodash';
 import { ExtraInfo } from 'Models';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import {
   getListTestCase,
   getTestSuiteByName,
@@ -61,7 +61,6 @@ import './TestSuiteDetailsPage.styles.less';
 
 const TestSuiteDetailsPage = () => {
   const { t } = useTranslation();
-  const history = useHistory();
   const { getEntityPermissionByFqn } = usePermissionProvider();
   const { testSuiteFQN } = useParams<Record<string, string>>();
   const [testSuite, setTestSuite] = useState<TestSuite>();
@@ -255,14 +254,14 @@ const TestSuiteDetailsPage = () => {
 
   const onRestoreTestSuite = async () => {
     try {
-      await restoreTestSuite(testSuite?.id || '');
+      const res = await restoreTestSuite(testSuite?.id || '');
+      setTestSuite(res);
 
       showSuccessToast(
         t('message.entity-restored-success', {
           entity: t('label.test-suite'),
         })
       );
-      history.push(ROUTES.TEST_SUITES);
     } catch (error) {
       showErrorToast(
         error as AxiosError,

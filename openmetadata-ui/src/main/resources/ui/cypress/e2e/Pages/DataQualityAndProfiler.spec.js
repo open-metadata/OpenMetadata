@@ -555,9 +555,6 @@ describe('Data Quality and Profiler should work properly', () => {
 
     cy.get('[data-testid="delete-button"]').should('be.visible').click();
 
-    // Check if soft delete option is not present
-    cy.get('[data-testid="soft-delete-option"]').should('not.exist');
-
     // Click on Permanent delete option
     cy.get('[data-testid="hard-delete-option"]')
       .should('contain', NEW_TEST_SUITE.name)

@@ -253,7 +253,10 @@ const ManageButton: FC<Props> = ({
         onCancel={() => {
           setShowReactiveModal(false);
         }}
-        onOk={onRestoreEntity}>
+        onOk={async () => {
+          onRestoreEntity && (await onRestoreEntity());
+          setShowReactiveModal(false);
+        }}>
         <Typography.Text data-testid="restore-modal-body">
           {t('message.are-you-want-to-restore', {
             entity: entityName,
