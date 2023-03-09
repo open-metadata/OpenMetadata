@@ -123,7 +123,9 @@ export interface ControlProps extends HTMLAttributes<HTMLDivElement> {
   status: LoadingState;
   zoomValue: number;
   lineageData: EntityLineage;
+  lineageConfig: LineageConfig;
   onOptionSelect: (value?: string) => void;
+  onLineageConfigUpdate: (config: LineageConfig) => void;
 }
 
 export type LineagePos = 'from' | 'to';
@@ -150,4 +152,10 @@ export interface EntityReferenceChild extends EntityReference {
 export interface NodeIndexMap {
   upstream: number[];
   downstream: number[];
+}
+
+export interface LineageConfig {
+  upstreamDepth: number;
+  downstreamDepth: number;
+  nodesPerLayer: number;
 }
