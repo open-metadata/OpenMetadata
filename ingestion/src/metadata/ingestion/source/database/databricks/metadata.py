@@ -130,14 +130,16 @@ def get_columns(self, connection, table_name, schema=None, **kw):
                         f"DESCRIBE {db_name}.{schema}.{table_name} {col_name}"
                     ).fetchall()
                 )
-            elif schema:
+            else:
                 rows = dict(
                     connection.execute(
                         f"DESCRIBE {schema}.{table_name} {col_name}"
+                        if schema
+                        else f"DESCRIBE {table_name} {col_name}"
                     ).fetchall()
                 )
 
-            col_info["raw_data_type"] = rows["data_type"] if rows else None
+            col_info["raw_data_type"] = rows["data_type"]
         result.append(col_info)
     return result
 
@@ -203,14 +205,13 @@ def get_table_comment(  # pylint: disable=unused-argument
 def get_view_definition(
     self, connection, table_name, schema=None, **kw  # pylint: disable=unused-argument
 ):
-    if schema in ("information_schema", "INFORMATION_SCHEMA"):
-        return get_view_definition_wrapper(
-            self,
-            connection,
-            table_name=table_name,
-            schema=schema,
-            query=DATABRICKS_VIEW_DEFINITIONS,
-        )
+    return get_view_definition_wrapper(
+        self,
+        connection,
+        table_name=table_name,
+        schema=schema,
+        query=DATABRICKS_VIEW_DEFINITIONS,
+    )
 
 
 DatabricksDialect.get_table_comment = get_table_comment
