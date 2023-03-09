@@ -30,19 +30,19 @@ export const mockPipelineDetails: Pipeline = {
       tags: [
         {
           tagFQN: 'PII.Sensitive',
-          source: TagSource.Tag,
+          source: TagSource.Classification,
           labelType: LabelType.Manual,
           state: State.Confirmed,
         },
         {
           tagFQN: 'TagClass.tag1',
-          source: TagSource.Tag,
+          source: TagSource.Classification,
           labelType: LabelType.Manual,
           state: State.Confirmed,
         },
         {
           tagFQN: 'PersonalData.Personal',
-          source: TagSource.Tag,
+          source: TagSource.Classification,
           labelType: LabelType.Manual,
           state: State.Confirmed,
         },
@@ -75,19 +75,19 @@ export const mockSortedPipelineDetails: Pipeline = {
       tags: [
         {
           tagFQN: 'PersonalData.Personal',
-          source: TagSource.Tag,
+          source: TagSource.Classification,
           labelType: LabelType.Manual,
           state: State.Confirmed,
         },
         {
           tagFQN: 'PII.Sensitive',
-          source: TagSource.Tag,
+          source: TagSource.Classification,
           labelType: LabelType.Manual,
           state: State.Confirmed,
         },
         {
           tagFQN: 'TagClass.tag1',
-          source: TagSource.Tag,
+          source: TagSource.Classification,
           labelType: LabelType.Manual,
           state: State.Confirmed,
         },

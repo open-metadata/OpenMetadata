@@ -49,7 +49,7 @@ export const mockTopicDetails: Topic = {
           {
             tagFQN: 'TagClass.tag1',
             description: '',
-            source: TagSource.Tag,
+            source: TagSource.Classification,
             labelType: LabelType.Manual,
             state: State.Confirmed,
           },
@@ -57,7 +57,7 @@ export const mockTopicDetails: Topic = {
             tagFQN: 'PersonalData.Personal',
             description:
               'Data that can be used to directly or indirectly identify a person.',
-            source: TagSource.Tag,
+            source: TagSource.Classification,
             labelType: LabelType.Manual,
             state: State.Confirmed,
           },
@@ -65,7 +65,7 @@ export const mockTopicDetails: Topic = {
             tagFQN: 'PII.NonSensitive',
             description:
               'PII which is easily accessible from public sources and can include zip code, race, gender, and date of birth.',
-            source: TagSource.Tag,
+            source: TagSource.Classification,
             labelType: LabelType.Manual,
             state: State.Confirmed,
           },
@@ -105,7 +105,7 @@ export const mockSortedTopicDetails: Topic = {
             tagFQN: 'PersonalData.Personal',
             description:
               'Data that can be used to directly or indirectly identify a person.',
-            source: TagSource.Tag,
+            source: TagSource.Classification,
             labelType: LabelType.Manual,
             state: State.Confirmed,
           },
@@ -113,14 +113,14 @@ export const mockSortedTopicDetails: Topic = {
             tagFQN: 'PII.NonSensitive',
             description:
               'PII which is easily accessible from public sources and can include zip code, race, gender, and date of birth.',
-            source: TagSource.Tag,
+            source: TagSource.Classification,
             labelType: LabelType.Manual,
             state: State.Confirmed,
           },
           {
             tagFQN: 'TagClass.tag1',
             description: '',
-            source: TagSource.Tag,
+            source: TagSource.Classification,
             labelType: LabelType.Manual,
             state: State.Confirmed,
           },
