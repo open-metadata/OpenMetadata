@@ -171,24 +171,19 @@ export const INITIAL_PROPORTION_METRIC_VALUE = {
 export const INITIAL_MATH_METRIC_VALUE = {
   information: [
     {
-      title: t('label.median'),
-      dataKey: 'median',
-      color: '#1890FF',
-    },
-    {
       title: t('label.max'),
       dataKey: 'max',
-      color: '#7147E8',
+      color: '#1890FF',
     },
     {
       title: t('label.mean'),
       dataKey: 'mean',
-      color: '#008376',
+      color: '#7147E8',
     },
     {
       title: t('label.min'),
       dataKey: 'min',
-      color: '#B02AAC',
+      color: '#008376',
     },
   ],
   data: [],
@@ -200,6 +195,26 @@ export const INITIAL_SUM_METRIC_VALUE = {
       title: t('label.sum'),
       dataKey: 'sum',
       color: '#1890FF',
+    },
+  ],
+  data: [],
+};
+export const INITIAL_QUARTILE_METRIC_VALUE = {
+  information: [
+    {
+      title: t('label.first-quartile'),
+      dataKey: 'firstQuartile',
+      color: '#1890FF',
+    },
+    {
+      title: t('label.median'),
+      dataKey: 'median',
+      color: '#7147E8',
+    },
+    {
+      title: t('label.third-quartile'),
+      dataKey: 'thirdQuartile',
+      color: '#008376',
     },
   ],
   data: [],
