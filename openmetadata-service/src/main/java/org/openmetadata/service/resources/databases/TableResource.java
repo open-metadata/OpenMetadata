@@ -57,7 +57,6 @@ import org.openmetadata.schema.type.DataModel;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
-import org.openmetadata.schema.type.SQLQuery;
 import org.openmetadata.schema.type.SystemProfile;
 import org.openmetadata.schema.type.TableData;
 import org.openmetadata.schema.type.TableJoins;
