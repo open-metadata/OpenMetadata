@@ -142,11 +142,11 @@ const mockAllFeeds = {
         closedBy: 'bharatdussa',
         closedAt: 1664445691340,
         oldValue:
-          '[{"tagFQN":"PersonalData.Personal","description":"","source":"Tag","labelType":"Manual","state":"Suggested"},]',
+          '[{"tagFQN":"PersonalData.Personal","description":"","source":"Classification","labelType":"Manual","state":"Suggested"},]',
         suggestion:
-          '[{"tagFQN":"PersonalData.Personal","description":"","source":"Tag","labelType":"Manual","state":"Suggested"},]',
+          '[{"tagFQN":"PersonalData.Personal","description":"","source":"Classification","labelType":"Manual","state":"Suggested"},]',
         newValue:
-          '[{"tagFQN":"PersonalData.Personal","description":"","source":"Tag","labelType":"Manual","state":"Suggested"},]',
+          '[{"tagFQN":"PersonalData.Personal","description":"","source":"Classification","labelType":"Manual","state":"Suggested"},]',
       },
     },
   ],
