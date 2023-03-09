@@ -6,8 +6,8 @@ source:
       type: Trino
       hostPort: localhost:8080
       username: user
-      catalog: tpcds
-      databaseSchema: tiny
+      catalog: catalog_name
+      databaseSchema: schema_name
       connectionOptions: {}
       connectionArguments: {}
   sourceConfig:

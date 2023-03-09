@@ -82,7 +82,7 @@ public class LineageResourceTest extends OpenMetadataApplicationTest {
 
   @Order(1)
   @Test
-  void put_delete_lineage_withAuthorizer(TestInfo test) throws HttpResponseException {
+  void put_delete_lineage_withAuthorizer() throws HttpResponseException {
     // Random user cannot update lineage.
     UserResourceTest userResourceTest = new UserResourceTest();
     User randomUser =
@@ -438,7 +438,7 @@ public class LineageResourceTest extends OpenMetadataApplicationTest {
   public static EntityLineage getLineageByName(
       String entity, String fqn, Integer upstreamDepth, Integer downStreamDepth, Map<String, String> authHeaders)
       throws HttpResponseException {
-    WebTarget target = getResource("lineage/" + entity + "/name/" + fqn);
+    WebTarget target = getResource("lineage/" + entity + "/name/").path(fqn);
     target = upstreamDepth != null ? target.queryParam("upstreamDepth", upstreamDepth) : target;
     target = downStreamDepth != null ? target.queryParam("downstreamDepth", downStreamDepth) : target;
     EntityLineage lineage = TestUtils.get(target, EntityLineage.class, authHeaders);

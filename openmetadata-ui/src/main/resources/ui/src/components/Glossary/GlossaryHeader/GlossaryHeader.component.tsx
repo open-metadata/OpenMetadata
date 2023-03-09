@@ -200,6 +200,14 @@ const GlossaryHeader = ({
     }
     setListVisible(false);
   };
+  const onRemoveOwner = () => {
+    const updatedData = {
+      ...selectedData,
+      owner: undefined,
+    };
+    onUpdate(updatedData);
+    setListVisible(false);
+  };
 
   const handleReviewerSave = (data: Array<EntityReference>) => {
     if (!isEqual(data, selectedData.reviewers)) {
@@ -335,6 +343,7 @@ const GlossaryHeader = ({
                   horzPosRight={false}
                   isLoading={isUserLoading}
                   listGroups={['Teams', 'Users']}
+                  removeOwner={onRemoveOwner}
                   showSearchBar={isCurrentUserAdmin()}
                   value={selectedData.owner?.id || ''}
                   onSearchTextChange={handleOwnerSearch}

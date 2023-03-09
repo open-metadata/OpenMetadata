@@ -81,8 +81,7 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
     public void entitySpecificUpdate() throws IOException {
       List<EntityReference> origTests = listOrEmpty(original.getTests());
       List<EntityReference> updatedTests = listOrEmpty(updated.getTests());
-      updateToRelationships(
-          "tests", TEST_SUITE, original.getId(), Relationship.CONTAINS, TEST_CASE, origTests, updatedTests, false);
+      recordChange("tests", origTests, updatedTests);
     }
   }
 }

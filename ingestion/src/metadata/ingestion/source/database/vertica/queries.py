@@ -82,3 +82,40 @@ VERTICA_TABLE_COMMENTS = textwrap.dedent(
     WHERE object_type = 'TABLE';
     """
 )
+
+VERTICA_SCHEMA_COMMENTS = textwrap.dedent(
+    """
+    SELECT
+      object_name as schema_name,
+      comment
+    FROM v_catalog.comments
+    WHERE object_type = 'SCHEMA';
+    """
+)
+
+
+VERTICA_SQL_STATEMENT = textwrap.dedent(
+    """
+    SELECT
+    DBNAME() AS database_name,
+    p.query AS query_text,
+    r.start_timestamp AS start_time,
+    r.end_timestamp AS end_time,
+    p.schema_name,
+    p.query_duration_us/1000 AS duration,
+    p.query_type,
+    p.user_name,
+    NULL aborted
+    FROM query_profiles p
+    LEFT JOIN query_requests r
+      ON p.TRANSACTION_ID = r.TRANSACTION_ID
+     AND p.STATEMENT_ID = r.STATEMENT_ID
+    WHERE query_start between '{start_time}' and '{end_time}'
+      AND query NOT LIKE '%%/* {{"app": "OpenMetadata", %%}} */%%'
+      AND query NOT LIKE '/* {{"app": "dbt", %%}} */%%'
+      AND success = 1
+      {filters}
+    ORDER BY query_start DESC
+    LIMIT {result_limit}
+    """
+)

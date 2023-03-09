@@ -380,6 +380,8 @@ site_menu:
     url: /connectors/dashboard/superset/airflow
   - category: Connectors / Dashboard / Superset / CLI
     url: /connectors/dashboard/superset/cli
+  - category: Connectors / Dashboard / Superset / SSO
+    url: /connectors/dashboard/superset/sso
   - category: Connectors / Dashboard / Metabase
     url: /connectors/dashboard/metabase
   - category: Connectors / Dashboard / Metabase / Airflow

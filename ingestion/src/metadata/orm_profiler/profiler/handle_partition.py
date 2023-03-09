@@ -69,7 +69,9 @@ def build_partition_predicate(partition_details: dict, col: Column):
     if col is not None:
         col_type = col.type
     if partition_details["partition_field"] == "_PARTITIONDATE":
-        col_type = sqlalchemy.DATE
+        col_type = sqlalchemy.DATE()
+    if partition_details["partition_field"] == "_PARTITIONTIME":
+        return sqlalchemy.DATETIME()
 
     return format_partition_datetime(
         partition_details["partition_field"],

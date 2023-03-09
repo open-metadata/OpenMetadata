@@ -54,7 +54,6 @@ import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.topic.CleanupPolicy;
 import org.openmetadata.schema.type.topic.TopicSampleData;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.OpenMetadataApplicationTest;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.topics.TopicResource.TopicList;
 import org.openmetadata.service.util.JsonUtils;
@@ -287,15 +286,14 @@ public class TopicResourceTest extends EntityResourceTest<Topic, CreateTopic> {
     return topic;
   }
 
-  public static Topic getTopic(UUID id, String fields, Map<String, String> authHeaders) throws HttpResponseException {
-    WebTarget target = getResource("topics/" + id);
+  public Topic getTopic(UUID id, String fields, Map<String, String> authHeaders) throws HttpResponseException {
+    WebTarget target = getResource(id);
     target = fields != null ? target.queryParam("fields", fields) : target;
     return TestUtils.get(target, Topic.class, authHeaders);
   }
 
-  public static Topic getTopicByName(String fqn, String fields, Map<String, String> authHeaders)
-      throws HttpResponseException {
-    WebTarget target = getResource("topics/name/" + fqn);
+  public Topic getTopicByName(String fqn, String fields, Map<String, String> authHeaders) throws HttpResponseException {
+    WebTarget target = getResourceByName(fqn);
     target = fields != null ? target.queryParam("fields", fields) : target;
     return TestUtils.get(target, Topic.class, authHeaders);
   }
@@ -350,9 +348,9 @@ public class TopicResourceTest extends EntityResourceTest<Topic, CreateTopic> {
     }
   }
 
-  public static Topic putSampleData(UUID topicId, TopicSampleData data, Map<String, String> authHeaders)
+  public Topic putSampleData(UUID topicId, TopicSampleData data, Map<String, String> authHeaders)
       throws HttpResponseException {
-    WebTarget target = OpenMetadataApplicationTest.getResource("topics/" + topicId + "/sampleData");
+    WebTarget target = getResource(topicId).path("/sampleData");
     return TestUtils.put(target, data, Topic.class, OK, authHeaders);
   }
 

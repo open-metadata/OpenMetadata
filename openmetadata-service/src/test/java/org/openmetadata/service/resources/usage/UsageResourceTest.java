@@ -298,7 +298,7 @@ class UsageResourceTest extends OpenMetadataApplicationTest {
     return new DailyCount().withCount(random.nextInt(100)).withDate(today);
   }
 
-  public static void reportUsageByNameAndCheckPut(
+  public void reportUsageByNameAndCheckPut(
       String entity, String fqn, DailyCount usage, int weeklyCount, int monthlyCount, Map<String, String> authHeaders)
       throws HttpResponseException {
     reportUsageByNamePut(entity, fqn, usage, authHeaders);
@@ -312,27 +312,21 @@ class UsageResourceTest extends OpenMetadataApplicationTest {
     checkUsage(usage.getDate(), entity, id, usage.getCount(), weeklyCount, monthlyCount, authHeaders);
   }
 
-  public static void reportUsageByName(String entity, String name, DailyCount usage, Map<String, String> authHeaders)
+  public void reportUsageByNamePut(String entity, String name, DailyCount usage, Map<String, String> authHeaders)
       throws HttpResponseException {
-    WebTarget target = getResource("usage/" + entity + "/name/" + name);
-    TestUtils.post(target, usage, authHeaders);
-  }
-
-  public static void reportUsageByNamePut(String entity, String name, DailyCount usage, Map<String, String> authHeaders)
-      throws HttpResponseException {
-    WebTarget target = getResource("usage/" + entity + "/name/" + name);
+    WebTarget target = getResource("usage/").path(entity).path("/name/").path(name);
     TestUtils.put(target, usage, Response.Status.CREATED, authHeaders);
   }
 
   public static void reportUsage(String entity, UUID id, DailyCount usage, Map<String, String> authHeaders)
       throws HttpResponseException {
-    WebTarget target = getResource("usage/" + entity + "/" + id);
+    WebTarget target = getResource("usage/").path(entity).path("/").path(id.toString());
     TestUtils.post(target, usage, authHeaders);
   }
 
   public static void reportUsagePut(String entity, UUID id, DailyCount usage, Map<String, String> authHeaders)
       throws HttpResponseException {
-    WebTarget target = getResource("usage/" + entity + "/" + id);
+    WebTarget target = getResource("usage/").path(entity).path("/").path(id.toString());
     TestUtils.put(target, usage, Response.Status.CREATED, authHeaders);
   }
 
@@ -352,7 +346,7 @@ class UsageResourceTest extends OpenMetadataApplicationTest {
   public static EntityUsage getUsageByName(
       String entity, String fqn, String date, Integer days, Map<String, String> authHeaders)
       throws HttpResponseException {
-    return getUsage(getResource("usage/" + entity + "/name/" + fqn), date, days, authHeaders);
+    return getUsage(getResource("usage/" + entity + "/name/").path(fqn), date, days, authHeaders);
   }
 
   public static EntityUsage getUsage(String entity, UUID id, String date, Integer days, Map<String, String> authHeaders)

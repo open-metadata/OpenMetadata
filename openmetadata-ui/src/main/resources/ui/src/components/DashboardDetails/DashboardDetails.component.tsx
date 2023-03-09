@@ -813,6 +813,10 @@ const DashboardDetails = ({
                   }
                   entityType={EntityType.DASHBOARD}
                   handleExtensionUpdate={onExtensionUpdate}
+                  hasEditAccess={
+                    dashboardPermissions.EditAll ||
+                    dashboardPermissions.EditCustomFields
+                  }
                 />
               )}
               <div

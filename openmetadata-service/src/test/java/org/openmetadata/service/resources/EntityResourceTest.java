@@ -88,8 +88,9 @@ import javax.json.JsonPatch;
 import javax.ws.rs.client.WebTarget;
 import javax.ws.rs.core.Response.Status;
 import lombok.Getter;
-import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.text.RandomStringGenerator;
+import org.apache.commons.text.RandomStringGenerator.Builder;
 import org.apache.http.client.HttpResponseException;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.AfterAll;
@@ -182,14 +183,21 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   protected boolean supportsSoftDelete;
   protected boolean supportsFieldsQueryParam = true;
   protected boolean supportsEmptyDescription = true;
-  protected String supportedNameCharacters = ".' _"; // Special characters supported in the entity name
+
+  // Special characters supported in the entity name
+  protected String supportedNameCharacters = "_'-.&" + RANDOM_STRING_GENERATOR.generate(1);
+
   protected final boolean supportsCustomExtension;
 
   public static final String DATA_STEWARD_ROLE_NAME = "DataSteward";
   public static final String DATA_CONSUMER_ROLE_NAME = "DataConsumer";
 
   public static final String ENTITY_LINK_MATCH_ERROR =
-      "[entityLink must match \"^<#E::\\w+::[\\w'\\- .&/:+\"\\\\]+>$\"]";
+      "[entityLink must match \"^(?U)<#E::\\w+::[\\w'\\- .&/:+\"\\\\()$#]+>$\"]";
+
+  // Random unicode string generator to test entity name accepts all the unicode characters
+  protected static final RandomStringGenerator RANDOM_STRING_GENERATOR =
+      new Builder().filteredBy(Character::isLetterOrDigit).build();
 
   // Users
   public static User USER1;
@@ -259,7 +267,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   public static EntityReference GLOSSARY2_TERM1_REF;
   public static TagLabel GLOSSARY2_TERM1_LABEL;
 
-  public static EntityReference SUPERSET_REFERENCE;
+  public static EntityReference METABASE_REFERENCE;
   public static EntityReference LOOKER_REFERENCE;
   public static List<EntityReference> CHART_REFERENCES;
 
@@ -282,8 +290,8 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
   public static KpiTarget KPI_TARGET;
 
-  public static final String C1 = "c'_+ 1";
-  public static final String C2 = "c2";
+  public static final String C1 = "c'_+# 1";
+  public static final String C2 = "c2()$";
   public static final String C3 = "\"c.3\"";
   public static List<Column> COLUMNS;
 
@@ -788,6 +796,10 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     final K request2 = createRequest(LONG_ENTITY_NAME, "description", "displayName", null);
     assertResponse(
         () -> createEntity(request2, ADMIN_AUTH_HEADERS), BAD_REQUEST, TestUtils.getEntityNameLengthError(entityClass));
+
+    // Any entity name that has EntityLink separator must fail
+    final K request3 = createRequest("invalid::Name", "description", "displayName", null);
+    assertResponseContains(() -> createEntity(request3, ADMIN_AUTH_HEADERS), BAD_REQUEST, "name must match");
   }
 
   @Test
@@ -838,7 +850,14 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   void post_delete_entity_as_admin_200(TestInfo test) throws IOException {
     K request = createRequest(getEntityName(test), "", "", null);
     T entity = createEntity(request, ADMIN_AUTH_HEADERS);
-    deleteAndCheckEntity(entity, ADMIN_AUTH_HEADERS);
+    deleteAndCheckEntity(entity, ADMIN_AUTH_HEADERS); // Delete by ID
+  }
+
+  @Test
+  void post_delete_as_name_entity_as_admin_200(TestInfo test) throws IOException {
+    K request = createRequest(getEntityName(test), "", "", null);
+    T entity = createEntity(request, ADMIN_AUTH_HEADERS);
+    deleteByNameAndCheckEntity(entity, false, false, ADMIN_AUTH_HEADERS); // Delete by name
   }
 
   @Test
@@ -873,9 +892,13 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     if (List.of(Entity.ALERT, Entity.ALERT_ACTION, Entity.BOT).contains(entityType)) {
       return;
     }
+    // Delete by ID
     T entity = createEntity(createRequest(test), INGESTION_BOT_AUTH_HEADERS);
-    assertNotNull(entity);
     deleteAndCheckEntity(entity, INGESTION_BOT_AUTH_HEADERS);
+
+    // Delete by name
+    entity = createEntity(createRequest(test, 1), INGESTION_BOT_AUTH_HEADERS);
+    deleteByNameAndCheckEntity(entity, false, false, INGESTION_BOT_AUTH_HEADERS);
   }
 
   @Test
@@ -897,7 +920,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
   @Test
   void post_entityWithDots_200() throws HttpResponseException {
-    if (!supportedNameCharacters.contains(" ")) { // Name does not support space
+    if (!supportedNameCharacters.contains(".")) { // Name does not support dot
       return;
     }
 
@@ -985,7 +1008,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
     // Remove ownership (from USER_OWNER1) using PUT request. Owner is expected to remain the same
     // and not removed.
-    request = createPutRequest(getEntityName(test), "description", "displayName", null);
+    request.withOwner(null);
     updateEntity(request, OK, ADMIN_AUTH_HEADERS);
     checkOwnerOwns(USER1_REF, entity.getId(), true);
   }
@@ -1086,7 +1109,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     T entity = createEntity(request, ADMIN_AUTH_HEADERS);
 
     // Update null description with a new description
-    request = createPutRequest(getEntityName(test), "updatedDescription", "displayName", null);
+    request = request.withDescription("updatedDescription");
     ChangeDescription change = getChangeDescription(entity.getVersion());
     fieldAdded(change, "description", "updatedDescription");
     updateAndCheckEntity(request, OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
@@ -1476,6 +1499,11 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
         () -> deleteAndCheckEntity(entity, TEST_AUTH_HEADERS),
         FORBIDDEN,
         permissionNotAllowed(TEST_USER_NAME, List.of(MetadataOperation.DELETE)));
+
+    assertResponse(
+        () -> deleteByNameAndCheckEntity(entity, true, true, TEST_AUTH_HEADERS),
+        FORBIDDEN,
+        permissionNotAllowed(TEST_USER_NAME, List.of(MetadataOperation.DELETE)));
   }
 
   /** Soft delete an entity and then use restore request to restore it back */
@@ -1609,11 +1637,11 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   }
 
   protected final WebTarget getFollowersCollection(UUID id) {
-    return getResource(collectionName + "/" + id + "/followers");
+    return getResource(id).path("followers");
   }
 
   protected final WebTarget getFollowerResource(UUID id, UUID userId) {
-    return getResource(collectionName + "/" + id + "/followers/" + userId);
+    return getFollowersCollection(id).path("/" + userId);
   }
 
   protected final T getEntity(UUID id, Map<String, String> authHeaders) throws HttpResponseException {
@@ -1658,7 +1686,6 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     return TestUtils.get(target, entityClass, authHeaders);
   }
 
-  @SneakyThrows
   public final T createEntity(CreateEntity createRequest, Map<String, String> authHeaders)
       throws HttpResponseException {
     return TestUtils.post(getCollection(), createRequest, entityClass, authHeaders);
@@ -1687,29 +1714,8 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
   public final void deleteAndCheckEntity(
       T entity, boolean recursive, boolean hardDelete, Map<String, String> authHeaders) throws IOException {
-    UUID id = entity.getId();
-
-    // Delete entity
-    T deletedEntity = deleteEntity(id, recursive, hardDelete, authHeaders); // TODO fix this to include
-    long timestamp = deletedEntity.getUpdatedAt();
-
-    // Validate delete change event
-    Double expectedVersion = EntityUtil.nextVersion(entity.getVersion());
-    if (supportsSoftDelete && !hardDelete) {
-      validateDeletedEvent(id, timestamp, EventType.ENTITY_SOFT_DELETED, expectedVersion, authHeaders);
-
-      // Validate that the entity version is updated after soft delete
-      Map<String, String> queryParams = new HashMap<>();
-      queryParams.put("include", Include.DELETED.value());
-
-      T getEntity = getEntity(id, queryParams, allFields, authHeaders);
-      assertEquals(expectedVersion, getEntity.getVersion());
-      ChangeDescription change = getChangeDescription(entity.getVersion());
-      fieldUpdated(change, FIELD_DELETED, false, true);
-      assertEquals(change, getEntity.getChangeDescription());
-    } else { // Hard delete
-      validateDeletedEvent(id, timestamp, EventType.ENTITY_DELETED, entity.getVersion(), authHeaders);
-    }
+    T deletedEntity = deleteEntity(entity.getId(), recursive, hardDelete, authHeaders); // TODO fix this to include
+    assertDeleted(deletedEntity, entity, hardDelete, authHeaders);
   }
 
   public final T deleteEntity(UUID id, Map<String, String> authHeaders) throws HttpResponseException {
@@ -1723,6 +1729,48 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     target = hardDelete ? target.queryParam("hardDelete", true) : target;
     T entity = TestUtils.delete(target, entityClass, authHeaders);
     assertEntityDeleted(id, hardDelete);
+    return entity;
+  }
+
+  public final void deleteByNameAndCheckEntity(
+      T entity, boolean recursive, boolean hardDelete, Map<String, String> authHeaders) throws IOException {
+    T deletedEntity = deleteEntityByName(entity.getFullyQualifiedName(), recursive, hardDelete, authHeaders);
+    assertDeleted(deletedEntity, entity, hardDelete, authHeaders);
+  }
+
+  private void assertDeleted(T deletedEntity, T entityBeforeDelete, boolean hardDelete, Map<String, String> authHeaders)
+      throws HttpResponseException {
+    long timestamp = deletedEntity.getUpdatedAt();
+
+    // Validate delete change event
+    if (supportsSoftDelete && !hardDelete) {
+      Double expectedVersion = EntityUtil.nextVersion(entityBeforeDelete.getVersion());
+      assertEquals(expectedVersion, deletedEntity.getVersion());
+      validateDeletedEvent(
+          deletedEntity.getId(), timestamp, EventType.ENTITY_SOFT_DELETED, expectedVersion, authHeaders);
+
+      // Validate that the entity version is updated after soft delete
+      Map<String, String> queryParams = new HashMap<>();
+      queryParams.put("include", Include.DELETED.value());
+
+      T getEntity = getEntity(deletedEntity.getId(), queryParams, allFields, authHeaders);
+      assertEquals(deletedEntity.getVersion(), getEntity.getVersion());
+      ChangeDescription change = getChangeDescription(entityBeforeDelete.getVersion());
+      fieldUpdated(change, FIELD_DELETED, false, true);
+      assertEquals(change, getEntity.getChangeDescription());
+    } else { // Hard delete
+      validateDeletedEvent(
+          deletedEntity.getId(), timestamp, EventType.ENTITY_DELETED, deletedEntity.getVersion(), authHeaders);
+    }
+  }
+
+  public final T deleteEntityByName(String name, boolean recursive, boolean hardDelete, Map<String, String> authHeaders)
+      throws HttpResponseException {
+    WebTarget target = getResourceByName(name);
+    target = recursive ? target.queryParam("recursive", true) : target;
+    target = hardDelete ? target.queryParam("hardDelete", true) : target;
+    T entity = TestUtils.delete(target, entityClass, authHeaders);
+    assertEntityDeleted(entity.getId(), hardDelete);
     return entity;
   }
 

@@ -28,3 +28,11 @@ export enum PIPELINE_EXECUTION_TABS {
   LIST_VIEW = 'List',
   TREE_VIEW = 'Tree',
 }
+
+export const PIPELINE_INGESTION_RUN_STATUS = {
+  queued: '#777777',
+  success: '#07a35a',
+  failed: '#e54937',
+  running: '#276ef1',
+  partialSuccess: '#439897',
+};

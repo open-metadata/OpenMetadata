@@ -124,7 +124,11 @@ const FormBuilder: FunctionComponent<Props> = ({
       case 'success':
         return (
           <div className="tw-flex">
-            <SVGIcons alt="success-badge" icon={Icons.SUCCESS_BADGE} />
+            <SVGIcons
+              alt="success-badge"
+              icon={Icons.SUCCESS_BADGE}
+              width={24}
+            />
             <span className="tw-ml-2">Connection test was successful</span>
           </div>
         );

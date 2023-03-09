@@ -21,12 +21,12 @@ import { CookieStorage } from 'cookie-storage';
 import React, { useState } from 'react';
 import { useHistory } from 'react-router-dom';
 import { createUser } from 'rest/userAPI';
+import { getNameFromUserData } from 'utils/AuthProvider.util';
 import appState from '../../AppState';
 import { REDIRECT_PATHNAME, ROUTES } from '../../constants/constants';
 import { CreateUser } from '../../generated/api/teams/createUser';
 import { User } from '../../generated/entity/teams/user';
 import jsonData from '../../jsons/en';
-import { getNameFromUserData } from '../../utils/AuthProvider.util';
 import { getImages } from '../../utils/CommonUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -34,17 +34,21 @@ import { showErrorToast } from '../../utils/ToastUtils';
 const cookieStorage = new CookieStorage();
 
 const Signup = () => {
-  const { setIsSigningIn, jwtPrincipalClaims = [] } = useAuthContext();
+  const {
+    setIsSigningIn,
+    jwtPrincipalClaims = [],
+    authorizerConfig,
+  } = useAuthContext();
 
   const [selectedTeams, setSelectedTeams] = useState<Array<string>>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const [details, setDetails] = useState({
     displayName: appState.newUser.name || '',
-    name: getNameFromUserData(
+    ...getNameFromUserData(
       appState.newUser as UserProfile,
-      jwtPrincipalClaims
+      jwtPrincipalClaims,
+      authorizerConfig?.principalDomain
     ),
-    email: appState.newUser.email || '',
   });
 
   const history = useHistory();

@@ -170,6 +170,12 @@ export const NEW_COLUMN_TEST_CASE = {
   description: 'New table test case for columnValueLengthsToBeBetween',
 };
 
+export const NEW_COLUMN_TEST_CASE_WITH_NULL_TYPE = {
+  column: 'id',
+  type: 'columnValuesToBeNotNull',
+  description: 'New table test case for columnValuesToBeNotNull',
+};
+
 export const NEW_TEAM = {
   team_1: {
     name: 'account',
@@ -210,6 +216,13 @@ export const NEW_GLOSSARY = {
   reviewer: 'Aaron Johnson',
   tag: 'PII.None',
 };
+export const NEW_GLOSSARY_1 = {
+  name: 'Product Glossary',
+  description: 'This is the Product glossary',
+  reviewer: 'Brandy Miller',
+  tag: 'PII.None',
+};
+
 export const NEW_GLOSSARY_TERMS = {
   term_1: {
     name: 'Purchase',
@@ -220,6 +233,19 @@ export const NEW_GLOSSARY_TERMS = {
     name: 'Sales',
     description: 'This is the Sales',
     synonyms: 'give,disposal,deal',
+  },
+};
+
+export const NEW_GLOSSARY_1_TERMS = {
+  term_1: {
+    name: 'Features',
+    description: 'This is the Features',
+    synonyms: 'data,collect,time',
+  },
+  term_2: {
+    name: 'Uses',
+    description: 'This is the Uses',
+    synonyms: 'home,business,adventure',
   },
 };
 

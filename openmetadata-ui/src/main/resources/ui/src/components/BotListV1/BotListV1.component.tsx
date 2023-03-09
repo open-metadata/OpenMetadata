@@ -95,6 +95,7 @@ const BotListV1 = ({
         title: t('label.name'),
         dataIndex: 'displayName',
         key: 'displayName',
+        width: 200,
         render: (_, record) => (
           <Link
             className="hover:tw-underline tw-cursor-pointer"

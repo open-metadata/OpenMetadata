@@ -14,6 +14,7 @@
 import { AxiosResponse } from 'axios';
 import { Edge } from 'components/EntityLineage/EntityLineage.interface';
 import { ExploreSearchIndex } from 'components/Explore/explore.interface';
+import { AuthorizerConfiguration } from 'generated/configuration/authorizerConfiguration';
 import { SearchIndex } from '../enums/search.enum';
 import { AirflowConfiguration } from '../generated/configuration/airflowConfiguration';
 import { AuthenticationConfiguration } from '../generated/configuration/authenticationConfiguration';
@@ -66,6 +67,14 @@ export const getOwnershipCount = (
 export const fetchAuthenticationConfig = async () => {
   const response = await APIClient.get<AuthenticationConfiguration>(
     '/config/auth'
+  );
+
+  return response.data;
+};
+
+export const fetchAuthorizerConfig = async () => {
+  const response = await APIClient.get<AuthorizerConfiguration>(
+    '/config/authorizer'
   );
 
   return response.data;
@@ -183,7 +192,7 @@ export const getTeamsByQuery = async (params: {
 export const getTagSuggestions = (term: string) => {
   const params = {
     q: term,
-    index: `${SearchIndex.TAG},${SearchIndex.TAG}`,
+    index: `${SearchIndex.TAG},${SearchIndex.GLOSSARY}`,
   };
 
   return APIClient.get<RawSuggestResponse<SearchIndex.TAG>>(`/search/suggest`, {
@@ -202,9 +211,18 @@ export const getSearchedUsers = (
 export const getSearchedTeams = (
   queryString: string,
   from: number,
+  filter?: string,
   size = 10
 ) => {
-  return searchData(queryString, from, size, '', '', '', SearchIndex.TEAM);
+  return searchData(
+    queryString,
+    from,
+    size,
+    filter ?? '',
+    '',
+    '',
+    SearchIndex.TEAM
+  );
 };
 
 export const getSearchedUsersAndTeams = async (
@@ -249,7 +267,7 @@ export const getAdvancedFieldOptions = (
 };
 
 export const getAdvancedFieldDefaultOptions = (
-  index: SearchIndex,
+  index: SearchIndex | SearchIndex[],
   field: string
 ) => {
   const params = { index, field };

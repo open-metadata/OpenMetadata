@@ -156,7 +156,7 @@ class Sampler:
         if col is not None:
             col_type = col.type
         if partition_field == "_PARTITIONDATE":
-            col_type = sqlalchemy.DATE
+            col_type = sqlalchemy.DATE()
         if partition_field == "_PARTITIONTIME":
             col_type = sqlalchemy.DATETIME()
 

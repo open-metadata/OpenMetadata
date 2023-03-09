@@ -36,6 +36,7 @@ def _(element, compiler, **kw):
 @compiles(LenFn, Dialects.SQLite)
 @compiles(LenFn, Dialects.Vertica)
 @compiles(LenFn, Dialects.Hive)
+@compiles(LenFn, Dialects.Impala)
 @compiles(LenFn, Dialects.Databricks)
 @compiles(LenFn, Dialects.MySQL)
 @compiles(LenFn, Dialects.MariaDB)

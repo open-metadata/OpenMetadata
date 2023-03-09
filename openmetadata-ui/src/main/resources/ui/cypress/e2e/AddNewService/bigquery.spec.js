@@ -23,9 +23,9 @@ import { API_SERVICE, SERVICE_TYPE } from '../../constants/constants';
 
 const serviceType = 'BigQuery';
 const serviceName = `${serviceType}-ct-test-${uuid()}`;
-const tableName = 'personsx';
+const tableName = 'testtable';
 const description = `This is ${serviceName} description`;
-const filterPattern = 'dbt_jaffle';
+const filterPattern = 'testschema';
 
 describe('BigQuery Ingestion', () => {
   beforeEach(() => {

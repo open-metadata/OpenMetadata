@@ -1,5 +1,5 @@
 {
-  "$id": "https://open-metadata.org/schema/api/auth/ldapConfiguration.json",
+  "$id": "https://open-metadata.org/schema/configuration/ldapConfiguration.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "LdapConfiguration",
   "description": "LDAP Configuration",
@@ -37,30 +37,26 @@
       "type": "boolean",
       "default": false
     },
-    "keyStorePath": {
-      "description": "Path of the Keystore for SSL",
-      "type": "string"
-    },
-    "keyStorePassword": {
-      "description": "Password of the Keystore",
-      "type": "string"
-    },
     "userBaseDN": {
-      "description": "Password for LDAP Admin",
+      "description": "User base distinguished name",
       "type": "string"
     },
     "mailAttributeName": {
-      "description": "Password for LDAP Admin",
+      "description": "Email attribute name",
       "type": "string"
     },
     "truststoreFormat": {
-      "description": "Password for LDAP Admin",
+      "description": "Truststore format e.g. PKCS12, JKS.",
       "type": "string"
     },
-    "verifyCertificateHostname": {
-      "description": "If true use HostNameSSLVerifier(only then trust store cn as hostname) else TrustAll ",
-      "type": "boolean",
-      "default": false
+    "truststoreConfigType": {
+      "description": "Truststore Type e.g. TrustAll, HostName, JVMDefault, CustomTrustStore.",
+      "type": "string",
+      "enum": ["TrustAll", "JVMDefault", "HostName", "CustomTrustStore"]
+    },
+    "trustStoreConfig": {
+      "description": "Truststore Configuration",
+      "$ref": "ldapTrustStoreConfig/truststoreConfig.json"
     }
   },
   "required": ["host", "port", "dnAdminPrincipal","dnAdminPassword", "userBaseDN", "mailAttributeName"],
