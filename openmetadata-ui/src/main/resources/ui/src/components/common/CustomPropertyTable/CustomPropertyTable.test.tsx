@@ -17,6 +17,7 @@ import {
   screen,
   waitForElementToBeRemoved,
 } from '@testing-library/react';
+import { Container } from 'generated/entity/data/container';
 import React from 'react';
 import { getTypeByFQN } from 'rest/metadataTypeAPI';
 import { EntityType } from '../../../enums/entity.enum';
@@ -71,7 +72,12 @@ jest.mock('rest/metadataTypeAPI', () => ({
   ),
 }));
 
-const mockTableDetails = {} as Table & Topic & Dashboard & Pipeline & Mlmodel;
+const mockTableDetails = {} as Table &
+  Topic &
+  Dashboard &
+  Pipeline &
+  Mlmodel &
+  Container;
 const handleExtensionUpdate = jest.fn();
 
 const mockProp = {
