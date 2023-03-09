@@ -163,7 +163,7 @@ public class PasswordEntityMasker extends EntityMasker {
         throw new EntityMaskException(String.format("Failed to unmask workflow instance [%s]", workflow.getName()));
       }
     }
-    return null;
+    return workflow;
   }
 
   private void maskPasswordFields(Object toMaskObject) {

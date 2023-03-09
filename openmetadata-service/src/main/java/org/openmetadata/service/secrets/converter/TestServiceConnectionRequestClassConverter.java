@@ -13,13 +13,30 @@
 
 package org.openmetadata.service.secrets.converter;
 
+import java.util.List;
+import org.openmetadata.schema.ServiceConnectionEntityInterface;
+import org.openmetadata.schema.api.services.DatabaseConnection;
 import org.openmetadata.schema.entity.automations.TestServiceConnectionRequest;
+import org.openmetadata.schema.entity.services.MetadataConnection;
+import org.openmetadata.schema.type.DashboardConnection;
+import org.openmetadata.schema.type.MessagingConnection;
+import org.openmetadata.schema.type.MlModelConnection;
+import org.openmetadata.schema.type.PipelineConnection;
 import org.openmetadata.service.exception.InvalidServiceConnectionException;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ReflectionUtil;
 
 /** Converter class to get an `TestServiceConnectionRequest` object. */
 public class TestServiceConnectionRequestClassConverter extends ClassConverter {
+
+  private static final List<Class<?>> CONNECTION_CLASSES =
+      List.of(
+          DatabaseConnection.class,
+          DashboardConnection.class,
+          MessagingConnection.class,
+          PipelineConnection.class,
+          MlModelConnection.class,
+          MetadataConnection.class);
 
   public TestServiceConnectionRequestClassConverter() {
     super(TestServiceConnectionRequest.class);
@@ -34,9 +51,14 @@ public class TestServiceConnectionRequestClassConverter extends ClassConverter {
       Class<?> clazz =
           ReflectionUtil.createConnectionConfigClass(
               testServiceConnectionRequest.getConnectionType(), testServiceConnectionRequest.getServiceType());
+
+      tryToConvertOrFail(testServiceConnectionRequest.getConnection(), CONNECTION_CLASSES)
+          .ifPresent(testServiceConnectionRequest::setConnection);
+
       Object newConnectionConfig =
-          ClassConverterFactory.getConverter(clazz).convert(testServiceConnectionRequest.getConnection());
-      testServiceConnectionRequest.setConnection(newConnectionConfig);
+          ClassConverterFactory.getConverter(clazz)
+              .convert(((ServiceConnectionEntityInterface) testServiceConnectionRequest.getConnection()).getConfig());
+      ((ServiceConnectionEntityInterface) testServiceConnectionRequest.getConnection()).setConfig(newConnectionConfig);
     } catch (Exception e) {
       throw InvalidServiceConnectionException.byMessage(
           testServiceConnectionRequest.getConnectionType(),

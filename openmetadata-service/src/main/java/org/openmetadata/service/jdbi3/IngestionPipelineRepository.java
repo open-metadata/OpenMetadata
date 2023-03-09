@@ -88,8 +88,12 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
     OpenMetadataConnection openmetadataConnection = ingestionPipeline.getOpenMetadataServerConnection();
 
     SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
+
     if (secretsManager != null) {
       secretsManager.encryptOrDecryptIngestionPipeline(ingestionPipeline, true);
+      // We store the OM sensitive values in SM separately
+      openmetadataConnection =
+          secretsManager.encryptOrDecryptOpenMetadataConnection(openmetadataConnection, true, true);
     }
 
     // Don't store owner. Build it on the fly based on relationships

@@ -33,10 +33,12 @@ public class WorkflowClassConverter extends ClassConverter {
     tryToConvertOrFail(workflow.getRequest(), List.of(TestServiceConnectionRequest.class))
         .ifPresent(workflow::setRequest);
 
-    workflow.setOpenMetadataServerConnection(
-        (OpenMetadataConnection)
-            ClassConverterFactory.getConverter(OpenMetadataConnection.class)
-                .convert(workflow.getOpenMetadataServerConnection()));
+    if (workflow.getOpenMetadataServerConnection() != null) {
+      workflow.setOpenMetadataServerConnection(
+          (OpenMetadataConnection)
+              ClassConverterFactory.getConverter(OpenMetadataConnection.class)
+                  .convert(workflow.getOpenMetadataServerConnection()));
+    }
 
     return workflow;
   }

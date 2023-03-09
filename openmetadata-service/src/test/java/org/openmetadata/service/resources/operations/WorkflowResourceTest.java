@@ -9,6 +9,7 @@ import static org.openmetadata.service.util.TestUtils.assertListNull;
 import java.io.IOException;
 import java.util.Map;
 import org.apache.http.client.HttpResponseException;
+import org.openmetadata.schema.api.services.DatabaseConnection;
 import org.openmetadata.schema.entity.automations.CreateWorkflow;
 import org.openmetadata.schema.entity.automations.TestServiceConnectionRequest;
 import org.openmetadata.schema.entity.automations.Workflow;
@@ -41,10 +42,12 @@ public class WorkflowResourceTest extends EntityResourceTest<Workflow, CreateWor
                 .withServiceType(ServiceType.DATABASE)
                 .withConnectionType("Mysql")
                 .withConnection(
-                    new MysqlConnection()
-                        .withHostPort("mysql:3306")
-                        .withUsername("openmetadata_user")
-                        .withPassword("openmetadata_password")));
+                    new DatabaseConnection()
+                        .withConfig(
+                            new MysqlConnection()
+                                .withHostPort("mysql:3306")
+                                .withUsername("openmetadata_user")
+                                .withPassword("openmetadata_password"))));
   }
 
   @Override
@@ -53,6 +56,7 @@ public class WorkflowResourceTest extends EntityResourceTest<Workflow, CreateWor
     assertEquals(request.getName(), createdEntity.getName());
     assertEquals(request.getWorkflowType(), createdEntity.getWorkflowType());
     assertNotNull(createdEntity.getRequest());
+    assertNotNull(createdEntity.getOpenMetadataServerConnection());
   }
 
   @Override

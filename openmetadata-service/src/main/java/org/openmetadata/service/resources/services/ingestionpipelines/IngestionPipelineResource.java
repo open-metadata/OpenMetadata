@@ -823,6 +823,10 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
       ingestionPipeline.getSourceConfig().setConfig(null);
     }
     secretsManager.encryptOrDecryptIngestionPipeline(ingestionPipeline, false);
+    OpenMetadataConnection openMetadataServerConnection =
+        new OpenMetadataConnectionBuilder(openMetadataApplicationConfig).build();
+    ingestionPipeline.setOpenMetadataServerConnection(
+        secretsManager.encryptOrDecryptOpenMetadataConnection(openMetadataServerConnection, true, false));
     if (authorizer.shouldMaskPasswords(securityContext) && !forceNotMask) {
       EntityMaskerFactory.getEntityMasker().maskIngestionPipeline(ingestionPipeline);
     }

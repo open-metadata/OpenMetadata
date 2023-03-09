@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Test;
+import org.openmetadata.schema.api.services.DatabaseConnection;
 import org.openmetadata.schema.auth.JWTAuthMechanism;
 import org.openmetadata.schema.auth.SSOAuthMechanism;
 import org.openmetadata.schema.entity.automations.TestServiceConnectionRequest;
@@ -180,14 +181,16 @@ abstract class TestEntityMasker {
         new Workflow()
             .withRequest(
                 new TestServiceConnectionRequest()
-                    .withConnection(buildMysqlConnection())
+                    .withConnection(new DatabaseConnection().withConfig(buildMysqlConnection()))
                     .withServiceType(ServiceType.DATABASE)
                     .withConnectionType("Mysql"))
             .withOpenMetadataServerConnection(buildOpenMetadataConnection());
     Workflow masked = EntityMaskerFactory.createEntityMasker(config).maskWorkflow(workflow);
     assertNotNull(masked);
     assertEquals(
-        ((MysqlConnection) ((TestServiceConnectionRequest) masked.getRequest()).getConnection()).getPassword(),
+        ((MysqlConnection)
+                ((DatabaseConnection) ((TestServiceConnectionRequest) masked.getRequest()).getConnection()).getConfig())
+            .getPassword(),
         getMaskedPassword());
     assertEquals(
         ((AWSCredentials) masked.getOpenMetadataServerConnection().getSecretsManagerCredentials())
@@ -198,7 +201,10 @@ abstract class TestEntityMasker {
         getMaskedPassword());
     Workflow unmasked = EntityMaskerFactory.createEntityMasker(config).unmaskWorkflow(masked, workflow);
     assertEquals(
-        ((MysqlConnection) ((TestServiceConnectionRequest) unmasked.getRequest()).getConnection()).getPassword(),
+        ((MysqlConnection)
+                ((DatabaseConnection) ((TestServiceConnectionRequest) unmasked.getRequest()).getConnection())
+                    .getConfig())
+            .getPassword(),
         PASSWORD);
     assertEquals(
         ((AWSCredentials) unmasked.getOpenMetadataServerConnection().getSecretsManagerCredentials())

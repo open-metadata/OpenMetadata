@@ -20,6 +20,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.openmetadata.schema.api.services.CreateDatabaseService;
+import org.openmetadata.schema.api.services.DatabaseConnection;
 import org.openmetadata.schema.auth.SSOAuthMechanism;
 import org.openmetadata.schema.entity.automations.TestServiceConnectionRequest;
 import org.openmetadata.schema.entity.automations.Workflow;
@@ -209,7 +210,8 @@ public abstract class ExternalSecretsManagerTest {
                     .withSecurityConfig(new GoogleSSOClientConfig().withSecretKey("google-secret")))
             .withRequest(
                 new TestServiceConnectionRequest()
-                    .withConnection(new MysqlConnection().withPassword("openmetadata-test"))
+                    .withConnection(
+                        new DatabaseConnection().withConfig(new MysqlConnection().withPassword("openmetadata-test")))
                     .withServiceType(ServiceType.DATABASE)
                     .withConnectionType("Mysql"));
 
@@ -218,20 +220,22 @@ public abstract class ExternalSecretsManagerTest {
     Workflow actualWorkflow = secretsManager.encryptOrDecryptWorkflow(workflow, encrypt);
 
     if (encrypt) {
-      ((MysqlConnection) ((TestServiceConnectionRequest) expectedWorkflow.getRequest()).getConnection())
-          .setPassword("secret:/openmetadata/workflow/my-workflow/request/connection/password");
+      ((MysqlConnection)
+              ((DatabaseConnection) ((TestServiceConnectionRequest) expectedWorkflow.getRequest()).getConnection())
+                  .getConfig())
+          .setPassword("secret:/openmetadata/workflow/my-workflow/request/connection/config/password");
       MysqlConnection mysqlConnection =
-          (MysqlConnection) ((TestServiceConnectionRequest) actualWorkflow.getRequest()).getConnection();
+          (MysqlConnection)
+              ((DatabaseConnection) ((TestServiceConnectionRequest) actualWorkflow.getRequest()).getConnection())
+                  .getConfig();
       mysqlConnection.setPassword(Fernet.getInstance().decrypt(mysqlConnection.getPassword()));
       ((GoogleSSOClientConfig) (expectedWorkflow.getOpenMetadataServerConnection()).getSecurityConfig())
-          .setSecretKey(
-              "secret:/openmetadata/workflow/my-workflow/openmetadataserverconnection/securityconfig/secretkey");
+          .setSecretKey("secret:/openmetadata/serverconnection/securityconfig/secretkey");
       GoogleSSOClientConfig googleSSOClientConfig =
           ((GoogleSSOClientConfig) (actualWorkflow.getOpenMetadataServerConnection()).getSecurityConfig());
       googleSSOClientConfig.setSecretKey(Fernet.getInstance().decrypt(googleSSOClientConfig.getSecretKey()));
       ((AWSCredentials) (expectedWorkflow.getOpenMetadataServerConnection()).getSecretsManagerCredentials())
-          .setAwsSecretAccessKey(
-              "secret:/openmetadata/workflow/my-workflow/openmetadataserverconnection/secretsmanagercredentials/awssecretaccesskey");
+          .setAwsSecretAccessKey("secret:/openmetadata/serverconnection/secretsmanagercredentials/awssecretaccesskey");
       AWSCredentials awsCredentials =
           ((AWSCredentials) (actualWorkflow.getOpenMetadataServerConnection()).getSecretsManagerCredentials());
       awsCredentials.setAwsSecretAccessKey(Fernet.getInstance().decrypt(awsCredentials.getAwsSecretAccessKey()));

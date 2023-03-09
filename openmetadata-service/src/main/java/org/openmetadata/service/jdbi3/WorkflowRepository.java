@@ -45,14 +45,13 @@ public class WorkflowRepository extends EntityRepository<Workflow> {
   public void storeEntity(Workflow entity, boolean update) throws IOException {
     EntityReference owner = entity.getOwner();
     OpenMetadataConnection openmetadataConnection = entity.getOpenMetadataServerConnection();
-
     SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
+
     if (secretsManager != null) {
       entity = secretsManager.encryptOrDecryptWorkflow(entity, true);
     }
 
     // Don't store owner, database, href and tags as JSON. Build it on the fly based on relationships
-    // We don't want to store the OM connection.
     entity.withOwner(null).withHref(null).withOpenMetadataServerConnection(null);
     store(entity, update);
 

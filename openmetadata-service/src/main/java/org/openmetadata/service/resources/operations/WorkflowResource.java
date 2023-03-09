@@ -37,6 +37,7 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.ServiceConnectionEntityInterface;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.entity.automations.CreateWorkflow;
 import org.openmetadata.schema.entity.automations.TestServiceConnectionRequest;
@@ -499,11 +500,17 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
     } catch (AuthorizationException | IOException e) {
       Workflow workflowConverted = (Workflow) ClassConverterFactory.getConverter(Workflow.class).convert(workflow);
       if (workflowConverted.getRequest() instanceof TestServiceConnectionRequest) {
-        ((TestServiceConnectionRequest) workflowConverted.getRequest()).setConnection(null);
+        ((ServiceConnectionEntityInterface)
+                ((TestServiceConnectionRequest) workflowConverted.getRequest()).getConnection())
+            .setConfig(null);
       }
       return workflowConverted;
     }
     Workflow workflowDecrypted = secretsManager.encryptOrDecryptWorkflow(workflow, false);
+    OpenMetadataConnection openMetadataServerConnection =
+        new OpenMetadataConnectionBuilder(openMetadataApplicationConfig).build();
+    workflowDecrypted.setOpenMetadataServerConnection(
+        secretsManager.encryptOrDecryptOpenMetadataConnection(openMetadataServerConnection, true, false));
     if (authorizer.shouldMaskPasswords(securityContext)) {
       workflowDecrypted = EntityMaskerFactory.getEntityMasker().maskWorkflow(workflowDecrypted);
     }
