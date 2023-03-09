@@ -15,6 +15,10 @@ import {
   PLACEHOLDER_ROUTE_TAB,
   ROUTES,
 } from 'constants/constants';
+import { Column, ContainerDataModel } from 'generated/entity/data/container';
+import { LabelType, State, TagLabel } from 'generated/type/tagLabel';
+import { isEmpty } from 'lodash';
+import { EntityTags, TagOption } from 'Models';
 
 export const getContainerDetailPath = (containerFQN: string, tab?: string) => {
   let path = tab ? ROUTES.CONTAINER_DETAILS_WITH_TAB : ROUTES.CONTAINER_DETAILS;
@@ -25,4 +29,84 @@ export const getContainerDetailPath = (containerFQN: string, tab?: string) => {
   }
 
   return path;
+};
+
+const getUpdatedContainerColumnTags = (
+  containerColumn: Column,
+  newContainerColumnTags: TagOption[] = []
+) => {
+  const newTagsFqnList = newContainerColumnTags.map((newTag) => newTag.fqn);
+
+  const prevTags = containerColumn?.tags?.filter((tag) =>
+    newTagsFqnList.includes(tag.tagFQN)
+  );
+
+  const prevTagsFqnList = prevTags?.map((prevTag) => prevTag.tagFQN);
+
+  const newTags: EntityTags[] = newContainerColumnTags.reduce((prev, curr) => {
+    const isExistingTag = prevTagsFqnList?.includes(curr.fqn);
+
+    return isExistingTag
+      ? prev
+      : [
+          ...prev,
+          {
+            labelType: LabelType.Manual,
+            state: State.Confirmed,
+            source: curr.source,
+            tagFQN: curr.fqn,
+          },
+        ];
+  }, [] as EntityTags[]);
+
+  return [...(prevTags as TagLabel[]), ...newTags];
+};
+
+export const updateContainerColumnTags = (
+  containerColumns: ContainerDataModel['columns'] = [],
+  changedColumnName: string,
+  newColumnTags: TagOption[] = []
+) => {
+  containerColumns.forEach((containerColumn) => {
+    if (containerColumn.name === changedColumnName) {
+      containerColumn.tags = getUpdatedContainerColumnTags(
+        containerColumn,
+        newColumnTags
+      );
+    } else {
+      const hasChildren = !isEmpty(containerColumn.children);
+
+      // stop condition
+      if (hasChildren) {
+        updateContainerColumnTags(
+          containerColumn.children,
+          changedColumnName,
+          newColumnTags
+        );
+      }
+    }
+  });
+};
+
+export const updateContainerColumnDescription = (
+  containerColumns: ContainerDataModel['columns'] = [],
+  changedColumnName: string,
+  description: string
+) => {
+  containerColumns.forEach((containerColumn) => {
+    if (containerColumn.name === changedColumnName) {
+      containerColumn.description = description;
+    } else {
+      const hasChildren = !isEmpty(containerColumn.children);
+
+      // stop condition
+      if (hasChildren) {
+        updateContainerColumnDescription(
+          containerColumn.children,
+          changedColumnName,
+          description
+        );
+      }
+    }
+  });
 };

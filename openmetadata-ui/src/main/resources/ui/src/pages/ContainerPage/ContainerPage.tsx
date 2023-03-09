@@ -532,6 +532,26 @@ const ContainerPage = () => {
     }
   };
 
+  const handleUpdateDataModel = async (
+    updatedDataModel: Container['dataModel']
+  ) => {
+    try {
+      const { dataModel: newDataModel, version } =
+        await handleUpdateContainerData({
+          ...(containerData as Container),
+          dataModel: updatedDataModel,
+        });
+
+      setContainerData((prev) => ({
+        ...(prev as Container),
+        dataModel: newDataModel,
+        version,
+      }));
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  };
+
   // Effects
   useEffect(() => {
     if (hasViewPermission) {
@@ -647,7 +667,19 @@ const ContainerPage = () => {
                 />
               </Col>
               <Col span={24}>
-                <ContainerDataModel dataModel={containerData?.dataModel} />
+                <ContainerDataModel
+                  dataModel={containerData?.dataModel}
+                  hasDescriptionEditAccess={
+                    containerPermissions.EditAll ||
+                    containerPermissions.EditDescription
+                  }
+                  hasTagEditAccess={
+                    containerPermissions.EditAll ||
+                    containerPermissions.EditTags
+                  }
+                  isReadOnly={Boolean(deleted)}
+                  onUpdate={handleUpdateDataModel}
+                />
               </Col>
             </Row>
           </Tabs.TabPane>
