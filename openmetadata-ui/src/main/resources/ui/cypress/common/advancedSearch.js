@@ -473,7 +473,9 @@ export const checkAddGroupWithOperator = (
 
   interceptURL(
     'GET',
-    `/api/v1/search/query?q=&index=*&from=0&size=10&deleted=false&query_filter=*${searchCriteria_1}*&sort_field=_score&sort_order=desc`,
+    `/api/v1/search/query?q=&index=*&from=0&size=10&deleted=false&query_filter=*${encodeURI(
+      searchCriteria_1
+    )}*&sort_field=_score&sort_order=desc`,
     'search'
   );
 
