@@ -82,7 +82,12 @@
           },
           "displayName": {
             "type": "text",
-            "analyzer": "om_analyzer"
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "ignore_above": 256
+              }
+            }
           },
           "description": {
             "type": "text",
