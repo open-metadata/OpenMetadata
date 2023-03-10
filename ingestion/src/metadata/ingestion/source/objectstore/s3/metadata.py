@@ -231,7 +231,7 @@ class S3Source(ObjectStoreServiceSource):
         if isinstance(data_structure_details, list) and data_structure_details:
             columns = DatalakeSource.get_columns(data_structure_details[0])
         if isinstance(data_structure_details, DatalakeColumnWrapper):
-            columns = data_structure_details.columns
+            columns = data_structure_details.columns  # pylint: disable=no-member
         return columns
 
     def _fetch_metric(self, bucket_name: str, metric: S3Metric) -> float:
