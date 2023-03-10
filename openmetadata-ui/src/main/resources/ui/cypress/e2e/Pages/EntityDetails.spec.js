@@ -203,12 +203,12 @@ describe('Entity Details Page', () => {
 
     // checks newly generated feed for follow and setting owner
     cy.get('[data-testid="message-container"]')
-      .eq(1)
+      .eq(2)
       .contains('Added owner: admin')
       .should('be.visible');
 
     cy.get('[data-testid="message-container"]')
-      .eq(0)
+      .eq(1)
       .scrollIntoView()
       .contains('Added tags: Tier.Tier1')
       .should('be.visible');
