@@ -239,7 +239,7 @@ public class AirflowRESTClient extends PipelineServiceClient {
       String connectionPayload = JsonUtils.pojoToJson(testServiceConnection);
       response = post(statusUrl, connectionPayload);
       if (response.statusCode() == 200) {
-        return Response.status(200, response.body()).build();
+        return Response.status(response.statusCode()).entity(response.body()).build();
       }
     } catch (Exception e) {
       throw PipelineServiceClientException.byMessage("Failed to test connection.", e.getMessage());
