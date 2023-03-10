@@ -167,7 +167,7 @@ const GlossaryTermsV1 = ({
           '',
           currentPage,
           PAGE_SIZE,
-          `(tags.tagFQN:"${fqn}")`,
+          `(tags.tagFQN:"${fqn.replace(/(["'])/g, '\\$1')}")`,
           '',
           '',
           myDataSearchIndex

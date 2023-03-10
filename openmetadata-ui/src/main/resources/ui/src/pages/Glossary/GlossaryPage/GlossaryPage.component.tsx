@@ -43,6 +43,7 @@ import {
 import { checkPermission } from 'utils/PermissionsUtils';
 import { getGlossaryPath } from 'utils/RouterUtils';
 import { showErrorToast, showSuccessToast } from 'utils/ToastUtils';
+import Fqn from '../../../utils/Fqn';
 import GlossaryLeftPanel from '../GlossaryLeftPanel/GlossaryLeftPanel.component';
 
 const GlossaryPage = () => {
@@ -63,7 +64,7 @@ const GlossaryPage = () => {
     setIsRightPanelLoading(true);
     setSelectedData(undefined);
     if (glossaryFqn) {
-      return glossaryFqn.split(FQN_SEPARATOR_CHAR).length === 1;
+      return Fqn.split(glossaryFqn)?.length === 1;
     }
 
     return true;
@@ -120,8 +121,9 @@ const GlossaryPage = () => {
         fetchGlossaryTermDetails();
       } else {
         setSelectedData(
-          glossaries.find((glossary) => glossary.name === glossaryFqn) ||
-            glossaries[0]
+          glossaries.find(
+            (glossary) => glossary.name === glossaryFqn?.replaceAll('"', '')
+          ) || glossaries[0]
         );
         setIsRightPanelLoading(false);
       }

@@ -18,7 +18,7 @@ import PageContainerV1 from 'components/containers/PageContainerV1';
 import Loader from 'components/Loader/Loader';
 import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from 'components/PermissionProvider/PermissionProvider.interface';
-import { cloneDeep, get, isUndefined } from 'lodash';
+import { cloneDeep, get, isEmpty, isUndefined } from 'lodash';
 import { LoadingState } from 'Models';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -32,6 +32,7 @@ import { CreateGlossaryTerm } from '../../generated/api/data/createGlossaryTerm'
 import { Glossary } from '../../generated/entity/data/glossary';
 import { GlossaryTerm } from '../../generated/entity/data/glossaryTerm';
 import { Operation } from '../../generated/entity/policies/policy';
+import Fqn from '../../utils/Fqn';
 import { checkPermission } from '../../utils/PermissionsUtils';
 import { getGlossaryPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -61,13 +62,21 @@ const AddGlossaryTermPage = () => {
     [permissions]
   );
 
+  const getFqn = (fqn: string) => {
+    if (isEmpty(parentGlossaryData)) {
+      return fqn.includes('.') ? Fqn.quoteName(fqn) : fqn;
+    }
+
+    return fqn;
+  };
+
   const goToGlossaryPath = (path: string) => {
     history.push(path);
   };
 
   const goToGlossary = () => {
     const fqn = glossaryTermsFQN || glossaryName || '';
-    goToGlossaryPath(getGlossaryPath(fqn));
+    goToGlossaryPath(getGlossaryPath(getFqn(fqn)));
   };
 
   const handleCancel = () => {
@@ -182,11 +191,15 @@ const AddGlossaryTermPage = () => {
 
     if (isUndefined(glossaryTermsFQN)) {
       breadcrumb.push({
-        name: glossaryName,
-        url: getGlossaryPath(glossaryName),
+        name: Fqn.quoteName(glossaryName),
+        url: getGlossaryPath(
+          glossaryName.includes('.')
+            ? Fqn.quoteName(glossaryName)
+            : glossaryName
+        ),
       });
     } else {
-      breadcrumb = glossaryTermsFQN.split('.').map((fqn, i, arr) => {
+      breadcrumb = Fqn.split(glossaryTermsFQN).map((fqn, i, arr) => {
         const cloneArr = cloneDeep(arr);
         if (i === 0) {
           return {

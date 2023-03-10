@@ -26,6 +26,7 @@ import { Glossary } from '../../generated/entity/data/glossary';
 import { GlossaryTerm } from '../../generated/entity/data/glossaryTerm';
 import { useAfterMount } from '../../hooks/useAfterMount';
 import { getEntityDeleteMessage } from '../../utils/CommonUtils';
+import Fqn from '../../utils/Fqn';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import {
   getGlossaryPath,
@@ -142,7 +143,7 @@ const GlossaryV1 = ({
    */
   const handleBreadcrumb = (fqn: string) => {
     if (fqn) {
-      const arr = fqn.split(FQN_SEPARATOR_CHAR);
+      const arr = Fqn.split(fqn);
       const dataFQN: Array<string> = [];
       const newData = arr.map((d, i) => {
         dataFQN.push(d);
@@ -169,7 +170,13 @@ const GlossaryV1 = ({
   };
 
   useEffect(() => {
-    handleBreadcrumb(glossaryFqn ? glossaryFqn : selectedData.name);
+    handleBreadcrumb(
+      glossaryFqn
+        ? glossaryFqn
+        : selectedData.name.includes('.')
+        ? Fqn.quoteName(selectedData.name)
+        : selectedData.name
+    );
   }, [glossaryFqn]);
 
   useAfterMount(() => {

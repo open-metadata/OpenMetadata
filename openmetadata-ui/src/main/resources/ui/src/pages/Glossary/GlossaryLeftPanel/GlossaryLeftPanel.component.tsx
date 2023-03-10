@@ -20,7 +20,6 @@ import Searchbar from 'components/common/searchbar/Searchbar';
 import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from 'components/PermissionProvider/PermissionProvider.interface';
 import GlossaryV1Skeleton from 'components/Skeleton/GlossaryV1/GlossaryV1LeftPanelSkeleton.component';
-import { FQN_SEPARATOR_CHAR } from 'constants/char.constants';
 import { ROUTES } from 'constants/constants';
 import { Operation } from 'generated/entity/policies/policy';
 import { isEmpty } from 'lodash';
@@ -29,6 +28,7 @@ import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import { checkPermission } from 'utils/PermissionsUtils';
 import { getGlossaryPath } from 'utils/RouterUtils';
+import Fqn from '../../../utils/Fqn';
 import { GlossaryLeftPanelProps } from './GlossaryLeftPanel.interface';
 
 const GlossaryLeftPanel = ({ glossaries }: GlossaryLeftPanelProps) => {
@@ -44,12 +44,16 @@ const GlossaryLeftPanel = ({ glossaries }: GlossaryLeftPanelProps) => {
       checkPermission(Operation.Create, ResourceEntity.GLOSSARY, permissions),
     [permissions]
   );
+
+  const getEncodedGlossaryName = (glossary: string) =>
+    glossary.includes('.') ? Fqn.quoteName(glossary) : glossary;
+
   const selectedKey = useMemo(() => {
     if (glossaryName) {
-      return glossaryName.split(FQN_SEPARATOR_CHAR)[0];
+      return Fqn.split(glossaryName)[0];
     }
 
-    return glossaries[0].name;
+    return getEncodedGlossaryName(glossaries[0].name);
   }, [glossaryName]);
 
   const menuItems: ItemType[] = useMemo(() => {
@@ -66,7 +70,7 @@ const GlossaryLeftPanel = ({ glossaries }: GlossaryLeftPanelProps) => {
       return [
         ...acc,
         {
-          key: glossary.name,
+          key: getEncodedGlossaryName(glossary.name),
           label: glossary.name,
           icon: <IconFolder />,
         },

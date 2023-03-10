@@ -44,6 +44,7 @@ import {
 } from 'utils/RouterUtils';
 import { getTableExpandableConfig } from 'utils/TableUtils';
 import { showErrorToast } from 'utils/ToastUtils';
+import Fqn from '../../../utils/Fqn';
 import {
   GlossaryTermTabProps,
   ModifiedGlossaryTerm,
@@ -153,12 +154,16 @@ const GlossaryTermTab = ({
 
   const handleAddGlossaryTermClick = () => {
     if (glossaryName) {
-      const activeTerm = glossaryName.split(FQN_SEPARATOR_CHAR);
+      const activeTerm = Fqn.split(glossaryName);
       const glossary = activeTerm[0];
       if (activeTerm.length > 1) {
         history.push(getAddGlossaryTermsPath(glossary, glossaryName));
       } else {
-        history.push(getAddGlossaryTermsPath(glossary));
+        history.push(
+          getAddGlossaryTermsPath(
+            glossary.includes('"') ? glossary.replaceAll('"', '') : glossary
+          )
+        );
       }
     } else {
       history.push(getAddGlossaryTermsPath(selectedGlossaryFqn ?? ''));
