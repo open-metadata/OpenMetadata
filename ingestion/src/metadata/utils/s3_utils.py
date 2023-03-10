@@ -115,3 +115,11 @@ def read_avro_from_s3(client: Any, key: str, bucket_name: str):
     return read_from_avro(
         get_file_text(client=client, key=key, bucket_name=bucket_name)
     )
+
+
+def prefix_exits(client: Any, bucket_name: str, prefix: str):
+    """
+    Checks if a given prefix exists in a bucket
+    """
+    res = client.list_objects_v2(Bucket=bucket_name, Prefix=prefix, MaxKeys=1)
+    return 'Contents' in res

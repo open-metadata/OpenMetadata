@@ -14,6 +14,9 @@ Base class for ingesting Object Storage services
 from abc import ABC, abstractmethod
 from typing import Any, Iterable, List, Optional
 
+from metadata.ingestion.source.objectstore.s3.connection import S3ObjectStoreClient
+
+from metadata.clients.aws_client import AWSClient
 from metadata.generated.schema.api.data.createContainer import CreateContainerRequest
 from metadata.generated.schema.entity.data.container import Container
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
@@ -66,7 +69,7 @@ class ObjectStoreServiceTopology(ServiceTopology):
             NodeStage(
                 type_=Container,
                 context="containers",
-                processor="yield_container",
+                processor="yield_create_container_requests",
                 consumer=["objectstore_service"],
                 nullable=True,
             )
@@ -117,26 +120,21 @@ class ObjectStoreServiceSource(TopologyRunnerMixin, Source, ABC):
         self.source_config: ObjectStoreServiceMetadataPipeline = (
             self.config.sourceConfig.config
         )
-        self.client = get_connection(self.service_connection)
+        self.connection: S3ObjectStoreClient = get_connection(self.service_connection)
         self.test_connection()
         self.status = ObjectStoreSourceStatus()
 
     @abstractmethod
-    def get_containers_list(self) -> Optional[List[Any]]:
-        """ """
-
     def get_containers(self) -> Iterable[Any]:
         """
-        Here we can already do the filtering
+        Retrieve all containers for the service
         """
-        for container in self.get_containers_list():
-            yield container
 
     @abstractmethod
-    def yield_container(
+    def yield_create_container_requests(
         self, container_details: Any
     ) -> Iterable[CreateContainerRequest]:
-        """ """
+        """ Generate the create container requests based on the received details"""
 
     def get_status(self) -> SourceStatus:
         return self.status
@@ -152,7 +150,7 @@ class ObjectStoreServiceSource(TopologyRunnerMixin, Source, ABC):
 
     def test_connection(self) -> None:
         test_connection_fn = get_test_connection_fn(self.service_connection)
-        test_connection_fn(self.client)
+        test_connection_fn(self.connection)
 
     def yield_create_request_objectstore_service(self, config: WorkflowSource):
         yield self.metadata.get_create_service_from_source(

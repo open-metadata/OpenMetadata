@@ -9,54 +9,279 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 """S3 object store extraction metadata"""
-from typing import Iterable, List, Optional
+import json
+import random
+import traceback
+from datetime import datetime, timedelta
+from enum import Enum
+from typing import Iterable, Optional, List
+
+from metadata.generated.schema.entity.data.table import Column
+from metadata.ingestion.source.database.datalake.models import DatalakeColumnWrapper
+from pandas import DataFrame
+
+from metadata.generated.schema.entity.data import container
+from pydantic import Extra, Field, ValidationError
+from pydantic.main import BaseModel
 
 from metadata.generated.schema.api.data.createContainer import CreateContainerRequest
+from metadata.generated.schema.entity.data.container import ContainerDataModel
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
 from metadata.generated.schema.entity.services.connections.objectstore.s3ObjectStoreConnection import (
-    S3Storeconnection,
+    S3StoreConnection,
 )
+from metadata.generated.schema.metadataIngestion.objectstore.containerMetadataConfig import ObjectStoreContainerConfig, \
+    MetadataEntry
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.ingestion.api.source import InvalidSourceException
+from metadata.ingestion.source.database.datalake.metadata import DatalakeSource
 from metadata.ingestion.source.objectstore.objectstore_service import (
     ObjectStoreServiceSource,
 )
+from metadata.utils.filters import filter_by_container
 from metadata.utils.logger import ingestion_logger
+from metadata.utils.s3_utils import prefix_exits
 
 logger = ingestion_logger()
+
+OPENMETADATA_TEMPLATE_FILE_NAME = "openmetadata.json"
+
+
+class S3Metric(Enum):
+    NUMBER_OF_OBJECTS = "NumberOfObjects"
+    BUCKET_SIZE_BYTES = "BucketSizeBytes"
+
+
+class S3BucketResponse(BaseModel):
+    """
+    Class modelling a response received from s3_client.list_buckets operation
+    """
+
+    class Config:
+        extra = Extra.forbid
+
+    Name: str = Field(..., description="Bucket name", title="Bucket Name")
+    CreationDate: datetime = Field(
+        ...,
+        description="Timestamp of Bucket creation in ISO format",
+        title="Creation Timestamp",
+    )
+
+
+class S3ContainerDetails(BaseModel):
+    class Config:
+        extra = Extra.forbid
+
+    name: str = Field(..., description="Bucket name", title="Bucket Name")
+    numberOfObjects: float = Field(..., description="Total nr. of objects", title="Nr. of objects")
+    size: float = Field(..., description="Total size in bytes of all objects", title="Total size(bytes) of objects")
+    fileFormats: Optional[List[container.FileFormat]] = Field(..., description="File formats", title="File formats")
+    dataModel: Optional[ContainerDataModel] = Field(..., description="Data Model for the container", title="Data Model")
+    CreationDate: str = Field(
+        ...,
+        description="Timestamp of Bucket creation in ISO format",
+        title="Creation Timestamp",
+    )
 
 
 class S3Source(ObjectStoreServiceSource):
     """
-    blabla
+    Source implementation to ingest S3 buckets data.
     """
+
+    def __init__(self, config: WorkflowSource, metadata_config: OpenMetadataConnection):
+        super().__init__(config, metadata_config)
+        self.s3_client = self.connection.s3_client
+        self.cloudwatch_client = self.connection.cloudwatch_client
 
     @classmethod
     def create(cls, config_dict, metadata_config: OpenMetadataConnection):
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
-        connection: S3Storeconnection = config.serviceConnection.__root__.config
-        if not isinstance(connection, S3Storeconnection):
+        connection: S3StoreConnection = config.serviceConnection.__root__.config
+        if not isinstance(connection, S3StoreConnection):
             raise InvalidSourceException(
-                f"Expected S3Storeconnection, but got {connection}"
+                f"Expected S3StoreConnection, but got {connection}"
             )
         return cls(config, metadata_config)
 
-    def get_containers_list(self) -> Optional[List[str]]:
+    def get_containers(self) -> Iterable[S3ContainerDetails]:
         """
-        Boto3 will list here all the stuff about the containers
-        s3.list
+        List and filter containers
         """
-        return ["XYZ", "ABC"]
+        buckets = []
+        try:
+            buckets = self.s3_client.list_buckets()['Buckets']
+        except Exception as err:
+            logger.debug(traceback.format_exc())
+            logger.error(f"Failed to fetch buckets list - {err}")
 
-    def yield_container(
-        self, container_details: str
+        # No pagination required, as there is a hard 1000 limit on nr of buckets per aws account
+        for bucket in buckets:
+            bucket_response: S3BucketResponse = S3BucketResponse.parse_obj(bucket)
+            bucket_name = bucket_response.Name
+            try:
+                if filter_by_container(self.source_config.containerFilterPattern, container_name=bucket_name):
+                    self.status.filter(bucket_name, "Bucket name pattern not allowed")
+                    continue
+                metadata_config = self._load_metadata_file(bucket_name=bucket_response.Name)
+                if metadata_config:
+                    for metadata_entry in metadata_config.entries:
+                        structured_container: Optional[S3ContainerDetails] = self._generate_container_details(
+                            bucket_response=bucket_response, metadata_entry=metadata_entry
+                        )
+                        if structured_container:
+                            yield structured_container
+                else:
+                    yield self._generate_unstructured_container(bucket_response=bucket_response)
+            except ValidationError as err:
+                logger.debug(traceback.format_exc())
+                logger.warning(
+                    f"Validation error while creating Container from bucket details - {err}"
+                )
+            except Exception as err:
+                logger.debug(traceback.format_exc())
+                logger.warning(
+                    f"Wild error while creating Container from bucket details - {err}"
+                )
+            continue
+
+    def yield_create_container_requests(
+            self, container_model: S3ContainerDetails
     ) -> Iterable[CreateContainerRequest]:
 
         yield CreateContainerRequest(
-            name=container_details,
+            name=container_model.name,
+            numberOfObjects=container_model.numberOfObjects,
+            size=container_model.size,
+            dataModel=container_model.dataModel,
             service=self.context.objectstore_service.fullyQualifiedName,
         )
+
+    def _generate_container_details(
+            self, bucket_response: S3BucketResponse, metadata_entry: MetadataEntry
+    ) -> Optional[S3ContainerDetails]:
+        bucket_name = bucket_response.Name
+        sample_key = self._get_sample_file_path(bucket_name=bucket_name, metadata_entry=metadata_entry)
+        # if we have a sample file to fetch a schema from
+        if sample_key:
+            columns = self.extract_column_definitions(bucket_name, sample_key)
+            if columns:
+                return S3ContainerDetails(
+                    name=f"{bucket_name}.{metadata_entry.dataPath.strip('/')}",
+                    CreationDate=bucket_response.CreationDate.isoformat(),
+                    numberOfObjects=self._fetch_metric(bucket_name=bucket_name, metric=S3Metric.NUMBER_OF_OBJECTS),
+                    size=self._fetch_metric(bucket_name=bucket_name, metric=S3Metric.BUCKET_SIZE_BYTES),
+                    fileFormats=[container.FileFormat(metadata_entry.structureFormat)],
+                    dataModel=ContainerDataModel(isPartitioned=metadata_entry.isPartitioned, columns=columns)
+                )
+        return None
+
+    def extract_column_definitions(self, bucket_name: str, sample_key: str) -> List[Column]:
+        client_args = self.service_connection.awsConfig
+        data_structure_details = DatalakeSource.get_s3_files(
+            self.s3_client, key=sample_key, bucket_name=bucket_name, client_kwargs=client_args
+        )
+        columns = []
+        if isinstance(data_structure_details, DataFrame):
+            columns = DatalakeSource.get_columns(data_structure_details)
+        if isinstance(data_structure_details, list) and data_structure_details:
+            columns = DatalakeSource.get_columns(data_structure_details[0])
+        if isinstance(data_structure_details, DatalakeColumnWrapper):
+            columns = data_structure_details.columns
+        return columns
+
+    def _fetch_metric(self, bucket_name: str, metric: S3Metric) -> float:
+        raw_result = self.cloudwatch_client.get_metric_data(
+            MetricDataQueries=[
+                {
+                    'Id': 'total_nr_of_object_request',
+                    'MetricStat': {
+                        'Metric': {
+                            'Namespace': 'AWS/S3',
+                            'MetricName': metric.value,
+                            'Dimensions': [
+                                {
+                                    'Name': 'BucketName',
+                                    'Value': bucket_name
+                                },
+                                {
+                                    'Name': 'StorageType',
+                                    # StandardStorage-only support for BucketSizeBytes for now
+                                    'Value': 'StandardStorage' if metric == S3Metric.BUCKET_SIZE_BYTES else 'AllStorageTypes'
+                                },
+                            ]
+                        },
+                        'Period': 60,
+                        'Stat': 'Average',
+                        'Unit': 'Bytes' if metric == S3Metric.BUCKET_SIZE_BYTES else 'Count'
+                    },
+                },
+            ],
+            StartTime=datetime.now() - timedelta(days=2),  # metrics generated daily, ensure there is at least 1 entry
+            EndTime=datetime.now(),
+            ScanBy='TimestampDescending'
+        )
+        if raw_result['MetricDataResults']:
+            first_metric = raw_result['MetricDataResults'][0]
+            if first_metric['StatusCode'] == 'Complete' and first_metric['Values']:
+                return int(first_metric['Values'][0])
+        return 0
+
+    def _load_metadata_file(self, bucket_name: str) -> Optional[ObjectStoreContainerConfig]:
+        """
+        Load the metadata template file from the root of the bucket, if it exists
+        """
+        if self._is_metadata_file_present(bucket_name=bucket_name):
+            try:
+                logger.info(f"Found metadata template file at - s3://{bucket_name}/{OPENMETADATA_TEMPLATE_FILE_NAME}")
+                response_object = self.s3_client.get_object(Bucket=bucket_name, Key=OPENMETADATA_TEMPLATE_FILE_NAME)
+                content = json.load(response_object['Body'])
+                metadata_config = ObjectStoreContainerConfig.parse_obj(content)
+                return metadata_config
+            except Exception as e:
+                logger.debug(traceback.format_exc())
+                logger.warning(f"Failed loading metadata file s3://{bucket_name}/{OPENMETADATA_TEMPLATE_FILE_NAME}-{e}")
+        return None
+
+    def _is_metadata_file_present(self, bucket_name: str):
+        return prefix_exits(self.s3_client, bucket_name=bucket_name, prefix=OPENMETADATA_TEMPLATE_FILE_NAME)
+
+    def _generate_unstructured_container(self, bucket_response: S3BucketResponse) -> S3ContainerDetails:
+        return S3ContainerDetails(
+            name=bucket_response.Name,
+            CreationDate=bucket_response.CreationDate.isoformat(),
+            numberOfObjects=self._fetch_metric(bucket_name=bucket_response.Name, metric=S3Metric.NUMBER_OF_OBJECTS),
+            size=self._fetch_metric(bucket_name=bucket_response.Name, metric=S3Metric.BUCKET_SIZE_BYTES),
+            fileFormats=[],  # TODO should we fetch some random files by extension here? Would it be valuable info?
+            dataModel=None
+        )
+
+    def _get_sample_file_path(self, bucket_name: str, metadata_entry: MetadataEntry) -> Optional[str]:
+        """
+        Given a bucket and a metadata entry, returns the full path key to a file which can then be used to infer schema
+        or None in the case of a non-structured metadata entry, or if no such keys can be found
+        """
+        result = f"{metadata_entry.dataPath.strip('/')}"
+        if not metadata_entry.isStructured:
+            return None
+        if metadata_entry.isPartitioned and metadata_entry.partitionColumn:
+            result = f"{result}/{metadata_entry.partitionColumn.strip('/')}"
+
+        response = self.s3_client.list_objects_v2(Bucket=bucket_name, Prefix=result)
+        # no objects found in the data path
+        if 'Contents' not in response:
+            return None
+        # this will look only in the first 1000 files under that path (default for list_objects_v2).
+        # We'd rather not do pagination here as it would incur unwanted costs
+        candidate_keys = [
+            entry['Key'] for entry in response['Contents'] if
+            entry and entry['Key'] and entry['Key'].endswith(metadata_entry.structureFormat)
+        ]
+        # pick a random key out of the candidates if any were returned
+        if candidate_keys:
+            return random.choice(candidate_keys)
+        return None

@@ -179,9 +179,9 @@ public class ContainerResourceTest extends EntityResourceTest<Container, CreateC
         new CreateContainer()
             .withName("0_root")
             .withService(S3_OBJECT_STORE_SERVICE_REFERENCE.getName())
-            .withNumberOfObjects(0)
+            .withNumberOfObjects(0.0)
             .withOwner(USER_WITH_DATA_CONSUMER_ROLE.getEntityReference())
-            .withSize(0);
+            .withSize(0.0);
     Container rootContainer = createAndCheckEntity(createRootContainer, ADMIN_AUTH_HEADERS);
 
     CreateContainer createChildOneContainer =
@@ -189,8 +189,8 @@ public class ContainerResourceTest extends EntityResourceTest<Container, CreateC
             .withName("1_child_1")
             .withService(S3_OBJECT_STORE_SERVICE_REFERENCE.getName())
             .withParent(rootContainer.getEntityReference())
-            .withNumberOfObjects(0)
-            .withSize(0);
+            .withNumberOfObjects(0.0)
+            .withSize(0.0);
     Container childOneContainer = createAndCheckEntity(createChildOneContainer, ADMIN_AUTH_HEADERS);
 
     CreateContainer createChildTwoContainer =
@@ -198,8 +198,8 @@ public class ContainerResourceTest extends EntityResourceTest<Container, CreateC
             .withName("2_child_2")
             .withService(S3_OBJECT_STORE_SERVICE_REFERENCE.getName())
             .withParent(rootContainer.getEntityReference())
-            .withNumberOfObjects(0)
-            .withSize(0);
+            .withNumberOfObjects(0.0)
+            .withSize(0.0);
     Container childTwoContainer = createAndCheckEntity(createChildTwoContainer, ADMIN_AUTH_HEADERS);
 
     CreateContainer createChildThreeContainer =
@@ -207,8 +207,8 @@ public class ContainerResourceTest extends EntityResourceTest<Container, CreateC
             .withName("3_child_3")
             .withService(S3_OBJECT_STORE_SERVICE_REFERENCE.getName())
             .withParent(childOneContainer.getEntityReference())
-            .withNumberOfObjects(0)
-            .withSize(0);
+            .withNumberOfObjects(0.0)
+            .withSize(0.0);
     Container childThreeContainer = createAndCheckEntity(createChildThreeContainer, ADMIN_AUTH_HEADERS);
 
     // GET .../containers?fields=parent,children
@@ -275,8 +275,8 @@ public class ContainerResourceTest extends EntityResourceTest<Container, CreateC
         .withService(S3_OBJECT_STORE_SERVICE_REFERENCE.getFullyQualifiedName())
         .withDataModel(PARTITIONED_DATA_MODEL)
         .withFileFormats(FILE_FORMATS)
-        .withNumberOfObjects(3)
-        .withSize(4096);
+        .withNumberOfObjects(3.0)
+        .withSize(4096.0);
   }
 
   @Override
