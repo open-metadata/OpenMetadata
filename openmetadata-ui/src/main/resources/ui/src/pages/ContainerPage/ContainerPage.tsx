@@ -712,7 +712,9 @@ const ContainerPage = () => {
                 addLineageHandler={handleAddLineage}
                 deleted={deleted}
                 entityLineage={entityLineage}
-                entityLineageHandler={(lineage) => setEntityLineage(lineage)}
+                entityLineageHandler={(lineage: EntityLineage) =>
+                  setEntityLineage(lineage)
+                }
                 entityType={EntityType.CONTAINER}
                 hasEditAccess={hasEditLineagePermission}
                 isLoading={isLineageLoading}
