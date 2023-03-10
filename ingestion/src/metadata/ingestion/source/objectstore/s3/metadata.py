@@ -10,7 +10,7 @@
 #  limitations under the License.
 """S3 object store extraction metadata"""
 import json
-import random
+import secrets
 import traceback
 from datetime import datetime, timedelta
 from enum import Enum
@@ -358,7 +358,7 @@ class S3Source(ObjectStoreServiceSource):
             ]
             # pick a random key out of the candidates if any were returned
             if candidate_keys:
-                result_key = random.choice(candidate_keys)
+                result_key = secrets.choice(candidate_keys)
                 logger.info(
                     f"File {result_key} was picked to infer data structure from."
                 )
