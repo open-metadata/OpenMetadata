@@ -153,7 +153,7 @@ describe('Test UserListPage component', () => {
 
     await waitForElement(async () => {
       const userSearchTerm = new URLSearchParams(window.location.search).get(
-        'userSearchTerm'
+        'user'
       );
 
       return userSearchTerm === 'test';

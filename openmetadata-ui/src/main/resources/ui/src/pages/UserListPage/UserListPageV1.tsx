@@ -176,7 +176,7 @@ const UserListPageV1 = () => {
   const handleSearch = (value: string) => {
     setSearchValue(value);
     setCurrentPage(INITIAL_PAGING_VALUE);
-    const params = new URLSearchParams({ userSearchTerm: value });
+    const params = new URLSearchParams({ user: value });
     // This function is called onChange in the search input with debouncing
     // Hence using history.replace instead of history.push to avoid adding multiple routes in history
     history.replace({
@@ -200,7 +200,7 @@ const UserListPageV1 = () => {
         // Converting string to URLSearchParameter
         const searchParameter = new URLSearchParams(location.search);
         // Getting the searched name
-        const userSearchTerm = searchParameter.get('userSearchTerm') || '';
+        const userSearchTerm = searchParameter.get('user') || '';
         setSearchValue(userSearchTerm);
         getSearchedUsers(userSearchTerm, 1);
         setIsPageLoading(false);
