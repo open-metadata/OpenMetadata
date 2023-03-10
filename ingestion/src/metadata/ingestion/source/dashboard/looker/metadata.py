@@ -191,7 +191,7 @@ class LookerSource(DashboardServiceSource):
                 entity=MetadataDashboard,
                 entity_id=self.context.dashboard.id,
                 owner=owner,
-                force=False,
+                force=True,
             )
 
     def yield_dashboard(
