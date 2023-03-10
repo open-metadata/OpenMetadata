@@ -330,6 +330,7 @@ const AddIngestion = ({
       tableFilterPattern,
       topicFilterPattern,
       useFqnFilter,
+      overrideOwner,
     } = state;
 
     switch (serviceCategory) {
@@ -376,6 +377,7 @@ const AddIngestion = ({
             showDashboardFilter
           ),
           dbServiceNames: databaseServiceNames,
+          overrideOwner,
           type: ConfigType.DashboardMetadata,
         };
       }
