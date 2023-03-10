@@ -71,11 +71,14 @@ def main():
 
     Note how we are expecting the env variables to be sent, with the `config` being the str
     representation of the ingestion YAML.
+
+    We will also set the `pipelineRunId` value if it comes from the environment.
     """
 
     # DockerOperator expects an env var called config
     config = os.environ["config"]
     pipeline_type = os.environ["pipelineType"]
+    pipeline_run_id = os.environ.get("pipelineRunId")
 
     workflow_class = WORKFLOW_MAP.get(pipeline_type)
     if workflow_class is None:
@@ -83,6 +86,9 @@ def main():
 
     # Load the config string representation
     workflow_config = yaml.safe_load(config)
+    if pipeline_run_id:
+        workflow_config["pipelineRunId"] = pipeline_run_id
+
     workflow = workflow_class.create(workflow_config)
     workflow.execute()
     workflow.raise_from_status()

@@ -54,7 +54,7 @@ def main():
     test_connection_fn = get_test_connection_fn(
         test_service_connection.connection.config
     )
-    test_connection_fn(connection)
+    test_connection_fn(connection, test_service_connection.connection.config)
 
 
 if __name__ == "__main__":
