@@ -19,6 +19,7 @@ from typing import Any
 import pandas as pd
 import pyarrow.parquet as pq
 import s3fs
+from botocore.client import BaseClient
 
 from metadata.ingestion.source.database.datalake.utils import (
     read_from_avro,
@@ -28,6 +29,8 @@ from metadata.utils.constants import CHUNKSIZE
 from metadata.utils.logger import utils_logger
 
 logger = utils_logger()
+
+S3_CLIENT_ROOT_RESPONSE = "Contents"
 
 
 def get_file_text(client: Any, key: str, bucket_name: str):
@@ -117,9 +120,16 @@ def read_avro_from_s3(client: Any, key: str, bucket_name: str):
     )
 
 
-def prefix_exits(client: Any, bucket_name: str, prefix: str):
+def prefix_exits(client: BaseClient, bucket_name: str, prefix: str) -> bool:
     """
     Checks if a given prefix exists in a bucket
     """
-    res = client.list_objects_v2(Bucket=bucket_name, Prefix=prefix, MaxKeys=1)
-    return 'Contents' in res
+    try:
+        res = client.list_objects_v2(Bucket=bucket_name, Prefix=prefix, MaxKeys=1)
+        return S3_CLIENT_ROOT_RESPONSE in res
+    except Exception:
+        logger.debug(traceback.format_exc())
+        logger.warning(
+            f"Failed when trying to check if S3 prefix {prefix} exists in bucket {bucket_name}"
+        )
+        return False

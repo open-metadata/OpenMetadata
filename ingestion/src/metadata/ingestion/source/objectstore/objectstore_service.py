@@ -12,11 +12,8 @@
 Base class for ingesting Object Storage services
 """
 from abc import ABC, abstractmethod
-from typing import Any, Iterable, List, Optional
+from typing import Any, Iterable
 
-from metadata.ingestion.source.objectstore.s3.connection import S3ObjectStoreClient
-
-from metadata.clients.aws_client import AWSClient
 from metadata.generated.schema.api.data.createContainer import CreateContainerRequest
 from metadata.generated.schema.entity.data.container import Container
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
@@ -42,6 +39,7 @@ from metadata.ingestion.models.topology import (
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.connections import get_connection, get_test_connection_fn
+from metadata.ingestion.source.objectstore.s3.connection import S3ObjectStoreClient
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -134,7 +132,7 @@ class ObjectStoreServiceSource(TopologyRunnerMixin, Source, ABC):
     def yield_create_container_requests(
         self, container_details: Any
     ) -> Iterable[CreateContainerRequest]:
-        """ Generate the create container requests based on the received details"""
+        """Generate the create container requests based on the received details"""
 
     def get_status(self) -> SourceStatus:
         return self.status

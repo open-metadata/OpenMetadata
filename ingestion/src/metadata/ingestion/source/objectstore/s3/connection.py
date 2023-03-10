@@ -8,9 +8,12 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
+"""
+Source connection handler for S3 object store
+"""
 from dataclasses import dataclass
 
-from botocore.client import ClientError, BaseClient
+from botocore.client import BaseClient, ClientError
 
 from metadata.clients.aws_client import AWSClient
 from metadata.generated.schema.entity.services.connections.objectstore.s3ObjectStoreConnection import (
@@ -32,14 +35,14 @@ def get_connection(connection: S3StoreConnection) -> S3ObjectStoreClient:
     aws_client = AWSClient(connection.awsConfig)
     return S3ObjectStoreClient(
         s3_client=aws_client.get_client(service_name="s3"),
-        cloudwatch_client=aws_client.get_client(service_name="cloudwatch")
+        cloudwatch_client=aws_client.get_client(service_name="cloudwatch"),
     )
 
 
 def test_connection(client: S3ObjectStoreClient) -> None:
     """
-        Test connection to both s3 and cloudwatch
-        """
+    Test connection to both s3 and cloudwatch
+    """
     try:
         client.s3_client.list_buckets()
         client.cloudwatch_client.list_dashboards()
