@@ -21,6 +21,8 @@ export interface CustomBarChartProps {
 }
 
 export interface DataDistributionHistogramProps {
-  name: string;
-  data: ColumnProfile | undefined;
+  data: {
+    firstDayData: ColumnProfile | undefined;
+    currentDayData: ColumnProfile | undefined;
+  };
 }

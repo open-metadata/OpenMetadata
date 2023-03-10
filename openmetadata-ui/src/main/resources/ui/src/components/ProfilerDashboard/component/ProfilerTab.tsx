@@ -335,7 +335,7 @@ const ProfilerTab: React.FC<ProfilerTabProps> = ({
         />
       </Col>
       <Col span={24}>
-        <Card className="shadow-none" data-testid="operation-metrics">
+        <Card className="shadow-none" data-testid="histogram-metrics">
           <Row gutter={[16, 16]}>
             <Col span={4}>
               <Typography.Text
@@ -344,11 +344,10 @@ const ProfilerTab: React.FC<ProfilerTabProps> = ({
                 {t('label.data-distribution')}
               </Typography.Text>
             </Col>
-            <Col span={10}>
-              <DataDistributionHistogram data={firstDay} name="start" />
-            </Col>
-            <Col span={10}>
-              <DataDistributionHistogram data={currentDay} name="end" />
+            <Col span={20}>
+              <DataDistributionHistogram
+                data={{ firstDayData: firstDay, currentDayData: currentDay }}
+              />
             </Col>
           </Row>
         </Card>

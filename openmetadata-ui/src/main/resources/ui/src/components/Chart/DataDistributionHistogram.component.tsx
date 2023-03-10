@@ -12,10 +12,12 @@
  */
 
 import { Col, Row, Tag } from 'antd';
+import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import { GRAPH_BACKGROUND_COLOR } from 'constants/constants';
 import { DEFAULT_HISTOGRAM_DATA } from 'constants/profiler.constant';
 import { HistogramClass } from 'generated/entity/data/table';
-import React, { useMemo } from 'react';
+import { isUndefined } from 'lodash';
+import React from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Bar,
@@ -32,52 +34,91 @@ import { getFormattedDateFromSeconds } from 'utils/TimeUtils';
 import { DataDistributionHistogramProps } from './Chart.interface';
 
 const DataDistributionHistogram = ({
-  name,
   data,
 }: DataDistributionHistogramProps) => {
   const { t } = useTranslation();
-  const graphData = useMemo(() => {
-    const histogramData =
-      (data?.histogram as HistogramClass) || DEFAULT_HISTOGRAM_DATA;
+  const showSingleGraph =
+    isUndefined(data.firstDayData?.histogram) ||
+    isUndefined(data.currentDayData?.histogram);
 
-    return histogramData.frequencies?.map((frequency, i) => ({
-      name: histogramData?.boundaries?.[i],
-      frequency,
-    }));
-  }, [data]);
+  if (
+    isUndefined(data.firstDayData?.histogram) &&
+    isUndefined(data.currentDayData?.histogram)
+  ) {
+    return (
+      <Row align="middle" className="h-full w-full" justify="center">
+        <Col>
+          <ErrorPlaceHolder>
+            <p>{t('message.no-data-available')}</p>
+          </ErrorPlaceHolder>
+        </Col>
+      </Row>
+    );
+  }
 
   return (
-    <Row className="w-full" gutter={[8, 8]}>
-      <Col offset={3} span={24}>
-        {getFormattedDateFromSeconds(data?.timestamp || 0, 'dd/MMM')}
-      </Col>
-      <Col offset={3} span={24}>
-        <Tag>{`${t('label.skew')}: ${data?.nonParametricSkew || '--'}`}</Tag>
-      </Col>
-      <Col span={24}>
-        <ResponsiveContainer
-          debounce={200}
-          id={`${name}_histogram`}
-          minHeight={300}>
-          <BarChart className="w-full" data={graphData} margin={{ left: 16 }}>
-            <CartesianGrid stroke={GRAPH_BACKGROUND_COLOR} />
-            <XAxis
-              dataKey="name"
-              padding={{ left: 16, right: 16 }}
-              tick={{ fontSize: 12 }}
-            />
-            <YAxis
-              allowDataOverflow
-              padding={{ top: 16, bottom: 16 }}
-              tick={{ fontSize: 12 }}
-              tickFormatter={(props) => axisTickFormatter(props)}
-            />
-            <Legend />
-            <Tooltip formatter={(value: number) => tooltipFormatter(value)} />
-            <Bar dataKey="frequency" fill="#1890FF" />
-          </BarChart>
-        </ResponsiveContainer>
-      </Col>
+    <Row className="w-full" data-testid="chart-container">
+      {Object.entries(data).map(([key, columnProfile]) => {
+        const histogramData =
+          (columnProfile?.histogram as HistogramClass) ||
+          DEFAULT_HISTOGRAM_DATA;
+
+        const graphData = histogramData.frequencies?.map((frequency, i) => ({
+          name: histogramData?.boundaries?.[i],
+          frequency,
+        }));
+
+        return isUndefined(columnProfile?.histogram) ? null : (
+          <Col key={key} span={showSingleGraph ? 24 : 12}>
+            <Row gutter={[8, 8]}>
+              <Col
+                data-testid="date"
+                offset={showSingleGraph ? 1 : 2}
+                span={24}>
+                {getFormattedDateFromSeconds(
+                  columnProfile?.timestamp || 0,
+                  'dd/MMM'
+                )}
+              </Col>
+              <Col offset={showSingleGraph ? 1 : 2} span={24}>
+                <Tag data-testid="skew-tag">{`${t('label.skew')}: ${
+                  columnProfile?.nonParametricSkew || '--'
+                }`}</Tag>
+              </Col>
+              <Col span={24}>
+                <ResponsiveContainer
+                  debounce={200}
+                  id={`${key}-histogram`}
+                  minHeight={300}>
+                  <BarChart
+                    className="w-full"
+                    data={graphData}
+                    margin={{ left: 16 }}>
+                    <CartesianGrid stroke={GRAPH_BACKGROUND_COLOR} />
+                    <XAxis
+                      dataKey="name"
+                      interval={0}
+                      padding={{ left: 16, right: 16 }}
+                      tick={{ fontSize: 12 }}
+                    />
+                    <YAxis
+                      allowDataOverflow
+                      padding={{ top: 16, bottom: 16 }}
+                      tick={{ fontSize: 12 }}
+                      tickFormatter={(props) => axisTickFormatter(props)}
+                    />
+                    <Legend />
+                    <Tooltip
+                      formatter={(value: number) => tooltipFormatter(value)}
+                    />
+                    <Bar dataKey="frequency" fill="#1890FF" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </Col>
+            </Row>
+          </Col>
+        );
+      })}
     </Row>
   );
 };
