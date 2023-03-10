@@ -73,7 +73,7 @@ public class QueryResourceTest extends EntityResourceTest<Query, CreateQuery> {
     return new CreateQuery()
         .withName(type)
         .withOwner(USER1_REF)
-        .withUsers(List.of(USER2_REF))
+        .withUsers(List.of(USER2.getName()))
         .withQueryUsedIn(List.of(TABLE_REF))
         .withQuery(QUERY)
         .withDuration("P23DT23H")
@@ -86,7 +86,6 @@ public class QueryResourceTest extends EntityResourceTest<Query, CreateQuery> {
     assertEquals(request.getQuery(), createdEntity.getQuery());
     assertEquals(0, createdEntity.getVote());
     assertEquals(request.getQueryDate(), createdEntity.getQueryDate());
-    assertEntityReferences(request.getUsers(), createdEntity.getUsers());
     assertEntityReferences(request.getQueryUsedIn(), createdEntity.getQueryUsedIn());
   }
 

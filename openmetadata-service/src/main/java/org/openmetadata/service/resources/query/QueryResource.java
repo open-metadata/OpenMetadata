@@ -465,7 +465,7 @@ public class QueryResource extends EntityResource<Query, QueryRepository> {
         .withTags(create.getTags())
         .withQuery(create.getQuery())
         .withDuration(create.getDuration())
-        .withUsers(create.getUsers())
+        .withUsers(getEntityReferences(Entity.USER, create.getUsers()))
         .withQueryUsedIn(create.getQueryUsedIn())
         .withQueryDate(create.getQueryDate());
   }

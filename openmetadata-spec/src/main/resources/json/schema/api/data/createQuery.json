@@ -43,12 +43,11 @@
       "$ref": "../../type/basic.json#/definitions/duration"
     },
     "users": {
-      "description": "List of users who ran this query.",
-      "type": "array",
+      "description": "UserName of the user running the query.",
+      "type" : "array",
       "items": {
-        "$ref": "../../type/entityReference.json"
-      },
-      "default": null
+        "$ref" : "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+      }
     },
     "queryDate": {
       "description": "Date on which the query ran.",
