@@ -20,6 +20,7 @@ import {
   isNil,
   isUndefined,
   lowerCase,
+  union,
   uniqueId,
   upperCase,
 } from 'lodash';
@@ -691,7 +692,7 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
     }
   };
 
-  const setElementsHandle = (data: EntityLineage) => {
+  const setElementsHandle = (data: EntityLineage, activeNodeId?: string) => {
     if (!isEmpty(data)) {
       const graphElements = getLineageData(
         data,
@@ -719,6 +720,12 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
       setEdges(edge);
 
       setConfirmDelete(false);
+      if (activeNodeId) {
+        const activeNode = node.find((item) => item.id === activeNodeId);
+        if (activeNode) {
+          selectNode(activeNode);
+        }
+      }
     }
   };
 
@@ -1407,31 +1414,45 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
     }
   };
 
+  const selectNode = (node: Node) => {
+    const { position } = node;
+    onNodeClick(node);
+    // moving selected node in center
+    reactFlowInstance &&
+      reactFlowInstance.setCenter(position.x, position.y, {
+        duration: ZOOM_TRANSITION_DURATION,
+        zoom: zoomValue,
+      });
+  };
+
   const handleOptionSelect = (value?: string) => {
     if (value) {
       const selectedNode = nodes.find((node) => node.id === value);
 
       if (selectedNode) {
-        const { position } = selectedNode;
-        onNodeClick(selectedNode);
-        // moving selected node in center
-        reactFlowInstance &&
-          reactFlowInstance.setCenter(position.x, position.y, {
-            duration: ZOOM_TRANSITION_DURATION,
-            zoom: zoomValue,
-          });
+        selectNode(selectedNode);
       } else {
-        const path = findNodeById(value, childMap?.children, []);
-
-        // Perform Search here
-
-        setTimeout(() => {
-          if (path) {
-            const lastNode = path[path?.length - 1];
-            onNodeClick(lastNode as Node);
-            // onPaneClick();
-          }
-        }, 2000);
+        const path = findNodeById(value, childMap?.children, []) || [];
+        const lastNode = path[path?.length - 1];
+        if (updatedLineageData) {
+          const { nodes, edges } = getPaginatedChildMap(
+            updatedLineageData,
+            childMap,
+            paginationData
+          );
+          const newNodes = union(nodes, path);
+          setElementsHandle(
+            {
+              ...updatedLineageData,
+              nodes: newNodes,
+              downstreamEdges: [
+                ...(updatedLineageData.downstreamEdges || []),
+                ...edges,
+              ],
+            },
+            lastNode.id
+          );
+        }
       }
     }
   };
