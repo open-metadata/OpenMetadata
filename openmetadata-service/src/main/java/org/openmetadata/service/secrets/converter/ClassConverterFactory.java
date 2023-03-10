@@ -18,6 +18,8 @@ import java.util.HashMap;
 import java.util.Map;
 import lombok.Getter;
 import org.openmetadata.schema.auth.SSOAuthMechanism;
+import org.openmetadata.schema.entity.automations.TestServiceConnectionRequest;
+import org.openmetadata.schema.entity.automations.Workflow;
 import org.openmetadata.schema.metadataIngestion.DbtPipeline;
 import org.openmetadata.schema.metadataIngestion.dbtconfig.DbtGCSConfig;
 import org.openmetadata.schema.security.credentials.GCSCredentials;
@@ -50,6 +52,8 @@ public class ClassConverterFactory {
                 put(GCSConfig.class, new GCSConfigClassConverter());
                 put(BigQueryConnection.class, new BigQueryConnectionClassConverter());
                 put(DbtGCSConfig.class, new DbtGCSConfigClassConverter());
+                put(TestServiceConnectionRequest.class, new TestServiceConnectionRequestClassConverter());
+                put(Workflow.class, new WorkflowClassConverter());
               }
             });
   }
