@@ -193,11 +193,11 @@ describe('Entity Details Page', () => {
       .should('be.visible')
       .click();
     // Check for tab count
-    cy.get('[data-testid=filter-count').should('be.visible').contains('2');
+    cy.get('[data-testid=filter-count').should('be.visible').contains('3');
 
-    // Check for activity feeds - count should be 2
-    // 1 for tier change and 1 for owner change
-    cy.get('[data-testid="message-container"]').its('length').should('eq', 2);
+    // Check for activity feeds - count should be 3
+    // 1 for tier change , 1 for owner change, 1 for entity tag
+    cy.get('[data-testid="message-container"]').its('length').should('eq', 3);
 
     cy.clickOnLogo();
 
