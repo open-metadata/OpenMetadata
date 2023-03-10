@@ -59,7 +59,7 @@ mock_nifi_config = {
                     "username": "username",
                     "password": "password",
                     "verifySSL": False,
-                }
+                },
             }
         },
         "sourceConfig": {"config": {"type": "PipelineMetadata"}},
