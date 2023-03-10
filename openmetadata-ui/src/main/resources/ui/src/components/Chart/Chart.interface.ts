@@ -11,10 +11,16 @@
  *  limitations under the License.
  */
 
+import { ColumnProfile } from 'generated/entity/data/table';
 import { MetricChartType } from '../ProfilerDashboard/profilerDashboard.interface';
 
 export interface CustomBarChartProps {
   chartCollection: MetricChartType;
   name: string;
   tickFormatter?: string;
+}
+
+export interface DataDistributionHistogramProps {
+  name: string;
+  data: ColumnProfile | undefined;
 }

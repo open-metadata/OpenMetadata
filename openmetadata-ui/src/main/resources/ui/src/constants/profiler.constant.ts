@@ -212,9 +212,14 @@ export const INITIAL_QUARTILE_METRIC_VALUE = {
       color: '#7147E8',
     },
     {
+      title: t('label.inter-quartile-range'),
+      dataKey: 'interQuartileRange',
+      color: '#008376',
+    },
+    {
       title: t('label.third-quartile'),
       dataKey: 'thirdQuartile',
-      color: '#008376',
+      color: '#B02AAC',
     },
   ],
   data: [],
@@ -342,3 +347,8 @@ export const PROFILE_SAMPLE_OPTIONS = [
     value: ProfileSampleType.Rows,
   },
 ];
+
+export const DEFAULT_HISTOGRAM_DATA = {
+  boundaries: [],
+  frequencies: [],
+};

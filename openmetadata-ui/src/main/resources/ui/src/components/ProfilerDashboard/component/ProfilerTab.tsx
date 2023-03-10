@@ -13,7 +13,8 @@
 
 import { Card, Col, Row, Statistic, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import { sortBy } from 'lodash';
+import DataDistributionHistogram from 'components/Chart/DataDistributionHistogram.component';
+import { first, last, sortBy } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router-dom';
@@ -109,6 +110,13 @@ const ProfilerTab: React.FC<ProfilerTabProps> = ({
     ];
   }, [tableTests]);
 
+  const { firstDay, currentDay } = useMemo(() => {
+    return {
+      firstDay: last(profilerData),
+      currentDay: first(profilerData),
+    };
+  }, [profilerData]);
+
   const createMetricsChartData = () => {
     const updateProfilerData = sortBy(profilerData, 'timestamp');
     const countMetricData: MetricChartType['data'] = [];
@@ -155,6 +163,7 @@ const ProfilerTab: React.FC<ProfilerTabProps> = ({
         timestamp: col.timestamp || 0,
         firstQuartile: col.firstQuartile || 0,
         thirdQuartile: col.thirdQuartile || 0,
+        interQuartileRange: col.interQuartileRange || 0,
         median: col.median || 0,
       });
     });
@@ -324,6 +333,25 @@ const ProfilerTab: React.FC<ProfilerTabProps> = ({
           chartCollection={quartileMetrics}
           name="quartile"
         />
+      </Col>
+      <Col span={24}>
+        <Card className="shadow-none" data-testid="operation-metrics">
+          <Row gutter={[16, 16]}>
+            <Col span={4}>
+              <Typography.Text
+                className="text-grey-body"
+                data-testid="data-distribution-title">
+                {t('label.data-distribution')}
+              </Typography.Text>
+            </Col>
+            <Col span={10}>
+              <DataDistributionHistogram data={firstDay} name="start" />
+            </Col>
+            <Col span={10}>
+              <DataDistributionHistogram data={currentDay} name="end" />
+            </Col>
+          </Row>
+        </Card>
       </Col>
     </Row>
   );

@@ -77,7 +77,7 @@ describe('Test ProfilerTab component', () => {
     expect(description).toBeInTheDocument();
     expect(dataTypeContainer).toBeInTheDocument();
     expect(ProfilerSummaryCards).toHaveLength(2);
-    expect(ProfilerDetailsCards).toHaveLength(4);
+    expect(ProfilerDetailsCards).toHaveLength(5);
   });
 
   it('ProfilerTab component should render properly with empty data', async () => {
@@ -108,7 +108,7 @@ describe('Test ProfilerTab component', () => {
     expect(description).toBeInTheDocument();
     expect(dataTypeContainer).toBeInTheDocument();
     expect(ProfilerSummaryCards).toHaveLength(2);
-    expect(ProfilerDetailsCards).toHaveLength(4);
+    expect(ProfilerDetailsCards).toHaveLength(5);
   });
 
   it('ProfilerTab component should render properly even if getListTestCase API fails', async () => {
@@ -135,6 +135,6 @@ describe('Test ProfilerTab component', () => {
     expect(description).toBeInTheDocument();
     expect(dataTypeContainer).toBeInTheDocument();
     expect(ProfilerSummaryCards).toHaveLength(2);
-    expect(ProfilerDetailsCards).toHaveLength(4);
+    expect(ProfilerDetailsCards).toHaveLength(5);
   });
 });
