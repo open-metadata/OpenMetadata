@@ -32,6 +32,7 @@ import { usePermissionProvider } from 'components/PermissionProvider/PermissionP
 import { OperationPermission } from 'components/PermissionProvider/PermissionProvider.interface';
 import ServiceConnectionDetails from 'components/ServiceConnectionDetails/ServiceConnectionDetails.component';
 import TagsViewer from 'components/Tag/TagsViewer/tags-viewer';
+import { EntityType } from 'enums/entity.enum';
 import { Container } from 'generated/entity/data/container';
 import { isEmpty, isNil, isUndefined, startCase, toLower } from 'lodash';
 import { ExtraInfo, ServicesUpdateRequest, ServiceTypes } from 'Models';
@@ -488,10 +489,10 @@ const ServicePage: FunctionComponent = () => {
 
       setData(response.data);
       setPaging(response.paging);
-      setIsLoading(false);
     } catch (error) {
       setData([]);
       setPaging(pagingObject);
+    } finally {
       setIsLoading(false);
     }
   };
@@ -548,11 +549,7 @@ const ServicePage: FunctionComponent = () => {
         return getEntityLink(SearchIndex.MLMODEL, fqn);
 
       case ServiceCategory.OBJECT_STORE_SERVICES:
-        /**
-         * Update this when containers details page is ready
-         */
-
-        return '';
+        return getEntityLink(EntityType.CONTAINER, fqn);
 
       case ServiceCategory.DATABASE_SERVICES:
       default:
@@ -632,7 +629,7 @@ const ServicePage: FunctionComponent = () => {
       case ServiceCategory.OBJECT_STORE_SERVICES: {
         const container = data as Container;
 
-        return container.tags && container.tags?.length > 0 ? (
+        return container.tags && container.tags.length > 0 ? (
           <TagsViewer
             showStartWith={false}
             sizeCap={-1}
