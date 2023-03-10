@@ -80,6 +80,7 @@ class S3ContainerDetails(BaseModel):
         extra = Extra.forbid
 
     name: str = Field(..., description="Bucket name", title="Bucket Name")
+    prefix: str = Field(..., description="Prefix for the container", title="Prefix")
     number_of_objects: float = Field(
         ..., description="Total nr. of objects", title="Nr. of objects"
     )
@@ -182,6 +183,7 @@ class S3Source(ObjectStoreServiceSource):
 
         yield CreateContainerRequest(
             name=container_details.name,
+            prefix=container_details.prefix,
             numberOfObjects=container_details.number_of_objects,
             size=container_details.size,
             dataModel=container_details.data_model,
@@ -201,6 +203,7 @@ class S3Source(ObjectStoreServiceSource):
             if columns:
                 return S3ContainerDetails(
                     name=f"{bucket_name}.{metadata_entry.dataPath.strip(S3_KEY_SEPARATOR)}",
+                    prefix=f"{S3_KEY_SEPARATOR}{metadata_entry.dataPath.strip(S3_KEY_SEPARATOR)}",
                     creation_date=bucket_response.creation_date.isoformat(),
                     number_of_objects=self._fetch_metric(
                         bucket_name=bucket_name, metric=S3Metric.NUMBER_OF_OBJECTS
@@ -315,6 +318,7 @@ class S3Source(ObjectStoreServiceSource):
     ) -> S3ContainerDetails:
         return S3ContainerDetails(
             name=bucket_response.name,
+            prefix=S3_KEY_SEPARATOR,
             creation_date=bucket_response.creation_date.isoformat(),
             number_of_objects=self._fetch_metric(
                 bucket_name=bucket_response.name, metric=S3Metric.NUMBER_OF_OBJECTS
