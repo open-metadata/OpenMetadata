@@ -49,8 +49,9 @@ describe('Check if tags addition and removal flow working properly from tables',
       );
 
       cy.get(
-        `[data-row-key="${entityDetails.fieldName}"] [data-testid="tag-container"] [data-testid="add-tag"]>span`
+        `.ant-table-tbody [data-testid="tag-container"] [data-testid="add-tag"]>span`
       )
+        .eq(0)
         .should('be.visible')
         .click();
 
