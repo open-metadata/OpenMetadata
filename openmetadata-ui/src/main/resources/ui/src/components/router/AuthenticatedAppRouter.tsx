@@ -12,7 +12,6 @@
  */
 
 import { isEmpty } from 'lodash';
-
 import LineagePage from 'pages/LineagePage/LineagePage';
 import React, { FunctionComponent, useMemo } from 'react';
 import { Redirect, Route, Switch } from 'react-router-dom';
@@ -529,6 +528,22 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         )}
         path={ROUTES.TEST_SUITES}
       />
+      <AdminProtectedRoute
+        component={TestSuitePage}
+        hasPermission={userPermissions.hasViewPermissions(
+          ResourceEntity.TEST_SUITE,
+          permissions
+        )}
+        path={ROUTES.TEST_SUITES_DUPLICATE}>
+        {/* For alerts we are getting wrong URL
+            Hence create a redirect path to make it work */}
+        <Redirect
+          to={location.pathname.replace(
+            ROUTES.TEST_SUITES_DUPLICATE,
+            ROUTES.TEST_SUITES
+          )}
+        />
+      </AdminProtectedRoute>
       <Route exact component={DataInsightPage} path={ROUTES.DATA_INSIGHT} />
       <Route
         exact

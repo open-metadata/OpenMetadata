@@ -247,6 +247,7 @@ export const ROUTES = {
   TEST_SUITES_ADD_INGESTION: `/test-suites/${PLACEHOLDER_TEST_SUITE_FQN}/add-ingestion`,
   TEST_SUITES_EDIT_INGESTION: `/test-suites/${PLACEHOLDER_TEST_SUITE_FQN}/edit-ingestion/${PLACEHOLDER_ROUTE_INGESTION_FQN}`,
   ADD_TEST_SUITES: `/add-test-suites`,
+  TEST_SUITES_DUPLICATE: `/testSuites`,
 
   // logs viewer
   LOGS: `/${LOG_ENTITY_TYPE}/${INGESTION_NAME}/logs`,
