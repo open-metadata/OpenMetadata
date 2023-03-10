@@ -61,10 +61,10 @@ const TestSuiteStepper = () => {
 
       const response = await createTestSuites({ ...data, owner });
       setTestSuiteResponse(response);
+      setActiveServiceStep(2);
     } catch (error) {
       showErrorToast(error as AxiosError);
     }
-    setActiveServiceStep(2);
   };
 
   const RenderSelectedTab = useCallback(() => {

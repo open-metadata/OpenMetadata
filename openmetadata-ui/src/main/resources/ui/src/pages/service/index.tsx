@@ -282,38 +282,42 @@ const ServicePage: FunctionComponent = () => {
       });
   };
 
-  const triggerIngestionById = (
+  const updateCurrentSelectedIngestion = (
     id: string,
-    displayName: string
-  ): Promise<void> => {
-    return new Promise<void>((resolve, reject) => {
-      triggerIngestionPipelineById(id)
-        .then((res) => {
-          if (res.data) {
-            resolve();
-            getAllIngestionWorkflows();
-          } else {
-            reject();
-            showErrorToast(
-              t('server.ingestion-workflow-operation-error', {
-                operation: t('label.triggering-lowercase'),
-                displayName,
-              })
-            );
-          }
+    data: IngestionPipeline | undefined,
+    updateKey: keyof IngestionPipeline,
+    isDeleted = false
+  ) => {
+    const rowIndex = ingestions.findIndex((row) => row.id === id);
+
+    const updatedRow = !isUndefined(data)
+      ? { ...ingestions[rowIndex], [updateKey]: data[updateKey] }
+      : null;
+
+    const updatedData = isDeleted
+      ? ingestions.filter((_, index) => index !== rowIndex)
+      : updatedRow
+      ? Object.assign([...ingestions], { [rowIndex]: updatedRow })
+      : [...ingestions];
+
+    setIngestions(updatedData);
+  };
+
+  const triggerIngestionById = async (id: string, displayName: string) => {
+    try {
+      const data = await triggerIngestionPipelineById(id);
+
+      updateCurrentSelectedIngestion(id, data, 'pipelineStatuses');
+    } catch (err) {
+      showErrorToast(
+        t('server.ingestion-workflow-operation-error', {
+          operation: t('label.triggering-lowercase'),
+          displayName,
         })
-        .catch((error: AxiosError) => {
-          showErrorToast(
-            error,
-            t('server.ingestion-workflow-operation-error', {
-              operation: t('label.triggering-lowercase'),
-              displayName,
-            })
-          );
-          reject();
-        })
-        .finally(() => setIsLoading(false));
-    });
+      );
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const deployIngestion = (id: string) => {
@@ -323,7 +327,12 @@ const ServicePage: FunctionComponent = () => {
           if (res.data) {
             resolve();
             setTimeout(() => {
-              getAllIngestionWorkflows();
+              updateCurrentSelectedIngestion(
+                id,
+                res.data,
+                'fullyQualifiedName'
+              );
+
               setIsLoading(false);
             }, 500);
           } else {
@@ -348,7 +357,7 @@ const ServicePage: FunctionComponent = () => {
     enableDisableIngestionPipelineById(id)
       .then((res) => {
         if (res.data) {
-          getAllIngestionWorkflows();
+          updateCurrentSelectedIngestion(id, res.data, 'enabled');
         } else {
           throw t('server.unexpected-response');
         }
@@ -366,7 +375,9 @@ const ServicePage: FunctionComponent = () => {
       deleteIngestionPipelineById(id)
         .then(() => {
           resolve();
-          getAllIngestionWorkflows();
+          setIngestions((ingestions) =>
+            ingestions.filter((ing) => ing.id !== id)
+          );
         })
         .catch((error: AxiosError) => {
           showErrorToast(
@@ -884,7 +895,7 @@ const ServicePage: FunctionComponent = () => {
           <Ingestion
             isRequiredDetailsAvailable
             airflowEndpoint={airflowEndpoint}
-            currrentPage={ingestionCurrentPage}
+            currentPage={ingestionCurrentPage}
             deleteIngestion={deleteIngestionById}
             deployIngestion={deployIngestion}
             handleEnableDisableIngestion={handleEnableDisableIngestion}

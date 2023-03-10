@@ -251,6 +251,18 @@ class TableauSource(DashboardServiceSource):
                 return EntityReference(id=user.id.__root__, type="user")
         return None
 
+    def process_owner(
+        self, dashboard_details: TableauDashboard
+    ) -> Optional[LineageDashboard]:
+        owner = self.get_owner_details(dashboard_details=dashboard_details)
+        if owner and self.source_config.overrideOwner:
+            self.metadata.patch_owner(
+                entity=LineageDashboard,
+                entity_id=self.context.dashboard.id,
+                owner=owner,
+                force=True,
+            )
+
     def yield_tag(self, *_, **__) -> OMetaTagAndClassification:
         """
         Fetch Dashboard Tags
@@ -297,7 +309,6 @@ class TableauSource(DashboardServiceSource):
             name=dashboard_details.id,
             displayName=dashboard_details.name,
             description=dashboard_details.description,
-            owner=self.get_owner_details(dashboard_details),
             charts=[
                 fqn.build(
                     self.metadata,

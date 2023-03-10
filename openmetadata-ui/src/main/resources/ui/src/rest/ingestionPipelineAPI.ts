@@ -93,10 +93,13 @@ export const getIngestionPipelines = async (
   return response.data;
 };
 
-export const triggerIngestionPipelineById = (
-  id: string
-): Promise<AxiosResponse> => {
-  return APIClient.post(`/services/ingestionPipelines/trigger/${id}`);
+export const triggerIngestionPipelineById = async (id: string) => {
+  const response = await APIClient.post<
+    unknown,
+    AxiosResponse<IngestionPipeline>
+  >(`/services/ingestionPipelines/trigger/${id}`);
+
+  return response.data;
 };
 
 export const deployIngestionPipelineById = (

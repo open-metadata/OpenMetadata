@@ -20,8 +20,6 @@ export interface TestSuiteDetailsProps {
   permissions: OperationPermission;
   extraInfo: ExtraInfo[];
   slashedBreadCrumb: TitleBreadcrumbProps['titleLinks'];
-  handleDeleteWidgetVisible: (isVisible: boolean) => void;
-  isDeleteWidgetVisible: boolean;
   isTagEditable?: boolean;
   isDescriptionEditable: boolean;
   testSuite: TestSuite | undefined;
@@ -30,4 +28,5 @@ export interface TestSuiteDetailsProps {
   testSuiteDescription: string | undefined;
   descriptionHandler: (value: boolean) => void;
   handleDescriptionUpdate: (updatedHTML: string) => Promise<void>;
+  handleRestoreTestSuite: () => void;
 }
