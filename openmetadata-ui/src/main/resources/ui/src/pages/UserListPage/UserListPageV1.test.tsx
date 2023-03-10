@@ -18,6 +18,7 @@ import {
   render,
   screen,
   waitForDomChange,
+  waitForElement,
 } from '@testing-library/react';
 import React from 'react';
 import { searchData } from 'rest/miscAPI';
@@ -148,6 +149,14 @@ describe('Test UserListPage component', () => {
 
     await act(async () => {
       fireEvent.change(searchBox, { target: { value: 'test' } });
+    });
+
+    await waitForElement(async () => {
+      const userSearchTerm = new URLSearchParams(window.location.search).get(
+        'userSearchTerm'
+      );
+
+      return userSearchTerm === 'test';
     });
 
     expect(searchBox).toHaveValue('test');
