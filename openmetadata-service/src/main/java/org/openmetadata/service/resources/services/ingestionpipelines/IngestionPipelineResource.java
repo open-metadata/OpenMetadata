@@ -273,7 +273,9 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
           @PathParam("version")
           String version)
       throws IOException {
-    return super.getVersionInternal(securityContext, id, version);
+    IngestionPipeline ingestionPipeline = super.getVersionInternal(securityContext, id, version);
+    decryptOrNullify(securityContext, ingestionPipeline, false);
+    return ingestionPipeline;
   }
 
   @GET
@@ -821,6 +823,10 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
       ingestionPipeline.getSourceConfig().setConfig(null);
     }
     secretsManager.encryptOrDecryptIngestionPipeline(ingestionPipeline, false);
+    OpenMetadataConnection openMetadataServerConnection =
+        new OpenMetadataConnectionBuilder(openMetadataApplicationConfig).build();
+    ingestionPipeline.setOpenMetadataServerConnection(
+        secretsManager.encryptOrDecryptOpenMetadataConnection(openMetadataServerConnection, true, false));
     if (authorizer.shouldMaskPasswords(securityContext) && !forceNotMask) {
       EntityMaskerFactory.getEntityMasker().maskIngestionPipeline(ingestionPipeline);
     }
