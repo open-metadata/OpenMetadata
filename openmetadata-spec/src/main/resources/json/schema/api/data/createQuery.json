@@ -10,7 +10,7 @@
   ],
   "properties": {
     "name": {
-      "description": "Name of a entity to which the query belong",
+      "description": "Name of a Query in case of User Creation.",
       "$ref": "../../type/basic.json#/definitions/entityName"
     },
     "displayName": {
@@ -27,7 +27,7 @@
       "default": null
     },
     "tags": {
-      "description": "Tags for this table",
+      "description": "Tags for this Query",
       "type": "array",
       "items": {
         "$ref": "../../type/tagLabel.json"
@@ -36,11 +36,11 @@
     },
     "query": {
       "description": "SQL Query definition.",
-      "type": "string"
+      "$ref": "../../type/basic.json#/definitions/sqlQuery"
     },
     "duration": {
-      "description": "How long did the query took to run in seconds.",
-      "type": "number"
+      "description": "How long did the query took to run.",
+      "$ref": "../../type/basic.json#/definitions/duration"
     },
     "users": {
       "description": "List of users who ran this query.",
@@ -49,11 +49,6 @@
         "$ref": "../../type/entityReference.json"
       },
       "default": null
-    },
-    "vote": {
-      "description": "Users can vote up to rank the popular queries.",
-      "type": "integer",
-      "default": 1
     },
     "queryDate": {
       "description": "Date on which the query ran.",

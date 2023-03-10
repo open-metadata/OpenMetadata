@@ -812,7 +812,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   @Test
   @Execution(ExecutionMode.CONCURRENT)
-  protected void post_entityCreateWithInvalidName_400() throws IOException {
+  protected void post_entityCreateWithInvalidName_400() {
     // Create an entity with mandatory name field null
     final K request = createRequest(null, "description", "displayName", null);
     assertResponseContains(() -> createEntity(request, ADMIN_AUTH_HEADERS), BAD_REQUEST, "[name must not be null]");

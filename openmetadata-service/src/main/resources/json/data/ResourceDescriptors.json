@@ -64,7 +64,11 @@
       "Delete",
       "ViewAll",
       "ViewQueries",
-      "EditAll"
+      "EditAll",
+      "EditDescription",
+      "EditDisplayName",
+      "EditTags",
+      "EditOwner"
     ]
   },
   {

@@ -48,13 +48,13 @@
       "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
     },
     "owner": {
-      "description": "Owner of this table.",
+      "description": "Owner of this Query.",
       "$ref": "../../type/entityReference.json",
       "default": null
     },
     "duration": {
       "description": "How long did the query took to run in seconds.",
-      "type": "number"
+      "$ref": "../../type/basic.json#/definitions/duration"
     },
     "users": {
       "description": "List of users who ran this query.",
@@ -65,17 +65,17 @@
       "default": null
     },
     "followers": {
-      "description": "Followers of this table.",
+      "description": "Followers of this Query.",
       "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
     },
     "vote": {
       "description": "Users can vote up to rank the popular queries.",
       "type": "integer",
-      "default": 1
+      "default": 0
     },
     "query": {
       "description": "SQL Query definition.",
-      "type": "string"
+      "$ref": "../../type/basic.json#/definitions/sqlQuery"
     },
     "checksum": {
       "description": "Checksum to avoid registering duplicate queries.",
@@ -92,11 +92,6 @@
         "$ref": "../../type/tagLabel.json"
       },
       "default": null
-    },
-    "deleted": {
-      "description": "When `true` indicates the entity has been soft deleted.",
-      "type": "boolean",
-      "default": false
     },
     "queryUsedIn": {
       "description": "Entities that are using this query",

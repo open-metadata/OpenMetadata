@@ -17,6 +17,7 @@ import java.security.NoSuchAlgorithmException;
 import java.util.List;
 import java.util.Map;
 import javax.ws.rs.core.Response;
+import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.codec.binary.Hex;
 import org.apache.http.client.HttpResponseException;
@@ -75,16 +76,15 @@ public class QueryResourceTest extends EntityResourceTest<Query, CreateQuery> {
         .withUsers(List.of(USER2_REF))
         .withQueryUsedIn(List.of(TABLE_REF))
         .withQuery(QUERY)
-        .withDuration(0.0)
-        .withQueryDate(1673857635064L)
-        .withVote(1);
+        .withDuration("P23DT23H")
+        .withQueryDate(1673857635064L);
   }
 
   @Override
   public void validateCreatedEntity(Query createdEntity, CreateQuery request, Map<String, String> authHeaders)
       throws HttpResponseException {
     assertEquals(request.getQuery(), createdEntity.getQuery());
-    assertEquals(request.getVote(), createdEntity.getVote());
+    assertEquals(0, createdEntity.getVote());
     assertEquals(request.getQueryDate(), createdEntity.getQueryDate());
     assertEntityReferences(request.getUsers(), createdEntity.getUsers());
     assertEntityReferences(request.getQueryUsedIn(), createdEntity.getQueryUsedIn());
@@ -123,7 +123,7 @@ public class QueryResourceTest extends EntityResourceTest<Query, CreateQuery> {
 
   @Test
   public void post_without_query_400() {
-    CreateQuery create = new CreateQuery().withDuration(0.0).withQueryDate(1673857635064L).withVote(1);
+    CreateQuery create = new CreateQuery().withDuration("P23DT23H").withQueryDate(1673857635064L);
     assertResponse(
         () -> createEntity(create, ADMIN_AUTH_HEADERS), Response.Status.BAD_REQUEST, "[query must not be null]");
   }
@@ -140,20 +140,22 @@ public class QueryResourceTest extends EntityResourceTest<Query, CreateQuery> {
 
   @Test
   void put_vote_queryUsage_update(TestInfo test) throws IOException {
+    // TODO:
     // create query with vote 1
     CreateQuery create = createRequest(getEntityName(test));
     Query createdEntity = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
     // update vote to 2.0
-    create.withVote(2);
+    // create.withVote(2);
     ChangeDescription change = getChangeDescription(createdEntity.getVersion());
     fieldUpdated(change, "vote", 1, 2);
 
     updateAndCheckEntity(create, OK, ADMIN_AUTH_HEADERS, TestUtils.UpdateType.MINOR_UPDATE, change);
   }
 
-  @Override
   @Test
-  protected void post_entityCreateWithInvalidName_400() throws IOException {
+  @SneakyThrows
+  @Override
+  protected void post_entityCreateWithInvalidName_400() {
     // Note: in case of Query empty name works fine since we internally use Checksum
     // Create an entity with mandatory name field null
     final CreateQuery request = createRequest(null, "description", "displayName", null).withQuery(QUERY);

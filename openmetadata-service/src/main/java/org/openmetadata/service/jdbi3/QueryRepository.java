@@ -1,8 +1,6 @@
 package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.service.Entity.FIELD_FOLLOWERS;
-import static org.openmetadata.service.Entity.FIELD_OWNER;
-import static org.openmetadata.service.Entity.FIELD_TAGS;
 
 import java.io.IOException;
 import java.security.MessageDigest;
@@ -20,13 +18,10 @@ import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.query.QueryResource;
 import org.openmetadata.service.util.EntityUtil;
-import org.openmetadata.service.util.RestUtil;
-import org.openmetadata.service.util.ResultList;
 
 public class QueryRepository extends EntityRepository<Query> {
-
-  private static final String QUERY_PATCH_FIELDS = "owner,tags,users,vote,queryUsedIn,followers";
-  private static final String QUERY_UPDATE_FIELDS = "owner,tags,users,queryUsedIn,followers";
+  private static final String QUERY_PATCH_FIELDS = "owner,tags,users,vote,followers";
+  private static final String QUERY_UPDATE_FIELDS = "owner,tags,users,followers";
 
   public QueryRepository(CollectionDAO dao) {
     super(
@@ -41,8 +36,6 @@ public class QueryRepository extends EntityRepository<Query> {
 
   @Override
   public Query setFields(Query entity, EntityUtil.Fields fields) throws IOException {
-    entity.setOwner(fields.contains(FIELD_OWNER) ? getOwner(entity) : null);
-    entity.setTags(fields.contains(FIELD_TAGS) ? getTags(entity.getFullyQualifiedName()) : null);
     entity.setFollowers(fields.contains(FIELD_FOLLOWERS) ? getFollowers(entity) : null);
     entity.setQueryUsedIn(fields.contains("queryUsedIn") ? this.getQueryUsage(entity) : null);
     entity.setUsers(fields.contains("users") ? this.getQueryUsers(entity) : null);
@@ -128,77 +121,6 @@ public class QueryRepository extends EntityRepository<Query> {
   @Override
   public EntityUpdater getUpdater(Query original, Query updated, Operation operation) {
     return new QueryUpdater(original, updated, operation);
-  }
-
-  public ResultList<Query> listQueriesByEntityId(
-      String entityId, String entityType, String before, String after, int limit) {
-    RestUtil.validateCursors(before, after);
-    int totalQueryCount =
-        daoCollection
-            .queryDAO()
-            .listQueryCount(entityId, entityType, Entity.QUERY, Relationship.MENTIONED_IN.ordinal());
-    List<CollectionDAO.QueryList> queryList;
-    if (before != null) {
-      queryList =
-          daoCollection
-              .queryDAO()
-              .listBeforeQueriesByEntityId(
-                  entityId,
-                  entityType,
-                  Entity.QUERY,
-                  RestUtil.decodeCursor(before),
-                  limit + 1,
-                  Relationship.MENTIONED_IN.ordinal());
-    } else {
-      queryList =
-          daoCollection
-              .queryDAO()
-              .listAfterQueriesByEntityId(
-                  entityId,
-                  entityType,
-                  Entity.QUERY,
-                  after == null ? "" : RestUtil.decodeCursor(after),
-                  limit + 1,
-                  Relationship.MENTIONED_IN.ordinal());
-    }
-    ResultList<Query> queryResultList;
-    if (before != null) {
-      queryResultList = listBeforeQueries(queryList, limit, totalQueryCount);
-    } else {
-      queryResultList = listAfterQueries(after, queryList, limit, totalQueryCount);
-    }
-    return queryResultList;
-  }
-
-  private ResultList<Query> listBeforeQueries(List<CollectionDAO.QueryList> queryList, int limit, int total) {
-    String beforeCursor = null;
-    String afterCursor;
-    if (queryList.size() > limit) { // If extra result exists, then previous page exists - return before cursor
-      queryList.remove(0);
-      beforeCursor = queryList.get(0).getFqn();
-    }
-    afterCursor = queryList.get(queryList.size() - 1).getFqn();
-    List<Query> queries = new ArrayList<>();
-    for (CollectionDAO.QueryList queryRow : queryList) {
-      queries.add(queryRow.getQuery());
-    }
-    return new ResultList<>(queries, beforeCursor, afterCursor, total);
-  }
-
-  private ResultList<Query> listAfterQueries(
-      String after, List<CollectionDAO.QueryList> queryList, int limit, int total) {
-    String beforeCursor;
-    String afterCursor = null;
-    beforeCursor = after == null ? null : queryList.get(0).getFqn();
-    if (queryList.size() > limit) { // If extra result exists, then next page exists - return after cursor
-      queryList.remove(limit);
-      afterCursor = queryList.get(limit - 1).getFqn();
-    }
-    List<Query> queries = new ArrayList<>();
-    for (CollectionDAO.QueryList queryRow : queryList) {
-      queries.add(queryRow.getQuery());
-    }
-    return new ResultList<>(queries, beforeCursor, afterCursor, total);
   }
 
   public Query addQueryUsage(UUID queryId, List<EntityReference> entityIds) throws IOException {

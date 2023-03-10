@@ -32,8 +32,8 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
+import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.api.data.CreateQuery;
-import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.entity.data.Query;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityHistory;
@@ -50,14 +50,14 @@ import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.util.ResultList;
 
-@Path("/v1/query")
-@Api(value = "Query collection", tags = "query collection")
+@Path("/v1/queries")
+@Api(value = "Queries Collection", tags = "Queries collection")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(name = "query")
+@Collection(name = "queries")
 public class QueryResource extends EntityResource<Query, QueryRepository> {
 
-  public static final String COLLECTION_PATH = "v1/query/";
+  public static final String COLLECTION_PATH = "v1/queries/";
 
   public QueryResource(CollectionDAO dao, Authorizer authorizer) {
     super(Query.class, new QueryRepository(dao), authorizer);
@@ -107,6 +107,9 @@ public class QueryResource extends EntityResource<Query, QueryRepository> {
               schema = @Schema(type = "string", example = FIELDS))
           @QueryParam("fields")
           String fieldsParam,
+      @Parameter(description = "UUID of the entity for which to list the Queries", schema = @Schema(type = "UUID"))
+          @QueryParam("entityId")
+          UUID entityId,
       @Parameter(description = "Limit the number queries returned. " + "(1 to 1000000, default = 10)")
           @DefaultValue("10")
           @Min(0)
@@ -127,6 +130,9 @@ public class QueryResource extends EntityResource<Query, QueryRepository> {
           Include include)
       throws IOException {
     ListFilter filter = new ListFilter(include);
+    if (!CommonUtil.nullOrEmpty(entityId)) {
+      filter.addQueryParam("entityId", entityId.toString());
+    }
     return super.listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
 
@@ -195,36 +201,6 @@ public class QueryResource extends EntityResource<Query, QueryRepository> {
           Include include)
       throws IOException {
     return getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include);
-  }
-
-  @GET
-  @Path("/{entityType}/{id}")
-  @Operation(
-      operationId = "listQueriesByDataAssetId",
-      summary = "Get List Queries By Data Asset Type and Id",
-      tags = "query",
-      description = "Get List Queries",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "Get List of Queries",
-            content =
-                @Content(
-                    mediaType = "application/json",
-                    schema = @Schema(implementation = QueryResource.QueryList.class)))
-      })
-  public ResultList<Query> list(
-      @Parameter(description = "data asset Id", schema = @Schema(type = "UUID")) @PathParam("id") UUID entityId,
-      @Parameter(description = "data asset Type", schema = @Schema(type = "string")) @PathParam("entityType")
-          String entityType,
-      @DefaultValue("10") @Min(0) @Max(1000000) @QueryParam("limit") int limitParam,
-      @Parameter(description = "Returns list of queries before this cursor", schema = @Schema(type = "string"))
-          @QueryParam("before")
-          String before,
-      @Parameter(description = "Returns list of queries after this cursor", schema = @Schema(type = "string"))
-          @QueryParam("after")
-          String after) {
-    return dao.listQueriesByEntityId(entityId.toString(), entityType, before, after, limitParam);
   }
 
   @GET
@@ -416,26 +392,7 @@ public class QueryResource extends EntityResource<Query, QueryRepository> {
   }
 
   @PUT
-  @Path("/restore")
-  @Operation(
-      operationId = "restore",
-      summary = "Restore a soft deleted query.",
-      tags = "query",
-      description = "Restore a soft deleted query.",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "Successfully restored the Query ",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Query.class)))
-      })
-  public Response restoreTable(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid RestoreEntity restore)
-      throws IOException {
-    return restoreEntity(uriInfo, securityContext, restore.getId());
-  }
-
-  @PUT
-  @Path("/{id}/addQueryUsage")
+  @Path("/{id}/usage")
   @Operation(
       operationId = "addQueryUsage",
       summary = "Add query usage",
@@ -458,8 +415,8 @@ public class QueryResource extends EntityResource<Query, QueryRepository> {
     return dao.addQueryUsage(id, entityIds);
   }
 
-  @PUT
-  @Path("/{id}/removeQueryUsage")
+  @DELETE
+  @Path("/{id}/usage")
   @Operation(
       operationId = "removeQueryUsedIn",
       summary = "remove query used in",
@@ -496,15 +453,11 @@ public class QueryResource extends EntityResource<Query, QueryRepository> {
   public Response delete(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Hard delete the entity. (Default = `false`)")
-          @QueryParam("hardDelete")
-          @DefaultValue("false")
-          boolean hardDelete,
       @Parameter(description = "Fully qualified name of the location", schema = @Schema(type = "string"))
           @PathParam("fqn")
           String fqn)
       throws IOException {
-    return deleteByName(uriInfo, securityContext, fqn, false, hardDelete);
+    return deleteByName(uriInfo, securityContext, fqn, false, true);
   }
 
   private Query getQuery(CreateQuery create, String user) throws IOException {
@@ -512,7 +465,6 @@ public class QueryResource extends EntityResource<Query, QueryRepository> {
         .withTags(create.getTags())
         .withQuery(create.getQuery())
         .withDuration(create.getDuration())
-        .withVote(create.getVote())
         .withUsers(create.getUsers())
         .withQueryUsedIn(create.getQueryUsedIn())
         .withQueryDate(create.getQueryDate());
