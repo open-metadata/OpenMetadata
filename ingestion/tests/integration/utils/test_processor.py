@@ -135,7 +135,7 @@ MOCK_TABLE: CreateTableRequest = CreateTableRequest(
                 TagLabel(
                     tagFQN="PersonalData.Personal",
                     description=None,
-                    source="Tag",
+                    source="Classification",
                     labelType="Automated",
                     state="Suggested",
                     href=None,
@@ -182,7 +182,7 @@ MOCK_TABLE: CreateTableRequest = CreateTableRequest(
                 TagLabel(
                     tagFQN="PersonalData.Personal",
                     description=None,
-                    source="Tag",
+                    source="Classification",
                     labelType="Automated",
                     state="Suggested",
                     href=None,
@@ -222,7 +222,7 @@ EXPECTED_COLUMNS = [
             TagLabel(
                 tagFQN=TagFQN(__root__="PII.Sensitive"),
                 description=None,
-                source="Tag",
+                source="Classification",
                 labelType="Automated",
                 state="Suggested",
                 href=None,
@@ -250,7 +250,7 @@ EXPECTED_COLUMNS = [
             TagLabel(
                 tagFQN=TagFQN(__root__="PII.Sensitive"),
                 description=None,
-                source="Tag",
+                source="Classification",
                 labelType="Automated",
                 state="Suggested",
                 href=None,
@@ -278,7 +278,7 @@ EXPECTED_COLUMNS = [
             TagLabel(
                 tagFQN=TagFQN(__root__="PII.Sensitive"),
                 description=None,
-                source="Tag",
+                source="Classification",
                 labelType="Automated",
                 state="Suggested",
                 href=None,
@@ -306,7 +306,7 @@ EXPECTED_COLUMNS = [
             TagLabel(
                 tagFQN="PersonalData.Personal",
                 description=None,
-                source="Tag",
+                source="Classification",
                 labelType="Automated",
                 state="Suggested",
                 href=None,
@@ -314,7 +314,7 @@ EXPECTED_COLUMNS = [
             TagLabel(
                 tagFQN=TagFQN(__root__="PII.Sensitive"),
                 description=None,
-                source="Tag",
+                source="Classification",
                 labelType="Automated",
                 state="Suggested",
                 href=None,
@@ -342,7 +342,7 @@ EXPECTED_COLUMNS = [
             TagLabel(
                 tagFQN=TagFQN(__root__="PII.NonSensitive"),
                 description=None,
-                source="Tag",
+                source="Classification",
                 labelType="Automated",
                 state="Suggested",
                 href=None,
@@ -370,7 +370,7 @@ EXPECTED_COLUMNS = [
             TagLabel(
                 tagFQN="PersonalData.Personal",
                 description=None,
-                source="Tag",
+                source="Classification",
                 labelType="Automated",
                 state="Suggested",
                 href=None,
@@ -468,7 +468,7 @@ TABLE_ENTITY = Table(
             tags=[
                 TagLabel(
                     tagFQN="PII.Sensitive",
-                    source=TagSource.Tag.value,
+                    source=TagSource.Classification.value,
                     labelType=LabelType.Automated.value,
                     state=State.Suggested.value,
                 )
@@ -693,7 +693,7 @@ UPDATED_TABLE_ENTITY = [
                         "substantial harm, embarrassment, inconvenience, or unfairness to an individual."
                     )
                 ),
-                source="Tag",
+                source="Classification",
                 labelType="Automated",
                 state="Suggested",
                 href=None,
@@ -743,7 +743,7 @@ UPDATED_TABLE_ENTITY = [
                     "PII which is easily accessible from public sources and can include zip code, "
                     "race, gender, and date of birth."
                 ),
-                source="Tag",
+                source="Classification",
                 labelType="Automated",
                 state="Suggested",
                 href=None,
@@ -776,7 +776,7 @@ UPDATED_TABLE_ENTITY = [
                         " substantial harm, embarrassment, inconvenience, or unfairness to an individual."
                     )
                 ),
-                source="Tag",
+                source="Classification",
                 labelType="Automated",
                 state="Suggested",
                 href=None,

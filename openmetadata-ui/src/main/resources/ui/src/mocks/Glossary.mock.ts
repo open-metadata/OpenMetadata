@@ -153,7 +153,7 @@ export const MOCK_GLOSSARY = {
     {
       tagFQN: 'PersonalData.SpecialCategory',
       description: 'GDPR special category ',
-      source: 'Tag',
+      source: 'Classification',
       labelType: 'Manual',
       state: 'Confirmed',
     },
@@ -161,7 +161,7 @@ export const MOCK_GLOSSARY = {
       tagFQN: 'PII.Sensitive',
       description:
         'PII which if lost, compromised, or disclosed without authorization, could result in substantial harm, embarrassment, inconvenience, or unfairness to an individual.',
-      source: 'Tag',
+      source: 'Classification',
       labelType: 'Manual',
       state: 'Confirmed',
     },
@@ -216,7 +216,7 @@ export const MOCK_ASSETS_DATA = {
                     labelType: 'Manual',
                     description:
                       'Data that can be used to directly or indirectly identify a person.',
-                    source: 'Tag',
+                    source: 'Classification',
                     state: 'Confirmed',
                   },
                   {
@@ -224,7 +224,7 @@ export const MOCK_ASSETS_DATA = {
                     labelType: 'Manual',
                     description:
                       'GDPR special category data is personal information of data subjects that is especially sensitive.',
-                    source: 'Tag',
+                    source: 'Classification',
                     state: 'Confirmed',
                   },
                 ],
@@ -304,7 +304,7 @@ export const MOCK_ASSETS_DATA = {
                 labelType: 'Manual',
                 description:
                   'Data that can be used to directly or indirectly identify a person.',
-                source: 'Tag',
+                source: 'Classification',
                 state: 'Confirmed',
               },
             ],

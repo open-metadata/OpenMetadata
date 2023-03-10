@@ -2140,8 +2140,8 @@ public interface CollectionDAO {
         @Bind("labelType") int labelType,
         @Bind("state") int state);
 
-    @SqlQuery("SELECT targetFQN FROM tag_usage WHERE tagFQN = :tagFQN")
-    List<String> tagTargetFQN(@Bind("tagFQN") String tagFQN);
+    @SqlQuery("SELECT targetFQN FROM tag_usage WHERE source = :source AND tagFQN = :tagFQN")
+    List<String> getTargetFQNs(@Bind("source") int source, @Bind("tagFQN") String tagFQN);
 
     default List<TagLabel> getTags(String targetFQN) {
       List<TagLabel> tags = getTagsInternal(targetFQN);
@@ -2171,22 +2171,22 @@ public interface CollectionDAO {
     void deleteTagLabelsByTargetPrefix(@Bind("targetFQN") String targetFQN);
 
     /** Update all the tagFQN starting with oldPrefix to start with newPrefix due to tag or glossary name change */
-    default void updateTagPrefix(String oldPrefix, String newPrefix) {
+    default void updateTagPrefix(int source, String oldPrefix, String newPrefix) {
       String update =
           String.format(
-              "UPDATE tag_usage set tagFQN = REPLACE(tagFQN, '%s.', '%s.') WHERE tagFQN LIKE '%s.%%'",
-              escapeApostrophe(oldPrefix), escapeApostrophe(newPrefix), escape(oldPrefix));
+              "UPDATE tag_usage set tagFQN = REPLACE(tagFQN, '%s.', '%s.') WHERE source = %s AND tagFQN LIKE '%s.%%'",
+              escapeApostrophe(oldPrefix), escapeApostrophe(newPrefix), source, escape(oldPrefix));
       updateTagPrefixInternal(update);
     }
 
-    default void rename(String oldFQN, String newFQN) {
-      renameInternal(oldFQN, newFQN); // First rename tagFQN from oldFQN to newFQN
-      updateTagPrefix(oldFQN, newFQN); // Rename all the tagFQN prefixes starting with the oldFQN to newFQN
+    default void rename(int source, String oldFQN, String newFQN) {
+      renameInternal(source, oldFQN, newFQN); // First rename tagFQN from oldFQN to newFQN
+      updateTagPrefix(source, oldFQN, newFQN); // Rename all the tagFQN prefixes starting with the oldFQN to newFQN
     }
 
     /** Rename the tagFQN */
-    @SqlUpdate("Update tag_usage set tagFQN = :newFQN WHERE tagFQN = :oldFQN")
-    void renameInternal(@Bind("oldFQN") String oldFQN, @Bind("newFQN") String newFQN);
+    @SqlUpdate("Update tag_usage set tagFQN = :newFQN WHERE source = :source AND tagFQN = :oldFQN")
+    void renameInternal(@Bind("source") int source, @Bind("oldFQN") String oldFQN, @Bind("newFQN") String newFQN);
 
     @SqlUpdate("<update>")
     void updateTagPrefixInternal(@Define("update") String update);

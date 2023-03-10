@@ -146,7 +146,7 @@ export const getTagOptionsFromFQN = (
   tagFQNs: Array<string>
 ): Array<TagOption> => {
   return tagFQNs.map((tag) => {
-    return { fqn: tag, source: 'Tag' };
+    return { fqn: tag, source: 'Classification' };
   });
 };
 
@@ -156,7 +156,7 @@ export const getTagOptions = (tags: Array<string>): Array<EntityTags> => {
       labelType: LabelType.Manual,
       state: State.Confirmed,
       tagFQN: tag,
-      source: TagSource.Tag,
+      source: TagSource.Classification,
     };
   });
 };
@@ -187,7 +187,10 @@ export const fetchTagsAndGlossaryTerms = async () => {
   let tagsAndTerms: TagOption[] = [];
   if (responses[0].status === SettledStatus.FULFILLED && responses[0].value) {
     tagsAndTerms = responses[0].value.map((tag) => {
-      return { fqn: tag.fullyQualifiedName ?? tag.name, source: 'Tag' };
+      return {
+        fqn: tag.fullyQualifiedName ?? tag.name,
+        source: 'Classification',
+      };
     });
   }
   if (

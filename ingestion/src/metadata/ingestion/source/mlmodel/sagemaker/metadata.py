@@ -169,7 +169,7 @@ class SagemakerSource(MlModelServiceSource):
                 TagLabel(
                     tagFQN=tag["Key"],
                     description=tag["Value"],
-                    source="Tag",
+                    source="Classification",
                     labelType="Propagated",
                     state="Confirmed",
                 )

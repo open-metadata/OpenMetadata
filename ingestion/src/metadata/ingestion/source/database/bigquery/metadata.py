@@ -215,7 +215,7 @@ class BigquerySource(CommonDbSourceService):
                     ),
                     labelType="Automated",
                     state="Suggested",
-                    source="Tag",
+                    source="Classification",
                 )
             ]
         return None
