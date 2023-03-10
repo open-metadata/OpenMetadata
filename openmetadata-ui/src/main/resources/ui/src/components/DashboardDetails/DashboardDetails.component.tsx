@@ -616,9 +616,7 @@ const DashboardDetails = ({
               data-testid="tags-wrapper"
               onClick={() => handleTagContainerClick(record, index)}>
               {deleted ? (
-                <Space>
-                  <TagsViewer sizeCap={-1} tags={tags || []} />
-                </Space>
+                <TagsViewer sizeCap={-1} tags={tags || []} />
               ) : (
                 <TagsContainer
                   editable={editChartTags?.index === index}
