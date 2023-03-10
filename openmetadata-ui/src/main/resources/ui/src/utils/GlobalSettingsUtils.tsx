@@ -13,6 +13,7 @@
 
 import { Badge } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
+import classNames from 'classnames';
 import {
   ResourceEntity,
   UIPermission,
@@ -26,6 +27,7 @@ import { ReactComponent as BotIcon } from '../../src/assets/svg/bot-profile.svg'
 import { ReactComponent as DashboardIcon } from '../../src/assets/svg/dashboard-grey.svg';
 import { ReactComponent as ElasticSearchIcon } from '../../src/assets/svg/elasticsearch.svg';
 import { ReactComponent as BellIcon } from '../../src/assets/svg/ic-alert-bell.svg';
+import { ReactComponent as ObjectStoreIcon } from '../../src/assets/svg/ic-object-store.svg';
 import { ReactComponent as RolesIcon } from '../../src/assets/svg/icon-role-grey.svg';
 import { ReactComponent as OMLogo } from '../../src/assets/svg/metadata.svg';
 import { ReactComponent as MlModelIcon } from '../../src/assets/svg/mlmodal.svg';
@@ -155,6 +157,15 @@ export const getGlobalSettingsMenuWithPermission = (
           ),
           icon: <OMLogo className="side-panel-icons w-4 h-4" />,
         },
+        {
+          label: i18next.t('label.object-store-plural'),
+          isProtected: userPermissions.hasViewPermissions(
+            ResourceEntity.OBJECT_STORE_SERVICE,
+            permissions
+          ),
+          icon: <ObjectStoreIcon className="side-panel-icons w-4 h-4" />,
+          isBeta: Boolean,
+        },
       ],
     },
     {
@@ -216,6 +227,14 @@ export const getGlobalSettingsMenuWithPermission = (
           ),
           icon: <MlModelIcon className="side-panel-icons" />,
         },
+        {
+          label: i18next.t('label.container-plural'),
+          isProtected: userPermissions.hasViewPermissions(
+            ResourceEntity.TYPE,
+            permissions
+          ),
+          icon: <ObjectStoreIcon className="side-panel-icons" />,
+        },
       ],
     },
     {
@@ -246,30 +265,42 @@ export const getGlobalSettingsMenuWithPermission = (
   ];
 };
 
-export const getGlobalSettingMenuItem = (
-  label: string,
-  key: string,
-  category?: string,
-  icon?: React.ReactNode,
+export const getGlobalSettingMenuItem = (args: {
+  label: string;
+  key: string;
+  category?: string;
+  icon?: React.ReactNode;
   children?: {
     label: string;
     isProtected: boolean;
     icon: React.ReactNode;
-  }[],
-  type?: string,
-  isBeta?: boolean
-): {
+    isBeta?: boolean;
+  }[];
+  type?: string;
+  isBeta?: boolean;
+  isChildren?: boolean;
+}): {
   key: string;
   icon: React.ReactNode;
   children: ItemType[] | undefined;
   label: ReactNode;
   type: string | undefined;
 } => {
+  const { children, label, key, icon, category, isBeta, type, isChildren } =
+    args;
+
   const subItems = children
     ? children
         .filter((menu) => menu.isProtected)
-        .map(({ label, icon }) => {
-          return getGlobalSettingMenuItem(label, camelCase(label), key, icon);
+        .map(({ label, icon, isBeta: isChildBeta }) => {
+          return getGlobalSettingMenuItem({
+            label,
+            key: camelCase(label),
+            category: key,
+            icon,
+            isBeta: isChildBeta,
+            isChildren: true,
+          });
         })
     : undefined;
 
@@ -279,7 +310,7 @@ export const getGlobalSettingMenuItem = (
     children: subItems,
     label: isBeta ? (
       <Badge
-        className="text-xs text-grey-muted"
+        className={classNames({ 'text-xs text-grey-muted': !isChildren })}
         color="#7147e8"
         count="beta"
         offset={[30, 8]}

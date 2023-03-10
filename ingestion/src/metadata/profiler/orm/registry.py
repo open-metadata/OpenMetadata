@@ -37,31 +37,34 @@ class Dialects(Enum):
     Map the service types from DatabaseServiceType
     to the dialect scheme name used for ingesting
     and profiling data.
+
+    Keep this alphabetically ordered
     """
 
-    Hive = b"hive"  # Hive requires bytes
-    Postgres = "postgresql"
-    BigQuery = "bigquery"
-    MySQL = "mysql"
-    Redshift = "redshift"
-    Snowflake = "snowflake"
-    MSSQL = "mssql"
-    Oracle = "oracle"
     Athena = "awsathena"
-    Presto = "presto"
-    Trino = "trino"
-    Vertica = "vertica"
-    Glue = "glue"
-    MariaDB = "mariadb"
-    Druid = "druid"
-    Db2 = "db2"
+    AzureSQL = "azuresql"
+    BigQuery = "bigquery"
     ClickHouse = "clickhouse"
     Databricks = "databricks"
+    Db2 = "db2"
+    Druid = "druid"
     DynamoDB = "dynamoDB"
-    AzureSQL = "azuresql"
+    Glue = "glue"
+    Hive = b"hive"  # Hive requires bytes
+    IbmDbSa = "ibm_db_sa"
+    Impala = "impala"
+    MariaDB = "mariadb"
+    MSSQL = "mssql"
+    MySQL = "mysql"
+    Oracle = "oracle"
+    Postgres = "postgresql"
+    Presto = "presto"
+    Redshift = "redshift"
     SingleStore = "singlestore"
     SQLite = "sqlite"
-    IbmDbSa = "ibm_db_sa"
+    Snowflake = "snowflake"
+    Trino = "trino"
+    Vertica = "vertica"
 
 
 # Sometimes we want to skip certain types for computing metrics.
@@ -119,7 +122,7 @@ def is_date_time(_type) -> bool:
     Check if sqlalchemy _type is derived from Date, Time or DateTime Type
     """
     if isinstance(_type, Type):
-        return _type.__class__.__name__ in DATATIME_SET
+        return _type.name in DATATIME_SET
     return (
         issubclass(_type.__class__, Date)
         or issubclass(_type.__class__, Time)
@@ -132,7 +135,7 @@ def is_quantifiable(_type) -> bool:
     Check if sqlalchemy _type is either integer or numeric
     """
     if isinstance(_type, Type):
-        return _type.__class__.__name__ in QUANTIFIABLE_SET
+        return _type.name in QUANTIFIABLE_SET
     return is_numeric(_type) or is_integer(_type)
 
 
@@ -142,5 +145,5 @@ def is_concatenable(_type) -> bool:
     e.g., strings or text
     """
     if isinstance(_type, Type):
-        return _type.__class__.__name__ in CONCATENABLE_SET
+        return _type.name in CONCATENABLE_SET
     return issubclass(_type.__class__, Concatenable)

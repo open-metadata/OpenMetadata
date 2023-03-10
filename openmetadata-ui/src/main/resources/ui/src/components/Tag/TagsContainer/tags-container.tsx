@@ -12,7 +12,7 @@
  */
 
 import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
-import { Button, Select, Space } from 'antd';
+import { Button, Select, Space, Tooltip } from 'antd';
 import classNames from 'classnames';
 import Tags from 'components/Tag/Tags/tags';
 import { isEmpty } from 'lodash';
@@ -154,9 +154,19 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
             data-testid="tag-selector"
             defaultValue={selectedTagsInternal}
             mode="multiple"
-            options={tagOptions}
-            onChange={handleTagSelection}
-          />
+            onChange={handleTagSelection}>
+            {tagOptions.map(({ label, value }) => (
+              <Select.Option key={label} value={value}>
+                <Tooltip
+                  destroyTooltipOnHide
+                  placement="topLeft"
+                  title={label}
+                  trigger="hover">
+                  {label}
+                </Tooltip>
+              </Select.Option>
+            ))}
+          </Select>
         ) : (
           children
         )}

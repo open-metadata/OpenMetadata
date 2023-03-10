@@ -12,11 +12,14 @@
 Module containing AWS Client
 """
 from enum import Enum
-from typing import Any
+from typing import Any, Optional
 
 import boto3
 from boto3 import Session
+from pydantic import BaseModel
 
+from metadata.generated.schema.security.credentials.awsCredentials import AWSCredentials
+from metadata.ingestion.models.custom_pydantic import CustomSecretStr
 from metadata.utils.logger import utils_logger
 
 logger = utils_logger()
@@ -30,16 +33,25 @@ class AWSServices(Enum):
     QUICKSIGHT = "quicksight"
 
 
+class AWSAssumeRoleException(Exception):
+    """
+    Exception class to handle assume role related issues
+    """
+
+
+class AWSAssumeRoleCredentialWrapper(BaseModel):
+
+    accessKeyId: str
+    secretAccessKey: CustomSecretStr
+    sessionToken: Optional[str]
+
+
 class AWSClient:
     """
     AWSClient creates a boto3 Session client based on AWSCredentials.
     """
 
     def __init__(self, config: "AWSCredentials"):
-        # local import to avoid the creation of circular dependencies with CustomSecretStr
-        from metadata.generated.schema.security.credentials.awsCredentials import (  # pylint: disable=import-outside-toplevel
-            AWSCredentials,
-        )
 
         self.config = (
             config
@@ -47,33 +59,86 @@ class AWSClient:
             else (AWSCredentials.parse_obj(config) if config else config)
         )
 
-    def _get_session(self) -> Session:
-        if (
-            self.config.awsAccessKeyId
-            and self.config.awsSecretAccessKey
-            and self.config.awsSessionToken
-        ):
-            return Session(
-                aws_access_key_id=self.config.awsAccessKeyId,
-                aws_secret_access_key=self.config.awsSecretAccessKey.get_secret_value(),
-                aws_session_token=self.config.awsSessionToken,
-                region_name=self.config.awsRegion,
+    @staticmethod
+    def get_assume_role_config(
+        config: AWSCredentials,
+    ) -> Optional[AWSAssumeRoleCredentialWrapper]:
+        """
+        Get temporary credentials from assumed role
+        """
+        session = AWSClient._get_session(
+            config.awsAccessKeyId,
+            config.awsSecretAccessKey,
+            config.awsSessionToken,
+            config.awsRegion,
+            config.profileName,
+        )
+        sts_client = session.client("sts")
+        resp = None
+        if config.assumeRoleSourceIdentity:
+            resp = sts_client.assume_role(
+                RoleArn=config.assumeRoleArn,
+                RoleSessionName=config.assumeRoleSessionName,
+                SourceIdentity=config.assumeRoleSourceIdentity,
             )
-        if self.config.awsAccessKeyId and self.config.awsSecretAccessKey:
-            return Session(
-                aws_access_key_id=self.config.awsAccessKeyId,
-                aws_secret_access_key=self.config.awsSecretAccessKey.get_secret_value(),
-                region_name=self.config.awsRegion,
+        else:
+            resp = sts_client.assume_role(
+                RoleArn=config.assumeRoleArn,
+                RoleSessionName=config.assumeRoleSessionName,
             )
-        if self.config.awsRegion:
-            return Session(region_name=self.config.awsRegion)
-        return Session()
+
+        if resp:
+            credentials = resp.get("Credentials", {})
+            return AWSAssumeRoleCredentialWrapper(
+                accessKeyId=credentials.get("AccessKeyId"),
+                secretAccessKey=credentials.get("SecretAccessKey"),
+                sessionToken=credentials.get("SessionToken"),
+            )
+        return None
+
+    @staticmethod
+    def _get_session(
+        aws_access_key_id,
+        aws_secret_access_key,
+        aws_session_token,
+        aws_region,
+        profile=None,
+    ) -> Session:
+        return Session(
+            aws_access_key_id=aws_access_key_id,
+            aws_secret_access_key=aws_secret_access_key.get_secret_value()
+            if aws_secret_access_key
+            else None,
+            aws_session_token=aws_session_token,
+            region_name=aws_region,
+            profile_name=profile,
+        )
+
+    def create_session(self) -> Session:
+        if self.config.assumeRoleArn:
+            assume_creds = AWSClient.get_assume_role_config(self.config)
+            if assume_creds:
+                return AWSClient._get_session(
+                    assume_creds.accessKeyId,
+                    assume_creds.secretAccessKey,
+                    assume_creds.sessionToken,
+                    self.config.awsRegion,
+                    self.config.profileName,
+                )
+
+        return AWSClient._get_session(
+            self.config.awsAccessKeyId,
+            self.config.awsSecretAccessKey,
+            self.config.awsSessionToken,
+            self.config.awsRegion,
+            self.config.profileName,
+        )
 
     def get_client(self, service_name: str) -> Any:
         # initialize the client depending on the AWSCredentials passed
         if self.config is not None:
             logger.info(f"Getting AWS client for service [{service_name}]")
-            session = self._get_session()
+            session = self.create_session()
             if self.config.endPointURL is not None:
                 return session.client(
                     service_name=service_name, endpoint_url=self.config.endPointURL
@@ -85,7 +150,7 @@ class AWSClient:
         return boto3.client(service_name=service_name)
 
     def get_resource(self, service_name: str) -> Any:
-        session = self._get_session()
+        session = self.create_session()
         if self.config.endPointURL is not None:
             return session.resource(
                 service_name=service_name, endpoint_url=self.config.endPointURL

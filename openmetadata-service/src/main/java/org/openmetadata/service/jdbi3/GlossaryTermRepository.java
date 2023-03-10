@@ -284,7 +284,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     protected void updateTags(String fqn, String fieldName, List<TagLabel> origTags, List<TagLabel> updatedTags)
         throws IOException {
       super.updateTags(fqn, fieldName, origTags, updatedTags);
-      List<String> targetFQNList = daoCollection.tagUsageDAO().tagTargetFQN(fqn);
+      List<String> targetFQNList = daoCollection.tagUsageDAO().getTargetFQNs(TagSource.CLASSIFICATION.ordinal(), fqn);
       for (String targetFQN : targetFQNList) {
         applyTags(updatedTags, targetFQN);
       }
@@ -349,7 +349,9 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
         // Glossary term name changed - update the FQNs of the children terms to reflect this
         LOG.info("Glossary term name changed from {} to {}", original.getName(), updated.getName());
         daoCollection.glossaryTermDAO().updateFqn(original.getFullyQualifiedName(), updated.getFullyQualifiedName());
-        daoCollection.tagUsageDAO().rename(original.getFullyQualifiedName(), updated.getFullyQualifiedName());
+        daoCollection
+            .tagUsageDAO()
+            .rename(TagSource.GLOSSARY.ordinal(), original.getFullyQualifiedName(), updated.getFullyQualifiedName());
         recordChange("name", original.getName(), updated.getName());
       }
     }
@@ -365,7 +367,9 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       boolean glossaryChanged = !Objects.equals(oldGlossaryId, newGlossaryId);
 
       daoCollection.glossaryTermDAO().updateFqn(original.getFullyQualifiedName(), updated.getFullyQualifiedName());
-      daoCollection.tagUsageDAO().rename(original.getFullyQualifiedName(), updated.getFullyQualifiedName());
+      daoCollection
+          .tagUsageDAO()
+          .rename(TagSource.GLOSSARY.ordinal(), original.getFullyQualifiedName(), updated.getFullyQualifiedName());
       if (glossaryChanged) {
         updateGlossaryRelationship(original, updated);
         recordChange("glossary", original.getGlossary(), updated.getGlossary(), true, entityReferenceMatch);

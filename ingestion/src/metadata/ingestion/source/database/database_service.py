@@ -67,7 +67,6 @@ from metadata.ingestion.models.topology import (
     create_source_context,
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.database.processor import PiiProcessor
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_schema
 from metadata.utils.logger import ingestion_logger
@@ -80,7 +79,7 @@ class DataModelLink(BaseModel):
     Tmp model to handle data model ingestion
     """
 
-    fqn: FullyQualifiedEntityName
+    table_entity: Table
     datamodel: DataModel
 
 
@@ -364,7 +363,7 @@ class DatabaseServiceSource(
                 ),
                 labelType=LabelType.Automated,
                 state=State.Suggested,
-                source=TagSource.Tag,
+                source=TagSource.Classification,
             )
             for tag_and_category in self.context.tags or []
             if tag_and_category.fqn.__root__ == entity_fqn
@@ -430,7 +429,10 @@ class DatabaseServiceSource(
         )
         for table in database_state:
             if str(table.fullyQualifiedName.__root__) not in self.database_source_state:
-                yield DeleteTable(table=table)
+                yield DeleteTable(
+                    table=table,
+                    mark_deleted_tables=self.source_config.markDeletedTables,
+                )
 
     def fetch_all_schema_and_delete_tables(self):
         """
@@ -491,10 +493,3 @@ class DatabaseServiceSource(
                     )
 
                     yield from self.delete_schema_tables(schema_fqn)
-
-    def process_pii_sensitive_column(
-        self, metadata_config: OpenMetadata, table_request: CreateTableRequest
-    ):
-        if self.source_config.processPiiSensitive:
-            processer = PiiProcessor(metadata_config=metadata_config)
-            processer.process(table_request=table_request)

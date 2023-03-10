@@ -139,3 +139,99 @@ workflowConfig:
 
 In the above section, under the `workflowConfig`, configure `authProvider` to be "openmetadata" and under `securityConfig`
 section, add `jwtToken` and its value from the ingestion bot page.
+
+## Configure JWT Key Pairs for Docker
+
+Following the above documentation, you will have private key and public key pair available as mentioned [here](#create-private-public-key). Next, will proceed with the below section which will configure JWT token with docker environment.
+### Create docker compose host volume mappings
+
+Create a host directory which will be mapped as docker volumes to docker compose. This step will require you to update existing docker compose files that comes up with [OpenMetadata Releases](https://github.com/open-metadata/OpenMetadata/releases).
+
+
+```yaml
+
+services:
+...
+  openmetadata-server:
+    volumes:
+    - ./docker-volume/jwtkeys:/etc/openmetadata/jwtkeys
+    ...
+```
+
+<Note>
+
+It is presumed with the above code snippet that you have `docker-volume` directory available on host where the docker-compose file is.
+
+</Note>
+
+### Update the docker compose environment variables with jwtkeys
+
+Update the docker environment variables either directly in the docker-compose files or in a separate docker env files.
+Below is a code snippet for how the docker env file will look like.
+
+```bash
+# openmetadata.prod.env
+RSA_PUBLIC_KEY_FILE_PATH="/etc/openmetadata/jwtkeys/public_key.der"
+RSA_PRIVATE_KEY_FILE_PATH="/etc/openmetadata/jwtkeys/private_key.der"
+JWT_ISSUER="open-metadata.org" # update this as per your environment
+JWT_KEY_ID="c8ec220c-be7d-4e47-97c7-098bf6a57ce1" # update this to a unique uuid4
+```
+
+### Run the docker compose command to start the services
+
+Run the docker compose CLI command to start the docker services with the configured jwt keys.
+
+```
+docker compose -f docker-compose.yml --env-file openmetadata.prod.env up -d
+```
+
+## Configure JWT Key Pairs for Kubernetes
+
+Following the above documentation, you will have private key and public key pair available as mentioned [here](#create-private-public-key). Next, will proceed with the below section which will configure JWT token with kubernetes environment.
+
+### Create Kubernetes Secrets for the Key Pairs
+
+Create Kubernetes Secrets from file using the kubernetes imparative commands below.
+
+```bash
+kubectl create secret generic openmetadata-jwt-keys --from-file private_key.der --from-file public_key.der --namespace default
+```
+
+### Update Helm Values to mount Kubernetes secrets and configure JWT Token Configuration
+
+Update your helm values to mount Kubernetes Secrets as Volumes and update the Jwt Token Configuration to point the Key File Paths to mounted path (absolute file path).
+
+```yaml
+# openmetadata.prod.values.yml
+global:
+	...
+	jwtTokenConfiguration:
+	  rsapublicKeyFilePath: "/etc/openmetadata/jwtkeys/public_key.der"
+	  rsaprivateKeyFilePath: "/etc/openmetadata/jwtkeys/private_key.der"
+	  jwtissuer: "open-metadata.org" # update this as per your environment
+	  keyId: "c8ec220c-be7d-4e47-97c7-098bf6a57ce1" # update this to a unique uuid4
+...
+extraVolumes:
+- name: openmetadata-jwt-vol
+  secret: 
+    secretName: openmetadata-jwt-keys
+extraVolumeMounts:
+- name: openmetadata-jwt-vol
+  mountPath: "/etc/openmetadata/jwtkeys"
+  readOnly: true
+```
+
+<Warning>
+
+It is recommended to consider new directory paths for mounting the secrets as volumes to OpenMetadata Server Pod.
+With OpenMetadata Helm Charts, you will be able to add volumes and volumeMounts with `extraVolumes` and `extraVolumeMounts` helm values.
+
+</Warning>
+
+### Install / Upgrade Helm Chart Release
+
+Run the below command to make sure the update helm values are available to OpenMetadata.
+
+```
+helm upgrade --install openmetadata open-metadata/openmetadata --values openmetadata.prod.values.yml
+```

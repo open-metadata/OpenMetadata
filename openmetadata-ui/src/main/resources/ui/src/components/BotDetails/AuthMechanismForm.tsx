@@ -474,7 +474,7 @@ const AuthMechanismForm: FC<Props> = ({
               <Input
                 data-testid="oktaEmail"
                 name="oktaEmail"
-                placeholder={t('label.okta-email')}
+                placeholder={t('label.okta-service-account-email')}
                 value={ssoClientConfig?.email}
                 onChange={handleOnChange}
               />

@@ -72,6 +72,7 @@ class GlueSource(DatabaseServiceSource):
         self.status = SQLSourceStatus()
         self.glue = get_connection(self.service_connection)
         super().__init__()
+        self.test_connection()
 
     @classmethod
     def create(cls, config_dict, metadata_config: OpenMetadataConnection):
@@ -280,9 +281,6 @@ class GlueSource(DatabaseServiceSource):
                 columns=columns,
                 tableConstraints=table_constraints,
                 databaseSchema=self.context.database_schema.fullyQualifiedName,
-            )
-            self.process_pii_sensitive_column(
-                metadata_config=self.metadata, table_request=table_request
             )
             yield table_request
             self.register_record(table_request=table_request)

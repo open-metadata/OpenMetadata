@@ -665,9 +665,11 @@ const TeamDetailsV1 = ({
               <Typography.Text
                 className="font-medium"
                 data-testid="deleted-menu-item-label">
-                {t('label.deleted-team-action', {
-                  action: showDeletedTeam ? t('label.hide') : t('label.show'),
-                })}
+                {t(
+                  showDeletedTeam
+                    ? 'label.hide-deleted-team'
+                    : 'label.show-deleted-team'
+                )}
               </Typography.Text>
             </Col>
 
@@ -961,7 +963,9 @@ const TeamDetailsV1 = ({
               data-testid="synonyms"
               id="synonyms"
               name="synonyms"
-              placeholder={t('message.enter-comma-separated-term')}
+              placeholder={t('message.enter-comma-separated-field', {
+                field: t('label.term-lowercase'),
+              })}
               type="text"
               value={heading}
               onChange={(e) => setHeading(e.target.value)}

@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
+@import url('../../../styles/variables.less');
 @link-btn-color: #37352f;
 
 .table-data-card-title-container {
@@ -22,5 +22,13 @@
   }
   .ant-btn-link > span {
     color: @link-btn-color;
+  }
+}
+
+.button-hover {
+  .ant-btn-link > span {
+    &:hover {
+      color: @primary-color;
+    }
   }
 }

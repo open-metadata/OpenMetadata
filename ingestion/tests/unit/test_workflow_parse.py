@@ -16,7 +16,7 @@ from unittest import TestCase
 
 from pydantic import ValidationError
 
-from metadata.generated.schema.api.services.ingestionPipelines.testServiceConnection import (
+from metadata.generated.schema.entity.automations.testServiceConnection import (
     TestServiceConnectionRequest,
 )
 from metadata.generated.schema.entity.services.connections.dashboard.tableauConnection import (

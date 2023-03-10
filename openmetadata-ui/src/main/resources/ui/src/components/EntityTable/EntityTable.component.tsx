@@ -119,7 +119,7 @@ const EntityTable = ({
               ? tagList.map((tag) => {
                   return {
                     fqn: tag,
-                    source: 'Tag',
+                    source: 'Classification',
                   };
                 })
               : [];
@@ -544,6 +544,7 @@ const EntityTable = ({
                 }
               }}>
               <TagsContainer
+                className="w-min-15 "
                 editable={editColumnTag?.index === index}
                 isLoading={isTagLoading && editColumnTag?.index === index}
                 selectedTags={tags || []}

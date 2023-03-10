@@ -47,22 +47,26 @@ class JsonSchemaParserTests(TestCase):
     parsed_schema = parse_json_schema(sample_json_schema)
 
     def test_schema_name(self):
-        self.assertEqual(self.parsed_schema[0].name.__root__, "firstName")
+        self.assertEqual(self.parsed_schema[0].name.__root__, "Person")
 
     def test_schema_type(self):
-        self.assertEqual(self.parsed_schema[0].dataType.name, "STRING")
+        self.assertEqual(self.parsed_schema[0].dataType.name, "RECORD")
 
     def test_field_names(self):
-        field_names = {str(field.name.__root__) for field in self.parsed_schema}
+        field_names = {
+            str(field.name.__root__) for field in self.parsed_schema[0].children
+        }
         self.assertEqual(field_names, {"firstName", "lastName", "age"})
 
     def test_field_types(self):
-        field_types = {str(field.dataType.name) for field in self.parsed_schema}
+        field_types = {
+            str(field.dataType.name) for field in self.parsed_schema[0].children
+        }
         self.assertEqual(field_types, {"INT", "STRING"})
 
     def test_field_descriptions(self):
         field_descriptions = {
-            str(field.description.__root__) for field in self.parsed_schema
+            str(field.description.__root__) for field in self.parsed_schema[0].children
         }
         self.assertEqual(
             field_descriptions,

@@ -28,7 +28,14 @@ public class EventMonitorFactoryTest {
   @BeforeEach
   void setUp() {
     config = new EventMonitorConfiguration();
-    config.setParameters(new HashMap<>());
+    config.setParameters(
+        new HashMap<>() {
+          {
+            put("region", "eu-west-2");
+            put("accessKeyId", "asdf1234");
+            put("secretAccessKey", "asdf1234");
+          }
+        });
   }
 
   @Test

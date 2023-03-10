@@ -222,3 +222,8 @@ Please refer to the examples to access an API:
     Response response = esApi.searchEntitiesWithQuery("", "pipeline_search_index", false, 0, 0, null, null, true, "{\"query\":{\"bool\":{}}}", null, false, null  );
     String data = IOUtils.toString(response.body().asInputStream(), Charsets.UTF_8);
 ```
+
+## More examples
+
+If you want more examples of using different Java SDK methods, you will find them in our demo repository 
+[here](https://github.com/open-metadata/openmetadata-demo/tree/main/java-sdk-examples).

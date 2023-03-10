@@ -77,16 +77,16 @@ public class TagResourceTest extends EntityResourceTest<Tag, CreateTag> {
     TIER1_TAG_LABEL = getTagLabel(FullyQualifiedName.add("Tier", "Tier1"));
     TIER2_TAG_LABEL = getTagLabel(FullyQualifiedName.add("Tier", "Tier2"));
 
-    USER_TAG_CATEGORY = createClassification("User");
+    USER_CLASSIFICATION = createClassification("User");
 
     ADDRESS_TAG =
         createTag(
             "Address",
-            USER_TAG_CATEGORY.getName(),
+            USER_CLASSIFICATION.getName(),
             null,
             PERSONAL_DATA_TAG_LABEL.getTagFQN(),
             PII_SENSITIVE_TAG_LABEL.getTagFQN());
-    USER_ADDRESS_TAG_LABEL = getTagLabel(FullyQualifiedName.add(USER_TAG_CATEGORY.getName(), "Address"));
+    USER_ADDRESS_TAG_LABEL = getTagLabel(FullyQualifiedName.add(USER_CLASSIFICATION.getName(), "Address"));
   }
 
   private TagLabel getTagLabel(String tagName) throws HttpResponseException {
@@ -96,7 +96,7 @@ public class TagResourceTest extends EntityResourceTest<Tag, CreateTag> {
   @Order(1)
   @Test
   void post_validTags_200() throws IOException {
-    Classification classification = getClassification(USER_TAG_CATEGORY.getName());
+    Classification classification = getClassification(USER_CLASSIFICATION.getName());
     Map<String, String> queryParams = new HashMap<>();
     queryParams.put("parent", classification.getFullyQualifiedName());
     List<Tag> childrenBefore = listEntities(queryParams, ADMIN_AUTH_HEADERS).getData();
@@ -106,19 +106,17 @@ public class TagResourceTest extends EntityResourceTest<Tag, CreateTag> {
 
     assertEquals(childrenBefore.size() + 1, childrenAfter.size());
 
-    // POST .../tags/{category}/{primaryTag}/{secondaryTag} to create secondary tag
     createTag("SecondaryTag", classification.getName(), tag1.getFullyQualifiedName());
   }
 
   @Test
   void post_newTagsOnNonExistentParents_404() {
-    // POST .../tags/{nonExistent}/{primaryTag} where category does not exist
     String nonExistent = "nonExistent";
     assertResponse(
         () -> createTag("primary", nonExistent, null), NOT_FOUND, entityNotFound(Entity.CLASSIFICATION, nonExistent));
 
     // POST .../tags/{user}/{nonExistent}/tag where primaryTag does not exist
-    String parentFqn = FullyQualifiedName.build(USER_TAG_CATEGORY.getName(), nonExistent);
+    String parentFqn = FullyQualifiedName.build(USER_CLASSIFICATION.getName(), nonExistent);
     CreateTag create1 = createRequest(nonExistent).withParent(parentFqn);
     assertResponse(() -> createEntity(create1, ADMIN_AUTH_HEADERS), NOT_FOUND, entityNotFound(Entity.TAG, parentFqn));
   }
@@ -195,7 +193,7 @@ public class TagResourceTest extends EntityResourceTest<Tag, CreateTag> {
     return new CreateTag()
         .withName(name)
         .withDescription("description")
-        .withClassification(USER_TAG_CATEGORY.getName());
+        .withClassification(USER_CLASSIFICATION.getName());
   }
 
   @Override

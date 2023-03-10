@@ -15,7 +15,7 @@ import os
 
 import yaml
 
-from metadata.generated.schema.api.services.ingestionPipelines.testServiceConnection import (
+from metadata.generated.schema.entity.automations.testServiceConnection import (
     TestServiceConnectionRequest,
 )
 from metadata.ingestion.source.connections import get_connection, get_test_connection_fn

@@ -47,6 +47,14 @@ jest.mock('components/searched-data/SearchedData', () => {
     ));
 });
 
+jest.mock('./EntitySummaryPanel/EntitySummaryPanel.component', () =>
+  jest
+    .fn()
+    .mockImplementation(() => (
+      <div data-testid="EntitySummaryPanel">EntitySummaryPanel</div>
+    ))
+);
+
 const mockFunction = jest.fn();
 
 jest.mock('../containers/PageLayoutV1', () =>
@@ -69,7 +77,6 @@ describe('Test Explore component', () => {
           [SearchIndex.PIPELINE]: 5,
           [SearchIndex.MLMODEL]: 2,
         }}
-        onChangeAdvancedSearchJsonTree={mockFunction}
         onChangeAdvancedSearchQueryFilter={mockFunction}
         onChangePostFilter={mockFunction}
         onChangeSearchIndex={mockFunction}

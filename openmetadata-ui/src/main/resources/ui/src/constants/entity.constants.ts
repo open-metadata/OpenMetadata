@@ -16,3 +16,5 @@ export const ENTITY_DELETE_STATE = {
   state: false,
   softDelete: true,
 };
+
+export const ENTITY_CARD_CLASS = 'h-full m-y-md';

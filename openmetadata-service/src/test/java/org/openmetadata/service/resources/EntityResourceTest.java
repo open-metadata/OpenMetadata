@@ -122,6 +122,9 @@ import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.policies.Policy;
 import org.openmetadata.schema.entity.policies.accessControl.Rule;
+import org.openmetadata.schema.entity.services.connections.TestConnectionResult;
+import org.openmetadata.schema.entity.services.connections.TestConnectionResultStatus;
+import org.openmetadata.schema.entity.services.connections.TestConnectionStepResult;
 import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
@@ -258,7 +261,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   public static EntityReference AMUNDSEN_SERVICE_REFERENCE;
   public static EntityReference ATLAS_SERVICE_REFERENCE;
 
-  public static Classification USER_TAG_CATEGORY;
+  public static Classification USER_CLASSIFICATION;
   public static Tag ADDRESS_TAG;
   public static TagLabel USER_ADDRESS_TAG_LABEL;
   public static TagLabel PERSONAL_DATA_TAG_LABEL;
@@ -299,6 +302,17 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   public static final String C2 = "c2()$";
   public static final String C3 = "\"c.3\"";
   public static List<Column> COLUMNS;
+
+  public static final TestConnectionResult TEST_CONNECTION_RESULT =
+      new TestConnectionResult()
+          .withStatus(TestConnectionResultStatus.SUCCESSFUL)
+          .withSteps(
+              List.of(
+                  new TestConnectionStepResult()
+                      .withMandatory(true)
+                      .withName("myStep")
+                      .withMessage("All good")
+                      .withPassed(true)));
 
   public static Type INT_TYPE;
   public static Type STRING_TYPE;

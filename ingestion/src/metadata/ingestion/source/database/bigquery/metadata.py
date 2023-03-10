@@ -45,7 +45,9 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.generated.schema.security.credentials.gcsCredentials import (
     GCSCredentialsPath,
-    GCSValues,
+)
+from metadata.generated.schema.security.credentials.gcsValues import (
+    GcsCredentialsValues,
     MultipleProjectId,
     SingleProjectId,
 )
@@ -213,14 +215,16 @@ class BigquerySource(CommonDbSourceService):
                     ),
                     labelType="Automated",
                     state="Suggested",
-                    source="Tag",
+                    source="Classification",
                 )
             ]
         return None
 
     def set_inspector(self, database_name: str):
         self.client = Client(project=database_name)
-        if isinstance(self.service_connection.credentials.gcsConfig, GCSValues):
+        if isinstance(
+            self.service_connection.credentials.gcsConfig, GcsCredentialsValues
+        ):
             self.service_connection.credentials.gcsConfig.projectId = SingleProjectId(
                 __root__=database_name
             )

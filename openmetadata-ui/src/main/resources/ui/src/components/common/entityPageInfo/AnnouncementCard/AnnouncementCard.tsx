@@ -49,7 +49,9 @@ const AnnouncementCard: FC<Props> = ({ onClick, announcement }) => {
             size="small"
             type="link"
             onClick={onClick}>
-            {t('label.read-more')}
+            {t('label.read-type', {
+              type: t('label.more-lowercase'),
+            })}
           </Button>
         </div>
       </Space>

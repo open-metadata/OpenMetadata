@@ -11,6 +11,10 @@
  *  limitations under the License.
  */
 
+import amazonS3 from 'assets/img/service-icon-amazon-s3.svg';
+import gcs from 'assets/img/service-icon-gcs.png';
+import msAzure from 'assets/img/service-icon-ms-azure.png';
+import { ObjectStoreServiceType } from 'generated/entity/services/objectstoreService';
 import { map, startCase } from 'lodash';
 import { ServiceTypes } from 'Models';
 import i18n from 'utils/i18next/LocalUtil';
@@ -142,6 +146,9 @@ export const KINESIS = kinesis;
 export const QUICKSIGHT = quicksight;
 export const DOMO = domo;
 export const SAGEMAKER = sagemaker;
+export const AMAZON_S3 = amazonS3;
+export const GCS = gcs;
+export const MS_AZURE = msAzure;
 
 export const PLUS = plus;
 export const NOSERVICE = noService;
@@ -172,6 +179,9 @@ export const serviceTypes: Record<ServiceTypes, Array<string>> = {
   metadataServices: (Object.values(MetadataServiceType) as string[]).sort(
     customServiceComparator
   ),
+  objectstoreServices: (Object.values(ObjectStoreServiceType) as string[]).sort(
+    customServiceComparator
+  ),
 };
 
 export const arrServiceTypes: Array<ServiceTypes> = [
@@ -180,6 +190,7 @@ export const arrServiceTypes: Array<ServiceTypes> = [
   'dashboardServices',
   'pipelineServices',
   'mlmodelServices',
+  'objectstoreServices',
 ];
 
 export const SERVICE_CATEGORY: { [key: string]: ServiceCategory } = {
@@ -189,6 +200,7 @@ export const SERVICE_CATEGORY: { [key: string]: ServiceCategory } = {
   pipelines: ServiceCategory.PIPELINE_SERVICES,
   mlModels: ServiceCategory.ML_MODEL_SERVICES,
   metadata: ServiceCategory.METADATA_SERVICES,
+  objectStores: ServiceCategory.OBJECT_STORE_SERVICES,
 };
 
 export const SERVICE_CATEGORY_TYPE = {
@@ -198,6 +210,7 @@ export const SERVICE_CATEGORY_TYPE = {
   pipelineServices: 'pipelines',
   mlmodelServices: 'mlModels',
   metadataServices: 'metadata',
+  objectstoreServices: 'objectStores',
 };
 
 export const servicesDisplayName: { [key: string]: string } = {
@@ -218,6 +231,9 @@ export const servicesDisplayName: { [key: string]: string } = {
   }),
   metadataServices: i18n.t('label.entity-service', {
     entity: i18n.t('label.metadata'),
+  }),
+  objectstoreServices: i18n.t('label.entity-service', {
+    entity: i18n.t('label.object-store'),
   }),
 };
 

@@ -227,7 +227,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
     }
     List<TagLabel> tagLabels = new ArrayList<>();
     for (EntityReference ref : refs) {
-      tagLabels.add(new TagLabel().withSource(TagSource.TAG).withTagFQN(ref.getFullyQualifiedName()));
+      tagLabels.add(new TagLabel().withSource(TagSource.CLASSIFICATION).withTagFQN(ref.getFullyQualifiedName()));
     }
     return tagLabels;
   }

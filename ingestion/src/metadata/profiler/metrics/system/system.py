@@ -256,7 +256,7 @@ def _(
         query_text = row_insert.query_text
         operation = next(
             (
-                token.value
+                token.value.upper()
                 for token in query_text.tokens
                 if token.ttype is sqlparse.tokens.DML
                 and token.value.upper()
@@ -277,7 +277,7 @@ def _(
         query_text = row_deleted.query_text
         operation = next(
             (
-                token.value
+                token.value.upper()
                 for token in query_text.tokens
                 if token.ttype is sqlparse.tokens.DML and token.value != "UPDATE"
             ),
@@ -325,7 +325,8 @@ def _(
         SELECT * FROM "SNOWFLAKE"."ACCOUNT_USAGE"."QUERY_HISTORY"
         WHERE
         start_time>= DATEADD('DAY', -1, CURRENT_TIMESTAMP)
-        AND QUERY_TYPE IN ('INSERT', 'MERGE', 'DELETE', 'UPDATE');
+        AND QUERY_TYPE IN ('INSERT', 'MERGE', 'DELETE', 'UPDATE')
+        AND EXECUTION_STATUS = 'SUCCESS';
     """
     result_scan = """
     SELECT *

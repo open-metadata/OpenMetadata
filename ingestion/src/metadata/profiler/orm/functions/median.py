@@ -31,19 +31,24 @@ class MedianFn(FunctionElement):
 @compiles(MedianFn)
 def _(elements, compiler, **kwargs):  # pylint: disable=unused-argument
     col = compiler.process(elements.clauses.clauses[0])
-    return "percentile_cont(0.5) WITHIN GROUP (ORDER BY %s ASC)" % col
+    percentile = elements.clauses.clauses[2].value
+    return "percentile_cont(%.1f) WITHIN GROUP (ORDER BY %s ASC)" % (percentile, col)
 
 
 @compiles(MedianFn, Dialects.BigQuery)
 def _(elements, compiler, **kwargs):
-    col, _ = [compiler.process(element, **kwargs) for element in elements.clauses]
-    return "percentile_cont(%s , 0.5) OVER()" % col
+    col, _, percentile = [
+        compiler.process(element, **kwargs) for element in elements.clauses
+    ]
+    return "percentile_cont(%s , %.1f) OVER()" % (col, percentile)
 
 
 @compiles(MedianFn, Dialects.ClickHouse)
 def _(elements, compiler, **kwargs):
-    col, _ = [compiler.process(element, **kwargs) for element in elements.clauses]
-    return "median(%s)" % col
+    col, _, percentile = [
+        compiler.process(element, **kwargs) for element in elements.clauses
+    ]
+    return "quantile(%.1f)(%s)" % (percentile, col)
 
 
 # pylint: disable=unused-argument
@@ -52,21 +57,29 @@ def _(elements, compiler, **kwargs):
 @compiles(MedianFn, Dialects.Presto)
 def _(elements, compiler, **kwargs):
     col = elements.clauses.clauses[0].name
-    return 'approx_percentile("%s", 0.5)' % col
+    percentile = elements.clauses.clauses[2].value
+    return 'approx_percentile("%s", %.1f)' % (col, percentile)
 
 
 @compiles(MedianFn, Dialects.MSSQL)
 def _(elements, compiler, **kwargs):
     """Median computation for MSSQL"""
     col = elements.clauses.clauses[0].name
-    return "percentile_cont(0.5) WITHIN GROUP (ORDER BY %s ASC) OVER()" % col
+    percentile = elements.clauses.clauses[2].value
+    return "percentile_cont(%.1f) WITHIN GROUP (ORDER BY %s ASC) OVER()" % (
+        percentile,
+        col,
+    )
 
 
 @compiles(MedianFn, Dialects.Hive)
+@compiles(MedianFn, Dialects.Impala)
 def _(elements, compiler, **kwargs):
     """Median computation for Hive"""
-    col, _ = [compiler.process(element, **kwargs) for element in elements.clauses]
-    return "percentile(cast(%s as BIGINT), 0.5)" % col
+    col, _, percentile = [
+        compiler.process(element, **kwargs) for element in elements.clauses
+    ]
+    return "percentile(cast(%s as BIGINT), %.1f)" % (col, percentile)
 
 
 @compiles(MedianFn, Dialects.MySQL)
@@ -79,25 +92,23 @@ def _(elements, compiler, **kwargs):  # pylint: disable=unused-argument
 
 @compiles(MedianFn, Dialects.SQLite)
 def _(elements, compiler, **kwargs):  # pylint: disable=unused-argument
-    col, table = list(elements.clauses)
+    col = compiler.process(elements.clauses.clauses[0])
+    table = elements.clauses.clauses[1].value
+    percentile = elements.clauses.clauses[2].value
+
     return """
     (SELECT 
-        AVG({col})
-    FROM (
-        SELECT {col}
+        {col}
+    FROM {table}
+    WHERE {col} IS NOT NULL
+    ORDER BY {col}
+    LIMIT 1
+    OFFSET (
+            SELECT ROUND(COUNT(*) * {percentile} -1)
             FROM {table}
-        ORDER BY {col}
-            LIMIT 2 - (SELECT COUNT(*) FROM {table}) % 2
-            OFFSET (SELECT (COUNT(*) - 1) / 2
-                FROM {table})))
-    """.format(
-        col=col, table=table.value
+            WHERE {col} IS NOT NULL
+        )
     )
-
-
-@compiles(MedianFn, Dialects.Vertica)
-def _(elements, compiler, **kwargs):  # pylint: disable=unused-argument
-    col, table = list(elements.clauses)
-    return "(SELECT MEDIAN({col}) OVER() FROM {table} LIMIT 1)".format(
-        col=col, table=table.value
+    """.format(
+        col=col, table=table, percentile=percentile
     )

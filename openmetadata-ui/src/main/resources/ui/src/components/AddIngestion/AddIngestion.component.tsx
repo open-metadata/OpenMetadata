@@ -329,7 +329,6 @@ const AddIngestion = ({
       tableFilterPattern,
       topicFilterPattern,
       useFqnFilter,
-      processPii,
     } = state;
 
     switch (serviceCategory) {
@@ -338,7 +337,6 @@ const AddIngestion = ({
           useFqnForFiltering: useFqnFilter,
           includeViews: includeView,
           includeTags: includeTags,
-          processPiiSensitive: processPii,
           databaseFilterPattern: getFilterPatternData(
             databaseFilterPattern,
             showDatabaseFilter
@@ -423,6 +421,7 @@ const AddIngestion = ({
       tableFilterPattern,
       threadCount,
       timeoutSeconds,
+      processPii,
     } = state;
     switch (type) {
       case PipelineType.Usage: {
@@ -461,6 +460,7 @@ const AddIngestion = ({
           profileSampleType: profileSampleType,
           threadCount: threadCount,
           timeoutSeconds: timeoutSeconds,
+          processPiiSensitive: processPii,
         };
       }
 

@@ -156,7 +156,6 @@ const TourPage = () => {
             sortOrder={INITIAL_SORT_ORDER}
             sortValue={INITIAL_SORT_FIELD}
             tabCounts={explorePageCounts}
-            onChangeAdvancedSearchJsonTree={noop}
             onChangeAdvancedSearchQueryFilter={noop}
             onChangePostFilter={noop}
             onChangeSearchIndex={noop}
