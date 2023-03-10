@@ -304,7 +304,7 @@ const PipelineDetails = ({
     if (pipelineDetails) {
       const updatedPipelineDetails = {
         ...pipelineDetails,
-        tags: undefined,
+        tags: getTagsWithoutTier(pipelineDetails.tags ?? []),
       };
       settingsUpdateHandler(updatedPipelineDetails);
     }

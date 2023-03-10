@@ -316,7 +316,7 @@ const DashboardDetails = ({
     if (dashboardDetails) {
       const updatedDashboardDetails = {
         ...dashboardDetails,
-        tags: undefined,
+        tags: getTagsWithoutTier(dashboardDetails.tags ?? []),
       };
       settingsUpdateHandler(updatedDashboardDetails);
     }
