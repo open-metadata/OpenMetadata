@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Typography } from 'antd';
 import Table, { ColumnsType } from 'antd/lib/table';
 import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
 import { Container } from 'generated/entity/data/container';
@@ -47,8 +48,18 @@ const ContainerChildren: FC<ContainerChildrenProps> = ({ childrenList }) => {
         title: t('label.description'),
         dataIndex: 'description',
         key: 'description',
-        render: (_, record) => (
-          <RichTextEditorPreviewer markdown={record?.description || ''} />
+        render: (description: EntityReference['description']) => (
+          <>
+            {description ? (
+              <RichTextEditorPreviewer markdown={description} />
+            ) : (
+              <Typography.Text className="tw-no-description">
+                {t('label.no-entity', {
+                  entity: t('label.description'),
+                })}
+              </Typography.Text>
+            )}
+          </>
         ),
       },
     ],

@@ -432,7 +432,7 @@ const ContainerPage = () => {
               tagFQN: updatedTier,
               labelType: LabelType.Manual,
               state: State.Confirmed,
-              source: TagSource.Tag,
+              source: TagSource.Classification,
             },
           ],
         });
