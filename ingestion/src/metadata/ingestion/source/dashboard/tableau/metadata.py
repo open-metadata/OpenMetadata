@@ -244,7 +244,7 @@ class TableauSource(DashboardServiceSource):
         Returns:
             Optional[EntityReference]
         """
-        if dashboard_details.owner.email:
+        if dashboard_details.owner and dashboard_details.owner.email:
             user = self.metadata.get_user_by_email(dashboard_details.owner.email)
             if user:
                 return EntityReference(id=user.id.__root__, type="user")
