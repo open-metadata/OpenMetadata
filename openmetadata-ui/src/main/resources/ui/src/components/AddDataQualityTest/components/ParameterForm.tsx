@@ -12,8 +12,10 @@
  */
 
 import { PlusOutlined } from '@ant-design/icons';
-import { Button, Form, Input, InputNumber, Switch } from 'antd';
+import { Button, Form, Input, InputNumber, Select, Switch } from 'antd';
 import 'codemirror/addon/fold/foldgutter.css';
+import { SUPPORTED_PARTITION_TYPE } from 'constants/profiler.constant';
+import { isUndefined } from 'lodash';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -24,7 +26,7 @@ import SVGIcons, { Icons } from '../../../utils/SvgUtils';
 import '../../TableProfiler/tableProfiler.less';
 import { ParameterFormProps } from '../AddDataQualityTest.interface';
 
-const ParameterForm: React.FC<ParameterFormProps> = ({ definition }) => {
+const ParameterForm: React.FC<ParameterFormProps> = ({ definition, table }) => {
   const { t } = useTranslation();
 
   const prepareForm = (data: TestCaseParameterDefinition) => {
@@ -37,13 +39,38 @@ const ParameterForm: React.FC<ParameterFormProps> = ({ definition }) => {
     );
     switch (data.dataType) {
       case TestDataType.String:
-        Field = (
-          <Input
-            placeholder={`${t('message.enter-a-field', {
-              field: data.displayName,
-            })}`}
-          />
-        );
+        if (data.name === 'columnName' && !isUndefined(table)) {
+          const partitionColumnOptions = table.columns.reduce(
+            (result, column) => {
+              if (SUPPORTED_PARTITION_TYPE.includes(column.dataType)) {
+                return [
+                  ...result,
+                  {
+                    value: column.name,
+                    label: column.name,
+                  },
+                ];
+              }
+
+              return result;
+            },
+            [] as { value: string; label: string }[]
+          );
+          Field = (
+            <Select
+              options={partitionColumnOptions}
+              placeholder={t('message.select-column-name')}
+            />
+          );
+        } else {
+          Field = (
+            <Input
+              placeholder={`${t('message.enter-a-field', {
+                field: data.displayName,
+              })}`}
+            />
+          );
+        }
 
         break;
       case TestDataType.Number:

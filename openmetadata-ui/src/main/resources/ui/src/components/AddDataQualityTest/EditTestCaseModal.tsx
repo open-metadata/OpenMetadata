@@ -15,6 +15,7 @@ import { Form, FormProps, Input } from 'antd';
 import Modal from 'antd/lib/modal/Modal';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
+import { Table } from 'generated/entity/data/table';
 import React, {
   useCallback,
   useEffect,
@@ -23,6 +24,7 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
+import { getTableDetailsByFQN } from 'rest/tableAPI';
 import { getTestDefinitionById, updateTestCaseById } from 'rest/testAPI';
 import { CSMode } from '../../enums/codemirror.enum';
 import { TestCaseParameterValue } from '../../generated/tests/testCase';
@@ -58,6 +60,7 @@ const EditTestCaseModal: React.FC<EditTestCaseModalProps> = ({
   );
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingOnSave, setIsLoadingOnSave] = useState(false);
+  const [table, setTable] = useState<Table>();
 
   const markdownRef = useRef<EditorContentRef>();
 
@@ -90,11 +93,11 @@ const EditTestCaseModal: React.FC<EditTestCaseModalProps> = ({
         );
       }
 
-      return <ParameterForm definition={selectedDefinition} />;
+      return <ParameterForm definition={selectedDefinition} table={table} />;
     }
 
     return;
-  }, [testCase, selectedDefinition, sqlQuery]);
+  }, [testCase, selectedDefinition, sqlQuery, table]);
 
   const fetchTestDefinitionById = async () => {
     setIsLoading(true);
@@ -176,14 +179,24 @@ const EditTestCaseModal: React.FC<EditTestCaseModalProps> = ({
     );
   };
 
+  const fetchTableDetails = async (fqn: string) => {
+    try {
+      const data = await getTableDetailsByFQN(fqn, '');
+      setTable(data);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  };
+
   useEffect(() => {
     if (testCase) {
       fetchTestDefinitionById();
+      const tableFqn = getEntityFqnFromEntityLink(testCase?.entityLink);
       form.setFieldsValue({
         name: testCase?.name,
         testDefinition: testCase?.testDefinition?.name,
         params: getParamsValue(),
-        table: getNameFromFQN(getEntityFqnFromEntityLink(testCase?.entityLink)),
+        table: getNameFromFQN(tableFqn),
         column: getNameFromFQN(
           getEntityFqnFromEntityLink(testCase?.entityLink, isColumn)
         ),
@@ -194,6 +207,13 @@ const EditTestCaseModal: React.FC<EditTestCaseModalProps> = ({
           value: '',
         }
       );
+      const isContainsColumnName = testCase.parameterValues?.find(
+        (value) => value.name === 'columnName'
+      );
+
+      if (isContainsColumnName) {
+        fetchTableDetails(tableFqn);
+      }
     }
   }, [testCase]);
 
