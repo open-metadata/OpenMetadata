@@ -148,7 +148,7 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
     record: Column
   ) => {
     const isSelectedField = editContainerColumnTags?.name === record.name;
-    const styleFlag = isSelectedField || !isEmpty(tags);
+    const isUpdatingTags = isSelectedField || !isEmpty(tags);
 
     return (
       <>
@@ -158,10 +158,10 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
           </Space>
         ) : (
           <Space
-            align={styleFlag ? 'start' : 'center'}
+            align={isUpdatingTags ? 'start' : 'center'}
             className="justify-between"
             data-testid="tags-wrapper"
-            direction={styleFlag ? 'vertical' : 'horizontal'}
+            direction={isUpdatingTags ? 'vertical' : 'horizontal'}
             onClick={() => handleAddTagClick(record)}>
             <TagsContainer
               editable={isSelectedField}
@@ -239,7 +239,6 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
       },
     ],
     [
-      dataModel,
       hasDescriptionEditAccess,
       hasTagEditAccess,
       editContainerColumnDescription,

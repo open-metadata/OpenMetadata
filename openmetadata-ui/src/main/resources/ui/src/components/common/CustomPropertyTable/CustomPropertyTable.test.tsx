@@ -17,16 +17,11 @@ import {
   screen,
   waitForElementToBeRemoved,
 } from '@testing-library/react';
-import { Container } from 'generated/entity/data/container';
 import React from 'react';
 import { getTypeByFQN } from 'rest/metadataTypeAPI';
 import { EntityType } from '../../../enums/entity.enum';
-import { Dashboard } from '../../../generated/entity/data/dashboard';
-import { Mlmodel } from '../../../generated/entity/data/mlmodel';
-import { Pipeline } from '../../../generated/entity/data/pipeline';
-import { Table } from '../../../generated/entity/data/table';
-import { Topic } from '../../../generated/entity/data/topic';
 import { CustomPropertyTable } from './CustomPropertyTable';
+import { EntityDetails } from './CustomPropertyTable.interface';
 
 const mockCustomProperties = [
   {
@@ -72,12 +67,7 @@ jest.mock('rest/metadataTypeAPI', () => ({
   ),
 }));
 
-const mockTableDetails = {} as Table &
-  Topic &
-  Dashboard &
-  Pipeline &
-  Mlmodel &
-  Container;
+const mockTableDetails = {} as EntityDetails;
 const handleExtensionUpdate = jest.fn();
 
 const mockProp = {
