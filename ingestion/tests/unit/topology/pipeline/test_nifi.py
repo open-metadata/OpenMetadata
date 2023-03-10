@@ -55,9 +55,11 @@ mock_nifi_config = {
             "config": {
                 "type": "Nifi",
                 "hostPort": "https://localhost:8443",
-                "username": "username",
-                "password": "password",
-                "verifySSL": False,
+                "nifiConfig": {
+                    "username": "username",
+                    "password": "password",
+                    "verifySSL": False,
+                }
             }
         },
         "sourceConfig": {"config": {"type": "PipelineMetadata"}},

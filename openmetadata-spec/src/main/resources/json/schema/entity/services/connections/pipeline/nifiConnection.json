@@ -12,7 +12,7 @@
       "enum": ["Nifi"],
       "default": "Nifi"
     },
-    "usernamePassword": {
+    "basicAuthentication": {
       "title": "Username/Password Authentication",
       "description": "username/password auth",
       "properties": {
@@ -78,7 +78,7 @@
       "description": "We support username/password or client certificate authentication",
       "oneOf": [
         {
-          "$ref": "#/definitions/usernamePassword"
+          "$ref": "#/definitions/basicAuthentication"
         },
         {
           "$ref": "#/definitions/clientCertificateAuthentication"
@@ -91,5 +91,5 @@
     }
   },
   "additionalProperties": false,
-  "required": ["hostPort"]
+  "required": ["hostPort", "nifiConfig"]
 }
