@@ -72,6 +72,7 @@ class GlueSource(DatabaseServiceSource):
         self.status = SQLSourceStatus()
         self.glue = get_connection(self.service_connection)
         super().__init__()
+        self.test_connection()
 
     @classmethod
     def create(cls, config_dict, metadata_config: OpenMetadataConnection):
