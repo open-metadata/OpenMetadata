@@ -68,6 +68,11 @@ const ManageButton: FC<Props> = ({
   const [isDelete, setIsDelete] = useState<boolean>(false);
   const [showReactiveModal, setShowReactiveModal] = useState(false);
 
+  const handleRestore = async () => {
+    onRestoreEntity && (await onRestoreEntity());
+    setShowReactiveModal(false);
+  };
+
   const items = [
     {
       label: (
@@ -253,10 +258,7 @@ const ManageButton: FC<Props> = ({
         onCancel={() => {
           setShowReactiveModal(false);
         }}
-        onOk={async () => {
-          onRestoreEntity && (await onRestoreEntity());
-          setShowReactiveModal(false);
-        }}>
+        onOk={handleRestore}>
         <Typography.Text data-testid="restore-modal-body">
           {t('message.are-you-want-to-restore', {
             entity: entityName,

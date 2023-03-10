@@ -103,7 +103,11 @@ const TestSuitePage = () => {
         dataIndex: 'name',
         key: 'name',
         render: (_, record) => (
-          <Link to={getTestSuitePath(record.name)}>{record.name}</Link>
+          <Link
+            data-testid={`test-suite-${record.name}`}
+            to={getTestSuitePath(record.name)}>
+            {record.name}
+          </Link>
         ),
       },
       {
