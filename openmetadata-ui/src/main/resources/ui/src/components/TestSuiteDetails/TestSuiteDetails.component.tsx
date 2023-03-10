@@ -11,14 +11,13 @@
  *  limitations under the License.
  */
 
-import { Button, Space, Tooltip } from 'antd';
+import { ExclamationCircleOutlined } from '@ant-design/icons';
+import { Space } from 'antd';
+import ManageButton from 'components/common/entityPageInfo/ManageButton/ManageButton';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { NO_PERMISSION_FOR_ACTION } from '../../constants/HelperTextUtil';
 import { useAuth } from '../../hooks/authHooks';
-import { IcDeleteColored } from '../../utils/SvgUtils';
 import { useAuthContext } from '../authentication/auth-provider/AuthProvider';
-import DeleteWidgetModal from '../common/DeleteWidget/DeleteWidgetModal';
 import Description from '../common/description/Description';
 import EntitySummaryDetails from '../common/EntitySummaryDetails/EntitySummaryDetails';
 import TitleBreadcrumb from '../common/title-breadcrumb/title-breadcrumb.component';
@@ -27,8 +26,6 @@ import { TestSuiteDetailsProps } from './TestSuiteDetails.interfaces';
 const TestSuiteDetails = ({
   extraInfo,
   slashedBreadCrumb,
-  handleDeleteWidgetVisible,
-  isDeleteWidgetVisible,
   isDescriptionEditable,
   testSuite,
   handleUpdateOwner,
@@ -36,6 +33,7 @@ const TestSuiteDetails = ({
   testSuiteDescription,
   descriptionHandler,
   handleDescriptionUpdate,
+  handleRestoreTestSuite,
 }: TestSuiteDetailsProps) => {
   const { isAdminUser } = useAuth();
   const { isAuthDisabled } = useAuthContext();
@@ -49,39 +47,28 @@ const TestSuiteDetails = ({
         align="center"
         className="tw-justify-between"
         style={{ width: '100%' }}>
-        <TitleBreadcrumb
-          data-testid="test-suite-breadcrumb"
-          titleLinks={slashedBreadCrumb}
-        />
-        <Tooltip
-          placement="topRight"
-          title={!hasAccess && NO_PERMISSION_FOR_ACTION}>
-          <Button
-            ghost
-            data-testid="test-suite-delete"
-            disabled={!hasAccess}
-            icon={
-              <IcDeleteColored
-                className="anticon"
-                height={14}
-                viewBox="0 0 24 24"
-                width={14}
-              />
-            }
-            size="small"
-            type="primary"
-            onClick={() => handleDeleteWidgetVisible(true)}>
-            <span>{t('label.delete')}</span>
-          </Button>
-        </Tooltip>
-        <DeleteWidgetModal
-          allowSoftDelete
+        <Space align="center">
+          <TitleBreadcrumb
+            data-testid="test-suite-breadcrumb"
+            titleLinks={slashedBreadCrumb}
+          />
+          {testSuite?.deleted && (
+            <div className="deleted-badge-button" data-testid="deleted-badge">
+              <ExclamationCircleOutlined className="tw-mr-1" />
+              {t('label.deleted')}
+            </div>
+          )}
+        </Space>
+
+        <ManageButton
           isRecursiveDelete
+          allowSoftDelete={!testSuite?.deleted}
+          canDelete={hasAccess}
+          deleted={testSuite?.deleted}
           entityId={testSuite?.id}
           entityName={testSuite?.fullyQualifiedName as string}
           entityType="testSuite"
-          visible={isDeleteWidgetVisible}
-          onCancel={() => handleDeleteWidgetVisible(false)}
+          onRestoreEntity={handleRestoreTestSuite}
         />
       </Space>
 
