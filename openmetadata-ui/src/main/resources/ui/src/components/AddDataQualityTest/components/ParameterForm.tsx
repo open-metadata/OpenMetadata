@@ -164,6 +164,7 @@ const ParameterForm: React.FC<ParameterFormProps> = ({ definition, table }) => {
 
     return (
       <Form.Item
+        data-testid="parameter"
         key={data.name}
         label={`${data.displayName}:`}
         name={data.name}
