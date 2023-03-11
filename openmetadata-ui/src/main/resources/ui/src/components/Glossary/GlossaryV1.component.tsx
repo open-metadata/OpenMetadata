@@ -19,6 +19,7 @@ import { isEmpty } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
+import { getQuotedGlossaryName } from 'utils/GlossaryUtils';
 import { ReactComponent as IconDropdown } from '../../assets/svg/menu.svg';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { NO_PERMISSION_FOR_ACTION } from '../../constants/HelperTextUtil';
@@ -171,11 +172,7 @@ const GlossaryV1 = ({
 
   useEffect(() => {
     handleBreadcrumb(
-      glossaryFqn
-        ? glossaryFqn
-        : selectedData.name.includes('.')
-        ? Fqn.quoteName(selectedData.name)
-        : selectedData.name
+      glossaryFqn ? glossaryFqn : getQuotedGlossaryName(selectedData.name)
     );
   }, [glossaryFqn]);
 

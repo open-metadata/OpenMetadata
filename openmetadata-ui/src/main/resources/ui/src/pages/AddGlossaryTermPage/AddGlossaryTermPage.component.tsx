@@ -28,6 +28,7 @@ import {
   getGlossariesByName,
   getGlossaryTermByFQN,
 } from 'rest/glossaryAPI';
+import { getQuotedGlossaryName } from 'utils/GlossaryUtils';
 import { CreateGlossaryTerm } from '../../generated/api/data/createGlossaryTerm';
 import { Glossary } from '../../generated/entity/data/glossary';
 import { GlossaryTerm } from '../../generated/entity/data/glossaryTerm';
@@ -64,7 +65,7 @@ const AddGlossaryTermPage = () => {
 
   const getFqn = (fqn: string) => {
     if (isEmpty(parentGlossaryData)) {
-      return fqn.includes('.') ? Fqn.quoteName(fqn) : fqn;
+      return getQuotedGlossaryName(fqn);
     }
 
     return fqn;
@@ -192,11 +193,7 @@ const AddGlossaryTermPage = () => {
     if (isUndefined(glossaryTermsFQN)) {
       breadcrumb.push({
         name: Fqn.quoteName(glossaryName),
-        url: getGlossaryPath(
-          glossaryName.includes('.')
-            ? Fqn.quoteName(glossaryName)
-            : glossaryName
-        ),
+        url: getGlossaryPath(getQuotedGlossaryName(glossaryName)),
       });
     } else {
       breadcrumb = Fqn.split(glossaryTermsFQN).map((fqn, i, arr) => {

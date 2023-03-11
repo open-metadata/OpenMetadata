@@ -13,6 +13,7 @@
 
 import { findByText, fireEvent, render } from '@testing-library/react';
 import React from 'react';
+import { getQuotedGlossaryName } from 'utils/GlossaryUtils';
 import { getGlossaryPath } from '../../utils/RouterUtils';
 import AddGlossaryTermPage from './AddGlossaryTermPage.component';
 
@@ -50,6 +51,10 @@ jest.mock('rest/glossaryAPI', () => ({
   getGlossaryTermByFQN: jest.fn().mockImplementation(() => Promise.resolve()),
 }));
 
+jest.mock('utils/GlossaryUtils', () => ({
+  getQuotedGlossaryName: jest.fn().mockReturnValue('"GlossaryName"'),
+}));
+
 describe('Test AddGlossaryTerm component page', () => {
   it('AddGlossaryTerm component page should render', async () => {
     const { container } = render(<AddGlossaryTermPage />);
@@ -63,7 +68,8 @@ describe('Test AddGlossaryTerm component page', () => {
   });
 
   it('Redirect to Glossary on cancel', async () => {
-    (getGlossaryPath as jest.Mock).mockImplementationOnce(mockRedirect);
+    (getGlossaryPath as jest.Mock).mockImplementation(mockRedirect);
+    (getQuotedGlossaryName as jest.Mock).mockImplementationOnce(mockRedirect);
     const { findByTestId } = render(<AddGlossaryTermPage />);
 
     const addGlossaryTerm = await findByTestId('add-glossary-term');

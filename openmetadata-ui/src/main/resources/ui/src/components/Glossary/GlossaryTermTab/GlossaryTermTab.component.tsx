@@ -35,6 +35,7 @@ import {
   createGlossaryTermTree,
   getRootLevelGlossaryTerm,
   getSearchedDataFromGlossaryTree,
+  getUnQuotedGlossaryName,
 } from 'utils/GlossaryUtils';
 import { checkPermission } from 'utils/PermissionsUtils';
 import {
@@ -160,9 +161,7 @@ const GlossaryTermTab = ({
         history.push(getAddGlossaryTermsPath(glossary, glossaryName));
       } else {
         history.push(
-          getAddGlossaryTermsPath(
-            glossary.includes('"') ? glossary.replaceAll('"', '') : glossary
-          )
+          getAddGlossaryTermsPath(getUnQuotedGlossaryName(glossary))
         );
       }
     } else {

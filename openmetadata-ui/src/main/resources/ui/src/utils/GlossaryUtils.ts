@@ -24,6 +24,7 @@ import { GlossaryTerm } from '../generated/entity/data/glossaryTerm';
 import { EntityReference } from '../generated/type/entityReference';
 import { SearchResponse } from '../interface/search.interface';
 import { formatSearchGlossaryTermResponse } from './APIUtils';
+import Fqn from './Fqn';
 
 export interface GlossaryTermTreeNode {
   children?: GlossaryTermTreeNode[];
@@ -160,3 +161,11 @@ export const getSearchedDataFromGlossaryTree = (
     return acc;
   }, [] as ModifiedGlossaryTerm[]);
 };
+
+// Get quoted glossary Name
+
+export const getQuotedGlossaryName = (glossary: string) =>
+  glossary.includes('.') ? Fqn.quoteName(glossary) : glossary;
+
+export const getUnQuotedGlossaryName = (glossary: string) =>
+  glossary.includes('"') ? glossary.replaceAll('"', '') : glossary;

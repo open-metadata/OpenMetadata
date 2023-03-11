@@ -26,6 +26,7 @@ import { isEmpty } from 'lodash';
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
+import { getQuotedGlossaryName } from 'utils/GlossaryUtils';
 import { checkPermission } from 'utils/PermissionsUtils';
 import { getGlossaryPath } from 'utils/RouterUtils';
 import Fqn from '../../../utils/Fqn';
@@ -46,7 +47,7 @@ const GlossaryLeftPanel = ({ glossaries }: GlossaryLeftPanelProps) => {
   );
 
   const getEncodedGlossaryName = (glossary: string) =>
-    glossary.includes('.') ? Fqn.quoteName(glossary) : glossary;
+    getQuotedGlossaryName(glossary);
 
   const selectedKey = useMemo(() => {
     if (glossaryName) {
