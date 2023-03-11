@@ -738,3 +738,29 @@ export const MOCK_TABLE_ROW_INSERTED_COUNT_TO_BE_BETWEEN = {
   href: 'http://sandbox-beta.open-metadata.org/api/v1/testDefinition/756c7770-0af3-49a9-9905-75a2886e5eec',
   deleted: false,
 };
+
+export const MOCK_TABLE_COLUMN_NAME_TO_EXIST = {
+  id: '6d4e4673-fd7f-4b37-811e-7645c3c17e93',
+  name: 'tableColumnNameToExist',
+  displayName: 'Table Column Name To Exist',
+  fullyQualifiedName: 'tableColumnNameToExist',
+  description:
+    'This test defines the test TableColumnNameToExist. Test the table columns exists in the table.',
+  entityType: 'TABLE',
+  testPlatforms: ['OpenMetadata'],
+  supportedDataTypes: [],
+  parameterDefinition: [
+    {
+      name: 'columnName',
+      displayName: 'Column Name',
+      dataType: 'STRING',
+      description: 'Expected column of the table to exist',
+      required: true,
+    },
+  ],
+  version: 0.1,
+  updatedAt: 1672236872076,
+  updatedBy: 'admin',
+  href: 'http://sandbox-beta.open-metadata.org/api/v1/testDefinition/6d4e4673-fd7f-4b37-811e-7645c3c17e93',
+  deleted: false,
+};
