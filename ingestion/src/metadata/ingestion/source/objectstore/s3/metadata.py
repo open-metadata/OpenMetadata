@@ -76,6 +76,8 @@ class S3BucketResponse(BaseModel):
 
 
 class S3ContainerDetails(BaseModel):
+    """Class mapping container details used to create the container requests"""
+
     class Config:
         extra = Extra.forbid
 
