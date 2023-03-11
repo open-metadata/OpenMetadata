@@ -90,6 +90,7 @@ from metadata.ingestion.ometa.mixins.ingestion_pipeline_mixin import (
 from metadata.ingestion.ometa.mixins.mlmodel_mixin import OMetaMlModelMixin
 from metadata.ingestion.ometa.mixins.patch_mixin import OMetaPatchMixin
 from metadata.ingestion.ometa.mixins.pipeline_mixin import OMetaPipelineMixin
+from metadata.ingestion.ometa.mixins.role_policy_mixin import OMetaRolePolicyMixin
 from metadata.ingestion.ometa.mixins.server_mixin import OMetaServerMixin
 from metadata.ingestion.ometa.mixins.service_mixin import OMetaServiceMixin
 from metadata.ingestion.ometa.mixins.table_mixin import OMetaTableMixin
@@ -164,6 +165,7 @@ class OpenMetadata(
     DataInsightMixin,
     OMetaIngestionPipelineMixin,
     OMetaUserMixin,
+    OMetaRolePolicyMixin,
     Generic[T, C],
 ):
     """
