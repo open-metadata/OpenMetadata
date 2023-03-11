@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate.
+ *  Copyright 2023 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -54,6 +54,7 @@ import {
   ExploreSearchIndexKey,
 } from './explore.interface';
 import './Explore.style.less';
+import { getSelectedValuesFromQuickFilter } from './Explore.utils';
 import ExploreQuickFilters from './ExploreQuickFilters';
 import SortingDropDown from './SortingDropDown';
 
@@ -74,6 +75,7 @@ const Explore: React.FC<ExploreProps> = ({
   page = 1,
   onChangePage = noop,
   loading,
+  queryFilter,
 }) => {
   const { t } = useTranslation();
   const { tab } = useParams<{ tab: string }>();
@@ -169,27 +171,39 @@ const Explore: React.FC<ExploreProps> = ({
     []
   );
 
-  const handleAdvanceSearchFilter = (data: ExploreQuickFilterField[]) => {
-    const terms = [] as Array<Record<string, unknown>>;
+  const handleQuickFiltersChange = (data: ExploreQuickFilterField[]) => {
+    const must = [] as Array<Record<string, unknown>>;
 
+    // Mapping the selected advanced search quick filter dropdown values
+    // to form a queryFilter to pass as a search parameter
     data.forEach((filter) => {
-      filter.value?.map((val) => {
-        if (filter.key) {
-          terms.push({ term: { [filter.key]: val.key } });
+      if (!isEmpty(filter.value)) {
+        const should = [] as Array<Record<string, unknown>>;
+        if (filter.value) {
+          filter.value.forEach((filterValue) => {
+            const term = {} as Record<string, unknown>;
+
+            term[filter.key] = filterValue.key;
+
+            should.push({ term });
+          });
         }
-      });
+
+        must.push({ bool: { should } });
+      }
     });
 
     onChangeAdvancedSearchQueryFilter(
-      isEmpty(terms)
+      isEmpty(must)
         ? undefined
         : {
-            query: { bool: { should: terms } },
-          }
+            query: { bool: { must } },
+          },
+      true
     );
   };
 
-  const handleAdvanceFieldValueSelect = (field: ExploreQuickFilterField) => {
+  const handleQuickFiltersValueSelect = (field: ExploreQuickFilterField) => {
     setSelectedQuickFilters((pre) => {
       const data = pre.map((preField) => {
         if (preField.key === field.key) {
@@ -199,7 +213,7 @@ const Explore: React.FC<ExploreProps> = ({
         }
       });
 
-      handleAdvanceSearchFilter(data);
+      handleQuickFiltersChange(data);
 
       return data;
     });
@@ -222,9 +236,16 @@ const Explore: React.FC<ExploreProps> = ({
     const dropdownItems = getDropDownItems(searchIndex);
 
     setSelectedQuickFilters(
-      dropdownItems.map((item) => ({ ...item, value: [] }))
+      dropdownItems.map((item) => ({
+        ...item,
+        value: getSelectedValuesFromQuickFilter(
+          item,
+          dropdownItems,
+          queryFilter
+        ),
+      }))
     );
-  }, [searchIndex]);
+  }, [searchIndex, queryFilter]);
 
   useEffect(() => {
     if (
@@ -309,7 +330,7 @@ const Explore: React.FC<ExploreProps> = ({
                 fields={selectedQuickFilters}
                 index={searchIndex}
                 onAdvanceSearch={() => setShowAdvanceSearchModal(true)}
-                onFieldValueSelect={handleAdvanceFieldValueSelect}
+                onFieldValueSelect={handleQuickFiltersValueSelect}
               />
             </Col>
             {appliedFilterSQLFormat && (

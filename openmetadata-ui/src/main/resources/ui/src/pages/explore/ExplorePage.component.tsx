@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate.
+ *  Copyright 2023 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -20,7 +20,7 @@ import {
   UrlParams,
 } from 'components/Explore/explore.interface';
 import { SORT_ORDER } from 'enums/common.enum';
-import { isNil, isString } from 'lodash';
+import { isEmpty, isNil, isString } from 'lodash';
 import Qs from 'qs';
 import React, {
   FunctionComponent,
@@ -29,25 +29,24 @@ import React, {
   useMemo,
   useState,
 } from 'react';
-import { JsonTree, Utils as QbUtils } from 'react-awesome-query-builder';
 import { useHistory, useLocation, useParams } from 'react-router-dom';
 import { searchQuery } from 'rest/searchAPI';
 import useDeepCompareEffect from 'use-deep-compare-effect';
 import AppState from '../../AppState';
 import { getExplorePath, PAGE_SIZE } from '../../constants/constants';
 import {
+  COMMON_FILTERS_FOR_DIFFERENT_TABS,
   INITIAL_SORT_FIELD,
   tabsInfo,
 } from '../../constants/explore.constants';
 import { SearchIndex } from '../../enums/search.enum';
 import { SearchResponse } from '../../interface/search.interface';
-import { getCombinedQueryFilterObject } from '../../utils/ExplorePage/ExplorePageUtils';
 import {
   filterObjectToElasticsearchQuery,
   isFilterObject,
 } from '../../utils/FilterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
-import { QueryFilterInterface } from './ExplorePage.interface';
+import { QueryFieldInterface } from './ExplorePage.interface';
 
 const ExplorePage: FunctionComponent = () => {
   const location = useLocation();
@@ -100,19 +99,60 @@ const ExplorePage: FunctionComponent = () => {
   const handlePageChange: ExploreProps['onChangePage'] = (page) => {
     history.push({ search: Qs.stringify({ ...parsedSearch, page }) });
   };
+  const queryFilter = useMemo(() => {
+    if (!isString(parsedSearch.queryFilter)) {
+      setAdvancedSearchQueryFilter(undefined);
 
-  const handleSearchIndexChange: (nSearchIndex: ExploreSearchIndex) => void = (
-    nSearchIndex
-  ) => {
-    history.push(
-      getExplorePath({
-        tab: tabsInfo[nSearchIndex].path,
-        extraParameters: { page: '1' },
-        isPersistFilters: false,
-      })
+      return undefined;
+    }
+
+    try {
+      const queryFilter = JSON.parse(parsedSearch.queryFilter);
+      setAdvancedSearchQueryFilter(queryFilter);
+
+      return queryFilter;
+    } catch {
+      setAdvancedSearchQueryFilter(undefined);
+
+      return undefined;
+    }
+  }, [location.search]);
+
+  const commonQuickFilters = useMemo(() => {
+    return {
+      query: {
+        bool: {
+          must: queryFilter?.query.bool.must.filter(
+            (filterCategory: QueryFieldInterface) =>
+              !isEmpty(filterCategory.bool.should) &&
+              COMMON_FILTERS_FOR_DIFFERENT_TABS.find(
+                (value) =>
+                  value === Object.keys(filterCategory.bool.should[0].term)[0]
+              )
+          ),
+        },
+      },
+    };
+  }, [queryFilter]);
+
+  const handleSearchIndexChange: (nSearchIndex: ExploreSearchIndex) => void =
+    useCallback(
+      (nSearchIndex) => {
+        history.push(
+          getExplorePath({
+            tab: tabsInfo[nSearchIndex].path,
+            extraParameters: {
+              page: '1',
+              queryFilter: queryFilter
+                ? JSON.stringify(commonQuickFilters)
+                : undefined,
+            },
+            isPersistFilters: false,
+          })
+        );
+      },
+      [queryFilter, commonQuickFilters]
     );
-    setAdvancedSearchQueryFilter(undefined);
-  };
 
   const handleQueryFilterChange = useCallback(
     (queryFilter) => {
@@ -142,24 +182,6 @@ const ExplorePage: FunctionComponent = () => {
       search: Qs.stringify({ ...parsedSearch, showDeleted, page: 1 }),
     });
   };
-
-  const queryFilter = useMemo(() => {
-    if (!isString(parsedSearch.queryFilter)) {
-      return undefined;
-    }
-
-    try {
-      const queryFilter = JSON.parse(parsedSearch.queryFilter);
-      const immutableTree = QbUtils.loadTree(queryFilter as JsonTree);
-      if (QbUtils.isValidTree(immutableTree)) {
-        return queryFilter as JsonTree;
-      }
-    } catch {
-      return undefined;
-    }
-
-    return undefined;
-  }, [location.search]);
 
   useEffect(() => {
     handleQueryFilterChange(queryFilter);
@@ -199,25 +221,14 @@ const ExplorePage: FunctionComponent = () => {
     return showDeletedParam === 'true';
   }, [parsedSearch.showDeleted]);
 
-  const combinedQueryFilter = useMemo(
-    () =>
-      // Both query filter objects have type as Record<string, unknown>
-      // Here unknown will not allow us to directly access the properties
-      // That is why I first did typecast it into QueryFilterInterface type to access the properties.
-      getCombinedQueryFilterObject(
-        elasticsearchQueryFilter as unknown as QueryFilterInterface,
-        advancesSearchQueryFilter as unknown as QueryFilterInterface
-      ),
-    [elasticsearchQueryFilter, advancesSearchQueryFilter]
-  );
-
   useDeepCompareEffect(() => {
     setIsLoading(true);
     Promise.all([
       searchQuery({
         query: searchQueryParam,
         searchIndex,
-        queryFilter: combinedQueryFilter,
+        queryFilter: advancesSearchQueryFilter,
+        postFilter: elasticsearchQueryFilter,
         sortField: sortValue,
         sortOrder,
         pageNumber: page,
@@ -238,7 +249,8 @@ const ExplorePage: FunctionComponent = () => {
             query: searchQueryParam,
             pageNumber: 0,
             pageSize: 0,
-            queryFilter: combinedQueryFilter,
+            queryFilter: advancesSearchQueryFilter,
+            postFilter: elasticsearchQueryFilter,
             searchIndex: index,
             includeDeleted: showDeleted,
             trackTotalHits: true,
@@ -277,11 +289,12 @@ const ExplorePage: FunctionComponent = () => {
   ]);
 
   const handleAdvanceSearchQueryFilterChange = useCallback(
-    (filter?: Record<string, unknown>) => {
+    (filter?: Record<string, unknown>, updateParameters?: boolean) => {
       handlePageChange(1);
       setAdvancedSearchQueryFilter(filter);
+      updateParameters && handleQueryFilterChange(filter);
     },
-    [setAdvancedSearchQueryFilter]
+    [setAdvancedSearchQueryFilter, history, parsedSearch]
   );
 
   useEffect(() => {
@@ -294,6 +307,7 @@ const ExplorePage: FunctionComponent = () => {
         loading={isLoading}
         page={page}
         postFilter={postFilter}
+        queryFilter={queryFilter}
         searchIndex={searchIndex}
         searchResults={searchResults}
         showDeleted={showDeleted}

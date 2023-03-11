@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate.
+ *  Copyright 2023 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -13,6 +13,7 @@
 
 import { DefaultOptionType } from 'antd/lib/select';
 import { SORT_ORDER } from 'enums/common.enum';
+import { QueryFilterInterface } from 'pages/explore/ExplorePage.interface';
 import { SearchIndex } from '../../enums/search.enum';
 import { Dashboard } from '../../generated/entity/data/dashboard';
 import { Mlmodel } from '../../generated/entity/data/mlmodel';
@@ -50,7 +51,8 @@ export interface ExploreProps {
   searchResults?: SearchResponse<ExploreSearchIndex>;
 
   onChangeAdvancedSearchQueryFilter: (
-    queryFilter: Record<string, unknown> | undefined
+    queryFilter: Record<string, unknown> | undefined,
+    updateParameters?: boolean
   ) => void;
 
   postFilter?: FilterObject;
@@ -72,6 +74,8 @@ export interface ExploreProps {
   onChangePage?: (page: number) => void;
 
   loading?: boolean;
+
+  queryFilter?: QueryFilterInterface;
 }
 
 export interface ExploreQuickFilterField {
