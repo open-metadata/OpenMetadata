@@ -59,6 +59,10 @@ const DataDistributionHistogram = ({
   return (
     <Row className="w-full" data-testid="chart-container">
       {Object.entries(data).map(([key, columnProfile]) => {
+        if (isUndefined(columnProfile?.histogram)) {
+          return;
+        }
+
         const histogramData =
           (columnProfile?.histogram as HistogramClass) ||
           DEFAULT_HISTOGRAM_DATA;
@@ -68,7 +72,7 @@ const DataDistributionHistogram = ({
           frequency,
         }));
 
-        return isUndefined(columnProfile?.histogram) ? null : (
+        return (
           <Col key={key} span={showSingleGraph ? 24 : 12}>
             <Row gutter={[8, 8]}>
               <Col

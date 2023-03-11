@@ -13,6 +13,7 @@
 
 import { t } from 'i18next';
 import { StepperStepType } from 'Models';
+import i18n from 'utils/i18next/LocalUtil';
 import { CSMode } from '../enums/codemirror.enum';
 import { DMLOperationType } from '../generated/api/data/createTableProfile';
 import {
@@ -202,22 +203,22 @@ export const INITIAL_SUM_METRIC_VALUE = {
 export const INITIAL_QUARTILE_METRIC_VALUE = {
   information: [
     {
-      title: t('label.first-quartile'),
+      title: i18n.t('label.first-quartile'),
       dataKey: 'firstQuartile',
       color: '#1890FF',
     },
     {
-      title: t('label.median'),
+      title: i18n.t('label.median'),
       dataKey: 'median',
       color: '#7147E8',
     },
     {
-      title: t('label.inter-quartile-range'),
+      title: i18n.t('label.inter-quartile-range'),
       dataKey: 'interQuartileRange',
       color: '#008376',
     },
     {
-      title: t('label.third-quartile'),
+      title: i18n.t('label.third-quartile'),
       dataKey: 'thirdQuartile',
       color: '#B02AAC',
     },
