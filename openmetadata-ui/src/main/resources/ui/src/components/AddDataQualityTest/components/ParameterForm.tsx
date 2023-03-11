@@ -39,7 +39,11 @@ const ParameterForm: React.FC<ParameterFormProps> = ({ definition, table }) => {
     );
     switch (data.dataType) {
       case TestDataType.String:
-        if (data.name === 'columnName' && !isUndefined(table)) {
+        if (
+          !isUndefined(table) &&
+          definition.name === 'tableRowInsertedCountToBeBetween' &&
+          data.name === 'columnName'
+        ) {
           const partitionColumnOptions = table.columns.reduce(
             (result, column) => {
               if (SUPPORTED_PARTITION_TYPE.includes(column.dataType)) {
