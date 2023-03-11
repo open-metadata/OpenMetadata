@@ -14,6 +14,7 @@
 import { act, render, screen } from '@testing-library/react';
 import { TestDefinition } from 'generated/tests/testDefinition';
 import {
+  MOCK_TABLE_COLUMN_NAME_TO_EXIST,
   MOCK_TABLE_ROW_INSERTED_COUNT_TO_BE_BETWEEN,
   MOCK_TABLE_WITH_DATE_TIME_COLUMNS,
 } from 'mocks/TestSuite.mock';
@@ -32,7 +33,7 @@ describe('ParameterForm component test', () => {
         />
       );
     });
-
+    // test definition should be "tableRowInsertedCountToBeBetween"
     const selectBox = await screen.findByRole('combobox');
     const parameters = await screen.findAllByTestId('parameter');
 
@@ -59,6 +60,25 @@ describe('ParameterForm component test', () => {
     expect(selectBox).not.toBeInTheDocument();
     expect(parameters).toHaveLength(
       MOCK_TABLE_ROW_INSERTED_COUNT_TO_BE_BETWEEN.parameterDefinition.length
+    );
+  });
+
+  it('Select box should not render if "columnName" field is present but test definition is not "tableRowInsertedCountToBeBetween"', async () => {
+    await act(async () => {
+      render(
+        <ParameterForm
+          definition={MOCK_TABLE_COLUMN_NAME_TO_EXIST as TestDefinition}
+          table={MOCK_TABLE_WITH_DATE_TIME_COLUMNS}
+        />
+      );
+    });
+
+    const selectBox = screen.queryByRole('combobox');
+    const parameters = await screen.findAllByTestId('parameter');
+
+    expect(selectBox).not.toBeInTheDocument();
+    expect(parameters).toHaveLength(
+      MOCK_TABLE_COLUMN_NAME_TO_EXIST.parameterDefinition.length
     );
   });
 });
