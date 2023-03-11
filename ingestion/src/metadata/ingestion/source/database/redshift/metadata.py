@@ -33,7 +33,9 @@ from sqlalchemy_redshift.dialect import (
 
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import (
+    ConstraintType,
     IntervalType,
+    TableConstraint,
     TablePartition,
     TableType,
 )
@@ -521,3 +523,26 @@ class RedshiftSource(CommonDbSourceService):
             )
             return True, partition_details
         return False, None
+
+    def process_additional_table_constraints(
+        self, column: dict, table_constraints: List[TableConstraint]
+    ) -> None:
+        """
+        Process DIST_KEY & SORT_KEY column properties
+        """
+
+        if column.get("distkey"):
+            table_constraints.append(
+                TableConstraint(
+                    constraintType=ConstraintType.DIST_KEY,
+                    columns=[column.get("name")],
+                )
+            )
+
+        if column.get("sortkey"):
+            table_constraints.append(
+                TableConstraint(
+                    constraintType=ConstraintType.SORT_KEY,
+                    columns=[column.get("name")],
+                )
+            )
