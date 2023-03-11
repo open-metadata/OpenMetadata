@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { Table } from 'generated/entity/data/table';
 import { TestCase } from 'generated/tests/testCase';
 
 export const MOCK_TABLE_DATA = {
@@ -664,4 +665,76 @@ export const MOCK_CHART_COLLECTION_DATA = {
       latestValue: 14567,
     },
   ],
+};
+
+export const MOCK_TABLE_WITH_DATE_TIME_COLUMNS = {
+  id: '975f9119-39bb-4901-b083-69b373cf8fe4',
+  name: 'dim.product',
+  columns: [
+    {
+      name: 'vendor',
+      dataType: 'VARCHAR',
+      dataLength: 100,
+      dataTypeDisplay: 'varchar',
+      description: 'description',
+      fullyQualifiedName:
+        'sample_data.ecommerce_db.shopify."dim.product".vendor',
+      tags: [],
+      ordinalPosition: 4,
+    },
+    {
+      name: 'created_at',
+      dataType: 'TIMESTAMP',
+      dataTypeDisplay: 'timestamp',
+      description: 'description',
+      fullyQualifiedName:
+        'sample_data.ecommerce_db.shopify."dim.product".created_at',
+      tags: [],
+      ordinalPosition: 5,
+    },
+    {
+      name: 'deleted_at',
+      dataType: 'TIMESTAMP',
+      dataTypeDisplay: 'timestamp',
+      description: 'description',
+      fullyQualifiedName:
+        'sample_data.ecommerce_db.shopify."dim.product".deleted_at',
+      tags: [],
+      ordinalPosition: 6,
+    },
+  ],
+} as Table;
+
+export const MOCK_TABLE_ROW_INSERTED_COUNT_TO_BE_BETWEEN = {
+  id: '756c7770-0af3-49a9-9905-75a2886e5eec',
+  name: 'tableRowInsertedCountToBeBetween',
+  displayName: 'Table Row Inserted Count To be Between',
+  fullyQualifiedName: 'tableRowInsertedCountToBeBetween',
+  description:
+    'This schema defines the test tableRowInsertedCountToBeBetween. Test the number of rows inserted is between x and y.',
+  entityType: 'TABLE',
+  testPlatforms: ['OpenMetadata'],
+  supportedDataTypes: [],
+  parameterDefinition: [
+    {
+      name: 'columnName',
+      displayName: 'Column Name',
+      dataType: 'STRING',
+      description:
+        'Name of the Column. It should be a timestamp, date or datetime field.',
+      required: true,
+    },
+    {
+      name: 'rangeType',
+      displayName: 'Range Type',
+      dataType: 'STRING',
+      description: "One of 'HOUR', 'DAY', 'MONTH', 'YEAR'",
+      required: true,
+    },
+  ],
+  version: 0.1,
+  updatedAt: 1675211404184,
+  updatedBy: 'admin',
+  href: 'http://sandbox-beta.open-metadata.org/api/v1/testDefinition/756c7770-0af3-49a9-9905-75a2886e5eec',
+  deleted: false,
 };
