@@ -79,6 +79,8 @@ import { getEntityLink } from './TableUtils';
 
 import { ReactComponent as DashboardIcon } from '../assets/svg/dashboard-grey.svg';
 import { ReactComponent as MlModelIcon } from '../assets/svg/mlmodal.svg';
+import { ReactComponent as PipelineIcon } from '../assets/svg/pipeline-grey.svg';
+
 import { ReactComponent as TableIcon } from '../assets/svg/table-grey.svg';
 import { ReactComponent as TopicIcon } from '../assets/svg/topic-grey.svg';
 
@@ -1140,6 +1142,8 @@ export const getEntityNodeIcon = (label: string) => {
       return DashboardIcon;
     case EntityType.TOPIC:
       return TopicIcon;
+    case EntityType.PIPELINE:
+      return PipelineIcon;
     case EntityType.MLMODEL:
       return MlModelIcon;
     default:
