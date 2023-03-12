@@ -16,7 +16,7 @@ import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlac
 import { GRAPH_BACKGROUND_COLOR } from 'constants/constants';
 import { DEFAULT_HISTOGRAM_DATA } from 'constants/profiler.constant';
 import { HistogramClass } from 'generated/entity/data/table';
-import { isUndefined } from 'lodash';
+import { isUndefined, map } from 'lodash';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -58,7 +58,7 @@ const DataDistributionHistogram = ({
 
   return (
     <Row className="w-full" data-testid="chart-container">
-      {Object.entries(data).map(([key, columnProfile]) => {
+      {map(data, (columnProfile, key) => {
         if (isUndefined(columnProfile?.histogram)) {
           return;
         }
@@ -72,6 +72,11 @@ const DataDistributionHistogram = ({
           frequency,
         }));
 
+        const date = getFormattedDateFromSeconds(
+          columnProfile?.timestamp || 0,
+          'dd/MMM'
+        );
+
         return (
           <Col key={key} span={showSingleGraph ? 24 : 12}>
             <Row gutter={[8, 8]}>
@@ -79,10 +84,7 @@ const DataDistributionHistogram = ({
                 data-testid="date"
                 offset={showSingleGraph ? 1 : 2}
                 span={24}>
-                {getFormattedDateFromSeconds(
-                  columnProfile?.timestamp || 0,
-                  'dd/MMM'
-                )}
+                {date}
               </Col>
               <Col offset={showSingleGraph ? 1 : 2} span={24}>
                 <Tag data-testid="skew-tag">{`${t('label.skew')}: ${
