@@ -68,13 +68,13 @@ export const IngestionRecentRuns: FunctionComponent<Props> = ({
     } finally {
       setLoading(false);
     }
-  }, [ingestion.fullyQualifiedName]);
+  }, [ingestion, ingestion.fullyQualifiedName]);
 
   useEffect(() => {
     if (ingestion.fullyQualifiedName) {
       fetchPipelineStatus();
     }
-  }, [ingestion.fullyQualifiedName]);
+  }, [ingestion, ingestion.fullyQualifiedName]);
 
   return (
     <Space className={classNames} size={2}>

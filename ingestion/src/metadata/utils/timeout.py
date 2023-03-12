@@ -18,7 +18,6 @@ import inspect
 import os
 import platform
 import signal
-import traceback
 from typing import Callable
 
 from metadata.utils.constants import TEN_MIN
@@ -31,7 +30,6 @@ def _handle_timeout(signum, frame):
     """
     Handler for signal timeout
     """
-    logger.debug(traceback.print_stack(frame))
     raise TimeoutError(f"[SIGNUM {signum}] {os.strerror(errno.ETIME)}")
 
 

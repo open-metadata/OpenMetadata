@@ -85,6 +85,7 @@ const ConfigureIngestion = ({
     topicFilterPattern,
     useFqnFilter,
     processPii,
+    overrideOwner,
   } = useMemo(
     () => ({
       chartFilterPattern: data.chartFilterPattern,
@@ -122,6 +123,7 @@ const ConfigureIngestion = ({
       topicFilterPattern: data.topicFilterPattern,
       useFqnFilter: data.useFqnFilter,
       processPii: data.processPii,
+      overrideOwner: data.overrideOwner,
     }),
     [data]
   );
@@ -165,6 +167,8 @@ const ConfigureIngestion = ({
   };
 
   const handleEnableDebugLogCheck = () => toggleField('enableDebugLog');
+
+  const handleOverrideOwner = () => toggleField('overrideOwner');
 
   const handleIncludeLineage = () => toggleField('includeLineage');
 
@@ -226,6 +230,25 @@ const ConfigureIngestion = ({
         </div>
         <p className="tw-text-grey-muted tw-mt-3">
           {t('message.enable-debug-logging')}
+        </p>
+        {getSeparator('')}
+      </Field>
+    );
+  };
+
+  const getOverrideOwnerToggle = () => {
+    return (
+      <Field>
+        <div className="tw-flex tw-gap-1">
+          <label>{t('label.override-current-owner')}</label>
+          <ToggleSwitchV1
+            checked={overrideOwner}
+            handleCheck={handleOverrideOwner}
+            testId="enabled-override-owner"
+          />
+        </div>
+        <p className="tw-text-grey-muted tw-mt-3">
+          {t('message.enable-override-owner')}
         </p>
         {getSeparator('')}
       </Field>
@@ -582,6 +605,7 @@ const ConfigureIngestion = ({
             {getSeparator('')}
             {getDashboardDBServiceName()}
             {getDebugLogToggle()}
+            {getOverrideOwnerToggle()}
           </Fragment>
         );
 

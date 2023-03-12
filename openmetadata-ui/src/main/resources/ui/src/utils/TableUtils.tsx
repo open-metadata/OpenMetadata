@@ -63,6 +63,7 @@ import {
   getTableFQNFromColumnFQN,
   sortTagsCaseInsensitive,
 } from './CommonUtils';
+import { getContainerDetailPath } from './ContainerDetailUtils';
 import { getGlossaryPath, getSettingPath } from './RouterUtils';
 import { ordinalize } from './StringsUtils';
 
@@ -244,6 +245,9 @@ export const getEntityLink = (
     case EntityType.MLMODEL:
     case SearchIndex.MLMODEL:
       return getMlModelPath(fullyQualifiedName);
+
+    case EntityType.CONTAINER:
+      return getContainerDetailPath(fullyQualifiedName);
 
     case SearchIndex.TABLE:
     case EntityType.TABLE:
