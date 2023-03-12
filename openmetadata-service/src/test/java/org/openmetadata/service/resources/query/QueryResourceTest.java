@@ -11,14 +11,12 @@ import static org.openmetadata.service.util.TestUtils.assertListNull;
 import static org.openmetadata.service.util.TestUtils.assertResponse;
 
 import java.io.IOException;
-import java.security.MessageDigest;
 import java.util.List;
 import java.util.Map;
 import javax.ws.rs.client.WebTarget;
 import javax.ws.rs.core.Response;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.codec.binary.Hex;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -35,6 +33,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.databases.TableResourceTest;
 import org.openmetadata.service.util.JsonUtils;
+import org.openmetadata.service.util.QueryUtil;
 import org.openmetadata.service.util.TestUtils;
 
 @Slf4j
@@ -62,7 +61,7 @@ public class QueryResourceTest extends EntityResourceTest<Query, CreateQuery> {
     Table createdTable = tableResourceTest.createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
     TABLE_REF = createdTable.getEntityReference();
     QUERY = "select * from sales";
-    QUERY_CHECKSUM = Hex.encodeHexString(MessageDigest.getInstance("MD5").digest(QUERY.getBytes()));
+    QUERY_CHECKSUM = QueryUtil.getCheckSum(QUERY);
   }
 
   @Override

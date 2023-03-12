@@ -5,14 +5,12 @@ import static org.openmetadata.service.Entity.FIELD_FOLLOWERS;
 import static org.openmetadata.service.util.EntityUtil.fieldUpdated;
 
 import java.io.IOException;
-import java.security.MessageDigest;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 import javax.ws.rs.core.Response;
 import lombok.SneakyThrows;
-import org.apache.commons.codec.binary.Hex;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.entity.data.Query;
@@ -25,6 +23,7 @@ import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.query.QueryResource;
 import org.openmetadata.service.util.EntityUtil;
+import org.openmetadata.service.util.QueryUtil;
 import org.openmetadata.service.util.RestUtil;
 
 public class QueryRepository extends EntityRepository<Query> {
@@ -93,9 +92,9 @@ public class QueryRepository extends EntityRepository<Query> {
   @SneakyThrows
   public void prepare(Query entity) throws IOException {
     if (CommonUtil.nullOrEmpty(entity.getName())) {
-      byte[] checksum = MessageDigest.getInstance("MD5").digest(entity.getQuery().getBytes());
-      entity.setChecksum(Hex.encodeHexString(checksum));
-      entity.setName(entity.getChecksum());
+      String checkSum = QueryUtil.getCheckSum(entity.getName());
+      entity.setChecksum(checkSum);
+      entity.setName(checkSum);
     }
 
     entity.setUsers(getQueryUsers(entity.getUsers()));
@@ -171,9 +170,8 @@ public class QueryRepository extends EntityRepository<Query> {
   public Query addQueryUsage(UUID queryId, List<EntityReference> entityIds) throws IOException {
     Query query = Entity.getEntity(Entity.QUERY, queryId, "queryUsedIn", Include.NON_DELETED);
     entityIds.forEach(
-        (entityRef) -> {
-          addRelationship(entityRef.getId(), queryId, entityRef.getType(), Entity.QUERY, Relationship.MENTIONED_IN);
-        });
+        (entityRef) ->
+            addRelationship(entityRef.getId(), queryId, entityRef.getType(), Entity.QUERY, Relationship.MENTIONED_IN));
     query.getQueryUsedIn().addAll(entityIds);
     return query;
   }
