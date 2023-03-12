@@ -62,9 +62,14 @@ def main():
     - if exists, update with `Failed` status
     """
 
-    config = os.environ["config"]  # Blow up if it's not here
-    pipeline_run_id = os.environ.get("pipelineRunId")
-    raw_pipeline_status = os.environ.get("pipelineStatus")
+    config = os.getenv("config")
+    if not config:
+        raise RuntimeError(
+            "Missing environment variable `config`. This is needed to configure the Workflow."
+        )
+
+    pipeline_run_id = os.getenv("pipelineRunId")
+    raw_pipeline_status = os.getenv("pipelineStatus")
 
     raw_workflow_config = yaml.safe_load(config)
     raw_workflow_config["pipelineRunId"] = pipeline_run_id

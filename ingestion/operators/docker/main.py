@@ -76,9 +76,19 @@ def main():
     """
 
     # DockerOperator expects an env var called config
-    config = os.environ["config"]
-    pipeline_type = os.environ["pipelineType"]
-    pipeline_run_id = os.environ.get("pipelineRunId")
+    config = os.getenv("config")
+    if not config:
+        raise RuntimeError(
+            "Missing environment variable `config`. This is needed to configure the Workflow."
+        )
+
+    pipeline_type = os.getenv("pipelineType")
+    if not pipeline_type:
+        raise RuntimeError(
+            "Missing environment variable `pipelineType`. This is needed to load the Workflow class."
+        )
+
+    pipeline_run_id = os.getenv("pipelineRunId")
 
     workflow_class = WORKFLOW_MAP.get(pipeline_type)
     if workflow_class is None:
