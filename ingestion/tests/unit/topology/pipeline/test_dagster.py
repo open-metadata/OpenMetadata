@@ -32,10 +32,11 @@ from metadata.generated.schema.entity.services.pipelineService import (
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
+from metadata.generated.schema.type.basic import FullyQualifiedEntityName
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.tagLabel import TagLabel
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
-from metadata.ingestion.source.pipeline.dagster import DagsterSource
+from metadata.ingestion.source.pipeline.dagster.metadata import DagsterSource
 
 mock_file_path = (
     Path(__file__).parent.parent.parent / "resources/datasets/dagster_dataset.json"
@@ -67,7 +68,7 @@ EXPECTED_DAGSTER_DETAILS = mock_data["data"]["graphOrError"]
 
 EXPECTED_CREATED_PIPELINES = [
     CreatePipelineRequest(
-        name="graph:5164c131c3524a271e7ecce49766d50a479b5ff4",
+        name="graph5164c131c3524a271e7ecce49766d50a479b5ff4",
         displayName="story_recommender_job",
         description=None,
         pipelineUrl=None,
@@ -151,23 +152,14 @@ EXPECTED_CREATED_PIPELINES = [
             TagLabel(
                 tagFQN="DagsterTags.hacker_new_repository",
                 description=None,
-                source="Tag",
+                source="Classification",
                 labelType="Automated",
                 state="Suggested",
                 href=None,
             )
         ],
         owner=None,
-        service=EntityReference(
-            id="86ff3c40-7c51-4ff5-9727-738cead28d9a",
-            type="pipelineService",
-            name=None,
-            fullyQualifiedName=None,
-            description=None,
-            displayName=None,
-            deleted=None,
-            href=None,
-        ),
+        service="dagster_source_test",
         extension=None,
     ),
 ]
@@ -219,6 +211,7 @@ EXPECTED_PIPELINE_STATUS = [
 MOCK_PIPELINE_SERVICE = PipelineService(
     id="86ff3c40-7c51-4ff5-9727-738cead28d9a",
     name="dagster_source_test",
+    fullyQualifiedName=FullyQualifiedEntityName(__root__="dagster_source_test"),
     connection=PipelineConnection(),
     serviceType=PipelineServiceType.Dagster,
 )
@@ -251,7 +244,9 @@ class DagsterUnitTest(TestCase):
     Dagster Pipeline Unit Test
     """
 
-    @patch("metadata.ingestion.source.pipeline.pipeline_service.test_connection")
+    @patch(
+        "metadata.ingestion.source.pipeline.pipeline_service.PipelineServiceSource.test_connection"
+    )
     @patch("dagster_graphql.DagsterGraphQLClient")
     # @patch("metadata.ingestion.source.pipeline.dagster.get_tag_labels")
     def __init__(self, methodName, graphql_client, test_connection) -> None:
@@ -274,7 +269,7 @@ class DagsterUnitTest(TestCase):
             in EXPTECTED_PIPELINE_NAME
         )
 
-    @patch("metadata.ingestion.source.pipeline.dagster.DagsterSource.get_jobs")
+    @patch("metadata.ingestion.source.pipeline.dagster.metadata.DagsterSource.get_jobs")
     def test_yield_pipeline(self, get_jobs):
         results = self.dagster.yield_pipeline(EXPECTED_DAGSTER_DETAILS)
         get_jobs.return_value = EXPECTED_DAGSTER_DETAILS

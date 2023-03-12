@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -12,15 +12,16 @@
  */
 
 import { AxiosError } from 'axios';
+import { t } from 'i18next';
 import { uniqueId } from 'lodash';
-import { EditorContentRef, FormErrorData } from 'Models';
+import { FormErrorData } from 'Models';
 import React, { useEffect, useRef, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
 import {
   addPropertyToEntity,
   getTypeByFQN,
   getTypeListByCategory,
-} from '../../../axiosAPIs/metadataTypeAPI';
+} from 'rest/metadataTypeAPI';
 import { SUPPORTED_FIELD_TYPES } from '../../../constants/constants';
 import { PageLayoutType } from '../../../enums/layout.enum';
 import { Category, Type } from '../../../generated/entity/type';
@@ -28,6 +29,7 @@ import { errorMsg, requiredField } from '../../../utils/CommonUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { Button } from '../../buttons/Button/Button';
 import RichTextEditor from '../../common/rich-text-editor/RichTextEditor';
+import { EditorContentRef } from '../../common/rich-text-editor/RichTextEditor.interface';
 import PageContainerV1 from '../../containers/PageContainerV1';
 import PageLayout from '../../containers/PageLayout';
 import { Field } from '../../Field/Field';
@@ -86,7 +88,9 @@ const AddCustomProperty = () => {
 
   const handleError = (flag: boolean, property: string) => {
     const message =
-      property === 'name' ? 'Invalid Property Name' : 'Type is required';
+      property === 'name'
+        ? t('message.invalid-property-name')
+        : t('message.field-text-is-required', { fieldText: t('label.type') });
 
     setFormErrorData((preVdata) => ({
       ...preVdata,
@@ -170,15 +174,20 @@ const AddCustomProperty = () => {
         <PageLayout
           classes="tw-max-w-full-hd tw-h-full tw-pt-4"
           layout={PageLayoutType['2ColRTL']}
+          pageTitle={t('label.add-entity', {
+            entity: t('label.custom-property'),
+          })}
           rightPanel={<RightPanel />}>
           <div
             className="tw-bg-white tw-p-4 tw-border tw-border-main tw-rounded tw-form-container"
             data-testid="form-container">
-            <h6 className="tw-heading tw-text-base">Add Custom Property</h6>
+            <h6 className="tw-heading tw-text-base">
+              {t('label.add-entity', { entity: t('label.custom-property') })}
+            </h6>
 
             <Field>
               <label className="tw-block tw-form-label" htmlFor="name">
-                {requiredField('Name:')}
+                {requiredField(`${t('label.name')}:`)}
               </label>
               <input
                 autoComplete="off"
@@ -186,7 +195,7 @@ const AddCustomProperty = () => {
                 data-testid="name"
                 id="name"
                 name="name"
-                placeholder="Name"
+                placeholder={t('label.name')}
                 type="text"
                 value={formData.name}
                 onChange={onChangeHandler}
@@ -196,17 +205,21 @@ const AddCustomProperty = () => {
 
             <Field>
               <label className="tw-block tw-form-label" htmlFor="type">
-                {requiredField('Type:')}
+                {requiredField(`${t('label.type')}:`)}
               </label>
               <select
                 className="tw-form-inputs tw-form-inputs-padding"
                 data-testid="type"
                 id="type"
                 name="type"
-                placeholder="type"
+                placeholder={t('label.type')}
                 value={formData.type || ''}
                 onChange={onChangeHandler}>
-                <option value="">Select type</option>
+                <option value="">
+                  {t('label.select-field', {
+                    field: t('label.type-lowercase'),
+                  })}
+                </option>
                 {getPropertyTypes().map((propertyType) => (
                   <option key={uniqueId()} value={propertyType.id}>
                     {propertyType.displayName}
@@ -219,7 +232,7 @@ const AddCustomProperty = () => {
               <label
                 className="tw-block tw-form-label tw-mb-0"
                 htmlFor="description">
-                Description:
+                {`${t('label.description')}:`}
               </label>
               <RichTextEditor
                 data-testid="description"
@@ -234,7 +247,7 @@ const AddCustomProperty = () => {
                 theme="primary"
                 variant="text"
                 onClick={onCancel}>
-                Back
+                {t('label.back')}
               </Button>
 
               <Button
@@ -244,7 +257,7 @@ const AddCustomProperty = () => {
                 theme="primary"
                 type="submit"
                 onClick={onSave}>
-                Create
+                {t('label.create')}
               </Button>
             </Field>
           </div>

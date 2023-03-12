@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { CreateTestCase } from 'generated/api/tests/createTestCase';
 import { ReactNode } from 'react';
 import { Table } from '../../generated/entity/data/table';
 import { IngestionPipeline } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
@@ -28,9 +29,9 @@ export interface SelectTestSuiteProps {
 }
 
 export interface TestCaseFormProps {
-  initialValue?: TestCase;
-  onSubmit: (data: TestCase) => void;
-  onCancel: (data: TestCase) => void;
+  initialValue?: CreateTestCase;
+  onSubmit: (data: CreateTestCase) => void;
+  onCancel: (data: CreateTestCase) => void;
   table: Table;
 }
 
@@ -62,6 +63,7 @@ export type SelectTestSuiteType = {
 
 export interface ParameterFormProps {
   definition: TestDefinition;
+  table?: Table;
 }
 
 export interface EditTestCaseModalProps {

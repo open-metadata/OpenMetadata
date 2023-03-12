@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -23,13 +23,19 @@
 .align-start {
   align-items: start;
 }
-
 .items-center {
   align-items: center;
+}
+.item-start {
+  align-items: flex-start;
 }
 
 // Display
 .d-flex {
+  display: flex;
+}
+//flex class will be removed once all the element using this class change to d-flex
+.flex {
   display: flex;
 }
 .d-inline-flex {
@@ -79,26 +85,63 @@
   bottom: 100%;
 }
 
-.flex-shrink {
-  flex-shrink: 0;
+.gap-1 {
+  gap: 16px;
 }
 
+// Alignment Items
 .align-middle {
   vertical-align: middle;
 }
+.self-end {
+  align-self: flex-end;
+}
+.vertical-align-inherit {
+  vertical-align: inherit;
+}
+
 .self-center {
   align-self: center;
 }
 .flex-none {
   flex: none;
 }
-.justify-center {
-  justify-content: center;
-}
 .flex-col-reverse {
   flex-direction: column-reverse;
 }
 
-.gap-1 {
-  gap: 16px;
+// Justify Items
+.justify-center {
+  justify-content: center;
+}
+.justify-self-end {
+  justify-self: end;
+}
+.justify-end {
+  justify-content: flex-end;
+}
+.justify-between {
+  justify-content: space-between;
+}
+
+//  Flex Direction
+.flex-col {
+  flex-direction: column;
+}
+.flex-initial {
+  flex: 0 1 auto;
+}
+.flex-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.flex-wrap {
+  flex-wrap: wrap;
+}
+.flex-grow {
+  flex-grow: 1;
+}
+.flex-shrink {
+  flex-shrink: 0;
 }

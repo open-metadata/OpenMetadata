@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { t } from 'i18next';
 import { lowerCase } from 'lodash';
 import React, { Fragment, FunctionComponent, useState } from 'react';
 import Searchbar from '../common/searchbar/Searchbar';
@@ -43,7 +44,7 @@ const SchemaTab: FunctionComponent<Props> = ({
       <div className="tw-grid tw-grid-cols-3 tw-gap-x-2">
         <div>
           <Searchbar
-            placeholder="Find in table..."
+            placeholder={`${t('message.find-in-table')}..`}
             searchValue={searchText}
             typingInterval={500}
             onSearch={handleSearchAction}

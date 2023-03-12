@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -13,6 +13,7 @@
 
 import { Col, Row, Select, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
+import { t } from 'i18next';
 import { isEmpty } from 'lodash';
 import React, { ReactElement, useEffect, useMemo, useState } from 'react';
 import {
@@ -26,7 +27,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import { getListTestCaseResults } from '../../../axiosAPIs/testAPI';
+import { getListTestCaseResults } from 'rest/testAPI';
 import {
   COLORS,
   PROFILER_FILTER_RANGE,
@@ -65,6 +66,7 @@ const TestSummary: React.FC<TestSummaryProps> = ({ data }) => {
   const [selectedTimeRange, setSelectedTimeRange] =
     useState<keyof typeof PROFILER_FILTER_RANGE>('last3days');
   const [isLoading, setIsLoading] = useState(true);
+  const [isGraphLoading, setIsGraphLoading] = useState(true);
 
   const timeRangeOption = useMemo(() => {
     return Object.entries(PROFILER_FILTER_RANGE).map(([key, value]) => ({
@@ -131,8 +133,10 @@ const TestSummary: React.FC<TestSummaryProps> = ({ data }) => {
   };
 
   const fetchTestResults = async () => {
-    if (isEmpty(data)) return;
-
+    if (isEmpty(data)) {
+      return;
+    }
+    setIsGraphLoading(true);
     try {
       const startTs = getPastDatesTimeStampFromCurrentDate(
         PROFILER_FILTER_RANGE[selectedTimeRange].days
@@ -153,6 +157,7 @@ const TestSummary: React.FC<TestSummaryProps> = ({ data }) => {
       showErrorToast(error as AxiosError);
     } finally {
       setIsLoading(false);
+      setIsGraphLoading(false);
     }
   };
 
@@ -166,7 +171,7 @@ const TestSummary: React.FC<TestSummaryProps> = ({ data }) => {
     if (isSqlQuery) {
       return (
         <div key={param.name}>
-          <Typography.Text>{param.name}: </Typography.Text>
+          <Typography.Text>{`${param.name}:`} </Typography.Text>
           <SchemaEditor
             className="tw-w-11/12 tw-mt-1"
             editorClass="table-query-editor"
@@ -182,7 +187,7 @@ const TestSummary: React.FC<TestSummaryProps> = ({ data }) => {
 
     return (
       <div key={param.name}>
-        <Typography.Text>{param.name}: </Typography.Text>
+        <Typography.Text>{`${param.name}:`} </Typography.Text>
         <Typography.Text>{param.value}</Typography.Text>
       </div>
     );
@@ -220,7 +225,9 @@ const TestSummary: React.FC<TestSummaryProps> = ({ data }) => {
               />
             </Space>
 
-            {results.length ? (
+            {isGraphLoading ? (
+              <Loader />
+            ) : results.length ? (
               <ResponsiveContainer
                 className="tw-bg-white"
                 id={`${data.name}_graph`}
@@ -255,8 +262,7 @@ const TestSummary: React.FC<TestSummaryProps> = ({ data }) => {
             ) : (
               <ErrorPlaceHolder classes="tw-mt-0" size={SIZE.MEDIUM}>
                 <Typography.Paragraph className="m-b-md">
-                  No Results Available. Try filtering by a different time
-                  period.
+                  {t('message.try-different-time-period-filtering')}
                 </Typography.Paragraph>
               </ErrorPlaceHolder>
             )}
@@ -266,24 +272,30 @@ const TestSummary: React.FC<TestSummaryProps> = ({ data }) => {
       <Col span={8}>
         <Row gutter={[8, 8]}>
           <Col span={24}>
-            <Typography.Text type="secondary">Name: </Typography.Text>
+            <Typography.Text type="secondary">
+              {`${t('label.name')}:`}
+            </Typography.Text>
             <Typography.Text>{data.displayName || data.name}</Typography.Text>
           </Col>
           <Col span={24}>
-            <Typography.Text type="secondary">Parameter: </Typography.Text>
+            <Typography.Text type="secondary">
+              {`${t('label.parameter')}:`}
+            </Typography.Text>
           </Col>
           <Col offset={1} span={24}>
             {data.parameterValues && data.parameterValues.length > 0 ? (
               data.parameterValues.map(showParamsData)
             ) : (
               <Typography.Text type="secondary">
-                No Parameter Available
+                {t('label.no-parameter-available')}
               </Typography.Text>
             )}
           </Col>
 
           <Col className="tw-flex tw-gap-2" span={24}>
-            <Typography.Text type="secondary">Description: </Typography.Text>
+            <Typography.Text type="secondary">
+              {`${t('label.description')}:`}{' '}
+            </Typography.Text>
             <RichTextEditorPreviewer markdown={data.description || ''} />
           </Col>
         </Row>

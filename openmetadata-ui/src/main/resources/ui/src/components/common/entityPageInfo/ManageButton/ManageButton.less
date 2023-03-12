@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -26,16 +26,27 @@
   border: none;
   background-color: @manage-dropdown-bg-primary;
   padding: 0;
+  border-radius: 4px;
+  width: 24px;
+  display: flex;
+  justify-content: center;
 
   .ant-btn {
-    padding: 0 8px 0 8px;
+    padding: 0 4px;
   }
 }
 
 .manage-dropdown-button:hover,
 .manage-dropdown-button:focus {
+  .ant-btn {
+    .manage-dropdown-icon {
+      color: @manage-button-bg-primary;
+      opacity: 0.5;
+    }
+  }
   .manage-dropdown-icon {
     color: @white;
+    font-weight: 600;
   }
   background-color: @manage-button-bg-primary;
 }

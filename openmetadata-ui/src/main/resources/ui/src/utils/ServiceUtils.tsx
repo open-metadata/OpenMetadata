@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -12,21 +12,21 @@
  */
 
 import { AxiosError } from 'axios';
+import {
+  OperationPermission,
+  ResourceEntity,
+} from 'components/PermissionProvider/PermissionProvider.interface';
 import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
+import { ObjectStoreServiceType } from 'generated/entity/data/container';
 import { t } from 'i18next';
 import {
   Bucket,
   DynamicFormFieldType,
-  DynamicObj,
   ServicesData,
   ServiceTypes,
 } from 'Models';
 import React from 'react';
-import { getEntityCount } from '../axiosAPIs/miscAPI';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from '../components/PermissionProvider/PermissionProvider.interface';
+import { getEntityCount } from 'rest/miscAPI';
 import { GlobalSettingOptions } from '../constants/GlobalSettings.constants';
 import {
   addDBTIngestionGuide,
@@ -40,6 +40,7 @@ import {
 import {
   AIRBYTE,
   AIRFLOW,
+  AMAZON_S3,
   AMUNDSEN,
   ATHENA,
   ATLAS,
@@ -57,6 +58,7 @@ import {
   DRUID,
   DYNAMODB,
   FIVETRAN,
+  GCS,
   GLUE,
   HIVE,
   IBMDB2,
@@ -69,6 +71,7 @@ import {
   MLFLOW,
   MODE,
   MSSQL,
+  MS_AZURE,
   MYSQL,
   NIFI,
   ORACLE,
@@ -97,7 +100,6 @@ import {
 } from '../constants/Services.constant';
 import { PROMISE_STATE } from '../enums/common.enum';
 import { ServiceCategory } from '../enums/service.enum';
-import { ConnectionType } from '../generated/api/services/ingestionPipelines/testServiceConnection';
 import { Database } from '../generated/entity/data/database';
 import { MlModelServiceType } from '../generated/entity/data/mlmodel';
 import {
@@ -119,6 +121,7 @@ import {
   PipelineService,
   PipelineServiceType,
 } from '../generated/entity/services/pipelineService';
+import { ServiceType } from '../generated/entity/services/serviceType';
 import { ServicesType } from '../interface/service.interface';
 import { getEntityDeleteMessage, pluralize } from './CommonUtils';
 import { getDashboardURL } from './DashboardServiceUtils';
@@ -284,6 +287,15 @@ export const serviceTypeLogo = (type: string) => {
     case MetadataServiceType.OpenMetadata:
       return LOGO;
 
+    case ObjectStoreServiceType.Azure:
+      return MS_AZURE;
+
+    case ObjectStoreServiceType.S3:
+      return AMAZON_S3;
+
+    case ObjectStoreServiceType.Gcs:
+      return GCS;
+
     default: {
       let logo;
       if (serviceTypes.messagingServices.includes(type)) {
@@ -372,7 +384,7 @@ export const getTotalEntityCountByService = (buckets: Array<Bucket> = []) => {
   return entityCounts;
 };
 
-export const getKeyValuePair = (obj: DynamicObj) => {
+export const getKeyValuePair = (obj: Record<string, string>) => {
   return Object.entries(obj).map((v) => {
     return {
       key: v[0],
@@ -382,7 +394,7 @@ export const getKeyValuePair = (obj: DynamicObj) => {
 };
 
 export const getKeyValueObject = (arr: DynamicFormFieldType[]) => {
-  const keyValuePair: DynamicObj = {};
+  const keyValuePair: Record<string, string> = {};
 
   arr.forEach((obj) => {
     if (obj.key && obj.value) {
@@ -436,7 +448,7 @@ export const servicePageTabs = (entity: string) => [
     path: entity.toLowerCase(),
   },
   {
-    name: t('label.ingestions'),
+    name: t('label.ingestion-plural'),
     path: 'ingestions',
   },
   {
@@ -592,7 +604,6 @@ export const getIngestionName = (
 
 export const shouldTestConnection = (serviceType: string) => {
   return (
-    serviceType !== DatabaseServiceType.SampleData &&
     serviceType !== DatabaseServiceType.CustomDatabase &&
     serviceType !== MessagingServiceType.CustomMessaging &&
     serviceType !== DashboardServiceType.CustomDashboard &&
@@ -604,14 +615,14 @@ export const shouldTestConnection = (serviceType: string) => {
 export const getTestConnectionType = (serviceCat: ServiceCategory) => {
   switch (serviceCat) {
     case ServiceCategory.MESSAGING_SERVICES:
-      return ConnectionType.Messaging;
+      return ServiceType.Messaging;
     case ServiceCategory.DASHBOARD_SERVICES:
-      return ConnectionType.Dashboard;
+      return ServiceType.Dashboard;
     case ServiceCategory.PIPELINE_SERVICES:
-      return ConnectionType.Pipeline;
+      return ServiceType.Pipeline;
     case ServiceCategory.DATABASE_SERVICES:
     default:
-      return ConnectionType.Database;
+      return ServiceType.Database;
   }
 };
 
@@ -696,7 +707,7 @@ export const getOptionalFields = (
 
       return (
         <div className="tw-mb-1 tw-truncate" data-testid="additional-field">
-          <label className="tw-mb-0">{t('label.brokers')}:</label>
+          <label className="tw-mb-0">{t('label.broker-plural')}:</label>
           <span
             className=" tw-ml-1 tw-font-normal tw-text-grey-body"
             data-testid="brokers">
@@ -809,6 +820,12 @@ export const getDeleteEntityMessage = (
         pluralize(instanceCount, t('label.metadata'))
       );
 
+    case ServiceCategory.OBJECT_STORE_SERVICES:
+      return getEntityDeleteMessage(
+        service || t('label.service'),
+        pluralize(instanceCount, t('label.container'))
+      );
+
     default:
       return;
   }
@@ -829,6 +846,9 @@ export const getServiceRouteFromServiceType = (type: ServiceTypes) => {
   }
   if (type === 'metadataServices') {
     return GlobalSettingOptions.METADATA;
+  }
+  if (type === 'objectstoreServices') {
+    return GlobalSettingOptions.OBJECT_STORES;
   }
 
   return GlobalSettingOptions.DATABASES;
@@ -861,6 +881,10 @@ export const getResourceEntityFromServiceCategory = (
     case 'metadata':
     case ServiceCategory.METADATA_SERVICES:
       return ResourceEntity.METADATA_SERVICE;
+
+    case 'objectStores':
+    case ServiceCategory.OBJECT_STORE_SERVICES:
+      return ResourceEntity.OBJECT_STORE_SERVICE;
   }
 
   return ResourceEntity.DATABASE_SERVICE;
@@ -869,16 +893,18 @@ export const getResourceEntityFromServiceCategory = (
 export const getCountLabel = (serviceName: ServiceTypes) => {
   switch (serviceName) {
     case ServiceCategory.DASHBOARD_SERVICES:
-      return 'Dashboards';
+      return t('label.dashboard-plural');
     case ServiceCategory.MESSAGING_SERVICES:
-      return 'Topics';
+      return t('label.topic-plural');
     case ServiceCategory.PIPELINE_SERVICES:
-      return 'Pipelines';
+      return t('label.pipeline-plural');
     case ServiceCategory.ML_MODEL_SERVICES:
-      return 'Models';
+      return t('label.ml-model-plural');
+    case ServiceCategory.OBJECT_STORE_SERVICES:
+      return t('label.container-plural');
     case ServiceCategory.DATABASE_SERVICES:
     default:
-      return 'Databases';
+      return t('label.database-plural');
   }
 };
 
@@ -901,7 +927,7 @@ export const getServicePageTabs = (
 
   tabs.push(
     {
-      name: t('label.ingestions'),
+      name: t('label.ingestion-plural'),
       isProtected: false,
 
       position: 2,

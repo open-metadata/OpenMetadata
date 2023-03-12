@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -20,7 +20,7 @@ import {
 } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
-import { getAuthMechanismForBotUser } from '../../axiosAPIs/userAPI';
+import { getAuthMechanismForBotUser } from 'rest/userAPI';
 import { OperationPermission } from '../PermissionProvider/PermissionProvider.interface';
 import BotDetails from './BotDetails.component';
 
@@ -99,7 +99,7 @@ jest.mock('../../utils/PermissionsUtils', () => ({
   checkPermission: jest.fn().mockReturnValue(true),
 }));
 
-jest.mock('../../axiosAPIs/userAPI', () => {
+jest.mock('rest/userAPI', () => {
   return {
     createUserWithPut: jest
       .fn()
@@ -120,6 +120,19 @@ jest.mock('./AuthMechanismForm', () =>
     .mockReturnValue(
       <div data-testid="AuthMechanismForm">AuthMechanismForm</div>
     )
+);
+
+jest.mock('../containers/PageLayout', () =>
+  jest
+    .fn()
+    .mockImplementation(({ children, leftPanel, rightPanel, header }) => (
+      <div>
+        {header}
+        <div>{leftPanel}</div>
+        {children}
+        <div>{rightPanel}</div>
+      </div>
+    ))
 );
 
 describe('Test BotsDetail Component', () => {
@@ -177,7 +190,7 @@ describe('Test BotsDetail Component', () => {
     fireEvent.click(confirmButton);
 
     // revoke token handler should get called
-    expect(revokeTokenHandler).toBeCalled();
+    expect(revokeTokenHandler).toHaveBeenCalled();
   });
 
   it('Should render the edit form if the authmechanism is empty', async () => {

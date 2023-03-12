@@ -23,8 +23,11 @@ import com.lmax.disruptor.util.DaemonThreadFactory;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import lombok.Getter;
+import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.type.ChangeEvent;
+import org.openmetadata.service.events.EventPubSub.ChangeEventHolder;
 
 /** Change event PubSub built based on LMAX Disruptor. */
 @Slf4j
@@ -59,15 +62,7 @@ public class EventPubSub {
   }
 
   public static class ChangeEventHolder {
-    private ChangeEvent value;
-
-    public void set(ChangeEvent event) {
-      this.value = event;
-    }
-
-    public ChangeEvent get() {
-      return value;
-    }
+    @Getter @Setter private ChangeEvent event;
   }
 
   public static class ChangeEventFactory implements EventFactory<ChangeEventHolder> {
@@ -80,7 +75,7 @@ public class EventPubSub {
     if (event != null) {
       RingBuffer<ChangeEventHolder> ringBuffer = disruptor.getRingBuffer();
       long sequence = ringBuffer.next();
-      ringBuffer.get(sequence).set(event);
+      ringBuffer.get(sequence).setEvent(event);
       ringBuffer.publish(sequence);
     }
   }

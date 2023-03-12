@@ -22,6 +22,7 @@ import com.google.common.util.concurrent.UncheckedExecutionException;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Stack;
 import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -34,7 +35,8 @@ import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
-import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.jdbi3.TeamRepository;
+import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.util.EntityUtil.Fields;
 
 /** Subject context used for Access Control Policies */
@@ -45,26 +47,26 @@ public class SubjectCache {
   protected static LoadingCache<String, SubjectContext> USER_CACHE;
   protected static LoadingCache<UUID, SubjectContext> USER_CACHE_WIH_ID;
   protected static LoadingCache<UUID, Team> TEAM_CACHE;
-  protected static EntityRepository<User> USER_REPOSITORY;
+  protected static UserRepository USER_REPOSITORY;
   protected static Fields USER_FIELDS;
-  protected static EntityRepository<Team> TEAM_REPOSITORY;
+  protected static TeamRepository TEAM_REPOSITORY;
   protected static Fields TEAM_FIELDS;
 
   // Expected to be called only once from the DefaultAuthorizer
   public static void initialize() {
     if (!INITIALIZED) {
       USER_CACHE =
-          CacheBuilder.newBuilder().maximumSize(1000).expireAfterAccess(1, TimeUnit.MINUTES).build(new UserLoader());
+          CacheBuilder.newBuilder().maximumSize(1000).expireAfterWrite(3, TimeUnit.MINUTES).build(new UserLoader());
       USER_CACHE_WIH_ID =
           CacheBuilder.newBuilder()
               .maximumSize(1000)
-              .expireAfterAccess(1, TimeUnit.MINUTES)
+              .expireAfterWrite(3, TimeUnit.MINUTES)
               .build(new UserLoaderWithId());
       TEAM_CACHE =
-          CacheBuilder.newBuilder().maximumSize(1000).expireAfterAccess(1, TimeUnit.MINUTES).build(new TeamLoader());
-      USER_REPOSITORY = Entity.getEntityRepository(Entity.USER);
+          CacheBuilder.newBuilder().maximumSize(1000).expireAfterWrite(3, TimeUnit.MINUTES).build(new TeamLoader());
+      USER_REPOSITORY = (UserRepository) Entity.getEntityRepository(Entity.USER);
       USER_FIELDS = USER_REPOSITORY.getFields("roles, teams, isAdmin");
-      TEAM_REPOSITORY = Entity.getEntityRepository(Entity.TEAM);
+      TEAM_REPOSITORY = (TeamRepository) Entity.getEntityRepository(Entity.TEAM);
       TEAM_FIELDS = TEAM_REPOSITORY.getFields("defaultRoles, policies, parents");
       INSTANCE = new SubjectCache();
       INITIALIZED = true;
@@ -94,25 +96,26 @@ public class SubjectCache {
     }
   }
 
-  public List<User> getAllUsers() throws EntityNotFoundException {
-    // TODO: this needs correction
-    List<User> allUsers = new ArrayList<>();
-    try {
-      for (SubjectContext context : USER_CACHE.asMap().values()) {
-        allUsers.add(context.getUser());
-      }
-    } catch (UncheckedExecutionException ex) {
-      throw new EntityNotFoundException(ex.getMessage());
-    }
-    return allUsers;
-  }
-
   public Team getTeam(UUID teamId) throws EntityNotFoundException {
     try {
       return TEAM_CACHE.get(teamId);
     } catch (ExecutionException | UncheckedExecutionException ex) {
       return null;
     }
+  }
+
+  /** Return true if given list of teams is part of the hierarchy of parentTeam */
+  public boolean isInTeam(String parentTeam, List<EntityReference> teams) {
+    Stack<EntityReference> stack = new Stack<>();
+    listOrEmpty(teams).forEach(stack::push);
+    while (!stack.empty()) {
+      Team parent = getTeam(stack.pop().getId());
+      if (parent.getName().equals(parentTeam)) {
+        return true;
+      }
+      listOrEmpty(parent.getParents()).forEach(stack::push);
+    }
+    return false;
   }
 
   public static void cleanUp() {

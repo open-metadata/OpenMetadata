@@ -22,13 +22,7 @@ import com.unboundid.ldap.sdk.SearchRequest;
 import com.unboundid.ldap.sdk.SearchResult;
 import com.unboundid.ldap.sdk.SearchResultEntry;
 import com.unboundid.ldap.sdk.SearchScope;
-import com.unboundid.util.ssl.AggregateTrustManager;
-import com.unboundid.util.ssl.HostNameSSLSocketVerifier;
-import com.unboundid.util.ssl.JVMDefaultTrustManager;
-import com.unboundid.util.ssl.SSLSocketVerifier;
 import com.unboundid.util.ssl.SSLUtil;
-import com.unboundid.util.ssl.TrustAllSSLSocketVerifier;
-import com.unboundid.util.ssl.TrustStoreTrustManager;
 import freemarker.template.TemplateException;
 import java.io.IOException;
 import java.security.GeneralSecurityException;
@@ -51,6 +45,7 @@ import org.openmetadata.service.jdbi3.TokenRepository;
 import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.security.AuthenticationException;
 import org.openmetadata.service.util.EmailUtil;
+import org.openmetadata.service.util.LdapUtil;
 import org.openmetadata.service.util.TokenUtil;
 
 @Slf4j
@@ -74,29 +69,15 @@ public class LdapAuthenticator implements AuthenticatorHandler {
     this.tokenRepository = new TokenRepository(jdbi.onDemand(CollectionDAO.class));
     this.ldapConfiguration = config.getAuthenticationConfiguration().getLdapConfiguration();
     this.loginAttemptCache = new LoginAttemptCache(config);
-    this.loginConfiguration = config.getLoginSettings();
+    this.loginConfiguration = config.getApplicationConfiguration().getLoginConfig();
   }
 
   private LDAPConnectionPool getLdapConnectionPool(LdapConfiguration ldapConfiguration) {
     try {
       if (ldapConfiguration.getSslEnabled()) {
-        AggregateTrustManager trustManager =
-            new AggregateTrustManager(
-                false,
-                JVMDefaultTrustManager.getInstance(),
-                new TrustStoreTrustManager(
-                    ldapConfiguration.getKeyStorePath(),
-                    ldapConfiguration.getKeyStorePassword().toCharArray(),
-                    ldapConfiguration.getTruststoreFormat(),
-                    true));
-        SSLUtil sslUtil = new SSLUtil(trustManager);
-
         LDAPConnectionOptions connectionOptions = new LDAPConnectionOptions();
-        SSLSocketVerifier sslSocketVerifier =
-            ldapConfiguration.getVerifyCertificateHostname()
-                ? new HostNameSSLSocketVerifier(true)
-                : TrustAllSSLSocketVerifier.getInstance();
-        connectionOptions.setSSLSocketVerifier(sslSocketVerifier);
+        LdapUtil ldapUtil = new LdapUtil();
+        SSLUtil sslUtil = new SSLUtil(ldapUtil.getLdapSSLConnection(ldapConfiguration, connectionOptions));
 
         try (LDAPConnection connection =
             new LDAPConnection(
@@ -124,9 +105,8 @@ public class LdapAuthenticator implements AuthenticatorHandler {
         }
       }
     } catch (LDAPException e) {
-      LOG.warn("[LDAP] Issue in creating a LookUp Connection");
+      throw new IllegalStateException("[LDAP] Issue in creating a LookUp Connection SSL", e);
     }
-    return null;
   }
 
   @Override
@@ -135,7 +115,7 @@ public class LdapAuthenticator implements AuthenticatorHandler {
     User storedUser = lookUserInProvider(loginRequest.getEmail());
     validatePassword(storedUser, loginRequest.getPassword());
     User omUser = checkAndCreateUser(loginRequest.getEmail());
-    return getJwtResponse(omUser);
+    return getJwtResponse(omUser, loginConfiguration.getJwtTokenExpiryTime());
   }
 
   private User checkAndCreateUser(String email) throws IOException {

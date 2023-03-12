@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,13 +11,31 @@
  *  limitations under the License.
  */
 
-import { Col, Row, Space, Table } from 'antd';
+import { Card, Col, Row, Skeleton, Space, Table } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
+import ActivityFeedList from 'components/ActivityFeed/ActivityFeedList/ActivityFeedList';
+import ActivityThreadPanel from 'components/ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
+import Description from 'components/common/description/Description';
+import ManageButton from 'components/common/entityPageInfo/ManageButton/ManageButton';
+import EntitySummaryDetails from 'components/common/EntitySummaryDetails/EntitySummaryDetails';
+import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
+import NextPrevious from 'components/common/next-previous/NextPrevious';
+import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
+import TabsPane from 'components/common/TabsPane/TabsPane';
+import TitleBreadcrumb from 'components/common/title-breadcrumb/title-breadcrumb.component';
+import { TitleBreadcrumbProps } from 'components/common/title-breadcrumb/title-breadcrumb.interface';
+import PageContainerV1 from 'components/containers/PageContainerV1';
+import Loader from 'components/Loader/Loader';
+import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
+import {
+  OperationPermission,
+  ResourceEntity,
+} from 'components/PermissionProvider/PermissionProvider.interface';
 import { compare, Operation } from 'fast-json-patch';
 import { isNil, startCase } from 'lodash';
 import { observer } from 'mobx-react';
-import { EntityFieldThreadCount, ExtraInfo } from 'Models';
+import { ExtraInfo } from 'Models';
 import React, {
   Fragment,
   FunctionComponent,
@@ -29,41 +47,23 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useHistory, useParams } from 'react-router-dom';
-import { default as AppState, default as appState } from '../../AppState';
 import {
   getDatabaseDetailsByFQN,
   getDatabaseSchemas,
   patchDatabaseDetails,
-} from '../../axiosAPIs/databaseAPI';
+} from 'rest/databaseAPI';
 import {
   getAllFeeds,
   getFeedCount,
   postFeedById,
   postThread,
-} from '../../axiosAPIs/feedsAPI';
-import ActivityFeedList from '../../components/ActivityFeed/ActivityFeedList/ActivityFeedList';
-import ActivityThreadPanel from '../../components/ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
-import Description from '../../components/common/description/Description';
-import ManageButton from '../../components/common/entityPageInfo/ManageButton/ManageButton';
-import EntitySummaryDetails from '../../components/common/EntitySummaryDetails/EntitySummaryDetails';
-import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
-import NextPrevious from '../../components/common/next-previous/NextPrevious';
-import RichTextEditorPreviewer from '../../components/common/rich-text-editor/RichTextEditorPreviewer';
-import TabsPane from '../../components/common/TabsPane/TabsPane';
-import TitleBreadcrumb from '../../components/common/title-breadcrumb/title-breadcrumb.component';
-import { TitleBreadcrumbProps } from '../../components/common/title-breadcrumb/title-breadcrumb.interface';
-import PageContainerV1 from '../../components/containers/PageContainerV1';
-import Loader from '../../components/Loader/Loader';
-import RequestDescriptionModal from '../../components/Modals/RequestDescriptionModal/RequestDescriptionModal';
-import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from '../../components/PermissionProvider/PermissionProvider.interface';
+} from 'rest/feedsAPI';
+import { default as AppState, default as appState } from '../../AppState';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import {
   getDatabaseDetailsPath,
   getDatabaseSchemaDetailsPath,
+  getExplorePath,
   getServiceDetailsPath,
   getTeamAndUserDetailsPath,
   PAGE_SIZE,
@@ -80,9 +80,10 @@ import { Database } from '../../generated/entity/data/database';
 import { DatabaseSchema } from '../../generated/entity/data/databaseSchema';
 import { Post, Thread } from '../../generated/entity/feed/thread';
 import { EntityReference } from '../../generated/entity/teams/user';
-import { TypeUsedToReturnUsageDetailsOfAnEntity } from '../../generated/type/entityUsage';
+import { UsageDetails } from '../../generated/type/entityUsage';
 import { Paging } from '../../generated/type/paging';
 import { useInfiniteScroll } from '../../hooks/useInfiniteScroll';
+import { EntityFieldThreadCount } from '../../interface/feed.interface';
 import jsonData from '../../jsons/en';
 import { getEntityName } from '../../utils/CommonUtils';
 import {
@@ -90,17 +91,13 @@ import {
   getCurrentDatabaseDetailsTab,
 } from '../../utils/DatabaseDetailsUtils';
 import { getEntityFeedLink } from '../../utils/EntityUtils';
-import { getDefaultValue } from '../../utils/FeedElementUtils';
 import {
   deletePost,
   getEntityFieldThreadCounts,
   updateThreadData,
 } from '../../utils/FeedUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
-import {
-  getExplorePathWithInitFilters,
-  getSettingPath,
-} from '../../utils/RouterUtils';
+import { getSettingPath } from '../../utils/RouterUtils';
 import {
   getServiceRouteFromServiceType,
   serviceTypeLogo,
@@ -121,10 +118,13 @@ const DatabaseDetails: FunctionComponent = () => {
   const [database, setDatabase] = useState<Database>();
   const [serviceType, setServiceType] = useState<string>();
   const [schemaData, setSchemaData] = useState<Array<DatabaseSchema>>([]);
+  const [schemaDataLoading, setSchemaDataLoading] = useState<boolean>(true);
 
   const [databaseName, setDatabaseName] = useState<string>(
     databaseFQN.split(FQN_SEPARATOR_CHAR).slice(-1).pop() || ''
   );
+  const [isDatabaseDetailsLoading, setIsDatabaseDetailsLoading] =
+    useState<boolean>(true);
   const [isEdit, setIsEdit] = useState(false);
   const [description, setDescription] = useState('');
   const [databaseId, setDatabaseId] = useState('');
@@ -147,7 +147,6 @@ const DatabaseDetails: FunctionComponent = () => {
   >([]);
 
   const [threadLink, setThreadLink] = useState<string>('');
-  const [selectedField, setSelectedField] = useState<string>('');
   const [paging, setPaging] = useState<Paging>({} as Paging);
   const [elementRef, isInView] = useInfiniteScroll(observerOptions);
   const [currentPage, setCurrentPage] = useState(1);
@@ -175,7 +174,7 @@ const DatabaseDetails: FunctionComponent = () => {
 
   const tabs = [
     {
-      name: 'Schemas',
+      name: t('label.schema-plural'),
       icon: {
         alt: 'schemas',
         name: 'schema-grey',
@@ -187,7 +186,7 @@ const DatabaseDetails: FunctionComponent = () => {
       position: 1,
     },
     {
-      name: 'Activity Feeds',
+      name: t('label.activity-feed-plural'),
       icon: {
         alt: 'activity_feed',
         name: 'activity_feed',
@@ -222,6 +221,7 @@ const DatabaseDetails: FunctionComponent = () => {
 
   const fetchDatabaseSchemas = (pagingObj?: string) => {
     return new Promise<void>((resolve, reject) => {
+      setSchemaDataLoading(true);
       getDatabaseSchemas(databaseFQN, pagingObj, ['owner', 'usageSummary'])
         .then((res) => {
           if (res.data) {
@@ -243,6 +243,9 @@ const DatabaseDetails: FunctionComponent = () => {
           );
 
           reject();
+        })
+        .finally(() => {
+          setSchemaDataLoading(false);
         });
     });
   };
@@ -260,13 +263,6 @@ const DatabaseDetails: FunctionComponent = () => {
 
   const onThreadPanelClose = () => {
     setThreadLink('');
-  };
-
-  const onEntityFieldSelect = (value: string) => {
-    setSelectedField(value);
-  };
-  const closeRequestModal = () => {
-    setSelectedField('');
   };
 
   const getEntityFeedCount = () => {
@@ -288,6 +284,7 @@ const DatabaseDetails: FunctionComponent = () => {
   };
 
   const getDetailsByFQN = () => {
+    setIsDatabaseDetailsLoading(true);
     getDatabaseDetailsByFQN(databaseFQN, ['owner'])
       .then((res) => {
         if (res) {
@@ -340,6 +337,7 @@ const DatabaseDetails: FunctionComponent = () => {
       })
       .finally(() => {
         setIsLoading(false);
+        setIsDatabaseDetailsLoading(false);
       });
   };
 
@@ -577,11 +575,15 @@ const DatabaseDetails: FunctionComponent = () => {
   useEffect(() => {
     if (!isMounting.current && appState.inPageSearchText) {
       history.push(
-        getExplorePathWithInitFilters(
-          appState.inPageSearchText,
-          undefined,
-          `postFilter[serviceType][0]=${serviceType}&postFilter[database.name.keyword][0]=${databaseName}`
-        )
+        getExplorePath({
+          search: appState.inPageSearchText,
+          extraParameters: {
+            postFilter: {
+              serviceType: [serviceType],
+              'database.name.keyword': [databaseName],
+            },
+          },
+        })
       );
     }
   }, [appState.inPageSearchText]);
@@ -645,7 +647,9 @@ const DatabaseDetails: FunctionComponent = () => {
           text?.trim() ? (
             <RichTextEditorPreviewer markdown={text} />
           ) : (
-            <span className="text-grey-muted">No description</span>
+            <span className="text-grey-muted">
+              {t('label.no-entity', { entity: t('label.description') })}
+            </span>
           ),
       },
       {
@@ -658,7 +662,7 @@ const DatabaseDetails: FunctionComponent = () => {
         title: t('label.usage'),
         dataIndex: 'usageSummary',
         key: 'usageSummary',
-        render: (text: TypeUsedToReturnUsageDetailsOfAnEntity) =>
+        render: (text: UsageDetails) =>
           getUsagePercentile(text?.weeklyStats?.percentileRank || 0),
       },
     ],
@@ -681,59 +685,70 @@ const DatabaseDetails: FunctionComponent = () => {
                 className=" p-x-md p-t-lg"
                 data-testid="page-container"
                 gutter={[0, 12]}>
-                <Col span={24}>
-                  <Space align="center" className="justify-between w-full">
-                    <TitleBreadcrumb titleLinks={slashedDatabaseName} />
-                    <ManageButton
-                      isRecursiveDelete
-                      allowSoftDelete={false}
-                      canDelete={databasePermission.Delete}
-                      entityFQN={databaseFQN}
-                      entityId={databaseId}
-                      entityName={databaseName}
-                      entityType={EntityType.DATABASE}
-                    />
-                  </Space>
-                </Col>
-                <Col span={24}>
-                  {extraInfo.map((info, index) => (
-                    <Space key={index}>
-                      <EntitySummaryDetails
-                        currentOwner={database?.owner}
-                        data={info}
-                        removeOwner={handleRemoveOwner}
-                        updateOwner={
-                          databasePermission.EditOwner ||
-                          databasePermission.EditAll
-                            ? handleUpdateOwner
-                            : undefined
-                        }
-                      />
-                    </Space>
-                  ))}
-                </Col>
-                <Col data-testid="description-container" span={24}>
-                  <Description
-                    description={description}
-                    entityFieldThreads={getEntityFieldThreadCounts(
-                      EntityField.DESCRIPTION,
-                      entityFieldThreadCount
-                    )}
-                    entityFqn={databaseFQN}
-                    entityName={databaseName}
-                    entityType={EntityType.DATABASE}
-                    hasEditAccess={
-                      databasePermission.EditDescription ||
-                      databasePermission.EditAll
-                    }
-                    isEdit={isEdit}
-                    onCancel={onCancel}
-                    onDescriptionEdit={onDescriptionEdit}
-                    onDescriptionUpdate={onDescriptionUpdate}
-                    onEntityFieldSelect={onEntityFieldSelect}
-                    onThreadLinkSelect={onThreadLinkSelect}
+                {isDatabaseDetailsLoading ? (
+                  <Skeleton
+                    active
+                    paragraph={{
+                      rows: 3,
+                      width: ['20%', '80%', '60%'],
+                    }}
                   />
-                </Col>
+                ) : (
+                  <>
+                    <Col span={24}>
+                      <Space align="center" className="justify-between w-full">
+                        <TitleBreadcrumb titleLinks={slashedDatabaseName} />
+                        <ManageButton
+                          isRecursiveDelete
+                          allowSoftDelete={false}
+                          canDelete={databasePermission.Delete}
+                          entityFQN={databaseFQN}
+                          entityId={databaseId}
+                          entityName={databaseName}
+                          entityType={EntityType.DATABASE}
+                        />
+                      </Space>
+                    </Col>
+                    <Col span={24}>
+                      {extraInfo.map((info, index) => (
+                        <Space key={index}>
+                          <EntitySummaryDetails
+                            currentOwner={database?.owner}
+                            data={info}
+                            removeOwner={handleRemoveOwner}
+                            updateOwner={
+                              databasePermission.EditOwner ||
+                              databasePermission.EditAll
+                                ? handleUpdateOwner
+                                : undefined
+                            }
+                          />
+                        </Space>
+                      ))}
+                    </Col>
+                    <Col data-testid="description-container" span={24}>
+                      <Description
+                        description={description}
+                        entityFieldThreads={getEntityFieldThreadCounts(
+                          EntityField.DESCRIPTION,
+                          entityFieldThreadCount
+                        )}
+                        entityFqn={databaseFQN}
+                        entityName={databaseName}
+                        entityType={EntityType.DATABASE}
+                        hasEditAccess={
+                          databasePermission.EditDescription ||
+                          databasePermission.EditAll
+                        }
+                        isEdit={isEdit}
+                        onCancel={onCancel}
+                        onDescriptionEdit={onDescriptionEdit}
+                        onDescriptionUpdate={onDescriptionUpdate}
+                        onThreadLinkSelect={onThreadLinkSelect}
+                      />
+                    </Col>
+                  </>
+                )}
                 <Col span={24}>
                   <Row className="m-t-md">
                     <Col span={24}>
@@ -753,6 +768,10 @@ const DatabaseDetails: FunctionComponent = () => {
                             columns={tableColumn}
                             data-testid="database-databaseSchemas"
                             dataSource={schemaData}
+                            loading={{
+                              spinning: schemaDataLoading,
+                              indicator: <Loader size="small" />,
+                            }}
                             pagination={false}
                             rowKey="id"
                             size="small"
@@ -772,24 +791,24 @@ const DatabaseDetails: FunctionComponent = () => {
                         </Fragment>
                       )}
                       {activeTab === 2 && (
-                        <Row
-                          className="p-t-xss entity-feed-list bg-white border-1 rounded-4 shadow-base h-full"
-                          id="activityfeed">
-                          <Col offset={4} span={16}>
-                            <ActivityFeedList
-                              hideFeedFilter
-                              hideThreadFilter
-                              isEntityFeed
-                              withSidePanel
-                              className=""
-                              deletePostHandler={deletePostHandler}
-                              entityName={databaseName}
-                              feedList={entityThread}
-                              postFeedHandler={postFeedHandler}
-                              updateThreadHandler={updateThreadHandler}
-                            />
-                          </Col>
-                        </Row>
+                        <Card className="p-t-xss p-b-md">
+                          <Row className="entity-feed-list" id="activityfeed">
+                            <Col offset={4} span={16}>
+                              <ActivityFeedList
+                                hideFeedFilter
+                                hideThreadFilter
+                                isEntityFeed
+                                withSidePanel
+                                className=""
+                                deletePostHandler={deletePostHandler}
+                                entityName={databaseName}
+                                feedList={entityThread}
+                                postFeedHandler={postFeedHandler}
+                                updateThreadHandler={updateThreadHandler}
+                              />
+                            </Col>
+                          </Row>
+                        </Card>
                       )}
                       <Col
                         data-testid="observer-element"
@@ -811,23 +830,6 @@ const DatabaseDetails: FunctionComponent = () => {
                       threadLink={threadLink}
                       updateThreadHandler={updateThreadHandler}
                       onCancel={onThreadPanelClose}
-                    />
-                  ) : null}
-                </Col>
-                <Col span={24}>
-                  {selectedField ? (
-                    <RequestDescriptionModal
-                      createThread={createThread}
-                      defaultValue={getDefaultValue(
-                        database?.owner as EntityReference
-                      )}
-                      header={t('label.request-description')}
-                      threadLink={getEntityFeedLink(
-                        EntityType.DATABASE,
-                        databaseFQN,
-                        selectedField
-                      )}
-                      onCancel={closeRequestModal}
                     />
                   ) : null}
                 </Col>

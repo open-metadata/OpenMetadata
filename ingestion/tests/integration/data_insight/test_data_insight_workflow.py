@@ -57,7 +57,6 @@ from metadata.generated.schema.dataInsight.type.percentageOfEntitiesWithOwnerByT
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
-from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.parser import ParsingConfigurationError
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 
@@ -89,8 +88,8 @@ WEB_EVENT_DATA = [
         timestamp=int((datetime.utcnow() - timedelta(days=1)).timestamp() * 1000),
         eventType=WebAnalyticEventType.PageView,
         eventData=PageViewData(
-            fullUrl="http://localhost:8585/table/sample_data.ecommerce_db.shopify.%22dim.shop%22",
-            url="/table/sample_data.ecommerce_db.shopify.%22dim.shop%22",
+            fullUrl='http://localhost:8585/table/sample_data.ecommerce_db.shopify."dim.shop"',
+            url='/table/sample_data.ecommerce_db.shopify."dim.shop"',
             hostname="localhost",
             language="en-US",
             screenSize="1280x720",
@@ -144,9 +143,7 @@ class DataInsightWorkflowTests(unittest.TestCase):
         )
         create = CreateKpiRequest(
             name="CompletedDescription",
-            dataInsightChart=EntityReference(
-                type="dataInsightChart", id=completed_description_chart.id
-            ),
+            dataInsightChart=completed_description_chart.fullyQualifiedName,
             description="foo",
             startDate=cls.start_ts,
             endDate=cls.end_ts,

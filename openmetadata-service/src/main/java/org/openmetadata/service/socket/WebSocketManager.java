@@ -23,7 +23,7 @@ public class WebSocketManager {
   public static final String JOB_STATUS_BROADCAST_CHANNEL = "jobStatus";
   public static final String MENTION_CHANNEL = "mentionChannel";
   public static final String ANNOUNCEMENT_CHANNEL = "announcementChannel";
-  private final Map<UUID, Map<String, SocketIoSocket>> activityFeedEndpoints = new ConcurrentHashMap<>();
+  @Getter private final Map<UUID, Map<String, SocketIoSocket>> activityFeedEndpoints = new ConcurrentHashMap<>();
 
   private WebSocketManager(EngineIoServerOptions eiOptions) {
     engineIoServer = new EngineIoServer(eiOptions);
@@ -86,10 +86,6 @@ public class WebSocketManager {
 
   public static WebSocketManager getInstance() {
     return INSTANCE;
-  }
-
-  public Map<UUID, Map<String, SocketIoSocket>> getActivityFeedEndpoints() {
-    return activityFeedEndpoints;
   }
 
   public void broadCastMessageToAll(String event, String message) {

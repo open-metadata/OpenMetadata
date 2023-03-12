@@ -88,4 +88,12 @@ class FullyQualifiedNameTest {
     assertEquals("a", FullyQualifiedName.getParent("a.b"));
     assertNull(FullyQualifiedName.getParent("a"));
   }
+
+  @Test
+  void test_getRoot() {
+    assertEquals("a", FullyQualifiedName.getRoot("a.b.c.d"));
+    assertEquals("a", FullyQualifiedName.getRoot("a.b.c"));
+    assertEquals("a", FullyQualifiedName.getRoot("a.b"));
+    assertNull(FullyQualifiedName.getRoot("a"));
+  }
 }

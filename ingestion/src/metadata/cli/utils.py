@@ -21,7 +21,7 @@ from metadata.generated.schema.entity.services.connections.database.mysqlConnect
 from metadata.generated.schema.entity.services.connections.database.postgresConnection import (
     PostgresConnection,
 )
-from metadata.utils.connections import get_connection
+from metadata.ingestion.source.connections import get_connection
 from metadata.utils.helpers import BackupRestoreArgs, list_to_dict
 
 

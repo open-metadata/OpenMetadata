@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -13,10 +13,7 @@
 
 import { Card, Divider, Typography } from 'antd';
 import React, { FC, Fragment } from 'react';
-import {
-  ANNOUNCEMENT_BG,
-  ANNOUNCEMENT_BORDER,
-} from '../../../constants/Feeds.constants';
+import { useTranslation } from 'react-i18next';
 import {
   Post,
   Thread,
@@ -24,12 +21,12 @@ import {
 } from '../../../generated/entity/feed/thread';
 import { isActiveAnnouncement } from '../../../utils/AnnouncementsUtils';
 import { getFeedListWithRelativeDays } from '../../../utils/FeedUtils';
-import { leftPanelAntCardStyle } from '../../containers/PageLayout';
 import ActivityFeedCard from '../ActivityFeedCard/ActivityFeedCard';
 import FeedCardFooter from '../ActivityFeedCard/FeedCardFooter/FeedCardFooter';
 import ActivityFeedEditor from '../ActivityFeedEditor/ActivityFeedEditor';
 import AnnouncementBadge from '../Shared/AnnouncementBadge';
 import { ActivityThreadListProp } from './ActivityThreadPanel.interface';
+import './announcement.less';
 
 const AnnouncementThreads: FC<ActivityThreadListProp> = ({
   threads,
@@ -41,6 +38,7 @@ const AnnouncementThreads: FC<ActivityThreadListProp> = ({
   postFeed,
   updateThreadHandler,
 }) => {
+  const { t } = useTranslation();
   const { updatedFeedList: updatedThreads } =
     getFeedListWithRelativeDays(threads);
 
@@ -92,16 +90,9 @@ const AnnouncementThreads: FC<ActivityThreadListProp> = ({
       return (
         <Fragment key={index}>
           <Card
-            className="ant-card-feed"
+            className="ant-card-feed announcement-thread-card"
             data-testid="announcement-card"
-            key={`${index} - card`}
-            style={{
-              ...leftPanelAntCardStyle,
-              marginTop: '20px',
-              paddingTop: '8px',
-              border: `1px solid ${ANNOUNCEMENT_BORDER}`,
-              background: `${ANNOUNCEMENT_BG}`,
-            }}>
+            key={`${index} - card`}>
             <AnnouncementBadge />
             <div data-testid="main-message">
               <ActivityFeedCard
@@ -174,7 +165,7 @@ const AnnouncementThreads: FC<ActivityThreadListProp> = ({
           <Typography.Text
             className="tw-block tw-mt-4 tw-font-medium"
             data-testid="inActive-announcements">
-            Inactive Announcements
+            {t('label.inactive-announcement-plural')}
           </Typography.Text>
           <Divider className="tw-mb-4 tw-mt-2" />
         </>

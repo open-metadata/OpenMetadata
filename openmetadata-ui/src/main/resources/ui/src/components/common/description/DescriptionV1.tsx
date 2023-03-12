@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -15,15 +15,14 @@ import { Space, Tooltip, Typography } from 'antd';
 import classNames from 'classnames';
 import { t } from 'i18next';
 import { isUndefined } from 'lodash';
-import { EntityFieldThreads } from 'Models';
 import React, { Fragment } from 'react';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { NO_PERMISSION_FOR_ACTION } from '../../../constants/HelperTextUtil';
 import { Table } from '../../../generated/entity/data/table';
+import { EntityFieldThreads } from '../../../interface/feed.interface';
 import { getEntityFeedLink } from '../../../utils/EntityUtils';
 import SVGIcons, { Icons } from '../../../utils/SvgUtils';
 import { ModalWithMarkdownEditor } from '../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
-import PopOver from '../popover/PopOver';
 import RichTextEditorPreviewer from '../rich-text-editor/RichTextEditorPreviewer';
 const { Text } = Typography;
 
@@ -66,14 +65,18 @@ const DescriptionV1 = ({
   const editButton = () => {
     return !isReadOnly ? (
       <Tooltip
-        title={hasEditAccess ? 'Edit Description' : NO_PERMISSION_FOR_ACTION}>
+        title={
+          hasEditAccess
+            ? t('label.edit-entity', { entity: t('label.description') })
+            : NO_PERMISSION_FOR_ACTION
+        }>
         <button
           className="focus:tw-outline-none tw-text-primary"
           data-testid="edit-description"
           disabled={!hasEditAccess}
           onClick={onDescriptionEdit}>
           <SVGIcons
-            alt="edit"
+            alt={t('label.edit')}
             icon={Icons.IC_EDIT_PRIMARY}
             title="Edit"
             width="16px"
@@ -93,7 +96,7 @@ const DescriptionV1 = ({
           width: '100%',
           justifyContent: 'space-between',
         }}>
-        <Text type="secondary">Description</Text>
+        <Text type="secondary">{t('label.description')}</Text>
         <div>{editButton()}</div>
       </Space>
       <div>
@@ -103,11 +106,13 @@ const DescriptionV1 = ({
             markdown={description}
           />
         ) : (
-          <span className="">No description </span>
+          <span>{t('label.no-description')}</span>
         )}
         <ModalWithMarkdownEditor
           header={t('label.edit-description-for', { entityName })}
-          placeholder={t('label.enter-description')}
+          placeholder={t('label.enter-entity', {
+            entity: t('label.description'),
+          })}
           value={description}
           visible={Boolean(isEdit)}
           onCancel={onCancel}
@@ -127,16 +132,16 @@ const DescriptionV1 = ({
               className="focus:tw-outline-none tw-ml-2 tw--mt-6"
               data-testid="request-description"
               onClick={() => onEntityFieldSelect?.(EntityField.DESCRIPTION)}>
-              <PopOver
-                position="top"
-                title="Request description"
-                trigger="mouseenter">
+              <Tooltip
+                placement="top"
+                title={t('message.request-description')}
+                trigger="hover">
                 <SVGIcons
-                  alt="request-description"
+                  alt={t('message.request-description')}
                   className="tw-mt-2"
                   icon={Icons.REQUEST}
                 />
-              </PopOver>
+              </Tooltip>
             </button>
           ) : null}
           {!isUndefined(descriptionThread) ? (

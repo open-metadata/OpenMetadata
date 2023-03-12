@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -12,20 +12,20 @@
  */
 
 import {
-    deleteCreatedService,
-    editOwnerforCreatedService,
-    goToAddNewServicePage,
-    testServiceCreationAndIngestion,
-    updateDescriptionForIngestedTables,
-    uuid
+  deleteCreatedService,
+  editOwnerforCreatedService,
+  goToAddNewServicePage,
+  testServiceCreationAndIngestion,
+  updateDescriptionForIngestedTables,
+  uuid,
 } from '../../common/common';
 import { API_SERVICE, SERVICE_TYPE } from '../../constants/constants';
 
 const serviceType = 'BigQuery';
 const serviceName = `${serviceType}-ct-test-${uuid()}`;
-const tableName = 'personsx';
+const tableName = 'testtable';
 const description = `This is ${serviceName} description`;
-const filterPattern = 'dbt_jaffle'
+const filterPattern = 'testschema';
 
 describe('BigQuery Ingestion', () => {
   beforeEach(() => {
@@ -52,15 +52,6 @@ describe('BigQuery Ingestion', () => {
       cy.get('#root_clientId')
         .scrollIntoView()
         .type(Cypress.env('bigqueryClientId'));
-      cy.get('#root_authUri')
-        .scrollIntoView()
-        .type('https://accounts.google.com/o/oauth2/auth');
-      cy.get('#root_tokenUri')
-        .scrollIntoView()
-        .type('https://oauth2.googleapis.com/token');
-      cy.get('#root_authProviderX509CertUrl')
-        .scrollIntoView()
-        .type('https://www.googleapis.com/oauth2/v1/certs');
       cy.get('#root_clientX509CertUrl')
         .scrollIntoView()
         .type(
@@ -71,12 +62,11 @@ describe('BigQuery Ingestion', () => {
     };
 
     const addIngestionInput = () => {
-      
       cy.get('[data-testid="schema-filter-pattern-checkbox"]')
         .invoke('show')
         .trigger('mouseover')
         .check();
-        cy.get('[data-testid="filter-pattern-includes-schema"]')
+      cy.get('[data-testid="filter-pattern-includes-schema"]')
         .scrollIntoView()
         .should('be.visible')
         .type(filterPattern);
@@ -109,6 +99,10 @@ describe('BigQuery Ingestion', () => {
   });
 
   it('delete created service', () => {
-    deleteCreatedService(SERVICE_TYPE.Database, serviceName, API_SERVICE.databaseServices);
+    deleteCreatedService(
+      SERVICE_TYPE.Database,
+      serviceName,
+      API_SERVICE.databaseServices
+    );
   });
 });

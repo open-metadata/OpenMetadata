@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -60,10 +60,10 @@ const FilterPattern = ({
             onChange={(e) => handleChecked(e.target.checked)}
           />
         </Col>
-        <Col className="flex flex-col">
+        <Col className="d-flex flex-col">
           <label htmlFor={`${type}FilterPatternCheckbox`}>{`${capitalize(
             type
-          )} Filter Pattern`}</label>
+          )} ${t('label.filter-pattern')}`}</label>
           <Typography.Text
             className="text-grey-muted m-t-xss"
             data-testid="filter-pattern-info">
@@ -73,7 +73,9 @@ const FilterPattern = ({
             <Typography.Link
               href={getFilterPatternDocsLinks(type)}
               target="_blank">
-              {t('label.read-more')}{' '}
+              {t('label.read-type', {
+                type: t('label.more-lowercase'),
+              })}{' '}
               <SVGIcons
                 alt="external-link"
                 className="m-l-xss"
@@ -87,7 +89,7 @@ const FilterPattern = ({
       {checked && (
         <div data-testid="field-container">
           <Field>
-            <label className="flex flex-col">{t('label.include')}:</label>
+            <label className="d-flex flex-col">{t('label.include')}:</label>
             <Typography.Text
               className="text-grey-muted m-t-xss m-b-xss"
               data-testid="filter-pattern-include-info">
@@ -99,14 +101,14 @@ const FilterPattern = ({
             <Input
               className="m-t-xss"
               data-testid={`filter-pattern-includes-${type}`}
-              placeholder={t('label.list-of-strings-regex-patterns-csv')}
+              placeholder={t('message.list-of-strings-regex-patterns-csv')}
               type="text"
               value={includePattern}
               onChange={includeFilterChangeHandler}
             />
           </Field>
           <Field>
-            <label className="flex flex-col">{t('label.exclude')}:</label>
+            <label className="d-flex flex-col">{t('label.exclude')}:</label>
             <Typography.Text
               className="text-grey-muted m-t-xss m-b-xss"
               data-testid="filter-pattern-exclude-info">
@@ -118,7 +120,7 @@ const FilterPattern = ({
             <Input
               className="m-t-xss"
               data-testid={`filter-pattern-excludes-${type}`}
-              placeholder={t('label.list-of-strings-regex-patterns-csv')}
+              placeholder={t('message.list-of-strings-regex-patterns-csv')}
               type="text"
               value={excludePattern}
               onChange={excludeFilterChangeHandler}

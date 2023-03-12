@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -13,8 +13,9 @@
 
 import { Tooltip } from 'antd';
 import classNames from 'classnames';
-import { isNil, isUndefined, toLower } from 'lodash';
+import { isNil, isUndefined, toLower, toString } from 'lodash';
 import React, { FunctionComponent, useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { SIZE } from '../../enums/common.enum';
 import { useWindowDimensions } from '../../hooks/useWindowDimensions';
 import { getCountBadge } from '../../utils/CommonUtils';
@@ -25,6 +26,11 @@ import { UserTag } from '../common/UserTag/UserTag.component';
 import Loader from '../Loader/Loader';
 import { DropDownListItem, DropDownListProp } from './types';
 
+/**
+ * @deprecated -- Use AntD components instead
+ * @param param0
+ * @returns Dropdown list
+ */
 const DropDownList: FunctionComponent<DropDownListProp> = ({
   dropDownList,
   isLoading = false,
@@ -45,12 +51,12 @@ const DropDownList: FunctionComponent<DropDownListProp> = ({
   getTotalCountForGroup,
 }: DropDownListProp) => {
   const { height: windowHeight } = useWindowDimensions();
+  const { t } = useTranslation();
   const isMounted = useRef<boolean>(false);
   const [searchedList, setSearchedList] = useState(dropDownList);
   const [searchText, setSearchText] = useState(searchString);
-  const [dropDownPosition, setDropDownPosition] = useState<
-    { bottom: string } | {}
-  >({});
+  const [dropDownPosition, setDropDownPosition] =
+    useState<{ bottom: string }>();
 
   const setCurrentTabOnMount = () => {
     const selectedItem = dropDownList.find((l) => l.value === value);
@@ -83,7 +89,9 @@ const DropDownList: FunctionComponent<DropDownListProp> = ({
         data-testid="empty-list">
         <div className={widthClass}>
           <ErrorPlaceHolder classes="tw-mt-0" size={SIZE.SMALL}>
-            {searchText ? 'No match found' : 'No data available'}
+            {searchText
+              ? t('message.no-match-found')
+              : t('message.no-data-available')}
           </ErrorPlaceHolder>
         </div>
       </div>
@@ -111,7 +119,10 @@ const DropDownList: FunctionComponent<DropDownListProp> = ({
 
   const removeOwnerButton = (item: DropDownListItem) => {
     return !isNil(value) && item.value === value && removeOwner ? (
-      <Tooltip title="Remove owner">
+      <Tooltip
+        title={t('label.remove-entity', {
+          entity: t('label.owner-lowercase'),
+        })}>
         <button
           className="cursor-pointer"
           data-testid="remove-owner"
@@ -120,9 +131,13 @@ const DropDownList: FunctionComponent<DropDownListProp> = ({
             removeOwner && removeOwner();
           }}>
           <SVGIcons
-            alt="remove owner"
+            alt={t('label.remove-entity', {
+              entity: t('label.owner-lowercase'),
+            })}
             icon={Icons.ICON_REMOVE}
-            title="Remove owner"
+            title={t('label.remove-entity', {
+              entity: t('label.owner-lowercase'),
+            })}
             width="16px"
           />
         </button>
@@ -137,7 +152,7 @@ const DropDownList: FunctionComponent<DropDownListProp> = ({
       <div
         aria-disabled={item.disabled as boolean}
         className={classNames(
-          'text-body flex px-4 py-2 text-sm hover:tw-bg-body-hover',
+          'text-body d-flex items-center px-4 py-2 text-sm hover:tw-bg-body-hover',
           !isNil(value) && item.value === value ? 'tw-bg-primary-lite' : null,
           {
             'opacity-60 cursor-not-allowed': item.disabled,
@@ -148,11 +163,12 @@ const DropDownList: FunctionComponent<DropDownListProp> = ({
         id={`menu-item-${index}`}
         key={index}
         role="menuitem"
+        title={toString(item.name)}
         onClick={(e) =>
           !item.disabled && item.value !== value && onSelect?.(e, item.value)
         }>
         {item.type === 'user' ? (
-          <div className="w-full flex justify-between items-center">
+          <div className="w-full d-flex justify-between items-center">
             <UserTag id={item.value as string} name={item.name as string} />
 
             {removeOwnerButton(item)}
@@ -162,10 +178,9 @@ const DropDownList: FunctionComponent<DropDownListProp> = ({
             {item.icon}
             <div
               className={classNames(
-                'tw-truncate flex items-center justify-between',
+                'tw-truncate d-flex items-center justify-between',
                 widthClass
-              )}
-              title={item.name as string}>
+              )}>
               {item.name}
 
               {removeOwnerButton(item)}
@@ -312,6 +327,7 @@ const DropDownList: FunctionComponent<DropDownListProp> = ({
         <>
           <button
             className="tw-z-10 tw-fixed tw-inset-0 tw-h-full tw-w-full tw-bg-black tw-opacity-0"
+            data-testid="backdrop-button"
             onClick={(e) => {
               e.stopPropagation();
               e.preventDefault();
@@ -335,7 +351,7 @@ const DropDownList: FunctionComponent<DropDownListProp> = ({
                   <input
                     className="tw-form-inputs tw-form-inputs-padding"
                     data-testid="searchInputText"
-                    placeholder="Search..."
+                    placeholder={`${t('label.search')}...`}
                     type="text"
                     value={controlledSearchStr}
                     onChange={(e) => {

@@ -76,9 +76,9 @@ public class LineageResource {
   @Path("/{entity}/{id}")
   @Operation(
       operationId = "getLineage",
-      summary = "Get lineage",
+      summary = "Get lineage by Id",
       tags = "lineage",
-      description = "Get lineage details for an entity identified by `id`.",
+      description = "Get lineage details for an entity identified by `Id`.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -94,7 +94,7 @@ public class LineageResource {
               schema = @Schema(type = "string", example = "table, report, metrics, or dashboard"))
           @PathParam("entity")
           String entity,
-      @Parameter(description = "Entity id", required = true, schema = @Schema(type = "string")) @PathParam("id")
+      @Parameter(description = "Id of the entity", required = true, schema = @Schema(type = "string")) @PathParam("id")
           String id,
       @Parameter(description = "Upstream depth of lineage (default=1, min=0, max=3)")
           @DefaultValue("1")
@@ -117,7 +117,7 @@ public class LineageResource {
   @Path("/{entity}/name/{fqn}")
   @Operation(
       operationId = "getLineageByFQN",
-      summary = "Get lineage by name",
+      summary = "Get lineage by fully qualified name",
       tags = "lineage",
       description = "Get lineage details for an entity identified by fully qualified name.",
       responses = {
@@ -125,7 +125,7 @@ public class LineageResource {
             responseCode = "200",
             description = "Entity lineage",
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = EntityLineage.class))),
-        @ApiResponse(responseCode = "404", description = "Entity for instance {id} is not found")
+        @ApiResponse(responseCode = "404", description = "Entity for instance {fqn} is not found")
       })
   public EntityLineage getByName(
       @Context UriInfo uriInfo,
@@ -185,7 +185,7 @@ public class LineageResource {
       description = "Delete a lineage edge with from entity as upstream node and to entity as downstream node.",
       responses = {
         @ApiResponse(responseCode = "200"),
-        @ApiResponse(responseCode = "404", description = "Entity for instance {id} is not found")
+        @ApiResponse(responseCode = "404", description = "Entity for instance {fromId} is not found")
       })
   public Response deleteLineage(
       @Context UriInfo uriInfo,

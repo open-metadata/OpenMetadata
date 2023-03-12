@@ -20,12 +20,15 @@ from metadata.ingestion.api.workflow import Workflow
 config = """
 {
   "source": {
-    "type": "sample-usage",
+    "type": "custom-database",
     "serviceName": "sample_data",
     "serviceConnection": {
       "config": {
-        "type": "SampleData",
-        "sampleDataFolder": "ingestion/examples/sample_data"
+        "type": "CustomDatabase",
+        "sourcePythonClass": "metadata.ingestion.source.database.sample_usage.SampleUsageSource",
+        "connectionOptions": {
+          "sampleDataFolder": "ingestion/examples/sample_data"
+        }
       }
     },
     "sourceConfig": {

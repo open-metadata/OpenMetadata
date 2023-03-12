@@ -22,10 +22,9 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
 from metadata.generated.schema.type.tableQuery import TableQuery
-from metadata.ingestion.source.database.databricks_lineage import (
+from metadata.ingestion.source.database.databricks.lineage import (
     DatabricksLineageSource,
 )
-from metadata.utils.ansi import print_ansi_encoded_string
 
 mock_file_path = Path(__file__).parent / "resources/datasets/databricks_dataset.json"
 with open(mock_file_path, encoding="utf-8") as file:
@@ -122,7 +121,6 @@ class DatabricksLineageTests(TestCase):
 
     def __init__(self, methodName) -> None:
         super().__init__(methodName)
-        print_ansi_encoded_string(message="init")
         config = OpenMetadataWorkflowConfig.parse_obj(mock_databricks_config)
 
         self.databricks = DatabricksLineageSource.create(
@@ -130,7 +128,9 @@ class DatabricksLineageTests(TestCase):
             config.workflowConfig.openMetadataServerConfig,
         )
 
-    @patch("metadata.clients.databricks_client.DatabricksClient.list_query_history")
+    @patch(
+        "metadata.ingestion.source.database.databricks.client.DatabricksClient.list_query_history"
+    )
     def test_get_table_query(self, list_query_history):
         list_query_history.return_value = mock_data
         results = self.databricks.get_table_query()

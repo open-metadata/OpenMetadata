@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -12,6 +12,7 @@
  */
 
 import { Button, Divider, Input, Space, Typography } from 'antd';
+import { t } from 'i18next';
 import { capitalize } from 'lodash';
 import React, { FC } from 'react';
 import { AuthType } from '../../generated/api/teams/createUser';
@@ -52,7 +53,7 @@ const AuthMechanism: FC<Props> = ({
       <>
         <Space className="w-full tw-justify-between">
           <Typography.Text className="tw-text-base">
-            OpenMetadata JWT Token
+            {t('label.om-jwt-token')}
           </Typography.Text>
           <Space>
             {JWTToken ? (
@@ -63,7 +64,7 @@ const AuthMechanism: FC<Props> = ({
                 size="small"
                 type="default"
                 onClick={onTokenRevoke}>
-                Revoke token
+                {t('label.revoke-token')}
               </Button>
             ) : (
               <Button
@@ -71,16 +72,13 @@ const AuthMechanism: FC<Props> = ({
                 size="small"
                 type="primary"
                 onClick={onEdit}>
-                Generate New Token
+                {t('label.generate-new-token')}
               </Button>
             )}
           </Space>
         </Space>
         <Divider style={{ margin: '8px 0px' }} />
-        <Typography.Paragraph>
-          Token you have generated that can be used to access the OpenMetadata
-          API.
-        </Typography.Paragraph>
+        <Typography.Paragraph>{t('message.jwt-token')}</Typography.Paragraph>
 
         {JWTToken ? (
           <>
@@ -106,7 +104,7 @@ const AuthMechanism: FC<Props> = ({
                 <>
                   <SVGIcons alt="warning" icon="error" />
                   <span className="tw-ml-1 tw-align-middle">
-                    This token has no expiration date.
+                    {t('message.token-has-no-expiry')}
                   </span>
                 </>
               )}
@@ -116,7 +114,7 @@ const AuthMechanism: FC<Props> = ({
           <div
             className="tw-no-description tw-text-sm tw-mt-4"
             data-testid="no-token">
-            No token available
+            {t('message.no-token-available')}
           </div>
         )}
       </>
@@ -136,14 +134,14 @@ const AuthMechanism: FC<Props> = ({
             size="small"
             type="primary"
             onClick={onEdit}>
-            Edit
+            {t('label.edit')}
           </Button>
         </Space>
         <Divider style={{ margin: '8px 0px' }} />
 
         <Space className="w-full" direction="vertical">
           <>
-            <Typography.Text>Account Email</Typography.Text>
+            <Typography.Text>{t('label.account-email')}</Typography.Text>
             <Space className="w-full tw-justify-between ant-space-authMechanism">
               <Input
                 readOnly
@@ -156,7 +154,7 @@ const AuthMechanism: FC<Props> = ({
 
           {authConfig?.secretKey && (
             <>
-              <Typography.Text>SecretKey</Typography.Text>
+              <Typography.Text>{t('label.secret-key')}</Typography.Text>
               <Space className="w-full tw-justify-between ant-space-authMechanism">
                 <Input.Password
                   readOnly
@@ -169,7 +167,7 @@ const AuthMechanism: FC<Props> = ({
           )}
           {authConfig?.privateKey && (
             <>
-              <Typography.Text>PrivateKey</Typography.Text>
+              <Typography.Text>{t('label.private-key')}</Typography.Text>
               <Space className="w-full tw-justify-between ant-space-authMechanism">
                 <Input.Password
                   readOnly
@@ -182,7 +180,7 @@ const AuthMechanism: FC<Props> = ({
           )}
           {authConfig?.clientSecret && (
             <>
-              <Typography.Text>ClientSecret</Typography.Text>
+              <Typography.Text>{t('label.client-secret')}</Typography.Text>
               <Space className="w-full tw-justify-between ant-space-authMechanism">
                 <Input.Password
                   readOnly
@@ -195,7 +193,7 @@ const AuthMechanism: FC<Props> = ({
           )}
           {authConfig?.audience && (
             <>
-              <Typography.Text>Audience</Typography.Text>
+              <Typography.Text>{t('label.audience')}</Typography.Text>
               <Space className="w-full tw-justify-between ant-space-authMechanism">
                 <Input
                   readOnly
@@ -208,7 +206,7 @@ const AuthMechanism: FC<Props> = ({
           )}
           {authConfig?.clientId && (
             <>
-              <Typography.Text>ClientId</Typography.Text>
+              <Typography.Text>{t('label.client-id')}</Typography.Text>
               <Space className="w-full tw-justify-between ant-space-authMechanism">
                 <Input
                   readOnly
@@ -221,7 +219,7 @@ const AuthMechanism: FC<Props> = ({
           )}
           {authConfig?.email && (
             <>
-              <Typography.Text>Email</Typography.Text>
+              <Typography.Text>{t('label.email')}</Typography.Text>
               <Space className="w-full tw-justify-between ant-space-authMechanism">
                 <Input readOnly data-testid="email" value={authConfig?.email} />
                 <CopyToClipboardButton copyText={authConfig?.email} />
@@ -230,7 +228,7 @@ const AuthMechanism: FC<Props> = ({
           )}
           {authConfig?.orgURL && (
             <>
-              <Typography.Text>OrgURL</Typography.Text>
+              <Typography.Text>{t('label.org-url')}</Typography.Text>
               <Space className="w-full tw-justify-between ant-space-authMechanism">
                 <Input
                   readOnly
@@ -243,7 +241,7 @@ const AuthMechanism: FC<Props> = ({
           )}
           {authConfig?.scopes && (
             <>
-              <Typography.Text>Scopes</Typography.Text>
+              <Typography.Text>{t('label.scope-plural')}</Typography.Text>
               <Space className="w-full tw-justify-between ant-space-authMechanism">
                 <Input
                   readOnly
@@ -258,7 +256,7 @@ const AuthMechanism: FC<Props> = ({
           )}
           {authConfig?.domain && (
             <>
-              <Typography.Text>Domain</Typography.Text>
+              <Typography.Text>{t('label.domain')}</Typography.Text>
               <Space className="w-full tw-justify-between ant-space-authMechanism">
                 <Input
                   readOnly
@@ -271,7 +269,7 @@ const AuthMechanism: FC<Props> = ({
           )}
           {authConfig?.authority && (
             <>
-              <Typography.Text>Authority</Typography.Text>
+              <Typography.Text>{t('label.authority')}</Typography.Text>
               <Space className="w-full tw-justify-between ant-space-authMechanism">
                 <Input
                   readOnly
@@ -284,7 +282,7 @@ const AuthMechanism: FC<Props> = ({
           )}
           {authConfig?.tokenEndpoint && (
             <>
-              <Typography.Text>TokenEndpoint</Typography.Text>
+              <Typography.Text>{t('label.token-end-point')}</Typography.Text>
               <Space className="w-full tw-justify-between ant-space-authMechanism">
                 <Input
                   readOnly

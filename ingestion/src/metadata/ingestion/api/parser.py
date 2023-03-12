@@ -15,7 +15,7 @@ from typing import Optional, Type, TypeVar, Union
 
 from pydantic import BaseModel, ValidationError
 
-from metadata.generated.schema.api.services.ingestionPipelines.testServiceConnection import (
+from metadata.generated.schema.entity.automations.testServiceConnection import (
     TestServiceConnectionRequest,
 )
 from metadata.generated.schema.entity.services.dashboardService import (
@@ -86,6 +86,7 @@ HAS_INNER_CONNECTION = {"Airflow"}
 
 # Build a service type map dynamically from JSON Schema covered types
 SERVICE_TYPE_MAP = {
+    "Backend": PipelineConnection,  # For Airflow backend
     **{service: DatabaseConnection for service in DatabaseServiceType.__members__},
     **{service: DashboardConnection for service in DashboardServiceType.__members__},
     **{service: MessagingConnection for service in MessagingServiceType.__members__},

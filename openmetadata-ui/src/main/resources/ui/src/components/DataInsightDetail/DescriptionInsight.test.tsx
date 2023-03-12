@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -12,7 +12,12 @@
  */
 
 import { act, queryByAttribute, render, screen } from '@testing-library/react';
+import {
+  DUMMY_GRAPH_DATA,
+  DUMMY_GRAPH_DATA_WITH_MISSING_ENTITY,
+} from 'mocks/DataInsight.mock';
 import React from 'react';
+import { getGraphDataByEntityType } from 'utils/DataInsightUtils';
 import { INITIAL_CHART_FILTER } from '../../constants/DataInsight.constants';
 
 import DescriptionInsight from './DescriptionInsight';
@@ -21,44 +26,18 @@ jest.mock('../../utils/DataInsightUtils', () => ({
   renderLegend: jest
     .fn()
     .mockReturnValue(<ul data-testid="graph-legend">Graph Legend</ul>),
-  getGraphDataByEntityType: jest.fn().mockImplementation(() => ({
-    data: [
-      {
-        timestamp: '27/Oct',
-        Table: 0.5674,
-        Topic: 0.0453,
-        Database: 0.9874,
-        Pipeline: 0.5432,
-        Messaging: 0.3215,
-      },
-      {
-        timestamp: '25/Oct',
-        Table: 0.3674,
-        Topic: 0.0353,
-        Database: 0.9874,
-        Pipeline: 0.4432,
-        Messaging: 0.3115,
-      },
-      {
-        timestamp: '24/Oct',
-        Table: 0.3374,
-        Topic: 0.0353,
-        Database: 0.9774,
-        Pipeline: 0.4482,
-        Messaging: 0.3105,
-      },
-    ],
-    entities: ['Table', 'Topic', 'Database', 'Pipeline', 'Messaging'],
-    latestData: {
-      timestamp: '24/Oct',
-      Table: 0.3374,
-      Topic: 0.0353,
-      Database: 0.9774,
-      Pipeline: 0.4482,
-      Messaging: 0.3105,
-    },
-  })),
+  getGraphDataByEntityType: jest
+    .fn()
+    .mockImplementation(() => DUMMY_GRAPH_DATA),
 }));
+jest.mock('./DataInsightProgressBar', () => {
+  return jest.fn().mockImplementation(({ startValue, successValue }) => (
+    <div>
+      DataInsightProgressBar.component
+      <p data-testid={successValue}>{startValue}</p>
+    </div>
+  ));
+});
 
 jest.mock('react-i18next', () => ({
   useTranslation: jest.fn().mockReturnValue({
@@ -86,6 +65,34 @@ describe('Test DescriptionInsight Component', () => {
 
       expect(card).toBeInTheDocument();
       expect(graph).toBeInTheDocument();
+    });
+  });
+
+  it('Should render the graph and progress bar even if one entity dont have values', async () => {
+    (getGraphDataByEntityType as jest.Mock).mockImplementationOnce(
+      () => DUMMY_GRAPH_DATA_WITH_MISSING_ENTITY
+    );
+    await act(async () => {
+      const { container } = render(
+        <DescriptionInsight
+          chartFilter={INITIAL_CHART_FILTER}
+          kpi={undefined}
+          selectedDays={30}
+        />
+      );
+      const card = screen.getByTestId('entity-description-percentage-card');
+
+      const graph = queryByAttribute(
+        'id',
+        container,
+        'description-summary-graph'
+      );
+      const missingEntityValue = await screen.findByTestId('Table');
+
+      expect(card).toBeInTheDocument();
+      expect(graph).toBeInTheDocument();
+      expect(missingEntityValue).toBeInTheDocument();
+      expect(missingEntityValue.textContent).toBe('0');
     });
   });
 });

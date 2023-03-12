@@ -14,6 +14,7 @@ Profiler DAG function builder
 import json
 
 from airflow import DAG
+from openmetadata_managed_apis.utils.logger import set_operator_logger
 from openmetadata_managed_apis.workflows.ingestion.common import build_dag, build_source
 
 from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
@@ -27,8 +28,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     WorkflowConfig,
 )
 from metadata.ingestion.models.encoders import show_secrets_encoder
-from metadata.orm_profiler.api.workflow import ProfilerWorkflow
-from metadata.utils.logger import set_loggers_level
+from metadata.profiler.api.workflow import ProfilerWorkflow
 
 
 def profiler_workflow(workflow_config: OpenMetadataWorkflowConfig):
@@ -41,7 +41,7 @@ def profiler_workflow(workflow_config: OpenMetadataWorkflowConfig):
     This is the callable used to create the PythonOperator
     """
 
-    set_loggers_level(workflow_config.workflowConfig.loggerLevel.value)
+    set_operator_logger(workflow_config)
 
     config = json.loads(workflow_config.json(encoder=show_secrets_encoder))
     workflow = ProfilerWorkflow.create(config)

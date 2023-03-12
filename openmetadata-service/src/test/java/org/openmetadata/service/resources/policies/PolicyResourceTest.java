@@ -34,7 +34,6 @@ import static org.openmetadata.service.util.TestUtils.assertResponseContains;
 
 import java.io.IOException;
 import java.net.URI;
-import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -44,7 +43,6 @@ import javax.ws.rs.client.WebTarget;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.openmetadata.schema.api.data.CreateLocation;
@@ -79,8 +77,6 @@ import org.openmetadata.service.util.TestUtils;
 
 @Slf4j
 public class PolicyResourceTest extends EntityResourceTest<Policy, CreatePolicy> {
-  private static final String LOCATION_NAME = "aws-s3";
-  private static Location location;
 
   public PolicyResourceTest() {
     super(
@@ -90,13 +86,6 @@ public class PolicyResourceTest extends EntityResourceTest<Policy, CreatePolicy>
         "policies",
         PolicyResource.FIELDS,
         Entity.ORGANIZATION_POLICY_NAME);
-    supportsAuthorizedMetadataOperations = false; // TODO why
-  }
-
-  @BeforeAll
-  public void setup(TestInfo test) throws IOException, URISyntaxException {
-    super.setup(test);
-    location = createLocation();
   }
 
   public void setupPolicies() throws IOException {
@@ -273,7 +262,7 @@ public class PolicyResourceTest extends EntityResourceTest<Policy, CreatePolicy>
     ChangeDescription change = getChangeDescription(policy.getVersion());
     fieldUpdated(change, "enabled", true, false);
     policy = patchEntityAndCheck(policy, origJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
-
+    Location location = createLocation();
     EntityReference locationReference = location.getEntityReference();
 
     // Add new field location
@@ -372,7 +361,7 @@ public class PolicyResourceTest extends EntityResourceTest<Policy, CreatePolicy>
 
     // Create a role with all the policies
     RoleResourceTest roleResourceTest = new RoleResourceTest();
-    CreateRole createRole = roleResourceTest.createRequest(test).withPolicies(EntityUtil.toEntityReferences(policies));
+    CreateRole createRole = roleResourceTest.createRequest(test).withPolicies(EntityUtil.toFQNs(policies));
     Role role = roleResourceTest.createEntity(createRole, ADMIN_AUTH_HEADERS);
 
     // Get each policy and ensure the teams and roles are listed correctly
@@ -421,9 +410,9 @@ public class PolicyResourceTest extends EntityResourceTest<Policy, CreatePolicy>
     TestUtils.get(target, ADMIN_AUTH_HEADERS);
   }
 
-  private static Location createLocation() throws HttpResponseException {
+  private Location createLocation() throws HttpResponseException {
     LocationResourceTest locationResourceTest = new LocationResourceTest();
-    CreateLocation createLocation = locationResourceTest.createRequest(LOCATION_NAME, "", "", null);
+    CreateLocation createLocation = locationResourceTest.createRequest("aws-s3", "", "", null);
     return TestUtils.post(getResource("locations"), createLocation, Location.class, ADMIN_AUTH_HEADERS);
   }
 

@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,18 +11,25 @@
  *  limitations under the License.
  */
 
+import i18n from 'utils/i18next/LocalUtil';
+
 export const NO_AUTH = 'no-auth';
 
 export const VALIDATION_MESSAGES = {
-  required: '${label} is required',
+  required: i18n.t('message.field-text-is-required', {
+    fieldText: '${label}',
+  }),
   types: {
-    email: '${label} is not valid',
+    email: i18n.t('message.entity-is-not-valid', {
+      entity: '${label}',
+    }),
   },
-  whitespace: '${label} is required',
+  whitespace: i18n.t('message.field-text-is-required', {
+    fieldText: '${label}',
+  }),
 };
 
-export const LOGIN_FAILED_ERROR =
-  'You have entered an invalid username or password.';
+export const LOGIN_FAILED_ERROR = i18n.t('server.invalid-username-or-password');
 
 export const HTTP_STATUS_CODE = {
   BAD_REQUEST: 400, // The request cannot be fulfilled due to bad syntax

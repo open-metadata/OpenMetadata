@@ -80,7 +80,7 @@ def parse_service_connection(connection_dict: dict) -> None:
     Parse the service connection and raise any scoped
     errors during the validation process
 
-    :param config_dict: JSON configuration
+    :param connection_dict: JSON configuration
     """
     # Unsafe access to the keys. Allow a KeyError if the config is not well formatted
     source_type = connection_dict["connection"]["config"].get("type")

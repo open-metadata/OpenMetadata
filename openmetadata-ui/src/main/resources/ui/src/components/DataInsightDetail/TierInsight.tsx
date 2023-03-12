@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -27,7 +27,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import { getAggregateChartData } from '../../axiosAPIs/DataInsightAPI';
+import { getAggregateChartData } from 'rest/DataInsightAPI';
 import {
   DEFAULT_CHART_OPACITY,
   GRAPH_BACKGROUND_COLOR,
@@ -182,10 +182,9 @@ const TierInsight: FC<Props> = ({ chartFilter, selectedDays }) => {
                 <Typography.Paragraph
                   className="data-insight-label-text"
                   style={{ marginBottom: '4px' }}>
-                  {t('label.assigned-entity', {
+                  {`${t('label.assigned-entity', {
                     entity: t('label.tier'),
-                  })}{' '}
-                  %
+                  })} %`}
                 </Typography.Paragraph>
                 <DataInsightProgressBar
                   changeInValue={relativePercentage}
@@ -202,7 +201,7 @@ const TierInsight: FC<Props> = ({ chartFilter, selectedDays }) => {
                       showEndValueAsLabel
                       progress={latestData[tiers]}
                       showLabel={false}
-                      startValue={Number(latestData[tiers]).toFixed(2)}
+                      startValue={Number(latestData[tiers] || 0).toFixed(2)}
                       successValue={TIER_DATA[tiers as keyof typeof TIER_DATA]}
                     />
                   </Col>

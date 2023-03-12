@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -20,18 +20,11 @@ import {
   render,
   screen,
 } from '@testing-library/react';
-import { flatten } from 'lodash';
 import { TagOption } from 'Models';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
-import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
-import {
-  TagCategory,
-  TagClass,
-} from '../../../generated/entity/tags/tagCategory';
 import { TagLabel } from '../../../generated/type/tagLabel';
-import { fetchGlossaryTerms } from '../../../utils/GlossaryUtils';
-import { getTagCategories } from '../../../utils/TagsUtils';
+import { fetchTagsAndGlossaryTerms } from '../../../utils/TagsUtils';
 import EntityPageInfo from './EntityPageInfo';
 
 const mockEntityFieldThreads = [
@@ -48,7 +41,7 @@ const onThreadLinkSelect = jest.fn();
 const mockTier = {
   tagFQN: 'Tier:Tier1',
   description: '',
-  source: 'Tag',
+  source: 'Classification',
   labelType: 'Manual',
   state: 'Confirmed',
 };
@@ -56,7 +49,7 @@ const mockTier = {
 const mockInfoTags = [
   {
     tagFQN: 'User.Biometric',
-    source: 'Tag',
+    source: 'Classification',
     labelType: 'Manual',
     state: 'Confirmed',
   },
@@ -123,91 +116,18 @@ const mockEntityInfoProp = {
   onThreadLinkSelect,
 };
 
-const mockTagList = [
-  {
-    id: 'tagCatId1',
-    name: 'TagCat1',
-    description: '',
-    children: [
-      {
-        id: 'tagId1',
-        name: 'Tag1',
-        fullyQualifiedName: 'TagCat1.Tag1',
-        description: '',
-        deprecated: false,
-        deleted: false,
-      },
-    ],
-  },
-  {
-    id: 'tagCatId2',
-    name: 'TagCat2',
-    description: '',
-    children: [
-      {
-        id: 'tagId2',
-        name: 'Tag2',
-        fullyQualifiedName: 'TagCat2.Tag2',
-        description: '',
-        deprecated: false,
-        deleted: false,
-      },
-    ],
-  },
-];
-
-const mockGlossaryList = [
-  {
-    name: 'Tag1',
-    displayName: 'Tag1',
-    fullyQualifiedName: 'Glossary.Tag1',
-    type: 'glossaryTerm',
-    id: 'glossaryTagId1',
-  },
-  {
-    name: 'Tag2',
-    displayName: 'Tag2',
-    fullyQualifiedName: 'Glossary.Tag2',
-    type: 'glossaryTerm',
-    id: 'glossaryTagId2',
-  },
-];
-
-jest.mock('../../../utils/CommonUtils', () => ({
-  getHtmlForNonAdminAction: jest.fn(),
-}));
-
 jest.mock('../../../utils/EntityUtils', () => ({
   getEntityFeedLink: jest.fn(),
 }));
 
-jest.mock('../../../utils/GlossaryUtils', () => ({
-  fetchGlossaryTerms: jest.fn(() => Promise.resolve(mockGlossaryList)),
-  getGlossaryTermlist: jest.fn((terms) => {
-    return terms.map((term: GlossaryTerm) => term?.fullyQualifiedName);
-  }),
-}));
-
-jest.mock('../../../utils/TableUtils', () => ({
-  getFollowerDetail: jest.fn(),
-}));
-
 jest.mock('../../../utils/TagsUtils', () => ({
-  getTagCategories: jest.fn(() => Promise.resolve({ data: mockTagList })),
-  getTaglist: jest.fn((categories) => {
-    const children = categories.map((category: TagCategory) => {
-      return category.children || [];
-    });
-    const allChildren = flatten(children);
-    const tagList = (allChildren as unknown as TagClass[]).map((tag) => {
-      return tag?.fullyQualifiedName || '';
-    });
-
-    return tagList;
-  }),
+  fetchTagsAndGlossaryTerms: jest.fn().mockResolvedValue([
+    { fqn: 'PersonalData.Personal', source: 'Classification' },
+    { fqn: 'Glossary.Tag1', source: 'Glossary' },
+  ]),
 }));
 
-jest.mock('../../tags-container/tags-container', () => {
+jest.mock('components/Tag/TagsContainer/tags-container', () => {
   return jest.fn().mockImplementation(({ tagList }) => {
     return (
       <>
@@ -219,7 +139,7 @@ jest.mock('../../tags-container/tags-container', () => {
   });
 });
 
-jest.mock('../../tags-viewer/tags-viewer', () => {
+jest.mock('components/Tag/TagsViewer/tags-viewer', () => {
   return jest.fn().mockReturnValue(<p data-testid="info-tags">TagViewer</p>);
 });
 
@@ -231,7 +151,7 @@ jest.mock('../EntitySummaryDetails/EntitySummaryDetails', () => {
     );
 });
 
-jest.mock('../../tags/tags', () => {
+jest.mock('components/Tag/Tags/tags', () => {
   return jest.fn().mockReturnValue(<p data-testid="tier-tag">Tag</p>);
 });
 
@@ -255,7 +175,7 @@ jest.mock('./AnnouncementDrawer/AnnouncementDrawer', () => {
   return jest.fn().mockReturnValue(<div>AnnouncementDrawer</div>);
 });
 
-jest.mock('../../../axiosAPIs/feedsAPI', () => ({
+jest.mock('rest/feedsAPI', () => ({
   getActiveAnnouncement: jest.fn().mockImplementation(() => Promise.resolve()),
 }));
 
@@ -356,7 +276,7 @@ describe('Test EntityPageInfo component', () => {
       new MouseEvent('click', { bubbles: true, cancelable: true })
     );
 
-    expect(versionHandler).toBeCalled();
+    expect(versionHandler).toHaveBeenCalled();
   });
 
   it('Should call follow handler on follow button click', async () => {
@@ -383,7 +303,7 @@ describe('Test EntityPageInfo component', () => {
       new MouseEvent('click', { bubbles: true, cancelable: true })
     );
 
-    expect(followHandler).toBeCalled();
+    expect(followHandler).toHaveBeenCalled();
   });
 
   it('Should render all the extra info', async () => {
@@ -495,7 +415,7 @@ describe('Test EntityPageInfo component', () => {
       new MouseEvent('click', { bubbles: true, cancelable: true })
     );
 
-    expect(onThreadLinkSelect).toBeCalled();
+    expect(onThreadLinkSelect).toHaveBeenCalled();
   });
 
   it('Should render tag thread button with count', async () => {
@@ -534,12 +454,11 @@ describe('Test EntityPageInfo component', () => {
       String(mockEntityFieldThreads[0].count)
     );
 
-    fireEvent.click(
-      tagThreadButton,
-      new MouseEvent('click', { bubbles: true, cancelable: true })
-    );
+    await act(async () => {
+      fireEvent.click(tagThreadButton);
+    });
 
-    expect(onThreadLinkSelect).toBeCalled();
+    expect(onThreadLinkSelect).toHaveBeenCalled();
   });
 
   it('Check if tags and glossary-terms are present', async () => {
@@ -551,72 +470,20 @@ describe('Test EntityPageInfo component', () => {
     );
 
     const tagWrapper = getByTestId('tags-wrapper');
-    fireEvent.click(
-      tagWrapper,
-      new MouseEvent('click', { bubbles: true, cancelable: true })
-    );
+    await act(async () => {
+      fireEvent.click(tagWrapper);
+    });
 
-    const tag1 = await findByText('TagCat1.Tag1');
+    const tag1 = await findByText('PersonalData.Personal');
     const glossaryTerm1 = await findByText('Glossary.Tag1');
 
     expect(tag1).toBeInTheDocument();
-    expect(glossaryTerm1).toBeInTheDocument();
-  });
-
-  it('Check if only tags are present', async () => {
-    (fetchGlossaryTerms as jest.Mock).mockImplementationOnce(() =>
-      Promise.reject()
-    );
-    const { getByTestId, findByText, queryByText } = render(
-      <EntityPageInfo {...mockEntityInfoProp} isTagEditable />,
-      {
-        wrapper: MemoryRouter,
-      }
-    );
-
-    const tagWrapper = getByTestId('tags-wrapper');
-    fireEvent.click(
-      tagWrapper,
-      new MouseEvent('click', { bubbles: true, cancelable: true })
-    );
-
-    const tag1 = await findByText('TagCat1.Tag1');
-    const glossaryTerm1 = queryByText('Glossary.Tag1');
-
-    expect(tag1).toBeInTheDocument();
-    expect(glossaryTerm1).not.toBeInTheDocument();
-  });
-
-  it('Check if only glossary terms are present', async () => {
-    (getTagCategories as jest.Mock).mockImplementationOnce(() =>
-      Promise.reject()
-    );
-    const { getByTestId, findByText, queryByText } = render(
-      <EntityPageInfo {...mockEntityInfoProp} isTagEditable />,
-      {
-        wrapper: MemoryRouter,
-      }
-    );
-
-    const tagWrapper = getByTestId('tags-wrapper');
-    fireEvent.click(
-      tagWrapper,
-      new MouseEvent('click', { bubbles: true, cancelable: true })
-    );
-
-    const tag1 = queryByText('TagCat1.Tag1');
-    const glossaryTerm1 = await findByText('Glossary.Tag1');
-
-    expect(tag1).not.toBeInTheDocument();
     expect(glossaryTerm1).toBeInTheDocument();
   });
 
   it('Check that tags and glossary terms are not present', async () => {
     await act(async () => {
-      (getTagCategories as jest.Mock).mockImplementationOnce(() =>
-        Promise.reject()
-      );
-      (fetchGlossaryTerms as jest.Mock).mockImplementationOnce(() =>
+      (fetchTagsAndGlossaryTerms as jest.Mock).mockImplementationOnce(() =>
         Promise.reject()
       );
 
@@ -625,12 +492,11 @@ describe('Test EntityPageInfo component', () => {
       });
       const tagWrapper = screen.getByTestId('tags-wrapper');
 
-      fireEvent.click(
-        tagWrapper,
-        new MouseEvent('click', { bubbles: true, cancelable: true })
-      );
+      await act(async () => {
+        fireEvent.click(tagWrapper);
+      });
 
-      const tag1 = screen.queryByText('TagCat1.Tag1');
+      const tag1 = screen.queryByText('PersonalData.Personal');
       const glossaryTerm1 = screen.queryByText('Glossary.Tag1');
 
       expect(tag1).not.toBeInTheDocument();

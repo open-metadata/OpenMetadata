@@ -34,11 +34,11 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.data.TermReference;
+import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.data.Topic;
 import org.openmetadata.schema.entity.policies.accessControl.Rule;
-import org.openmetadata.schema.entity.tags.Tag;
 import org.openmetadata.schema.entity.type.CustomProperty;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.ChangeEvent;
@@ -93,7 +93,7 @@ public final class EntityUtil {
       (ref1, ref2) -> ref1.getId().equals(ref2.getId()) && ref1.getType().equals(ref2.getType());
 
   public static final BiPredicate<TagLabel, TagLabel> tagLabelMatch =
-      (tag1, tag2) -> tag1.getTagFQN().equals(tag2.getTagFQN());
+      (tag1, tag2) -> tag1.getTagFQN().equals(tag2.getTagFQN()) && tag1.getSource().equals(tag2.getSource());
 
   public static final BiPredicate<Task, Task> taskMatch = (task1, task2) -> task1.getName().equals(task2.getName());
 
@@ -151,7 +151,7 @@ public final class EntityUtil {
   public static List<EntityReference> populateEntityReferences(List<EntityReference> list) throws IOException {
     if (list != null) {
       for (EntityReference ref : list) {
-        EntityReference ref2 = Entity.getEntityReferenceById(ref.getType(), ref.getId(), ALL);
+        EntityReference ref2 = Entity.getEntityReference(ref, ALL);
         EntityUtil.copy(ref2, ref);
       }
       list.sort(compareEntityReference);
@@ -230,13 +230,13 @@ public final class EntityUtil {
     return CommonUtil.getResources(Pattern.compile(path));
   }
 
-  public static <T extends EntityInterface> List<EntityReference> toEntityReferences(List<T> entities) {
+  public static <T extends EntityInterface> List<String> toFQNs(List<T> entities) {
     if (entities == null) {
       return Collections.emptyList();
     }
-    List<EntityReference> entityReferences = new ArrayList<>();
+    List<String> entityReferences = new ArrayList<>();
     for (T entity : entities) {
-      entityReferences.add(entity.getEntityReference());
+      entityReferences.add(entity.getFullyQualifiedName());
     }
     return entityReferences;
   }
@@ -409,7 +409,7 @@ public final class EntityUtil {
     return new TagLabel()
         .withTagFQN(tag.getFullyQualifiedName())
         .withDescription(tag.getDescription())
-        .withSource(TagSource.TAG);
+        .withSource(TagSource.CLASSIFICATION);
   }
 
   public static String addField(String fields, String newField) {
@@ -446,11 +446,43 @@ public final class EntityUtil {
     return entity == null ? null : entity.getFullyQualifiedName();
   }
 
+  public static List<String> getFqns(List<EntityReference> refs) {
+    if (nullOrEmpty(refs)) {
+      return null;
+    }
+    List<String> fqns = new ArrayList<>();
+    for (EntityReference ref : refs) {
+      fqns.add(getFqn(ref));
+    }
+    return fqns;
+  }
+
   public static EntityReference getEntityReference(EntityInterface entity) {
     return entity == null ? null : entity.getEntityReference();
   }
 
+  public static EntityReference getEntityReference(String entityType, String fqn) {
+    return fqn == null ? null : new EntityReference().withType(entityType).withFullyQualifiedName(fqn);
+  }
+
+  public static List<EntityReference> getEntityReferences(String entityType, List<String> fqns) {
+    if (nullOrEmpty(fqns)) {
+      return null;
+    }
+    List<EntityReference> references = new ArrayList<>();
+    for (String fqn : fqns) {
+      references.add(getEntityReference(entityType, fqn));
+    }
+    return references;
+  }
+
   public static Column getColumn(Table table, String columnName) {
     return table.getColumns().stream().filter(c -> c.getName().equals(columnName)).findFirst().orElse(null);
+  }
+
+  public static void sortByTagHierarchy(List<Tag> tags) {
+    // Note - before calling this method - fullyQualifiedName should set up for the tags
+    // Sort tags by tag hierarchy. Tags with parents null come first, followed by tags with
+    tags.sort(Comparator.comparing(Tag::getFullyQualifiedName));
   }
 }

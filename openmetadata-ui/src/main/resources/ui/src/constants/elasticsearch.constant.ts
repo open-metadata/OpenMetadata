@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+
 import { t } from 'i18next';
 
 export const ELASTIC_SEARCH_INDEX_ENTITIES = [
@@ -31,7 +32,7 @@ export const ELASTIC_SEARCH_INDEX_ENTITIES = [
   },
   {
     value: 'mlmodel',
-    label: t('label.mlmodel'),
+    label: t('label.ml-model'),
   },
   {
     value: 'user',
@@ -54,11 +55,11 @@ export const ELASTIC_SEARCH_INDEX_ENTITIES = [
     label: t('label.data-assets-report'),
   },
   {
-    value: 'webAnalyticEntityViewReport',
+    value: 'webAnalyticEntityViewReportData',
     label: t('label.web-analytics-report'),
   },
   {
-    value: 'webAnalyticUserActivityReport',
+    value: 'webAnalyticUserActivityReportData',
     label: t('label.user-analytics-report'),
   },
 ];
@@ -75,8 +76,8 @@ export const ELASTIC_SEARCH_INITIAL_VALUES = {
     'glossaryTerm',
     'tag',
     'entityReportData',
-    'webAnalyticEntityViewReport',
-    'webAnalyticUserActivityReport',
+    'webAnalyticEntityViewReportData',
+    'webAnalyticUserActivityReportData',
   ],
   batchSize: 100,
   flushIntervalInSec: 30,

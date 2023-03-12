@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -12,6 +12,7 @@
  */
 
 import { Button, Space, Tooltip, Typography } from 'antd';
+import { t } from 'i18next';
 import { kebabCase } from 'lodash';
 import React from 'react';
 import { NO_PERMISSION_FOR_ACTION } from '../../constants/HelperTextUtil';
@@ -65,7 +66,8 @@ const SummaryDetail = ({
           )}
         </div>
         {showIcon ? (
-          <Tooltip title={hasAccess ? 'Edit' : NO_PERMISSION_FOR_ACTION}>
+          <Tooltip
+            title={hasAccess ? t('label.edit') : NO_PERMISSION_FOR_ACTION}>
             <Button
               className="cursor-pointer m--t-xss"
               data-testid="edit-button"
@@ -88,7 +90,7 @@ const SummaryDetail = ({
             size="small"
             type="link"
             onClick={onSave}>
-            Save
+            {t('label.save')}
           </Button>
         )}
       </Space>

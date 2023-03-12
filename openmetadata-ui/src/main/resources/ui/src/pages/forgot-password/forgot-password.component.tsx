@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -12,14 +12,16 @@
  */
 
 import { Button, Card, Col, Divider, Form, Input, Row, Typography } from 'antd';
+import { useBasicAuth } from 'components/authentication/auth-provider/basic-auth.provider';
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
-import { useBasicAuth } from '../../authentication/auth-provider/basic-auth.provider';
 import { ROUTES } from '../../constants/constants';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import './forgot-password.styles.less';
 
 const ForgotPassword = () => {
+  const { t } = useTranslation();
   const { handleForgotPassword } = useBasicAuth();
   const history = useHistory();
 
@@ -42,11 +44,15 @@ const ForgotPassword = () => {
         style={{ maxWidth: '430px' }}>
         <Row gutter={[16, 24]}>
           <Col className="text-center" span={24}>
-            <SVGIcons alt="OpenMetadata Logo" icon={Icons.LOGO} width="152" />
+            <SVGIcons
+              alt={t('label.open-metadata-logo')}
+              icon={Icons.LOGO}
+              width="152"
+            />
           </Col>
           <Col className="flex-center text-center mt-8" span={24}>
             <Typography.Text className="text-xl font-medium text-grey-muted">
-              Enter your registered email to receive password reset link
+              {t('message.enter-your-registered-email')}
             </Typography.Text>
           </Col>
 
@@ -56,13 +62,15 @@ const ForgotPassword = () => {
             onFinish={handleSubmit}>
             <Col span={24}>
               <Form.Item
-                label="Email"
+                label={t('label.email')}
                 name="email"
                 rules={[
                   {
                     required: true,
                     type: 'email',
-                    message: 'Email is invalid',
+                    message: t('label.field-invalid', {
+                      field: t('label.email'),
+                    }),
                   },
                 ]}>
                 <Input type="email" />
@@ -70,7 +78,7 @@ const ForgotPassword = () => {
             </Col>
             <Col className="m-t-md" span={24}>
               <Button className="w-full" htmlType="submit" type="primary">
-                Submit
+                {t('label.submit')}
               </Button>
             </Col>
           </Form>
@@ -80,17 +88,17 @@ const ForgotPassword = () => {
               <div
                 className="flex flex-col"
                 data-testid="success-screen-container">
-                <div className="flex border-1 border-main rounded-4 p-sm success-alert">
+                <div className="flex global-border rounded-4 p-sm success-alert">
                   <div className="m-r-xs">
                     <SVGIcons
-                      alt="success"
+                      alt={t('label.success')}
                       className="w-5"
                       data-testid="success-icon"
                       icon={Icons.SUCCESS_BADGE}
                     />
                   </div>
                   <p data-testid="success-line">
-                    <span>Reset link has been sent to your email</span>
+                    <span>{t('message.reset-link-has-been-sent')}</span>
                   </p>
                 </div>
               </div>
@@ -98,7 +106,7 @@ const ForgotPassword = () => {
           )}
           <Divider className="w-min-0 mt-8 mb-12 justify-center align-start p-x-xs">
             <Typography.Text className="text-sm" type="secondary">
-              or
+              {t('label.or-lowercase')}
             </Typography.Text>
           </Divider>
           <Col span={24}>
@@ -107,7 +115,7 @@ const ForgotPassword = () => {
               className="w-full"
               type="primary"
               onClick={() => history.push(ROUTES.SIGNIN)}>
-              Go back to Login page
+              {t('message.go-back-to-login-page')}
             </Button>
           </Col>
         </Row>

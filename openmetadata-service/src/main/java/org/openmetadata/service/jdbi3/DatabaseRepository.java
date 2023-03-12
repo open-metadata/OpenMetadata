@@ -13,7 +13,6 @@
 
 package org.openmetadata.service.jdbi3;
 
-import static org.openmetadata.service.Entity.FIELD_OWNER;
 import static org.openmetadata.service.Entity.LOCATION;
 
 import java.io.IOException;
@@ -23,10 +22,10 @@ import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.service.resources.databases.DatabaseResource;
 import org.openmetadata.service.util.EntityUtil;
@@ -50,7 +49,7 @@ public class DatabaseRepository extends EntityRepository<Database> {
 
   @Override
   public void setFullyQualifiedName(Database database) {
-    database.setFullyQualifiedName(FullyQualifiedName.add(database.getService().getName(), database.getName()));
+    database.setFullyQualifiedName(FullyQualifiedName.build(database.getService().getName(), database.getName()));
   }
 
   @Transaction
@@ -98,12 +97,10 @@ public class DatabaseRepository extends EntityRepository<Database> {
 
   public Database setFields(Database database, Fields fields) throws IOException {
     database.setService(getContainer(database.getId()));
-    database.setOwner(fields.contains(FIELD_OWNER) ? getOwner(database) : null);
     database.setDatabaseSchemas(fields.contains("databaseSchemas") ? getSchemas(database) : null);
     database.setUsageSummary(
         fields.contains("usageSummary") ? EntityUtil.getLatestUsage(daoCollection.usageDAO(), database.getId()) : null);
-    database.setLocation(fields.contains("location") ? getLocation(database) : null);
-    return database;
+    return database.withLocation(fields.contains("location") ? getLocation(database) : null);
   }
 
   @Override
@@ -121,16 +118,8 @@ public class DatabaseRepository extends EntityRepository<Database> {
   }
 
   private void populateService(Database database) throws IOException {
-    DatabaseService service = getService(database.getService().getId(), database.getService().getType());
+    DatabaseService service = Entity.getEntity(database.getService(), "", Include.NON_DELETED);
     database.setService(service.getEntityReference());
     database.setServiceType(service.getServiceType());
-  }
-
-  private DatabaseService getService(UUID serviceId, String entityType) throws IOException {
-    if (entityType.equalsIgnoreCase(Entity.DATABASE_SERVICE)) {
-      return daoCollection.dbServiceDAO().findEntityById(serviceId);
-    }
-    throw new IllegalArgumentException(
-        CatalogExceptionMessage.invalidServiceEntity(entityType, Entity.DATABASE, Entity.DATABASE_SERVICE));
   }
 }

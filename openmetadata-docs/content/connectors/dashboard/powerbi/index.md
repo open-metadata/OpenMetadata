@@ -135,6 +135,7 @@ the changes.
 - **Tenant ID**: PowerBI Tenant ID.
 - **Authority URI**: Authority URI for the service.
 - **Scope**: Service scope. By default `["https://analysis.windows.net/powerbi/api/.default"]`.
+- **Pagination Entity Per Page**: Entity Limit set here will be used to paginate the PowerBi APIs. PowerBi API do not allow more than 100 workspaces to be inputed at a time. This field sets the limit of entities used for paginating the powerbi APIs. By default 100
 
 ### 6. Configure Metadata Ingestion
 

@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -63,7 +63,7 @@ jest.mock('../containers/PageLayout', () => {
   return jest
     .fn()
     .mockImplementation(({ children }) => (
-      <div data-testid="page-container">{children}</div>
+      <div data-testid="page-layout-v1">{children}</div>
     ));
 });
 
@@ -83,7 +83,7 @@ jest.mock('./component/DataQualityTab', () => {
     .mockImplementation(() => <div>DataQualityTab component</div>);
 });
 
-jest.mock('../../components/PermissionProvider/PermissionProvider', () => {
+jest.mock('components/PermissionProvider/PermissionProvider', () => {
   return {
     usePermissionProvider: jest.fn().mockImplementation(() => ({
       getEntityPermission: jest.fn().mockImplementation(() => ({
@@ -98,6 +98,10 @@ jest.mock('../../components/PermissionProvider/PermissionProvider', () => {
   };
 });
 
+jest.mock('../containers/PageLayoutV1', () =>
+  jest.fn().mockImplementation(({ children }) => <div>{children}</div>)
+);
+
 describe('Test ProfilerDashboardPage component', () => {
   beforeEach(() => cleanup());
 
@@ -107,14 +111,15 @@ describe('Test ProfilerDashboardPage component', () => {
         wrapper: MemoryRouter,
       });
     });
-    const pageContainer = await screen.findByTestId('page-container');
+
     const profilerSwitch = await screen.findByTestId('profiler-switch');
     const EntityPageInfo = await screen.findByText('EntityPageInfo component');
     const ProfilerTab = await screen.findByText('ProfilerTab component');
-    const selectedTimeFrame = await screen.findByText('Last 3 days');
+    const selectedTimeFrame = await screen.findByText(
+      'label.last-number-of-days'
+    );
     const DataQualityTab = screen.queryByText('DataQualityTab component');
 
-    expect(pageContainer).toBeInTheDocument();
     expect(profilerSwitch).toBeInTheDocument();
     expect(EntityPageInfo).toBeInTheDocument();
     expect(ProfilerTab).toBeInTheDocument();
@@ -132,15 +137,14 @@ describe('Test ProfilerDashboardPage component', () => {
         wrapper: MemoryRouter,
       });
     });
-    const pageContainer = await screen.findByTestId('page-container');
+
     const profilerSwitch = await screen.findByTestId('profiler-switch');
     const EntityPageInfo = await screen.findByText('EntityPageInfo component');
     const ProfilerTab = screen.queryByText('ProfilerTab component');
     const DataQualityTab = await screen.findByText('DataQualityTab component');
-    const deletedTestSwitch = await screen.findByText('Deleted Tests');
-    const statusDropdown = await screen.findByText('Status');
+    const deletedTestSwitch = await screen.findByText('label.deleted-entity');
+    const statusDropdown = await screen.findByText('label.status');
 
-    expect(pageContainer).toBeInTheDocument();
     expect(profilerSwitch).toBeInTheDocument();
     expect(EntityPageInfo).toBeInTheDocument();
     expect(DataQualityTab).toBeInTheDocument();
@@ -159,14 +163,15 @@ describe('Test ProfilerDashboardPage component', () => {
         wrapper: MemoryRouter,
       });
     });
-    const pageContainer = await screen.findByTestId('page-container');
+
     const profilerSwitch = await screen.findByTestId('profiler-switch');
     const EntityPageInfo = await screen.findByText('EntityPageInfo component');
     const ProfilerTab = await screen.findByText('ProfilerTab component');
-    const selectedTimeFrame = await screen.findByText('Last 3 days');
+    const selectedTimeFrame = await screen.findByText(
+      'label.last-number-of-days'
+    );
     const DataQualityTab = screen.queryByText('DataQualityTab component');
 
-    expect(pageContainer).toBeInTheDocument();
     expect(profilerSwitch).toBeInTheDocument();
     expect(EntityPageInfo).toBeInTheDocument();
     expect(ProfilerTab).toBeInTheDocument();
@@ -199,7 +204,7 @@ describe('Test ProfilerDashboardPage component', () => {
     const DQTab = await screen.findByText('DataQualityTab component');
 
     expect(DQTab).toBeInTheDocument();
-    expect(profilerDashboardProps.fetchTestCases).toBeCalled();
+    expect(profilerDashboardProps.fetchTestCases).toHaveBeenCalled();
     expect(ProfilerTab).not.toBeInTheDocument();
 
     await act(async () => {
@@ -208,14 +213,14 @@ describe('Test ProfilerDashboardPage component', () => {
     const profilerContainer = await screen.findByText('ProfilerTab component');
 
     expect(profilerContainer).toBeInTheDocument();
-    expect(profilerDashboardProps.fetchProfilerData).toBeCalled();
+    expect(profilerDashboardProps.fetchProfilerData).toHaveBeenCalled();
     expect(DQTab).not.toBeInTheDocument();
 
     await act(async () => {
       fireEvent.click(summaryTabBtn);
     });
 
-    expect(mockHistory.push).toBeCalled();
+    expect(mockHistory.push).toHaveBeenCalled();
   });
 
   it('Add test button should work properly', async () => {
@@ -225,16 +230,14 @@ describe('Test ProfilerDashboardPage component', () => {
       });
     });
 
-    const pageContainer = await screen.findByTestId('page-container');
     const addTest = await screen.findByTestId('add-test');
 
-    expect(pageContainer).toBeInTheDocument();
     expect(addTest).toBeInTheDocument();
 
     await act(async () => {
       fireEvent.click(addTest);
 
-      expect(mockHistory.push).toBeCalled();
+      expect(mockHistory.push).toHaveBeenCalled();
     });
   });
 });

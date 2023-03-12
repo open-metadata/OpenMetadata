@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,14 +11,14 @@
  *  limitations under the License.
  */
 
-import { act, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
-import { getListTestSuites } from '../../axiosAPIs/testAPI';
+import { getListTestSuites } from 'rest/testAPI';
 import { MOCK_TABLE_DATA } from '../../mocks/TestSuite.mock';
 import TestSuitePage from './TestSuitePage';
 
-jest.mock('../../axiosAPIs/testAPI', () => ({
+jest.mock('rest/testAPI', () => ({
   getListTestSuites: jest
     .fn()
     .mockImplementation(() => Promise.resolve(MOCK_TABLE_DATA)),
@@ -33,7 +33,7 @@ jest.mock('react-router-dom', () => ({
     .mockImplementation(({ children }) => <a href="#">{children}</a>),
 }));
 
-jest.mock('../../components/containers/PageLayoutV1', () =>
+jest.mock('components/containers/PageLayoutV1', () =>
   jest
     .fn()
     .mockImplementation(({ children }) => (
@@ -50,28 +50,31 @@ jest.mock('../../utils/CommonUtils', () => ({
   pluralize: jest.fn().mockReturnValue('0 Test'),
 }));
 
-jest.mock(
-  '../../components/common/error-with-placeholder/ErrorPlaceHolder',
-  () => jest.fn().mockReturnValue(<div>ErrorPlaceHolder</div>)
+jest.mock('components/common/error-with-placeholder/ErrorPlaceHolder', () =>
+  jest.fn().mockReturnValue(<div>ErrorPlaceHolder</div>)
 );
 
-jest.mock('../../components/Loader/Loader', () => {
+jest.mock('components/Loader/Loader', () => {
   return jest.fn().mockReturnValue(<div>Loader</div>);
 });
 
 jest.mock(
-  '../../components/common/title-breadcrumb/title-breadcrumb.component',
+  'components/common/title-breadcrumb/title-breadcrumb.component',
   () => {
     return jest.fn().mockReturnValue(<p>TitleBreadCrumb</p>);
   }
 );
 
-jest.mock('../../components/common/next-previous/NextPrevious', () => {
+jest.mock('components/common/next-previous/NextPrevious', () => {
   return jest.fn().mockImplementation(() => <div>NextPrevious</div>);
 });
 
-jest.mock('../../components/common/next-previous/NextPrevious', () =>
+jest.mock('components/common/next-previous/NextPrevious', () =>
   jest.fn().mockReturnValue(<p>NextPrevious</p>)
+);
+
+jest.mock('components/common/rich-text-editor/RichTextEditorPreviewer', () =>
+  jest.fn().mockReturnValue(<p>RichTextEditorPreviewer</p>)
 );
 
 describe('Test Suite Page', () => {
@@ -98,11 +101,15 @@ describe('Test Suite Page', () => {
     });
 
     const testSuitePage = await screen.findByTestId('pageLayoutV1');
+    const addTestSuite = await screen.findByTestId('add-test-suite');
+    const switchButton = await screen.findByTestId('switch-deleted');
 
     expect(testSuitePage).toBeInTheDocument();
+    expect(addTestSuite).toBeInTheDocument();
+    expect(switchButton).toBeInTheDocument();
   });
 
-  it('Component should render table and add test suite button', async () => {
+  it('Component should render table', async () => {
     await act(async () => {
       render(<TestSuitePage />, {
         wrapper: MemoryRouter,
@@ -110,11 +117,9 @@ describe('Test Suite Page', () => {
     });
 
     const testSuitePage = await screen.findByTestId('pageLayoutV1');
-    const addTestSuite = await screen.findByTestId('add-test-suite');
     const testSuiteTable = await screen.findByTestId('test-suite-table');
 
     expect(testSuitePage).toBeInTheDocument();
-    expect(addTestSuite).toBeInTheDocument();
     expect(testSuiteTable).toBeInTheDocument();
   });
 
@@ -139,6 +144,36 @@ describe('Test Suite Page', () => {
     expect(descriptionColumn).toBeInTheDocument();
 
     expect(rows).toHaveLength(MOCK_TABLE_DATA.data.length + 1);
+  });
+
+  it('Component should render empty table on change to show deleted test suite', async () => {
+    await act(async () => {
+      render(<TestSuitePage />, {
+        wrapper: MemoryRouter,
+      });
+    });
+    const mockTestSuite = getListTestSuites as jest.Mock;
+
+    expect(mockTestSuite.mock.calls[0][0]).toEqual({
+      fields: 'owner,tests',
+      limit: 15,
+      before: undefined,
+      after: undefined,
+      include: 'non-deleted',
+    });
+
+    const switchButton = await screen.findByTestId('switch-deleted');
+    await act(async () => {
+      fireEvent.click(switchButton);
+    });
+
+    expect(mockTestSuite.mock.calls[1][0]).toEqual({
+      fields: 'owner,tests',
+      limit: 15,
+      before: undefined,
+      after: undefined,
+      include: 'deleted',
+    });
   });
 
   it('Should render Next Button when test suite is more than 15', async () => {

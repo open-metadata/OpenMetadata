@@ -10,8 +10,7 @@ import org.elasticsearch.search.aggregations.metrics.Sum;
 import org.openmetadata.schema.dataInsight.DataInsightChartResult;
 import org.openmetadata.schema.dataInsight.type.PercentageOfEntitiesWithDescriptionByType;
 
-public class EntitiesDescriptionAggregator
-    extends DataInsightAggregatorInterface<PercentageOfEntitiesWithDescriptionByType> {
+public class EntitiesDescriptionAggregator extends DataInsightAggregatorInterface {
 
   public EntitiesDescriptionAggregator(
       Aggregations aggregations, DataInsightChartResult.DataInsightChartType dataInsightChartType) {
@@ -20,15 +19,14 @@ public class EntitiesDescriptionAggregator
 
   @Override
   public DataInsightChartResult process() throws ParseException {
-    List data = this.aggregate();
-    DataInsightChartResult dataInsightChartResult = new DataInsightChartResult();
-    return dataInsightChartResult.withData(data).withChartType(this.dataInsightChartType);
+    List<Object> data = this.aggregate();
+    return new DataInsightChartResult().withData(data).withChartType(this.dataInsightChartType);
   }
 
   @Override
-  public List<PercentageOfEntitiesWithDescriptionByType> aggregate() throws ParseException {
+  public List<Object> aggregate() throws ParseException {
     Histogram timestampBuckets = this.aggregations.get(TIMESTAMP);
-    List<PercentageOfEntitiesWithDescriptionByType> data = new ArrayList();
+    List<Object> data = new ArrayList<>();
     for (Histogram.Bucket timestampBucket : timestampBuckets.getBuckets()) {
       String dateTimeString = timestampBucket.getKeyAsString();
       Long timestamp = this.convertDatTimeStringToTimestamp(dateTimeString);

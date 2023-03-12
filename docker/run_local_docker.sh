@@ -60,7 +60,11 @@ else
     echo "Skipping Maven Build"
 fi
 
-#cd docker/local-metadata || exit
+RESULT=$?
+if [ $RESULT -ne 0 ]; then
+  echo "Failed to run Maven build!"
+  exit 1
+fi
 
 if [[ $debugOM == "true" ]]; then
  export OPENMETADATA_DEBUG=true
@@ -74,35 +78,43 @@ then
     fi
 fi
 
-if [[ $VIRTUAL_ENV == "" ]]; 
-then 
-  echo "Please Use Virtual Environment and make sure to generate Pydantic Models"; 
+if [[ $VIRTUAL_ENV == "" ]];
+then
+  echo "Please Use Virtual Environment and make sure to generate Pydantic Models";
 else
-  echo "Generating Pydantic Models"; 
+  echo "Generating Pydantic Models";
   make install_dev generate
 fi
 
 echo "Stopping any previous Local Docker Containers"
-docker compose  -f docker/local-metadata/docker-compose-postgres.yml down
-docker compose -f docker/local-metadata/docker-compose.yml down
+docker compose -f docker/development/docker-compose-postgres.yml down
+docker compose -f docker/development/docker-compose.yml down
 
 echo "Starting Local Docker Containers"
 echo "Using ingestion dependency: ${INGESTION_DEPENDENCY:-all}"
 
 if [[ $database == "postgresql" ]]; then
-    docker compose -f docker/local-metadata/docker-compose-postgres.yml build --build-arg INGESTION_DEPENDENCY="${INGESTION_DEPENDENCY:-all}" && docker compose -f docker/local-metadata/docker-compose-postgres.yml up -d
+    docker compose -f docker/development/docker-compose-postgres.yml build --build-arg INGESTION_DEPENDENCY="${INGESTION_DEPENDENCY:-all}" && docker compose -f docker/development/docker-compose-postgres.yml up -d
 else
-    docker compose -f docker/local-metadata/docker-compose.yml build --build-arg INGESTION_DEPENDENCY="${INGESTION_DEPENDENCY:-all}" && docker compose -f docker/local-metadata/docker-compose.yml up --build -d
+    docker compose -f docker/development/docker-compose.yml build --build-arg INGESTION_DEPENDENCY="${INGESTION_DEPENDENCY:-all}" && docker compose -f docker/development/docker-compose.yml up -d
+fi
+
+RESULT=$?
+if [ $RESULT -ne 0 ]; then
+  echo "Failed to start Docker instances!"
+  exit 1
 fi
 
 until curl -s -f "http://localhost:9200/_cat/indices/team_search_index"; do
   printf 'Checking if Elastic Search instance is up...\n'
   sleep 5
 done
+
 until curl -s -f --header 'Authorization: Basic YWRtaW46YWRtaW4=' "http://localhost:8080/api/v1/dags/sample_data"; do
   printf 'Checking if Sample Data DAG is reachable...\n'
   sleep 5
 done
+
 curl --location --request PATCH 'localhost:8080/api/v1/dags/sample_data' \
   --header 'Authorization: Basic YWRtaW46YWRtaW4=' \
   --header 'Content-Type: application/json' \
@@ -110,10 +122,9 @@ curl --location --request PATCH 'localhost:8080/api/v1/dags/sample_data' \
         "is_paused": false
       }'
 
-cd ../
 printf 'Validate sample data DAG...'
 sleep 5
-python validate_compose.py
+python docker/validate_compose.py
 
 until curl -s -f --header "Authorization: Bearer $authorizationToken" "http://localhost:8585/api/v1/tables/name/sample_data.ecommerce_db.shopify.fact_sale"; do
   printf 'Waiting on Sample Data Ingestion to complete...\n'

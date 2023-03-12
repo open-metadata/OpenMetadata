@@ -91,18 +91,3 @@ Click on `Trust` to open and set `Always Trust`:
 Once the above steps are finished, all the browsers will allow you to visit the OpenMetadata server using HTTPS.
 However, you'll still a warning in the address bar. All of these steps are not necessary with an X509 certificate issued
 by a trusted authority and one should always use that in production.
-
-### Import public cert into Java Keystore
-
-This step is required in case you have configured a `bot` with a JWT Token as authentication mechanism and your server
-has SSL enabled.
-
-From your terminal:
-
-1. Go to your $JAVA_HOME/lib/security where the **cacerts** keystore is located.
-
-2. Run the following command once in the directory:
-
-```bash
-keytool -import -trustcacerts -keystore cacerts -storepass changeit -noprompt -alias localhost -file /path/to/public.cert
-```

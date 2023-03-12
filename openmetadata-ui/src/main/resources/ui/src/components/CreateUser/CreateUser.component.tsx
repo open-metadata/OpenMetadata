@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
   Button,
   Form,
@@ -24,12 +23,11 @@ import {
 } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
+import { LOADING_STATE } from 'enums/common.enum';
 import { isUndefined, trim } from 'lodash';
-import { EditorContentRef } from 'Models';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
-import { checkEmailInUse, generateRandomPwd } from '../../axiosAPIs/auth-API';
+import { checkEmailInUse, generateRandomPwd } from 'rest/auth-API';
 import { getBotsPagePath, getUsersPagePath } from '../../constants/constants';
 import { passwordErrorMessage } from '../../constants/ErrorMessages.constant';
 import {
@@ -58,8 +56,10 @@ import {
 } from '../../utils/BotsUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
+import { useAuthContext } from '../authentication/auth-provider/AuthProvider';
 import CopyToClipboardButton from '../buttons/CopyToClipboardButton/CopyToClipboardButton';
 import RichTextEditor from '../common/rich-text-editor/RichTextEditor';
+import { EditorContentRef } from '../common/rich-text-editor/RichTextEditor.interface';
 import TitleBreadcrumb from '../common/title-breadcrumb/title-breadcrumb.component';
 import PageLayout from '../containers/PageLayout';
 import DropDown from '../dropdown/DropDown';
@@ -116,7 +116,7 @@ const CreateUser = ({
   const slashedBreadcrumbList = useMemo(
     () => [
       {
-        name: forceBot ? t('label.bot-plural') : t('label.users'),
+        name: forceBot ? t('label.bot-plural') : t('label.user-plural'),
         url: forceBot ? getBotsPagePath() : getUsersPagePath(),
       },
       {
@@ -512,18 +512,18 @@ const CreateUser = ({
               />
             </Form.Item>
             <Form.Item
-              label={t('label.scopes')}
+              label={t('label.scope-plural')}
               name="scopes"
               rules={[
                 {
                   required: true,
-                  message: t('label.scopes-comma-separated'),
+                  message: t('message.scopes-comma-separated'),
                 },
               ]}>
               <Input
                 data-testid="scopes"
                 name="scopes"
-                placeholder={t('label.scopes-comma-separated')}
+                placeholder={t('message.scopes-comma-separated')}
                 value={ssoClientConfig?.scopes}
                 onChange={handleOnChange}
               />
@@ -599,23 +599,23 @@ const CreateUser = ({
                   required: true,
                   type: 'email',
                   message: t('label.field-required', {
-                    field: t('label.service-email'),
+                    field: t('label.service-account-email'),
                   }),
                 },
               ]}>
               <Input
                 data-testid="oktaEmail"
                 name="oktaEmail"
-                placeholder={t('label.okta-email')}
+                placeholder={t('label.okta-service-account-email')}
                 value={ssoClientConfig?.email}
                 onChange={handleOnChange}
               />
             </Form.Item>
-            <Form.Item label={t('label.scopes')} name="scopes">
+            <Form.Item label={t('label.scope-plural')} name="scopes">
               <Input
                 data-testid="scopes"
                 name="scopes"
-                placeholder={t('label.scopes-comma-separated')}
+                placeholder={t('message.scopes-comma-separated')}
                 value={ssoClientConfig?.scopes}
                 onChange={handleOnChange}
               />
@@ -700,7 +700,8 @@ const CreateUser = ({
     <PageLayout
       classes="tw-max-w-full-hd tw-h-full tw-pt-4"
       header={<TitleBreadcrumb titleLinks={slashedBreadcrumbList} />}
-      layout={PageLayoutType['2ColRTL']}>
+      layout={PageLayoutType['2ColRTL']}
+      pageTitle={t('label.create-entity', { entity: t('label.user') })}>
       <div className="tw-form-container">
         <h6 className="tw-heading tw-text-base">
           {t('label.create-entity', {
@@ -782,7 +783,9 @@ const CreateUser = ({
                   className="w-full"
                   data-testid="auth-mechanism"
                   defaultValue={authMechanism}
-                  placeholder={t('label.select-auth-mechanism')}
+                  placeholder={t('label.select-field', {
+                    field: t('label.auth-mechanism'),
+                  })}
                   onChange={(value) => setAuthMechanism(value)}>
                   {getAuthMechanismTypeOptions(authConfig).map((option) => (
                     <Option key={option.value}>{option.label}</Option>
@@ -813,7 +816,7 @@ const CreateUser = ({
                     className="w-full"
                     data-testid="token-expiry"
                     defaultValue={tokenExpiry}
-                    placeholder={t('label.select-token-expiration')}
+                    placeholder={t('message.select-token-expiration')}
                     onChange={(value) => setTokenExpiry(value)}>
                     {getJWTTokenExpiryOptions().map((option) => (
                       <Option key={option.value}>{option.label}</Option>
@@ -945,17 +948,17 @@ const CreateUser = ({
                   )}
                 </>
               )}
-              <Form.Item label={t('label.teams')} name="teams">
+              <Form.Item label={t('label.team-plural')} name="teams">
                 <TeamsSelectable onSelectionChange={setSelectedTeams} />
               </Form.Item>
-              <Form.Item label={t('label.roles')} name="roles">
+              <Form.Item label={t('label.role-plural')} name="roles">
                 <DropDown
                   className={classNames('tw-bg-white', {
                     'tw-bg-gray-100 tw-cursor-not-allowed': roles.length === 0,
                   })}
                   dataTestId="roles-dropdown"
                   dropDownList={getDropdownOptions(roles) as DropDownListItem[]}
-                  label={t('label.roles')}
+                  label={t('label.role-plural')}
                   selectedItems={selectedRoles as Array<string>}
                   type="checkbox"
                   onSelect={(_e, value) => selectedRolesHandler(value)}
@@ -982,25 +985,14 @@ const CreateUser = ({
             <Button data-testid="cancel-user" type="link" onClick={onCancel}>
               {t('label.cancel')}
             </Button>
-            <>
-              {saveState === 'waiting' ? (
-                <Button disabled type="primary">
-                  <Loader size="small" type="white" />
-                </Button>
-              ) : saveState === 'success' ? (
-                <Button disabled type="primary">
-                  <FontAwesomeIcon icon="check" />
-                </Button>
-              ) : (
-                <Button
-                  data-testid="save-user"
-                  form="create-user-bot-form"
-                  htmlType="submit"
-                  type="primary">
-                  {t('label.create')}
-                </Button>
-              )}
-            </>
+            <Button
+              data-testid="save-user"
+              form="create-user-bot-form"
+              htmlType="submit"
+              loading={saveState === LOADING_STATE.WAITING}
+              type="primary">
+              {t('label.create')}
+            </Button>
           </Space>
         </Form>
       </div>

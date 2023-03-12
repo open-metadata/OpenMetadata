@@ -1,11 +1,24 @@
+/*
+ *  Copyright 2022 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
 import { Form, Input, Modal, Select } from 'antd';
 import { AxiosError } from 'axios';
+import RichTextEditor from 'components/common/rich-text-editor/RichTextEditor';
+import { EditorContentRef } from 'components/common/rich-text-editor/RichTextEditor.interface';
 import { isUndefined, toLower, trim } from 'lodash';
-import { EditorContentRef } from 'Models';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { getTeams } from '../../axiosAPIs/teamsAPI';
-import RichTextEditor from '../../components/common/rich-text-editor/RichTextEditor';
+import { getTeams } from 'rest/teamsAPI';
 import { Team, TeamType } from '../../generated/entity/teams/team';
 import jsonData from '../../jsons/en';
 import { isUrlFriendlyName } from '../../utils/CommonUtils';
@@ -40,11 +53,19 @@ const AddTeamForm: React.FC<AddTeamFormType> = ({
 
   const validationMessages = useMemo(
     () => ({
-      required: '${label} is required',
+      required: t('message.field-text-is-required', {
+        fieldText: '${label}',
+      }),
       string: {
-        range: '${label} must be between ${min} and ${max}.',
+        range: t('message.entity-size-in-between', {
+          entity: '${label}',
+          min: '${min}',
+          max: '${max}',
+        }),
       },
-      whitespace: '${label} is required',
+      whitespace: t('message.entity-not-contain-whitespace', {
+        entity: '${label}',
+      }),
     }),
     []
   );
@@ -88,14 +109,14 @@ const AddTeamForm: React.FC<AddTeamFormType> = ({
         type: 'primary',
         htmlType: 'submit',
       }}
-      title={t('label.add-team')}
-      visible={visible}
+      open={visible}
+      title={t('label.add-entity', { entity: t('label.team') })}
       width={750}
       onCancel={onCancel}>
       <Form
         id="add-team-form"
         initialValues={{
-          teamType: TeamType.Department,
+          teamType: TeamType.Group,
         }}
         layout="vertical"
         name="add-team-nest-messages"
@@ -116,7 +137,7 @@ const AddTeamForm: React.FC<AddTeamFormType> = ({
               validator: (_, value) => {
                 if (!isUrlFriendlyName(value)) {
                   return Promise.reject(
-                    t('label.special-character-not-allowed')
+                    t('message.special-character-not-allowed')
                   );
                 }
                 if (
@@ -127,7 +148,9 @@ const AddTeamForm: React.FC<AddTeamFormType> = ({
                   )
                 ) {
                   return Promise.reject(
-                    t('label.entity-already-exists', { entity: 'Name' })
+                    t('message.entity-already-exists', {
+                      entity: t('label.name'),
+                    })
                   );
                 }
 
@@ -135,7 +158,10 @@ const AddTeamForm: React.FC<AddTeamFormType> = ({
               },
             },
           ]}>
-          <Input data-testid="name" placeholder={t('label.enter-name')} />
+          <Input
+            data-testid="name"
+            placeholder={t('label.enter-entity', { entity: t('label.name') })}
+          />
         </Form.Item>
         <Form.Item
           label={t('label.display-name')}
@@ -151,14 +177,14 @@ const AddTeamForm: React.FC<AddTeamFormType> = ({
           ]}>
           <Input
             data-testid="display-name"
-            placeholder={t('label.enter-display-name')}
+            placeholder={t('message.enter-display-name')}
           />
         </Form.Item>
         <Form.Item label={t('label.team-type')} name="teamType">
           <Select
             data-testid="team-selector"
             options={teamTypeOptions}
-            placeholder={t('label.select-team')}
+            placeholder={t('message.select-team')}
           />
         </Form.Item>
         <Form.Item

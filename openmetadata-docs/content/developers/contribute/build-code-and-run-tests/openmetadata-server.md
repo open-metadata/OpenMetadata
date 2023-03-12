@@ -11,13 +11,13 @@ Learn how to run the OpenMetadata server in development mode by using Docker and
   - For an easy install of MySQL and ES, just install Docker on your local machine and run the following commands from the top-level directory
 
 ```shell
-docker compose -f docker/local-metadata/docker-compose.yml -d up mysql elasticsearch
+docker compose -f docker/development/docker-compose.yml up mysql elasticsearch --build -d
 ```
 
 - For an easy install of PostgreSQL and ES, just install Docker on your local machine and run the following commands from the top-level directory
 
 ```shell
-docker compose -f docker/local-metadata/docker-compose-postgres.yml -d up postgresql elasticsearch
+docker compose -f docker/development/docker-compose-postgres.yml up postgresql elasticsearch --build -d
 ```
 
 - Bootstrap MySQL with tables
@@ -103,7 +103,11 @@ In that list look for "jersey-client:2.25.1"
 
 <Image src="/images/developers/contribute/build-code-and-run-tests/intellij-jersey-dependency.png" alt="Add jersey-client dependency" caption=" "/>
 
-Select it and click "OK". Now run/debug the application.
+Select it and click "OK". 
+
+We also need to set the folder ‘generated-resources’ in some module’s target folder as “source” folder. IntelliJ IDEA mark target folder as "excluded" by default, we could change it in the module setting. The openmetadata-spec and openmetadata-java-client modules have generated code, need to be changed.
+
+Now run/debug the application.
 
 ## Troubleshooting
 - If you see blank page at [http://localhost:8585](http://localhost:8585), please check the logs at logs/openmetadata.log. You might be encountering one of the following errors:

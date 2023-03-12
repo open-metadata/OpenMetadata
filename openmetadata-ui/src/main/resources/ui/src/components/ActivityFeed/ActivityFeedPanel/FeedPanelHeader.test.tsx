@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -24,10 +24,6 @@ const mockFeedPanelHeaderProp = {
   onShowNewConversation: jest.fn(),
 };
 
-jest.mock('@fortawesome/react-fontawesome', () => ({
-  FontAwesomeIcon: jest.fn().mockReturnValue(<span>Icon</span>),
-}));
-
 describe('Test FeedPanelHeader Component', () => {
   it('Check if FeedPanelHeader has all child elements', async () => {
     const { container } = render(
@@ -47,7 +43,7 @@ describe('Test FeedPanelHeader Component', () => {
     const bottomSeparator = await findByTestId(container, 'bottom-separator');
 
     expect(title).toBeInTheDocument();
-    expect(noun).toHaveTextContent('Conversations on');
+    expect(noun).toHaveTextContent('Conversations label.on-lowercase');
     expect(newConversationButton).toBeInTheDocument();
     expect(drawerCloseButton).toBeInTheDocument();
     expect(bottomSeparator).toBeInTheDocument();
@@ -84,7 +80,7 @@ describe('Test FeedPanelHeader Component', () => {
     const noun = await findByTestId(container, 'header-noun');
 
     // noun is undefined so default noun should be present in text content
-    expect(noun).toHaveTextContent('label.conversation on');
+    expect(noun).toHaveTextContent('label.conversation label.on-lowercase');
   });
 
   it('Should render entityFQN if entityField is empty', async () => {
@@ -120,6 +116,6 @@ describe('Test FeedPanelHeader Component', () => {
 
     const noun = await findByTestId(container, 'header-noun');
 
-    expect(noun).toHaveTextContent(/Announcement on/i);
+    expect(noun).toHaveTextContent(/Announcement label.on-lowercase/i);
   });
 });

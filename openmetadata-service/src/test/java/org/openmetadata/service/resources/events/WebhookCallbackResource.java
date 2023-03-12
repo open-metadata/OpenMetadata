@@ -3,6 +3,8 @@ package org.openmetadata.service.resources.events;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Schema;
 import java.io.IOException;
 import java.time.Duration;
 import java.util.ArrayList;
@@ -45,18 +47,19 @@ public class WebhookCallbackResource {
    * Webhook endpoint that immediately responds to callback. The events received are collected in a queue per testName
    */
   @POST
-  @Path("/{testName}")
+  @Path("/{name}")
   public Response receiveEventCount(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @HeaderParam(RestUtil.SIGNATURE_HEADER) String signature,
-      @PathParam("testName") String testName,
+      @Parameter(description = "Name of the Webhook callback", schema = @Schema(type = "string")) @PathParam("name")
+          String name,
       ChangeEventList events)
       throws IOException {
     String payload = JsonUtils.pojoToJson(events);
     String computedSignature = "sha256=" + CommonUtil.calculateHMAC("webhookTest", payload);
     assertEquals(computedSignature, signature);
-    addEventDetails(testName, events);
+    addEventDetails(name, events);
     return Response.ok().build();
   }
 
@@ -112,8 +115,12 @@ public class WebhookCallbackResource {
   public Response receiveEntityEvents(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @PathParam("eventType") String eventType,
-      @PathParam("entityType") String entityType,
+      @Parameter(description = "Name of the Webhook callback", schema = @Schema(type = "string")) @PathParam("name")
+          String name,
+      @Parameter(description = "Type of event", schema = @Schema(type = "string")) @PathParam("eventType")
+          String eventType,
+      @Parameter(description = "Type of entity", schema = @Schema(type = "string")) @PathParam("entityType")
+          String entityType,
       ChangeEventList events) {
     String key = eventType + ":" + entityType;
     List<ChangeEvent> list = entityCallbackMap.get(key);

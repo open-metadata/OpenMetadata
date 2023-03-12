@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -70,6 +70,7 @@ const EntityDeleteModal = ({
           </Button>
         </div>
       }
+      open={visible}
       title={
         <Typography.Text data-testid="modal-header">
           {softDelete ? (
@@ -83,7 +84,6 @@ const EntityDeleteModal = ({
           )}
         </Typography.Text>
       }
-      visible={visible}
       width={600}>
       <div data-testid="body-text">
         <Typography className="mb-2">

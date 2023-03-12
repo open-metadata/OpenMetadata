@@ -66,6 +66,10 @@ Set the sample to be use by the profiler for the specific table.
 **Thread Count (Optional)**
 Number of thread to use when computing metrics for the profiler. For Snowflake users we recommend setting it to 1. There is a known issue with one of the dependency (`snowflake-connector-python`) affecting projects with certain environments. 
 
+**Auto PII Tag**
+Here, the sample data will be analysed to determine appropriate PII tags for each column.
+For more information click [here](/connectors/ingestion/auto_tagging)
+
 **Timeout in Seconds (Optional)**
 This will set the duration a profiling job against a table should wait before interrupting its execution and moving on to profiling the next table. It is important to note that the profiler will wait for the hanging query to terminiate before killing the execution. If there is a risk for your profiling job to hang, it is important to also set a query/connection timeout on your database engine. The default value for the profiler timeout is 12-hours.
 
@@ -102,6 +106,8 @@ Use a query to sample data for the profiler. This will overwrite any profle samp
 **Enable Column Profile**
 This setting allows user to exclude or include specific columns and metrics from the profiler.
 
+*Note: for Google BigQuery tables partitioned on timestamp/datetime column type, month and year interval are not supported. You will need to set the `Interval Unit` to `DAY` or `HOUR`.*
+
 **Enable Partition**
 If your table includes a timestamp, date or datetime column type you can enable partitionning. If enabled, the profiler will fetch the last `<interval>` `<interval unit>` of data to profile the table. Note that if "profile sample" is set, this configuration will be used against the partitioned data and not the whole table.
 - `Column Name`: this is the name of the column that will be used as the partition field
@@ -130,6 +136,8 @@ This is a good option if you which to execute your workflow via the Airflow SDK 
       type: Profiler
       generateSampleData: true
       profileSample: 60
+      profileSampleType: ROWS
+      #profileSampleType: PERCENTAGE
       databaseFilterPattern: 
         includes: 
           - dev

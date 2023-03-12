@@ -16,6 +16,9 @@ on:
       tag:
         description: "Input tag"
         required: true
+      push_latest_tag_to_release:
+        description: "Do you want to update docker image latest tag as well ?"
+        type: boolean
   release:
     types: [published]
 
@@ -28,7 +31,7 @@ jobs:
     steps:
       - name: Check trigger type
         if: ${{ env.input == '' }}
-        run: echo "input=0.12.0" >> $GITHUB_ENV
+        run: echo "input=0.13.2" >> $GITHUB_ENV
         
       - name: Check out the Repo
         uses: actions/checkout@v3
@@ -45,12 +48,22 @@ jobs:
           username: ${{ secrets.DOCKERHUB_OPENMETADATA_USERNAME }}
           password: ${{ secrets.DOCKERHUB_OPENMETADATA_TOKEN }}
       
-      - name: Build and push
+      - name: Process Docker Tags
+        id:  input_check
+        run: |
+            if ${{ github.event_name == 'release' }}; then
+                echo "tags=openmetadata/postgresql:${{ env.input }},openmetadata/postgresql:latest" >> $GITHUB_OUTPUT
+            elif ${{ github.event_name == 'workflow_dispatch' && inputs.push_latest_tag_to_release }}; then
+                echo "tags=openmetadata/postgresql:${{inputs.tag}},openmetadata/postgresql:latest" >> $GITHUB_OUTPUT
+            else
+                echo "tags=openmetadata/postgresql:${{ inputs.tag }}" >> $GITHUB_OUTPUT
+            fi
+
+      - name: Build and push if event is workflow_dispatch and input is checked
         uses: docker/build-push-action@v3
         with:
           context: .
           platforms: linux/amd64,linux/arm64
           push: ${{ github.event_name == 'release' || github.event_name == 'workflow_dispatch' }}
-          # Update tags before every release
-          tags: 'openmetadata/postgresql:${{ env.input }},openmetadata/postgresql:latest'
-          file: ./docker/local-metadata/Dockerfile_postgres
+          tags: ${{ steps.input_check.outputs.tags }}
+          file: ./docker/postgresql/Dockerfile_postgres

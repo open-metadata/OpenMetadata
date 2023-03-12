@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -17,30 +17,21 @@ import { MemoryRouter } from 'react-router';
 import { EntitiesCount } from '../../generated/entity/utils/entitiesCount';
 import MyAssetStats from './MyAssetStats.component';
 
-jest.mock('../../authentication/auth-provider/AuthProvider', () => {
-  return {
-    useAuthContext: jest.fn(() => ({
-      isAuthDisabled: false,
-      isAuthenticated: true,
-      isProtectedRoute: jest.fn().mockReturnValue(true),
-      isTourRoute: jest.fn().mockReturnValue(false),
-      onLogoutHandler: jest.fn(),
-    })),
-  };
-});
-
 const mockProp = {
-  entityCounts: {
-    tableCount: 40,
-    topicCount: 13,
-    dashboardCount: 10,
-    pipelineCount: 3,
-    mlmodelCount: 2,
-    servicesCount: 193,
-    userCount: 100,
-    teamCount: 7,
-    testSuiteCount: 1,
-  } as EntitiesCount,
+  entityState: {
+    entityCounts: {
+      tableCount: 40,
+      topicCount: 13,
+      dashboardCount: 10,
+      pipelineCount: 3,
+      mlmodelCount: 2,
+      servicesCount: 193,
+      userCount: 100,
+      teamCount: 7,
+      testSuiteCount: 1,
+    } as EntitiesCount,
+    entityCountLoading: false,
+  },
 };
 
 describe('Test MyDataHeader Component', () => {
@@ -61,7 +52,7 @@ describe('Test MyDataHeader Component', () => {
 
     const dataSummary = getAllByTestId(container, /-summary$/);
 
-    expect(dataSummary.length).toBe(9);
+    expect(dataSummary).toHaveLength(9);
   });
 
   it('OnClick it should redirect to respective page', () => {
@@ -77,11 +68,11 @@ describe('Test MyDataHeader Component', () => {
     const user = getByTestId(container, 'user');
     const terms = getByTestId(container, 'terms');
 
-    expect(tables).toHaveAttribute('href', '/explore/tables/');
-    expect(topics).toHaveAttribute('href', '/explore/topics/');
-    expect(dashboards).toHaveAttribute('href', '/explore/dashboards/');
-    expect(pipelines).toHaveAttribute('href', '/explore/pipelines/');
-    expect(mlmodel).toHaveAttribute('href', '/explore/mlmodels/');
+    expect(tables).toHaveAttribute('href', '/explore/tables');
+    expect(topics).toHaveAttribute('href', '/explore/topics');
+    expect(dashboards).toHaveAttribute('href', '/explore/dashboards');
+    expect(pipelines).toHaveAttribute('href', '/explore/pipelines');
+    expect(mlmodel).toHaveAttribute('href', '/explore/mlmodels');
     expect(service).toHaveAttribute('href', '/settings/services/databases');
     expect(user).toHaveAttribute('href', '/settings/members/users');
     expect(terms).toHaveAttribute(

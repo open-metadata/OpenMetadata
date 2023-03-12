@@ -1,3 +1,16 @@
+/*
+ *  Copyright 2021 Collate
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
 package org.openmetadata.service.util;
 
 import java.util.ArrayList;
@@ -56,16 +69,33 @@ public class FullyQualifiedName {
   }
 
   public static String getParent(String fqn) {
-    // Split columnFQN of format databaseServiceName.databaseName.tableName.columnName
+    // Split fqn of format a.b.c.d and return the parent a.b.c
+    String[] split = split(fqn);
+    return getParent(split);
+  }
+
+  public static String getParent(String... fqnParts) {
+    // Fqn parts a b c d are given from fqn a.b.c.d
+    if (fqnParts.length <= 1) {
+      return null;
+    }
+    if (fqnParts.length == 2) {
+      return unquoteName(fqnParts[0]); // The root name is not quoted and only the unquoted name is returned
+    }
+    String parent = build(fqnParts[0]);
+    for (int i = 1; i < fqnParts.length - 1; i++) {
+      parent = add(parent, fqnParts[i]);
+    }
+    return parent;
+  }
+
+  public static String getRoot(String fqn) {
+    // Split fqn of format a.b.c.d and return the root a
     String[] split = split(fqn);
     if (split.length <= 1) {
       return null;
     }
-    String parent = build(split[0]);
-    for (int i = 1; i < split.length - 1; i++) {
-      parent = add(parent, split[i]);
-    }
-    return parent;
+    return split[0];
   }
 
   private static class SplitListener extends FqnBaseListener {
@@ -132,10 +162,6 @@ public class FullyQualifiedName {
     }
     // Return table FQN of format databaseService.tableName
     return build(split[0], split[1], split[2], split[3]);
-  }
-
-  public static String getServiceName(String fqn) {
-    return split(fqn)[0];
   }
 
   public static String getColumnName(String columnFQN) {

@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -17,6 +17,10 @@ import {
   GCSCredentialsValues,
   SCredentials,
 } from '../../../generated/metadataIngestion/dbtPipeline';
+import {
+  AddIngestionState,
+  ModifiedDbtConfig,
+} from '../../AddIngestion/addIngestion.interface';
 import { DBT_SOURCES, GCS_CONFIG } from './DBTFormEnum';
 
 export interface DBTFormCommonProps {
@@ -28,42 +32,46 @@ export interface DBTFormCommonProps {
 
 export interface DBTConfigFormProps extends DBTFormCommonProps {
   formType: FormSubmitType;
-  data: DbtConfig;
-  gcsType?: GCS_CONFIG;
-  source?: DBT_SOURCES;
-  handleGcsTypeChange?: (type: GCS_CONFIG) => void;
-  handleSourceChange?: (src: DBT_SOURCES) => void;
-  ingestionName: string;
-  handleIngestionName: (value: string) => void;
+  data: AddIngestionState;
+
+  onChange: (newState: Partial<AddIngestionState>) => void;
 }
 
 export type DbtConfigCloud = Pick<
-  DbtConfig,
+  ModifiedDbtConfig,
   | 'dbtCloudAccountId'
   | 'dbtCloudAuthToken'
   | 'dbtUpdateDescriptions'
   | 'dbtCloudProjectId'
+  | 'dbtClassificationName'
+  | 'dbtCloudUrl'
+  | 'dbtCloudJobId'
 >;
 
 export type DbtConfigLocal = Pick<
-  DbtConfig,
+  ModifiedDbtConfig,
   | 'dbtCatalogFilePath'
   | 'dbtManifestFilePath'
   | 'dbtRunResultsFilePath'
   | 'dbtUpdateDescriptions'
+  | 'dbtClassificationName'
 >;
 
 export type DbtConfigHttp = Pick<
-  DbtConfig,
+  ModifiedDbtConfig,
   | 'dbtCatalogHttpPath'
   | 'dbtManifestHttpPath'
   | 'dbtRunResultsHttpPath'
   | 'dbtUpdateDescriptions'
+  | 'dbtClassificationName'
 >;
 
 export type DbtConfigS3GCS = Pick<
-  DbtConfig,
-  'dbtSecurityConfig' | 'dbtPrefixConfig' | 'dbtUpdateDescriptions'
+  ModifiedDbtConfig,
+  | 'dbtSecurityConfig'
+  | 'dbtPrefixConfig'
+  | 'dbtUpdateDescriptions'
+  | 'dbtClassificationName'
 >;
 
 export type DbtS3Creds = Pick<

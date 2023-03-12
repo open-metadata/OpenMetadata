@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -36,4 +36,20 @@ export enum LOADING_STATE {
 export enum PROMISE_STATE {
   FULFILLED = 'fulfilled',
   REJECTED = 'rejected',
+}
+
+export enum OPERATION {
+  UPDATE = 'update',
+  DELETE = 'delete',
+  NO_OPERATION = 'no-operation',
+}
+
+export enum SORT_ORDER {
+  ASC = 'asc',
+  DESC = 'desc',
+}
+
+export enum ERROR_PLACEHOLDER_TYPE {
+  ADD = 'ADD_DATA',
+  VIEW = 'VIEW_DATA',
 }

@@ -30,8 +30,8 @@ global:
   authentication:
     provider: "custom-oidc"
     publicKeys:
-      - "http://localhost:8081/realms/data-sec/protocol/openid-connect/certs"
-    authority: "http://localhost:8081/realms/data-sec"
+      - "http://localhost:8081/auth/realms/data-sec/protocol/openid-connect/certs"
+    authority: "http://localhost:8081/auth/realms/data-sec"
     clientId: "{Client ID}"
     callbackUrl: "http://localhost:8585/callback"
   airflow:
@@ -58,8 +58,9 @@ global:
   authentication:
     provider: "custom-oidc"
     publicKeys:
-      - "http://localhost:8081/realms/data-sec/protocol/openid-connect/certs"
-    authority: "http://localhost:8081/realms/data-sec"
+    - "http://openmetadata:8585/api/v1/config/jwks"
+    - "http://localhost:8081/auth/realms/data-sec/protocol/openid-connect/certs"
+    authority: "http://localhost:8081/auth/realms/data-sec"
     clientId: "{Client ID}"
     callbackUrl: "http://localhost:8585/callback"
 ```

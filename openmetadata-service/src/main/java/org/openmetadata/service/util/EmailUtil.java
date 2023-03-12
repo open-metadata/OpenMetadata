@@ -1,3 +1,16 @@
+/*
+ *  Copyright 2021 Collate
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
 package org.openmetadata.service.util;
 
 import static freemarker.template.Configuration.VERSION_2_3_28;
@@ -265,14 +278,14 @@ public class EmailUtil {
     }
   }
 
-  public static void sendChangeEventMail(String receiverMail, EmailMessage emailMesssage) {
+  public static void sendChangeEventMail(String receiverMail, EmailMessage emailMessaged) {
     if (DEFAULT_SMTP_SETTINGS.getEnableSmtpServer()) {
       Map<String, String> templatePopulator = new HashMap<>();
       templatePopulator.put(EmailUtil.USERNAME, receiverMail.split("@")[0]);
-      templatePopulator.put("updatedBy", emailMesssage.getUpdatedBy());
-      templatePopulator.put("entityUrl", emailMesssage.getEntityUrl());
+      templatePopulator.put("updatedBy", emailMessaged.getUpdatedBy());
+      templatePopulator.put("entityUrl", emailMessaged.getEntityUrl());
       StringBuilder buff = new StringBuilder();
-      for (String cmessage : emailMesssage.getChangeMessage()) {
+      for (String cmessage : emailMessaged.getChangeMessage()) {
         buff.append(cmessage);
         buff.append("\n");
       }

@@ -20,8 +20,8 @@ from typing import Generic, List, Optional, Type, TypeVar
 from pydantic import BaseModel
 
 from metadata.ingestion.ometa.client import REST
-from metadata.ingestion.ometa.utils import ometa_logger
 from metadata.utils.elasticsearch import ES_INDEX_MAP
+from metadata.utils.logger import ometa_logger
 
 logger = ometa_logger()
 
@@ -39,7 +39,7 @@ class ESMixin(Generic[T]):
 
     fqdn_search = "/search/query?q=fullyQualifiedName:{fqn}&from={from_}&size={size}&index={index}"
 
-    @functools.lru_cache()
+    @functools.lru_cache(maxsize=512)
     def _search_es_entity(
         self, entity_type: Type[T], query_string: str
     ) -> Optional[List[T]]:

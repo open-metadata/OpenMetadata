@@ -29,6 +29,7 @@ import org.openmetadata.schema.type.TagLabel;
 public interface EntityInterface {
   // Lower case entity name to canonical entity name map
   Map<String, String> CANONICAL_ENTITY_NAME_MAP = new HashMap<>();
+  Map<String, Class<? extends EntityInterface>> ENTITY_TYPE_TO_CLASS_MAP = new HashMap<>();
 
   UUID getId();
 

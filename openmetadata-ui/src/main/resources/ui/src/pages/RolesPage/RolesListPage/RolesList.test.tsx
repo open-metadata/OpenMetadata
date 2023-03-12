@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -24,15 +24,14 @@ jest.mock('react-router-dom', () => ({
   )),
 }));
 
-jest.mock('../../../components/common/DeleteWidget/DeleteWidgetModal', () =>
+jest.mock('components/common/DeleteWidget/DeleteWidgetModal', () =>
   jest
     .fn()
     .mockReturnValue(<div data-testid="delete-modal">DeletWdigetModal</div>)
 );
 
-jest.mock(
-  '../../../components/common/rich-text-editor/RichTextEditorPreviewer',
-  () => jest.fn().mockReturnValue(<div data-testid="previewer">Previewer</div>)
+jest.mock('components/common/rich-text-editor/RichTextEditorPreviewer', () =>
+  jest.fn().mockReturnValue(<div data-testid="previewer">Previewer</div>)
 );
 
 jest.mock('../../../utils/CommonUtils', () => ({
@@ -69,10 +68,10 @@ describe('Test Roles List Component', () => {
 
     const container = await screen.findByTestId('roles-list-table');
 
-    const nameCol = await screen.findByText('Name');
-    const descriptionCol = await screen.findByText('Description');
-    const policiesCol = await screen.findByText('Policies');
-    const actionsCol = await screen.findByText('Actions');
+    const nameCol = await screen.findByText('label.name');
+    const descriptionCol = await screen.findByText('label.description');
+    const policiesCol = await screen.findByText('label.policy-plural');
+    const actionsCol = await screen.findByText('label.action-plural');
 
     expect(container).toBeInTheDocument();
     expect(nameCol).toBeInTheDocument();

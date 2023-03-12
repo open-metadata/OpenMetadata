@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -13,10 +13,10 @@
 
 import { AxiosError } from 'axios';
 import i18next from 'i18next';
-import { getChartById } from '../axiosAPIs/chartAPI';
+import { ChartType } from 'pages/DashboardDetailsPage/DashboardDetailsPage.component';
+import { getChartById } from 'rest/chartAPI';
 import { TabSpecificField } from '../enums/entity.enum';
 import { Dashboard } from '../generated/entity/data/dashboard';
-import { ChartType } from '../pages/DashboardDetailsPage/DashboardDetailsPage.component';
 import { sortTagsCaseInsensitive } from './CommonUtils';
 
 export const defaultFields = `${TabSpecificField.OWNER}, ${TabSpecificField.FOLLOWERS}, ${TabSpecificField.TAGS},
@@ -24,7 +24,7 @@ ${TabSpecificField.USAGE_SUMMARY}, ${TabSpecificField.CHARTS},${TabSpecificField
 
 export const dashboardDetailsTabs = [
   {
-    name: i18next.t('label.details'),
+    name: i18next.t('label.detail-plural'),
     path: 'details',
   },
   {
@@ -38,7 +38,7 @@ export const dashboardDetailsTabs = [
     field: TabSpecificField.LINEAGE,
   },
   {
-    name: i18next.t('label.custom-properties'),
+    name: i18next.t('label.custom-property-plural'),
     path: 'custom_properties',
   },
 ];

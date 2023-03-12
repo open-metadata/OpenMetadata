@@ -49,6 +49,7 @@ class FileSink(Sink[Entity]):
         self.report = SinkStatus()
 
         fpath = pathlib.Path(self.config.filename)
+        # pylint: disable=consider-using-with
         self.file = fpath.open("w", encoding=UTF_8)
         self.file.write("[\n")
         self.wrote_something = False

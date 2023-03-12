@@ -24,6 +24,10 @@ from airflow_provider_openmetadata.lineage.config.loader import (
 )
 from airflow_provider_openmetadata.lineage.runner import AirflowLineageRunner
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.source.pipeline.airflow.lineage_parser import (
+    XLets,
+    get_xlets_from_dag,
+)
 
 
 # pylint: disable=too-few-public-methods
@@ -47,7 +51,6 @@ class OpenMetadataLineageBackend(LineageBackend):
                  only if you are using google as SSO
     """
 
-    # pylint: disable=protected-access
     def send_lineage(
         self,
         operator: "BaseOperator",
@@ -70,12 +73,13 @@ class OpenMetadataLineageBackend(LineageBackend):
         try:
             config: AirflowLineageConfig = get_lineage_config()
             metadata = OpenMetadata(config.metadata_config)
+            xlet_list: List[XLets] = get_xlets_from_dag(context["dag"])
 
             runner = AirflowLineageRunner(
                 metadata=metadata,
                 service_name=config.airflow_service_name,
                 dag=context["dag"],
-                context=context,
+                xlets=xlet_list,
                 only_keep_dag_lineage=config.only_keep_dag_lineage,
                 max_status=config.max_status,
             )

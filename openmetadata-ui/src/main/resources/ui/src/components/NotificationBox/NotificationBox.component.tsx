@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,13 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+
 import { Badge, Button, List, Tabs, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import { isEmpty, toLower } from 'lodash';
+import { isEmpty } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { getFeedsWithFilter } from 'rest/feedsAPI';
 import AppState from '../../AppState';
-import { getFeedsWithFilter } from '../../axiosAPIs/feedsAPI';
 import {
   getUserPath,
   NOTIFICATION_READ_TIMER,
@@ -162,7 +163,11 @@ const NotificationBox = ({
           dataSource={notificationDropDownList}
           footer={
             <Button block href={viewAllPath} type="link">
-              <span>{toLower(t('label.view-all'))}</span>
+              <span>
+                {t('label.view-entity', {
+                  entity: t('label.all-lowercase'),
+                })}
+              </span>
             </Button>
           }
           itemLayout="vertical"

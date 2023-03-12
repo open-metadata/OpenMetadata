@@ -4,15 +4,31 @@ slug: /connectors/database/snowflake
 ---
 
 # Snowflake
+<Table>
+
+| Stage | Metadata |Query Usage | Data Profiler | Data Quality | Lineage | DBT | Supported Versions |
+|:------:|:------:|:-----------:|:-------------:|:------------:|:-------:|:---:|:------------------:|
+|  PROD  |   ✅   |      ✅      |       ✅       |       ✅      |    ✅    |  ✅  |  --  |
+
+</Table>
+
+<Table>
+
+| Lineage | Table-level | Column-level |
+|:------:|:-----------:|:-------------:|
+| ✅ | ✅ | ✅ |
+
+</Table>
 
 In this section, we provide guides and references to use the Snowflake connector.
 
 Configure and schedule Snowflake metadata and profiler workflows from the OpenMetadata UI:
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
-- [Query Usage and Lineage Ingestion](#query-usage-and-lineage-ingestion)
+- [Query Usage](#query-usage)
 - [Data Profiler](#data-profiler)
 - [Data Quality](#data-quality)
+- [Lineage](#lineage)
 - [dbt Integration](#dbt-integration)
 
 If you don't want to use the OpenMetadata Ingestion container to configure the workflows via the UI, then you can check
@@ -44,18 +60,57 @@ To deploy OpenMetadata, check the <a href="/deployment">Deployment</a> guides.
 To run the Ingestion via the UI you'll need to use the OpenMetadata Ingestion Container, which comes shipped with
 custom Airflow plugins to handle the workflow deployment.
 
-<Note>
+To ingest basic metadata snowflake user must have the following priviledges:
+  - `USAGE` Privilege on Warehouse
+  - `USAGE` Privilege on Database
+  - `USAGE` Privilege on Schema
+  - `SELECT` Privilege on Tables
+```sql
+-- Create New Role
+CREATE ROLE NEW_ROLE;
 
-- To ingest basic metadata snowflake user must have at least `USAGE` privileges on required schemas.
-- While running the usage workflow, Openmetadata fetches the query logs by querying `snowflake.account_usage.query_history` table.
-  For this the snowflake user should be granted the `ACCOUNTADMIN` role (or a role granted IMPORTED PRIVILEGES on the database).
-- If ingesting tags, the user should also have permissions to query `snowflake.account_usage.tag_references`.
-  For this the snowflake user should be granted the `ACCOUNTADMIN` role (or a role granted IMPORTED PRIVILEGES on the database)
-- If during the ingestion you want to set the session tags, note that the user should have `ALTER SESSION` permissions.
+-- Create New User
+CREATE USER NEW_USER DEFAULT_ROLE=NEW_ROLE PASSWORD='PASSWORD';
 
-You can find more information about the Account Usage [here](https://docs.snowflake.com/en/sql-reference/account-usage.html).
+-- Grant role to user
+GRANT ROLE NEW_ROLE TO USER NEW_USER;
 
-</Note>
+-- Grant USAGE Privilege on Warehouse to New Role
+GRANT USAGE ON WAREHOUSE WAREHOUSE_NAME TO ROLE NEW_ROLE;
+
+-- Grant USAGE Privilege on Database to New Role
+GRANT USAGE ON DATABASE TEST_DB TO ROLE NEW_ROLE;
+
+-- Grant USAGE Privilege on required Schemas to New Role
+GRANT USAGE ON SCHEMA TEST_SCHEMA TO ROLE NEW_ROLE;
+
+-- Grant SELECT Privilege on required tables & views to New Role
+GRANT SELECT ON ALL TABLES IN SCHEMA TEST_SCHEMA TO ROLE NEW_ROLE;
+GRANT SELECT ON ALL VIEWS IN SCHEMA TEST_SCHEMA TO ROLE NEW_ROLE;
+```
+
+
+While running the usage workflow, Openmetadata fetches the query logs by querying `snowflake.account_usage.query_history` table. For this the snowflake user should be granted the `ACCOUNTADMIN` role or a role granted IMPORTED PRIVILEGES on the database `SNOWFLAKE`.
+
+```sql
+
+-- Grant IMPORTED PRIVILEGES on all Schemas of SNOWFLAKE DB to New Role
+GRANT IMPORTED PRIVILEGES ON ALL SCHEMAS IN DATABASE SNOWFLAKE TO ROLE NEW_ROLE;
+
+```
+
+
+If ingesting tags, the user should also have permissions to query `snowflake.account_usage.tag_references`.For this the snowflake user should be granted the `ACCOUNTADMIN` role or a role granted IMPORTED PRIVILEGES on the database
+
+```sql
+
+-- Grant IMPORTED PRIVILEGES on all Schemas of SNOWFLAKE DB to New Role
+GRANT IMPORTED PRIVILEGES ON ALL SCHEMAS IN DATABASE SNOWFLAKE TO ROLE NEW_ROLE;
+
+```
+
+You can find more information about the `account_usage` schema [here](https://docs.snowflake.com/en/sql-reference/account-usage.html).
+
 
 ## Metadata Ingestion
 
@@ -152,8 +207,9 @@ the changes.
 - **Role (Optional)**: Enter the details of the Snowflake Account Role. This is an optional detail.
 - **Warehouse**: Warehouse name.
 - **Database (Optional)**: The database of the data source is an optional parameter, if you would like to restrict the metadata reading to a single database. If left blank, OpenMetadata ingestion attempts to scan all the databases.
-- **Private Key (Optional)**: Connection to Snowflake instance via Private Key.
-- **Snowflake Passphrase Key (Optional)**: Snowflake Passphrase Key used with Private Key.
+- **Private Key (Optional)**: Connection to Snowflake instance via Private Key instead of a Password.
+  - The multi-line key needs to be converted to one line with `\n` for line endings i.e. `-----BEGIN ENCRYPTED PRIVATE KEY-----\nMII...\n...\n-----END ENCRYPTED PRIVATE KEY-----`
+- **Snowflake Passphrase Key (Optional)**: Snowflake Passphrase Key used with an encrypted Private Key.
 - **Connection Options (Optional)**: Enter the details for any additional connection options that can be sent to Snowflake during the connection. These details must be added as Key-Value pairs.
 - **Connection Arguments (Optional)**: Enter the details for any additional connection arguments such as security or protocol configs that can be sent to Snowflake during the connection. These details must be added as Key-Value pairs. 
   - In case you are using Single-Sign-On (SSO) for authentication, add the `authenticator` details in the Connection Arguments as a Key-Value pair as follows: `"authenticator" : "sso_login_url"`
@@ -187,6 +243,7 @@ caption="Configure Metadata Ingestion Page"
 - **Enable Debug Log (toggle)**: Set the Enable Debug Log toggle to set the default log level to debug, these logs can be viewed later in Airflow.
 - **Mark Deleted Tables (toggle)**: Set the Mark Deleted Tables toggle to flag tables as soft-deleted if they are not present anymore in the source system.
 - **Mark Deleted Tables from Filter Only (toggle)**: Set the Mark Deleted Tables from Filter Only toggle to flag tables as soft-deleted if they are not present anymore within the filtered schema or database only. This flag is useful when you have more than one ingestion pipelines. For example if you have a schema
+- **Auto Tag PII(toggle)**: Auto PII tagging checks for column name to mark PII Sensitive/NonSensitive tag
 
 ### 7. Schedule the Ingestion and Deploy
 
@@ -236,7 +293,7 @@ caption="Edit and Deploy the Ingestion Pipeline"
 
 From the Connection tab, you can also Edit the Service if needed.
 
-## Query Usage and Lineage Ingestion
+## Query Usage
 
 <Tile
 icon="manage_accounts"
@@ -261,6 +318,15 @@ icon="air"
 title="Data Quality Workflow"
 text="Learn more about how to configure the Data Quality tests from the UI."
 link="/connectors/ingestion/workflows/data-quality"
+/>
+
+## Lineage
+
+<Tile
+icon="air"
+title="Lineage Workflow"
+text="Learn more about how to configure the Lineage from the UI."
+link="/connectors/ingestion/workflows/lineage"
 />
 
 ## dbt Integration

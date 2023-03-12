@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -46,7 +46,7 @@ describe('Test CardWithListing Component', () => {
 
     expect(card).toBeInTheDocument();
 
-    expect(getByTestId('select-tier-buuton')).toBeInTheDocument();
+    expect(getByTestId('select-tier-button')).toBeInTheDocument();
   });
 
   it('OnClick onSelect function should call', () => {
@@ -98,7 +98,7 @@ describe('Test CardWithListing Component', () => {
 
     expect(mockSelectFunction).toHaveBeenCalledTimes(1);
 
-    const tierSelectButton = getByTestId('select-tier-buuton');
+    const tierSelectButton = getByTestId('select-tier-button');
 
     expect(tierSelectButton).toBeInTheDocument();
   });
@@ -127,7 +127,7 @@ describe('Test CardWithListing Component', () => {
 
     expect(mockSelectFunction).toHaveBeenCalledTimes(1);
 
-    const tierSelectButton = getByTestId('select-tier-buuton');
+    const tierSelectButton = getByTestId('select-tier-button');
 
     expect(tierSelectButton).toBeInTheDocument();
 

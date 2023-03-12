@@ -5,6 +5,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.permissionNotAllowed;
 import static org.openmetadata.service.security.SecurityUtil.authHeaders;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
+import static org.openmetadata.service.util.TestUtils.assertListNotNull;
+import static org.openmetadata.service.util.TestUtils.assertListNull;
 import static org.openmetadata.service.util.TestUtils.assertResponse;
 import static org.openmetadata.service.util.TestUtils.assertResponseContains;
 
@@ -24,7 +26,6 @@ import org.openmetadata.schema.analytics.type.WebAnalyticEventType;
 import org.openmetadata.schema.api.tests.CreateWebAnalyticEvent;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.OpenMetadataApplicationTest;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.TestUtils;
@@ -37,10 +38,6 @@ public class WebAnalyticEventResourceTest extends EntityResourceTest<WebAnalytic
         WebAnalyticEventResource.WebAnalyticEventList.class,
         "analytics/webAnalyticEvent",
         WebAnalyticEventResource.FIELDS);
-    supportsEmptyDescription = false;
-    supportsFollowers = false;
-    supportsAuthorizedMetadataOperations = false;
-    supportsOwner = false;
   }
 
   @Test
@@ -156,29 +153,41 @@ public class WebAnalyticEventResourceTest extends EntityResourceTest<WebAnalytic
   }
 
   @Override
-  public WebAnalyticEvent validateGetWithDifferentFields(WebAnalyticEvent entity, boolean byName) {
-    return null;
+  public WebAnalyticEvent validateGetWithDifferentFields(WebAnalyticEvent entity, boolean byName)
+      throws HttpResponseException {
+    String fields = "";
+    entity =
+        byName
+            ? getEntityByName(entity.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
+            : getEntity(entity.getId(), null, ADMIN_AUTH_HEADERS);
+    assertListNull(entity.getOwner());
+    fields = "owner";
+    entity =
+        byName
+            ? getEntityByName(entity.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
+            : getEntity(entity.getId(), fields, ADMIN_AUTH_HEADERS);
+    assertListNotNull(entity.getOwner());
+    return entity;
   }
 
   @Override
   public void assertFieldChange(String fieldName, Object expected, Object actual) {}
 
-  public static void putWebAnalyticEventData(WebAnalyticEventData data, Map<String, String> authHeaders)
+  public void putWebAnalyticEventData(WebAnalyticEventData data, Map<String, String> authHeaders)
       throws HttpResponseException {
-    WebTarget target = OpenMetadataApplicationTest.getResource("analytics/webAnalyticEvent/collect");
+    WebTarget target = getCollection().path("/collect");
     TestUtils.put(target, data, OK, authHeaders);
   }
 
-  public static void deleteWebAnalyticEventData(Long timestamp, Map<String, String> authHeaders) throws IOException {
-    String url =
-        String.format("analytics/webAnalyticEvent/%s/%s/collect", WebAnalyticEventType.PAGE_VIEW.value(), timestamp);
-    WebTarget target = OpenMetadataApplicationTest.getResource(url);
+  public void deleteWebAnalyticEventData(Long timestamp, Map<String, String> authHeaders) throws IOException {
+    String url = String.format("/%s/%s/collect", WebAnalyticEventType.PAGE_VIEW.value(), timestamp);
+    WebTarget target = getCollection().path(url);
     TestUtils.delete(target, WebAnalyticEvent.class, authHeaders);
   }
 
-  public static ResultList<WebAnalyticEventData> getWebAnalyticEventData(
+  public ResultList<WebAnalyticEventData> getWebAnalyticEventData(
       String eventType, Long start, Long end, Map<String, String> authHeaders) throws HttpResponseException {
-    WebTarget target = OpenMetadataApplicationTest.getResource("analytics/webAnalyticEvent/collect");
+    WebTarget target = getCollection().path("/collect");
     target = target.queryParam("startTs", start);
     target = target.queryParam("endTs", end);
     target = target.queryParam("eventType", eventType);

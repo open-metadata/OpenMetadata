@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -15,6 +15,7 @@ import { Menu, MenuProps } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { camelCase } from 'lodash';
 import React, { useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import { GlobalSettingOptions } from '../../constants/GlobalSettings.constants';
 import { TeamType } from '../../generated/entity/teams/team';
@@ -31,6 +32,7 @@ import { usePermissionProvider } from '../PermissionProvider/PermissionProvider'
 
 const GlobalSettingLeftPanel = () => {
   const history = useHistory();
+  const { t } = useTranslation();
   const { tab, settingCategory } = useParams<{ [key: string]: string }>();
 
   const { permissions } = usePermissionProvider();
@@ -41,15 +43,13 @@ const GlobalSettingLeftPanel = () => {
     () =>
       getGlobalSettingsMenuWithPermission(permissions, isAdminUser).reduce(
         (acc: ItemType[], curr: MenuList) => {
-          const menuItem = getGlobalSettingMenuItem(
-            curr.category,
-            camelCase(curr.category),
-            '',
-            '',
-            curr.items,
-            'group',
-            curr.isBeta
-          );
+          const menuItem = getGlobalSettingMenuItem({
+            label: curr.category,
+            key: camelCase(curr.category),
+            children: curr.items,
+            type: 'group',
+            isBeta: curr.isBeta,
+          });
           if (menuItem.children?.length) {
             return [...acc, menuItem];
           } else {
@@ -84,7 +84,7 @@ const GlobalSettingLeftPanel = () => {
     </LeftPanelCard>
   ) : (
     <ErrorPlaceHolder>
-      <p>No Data</p>
+      <p>{t('message.no-data-available')}</p>
     </ErrorPlaceHolder>
   );
 };

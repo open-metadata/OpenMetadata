@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -22,7 +22,9 @@ export const hashCode = (str: string) => {
   let hash = 0,
     i,
     chr;
-  if (isEmpty(str)) return hash;
+  if (isEmpty(str)) {
+    return hash;
+  }
   for (i = 0; i < str.length; i++) {
     chr = str.charCodeAt(i);
     hash = (hash << 5) - hash + chr;

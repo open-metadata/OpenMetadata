@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -12,12 +12,12 @@
  */
 
 import { AxiosError } from 'axios';
+import Loader from 'components/Loader/Loader';
+import UserListV1 from 'components/UserList/UserListV1';
 import React, { useEffect, useState } from 'react';
 import { useHistory, useLocation, useParams } from 'react-router-dom';
-import { searchData } from '../../axiosAPIs/miscAPI';
-import { getUsers } from '../../axiosAPIs/userAPI';
-import Loader from '../../components/Loader/Loader';
-import UserListV1 from '../../components/UserList/UserListV1';
+import { searchData } from 'rest/miscAPI';
+import { getUsers } from 'rest/userAPI';
 import { WILD_CARD_CHAR } from '../../constants/char.constants';
 import {
   INITIAL_PAGING_VALUE,
@@ -176,7 +176,7 @@ const UserListPageV1 = () => {
   const handleSearch = (value: string) => {
     setSearchValue(value);
     setCurrentPage(INITIAL_PAGING_VALUE);
-    const params = new URLSearchParams({ search: value });
+    const params = new URLSearchParams({ user: value });
     // This function is called onChange in the search input with debouncing
     // Hence using history.replace instead of history.push to avoid adding multiple routes in history
     history.replace({
@@ -200,9 +200,9 @@ const UserListPageV1 = () => {
         // Converting string to URLSearchParameter
         const searchParameter = new URLSearchParams(location.search);
         // Getting the searched name
-        const searchTerm = searchParameter.get('search') || '';
-        setSearchValue(searchTerm);
-        getSearchedUsers(searchTerm, 1);
+        const userSearchTerm = searchParameter.get('user') || '';
+        setSearchValue(userSearchTerm);
+        getSearchedUsers(userSearchTerm, 1);
         setIsPageLoading(false);
       } else {
         fetchUsersList(tab === GlobalSettingOptions.ADMINS || undefined);

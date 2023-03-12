@@ -1,6 +1,5 @@
-/* eslint-disable max-len */
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,11 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+/* eslint-disable max-len */
 
-import { VersionData } from '../../pages/EntityVersionPage/EntityVersionPage.component';
+import { VersionData } from 'pages/EntityVersionPage/EntityVersionPage.component';
 import { DashboardVersionProp } from './DashboardVersion.interface';
 
-export const dashboardVersionProp = {
+export const dashboardVersionProps = {
   version: '0.3',
   currentVersionData: {
     id: '4ee70a0c-6ec9-4c93-a91c-4a57d65bebc8',
@@ -132,7 +132,7 @@ export const mockTagChangeVersion = {
       tagFQN: 'PersonalData.Personal',
       description:
         'Data that can be used to directly or indirectly identify a person.',
-      source: 'Tag',
+      source: 'Classification',
       labelType: 'Manual',
       state: 'Confirmed',
     },
@@ -140,7 +140,7 @@ export const mockTagChangeVersion = {
       tagFQN: 'Tier.Tier1',
       description:
         'Data that can be used to directly or indirectly identify a person.',
-      source: 'Tag',
+      source: 'Classification',
       labelType: 'Manual',
       state: 'Confirmed',
     },
@@ -157,7 +157,7 @@ export const mockTagChangeVersion = {
       {
         name: 'tags',
         newValue:
-          '[{"tagFQN":"PersonalData.Personal","source":"Tag","labelType":"Manual","state":"Confirmed"}]',
+          '[{"tagFQN":"PersonalData.Personal","source":"Classification","labelType":"Manual","state":"Confirmed"}]',
       },
     ],
     fieldsUpdated: [],
@@ -184,7 +184,7 @@ export const mockNoChartData = {
       tagFQN: 'PersonalData.Personal',
       description:
         'Data that can be used to directly or indirectly identify a person.',
-      source: 'Tag',
+      source: 'Classification',
       labelType: 'Manual',
       state: 'Confirmed',
     },
@@ -192,7 +192,7 @@ export const mockNoChartData = {
       tagFQN: 'Tier.Tier1',
       description:
         'Data that can be used to directly or indirectly identify a person.',
-      source: 'Tag',
+      source: 'Classification',
       labelType: 'Manual',
       state: 'Confirmed',
     },
@@ -209,7 +209,7 @@ export const mockNoChartData = {
       {
         name: 'tags',
         newValue:
-          '[{"tagFQN":"PersonalData.Personal","source":"Tag","labelType":"Manual","state":"Confirmed"}]',
+          '[{"tagFQN":"PersonalData.Personal","source":"Classification","labelType":"Manual","state":"Confirmed"}]',
       },
     ],
     fieldsUpdated: [],

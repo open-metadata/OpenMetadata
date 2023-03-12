@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -26,7 +26,7 @@ const FQN = 'service.database.schema.table';
 const type = 'table';
 const expectedDisplayName = 'database.schema.table';
 
-jest.mock('../../../../axiosAPIs/userAPI', () => ({
+jest.mock('rest/userAPI', () => ({
   getUserByName: jest.fn().mockReturnValue({}),
 }));
 

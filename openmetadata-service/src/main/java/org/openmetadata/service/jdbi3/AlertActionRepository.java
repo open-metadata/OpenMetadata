@@ -6,7 +6,6 @@ import java.io.IOException;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.alerts.AlertAction;
 import org.openmetadata.schema.type.EntityReference;
-import org.openmetadata.service.Entity;
 import org.openmetadata.service.alerts.AlertsPublisherManager;
 import org.openmetadata.service.resources.dqtests.TestDefinitionResource;
 import org.openmetadata.service.util.EntityUtil;
@@ -30,8 +29,7 @@ public class AlertActionRepository extends EntityRepository<AlertAction> {
   }
 
   @Override
-  public AlertAction setFields(AlertAction entity, EntityUtil.Fields fields) throws IOException {
-    entity.setOwner(fields.contains(Entity.FIELD_OWNER) ? getOwner(entity) : null);
+  public AlertAction setFields(AlertAction entity, EntityUtil.Fields fields) {
     return entity;
   }
 
@@ -58,7 +56,7 @@ public class AlertActionRepository extends EntityRepository<AlertAction> {
 
   @Override
   public EntityUpdater getUpdater(AlertAction original, AlertAction updated, EntityRepository.Operation operation) {
-    return new AlertActionRepository.AlertActionUpdater(original, updated, operation);
+    return new AlertActionUpdater(original, updated, operation);
   }
 
   public class AlertActionUpdater extends EntityUpdater {

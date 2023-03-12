@@ -15,12 +15,18 @@ import traceback
 from collections import defaultdict
 from copy import deepcopy
 from logging.config import DictConfigurator
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, Union
 
+import sqlparse
 from cached_property import cached_property
-from sqlparse.sql import Comparison, Identifier, Statement
+from sqllineage import SQLPARSE_DIALECT
+from sqllineage.core.models import Column, Table
+from sqllineage.exceptions import SQLLineageException
+from sqllineage.runner import LineageRunner
+from sqlparse.sql import Comparison, Identifier, Parenthesis, Statement
 
 from metadata.generated.schema.type.tableUsageCount import TableColumn, TableColumnJoin
+from metadata.ingestion.lineage.models import Dialect
 from metadata.utils.helpers import (
     find_in_iter,
     get_formatted_entity_name,
@@ -28,20 +34,21 @@ from metadata.utils.helpers import (
     insensitive_replace,
 )
 from metadata.utils.logger import ingestion_logger
+from metadata.utils.timeout import timeout
 
 # Prevent sqllineage from modifying the logger config
 # Disable the DictConfigurator.configure method while importing LineageRunner
-# pylint: disable=wrong-import-position
+
 configure = DictConfigurator.configure
 DictConfigurator.configure = lambda _: None
-from sqllineage.core.models import Column, Table
-from sqllineage.exceptions import SQLLineageException
-from sqllineage.runner import LineageRunner
 
 # Reverting changes after import is done
 DictConfigurator.configure = configure
 
 logger = ingestion_logger()
+
+# max lineage parsing wait in second when using specific dialect
+LINEAGE_PARSING_TIMEOUT = 10
 
 
 class LineageParser:
@@ -53,10 +60,17 @@ class LineageParser:
     query: str
     _clean_query: str
 
-    def __init__(self, query: str):
+    def __init__(
+        self,
+        query: str,
+        dialect: Dialect = Dialect.ANSI,
+        timeout_seconds: int = LINEAGE_PARSING_TIMEOUT,
+    ):
         self.query = query
         self._clean_query = self.clean_raw_query(query)
-        self.parser = LineageRunner(self._clean_query)
+        self.parser = self._evaluate_best_parser(
+            self._clean_query, dialect=dialect, timeout_seconds=timeout_seconds
+        )
 
     @cached_property
     def involved_tables(self) -> Optional[List[Table]]:
@@ -104,11 +118,20 @@ class LineageParser:
         return self.retrieve_tables(self.parser.target_tables)
 
     @cached_property
-    def column_lineage(self) -> List[Tuple[Column, Column]]:
+    def column_lineage(self) -> List[Union[Tuple[Column, Column]]]:
         """
         Get a list of tuples of column lineage
         """
-        return self.parser.get_column_lineage()
+        if self.parser._dialect == SQLPARSE_DIALECT:  # pylint: disable=protected-access
+            return self.parser.get_column_lineage()
+        column_lineage = []
+        for src_column, tgt_column in self.parser.get_column_lineage():
+            src_col = Column(src_column.raw_name)
+            src_col._parent = src_column._parent  # pylint: disable=protected-access
+            tgt_col = Column(tgt_column.raw_name)
+            tgt_col._parent = tgt_column._parent  # pylint: disable=protected-access
+            column_lineage.append((src_col, tgt_col))
+        return column_lineage
 
     @cached_property
     def clean_table_list(self) -> List[str]:
@@ -242,18 +265,27 @@ class LineageParser:
     def stateful_add_joins_from_statement(
         self,
         join_data: Dict[str, List[TableColumnJoin]],
-        statement: Statement,
+        sql_statement: str,
     ) -> None:
         """
         Parse a single statement to pick up join information
         :param join_data: join data from previous statements
-        :param statement: Parsed sql statement to process
+        :param sql_statement: Parsed sql statement to process
         :return: for each table name, list all joins against other tables
         """
-        # Here we want to get tokens such as `tableA.col1 = tableB.col2`
-        comparisons = [
-            sub for sub in statement.get_sublists() if isinstance(sub, Comparison)
-        ]
+        # Here we want to get tokens such as `(tableA.col1 = tableB.col2)`
+        statement: Statement = sqlparse.parse(sql_statement)[0]
+        comparisons: List[Comparison] = []
+        for sub in statement.get_sublists():
+            if isinstance(sub, Parenthesis):
+                sub = (
+                    sub._groupable_tokens[0]  # pylint: disable=protected-access
+                    if len(sub._groupable_tokens)  # pylint: disable=protected-access
+                    else sub
+                )
+            if isinstance(sub, Comparison):
+                comparisons.append(sub)
+
         for comparison in comparisons:
             if "." not in comparison.left.value or "." not in comparison.right.value:
                 logger.debug(f"Ignoring comparison {comparison}")
@@ -288,8 +320,8 @@ class LineageParser:
         """
         join_data = defaultdict(list)
         # These are @lazy_property, not properly being picked up by IDEs. Ignore the warning
-        for statement in self.parser.statements_parsed:
-            self.stateful_add_joins_from_statement(join_data, statement=statement)
+        for statement in self.parser.statements():
+            self.stateful_add_joins_from_statement(join_data, sql_statement=statement)
 
         return join_data
 
@@ -313,15 +345,15 @@ class LineageParser:
             replace_by=" ",  # remove it as it does not add any value to lineage
         )
 
-        clean_query = insensitive_replace(
+        query_no_linebreaks = insensitive_replace(
             raw_str=clean_query.strip(),
             to_replace="\n",  # remove line breaks
             replace_by=" ",
         )
 
-        if insensitive_match(clean_query, ".*merge into .*when matched.*"):
+        if insensitive_match(query_no_linebreaks, ".*merge into .*when matched.*"):
             clean_query = insensitive_replace(
-                raw_str=clean_query,
+                raw_str=query_no_linebreaks,
                 to_replace="when matched.*",  # merge into queries specific
                 replace_by="",  # remove it as LineageRunner is not able to perform the lineage
             )
@@ -332,6 +364,62 @@ class LineageParser:
             return None
 
         return clean_query.strip()
+
+    @staticmethod
+    def _evaluate_best_parser(
+        query: str, dialect: Dialect, timeout_seconds: int
+    ) -> LineageRunner:
+        @timeout(seconds=timeout_seconds)
+        def get_sqlfluff_lineage_runner(qry: str, dlct: str) -> LineageRunner:
+            lr_dialect = LineageRunner(qry, dialect=dlct)
+            lr_dialect.get_column_lineage()
+            return lr_dialect
+
+        sqlfluff_count = 0
+        try:
+            lr_sqlfluff = get_sqlfluff_lineage_runner(query, dialect.value)
+            sqlfluff_count = len(lr_sqlfluff.get_column_lineage()) + len(
+                set(lr_sqlfluff.source_tables).union(
+                    set(lr_sqlfluff.target_tables).union(
+                        set(lr_sqlfluff.intermediate_tables)
+                    )
+                )
+            )
+        except TimeoutError:
+            logger.debug(
+                f"Lineage with SqlFluff failed for the [{dialect.value}] query: [{query}]: "
+                f"Parser has been running for more than {timeout_seconds} seconds."
+            )
+            lr_sqlfluff = None
+        except Exception:
+            logger.debug(
+                f"Lineage with SqlFluff failed for the [{dialect.value}] query: [{query}]"
+            )
+            lr_sqlfluff = None
+
+        lr_sqlparser = LineageRunner(query)
+        try:
+            sqlparser_count = len(lr_sqlparser.get_column_lineage()) + len(
+                set(lr_sqlparser.source_tables).union(
+                    set(lr_sqlparser.target_tables).union(
+                        set(lr_sqlparser.intermediate_tables)
+                    )
+                )
+            )
+        except Exception:
+            # if both runner have failed we return the usual one
+            return lr_sqlfluff if lr_sqlfluff else lr_sqlparser
+
+        if lr_sqlfluff:
+            # if sqlparser retrieve more lineage info that sqlfluff
+            if sqlparser_count > sqlfluff_count:
+                logger.debug(
+                    "Lineage computed with SqlFluff did not perform as expected "
+                    f"for the [{dialect.value}] query: [{query}]"
+                )
+                return lr_sqlparser
+            return lr_sqlfluff
+        return lr_sqlparser
 
     @staticmethod
     def clean_table_name(table: Table) -> Table:

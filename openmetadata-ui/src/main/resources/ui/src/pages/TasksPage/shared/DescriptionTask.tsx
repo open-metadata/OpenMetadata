@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,10 +11,11 @@
  *  limitations under the License.
  */
 
+import RichTextEditor from 'components/common/rich-text-editor/RichTextEditor';
+import { EditorContentRef } from 'components/common/rich-text-editor/RichTextEditor.interface';
 import { isEqual } from 'lodash';
-import { EditorContentRef } from 'Models';
 import React, { FC, Fragment, useRef } from 'react';
-import RichTextEditor from '../../../components/common/rich-text-editor/RichTextEditor';
+import { useTranslation } from 'react-i18next';
 import {
   TaskType,
   Thread,
@@ -41,6 +42,7 @@ const DescriptionTask: FC<DescriptionTaskProps> = ({
   currentDescription,
   onSuggestionChange,
 }) => {
+  const { t } = useTranslation();
   const markdownRef = useRef<EditorContentRef>();
 
   const isRequestDescription = isEqual(
@@ -64,7 +66,9 @@ const DescriptionTask: FC<DescriptionTaskProps> = ({
     if (!oldValue && !newValue) {
       return (
         <div className="tw-border tw-border-main tw-p-2 tw-rounded tw-my-1 tw-mb-3">
-          <span className="tw-p-2 tw-text-grey-muted">No Description</span>
+          <span className="tw-p-2 tw-text-grey-muted">
+            {t('label.no-entity', { entity: t('label.description') })}
+          </span>
         </div>
       );
     } else {
@@ -94,7 +98,9 @@ const DescriptionTask: FC<DescriptionTaskProps> = ({
     );
 
     return !newDescription && !oldDescription ? (
-      <span className="tw-p-2 tw-text-grey-muted">No Suggestion</span>
+      <span className="tw-p-2 tw-text-grey-muted">
+        {t('label.no-entity', { entity: t('label.suggestion') })}
+      </span>
     ) : (
       <DiffView className="tw-p-2" diffArr={diffs} />
     );
@@ -102,7 +108,7 @@ const DescriptionTask: FC<DescriptionTaskProps> = ({
 
   return (
     <div data-testid="task-description-tabs">
-      <p className="tw-text-grey-muted">Description:</p>{' '}
+      <p className="tw-text-grey-muted">{`${t('label.description')}:`}</p>{' '}
       <Fragment>
         {isTaskClosed ? (
           getDiffView()
@@ -114,7 +120,9 @@ const DescriptionTask: FC<DescriptionTaskProps> = ({
                   <RichTextEditor
                     height="208px"
                     initialValue={suggestion}
-                    placeHolder="Add description"
+                    placeHolder={t('label.add-entity', {
+                      entity: t('label.description'),
+                    })}
                     style={{ marginTop: '0px' }}
                     onTextChange={onSuggestionChange}
                   />

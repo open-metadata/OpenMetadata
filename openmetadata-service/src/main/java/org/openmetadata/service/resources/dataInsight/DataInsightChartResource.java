@@ -128,7 +128,7 @@ public class DataInsightChartResource extends EntityResource<DataInsightChart, D
   @GET
   @Operation(
       operationId = "listDataInsightChart",
-      summary = "List data charts",
+      summary = "List data insight charts",
       tags = "dataInsight",
       description = "Get a list of data insight charts",
       responses = {
@@ -191,7 +191,8 @@ public class DataInsightChartResource extends EntityResource<DataInsightChart, D
   public EntityHistory listVersions(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Data Inisght chart Id", schema = @Schema(type = "string")) @PathParam("id") UUID id)
+      @Parameter(description = "Id of the data insight chart", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id)
       throws IOException {
     return super.listVersionsInternal(securityContext, id);
   }
@@ -200,9 +201,9 @@ public class DataInsightChartResource extends EntityResource<DataInsightChart, D
   @Path("/{id}")
   @Operation(
       operationId = "listDataInsightChartId",
-      summary = "Get a Data Insight Chart",
+      summary = "Get a data insight chart by Id",
       tags = "dataInsight",
-      description = "Get a Data Insight Chart by `id`.",
+      description = "Get a Data Insight Chart by `Id`.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -213,7 +214,8 @@ public class DataInsightChartResource extends EntityResource<DataInsightChart, D
       })
   public DataInsightChart get(
       @Context UriInfo uriInfo,
-      @PathParam("id") UUID id,
+      @Parameter(description = "Id of the data insight chart", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id,
       @Context SecurityContext securityContext,
       @Parameter(
               description = "Fields requested in the returned resource",
@@ -231,23 +233,25 @@ public class DataInsightChartResource extends EntityResource<DataInsightChart, D
   }
 
   @GET
-  @Path("/name/{name}")
+  @Path("/name/{fqn}")
   @Operation(
       operationId = "getDataInsightChartByName",
-      summary = "Get a data insight chart by name",
+      summary = "Get a data insight chart by fully qualified name",
       tags = "dataInsight",
-      description = "Get a data insight chart by  name.",
+      description = "Get a data insight chart by `fullyQualifiedName`.",
       responses = {
         @ApiResponse(
             responseCode = "200",
             description = "The data insight chart",
             content =
                 @Content(mediaType = "application/json", schema = @Schema(implementation = DataInsightChart.class))),
-        @ApiResponse(responseCode = "404", description = "Data Insight Chart for instance {name} is not found")
+        @ApiResponse(responseCode = "404", description = "Data Insight Chart for instance {fqn} is not found")
       })
   public DataInsightChart getByName(
       @Context UriInfo uriInfo,
-      @PathParam("name") String name,
+      @Parameter(description = "Fully qualified name of the data insight chart", schema = @Schema(type = "string"))
+          @PathParam("fqn")
+          String fqn,
       @Context SecurityContext securityContext,
       @Parameter(
               description = "Fields requested in the returned resource",
@@ -261,16 +265,16 @@ public class DataInsightChartResource extends EntityResource<DataInsightChart, D
           @DefaultValue("non-deleted")
           Include include)
       throws IOException {
-    return getByNameInternal(uriInfo, securityContext, name, fieldsParam, include);
+    return getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include);
   }
 
   @GET
   @Path("/{id}/versions/{version}")
   @Operation(
       operationId = "getSpecificDataInsightChartVersion",
-      summary = "Get a version of the DataInsight",
+      summary = "Get a version of the data insight chart",
       tags = "dataInsight",
-      description = "Get a version of the data insight by given `id`",
+      description = "Get a version of the data insight by given `Id`",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -284,7 +288,8 @@ public class DataInsightChartResource extends EntityResource<DataInsightChart, D
   public DataInsightChart getVersion(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Data Insight Chart Id", schema = @Schema(type = "string")) @PathParam("id") UUID id,
+      @Parameter(description = "Id of the data insight chart", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id,
       @Parameter(
               description = "Data Insight Chart version number in the form `major`.`minor`",
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
@@ -297,9 +302,9 @@ public class DataInsightChartResource extends EntityResource<DataInsightChart, D
   @POST
   @Operation(
       operationId = "createDataInsightChart",
-      summary = "Create a Data Insight Chart",
+      summary = "Create a data insight chart",
       tags = "dataInsight",
-      description = "Create a Data Insight Chart.",
+      description = "Create a data insight chart.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -327,7 +332,8 @@ public class DataInsightChartResource extends EntityResource<DataInsightChart, D
   public Response updateDescription(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @PathParam("id") UUID id,
+      @Parameter(description = "Id of the data insight chart", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id,
       @RequestBody(
               description = "JsonPatch with array of operations",
               content =
@@ -365,9 +371,9 @@ public class DataInsightChartResource extends EntityResource<DataInsightChart, D
   @Path("/{id}")
   @Operation(
       operationId = "deleteDataInsightChart",
-      summary = "Delete a data insight chart",
+      summary = "Delete a data insight chart by Id",
       tags = "dataInsight",
-      description = "Delete a data insight chart by `id`.",
+      description = "Delete a data insight chart by `Id`.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
         @ApiResponse(responseCode = "404", description = "Data insight chart for instance {id} is not found")
@@ -379,18 +385,44 @@ public class DataInsightChartResource extends EntityResource<DataInsightChart, D
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
-      @Parameter(description = "Data Insight Chart Id", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
+      @Parameter(description = "Id of the data insight chart", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id)
       throws IOException {
     return delete(uriInfo, securityContext, id, false, hardDelete);
+  }
+
+  @DELETE
+  @Path("/name/{fqn}")
+  @Operation(
+      operationId = "deleteDataInsightChartByName",
+      summary = "Delete a data insight chart by fully qualified name",
+      tags = "dataInsight",
+      description = "Delete a data insight chart by `fullyQualifiedName`.",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "OK"),
+        @ApiResponse(responseCode = "404", description = "Data insight chart for instance {fqn} is not found")
+      })
+  public Response delete(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Hard delete the entity. (Default = `false`)")
+          @QueryParam("hardDelete")
+          @DefaultValue("false")
+          boolean hardDelete,
+      @Parameter(description = "Fully qualified name of the data insight chart", schema = @Schema(type = "string"))
+          @PathParam("fqn")
+          String fqn)
+      throws IOException {
+    return deleteByName(uriInfo, securityContext, fqn, false, hardDelete);
   }
 
   @PUT
   @Path("/restore")
   @Operation(
       operationId = "restore",
-      summary = "Restore a soft deleted DataInsightChart.",
+      summary = "Restore a soft deleted data insight chart",
       tags = "dataInsight",
-      description = "Restore a soft deleted DataInsightChart.",
+      description = "Restore a soft deleted data insight chart.",
       responses = {
         @ApiResponse(
             responseCode = "200",

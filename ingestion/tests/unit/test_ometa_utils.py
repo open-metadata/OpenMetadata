@@ -16,8 +16,8 @@ from unittest import TestCase
 
 from metadata.generated.schema.entity.data.mlmodel import MlModel
 from metadata.generated.schema.type import basic
+from metadata.ingestion.connections.headers import render_query_header
 from metadata.ingestion.ometa.utils import format_name, get_entity_type, model_str
-from metadata.utils.connections import render_query_header
 
 
 class OMetaUtilsTest(TestCase):

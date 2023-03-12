@@ -6,13 +6,12 @@ source:
       type: Mysql
       username: openmetadata_user
       password: openmetadata_password
-      database: openmetadata_db
       hostPort: localhost:3306
+      databaseSchema: openmetadata_db
       connectionOptions: {}
       connectionArguments: {}
   sourceConfig:
     config:
-      enableDataProfiler: false
       schemaFilterPattern:
         excludes:
         - mysql.*

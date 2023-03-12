@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -13,13 +13,14 @@
 
 import { Button, Popover, Space, Table, Tag, Tooltip } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
+import DeleteWidgetModal from 'components/common/DeleteWidget/DeleteWidgetModal';
+import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
+import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
+import { ResourceEntity } from 'components/PermissionProvider/PermissionProvider.interface';
 import { isEmpty, isUndefined, uniqueId } from 'lodash';
 import React, { FC, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import DeleteWidgetModal from '../../../components/common/DeleteWidget/DeleteWidgetModal';
-import RichTextEditorPreviewer from '../../../components/common/rich-text-editor/RichTextEditorPreviewer';
-import { usePermissionProvider } from '../../../components/PermissionProvider/PermissionProvider';
-import { ResourceEntity } from '../../../components/PermissionProvider/PermissionProvider.interface';
 import {
   NO_PERMISSION_FOR_ACTION,
   NO_PERMISSION_TO_VIEW,
@@ -45,6 +46,7 @@ interface PolicyListProps {
 }
 
 const PoliciesList: FC<PolicyListProps> = ({ policies, fetchPolicies }) => {
+  const { t } = useTranslation();
   const [selectedPolicy, setSelectedPolicy] = useState<Policy>();
 
   const { permissions } = usePermissionProvider();
@@ -66,13 +68,13 @@ const PoliciesList: FC<PolicyListProps> = ({ policies, fetchPolicies }) => {
   const columns: ColumnsType<Policy> = useMemo(() => {
     return [
       {
-        title: 'Name',
+        title: t('label.name'),
         dataIndex: 'name',
         width: '200px',
         key: 'name',
         render: (_, record) => (
           <Link
-            className="hover:tw-underline tw-cursor-pointer"
+            className="link-hover"
             data-testid="policy-name"
             to={getPolicyWithFqnPath(record.fullyQualifiedName || '')}>
             {getEntityName(record)}
@@ -80,7 +82,7 @@ const PoliciesList: FC<PolicyListProps> = ({ policies, fetchPolicies }) => {
         ),
       },
       {
-        title: 'Description',
+        title: t('label.description'),
         dataIndex: 'description',
         key: 'description',
         render: (_, record) => (
@@ -88,7 +90,7 @@ const PoliciesList: FC<PolicyListProps> = ({ policies, fetchPolicies }) => {
         ),
       },
       {
-        title: 'Roles',
+        title: t('label.role-plural'),
         dataIndex: 'roles',
         width: '250px',
         key: 'roles',
@@ -106,14 +108,14 @@ const PoliciesList: FC<PolicyListProps> = ({ policies, fetchPolicies }) => {
                     {getEntityName(role)}
                   </Link>
                 ) : (
-                  <Tooltip title={NO_PERMISSION_TO_VIEW}>
+                  <Tooltip key={uniqueId()} title={NO_PERMISSION_TO_VIEW}>
                     {getEntityName(role)}
                   </Tooltip>
                 )
               )}
               {hasMore && (
                 <Popover
-                  className="tw-cursor-pointer"
+                  className="cursor-pointer"
                   content={
                     <Space wrap size={4}>
                       {record.roles.slice(LIST_CAP).map((role) =>
@@ -126,16 +128,18 @@ const PoliciesList: FC<PolicyListProps> = ({ policies, fetchPolicies }) => {
                             {getEntityName(role)}
                           </Link>
                         ) : (
-                          <Tooltip title={NO_PERMISSION_TO_VIEW}>
+                          <Tooltip
+                            key={uniqueId()}
+                            title={NO_PERMISSION_TO_VIEW}>
                             {getEntityName(role)}
                           </Tooltip>
                         )
                       )}
                     </Space>
                   }
-                  overlayClassName="tw-w-40 tw-text-center"
+                  overlayClassName="w-40 text-center"
                   trigger="click">
-                  <Tag className="tw-ml-1" data-testid="plus-more-count">{`+${
+                  <Tag className="m-l-xss" data-testid="plus-more-count">{`+${
                     listLength - LIST_CAP
                   } more`}</Tag>
                 </Popover>
@@ -147,7 +151,7 @@ const PoliciesList: FC<PolicyListProps> = ({ policies, fetchPolicies }) => {
         },
       },
       {
-        title: 'Actions',
+        title: t('label.action-plural'),
         dataIndex: 'actions',
         width: '80px',
         key: 'actions',
@@ -156,7 +160,9 @@ const PoliciesList: FC<PolicyListProps> = ({ policies, fetchPolicies }) => {
             <Tooltip
               placement="left"
               title={
-                deletePolicyPermission ? 'Delete' : NO_PERMISSION_FOR_ACTION
+                deletePolicyPermission
+                  ? t('label.delete')
+                  : NO_PERMISSION_FOR_ACTION
               }>
               <Button
                 data-testid={`delete-action-${getEntityName(record)}`}
@@ -188,9 +194,9 @@ const PoliciesList: FC<PolicyListProps> = ({ policies, fetchPolicies }) => {
         <DeleteWidgetModal
           afterDeleteAction={fetchPolicies}
           allowSoftDelete={false}
-          deleteMessage={`Are you sure you want to delete ${getEntityName(
-            selectedPolicy
-          )}`}
+          deleteMessage={t('message.are-you-sure-delete-entity', {
+            entity: getEntityName(selectedPolicy),
+          })}
           entityId={selectedPolicy.id}
           entityName={getEntityName(selectedPolicy)}
           entityType={EntityType.POLICY}

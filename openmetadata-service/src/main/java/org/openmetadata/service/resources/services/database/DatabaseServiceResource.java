@@ -52,8 +52,10 @@ import org.openmetadata.schema.api.services.CreateDatabaseService;
 import org.openmetadata.schema.api.services.DatabaseConnection;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.services.ServiceType;
+import org.openmetadata.schema.entity.services.connections.TestConnectionResult;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.DatabaseServiceRepository;
@@ -61,6 +63,7 @@ import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.services.ServiceEntityResource;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.RestUtil;
@@ -150,7 +153,7 @@ public class DatabaseServiceResource
       operationId = "getDatabaseServiceByID",
       summary = "Get a database service",
       tags = "databaseServices",
-      description = "Get a database service by `id`.",
+      description = "Get a database service by `Id`.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -162,7 +165,7 @@ public class DatabaseServiceResource
   public DatabaseService get(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @PathParam("id") UUID id,
+      @Parameter(description = "Id of the database service", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
       @Parameter(
               description = "Fields requested in the returned resource",
               schema = @Schema(type = "string", example = FIELDS))
@@ -192,12 +195,13 @@ public class DatabaseServiceResource
             description = "Database service instance",
             content =
                 @Content(mediaType = "application/json", schema = @Schema(implementation = DatabaseService.class))),
-        @ApiResponse(responseCode = "404", description = "Database service for instance {id} is not found")
+        @ApiResponse(responseCode = "404", description = "Database service for instance {name} is not found")
       })
   public DatabaseService getByName(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @PathParam("name") String name,
+      @Parameter(description = "Name of the database service", schema = @Schema(type = "string")) @PathParam("name")
+          String name,
       @Parameter(
               description = "Fields requested in the returned resource",
               schema = @Schema(type = "string", example = FIELDS))
@@ -214,13 +218,39 @@ public class DatabaseServiceResource
     return decryptOrNullify(securityContext, databaseService);
   }
 
+  @PUT
+  @Path("/{id}/testConnectionResult")
+  @Operation(
+      operationId = "addTestConnectionResult",
+      summary = "Add test connection result",
+      tags = "databaseServices",
+      description = "Add test connection result to the service.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Successfully updated the service",
+            content =
+                @Content(mediaType = "application/json", schema = @Schema(implementation = DatabaseService.class)))
+      })
+  public DatabaseService addTestConnectionResult(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the service", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Valid TestConnectionResult testConnectionResult)
+      throws IOException {
+    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.CREATE);
+    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
+    DatabaseService service = dao.addTestConnectionResult(id, testConnectionResult);
+    return decryptOrNullify(securityContext, service);
+  }
+
   @GET
   @Path("/{id}/versions")
   @Operation(
       operationId = "listAllDatabaseServiceVersion",
       summary = "List database service versions",
       tags = "databaseServices",
-      description = "Get a list of all the versions of a database service identified by `id`",
+      description = "Get a list of all the versions of a database service identified by `Id`",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -230,7 +260,7 @@ public class DatabaseServiceResource
   public EntityHistory listVersions(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "database service Id", schema = @Schema(type = "string")) @PathParam("id") UUID id)
+      @Parameter(description = "Id of the database service", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
       throws IOException {
     EntityHistory entityHistory = super.listVersionsInternal(securityContext, id);
 
@@ -256,7 +286,7 @@ public class DatabaseServiceResource
       operationId = "getSpecificDatabaseServiceVersion",
       summary = "Get a version of the database service",
       tags = "databaseServices",
-      description = "Get a version of the database service by given `id`",
+      description = "Get a version of the database service by given `Id`",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -270,7 +300,7 @@ public class DatabaseServiceResource
   public DatabaseService getVersion(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "database service Id", schema = @Schema(type = "string")) @PathParam("id") UUID id,
+      @Parameter(description = "Id of the database service", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
       @Parameter(
               description = "database service version number in the form `major`" + ".`minor`",
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
@@ -322,7 +352,7 @@ public class DatabaseServiceResource
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateDatabaseService update)
       throws IOException {
     DatabaseService service = getService(update, securityContext.getUserPrincipal().getName());
-    Response response = createOrUpdate(uriInfo, securityContext, service);
+    Response response = createOrUpdate(uriInfo, securityContext, unmask(service));
     decryptOrNullify(securityContext, (DatabaseService) response.getEntity());
     return response;
   }
@@ -339,7 +369,7 @@ public class DatabaseServiceResource
   public Response patch(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @PathParam("id") UUID id,
+      @Parameter(description = "Id of the database service", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
       @RequestBody(
               description = "JsonPatch with array of operations",
               content =
@@ -357,7 +387,7 @@ public class DatabaseServiceResource
   @Path("/{id}")
   @Operation(
       operationId = "deleteDatabaseService",
-      summary = "Delete a database service",
+      summary = "Delete a database service by Id",
       tags = "databaseServices",
       description =
           "Delete a database services. If databases (and tables) belong the service, it can't be " + "deleted.",
@@ -376,19 +406,46 @@ public class DatabaseServiceResource
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
-      @Parameter(description = "Id of the database service", schema = @Schema(type = "string")) @PathParam("id")
-          UUID id)
+      @Parameter(description = "Id of the database service", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
       throws IOException {
     return delete(uriInfo, securityContext, id, recursive, hardDelete);
+  }
+
+  @DELETE
+  @Path("/name/{name}")
+  @Operation(
+      operationId = "deleteDatabaseServiceByName",
+      summary = "Delete a database service by name",
+      tags = "databaseServices",
+      description =
+          "Delete a database services by `name`. If databases (and tables) belong the service, it can't be "
+              + "deleted.",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "OK"),
+        @ApiResponse(
+            responseCode = "404",
+            description = "DatabaseService service for instance {name} " + "is not found")
+      })
+  public Response delete(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Hard delete the entity. (Default = `false`)")
+          @QueryParam("hardDelete")
+          @DefaultValue("false")
+          boolean hardDelete,
+      @Parameter(description = "Name of the database service", schema = @Schema(type = "string")) @PathParam("name")
+          String name)
+      throws IOException {
+    return deleteByName(uriInfo, securityContext, name, false, hardDelete);
   }
 
   @PUT
   @Path("/restore")
   @Operation(
       operationId = "restore",
-      summary = "Restore a soft deleted DatabaseService.",
+      summary = "Restore a soft deleted database service",
       tags = "databaseServices",
-      description = "Restore a soft deleted DatabaseService.",
+      description = "Restore a soft deleted database service.",
       responses = {
         @ApiResponse(
             responseCode = "200",

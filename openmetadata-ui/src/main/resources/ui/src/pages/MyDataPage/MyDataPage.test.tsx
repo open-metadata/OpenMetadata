@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -13,24 +13,31 @@
 
 import { findByText, queryByText, render } from '@testing-library/react';
 import React, { ReactNode } from 'react';
-import { fetchSandboxConfig, getAllEntityCount } from '../../axiosAPIs/miscAPI';
+import { getAllEntityCount } from 'rest/miscAPI';
 import MyDataPageComponent from './MyDataPage.component';
 
 const mockAuth = {
   isAuthDisabled: true,
 };
 
-const mockErrors = {
-  sandboxMode: 'SandboxModeError',
-};
+jest.mock('react', () => {
+  const originalReact = jest.requireActual('react');
 
-jest.mock('../../components/MyData/MyData.component', () => {
+  return {
+    ...originalReact,
+    useReducer: jest.fn((_reducer, initialState) => {
+      return [initialState, jest.fn()];
+    }),
+  };
+});
+
+jest.mock('components/MyData/MyData.component', () => {
   return jest
     .fn()
     .mockReturnValue(<p data-testid="my-data-component">Mydata component</p>);
 });
 
-jest.mock('../../axiosAPIs/miscAPI', () => ({
+jest.mock('rest/miscAPI', () => ({
   fetchSandboxConfig: jest.fn().mockImplementation(() =>
     Promise.resolve({
       data: {
@@ -54,7 +61,7 @@ jest.mock('../../axiosAPIs/miscAPI', () => ({
   ),
 }));
 
-jest.mock('../../axiosAPIs/feedsAPI', () => ({
+jest.mock('rest/feedsAPI', () => ({
   getFeedsWithFilter: jest.fn().mockImplementation(() =>
     Promise.resolve({
       data: {
@@ -82,7 +89,7 @@ jest.mock('../../utils/APIUtils', () => ({
   formatDataResponse: jest.fn(),
 }));
 
-jest.mock('../../components/containers/PageContainerV1', () => {
+jest.mock('components/containers/PageContainerV1', () => {
   return jest
     .fn()
     .mockImplementation(({ children }: { children: ReactNode }) => (
@@ -90,11 +97,11 @@ jest.mock('../../components/containers/PageContainerV1', () => {
     ));
 });
 
-jest.mock('../../components/MyData/MyData.component', () => {
+jest.mock('components/MyData/MyData.component', () => {
   return jest.fn().mockImplementation(() => <p>MyData.component</p>);
 });
 
-jest.mock('../../components/GithubStarButton/GithubStarButton', () => {
+jest.mock('components/GithubStarButton/GithubStarButton', () => {
   return jest.fn().mockImplementation(() => <p>GithubStarButton.component</p>);
 });
 
@@ -116,32 +123,14 @@ describe('Test MyData page component', () => {
   });
 
   it('Component should render in sandbox mode', async () => {
-    (fetchSandboxConfig as jest.Mock).mockImplementationOnce(() =>
-      Promise.resolve({
-        sandboxModeEnabled: true,
-      })
-    );
-
     const { container } = render(<MyDataPageComponent />);
     const myData = await findByText(container, /MyData.component/i);
 
-    const githubStarButton = await findByText(
-      container,
-      /GithubStarButton.component/i
-    );
-
     expect(myData).toBeInTheDocument();
-    expect(githubStarButton).toBeInTheDocument();
   });
 
   describe('render Sad Paths', () => {
     it('show error message on failing of config/sandbox api', async () => {
-      (fetchSandboxConfig as jest.Mock).mockImplementationOnce(() =>
-        Promise.reject({
-          response: { data: { message: mockErrors.sandboxMode } },
-        })
-      );
-
       const { container } = render(<MyDataPageComponent />);
       const myData = await findByText(container, /MyData.component/i);
 
@@ -155,10 +144,6 @@ describe('Test MyData page component', () => {
     });
 
     it('show error message on no data from config/sandbox api', async () => {
-      (fetchSandboxConfig as jest.Mock).mockImplementationOnce(() =>
-        Promise.resolve({})
-      );
-
       const { container } = render(<MyDataPageComponent />);
       const myData = await findByText(container, /MyData.component/i);
 

@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,25 +11,26 @@
  *  limitations under the License.
  */
 
-import { Button as ButtonAntd, Col, Row, Tooltip } from 'antd';
+import { Button, Col, Row, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
-import { compare } from 'fast-json-patch';
-import { isEmpty, isUndefined } from 'lodash';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { useHistory, useParams } from 'react-router-dom';
-import { getTypeByFQN, updateType } from '../../axiosAPIs/metadataTypeAPI';
-import { Button } from '../../components/buttons/Button/Button';
-import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
-import TabsPane from '../../components/common/TabsPane/TabsPane';
-import { CustomPropertyTable } from '../../components/CustomEntityDetail/CustomPropertyTable';
-import PageHeader from '../../components/header/PageHeader.component';
-import Loader from '../../components/Loader/Loader';
-import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
+import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
+import TabsPane from 'components/common/TabsPane/TabsPane';
+import { CustomPropertyTable } from 'components/CustomEntityDetail/CustomPropertyTable';
+import PageHeader from 'components/header/PageHeader.component';
+import Loader from 'components/Loader/Loader';
+import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
   ResourceEntity,
-} from '../../components/PermissionProvider/PermissionProvider.interface';
-import SchemaEditor from '../../components/schema-editor/SchemaEditor';
+} from 'components/PermissionProvider/PermissionProvider.interface';
+import SchemaEditor from 'components/schema-editor/SchemaEditor';
+import { ERROR_PLACEHOLDER_TYPE, LOADING_STATE } from 'enums/common.enum';
+import { compare } from 'fast-json-patch';
+import { isEmpty, isUndefined } from 'lodash';
+import { default as React, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { useHistory, useParams } from 'react-router-dom';
+import { getTypeByFQN, updateType } from 'rest/metadataTypeAPI';
 import {
   ENTITY_PATH,
   getAddCustomPropertyPath,
@@ -47,6 +48,7 @@ import { showErrorToast } from '../../utils/ToastUtils';
 import './CustomPropertiesPageV1.less';
 
 const CustomEntityDetailV1 = () => {
+  const { t } = useTranslation();
   const { tab } = useParams<{ [key: string]: string }>();
   const history = useHistory();
 
@@ -55,6 +57,8 @@ const CustomEntityDetailV1 = () => {
   const [isError, setIsError] = useState<boolean>(false);
   const [selectedEntityTypeDetail, setSelectedEntityTypeDetail] =
     useState<Type>({} as Type);
+
+  const [loadingState, setLoadingState] = useState(LOADING_STATE.INITIAL);
 
   const tabAttributePath = ENTITY_PATH[tab.toLowerCase()];
 
@@ -111,13 +115,13 @@ const CustomEntityDetailV1 = () => {
 
     return [
       {
-        name: 'Custom Properties',
+        name: t('label.custom-property-plural'),
         isProtected: false,
         position: 1,
         count: (customProperties || []).length,
       },
       {
-        name: 'Schema',
+        name: t('label.schema'),
         isProtected: false,
         position: 2,
       },
@@ -125,6 +129,7 @@ const CustomEntityDetailV1 = () => {
   }, [selectedEntityTypeDetail]);
 
   const updateEntityType = async (properties: Type['customProperties']) => {
+    setLoadingState(LOADING_STATE.WAITING);
     const patch = compare(selectedEntityTypeDetail, {
       ...selectedEntityTypeDetail,
       customProperties: properties,
@@ -138,22 +143,30 @@ const CustomEntityDetailV1 = () => {
       }));
     } catch (error) {
       showErrorToast(error as AxiosError);
+    } finally {
+      setLoadingState(LOADING_STATE.INITIAL);
     }
   };
 
-  const getCustomPageHeader = useCallback(() => {
+  const customPageHeader = useMemo(() => {
     switch (tabAttributePath) {
       case ENTITY_PATH.tables:
         return PAGE_HEADERS.TABLES_CUSTOM_ATTRIBUTES;
+
       case ENTITY_PATH.topics:
         return PAGE_HEADERS.TOPICS_CUSTOM_ATTRIBUTES;
+
       case ENTITY_PATH.dashboards:
         return PAGE_HEADERS.DASHBOARD_CUSTOM_ATTRIBUTES;
+
       case ENTITY_PATH.pipelines:
         return PAGE_HEADERS.PIPELINES_CUSTOM_ATTRIBUTES;
+
       case ENTITY_PATH.mlmodels:
         return PAGE_HEADERS.ML_MODELS_CUSTOM_ATTRIBUTES;
 
+      case ENTITY_PATH.containers:
+        return PAGE_HEADERS.CONTAINER_CUSTOM_ATTRIBUTES;
       default:
         return PAGE_HEADERS.TABLES_CUSTOM_ATTRIBUTES;
     }
@@ -191,7 +204,7 @@ const CustomEntityDetailV1 = () => {
       data-testid="custom-entity-container"
       gutter={[16, 16]}>
       <Col span={24}>
-        <PageHeader data={getCustomPageHeader()} />
+        <PageHeader data={customPageHeader} />
       </Col>
       <Col className="global-settings-tabs" span={24}>
         <TabsPane
@@ -216,36 +229,54 @@ const CustomEntityDetailV1 = () => {
               <ErrorPlaceHolder
                 buttons={
                   <Tooltip
-                    title={editPermission ? 'Add' : NO_PERMISSION_FOR_ACTION}>
-                    <ButtonAntd
+                    title={
+                      editPermission
+                        ? t('label.add-custom-entity-property', {
+                            entity: customPageHeader.header,
+                          })
+                        : NO_PERMISSION_FOR_ACTION
+                    }>
+                    <Button
                       ghost
                       data-testid="add-field-button"
                       disabled={!editPermission}
                       type="primary"
                       onClick={() => handleAddProperty()}>
-                      Add Property
-                    </ButtonAntd>
+                      {t('label.add-entity', {
+                        entity: t('label.property'),
+                      })}
+                    </Button>
                   </Tooltip>
                 }
+                classes="mt-24"
                 dataTestId="custom-properties-no-data"
                 doc={CUSTOM_PROPERTIES_DOCS}
                 heading="Property"
-                type="ADD_DATA"
+                type={ERROR_PLACEHOLDER_TYPE.ADD}
               />
             </div>
           ) : (
             <div data-testid="entity-custom-fields">
               <div className="flex justify-end">
                 <Tooltip
-                  title={editPermission ? 'Add' : NO_PERMISSION_FOR_ACTION}>
+                  placement="topRight"
+                  title={
+                    editPermission
+                      ? t('label.add-custom-entity-property', {
+                          entity: customPageHeader.header,
+                        })
+                      : NO_PERMISSION_FOR_ACTION
+                  }>
                   <Button
                     className="m-b-md p-y-xss p-x-xs rounded-4"
                     data-testid="add-field-button"
                     disabled={!editPermission}
-                    size="custom"
-                    theme="primary"
+                    size="middle"
+                    type="primary"
                     onClick={() => handleAddProperty()}>
-                    Add Property
+                    {t('label.add-entity', {
+                      entity: t('label.property'),
+                    })}
                   </Button>
                 </Tooltip>
               </div>
@@ -254,6 +285,7 @@ const CustomEntityDetailV1 = () => {
                   selectedEntityTypeDetail.customProperties || []
                 }
                 hasAccess={editPermission}
+                loadingState={loadingState}
                 updateEntityType={updateEntityType}
               />
             </div>

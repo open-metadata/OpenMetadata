@@ -26,8 +26,9 @@ from metadata.generated.schema.entity.services.pipelineService import (
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
+from metadata.generated.schema.type.basic import FullyQualifiedEntityName
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.ingestion.source.pipeline.nifi import (
+from metadata.ingestion.source.pipeline.nifi.metadata import (
     NifiPipelineDetails,
     NifiProcessor,
     NifiProcessorConnections,
@@ -54,9 +55,11 @@ mock_nifi_config = {
             "config": {
                 "type": "Nifi",
                 "hostPort": "https://localhost:8443",
-                "username": "username",
-                "password": "password",
-                "verifySSL": False,
+                "nifiConfig": {
+                    "username": "username",
+                    "password": "password",
+                    "verifySSL": False,
+                },
             }
         },
         "sourceConfig": {"config": {"type": "PipelineMetadata"}},
@@ -122,14 +125,13 @@ EXPECTED_CREATED_PIPELINES = CreatePipelineRequest(
             downstreamTasks=["d3f023ac-0182-1000-8bbe-e2b00347fff8"],
         ),
     ],
-    service=EntityReference(
-        id="85811038-099a-11ed-861d-0242ac120002", type="pipelineService"
-    ),
+    service="nifi_source",
 )
 
 MOCK_PIPELINE_SERVICE = PipelineService(
     id="85811038-099a-11ed-861d-0242ac120002",
     name="nifi_source",
+    fullyQualifiedName=FullyQualifiedEntityName(__root__="nifi_source"),
     connection=PipelineConnection(),
     serviceType=PipelineServiceType.Nifi,
 )
@@ -163,9 +165,11 @@ MOCK_PIPELINE = Pipeline(
 
 
 class NifiUnitTest(TestCase):
-    @patch("metadata.ingestion.source.pipeline.pipeline_service.test_connection")
     @patch(
-        "metadata.ingestion.source.pipeline.nifi.NifiClient.token",
+        "metadata.ingestion.source.pipeline.pipeline_service.PipelineServiceSource.test_connection"
+    )
+    @patch(
+        "metadata.ingestion.source.pipeline.nifi.client.NifiClient.token",
         new_callable=PropertyMock,
     )
     def __init__(self, methodName, nifi_token_prop, test_connection) -> None:

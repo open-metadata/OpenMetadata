@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -16,10 +16,10 @@ import LanguageDetector from 'i18next-browser-languagedetector';
 import { initReactI18next } from 'react-i18next';
 import { getInitOptions } from './i18nextUtil';
 
-export const initLocale = (): void => {
-  // Initialize i18next (language)
-  i18n
-    .use(LanguageDetector) // Detects system language
-    .use(initReactI18next)
-    .init(getInitOptions());
-};
+// Initialize i18next (language)
+i18n
+  .use(LanguageDetector) // Detects system language
+  .use(initReactI18next)
+  .init(getInitOptions());
+
+export default i18n;

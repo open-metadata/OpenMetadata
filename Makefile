@@ -61,6 +61,7 @@ py_format_check:  ## Check if Python sources are correctly formatted
 generate:  ## Generate the pydantic models from the JSON Schemas to the ingestion module
 	@echo "Running Datamodel Code Generator"
 	@echo "Make sure to first run the install_dev recipe"
+	rm -rf ingestion/src/metadata/generated
 	mkdir -p ingestion/src/metadata/generated
 	python scripts/datamodel_generation.py
 	$(MAKE) py_antlr js_antlr
@@ -119,16 +120,6 @@ publish:  ## Publish the ingestion module to PyPI
 	  python setup.py install sdist bdist_wheel; \
 	  twine check dist/*; \
 	  twine upload dist/*
-
-.PHONY: build_docker_connectors
-build_docker_connectors:  ## Build all Ingestion Framework Sources Images to be used as Docker Operators in Airflow
-	@echo "Building Docker connectors. Make sure to run build_docker_base first"
-	python ingestion/connectors/docker-cli.py build
-
-.PHONY: push_docker_connectors
-push_docker_connectors:  ## Push all Sources Docker Images to DockerHub
-	@echo "Pushing Docker connectors. Make sure to run build_docker_connectors first"
-	python ingestion/connectors/docker-cli.py push
 
 ## Yarn
 .PHONY: yarn_install_cache
@@ -199,10 +190,12 @@ install_antlr_cli:  ## Install antlr CLI locally
 
 .PHONY: docker-docs
 docker-docs:  ## Runs the OM docs in docker passing openmetadata-docs as volume for content and images
+	docker pull openmetadata/docs:latest
 	docker run --name openmetadata-docs -p 3000:3000 -v ${PWD}/openmetadata-docs/content:/docs/content/ -v ${PWD}/openmetadata-docs/images:/docs/public/images openmetadata/docs:latest
 
 .PHONY: docker-docs-validate
 docker-docs-validate:  ## Runs the OM docs in docker passing openmetadata-docs as volume for content and images
+	docker pull openmetadata/docs:latest
 	docker run --entrypoint '/bin/sh' -v ${PWD}/openmetadata-docs/content:/docs/content/ -v ${PWD}/openmetadata-docs/images:/docs/public/images openmetadata/docs:latest -c 'npm run export'
 
 .PHONY: docker-docs-local
@@ -233,8 +226,8 @@ snyk-airflow-apis-report:  ## Uses Snyk CLI to validate the airflow apis code. D
 .PHONY: snyk-catalog-report
 snyk-server-report:  ## Uses Snyk CLI to validate the catalog code and container. Don't stop the execution
 	@echo "Validating catalog container... Make sure the code is built and available under openmetadata-dist"
-	docker build -t openmetadata-server:scan -f docker/local-metadata/Dockerfile .
-	snyk container test openmetadata-server:scan --file=docker/local-metadata/Dockerfile $(SNYK_ARGS) --json > security-report/server-docker-scan.json | true;
+	docker build -t openmetadata-server:scan -f docker/development/Dockerfile .
+	snyk container test openmetadata-server:scan --file=docker/development/Dockerfile $(SNYK_ARGS) --json > security-report/server-docker-scan.json | true;
 	snyk test --all-projects $(SNYK_ARGS) --json > security-report/server-dep-scan.json | true;
 	snyk code test --all-projects --severity-threshold=high --json > security-report/server-code-scan.json | true;
 
@@ -258,13 +251,16 @@ snyk-report:  ## Uses Snyk CLI to run a security scan of the different pieces of
 	$(MAKE) snyk-airflow-apis-report
 	$(MAKE) snyk-server-report
 	$(MAKE) snyk-ui-report
-	$(MAKE)	export-snyk-html-report
+	$(MAKE)	export-snyk-pdf-report
 
-.PHONY: export-snyk-html-report
-export-snyk-html-report:  ## export json file from security-report/ to HTML
+.PHONY: export-snyk-pdf-report
+export-snyk-pdf-report:  ## export json file from security-report/ to HTML
 	@echo "Reading all results"
 	npm install snyk-to-html -g
 	ls security-report | xargs -I % snyk-to-html -i security-report/% -o security-report/%.html
+	pip install pdfkit
+	pip install PyPDF2
+	python scripts/html_to_pdf.py
 
 # Ingestion Operators
 .PHONY: build-ingestion-base-local

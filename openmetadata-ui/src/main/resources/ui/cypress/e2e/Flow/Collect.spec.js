@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -46,7 +46,9 @@ describe('Collect end point should work properly', () => {
   const assertCollectEndPoint = () => {
     cy.wait('@collect').then(({ request, response }) => {
       expect(response.body).to.have.any.key('eventId');
+
       const modifiedResponse = Cypress._.omit(response.body, 'eventId');
+
       expect(request.body).deep.equal(modifiedResponse);
     });
   };
@@ -62,7 +64,9 @@ describe('Collect end point should work properly', () => {
 
   Object.values(PAGES).map((page) => {
     it(`Visit ${page.name} page should trigger collect API`, () => {
-      cy.get(page.mainMenuId).should('be.visible').click({ animationDistanceThreshold: 10 });
+      cy.get(page.mainMenuId)
+        .should('be.visible')
+        .click({ animationDistanceThreshold: 10 });
       if (page.subMenu) {
         // adding manual wait to open dropdown in UI
         cy.wait(500);

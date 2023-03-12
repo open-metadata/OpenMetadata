@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -49,11 +49,15 @@ export const getFunctionDisplayName = (func: string): string => {
     case 'matchAnyEventType':
       return i18next.t('label.event-type');
     case 'matchTestResult':
-      return i18next.t('label.test-results');
+      return i18next.t('label.test-entity', {
+        entity: i18next.t('label.result-plural'),
+      });
     case 'matchUpdatedBy':
       return i18next.t('label.updated-by');
     case 'matchAnyFieldChange':
       return i18next.t('label.field-change');
+    case 'matchIngestionPipelineState':
+      return i18next.t('label.pipeline-state');
     case 'matchAnySource':
     case 'matchAnyEntityId':
     default:
@@ -69,7 +73,7 @@ export const StyledCard = ({
   subHeading: string;
 }) => {
   return (
-    <div className="bg-grey p-sm rounded-4">
+    <div className="bg-grey p-sm rounded-4 min-h-24">
       <Typography.Text>{heading}</Typography.Text>
       <br />
       <Typography.Text className="text-xs text-grey-muted">
@@ -82,9 +86,9 @@ export const StyledCard = ({
 export const getDisplayNameForTriggerType = (type: AlertTriggerType) => {
   switch (type) {
     case AlertTriggerType.AllDataAssets:
-      return i18next.t('label.all-data-assets');
+      return i18next.t('label.all-data-asset-plural');
     case AlertTriggerType.SpecificDataAsset:
-      return i18next.t('label.specific-data-assets');
+      return i18next.t('label.specific-data-asset-plural');
   }
 };
 
@@ -116,7 +120,7 @@ export const getAlertActionTypeDisplayName = (
 ) => {
   switch (alertActionType) {
     case AlertActionType.ActivityFeed:
-      return i18next.t('label.activity-feeds');
+      return i18next.t('label.activity-feed-plural');
     case AlertActionType.Email:
       return i18next.t('label.email');
     case AlertActionType.GenericWebhook:
@@ -124,7 +128,9 @@ export const getAlertActionTypeDisplayName = (
     case AlertActionType.SlackWebhook:
       return i18next.t('label.slack');
     case AlertActionType.MSTeamsWebhook:
-      return i18next.t('label.ms-teams');
+      return i18next.t('label.ms-team-plural');
+    case AlertActionType.GChatWebhook:
+      return i18next.t('label.g-chat');
   }
 };
 

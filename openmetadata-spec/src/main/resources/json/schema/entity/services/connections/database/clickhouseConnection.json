@@ -48,6 +48,11 @@
       "description": "Host and port of the Clickhouse service.",
       "type": "string"
     },
+    "databaseName": {
+      "title": "Database Name",
+      "description": "Optional name to give to the database in OpenMetadata. If left blank, we will use default as the database name.",
+      "type": "string"
+    },
     "databaseSchema": {
       "title": "databaseSchema",
       "description": "databaseSchema of the data source. This is optional parameter, if you would like to restrict the metadata reading to a single databaseSchema. When left blank, OpenMetadata Ingestion attempts to scan all the databaseSchema.",
@@ -57,6 +62,16 @@
       "title": "Duration",
       "description": "Clickhouse SQL connection duration.",
       "type": "integer"
+    },
+    "secure": {
+      "title": "Secure Connection",
+      "description": "Establish secure connection with clickhouse",
+      "type": "boolean"
+    },
+    "keyfile": {
+      "title": "Key File Path",
+      "description": "Path to key file for establishing secure connection",
+      "type": "boolean"
     },
     "connectionOptions": {
       "title": "Connection Options",

@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -12,6 +12,11 @@
  */
 
 import { AxiosError } from 'axios';
+import { useAuthContext } from 'components/authentication/auth-provider/AuthProvider';
+import PageContainerV1 from 'components/containers/PageContainerV1';
+import Loader from 'components/Loader/Loader';
+import Users from 'components/Users/Users.component';
+import { TabCountsProps, UserDetails } from 'components/Users/Users.interface';
 import { compare, Operation } from 'fast-json-patch';
 import { isEmpty, isEqual } from 'lodash';
 import { observer } from 'mobx-react';
@@ -26,18 +31,10 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useParams } from 'react-router-dom';
+import { getFeedsWithFilter, postFeedById } from 'rest/feedsAPI';
+import { searchData } from 'rest/miscAPI';
+import { getUserByName, updateUserDetail } from 'rest/userAPI';
 import AppState from '../../AppState';
-import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
-import { getFeedsWithFilter, postFeedById } from '../../axiosAPIs/feedsAPI';
-import { searchData } from '../../axiosAPIs/miscAPI';
-import { getUserByName, updateUserDetail } from '../../axiosAPIs/userAPI';
-import PageContainerV1 from '../../components/containers/PageContainerV1';
-import Loader from '../../components/Loader/Loader';
-import Users from '../../components/Users/Users.component';
-import {
-  TabCountsProps,
-  UserDetails,
-} from '../../components/Users/Users.interface';
 import { PAGE_SIZE } from '../../constants/constants';
 import { myDataSearchIndex } from '../../constants/Mydata.constants';
 import { getUserCurrentTab } from '../../constants/usersprofile.constants';
@@ -71,6 +68,8 @@ const UserPage = () => {
   const [isError, setIsError] = useState(false);
   const [entityThread, setEntityThread] = useState<Thread[]>([]);
   const [isFeedLoading, setIsFeedLoading] = useState<boolean>(false);
+  const [isUserEntitiesLoading, setIsUserEntitiesLoading] =
+    useState<boolean>(false);
   const [paging, setPaging] = useState<Paging>({} as Paging);
   const [feedFilter, setFeedFilter] = useState<FeedFilter>(
     (searchParams.get('feedFilter') as FeedFilter) ?? FeedFilter.ALL
@@ -194,14 +193,15 @@ const UserPage = () => {
   ) => {
     const entity = fetchOwnedEntities ? ownedEntities : followingEntities;
     if (userData.id) {
+      setIsUserEntitiesLoading(true);
       try {
         const response = await searchData(
+          '',
+          entity.currPage,
+          PAGE_SIZE,
           fetchOwnedEntities
             ? `owner.id:${userData.id}`
             : `followers:${userData.id}`,
-          entity.currPage,
-          PAGE_SIZE,
-          ``,
           '',
           '',
           myDataSearchIndex
@@ -232,6 +232,8 @@ const UserPage = () => {
             entity: `${fetchOwnedEntities ? 'Owned' : 'Follwing'} Entities`,
           })
         );
+      } finally {
+        setIsUserEntitiesLoading(false);
       }
     }
   };
@@ -250,10 +252,10 @@ const UserPage = () => {
         className="tw-flex tw-flex-col tw-items-center tw-place-content-center tw-mt-40 tw-gap-1"
         data-testid="error">
         <p className="tw-text-base" data-testid="error-message">
-          No user available with name{' '}
+          {t('message.no-username-available')}
           <span className="tw-font-medium" data-testid="username">
             {username}
-          </span>{' '}
+          </span>
         </p>
       </div>
     );
@@ -401,6 +403,7 @@ const UserPage = () => {
           isAuthDisabled={Boolean(isAuthDisabled)}
           isFeedLoading={isFeedLoading}
           isLoggedinUser={isLoggedinUser(username)}
+          isUserEntitiesLoading={isUserEntitiesLoading}
           ownedEntities={ownedEntities}
           paging={paging}
           postFeedHandler={postFeedHandler}

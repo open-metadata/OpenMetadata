@@ -13,7 +13,9 @@
     "pipelineServiceType": {
       "description": "Type of pipeline service - Airflow or Prefect.",
       "type": "string",
-      "javaInterfaces": ["org.openmetadata.schema.EnumInterface"],
+      "javaInterfaces": [
+        "org.openmetadata.schema.EnumInterface"
+      ],
       "enum": [
         "Airflow",
         "GluePipeline",
@@ -22,7 +24,8 @@
         "Dagster",
         "Nifi",
         "DomoPipeline",
-        "CustomPipeline"
+        "CustomPipeline",
+        "DatabricksPipeline"
       ],
       "javaEnums": [
         {
@@ -48,6 +51,9 @@
         },
         {
           "name": "CustomPipeline"
+        },
+        {
+          "name": "DatabricksPipeline"
         }
       ]
     },
@@ -85,6 +91,9 @@
             },
             {
               "$ref": "./connections/pipeline/customPipelineConnection.json"
+            },
+            {
+              "$ref": "./connections/pipeline/databricksPipelineConnection.json"
             }
           ]
         }
@@ -129,6 +138,10 @@
       "description": "User who made the update.",
       "type": "string"
     },
+    "testConnectionResult": {
+      "description": "Last test connection results for this service",
+      "$ref": "connections/testConnectionResult.json"
+    },
     "tags": {
       "description": "Tags for this Pipeline Service.",
       "type": "array",
@@ -162,6 +175,10 @@
       "default": false
     }
   },
-  "required": ["id", "name", "serviceType"],
+  "required": [
+    "id",
+    "name",
+    "serviceType"
+  ],
   "additionalProperties": false
 }

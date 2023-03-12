@@ -20,6 +20,13 @@ To deploy OpenMetadata, check the <a href="/deployment">Deployment</a> guides.
 To run the Ingestion via the UI you'll need to use the OpenMetadata Ingestion Container, which comes shipped with
 custom Airflow plugins to handle the workflow deployment.
 
+<Note>
+
+For metadata ingestion, kindly make sure add alteast `dashboard` scopes to the clientId provided.
+Question related to scopes, click [here](https://developer.domo.com/docs/authentication/quickstart-5).
+
+</Note>
+
 ### Python Requirements
 
 To run the Domo-Dashboard ingestion, you will need to install:
@@ -58,10 +65,9 @@ source:
       apiHost: api.domo.com
       sandboxDomain: https://<api_domo>.domo.com
   sourceConfig:
-      dashboardFilterPattern: {}
-      chartFilterPattern: {}
     config:
       type: DashboardMetadata
+      overrideOwner: True
       # dbServiceNames:
       #   - service1
       #   - service2
@@ -101,8 +107,9 @@ workflowConfig:
 #### Source Configuration - Source Config
 The `sourceConfig` is defined [here](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-spec/src/main/resources/json/schema/metadataIngestion/dashboardServiceMetadataPipeline.json):
 
-- `dbServiceName`: Database Service Name for the creation of lineage, if the source supports it.
+- `dbServiceNames`: Database Service Name for the creation of lineage, if the source supports it.
 - `dashboardFilterPattern` and `chartFilterPattern`: Note that the `dashboardFilterPattern` and `chartFilterPattern` both support regex as include or exclude. E.g.,
+- `overrideOwner`: Flag to override current owner by new owner from source, if found during metadata ingestion
 
 ```yaml
 dashboardFilterPattern:

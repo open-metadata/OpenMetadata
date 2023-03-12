@@ -1,3 +1,16 @@
+/*
+ *  Copyright 2022 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
 import { Popover, Space, Tag } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { t } from 'i18next';
@@ -17,7 +30,7 @@ import SVGIcons, { Icons } from '../../utils/SvgUtils';
 
 export const userPageFilterList = [
   {
-    name: 'My Data',
+    name: t('label.my-data'),
     value: 'OWNER',
     icon: (
       <SVGIcons
@@ -29,7 +42,7 @@ export const userPageFilterList = [
     ),
   },
   {
-    name: 'Mentions',
+    name: t('label.mention-plural'),
     value: 'MENTIONS',
     icon: (
       <SVGIcons
@@ -41,7 +54,7 @@ export const userPageFilterList = [
     ),
   },
   {
-    name: 'Following',
+    name: t('label.following'),
     value: 'FOLLOWS',
     icon: (
       <SVGIcons
@@ -95,7 +108,7 @@ export const commonUserDetailColumns = (): ColumnsType<User> => [
     ),
   },
   {
-    title: t('label.teams'),
+    title: t('label.team-plural'),
     dataIndex: 'teams',
     key: 'teams',
     render: (_, record) => {
@@ -103,7 +116,7 @@ export const commonUserDetailColumns = (): ColumnsType<User> => [
       const hasMore = listLength > LIST_CAP;
 
       if (isUndefined(record.teams) || isEmpty(record.teams)) {
-        return <>No Team</>;
+        return <>{t('label.no-entity', { entity: t('label.team') })}</>;
       } else {
         return (
           <Space wrap data-testid="policy-link" size={4}>
@@ -143,7 +156,7 @@ export const commonUserDetailColumns = (): ColumnsType<User> => [
     },
   },
   {
-    title: t('label.roles'),
+    title: t('label.role-plural'),
     dataIndex: 'roles',
     key: 'roles',
     render: (_, record) => {
@@ -151,7 +164,7 @@ export const commonUserDetailColumns = (): ColumnsType<User> => [
       const hasMore = listLength > LIST_CAP;
 
       if (isUndefined(record.roles) || isEmpty(record.roles)) {
-        return <>No Role</>;
+        return <>{t('label.no-entity', { entity: t('label.role') })}</>;
       } else {
         return (
           <Space wrap data-testid="policy-link" size={4}>

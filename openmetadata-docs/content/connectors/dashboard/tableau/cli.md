@@ -13,12 +13,17 @@ Configure and schedule Tableau metadata and profiler workflows from the OpenMeta
 
 ## Requirements
 
+To ingest tableau metadata, minimum `Site Role: Viewer` is requried for the tableau user.
+
 <InlineCallout color="violet-70" icon="description" bold="OpenMetadata 0.12 or later" href="/deployment">
 To deploy OpenMetadata, check the <a href="/deployment">Deployment</a> guides.
 </InlineCallout>
 
 To run the Ingestion via the UI you'll need to use the OpenMetadata Ingestion Container, which comes shipped with
 custom Airflow plugins to handle the workflow deployment.
+
+To create lineage between tableau dashboard and any database service via the queries provided from Tableau Metadata API, please enable the Tableau Metadata API for your tableau server.
+For more information on enabling the Tableau Metadata APIs follow the link [here](https://help.tableau.com/current/api/metadata_api/en-us/docs/meta_api_start.html)
 
 ### Python Requirements
 
@@ -175,6 +180,7 @@ source:
   sourceConfig:
     config:
       type: DashboardMetadata
+      overrideOwner: True
       # dbServiceNames:
       #   - service1
       #   - service2
@@ -218,8 +224,9 @@ workflowConfig:
 
 The `sourceConfig` is defined [here](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-spec/src/main/resources/json/schema/metadataIngestion/dashboardServiceMetadataPipeline.json):
 
-- `dbServiceName`: Database Service Name for the creation of lineage, if the source supports it.
+- `dbServiceNames`: Database Service Name for the creation of lineage, if the source supports it.
 - `dashboardFilterPattern` and `chartFilterPattern`: Note that the `dashboardFilterPattern` and `chartFilterPattern` both support regex as include or exclude. E.g.,
+- `overrideOwner`: Flag to override current owner by new owner from source, if found during metadata ingestion
 
 ```yaml
 dashboardFilterPattern:

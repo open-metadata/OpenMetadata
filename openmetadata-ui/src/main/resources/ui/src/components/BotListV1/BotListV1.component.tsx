@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -14,11 +14,12 @@
 import { Button, Col, Row, Space, Switch, Table, Tooltip } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
+import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { isEmpty, lowerCase } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { getBots } from '../../axiosAPIs/botsAPI';
+import { getBots } from 'rest/botsAPI';
 import {
   getBotsPath,
   INITIAL_PAGING_VALUE,
@@ -95,6 +96,7 @@ const BotListV1 = ({
         title: t('label.name'),
         dataIndex: 'displayName',
         key: 'displayName',
+        width: 200,
         render: (_, record) => (
           <Link
             className="hover:tw-underline tw-cursor-pointer"
@@ -113,22 +115,24 @@ const BotListV1 = ({
             <RichTextEditorPreviewer markdown={record?.description || ''} />
           ) : (
             <span data-testid="no-description">
-              {t('label.no-description')}
+              {t('label.no-entity', {
+                entity: t('label.description'),
+              })}
             </span>
           ),
       },
       {
-        title: t('label.actions'),
+        title: t('label.action-plural'),
         dataIndex: 'id',
         key: 'id',
         width: 90,
         render: (_, record) => {
           const isSystemBot = record.provider === ProviderType.System;
           const title = isSystemBot
-            ? t('label.ingestion-bot-cant-be-deleted')
+            ? t('message.ingestion-bot-cant-be-deleted')
             : isAdminUser
             ? t('label.delete')
-            : t('label.admin-only-action');
+            : t('message.admin-only-action');
           const isDisabled = !isAdminUser || isSystemBot;
 
           return (
@@ -168,7 +172,7 @@ const BotListV1 = ({
    * handle after delete bot action
    */
   const handleDeleteAction = useCallback(async () => {
-    fetchBots();
+    fetchBots(showDeleted);
   }, [selectedUser]);
 
   const handleSearch = (text: string) => {
@@ -193,6 +197,8 @@ const BotListV1 = ({
     fetchBots(showDeleted);
   }, [showDeleted]);
 
+  const addBotLabel = t('label.add-entity', { entity: t('label.bot') });
+
   return handleErrorPlaceholder ? (
     <Row>
       <Col className="w-full tw-flex tw-justify-end">
@@ -213,9 +219,7 @@ const BotListV1 = ({
               <Tooltip
                 placement="left"
                 title={
-                  isAdminUser
-                    ? t('label.add-bot')
-                    : t('label.admin-only-action')
+                  isAdminUser ? addBotLabel : t('message.admin-only-action')
                 }>
                 <Button
                   ghost
@@ -223,14 +227,15 @@ const BotListV1 = ({
                   disabled={!isAdminUser}
                   type="primary"
                   onClick={handleAddBotClick}>
-                  {t('label.add-bot')}
+                  {addBotLabel}
                 </Button>
               </Tooltip>
             </div>
           }
+          classes="mt-24"
           doc={BOTS_DOCS}
           heading={t('label.bot')}
-          type="ADD_DATA"
+          type={ERROR_PLACEHOLDER_TYPE.ADD}
         />
       </Col>
     </Row>
@@ -252,15 +257,13 @@ const BotListV1 = ({
           </Space>
 
           <Tooltip
-            title={
-              isAdminUser ? t('label.add-bot') : t('label.admin-only-action')
-            }>
+            title={isAdminUser ? addBotLabel : t('message.admin-only-action')}>
             <Button
               data-testid="add-bot"
               disabled={!isAdminUser}
               type="primary"
               onClick={handleAddBotClick}>
-              {t('label.add-bot')}
+              {addBotLabel}
             </Button>
           </Tooltip>
         </Space>
@@ -268,7 +271,9 @@ const BotListV1 = ({
       <Col span={8}>
         <Searchbar
           removeMargin
-          placeholder={t('label.search-for-bots')}
+          placeholder={`${t('label.search-for-type', {
+            type: t('label.bot-plural'),
+          })}...`}
           typingInterval={500}
           onSearch={handleSearch}
         />
@@ -303,6 +308,7 @@ const BotListV1 = ({
 
         <DeleteWidgetModal
           afterDeleteAction={handleDeleteAction}
+          allowSoftDelete={!showDeleted}
           entityId={selectedUser?.id || ''}
           entityName={selectedUser?.displayName || ''}
           entityType={EntityType.BOT}

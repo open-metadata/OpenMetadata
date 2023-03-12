@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -13,11 +13,12 @@
 
 import { Col, Row, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import { isUndefined } from 'lodash';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { CreateTestCase } from 'generated/api/tests/createTestCase';
+import { t } from 'i18next';
+import { isUndefined, toString } from 'lodash';
+import { default as React, useCallback, useMemo, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
-import { checkAirflowStatus } from '../../axiosAPIs/ingestionPipelineAPI';
-import { createTestCase, createTestSuites } from '../../axiosAPIs/testAPI';
+import { createTestCase, createTestSuites } from 'rest/testAPI';
 import {
   getDatabaseDetailsPath,
   getDatabaseSchemaDetailsPath,
@@ -31,7 +32,6 @@ import { PageLayoutType } from '../../enums/layout.enum';
 import { ServiceCategory } from '../../enums/service.enum';
 import { ProfilerDashboardType } from '../../enums/table.enum';
 import { OwnerType } from '../../enums/user.enum';
-import { CreateTestCase } from '../../generated/api/tests/createTestCase';
 import { TestCase } from '../../generated/tests/testCase';
 import { TestSuite } from '../../generated/tests/testSuite';
 import {
@@ -58,17 +58,18 @@ import TestCaseForm from './components/TestCaseForm';
 import { addTestSuiteRightPanel, INGESTION_DATA } from './rightPanelData';
 import TestSuiteIngestion from './TestSuiteIngestion';
 
-const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({ table }) => {
+const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({
+  table,
+}: AddDataQualityTestProps) => {
   const { entityTypeFQN, dashboardType } = useParams<Record<string, string>>();
   const isColumnFqn = dashboardType === ProfilerDashboardType.COLUMN;
   const history = useHistory();
   const [activeServiceStep, setActiveServiceStep] = useState(1);
   const [selectedTestSuite, setSelectedTestSuite] =
     useState<SelectTestSuiteType>();
-  const [testCaseData, setTestCaseData] = useState<TestCase>();
+  const [testCaseData, setTestCaseData] = useState<CreateTestCase>();
   const [testSuiteData, setTestSuiteData] = useState<TestSuite>();
   const [testCaseRes, setTestCaseRes] = useState<TestCase>();
-  const [isAirflowRunning, setIsAirflowRunning] = useState(false);
   const [addIngestion, setAddIngestion] = useState(false);
 
   const breadcrumb = useMemo(() => {
@@ -118,7 +119,7 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({ table }) => {
           url: getTableTabPath(entityTypeFQN, 'profiler'),
         },
         {
-          name: 'Add Column Test',
+          name: t('label.add-entity-test', { entity: t('label.column') }),
           url: '',
           activeTitle: true,
         },
@@ -126,7 +127,7 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({ table }) => {
       data.push(...colVal);
     } else {
       data.push({
-        name: 'Add Table Test',
+        name: t('label.add-entity-test', { entity: t('label.table') }),
         url: '',
         activeTitle: true,
       });
@@ -145,30 +146,11 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({ table }) => {
     );
   };
 
-  const handleAirflowStatusCheck = (): Promise<void> => {
-    return new Promise<void>((resolve, reject) => {
-      checkAirflowStatus()
-        .then((res) => {
-          if (res.status === 200) {
-            setIsAirflowRunning(true);
-            resolve();
-          } else {
-            setIsAirflowRunning(false);
-            reject();
-          }
-        })
-        .catch(() => {
-          setIsAirflowRunning(false);
-          reject();
-        });
-    });
-  };
-
   const handleCancelClick = () => {
     setActiveServiceStep((pre) => pre - 1);
   };
 
-  const handleTestCaseBack = (testCase: TestCase) => {
+  const handleTestCaseBack = (testCase: CreateTestCase) => {
     setTestCaseData(testCase);
     handleCancelClick();
   };
@@ -178,9 +160,11 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({ table }) => {
     setActiveServiceStep(2);
   };
 
-  const handleFormSubmit = async (data: TestCase) => {
+  const handleFormSubmit = async (data: CreateTestCase) => {
     setTestCaseData(data);
-    if (isUndefined(selectedTestSuite)) return;
+    if (isUndefined(selectedTestSuite)) {
+      return;
+    }
     try {
       const { parameterValues, testDefinition, name, entityLink, description } =
         data;
@@ -196,10 +180,7 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({ table }) => {
         parameterValues,
         owner,
         testDefinition,
-        testSuite: {
-          id: selectedSuite?.id || '',
-          type: 'testSuite',
-        },
+        testSuite: toString(selectedSuite?.fullyQualifiedName),
       };
       if (isNewTestSuite && isUndefined(testSuiteData)) {
         const testSuitePayload = {
@@ -208,10 +189,10 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({ table }) => {
           owner,
         };
         const testSuiteResponse = await createTestSuites(testSuitePayload);
-        testCasePayload.testSuite.id = testSuiteResponse.id || '';
+        testCasePayload.testSuite = testSuiteResponse.fullyQualifiedName || '';
         setTestSuiteData(testSuiteResponse);
       } else if (!isUndefined(testSuiteData)) {
-        testCasePayload.testSuite.id = testSuiteData.id || '';
+        testCasePayload.testSuite = testSuiteData.fullyQualifiedName || '';
       }
 
       const testCaseResponse = await createTestCase(testCasePayload);
@@ -235,16 +216,15 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({ table }) => {
     } else if (activeServiceStep > 2) {
       const successName = selectedTestSuite?.isNewTestSuite
         ? `${testSuiteData?.name} & ${testCaseRes?.name}`
-        : testCaseRes?.name || 'Test case';
+        : testCaseRes?.name || t('label.test-case') || '';
 
       const successMessage = selectedTestSuite?.isNewTestSuite ? undefined : (
         <span>
-          <span className="tw-mr-1 tw-font-semibold">
-            &quot;{successName}&quot;
-          </span>
+          <span className="tw-mr-1 tw-font-semibold">{`"${successName}"`}</span>
           <span>
-            has been created successfully. This will be picked up in the next
-            run.
+            {`${t('message.has-been-created-successfully')}.`}
+            &nbsp;
+            {t('message.this-will-pick-in-next-run')}
           </span>
         </span>
       );
@@ -253,13 +233,11 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({ table }) => {
         <SuccessScreen
           handleIngestionClick={() => setAddIngestion(true)}
           handleViewServiceClick={handleViewTestSuiteClick}
-          isAirflowSetup={isAirflowRunning}
           name={successName}
           showIngestionButton={selectedTestSuite?.isNewTestSuite || false}
           state={FormSubmitType.ADD}
           successMessage={successMessage}
-          viewServiceText="View Test Suite"
-          onCheckAirflowStatus={handleAirflowStatusCheck}
+          viewServiceText={t('message.view-test-suite')}
         />
       );
     }
@@ -270,17 +248,16 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({ table }) => {
         onSubmit={handleSelectTestSuite}
       />
     );
-  }, [activeServiceStep, isAirflowRunning, testCaseRes]);
-
-  useEffect(() => {
-    handleAirflowStatusCheck();
-  }, []);
+  }, [activeServiceStep, testCaseRes]);
 
   return (
     <PageLayout
       classes="tw-max-w-full-hd tw-h-full tw-pt-4"
       header={<TitleBreadcrumb titleLinks={breadcrumb} />}
       layout={PageLayoutType['2ColRTL']}
+      pageTitle={t('label.add-entity', {
+        entity: t('label.data-quality-test'),
+      })}
       rightPanel={
         <RightPanel
           data={
@@ -312,7 +289,9 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({ table }) => {
             <Typography.Paragraph
               className="tw-heading tw-text-base"
               data-testid="header">
-              {`Add ${isColumnFqn ? 'Column' : 'Table'} Test`}
+              {t('label.add-entity-test', {
+                entity: isColumnFqn ? t('label.column') : t('label.table'),
+              })}
             </Typography.Paragraph>
           </Col>
           <Col span={24}>

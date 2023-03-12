@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -14,14 +14,14 @@
 import { Button, Col, Row, Typography } from 'antd';
 import Modal from 'antd/lib/modal/Modal';
 import { isUndefined, uniqueId } from 'lodash';
+import CheckboxUserCard from 'pages/teams/CheckboxUserCard';
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { getSuggestedUsers, searchData } from '../../../axiosAPIs/miscAPI';
+import { getSuggestedUsers, searchData } from 'rest/miscAPI';
 import { WILD_CARD_CHAR } from '../../../constants/char.constants';
 import { SearchIndex } from '../../../enums/search.enum';
 import { User } from '../../../generated/entity/teams/user';
 import { SearchResponse } from '../../../interface/search.interface';
-import CheckboxUserCard from '../../../pages/teams/CheckboxUserCard';
 import { formatUsersResponse } from '../../../utils/APIUtils';
 import Searchbar from '../../common/searchbar/Searchbar';
 import Loader from '../../Loader/Loader';
@@ -41,9 +41,7 @@ const ReviewerModal = ({
   const [searchText, setSearchText] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [options, setOptions] = useState<User[]>([]);
-  const [selectedOption, setSelectedOption] = useState<User[]>(
-    reviewer?.map(getUserFromEntityReference) ?? []
-  );
+  const [selectedOption, setSelectedOption] = useState<User[]>([]);
   const { t } = useTranslation();
 
   const getSearchedReviewers = (searchedData: User[]) => {
@@ -118,6 +116,12 @@ const ReviewerModal = ({
     querySearch();
   }, []);
 
+  useEffect(() => {
+    if (reviewer) {
+      setSelectedOption(reviewer.map(getUserFromEntityReference));
+    }
+  }, [reviewer]);
+
   return (
     <Modal
       centered
@@ -144,16 +148,18 @@ const ReviewerModal = ({
           </Button>
         </div>
       }
+      open={visible}
       title={
         <Typography.Text strong data-testid="header">
           {header}
         </Typography.Text>
       }
-      visible={visible}
       width={800}>
       <>
         <Searchbar
-          placeholder={`${t('label.search-for-user')}...`}
+          placeholder={`${t('label.search-for-type', {
+            type: t('label.user-lowercase'),
+          })}...`}
           searchValue={searchText}
           typingInterval={500}
           onSearch={handleSearchAction}
@@ -184,7 +190,7 @@ const ReviewerModal = ({
           </Row>
         ) : (
           <Typography.Text className="flex justify-center mt-10 text-grey-muted text-base">
-            {t('label.no-user-available')}
+            {t('message.no-user-available')}
           </Typography.Text>
         )}
       </>

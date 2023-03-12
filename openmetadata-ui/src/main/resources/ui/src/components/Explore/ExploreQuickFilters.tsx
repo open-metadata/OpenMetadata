@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -13,7 +13,8 @@
 
 import { Divider, Space } from 'antd';
 import { AxiosError } from 'axios';
-import { isUndefined } from 'lodash';
+import { SearchIndex } from 'enums/search.enum';
+import { isEqual, isUndefined, uniqWith } from 'lodash';
 import React, { FC, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -21,8 +22,11 @@ import {
   getAdvancedFieldOptions,
   getTagSuggestions,
   getUserSuggestions,
-} from '../../axiosAPIs/miscAPI';
-import { MISC_FIELDS } from '../../constants/AdvancedSearch.constants';
+} from 'rest/miscAPI';
+import {
+  MISC_FIELDS,
+  OWNER_QUICK_FILTER_DEFAULT_OPTIONS_KEY,
+} from '../../constants/AdvancedSearch.constants';
 import {
   getAdvancedField,
   getOptionsObject,
@@ -43,18 +47,34 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
   const [options, setOptions] = useState<SearchDropdownOption[]>();
   const [isOptionsLoading, setIsOptionsLoading] = useState<boolean>(false);
 
+  const fetchDefaultOptions = async (
+    index: SearchIndex | SearchIndex[],
+    key: string
+  ) => {
+    const res = await getAdvancedFieldDefaultOptions(index, key);
+
+    const buckets = res.data.aggregations[`sterms#${key}`].buckets;
+
+    const optionsArray = buckets.map((option) => ({
+      key: option.key,
+      label: option.key,
+    }));
+
+    setOptions(uniqWith(optionsArray, isEqual));
+  };
+
   const getInitialOptions = async (key: string) => {
     setIsOptionsLoading(true);
     setOptions([]);
     try {
-      const res = await getAdvancedFieldDefaultOptions(index, key);
-      const buckets = res.data.aggregations[`sterms#${key}`].buckets;
-      setOptions(
-        buckets.map((option) => ({
-          key: option.key,
-          label: option.label ?? option.key,
-        }))
-      );
+      if (key === MISC_FIELDS[0]) {
+        await fetchDefaultOptions(
+          [SearchIndex.USER, SearchIndex.TEAM],
+          OWNER_QUICK_FILTER_DEFAULT_OPTIONS_KEY
+        );
+      } else {
+        await fetchDefaultOptions(index, key);
+      }
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
@@ -77,44 +97,44 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
 
           const suggestOptions =
             res.data.suggest['metadata-suggest'][0].options ?? [];
-          const uniqueOptions = [
-            ...new Set(
-              suggestOptions.map((op) => ({
-                text: op.text,
-                source: op._source as EntityDetailsType,
-              }))
-            ),
-          ];
-          const optionsObject = getOptionsObject(key, uniqueOptions);
-          setOptions(optionsObject);
+
+          const formattedSuggestions = suggestOptions.map((op) => ({
+            text: op.text,
+            source: op._source as EntityDetailsType,
+          }));
+
+          const optionsArray = getOptionsObject(key, formattedSuggestions);
+
+          setOptions(uniqWith(optionsArray, isEqual));
         } else {
           if (key === 'tags.tagFQN') {
             const res = await getTagSuggestions(value);
 
             const suggestOptions =
               res.data.suggest['metadata-suggest'][0].options ?? [];
-            const uniqueOptions = [
-              ...new Set(
-                suggestOptions
-                  .filter((op) => !isUndefined(op._source.fullyQualifiedName))
-                  .map((op) => op._source.fullyQualifiedName as string)
-              ),
-            ];
-            setOptions(uniqueOptions.map((op) => ({ key: op, label: op })));
+
+            const formattedSuggestions = suggestOptions
+              .filter((op) => !isUndefined(op._source.fullyQualifiedName))
+              .map((op) => op._source.fullyQualifiedName as string);
+
+            const optionsArray = formattedSuggestions.map((op) => ({
+              key: op,
+              label: op,
+            }));
+
+            setOptions(uniqWith(optionsArray, isEqual));
           } else {
             const res = await getUserSuggestions(value);
 
             const suggestOptions =
               res.data.suggest['metadata-suggest'][0].options ?? [];
-            const uniqueOptions = [
-              ...new Set(
-                suggestOptions.map((op) => ({
-                  key: op._source.name,
-                  label: op._source.displayName ?? op._source.name,
-                }))
-              ),
-            ];
-            setOptions(uniqueOptions);
+
+            const formattedSuggestions = suggestOptions.map((op) => ({
+              key: op._source.displayName ?? op._source.name,
+              label: op._source.displayName ?? op._source.name,
+            }));
+
+            setOptions(uniqWith(formattedSuggestions, isEqual));
           }
         }
       } else {
@@ -150,7 +170,9 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
         className="tw-text-primary tw-self-center tw-cursor-pointer"
         data-testid="advance-search-button"
         onClick={onAdvanceSearch}>
-        {t('label.advanced-search')}
+        {t('label.advanced-entity', {
+          entity: t('label.search'),
+        })}
       </span>
     </Space>
   );

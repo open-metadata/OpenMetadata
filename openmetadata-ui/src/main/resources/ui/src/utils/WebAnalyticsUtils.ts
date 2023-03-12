@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -17,8 +17,8 @@ import {
   setSession,
 } from '@analytics/session-utils';
 import Analytics, { AnalyticsInstance } from 'analytics';
-import { postPageView } from '../axiosAPIs/WebAnalyticsAPI';
-import { WebPageData } from '../components/WebAnalytics/WebAnalytics.interface';
+import { WebPageData } from 'components/WebAnalytics/WebAnalytics.interface';
+import { postPageView } from 'rest/WebAnalyticsAPI';
 import {
   WebAnalyticEventData,
   WebAnalyticEventType,

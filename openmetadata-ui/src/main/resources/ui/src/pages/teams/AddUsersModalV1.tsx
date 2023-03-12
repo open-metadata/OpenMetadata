@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -13,12 +13,13 @@
 
 import { List, Modal } from 'antd';
 import { AxiosError } from 'axios';
+import Searchbar from 'components/common/searchbar/Searchbar';
 import { isUndefined } from 'lodash';
 import VirtualList from 'rc-virtual-list';
 import React, { useEffect, useState } from 'react';
-import { searchData } from '../../axiosAPIs/miscAPI';
-import { getUsers } from '../../axiosAPIs/userAPI';
-import Searchbar from '../../components/common/searchbar/Searchbar';
+import { useTranslation } from 'react-i18next';
+import { searchData } from 'rest/miscAPI';
+import { getUsers } from 'rest/userAPI';
 import {
   ADD_USER_CONTAINER_HEIGHT,
   PAGE_SIZE_MEDIUM,
@@ -32,7 +33,6 @@ import {
 } from '../../generated/entity/teams/user';
 import { Paging } from '../../generated/type/paging';
 import { SearchResponse } from '../../interface/search.interface';
-import jsonData from '../../jsons/en';
 import { formatUsersResponse } from '../../utils/APIUtils';
 import { getEntityName } from '../../utils/CommonUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -63,6 +63,7 @@ const AddUsersModalV1 = ({
   onSave,
   searchPlaceHolder,
 }: Props) => {
+  const { t } = useTranslation();
   const [uniqueUser, setUniqueUser] = useState<UserData[]>([]);
   const [selectedUsers, setSelectedUsers] = useState<Array<string>>([]);
   const [searchText, setSearchText] = useState('');
@@ -88,7 +89,7 @@ const AddUsersModalV1 = ({
       });
   };
 
-  const searchUsers = (text: string, page: number) => {
+  const searchUsers = (text: string, page = 1) => {
     searchData(text, page, PAGE_SIZE_MEDIUM, '', '', '', SearchIndex.USER)
       .then((res) => {
         const data = getFilterUserData(
@@ -115,7 +116,7 @@ const AddUsersModalV1 = ({
       setUniqueUser([]);
       showErrorToast(
         error as AxiosError,
-        jsonData['api-error-messages']['fetch-users-error']
+        t('Server.entity-fetch-error', { entity: t('label.user') })
       );
     }
   };
@@ -150,7 +151,7 @@ const AddUsersModalV1 = ({
     setCurrentPage(1);
     setSearchText(searchValue);
     if (searchValue) {
-      searchUsers(searchValue, currentPage);
+      searchUsers(searchValue);
     } else {
       fetchAllUsers();
     }
@@ -182,14 +183,16 @@ const AddUsersModalV1 = ({
         id: 'save-button',
       }}
       okText="Save"
+      open={isVisible}
       title={header}
-      visible={isVisible}
       width={750}
       onCancel={onCancel}
       onOk={handleSave}>
       <Searchbar
         placeholder={
-          searchPlaceHolder ? searchPlaceHolder : 'Search for a user...'
+          searchPlaceHolder
+            ? searchPlaceHolder
+            : t('label.search-for-type', { type: t('label.user') })
         }
         searchValue={searchText}
         typingInterval={500}

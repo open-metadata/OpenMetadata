@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -13,11 +13,13 @@
 
 import { act, fireEvent, render } from '@testing-library/react';
 import React, { ReactNode } from 'react';
+import { createUser } from 'rest/userAPI';
 import Signup from '.';
 import AppState from '../../AppState';
-import { createUser } from '../../axiosAPIs/userAPI';
 import { getImages } from '../../utils/CommonUtils';
 import { mockCreateUser } from './mocks/signup.mock';
+
+let letExpectedUserName = { name: 'sample123', email: 'sample123@sample.com' };
 
 const mockChangeHandler = jest.fn();
 const mockSubmitHandler = jest.fn();
@@ -29,17 +31,17 @@ jest.mock('react-router-dom', () => ({
   }),
 }));
 
-jest.mock('../../authentication/auth-provider/AuthProvider', () => ({
+jest.mock('components/authentication/auth-provider/AuthProvider', () => ({
   useAuthContext: jest.fn(() => ({
     setIsSigningIn: jest.fn(),
   })),
 }));
 
-jest.mock('../../components/TeamsSelectable/TeamsSelectable', () => {
+jest.mock('components/TeamsSelectable/TeamsSelectable', () => {
   return jest.fn().mockImplementation(() => <div>TeamSelectable</div>);
 });
 
-jest.mock('../../components/buttons/Button/Button', () => ({
+jest.mock('components/buttons/Button/Button', () => ({
   Button: jest
     .fn()
     .mockImplementation(({ children }) => (
@@ -47,7 +49,7 @@ jest.mock('../../components/buttons/Button/Button', () => ({
     )),
 }));
 
-jest.mock('../../components/containers/PageContainer', () => {
+jest.mock('components/containers/PageContainer', () => {
   return jest
     .fn()
     .mockImplementation(({ children }: { children: ReactNode }) => (
@@ -55,7 +57,7 @@ jest.mock('../../components/containers/PageContainer', () => {
     ));
 });
 
-jest.mock('../../axiosAPIs/userAPI', () => ({
+jest.mock('rest/userAPI', () => ({
   createUser: jest
     .fn()
     .mockImplementation(() => Promise.resolve(mockCreateUser)),
@@ -84,11 +86,11 @@ jest.mock('../../utils/CommonUtils', () => ({
     ),
 }));
 
-describe('Signup page', () => {
-  beforeEach(() => {
-    jest.clearAllMocks();
-  });
+jest.mock('utils/AuthProvider.util', () => ({
+  getNameFromUserData: jest.fn().mockImplementation(() => letExpectedUserName),
+}));
 
+describe('Signup page', () => {
   it('Component should render properly', async () => {
     (createUser as jest.Mock).mockImplementationOnce(() =>
       Promise.resolve({ data: {} })
@@ -127,7 +129,7 @@ describe('Signup page', () => {
 
       fireEvent.submit(form);
 
-      expect(mockSubmitHandler).toBeCalledTimes(1);
+      expect(mockSubmitHandler).toHaveBeenCalledTimes(1);
     });
   });
 
@@ -164,13 +166,13 @@ describe('Signup page', () => {
         target: { name: 'displayName', value: 'sample@sample.com' },
       });
 
-      expect(mockChangeHandler).toBeCalledTimes(3);
+      expect(mockChangeHandler).toHaveBeenCalledTimes(3);
 
       form.onsubmit = mockSubmitHandler;
 
       fireEvent.submit(form);
 
-      expect(mockSubmitHandler).toBeCalledTimes(1);
+      expect(mockSubmitHandler).toHaveBeenCalledTimes(1);
     });
   });
 
@@ -204,7 +206,7 @@ describe('Signup page', () => {
       });
     });
 
-    expect(mockChangeHandler).toBeCalledTimes(3);
+    expect(mockChangeHandler).toHaveBeenCalledTimes(3);
 
     form.onsubmit = mockSubmitHandler;
 
@@ -222,6 +224,7 @@ describe('Signup page', () => {
 
   it('Handlers in form should work if data is empty', async () => {
     (getImages as jest.Mock).mockImplementationOnce(() => Promise.reject(''));
+    letExpectedUserName = { name: '', email: '' };
 
     AppState.newUser = {
       name: '',
@@ -245,7 +248,7 @@ describe('Signup page', () => {
     usernameInput.onchange = mockChangeHandler;
     emailInput.onchange = mockChangeHandler;
 
-    expect(mockChangeHandler).not.toBeCalled();
+    expect(mockChangeHandler).not.toHaveBeenCalled();
 
     form.onsubmit = mockSubmitHandler;
 

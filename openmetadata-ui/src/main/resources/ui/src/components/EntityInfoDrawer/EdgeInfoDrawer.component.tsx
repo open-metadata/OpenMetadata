@@ -1,3 +1,16 @@
+/*
+ *  Copyright 2022 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
 import { CloseOutlined } from '@ant-design/icons';
 import { Col, Divider, Drawer, Row, Typography } from 'antd';
 import { isUndefined } from 'lodash';
@@ -99,9 +112,9 @@ const EdgeInfoDrawer = ({
       getContainer={false}
       headerStyle={{ padding: 16 }}
       mask={false}
+      open={visible}
       style={{ position: 'absolute' }}
-      title={t('label.edge-information')}
-      visible={visible}>
+      title={t('label.edge-information')}>
       {isLoading ? (
         <Loader />
       ) : (
@@ -112,7 +125,7 @@ const EdgeInfoDrawer = ({
                 data.value && (
                   <Col key={data.key} span={24}>
                     <Typography.Text className="m-r-sm">
-                      {data.key}:
+                      {`${data.key}:`}
                     </Typography.Text>
 
                     {isUndefined(data.link) ? (
@@ -128,7 +141,7 @@ const EdgeInfoDrawer = ({
           <Col span={24}>
             <Divider />
             <Typography.Paragraph>
-              {t('label.description')}:
+              {`${t('label.description')}:`}
             </Typography.Paragraph>
             {edge?.data.edge?.description?.trim() ? (
               <RichTextEditorPreviewer
@@ -136,13 +149,17 @@ const EdgeInfoDrawer = ({
               />
             ) : (
               <Typography.Paragraph className="text-grey-muted m-b-0">
-                {t('label.no-description')}
+                {t('label.no-entity', {
+                  entity: t('label.description'),
+                })}
               </Typography.Paragraph>
             )}
           </Col>
           <Col span={24}>
             <Divider />
-            <Typography.Paragraph>{t('label.sql-query')}:</Typography.Paragraph>
+            <Typography.Paragraph>
+              {`${t('label.sql-uppercase-query')}:`}
+            </Typography.Paragraph>
             {mysqlQuery ? (
               <SchemaEditor
                 className="edge-drawer-sql-editor"

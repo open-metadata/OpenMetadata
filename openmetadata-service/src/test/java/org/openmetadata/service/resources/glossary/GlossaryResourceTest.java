@@ -16,15 +16,23 @@
 
 package org.openmetadata.service.resources.glossary;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+import static org.openmetadata.csv.CsvUtil.recordToString;
+import static org.openmetadata.csv.EntityCsv.entityNotFound;
+import static org.openmetadata.csv.EntityCsvTest.assertRows;
+import static org.openmetadata.csv.EntityCsvTest.assertSummary;
+import static org.openmetadata.csv.EntityCsvTest.createCsv;
+import static org.openmetadata.csv.EntityCsvTest.getFailedRecord;
 import static org.openmetadata.schema.type.ProviderType.SYSTEM;
 import static org.openmetadata.service.util.EntityUtil.fieldAdded;
 import static org.openmetadata.service.util.EntityUtil.fieldDeleted;
 import static org.openmetadata.service.util.EntityUtil.fieldUpdated;
-import static org.openmetadata.service.util.EntityUtil.getEntityReference;
 import static org.openmetadata.service.util.EntityUtil.getFqn;
+import static org.openmetadata.service.util.EntityUtil.getFqns;
 import static org.openmetadata.service.util.EntityUtil.toTagLabels;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.UpdateType.MINOR_UPDATE;
@@ -43,10 +51,12 @@ import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.TestMethodOrder;
-import org.openmetadata.common.utils.CommonUtil;
+import org.openmetadata.csv.EntityCsv;
+import org.openmetadata.schema.api.classification.CreateClassification;
 import org.openmetadata.schema.api.data.CreateGlossary;
 import org.openmetadata.schema.api.data.CreateGlossaryTerm;
 import org.openmetadata.schema.api.data.CreateTable;
+import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.Table;
@@ -56,10 +66,15 @@ import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.TagLabel;
+import org.openmetadata.schema.type.TagLabel.TagSource;
+import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
+import org.openmetadata.service.jdbi3.GlossaryRepository.GlossaryCsv;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.databases.TableResourceTest;
+import org.openmetadata.service.resources.tags.ClassificationResourceTest;
+import org.openmetadata.service.resources.tags.TagResourceTest;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.TestUtils;
@@ -77,36 +92,33 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
   public void setupGlossaries() throws IOException {
     GlossaryResourceTest glossaryResourceTest = new GlossaryResourceTest();
     CreateGlossary createGlossary = glossaryResourceTest.createRequest("g1", "", "", null);
-    GLOSSARY1 = glossaryResourceTest.createAndCheckEntity(createGlossary, ADMIN_AUTH_HEADERS);
-    GLOSSARY1_REF = GLOSSARY1.getEntityReference();
+    GLOSSARY1 = glossaryResourceTest.createEntity(createGlossary, ADMIN_AUTH_HEADERS);
 
     createGlossary = glossaryResourceTest.createRequest("g2", "", "", null);
-    GLOSSARY2 = glossaryResourceTest.createAndCheckEntity(createGlossary, ADMIN_AUTH_HEADERS);
-    GLOSSARY2_REF = GLOSSARY2.getEntityReference();
+    GLOSSARY2 = glossaryResourceTest.createEntity(createGlossary, ADMIN_AUTH_HEADERS);
 
     GlossaryTermResourceTest glossaryTermResourceTest = new GlossaryTermResourceTest();
     CreateGlossaryTerm createGlossaryTerm =
         glossaryTermResourceTest
             .createRequest("g1t1", "", "", null)
             .withRelatedTerms(null)
-            .withGlossary(GLOSSARY1_REF)
+            .withGlossary(GLOSSARY1.getName())
             .withTags(List.of(PII_SENSITIVE_TAG_LABEL, PERSONAL_DATA_TAG_LABEL))
-            .withReviewers(GLOSSARY1.getReviewers());
-    GLOSSARY1_TERM1 = glossaryTermResourceTest.createAndCheckEntity(createGlossaryTerm, ADMIN_AUTH_HEADERS);
-    GLOSSARY1_TERM1_REF = GLOSSARY1_TERM1.getEntityReference();
+            .withReviewers(getFqns(GLOSSARY1.getReviewers()));
+    GLOSSARY1_TERM1 = glossaryTermResourceTest.createEntity(createGlossaryTerm, ADMIN_AUTH_HEADERS);
     GLOSSARY1_TERM1_LABEL = EntityUtil.toTagLabel(GLOSSARY1_TERM1);
     validateTagLabel(GLOSSARY1_TERM1_LABEL);
 
     createGlossaryTerm =
         glossaryTermResourceTest
             .createRequest("g2t1", "", "", null)
-            .withRelatedTerms(List.of(GLOSSARY1_TERM1_REF))
-            .withGlossary(GLOSSARY2_REF)
-            .withReviewers(GLOSSARY1.getReviewers());
-    GLOSSARY2_TERM1 = glossaryTermResourceTest.createAndCheckEntity(createGlossaryTerm, ADMIN_AUTH_HEADERS);
-    GLOSSARY2_TERM1_REF = GLOSSARY2_TERM1.getEntityReference();
+            .withRelatedTerms(List.of(GLOSSARY1_TERM1.getFullyQualifiedName()))
+            .withGlossary(GLOSSARY2.getName())
+            .withReviewers(getFqns(GLOSSARY1.getReviewers()));
+    GLOSSARY2_TERM1 = glossaryTermResourceTest.createEntity(createGlossaryTerm, ADMIN_AUTH_HEADERS);
     GLOSSARY2_TERM1_LABEL = EntityUtil.toTagLabel(GLOSSARY2_TERM1);
     validateTagLabel(GLOSSARY2_TERM1_LABEL);
+    System.out.println("Setup glossaries done");
   }
 
   @Test
@@ -172,12 +184,23 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
     GlossaryTerm t21 = createGlossaryTerm(glossaryTermResourceTest, glossary, t2, "t21");
     GlossaryTerm t22 = createGlossaryTerm(glossaryTermResourceTest, glossary, t2, "t22");
 
+    // Create a Classification with the same name as glossary and assign it to a table
+    ClassificationResourceTest classificationResourceTest = new ClassificationResourceTest();
+    TagResourceTest tagResourceTest = new TagResourceTest();
+    CreateClassification createClassification = classificationResourceTest.createRequest("renameGlossary");
+    classificationResourceTest.createEntity(createClassification, ADMIN_AUTH_HEADERS);
+    Tag tag = tagResourceTest.createTag("t1", "renameGlossary", null);
+
     // Create a table with all the terms as tag labels
     TableResourceTest tableResourceTest = new TableResourceTest();
     List<TagLabel> tagLabels = toTagLabels(t1, t11, t12, t2, t21, t22);
-    Column column = new Column().withName("c1").withDataType(ColumnDataType.INT).withTags(tagLabels);
+    tagLabels.add(EntityUtil.toTagLabel(tag)); // Add classification tag with the same name
+    Column column = new Column().withName(C1).withDataType(ColumnDataType.INT).withTags(tagLabels);
     CreateTable createTable =
-        tableResourceTest.createRequest(getEntityName(test)).withTags(tagLabels).withColumns(CommonUtil.listOf(column));
+        tableResourceTest
+            .createRequest(tableResourceTest.getEntityName(test))
+            .withTags(tagLabels)
+            .withColumns(listOf(column));
     Table table = tableResourceTest.createEntity(createTable, ADMIN_AUTH_HEADERS);
 
     //
@@ -188,6 +211,9 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
     table = tableResourceTest.getEntity(table.getId(), "columns,tags", ADMIN_AUTH_HEADERS);
     assertTagPrefixAbsent(table.getTags(), "renameGlossary.t2");
     assertTagPrefixAbsent(table.getColumns().get(0).getTags(), "renameGlossary.t2");
+
+    // Ensure classification tag with the same name is not changed after renaming glossary
+    assertTrue(table.getTags().stream().anyMatch(t -> EntityUtil.tagLabelMatch.test(t, EntityUtil.toTagLabel(tag))));
 
     //
     // Change the glossary renameGlossary to newRenameGlossary and ensure the children FQNs are changed
@@ -211,30 +237,33 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
     //    -> t2 -> t21 -> t211
     //
     // h  -> h1 -> h11 -> h111
-    Glossary g = createEntity(createRequest("changeParent_g"), ADMIN_AUTH_HEADERS);
-    Glossary h = createEntity(createRequest("changeParent_h"), ADMIN_AUTH_HEADERS);
+    Glossary g = createEntity(createRequest("changeParent'_g"), ADMIN_AUTH_HEADERS);
+    Glossary h = createEntity(createRequest("changeParent'_h"), ADMIN_AUTH_HEADERS);
 
     GlossaryTermResourceTest glossaryTermResourceTest = new GlossaryTermResourceTest();
-    GlossaryTerm t1 = createGlossaryTerm(glossaryTermResourceTest, g, null, "t1");
-    GlossaryTerm t11 = createGlossaryTerm(glossaryTermResourceTest, g, t1, "t11");
-    GlossaryTerm t111 = createGlossaryTerm(glossaryTermResourceTest, g, t11, "t111");
-    GlossaryTerm t12 = createGlossaryTerm(glossaryTermResourceTest, g, t1, "t12");
-    GlossaryTerm t121 = createGlossaryTerm(glossaryTermResourceTest, g, t12, "t121");
-    GlossaryTerm t13 = createGlossaryTerm(glossaryTermResourceTest, g, t1, "t13");
-    GlossaryTerm t131 = createGlossaryTerm(glossaryTermResourceTest, g, t13, "t131");
-    GlossaryTerm t2 = createGlossaryTerm(glossaryTermResourceTest, g, null, "t2");
-    GlossaryTerm t21 = createGlossaryTerm(glossaryTermResourceTest, g, t2, "t21");
-    GlossaryTerm t211 = createGlossaryTerm(glossaryTermResourceTest, g, t21, "t211");
-    GlossaryTerm h1 = createGlossaryTerm(glossaryTermResourceTest, h, null, "h1");
-    GlossaryTerm h11 = createGlossaryTerm(glossaryTermResourceTest, h, h1, "h11");
-    GlossaryTerm h111 = createGlossaryTerm(glossaryTermResourceTest, h, h11, "h111");
+    GlossaryTerm t1 = createGlossaryTerm(glossaryTermResourceTest, g, null, "t'_1");
+    GlossaryTerm t11 = createGlossaryTerm(glossaryTermResourceTest, g, t1, "t'_11");
+    GlossaryTerm t111 = createGlossaryTerm(glossaryTermResourceTest, g, t11, "t'_111");
+    GlossaryTerm t12 = createGlossaryTerm(glossaryTermResourceTest, g, t1, "t'_12");
+    GlossaryTerm t121 = createGlossaryTerm(glossaryTermResourceTest, g, t12, "t'_121");
+    GlossaryTerm t13 = createGlossaryTerm(glossaryTermResourceTest, g, t1, "t'_13");
+    GlossaryTerm t131 = createGlossaryTerm(glossaryTermResourceTest, g, t13, "t'_131");
+    GlossaryTerm t2 = createGlossaryTerm(glossaryTermResourceTest, g, null, "t'_2");
+    GlossaryTerm t21 = createGlossaryTerm(glossaryTermResourceTest, g, t2, "t'_21");
+    GlossaryTerm t211 = createGlossaryTerm(glossaryTermResourceTest, g, t21, "t'_211");
+    GlossaryTerm h1 = createGlossaryTerm(glossaryTermResourceTest, h, null, "h'_1");
+    GlossaryTerm h11 = createGlossaryTerm(glossaryTermResourceTest, h, h1, "h'_11");
+    GlossaryTerm h111 = createGlossaryTerm(glossaryTermResourceTest, h, h11, "h'_111");
 
     // Create a table with all the terms as tag labels
     TableResourceTest tableResourceTest = new TableResourceTest();
     List<TagLabel> tagLabels = toTagLabels(t1, t11, t111, t12, t121, t13, t131, t2, t21, t211, h1, h11, h111);
-    Column column = new Column().withName("c1").withDataType(ColumnDataType.INT).withTags(tagLabels);
+    Column column = new Column().withName(C1).withDataType(ColumnDataType.INT).withTags(tagLabels);
     CreateTable createTable =
-        tableResourceTest.createRequest(getEntityName(test)).withTags(tagLabels).withColumns(CommonUtil.listOf(column));
+        tableResourceTest
+            .createRequest(tableResourceTest.getEntityName(test))
+            .withTags(tagLabels)
+            .withColumns(listOf(column));
     Table table = tableResourceTest.createEntity(createTable, ADMIN_AUTH_HEADERS);
 
     Object[][] scenarios = {
@@ -285,6 +314,58 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
         copyGlossaryTerm(updatedTerm, termToMove);
       }
     }
+  }
+
+  @Test
+  void testCsvDocumentation() throws HttpResponseException {
+    assertEquals(GlossaryCsv.DOCUMENTATION, getCsvDocumentation());
+  }
+
+  @Test
+  void testImportInvalidCsv() throws IOException {
+    String glossaryName = "invalidCsv";
+    createEntity(createRequest(glossaryName), ADMIN_AUTH_HEADERS);
+
+    // Create glossaryTerm with invalid parent
+    String resultsHeader = recordToString(EntityCsv.getResultHeaders(GlossaryCsv.HEADERS));
+    String record = "invalidParent,g1,dsp1,dsc1,h1;h2;h3,,term1;http://term1,Tier.Tier1";
+    String csv = createCsv(GlossaryCsv.HEADERS, listOf(record), null);
+    CsvImportResult result = importCsv(glossaryName, csv, false);
+    assertSummary(result, CsvImportResult.Status.FAILURE, 2, 1, 1);
+    String[] expectedRows = {resultsHeader, getFailedRecord(record, entityNotFound(0, "invalidParent"))};
+    assertRows(result, expectedRows);
+
+    // Create glossaryTerm with invalid tags field
+    record = ",g1,dsp1,dsc1,h1;h2;h3,,term1;http://term1,Tag.invalidTag";
+    csv = createCsv(GlossaryCsv.HEADERS, listOf(record), null);
+    result = importCsv(glossaryName, csv, false);
+    assertSummary(result, CsvImportResult.Status.FAILURE, 2, 1, 1);
+    expectedRows = new String[] {resultsHeader, getFailedRecord(record, entityNotFound(7, "Tag.invalidTag"))};
+    assertRows(result, expectedRows);
+  }
+
+  @Test
+  void testGlossaryImportExport() throws IOException {
+    Glossary glossary = createEntity(createRequest("importExportTest"), ADMIN_AUTH_HEADERS);
+
+    // CSV Header "parent" "name" "displayName" "description" "synonyms" "relatedTerms" "references" "tags"
+    // Create two records
+    List<String> createRecords =
+        listOf(
+            ",g1,dsp1,\"dsc1,1\",h1;h2;h3,,term1;http://term1,Tier.Tier1",
+            ",g2,dsp2,dsc3,h1;h3;h3,,term2;https://term2,Tier.Tier2",
+            "importExportTest.g1,g11,dsp2,dsc11,h1;h3;h3,,,");
+
+    // Update terms with change in description
+    List<String> updateRecords =
+        listOf(
+            ",g1,dsp1,new-dsc1,h1;h2;h3,,term1;http://term1,Tier.Tier1",
+            ",g2,dsp2,new-dsc3,h1;h3;h3,,term2;https://term2,Tier.Tier2",
+            "importExportTest.g1,g11,dsp2,new-dsc11,h1;h3;h3,,,");
+
+    // Add new row to existing rows
+    List<String> newRecords = listOf(",g3,dsp0,dsc0,h1;h2;h3,,term0;http://term0,Tier.Tier3");
+    testImportExport(glossary.getName(), GlossaryCsv.HEADERS, createRecords, updateRecords, newRecords);
   }
 
   private void copyGlossaryTerm(GlossaryTerm from, GlossaryTerm to) {
@@ -361,8 +442,8 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
         new CreateGlossaryTerm()
             .withName(name)
             .withDescription("d")
-            .withGlossary(glossary.getEntityReference())
-            .withParent(getEntityReference(parent))
+            .withGlossary(glossary.getFullyQualifiedName())
+            .withParent(getFqn(parent))
             .withProvider(provider);
     return resource.createEntity(create, ADMIN_AUTH_HEADERS);
   }
@@ -413,7 +494,9 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
 
   private void assertTagPrefixAbsent(List<TagLabel> labels, String prefix) {
     for (TagLabel tag : labels) {
-      assertFalse(tag.getTagFQN().startsWith(prefix), tag.getTagFQN());
+      if (tag.getSource() == TagSource.GLOSSARY) {
+        assertFalse(tag.getTagFQN().startsWith(prefix), tag.getTagFQN());
+      }
     }
   }
 

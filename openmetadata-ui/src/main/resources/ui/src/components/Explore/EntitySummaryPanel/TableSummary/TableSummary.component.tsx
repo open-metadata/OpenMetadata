@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -14,41 +14,69 @@
 import { Col, Divider, Row, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
+import SummaryTagsDescription from 'components/common/SummaryTagsDescription/SummaryTagsDescription.component';
+import SummaryPanelSkeleton from 'components/Skeleton/SummaryPanelSkeleton/SummaryPanelSkeleton.component';
+import { ExplorePageTabs } from 'enums/Explore.enum';
 import { isEmpty, isUndefined } from 'lodash';
-import React, { useEffect, useMemo, useState } from 'react';
+import {
+  default as React,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router-dom';
 import {
   getLatestTableProfileByFqn,
   getTableQueryByTableId,
-} from '../../../../axiosAPIs/tableAPI';
-import { getListTestCase } from '../../../../axiosAPIs/testAPI';
+} from 'rest/tableAPI';
+import { getListTestCase } from 'rest/testAPI';
+import {
+  DRAWER_NAVIGATION_OPTIONS,
+  getEntityOverview,
+} from 'utils/EntityUtils';
+import SVGIcons from 'utils/SvgUtils';
 import { API_RES_MAX_SIZE } from '../../../../constants/constants';
 import { INITIAL_TEST_RESULT_SUMMARY } from '../../../../constants/profiler.constant';
-import { SearchIndex } from '../../../../enums/search.enum';
-import { Table, TableType } from '../../../../generated/entity/data/table';
+import { SummaryEntityType } from '../../../../enums/EntitySummary.enum';
+import { Table } from '../../../../generated/entity/data/table';
 import { Include } from '../../../../generated/type/include';
 import {
   formatNumberWithComma,
-  formTwoDigitNmber,
+  formTwoDigitNmber as formTwoDigitNumber,
 } from '../../../../utils/CommonUtils';
 import { updateTestResults } from '../../../../utils/DataQualityAndProfilerUtils';
+import { getFormattedEntityData } from '../../../../utils/EntitySummaryPanelUtils';
 import { generateEntityLink } from '../../../../utils/TableUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
-import TableDataCardTitle from '../../../common/table-data-card-v2/TableDataCardTitle.component';
 import {
   OverallTableSummeryType,
   TableTestsType,
 } from '../../../TableProfiler/TableProfiler.interface';
 import SummaryList from '../SummaryList/SummaryList.component';
-import { BasicTableInfo, TableSummaryProps } from './TableSummary.interface';
+import { BasicEntityInfo } from '../SummaryList/SummaryList.interface';
+import { TableSummaryProps } from './TableSummary.interface';
 
-function TableSummary({ entityDetails }: TableSummaryProps) {
+function TableSummary({
+  entityDetails,
+  componentType = DRAWER_NAVIGATION_OPTIONS.explore,
+  tags,
+  isLoading,
+}: TableSummaryProps) {
   const { t } = useTranslation();
-  const [TableDetails, setTableDetails] = useState<Table>(entityDetails);
+  const [tableDetails, setTableDetails] = useState<Table>(entityDetails);
   const [tableTests, setTableTests] = useState<TableTestsType>({
     tests: [],
     results: INITIAL_TEST_RESULT_SUMMARY,
   });
+
+  const isExplore = useMemo(
+    () => componentType === DRAWER_NAVIGATION_OPTIONS.explore,
+    [componentType]
+  );
+
+  const isTableDeleted = useMemo(() => entityDetails.deleted, [entityDetails]);
 
   const fetchAllTests = async () => {
     try {
@@ -79,13 +107,13 @@ function TableSummary({ entityDetails }: TableSummaryProps) {
     }
   };
 
-  const fetchProfilerData = async () => {
+  const fetchProfilerData = useCallback(async () => {
     try {
       const profileResponse = await getLatestTableProfileByFqn(
         entityDetails?.fullyQualifiedName || ''
       );
 
-      const { profile } = profileResponse;
+      const { profile, tableConstraints } = profileResponse;
 
       const queriesResponse = await getTableQueryByTableId(
         entityDetails.id || ''
@@ -95,7 +123,7 @@ function TableSummary({ entityDetails }: TableSummaryProps) {
 
       setTableDetails((prev) => {
         if (prev) {
-          return { ...prev, profile, tableQueries };
+          return { ...prev, profile, tableQueries, tableConstraints };
         } else {
           return {} as Table;
         }
@@ -108,142 +136,213 @@ function TableSummary({ entityDetails }: TableSummaryProps) {
         })
       );
     }
-  };
+  }, [entityDetails]);
 
   const overallSummary: OverallTableSummeryType[] | undefined = useMemo(() => {
-    if (isUndefined(TableDetails.profile)) {
+    if (isUndefined(tableDetails.profile)) {
       return undefined;
     }
 
     return [
       {
-        title: t('label.row-count'),
-        value: formatNumberWithComma(TableDetails?.profile?.rowCount ?? 0),
+        title: t('label.entity-count', {
+          entity: t('label.row'),
+        }),
+        value: formatNumberWithComma(tableDetails?.profile?.rowCount ?? 0),
       },
       {
-        title: t('label.column-count'),
+        title: t('label.column-entity', {
+          entity: t('label.count'),
+        }),
         value:
-          TableDetails?.profile?.columnCount ?? entityDetails.columns.length,
+          tableDetails?.profile?.columnCount ?? entityDetails.columns.length,
       },
       {
-        title: `${t('label.table-sample')} %`,
-        value: `${TableDetails?.profile?.profileSample ?? 100}%`,
+        title: `${t('label.table-entity-text', {
+          entityText: t('label.sample'),
+        })} %`,
+        value: `${tableDetails?.profile?.profileSample ?? 100}%`,
       },
       {
         title: `${t('label.test-plural')} ${t('label.passed')}`,
-        value: formTwoDigitNmber(tableTests.results.success),
+        value: formTwoDigitNumber(tableTests.results.success),
         className: 'success',
       },
       {
         title: `${t('label.test-plural')} ${t('label.aborted')}`,
-        value: formTwoDigitNmber(tableTests.results.aborted),
+        value: formTwoDigitNumber(tableTests.results.aborted),
         className: 'aborted',
       },
       {
         title: `${t('label.test-plural')} ${t('label.failed')}`,
-        value: formTwoDigitNmber(tableTests.results.failed),
+        value: formTwoDigitNumber(tableTests.results.failed),
         className: 'failed',
       },
     ];
-  }, [TableDetails, tableTests]);
+  }, [tableDetails, tableTests]);
 
-  const { tableType, columns, tableQueries } = TableDetails;
+  const { columns } = tableDetails;
 
-  const basicTableInfo: BasicTableInfo = useMemo(
-    () => ({
-      Type: tableType || TableType.Regular,
-      Queries: tableQueries?.length ? `${tableQueries?.length}` : '-',
-      Columns: columns?.length ? `${columns?.length}` : '-',
-    }),
-    [tableType, columns, tableQueries]
+  const entityInfo = useMemo(
+    () => getEntityOverview(ExplorePageTabs.TABLES, tableDetails),
+    [tableDetails]
+  );
+
+  const formattedColumnsData: BasicEntityInfo[] = useMemo(
+    () =>
+      getFormattedEntityData(
+        SummaryEntityType.COLUMN,
+        columns,
+        tableDetails.tableConstraints
+      ),
+    [columns, tableDetails]
   );
 
   useEffect(() => {
     if (!isEmpty(entityDetails)) {
       setTableDetails(entityDetails);
-      fetchAllTests();
-      fetchProfilerData();
+      if (
+        !isTableDeleted &&
+        entityDetails.service?.type === 'databaseService'
+      ) {
+        fetchProfilerData();
+        fetchAllTests();
+      }
     }
   }, [entityDetails]);
 
   return (
-    <>
-      <Row className={classNames('m-md')} gutter={[0, 4]}>
-        <Col span={24}>
-          <TableDataCardTitle
-            dataTestId="summary-panel-title"
-            searchIndex={SearchIndex.TABLE}
-            source={TableDetails}
-          />
-        </Col>
-        <Col span={24}>
-          <Row>
-            {Object.keys(basicTableInfo).map((fieldName) => (
-              <Col key={fieldName} span={24}>
-                <Row gutter={16}>
-                  <Col className="text-gray" span={10}>
-                    {fieldName}
-                  </Col>
-                  <Col span={12}>
-                    {basicTableInfo[fieldName as keyof BasicTableInfo]}
-                  </Col>
-                </Row>
-              </Col>
-            ))}
-          </Row>
-        </Col>
-      </Row>
-      <Divider className="m-0" />
+    <SummaryPanelSkeleton loading={isLoading || isEmpty(tableDetails)}>
+      <>
+        <Row className="m-md" gutter={[0, 4]}>
+          <Col span={24}>
+            <Row>
+              {entityInfo.map((info) => {
+                const isOwner = info.name === t('label.owner');
 
-      <Row className={classNames('m-md')} gutter={[0, 16]}>
-        <Col span={24}>
-          <Typography.Text className="section-header">
-            {t('label.profiler-amp-data-quality')}
-          </Typography.Text>
-        </Col>
-        <Col span={24}>
-          {isUndefined(overallSummary) ? (
-            <Typography.Text>
-              {t('message.no-profiler-enabled-summary-message')}
-            </Typography.Text>
-          ) : (
-            <Row gutter={[16, 16]}>
-              {overallSummary.map((field) => (
-                <Col key={field.title} span={10}>
-                  <Row>
-                    <Col span={24}>
-                      <Typography.Text className="text-gray">
-                        {field.title}
-                      </Typography.Text>
-                    </Col>
-                    <Col span={24}>
-                      <Typography.Text
-                        className={classNames(
-                          'summary-panel-statistics-count',
-                          field.className
-                        )}>
-                        {field.value}
-                      </Typography.Text>
-                    </Col>
-                  </Row>
-                </Col>
-              ))}
+                return info.visible?.includes(componentType) ? (
+                  <Col key={info.name} span={24}>
+                    <Row
+                      className={classNames('', {
+                        'p-b-md': isOwner,
+                      })}
+                      gutter={[16, 32]}>
+                      {!isOwner ? (
+                        <Col data-testid={`${info.name}-label`} span={8}>
+                          <Typography.Text className="text-grey-muted">
+                            {info.name}
+                          </Typography.Text>
+                        </Col>
+                      ) : null}
+                      <Col data-testid={`${info.name}-value`} span={16}>
+                        {info.isLink ? (
+                          <Link
+                            component={Typography.Link}
+                            target={info.isExternal ? '_blank' : '_self'}
+                            to={{ pathname: info.url }}>
+                            {info.value}
+                            {info.isExternal ? (
+                              <SVGIcons
+                                alt="external-link"
+                                className="m-l-xs"
+                                icon="external-link"
+                                width="12px"
+                              />
+                            ) : null}
+                          </Link>
+                        ) : (
+                          <Typography.Text
+                            className={classNames('text-grey-muted', {
+                              'text-grey-body': !isOwner,
+                            })}>
+                            {info.value}
+                          </Typography.Text>
+                        )}
+                      </Col>
+                    </Row>
+                  </Col>
+                ) : null;
+              })}
             </Row>
-          )}
-        </Col>
-      </Row>
-      <Divider className="m-0" />
-      <Row className={classNames('m-md')} gutter={[0, 16]}>
-        <Col span={24}>
-          <Typography.Text className="section-header">
-            {t('label.schema')}
-          </Typography.Text>
-        </Col>
-        <Col span={24}>
-          <SummaryList columns={columns} />
-        </Col>
-      </Row>
-    </>
+          </Col>
+        </Row>
+
+        <Divider className="m-y-xs" />
+
+        {!isExplore ? (
+          <>
+            <SummaryTagsDescription
+              entityDetail={entityDetails}
+              tags={tags ? tags : []}
+            />
+            <Divider className="m-y-xs" />
+          </>
+        ) : null}
+
+        <Row className="m-md" gutter={[0, 16]}>
+          <Col span={24}>
+            <Typography.Text
+              className="text-base text-grey-muted"
+              data-testid="profiler-header">
+              {t('label.profiler-amp-data-quality')}
+            </Typography.Text>
+          </Col>
+          <Col span={24}>
+            {isUndefined(overallSummary) ? (
+              <Typography.Text
+                className="text-grey-body"
+                data-testid="no-profiler-enabled-message">
+                {t('message.no-profiler-enabled-summary-message')}
+              </Typography.Text>
+            ) : (
+              <Row gutter={[0, 16]}>
+                {overallSummary.map((field) => (
+                  <Col key={field.title} span={10}>
+                    <Row>
+                      <Col span={24}>
+                        <Typography.Text
+                          className="text-grey-muted"
+                          data-testid={`${field.title}-label`}>
+                          {field.title}
+                        </Typography.Text>
+                      </Col>
+                      <Col span={24}>
+                        <Typography.Text
+                          className={classNames(
+                            'summary-panel-statistics-count',
+                            field.className
+                          )}
+                          data-testid={`${field.title}-value`}>
+                          {field.value}
+                        </Typography.Text>
+                      </Col>
+                    </Row>
+                  </Col>
+                ))}
+              </Row>
+            )}
+          </Col>
+        </Row>
+
+        <Divider className="m-y-xs" />
+
+        <Row className="m-md" gutter={[0, 16]}>
+          <Col span={24}>
+            <Typography.Text
+              className="text-base text-grey-muted"
+              data-testid="schema-header">
+              {t('label.schema')}
+            </Typography.Text>
+          </Col>
+          <Col span={24}>
+            <SummaryList
+              entityType={SummaryEntityType.COLUMN}
+              formattedEntityData={formattedColumnsData}
+            />
+          </Col>
+        </Row>
+      </>
+    </SummaryPanelSkeleton>
   );
 }
 

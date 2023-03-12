@@ -15,6 +15,7 @@ package org.openmetadata.service;
 
 import static java.lang.String.format;
 
+import io.dropwizard.jersey.jackson.JacksonFeature;
 import io.dropwizard.testing.ConfigOverride;
 import io.dropwizard.testing.ResourceHelpers;
 import io.dropwizard.testing.junit5.DropwizardAppExtension;
@@ -24,8 +25,10 @@ import lombok.extern.slf4j.Slf4j;
 import org.flywaydb.core.Flyway;
 import org.glassfish.jersey.client.ClientProperties;
 import org.glassfish.jersey.client.HttpUrlConnectorProvider;
+import org.glassfish.jersey.client.JerseyClientBuilder;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.TestInstance;
 import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.resources.CollectionRegistry;
 import org.openmetadata.service.resources.events.WebhookCallbackResource;
@@ -35,6 +38,7 @@ import org.openmetadata.service.security.policyevaluator.SubjectCache;
 import org.testcontainers.containers.JdbcDatabaseContainer;
 
 @Slf4j
+@TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public abstract class OpenMetadataApplicationTest {
   protected static final String CONFIG_PATH = ResourceHelpers.resourceFilePath("openmetadata-secure-test.yaml");
   public static DropwizardAppExtension<OpenMetadataApplicationConfig> APP;
@@ -56,7 +60,7 @@ public abstract class OpenMetadataApplicationTest {
     JdbcDatabaseContainer<?> sqlContainer =
         (JdbcDatabaseContainer<?>)
             Class.forName(jdbcContainerClassName).getConstructor(String.class).newInstance(jdbcContainerImage);
-    sqlContainer.withReuse(true);
+    sqlContainer.withReuse(false);
     sqlContainer.withStartupTimeoutSeconds(240);
     sqlContainer.withConnectTimeoutSeconds(240);
     sqlContainer.start();
@@ -69,6 +73,7 @@ public abstract class OpenMetadataApplicationTest {
             .table("DATABASE_CHANGE_LOG")
             .locations("filesystem:" + migrationScripsLocation)
             .sqlMigrationPrefix("v")
+            .cleanDisabled(false)
             .load();
     flyway.clean();
     flyway.migrate();
@@ -102,10 +107,12 @@ public abstract class OpenMetadataApplicationTest {
   }
 
   public static Client getClient() {
-    return APP.client()
+    return new JerseyClientBuilder()
+        .register(new JacksonFeature(APP.getObjectMapper()))
         .property(ClientProperties.CONNECT_TIMEOUT, 0)
         .property(ClientProperties.READ_TIMEOUT, 0)
-        .property(HttpUrlConnectorProvider.SET_METHOD_WORKAROUND, true);
+        .property(HttpUrlConnectorProvider.SET_METHOD_WORKAROUND, true)
+        .build();
   }
 
   public static WebTarget getResource(String collection) {
@@ -113,6 +120,6 @@ public abstract class OpenMetadataApplicationTest {
   }
 
   public static WebTarget getConfigResource(String resource) {
-    return getClient().target(format("http://localhost:%s/api/v1/config/%s", APP.getLocalPort(), resource));
+    return getClient().target(format("http://localhost:%s/api/v1/system/config/%s", APP.getLocalPort(), resource));
   }
 }

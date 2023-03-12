@@ -16,9 +16,24 @@ supports service accounts that the SSO provider supports. Please read the [docs]
 In some cases, either creating a service account is not feasible, or the SSO provider itself doesn't support the service account. To address
 this gap, we shipped JWT token generation and authentication within OpenMetadata.
 
+<Important>
+
+Security requirements for your **production** environment:
+- **DELETE** the admin default account shipped by OM in case you have [Basic Authentication](/deployment/security/basic-auth) enabled.
+- **UPDATE** the Private / Public keys used for the [JWT Tokens](/deployment/security/enable-jwt-tokens). The keys we provide
+  by default are aimed only for quickstart and testing purposes. They should NEVER be used in a production installation.
+
+</Important>
+
 ## Create Private / Public key 
 
-To create private/public key use the following commands
+### For local/testing deployment
+
+You can work with the existing configuration or generate private/public keys. By default, the `jwtTokenConfiguration` is shipped with OM.
+
+### For production deployment
+
+It is a **MUST** to update the JWT configuration. To create private/public key use the following commands can be used:
 
 ```commandline
 openssl genrsa -out private_key.pem 2048   
@@ -56,15 +71,19 @@ authenticationConfiguration:
   provider: ${AUTHENTICATION_PROVIDER:-no-auth}
   # This will only be valid when provider type specified is customOidc
   providerName: ${CUSTOM_OIDC_AUTHENTICATION_PROVIDER_NAME:-""}
-  publicKeyUrls: ${AUTHENTICATION_PUBLIC_KEYS:-[https://www.googleapis.com/oauth2/v3/certs]}
+  publicKeyUrls: ${AUTHENTICATION_PUBLIC_KEYS:-[{your SSO public keys URL}]}
   authority: ${AUTHENTICATION_AUTHORITY:-https://accounts.google.com}
   clientId: ${AUTHENTICATION_CLIENT_ID:-""}
   callbackUrl: ${AUTHENTICATION_CALLBACK_URL:-""}
   jwtPrincipalClaims: ${AUTHENTICATION_JWT_PRINCIPAL_CLAIMS:-[email,preferred_username,sub]}
 ```
 
-add `http://localhost:8585/api/v1/config/jwks` to `publicKeyUrls`. You should append to the existing configuration such that
+add `http://{your domain}:8585/api/v1/system/config/jwks` to `publicKeyUrls`. You should append to the existing configuration such that
 your SSO and JWTToken auth verification will work. 
+
+```yaml
+  publicKeyUrls: ${AUTHENTICATION_PUBLIC_KEYS:-[{your SSO public keys URL}, http://{your domain}:8585/api/v1/system/config/jwks]}
+```
 
 Once you configure the above settings, restart OpenMetadata server .
 
@@ -72,16 +91,20 @@ Once you configure the above settings, restart OpenMetadata server .
 
 Once the above configuration is updated, the server is restarted. Admin can go to Settings -> Bots page.
 
-<Image src="/images/deployment/security/enable-jwt/bot.png" alt="bots"/> 
+<Image src="/images/deployment/security/enable-jwt/bot.png" alt="Bot settings page" caption="Bot settings page"/> 
 
-Click on the generate token to create a token for the ingestion bot.
+Click on the `ingestion-bot`. The current token can be revoked, or you can create a new one.
+
+<Image src="/images/deployment/security/enable-jwt/bot-jwt-token.png" alt="Bot credentials edition" caption="Edit JWT Token for ingestion-bot"/> 
 
 ## Configure Ingestion
 
 The generated token from the above page should pass onto the ingestion framework so that the ingestion can make calls
 securely to OpenMetadata. Make sure this token is not shared and stored securely. 
 
-### Using Airflow APIs
+After `0.12.1` version, we don't need any other additional change in the configuration after configuring the `ingestion-bot`.
+
+### Using Airflow APIs (only before 0.12.1)
 
 If you are using OpenMetadata shipped Airflow container with our APIs to deploy ingestion workflows from the
 OpenMetadata UIs. Configure the below section to enable JWT Token
@@ -101,43 +124,114 @@ airflowConfiguration:
 
 In the above configuration, you can see we configure `authProvider` to be "openmetadata" and `OM_AUTH_JWT_TOKEN` with the JWT token that was generated in the bots page.
 
-### Using Ingestion Framework
+### Running Ingestion from CLI
 
-If you are running your own Airflow and using the ingestion framework from OpenMetadata APIs. Add the below
-configuration to the workflow configuration you pass onto the ingestion framework
+If you are running the ingestion from CLI. Add the below configuration to the workflow configuration you pass:
 
 ```yaml
-source:
-  type: bigquery
-  serviceName: local_bigquery
-  serviceConnection:
-    config:
-      type: BigQuery
-      credentials:
-        gcsConfig:
-          type: service_account
-          projectId: project_id
-          privateKeyId: private_key_id
-          privateKey: private_key
-          clientEmail: gcpuser@project_id.iam.gserviceaccount.com
-          clientId: client_id
-          authUri: https://accounts.google.com/o/oauth2/auth
-          tokenUri: https://oauth2.googleapis.com/token
-          authProviderX509CertUrl: https://www.googleapis.com/oauth2/v1/certs
-          clientX509CertUrl: clientX509CertUrl
-  sourceConfig:
-    config:
-      type: DatabaseMetadata
-sink:
-  type: metadata-rest
-  config: {}
 workflowConfig:
   openMetadataServerConfig:
     hostPort: http://localhost:8585/api
     authProvider: openmetadata
     securityConfig:
-       jwtToken:
+       jwtToken: <jwt-token>
 ```
 
 In the above section, under the `workflowConfig`, configure `authProvider` to be "openmetadata" and under `securityConfig`
-section, add "jwtToken" and its value from the ingestion bot page.
+section, add `jwtToken` and its value from the ingestion bot page.
+
+## Configure JWT Key Pairs for Docker
+
+Following the above documentation, you will have private key and public key pair available as mentioned [here](#create-private-public-key). Next, will proceed with the below section which will configure JWT token with docker environment.
+### Create docker compose host volume mappings
+
+Create a host directory which will be mapped as docker volumes to docker compose. This step will require you to update existing docker compose files that comes up with [OpenMetadata Releases](https://github.com/open-metadata/OpenMetadata/releases).
+
+
+```yaml
+
+services:
+...
+  openmetadata-server:
+    volumes:
+    - ./docker-volume/jwtkeys:/etc/openmetadata/jwtkeys
+    ...
+```
+
+<Note>
+
+It is presumed with the above code snippet that you have `docker-volume` directory available on host where the docker-compose file is.
+
+</Note>
+
+### Update the docker compose environment variables with jwtkeys
+
+Update the docker environment variables either directly in the docker-compose files or in a separate docker env files.
+Below is a code snippet for how the docker env file will look like.
+
+```bash
+# openmetadata.prod.env
+RSA_PUBLIC_KEY_FILE_PATH="/etc/openmetadata/jwtkeys/public_key.der"
+RSA_PRIVATE_KEY_FILE_PATH="/etc/openmetadata/jwtkeys/private_key.der"
+JWT_ISSUER="open-metadata.org" # update this as per your environment
+JWT_KEY_ID="c8ec220c-be7d-4e47-97c7-098bf6a57ce1" # update this to a unique uuid4
+```
+
+### Run the docker compose command to start the services
+
+Run the docker compose CLI command to start the docker services with the configured jwt keys.
+
+```
+docker compose -f docker-compose.yml --env-file openmetadata.prod.env up -d
+```
+
+## Configure JWT Key Pairs for Kubernetes
+
+Following the above documentation, you will have private key and public key pair available as mentioned [here](#create-private-public-key). Next, will proceed with the below section which will configure JWT token with kubernetes environment.
+
+### Create Kubernetes Secrets for the Key Pairs
+
+Create Kubernetes Secrets from file using the kubernetes imparative commands below.
+
+```bash
+kubectl create secret generic openmetadata-jwt-keys --from-file private_key.der --from-file public_key.der --namespace default
+```
+
+### Update Helm Values to mount Kubernetes secrets and configure JWT Token Configuration
+
+Update your helm values to mount Kubernetes Secrets as Volumes and update the Jwt Token Configuration to point the Key File Paths to mounted path (absolute file path).
+
+```yaml
+# openmetadata.prod.values.yml
+global:
+	...
+	jwtTokenConfiguration:
+	  rsapublicKeyFilePath: "/etc/openmetadata/jwtkeys/public_key.der"
+	  rsaprivateKeyFilePath: "/etc/openmetadata/jwtkeys/private_key.der"
+	  jwtissuer: "open-metadata.org" # update this as per your environment
+	  keyId: "c8ec220c-be7d-4e47-97c7-098bf6a57ce1" # update this to a unique uuid4
+...
+extraVolumes:
+- name: openmetadata-jwt-vol
+  secret: 
+    secretName: openmetadata-jwt-keys
+extraVolumeMounts:
+- name: openmetadata-jwt-vol
+  mountPath: "/etc/openmetadata/jwtkeys"
+  readOnly: true
+```
+
+<Warning>
+
+It is recommended to consider new directory paths for mounting the secrets as volumes to OpenMetadata Server Pod.
+With OpenMetadata Helm Charts, you will be able to add volumes and volumeMounts with `extraVolumes` and `extraVolumeMounts` helm values.
+
+</Warning>
+
+### Install / Upgrade Helm Chart Release
+
+Run the below command to make sure the update helm values are available to OpenMetadata.
+
+```
+helm upgrade --install openmetadata open-metadata/openmetadata --values openmetadata.prod.values.yml
+```

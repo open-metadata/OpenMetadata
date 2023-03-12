@@ -132,6 +132,11 @@ class WebAnalyticEntityViewReportDataProcessor(DataProcessor):
                     fields=["*"],
                 )
 
+                if not entity:
+                    # If a user visits an entity and then deletes this entity, we will try to get the entity
+                    # object as we will have a reference to it in the web analytics events.
+                    continue
+
                 try:
                     tags = (
                         [tag.tagFQN.__root__ for tag in entity.tags]
@@ -250,7 +255,7 @@ class WebAnalyticUserActivityReportDataProcessor(DataProcessor):
             user_entity: Optional[User] = self.metadata.get_by_id(
                 User,
                 user_id,
-                fields=["*"],
+                fields=["teams"],
             )
         except Exception as exc:
             logger.warning(f"Could not get user details - {exc}")

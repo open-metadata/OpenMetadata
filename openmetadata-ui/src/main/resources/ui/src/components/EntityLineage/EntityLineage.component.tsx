@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,14 +11,13 @@
  *  limitations under the License.
  */
 
-import { Modal } from 'antd';
+import { Modal, Space } from 'antd';
 import { AxiosError } from 'axios';
 import {
   debounce,
   isEmpty,
   isNil,
   isUndefined,
-  lowerCase,
   uniqueId,
   upperCase,
 } from 'lodash';
@@ -33,6 +32,7 @@ import React, {
   useRef,
   useState,
 } from 'react';
+import { useTranslation } from 'react-i18next';
 import ReactFlow, {
   addEdge,
   Background,
@@ -47,8 +47,8 @@ import ReactFlow, {
   useEdgesState,
   useNodesState,
 } from 'reactflow';
-import { searchData } from '../../axiosAPIs/miscAPI';
-import { getTableDetails } from '../../axiosAPIs/tableAPI';
+import { searchData } from 'rest/miscAPI';
+import { getTableDetails } from 'rest/tableAPI';
 import { PAGE_SIZE } from '../../constants/constants';
 import {
   ELEMENT_DELETE_STATE,
@@ -57,7 +57,7 @@ import {
   ZOOM_TRANSITION_DURATION,
   ZOOM_VALUE,
 } from '../../constants/Lineage.constants';
-import { EntityType } from '../../enums/entity.enum';
+import { EntityLineageNodeType, EntityType } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import {
   AddLineage,
@@ -70,7 +70,6 @@ import {
 } from '../../generated/type/entityLineage';
 import { EntityReference } from '../../generated/type/entityReference';
 import { withLoader } from '../../hoc/withLoader';
-import jsonData from '../../jsons/en';
 import { getEntityName } from '../../utils/CommonUtils';
 import {
   createNewEdge,
@@ -80,10 +79,10 @@ import {
   getAllTracedNodes,
   getClassifiedEdge,
   getColumnType,
-  getDataLabel,
   getDeletedLineagePlaceholder,
   getEdgeStyle,
   getEdgeType,
+  getEntityNodeIcon,
   getLayoutedElements,
   getLineageData,
   getLoadingStatusValue,
@@ -105,8 +104,9 @@ import {
   onNodeMouseLeave,
   onNodeMouseMove,
 } from '../../utils/EntityLineageUtils';
-import SVGIcons from '../../utils/SvgUtils';
+import { getEntityReferenceFromPipeline } from '../../utils/PipelineServiceUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
+import EdgeInfoDrawer from '../EntityInfoDrawer/EdgeInfoDrawer.component';
 import EntityInfoDrawer from '../EntityInfoDrawer/EntityInfoDrawer.component';
 import Loader from '../Loader/Loader';
 import AddPipeLineModal from './AddPipeLineModal';
@@ -124,13 +124,10 @@ import {
   SelectedEdge,
   SelectedNode,
 } from './EntityLineage.interface';
-import EntityLineageSidebar from './EntityLineageSidebar.component';
-import NodeSuggestions from './NodeSuggestions.component';
-
-import { getEntityReferenceFromPipeline } from '../../utils/PipelineServiceUtils';
-import EdgeInfoDrawer from '../EntityInfoDrawer/EdgeInfoDrawer.component';
 import './entityLineage.style.less';
+import EntityLineageSidebar from './EntityLineageSidebar.component';
 import LineageNodeLabel from './LineageNodeLabel';
+import NodeSuggestions from './NodeSuggestions.component';
 
 const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
   entityLineage,
@@ -146,6 +143,7 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
   hasEditAccess,
   onExitFullScreenViewClick,
 }: EntityLineageProp) => {
+  const { t } = useTranslation();
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
   const [reactFlowInstance, setReactFlowInstance] =
     useState<ReactFlowInstance>();
@@ -258,10 +256,12 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
       };
       removeLineageHandler(edgeData);
       setEdges((prevEdges) => {
-        return prevEdges.filter(
-          (edge) =>
-            edge.source !== data.source.id && edge.target !== data.target.id
-        );
+        return prevEdges.filter((edge) => {
+          const isRemovedEdge =
+            edge.source === data.source.id && edge.target === data.target.id;
+
+          return !isRemovedEdge;
+        });
       });
       const newDownStreamEdges = getSelectedEdgeArr(
         updatedLineageData.downstreamEdges || [],
@@ -478,6 +478,88 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
     [nodes, updatedLineageData]
   );
 
+  /**
+   * take node and get the columns for that node
+   * @param expandNode
+   */
+  const getTableColumns = async (expandNode?: EntityReference) => {
+    if (expandNode) {
+      try {
+        const res = await getTableDetails(expandNode.id, ['columns']);
+        const tableId = expandNode.id;
+        const { columns } = res;
+        tableColumnsRef.current[tableId] = columns;
+        updateColumnsToNode(columns, tableId);
+      } catch (error) {
+        showErrorToast(
+          error as AxiosError,
+          t('server.entity-details-fetch-error', {
+            entityName: expandNode.displayName ?? expandNode.name,
+            entityType: t('label.column-plural'),
+          })
+        );
+      }
+    }
+  };
+
+  const handleNodeExpand = (isExpanded: boolean, node: EntityReference) => {
+    if (isExpanded) {
+      setNodes((prevState) => {
+        const newNodes = prevState.map((prevNode) => {
+          if (prevNode.id === node.id) {
+            const nodeId = node.id;
+            prevNode.data.label = (
+              <LineageNodeLabel
+                isExpanded
+                node={node}
+                onNodeExpand={handleNodeExpand}
+              />
+            );
+            prevNode.data.isExpanded = true;
+            if (isUndefined(tableColumnsRef.current[nodeId])) {
+              getTableColumns(node);
+            } else {
+              const cols: { [key: string]: ModifiedColumn } = {};
+              tableColumnsRef.current[nodeId]?.forEach((col) => {
+                cols[col.fullyQualifiedName || col.name] = {
+                  ...col,
+                  type: isEditMode
+                    ? EntityLineageNodeType.DEFAULT
+                    : getColumnType(edges, col.fullyQualifiedName || col.name),
+                };
+              });
+              prevNode.data.columns = cols;
+            }
+          }
+
+          return prevNode;
+        });
+
+        return newNodes;
+      });
+    } else {
+      setNodes((prevState) => {
+        const newNodes = prevState.map((n) => {
+          if (n.id === node.id) {
+            n.data.label = (
+              <LineageNodeLabel
+                isExpanded={false}
+                node={node}
+                onNodeExpand={handleNodeExpand}
+              />
+            );
+            n.data.isExpanded = false;
+            n.data.columns = undefined;
+          }
+
+          return n;
+        });
+
+        return newNodes;
+      });
+    }
+  };
+
   const setElementsHandle = (data: EntityLineage) => {
     if (!isEmpty(data)) {
       const graphElements = getLineageData(
@@ -493,7 +575,8 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
         tableColumnsRef.current,
         addPipelineClick,
         handleColumnClick,
-        expandAllColumns
+        expandAllColumns,
+        handleNodeExpand
       ) as CustomElement;
 
       const uniqueElements: CustomElement = {
@@ -537,7 +620,9 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
     (params: Edge | Connection) => {
       const { target, source, sourceHandle, targetHandle } = params;
 
-      if (target === source) return;
+      if (target === source) {
+        return;
+      }
 
       const columnConnection = !isNil(sourceHandle) && !isNil(targetHandle);
 
@@ -949,31 +1034,6 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
   };
 
   /**
-   * take node and get the columns for that node
-   * @param expandNode
-   */
-  const getTableColumns = async (expandNode?: EntityReference) => {
-    if (expandNode) {
-      try {
-        const res = await getTableDetails(expandNode.id, ['columns']);
-        const tableId = expandNode.id;
-        const { columns } = res;
-        tableColumnsRef.current[tableId] = columns;
-        updateColumnsToNode(columns, tableId);
-      } catch (error) {
-        showErrorToast(
-          error as AxiosError,
-          `Error while fetching ${getDataLabel(
-            expandNode.displayName,
-            expandNode.name,
-            true
-          )} columns`
-        );
-      }
-    }
-  };
-
-  /**
    * handle node drag event
    * @param event
    */
@@ -997,6 +1057,7 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
         y: event.clientY - (reactFlowBounds?.top ?? 0),
       });
       const [label, nodeType] = type.split('-');
+      const Icon = getEntityNodeIcon(label);
       const newNode = {
         id: uniqueId(),
         nodeType,
@@ -1011,18 +1072,18 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
               {getNodeRemoveButton(() => {
                 removeNodeHandler(newNode as Node);
               })}
-              <div className="tw-flex">
-                <SVGIcons
-                  alt="entity-icon"
-                  className="tw-mr-2"
-                  icon={`${lowerCase(label)}-grey`}
-                  width="16px"
+              <Space align="center" size={2}>
+                <Icon
+                  className="m-r-xs"
+                  height={16}
+                  name="entity-icon"
+                  width={16}
                 />
                 <NodeSuggestions
                   entityType={upperCase(label)}
                   onSelectHandler={setSelectedEntity}
                 />
-              </div>
+              </Space>
             </div>
           ),
           removeNodeHandler,
@@ -1075,7 +1136,10 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
                   isEditMode,
                   label: (
                     <Fragment>
-                      <LineageNodeLabel node={selectedEntity} />
+                      <LineageNodeLabel
+                        node={selectedEntity}
+                        onNodeExpand={handleNodeExpand}
+                      />
                       {getNodeRemoveButton(() => {
                         removeNodeHandler({
                           ...el,
@@ -1136,6 +1200,13 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
     setNodes((prevNodes) => {
       const updatedNode = prevNodes.map((node) => {
         node.data.isExpanded = value;
+        node.data.label = (
+          <LineageNodeLabel
+            isExpanded={value}
+            node={node.data.node}
+            onNodeExpand={handleNodeExpand}
+          />
+        );
 
         return node;
       });
@@ -1191,7 +1262,9 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
     } catch (error) {
       showErrorToast(
         error as AxiosError,
-        jsonData['api-error-messages']['fetch-suggestions-error']
+        t('server.entity-fetch-error', {
+          entity: t('label.suggestion-lowercase-plural'),
+        })
       );
     }
   };
@@ -1233,7 +1306,12 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
             ...el,
             data: {
               ...el.data,
-              label: <LineageNodeLabel node={newlyAddedNode} />,
+              label: (
+                <LineageNodeLabel
+                  node={newlyAddedNode}
+                  onNodeExpand={handleNodeExpand}
+                />
+              ),
             },
           };
         } else {
@@ -1392,12 +1470,12 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
       {showDeleteModal && (
         <Modal
           okText={getLoadingStatusValue(
-            'Confirm',
+            t('label.confirm'),
             deletionState.loading,
             deletionState.status
           )}
-          title="Remove lineage edge"
-          visible={showDeleteModal}
+          open={showDeleteModal}
+          title={t('message.remove-lineage-edge')}
           onCancel={() => {
             setShowDeleteModal(false);
           }}

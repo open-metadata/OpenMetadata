@@ -1,20 +1,15 @@
 package org.openmetadata.service.resources.kpi;
 
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
-import static javax.ws.rs.core.Response.Status.CONFLICT;
 import static javax.ws.rs.core.Response.Status.CREATED;
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static javax.ws.rs.core.Response.Status.OK;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.openmetadata.service.exception.CatalogExceptionMessage.ENTITY_ALREADY_EXISTS;
 import static org.openmetadata.service.security.SecurityUtil.getPrincipalName;
-import static org.openmetadata.service.util.EntityUtil.fieldAdded;
-import static org.openmetadata.service.util.EntityUtil.fieldDeleted;
 import static org.openmetadata.service.util.EntityUtil.fieldUpdated;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
-import static org.openmetadata.service.util.TestUtils.INGESTION_BOT_AUTH_HEADERS;
-import static org.openmetadata.service.util.TestUtils.UpdateType.MINOR_UPDATE;
-import static org.openmetadata.service.util.TestUtils.UpdateType.NO_CHANGE;
+import static org.openmetadata.service.util.TestUtils.assertListNotNull;
+import static org.openmetadata.service.util.TestUtils.assertListNull;
 import static org.openmetadata.service.util.TestUtils.assertResponse;
 import static org.openmetadata.service.util.TestUtils.assertResponseContains;
 
@@ -43,7 +38,6 @@ import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.DataInsightChartDataType;
 import org.openmetadata.schema.type.DataReportIndex;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.OpenMetadataApplicationTest;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.dataInsight.DataInsightResourceTest;
 import org.openmetadata.service.util.ResultList;
@@ -55,9 +49,6 @@ public class KpiResourceTest extends EntityResourceTest<Kpi, CreateKpiRequest> {
   public KpiResourceTest() {
     super(Entity.KPI, Kpi.class, KpiResource.KpiList.class, "kpi", KpiResource.FIELDS);
     supportsEmptyDescription = false;
-    supportsFollowers = false;
-    supportsAuthorizedMetadataOperations = false;
-    supportsOwner = false;
     supportsPatch = false;
   }
 
@@ -65,8 +56,7 @@ public class KpiResourceTest extends EntityResourceTest<Kpi, CreateKpiRequest> {
     DataInsightResourceTest dataInsightResourceTest = new DataInsightResourceTest();
     CreateDataInsightChart chartRequest =
         dataInsightResourceTest
-            .createRequest()
-            .withName(String.format("TestChart" + "%s", UUID.randomUUID()))
+            .createRequest(String.format("TestChart" + "%s", UUID.randomUUID()))
             .withOwner(USER1_REF)
             .withDataIndexType(DataReportIndex.ENTITY_REPORT_DATA_INDEX)
             .withMetrics(
@@ -75,7 +65,6 @@ public class KpiResourceTest extends EntityResourceTest<Kpi, CreateKpiRequest> {
                         .withName("Percentage")
                         .withChartDataType(DataInsightChartDataType.PERCENTAGE)));
     DI_CHART1 = dataInsightResourceTest.createAndCheckEntity(chartRequest, ADMIN_AUTH_HEADERS);
-    DI_CHART1_REFERENCE = DI_CHART1.getEntityReference();
     KPI_TARGET = new KpiTarget().withName("Percentage").withValue("80");
   }
 
@@ -92,12 +81,12 @@ public class KpiResourceTest extends EntityResourceTest<Kpi, CreateKpiRequest> {
   void post_testWithInvalidValues_4xx() {
     String uuid = "Test2" + UUID.randomUUID();
     CreateKpiRequest create1 = createRequest(uuid);
-    create1.withDataInsightChart(USER1_REF);
+    create1.withDataInsightChart(USER1_REF.getName());
 
     assertResponseContains(
         () -> createAndCheckEntity(create1, ADMIN_AUTH_HEADERS),
         NOT_FOUND,
-        "dataInsightChart instance for " + USER1_REF.getId() + " not found");
+        "dataInsightChart instance for " + USER1_REF.getName() + " not found");
     CreateKpiRequest create2 = createRequest(String.format("Test%s", UUID.randomUUID()));
     KpiTarget target = new KpiTarget().withName("Test").withValue("Test");
     create2.withTargetDefinition(List.of(target));
@@ -198,15 +187,14 @@ public class KpiResourceTest extends EntityResourceTest<Kpi, CreateKpiRequest> {
     verifyKpiResults(kpiResults, kpiResultList, 12);
   }
 
-  public static void putKpiResult(String fqn, KpiResult data, Map<String, String> authHeaders)
-      throws HttpResponseException {
-    WebTarget target = OpenMetadataApplicationTest.getResource("kpi/" + fqn + "/kpiResult");
+  public void putKpiResult(String fqn, KpiResult data, Map<String, String> authHeaders) throws HttpResponseException {
+    WebTarget target = getCollection().path("/" + fqn + "/kpiResult");
     TestUtils.put(target, data, CREATED, authHeaders);
   }
 
-  public static ResultList<KpiResult> getKpiResults(String fqn, Long start, Long end, Map<String, String> authHeaders)
+  public ResultList<KpiResult> getKpiResults(String fqn, Long start, Long end, Map<String, String> authHeaders)
       throws HttpResponseException {
-    WebTarget target = OpenMetadataApplicationTest.getResource("kpi/" + fqn + "/kpiResult");
+    WebTarget target = getCollection().path("/" + fqn + "/kpiResult");
     target = target.queryParam("startTs", start);
     target = target.queryParam("endTs", end);
     return TestUtils.get(target, KpiResource.KpiResultList.class, authHeaders);
@@ -243,7 +231,7 @@ public class KpiResourceTest extends EntityResourceTest<Kpi, CreateKpiRequest> {
         .withDisplayName(name)
         .withStartDate(0L)
         .withEndDate(30L)
-        .withDataInsightChart(DI_CHART1_REFERENCE)
+        .withDataInsightChart(DI_CHART1.getFullyQualifiedName())
         .withOwner(USER1_REF)
         .withMetricType(KpiTargetType.PERCENTAGE)
         .withTargetDefinition(List.of(KPI_TARGET));
@@ -254,73 +242,9 @@ public class KpiResourceTest extends EntityResourceTest<Kpi, CreateKpiRequest> {
     validateCommonEntityFields(createdEntity, request, getPrincipalName(authHeaders));
     assertEquals(request.getStartDate(), createdEntity.getStartDate());
     assertEquals(request.getEndDate(), createdEntity.getEndDate());
-    assertEquals(request.getDataInsightChart(), createdEntity.getDataInsightChart());
+    assertReference(request.getDataInsightChart(), createdEntity.getDataInsightChart());
     assertEquals(request.getMetricType(), createdEntity.getMetricType());
     assertEquals(request.getTargetDefinition(), createdEntity.getTargetDefinition());
-  }
-
-  @Override
-  protected void post_entityAlreadyExists_409_conflict(TestInfo test) throws HttpResponseException {
-    CreateKpiRequest create = createRequest(getEntityName(test), "", "", null);
-    // Create first time using POST
-    createEntity(create, ADMIN_AUTH_HEADERS);
-    CreateKpiRequest create1 = createRequest(getEntityName(test), "", "", null);
-    // Second time creating the same entity using POST should fail
-    assertResponse(() -> createEntity(create1, ADMIN_AUTH_HEADERS), CONFLICT, ENTITY_ALREADY_EXISTS);
-  }
-
-  @Override
-  @Test
-  protected void put_entityNonEmptyDescriptionUpdate_200(TestInfo test) throws IOException {
-    // Create entity with non-empty description
-    CreateKpiRequest request =
-        createRequest(getEntityName(test), supportsEmptyDescription ? null : "description", null, null);
-    Kpi entity = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
-    UUID oldUUID = request.getDataInsightChart().getId();
-    // BOT user can update empty description and empty displayName
-    ChangeDescription change = getChangeDescription(entity.getVersion());
-    request = createPutRequest(getEntityName(test), "description", "displayName", null);
-    UUID newUUID = request.getDataInsightChart().getId();
-    if (supportsEmptyDescription) {
-      fieldAdded(change, "description", "description");
-    }
-    fieldAdded(change, "displayName", "displayName");
-    fieldAdded(change, "dataInsightChart", newUUID);
-    fieldDeleted(change, "dataInsightChart", oldUUID);
-    entity = updateAndCheckEntity(request, OK, INGESTION_BOT_AUTH_HEADERS, MINOR_UPDATE, change);
-
-    // Updating non-empty description and non-empty displayName is allowed for users other than bots
-    oldUUID = request.getDataInsightChart().getId();
-    request = createPutRequest(getEntityName(test), "updatedDescription", "updatedDisplayName", null);
-    newUUID = request.getDataInsightChart().getId();
-    change = getChangeDescription(entity.getVersion());
-    fieldUpdated(change, "description", "description", "updatedDescription");
-    fieldUpdated(change, "displayName", "displayName", "updatedDisplayName");
-    fieldAdded(change, "dataInsightChart", newUUID);
-    fieldDeleted(change, "dataInsightChart", oldUUID);
-    updateAndCheckEntity(request, OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
-
-    // Updating non-empty description and non-empty displayName is ignored for bot users
-    request = createPutRequest(getEntityName(test), "updatedDescription2", "updatedDisplayName2", null);
-    updateAndCheckEntity(request, OK, INGESTION_BOT_AUTH_HEADERS, NO_CHANGE, null);
-  }
-
-  @Override
-  @Test
-  protected void put_entityEmptyDescriptionUpdate_200(TestInfo test) throws IOException {
-    // Create entity with empty description
-    CreateKpiRequest request = createRequest(getEntityName(test), "", "displayName", null);
-    Kpi entity = createEntity(request, ADMIN_AUTH_HEADERS);
-    UUID oldUUID = request.getDataInsightChart().getId();
-
-    // Update empty description with a new description
-    request = createPutRequest(getEntityName(test), "updatedDescription", "displayName", null);
-    UUID newUUID = request.getDataInsightChart().getId();
-    ChangeDescription change = getChangeDescription(entity.getVersion());
-    fieldUpdated(change, "description", "", "updatedDescription");
-    fieldAdded(change, "dataInsightChart", newUUID);
-    fieldDeleted(change, "dataInsightChart", oldUUID);
-    updateAndCheckEntity(request, OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
   }
 
   @Override
@@ -334,9 +258,20 @@ public class KpiResourceTest extends EntityResourceTest<Kpi, CreateKpiRequest> {
   }
 
   @Override
-  public Kpi validateGetWithDifferentFields(Kpi entity, boolean byName) {
-    // TODO:
-    return null;
+  public Kpi validateGetWithDifferentFields(Kpi entity, boolean byName) throws HttpResponseException {
+    String fields = "";
+    entity =
+        byName
+            ? getEntityByName(entity.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
+            : getEntity(entity.getId(), null, ADMIN_AUTH_HEADERS);
+    assertListNull(entity.getOwner(), entity.getDataInsightChart());
+    fields = "owner,dataInsightChart"; // Not testing for kpiResult field
+    entity =
+        byName
+            ? getEntityByName(entity.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
+            : getEntity(entity.getId(), fields, ADMIN_AUTH_HEADERS);
+    assertListNotNull(entity.getOwner(), entity.getDataInsightChart());
+    return entity;
   }
 
   @Override

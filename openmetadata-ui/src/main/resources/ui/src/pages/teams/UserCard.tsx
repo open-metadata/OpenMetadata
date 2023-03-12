@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,15 +11,16 @@
  *  limitations under the License.
  */
 
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { CloseOutlined } from '@ant-design/icons';
 import { Button, Tooltip, Typography } from 'antd';
 import classNames from 'classnames';
+import ProfilePicture from 'components/common/ProfilePicture/ProfilePicture';
+import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
+import { ResourceEntity } from 'components/PermissionProvider/PermissionProvider.interface';
 import { capitalize } from 'lodash';
 import React, { Fragment, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import ProfilePicture from '../../components/common/ProfilePicture/ProfilePicture';
-import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
-import { ResourceEntity } from '../../components/PermissionProvider/PermissionProvider.interface';
 import { NO_PERMISSION_FOR_ACTION } from '../../constants/HelperTextUtil';
 import { AssetsType, FqnPart } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
@@ -61,6 +62,7 @@ const UserCard = ({
   onRemove,
 }: Props) => {
   const { permissions } = usePermissionProvider();
+  const { t } = useTranslation();
 
   const editPermission = useMemo(() => {
     return checkPermission(Operation.EditAll, ResourceEntity.USER, permissions);
@@ -237,17 +239,16 @@ const UserCard = ({
         ) : (
           <div className="tw-flex-none">
             <Tooltip
-              title={editPermission ? 'Remove' : NO_PERMISSION_FOR_ACTION}>
+              title={
+                editPermission ? t('label.remove') : NO_PERMISSION_FOR_ACTION
+              }>
               <Button
                 className={classNames('tw-h-8 tw-rounded tw-mb-3')}
                 data-testid="remove"
                 disabled={!editPermission}
                 type="text"
                 onClick={() => onRemove?.(item.id as string)}>
-                <FontAwesomeIcon
-                  className="tw-cursor-pointer tw-opacity-0 group-hover:tw-opacity-100"
-                  icon="remove"
-                />
+                <CloseOutlined className="tw-cursor-pointer tw-opacity-0 group-hover:tw-opacity-100" />
               </Button>
             </Tooltip>
           </div>

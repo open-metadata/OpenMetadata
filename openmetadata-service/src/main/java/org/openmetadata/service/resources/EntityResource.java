@@ -19,6 +19,7 @@ import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.jdbi3.EntityRepository;
@@ -28,6 +29,7 @@ import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext.ResourceContextBuilder;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
+import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.RestUtil.DeleteResponse;
@@ -252,6 +254,19 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     return Response.ok(entity.getHref()).entity(entity).build();
   }
 
+  public String exportCsvInternal(SecurityContext securityContext, String name) throws IOException {
+    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.VIEW_ALL);
+    authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
+    return dao.exportToCsv(name, securityContext.getUserPrincipal().getName());
+  }
+
+  protected CsvImportResult importCsvInternal(SecurityContext securityContext, String name, String csv, boolean dryRun)
+      throws IOException {
+    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.EDIT_ALL);
+    authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
+    return dao.importFromCsv(name, csv, dryRun, securityContext.getUserPrincipal().getName());
+  }
+
   public T copy(T entity, CreateEntity request, String updatedBy) throws IOException {
     EntityReference owner = dao.validateOwner(request.getOwner());
     entity.setId(UUID.randomUUID());
@@ -285,6 +300,15 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
   public static final MetadataOperation[] VIEW_ALL_OPERATIONS = {MetadataOperation.VIEW_ALL};
 
   protected MetadataOperation[] getViewOperations(Fields fields) {
+
     return VIEW_ALL_OPERATIONS;
+  }
+
+  protected EntityReference getEntityReference(String entityType, String fqn) {
+    return EntityUtil.getEntityReference(entityType, fqn);
+  }
+
+  protected List<EntityReference> getEntityReferences(String entityType, List<String> fqns) {
+    return EntityUtil.getEntityReferences(entityType, fqns);
   }
 }

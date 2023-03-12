@@ -1,5 +1,19 @@
+/*
+ *  Copyright 2021 Collate
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
 package org.openmetadata.service.util;
 
+import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.auth.SSOAuthMechanism.SsoServiceType.AUTH_0;
 import static org.openmetadata.schema.auth.SSOAuthMechanism.SsoServiceType.AZURE;
@@ -13,14 +27,13 @@ import static org.openmetadata.service.resources.teams.UserResource.USER_PROTECT
 
 import at.favre.lib.crypto.bcrypt.BCrypt;
 import java.io.IOException;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.api.configuration.airflow.AuthConfiguration;
-import org.openmetadata.schema.api.configuration.airflow.AirflowConfiguration;
+import org.openmetadata.schema.api.configuration.pipelineServiceClient.PipelineServiceClientConfiguration;
 import org.openmetadata.schema.auth.BasicAuthMechanism;
 import org.openmetadata.schema.auth.JWTAuthMechanism;
 import org.openmetadata.schema.auth.JWTTokenExpiry;
@@ -62,7 +75,7 @@ public final class UserUtil {
   }
 
   public static void addUserForBasicAuth(String username, String pwd, String domain) throws IOException {
-    EntityRepository<User> userRepository = Entity.getEntityRepository(Entity.USER);
+    UserRepository userRepository = (UserRepository) Entity.getEntityRepository(Entity.USER);
     User originalUser;
     try {
       List<String> fields = userRepository.getAllowedFieldsCopy();
@@ -97,7 +110,7 @@ public final class UserUtil {
   }
 
   public static User addOrUpdateUser(User user) {
-    EntityRepository<User> userRepository = Entity.getEntityRepository(Entity.USER);
+    UserRepository userRepository = (UserRepository) Entity.getEntityRepository(Entity.USER);
     try {
       RestUtil.PutResponse<User> addedUser = userRepository.createOrUpdate(null, user);
       // should not log the user auth details in LOGS
@@ -143,14 +156,16 @@ public final class UserUtil {
    */
   public static User addOrUpdateBotUser(User user, OpenMetadataApplicationConfig openMetadataApplicationConfig) {
     User originalUser = retrieveWithAuthMechanism(user);
-    AirflowConfiguration airflowConfig = openMetadataApplicationConfig.getAirflowConfiguration();
+    PipelineServiceClientConfiguration pipelineServiceClientConfiguration =
+        openMetadataApplicationConfig.getPipelineServiceClientConfiguration();
     AuthenticationMechanism authMechanism = originalUser != null ? originalUser.getAuthenticationMechanism() : null;
     // the user did not have an auth mechanism and auth config is present
-    if (authConfigPresent(airflowConfig) && authMechanism == null) {
-      AuthConfiguration authConfig = airflowConfig.getAuthConfig();
+    if (authConfigPresent(pipelineServiceClientConfiguration) && authMechanism == null) {
+      AuthConfiguration authConfig = pipelineServiceClientConfiguration.getAuthConfig();
       String currentAuthProvider = openMetadataApplicationConfig.getAuthenticationConfiguration().getProvider();
       // if the auth provider is "openmetadata" in the configuration set JWT as auth mechanism
-      if ("openmetadata".equals(airflowConfig.getAuthProvider()) && !"basic".equals(currentAuthProvider)) {
+      if ("openmetadata".equals(pipelineServiceClientConfiguration.getAuthProvider())
+          && !"basic".equals(currentAuthProvider)) {
         OpenMetadataJWTClientConfig jwtClientConfig = authConfig.getOpenmetadata();
         authMechanism = buildAuthMechanism(JWT, buildJWTAuthMechanism(jwtClientConfig, user));
         // TODO: https://github.com/open-metadata/OpenMetadata/issues/7712
@@ -192,8 +207,8 @@ public final class UserUtil {
     return addOrUpdateUser(user);
   }
 
-  private static boolean authConfigPresent(AirflowConfiguration airflowConfig) {
-    return airflowConfig != null && airflowConfig.getAuthConfig() != null;
+  private static boolean authConfigPresent(PipelineServiceClientConfiguration pipelineServiceClientConfiguration) {
+    return pipelineServiceClientConfiguration != null && pipelineServiceClientConfiguration.getAuthConfig() != null;
   }
 
   private static JWTAuthMechanism buildJWTAuthMechanism(OpenMetadataJWTClientConfig jwtClientConfig, User user) {
@@ -238,6 +253,6 @@ public final class UserUtil {
       default:
         throw new IllegalArgumentException("No role found for the bot " + botName);
     }
-    return Arrays.asList(RoleResource.getRole(botRole));
+    return listOf(RoleResource.getRole(botRole));
   }
 }

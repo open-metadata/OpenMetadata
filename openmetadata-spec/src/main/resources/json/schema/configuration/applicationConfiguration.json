@@ -1,0 +1,59 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/configuration/applicationConfiguration.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ApplicationConfiguration",
+  "description": "This schema defines the Application Configuration.",
+  "type": "object",
+  "javaType": "org.openmetadata.api.configuration.ApplicationConfiguration",
+  "definitions": {
+    "logoConfiguration": {
+      "description": "This schema defines the Logo Configuration",
+      "type": "object",
+      "javaType": "org.openmetadata.api.configuration.LogoConfiguration",
+      "properties": {
+        "customLogoUrlPath": {
+          "description": "Login Page Logo Image Url",
+          "type": "string"
+        },
+        "customMonogramUrlPath": {
+          "description": "Navigation Bar Logo Image Url",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "loginConfiguration": {
+      "description": "This schema defines the Login Configuration",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.api.configuration.LoginConfiguration",
+      "properties": {
+        "maxLoginFailAttempts": {
+          "description": "Failed Login Attempts allowed for user.",
+          "type": "integer",
+          "default": 3
+        },
+        "accessBlockTime": {
+          "description": "Access Block time for user on exceeding failed attempts(in seconds)",
+          "type": "integer",
+          "default": 600
+        },
+        "jwtTokenExpiryTime": {
+          "description": "Jwt Token Expiry time for login in seconds",
+          "type": "integer",
+          "default": 3600
+        }
+
+      },
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "logoConfig" : {
+      "$ref": "#/definitions/logoConfiguration"
+    },
+    "loginConfig": {
+      "$ref": "#/definitions/loginConfiguration"
+    }
+  },
+  "additionalProperties": false
+}

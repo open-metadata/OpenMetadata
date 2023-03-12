@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -28,7 +28,7 @@ const mockActivityThreadProp = {
   updateThreadHandler: jest.fn(),
 };
 
-jest.mock('../../../axiosAPIs/feedsAPI', () => ({
+jest.mock('rest/feedsAPI', () => ({
   getFeedById: jest.fn().mockImplementation(() => Promise.resolve()),
 }));
 
@@ -72,7 +72,7 @@ describe('Test ActivityFeedThread Component', () => {
     expect(repliesContainer).toBeInTheDocument();
     expect(replies).toHaveLength(mockThreadData[1].posts.length);
     expect(repliesCount).toHaveTextContent(
-      `${mockThreadData[1].posts.length} replies`
+      `${mockThreadData[1].posts.length} label.reply-lowercase-plural`
     );
   });
 });

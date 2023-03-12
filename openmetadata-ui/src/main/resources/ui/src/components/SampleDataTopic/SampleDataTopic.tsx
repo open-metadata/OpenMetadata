@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,10 +11,11 @@
  *  limitations under the License.
  */
 
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { DownOutlined, UpOutlined } from '@ant-design/icons';
 import { Typography } from 'antd';
 import { isUndefined } from 'lodash';
 import React, { FC, HTMLAttributes, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { WORKFLOWS_METADATA_DOCS } from '../../constants/docs.constants';
 import { TopicSampleData } from '../../generated/entity/data/topic';
@@ -27,6 +28,7 @@ interface SampleDataTopicProp extends HTMLAttributes<HTMLDivElement> {
 }
 
 const MessageCard = ({ message }: { message: string }) => {
+  const { t } = useTranslation();
   const [isExpanded, setIsExpanded] = useState(false);
 
   return (
@@ -36,10 +38,11 @@ const MessageCard = ({ message }: { message: string }) => {
       onClick={() => setIsExpanded((pre) => !pre)}>
       <div className="tw-flex">
         <div className="tw-mr-3 tw-cursor-pointer">
-          <FontAwesomeIcon
-            className="tw-text-xs"
-            icon={isExpanded ? 'chevron-up' : 'chevron-down'}
-          />
+          {isExpanded ? (
+            <UpOutlined className="tw-text-xs" />
+          ) : (
+            <DownOutlined className="tw-text-xs" />
+          )}
         </div>
         {isExpanded ? (
           <div>
@@ -47,7 +50,7 @@ const MessageCard = ({ message }: { message: string }) => {
               className="tw-gh-tabs active tw--mt-4"
               data-testid="value"
               id="sampleData-value">
-              Value
+              {t('label.value')}
             </button>
             <SchemaEditor
               className="tw-mt-2"
@@ -73,6 +76,7 @@ const MessageCard = ({ message }: { message: string }) => {
 };
 
 const SampleDataTopic: FC<SampleDataTopicProp> = ({ sampleData }) => {
+  const { t } = useTranslation();
   if (!isUndefined(sampleData)) {
     return (
       <div className="tw-p-4 tw-flex tw-flex-col">
@@ -91,19 +95,19 @@ const SampleDataTopic: FC<SampleDataTopicProp> = ({ sampleData }) => {
           <div className="tw-max-w-x tw-text-center">
             <Typography.Paragraph style={{ marginBottom: '4px' }}>
               {' '}
-              No sample data available
+              {t('message.no-entity-data-available', {
+                entity: t('label.sample'),
+              })}
             </Typography.Paragraph>
             <Typography.Paragraph>
-              {' '}
-              To view Sample Data, run the MetaData Ingestion. Please refer to
-              this doc to schedule the{' '}
+              {t('message.view-sample-data-message')}{' '}
               <Link
                 className="tw-ml-1"
                 target="_blank"
                 to={{
                   pathname: WORKFLOWS_METADATA_DOCS,
                 }}>
-                MetaData Ingestion
+                {t('label.metadata-ingestion')}
               </Link>
             </Typography.Paragraph>
           </div>

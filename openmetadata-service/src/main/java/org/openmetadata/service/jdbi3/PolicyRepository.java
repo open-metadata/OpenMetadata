@@ -16,7 +16,6 @@ package org.openmetadata.service.jdbi3;
 import static java.lang.Boolean.FALSE;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.service.Entity.FIELD_DESCRIPTION;
-import static org.openmetadata.service.Entity.FIELD_OWNER;
 import static org.openmetadata.service.Entity.LOCATION;
 import static org.openmetadata.service.Entity.POLICY;
 import static org.openmetadata.service.util.EntityUtil.entityReferenceMatch;
@@ -71,11 +70,9 @@ public class PolicyRepository extends EntityRepository<Policy> {
 
   @Override
   public Policy setFields(Policy policy, Fields fields) throws IOException {
-    policy.setOwner(fields.contains(FIELD_OWNER) ? getOwner(policy) : null);
     policy.setLocation(fields.contains("location") ? getLocationForPolicy(policy) : null);
     policy.setTeams(fields.contains("teams") ? getTeams(policy) : null);
-    policy.setRoles(fields.contains("roles") ? getRoles(policy) : null);
-    return policy;
+    return policy.withRoles(fields.contains("roles") ? getRoles(policy) : null);
   }
 
   /* Get all the teams that use this policy */

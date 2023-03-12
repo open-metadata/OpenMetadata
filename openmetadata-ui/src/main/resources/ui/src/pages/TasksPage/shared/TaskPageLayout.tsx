@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,22 +11,23 @@
  *  limitations under the License.
  */
 
-import { Layout } from 'antd';
+import PageContainerV1 from 'components/containers/PageContainerV1';
+import PageLayoutV1 from 'components/containers/PageLayoutV1';
 import React, { FC, HTMLAttributes } from 'react';
-import { background, contentStyles } from '../TaskPage.styles';
+import { useTranslation } from 'react-i18next';
 
 // eslint-disable-next-line @typescript-eslint/no-empty-interface
 interface Props extends HTMLAttributes<HTMLDivElement> {}
 
 const TaskPageLayout: FC<Props> = ({ children }) => {
-  const { Content, Sider } = Layout;
+  const { t } = useTranslation();
 
   return (
-    <Layout style={{ ...background, height: '100vh' }}>
-      <Sider data-testid="left-sider" style={background} width={180} />
-      <Content style={contentStyles}>{children}</Content>
-      <Sider data-testid="right-sider" style={background} width={180} />
-    </Layout>
+    <PageContainerV1>
+      <PageLayoutV1 center pageTitle={t('label.task')}>
+        {children}
+      </PageLayoutV1>
+    </PageContainerV1>
   );
 };
 

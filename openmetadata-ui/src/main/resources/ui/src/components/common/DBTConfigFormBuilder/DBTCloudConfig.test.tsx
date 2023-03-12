@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -21,11 +21,15 @@ const mockAccountIdChange = jest.fn();
 const mockAuthTokenChange = jest.fn();
 const mockUpdateDescriptions = jest.fn();
 const mockDbtCloudProjectId = jest.fn();
+const mockDbtCloudJobId = jest.fn();
+const mockUpdateDBTClassification = jest.fn();
+const mockUpdateDBTCloudUrl = jest.fn();
 
 const mockProps = {
   dbtCloudAccountId: '',
   dbtCloudAuthToken: '',
   dbtUpdateDescriptions: false,
+  dbtCloudUrl: 'https://cloud.getdbt.com/',
   okText: 'Next',
   cancelText: 'Back',
   onCancel: mockCancel,
@@ -34,10 +38,13 @@ const mockProps = {
   handleCloudAuthTokenChange: mockAuthTokenChange,
   handleUpdateDescriptions: mockUpdateDescriptions,
   handleDbtCloudProjectId: mockDbtCloudProjectId,
+  handleDbtCloudJobId: mockDbtCloudJobId,
+  handleDbtCloudUrl: mockUpdateDBTCloudUrl,
+  handleUpdateDBTClassification: mockUpdateDBTClassification,
 };
 
-jest.mock('./SwitchField.component', () =>
-  jest.fn().mockImplementation(() => <div>UpdateDescriptionSwitch</div>)
+jest.mock('./DBTCommonFields.component', () =>
+  jest.fn().mockImplementation(() => <div>DBT Common Fields</div>)
 );
 
 describe('Test DBT Cloud Config Form', () => {
@@ -59,6 +66,15 @@ describe('Test DBT Cloud Config Form', () => {
     expect(inputAccountId).toHaveValue('Test_Id');
   });
 
+  it('Job Id should be displayed when passed as prop', async () => {
+    const { container } = render(
+      <DBTCloudConfig {...mockProps} dbtCloudJobId="Job_Id" />
+    );
+    const dbtCloudJobId = getByTestId(container, 'dbtCloudJobId');
+
+    expect(dbtCloudJobId).toHaveValue('Job_Id');
+  });
+
   it('Authorization Token should be displayed when passed as prop', async () => {
     const { container } = render(
       <DBTCloudConfig {...mockProps} dbtCloudAuthToken="Test_Token" />
@@ -78,7 +94,20 @@ describe('Test DBT Cloud Config Form', () => {
       },
     });
 
-    expect(mockAccountIdChange).toBeCalled();
+    expect(mockAccountIdChange).toHaveBeenCalled();
+  });
+
+  it('Job Id should change with input', async () => {
+    const { container } = render(<DBTCloudConfig {...mockProps} />);
+    const dbtCloudJobId = getByTestId(container, 'dbtCloudJobId');
+
+    fireEvent.change(dbtCloudJobId, {
+      target: {
+        value: 'Job_Id',
+      },
+    });
+
+    expect(mockDbtCloudJobId).toHaveBeenCalledWith('Job_Id');
   });
 
   it('Authorization Token should change with input', async () => {
@@ -91,7 +120,7 @@ describe('Test DBT Cloud Config Form', () => {
       },
     });
 
-    expect(mockAuthTokenChange).toBeCalled();
+    expect(mockAuthTokenChange).toHaveBeenCalled();
   });
 
   it('Should show errors on submit when required fields do not have value provided', async () => {
@@ -100,7 +129,7 @@ describe('Test DBT Cloud Config Form', () => {
 
     fireEvent.click(submitBtn);
 
-    expect(mockSubmit).not.toBeCalled();
+    expect(mockSubmit).not.toHaveBeenCalled();
   });
 
   it('Should submit successfully when required fields have value provided', async () => {
@@ -115,7 +144,7 @@ describe('Test DBT Cloud Config Form', () => {
 
     fireEvent.click(submitBtn);
 
-    expect(mockSubmit).toBeCalled();
+    expect(mockSubmit).toHaveBeenCalled();
   });
 
   it('Should successfully cancel the operation', async () => {
@@ -124,6 +153,6 @@ describe('Test DBT Cloud Config Form', () => {
 
     fireEvent.click(backBtn);
 
-    expect(mockCancel).toBeCalled();
+    expect(mockCancel).toHaveBeenCalled();
   });
 });

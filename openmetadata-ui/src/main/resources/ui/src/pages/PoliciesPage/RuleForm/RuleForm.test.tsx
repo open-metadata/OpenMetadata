@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -17,13 +17,13 @@ import React from 'react';
 import { Rule } from '../../../generated/api/policies/createPolicy';
 import RuleForm, { RuleFormProps } from './RuleForm';
 
-jest.mock('../../../axiosAPIs/rolesAPIV1', () => ({
+jest.mock('rest/rolesAPIV1', () => ({
   getPolicyFunctions: jest.fn().mockImplementation(() => Promise.resolve()),
   getPolicyResources: jest.fn().mockImplementation(() => Promise.resolve()),
   validateRuleCondition: jest.fn().mockImplementation(() => Promise.resolve()),
 }));
 
-jest.mock('../../../components/common/rich-text-editor/RichTextEditor', () =>
+jest.mock('components/common/rich-text-editor/RichTextEditor', () =>
   jest.fn().mockReturnValue(<div data-testid="editor">Editor</div>)
 );
 
@@ -90,6 +90,6 @@ describe('Test Rule Form Component', () => {
       fireEvent.change(ruleName, { target: { value: 'RuleName' } });
     });
 
-    expect(setRuleData).toBeCalled();
+    expect(setRuleData).toHaveBeenCalled();
   });
 });

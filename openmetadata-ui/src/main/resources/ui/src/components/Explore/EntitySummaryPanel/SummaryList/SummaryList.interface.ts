@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -12,32 +12,29 @@
  */
 
 import { ReactNode } from 'react';
-import { Chart, ChartType } from '../../../../generated/entity/data/chart';
+import { SummaryEntityType } from '../../../../enums/EntitySummary.enum';
+import { ChartType } from '../../../../generated/entity/data/chart';
+import { FeatureType } from '../../../../generated/entity/data/mlmodel';
 import {
-  FeatureType,
-  MlFeature,
-} from '../../../../generated/entity/data/mlmodel';
-import { Task } from '../../../../generated/entity/data/pipeline';
-import {
-  Column,
   Constraint,
   DataType,
+  TableConstraint,
 } from '../../../../generated/entity/data/table';
 import { TagLabel } from '../../../../generated/type/tagLabel';
 
-export interface SummaryListProps {
-  columns?: Column[];
-  charts?: Chart[];
-  tasks?: Task[];
-  mlFeatures?: MlFeature[];
-}
-
-export interface BasicColumnInfo {
+export interface BasicEntityInfo {
   algorithm?: string;
   name: string;
   title: ReactNode;
   type?: DataType | ChartType | FeatureType | string;
   tags?: TagLabel[];
   description?: string;
-  constraint?: Constraint;
+  columnConstraint?: Constraint;
+  tableConstraints?: TableConstraint[];
+  children?: BasicEntityInfo[];
+}
+
+export interface SummaryListProps {
+  formattedEntityData: BasicEntityInfo[];
+  entityType?: SummaryEntityType;
 }

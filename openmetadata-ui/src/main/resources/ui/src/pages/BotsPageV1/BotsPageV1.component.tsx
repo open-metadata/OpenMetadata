@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 
+import BotListV1 from 'components/BotListV1/BotListV1.component';
 import React, { useState } from 'react';
 import { useHistory } from 'react-router-dom';
-import BotListV1 from '../../components/BotListV1/BotListV1.component';
 import { getCreateUserPath } from '../../constants/constants';
 
 export const BotsPageV1 = () => {

@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -12,11 +12,13 @@
  */
 
 import {
-  faSortAmountDownAlt,
-  faSortAmountUpAlt,
-} from '@fortawesome/free-solid-svg-icons';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { Card, Col, Row, Tabs } from 'antd';
+  SortAscendingOutlined,
+  SortDescendingOutlined,
+} from '@ant-design/icons';
+import { Button, Card, Col, Row, Space, Tabs } from 'antd';
+import FacetFilter from 'components/common/facetfilter/FacetFilter';
+import SearchedData from 'components/searched-data/SearchedData';
+import { SORT_ORDER } from 'enums/common.enum';
 import unique from 'fork-ts-checker-webpack-plugin/lib/utils/array/unique';
 import {
   isEmpty,
@@ -29,9 +31,8 @@ import {
   toUpper,
 } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router-dom';
-import FacetFilter from '../../components/common/facetfilter/FacetFilter';
-import SearchedData from '../../components/searched-data/SearchedData';
 import { ENTITY_PATH } from '../../constants/constants';
 import { tabsInfo } from '../../constants/explore.constants';
 import { SearchIndex } from '../../enums/search.enum';
@@ -40,6 +41,7 @@ import { getCountBadge } from '../../utils/CommonUtils';
 import { FacetFilterProps } from '../common/facetfilter/facetFilter.interface';
 import PageLayoutV1 from '../containers/PageLayoutV1';
 import Loader from '../Loader/Loader';
+import ExploreSkeleton from '../Skeleton/Explore/ExploreLeftPanelSkeleton.component';
 import { AdvancedSearchModal } from './AdvanceSearchModal.component';
 import AppliedFilterText from './AppliedFilterText/AppliedFilterText';
 import EntitySummaryPanel from './EntitySummaryPanel/EntitySummaryPanel.component';
@@ -58,8 +60,6 @@ import SortingDropDown from './SortingDropDown';
 const Explore: React.FC<ExploreProps> = ({
   searchResults,
   tabCounts,
-  advancedSearchJsonTree,
-  onChangeAdvancedSearchJsonTree,
   onChangeAdvancedSearchQueryFilter,
   postFilter,
   onChangePostFilter,
@@ -75,6 +75,7 @@ const Explore: React.FC<ExploreProps> = ({
   onChangePage = noop,
   loading,
 }) => {
+  const { t } = useTranslation();
   const { tab } = useParams<{ tab: string }>();
   const [showAdvanceSearchModal, setShowAdvanceSearchModal] = useState(false);
 
@@ -88,12 +89,43 @@ const Explore: React.FC<ExploreProps> = ({
   const [appliedFilterSQLFormat, setAppliedFilterSQLFormat] =
     useState<string>('');
 
-  const handleAppliedFilterChange = (value: string) =>
-    setAppliedFilterSQLFormat(value);
-
   const handleClosePanel = () => {
     setShowSummaryPanel(false);
   };
+
+  const isAscSortOrder = useMemo(
+    () => sortOrder === SORT_ORDER.ASC,
+    [sortOrder]
+  );
+  const sortProps = useMemo(
+    () => ({
+      className: 'text-base text-primary',
+      'data-testid': 'last-updated',
+    }),
+    []
+  );
+
+  const tabItems = useMemo(
+    () =>
+      Object.entries(tabsInfo).map(([tabSearchIndex, tabDetail]) => ({
+        key: tabSearchIndex,
+        label: (
+          <div data-testid={`${lowerCase(tabDetail.label)}-tab`}>
+            {tabDetail.label}
+            <span className="p-l-xs ">
+              {!isNil(tabCounts)
+                ? getCountBadge(
+                    tabCounts[tabSearchIndex as ExploreSearchIndex],
+                    '',
+                    tabSearchIndex === searchIndex
+                  )
+                : getCountBadge()}
+            </span>
+          </div>
+        ),
+      })),
+    [tabsInfo, tabCounts]
+  );
 
   // get entity active tab by URL params
   const defaultActiveTab = useMemo(() => {
@@ -152,7 +184,7 @@ const Explore: React.FC<ExploreProps> = ({
       isEmpty(terms)
         ? undefined
         : {
-            query: { bool: { must: terms } },
+            query: { bool: { should: terms } },
           }
     );
   };
@@ -204,6 +236,9 @@ const Explore: React.FC<ExploreProps> = ({
         searchResults?.hits?.hits[0]._source as EntityDetailsType,
         tab
       );
+    } else {
+      setShowSummaryPanel(false);
+      setEntityDetails(undefined);
     }
   }, [tab, searchResults]);
 
@@ -219,76 +254,53 @@ const Explore: React.FC<ExploreProps> = ({
         <Card
           className="page-layout-v1-left-panel page-layout-v1-vertical-scroll"
           data-testid="data-summary-container">
-          <FacetFilter
-            aggregations={omit(searchResults?.aggregations, 'entityType')}
-            filters={postFilter}
-            showDeleted={showDeleted}
-            onChangeShowDeleted={onChangeShowDeleted}
-            onClearFilter={onChangePostFilter}
-            onSelectHandler={handleFacetFilterChange}
-          />
+          <ExploreSkeleton loading={Boolean(loading)}>
+            <FacetFilter
+              aggregations={omit(searchResults?.aggregations, 'entityType')}
+              filters={postFilter}
+              showDeleted={showDeleted}
+              onChangeShowDeleted={onChangeShowDeleted}
+              onClearFilter={onChangePostFilter}
+              onSelectHandler={handleFacetFilterChange}
+            />
+          </ExploreSkeleton>
         </Card>
-      }>
+      }
+      pageTitle={t('label.explore')}>
       <Tabs
         defaultActiveKey={defaultActiveTab}
+        items={tabItems}
         size="small"
         tabBarExtraContent={
-          <div className="tw-flex">
+          <Space align="center" size={4}>
             <SortingDropDown
               fieldList={tabsInfo[searchIndex].sortingFields}
               handleFieldDropDown={onChangeSortValue}
               sortField={sortValue}
             />
-
-            <div className="tw-flex">
-              {sortOrder === 'asc' ? (
-                <button
-                  className="tw-mt-2"
-                  onClick={() => onChangeSortOder('desc')}>
-                  <FontAwesomeIcon
-                    className="tw-text-base tw-text-primary"
-                    data-testid="last-updated"
-                    icon={faSortAmountUpAlt}
-                  />
-                </button>
+            <Button
+              className="p-0"
+              size="small"
+              type="text"
+              onClick={() =>
+                onChangeSortOder(
+                  isAscSortOrder ? SORT_ORDER.DESC : SORT_ORDER.ASC
+                )
+              }>
+              {isAscSortOrder ? (
+                <SortAscendingOutlined {...sortProps} />
               ) : (
-                <button
-                  className="tw-mt-2"
-                  onClick={() => onChangeSortOder('asc')}>
-                  <FontAwesomeIcon
-                    className="tw-text-base tw-text-primary"
-                    data-testid="last-updated"
-                    icon={faSortAmountDownAlt}
-                  />
-                </button>
+                <SortDescendingOutlined {...sortProps} />
               )}
-            </div>
-          </div>
+            </Button>
+          </Space>
         }
         onChange={(tab) => {
           tab && onChangeSearchIndex(tab as ExploreSearchIndex);
           setShowSummaryPanel(false);
-        }}>
-        {Object.entries(tabsInfo).map(([tabSearchIndex, tabDetail]) => (
-          <Tabs.TabPane
-            key={tabSearchIndex}
-            tab={
-              <div data-testid={`${lowerCase(tabDetail.label)}-tab`}>
-                {tabDetail.label}
-                <span className="p-l-xs ">
-                  {!isNil(tabCounts)
-                    ? getCountBadge(
-                        tabCounts[tabSearchIndex as ExploreSearchIndex],
-                        '',
-                        tabSearchIndex === searchIndex
-                      )
-                    : getCountBadge()}
-                </span>
-              </div>
-            }
-          />
-        ))}
-      </Tabs>
+        }}
+      />
+
       <Row gutter={[8, 0]} wrap={false}>
         <Col className="searched-data-container" flex="auto">
           <Row gutter={[16, 16]}>
@@ -325,7 +337,7 @@ const Explore: React.FC<ExploreProps> = ({
                       onChangePage(Number.parseInt(value));
                     }
                   }}
-                  selectedEntityName={entityDetails?.details.name || ''}
+                  selectedEntityId={entityDetails?.details.id || ''}
                   totalValue={searchResults?.hits.total.value ?? 0}
                 />
               ) : (
@@ -346,13 +358,13 @@ const Explore: React.FC<ExploreProps> = ({
         )}
       </Row>
       <AdvancedSearchModal
-        jsonTree={advancedSearchJsonTree}
         searchIndex={searchIndex}
         visible={showAdvanceSearchModal}
-        onAppliedFilterChange={handleAppliedFilterChange}
         onCancel={() => setShowAdvanceSearchModal(false)}
-        onChangeJsonTree={onChangeAdvancedSearchJsonTree}
-        onSubmit={onChangeAdvancedSearchQueryFilter}
+        onSubmit={(query, sqlFilter) => {
+          onChangeAdvancedSearchQueryFilter(query);
+          setAppliedFilterSQLFormat(sqlFilter);
+        }}
       />
     </PageLayoutV1>
   );

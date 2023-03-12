@@ -30,6 +30,7 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.ext.ExceptionMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.statement.UnableToExecuteStatementException;
+import org.openmetadata.sdk.exception.WebServiceException;
 import org.openmetadata.service.security.AuthenticationException;
 import org.openmetadata.service.security.AuthorizationException;
 import org.postgresql.util.PSQLException;
@@ -41,7 +42,9 @@ public class CatalogGenericExceptionMapper implements ExceptionMapper<Throwable>
   @Override
   public Response toResponse(Throwable ex) {
     LOG.debug(ex.getMessage());
-    if (ex instanceof ProcessingException || ex instanceof IllegalArgumentException) {
+    if (ex instanceof ProcessingException
+        || ex instanceof IllegalArgumentException
+        || ex instanceof javax.ws.rs.BadRequestException) {
       final Response response = BadRequestException.of().getResponse();
       return Response.fromResponse(response)
           .type(MediaType.APPLICATION_JSON_TYPE)

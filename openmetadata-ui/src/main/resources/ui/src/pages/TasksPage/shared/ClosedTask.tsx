@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,10 +11,11 @@
  *  limitations under the License.
  */
 
+import UserPopOverCard from 'components/common/PopOverCard/UserPopOverCard';
+import ProfilePicture from 'components/common/ProfilePicture/ProfilePicture';
+import { t } from 'i18next';
 import { toLower } from 'lodash';
 import React, { FC } from 'react';
-import UserPopOverCard from '../../../components/common/PopOverCard/UserPopOverCard';
-import ProfilePicture from '../../../components/common/ProfilePicture/ProfilePicture';
 import { Thread } from '../../../generated/entity/feed/thread';
 import { getDayTimeByTimeStamp } from '../../../utils/TimeUtils';
 
@@ -40,7 +41,7 @@ const ClosedTask: FC<ClosedTaskProps> = ({ task }) => {
           </span>{' '}
         </span>
       </UserPopOverCard>
-      <span className="tw-ml-1"> closed this task </span>
+      <span className="tw-ml-1"> {t('label.closed-this-task-lowercase')} </span>
       <span className="tw-ml-1" data-testid="task-closedAt">
         {toLower(getDayTimeByTimeStamp(task?.closedAt as number))}
       </span>

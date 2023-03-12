@@ -20,8 +20,18 @@ on:
       - "openmetadata-service/**"
       - "openmetadata-ui/**"
       - "openmetadata-spec/src/main/resources/json/schema/**"
+      - "openmetadata-dist/**"
+      - "openmetadata-clients/**"
+      - "common/**"
   pull_request_target:
     types: [labeled, opened, synchronize, reopened]
+    paths:
+      - "openmetadata-service/**"
+      - "openmetadata-ui/**"
+      - "openmetadata-spec/src/main/resources/json/schema/**"
+      - "openmetadata-dist/**"
+      - "openmetadata-clients/**"
+      - "common/**"
 
 permissions:
   contents: read
@@ -33,14 +43,12 @@ concurrency:
 jobs:
   test:
     runs-on: ${{matrix.os}}
-
     strategy:
       matrix:
         os:
           - ubuntu-latest
         node-version:
           - 16.x
-
     steps:
 
       - name: Wait for the labeler
@@ -66,13 +74,24 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.sha }}
 
+      - name: Cache Maven dependencies
+        id: cache-output
+        uses: actions/cache@v3
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-
+ 
       - name: Set up JDK 11
+        if: steps.cache-output.outputs.exit-code == 0
         uses: actions/setup-java@v3
         with:
           java-version: '11'
           distribution: 'adopt'
 
       - name: Install Ubuntu dependencies
+        if: steps.cache-output.outputs.exit-code == 0
         run: |
           sudo apt-get update
           sudo apt-get install -y unixodbc-dev python3-venv librdkafka-dev gcc libsasl2-dev build-essential libssl-dev libffi-dev \
@@ -105,7 +124,7 @@ jobs:
 
       - name: Clean Up
         run: |
-          cd ./docker/local-metadata
+          cd ./docker/development
           docker compose down --remove-orphans
           sudo rm -rf ${PWD}/docker-volume
 

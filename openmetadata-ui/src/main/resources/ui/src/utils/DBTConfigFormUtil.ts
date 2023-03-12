@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { isEmpty, isNil, isString } from 'lodash';
+import { ModifiedDbtConfig } from 'components/AddIngestion/addIngestion.interface';
 import {
   DbtConfigCloud,
   DbtConfigCloudReq,
@@ -24,7 +24,7 @@ import {
   ErrorDbtHttp,
   ErrorDbtLocal,
   ErrorDbtS3,
-} from '../components/common/DBTConfigFormBuilder/DBTConfigForm.interface';
+} from 'components/common/DBTConfigFormBuilder/DBTConfigForm.interface';
 import {
   reqDBTCloudFields,
   reqDBTHttpFields,
@@ -32,11 +32,12 @@ import {
   reqDBTS3Fields,
   rulesDBTGCSCredsFields,
   rulesDBTS3CredsFields,
-} from '../components/common/DBTConfigFormBuilder/DBTFormConstants';
+} from 'components/common/DBTConfigFormBuilder/DBTFormConstants';
 import {
   DBT_SOURCES,
   GCS_CONFIG,
-} from '../components/common/DBTConfigFormBuilder/DBTFormEnum';
+} from 'components/common/DBTConfigFormBuilder/DBTFormEnum';
+import { isEmpty, isNil, isString } from 'lodash';
 import { FormValidationRulesType } from '../enums/form.enum';
 import {
   DbtConfig,
@@ -68,7 +69,7 @@ export const validateDbtCloudConfig = (
 };
 
 export const validateDbtLocalConfig = (
-  data: DbtConfig,
+  data: ModifiedDbtConfig,
   requiredFields = reqDBTLocalFields
 ) => {
   let isValid = true;
@@ -88,7 +89,7 @@ export const validateDbtLocalConfig = (
 };
 
 export const validateDbtHttpConfig = (
-  data: DbtConfig,
+  data: ModifiedDbtConfig,
   requiredFields = reqDBTHttpFields
 ) => {
   let isValid = true;
@@ -229,7 +230,7 @@ export const checkDbtGCSCredsConfigRules = (
 };
 
 export const getSourceTypeFromConfig = (
-  data?: DbtConfig,
+  data?: ModifiedDbtConfig,
   defaultSource = DBT_SOURCES.local
 ): DbtSourceTypes => {
   let sourceType = defaultSource;

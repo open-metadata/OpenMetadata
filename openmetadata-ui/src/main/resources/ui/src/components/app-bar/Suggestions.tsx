@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -13,8 +13,9 @@
 
 import { AxiosError } from 'axios';
 import React, { useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { getSuggestions } from '../../axiosAPIs/miscAPI';
+import { getSuggestions } from 'rest/miscAPI';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { FqnPart } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
@@ -64,6 +65,7 @@ type MlModelSource = {
 } & CommonSource;
 
 const Suggestions = ({ searchText, isOpen, setIsOpen }: SuggestionProp) => {
+  const { t } = useTranslation();
   const [options, setOptions] = useState<Array<Option>>([]);
   const [tableSuggestions, setTableSuggestions] = useState<TableSource[]>([]);
   const [topicSuggestions, setTopicSuggestions] = useState<TopicSource[]>([]);
@@ -112,28 +114,28 @@ const Suggestions = ({ searchText, isOpen, setIsOpen }: SuggestionProp) => {
     let icon = '';
     switch (index) {
       case SearchIndex.TOPIC:
-        label = 'Topics';
+        label = t('label.topic-plural');
         icon = Icons.TOPIC_GREY;
 
         break;
       case SearchIndex.DASHBOARD:
-        label = 'Dashboards';
+        label = t('label.dashboard-plural');
         icon = Icons.DASHBOARD_GREY;
 
         break;
       case SearchIndex.PIPELINE:
-        label = 'Pipelines';
+        label = t('label.pipeline-plural');
         icon = Icons.PIPELINE_GREY;
 
         break;
       case SearchIndex.MLMODEL:
-        label = 'ML Models';
+        label = t('label.ml-model-plural');
         icon = Icons.MLMODAL;
 
         break;
       case SearchIndex.TABLE:
       default:
-        label = 'Tables';
+        label = t('label.table-plural');
         icon = Icons.TABLE_GREY;
 
         break;

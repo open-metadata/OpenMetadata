@@ -17,7 +17,6 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.Entity.DASHBOARD;
 import static org.openmetadata.service.Entity.FIELD_FOLLOWERS;
 import static org.openmetadata.service.Entity.MLMODEL;
-import static org.openmetadata.service.Entity.MLMODEL_SERVICE;
 import static org.openmetadata.service.util.EntityUtil.entityReferenceMatch;
 import static org.openmetadata.service.util.EntityUtil.mlFeatureMatch;
 import static org.openmetadata.service.util.EntityUtil.mlHyperParameterMatch;
@@ -26,7 +25,6 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.data.MlModel;
 import org.openmetadata.schema.entity.services.MlModelService;
@@ -38,7 +36,6 @@ import org.openmetadata.schema.type.MlHyperParameter;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.resources.mlmodels.MlModelResource;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
@@ -46,8 +43,8 @@ import org.openmetadata.service.util.FullyQualifiedName;
 
 @Slf4j
 public class MlModelRepository extends EntityRepository<MlModel> {
-  private static final String MODEL_UPDATE_FIELDS = "owner,dashboard,tags,extension";
-  private static final String MODEL_PATCH_FIELDS = "owner,dashboard,tags,extension";
+  private static final String MODEL_UPDATE_FIELDS = "owner,dashboard,tags,extension,followers";
+  private static final String MODEL_PATCH_FIELDS = "owner,dashboard,tags,extension,followers";
 
   public MlModelRepository(CollectionDAO dao) {
     super(
@@ -73,9 +70,8 @@ public class MlModelRepository extends EntityRepository<MlModel> {
     mlModel.setService(getContainer(mlModel.getId()));
     mlModel.setDashboard(fields.contains("dashboard") ? getDashboard(mlModel) : null);
     mlModel.setFollowers(fields.contains(FIELD_FOLLOWERS) ? getFollowers(mlModel) : null);
-    mlModel.setUsageSummary(
+    return mlModel.withUsageSummary(
         fields.contains("usageSummary") ? EntityUtil.getLatestUsage(daoCollection.usageDAO(), mlModel.getId()) : null);
-    return mlModel;
   }
 
   @Override
@@ -138,7 +134,7 @@ public class MlModelRepository extends EntityRepository<MlModel> {
 
     // Check that the dashboard exists
     if (mlModel.getDashboard() != null) {
-      daoCollection.dashboardDAO().findEntityReferenceById(mlModel.getDashboard().getId());
+      mlModel.setDashboard(Entity.getEntityReference(mlModel.getDashboard(), Include.NON_DELETED));
     }
   }
 
@@ -216,17 +212,9 @@ public class MlModelRepository extends EntityRepository<MlModel> {
   }
 
   private void populateService(MlModel mlModel) throws IOException {
-    MlModelService service = getService(mlModel.getService().getId(), mlModel.getService().getType());
+    MlModelService service = Entity.getEntity(mlModel.getService(), "", Include.NON_DELETED);
     mlModel.setService(service.getEntityReference());
     mlModel.setServiceType(service.getServiceType());
-  }
-
-  private MlModelService getService(UUID serviceId, String entityType) throws IOException {
-    if (entityType.equalsIgnoreCase(Entity.MLMODEL_SERVICE)) {
-      return daoCollection.mlModelServiceDAO().findEntityById(serviceId);
-    }
-    throw new IllegalArgumentException(
-        CatalogExceptionMessage.invalidServiceEntity(entityType, MLMODEL, MLMODEL_SERVICE));
   }
 
   private EntityReference getDashboard(MlModel mlModel) throws IOException {

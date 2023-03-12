@@ -6,6 +6,15 @@
   "type": "object",
   "javaType": "org.openmetadata.schema.entity.data.DatabaseSchema",
   "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
+  "definitions": {
+    "entityName": {
+      "description": "Name of a table. Expected to be unique within a database.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^((?!::).)*$"
+    }
+  },
   "properties": {
     "id": {
       "description": "Unique identifier that identifies this schema instance.",
@@ -13,7 +22,7 @@
     },
     "name": {
       "description": "Name that identifies the schema.",
-      "$ref": "../../type/basic.json#/definitions/entityName"
+      "$ref": "#/definitions/entityName"
     },
     "fullyQualifiedName": {
       "description": "Name that uniquely identifies a schema in the format 'ServiceName.DatabaseName.SchemaName'.",
@@ -66,6 +75,14 @@
     "usageSummary": {
       "description": "Latest usage information for this database.",
       "$ref": "../../type/usageDetails.json",
+      "default": null
+    },
+    "tags": {
+      "description": "Tags for this Database Schema Service.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/tagLabel.json"
+      },
       "default": null
     },
     "changeDescription": {

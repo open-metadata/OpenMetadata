@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -14,18 +14,23 @@
 import { Typography } from 'antd';
 import { isEmpty, isUndefined } from 'lodash';
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { Column } from '../../../generated/entity/data/table';
 import SVGIcons from '../../../utils/SvgUtils';
 
 const ColumnDetail = ({ column }: { column: Column }) => {
+  const { t } = useTranslation();
+
   return !isEmpty(column) && !isUndefined(column) ? (
     <div className="tw-mb-4" data-testid="column-details">
       <div className="tw-flex">
         <span
           className="tw-text-grey-muted tw-flex-none tw-mr-1"
           data-testid="column-type">
-          Column type:
-        </span>{' '}
+          {`${t('label.column-entity', {
+            entity: t('label.type-lowercase'),
+          })}:`}
+        </span>
         <Typography.Paragraph
           className="ant-typography-ellipsis-custom"
           ellipsis={{ rows: 1, tooltip: true }}>

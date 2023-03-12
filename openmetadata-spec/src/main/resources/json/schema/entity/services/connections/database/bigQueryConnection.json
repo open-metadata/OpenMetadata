@@ -47,12 +47,6 @@
       "description": "GCS Credentials",
       "$ref": "../../../../security/credentials/gcsCredentials.json"
     },
-    "tagCategoryName": {
-      "title": "Tag Category Name",
-      "description": "Custom OpenMetadata Tag category name for BigQuery policy tags.",
-      "type": "string",
-      "default": "BigqueryPolicyTags"
-    },
     "partitionQueryDuration": {
       "title": "Partition Query Duration",
       "description": "Duration for partitioning BigQuery tables.",

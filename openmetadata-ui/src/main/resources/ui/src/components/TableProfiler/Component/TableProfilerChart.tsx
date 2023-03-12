@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -15,10 +15,7 @@ import { Card, Col, Row } from 'antd';
 import { AxiosError } from 'axios';
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import {
-  getSystemProfileList,
-  getTableProfilesList,
-} from '../../../axiosAPIs/tableAPI';
+import { getSystemProfileList, getTableProfilesList } from 'rest/tableAPI';
 import {
   INITIAL_OPERATION_METRIC_VALUE,
   INITIAL_ROW_METRIC_VALUE,
@@ -101,6 +98,8 @@ const TableProfilerChart = ({ selectedTimeRange }: TableProfilerChartProps) => {
         datasetFQN,
         PROFILER_FILTER_RANGE[selectedTimeRange].days
       );
+    } else {
+      setIsLoading(false);
     }
   }, [datasetFQN, selectedTimeRange]);
 
@@ -118,9 +117,7 @@ const TableProfilerChart = ({ selectedTimeRange }: TableProfilerChartProps) => {
         />
       </Col>
       <Col span={24}>
-        <Card
-          className="rounded-6 border-1"
-          data-testid="operation-date-metrics">
+        <Card className="shadow-none" data-testid="operation-date-metrics">
           <Row gutter={[16, 16]}>
             <Col span={4}>
               <ProfilerLatestValue
@@ -138,7 +135,7 @@ const TableProfilerChart = ({ selectedTimeRange }: TableProfilerChartProps) => {
         </Card>
       </Col>
       <Col span={24}>
-        <Card className="rounded-6 border-1" data-testid="operation-metrics">
+        <Card className="shadow-none" data-testid="operation-metrics">
           <Row gutter={[16, 16]}>
             <Col span={4}>
               <ProfilerLatestValue information={operationMetrics.information} />

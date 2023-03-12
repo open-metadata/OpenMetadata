@@ -38,7 +38,7 @@ public abstract class AbstractAlertPublisher implements EventPublisher {
   public void onEvent(EventPubSub.ChangeEventHolder changeEventHolder, long sequence, boolean endOfBatch)
       throws Exception {
     // Ignore events that don't match the webhook event filters
-    ChangeEvent changeEvent = changeEventHolder.get();
+    ChangeEvent changeEvent = changeEventHolder.getEvent();
 
     // Evaluate Alert Trigger Config
     if (!AlertUtil.shouldTriggerAlert(changeEvent.getEntityType(), alert.getTriggerConfig())) {
@@ -51,7 +51,7 @@ public abstract class AbstractAlertPublisher implements EventPublisher {
     }
 
     // Batch until either the batch has ended or batch size has reached the max size
-    batch.add(changeEventHolder.get());
+    batch.add(changeEventHolder.getEvent());
     if (!endOfBatch && batch.size() < batchSize) {
       return;
     }

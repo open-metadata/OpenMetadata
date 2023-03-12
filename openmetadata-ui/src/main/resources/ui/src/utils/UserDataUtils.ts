@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -12,17 +12,17 @@
  */
 
 import { AxiosError } from 'axios';
+import { OidcUser } from 'components/authentication/auth-provider/AuthProvider.interface';
 import { isEqual, isUndefined } from 'lodash';
 import { SearchedUsersAndTeams } from 'Models';
-import AppState from '../AppState';
-import { OidcUser } from '../authentication/auth-provider/AuthProvider.interface';
 import {
   getSearchedTeams,
   getSearchedUsers,
   getSuggestedTeams,
   getSuggestedUsers,
-} from '../axiosAPIs/miscAPI';
-import { getUserById, getUserByName, getUsers } from '../axiosAPIs/userAPI';
+} from 'rest/miscAPI';
+import { getUserById, getUserByName, getUsers } from 'rest/userAPI';
+import AppState from '../AppState';
 import { WILD_CARD_CHAR } from '../constants/char.constants';
 import { SettledStatus } from '../enums/axios.enum';
 import { SearchIndex } from '../enums/search.enum';
@@ -146,46 +146,43 @@ export const getUserProfilePic = (
   return profile;
 };
 
-export const searchFormattedUsersAndTeams = (
+export const searchFormattedUsersAndTeams = async (
   searchQuery = WILD_CARD_CHAR,
   from = 1
-): Promise<SearchedUsersAndTeams> => {
-  return new Promise<SearchedUsersAndTeams>((resolve, reject) => {
-    const teamQuery = `${searchQuery} AND teamType:Group`;
+) => {
+  try {
     const promises = [
       getSearchedUsers(searchQuery, from),
-      getSearchedTeams(teamQuery, from),
+      getSearchedTeams(searchQuery, from, 'teamType:Group'),
     ];
-    Promise.allSettled(promises)
-      .then(([resUsers, resTeams]) => {
-        const users =
-          resUsers.status === SettledStatus.FULFILLED
-            ? formatUsersResponse(
-                (resUsers.value.data as SearchResponse<SearchIndex.USER>).hits
-                  .hits
-              )
-            : [];
-        const teams =
-          resTeams.status === SettledStatus.FULFILLED
-            ? formatTeamsResponse(
-                (resTeams.value.data as SearchResponse<SearchIndex.TEAM>).hits
-                  .hits
-              )
-            : [];
-        const usersTotal =
-          resUsers.status === SettledStatus.FULFILLED
-            ? resUsers.value.data.hits.total.value
-            : 0;
-        const teamsTotal =
-          resTeams.status === SettledStatus.FULFILLED
-            ? resTeams.value.data.hits.total.value
-            : 0;
-        resolve({ users, teams, usersTotal, teamsTotal });
-      })
-      .catch((err: AxiosError) => {
-        reject(err);
-      });
-  });
+
+    const [resUsers, resTeams] = await Promise.allSettled(promises);
+
+    const users =
+      resUsers.status === SettledStatus.FULFILLED
+        ? formatUsersResponse(
+            (resUsers.value.data as SearchResponse<SearchIndex.USER>).hits.hits
+          )
+        : [];
+    const teams =
+      resTeams.status === SettledStatus.FULFILLED
+        ? formatTeamsResponse(
+            (resTeams.value.data as SearchResponse<SearchIndex.TEAM>).hits.hits
+          )
+        : [];
+    const usersTotal =
+      resUsers.status === SettledStatus.FULFILLED
+        ? resUsers.value.data.hits.total.value
+        : 0;
+    const teamsTotal =
+      resTeams.status === SettledStatus.FULFILLED
+        ? resTeams.value.data.hits.total.value
+        : 0;
+
+    return { users, teams, usersTotal, teamsTotal };
+  } catch (error) {
+    return { users: [], teams: [], usersTotal: 0, teamsTotal: 0 };
+  }
 };
 
 export const suggestFormattedUsersAndTeams = (

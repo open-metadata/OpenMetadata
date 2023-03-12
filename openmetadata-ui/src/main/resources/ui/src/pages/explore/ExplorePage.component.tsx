@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,31 +11,36 @@
  *  limitations under the License.
  */
 
-import { isNil, isString } from 'lodash';
-import Qs from 'qs';
-import React, { FunctionComponent, useEffect, useMemo, useState } from 'react';
-import { useHistory, useLocation, useParams } from 'react-router-dom';
-import AppState from '../../AppState';
-import { searchQuery } from '../../axiosAPIs/searchAPI';
-import PageContainerV1 from '../../components/containers/PageContainerV1';
-import Explore from '../../components/Explore/Explore.component';
+import PageContainerV1 from 'components/containers/PageContainerV1';
+import Explore from 'components/Explore/Explore.component';
 import {
   ExploreProps,
   ExploreSearchIndex,
   SearchHitCounts,
   UrlParams,
-} from '../../components/Explore/explore.interface';
-import { SearchIndex } from '../../enums/search.enum';
-import { SearchResponse } from '../../interface/search.interface';
-
+} from 'components/Explore/explore.interface';
+import { SORT_ORDER } from 'enums/common.enum';
+import { isNil, isString } from 'lodash';
+import Qs from 'qs';
+import React, {
+  FunctionComponent,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 import { JsonTree, Utils as QbUtils } from 'react-awesome-query-builder';
+import { useHistory, useLocation, useParams } from 'react-router-dom';
+import { searchQuery } from 'rest/searchAPI';
 import useDeepCompareEffect from 'use-deep-compare-effect';
-import { PAGE_SIZE } from '../../constants/constants';
+import AppState from '../../AppState';
+import { getExplorePath, PAGE_SIZE } from '../../constants/constants';
 import {
   INITIAL_SORT_FIELD,
-  INITIAL_SORT_ORDER,
   tabsInfo,
 } from '../../constants/explore.constants';
+import { SearchIndex } from '../../enums/search.enum';
+import { SearchResponse } from '../../interface/search.interface';
 import { getCombinedQueryFilterObject } from '../../utils/ExplorePage/ExplorePageUtils';
 import {
   filterObjectToElasticsearchQuery,
@@ -48,7 +53,7 @@ const ExplorePage: FunctionComponent = () => {
   const location = useLocation();
   const history = useHistory();
 
-  const { searchQuery: searchQueryParam = '', tab } = useParams<UrlParams>();
+  const { tab } = useParams<UrlParams>();
 
   const [searchResults, setSearchResults] =
     useState<SearchResponse<ExploreSearchIndex>>();
@@ -58,7 +63,7 @@ const ExplorePage: FunctionComponent = () => {
 
   const [sortValue, setSortValue] = useState<string>(INITIAL_SORT_FIELD);
 
-  const [sortOrder, setSortOrder] = useState<string>(INITIAL_SORT_ORDER);
+  const [sortOrder, setSortOrder] = useState<SORT_ORDER>(SORT_ORDER.DESC);
 
   const [searchHitCounts, setSearchHitCounts] = useState<SearchHitCounts>();
 
@@ -71,6 +76,11 @@ const ExplorePage: FunctionComponent = () => {
           ? location.search.substr(1)
           : location.search
       ),
+    [location.search]
+  );
+
+  const searchQueryParam = useMemo(
+    () => (isString(parsedSearch.search) ? parsedSearch.search : ''),
     [location.search]
   );
 
@@ -94,30 +104,33 @@ const ExplorePage: FunctionComponent = () => {
   const handleSearchIndexChange: (nSearchIndex: ExploreSearchIndex) => void = (
     nSearchIndex
   ) => {
-    history.push({
-      pathname: `/explore/${tabsInfo[nSearchIndex].path}/${searchQueryParam}`,
-      search: Qs.stringify({ page: 1 }),
-    });
+    history.push(
+      getExplorePath({
+        tab: tabsInfo[nSearchIndex].path,
+        extraParameters: { page: '1' },
+        isPersistFilters: false,
+      })
+    );
     setAdvancedSearchQueryFilter(undefined);
   };
 
-  const handleQueryFilterChange: ExploreProps['onChangeAdvancedSearchJsonTree'] =
+  const handleQueryFilterChange = useCallback(
     (queryFilter) => {
       history.push({
-        pathname: history.location.pathname,
         search: Qs.stringify({
           ...parsedSearch,
           queryFilter: queryFilter ? JSON.stringify(queryFilter) : undefined,
           page: 1,
         }),
       });
-    };
+    },
+    [history, parsedSearch]
+  );
 
   const handlePostFilterChange: ExploreProps['onChangePostFilter'] = (
     postFilter
   ) => {
     history.push({
-      pathname: history.location.pathname,
       search: Qs.stringify({ ...parsedSearch, postFilter, page: 1 }),
     });
   };
@@ -126,7 +139,6 @@ const ExplorePage: FunctionComponent = () => {
     showDeleted
   ) => {
     history.push({
-      pathname: history.location.pathname,
       search: Qs.stringify({ ...parsedSearch, showDeleted, page: 1 }),
     });
   };
@@ -264,12 +276,13 @@ const ExplorePage: FunctionComponent = () => {
     page,
   ]);
 
-  const handleAdvanceSearchQueryFilterChange = (
-    filter?: Record<string, unknown>
-  ) => {
-    handlePageChange(1);
-    setAdvancedSearchQueryFilter(filter);
-  };
+  const handleAdvanceSearchQueryFilterChange = useCallback(
+    (filter?: Record<string, unknown>) => {
+      handlePageChange(1);
+      setAdvancedSearchQueryFilter(filter);
+    },
+    [setAdvancedSearchQueryFilter]
+  );
 
   useEffect(() => {
     AppState.updateExplorePageTab(tab);
@@ -278,7 +291,6 @@ const ExplorePage: FunctionComponent = () => {
   return (
     <PageContainerV1>
       <Explore
-        advancedSearchJsonTree={queryFilter}
         loading={isLoading}
         page={page}
         postFilter={postFilter}
@@ -288,7 +300,6 @@ const ExplorePage: FunctionComponent = () => {
         sortOrder={sortOrder}
         sortValue={sortValue}
         tabCounts={searchHitCounts}
-        onChangeAdvancedSearchJsonTree={handleQueryFilterChange}
         onChangeAdvancedSearchQueryFilter={handleAdvanceSearchQueryFilterChange}
         onChangePage={handlePageChange}
         onChangePostFilter={handlePostFilterChange}

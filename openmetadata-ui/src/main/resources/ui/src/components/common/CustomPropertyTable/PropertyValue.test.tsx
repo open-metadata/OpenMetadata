@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { fireEvent, render } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
 import { PropertyValue } from './PropertyValue';
 
@@ -53,27 +53,36 @@ const mockData = {
     href: 'http://localhost:8585/api/v1/metadata/types/73f1e4a4-4c62-4399-9d6d-4a3906851483',
   },
   onExtensionUpdate: mockUpdate,
+  hasEditPermissions: true,
 };
 
 describe('Test PropertyValue Component', () => {
   it('Should render value component', async () => {
-    const { findByTestId } = render(<PropertyValue {...mockData} />);
+    render(<PropertyValue {...mockData} />);
 
-    const valueElement = await findByTestId('value');
-    const iconElement = await findByTestId('edit-icon');
+    const valueElement = await screen.findByTestId('value');
+    const iconElement = await screen.findByTestId('edit-icon');
 
     expect(valueElement).toBeInTheDocument();
     expect(iconElement).toBeInTheDocument();
 
     fireEvent.click(iconElement);
 
-    expect(await findByTestId('PropertyInput')).toBeInTheDocument();
+    expect(await screen.findByTestId('PropertyInput')).toBeInTheDocument();
+  });
+
+  it('Should not render edit component if user has no edit permissions', async () => {
+    render(<PropertyValue {...mockData} hasEditPermissions={false} />);
+
+    const iconElement = await screen.queryByTestId('edit-icon');
+
+    expect(iconElement).not.toBeInTheDocument();
   });
 
   it('Should render richtext previewer component for markdown type', async () => {
     const extension = { yNumber: 'markdown value' };
     const propertyType = { ...mockData.propertyType, name: 'markdown' };
-    const { findByTestId } = render(
+    render(
       <PropertyValue
         {...mockData}
         extension={extension}
@@ -81,14 +90,14 @@ describe('Test PropertyValue Component', () => {
       />
     );
 
-    const valueElement = await findByTestId('RichTextPreviewer');
-    const iconElement = await findByTestId('edit-icon');
+    const valueElement = await screen.findByTestId('RichTextPreviewer');
+    const iconElement = await screen.findByTestId('edit-icon');
 
     expect(valueElement).toBeInTheDocument();
     expect(iconElement).toBeInTheDocument();
 
     fireEvent.click(iconElement);
 
-    expect(await findByTestId('EditorModal')).toBeInTheDocument();
+    expect(await screen.findByTestId('EditorModal')).toBeInTheDocument();
   });
 });

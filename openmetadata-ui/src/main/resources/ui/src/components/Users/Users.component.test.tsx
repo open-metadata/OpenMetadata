@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -30,7 +30,7 @@ import {
 } from './mocks/User.mocks';
 import Users from './Users.component';
 
-jest.mock('../../axiosAPIs/rolesAPIV1.ts', () => ({
+jest.mock('rest/rolesAPIV1.ts', () => ({
   getRoles: jest.fn().mockImplementation(() => Promise.resolve(mockUserRole)),
 }));
 
@@ -38,7 +38,7 @@ jest.mock('../common/ProfilePicture/ProfilePicture', () => {
   return jest.fn().mockReturnValue(<p>ProfilePicture</p>);
 });
 
-jest.mock('../../pages/teams/UserCard', () => {
+jest.mock('pages/teams/UserCard', () => {
   return jest.fn().mockReturnValue(<p>UserCard</p>);
 });
 
@@ -50,7 +50,7 @@ jest.mock('../ActivityFeed/ActivityFeedList/ActivityFeedList.tsx', () => {
   return jest.fn().mockReturnValue(<p>FeedCards</p>);
 });
 
-jest.mock('../../axiosAPIs/teamsAPI', () => ({
+jest.mock('rest/teamsAPI', () => ({
   getTeams: jest.fn().mockImplementation(() => Promise.resolve(mockTeamsData)),
 }));
 
@@ -110,6 +110,7 @@ const mockProp = {
   isAdminUser: false,
   isLoggedinUser: false,
   isAuthDisabled: true,
+  isUserEntitiesLoading: false,
   updateUserDetails,
   updateThreadHandler: jest.fn(),
   setFeedFilter: jest.fn(),
@@ -125,9 +126,19 @@ const mockProp = {
   },
 };
 
-jest.mock('../../axiosAPIs/userAPI', () => ({
+jest.mock('rest/userAPI', () => ({
   checkValidImage: jest.fn().mockImplementation(() => Promise.resolve(true)),
 }));
+
+jest.mock('../containers/PageLayoutV1', () =>
+  jest.fn().mockImplementation(({ children, leftPanel, rightPanel }) => (
+    <div>
+      {leftPanel}
+      {children}
+      {rightPanel}
+    </div>
+  ))
+);
 
 describe('Test User Component', () => {
   it('Should render user component', async () => {
@@ -239,5 +250,34 @@ describe('Test User Component', () => {
     const inheritedRoles = await findByTestId(container, 'inherited-roles');
 
     expect(inheritedRoles).toBeInTheDocument();
+  });
+
+  it('MyData tab should show loader if the data is loading', async () => {
+    const { container } = render(
+      <Users
+        userData={mockUserData}
+        {...mockProp}
+        isUserEntitiesLoading
+        tab="mydata"
+      />,
+      {
+        wrapper: MemoryRouter,
+      }
+    );
+    const loader = await findByTestId(container, 'loader');
+
+    expect(loader).toBeInTheDocument();
+  });
+
+  it('Following tab should show loader if the data is loading', async () => {
+    const { container } = render(
+      <Users userData={mockUserData} {...mockProp} isUserEntitiesLoading />,
+      {
+        wrapper: MemoryRouter,
+      }
+    );
+    const loader = await findByTestId(container, 'loader');
+
+    expect(loader).toBeInTheDocument();
   });
 });

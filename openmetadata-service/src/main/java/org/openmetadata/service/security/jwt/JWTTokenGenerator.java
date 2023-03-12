@@ -20,13 +20,10 @@ import java.util.List;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.security.jwt.JWTTokenConfiguration;
-import org.openmetadata.schema.auth.GenerateTokenRequest;
 import org.openmetadata.schema.auth.JWTAuthMechanism;
 import org.openmetadata.schema.auth.JWTTokenExpiry;
-import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.service.security.AuthenticationException;
-import org.openmetadata.service.util.JsonUtils;
 
 @Slf4j
 public class JWTTokenGenerator {
@@ -68,17 +65,6 @@ public class JWTTokenGenerator {
     }
   }
 
-  public void setAuthMechanism(User user, GenerateTokenRequest generateTokenRequest) {
-    JWTAuthMechanism jwtAuthMechanism = generateJWTToken(user, generateTokenRequest.getJWTTokenExpiry());
-    AuthenticationMechanism authenticationMechanism =
-        new AuthenticationMechanism().withConfig(jwtAuthMechanism).withAuthType(AuthenticationMechanism.AuthType.JWT);
-    user.setAuthenticationMechanism(authenticationMechanism);
-  }
-
-  public JWTAuthMechanism getAuthMechanism(User user) {
-    return JsonUtils.convertValue(user.getAuthenticationMechanism().getConfig(), JWTAuthMechanism.class);
-  }
-
   public JWTAuthMechanism generateJWTToken(User user, JWTTokenExpiry expiry) {
     try {
       JWTAuthMechanism jwtAuthMechanism = new JWTAuthMechanism().withJWTTokenExpiry(expiry);
@@ -102,11 +88,11 @@ public class JWTTokenGenerator {
     }
   }
 
-  public JWTAuthMechanism generateJWTToken(String userName, String email, JWTTokenExpiry expiry, boolean isBot) {
+  public JWTAuthMechanism generateJWTToken(String userName, String email, long expiryInSeconds, boolean isBot) {
     try {
-      JWTAuthMechanism jwtAuthMechanism = new JWTAuthMechanism().withJWTTokenExpiry(expiry);
+      JWTAuthMechanism jwtAuthMechanism = new JWTAuthMechanism();
       Algorithm algorithm = Algorithm.RSA256(null, privateKey);
-      Date expires = getExpiryDate(expiry);
+      Date expires = getCustomExpiryDate(expiryInSeconds);
       String token =
           JWT.create()
               .withIssuer(issuer)
@@ -151,6 +137,11 @@ public class JWTTokenGenerator {
         expiryDate = null;
     }
     return expiryDate != null ? Date.from(expiryDate.atZone(ZoneId.systemDefault()).toInstant()) : null;
+  }
+
+  public Date getCustomExpiryDate(long seconds) {
+    LocalDateTime expiryDate = LocalDateTime.now().plusSeconds(seconds);
+    return Date.from(expiryDate.atZone(ZoneId.systemDefault()).toInstant());
   }
 
   public JWKSResponse getJWKSResponse() {

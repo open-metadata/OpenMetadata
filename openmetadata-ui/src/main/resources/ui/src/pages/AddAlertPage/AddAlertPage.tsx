@@ -1,5 +1,6 @@
+/* eslint-disable @typescript-eslint/ban-types */
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -27,14 +28,13 @@ import {
 } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
 import { DefaultOptionType } from 'antd/lib/select';
+import { AsyncSelect } from 'components/AsyncSelect/AsyncSelect';
+import { VALIDATE_MESSAGES } from 'constants/constants';
 import { get, intersection, isEmpty, map, pick, startCase, trim } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
-import {
-  createAlertAction,
-  updateAlertAction,
-} from '../../axiosAPIs/alertActionAPI';
+import { createAlertAction, updateAlertAction } from 'rest/alertActionAPI';
 import {
   createAlert,
   getAlertActionForAlerts,
@@ -43,12 +43,10 @@ import {
   getEntityFilterFunctions,
   getFilterFunctions,
   updateAlert,
-} from '../../axiosAPIs/alertsAPI';
-import {
-  getSearchedUsersAndTeams,
-  getSuggestions,
-} from '../../axiosAPIs/miscAPI';
-import { AsyncSelect } from '../../components/AsyncSelect/AsyncSelect';
+} from 'rest/alertsAPI';
+import { getSuggestions } from 'rest/miscAPI';
+import { getEntityName } from 'utils/CommonUtils';
+import { searchFormattedUsersAndTeams } from 'utils/UserDataUtils';
 import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
@@ -284,11 +282,11 @@ const AddAlertPage = () => {
 
   const getUsersAndTeamsOptions = useCallback(async (search: string) => {
     try {
-      const response = await getSearchedUsersAndTeams(search, 1);
+      const { teams, users } = await searchFormattedUsersAndTeams(search, 1);
 
-      return response.hits.hits.map((d) => ({
-        label: d._source.displayName ?? d._source.name,
-        value: d._source.fullyQualifiedName,
+      return [...teams, ...users].map((d) => ({
+        label: getEntityName(d),
+        value: d.name,
       }));
     } catch (error) {
       return [];
@@ -323,6 +321,7 @@ const AddAlertPage = () => {
             <Form.Item className="w-full" name={[name, 'condition']}>
               <AsyncSelect
                 api={getEntityByFQN}
+                data-testid={`${condition}-select`}
                 mode="multiple"
                 placeholder={t('label.search-by-type', {
                   type: t('label.fqn-uppercase'),
@@ -341,6 +340,7 @@ const AddAlertPage = () => {
             <Form.Item className="w-full" name={[name, 'condition']}>
               <AsyncSelect
                 api={getUsersAndTeamsOptions}
+                data-testid={`${condition}-select`}
                 mode="multiple"
                 placeholder={t('label.search-by-type', {
                   type: getFunctionDisplayName(condition),
@@ -357,6 +357,7 @@ const AddAlertPage = () => {
             <Form.Item className="w-full" name={[name, 'condition']}>
               <Select
                 showArrow
+                data-testid={`${condition}-select`}
                 mode="multiple"
                 options={
                   func.paramAdditionalContext?.data?.map((d) => ({
@@ -469,6 +470,7 @@ const AddAlertPage = () => {
           case AlertActionType.GenericWebhook:
           case AlertActionType.SlackWebhook:
           case AlertActionType.MSTeamsWebhook:
+          case AlertActionType.GChatWebhook:
             return (
               <>
                 <Form.Item
@@ -486,7 +488,9 @@ const AddAlertPage = () => {
 
                 <Collapse ghost>
                   <Collapse.Panel
-                    header={`${t('label.advanced-config')}:`}
+                    header={`${t('label.advanced-entity', {
+                      entity: t('label.config'),
+                    })}:`}
                     key="1">
                     <Space>
                       <Form.Item
@@ -499,9 +503,7 @@ const AddAlertPage = () => {
                       <Form.Item
                         colon
                         initialValue={10}
-                        label={`${t(
-                          'label.connection-timeout-plural-optional'
-                        )}`}
+                        label={`${t('label.connection-timeout-plural')}`}
                         labelCol={{ span: 24 }}
                         name={[name, 'timeout']}>
                         <Input disabled={provider === ProviderType.System} />
@@ -533,9 +535,9 @@ const AddAlertPage = () => {
       <Row gutter={[16, 16]}>
         <Col span={24}>
           <Typography.Title level={5}>
-            {!isEmpty(fqn)
-              ? t('label.edit-entity', { entity: t('label.alert-plural') })
-              : t('label.create-entity', { entity: t('label.alert-plural') })}
+            {t(!isEmpty(fqn) ? 'label.edit-entity' : 'label.create-entity', {
+              entity: t('label.alert-plural'),
+            })}
           </Typography.Title>
           <Typography.Text>{t('message.alerts-description')}</Typography.Text>
         </Col>
@@ -543,6 +545,7 @@ const AddAlertPage = () => {
           <Form<Alerts>
             className="alerts-notification-form"
             form={form}
+            validateMessages={VALIDATE_MESSAGES}
             onFinish={handleSave}
             onValuesChange={handleChange}>
             <Card loading={loadingCount > 0}>
@@ -556,8 +559,7 @@ const AddAlertPage = () => {
               <Form.Item
                 label={t('label.description')}
                 labelCol={{ span: 24 }}
-                name="description"
-                rules={[{ required: true }]}>
+                name="description">
                 <Input.TextArea />
               </Form.Item>
               <Form.Item>
@@ -573,6 +575,7 @@ const AddAlertPage = () => {
                           initialValue={AlertTriggerType.AllDataAssets}
                           name={['triggerConfig', 'type']}>
                           <Select
+                            data-testid="triggerConfig-type"
                             options={defaultTriggers.map((trigger) => ({
                               label: getDisplayNameForTriggerType(trigger.type),
                               value: trigger.type,
@@ -584,7 +587,7 @@ const AddAlertPage = () => {
                           <Form.Item
                             required
                             messageVariables={{
-                              fieldName: t('label.data-assets'),
+                              fieldName: t('label.data-asset-plural'),
                             }}
                             name={['triggerConfig', 'entities']}>
                             <Select
@@ -597,7 +600,9 @@ const AddAlertPage = () => {
                                   label: getDisplayNameForEntities(entity),
                                 })) ?? []
                               }
-                              placeholder={t('label.select-data-assets')}
+                              placeholder={t('label.select-field', {
+                                field: t('label.data-asset-plural'),
+                              })}
                             />
                           </Form.Item>
                         )}
@@ -611,20 +616,13 @@ const AddAlertPage = () => {
                         subHeading={t('message.alerts-filter-description')}
                       />
 
-                      <Form.List
-                        name="filteringRules"
-                        rules={[
-                          {
-                            validator: listLengthValidator(
-                              t('label.filter-plural')
-                            ),
-                          },
-                        ]}>
-                        {(fields, { add, remove }, { errors }) => (
+                      <Form.List name="filteringRules">
+                        {(fields, { add, remove }) => (
                           <>
                             <Form.Item>
                               <Button
                                 block
+                                data-testid="add-filters"
                                 icon={<PlusOutlined />}
                                 type="default"
                                 onClick={() => add({}, 0)}>
@@ -642,7 +640,20 @@ const AddAlertPage = () => {
                                 )}
                                 <div className="d-flex gap-1">
                                   <div className="flex-1">
-                                    <Form.Item key={key} name={[name, 'name']}>
+                                    <Form.Item
+                                      key={key}
+                                      name={[name, 'name']}
+                                      rules={[
+                                        {
+                                          required: true,
+                                          message: t(
+                                            'label.please-select-entity',
+                                            {
+                                              entity: t('label.condition'),
+                                            }
+                                          ),
+                                        },
+                                      ]}>
                                       <Select
                                         options={functions}
                                         placeholder={t('label.select-field', {
@@ -690,7 +701,6 @@ const AddAlertPage = () => {
                                 </div>
                               </div>
                             ))}
-                            <Form.ErrorList errors={errors} />
                           </>
                         )}
                       </Form.List>
@@ -717,6 +727,7 @@ const AddAlertPage = () => {
                             <Form.Item>
                               <Button
                                 block
+                                data-testid="add=destination"
                                 disabled={provider === ProviderType.System}
                                 icon={<PlusOutlined />}
                                 type="default"
@@ -736,10 +747,21 @@ const AddAlertPage = () => {
                                 <div className="d-flex" style={{ gap: '10px' }}>
                                   <div className="flex-1">
                                     <Form.Item
-                                      required
                                       key={key}
-                                      name={[name, 'alertActionType']}>
+                                      name={[name, 'alertActionType']}
+                                      rules={[
+                                        {
+                                          required: true,
+                                          message: t(
+                                            'label.please-select-entity',
+                                            {
+                                              entity: t('label.source'),
+                                            }
+                                          ),
+                                        },
+                                      ]}>
                                       <Select
+                                        data-testid="alert-action-type"
                                         disabled={
                                           provider === ProviderType.System
                                         }
@@ -793,7 +815,7 @@ const AddAlertPage = () => {
                     <Button onClick={() => history.goBack()}>
                       {t('label.cancel')}
                     </Button>
-                    <Button htmlType="submit" type="primary">
+                    <Button data-testid="save" htmlType="submit" type="primary">
                       {t('label.save')}
                     </Button>
                   </Col>

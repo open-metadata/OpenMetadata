@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -12,13 +12,13 @@
  */
 
 import { Menu, MenuProps } from 'antd';
+import LeftPanelCard from 'components/common/LeftPanelCard/LeftPanelCard';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import { ReactComponent as AppAnalyticsIcon } from '../../assets/svg/app-analytics.svg';
 import { ReactComponent as DataAssetsIcon } from '../../assets/svg/data-asset.svg';
 import { ReactComponent as KPIIcon } from '../../assets/svg/kpi.svg';
-import LeftPanelCard from '../../components/common/LeftPanelCard/LeftPanelCard';
 import { DataInsightTabs } from '../../interface/data-insight.interface';
 import { getDataInsightPathWithFqn } from '../../utils/DataInsightUtils';
 
@@ -31,12 +31,12 @@ const DataInsightLeftPanel = () => {
   const menuItems: MenuProps['items'] = [
     {
       key: DataInsightTabs.DATA_ASSETS,
-      label: t('label.data-assets'),
+      label: t('label.data-asset-plural'),
       icon: <AppAnalyticsIcon className="side-panel-icons" />,
     },
     {
       key: DataInsightTabs.APP_ANALYTICS,
-      label: t('label.app-analytics'),
+      label: t('label.app-analytic-plural'),
       icon: <DataAssetsIcon className="side-panel-icons" />,
     },
     {

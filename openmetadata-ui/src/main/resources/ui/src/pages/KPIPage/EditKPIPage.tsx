@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -26,39 +26,35 @@ import {
   Tooltip,
   Typography,
 } from 'antd';
+import { useForm } from 'antd/lib/form/Form';
 import { AxiosError } from 'axios';
+import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
+import RichTextEditor from 'components/common/rich-text-editor/RichTextEditor';
+import TitleBreadcrumb from 'components/common/title-breadcrumb/title-breadcrumb.component';
+import Loader from 'components/Loader/Loader';
+import { compare } from 'fast-json-patch';
 import { isUndefined, toInteger, toNumber } from 'lodash';
+import moment from 'moment';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
-import RichTextEditor from '../../components/common/rich-text-editor/RichTextEditor';
-import TitleBreadcrumb from '../../components/common/title-breadcrumb/title-breadcrumb.component';
-import './KPIPage.less';
-
-import { compare } from 'fast-json-patch';
-import moment from 'moment';
-import { getChartById } from '../../axiosAPIs/DataInsightAPI';
-import { getKPIByName, patchKPI } from '../../axiosAPIs/KpiAPI';
-import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
-import Loader from '../../components/Loader/Loader';
+import { getChartById } from 'rest/DataInsightAPI';
+import { getKPIByName, patchKPI } from 'rest/KpiAPI';
 import { ROUTES } from '../../constants/constants';
 import {
-  KPI_DATES,
   KPI_DATE_PICKER_FORMAT,
   VALIDATE_MESSAGES,
 } from '../../constants/DataInsight.constants';
 import { DataInsightChart } from '../../generated/dataInsight/dataInsightChart';
 import { Kpi, KpiTargetType } from '../../generated/dataInsight/kpi/kpi';
 import { useAuth } from '../../hooks/authHooks';
-import { KpiDate, KpiDates } from '../../interface/data-insight.interface';
 import {
   getDisabledDates,
-  getKpiDateFormatByTimeStamp,
-  getKPIFormattedDates,
   getKpiTargetValueByMetricType,
 } from '../../utils/DataInsightUtils';
-import { getTimeStampByDateTime } from '../../utils/TimeUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
+import { KPIFormValues } from './KPIPage.interface';
+import './KPIPage.less';
 
 const EditKPIPage = () => {
   const { isAdminUser } = useAuth();
@@ -66,6 +62,7 @@ const EditKPIPage = () => {
 
   const { t } = useTranslation();
   const history = useHistory();
+  const [form] = useForm<KPIFormValues>();
 
   const [kpiData, setKpiData] = useState<Kpi>();
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -76,8 +73,6 @@ const EditKPIPage = () => {
 
   const [metricValue, setMetricValue] = useState<number>(0);
   const [isUpdatingKPI, setIsUpdatingKPI] = useState<boolean>(false);
-
-  const [kpiDates, setKpiDates] = useState<KpiDates>(KPI_DATES);
 
   const breadcrumb = useMemo(
     () => [
@@ -155,16 +150,36 @@ const EditKPIPage = () => {
 
   const handleCancel = () => history.goBack();
 
-  const handleDateChange = (dateString: string, key: KpiDate) => {
-    setKpiDates((previous) => ({ ...previous, [key]: dateString }));
+  const handleFormValuesChange = (
+    changedValues: Partial<KPIFormValues>,
+    allValues: KPIFormValues
+  ) => {
+    if (changedValues.startDate) {
+      const startDate = moment(changedValues.startDate).startOf('day');
+      form.setFieldsValue({ startDate });
+      if (changedValues.startDate > allValues.endDate) {
+        form.setFieldsValue({
+          endDate: '',
+        });
+      }
+    }
+
+    if (changedValues.endDate) {
+      let endDate = moment(changedValues.endDate).endOf('day');
+      form.setFieldsValue({ endDate });
+      if (changedValues.endDate < allValues.startDate) {
+        endDate = moment(changedValues.endDate).startOf('day');
+        form.setFieldsValue({
+          startDate: endDate,
+        });
+      }
+    }
   };
 
   const handleSubmit: FormProps['onFinish'] = async (values) => {
     if (kpiData && metricData) {
-      const formattedDates = getKPIFormattedDates(kpiDates);
-
-      const startDate = getTimeStampByDateTime(formattedDates.startDate);
-      const endDate = getTimeStampByDateTime(formattedDates.endDate);
+      const startDate = values.startDate.valueOf();
+      const endDate = values.endDate.valueOf();
 
       const targetValue = getKpiTargetValueByMetricType(
         kpiData.metricType,
@@ -205,11 +220,8 @@ const EditKPIPage = () => {
 
   useEffect(() => {
     if (kpiData) {
-      const startDate = getKpiDateFormatByTimeStamp(kpiData.startDate);
-      const endDate = getKpiDateFormatByTimeStamp(kpiData.endDate);
       fetchChartData();
       setDescription(kpiData.description);
-      setKpiDates({ startDate, endDate });
     }
   }, [kpiData]);
 
@@ -245,11 +257,13 @@ const EditKPIPage = () => {
               </Typography.Paragraph>
               <Form
                 data-testid="kpi-form"
+                form={form}
                 id="kpi-form"
                 initialValues={initialValues}
                 layout="vertical"
                 validateMessages={VALIDATE_MESSAGES}
-                onFinish={handleSubmit}>
+                onFinish={handleSubmit}
+                onValuesChange={handleFormValuesChange}>
                 <Form.Item
                   label={t('label.data-insight-chart')}
                   name="dataInsightChart">
@@ -289,7 +303,9 @@ const EditKPIPage = () => {
                           }
 
                           return Promise.reject(
-                            t('message.metric-value-required')
+                            t('message.field-text-is-required', {
+                              fieldText: t('label.metric-value'),
+                            })
                           );
                         },
                       },
@@ -306,8 +322,7 @@ const EditKPIPage = () => {
                               }}
                               max={100}
                               min={0}
-                              tooltipPlacement="bottom"
-                              tooltipVisible={false}
+                              tooltip={{ open: false }}
                               value={metricValue}
                               onChange={(value) => {
                                 setMetricValue(value);
@@ -344,14 +359,18 @@ const EditKPIPage = () => {
                 <Row gutter={[8, 8]}>
                   <Col span={12}>
                     <Form.Item
-                      label={t('label.start-date')}
+                      label={t('label.start-entity', {
+                        entity: t('label.date'),
+                      })}
                       messageVariables={{ fieldName: 'startDate' }}
                       name="startDate"
                       rules={[
                         {
                           required: true,
                           message: t('label.field-required', {
-                            field: t('label.start-date'),
+                            field: t('label.start-entity', {
+                              entity: t('label.date'),
+                            }),
                           }),
                         },
                       ]}>
@@ -360,9 +379,6 @@ const EditKPIPage = () => {
                         data-testid="start-date"
                         disabledDate={getDisabledDates}
                         format={KPI_DATE_PICKER_FORMAT}
-                        onChange={(_, dateString) =>
-                          handleDateChange(dateString, KpiDate.START_DATE)
-                        }
                       />
                     </Form.Item>
                   </Col>
@@ -384,9 +400,6 @@ const EditKPIPage = () => {
                         data-testid="end-date"
                         disabledDate={getDisabledDates}
                         format={KPI_DATE_PICKER_FORMAT}
-                        onChange={(_, dateString) =>
-                          handleDateChange(dateString, KpiDate.END_DATE)
-                        }
                       />
                     </Form.Item>
                   </Col>
@@ -396,7 +409,7 @@ const EditKPIPage = () => {
                   <RichTextEditor
                     height="200px"
                     initialValue={description}
-                    placeHolder={t('label.write-your-description')}
+                    placeHolder={t('message.write-your-description')}
                     style={{ margin: 0 }}
                     onTextChange={(value) => setDescription(value)}
                   />

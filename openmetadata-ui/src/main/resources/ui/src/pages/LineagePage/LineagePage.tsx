@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -13,25 +13,28 @@
 
 import { Card } from 'antd';
 import { AxiosError } from 'axios';
-import { LeafNodes, LineagePos, LoadingNodeState } from 'Models';
-import React, { useEffect, useState } from 'react';
-import { useHistory, useParams } from 'react-router-dom';
-import { getDashboardByFqn } from '../../axiosAPIs/dashboardAPI';
-import { getLineageByFQN } from '../../axiosAPIs/lineageAPI';
-import { addLineage, deleteLineageEdge } from '../../axiosAPIs/miscAPI';
-import { getMlModelByFQN } from '../../axiosAPIs/mlModelAPI';
-import { getPipelineByFqn } from '../../axiosAPIs/pipelineAPI';
-import { getTableDetailsByFQN } from '../../axiosAPIs/tableAPI';
-import { getTopicByFqn } from '../../axiosAPIs/topicsAPI';
-import TitleBreadcrumb from '../../components/common/title-breadcrumb/title-breadcrumb.component';
-import { TitleBreadcrumbProps } from '../../components/common/title-breadcrumb/title-breadcrumb.interface';
-import PageContainerV1 from '../../components/containers/PageContainerV1';
-import PageLayoutV1 from '../../components/containers/PageLayoutV1';
-import EntityLineageComponent from '../../components/EntityLineage/EntityLineage.component';
+import TitleBreadcrumb from 'components/common/title-breadcrumb/title-breadcrumb.component';
+import { TitleBreadcrumbProps } from 'components/common/title-breadcrumb/title-breadcrumb.interface';
+import PageContainerV1 from 'components/containers/PageContainerV1';
+import PageLayoutV1 from 'components/containers/PageLayoutV1';
+import EntityLineageComponent from 'components/EntityLineage/EntityLineage.component';
 import {
   Edge,
   EdgeData,
-} from '../../components/EntityLineage/EntityLineage.interface';
+  LeafNodes,
+  LineagePos,
+  LoadingNodeState,
+} from 'components/EntityLineage/EntityLineage.interface';
+import React, { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { useHistory, useParams } from 'react-router-dom';
+import { getDashboardByFqn } from 'rest/dashboardAPI';
+import { getLineageByFQN } from 'rest/lineageAPI';
+import { addLineage, deleteLineageEdge } from 'rest/miscAPI';
+import { getMlModelByFQN } from 'rest/mlModelAPI';
+import { getPipelineByFqn } from 'rest/pipelineAPI';
+import { getTableDetailsByFQN } from 'rest/tableAPI';
+import { getTopicByFqn } from 'rest/topicsAPI';
 import {
   getDashboardDetailsPath,
   getDatabaseDetailsPath,
@@ -59,11 +62,11 @@ import {
 import { getEntityLineage } from '../../utils/EntityUtils';
 import { serviceTypeLogo } from '../../utils/ServiceUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
-
 // css import
 import './lineagePage.style.less';
 
 const LineagePage = () => {
+  const { t } = useTranslation();
   const { entityType, entityFQN } =
     useParams<{ entityType: EntityType; entityFQN: string }>();
   const history = useHistory();
@@ -335,7 +338,7 @@ const LineagePage = () => {
 
   return (
     <PageContainerV1>
-      <PageLayoutV1 className="p-x-lg">
+      <PageLayoutV1 className="p-x-lg" pageTitle={t('label.lineage')}>
         <div className="lineage-page-container">
           <TitleBreadcrumb titleLinks={titleBreadcrumb} />
           <Card className="h-full" size="default">

@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -12,6 +12,7 @@
  */
 
 import { Select, Typography } from 'antd';
+import { t } from 'i18next';
 import { cloneDeep, isEmpty, isEqual } from 'lodash';
 import React, { useEffect, useState } from 'react';
 import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
@@ -40,7 +41,9 @@ const GlossaryTermSynonyms = ({
         </span>
       ))
     ) : (
-      <Typography.Text type="secondary">No synonyms available.</Typography.Text>
+      <Typography.Text type="secondary">
+        {t('message.no-synonyms-available')}
+      </Typography.Text>
     );
   };
 
@@ -59,7 +62,8 @@ const GlossaryTermSynonyms = ({
 
   useEffect(() => {
     if (glossaryTerm.synonyms?.length) {
-      setSynonyms(glossaryTerm.synonyms);
+      // removing empty string
+      setSynonyms(glossaryTerm.synonyms.filter((synonym) => !isEmpty(synonym)));
     }
   }, [glossaryTerm]);
 
@@ -69,7 +73,7 @@ const GlossaryTermSynonyms = ({
       key="synonyms"
       setShow={() => setIsViewMode(false)}
       showIcon={isViewMode}
-      title="Synonyms"
+      title={t('label.synonym-plural')}
       onSave={handleSynonymsSave}>
       <div className="flex" data-testid="synonyms-container">
         {isViewMode ? (
@@ -79,7 +83,9 @@ const GlossaryTermSynonyms = ({
             allowClear
             id="synonyms-select"
             mode="tags"
-            placeholder="Add Synonyms"
+            placeholder={t('label.add-entity', {
+              entity: t('label.synonym-plural'),
+            })}
             style={{ width: '100%' }}
             value={synonyms}
             onChange={(value) => setSynonyms(value)}

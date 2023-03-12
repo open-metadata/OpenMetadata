@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,12 +11,12 @@
  *  limitations under the License.
  */
 
-import { faGripVertical } from '@fortawesome/free-solid-svg-icons';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import Icon from '@ant-design/icons';
 import classNames from 'classnames';
 import { capitalize, isEmpty, uniqueId } from 'lodash';
 import React, { FC, HTMLAttributes } from 'react';
 import { Node } from 'reactflow';
+import { ReactComponent as DragIconDotted } from '../../assets/svg/dots-six-bold.svg';
 import { entityData } from '../../constants/Lineage.constants';
 import SVGIcons from '../../utils/SvgUtils';
 
@@ -56,7 +56,12 @@ const EntityNode: FC<EntityNodeProps> = ({ type, label, draggable }) => {
           <SVGIcons alt={type} icon={`${type}-grey`} width="14" />
         </span>
         <span>
-          <FontAwesomeIcon icon={faGripVertical} style={{ color: '#7147E8' }} />
+          <Icon
+            className="drag-icon"
+            component={DragIconDotted}
+            rotate={90}
+            style={{ color: '#7147E8', fontSize: '18px', fontWeight: 'bold' }}
+          />
         </span>
       </div>
       <p className="tw-text-grey-body tw-text-center tw-text-xs tw-pt-1.5">

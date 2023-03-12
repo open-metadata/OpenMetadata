@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -12,35 +12,37 @@
  */
 
 import { AxiosError } from 'axios';
+import PageContainerV1 from 'components/containers/PageContainerV1';
+import Loader from 'components/Loader/Loader';
+import MyData from 'components/MyData/MyData.component';
+import { MyDataState } from 'components/MyData/MyData.interface';
+import { useWebSocketConnector } from 'components/web-scoket/web-scoket.provider';
 import { Operation } from 'fast-json-patch';
-import { isEmpty, isNil, isUndefined } from 'lodash';
+import { isEmpty, isNil } from 'lodash';
 import { observer } from 'mobx-react';
 import React, {
   Fragment,
+  Reducer,
   useCallback,
   useEffect,
   useMemo,
+  useReducer,
   useState,
 } from 'react';
 import { useLocation } from 'react-router-dom';
+import { getFeedsWithFilter, postFeedById } from 'rest/feedsAPI';
+import { getAllEntityCount } from 'rest/miscAPI';
+import { getUserById } from 'rest/userAPI';
 import AppState from '../../AppState';
-import { getFeedsWithFilter, postFeedById } from '../../axiosAPIs/feedsAPI';
-import { fetchSandboxConfig, getAllEntityCount } from '../../axiosAPIs/miscAPI';
-import { getUserById } from '../../axiosAPIs/userAPI';
-import PageContainerV1 from '../../components/containers/PageContainerV1';
-import GithubStarButton from '../../components/GithubStarButton/GithubStarButton';
-import Loader from '../../components/Loader/Loader';
-import MyData from '../../components/MyData/MyData.component';
-import { useWebSocketConnector } from '../../components/web-scoket/web-scoket.provider';
 import { SOCKET_EVENTS } from '../../constants/constants';
 import { AssetsType } from '../../enums/entity.enum';
 import { FeedFilter } from '../../enums/mydata.enum';
 import { Post, Thread, ThreadType } from '../../generated/entity/feed/thread';
-import { EntitiesCount } from '../../generated/entity/utils/entitiesCount';
 import { EntityReference } from '../../generated/type/entityReference';
 import { Paging } from '../../generated/type/paging';
 import { useAuth } from '../../hooks/authHooks';
 import jsonData from '../../jsons/en';
+import { reducerWithoutAction } from '../../utils/CommonUtils';
 import { deletePost, updateThreadData } from '../../utils/FeedUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
@@ -48,9 +50,31 @@ const MyDataPage = () => {
   const location = useLocation();
   const { isAuthDisabled } = useAuth(location.pathname);
   const [error, setError] = useState<string>('');
-  const [entityCounts, setEntityCounts] = useState<EntitiesCount>(
-    {} as EntitiesCount
+
+  const initialState = useMemo(
+    () => ({
+      entityCounts: {
+        tableCount: 0,
+        topicCount: 0,
+        dashboardCount: 0,
+        pipelineCount: 0,
+        mlmodelCount: 0,
+        servicesCount: 0,
+        userCount: 0,
+        teamCount: 0,
+      },
+      entityCountLoading: false,
+    }),
+    []
   );
+
+  const [state, dispatch] = useReducer<
+    Reducer<MyDataState, Partial<MyDataState>>
+  >(reducerWithoutAction, initialState);
+
+  const handleStateChange = useCallback((newState: Partial<MyDataState>) => {
+    dispatch(newState);
+  }, []);
 
   const [ownedData, setOwnedData] = useState<Array<EntityReference>>();
   const [followedData, setFollowedData] = useState<Array<EntityReference>>();
@@ -61,7 +85,6 @@ const MyDataPage = () => {
   const [entityThread, setEntityThread] = useState<Thread[]>([]);
   const [isFeedLoading, setIsFeedLoading] = useState<boolean>(false);
   const [isLoadingOwnedData, setIsLoadingOwnedData] = useState<boolean>(false);
-  const [isSandbox, setIsSandbox] = useState<boolean>(false);
 
   const [activityFeeds, setActivityFeeds] = useState<Thread[]>([]);
 
@@ -73,17 +96,21 @@ const MyDataPage = () => {
     [AppState.userDetails, AppState.nonSecureUserDetails]
   );
 
-  const fetchEntityCount = () => {
-    getAllEntityCount()
-      .then((res) => {
-        setEntityCounts(res);
-      })
-      .catch((err: AxiosError) => {
-        showErrorToast(
-          err,
-          jsonData['api-error-messages']['fetch-entity-count-error']
-        );
-        setEntityCounts({
+  const fetchEntityCount = async () => {
+    handleStateChange({
+      entityCountLoading: true,
+    });
+    try {
+      const res = await getAllEntityCount();
+      handleStateChange({
+        entityCounts: {
+          ...res,
+        },
+      });
+    } catch (err) {
+      showErrorToast(err as AxiosError);
+      handleStateChange({
+        entityCounts: {
           tableCount: 0,
           topicCount: 0,
           dashboardCount: 0,
@@ -92,8 +119,13 @@ const MyDataPage = () => {
           servicesCount: 0,
           userCount: 0,
           teamCount: 0,
-        });
+        },
       });
+    } finally {
+      handleStateChange({
+        entityCountLoading: false,
+      });
+    }
   };
 
   const fetchData = () => {
@@ -212,24 +244,6 @@ const MyDataPage = () => {
     updateThreadData(threadId, postId, isThread, data, setEntityThread);
   };
 
-  const fetchSandboxMode = () => {
-    fetchSandboxConfig()
-      .then((res) => {
-        if (!isUndefined(res.sandboxModeEnabled)) {
-          setIsSandbox(Boolean(res.sandboxModeEnabled));
-        } else {
-          throw '';
-        }
-      })
-      .catch((err: AxiosError) => {
-        showErrorToast(
-          err,
-          jsonData['api-error-messages']['unexpected-server-response']
-        );
-        setIsSandbox(false);
-      });
-  };
-
   // Fetch tasks list to show count for Pending tasks
   const fetchMyTaskData = useCallback(() => {
     if (!currentUser || !currentUser.id) {
@@ -247,13 +261,12 @@ const MyDataPage = () => {
   }, [currentUser]);
 
   useEffect(() => {
-    fetchSandboxMode();
     fetchData();
     fetchMyTaskData();
   }, []);
 
   useEffect(() => {
-    getFeedData();
+    getFeedData(FeedFilter.OWNER);
   }, []);
 
   useEffect(() => {
@@ -299,12 +312,12 @@ const MyDataPage = () => {
 
   return (
     <PageContainerV1>
-      {!isEmpty(entityCounts) ? (
+      {!isEmpty(state.entityCounts) ? (
         <Fragment>
           <MyData
             activityFeeds={activityFeeds}
+            data={state}
             deletePostHandler={deletePostHandler}
-            entityCounts={entityCounts}
             error={error}
             feedData={entityThread || []}
             fetchFeedHandler={handleFeedFetchFromFeedList}
@@ -320,7 +333,6 @@ const MyDataPage = () => {
             updateThreadHandler={updateThreadHandler}
             onRefreshFeeds={onRefreshFeeds}
           />
-          {isSandbox ? <GithubStarButton /> : null}
         </Fragment>
       ) : (
         <Loader />

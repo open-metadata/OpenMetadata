@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -12,11 +12,11 @@
  */
 
 import {
-    addCustomPropertiesForEntity,
-    deleteCreatedProperty,
-    editCreatedProperty,
-    interceptURL,
-    verifyResponseStatusCode
+  addCustomPropertiesForEntity,
+  deleteCreatedProperty,
+  editCreatedProperty,
+  interceptURL,
+  verifyResponseStatusCode,
 } from '../../common/common';
 import { ENTITIES, uuid } from '../../constants/constants';
 
@@ -32,6 +32,7 @@ describe('Custom Properties should work properly', () => {
   describe('Add update and delete Integer custom properties', () => {
     Object.values(ENTITIES).forEach((entity) => {
       const propertyName = `entity${entity.name}test${uuid()}`;
+
       it(`Add Integer custom property for ${entity.name}  Entities`, () => {
         interceptURL(
           'GET',
@@ -39,7 +40,7 @@ describe('Custom Properties should work properly', () => {
           'getEntity'
         );
 
-        //Selecting the entity
+        // Selecting the entity
         cy.get(`[data-menu-id*="customAttributes.${entity.name}"]`)
           .scrollIntoView()
           .should('be.visible')
@@ -47,7 +48,7 @@ describe('Custom Properties should work properly', () => {
 
         verifyResponseStatusCode('@getEntity', 200);
 
-        //Getting the property
+        // Getting the property
         addCustomPropertiesForEntity(
           propertyName,
           entity,
@@ -55,7 +56,7 @@ describe('Custom Properties should work properly', () => {
           entity.integerValue,
           entity.entityObj
         );
-        //Navigating back to custom properties page
+        // Navigating back to custom properties page
         cy.get('[data-testid="appbar-item-settings"]')
           .should('be.visible')
           .click();
@@ -74,7 +75,7 @@ describe('Custom Properties should work properly', () => {
           'getEntity'
         );
 
-        //Selecting the entity
+        // Selecting the entity
         cy.get(`[data-menu-id*="customAttributes.${entity.name}"]`)
           .scrollIntoView()
           .should('be.visible')
@@ -91,7 +92,7 @@ describe('Custom Properties should work properly', () => {
           'getEntity'
         );
 
-        //Selecting the entity
+        // Selecting the entity
         cy.get(`[data-menu-id*="customAttributes.${entity.name}"]`)
           .scrollIntoView()
           .should('be.visible')
@@ -106,6 +107,7 @@ describe('Custom Properties should work properly', () => {
   describe('Add update and delete String custom properties', () => {
     Object.values(ENTITIES).forEach((entity) => {
       const propertyName = `entity${entity.name}test${uuid()}`;
+
       it(`Add String custom property for ${entity.name} Entities`, () => {
         interceptURL(
           'GET',
@@ -113,7 +115,7 @@ describe('Custom Properties should work properly', () => {
           'getEntity'
         );
 
-        //Selecting the entity
+        // Selecting the entity
         cy.get(`[data-menu-id*="customAttributes.${entity.name}"]`)
           .scrollIntoView()
           .should('be.visible')
@@ -129,11 +131,11 @@ describe('Custom Properties should work properly', () => {
           entity.entityObj
         );
 
-        //Navigating back to custom properties page
+        // Navigating back to custom properties page
         cy.get('[data-testid="appbar-item-settings"]')
           .should('be.visible')
           .click();
-        //Selecting the entity
+        // Selecting the entity
         cy.get(`[data-menu-id*="customAttributes.${entity.name}"]`)
           .scrollIntoView()
           .should('be.visible')
@@ -149,7 +151,7 @@ describe('Custom Properties should work properly', () => {
           'getEntity'
         );
 
-        //Selecting the entity
+        // Selecting the entity
         cy.get(`[data-menu-id*="customAttributes.${entity.name}"]`)
           .scrollIntoView()
           .should('be.visible')
@@ -166,7 +168,7 @@ describe('Custom Properties should work properly', () => {
           'getEntity'
         );
 
-        //Selecting the entity
+        // Selecting the entity
         cy.get(`[data-menu-id*="customAttributes.${entity.name}"]`)
           .scrollIntoView()
           .should('be.visible')
@@ -181,6 +183,7 @@ describe('Custom Properties should work properly', () => {
   describe('Add update and delete Markdown custom properties', () => {
     Object.values(ENTITIES).forEach((entity) => {
       const propertyName = `entity${entity.name}test${uuid()}`;
+
       it(`Add Markdown custom property for ${entity.name} Entities`, () => {
         interceptURL(
           'GET',
@@ -188,7 +191,7 @@ describe('Custom Properties should work properly', () => {
           'getEntity'
         );
 
-        //Selecting the entity
+        // Selecting the entity
         cy.get(`[data-menu-id*="customAttributes.${entity.name}"]`)
           .scrollIntoView()
           .should('be.visible')
@@ -203,7 +206,7 @@ describe('Custom Properties should work properly', () => {
           entity.markdownValue,
           entity.entityObj
         );
-        //Navigating back to custom properties page
+        // Navigating back to custom properties page
         cy.get('[data-testid="appbar-item-settings"]')
           .should('be.visible')
           .click();
@@ -222,7 +225,7 @@ describe('Custom Properties should work properly', () => {
           'getEntity'
         );
 
-        //Selecting the entity
+        // Selecting the entity
         cy.get(`[data-menu-id*="customAttributes.${entity.name}"]`)
           .scrollIntoView()
           .should('be.visible')
@@ -239,7 +242,7 @@ describe('Custom Properties should work properly', () => {
           'getEntity'
         );
 
-        //Selecting the entity
+        // Selecting the entity
         cy.get(`[data-menu-id*="customAttributes.${entity.name}"]`)
           .scrollIntoView()
           .should('be.visible')

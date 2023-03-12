@@ -95,6 +95,7 @@
       "matchAnyOwnerName",
       "matchAnyEntityFqn",
       "matchAnyEventType",
+      "matchIngestionPipelineState",
       "matchUpdatedBy"
     ]
   },
@@ -275,6 +276,7 @@
       "matchAnyOwnerName",
       "matchAnyEntityFqn",
       "matchAnyEventType",
+      "matchTestResult",
       "matchUpdatedBy"
     ]
   },
@@ -284,6 +286,7 @@
       "matchAnyOwnerName",
       "matchAnyEntityFqn",
       "matchAnyEventType",
+      "matchTestResult",
       "matchUpdatedBy"
     ]
   },

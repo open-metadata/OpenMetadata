@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -12,6 +12,7 @@
  */
 
 import { Card, Col, Row } from 'antd';
+import { t } from 'i18next';
 import React, { useState } from 'react';
 import {
   CartesianGrid,
@@ -50,7 +51,7 @@ const ProfilerDetailsCard: React.FC<ProfilerDetailsCardProps> = ({
   };
 
   return (
-    <Card className="tw-rounded-md tw-border">
+    <Card className="shadow-none" data-testid="profiler-details-card-container">
       <Row gutter={[16, 16]}>
         <Col span={4}>
           <ProfilerLatestValue
@@ -112,7 +113,7 @@ const ProfilerDetailsCard: React.FC<ProfilerDetailsCardProps> = ({
               justify="center">
               <Col>
                 <ErrorPlaceHolder>
-                  <p>No Data Available</p>
+                  <p>{t('message.no-data-available')}</p>
                 </ErrorPlaceHolder>
               </Col>
             </Row>

@@ -42,9 +42,8 @@ from metadata.generated.schema.entity.services.databaseService import (
 from metadata.generated.schema.security.client.openMetadataJWTClientConfig import (
     OpenMetadataJWTClientConfig,
 )
-from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.orm_profiler.orm.converter import ometa_to_sqa_orm
+from metadata.profiler.orm.converter import ometa_to_sqa_orm
 
 
 class ProfilerWorkflowTest(TestCase):
@@ -87,21 +86,21 @@ class ProfilerWorkflowTest(TestCase):
         database = self.metadata.create_or_update(
             CreateDatabaseRequest(
                 name="one-db",
-                service=EntityReference(id=service.id, type="databaseService"),
+                service=service.fullyQualifiedName,
             )
         )
 
         schema = self.metadata.create_or_update(
             CreateDatabaseSchemaRequest(
                 name="one-schema",
-                database=EntityReference(id=database.id, type="database"),
+                database=database.fullyQualifiedName,
             )
         )
 
         table = self.metadata.create_or_update(
             CreateTableRequest(
                 name="table1",
-                databaseSchema=EntityReference(id=schema.id, type="databaseSchema"),
+                databaseSchema=schema.fullyQualifiedName,
                 columns=[
                     Column(name="id", dataType=DataType.BIGINT),
                     Column(name="name", dataType=DataType.STRING),
@@ -161,21 +160,21 @@ class ProfilerWorkflowTest(TestCase):
         database = self.metadata.create_or_update(
             CreateDatabaseRequest(
                 name="one-db",
-                service=EntityReference(id=service.id, type="databaseService"),
+                service=service.fullyQualifiedName,
             )
         )
 
         schema = self.metadata.create_or_update(
             CreateDatabaseSchemaRequest(
                 name="one-schema",
-                database=EntityReference(id=database.id, type="database"),
+                database=database.fullyQualifiedName,
             )
         )
 
         table = self.metadata.create_or_update(
             CreateTableRequest(
                 name="table1-snflk",
-                databaseSchema=EntityReference(id=schema.id, type="databaseSchema"),
+                databaseSchema=schema.fullyQualifiedName,
                 columns=[
                     Column(name="id", dataType=DataType.BIGINT),
                 ],

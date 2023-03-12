@@ -3,7 +3,7 @@ package org.openmetadata.service.elasticsearch;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import org.openmetadata.schema.entity.tags.Tag;
+import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.util.JsonUtils;
 

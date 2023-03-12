@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -13,6 +13,7 @@
 
 import { Col, Switch } from 'antd';
 import { SwitchChangeEventHandler } from 'antd/lib/switch';
+import { t } from 'i18next';
 import { orderBy } from 'lodash';
 import React, { useMemo, useState } from 'react';
 import { Operation } from '../../generated/entity/policies/policy';
@@ -64,7 +65,7 @@ const TestCasesTab = ({
   return (
     <TestCaseCommonTabContainer
       isPaging
-      buttonName="Add Test"
+      buttonName={t('label.add-entity', { entity: t('label.test') })}
       currentPage={currentPage}
       hasAccess={createPermission}
       paging={testCasesPaging}
@@ -72,12 +73,15 @@ const TestCasesTab = ({
       testCasePageHandler={testCasePageHandler}>
       <>
         <Col className="flex justify-end items-center" span={24}>
-          <span className="m-r-xs">Deleted Tests</span>
+          <span className="m-r-xs">
+            {t('label.deleted-entity', {
+              entity: t('label.test-plural'),
+            })}
+          </span>
           <Switch checked={deleted} onClick={handleDeletedTestCaseClick} />
         </Col>
         <Col span={24}>
           <DataQualityTab
-            hasAccess
             deletedTable={deleted}
             isLoading={isDataLoading}
             testCases={sortedTestCases}

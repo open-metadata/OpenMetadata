@@ -76,12 +76,18 @@
       "description": "Connect with oracle by either passing service name or database schema name.",
       "oneOf": [
         {
-          "$ref": "#/definitions/OracleServiceName"
+          "$ref": "#/definitions/OracleDatabaseSchema"
         },
         {
-          "$ref": "#/definitions/OracleDatabaseSchema"
+          "$ref": "#/definitions/OracleServiceName"
         }
       ]
+    },
+    "instantClientDirectory": {
+      "title": "Oracle instant client directory",
+      "type": "string",
+      "description": "This directory will be used to set the LD_LIBRARY_PATH env variable. It is required if you need to enable thick connection mode. By default, we bring instant client 19 and point to /instantclient.",
+      "default": "/instantclient"
     },
     "connectionOptions": {
       "title": "Connection Options",

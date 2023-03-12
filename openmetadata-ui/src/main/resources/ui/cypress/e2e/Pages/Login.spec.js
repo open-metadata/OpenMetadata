@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,7 +11,11 @@
  *  limitations under the License.
  */
 
-import { interceptURL, login, verifyResponseStatusCode } from '../../common/common';
+import {
+  interceptURL,
+  login,
+  verifyResponseStatusCode,
+} from '../../common/common';
 import { BASE_URL, LOGIN_ERROR_MESSAGE } from '../../constants/constants';
 
 const CREDENTIALS = {
@@ -25,55 +29,59 @@ const invalidPassword = 'testUsers@123';
 
 describe('Login flow should work properly', () => {
   it('Signup and Login with signed up credentials', () => {
-    interceptURL('GET', 'api/v1/config/auth', 'getLoginPage');
+    interceptURL('GET', 'api/v1/system/config/auth', 'getLoginPage');
     cy.visit('/');
     verifyResponseStatusCode('@getLoginPage', 200);
-    //Click on create account button
+    // Click on create account button
     cy.get('[data-testid="signup"]')
       .scrollIntoView()
       .should('be.visible')
       .click();
-    //Enter first name
+    // Enter first name
     cy.get('[id="firstName"]').should('be.visible').type(CREDENTIALS.firstName);
     cy.get('[id="firstName"]').should('have.value', CREDENTIALS.firstName);
-    //Enter last name
+    // Enter last name
     cy.get('[id="lastName"]').should('be.visible').type(CREDENTIALS.lastName);
     cy.get('[id="lastName"]').should('have.value', CREDENTIALS.lastName);
-    //Enter email
+    // Enter email
     cy.get('[id="email"]').should('be.visible').type(CREDENTIALS.email);
     cy.get('[id="email"]').should('have.value', CREDENTIALS.email);
-    //Enter password
+    // Enter password
     cy.get('[id="password"]').should('be.visible').type(CREDENTIALS.password);
     cy.get('[id="password"]')
       .should('have.attr', 'type')
       .should('eq', 'password');
 
-    //Confirm password
+    // Confirm password
     cy.get('[id="confirmPassword"]')
       .should('be.visible')
       .type(CREDENTIALS.password);
-    //Click on create account button
+    // Click on create account button
     cy.get('.ant-btn').contains('Create Account').should('be.visible').click();
     cy.url().should('eq', `${BASE_URL}/signin`).and('contain', 'signin');
 
-    //Login with the created user
+    // Login with the created user
 
     login(CREDENTIALS.email, CREDENTIALS.password);
-    cy.goToHomePage();
+    cy.goToHomePage(true);
     cy.url().should('eq', `${BASE_URL}/my-data`);
 
-    //Verify user profile
-    cy.get('[data-testid="avatar"]').first().should('be.visible').trigger('mouseover').click();
+    // Verify user profile
+    cy.get('[data-testid="avatar"]')
+      .first()
+      .should('be.visible')
+      .trigger('mouseover')
+      .click();
 
     cy.get('[data-testid="user-name"]')
       .should('be.visible')
       .invoke('text')
       .should('contain', `${CREDENTIALS.firstName}${CREDENTIALS.lastName}`);
-    interceptURL('GET', 'api/v1/users/name/*', 'getUserPage');
+    interceptURL('GET', 'api/v1/users/name/*', 'getUser');
     cy.get('[data-testid="user-name"]')
       .should('be.visible')
       .click({ force: true });
-    verifyResponseStatusCode('@getUserPage', 200);
+    verifyResponseStatusCode('@getUser', 200);
     cy.get('[data-testid="left-panel"]').should(
       'contain',
       `${CREDENTIALS.firstName}${CREDENTIALS.lastName}`
@@ -81,14 +89,14 @@ describe('Login flow should work properly', () => {
   });
 
   it('Signin using invalid credentials', () => {
-    //Login with invalid email
+    // Login with invalid email
     login(invalidEmail, CREDENTIALS.password);
     cy.get('[data-testid="login-error-container"]')
       .should('be.visible')
       .invoke('text')
       .should('eq', LOGIN_ERROR_MESSAGE);
 
-    //Login with invalid password
+    // Login with invalid password
     login(CREDENTIALS.email, invalidPassword);
     cy.get('[data-testid="login-error-container"]')
       .should('be.visible')
@@ -97,10 +105,10 @@ describe('Login flow should work properly', () => {
   });
 
   it('Forgot password and login with new password', () => {
-    interceptURL('GET', 'api/v1/config/auth', 'getLoginPage');
+    interceptURL('GET', 'api/v1/system/config/auth', 'getLoginPage');
     cy.visit('/');
     verifyResponseStatusCode('@getLoginPage', 200);
-    //Click on Forgot button
+    // Click on Forgot button
     cy.get('[data-testid="forgot-password"]')
       .should('be.visible')
       .trigger('mouseover')
@@ -109,9 +117,9 @@ describe('Login flow should work properly', () => {
     cy.url()
       .should('eq', `${BASE_URL}/forgot-password`)
       .and('contain', 'forgot-password');
-    //Enter email
+    // Enter email
     cy.get('[id="email"]').should('be.visible').clear().type(CREDENTIALS.email);
-    //Click on submit
+    // Click on submit
     cy.get('.ant-btn').contains('Submit').click();
   });
 });

@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -13,6 +13,7 @@
 
 import { Modal } from 'antd';
 import { debounce } from 'lodash';
+import Qs from 'qs';
 import { BaseSelectRef } from 'rc-select';
 import React, {
   FC,
@@ -23,8 +24,7 @@ import React, {
   useState,
 } from 'react';
 import { useHistory } from 'react-router-dom';
-import AppState from '../../AppState';
-import { getExplorePathWithSearch, ROUTES } from '../../constants/constants';
+import { getExplorePath, ROUTES } from '../../constants/constants';
 import { addToRecentSearched } from '../../utils/CommonUtils';
 import { isCommandKeyPress, Keys } from '../../utils/KeyboardUtil';
 import GlobalSearchSuggestions from './GlobalSearchSuggestions/GlobalSearchSuggestions';
@@ -77,15 +77,20 @@ const GlobalSearchProvider: FC<Props> = ({ children }: Props) => {
 
   const searchHandler = (value: string) => {
     addToRecentSearched(value);
-    history.push({
-      pathname: getExplorePathWithSearch(
-        value,
-        location.pathname.startsWith(ROUTES.EXPLORE)
-          ? AppState.explorePageTab
-          : 'tables'
-      ),
-      search: location.search,
-    });
+    if (location.pathname.startsWith(ROUTES.EXPLORE)) {
+      // Already on explore page, only push search change
+      const paramsObject: Record<string, unknown> = Qs.parse(
+        location.search.startsWith('?')
+          ? location.search.substr(1)
+          : location.search
+      );
+      history.push({
+        search: Qs.stringify({ ...paramsObject, search: value }),
+      });
+    } else {
+      // Outside Explore page
+      history.push(getExplorePath({ search: value }));
+    }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -118,8 +123,8 @@ const GlobalSearchProvider: FC<Props> = ({ children }: Props) => {
         }}
         closeIcon={<></>}
         footer={null}
+        open={visible}
         transitionName=""
-        visible={visible}
         width={650}
         onCancel={handleCancel}>
         <GlobalSearchSuggestions

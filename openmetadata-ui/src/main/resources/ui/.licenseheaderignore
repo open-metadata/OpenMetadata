@@ -1,0 +1,78 @@
+# GitHub
+".github"
+
+# Husky
+".husky/_"
+".husky/pre-commit"
+
+# Dependencies
+/node
+/node_modules
+
+# Production
+/build
+/dist
+
+# TypeScript
+"tsconfig.tsbuildinfo"
+
+# Maven
+/target
+
+# Docker
+/docker
+
+# Assets
+*.svg
+*.png
+*.ico
+*.ttf
+
+# Ignore files
+".dockerignore"
+".eslintignore"
+".gitignore"
+".licenseheaderignore"
+".prettierignore"
+".stylelintignore"
+
+# RC files
+".npmrc"
+".nvmrc"
+
+# Jest
+/src/test/unit/coverage
+"text-report.xml"
+
+# Cypress
+/cypress/downloads
+/cypress/screenshots
+/cypress/videos
+/cypress/plugins
+
+# webpack
+/webpack
+
+# Miscellaneous
+*.json
+*.txt
+
+# Docs, READMEs
+*.md
+
+# OS
+Thumbs.db
+".DS_Store"
+"._*"
+".Spotlight-V100"
+".Trashes"
+
+# yarn files
+"yarn-error.log"
+"yarn.lock"
+
+# Sonar cloud
+"sonar-project.properties"
+
+# Generated
+src/generated

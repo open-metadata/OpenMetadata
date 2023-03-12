@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,7 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+
 import { Button, Typography } from 'antd';
+import classNames from 'classnames';
+import { toString } from 'lodash';
 import React, { useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { ROUTES } from '../../../constants/constants';
@@ -30,6 +33,7 @@ interface TableDataCardTitleProps {
   id?: string;
   searchIndex: SearchIndex | EntityType;
   source: SourceType;
+  isPanel?: boolean;
   handleLinkClick?: (e: React.MouseEvent) => void;
 }
 
@@ -39,26 +43,28 @@ const TableDataCardTitle = ({
   searchIndex,
   source,
   handleLinkClick,
+  isPanel = false,
 }: TableDataCardTitleProps) => {
   const isTourRoute = location.pathname.includes(ROUTES.TOUR);
 
-  const testId = useMemo(
-    () =>
-      dataTestId
+  const { testId, displayName } = useMemo(
+    () => ({
+      testId: dataTestId
         ? dataTestId
         : `${getPartialNameFromTableFQN(source.fullyQualifiedName ?? '', [
             FqnPart.Service,
           ])}-${getNameFromFQN(source.fullyQualifiedName ?? '')}`,
+      displayName: toString(source.displayName),
+    }),
     [dataTestId, source]
   );
-
   const title = (
     <Button
       data-testid={testId}
       id={`${id ?? testId}-title`}
       type="link"
       onClick={isTourRoute ? handleLinkClick : undefined}>
-      {stringToHTML(source.name)}
+      {stringToHTML(displayName)}
     </Button>
   );
 
@@ -71,9 +77,14 @@ const TableDataCardTitle = ({
       ellipsis
       className="m-b-0 text-base"
       level={5}
-      title={source.name}>
+      title={displayName}>
       <Link
-        className="table-data-card-title-container w-fit-content w-max-90"
+        className={classNames(
+          'table-data-card-title-container w-fit-content w-max-90',
+          {
+            'button-hover': isPanel,
+          }
+        )}
         to={getEntityLink(searchIndex, source.fullyQualifiedName ?? '')}>
         {title}
       </Link>

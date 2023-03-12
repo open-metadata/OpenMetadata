@@ -45,6 +45,7 @@ public class NoopSecretsManagerTest {
     secretsManager = NoopSecretsManager.getInstance("openmetadata", SecretsManagerProvider.NOOP);
     Fernet fernet = Mockito.mock(Fernet.class);
     lenient().when(fernet.decrypt(anyString())).thenReturn(DECRYPTED_VALUE);
+    lenient().when(fernet.decryptIfApplies(anyString())).thenReturn(DECRYPTED_VALUE);
     lenient().when(fernet.encrypt(anyString())).thenReturn(ENCRYPTED_VALUE);
     secretsManager.setFernet(fernet);
   }
@@ -57,12 +58,12 @@ public class NoopSecretsManagerTest {
 
   @Test
   void testEncryptDatabaseServiceConnectionConfig() {
-    testEncryptDecryptServiceConnection(DECRYPTED_VALUE, ENCRYPTED_VALUE, ENCRYPT);
+    testEncryptDecryptServiceConnection(ENCRYPT);
   }
 
   @Test
   void testDecryptDatabaseServiceConnectionConfig() {
-    testEncryptDecryptServiceConnection(DECRYPTED_VALUE, ENCRYPTED_VALUE, DECRYPT);
+    testEncryptDecryptServiceConnection(DECRYPT);
   }
 
   @Test
@@ -92,17 +93,17 @@ public class NoopSecretsManagerTest {
     assertNotSame(sklearnConnection, actualConfig);
   }
 
-  private void testEncryptDecryptServiceConnection(String encryptedValue, String decryptedValue, boolean decrypt) {
+  private void testEncryptDecryptServiceConnection(boolean encrypt) {
     MysqlConnection mysqlConnection = new MysqlConnection();
-    mysqlConnection.setPassword(decrypt ? encryptedValue : decryptedValue);
+    mysqlConnection.setPassword(encrypt ? ENCRYPTED_VALUE : DECRYPTED_VALUE);
     CreateDatabaseService.DatabaseServiceType databaseServiceType = CreateDatabaseService.DatabaseServiceType.Mysql;
     String connectionName = "test";
 
     Object actualConfig =
         secretsManager.encryptOrDecryptServiceConnectionConfig(
-            mysqlConnection, databaseServiceType.value(), connectionName, ServiceType.DATABASE, decrypt);
+            mysqlConnection, databaseServiceType.value(), connectionName, ServiceType.DATABASE, encrypt);
 
-    assertEquals(decrypt ? decryptedValue : encryptedValue, ((MysqlConnection) actualConfig).getPassword());
+    assertEquals(encrypt ? ENCRYPTED_VALUE : DECRYPTED_VALUE, ((MysqlConnection) actualConfig).getPassword());
     assertNotSame(mysqlConnection, actualConfig);
   }
 }

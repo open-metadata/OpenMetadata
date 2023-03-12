@@ -4,13 +4,27 @@ slug: /connectors/database/dynamodb
 ---
 
 # DynamoDB
+<Table>
+
+| Stage | Metadata |Query Usage | Data Profiler | Data Quality | Lineage | DBT | Supported Versions |
+|:------:|:------:|:-----------:|:-------------:|:------------:|:-------:|:---:|:------------------:|
+|  PROD  |   ✅   |      ❌      |       ✅       |       ✅      |    ❌    |  ❌  |  --  |
+
+</Table>
+
+<Table>
+
+| Lineage | Table-level | Column-level |
+|:------:|:-----------:|:-------------:|
+| ❌ | ❌ | ❌ |
+
+</Table>
 
 In this section, we provide guides and references to use the DynamoDB connector.
 
-Configure and schedule DynamoDB metadata and profiler workflows from the OpenMetadata UI:
+Configure and schedule DynamoDB metadata workflows from the OpenMetadata UI:
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
-- [dbt Integration](#dbt-integration)
 
 If you don't want to use the OpenMetadata Ingestion container to configure the workflows via the UI, then you can check
 the following docs to connect using Airflow SDK or with the CLI.
@@ -47,8 +61,7 @@ custom Airflow plugins to handle the workflow deployment.
 
 The first step is ingesting the metadata from your sources. Under
 Settings, you will find a Services link an external source system to
-OpenMetadata. Once a service is created, it can be used to configure
-metadata, usage, and profiler workflows.
+OpenMetadata.
 
 To visit the Services page, select Services from the Settings menu.
 
@@ -169,6 +182,7 @@ caption="Configure Metadata Ingestion Page"
 - **Enable Debug Log (toggle)**: Set the Enable Debug Log toggle to set the default log level to debug, these logs can be viewed later in Airflow.
 - **Mark Deleted Tables (toggle)**: Set the Mark Deleted Tables toggle to flag tables as soft-deleted if they are not present anymore in the source system.
 - **Mark Deleted Tables from Filter Only (toggle)**: Set the Mark Deleted Tables from Filter Only toggle to flag tables as soft-deleted if they are not present anymore within the filtered schema or database only. This flag is useful when you have more than one ingestion pipelines. For example if you have a schema
+- **Auto Tag PII(toggle)**: Auto PII tagging checks for column name to mark PII Sensitive/NonSensitive tag
 
 ### 7. Schedule the Ingestion and Deploy
 
@@ -217,12 +231,3 @@ caption="Edit and Deploy the Ingestion Pipeline"
 />
 
 From the Connection tab, you can also Edit the Service if needed.
-
-## dbt Integration
-
-<Tile
-icon="mediation"
-title="dbt Integration"
-text="Learn more about how to ingest dbt models' definitions and their lineage."
-link="/connectors/ingestion/workflows/dbt"
-/>

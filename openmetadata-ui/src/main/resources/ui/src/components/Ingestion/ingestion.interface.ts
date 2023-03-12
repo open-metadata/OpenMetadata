@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -39,7 +39,7 @@ export interface IngestionProps {
   paging: Paging;
   ingestionList: Array<IngestionPipeline>;
   serviceList: Array<DatabaseService>;
-  currrentPage: number;
+  currentPage: number;
   permissions: OperationPermission;
   pagingHandler: (value: string | number, activePage?: number) => void;
   deleteIngestion: (id: string, displayName: string) => Promise<void>;

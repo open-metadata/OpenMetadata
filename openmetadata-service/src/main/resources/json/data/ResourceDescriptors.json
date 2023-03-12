@@ -219,6 +219,30 @@
     ]
   },
   {
+    "name" : "container",
+    "operations" : [
+      "Create",
+      "Delete",
+      "ViewAll",
+      "EditAll",
+      "EditDescription",
+      "EditDisplayName",
+      "EditCustomFields"
+    ]
+  },
+  {
+    "name" : "objectStoreService",
+    "operations" : [
+      "Create",
+      "Delete",
+      "ViewAll",
+      "EditAll",
+      "EditDescription",
+      "EditDisplayName",
+      "EditCustomFields"
+    ]
+  },
+  {
     "name" : "pipeline",
     "operations" : [
       "Create",
@@ -331,7 +355,7 @@
     ]
   },
   {
-    "name" : "tagCategory",
+    "name" : "classification",
     "operations" : [
       "Create",
       "Delete",
@@ -430,6 +454,14 @@
     ]
   },
   {
+    "name" : "testConnectionDefinition",
+    "operations" : [
+      "Create",
+      "Delete",
+      "ViewAll"
+    ]
+  },
+  {
     "name" : "type",
     "operations" : [
       "Create",
@@ -467,6 +499,14 @@
       "Delete",
       "ViewAll",
       "EditDescription"
+    ]
+  },
+  {
+    "name" : "workflow",
+    "operations" : [
+      "Create",
+      "Delete",
+      "ViewAll"
     ]
   },
   {

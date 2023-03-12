@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -12,9 +12,11 @@
  */
 
 import classNames from 'classnames';
+import PageContainer from 'components/containers/PageContainer';
 import { isUndefined } from 'lodash';
 import { ExtraInfo } from 'Models';
 import React, { FC, useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { EntityField } from '../../constants/Feeds.constants';
 import { OwnerType } from '../../enums/user.enum';
@@ -31,7 +33,6 @@ import { bytesToSize } from '../../utils/StringsUtils';
 import Description from '../common/description/Description';
 import EntityPageInfo from '../common/entityPageInfo/EntityPageInfo';
 import TabsPane from '../common/TabsPane/TabsPane';
-import PageContainer from '../containers/PageContainer';
 import EntityVersionTimeLine from '../EntityVersionTimeLine/EntityVersionTimeLine';
 import Loader from '../Loader/Loader';
 import SchemaEditor from '../schema-editor/SchemaEditor';
@@ -49,12 +50,13 @@ const TopicVersion: FC<TopicVersionProp> = ({
   backHandler,
   versionHandler,
 }: TopicVersionProp) => {
+  const { t } = useTranslation();
   const [changeDescription, setChangeDescription] = useState<ChangeDescription>(
     currentVersionData.changeDescription as ChangeDescription
   );
   const tabs = [
     {
-      name: 'Schema',
+      name: t('label.schema'),
       icon: {
         alt: 'schema',
         name: 'icon-schema',
@@ -70,31 +72,33 @@ const TopicVersion: FC<TopicVersionProp> = ({
     return [
       {
         key: 'Partitions',
-        value: `${(currentVersionData as Topic).partitions ?? '--'} partitions`,
+        value: `${(currentVersionData as Topic).partitions ?? '--'} ${t(
+          'label.partition-lowercase-plural'
+        )}`,
       },
       {
         key: 'Replication Factor',
-        value: `${
-          (currentVersionData as Topic).replicationFactor ?? '--'
-        } replication factor`,
+        value: `${(currentVersionData as Topic).replicationFactor ?? '--'} ${t(
+          'label.replication-factor'
+        )}`,
       },
       {
         key: 'Retention Size',
         value: `${bytesToSize(
           (currentVersionData as Topic).retentionSize ?? 0
-        )} retention size`,
+        )} ${t('label.retention-size-lowercase')}`,
       },
       {
         key: 'Clean-up Policies',
         value: `${(currentVersionData as Topic)?.cleanupPolicies?.join(
           ', '
-        )} clean-up policies`,
+        )} ${t('label.clean-up-policy-plural-lowercase')}`,
       },
       {
         key: 'Max Message Size',
         value: `${bytesToSize(
           (currentVersionData as Topic).maximumMessageSize ?? 0
-        )} maximum size`,
+        )} ${t('label.maximum-size-lowercase')}`,
       },
     ];
   };
@@ -289,7 +293,7 @@ const TopicVersion: FC<TopicVersionProp> = ({
                   <div className="tw-col-span-full">
                     {getInfoBadge([
                       {
-                        key: 'Schema',
+                        key: t('label.schema'),
                         value:
                           (currentVersionData as Topic).messageSchema
                             ?.schemaType ?? '',

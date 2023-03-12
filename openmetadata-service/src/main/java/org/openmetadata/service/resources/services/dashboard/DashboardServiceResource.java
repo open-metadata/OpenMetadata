@@ -51,10 +51,13 @@ import javax.ws.rs.core.UriInfo;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.api.services.CreateDashboardService;
 import org.openmetadata.schema.entity.services.DashboardService;
+import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.services.ServiceType;
+import org.openmetadata.schema.entity.services.connections.TestConnectionResult;
 import org.openmetadata.schema.type.DashboardConnection;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.DashboardServiceRepository;
@@ -62,6 +65,7 @@ import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.services.ServiceEntityResource;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
@@ -143,9 +147,9 @@ public class DashboardServiceResource
   @Path("/{id}")
   @Operation(
       operationId = "getDashboardServiceByID",
-      summary = "Get a dashboard service",
+      summary = "Get a dashboard service by Id",
       tags = "dashboardServices",
-      description = "Get a dashboard service by `id`.",
+      description = "Get a dashboard service by `Id`.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -157,7 +161,7 @@ public class DashboardServiceResource
   public DashboardService get(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @PathParam("id") UUID id,
+      @Parameter(description = "Id of the dashboard service", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
       @Parameter(
               description = "Fields requested in the returned resource",
               schema = @Schema(type = "string", example = FIELDS))
@@ -187,12 +191,13 @@ public class DashboardServiceResource
             description = "Dashboard service instance",
             content =
                 @Content(mediaType = "application/json", schema = @Schema(implementation = DashboardService.class))),
-        @ApiResponse(responseCode = "404", description = "Dashboard service for instance {id} is not found")
+        @ApiResponse(responseCode = "404", description = "Dashboard service for instance {name} is not found")
       })
   public DashboardService getByName(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @PathParam("name") String name,
+      @Parameter(description = "Name of the dashboard service", schema = @Schema(type = "string")) @PathParam("name")
+          String name,
       @Parameter(
               description = "Fields requested in the returned resource",
               schema = @Schema(type = "string", example = FIELDS))
@@ -209,13 +214,39 @@ public class DashboardServiceResource
     return decryptOrNullify(securityContext, dashboardService);
   }
 
+  @PUT
+  @Path("/{id}/testConnectionResult")
+  @Operation(
+      operationId = "addTestConnectionResult",
+      summary = "Add test connection result",
+      tags = "dashboardServices",
+      description = "Add test connection result to the service.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Successfully updated the service",
+            content =
+                @Content(mediaType = "application/json", schema = @Schema(implementation = DatabaseService.class)))
+      })
+  public DashboardService addTestConnectionResult(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the service", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Valid TestConnectionResult testConnectionResult)
+      throws IOException {
+    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.CREATE);
+    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
+    DashboardService service = dao.addTestConnectionResult(id, testConnectionResult);
+    return decryptOrNullify(securityContext, service);
+  }
+
   @GET
   @Path("/{id}/versions")
   @Operation(
       operationId = "listAllDashboardServiceVersion",
       summary = "List dashboard service versions",
       tags = "dashboardServices",
-      description = "Get a list of all the versions of a dashboard service identified by `id`",
+      description = "Get a list of all the versions of a dashboard service identified by `Id`",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -225,7 +256,7 @@ public class DashboardServiceResource
   public EntityHistory listVersions(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "dashboard service Id", schema = @Schema(type = "string")) @PathParam("id") UUID id)
+      @Parameter(description = "Id of the dashboard service", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
       throws IOException {
     EntityHistory entityHistory = super.listVersionsInternal(securityContext, id);
 
@@ -251,7 +282,7 @@ public class DashboardServiceResource
       operationId = "getSpecificDashboardServiceVersion",
       summary = "Get a version of the dashboard service",
       tags = "dashboardServices",
-      description = "Get a version of the dashboard service by given `id`",
+      description = "Get a version of the dashboard service by given `Id`",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -265,7 +296,7 @@ public class DashboardServiceResource
   public DashboardService getVersion(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "dashboard service Id", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Parameter(description = "Id of the dashboard service", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
       @Parameter(
               description = "dashboard service version number in the form `major`" + ".`minor`",
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
@@ -302,9 +333,9 @@ public class DashboardServiceResource
   @PUT
   @Operation(
       operationId = "createOrUpdateDashboardService",
-      summary = "Update a Dashboard service",
+      summary = "Update a dashboard service",
       tags = "dashboardServices",
-      description = "Update an existing dashboard service identified by `id`.",
+      description = "Update an existing dashboard service identified by `Id`.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -317,7 +348,7 @@ public class DashboardServiceResource
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateDashboardService update)
       throws IOException {
     DashboardService service = getService(update, securityContext.getUserPrincipal().getName());
-    Response response = createOrUpdate(uriInfo, securityContext, service);
+    Response response = createOrUpdate(uriInfo, securityContext, unmask(service));
     decryptOrNullify(securityContext, (DashboardService) response.getEntity());
     return response;
   }
@@ -334,7 +365,7 @@ public class DashboardServiceResource
   public Response patch(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @PathParam("id") UUID id,
+      @Parameter(description = "Id of the dashboard service", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
       @RequestBody(
               description = "JsonPatch with array of operations",
               content =
@@ -352,7 +383,7 @@ public class DashboardServiceResource
   @Path("/{id}")
   @Operation(
       operationId = "deleteDashboardService",
-      summary = "Delete a Dashboard service",
+      summary = "Delete a dashboard service by Id",
       tags = "dashboardServices",
       description =
           "Delete a Dashboard services. If dashboard (and charts) belong to the service, it can't be " + "deleted.",
@@ -376,13 +407,41 @@ public class DashboardServiceResource
     return delete(uriInfo, securityContext, id, recursive, hardDelete);
   }
 
+  @DELETE
+  @Path("/name/{name}")
+  @Operation(
+      operationId = "deleteDashboardServiceByName",
+      summary = "Delete a dashboard service by name",
+      tags = "dashboardServices",
+      description =
+          "Delete a Dashboard services by `name`. If dashboard (and charts) belong to the service, it can't be "
+              + "deleted.",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "OK"),
+        @ApiResponse(
+            responseCode = "404",
+            description = "DashboardService service for instance {name} " + "is not found")
+      })
+  public Response delete(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Hard delete the entity. (Default = `false`)")
+          @QueryParam("hardDelete")
+          @DefaultValue("false")
+          boolean hardDelete,
+      @Parameter(description = "Name of the dashboard service", schema = @Schema(type = "string")) @PathParam("name")
+          String name)
+      throws IOException {
+    return deleteByName(uriInfo, securityContext, name, false, hardDelete);
+  }
+
   @PUT
   @Path("/restore")
   @Operation(
       operationId = "restore",
-      summary = "Restore a soft deleted DashboardService.",
+      summary = "Restore a soft deleted dashboard service",
       tags = "dashboardServices",
-      description = "Restore a soft deleted DashboardService.",
+      description = "Restore a soft deleted dashboard service.",
       responses = {
         @ApiResponse(
             responseCode = "200",

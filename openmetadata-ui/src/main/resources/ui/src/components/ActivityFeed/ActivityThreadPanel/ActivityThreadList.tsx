@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -13,10 +13,12 @@
 import { Card } from 'antd';
 import { isEqual } from 'lodash';
 import React, { FC, Fragment } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import {
   ANNOUNCEMENT_BG,
   ANNOUNCEMENT_BORDER,
+  GLOBAL_BORDER,
   TASK_BORDER,
 } from '../../../constants/Feeds.constants';
 import {
@@ -27,7 +29,6 @@ import {
 import { getFeedListWithRelativeDays } from '../../../utils/FeedUtils';
 import { getTaskDetailPath } from '../../../utils/TasksUtils';
 import AssigneeList from '../../common/AssigneeList/AssigneeList';
-import { leftPanelAntCardStyle } from '../../containers/PageLayout';
 import ActivityFeedCard from '../ActivityFeedCard/ActivityFeedCard';
 import FeedCardFooter from '../ActivityFeedCard/FeedCardFooter/FeedCardFooter';
 import ActivityFeedEditor from '../ActivityFeedEditor/ActivityFeedEditor';
@@ -46,6 +47,7 @@ const ActivityThreadList: FC<ActivityThreadListProp> = ({
   onConfirmation,
   updateThreadHandler,
 }) => {
+  const { t } = useTranslation();
   const history = useHistory();
   const { updatedFeedList: updatedThreads, relativeDays } =
     getFeedListWithRelativeDays(threads);
@@ -98,14 +100,15 @@ const ActivityThreadList: FC<ActivityThreadListProp> = ({
                       className="ant-card-feed"
                       key={`${index} - card`}
                       style={{
-                        ...leftPanelAntCardStyle,
                         marginTop: '20px',
                         paddingTop: isTask ? '8px' : '',
                         border: isTask
                           ? `1px solid ${TASK_BORDER}`
-                          : isAnnouncement
-                          ? `1px solid ${ANNOUNCEMENT_BORDER}`
-                          : leftPanelAntCardStyle.border,
+                          : `1px solid ${
+                              isAnnouncement
+                                ? ANNOUNCEMENT_BORDER
+                                : GLOBAL_BORDER
+                            }`,
                         background: isAnnouncement ? `${ANNOUNCEMENT_BG}` : '',
                       }}
                       onClick={() =>
@@ -179,7 +182,7 @@ const ActivityThreadList: FC<ActivityThreadListProp> = ({
                       {thread.task && (
                         <div className="tw-border-t tw-border-main tw-py-1">
                           <span className="tw-text-grey-muted">
-                            Assignees:{' '}
+                            {t('label.assignee-plural')}:{' '}
                           </span>
                           <AssigneeList
                             assignees={thread.task.assignees || []}

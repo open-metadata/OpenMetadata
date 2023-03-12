@@ -1,19 +1,39 @@
+/*
+ *  Copyright 2022 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
 import { AxiosError } from 'axios';
+import AddGlossary from 'components/AddGlossary/AddGlossary.component';
+import { TitleBreadcrumbProps } from 'components/common/title-breadcrumb/title-breadcrumb.interface';
+import PageContainerV1 from 'components/containers/PageContainerV1';
+import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
+import { ResourceEntity } from 'components/PermissionProvider/PermissionProvider.interface';
 import { LoadingState } from 'Models';
-import React, { FunctionComponent, useEffect, useMemo, useState } from 'react';
+import React, {
+  FunctionComponent,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
+import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
-import { addGlossaries } from '../../axiosAPIs/glossaryAPI';
-import AddGlossary from '../../components/AddGlossary/AddGlossary.component';
-import { TitleBreadcrumbProps } from '../../components/common/title-breadcrumb/title-breadcrumb.interface';
-import PageContainerV1 from '../../components/containers/PageContainerV1';
-import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
-import { ResourceEntity } from '../../components/PermissionProvider/PermissionProvider.interface';
+import { addGlossaries } from 'rest/glossaryAPI';
 import { CreateGlossary } from '../../generated/api/data/createGlossary';
 import { Operation } from '../../generated/entity/policies/policy';
 import jsonData from '../../jsons/en';
 import { checkPermission } from '../../utils/PermissionsUtils';
 import { getGlossaryPath } from '../../utils/RouterUtils';
-import { getTagCategories, getTaglist } from '../../utils/TagsUtils';
+import { getClassifications, getTaglist } from '../../utils/TagsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
 const AddGlossaryPage: FunctionComponent = () => {
@@ -26,6 +46,7 @@ const AddGlossaryPage: FunctionComponent = () => {
     TitleBreadcrumbProps['titleLinks']
   >([]);
 
+  const { t } = useTranslation();
   const createPermission = useMemo(
     () =>
       checkPermission(Operation.Create, ResourceEntity.GLOSSARY, permissions),
@@ -36,9 +57,9 @@ const AddGlossaryPage: FunctionComponent = () => {
     history.push(getGlossaryPath(name));
   };
 
-  const handleCancel = () => {
+  const handleCancel = useCallback(() => {
     goToGlossary();
-  };
+  }, []);
 
   const handleSaveFailure = (
     error: AxiosError | string,
@@ -48,7 +69,7 @@ const AddGlossaryPage: FunctionComponent = () => {
     setStatus('initial');
   };
 
-  const onSave = (data: CreateGlossary) => {
+  const onSave = useCallback((data: CreateGlossary) => {
     setStatus('waiting');
     addGlossaries(data)
       .then((res) => {
@@ -70,14 +91,15 @@ const AddGlossaryPage: FunctionComponent = () => {
           jsonData['api-error-messages']['add-glossary-error']
         );
       });
-  };
+  }, []);
 
   const fetchTags = () => {
     setIsTagLoading(true);
-    getTagCategories()
-      .then((res) => {
+    getClassifications()
+      .then(async (res) => {
         if (res.data) {
-          setTagList(getTaglist(res.data));
+          const tagList = await getTaglist(res.data);
+          setTagList(tagList);
         } else {
           showErrorToast(jsonData['api-error-messages']['fetch-tags-error']);
         }
@@ -93,11 +115,13 @@ const AddGlossaryPage: FunctionComponent = () => {
   useEffect(() => {
     setSlashedBreadcrumb([
       {
-        name: 'Glossary',
+        name: t('label.glossary'),
         url: getGlossaryPath(),
       },
       {
-        name: 'Add Glossary',
+        name: t('label.add-entity', {
+          entity: t('label.glossary'),
+        }),
         url: '',
         activeTitle: true,
       },
@@ -110,7 +134,9 @@ const AddGlossaryPage: FunctionComponent = () => {
         <AddGlossary
           allowAccess={createPermission}
           fetchTags={fetchTags}
-          header="Add Glossary"
+          header={t('label.add-entity', {
+            entity: t('label.glossary'),
+          })}
           isTagLoading={isTagLoading}
           saveState={status}
           slashedBreadcrumb={slashedBreadcrumb}

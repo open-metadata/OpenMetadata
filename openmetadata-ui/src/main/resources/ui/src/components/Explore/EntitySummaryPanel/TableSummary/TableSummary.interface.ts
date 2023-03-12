@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,10 +11,17 @@
  *  limitations under the License.
  */
 
-import { Table, TableType } from '../../../../generated/entity/data/table';
+import {
+  Table,
+  TableType,
+  TagLabel,
+} from '../../../../generated/entity/data/table';
 
 export interface TableSummaryProps {
   entityDetails: Table;
+  componentType?: string;
+  tags?: TagLabel[];
+  isLoading?: boolean;
 }
 
 export interface BasicTableInfo {

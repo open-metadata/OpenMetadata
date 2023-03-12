@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { t } from 'i18next';
 import { capitalize, isUndefined } from 'lodash';
 import { LoadingState } from 'Models';
 import React, { useState } from 'react';
@@ -133,12 +134,6 @@ const AddService = ({
         delimit: true,
         isError: true,
       });
-    } else if (nameWithSpace.test(serviceName)) {
-      setShowErrorMessage({
-        ...showErrorMessage,
-        nameWithSpace: true,
-        isError: true,
-      });
     } else if (!isUrlFriendlyName(serviceName.trim())) {
       setShowErrorMessage({
         ...showErrorMessage,
@@ -233,7 +228,7 @@ const AddService = ({
     return (
       <div data-testid="add-new-service-container">
         <h6 className="tw-heading tw-text-base" data-testid="header">
-          Add New Service
+          {t('label.add-new-entity', { entity: t('label.service') })}
         </h6>
         <IngestionStepper
           activeStep={activeServiceStep}
@@ -273,7 +268,7 @@ const AddService = ({
 
           {activeServiceStep === 3 && (
             <ConnectionConfigForm
-              cancelText="Back"
+              cancelText={t('label.back')}
               serviceCategory={serviceCategory}
               serviceType={selectServiceType}
               status={saveServiceState}
@@ -289,11 +284,9 @@ const AddService = ({
               showIngestionButton
               handleIngestionClick={() => handleAddIngestion(true)}
               handleViewServiceClick={handleViewServiceClick}
-              isAirflowSetup={isAirflowRunning}
               name={serviceName}
               state={FormSubmitType.ADD}
               suffix={getServiceCreatedLabel(serviceCategory)}
-              onCheckAirflowStatus={onAirflowStatusCheck}
             />
           )}
         </div>
@@ -327,15 +320,17 @@ const AddService = ({
         classes="tw-max-w-full-hd tw-h-full tw-pt-4"
         header={<TitleBreadcrumb titleLinks={slashedBreadcrumb} />}
         layout={PageLayoutType['2ColRTL']}
+        pageTitle={t('label.add-entity', { entity: t('label.service') })}
         rightPanel={fetchRightPanel()}>
         <div className="tw-form-container">
           {addIngestion ? (
             <AddIngestion
-              isAirflowSetup
               activeIngestionStep={activeIngestionStep}
               handleCancelClick={() => handleAddIngestion(false)}
               handleViewServiceClick={handleViewServiceClick}
-              heading={`Add ${capitalize(PipelineType.Metadata)} Ingestion`}
+              heading={`${t('label.add-workflow-ingestion', {
+                workflow: capitalize(PipelineType.Metadata),
+              })}`}
               ingestionAction={ingestionAction}
               ingestionProgress={ingestionProgress}
               isIngestionCreated={isIngestionCreated}
@@ -347,7 +342,6 @@ const AddService = ({
               showDeployButton={showDeployButton}
               status={FormSubmitType.ADD}
               onAddIngestionSave={onAddIngestionSave}
-              onAirflowStatusCheck={onAirflowStatusCheck}
               onIngestionDeploy={onIngestionDeploy}
             />
           ) : (

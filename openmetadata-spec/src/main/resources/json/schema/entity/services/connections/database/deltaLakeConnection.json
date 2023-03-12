@@ -32,6 +32,27 @@
           "title": "Hive Metastore Database",
           "description": "JDBC connection to the metastore database. E.g., jdbc:mysql://localhost:3306/demo_hive",
           "type": "string"
+        },
+        "username": {
+          "title": "Connection UserName",
+          "description": "Username to use against metastore database. The value will be mapped as spark.hadoop.javax.jdo.option.ConnectionUserName sparks property.",
+          "type": "string"
+        },
+        "password": {
+          "title": "Connection Password",
+          "description": "Password to use against metastore database. The value will be mapped as spark.hadoop.javax.jdo.option.ConnectionPassword sparks property.",
+          "type": "string",
+          "format": "password"
+        },
+        "driverName": {
+          "title": "Connection Driver Name",
+          "description": "Driver class name for JDBC metastore. The value will be mapped as spark.hadoop.javax.jdo.option.ConnectionDriverName sparks property. E.g., org.mariadb.jdbc.Driver",
+          "type": "string"
+        },
+        "jdbcDriverClassPath": {
+          "title": "JDBC Driver Class Path",
+          "description": "Class path to JDBC driver required for JDBC connection. The value will be mapped as sparks.driver.extraClassPath sparks property.",
+          "type": "string"
         }
       },
       "additionalProperties": false
@@ -74,6 +95,11 @@
     "appName": {
       "title": "Application Name",
       "description": "pySpark App Name.",
+      "type": "string"
+    },
+    "databaseName": {
+      "title": "Database Name",
+      "description": "Optional name to give to the database in OpenMetadata. If left blank, we will use default as the database name.",
       "type": "string"
     },
     "connectionArguments": {

@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,7 +11,10 @@
  *  limitations under the License.
  */
 
-import { COOKIE_VERSION } from '../components/Modals/WhatsNewModal/whatsNewData';
+import { COOKIE_VERSION } from 'components/Modals/WhatsNewModal/whatsNewData';
+import { t } from 'i18next';
+import { isUndefined } from 'lodash';
+import Qs from 'qs';
 import { getSettingPath } from '../utils/RouterUtils';
 import { getEncodedFqn } from '../utils/StringsUtils';
 import { FQN_SEPARATOR_CHAR } from './char.constants';
@@ -53,6 +56,7 @@ export const INGESTION_PROGRESS_END_VAL = 80;
 export const DEPLOYED_PROGRESS_VAL = 100;
 export const DESCRIPTION_MAX_PREVIEW_CHARACTERS = 350;
 export const MAX_CHAR_LIMIT_ENTITY_SUMMARY = 130;
+export const MAX_CHAR_LIMIT_TEST_SUITE = 75;
 export const LOCALSTORAGE_RECENTLY_VIEWED = `recentlyViewedData_${COOKIE_VERSION}`;
 export const LOCALSTORAGE_RECENTLY_SEARCHED = `recentlySearchedData_${COOKIE_VERSION}`;
 export const LOCALSTORAGE_USER_PROFILES = 'userProfiles';
@@ -72,10 +76,12 @@ export const imageTypes = {
   image512: 's512-c',
   image72: 's72-c',
 };
+export const NO_DATA_PLACEHOLDER = '---';
+export const ELLIPSES = '...';
 
 export const TOUR_SEARCH_TERM = 'dim_a';
-export const ERROR404 = 'No data found';
-export const ERROR500 = 'Something went wrong';
+export const ERROR404 = t('label.no-data-found');
+export const ERROR500 = t('message.something-went-wrong');
 const PLACEHOLDER_ROUTE_TABLE_FQN = ':datasetFQN';
 const PLACEHOLDER_ROUTE_TOPIC_FQN = ':topicFQN';
 const PLACEHOLDER_ROUTE_PIPELINE_FQN = ':pipelineFQN';
@@ -87,7 +93,6 @@ export const PLACEHOLDER_ROUTE_SERVICE_FQN = ':serviceFQN';
 export const PLACEHOLDER_ROUTE_INGESTION_TYPE = ':ingestionType';
 export const PLACEHOLDER_ROUTE_INGESTION_FQN = ':ingestionFQN';
 export const PLACEHOLDER_ROUTE_SERVICE_CAT = ':serviceCategory';
-export const PLACEHOLDER_ROUTE_SEARCHQUERY = ':searchQuery';
 export const PLACEHOLDER_ROUTE_TAB = ':tab';
 export const PLACEHOLDER_ROUTE_FQN = ':fqn';
 export const PLACEHOLDER_ROUTE_TEAM_AND_USER = ':teamAndUser';
@@ -113,6 +118,8 @@ export const LOG_ENTITY_TYPE = ':logEntityType';
 export const INGESTION_NAME = ':ingestionName';
 export const LOG_ENTITY_NAME = ':logEntityName';
 export const KPI_NAME = ':kpiName';
+export const PLACEHOLDER_ACTION = ':action';
+export const PLACEHOLDER_CONTAINER_NAME = ':containerName';
 
 export const pagingObject = { after: '', before: '', total: 0 };
 
@@ -121,7 +128,6 @@ export const ONLY_NUMBER_REGEX = /^[0-9\b]+$/;
 export const CUSTOM_AIRFLOW_DOCS =
   'https://docs.open-metadata.org/integrations/airflow/custom-airflow-installation';
 
-/* eslint-disable @typescript-eslint/camelcase */
 export const tiers = [
   { key: `Tier${FQN_SEPARATOR_CHAR}Tier1`, doc_count: 0 },
   { key: `Tier${FQN_SEPARATOR_CHAR}Tier2`, doc_count: 0 },
@@ -131,9 +137,9 @@ export const tiers = [
 ];
 
 export const versionTypes = [
-  { name: 'All', value: 'all' },
-  { name: 'Major', value: 'major' },
-  { name: 'Minor', value: 'minor' },
+  { name: t('label.all'), value: 'all' },
+  { name: t('label.major'), value: 'major' },
+  { name: t('label.minor'), value: 'minor' },
 ];
 
 export const DESCRIPTIONLENGTH = 100;
@@ -147,33 +153,6 @@ export const visibleFilters = [
   'servicename',
 ];
 
-export const facetFilterPlaceholder = [
-  {
-    name: 'Service',
-    value: 'Service',
-  },
-  {
-    name: 'Tier',
-    value: 'Tier',
-  },
-  {
-    name: 'Tags',
-    value: 'Tags',
-  },
-  {
-    name: 'Database',
-    value: 'Database',
-  },
-  {
-    name: 'DatabaseSchema',
-    value: 'Schema',
-  },
-  {
-    name: 'ServiceName',
-    value: 'Service Name',
-  },
-];
-
 export const ROUTES = {
   HOME: '/',
   CALLBACK: '/callback',
@@ -183,7 +162,6 @@ export const ROUTES = {
   TOUR: '/tour',
   REPORTS: '/reports',
   EXPLORE: '/explore',
-  EXPLORE_WITH_SEARCH: `/explore/${PLACEHOLDER_ROUTE_TAB}/${PLACEHOLDER_ROUTE_SEARCHQUERY}`,
   EXPLORE_WITH_TAB: `/explore/${PLACEHOLDER_ROUTE_TAB}`,
   WORKFLOWS: '/workflows',
   SQL_BUILDER: '/sql-builder',
@@ -236,6 +214,7 @@ export const ROUTES = {
   GLOSSARY: '/glossary',
   ADD_GLOSSARY: '/add-glossary',
   GLOSSARY_DETAILS: `/glossary/${PLACEHOLDER_GLOSSARY_NAME}`,
+  GLOSSARY_DETAILS_WITH_ACTION: `/glossary/${PLACEHOLDER_GLOSSARY_NAME}/action/${PLACEHOLDER_ACTION}`,
   ADD_GLOSSARY_TERMS: `/glossary/${PLACEHOLDER_GLOSSARY_NAME}/add-term`,
   GLOSSARY_TERMS: `/glossary/${PLACEHOLDER_GLOSSARY_NAME}/term/${PLACEHOLDER_GLOSSARY_TERMS_FQN}`,
   ADD_GLOSSARY_TERMS_CHILD: `/glossary/${PLACEHOLDER_GLOSSARY_NAME}/term/${PLACEHOLDER_GLOSSARY_TERMS_FQN}/add-term`,
@@ -277,6 +256,9 @@ export const ROUTES = {
   KPI_LIST: `/data-insights/kpi`,
   ADD_KPI: `/data-insights/kpi/add-kpi`,
   EDIT_KPI: `/data-insights/kpi/edit-kpi/${KPI_NAME}`,
+
+  CONTAINER_DETAILS: `/container/${PLACEHOLDER_CONTAINER_NAME}`,
+  CONTAINER_DETAILS_WITH_TAB: `/container/${PLACEHOLDER_CONTAINER_NAME}/${PLACEHOLDER_ROUTE_TAB}`,
 };
 
 export const SOCKET_EVENTS = {
@@ -287,7 +269,7 @@ export const SOCKET_EVENTS = {
 };
 
 export const IN_PAGE_SEARCH_ROUTES: Record<string, Array<string>> = {
-  '/database/': ['In this Database'],
+  '/database/': [t('message.in-this-database')],
 };
 
 export const getTableDetailsPath = (tableFQN: string, columnName?: string) => {
@@ -337,13 +319,51 @@ export const getServiceDetailsPath = (
   return path;
 };
 
-export const getExplorePathWithSearch = (searchQuery = '', tab = 'tables') => {
-  let path = ROUTES.EXPLORE_WITH_SEARCH;
-  path = path
-    .replace(PLACEHOLDER_ROUTE_SEARCHQUERY, searchQuery)
-    .replace(PLACEHOLDER_ROUTE_TAB, tab);
+export const getExplorePath: (args: {
+  tab?: string;
+  search?: string;
+  extraParameters?: Record<string, unknown>;
+  isPersistFilters?: boolean;
+}) => string = ({ tab, search, extraParameters, isPersistFilters = true }) => {
+  const pathname = ROUTES.EXPLORE_WITH_TAB.replace(
+    PLACEHOLDER_ROUTE_TAB,
+    tab ?? ''
+  );
+  let paramsObject: Record<string, unknown> = Qs.parse(
+    location.search.startsWith('?')
+      ? location.search.substr(1)
+      : location.search
+  );
 
-  return path;
+  const { search: paramSearch } = paramsObject;
+
+  /**
+   * persist the filters if isPersistFilters is true
+   * otherwise only persist the search and passed extra params
+   * */
+  if (isPersistFilters) {
+    if (!isUndefined(search)) {
+      paramsObject = {
+        ...paramsObject,
+        search,
+      };
+    }
+    if (!isUndefined(extraParameters)) {
+      paramsObject = {
+        ...paramsObject,
+        ...extraParameters,
+      };
+    }
+  } else {
+    paramsObject = {
+      search: isUndefined(search) ? paramSearch : search,
+      ...(!isUndefined(extraParameters) ? extraParameters : {}),
+    };
+  }
+
+  const query = Qs.stringify(paramsObject);
+
+  return `${pathname}?${query}`;
 };
 
 export const getDatabaseDetailsPath = (databaseFQN: string, tab?: string) => {
@@ -396,6 +416,17 @@ export const getDashboardDetailsPath = (dashboardFQN: string, tab?: string) => {
 export const getPipelineDetailsPath = (pipelineFQN: string, tab?: string) => {
   let path = tab ? ROUTES.PIPELINE_DETAILS_WITH_TAB : ROUTES.PIPELINE_DETAILS;
   path = path.replace(PLACEHOLDER_ROUTE_PIPELINE_FQN, pipelineFQN);
+
+  if (tab) {
+    path = path.replace(PLACEHOLDER_ROUTE_TAB, tab);
+  }
+
+  return path;
+};
+
+export const getMlModelDetailsPath = (mlModelFQN: string, tab?: string) => {
+  let path = tab ? ROUTES.MLMODEL_DETAILS_WITH_TAB : ROUTES.MLMODEL_DETAILS;
+  path = path.replace(PLACEHOLDER_ROUTE_MLMODEL_FQN, mlModelFQN);
 
   if (tab) {
     path = path.replace(PLACEHOLDER_ROUTE_TAB, tab);
@@ -492,24 +523,6 @@ export const TIMEOUT = {
   TOAST_DELAY: 5000, // 5 seconds timeout for toaster autohide delay
 };
 
-export const navLinkDevelop = [
-  { name: 'Reports', to: '/reports', disabled: false },
-  { name: 'SQL Builder', to: '/sql-builder', disabled: false },
-  { name: 'Workflows', to: '/workflows', disabled: false },
-];
-
-export const TITLE_FOR_NON_OWNER_ACTION =
-  'You need to be owner to perform this action';
-
-export const TITLE_FOR_NON_ADMIN_ACTION =
-  'Only Admin is allowed for the action';
-
-export const TITLE_FOR_UPDATE_OWNER =
-  'You do not have permissions to update the owner.';
-
-export const TITLE_FOR_UPDATE_DESCRIPTION =
-  'You do not have permissions to update the description.';
-
 export const configOptions = {
   headers: { 'Content-type': 'application/json-patch+json' },
 };
@@ -523,4 +536,11 @@ export const ENTITY_PATH: Record<string, string> = {
   dashboards: 'dashboard',
   pipelines: 'pipeline',
   mlmodels: 'mlmodel',
+  containers: 'container',
+};
+
+export const VALIDATE_MESSAGES = {
+  required: t('message.field-text-is-required', {
+    fieldText: '${label}',
+  }),
 };

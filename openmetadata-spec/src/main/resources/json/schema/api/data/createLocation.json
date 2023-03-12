@@ -9,8 +9,7 @@
 
   "properties": {
     "name": {
-      "description": "Name that identifies this Location.",
-      "$ref": "../../type/basic.json#/definitions/entityName"
+      "$ref" : "../../entity/data/location.json#/definitions/entityName"
     },
     "displayName": {
       "description": "Display Name that identifies this location.",
@@ -40,7 +39,7 @@
       "$ref": "../../type/entityReference.json"
     },
     "service": {
-      "description": "Link to the pipeline service where this location is used",
+      "description": "Link to the service where this location is from. Note this could be of multiple storage service types.",
       "$ref": "../../type/entityReference.json"
     }
   },

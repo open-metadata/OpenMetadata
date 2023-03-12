@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,8 +11,9 @@
  *  limitations under the License.
  */
 
-import { Popover, Skeleton, Space } from 'antd';
-import { capitalize, isEmpty } from 'lodash';
+import { Popover, Skeleton, Space, Tag } from 'antd';
+import { PIPELINE_INGESTION_RUN_STATUS } from 'constants/pipeline.constants';
+import { isEmpty, startCase } from 'lodash';
 import React, {
   FunctionComponent,
   useCallback,
@@ -20,7 +21,7 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { getRunHistoryForPipeline } from '../../../axiosAPIs/ingestionPipelineAPI';
+import { getRunHistoryForPipeline } from 'rest/ingestionPipelineAPI';
 import {
   IngestionPipeline,
   PipelineStatus,
@@ -30,6 +31,7 @@ import {
   getDateTimeFromMilliSeconds,
   getPastDaysDateTimeMillis,
 } from '../../../utils/TimeUtils';
+import './ingestion-recent-run.style.less';
 
 interface Props {
   ingestion: IngestionPipeline;
@@ -66,13 +68,13 @@ export const IngestionRecentRuns: FunctionComponent<Props> = ({
     } finally {
       setLoading(false);
     }
-  }, [ingestion.fullyQualifiedName]);
+  }, [ingestion, ingestion.fullyQualifiedName]);
 
   useEffect(() => {
     if (ingestion.fullyQualifiedName) {
       fetchPipelineStatus();
     }
-  }, [ingestion.fullyQualifiedName]);
+  }, [ingestion, ingestion.fullyQualifiedName]);
 
   return (
     <Space className={classNames} size={2}>
@@ -84,15 +86,21 @@ export const IngestionRecentRuns: FunctionComponent<Props> = ({
         recentRunStatus.map((r, i) => {
           const status =
             i === recentRunStatus.length - 1 ? (
-              <p
-                className={`tw-h-5 tw-w-16 tw-rounded-sm tw-bg-status-${r?.pipelineState} tw-px-1 tw-text-white tw-text-center`}
+              <Tag
+                className="ingestion-run-badge latest"
+                color={
+                  PIPELINE_INGESTION_RUN_STATUS[r?.pipelineState ?? 'success']
+                }
                 data-testid="pipeline-status"
                 key={i}>
-                {capitalize(r?.pipelineState)}
-              </p>
+                {startCase(r?.pipelineState)}
+              </Tag>
             ) : (
-              <p
-                className={`tw-w-4 tw-h-5 tw-rounded-sm tw-bg-status-${r?.pipelineState} `}
+              <Tag
+                className="ingestion-run-badge"
+                color={
+                  PIPELINE_INGESTION_RUN_STATUS[r?.pipelineState ?? 'success']
+                }
                 data-testid="pipeline-status"
                 key={i}
               />
@@ -107,19 +115,19 @@ export const IngestionRecentRuns: FunctionComponent<Props> = ({
                 <div className="tw-text-left">
                   {r.timestamp && (
                     <p>
-                      {t('label.execution-date')} :{' '}
+                      {`${t('label.execution-date')}:`}{' '}
                       {getDateTimeFromMilliSeconds(r.timestamp)}
                     </p>
                   )}
                   {r.startDate && (
                     <p>
-                      {t('label.start-date')}:{' '}
+                      {t('label.start-entity', { entity: t('label.date') })}:{' '}
                       {getDateTimeFromMilliSeconds(r.startDate)}
                     </p>
                   )}
                   {r.endDate && (
                     <p>
-                      {t('label.end-date')} :{' '}
+                      {`${t('label.end-date')}"`}{' '}
                       {getDateTimeFromMilliSeconds(r.endDate)}
                     </p>
                   )}

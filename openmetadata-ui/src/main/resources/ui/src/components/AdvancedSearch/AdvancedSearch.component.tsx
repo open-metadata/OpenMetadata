@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Builder,
   Config,
@@ -30,7 +30,6 @@ const AdvancedSearch: React.FC<AdvancedSearchProps> = ({
   onChangeJsonTree,
   onChangeQueryFilter,
   searchIndex,
-  onAppliedFilterChange,
 }) => {
   const [config, setConfig] = useState<Config>(getQbConfigs(searchIndex));
 
@@ -42,11 +41,21 @@ const AdvancedSearch: React.FC<AdvancedSearchProps> = ({
   useEffect(() => setConfig(getQbConfigs(searchIndex)), [searchIndex]);
 
   useEffect(() => {
-    onAppliedFilterChange(QbUtils.sqlFormat(immutableTree, config) ?? '');
-    onChangeQueryFilter({
-      query: elasticSearchFormat(immutableTree, config),
-    });
+    onChangeQueryFilter(
+      {
+        query: elasticSearchFormat(immutableTree, config),
+      },
+      QbUtils.sqlFormat(immutableTree, config) ?? ''
+    );
   }, [immutableTree, config]);
+
+  const handleChange = useCallback(
+    (nTree, nConfig) => {
+      setConfig(nConfig);
+      onChangeJsonTree(QbUtils.getTree(nTree));
+    },
+    [setConfig, onChangeJsonTree]
+  );
 
   return (
     <Query
@@ -57,10 +66,7 @@ const AdvancedSearch: React.FC<AdvancedSearchProps> = ({
         </div>
       )}
       value={immutableTree}
-      onChange={(nTree, nConfig) => {
-        setConfig(nConfig);
-        onChangeJsonTree(QbUtils.getTree(nTree));
-      }}
+      onChange={handleChange}
     />
   );
 };

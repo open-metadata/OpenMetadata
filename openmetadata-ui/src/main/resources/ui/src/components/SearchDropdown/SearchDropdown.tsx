@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -164,7 +164,9 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
                   data-testid="clear-button"
                   type="link"
                   onClick={handleClear}>
-                  {t('label.clear-all')}
+                  {t('label.clear-entity', {
+                    entity: t('label.all'),
+                  })}
                 </Button>
               </>
             )}
@@ -180,7 +182,7 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
             ) : (
               <Row className="m-y-sm" justify="center">
                 <Typography.Text>
-                  {t('label.no-data-available')}
+                  {t('message.no-data-available')}
                 </Typography.Text>
               </Row>
             )}
@@ -222,7 +224,7 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
         title={getSelectedOptionLabelString(selectedKeys, true)}
         trigger="hover">
         <Button className="quick-filter-dropdown-trigger-btn">
-          <Space data-testid="search-dropdown" size={4}>
+          <Space data-testid={`search-dropdown-${label}`} size={4}>
             <Space size={0}>
               <Typography.Text>{label}</Typography.Text>
               {selectedKeys.length > 0 && (

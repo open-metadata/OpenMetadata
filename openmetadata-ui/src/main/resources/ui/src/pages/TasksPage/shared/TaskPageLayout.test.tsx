@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -18,17 +18,22 @@ const mockProps = {
   children: <div data-testid="children" />,
 };
 
+jest.mock('components/containers/PageLayoutV1', () =>
+  jest.fn().mockImplementation(({ children, leftPanel, rightPanel }) => (
+    <div>
+      {leftPanel}
+      {children}
+      {rightPanel}
+    </div>
+  ))
+);
+
 describe('Test TaskPageLayout Component', () => {
   it('Should render the component', async () => {
     render(<TaskPageLayout {...mockProps} />);
 
-    const leftSider = await screen.findByTestId('left-sider');
-    const rightSider = await screen.findByTestId('right-sider');
-
     const children = await screen.findByTestId('children');
 
-    expect(leftSider).toBeInTheDocument();
-    expect(rightSider).toBeInTheDocument();
     expect(children).toBeInTheDocument();
   });
 });

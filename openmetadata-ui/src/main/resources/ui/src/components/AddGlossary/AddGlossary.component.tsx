@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,11 +11,12 @@
  *  limitations under the License.
  */
 
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { Space, Typography } from 'antd';
-import classNames from 'classnames';
-import { cloneDeep } from 'lodash';
-import { EditorContentRef, EntityTags } from 'Models';
+import { PlusOutlined } from '@ant-design/icons';
+import { Button, Space, Switch, Typography } from 'antd';
+import Tags from 'components/Tag/Tags/tags';
+import { LOADING_STATE } from 'enums/common.enum';
+import { cloneDeep, toString } from 'lodash';
+import { EntityTags } from 'Models';
 import React, { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ADD_GLOSSARY_ERROR } from '../../constants/Glossary.constant';
@@ -25,13 +26,11 @@ import { CreateGlossary } from '../../generated/api/data/createGlossary';
 import { EntityReference } from '../../generated/type/entityReference';
 import { getCurrentUserId, requiredField } from '../../utils/CommonUtils';
 import { AddTags } from '../AddTags/add-tags.component';
-import { Button } from '../buttons/Button/Button';
 import RichTextEditor from '../common/rich-text-editor/RichTextEditor';
+import { EditorContentRef } from '../common/rich-text-editor/RichTextEditor.interface';
 import TitleBreadcrumb from '../common/title-breadcrumb/title-breadcrumb.component';
 import PageLayout from '../containers/PageLayout';
-import Loader from '../Loader/Loader';
 import ReviewerModal from '../Modals/ReviewerModal/ReviewerModal.component';
-import Tags from '../tags/tags';
 import { AddGlossaryError, AddGlossaryProps } from './AddGlossary.interface';
 
 const Field = ({ children }: { children: React.ReactNode }) => {
@@ -59,6 +58,7 @@ const AddGlossary = ({
   const [description] = useState<string>('');
   const [showReviewerModal, setShowReviewerModal] = useState(false);
   const [tags, setTags] = useState<EntityTags[]>([]);
+  const [mutuallyExclusive, setMutuallyExclusive] = useState(false);
   const [reviewer, setReviewer] = useState<Array<EntityReference>>([]);
 
   const getDescription = () => {
@@ -122,54 +122,19 @@ const AddGlossary = ({
         name: name.trim(),
         displayName: name.trim(),
         description: getDescription(),
-        reviewers: reviewer.map((d) => ({ id: d.id, type: d.type })),
+        reviewers:
+          reviewer.map((d) => toString(d.fullyQualifiedName)).filter(Boolean) ??
+          [],
         owner: {
           id: getCurrentUserId(),
           type: 'user',
         },
         tags: tags,
+        mutuallyExclusive,
       };
 
       onSave(data);
     }
-  };
-
-  const getSaveButton = () => {
-    return allowAccess ? (
-      <>
-        {saveState === 'waiting' ? (
-          <Button
-            disabled
-            className="tw-w-16 tw-h-10 disabled:tw-opacity-100"
-            size="regular"
-            theme="primary"
-            variant="contained">
-            <Loader size="small" type="white" />
-          </Button>
-        ) : saveState === 'success' ? (
-          <Button
-            disabled
-            className="tw-w-16 tw-h-10 disabled:tw-opacity-100"
-            size="regular"
-            theme="primary"
-            variant="contained">
-            <FontAwesomeIcon icon="check" />
-          </Button>
-        ) : (
-          <Button
-            className={classNames('tw-w-16 tw-h-10', {
-              'tw-opacity-40': !allowAccess,
-            })}
-            data-testid="save-glossary"
-            size="regular"
-            theme="primary"
-            variant="contained"
-            onClick={handleSave}>
-            {t('label.save')}
-          </Button>
-        )}
-      </>
-    ) : null;
   };
 
   const fetchRightPanel = () => {
@@ -190,6 +155,7 @@ const AddGlossary = ({
       classes="tw-max-w-full-hd tw-h-full tw-pt-4"
       header={<TitleBreadcrumb titleLinks={slashedBreadcrumb} />}
       layout={PageLayoutType['2ColRTL']}
+      pageTitle={t('label.add-entity', { entity: t('label.glossary') })}
       rightPanel={fetchRightPanel()}>
       <div className="tw-form-container">
         <Typography.Title data-testid="form-heading" level={5}>
@@ -235,7 +201,10 @@ const AddGlossary = ({
           </Field>
 
           <Field>
-            <Space className="w-full" direction="vertical">
+            <Space
+              className="w-full"
+              data-testid="tags-container"
+              direction="vertical">
               <label htmlFor="tags">{t('label.tag-plural')}:</label>
               <AddTags
                 data-testid="tags"
@@ -244,19 +213,34 @@ const AddGlossary = ({
             </Space>
           </Field>
 
+          <Field>
+            <Space align="end">
+              <label
+                className="tw-form-label m-b-0 tw-mb-1"
+                data-testid="mutually-exclusive-label"
+                htmlFor="mutuallyExclusive">
+                {t('label.mutually-exclusive')}
+              </label>
+              <Switch
+                checked={mutuallyExclusive}
+                data-testid="mutually-exclusive-button"
+                id="mutuallyExclusive"
+                onChange={(value) => setMutuallyExclusive(value)}
+              />
+            </Space>
+          </Field>
+
           <div>
             <div className="tw-flex tw-items-center tw-mt-4">
               <span className="w-form-label tw-mr-3">
-                {t('label.reviewer-plural')}:
+                {`${t('label.reviewer-plural')}:`}
               </span>
               <Button
-                className="tw-h-5 tw-px-2"
                 data-testid="add-reviewers"
-                size="x-small"
-                theme="primary"
-                variant="contained"
+                size="small"
+                type="primary"
                 onClick={() => setShowReviewerModal(true)}>
-                <FontAwesomeIcon icon="plus" />
+                <PlusOutlined style={{ color: 'white' }} />
               </Button>
             </div>
             <div className="tw-my-4" data-testid="reviewers-container">
@@ -280,17 +264,25 @@ const AddGlossary = ({
           <div className="flex justify-end">
             <Button
               data-testid="cancel-glossary"
-              size="regular"
-              theme="primary"
-              variant="text"
+              type="link"
               onClick={onCancel}>
               {t('label.cancel')}
             </Button>
-            {getSaveButton()}
+
+            <Button
+              data-testid="save-glossary"
+              disabled={!allowAccess}
+              loading={saveState === LOADING_STATE.WAITING}
+              type="primary"
+              onClick={handleSave}>
+              {t('label.save')}
+            </Button>
           </div>
         </div>
         <ReviewerModal
-          header={t('label.add-reviewer')}
+          header={t('label.add-entity', {
+            entity: t('label.reviewer'),
+          })}
           reviewer={reviewer}
           visible={showReviewerModal}
           onCancel={onReviewerModalCancel}

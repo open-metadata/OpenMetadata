@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
 import React, { ChangeEvent, FC, useState } from 'react';
 import { Button } from '../../buttons/Button/Button';
 
@@ -67,7 +67,7 @@ export const PropertyInput: FC<PropertInputProps> = ({
           theme="primary"
           variant="contained"
           onMouseDown={onCancel}>
-          <FontAwesomeIcon className="tw-w-3.5 tw-h-3.5" icon="times" />
+          <CloseOutlined />
         </Button>
         <Button
           className="tw-px-1 tw-py-1 tw-rounded tw-text-sm"
@@ -76,7 +76,7 @@ export const PropertyInput: FC<PropertInputProps> = ({
           theme="primary"
           variant="contained"
           onClick={handleSave}>
-          <FontAwesomeIcon className="tw-w-3.5 tw-h-3.5" icon="check" />
+          <CheckOutlined />
         </Button>
       </div>
     </div>

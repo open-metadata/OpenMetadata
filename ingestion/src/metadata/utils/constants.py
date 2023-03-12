@@ -16,6 +16,8 @@ Define constants useful for the metadata ingestion
 DOT = "_DOT_"
 TEN_MIN = 10 * 60
 UTF_8 = "utf-8"
+CHUNKSIZE = 200000
+DEFAULT_DATABASE = "default"
 
 
 ES_SOURCE_TO_ES_OBJ_ARGS = {
@@ -26,8 +28,3 @@ ES_SOURCE_TO_ES_OBJ_ARGS = {
     "useSSL": "use_ssl",
     "verifyCerts": "verify_certs",
 }
-
-TABLEAU_GET_WORKBOOKS_PARAM_DICT = {
-    "fields": "fields=_default_,owner.email,description"
-}
-TABLEAU_GET_VIEWS_PARAM_DICT = {"fields": "fields=_default_,sheetType"}

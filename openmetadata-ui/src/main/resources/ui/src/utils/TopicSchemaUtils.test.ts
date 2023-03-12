@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -16,24 +16,24 @@ import { updateFieldDescription, updateFieldTags } from './TopicSchema.utils';
 const mockTagOptions = [
   {
     fqn: 'PII.Sensitive',
-    source: 'Tag',
+    source: 'Classification',
   },
   {
     fqn: 'PersonalData.Personal',
-    source: 'Tag',
+    source: 'Classification',
   },
 ];
 
 const mockTags = [
   {
     tagFQN: 'PII.Sensitive',
-    source: 'Tag',
+    source: 'Classification',
     labelType: 'Manual',
     state: 'Confirmed',
   },
   {
     tagFQN: 'PersonalData.Personal',
-    source: 'Tag',
+    source: 'Classification',
     labelType: 'Manual',
     state: 'Confirmed',
   },

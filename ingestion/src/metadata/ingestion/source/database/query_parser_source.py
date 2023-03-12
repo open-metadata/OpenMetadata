@@ -25,8 +25,8 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.generated.schema.type.tableQuery import TableQuery
 from metadata.ingestion.api.source import Source, SourceStatus
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.source.connections import get_connection, get_test_connection_fn
 from metadata.ingestion.source.database.common_db_source import SQLSourceStatus
-from metadata.utils.connections import get_connection, test_connection
 from metadata.utils.helpers import get_start_and_end
 from metadata.utils.logger import ingestion_logger
 
@@ -45,16 +45,18 @@ class QueryParserSource(Source[Union[TableQuery, AddLineageRequest]], ABC):
 
     sql_stmt: str
     filters: str
+    database_field: str
+    schema_field: str
 
     def __init__(self, config: WorkflowSource, metadata_config: OpenMetadataConnection):
         self.config = config
         self.metadata_config = metadata_config
         self.metadata = OpenMetadata(metadata_config)
-        self.connection = self.config.serviceConnection.__root__.config
+        self.service_connection = self.config.serviceConnection.__root__.config
         self.source_config = self.config.sourceConfig.config
         self.start, self.end = get_start_and_end(self.source_config.queryLogDuration)
         self.report = SQLSourceStatus()
-        self.engine = get_connection(self.connection)
+        self.engine = get_connection(self.service_connection)
 
     def prepare(self):
         """
@@ -118,4 +120,5 @@ class QueryParserSource(Source[Union[TableQuery, AddLineageRequest]], ABC):
         return self.report
 
     def test_connection(self) -> None:
-        test_connection(self.engine)
+        test_connection_fn = get_test_connection_fn(self.service_connection)
+        test_connection_fn(self.engine)

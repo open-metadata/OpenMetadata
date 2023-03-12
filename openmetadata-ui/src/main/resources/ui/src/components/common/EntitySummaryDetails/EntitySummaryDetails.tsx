@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -45,6 +45,7 @@ export interface GetInfoElementsProps {
   currentOwner?: Dashboard['owner'];
   removeTier?: () => void;
   deleted?: boolean;
+  allowTeamOwner?: boolean;
 }
 
 const EditIcon = ({ iconClasses }: { iconClasses?: string }): JSX.Element => (
@@ -80,6 +81,7 @@ const EntitySummaryDetails = ({
   removeTier,
   currentOwner,
   deleted = false,
+  allowTeamOwner = true,
 }: GetInfoElementsProps) => {
   let retVal = <></>;
   const { t } = useTranslation();
@@ -122,7 +124,7 @@ const EntitySummaryDetails = ({
                     />
                     <span>{userDetails.ownerName}</span>
                     <span className="tw-mr-1 tw-inline-block tw-text-gray-400">
-                      |
+                      {t('label.pipe-symbol')}
                     </span>
                   </>
                 )}
@@ -157,13 +159,13 @@ const EntitySummaryDetails = ({
             <>
               {t('label.no-entity', { entity: t('label.tier') })}
               <Dropdown
-                overlay={
+                dropdownRender={() => (
                   <TierCard
                     currentTier={tier?.tagFQN}
                     removeTier={removeTier}
                     updateTier={updateTier}
                   />
-                }
+                )}
                 trigger={['click']}>
                 <span data-testid={`edit-${data.key}-icon`}>
                   {updateTier && !deleted ? <EditIcon /> : null}
@@ -179,14 +181,14 @@ const EntitySummaryDetails = ({
 
     case 'TeamType':
       {
-        retVal = displayVal ? <>{t('label.type')} - </> : <></>;
+        retVal = displayVal ? <>{`${t('label.type')} - `}</> : <></>;
       }
 
       break;
 
     case 'Usage':
       {
-        retVal = <>{t('label.usage')} - </>;
+        retVal = <>{`${t('label.usage')} - `}</>;
       }
 
       break;
@@ -201,7 +203,11 @@ const EntitySummaryDetails = ({
                   ? `${t(`label.${toLower(data.key)}`)} - `
                   : null
                 : `${t('label.no-entity', {
-                    entity: t(`label.${toLower(data.key)}`),
+                    entity: t(
+                      `label.${toLower(
+                        data.localizationKey ? data.localizationKey : data.key
+                      )}`
+                    ),
                   })}`
               : null}
           </>
@@ -342,7 +348,9 @@ const EntitySummaryDetails = ({
                   title={
                     isGroupType
                       ? t('message.group-team-type-change-message')
-                      : t('label.edit-team-type')
+                      : t('label.edit-entity', {
+                          entity: t('label.team-type'),
+                        })
                   }>
                   <AntdButton
                     className={isGroupType ? 'tw-opacity-50' : ''}
@@ -360,6 +368,7 @@ const EntitySummaryDetails = ({
         </>
       )}
       <OwnerWidgetWrapper
+        allowTeamOwner={allowTeamOwner}
         currentUser={currentOwner}
         hideWidget={() => setShow(false)}
         removeOwner={removeOwner}

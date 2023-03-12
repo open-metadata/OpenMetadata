@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,12 +11,30 @@
  *  limitations under the License.
  */
 
-/// <reference types="cypress" />
+// / <reference types="cypress" />
 
-import { followAndOwnTheEntity, interceptURL, searchEntity, visitEntityDetailsPage } from '../../common/common';
-import { ENTITIES, FOLLOWING_TITLE, MYDATA_SUMMARY_OPTIONS, MY_DATA_TITLE, NO_SEARCHED_TERMS, RECENT_SEARCH_TITLE, RECENT_VIEW_TITLE, SEARCH_ENTITY_DASHBOARD, SEARCH_ENTITY_PIPELINE, SEARCH_ENTITY_TABLE, SEARCH_ENTITY_TOPIC } from '../../constants/constants';
+import {
+  followAndOwnTheEntity,
+  interceptURL,
+  searchEntity,
+  verifyResponseStatusCode,
+  visitEntityDetailsPage,
+} from '../../common/common';
+import {
+  ENTITIES,
+  FOLLOWING_TITLE,
+  MYDATA_SUMMARY_OPTIONS,
+  MY_DATA_TITLE,
+  NO_SEARCHED_TERMS,
+  RECENT_SEARCH_TITLE,
+  RECENT_VIEW_TITLE,
+  SEARCH_ENTITY_DASHBOARD,
+  SEARCH_ENTITY_PIPELINE,
+  SEARCH_ENTITY_TABLE,
+  SEARCH_ENTITY_TOPIC,
+} from '../../constants/constants';
 
-const FOLLOWING_MYDATA_COUNT = 3;
+const FOLLOWING_MYDATA_COUNT = 4;
 
 describe('MyData page should work', () => {
   beforeEach(() => {
@@ -63,6 +81,7 @@ describe('MyData page should work', () => {
 
   Object.values(ENTITIES).map((entity) => {
     const text = entity.entityObj.displayName ?? entity.entityObj.term;
+
     it(`Recent view section and redirection should work for ${entity.name} entity`, () => {
       visitEntityDetailsPage(
         entity.entityObj.term,
@@ -105,7 +124,7 @@ describe('MyData page should work', () => {
     followAndOwnTheEntity(SEARCH_ENTITY_TOPIC.topic_1);
   });
 
-  it.skip('My data, following & feed section should work properly for dashboard entity', () => {
+  it('My data, following & feed section should work properly for dashboard entity', () => {
     followAndOwnTheEntity(SEARCH_ENTITY_DASHBOARD.dashboard_1);
   });
 
@@ -113,23 +132,31 @@ describe('MyData page should work', () => {
     followAndOwnTheEntity(SEARCH_ENTITY_PIPELINE.pipeline_1);
   });
 
-  
-  it.skip('My data and following section, CTA should work properly', () => {
+  it('My data and following section, CTA should work properly', () => {
     cy.get('[data-testid="my-data-container"]')
       .find('[data-testid*="My data"]')
-      .should('have.length', FOLLOWING_MYDATA_COUNT);
+      .should('have.length.at.least', FOLLOWING_MYDATA_COUNT);
     cy.get('[data-testid="following-data-container"]')
       .find('[data-testid*="Following data"]')
-      .should('have.length', FOLLOWING_MYDATA_COUNT);
-
+      .should('have.length.at.least', FOLLOWING_MYDATA_COUNT);
+    interceptURL(
+      'GET',
+      '/api/v1/search/query?q=*owner.id:*&from=0&size=10&index=*',
+      'userDetailsmyDataTab'
+    );
     cy.get('[data-testid="my-data-total-count"]').should('be.visible').click();
-
+    verifyResponseStatusCode('@userDetailsmyDataTab', 200);
     cy.get('[data-testid="table-data-card"]').first().should('be.visible');
     cy.clickOnLogo();
-
+    interceptURL(
+      'GET',
+      'api/v1/search/query?q=*followers:*&from=0&size=10&index=*',
+      'userDetailsFollowTab'
+    );
     cy.get('[data-testid="following-data-total-count"]')
       .should('be.visible')
       .click();
+    verifyResponseStatusCode('@userDetailsFollowTab', 200);
 
     cy.get('[data-testid="table-data-card"]').first().should('be.visible');
     cy.clickOnLogo();

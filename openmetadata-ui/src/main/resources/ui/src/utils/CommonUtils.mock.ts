@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+
 import { LabelType, State, TagSource } from '../generated/entity/data/chart';
 
 export const mockTags = [
@@ -17,7 +18,7 @@ export const mockTags = [
     tagFQN: 'PII.NonSensitive',
     description:
       'PII which is easily accessible from public sources and can include zip code, race, gender, and date of birth.',
-    source: TagSource.Tag,
+    source: TagSource.Classification,
     labelType: LabelType.Manual,
     state: State.Confirmed,
   },
@@ -25,35 +26,35 @@ export const mockTags = [
     tagFQN: 'PersonalData.Personal',
     description:
       'Data that can be used to directly or indirectly identify a person.',
-    source: TagSource.Tag,
+    source: TagSource.Classification,
     labelType: LabelType.Manual,
     state: State.Confirmed,
   },
   {
     tagFQN: 'ab.tag',
     description: '',
-    source: TagSource.Tag,
+    source: TagSource.Classification,
     labelType: LabelType.Manual,
     state: State.Confirmed,
   },
   {
     tagFQN: 'persona.tag',
     description: '',
-    source: TagSource.Tag,
+    source: TagSource.Classification,
     labelType: LabelType.Manual,
     state: State.Confirmed,
   },
   {
     tagFQN: 'aa.tag',
     description: '',
-    source: TagSource.Tag,
+    source: TagSource.Classification,
     labelType: LabelType.Manual,
     state: State.Confirmed,
   },
   {
     tagFQN: 'ac.tag',
     description: '',
-    source: TagSource.Tag,
+    source: TagSource.Classification,
     labelType: LabelType.Manual,
     state: State.Confirmed,
   },
@@ -63,28 +64,28 @@ export const sortedMockTags = [
   {
     tagFQN: 'aa.tag',
     description: '',
-    source: TagSource.Tag,
+    source: TagSource.Classification,
     labelType: LabelType.Manual,
     state: State.Confirmed,
   },
   {
     tagFQN: 'ab.tag',
     description: '',
-    source: TagSource.Tag,
+    source: TagSource.Classification,
     labelType: LabelType.Manual,
     state: State.Confirmed,
   },
   {
     tagFQN: 'ac.tag',
     description: '',
-    source: TagSource.Tag,
+    source: TagSource.Classification,
     labelType: LabelType.Manual,
     state: State.Confirmed,
   },
   {
     tagFQN: 'persona.tag',
     description: '',
-    source: TagSource.Tag,
+    source: TagSource.Classification,
     labelType: LabelType.Manual,
     state: State.Confirmed,
   },
@@ -92,7 +93,7 @@ export const sortedMockTags = [
     tagFQN: 'PersonalData.Personal',
     description:
       'Data that can be used to directly or indirectly identify a person.',
-    source: TagSource.Tag,
+    source: TagSource.Classification,
     labelType: LabelType.Manual,
     state: State.Confirmed,
   },
@@ -100,7 +101,7 @@ export const sortedMockTags = [
     tagFQN: 'PII.NonSensitive',
     description:
       'PII which is easily accessible from public sources and can include zip code, race, gender, and date of birth.',
-    source: TagSource.Tag,
+    source: TagSource.Classification,
     labelType: LabelType.Manual,
     state: State.Confirmed,
   },

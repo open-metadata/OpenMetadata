@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -12,96 +12,139 @@
  */
 
 import { Col, Divider, Row, Typography } from 'antd';
-import React, { ReactNode, useMemo } from 'react';
+import classNames from 'classnames';
+import SummaryTagsDescription from 'components/common/SummaryTagsDescription/SummaryTagsDescription.component';
+import SummaryPanelSkeleton from 'components/Skeleton/SummaryPanelSkeleton/SummaryPanelSkeleton.component';
+import { ExplorePageTabs } from 'enums/Explore.enum';
+import { TagLabel } from 'generated/type/tagLabel';
+import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { getDashboardDetailsPath } from '../../../../constants/constants';
-import { SearchIndex } from '../../../../enums/search.enum';
+import {
+  DRAWER_NAVIGATION_OPTIONS,
+  getEntityOverview,
+} from 'utils/EntityUtils';
+import SVGIcons from 'utils/SvgUtils';
+import { SummaryEntityType } from '../../../../enums/EntitySummary.enum';
 import { Mlmodel } from '../../../../generated/entity/data/mlmodel';
-import { getEntityName } from '../../../../utils/CommonUtils';
-import TableDataCardTitle from '../../../common/table-data-card-v2/TableDataCardTitle.component';
+import { getFormattedEntityData } from '../../../../utils/EntitySummaryPanelUtils';
 import SummaryList from '../SummaryList/SummaryList.component';
+import { BasicEntityInfo } from '../SummaryList/SummaryList.interface';
 
 interface MlModelSummaryProps {
   entityDetails: Mlmodel;
+  componentType?: string;
+  tags?: TagLabel[];
+  isLoading?: boolean;
 }
 
-interface BasicMlModelInfo {
-  algorithm: string;
-  target?: string;
-  server?: ReactNode;
-  dashboard?: ReactNode;
-}
-
-function MlModelSummary({ entityDetails }: MlModelSummaryProps) {
+function MlModelSummary({
+  entityDetails,
+  componentType = DRAWER_NAVIGATION_OPTIONS.explore,
+  tags,
+  isLoading,
+}: MlModelSummaryProps) {
   const { t } = useTranslation();
 
-  const basicMlModelInfo: BasicMlModelInfo = useMemo(
-    () => ({
-      algorithm: entityDetails.algorithm,
-      target: entityDetails.target,
-      server: entityDetails.server ? (
-        <a href={entityDetails.server}>{entityDetails.server}</a>
-      ) : undefined,
-      dashboard: entityDetails.dashboard ? (
-        <Link
-          to={getDashboardDetailsPath(
-            entityDetails.dashboard?.fullyQualifiedName as string
-          )}>
-          {getEntityName(entityDetails.dashboard)}
-        </Link>
-      ) : undefined,
-    }),
+  const entityInfo = useMemo(
+    () => getEntityOverview(ExplorePageTabs.MLMODELS, entityDetails),
     [entityDetails]
   );
 
+  const formattedFeaturesData: BasicEntityInfo[] = useMemo(
+    () =>
+      getFormattedEntityData(
+        SummaryEntityType.MLFEATURE,
+        entityDetails.mlFeatures
+      ),
+    [entityDetails]
+  );
+
+  const isExplore = useMemo(
+    () => componentType === DRAWER_NAVIGATION_OPTIONS.explore,
+    [componentType]
+  );
+
   return (
-    <>
-      <Row className="m-md" gutter={[0, 4]}>
-        <Col span={24}>
-          <TableDataCardTitle
-            dataTestId="summary-panel-title"
-            searchIndex={SearchIndex.MLMODEL}
-            source={entityDetails}
-          />
-        </Col>
-        <Col span={24}>
-          <Row>
-            {Object.keys(basicMlModelInfo).map((fieldName) => {
-              const value =
-                basicMlModelInfo[fieldName as keyof BasicMlModelInfo];
-              if (value) {
-                return (
-                  <Col key={fieldName} span={24}>
-                    <Row gutter={16}>
-                      <Col className="text-gray" span={10}>
-                        {fieldName}
-                      </Col>
-                      <Col span={12}>
-                        {basicMlModelInfo[fieldName as keyof BasicMlModelInfo]}
+    <SummaryPanelSkeleton loading={Boolean(isLoading)}>
+      <>
+        <Row className="m-md" gutter={[0, 4]}>
+          <Col span={24}>
+            <Row>
+              {entityInfo.map((info) => {
+                const isOwner = info.name === t('label.owner');
+
+                return info.visible?.includes(componentType) ? (
+                  <Col key={info.name} span={24}>
+                    <Row
+                      className={classNames('', {
+                        'p-b-md': isOwner,
+                      })}
+                      gutter={[16, 32]}>
+                      {!isOwner ? (
+                        <Col data-testid={`${info.name}-label`} span={8}>
+                          <Typography.Text className="text-grey-muted">
+                            {info.name}
+                          </Typography.Text>
+                        </Col>
+                      ) : null}
+                      <Col data-testid={`${info.name}-value`} span={16}>
+                        {info.isLink ? (
+                          <Link
+                            target={info.isExternal ? '_blank' : '_self'}
+                            to={{ pathname: info.url }}>
+                            {info.value}
+                            {info.isExternal ? (
+                              <SVGIcons
+                                alt="external-link"
+                                className="m-l-xs"
+                                icon="external-link"
+                                width="12px"
+                              />
+                            ) : null}
+                          </Link>
+                        ) : (
+                          <Typography.Text
+                            className={classNames('text-grey-muted', {
+                              'text-grey-body': !isOwner,
+                            })}>
+                            {info.value}
+                          </Typography.Text>
+                        )}
                       </Col>
                     </Row>
                   </Col>
-                );
-              } else {
-                return null;
-              }
-            })}
-          </Row>
-        </Col>
-      </Row>
-      <Divider className="m-0" />
-      <Row className="m-md" gutter={[0, 16]}>
-        <Col span={24}>
-          <Typography.Text className="section-header">
-            {t('label.feature-plural')}
-          </Typography.Text>
-        </Col>
-        <Col span={24}>
-          <SummaryList mlFeatures={entityDetails.mlFeatures || []} />
-        </Col>
-      </Row>
-    </>
+                ) : null;
+              })}
+            </Row>
+          </Col>
+        </Row>
+        <Divider className="m-y-xs" />
+
+        {!isExplore ? (
+          <>
+            <SummaryTagsDescription
+              entityDetail={entityDetails}
+              tags={tags ? tags : []}
+            />
+            <Divider className="m-y-xs" />
+          </>
+        ) : null}
+
+        <Row className="m-md" gutter={[0, 16]}>
+          <Col span={24}>
+            <Typography.Text
+              className="text-base text-grey-muted"
+              data-testid="features-header">
+              {t('label.feature-plural')}
+            </Typography.Text>
+          </Col>
+          <Col span={24}>
+            <SummaryList formattedEntityData={formattedFeaturesData} />
+          </Col>
+        </Row>
+      </>
+    </SummaryPanelSkeleton>
   );
 }
 

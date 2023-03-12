@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -12,9 +12,12 @@
  */
 
 import { Select, Spin, Typography } from 'antd';
+import { t } from 'i18next';
 import { cloneDeep, debounce, includes } from 'lodash';
 import React, { Fragment, useCallback, useEffect, useState } from 'react';
-import { searchData } from '../../../axiosAPIs/miscAPI';
+import { useHistory } from 'react-router-dom';
+import { searchData } from 'rest/miscAPI';
+import { getGlossaryPath } from 'utils/RouterUtils';
 import { PAGE_SIZE } from '../../../constants/constants';
 import { SearchIndex } from '../../../enums/search.enum';
 import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
@@ -27,16 +30,15 @@ import SummaryDetail from '../SummaryDetail';
 interface RelatedTermsProps {
   permissions: OperationPermission;
   glossaryTerm: GlossaryTerm;
-  onRelatedTermClick?: (fqn: string) => void;
   onGlossaryTermUpdate: (data: GlossaryTerm) => void;
 }
 
 const RelatedTerms = ({
   glossaryTerm,
   permissions,
-  onRelatedTermClick,
   onGlossaryTermUpdate,
 }: RelatedTermsProps) => {
+  const history = useHistory();
   const [isIconVisible, setIsIconVisible] = useState<boolean>(true);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [options, setOptions] = useState<EntityReference[]>([]);
@@ -51,6 +53,10 @@ const RelatedTerms = ({
     });
 
     return [...selectedOption, ...data];
+  };
+
+  const handleRelatedTermClick = (fqn: string) => {
+    history.push(getGlossaryPath(fqn));
   };
 
   const handleRelatedTermsSave = () => {
@@ -102,7 +108,7 @@ const RelatedTerms = ({
     return data.map((value) => ({
       ...value,
       value: value.id,
-      label: value.displayName,
+      label: value.displayName || value.name,
       key: value.id,
     }));
   };
@@ -120,7 +126,7 @@ const RelatedTerms = ({
       key="related_term"
       setShow={() => setIsIconVisible(false)}
       showIcon={isIconVisible}
-      title="Related Terms"
+      title={t('label.related-term-plural')}
       onSave={handleRelatedTermsSave}>
       <div className="flex" data-testid="related-term-container">
         {isIconVisible ? (
@@ -132,7 +138,7 @@ const RelatedTerms = ({
                   className="flex"
                   data-testid={`related-term-${term?.name}`}
                   onClick={() => {
-                    onRelatedTermClick?.(term.fullyQualifiedName || '');
+                    handleRelatedTermClick(term.fullyQualifiedName || '');
                   }}>
                   <Typography.Text
                     className="link-text-info"
@@ -145,7 +151,7 @@ const RelatedTerms = ({
             ))
           ) : (
             <Typography.Text type="secondary">
-              No related terms available.
+              {t('message.no-related-terms-available')}
             </Typography.Text>
           )
         ) : (
@@ -155,7 +161,9 @@ const RelatedTerms = ({
             mode="multiple"
             notFoundContent={isLoading ? <Spin size="small" /> : null}
             options={formatOptions(options)}
-            placeholder="Add Related Terms"
+            placeholder={t('label.add-entity', {
+              entity: t('label.related-term-plural'),
+            })}
             style={{ width: '100%' }}
             value={selectedOption}
             onChange={(_, data) => {

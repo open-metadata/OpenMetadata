@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,8 +11,23 @@
  *  limitations under the License.
  */
 
-import { Button, Popover, Space, Typography } from 'antd';
+import {
+  Button,
+  Col,
+  Popover,
+  Radio,
+  RadioChangeEvent,
+  Row,
+  Space,
+  Tag,
+  Typography,
+} from 'antd';
 import Table, { ColumnsType } from 'antd/lib/table';
+import classNames from 'classnames';
+import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
+import SchemaEditor from 'components/schema-editor/SchemaEditor';
+import { CSMode } from 'enums/codemirror.enum';
+import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { cloneDeep, isEmpty, isUndefined } from 'lodash';
 import { EntityTags, TagOption } from 'Models';
 import React, { FC, useMemo, useState } from 'react';
@@ -28,9 +43,13 @@ import {
 } from '../../../utils/TopicSchema.utils';
 import RichTextEditorPreviewer from '../../common/rich-text-editor/RichTextEditorPreviewer';
 import { ModalWithMarkdownEditor } from '../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
-import TagsContainer from '../../tags-container/tags-container';
-import TagsViewer from '../../tags-viewer/tags-viewer';
-import { CellRendered, TopicSchemaFieldsProps } from './TopicSchema.interface';
+import TagsContainer from '../../Tag/TagsContainer/tags-container';
+import TagsViewer from '../../Tag/TagsViewer/tags-viewer';
+import {
+  CellRendered,
+  SchemaViewType,
+  TopicSchemaFieldsProps,
+} from './TopicSchema.interface';
 
 const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
   messageSchema,
@@ -48,6 +67,9 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
   const [tagList, setTagList] = useState<TagOption[]>([]);
   const [isTagLoading, setIsTagLoading] = useState<boolean>(false);
   const [tagFetchFailed, setTagFetchFailed] = useState<boolean>(false);
+  const [viewType, setViewType] = useState<SchemaViewType>(
+    SchemaViewType.FIELDS
+  );
 
   const fetchTags = async () => {
     setIsTagLoading(true);
@@ -125,7 +147,9 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
             <RichTextEditorPreviewer markdown={description} />
           ) : (
             <Typography.Text className="tw-no-description">
-              {t('label.no-description')}
+              {t('label.no-entity', {
+                entity: t('label.description'),
+              })}
             </Typography.Text>
           )}
         </>
@@ -170,7 +194,6 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
             direction={styleFlag ? 'vertical' : 'horizontal'}
             onClick={() => handleAddTagClick(record)}>
             <TagsContainer
-              className="w-max-256"
               editable={isSelectedField}
               isLoading={isTagLoading && isSelectedField}
               selectedTags={tags || []}
@@ -224,7 +247,7 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
         title: t('label.tag-plural'),
         dataIndex: 'tags',
         key: 'tags',
-        width: 272,
+        width: 350,
         render: renderFieldTags,
       },
     ],
@@ -239,22 +262,71 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
     ]
   );
 
+  const handleViewChange = (e: RadioChangeEvent) => {
+    setViewType(e.target.value);
+  };
+
   return (
-    <>
-      <Table
-        bordered
-        className={className}
-        columns={columns}
-        data-testid="topic-schema-fields-table"
-        dataSource={messageSchema?.schemaFields}
-        expandable={{
-          ...getTableExpandableConfig<Field>(),
-          rowExpandable: (record) => !isEmpty(record.children),
-        }}
-        pagination={false}
-        rowKey="name"
-        size="small"
-      />
+    <Row className="mt-4" gutter={[16, 16]}>
+      <Col>
+        <Space>
+          <Typography.Text type="secondary">
+            {t('label.schema')}
+          </Typography.Text>
+          <Tag>{messageSchema?.schemaType ?? ''}</Tag>
+        </Space>
+      </Col>
+      {isEmpty(messageSchema?.schemaFields) &&
+      isEmpty(messageSchema?.schemaText) ? (
+        <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.VIEW}>
+          {t('message.no-schema-data-available')}
+        </ErrorPlaceHolder>
+      ) : (
+        <>
+          {!isEmpty(messageSchema?.schemaFields) && (
+            <Col span={24}>
+              <Radio.Group value={viewType} onChange={handleViewChange}>
+                <Radio.Button value={SchemaViewType.FIELDS}>
+                  {t('label.field-plural')}
+                </Radio.Button>
+                <Radio.Button value={SchemaViewType.TEXT}>
+                  {t('label.text')}
+                </Radio.Button>
+              </Radio.Group>
+            </Col>
+          )}
+          <Col span={24}>
+            {viewType === SchemaViewType.TEXT ||
+            isEmpty(messageSchema?.schemaFields) ? (
+              messageSchema?.schemaText && (
+                <SchemaEditor
+                  editorClass={classNames('table-query-editor')}
+                  mode={{ name: CSMode.JAVASCRIPT }}
+                  options={{
+                    styleActiveLine: false,
+                  }}
+                  value={messageSchema?.schemaText ?? ''}
+                />
+              )
+            ) : (
+              <Table
+                bordered
+                className={className}
+                columns={columns}
+                data-testid="topic-schema-fields-table"
+                dataSource={messageSchema?.schemaFields}
+                expandable={{
+                  ...getTableExpandableConfig<Field>(),
+                  rowExpandable: (record) => !isEmpty(record.children),
+                }}
+                pagination={false}
+                rowKey="name"
+                size="small"
+              />
+            )}
+          </Col>
+        </>
+      )}
       {editFieldDescription && (
         <ModalWithMarkdownEditor
           header={`${t('label.edit-entity', {
@@ -269,7 +341,7 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
           onSave={handleFieldDescriptionChange}
         />
       )}
-    </>
+    </Row>
   );
 };
 

@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -19,7 +19,7 @@ const mockParam = {
   serviceCategory: 'databaseServices',
 };
 
-jest.mock('../../components/containers/PageContainerV1', () => {
+jest.mock('components/containers/PageContainerV1', () => {
   return jest
     .fn()
     .mockImplementation(({ children }: { children: ReactNode }) => (
@@ -27,7 +27,7 @@ jest.mock('../../components/containers/PageContainerV1', () => {
     ));
 });
 
-jest.mock('../../components/AddService/AddService.component', () => {
+jest.mock('components/AddService/AddService.component', () => {
   return jest.fn().mockImplementation(() => <div>AddService.component</div>);
 });
 

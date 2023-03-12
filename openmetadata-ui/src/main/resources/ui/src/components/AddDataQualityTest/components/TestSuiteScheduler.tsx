@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -12,6 +12,7 @@
  */
 
 import { Button, Col, Row, Space } from 'antd';
+import { t } from 'i18next';
 import React, { useEffect, useState } from 'react';
 import CronEditor from '../../common/CronEditor/CronEditor';
 import { TestSuiteSchedulerProps } from '../AddDataQualityTest.interface';
@@ -41,12 +42,12 @@ const TestSuiteScheduler: React.FC<TestSuiteSchedulerProps> = ({
       </Col>
       <Col span={24}>
         <Space className="tw-w-full tw-justify-end" size={16}>
-          <Button onClick={onCancel}>Back</Button>
+          <Button onClick={onCancel}>{t('label.back')}</Button>
           <Button
             data-testid="deploy-button"
             type="primary"
             onClick={() => onSubmit(repeatFrequency || '')}>
-            Submit
+            {t('label.submit')}
           </Button>
         </Space>
       </Col>

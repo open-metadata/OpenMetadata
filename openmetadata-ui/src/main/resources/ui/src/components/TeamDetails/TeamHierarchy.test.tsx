@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -37,7 +37,7 @@ jest.mock('../../utils/TeamUtils', () => ({
   getMovedTeamData: jest.fn().mockReturnValue([]),
 }));
 
-jest.mock('../../axiosAPIs/teamsAPI', () => ({
+jest.mock('rest/teamsAPI', () => ({
   updateTeam: jest
     .fn()
     .mockImplementation(() => Promise.resolve(MOCK_CURRENT_TEAM)),
@@ -79,12 +79,12 @@ describe('Team Hierarchy page', () => {
     });
 
     const table = await screen.findByTestId('team-hierarchy-table');
-    const teamsColumn = await screen.findByText('Teams');
-    const typeColumn = await screen.findByText('Type');
-    const subTeamsColumn = await screen.findByText('Sub Teams');
-    const usersColumn = await screen.findByText('Users');
-    const assetCountColumn = await screen.findByText('Asset Count');
-    const descriptionColumn = await screen.findByText('Description');
+    const teamsColumn = await screen.findByText('label.team-plural');
+    const typeColumn = await screen.findByText('label.type');
+    const subTeamsColumn = await screen.findByText('label.sub-team-plural');
+    const usersColumn = await screen.findByText('label.user-plural');
+    const assetCountColumn = await screen.findByText('label.entity-count');
+    const descriptionColumn = await screen.findByText('label.description');
     const rows = await screen.findAllByRole('row');
 
     expect(table).toBeInTheDocument();

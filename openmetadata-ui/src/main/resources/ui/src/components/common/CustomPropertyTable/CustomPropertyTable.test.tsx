@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,16 +11,17 @@
  *  limitations under the License.
  */
 
-import { render, screen } from '@testing-library/react';
+import {
+  act,
+  render,
+  screen,
+  waitForElementToBeRemoved,
+} from '@testing-library/react';
 import React from 'react';
-import { getTypeByFQN } from '../../../axiosAPIs/metadataTypeAPI';
+import { getTypeByFQN } from 'rest/metadataTypeAPI';
 import { EntityType } from '../../../enums/entity.enum';
-import { Dashboard } from '../../../generated/entity/data/dashboard';
-import { Mlmodel } from '../../../generated/entity/data/mlmodel';
-import { Pipeline } from '../../../generated/entity/data/pipeline';
-import { Table } from '../../../generated/entity/data/table';
-import { Topic } from '../../../generated/entity/data/topic';
 import { CustomPropertyTable } from './CustomPropertyTable';
+import { EntityDetails } from './CustomPropertyTable.interface';
 
 const mockCustomProperties = [
   {
@@ -54,7 +55,11 @@ jest.mock('../error-with-placeholder/ErrorPlaceHolder', () => {
   return jest.fn().mockReturnValue(<div>ErrorPlaceHolder.component</div>);
 });
 
-jest.mock('../../../axiosAPIs/metadataTypeAPI', () => ({
+jest.mock('components/Loader/Loader', () => {
+  return jest.fn().mockReturnValue(<div data-testid="loader">Loader</div>);
+});
+
+jest.mock('rest/metadataTypeAPI', () => ({
   getTypeByFQN: jest.fn().mockImplementation(() =>
     Promise.resolve({
       customProperties: mockCustomProperties,
@@ -62,18 +67,21 @@ jest.mock('../../../axiosAPIs/metadataTypeAPI', () => ({
   ),
 }));
 
-const mockTableDetails = {} as Table & Topic & Dashboard & Pipeline & Mlmodel;
+const mockTableDetails = {} as EntityDetails;
 const handleExtensionUpdate = jest.fn();
 
 const mockProp = {
   entityDetails: mockTableDetails,
   handleExtensionUpdate,
   entityType: EntityType.TABLE,
+  hasEditAccess: true,
 };
 
 describe('Test CustomProperty Table Component', () => {
   it('Should render table component', async () => {
-    render(<CustomPropertyTable {...mockProp} />);
+    await act(async () => {
+      render(<CustomPropertyTable {...mockProp} />);
+    });
     const table = await screen.findByTestId('custom-properties-table');
 
     expect(table).toBeInTheDocument();
@@ -91,8 +99,26 @@ describe('Test CustomProperty Table Component', () => {
     (getTypeByFQN as jest.Mock).mockImplementationOnce(() =>
       Promise.resolve({ customProperties: [] })
     );
-    const { findByText } = render(<CustomPropertyTable {...mockProp} />);
-    const noDataPlaceHolder = await findByText('ErrorPlaceHolder.component');
+    await act(async () => {
+      render(<CustomPropertyTable {...mockProp} />);
+    });
+    const noDataPlaceHolder = await screen.findByText(
+      'ErrorPlaceHolder.component'
+    );
+
+    expect(noDataPlaceHolder).toBeInTheDocument();
+  });
+
+  it('Loader should be shown while loading the custom properties', async () => {
+    (getTypeByFQN as jest.Mock).mockResolvedValueOnce(Promise.resolve({}));
+    render(<CustomPropertyTable {...mockProp} />);
+
+    // To check if loader was rendered when the loading state was true and then removed after loading is false
+    await waitForElementToBeRemoved(() => screen.getByTestId('loader'));
+
+    const noDataPlaceHolder = await screen.findByText(
+      'ErrorPlaceHolder.component'
+    );
 
     expect(noDataPlaceHolder).toBeInTheDocument();
   });

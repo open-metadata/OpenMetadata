@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -53,7 +53,10 @@ const DataInsightProgressBar = ({
   const { t } = useTranslation();
 
   return (
-    <div className={classNames(className)} style={{ width }}>
+    <div
+      className={classNames(className)}
+      data-testid="progress-bar-container"
+      style={{ width }}>
       {showLabel && (
         <Typography.Paragraph className="data-insight-label-text">
           {label ?? t('label.latest')}
@@ -64,7 +67,7 @@ const DataInsightProgressBar = ({
           className="data-insight-progress-bar"
           format={(per) => (
             <>
-              <span>
+              <span data-testid="progress-bar-value">
                 {startValue ?? per}
                 {suffix}
               </span>
@@ -78,7 +81,7 @@ const DataInsightProgressBar = ({
                   </span>
                 </span>
               )}
-              <span>
+              <span data-testid="progress-bar-label">
                 {successValue}
                 {showEndValueAsLabel ? '' : suffix}
               </span>

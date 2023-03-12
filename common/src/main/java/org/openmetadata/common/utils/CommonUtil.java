@@ -24,6 +24,7 @@ import java.nio.file.Paths;
 import java.text.DateFormat;
 import java.text.ParseException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Base64;
 import java.util.Calendar;
 import java.util.Collection;
@@ -105,14 +106,6 @@ public final class CommonUtil {
   }
 
   /** Get date after {@code days} from the given date or before i{@code days} when it is negative */
-  public static Date getDateByOffsetSeconds(Date date, int seconds) {
-    Calendar calendar = Calendar.getInstance(TimeZone.getTimeZone("UTC"));
-    calendar.setTime(date);
-    calendar.add(Calendar.SECOND, seconds);
-    return calendar.getTime();
-  }
-
-  /** Get date after {@code days} from the given date or before i{@code days} when it is negative */
   public static Date getDateByOffset(DateFormat dateFormat, String strDate, int days) {
     Date date;
     try {
@@ -140,15 +133,6 @@ public final class CommonUtil {
       throw new IllegalArgumentException("Failed to parse date " + date, e);
     }
     return givenDate.after(startDate) && givenDate.before(endDate);
-  }
-
-  /** Parse a date using given DataFormat */
-  public static Date parseDate(String date, DateFormat dateFormat) {
-    try {
-      return dateFormat.parse(date);
-    } catch (ParseException e) {
-      throw new RuntimeException(e);
-    }
   }
 
   public static final String HMAC_SHA256_ALGORITHM = "HmacSHA256";
@@ -187,12 +171,12 @@ public final class CommonUtil {
     return IOUtils.toString(Objects.requireNonNull(loader.getResourceAsStream(file)), UTF_8);
   }
 
-  /** Return list of entiries that are modifiable for performing sort and other operations */
+  /** Return list of entries that are modifiable for performing sort and other operations */
   @SafeVarargs
   public static <T> List<T> listOf(T... entries) {
     if (entries == null) {
       return Collections.emptyList();
     }
-    return new ArrayList<>(List.of(entries));
+    return new ArrayList<>(Arrays.asList(entries));
   }
 }

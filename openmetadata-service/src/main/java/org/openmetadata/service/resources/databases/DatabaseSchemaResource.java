@@ -144,7 +144,7 @@ public class DatabaseSchemaResource extends EntityResource<DatabaseSchema, Datab
       operationId = "listAllDBSchemaVersion",
       summary = "List schema versions",
       tags = "databaseSchemas",
-      description = "Get a list of all the versions of a schema identified by `id`",
+      description = "Get a list of all the versions of a schema identified by `Id`",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -154,7 +154,7 @@ public class DatabaseSchemaResource extends EntityResource<DatabaseSchema, Datab
   public EntityHistory listVersions(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Database schema Id", schema = @Schema(type = "string")) @PathParam("id") UUID id)
+      @Parameter(description = "Database schema Id", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
       throws IOException {
     return super.listVersionsInternal(securityContext, id);
   }
@@ -163,9 +163,9 @@ public class DatabaseSchemaResource extends EntityResource<DatabaseSchema, Datab
   @Path("/{id}")
   @Operation(
       operationId = "getDBSchemaByID",
-      summary = "Get a schema",
+      summary = "Get a schema by Id",
       tags = "databaseSchemas",
-      description = "Get a database schema by `id`.",
+      description = "Get a database schema by `Id`.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -176,7 +176,7 @@ public class DatabaseSchemaResource extends EntityResource<DatabaseSchema, Datab
       })
   public DatabaseSchema get(
       @Context UriInfo uriInfo,
-      @PathParam("id") UUID id,
+      @Parameter(description = "Database schema Id", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
       @Context SecurityContext securityContext,
       @Parameter(
               description = "Fields requested in the returned resource",
@@ -197,7 +197,7 @@ public class DatabaseSchemaResource extends EntityResource<DatabaseSchema, Datab
   @Path("/name/{fqn}")
   @Operation(
       operationId = "getDBSchemaByFQN",
-      summary = "Get a schema by name",
+      summary = "Get a schema by fully qualified name",
       tags = "databaseSchemas",
       description = "Get a database schema by fully qualified name.",
       responses = {
@@ -206,11 +206,13 @@ public class DatabaseSchemaResource extends EntityResource<DatabaseSchema, Datab
             description = "The schema",
             content =
                 @Content(mediaType = "application/json", schema = @Schema(implementation = DatabaseSchema.class))),
-        @ApiResponse(responseCode = "404", description = "Database schema for instance {id} is not found")
+        @ApiResponse(responseCode = "404", description = "Database schema for instance {fqn} is not found")
       })
   public DatabaseSchema getByName(
       @Context UriInfo uriInfo,
-      @PathParam("fqn") String fqn,
+      @Parameter(description = "Fully qualified name of the database schema", schema = @Schema(type = "string"))
+          @PathParam("fqn")
+          String fqn,
       @Context SecurityContext securityContext,
       @Parameter(
               description = "Fields requested in the returned resource",
@@ -233,7 +235,7 @@ public class DatabaseSchemaResource extends EntityResource<DatabaseSchema, Datab
       operationId = "getSpecificDBSchemaVersion",
       summary = "Get a version of the schema",
       tags = "databaseSchemas",
-      description = "Get a version of the database schema by given `id`",
+      description = "Get a version of the database schema by given `Id`",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -290,7 +292,7 @@ public class DatabaseSchemaResource extends EntityResource<DatabaseSchema, Datab
   public Response patch(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @PathParam("id") UUID id,
+      @Parameter(description = "Database schema Id", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
       @RequestBody(
               description = "JsonPatch with array of operations",
               content =
@@ -327,9 +329,9 @@ public class DatabaseSchemaResource extends EntityResource<DatabaseSchema, Datab
   @Path("/{id}")
   @Operation(
       operationId = "deleteDBSchema",
-      summary = "Delete a schema",
+      summary = "Delete a schema by Id",
       tags = "databaseSchemas",
-      description = "Delete a schema by `id`. Schema can only be deleted if it has no tables.",
+      description = "Delete a schema by `Id`. Schema can only be deleted if it has no tables.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
         @ApiResponse(responseCode = "404", description = "Schema for instance {id} is not found")
@@ -345,18 +347,41 @@ public class DatabaseSchemaResource extends EntityResource<DatabaseSchema, Datab
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
-      @PathParam("id") UUID id)
+      @Parameter(description = "Database schema Id", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
       throws IOException {
     return delete(uriInfo, securityContext, id, recursive, hardDelete);
+  }
+
+  @DELETE
+  @Path("/name/{fqn}")
+  @Operation(
+      operationId = "deleteDBSchemaByFQN",
+      summary = "Delete a schema by fully qualified name",
+      tags = "databaseSchemas",
+      description = "Delete a schema by `fullyQualifiedName`. Schema can only be deleted if it has no tables.",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "OK"),
+        @ApiResponse(responseCode = "404", description = "Schema for instance {fqn} is not found")
+      })
+  public Response delete(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Hard delete the entity. (Default = `false`)")
+          @QueryParam("hardDelete")
+          @DefaultValue("false")
+          boolean hardDelete,
+      @Parameter(description = "Name of the DBSchema", schema = @Schema(type = "string")) @PathParam("fqn") String fqn)
+      throws IOException {
+    return deleteByName(uriInfo, securityContext, fqn, false, hardDelete);
   }
 
   @PUT
   @Path("/restore")
   @Operation(
       operationId = "restore",
-      summary = "Restore a soft deleted DatabaseSchema.",
-      tags = "tables",
-      description = "Restore a soft deleted DatabaseSchema.",
+      summary = "Restore a soft deleted database schema.",
+      tags = "databaseSchemas",
+      description = "Restore a soft deleted database schema.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -370,6 +395,7 @@ public class DatabaseSchemaResource extends EntityResource<DatabaseSchema, Datab
   }
 
   private DatabaseSchema getDatabaseSchema(CreateDatabaseSchema create, String user) throws IOException {
-    return copy(new DatabaseSchema(), create, user).withDatabase(create.getDatabase());
+    return copy(new DatabaseSchema(), create, user)
+        .withDatabase(getEntityReference(Entity.DATABASE, create.getDatabase()));
   }
 }

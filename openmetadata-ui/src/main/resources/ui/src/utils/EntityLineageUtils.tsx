@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,15 +11,27 @@
  *  limitations under the License.
  */
 
+import { CheckOutlined, LeftOutlined, RightOutlined } from '@ant-design/icons';
+import { Button, Typography } from 'antd';
 import {
-  faChevronLeft,
-  faChevronRight,
-} from '@fortawesome/free-solid-svg-icons';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+  CustomEdgeData,
+  CustomElement,
+  CustomFlow,
+  EdgeData,
+  EdgeTypeEnum,
+  LeafNodes,
+  LineagePos,
+  LoadingNodeState,
+  ModifiedColumn,
+  SelectedEdge,
+  SelectedNode,
+} from 'components/EntityLineage/EntityLineage.interface';
+import LineageNodeLabel from 'components/EntityLineage/LineageNodeLabel';
+import Loader from 'components/Loader/Loader';
 import dagre from 'dagre';
 import { t } from 'i18next';
-import { isEmpty, isNil, isUndefined } from 'lodash';
-import { LeafNodes, LineagePos, LoadingNodeState, LoadingState } from 'Models';
+import { isEmpty, isNil, isUndefined, lowerCase } from 'lodash';
+import { LoadingState } from 'Models';
 import React, { Fragment, MouseEvent as ReactMouseEvent } from 'react';
 import { Link } from 'react-router-dom';
 import {
@@ -31,25 +43,13 @@ import {
   Position,
   ReactFlowInstance,
 } from 'reactflow';
-import {
-  CustomEdgeData,
-  CustomElement,
-  CustomFlow,
-  EdgeData,
-  EdgeTypeEnum,
-  ModifiedColumn,
-  SelectedEdge,
-  SelectedNode,
-} from '../components/EntityLineage/EntityLineage.interface';
-import LineageNodeLabel from '../components/EntityLineage/LineageNodeLabel';
-import Loader from '../components/Loader/Loader';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import { SECONDARY_COLOR } from '../constants/constants';
 import {
   EXPANDED_NODE_HEIGHT,
-  MIN_ZOOM_VALUE,
   NODE_HEIGHT,
   NODE_WIDTH,
+  ZOOM_VALUE,
 } from '../constants/Lineage.constants';
 import {
   EntityLineageDirection,
@@ -77,6 +77,13 @@ import { getEncodedFqn } from './StringsUtils';
 import SVGIcons from './SvgUtils';
 import { getEntityLink } from './TableUtils';
 
+import { ReactComponent as DashboardIcon } from '../assets/svg/dashboard-grey.svg';
+import { ReactComponent as MlModelIcon } from '../assets/svg/mlmodal.svg';
+import { ReactComponent as PipelineIcon } from '../assets/svg/pipeline-grey.svg';
+
+import { ReactComponent as TableIcon } from '../assets/svg/table-grey.svg';
+import { ReactComponent as TopicIcon } from '../assets/svg/topic-grey.svg';
+
 export const getHeaderLabel = (
   name = '',
   fqn = '',
@@ -92,13 +99,20 @@ export const getHeaderLabel = (
           {name || prepareLabel(type, fqn, false)}
         </span>
       ) : (
-        <span
-          className="tw-break-words description-text tw-self-center link-text tw-font-medium"
-          data-testid="lineage-entity">
-          <Link to={getEntityLink(type, fqn)}>
-            {name || prepareLabel(type, fqn, false)}
+        <Typography.Title
+          ellipsis
+          className="m-b-0 text-base"
+          level={5}
+          title={name || prepareLabel(type, fqn, false)}>
+          <Link className="" to={getEntityLink(type, fqn)}>
+            <Button
+              className="text-base font-semibold p-0"
+              data-testid="link-button"
+              type="link">
+              {name || prepareLabel(type, fqn, false)}
+            </Button>
           </Link>
-        </span>
+        </Typography.Title>
       )}
     </Fragment>
   );
@@ -106,7 +120,7 @@ export const getHeaderLabel = (
 
 export const onLoad = (reactFlowInstance: ReactFlowInstance) => {
   reactFlowInstance.fitView();
-  reactFlowInstance.zoomTo(MIN_ZOOM_VALUE);
+  reactFlowInstance.zoomTo(ZOOM_VALUE);
 };
 /* eslint-disable-next-line */
 export const onNodeMouseEnter = (_event: ReactMouseEvent, _node: Node) => {
@@ -144,10 +158,12 @@ const getNodeType = (entityLineage: EntityLineage, id: string) => {
   );
   const hasUpstreamToEntity = upStreamEdges.find((up) => up.toEntity === id);
 
-  if (hasDownStreamToEntity && !hasDownStreamFromEntity)
+  if (hasDownStreamToEntity && !hasDownStreamFromEntity) {
     return EntityLineageNodeType.OUTPUT;
-  if (hasUpstreamFromEntity && !hasUpstreamToEntity)
+  }
+  if (hasUpstreamFromEntity && !hasUpstreamToEntity) {
     return EntityLineageNodeType.INPUT;
+  }
 
   return EntityLineageNodeType.DEFAULT;
 };
@@ -156,10 +172,15 @@ export const getColumnType = (edges: Edge[], id: string) => {
   const sourceEdge = edges.find((edge) => edge.sourceHandle === id);
   const targetEdge = edges.find((edge) => edge.targetHandle === id);
 
-  if (sourceEdge?.sourceHandle === id && targetEdge?.targetHandle === id)
+  if (sourceEdge?.sourceHandle === id && targetEdge?.targetHandle === id) {
     return EntityLineageNodeType.DEFAULT;
-  if (sourceEdge?.sourceHandle === id) return EntityLineageNodeType.INPUT;
-  if (targetEdge?.targetHandle === id) return EntityLineageNodeType.OUTPUT;
+  }
+  if (sourceEdge?.sourceHandle === id) {
+    return EntityLineageNodeType.INPUT;
+  }
+  if (targetEdge?.targetHandle === id) {
+    return EntityLineageNodeType.OUTPUT;
+  }
 
   return EntityLineageNodeType.NOT_CONNECTED;
 };
@@ -183,7 +204,8 @@ export const getLineageData = (
     data: CustomEdgeData
   ) => void,
   handleColumnClick?: (value: string) => void,
-  isExpanded?: boolean
+  isExpanded?: boolean,
+  onNodeExpand?: (isExpanded: boolean, node: EntityReference) => void
 ) => {
   const [x, y] = [0, 0];
   const nodes = [...(entityLineage['nodes'] || []), entityLineage['entity']];
@@ -302,10 +324,7 @@ export const getLineageData = (
                 }}>
                 {!isLeafNode(lineageLeafNodes, node?.id as string, 'from') &&
                 !node.id.includes(isNodeLoading.id as string) ? (
-                  <FontAwesomeIcon
-                    className="tw-text-primary tw-mr-2"
-                    icon={faChevronLeft}
-                  />
+                  <LeftOutlined className="tw-text-primary tw-mr-2" />
                 ) : null}
                 {isNodeLoading.state &&
                 node.id.includes(isNodeLoading.id as string) ? (
@@ -314,7 +333,11 @@ export const getLineageData = (
               </div>
             )}
 
-            <LineageNodeLabel node={node} />
+            <LineageNodeLabel
+              isExpanded={isExpanded}
+              node={node}
+              onNodeExpand={onNodeExpand}
+            />
 
             {type === EntityLineageNodeType.OUTPUT && (
               <div
@@ -336,10 +359,7 @@ export const getLineageData = (
                 }}>
                 {!isLeafNode(lineageLeafNodes, node?.id as string, 'to') &&
                 !node.id.includes(isNodeLoading.id as string) ? (
-                  <FontAwesomeIcon
-                    className="tw-text-primary tw-ml-2"
-                    icon={faChevronRight}
-                  />
+                  <RightOutlined className="tw-text-primary tw-ml-2" />
                 ) : null}
                 {isNodeLoading.state &&
                 node.id.includes(isNodeLoading.id as string) ? (
@@ -382,7 +402,13 @@ export const getLineageData = (
       type: getNodeType(entityLineage, mainNode.id),
       className: `leaf-node core`,
       data: {
-        label: <LineageNodeLabel node={mainNode} />,
+        label: (
+          <LineageNodeLabel
+            isExpanded={isExpanded}
+            node={mainNode}
+            onNodeExpand={onNodeExpand}
+          />
+        ),
         isEditMode,
         removeNodeHandler,
         handleColumnClick,
@@ -907,7 +933,7 @@ export const getLoadingStatusValue = (
   if (loading) {
     return <Loader size="small" type="white" />;
   } else if (status === 'success') {
-    return <FontAwesomeIcon className="text-white" icon="check" />;
+    return <CheckOutlined className="text-white" />;
   } else {
     return defaultState;
   }
@@ -957,7 +983,7 @@ export const getAllTracedNodes = (
   return tracedNodes.reduce((memo, tracedNode) => {
     memo.push(tracedNode);
 
-    if (prevTraced.findIndex((n) => n.id == tracedNode.id) === -1) {
+    if (prevTraced.findIndex((n) => n.id === tracedNode.id) === -1) {
       prevTraced.push(tracedNode);
 
       getAllTracedNodes(
@@ -969,7 +995,7 @@ export const getAllTracedNodes = (
       ).forEach((foundNode) => {
         memo.push(foundNode);
 
-        if (prevTraced.findIndex((n) => n.id == foundNode.id) === -1) {
+        if (prevTraced.findIndex((n) => n.id === foundNode.id) === -1) {
           prevTraced.push(foundNode);
         }
       });
@@ -1048,14 +1074,14 @@ export const getAllTracedEdges = (
   return tracedNodes.reduce((memo, tracedNode) => {
     memo.push(tracedNode);
 
-    if (prevTraced.findIndex((n) => n == tracedNode) === -1) {
+    if (prevTraced.findIndex((n) => n === tracedNode) === -1) {
       prevTraced.push(tracedNode);
 
       getAllTracedEdges(tracedNode, edges, prevTraced, isIncomer).forEach(
         (foundNode) => {
           memo.push(foundNode);
 
-          if (prevTraced.findIndex((n) => n == foundNode) === -1) {
+          if (prevTraced.findIndex((n) => n === foundNode) === -1) {
             prevTraced.push(foundNode);
           }
         }
@@ -1105,4 +1131,22 @@ export const getEdgeStyle = (value: boolean) => {
     strokeWidth: value ? 2 : 1,
     stroke: value ? SECONDARY_COLOR : undefined,
   };
+};
+
+// Nodes Icons
+export const getEntityNodeIcon = (label: string) => {
+  switch (lowerCase(label)) {
+    case EntityType.TABLE:
+      return TableIcon;
+    case EntityType.DASHBOARD:
+      return DashboardIcon;
+    case EntityType.TOPIC:
+      return TopicIcon;
+    case EntityType.PIPELINE:
+      return PipelineIcon;
+    case EntityType.MLMODEL:
+      return MlModelIcon;
+    default:
+      return TableIcon;
+  }
 };

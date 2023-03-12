@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,8 +11,13 @@
  *  limitations under the License.
  */
 
-import i18next from 'i18next';
+import amazonS3 from 'assets/img/service-icon-amazon-s3.svg';
+import gcs from 'assets/img/service-icon-gcs.png';
+import msAzure from 'assets/img/service-icon-ms-azure.png';
+import { ObjectStoreServiceType } from 'generated/entity/services/objectstoreService';
+import { map, startCase } from 'lodash';
 import { ServiceTypes } from 'Models';
+import i18n from 'utils/i18next/LocalUtil';
 import addPlaceHolder from '../assets/img/add-placeholder.svg';
 import airbyte from '../assets/img/Airbyte.png';
 import noDataFound from '../assets/img/no-data-placeholder.svg';
@@ -141,6 +146,9 @@ export const KINESIS = kinesis;
 export const QUICKSIGHT = quicksight;
 export const DOMO = domo;
 export const SAGEMAKER = sagemaker;
+export const AMAZON_S3 = amazonS3;
+export const GCS = gcs;
+export const MS_AZURE = msAzure;
 
 export const PLUS = plus;
 export const NOSERVICE = noService;
@@ -171,6 +179,9 @@ export const serviceTypes: Record<ServiceTypes, Array<string>> = {
   metadataServices: (Object.values(MetadataServiceType) as string[]).sort(
     customServiceComparator
   ),
+  objectstoreServices: (Object.values(ObjectStoreServiceType) as string[]).sort(
+    customServiceComparator
+  ),
 };
 
 export const arrServiceTypes: Array<ServiceTypes> = [
@@ -179,6 +190,7 @@ export const arrServiceTypes: Array<ServiceTypes> = [
   'dashboardServices',
   'pipelineServices',
   'mlmodelServices',
+  'objectstoreServices',
 ];
 
 export const SERVICE_CATEGORY: { [key: string]: ServiceCategory } = {
@@ -188,6 +200,7 @@ export const SERVICE_CATEGORY: { [key: string]: ServiceCategory } = {
   pipelines: ServiceCategory.PIPELINE_SERVICES,
   mlModels: ServiceCategory.ML_MODEL_SERVICES,
   metadata: ServiceCategory.METADATA_SERVICES,
+  objectStores: ServiceCategory.OBJECT_STORE_SERVICES,
 };
 
 export const SERVICE_CATEGORY_TYPE = {
@@ -197,26 +210,30 @@ export const SERVICE_CATEGORY_TYPE = {
   pipelineServices: 'pipelines',
   mlmodelServices: 'mlModels',
   metadataServices: 'metadata',
+  objectstoreServices: 'objectStores',
 };
 
 export const servicesDisplayName: { [key: string]: string } = {
-  databaseServices: i18next.t('label.entity-service', {
-    entity: i18next.t('label.database'),
+  databaseServices: i18n.t('label.entity-service', {
+    entity: i18n.t('label.database'),
   }),
-  messagingServices: i18next.t('label.entity-service', {
-    entity: i18next.t('label.messaging'),
+  messagingServices: i18n.t('label.entity-service', {
+    entity: i18n.t('label.messaging'),
   }),
-  dashboardServices: i18next.t('label.entity-service', {
-    entity: i18next.t('label.dashboard'),
+  dashboardServices: i18n.t('label.entity-service', {
+    entity: i18n.t('label.dashboard'),
   }),
-  pipelineServices: i18next.t('label.entity-service', {
-    entity: i18next.t('label.pipeline'),
+  pipelineServices: i18n.t('label.entity-service', {
+    entity: i18n.t('label.pipeline'),
   }),
-  mlmodelServices: i18next.t('label.entity-service', {
-    entity: i18next.t('label.ml-model'),
+  mlmodelServices: i18n.t('label.entity-service', {
+    entity: i18n.t('label.ml-model'),
   }),
-  metadataServices: i18next.t('label.entity-service', {
-    entity: i18next.t('label.metadata'),
+  metadataServices: i18n.t('label.entity-service', {
+    entity: i18n.t('label.metadata'),
+  }),
+  objectstoreServices: i18n.t('label.entity-service', {
+    entity: i18n.t('label.object-store'),
   }),
 };
 
@@ -240,3 +257,8 @@ export const COMMON_UI_SCHEMA = {
 
 export const OPENMETADATA = 'OpenMetadata';
 export const JWT_CONFIG = 'openMetadataJWTClientConfig';
+
+export const SERVICE_CATEGORY_OPTIONS = map(ServiceCategory, (value) => ({
+  label: startCase(value),
+  value,
+}));

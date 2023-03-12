@@ -1,13 +1,26 @@
+/*
+ *  Copyright 2022 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
 import { Button, Card, Col, Popover, Row, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { Status, TableDetail } from 'Models';
+import { t } from 'i18next';
+import { LoadingState, TableDetail } from 'Models';
 import React, { useEffect, useState } from 'react';
-import { getCategory } from '../../../axiosAPIs/tagAPI';
+import { getTags } from 'rest/tagAPI';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { EntityReference } from '../../../generated/type/entityReference';
 import jsonData from '../../../jsons/en';
-import { TagsCategory } from '../../../pages/tags/tagsTypes';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import CardListItem from '../../cardlist/CardListItem/CardWithListItem';
 import { CardWithListItems } from '../../cardlist/CardListItem/CardWithListItem.interface';
@@ -34,7 +47,7 @@ const TierCard = ({
 }: TierCardProps) => {
   const [tierData, setTierData] = useState<Array<CardWithListItems>>([]);
   const [activeTier, setActiveTier] = useState(currentTier);
-  const [statusTier, setStatusTier] = useState<Status>('initial');
+  const [statusTier, setStatusTier] = useState<LoadingState>('initial');
   const [isLoadingTierData, setIsLoadingTierData] = useState<boolean>(false);
 
   const handleCardSelection = (cardId: string) => {
@@ -47,23 +60,23 @@ const TierCard = ({
 
   const getTierData = () => {
     setIsLoadingTierData(true);
-    getCategory('Tier')
-      .then((res) => {
-        if (res) {
+    getTags({
+      parent: 'Tier',
+    })
+      .then(({ data }) => {
+        if (data) {
           const tierData: CardWithListItems[] =
-            (res as TagsCategory).children?.map(
-              (tier: { name: string; description: string }) => ({
-                id: `Tier${FQN_SEPARATOR_CHAR}${tier.name}`,
-                title: tier.name,
-                description: tier.description.substring(
-                  0,
-                  tier.description.indexOf('\n\n')
-                ),
-                data: tier.description.substring(
-                  tier.description.indexOf('\n\n') + 1
-                ),
-              })
-            ) ?? [];
+            data.map((tier: { name: string; description: string }) => ({
+              id: `Tier${FQN_SEPARATOR_CHAR}${tier.name}`,
+              title: tier.name,
+              description: tier.description.substring(
+                0,
+                tier.description.indexOf('\n\n')
+              ),
+              data: tier.description.substring(
+                tier.description.indexOf('\n\n') + 1
+              ),
+            })) ?? [];
 
           setTierData(tierData);
         } else {
@@ -105,7 +118,7 @@ const TierCard = ({
           <Row>
             <Col span={21}>
               <Typography.Title className="m-b-0" level={5}>
-                Edit Tier
+                {t('label.edit-entity', { entity: t('label.tier') })}
               </Typography.Title>
             </Col>
             <Col span={3}>
@@ -115,8 +128,7 @@ const TierCard = ({
                   data-testid="remove-tier"
                   type="link"
                   onClick={removeTier}>
-                  {' '}
-                  Clear Tier
+                  {t('label.clear-entity', { entity: t('label.tier') })}
                 </Button>
               ) : (
                 ''

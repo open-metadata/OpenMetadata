@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -16,18 +16,17 @@ import { AxiosError } from 'axios';
 import { toLower } from 'lodash';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { createBotWithPut } from '../../axiosAPIs/botsAPI';
+import { createBotWithPut } from 'rest/botsAPI';
 import {
   createUserWithPut,
   getAuthMechanismForBotUser,
   getRoles,
-} from '../../axiosAPIs/userAPI';
-import { PAGE_SIZE_LARGE, TERM_ADMIN } from '../../constants/constants';
+} from 'rest/userAPI';
+import { TERM_ADMIN } from '../../constants/constants';
 import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
 } from '../../constants/GlobalSettings.constants';
-import { EntityType } from '../../enums/entity.enum';
 import { Role } from '../../generated/entity/teams/role';
 import {
   AuthenticationMechanism,
@@ -99,14 +98,8 @@ const BotDetails: FC<BotsDetailProps> = ({
 
   const fetchRoles = async () => {
     try {
-      const response = await getRoles(
-        '',
-        undefined,
-        undefined,
-        false,
-        PAGE_SIZE_LARGE
-      );
-      setRoles(response.data.data);
+      const { data } = await getRoles();
+      setRoles(data);
     } catch (err) {
       setRoles([]);
       showErrorToast(err as AxiosError);
@@ -157,7 +150,7 @@ const BotDetails: FC<BotsDetailProps> = ({
           name: botData.name,
           description: botData.description,
           displayName: botData.displayName,
-          botUser: { id: response.id, type: EntityType.USER },
+          botUser: response.name,
         });
         fetchAuthMechanismForBot();
       }
@@ -202,7 +195,7 @@ const BotDetails: FC<BotsDetailProps> = ({
         <Col span={24}>
           <Card className="page-layout-v1-left-panel mt-2">
             <div data-testid="left-panel">
-              <div className="flex flex-col">
+              <div className="d-flex flex-col">
                 <SVGIcons
                   alt="bot-profile"
                   icon={Icons.BOT_PROFILE}
@@ -283,10 +276,11 @@ const BotDetails: FC<BotsDetailProps> = ({
         />
       }
       leftPanel={fetchLeftPanel()}
+      pageTitle={t('label.bot-detail')}
       rightPanel={
         <Card className="page-layout-v1-left-panel mt-2">
           <div data-testid="right-panel">
-            <div className="flex flex-col">
+            <div className="d-flex flex-col">
               <Typography.Text className="mb-2 text-lg">
                 {t('label.token-security')}
               </Typography.Text>
@@ -338,7 +332,7 @@ const BotDetails: FC<BotsDetailProps> = ({
         bodyText={t('message.are-you-sure-to-revoke-access')}
         cancelText={t('label.cancel')}
         confirmText={t('label.confirm')}
-        header={t('label.are-you-sure')}
+        header={t('message.are-you-sure')}
         visible={isRevokingToken}
         onCancel={() => setIsRevokingToken(false)}
         onConfirm={() => {

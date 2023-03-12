@@ -43,7 +43,7 @@ from metadata.ingestion.models.topology import (
     create_source_context,
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.utils.connections import get_connection, test_connection
+from metadata.ingestion.source.connections import get_connection, get_test_connection_fn
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -148,7 +148,7 @@ class MlModelServiceSource(TopologyRunnerMixin, Source, ABC):
         self.test_connection()
         self.status = MlModelSourceStatus()
 
-        self.client = self.connection.client
+        self.client = self.connection
 
     def get_services(self) -> Iterable[WorkflowSource]:
         yield self.config
@@ -202,7 +202,8 @@ class MlModelServiceSource(TopologyRunnerMixin, Source, ABC):
         pass
 
     def test_connection(self) -> None:
-        test_connection(self.connection)
+        test_connection_fn = get_test_connection_fn(self.service_connection)
+        test_connection_fn(self.connection, self.service_connection)
 
     def prepare(self):
         pass

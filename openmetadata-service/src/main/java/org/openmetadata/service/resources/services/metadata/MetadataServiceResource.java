@@ -35,18 +35,21 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
-import org.openmetadata.schema.api.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.api.services.CreateMetadataService;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.services.MetadataConnection;
 import org.openmetadata.schema.entity.services.MetadataService;
 import org.openmetadata.schema.entity.services.ServiceType;
+import org.openmetadata.schema.entity.services.connections.TestConnectionResult;
+import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.schema.services.connections.metadata.ComponentConfig;
 import org.openmetadata.schema.services.connections.metadata.ElasticsSearch;
 import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.jdbi3.CollectionDAO;
@@ -55,6 +58,7 @@ import org.openmetadata.service.jdbi3.MetadataServiceRepository;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.services.ServiceEntityResource;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.OpenMetadataConnectionBuilder;
@@ -178,9 +182,9 @@ public class MetadataServiceResource
   @Path("/{id}")
   @Operation(
       operationId = "getMetadataServiceByID",
-      summary = "Get a Metadata Service",
+      summary = "Get a metadata service by Id",
       tags = "metadataService",
-      description = "Get a Metadata Service by `id`.",
+      description = "Get a Metadata Service by `Id`.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -192,7 +196,7 @@ public class MetadataServiceResource
   public MetadataService get(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @PathParam("id") UUID id,
+      @Parameter(description = "Id of the metadata service", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
       @Parameter(
               description = "Fields requested in the returned resource",
               schema = @Schema(type = "string", example = FIELDS))
@@ -213,7 +217,7 @@ public class MetadataServiceResource
   @Path("/name/{name}")
   @Operation(
       operationId = "getMetadataServiceByFQN",
-      summary = "Get Metadata Service by name",
+      summary = "Get a metadata service by name",
       tags = "metadataService",
       description = "Get a Metadata Service by the service `name`.",
       responses = {
@@ -222,12 +226,13 @@ public class MetadataServiceResource
             description = "Metadata Service instance",
             content =
                 @Content(mediaType = "application/json", schema = @Schema(implementation = MetadataService.class))),
-        @ApiResponse(responseCode = "404", description = "Metadata Service for instance {id} is not found")
+        @ApiResponse(responseCode = "404", description = "Metadata Service for instance {name} is not found")
       })
   public MetadataService getByName(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @PathParam("name") String name,
+      @Parameter(description = "Name of the metadata service", schema = @Schema(type = "string")) @PathParam("name")
+          String name,
       @Parameter(
               description = "Fields requested in the returned resource",
               schema = @Schema(type = "string", example = FIELDS))
@@ -244,13 +249,39 @@ public class MetadataServiceResource
     return decryptOrNullify(securityContext, metadataService);
   }
 
+  @PUT
+  @Path("/{id}/testConnectionResult")
+  @Operation(
+      operationId = "addTestConnectionResult",
+      summary = "Add test connection result",
+      tags = "metadataServices",
+      description = "Add test connection result to the service.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Successfully updated the service",
+            content =
+                @Content(mediaType = "application/json", schema = @Schema(implementation = DatabaseService.class)))
+      })
+  public MetadataService addTestConnectionResult(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the service", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Valid TestConnectionResult testConnectionResult)
+      throws IOException {
+    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.CREATE);
+    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
+    MetadataService service = dao.addTestConnectionResult(id, testConnectionResult);
+    return decryptOrNullify(securityContext, service);
+  }
+
   @GET
   @Path("/{id}/versions")
   @Operation(
       operationId = "listAllMetadataServiceVersion",
-      summary = "List Metadata Service versions",
+      summary = "List metadata service versions",
       tags = "metadataService",
-      description = "Get a list of all the versions of a Metadata Service identified by `id`",
+      description = "Get a list of all the versions of a Metadata Service identified by `Id`",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -260,7 +291,7 @@ public class MetadataServiceResource
   public EntityHistory listVersions(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Metadata Service Id", schema = @Schema(type = "string")) @PathParam("id") UUID id)
+      @Parameter(description = "Id of the metadata service", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
       throws IOException {
     EntityHistory entityHistory = super.listVersionsInternal(securityContext, id);
 
@@ -284,9 +315,9 @@ public class MetadataServiceResource
   @Path("/{id}/versions/{version}")
   @Operation(
       operationId = "getSpecificMetadataServiceVersion",
-      summary = "Get a version of the Metadata Service",
+      summary = "Get a version of the metadata service",
       tags = "metadataService",
-      description = "Get a version of the Metadata Service by given `id`",
+      description = "Get a version of the Metadata Service by given `Id`",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -300,7 +331,7 @@ public class MetadataServiceResource
   public MetadataService getVersion(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Metadata Service Id", schema = @Schema(type = "string")) @PathParam("id") UUID id,
+      @Parameter(description = "Id of the metadata service", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
       @Parameter(
               description = "Metadata Service version number in the form `major`" + ".`minor`",
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
@@ -314,7 +345,7 @@ public class MetadataServiceResource
   @POST
   @Operation(
       operationId = "createMetadataService",
-      summary = "Create Metadata Service",
+      summary = "Create metadata service",
       tags = "metadataService",
       description = "Create a new Metadata Service.",
       responses = {
@@ -337,7 +368,7 @@ public class MetadataServiceResource
   @PUT
   @Operation(
       operationId = "createOrUpdateMetadataService",
-      summary = "Update Metadata Service",
+      summary = "Update metadata service",
       tags = "metadataService",
       description = "Update an existing or create a new Metadata Service.",
       responses = {
@@ -352,7 +383,7 @@ public class MetadataServiceResource
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateMetadataService update)
       throws IOException {
     MetadataService service = getMetadataService(update, securityContext.getUserPrincipal().getName());
-    Response response = createOrUpdate(uriInfo, securityContext, service);
+    Response response = createOrUpdate(uriInfo, securityContext, unmask(service));
     decryptOrNullify(securityContext, (MetadataService) response.getEntity());
     return response;
   }
@@ -361,7 +392,7 @@ public class MetadataServiceResource
   @Path("/{id}")
   @Operation(
       operationId = "patchMetadataService",
-      summary = "Update a Metadata service",
+      summary = "Update a metadata service",
       tags = "metadataService",
       description = "Update an existing Metadata service using JsonPatch.",
       externalDocs = @ExternalDocumentation(description = "JsonPatch RFC", url = "https://tools.ietf.org/html/rfc6902"))
@@ -369,7 +400,7 @@ public class MetadataServiceResource
   public Response patch(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @PathParam("id") UUID id,
+      @Parameter(description = "Id of the metadata service", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
       @RequestBody(
               description = "JsonPatch with array of operations",
               content =
@@ -387,7 +418,7 @@ public class MetadataServiceResource
   @Path("/{id}")
   @Operation(
       operationId = "deleteMetadataService",
-      summary = "Delete a Metadata Service",
+      summary = "Delete a metadata service by Id",
       tags = "metadataService",
       description = "Delete a metadata services. If some service belong the service, it can't be " + "deleted.",
       responses = {
@@ -405,10 +436,36 @@ public class MetadataServiceResource
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
-      @Parameter(description = "Id of the Metadata Service", schema = @Schema(type = "string")) @PathParam("id")
-          UUID id)
+      @Parameter(description = "Id of the metadata service", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
       throws IOException {
     return delete(uriInfo, securityContext, id, recursive, hardDelete);
+  }
+
+  @DELETE
+  @Path("/name/{name}")
+  @Operation(
+      operationId = "deleteMetadataServiceByName",
+      summary = "Delete a metadata service by name",
+      tags = "metadataService",
+      description =
+          "Delete a metadata services by `name`. If some service belong the service, it can't be " + "deleted.",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "OK"),
+        @ApiResponse(
+            responseCode = "404",
+            description = "MetadataService service for instance {name} " + "is not found")
+      })
+  public Response delete(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Hard delete the entity. (Default = `false`)")
+          @QueryParam("hardDelete")
+          @DefaultValue("false")
+          boolean hardDelete,
+      @Parameter(description = "Name of the metadata service", schema = @Schema(type = "string")) @PathParam("name")
+          String name)
+      throws IOException {
+    return deleteByName(uriInfo, securityContext, name, false, hardDelete);
   }
 
   @PUT

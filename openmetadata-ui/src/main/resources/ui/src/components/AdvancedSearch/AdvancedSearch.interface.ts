@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -19,9 +19,9 @@ export interface AdvancedSearchProps {
   searchIndex: SearchIndex;
   onChangeJsonTree: (tree: JsonTree) => void;
   onChangeQueryFilter: (
-    queryFilter: Record<string, unknown> | undefined
+    queryFilter: Record<string, unknown> | undefined,
+    sqlFilter: string
   ) => void;
-  onAppliedFilterChange: (value: string) => void;
 }
 
 export type FilterObject = Record<string, string[]>;

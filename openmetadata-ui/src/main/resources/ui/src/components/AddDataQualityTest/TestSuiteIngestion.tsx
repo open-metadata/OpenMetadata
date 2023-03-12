@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,17 +10,18 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+
 import { Col, Row, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { camelCase, isEmpty } from 'lodash';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import {
   addIngestionPipeline,
-  checkAirflowStatus,
   deployIngestionPipelineById,
   updateIngestionPipeline as putIngestionPipeline,
-} from '../../axiosAPIs/ingestionPipelineAPI';
+} from 'rest/ingestionPipelineAPI';
 import {
   DEPLOYED_PROGRESS_VAL,
   INGESTION_PROGRESS_END_VAL,
@@ -37,6 +38,7 @@ import jsonData from '../../jsons/en';
 import {
   getIngestionFrequency,
   replaceSpaceWith_,
+  Transi18next,
 } from '../../utils/CommonUtils';
 import { getTestSuitePath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -52,6 +54,7 @@ const TestSuiteIngestion: React.FC<TestSuiteIngestionProps> = ({
 }) => {
   const { ingestionFQN } = useParams<Record<string, string>>();
   const history = useHistory();
+  const { t } = useTranslation();
   const [ingestionData, setIngestionData] = useState<
     IngestionPipeline | undefined
   >(ingestionPipeline);
@@ -66,22 +69,23 @@ const TestSuiteIngestion: React.FC<TestSuiteIngestionProps> = ({
   const [isIngestionCreated, setIsIngestionCreated] = useState(false);
   const [ingestionProgress, setIngestionProgress] = useState(0);
   const getSuccessMessage = useMemo(() => {
-    const createMessage = showDeployButton
-      ? `has been ${ingestionFQN ? 'updated' : 'created'}, but failed to deploy`
-      : `has been ${
-          ingestionFQN ? 'updated' : 'created'
-        } and deployed successfully`;
-
     return (
-      <span>
-        <span className="tw-mr-1 tw-font-semibold">
-          &quot;{ingestionData?.name ?? 'Test Suite'}&quot;
-        </span>
-        <span>{createMessage}</span>
-      </span>
+      <Transi18next
+        i18nKey={
+          showDeployButton
+            ? 'message.failed-status-for-entity-deploy'
+            : 'message.success-status-for-entity-deploy'
+        }
+        renderElement={<strong />}
+        values={{
+          entity: `"${ingestionData?.name ?? t('label.test-suite')}"`,
+          entityStatus: ingestionFQN
+            ? t('label.updated-lowercase')
+            : t('label.created-lowercase'),
+        }}
+      />
     );
   }, [ingestionData, showDeployButton]);
-  const [isAirflowRunning, setIsAirflowRunning] = useState(false);
 
   const handleIngestionDeploy = (id?: string) => {
     setShowDeployModal(true);
@@ -178,40 +182,30 @@ const TestSuiteIngestion: React.FC<TestSuiteIngestionProps> = ({
     }
   };
 
-  const handleIngestionSubmit = (repeatFrequency: string) => {
-    if (ingestionFQN) {
-      updateIngestionPipeline(repeatFrequency);
-    } else {
-      createIngestionPipeline(repeatFrequency);
-    }
-  };
+  const handleIngestionSubmit = useCallback(
+    (repeatFrequency: string) => {
+      if (ingestionFQN) {
+        updateIngestionPipeline(repeatFrequency);
+      } else {
+        createIngestionPipeline(repeatFrequency);
+      }
+    },
+    [
+      ingestionFQN,
+      updateIngestionPipeline,
+      createIngestionPipeline,
+      ingestionPipeline,
+    ]
+  );
 
-  const handleViewTestSuiteClick = () => {
+  const handleViewTestSuiteClick = useCallback(() => {
     history.push(getTestSuitePath(testSuite?.fullyQualifiedName || ''));
-  };
+  }, [history, testSuite]);
 
   const handleDeployClick = () => {
     setShowDeployModal(true);
     handleIngestionDeploy();
   };
-
-  const handleAirflowStatusCheck = (): Promise<void> => {
-    return checkAirflowStatus()
-      .then((res) => {
-        if (res.status === 200) {
-          setIsAirflowRunning(true);
-        } else {
-          setIsAirflowRunning(false);
-        }
-      })
-      .catch(() => {
-        setIsAirflowRunning(false);
-      });
-  };
-
-  useEffect(() => {
-    handleAirflowStatusCheck();
-  }, []);
 
   return (
     <Row className="tw-form-container" gutter={[16, 16]}>
@@ -219,7 +213,7 @@ const TestSuiteIngestion: React.FC<TestSuiteIngestionProps> = ({
         <Typography.Paragraph
           className="tw-heading tw-text-base"
           data-testid="header">
-          Schedule for Ingestion
+          {t('label.schedule-for-ingestion')}
         </Typography.Paragraph>
       </Col>
 
@@ -228,14 +222,14 @@ const TestSuiteIngestion: React.FC<TestSuiteIngestionProps> = ({
           <SuccessScreen
             handleDeployClick={handleDeployClick}
             handleViewServiceClick={handleViewTestSuiteClick}
-            isAirflowSetup={isAirflowRunning}
             name={`${testSuite?.name}_${PipelineType.TestSuite}`}
             showDeployButton={showDeployButton}
             showIngestionButton={false}
             state={FormSubmitType.ADD}
             successMessage={getSuccessMessage}
-            viewServiceText="View Test Suite"
-            onCheckAirflowStatus={handleAirflowStatusCheck}
+            viewServiceText={t('label.view-entity', {
+              entity: t('label.test-suite'),
+            })}
           />
         ) : (
           <TestSuiteScheduler

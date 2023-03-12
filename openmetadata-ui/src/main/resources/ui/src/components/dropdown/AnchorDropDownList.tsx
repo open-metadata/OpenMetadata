@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,12 +11,14 @@
  *  limitations under the License.
  */
 
+import { Space } from 'antd';
 import classNames from 'classnames';
 import React, { Fragment } from 'react';
 import { Link } from 'react-router-dom';
-import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
+import { ReactComponent as IconExternalLink } from '../../assets/svg/external-link.svg';
 import { useAuth } from '../../hooks/authHooks';
 import SVGIcons from '../../utils/SvgUtils';
+import { useAuthContext } from '../authentication/auth-provider/AuthProvider';
 import './AnchorDropDownList.style.less';
 import { DropDownListItem, DropDownListProp } from './types';
 
@@ -62,7 +64,7 @@ const AnchorDropDownList = ({ dropDownList, setIsOpen }: DropDownListProp) => {
                       item.method && item.method();
                       setIsOpen && setIsOpen(false);
                     }}>
-                    <div className="tw-flex tw-gap-1 tw-px-2">
+                    <Space className="p-x-xs" size={4}>
                       {item.icon && item.icon}
                       {item.icon ? (
                         <button className="tw-text-grey-body">
@@ -85,11 +87,11 @@ const AnchorDropDownList = ({ dropDownList, setIsOpen }: DropDownListProp) => {
                           {item.isOpenNewTab ? (
                             <span className="tw-flex">
                               <span className="tw-mr-1">{item.name}</span>
-                              <SVGIcons
-                                alt="external-link"
+                              <IconExternalLink
                                 className="tw-align-middle"
-                                icon="external-link"
-                                width="16px"
+                                height={16}
+                                name="external-link"
+                                width={16}
                               />
                             </span>
                           ) : (
@@ -97,7 +99,7 @@ const AnchorDropDownList = ({ dropDownList, setIsOpen }: DropDownListProp) => {
                           )}
                         </>
                       )}
-                    </div>
+                    </Space>
                   </Link>
                 )}
               </div>

@@ -131,8 +131,8 @@ We will now describe the steps, following the official AWS documentation.
 ### 1. Create an ECS Cluster
 
 - The cluster just needs a task to run in `FARGATE` mode.
-- The required image is `registry.hub.docker.com/openmetadata/ingestion-base:x.y.z`
-  - The same logic as above applies. The `x.y.z` version needs to match the server version. For example, `registry.hub.docker.com/openmetadata/ingestion-base:0.12.2`
+- The required image is `docker.getcollate.io/openmetadata/ingestion-base:x.y.z`
+  - The same logic as above applies. The `x.y.z` version needs to match the server version. For example, `docker.getcollate.io/openmetadata/ingestion-base:0.13.2`
   
 We have tested this process with a Task Memory of 512MB and Task CPU (unit) of 256. This can be tuned depending on the amount of metadata that needs to be ingested.
 

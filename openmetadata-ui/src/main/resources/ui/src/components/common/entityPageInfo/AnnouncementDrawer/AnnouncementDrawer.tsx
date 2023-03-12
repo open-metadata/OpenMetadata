@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -18,8 +18,9 @@ import { Operation } from 'fast-json-patch';
 import { uniqueId } from 'lodash';
 import { observer } from 'mobx-react';
 import React, { FC, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { postFeedById, postThread } from 'rest/feedsAPI';
 import AppState from '../../../../AppState';
-import { postFeedById, postThread } from '../../../../axiosAPIs/feedsAPI';
 import {
   CreateThread,
   ThreadType,
@@ -46,6 +47,7 @@ const AnnouncementDrawer: FC<Props> = ({
   entityType,
   entityName,
 }) => {
+  const { t } = useTranslation();
   const [isAnnouncement, setIsAnnouncement] = useState<boolean>(false);
 
   // get current user details
@@ -60,7 +62,7 @@ const AnnouncementDrawer: FC<Props> = ({
       data-testid="title"
       style={{ width: '100%' }}>
       <Typography.Text className="tw-font-medium">
-        Announcements on {entityName}
+        {t('label.announcement-on-entity', { entity: entityName })}
       </Typography.Text>
       <CloseOutlined onClick={onClose} />
     </Space>
@@ -108,9 +110,9 @@ const AnnouncementDrawer: FC<Props> = ({
       <div data-testid="announcement-drawer">
         <Drawer
           closable={false}
+          open={open}
           placement="right"
           title={title}
-          visible={open}
           width={576}
           onClose={onClose}>
           <div className="tw-flex tw-justify-end">
@@ -118,7 +120,7 @@ const AnnouncementDrawer: FC<Props> = ({
               data-testid="add-announcement"
               type="primary"
               onClick={() => setIsAnnouncement(true)}>
-              Add Announcement
+              {t('label.add-entity', { entity: t('label.announcement') })}
             </Button>
           </div>
 

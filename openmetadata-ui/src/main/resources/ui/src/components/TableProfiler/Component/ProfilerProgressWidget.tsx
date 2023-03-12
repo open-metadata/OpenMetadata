@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -25,7 +25,7 @@ const ProfilerProgressWidget: React.FC<ProfilerProgressWidgetProps> = ({
     <Row data-testid="profiler-progress-bar-container">
       <Col span={6}>
         <p className="percent-info" data-testid="percent-info">
-          {modifedValue}%
+          {`${modifedValue}%`}
         </p>
       </Col>
       <Col span={16}>

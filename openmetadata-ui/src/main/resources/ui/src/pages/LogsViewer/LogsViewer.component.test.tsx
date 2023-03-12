@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -24,7 +24,7 @@ jest.mock('react-router-dom', () => ({
 }));
 
 jest.mock(
-  '../../components/common/title-breadcrumb/title-breadcrumb.component',
+  'components/common/title-breadcrumb/title-breadcrumb.component',
   () => () => <>TitleBreadcrumb.component</>
 );
 
@@ -34,7 +34,7 @@ jest.mock('react-lazylog', () => ({
     .mockImplementation(() => <div data-testid="logs">LazyLog</div>),
 }));
 
-jest.mock('../../axiosAPIs/ingestionPipelineAPI', () => ({
+jest.mock('rest/ingestionPipelineAPI', () => ({
   getIngestionPipelineLogById: jest
     .fn()
     .mockImplementation(() => Promise.resolve({ data: mockLogsData })),
@@ -44,7 +44,7 @@ jest.mock('../../axiosAPIs/ingestionPipelineAPI', () => ({
 }));
 
 jest.mock(
-  '../../components/Ingestion/IngestionRecentRun/IngestionRecentRuns.component',
+  'components/Ingestion/IngestionRecentRun/IngestionRecentRuns.component',
   () => ({
     IngestionRecentRuns: jest
       .fn()

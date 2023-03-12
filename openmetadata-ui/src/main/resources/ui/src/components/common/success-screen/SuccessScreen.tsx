@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -13,13 +13,12 @@
 
 import classNames from 'classnames';
 import { isUndefined } from 'lodash';
-import { LoadingState } from 'Models';
-import React, { useState } from 'react';
+import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { CUSTOM_AIRFLOW_DOCS } from '../../../constants/constants';
 import { FormSubmitType } from '../../../enums/form.enum';
-import jsonData from '../../../jsons/en';
+import { useAirflowStatus } from '../../../hooks/useAirflowStatus';
 import SVGIcons, { Icons } from '../../../utils/SvgUtils';
-import { showErrorToast } from '../../../utils/ToastUtils';
 import { Button } from '../../buttons/Button/Button';
 import Loader from '../../Loader/Loader';
 
@@ -30,12 +29,10 @@ type SuccessScreenProps = {
   showIngestionButton: boolean;
   showDeployButton?: boolean;
   state: FormSubmitType;
-  isAirflowSetup: boolean;
   viewServiceText?: string;
   handleIngestionClick?: () => void;
   handleViewServiceClick: () => void;
   handleDeployClick?: () => void;
-  onCheckAirflowStatus?: () => Promise<void>;
 };
 
 const SuccessScreen = ({
@@ -43,41 +40,22 @@ const SuccessScreen = ({
   suffix,
   showIngestionButton,
   showDeployButton = false,
-  isAirflowSetup,
+
   handleIngestionClick,
   handleViewServiceClick,
   handleDeployClick,
   successMessage,
   viewServiceText,
-  onCheckAirflowStatus,
 }: SuccessScreenProps) => {
-  const [airflowCheckState, setAirflowCheckState] =
-    useState<LoadingState>('initial');
-  const [isAirflowRunning, setIsAirflowRunning] =
-    useState<boolean>(isAirflowSetup);
-
-  const handleAirflowStatusCheck = () => {
-    if (onCheckAirflowStatus) {
-      setAirflowCheckState('waiting');
-      onCheckAirflowStatus()
-        .then(() => {
-          setIsAirflowRunning(true);
-          setAirflowCheckState('success');
-        })
-        .catch(() => {
-          showErrorToast(
-            jsonData['api-error-messages']['check-status-airflow']
-          );
-          setAirflowCheckState('initial');
-        });
-    }
-  };
+  const { t } = useTranslation();
+  const { isAirflowAvailable, fetchAirflowStatus, isFetchingStatus } =
+    useAirflowStatus();
 
   const getAirflowStatusIcon = () => {
     let icon;
-    if (airflowCheckState === 'waiting') {
+    if (isFetchingStatus) {
       icon = <Loader size="small" type="default" />;
-    } else if (isAirflowRunning) {
+    } else if (isAirflowAvailable) {
       icon = (
         <SVGIcons
           alt="success"
@@ -117,10 +95,10 @@ const SuccessScreen = ({
           {isUndefined(successMessage) ? (
             <span>
               <span className="tw-mr-1 tw-font-semibold">
-                &quot;{name || 'demo_mysql'}&quot;
+                {`"${name || 'demo_mysql'}"`}
               </span>
               {suffix && <span className="tw-mr-1">{suffix}</span>}
-              <span>has been created successfully.</span>
+              <span>{t('message.has-been-created-successfully')}</span>
             </span>
           ) : (
             successMessage
@@ -128,7 +106,7 @@ const SuccessScreen = ({
         </p>
       </div>
 
-      {!isAirflowSetup && (
+      {!isAirflowAvailable && (
         <div
           className="tw-border tw-border-main tw-rounded tw-shadow tw-mt-7 tw-p-3"
           data-testid="airflow-status-msg">
@@ -138,40 +116,38 @@ const SuccessScreen = ({
                 {getAirflowStatusIcon()}
               </div>
               <h6 className="tw-text-base tw-font-medium tw-mb-0.5">
-                {isAirflowRunning
-                  ? 'OpenMetadata - Managed Airflow APIs'
-                  : 'Failed to find OpenMetadata - Managed Airflow APIs'}
+                {isAirflowAvailable
+                  ? t('message.manage-airflow-api')
+                  : t('message.manage-airflow-api-failed')}
               </h6>
             </div>
-            {!isUndefined(onCheckAirflowStatus) && (
+            {!isUndefined(fetchAirflowStatus) && (
               <div className="tw-flex-none">
                 <Button
                   className={classNames('tw-self-center tw-py-1 tw-px-1.5', {
-                    'tw-opacity-40': airflowCheckState === 'waiting',
+                    'tw-opacity-40': isFetchingStatus,
                   })}
                   data-testid="airflow-status-check"
-                  disabled={airflowCheckState === 'waiting'}
+                  disabled={isFetchingStatus}
                   size="small"
                   theme="primary"
                   variant="outlined"
-                  onClick={handleAirflowStatusCheck}>
-                  Check Status
+                  onClick={fetchAirflowStatus}>
+                  {t('label.check-status')}
                 </Button>
               </div>
             )}
           </div>
-          {!isAirflowRunning && (
+          {!isAirflowAvailable && (
             <p className="tw-mt-3">
-              To set up metadata extraction through UI, you first need to
-              configure and connect to Airflow. For more details visit our{' '}
+              {t('message.configure-airflow')}
               <a
                 data-testid="airflow-doc-link"
                 href={CUSTOM_AIRFLOW_DOCS}
                 rel="noopener noreferrer"
                 target="_blank">
-                documentation
+                {t('label.documentation-lowercase')}
               </a>
-              .
             </p>
           )}
         </div>
@@ -190,30 +166,32 @@ const SuccessScreen = ({
         {showIngestionButton && (
           <Button
             className={classNames('tw-ml-3.5', {
-              'tw-opacity-40 tw-pointer-events-none': !isAirflowRunning,
+              'tw-opacity-40 tw-pointer-events-none': !isAirflowAvailable,
             })}
             data-testid="add-ingestion-button"
-            disabled={!isAirflowRunning}
+            disabled={!isAirflowAvailable}
             size="regular"
             theme="primary"
             variant="contained"
             onClick={handleIngestionClick}>
-            <span>Add Ingestion</span>
+            <span>
+              {t('label.add-entity', { entity: t('label.ingestion') })}
+            </span>
           </Button>
         )}
 
         {showDeployButton && (
           <Button
             className={classNames('tw-ml-3.5', {
-              'tw-opacity-40 tw-pointer-events-none': !isAirflowRunning,
+              'tw-opacity-40 tw-pointer-events-none': !isAirflowAvailable,
             })}
             data-testid="add-ingestion-button"
-            disabled={!isAirflowRunning}
+            disabled={!isAirflowAvailable}
             size="regular"
             theme="primary"
             variant="contained"
             onClick={handleDeployClick}>
-            <span>Deploy</span>
+            <span>{t('label.deploy')}</span>
           </Button>
         )}
       </div>

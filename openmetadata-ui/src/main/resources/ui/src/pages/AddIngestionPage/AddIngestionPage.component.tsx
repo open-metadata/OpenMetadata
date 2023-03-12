@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -13,6 +13,13 @@
 
 import { Space } from 'antd';
 import { AxiosError } from 'axios';
+import AddIngestion from 'components/AddIngestion/AddIngestion.component';
+import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
+import TitleBreadcrumb from 'components/common/title-breadcrumb/title-breadcrumb.component';
+import { TitleBreadcrumbProps } from 'components/common/title-breadcrumb/title-breadcrumb.interface';
+import PageContainerV1 from 'components/containers/PageContainerV1';
+import PageLayoutV1 from 'components/containers/PageLayoutV1';
+import Loader from 'components/Loader/Loader';
 import { startCase } from 'lodash';
 import { ServiceTypes } from 'Models';
 import React, { useEffect, useState } from 'react';
@@ -20,18 +27,10 @@ import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import {
   addIngestionPipeline,
-  checkAirflowStatus,
   deployIngestionPipelineById,
   getIngestionPipelineByFqn,
-} from '../../axiosAPIs/ingestionPipelineAPI';
-import { getServiceByFQN } from '../../axiosAPIs/serviceAPI';
-import AddIngestion from '../../components/AddIngestion/AddIngestion.component';
-import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
-import TitleBreadcrumb from '../../components/common/title-breadcrumb/title-breadcrumb.component';
-import { TitleBreadcrumbProps } from '../../components/common/title-breadcrumb/title-breadcrumb.interface';
-import PageContainerV1 from '../../components/containers/PageContainerV1';
-import PageLayoutV1 from '../../components/containers/PageLayoutV1';
-import Loader from '../../components/Loader/Loader';
+} from 'rest/ingestionPipelineAPI';
+import { getServiceByFQN } from 'rest/serviceAPI';
 import {
   DEPLOYED_PROGRESS_VAL,
   getServiceDetailsPath,
@@ -45,6 +44,7 @@ import { IngestionActionMessage } from '../../enums/ingestion.enum';
 import { ServiceCategory } from '../../enums/service.enum';
 import { CreateIngestionPipeline } from '../../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { PipelineType } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
+import { useAirflowStatus } from '../../hooks/useAirflowStatus';
 import { DataObj } from '../../interface/service.interface';
 import jsonData from '../../jsons/en';
 import { getEntityMissingError } from '../../utils/CommonUtils';
@@ -58,6 +58,7 @@ import {
 import { showErrorToast } from '../../utils/ToastUtils';
 
 const AddIngestionPage = () => {
+  const { isAirflowAvailable, fetchAirflowStatus } = useAirflowStatus();
   const { ingestionType, serviceFQN, serviceCategory } =
     useParams<{ [key: string]: string }>();
   const { t } = useTranslation();
@@ -77,7 +78,6 @@ const AddIngestionPage = () => {
   const [slashedBreadcrumb, setSlashedBreadcrumb] = useState<
     TitleBreadcrumbProps['titleLinks']
   >([]);
-  const [isAirflowRunning, setIsAirflowRunning] = useState(true);
 
   const fetchServiceDetails = () => {
     getServiceByFQN(serviceCategory, serviceFQN)
@@ -145,7 +145,9 @@ const AddIngestionPage = () => {
           if (err.response?.status === 409) {
             showErrorToast(
               err,
-              t('label.entity-already-exists', { entity: 'Data asset' })
+              t('message.entity-already-exists', {
+                entity: t('label.data-asset'),
+              })
             );
             reject();
           } else {
@@ -172,33 +174,6 @@ const AddIngestionPage = () => {
               });
           }
         });
-    });
-  };
-
-  const onAirflowStatusCheck = (): Promise<void> => {
-    return new Promise<void>((resolve, reject) => {
-      checkAirflowStatus()
-        .then((res) => {
-          if (res.status === 200) {
-            resolve();
-          } else {
-            reject();
-          }
-        })
-        .catch(() => reject());
-    });
-  };
-
-  const fetchAirflowStatusCheck = () => {
-    return new Promise<void>((resolve) => {
-      onAirflowStatusCheck()
-        .then(() => {
-          setIsAirflowRunning(true);
-        })
-        .catch(() => {
-          setIsAirflowRunning(false);
-        })
-        .finally(() => resolve());
     });
   };
 
@@ -258,7 +233,9 @@ const AddIngestionPage = () => {
     } else {
       return (
         <div className="self-center">
-          <PageLayoutV1 center>
+          <PageLayoutV1
+            center
+            pageTitle={t('label.add-entity', { entity: t('label.ingestion') })}>
             <Space direction="vertical" size="middle">
               <TitleBreadcrumb titleLinks={slashedBreadcrumb} />
               <div className="form-container">
@@ -272,7 +249,6 @@ const AddIngestionPage = () => {
                   )}
                   ingestionAction={ingestionAction}
                   ingestionProgress={ingestionProgress}
-                  isAirflowSetup={isAirflowRunning}
                   isIngestionCreated={isIngestionCreated}
                   isIngestionDeployed={isIngestionDeployed}
                   pipelineType={ingestionType as PipelineType}
@@ -284,7 +260,6 @@ const AddIngestionPage = () => {
                   showDeployButton={showIngestionButton}
                   status={FormSubmitType.ADD}
                   onAddIngestionSave={onAddIngestionSave}
-                  onAirflowStatusCheck={onAirflowStatusCheck}
                   onIngestionDeploy={onIngestionDeploy}
                 />
               </div>
@@ -298,7 +273,7 @@ const AddIngestionPage = () => {
                 ingestionType as PipelineType,
                 isDeployed(),
                 false,
-                isAirflowRunning
+                isAirflowAvailable
               )}
             </div>
           </PageLayoutV1>
@@ -308,7 +283,7 @@ const AddIngestionPage = () => {
   };
 
   useEffect(() => {
-    fetchAirflowStatusCheck().finally(() => {
+    fetchAirflowStatus().finally(() => {
       fetchServiceDetails();
     });
   }, [serviceCategory, serviceFQN]);

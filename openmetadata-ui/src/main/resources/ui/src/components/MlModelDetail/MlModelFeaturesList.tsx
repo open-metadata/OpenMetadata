@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -21,7 +21,8 @@ import {
   Tooltip,
   Typography,
 } from 'antd';
-import { isEmpty, uniqueId } from 'lodash';
+import Tags from 'components/Tag/Tags/tags';
+import { isEmpty } from 'lodash';
 import { EntityTags, TagOption } from 'Models';
 import React, { FC, Fragment, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -33,13 +34,12 @@ import {
   getGlossaryTermlist,
 } from '../../utils/GlossaryUtils';
 import SVGIcons from '../../utils/SvgUtils';
-import { getTagCategories, getTaglist } from '../../utils/TagsUtils';
+import { getClassifications, getTaglist } from '../../utils/TagsUtils';
 import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder';
 import RichTextEditorPreviewer from '../common/rich-text-editor/RichTextEditorPreviewer';
 import { ModalWithMarkdownEditor } from '../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
 import { OperationPermission } from '../PermissionProvider/PermissionProvider.interface';
-import TagsContainer from '../tags-container/tags-container';
-import Tags from '../tags/tags';
+import TagsContainer from '../Tag/TagsContainer/tags-container';
 import SourceList from './SourceList.component';
 
 interface MlModelFeaturesListProp {
@@ -123,15 +123,16 @@ const MlModelFeaturesList: FC<MlModelFeaturesListProp> = ({
 
   const fetchTagsAndGlossaryTerms = () => {
     setIsTagLoading(true);
-    Promise.allSettled([getTagCategories(), fetchGlossaryTerms()])
-      .then((values) => {
+    Promise.allSettled([getClassifications(), fetchGlossaryTerms()])
+      .then(async (values) => {
         let tagsAndTerms: TagOption[] = [];
         if (
           values[0].status === SettledStatus.FULFILLED &&
           values[0].value.data
         ) {
-          tagsAndTerms = getTaglist(values[0].value.data).map((tag) => {
-            return { fqn: tag, source: 'Tag' };
+          const tagList = await getTaglist(values[0].value.data);
+          tagsAndTerms = tagList.map((tag) => {
+            return { fqn: tag, source: 'Classification' };
           });
         }
         if (
@@ -183,17 +184,16 @@ const MlModelFeaturesList: FC<MlModelFeaturesListProp> = ({
           </Col>
           <Col span={24}>
             <Typography.Title level={5}>
-              {t('label.features-used')}
+              {t('label.feature-plural-used')}
             </Typography.Title>
           </Col>
 
           {mlFeatures.map((feature: MlFeature) => (
             <Col key={feature.fullyQualifiedName} span={24}>
               <Card
-                bordered
-                className="m-b-xlg"
+                className="m-b-lg shadow-none"
                 data-testid="feature-card"
-                key={uniqueId()}>
+                key={feature.fullyQualifiedName}>
                 <Row>
                   <Col className="m-b-xs" span={24}>
                     <Typography.Text className="font-semibold">
@@ -204,7 +204,7 @@ const MlModelFeaturesList: FC<MlModelFeaturesListProp> = ({
                     <Space align="start">
                       <Space>
                         <Typography.Text className="text-grey-muted">
-                          {t('label.type')}:
+                          {`${t('label.type')}:`}
                         </Typography.Text>{' '}
                         <Typography.Text>
                           {feature.dataType || '--'}
@@ -213,7 +213,7 @@ const MlModelFeaturesList: FC<MlModelFeaturesListProp> = ({
                       <Divider className="border-gray" type="vertical" />
                       <Space>
                         <Typography.Text className="text-grey-muted">
-                          {t('label.algorithm')}:
+                          {`${t('label.algorithm')}:`}
                         </Typography.Text>{' '}
                         <Typography.Text>
                           {feature.featureAlgorithm || '--'}
@@ -222,7 +222,7 @@ const MlModelFeaturesList: FC<MlModelFeaturesListProp> = ({
                       <Divider className="border-gray" type="vertical" />
                       <Space align="start">
                         <Typography.Text className="text-grey-muted">
-                          {t('label.tag-plural')}:
+                          {`${t('label.tag-plural')}:`}
                         </Typography.Text>{' '}
                         <div
                           data-testid="feature-tags-wrapper"
@@ -306,7 +306,7 @@ const MlModelFeaturesList: FC<MlModelFeaturesListProp> = ({
                   <Col className="m-t-sm" span={24}>
                     <Space direction="vertical">
                       <Typography.Text className="text-grey-muted">
-                        {t('label.description')}:
+                        {`${t('label.description')}:`}
                       </Typography.Text>
                       <Space>
                         {feature.description ? (
@@ -314,8 +314,10 @@ const MlModelFeaturesList: FC<MlModelFeaturesListProp> = ({
                             markdown={feature.description}
                           />
                         ) : (
-                          <Typography.Text className="tw-no-description">
-                            {t('label.no-description')}
+                          <Typography.Text className="text-grey-muted">
+                            {t('label.no-entity', {
+                              entity: t('label.description'),
+                            })}
                           </Typography.Text>
                         )}
                         <Tooltip
@@ -339,7 +341,6 @@ const MlModelFeaturesList: FC<MlModelFeaturesListProp> = ({
                             <SVGIcons
                               alt="edit"
                               icon="icon-edit"
-                              title="Edit"
                               width="16px"
                             />
                           </Button>
@@ -357,10 +358,13 @@ const MlModelFeaturesList: FC<MlModelFeaturesListProp> = ({
         </Row>
         {!isEmpty(selectedFeature) && (
           <ModalWithMarkdownEditor
-            header={t('label.edit-feature', {
-              featureName: selectedFeature.name,
+            header={t('label.edit-entity-name', {
+              entityType: t('label.feature'),
+              entityName: selectedFeature.name,
             })}
-            placeholder={t('label.enter-feature-description')}
+            placeholder={t('label.enter-field-description', {
+              field: t('label.feature-lowercase'),
+            })}
             value={selectedFeature.description as string}
             visible={editDescription}
             onCancel={handleCancelEditDescription}

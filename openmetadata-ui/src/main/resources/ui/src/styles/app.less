@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -18,8 +18,34 @@
 @primary-hover-light: rgba(219, 209, 249);
 @white: #fff;
 @gray: #dde3ea;
-@grey-body: rgb(55, 53, 47);
 @trigger-btn-hover-bg: #efefef;
+
+// Global css
+.global-border {
+  border: @global-border;
+}
+
+.card-shadow {
+  box-shadow: @card-shadow;
+}
+
+.shadow-none {
+  box-shadow: none;
+}
+
+.deleted-badge-button {
+  margin-left: 4px;
+  padding: 2px 8px;
+  font-weight: 500;
+  border-radius: @border-radius-base;
+  color: @error-color;
+  background-color: @error-light-color;
+}
+
+// Left and Right Panel shadow color
+.panel-shadow-color {
+  box-shadow: @panels-shadow-color;
+}
 
 //font weight
 .font-300 {
@@ -30,30 +56,6 @@
 }
 .text-600 {
   font-weight: 600;
-}
-
-// font size
-.text-xs {
-  font-size: 12px;
-}
-.text-lg {
-  font-size: 18px;
-}
-.text-sm {
-  font-size: 14px;
-}
-.text-base {
-  font-size: 1rem /* 16px */;
-  line-height: 1.5rem /* 24px */;
-}
-.text-xl {
-  font-size: 1.25rem /* 20px */;
-  line-height: 1.75rem /* 28px */;
-}
-
-.text-2xl {
-  font-size: 1.5rem /* 24px */;
-  line-height: 2rem /* 32px */;
 }
 
 // text color
@@ -69,8 +71,19 @@
 .text-grey-muted {
   color: #6b7280;
 }
+.text-grey-body {
+  color: @text-color-secondary;
+}
 .text-body {
   color: @text-color-secondary;
+}
+
+.text-success {
+  color: #008376;
+}
+
+.text-failure {
+  color: #cb2431;
 }
 
 // text alignment
@@ -119,7 +132,7 @@
 // Radius
 
 .rounded-4 {
-  border-radius: 4px;
+  border-radius: @border-radius-base;
 }
 .rounded-full {
   border-radius: 9999px;
@@ -127,46 +140,6 @@
 
 .rounded-6 {
   border-radius: 6px;
-}
-
-// flex
-.flex {
-  display: flex;
-}
-.item-start {
-  align-items: flex-start;
-}
-.items-center {
-  align-items: center;
-}
-.justify-end {
-  justify-content: flex-end;
-}
-.justify-between {
-  justify-content: space-between;
-}
-.justify-center {
-  justify-content: center;
-}
-.self-center {
-  align-self: center;
-}
-.flex-col {
-  flex-direction: column;
-}
-.flex-initial {
-  flex: 0 1 auto;
-}
-.flex-center {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.flex-wrap {
-  flex-wrap: wrap;
-}
-.flex-grow {
-  flex-grow: 1;
 }
 
 .break-word {
@@ -192,6 +165,9 @@
 .bg-grey {
   background-color: @gray;
 }
+.bg-white {
+  background-color: @white;
+}
 
 .activeCategory {
   border-left: 2px solid @primary;
@@ -212,6 +188,12 @@
   opacity: 0.6;
 }
 
+.link-hover {
+  &:hover {
+    text-decoration: underline;
+    cursor: pointer;
+  }
+}
 .cursor-pointer {
   cursor: pointer;
 }
@@ -266,6 +248,10 @@
 .bg-white {
   background: @white;
 }
+
+.z-5 {
+  z-index: 5;
+}
 .z-10 {
   z-index: 10;
 }
@@ -292,6 +278,9 @@
 
 .opacity-0 {
   opacity: 0;
+}
+.opacity-50 {
+  opacity: 0.5;
 }
 .opacity-100 {
   opacity: 1;

@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -79,19 +79,19 @@ export const TIER_BAR_COLOR_MAP: Record<string, string> = {
 export const DAY_FILTER = [
   {
     value: 7,
-    label: i18n.t('label.last-no-of-days', { day: 7 }),
+    label: i18n.t('label.last-no-of-day-plural', { day: 7 }),
   },
   {
     value: 14,
-    label: i18n.t('label.last-no-of-days', { day: 14 }),
+    label: i18n.t('label.last-no-of-day-plural', { day: 14 }),
   },
   {
     value: 30,
-    label: i18n.t('label.last-no-of-days', { day: 30 }),
+    label: i18n.t('label.last-no-of-day-plural', { day: 30 }),
   },
   {
     value: 60,
-    label: i18n.t('label.last-no-of-days', { day: 60 }),
+    label: i18n.t('label.last-no-of-day-plural', { day: 60 }),
   },
 ];
 
@@ -124,7 +124,9 @@ export const TIER_DATA = {
   'Tier.Tier3': i18n.t('label.tier-number', { tier: 3 }),
   'Tier.Tier4': i18n.t('label.tier-number', { tier: 4 }),
   'Tier.Tier5': i18n.t('label.tier-number', { tier: 5 }),
-  NoTier: i18n.t('label.no-tier'),
+  NoTier: i18n.t('label.no-entity', {
+    entity: i18n.t('label.tier'),
+  }),
 };
 
 export const INITIAL_CHART_FILTER: ChartFilter = {
@@ -152,12 +154,12 @@ export const WEB_CHARTS = [
 
 export const WEB_SUMMARY_LIST = [
   {
-    label: i18n.t('label.page-views-by-entities'),
+    label: i18n.t('label.page-views-by-data-asset-plural'),
     latest: 0,
     id: DataInsightChartType.PageViewsByEntities,
   },
   {
-    label: i18n.t('label.daily-active-user'),
+    label: i18n.t('label.daily-active-users-on-the-platform'),
     latest: 0,
     id: DataInsightChartType.DailyActiveUsers,
   },
@@ -165,22 +167,28 @@ export const WEB_SUMMARY_LIST = [
 
 export const ENTITIES_SUMMARY_LIST = [
   {
-    label: i18n.t('label.total-data-assets'),
+    label: i18n.t('label.total-entity', {
+      entity: i18n.t('label.data-asset-plural'),
+    }),
     latest: 0,
     id: DataInsightChartType.TotalEntitiesByType,
   },
   {
-    label: i18n.t('label.data-assets-with-field', { field: 'description' }),
+    label: i18n.t('label.data-asset-plural-with-field', {
+      field: 'description',
+    }),
     latest: 0,
     id: DataInsightChartType.PercentageOfEntitiesWithDescriptionByType,
   },
   {
-    label: i18n.t('label.data-assets-with-field', { field: 'owners' }),
+    label: i18n.t('label.data-asset-plural-with-field', { field: 'owners' }),
     latest: 0,
     id: DataInsightChartType.PercentageOfEntitiesWithOwnerByType,
   },
   {
-    label: i18n.t('label.total-data-assets-with-tiers'),
+    label: i18n.t('label.total-entity', {
+      entity: i18n.t('label.data-assets-with-tier-plural'),
+    }),
     latest: 0,
     id: DataInsightChartType.TotalEntitiesByTier,
   },

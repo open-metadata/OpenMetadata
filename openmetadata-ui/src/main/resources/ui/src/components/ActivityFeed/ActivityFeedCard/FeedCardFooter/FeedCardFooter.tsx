@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -13,6 +13,7 @@
 
 import { isUndefined } from 'lodash';
 import React, { FC } from 'react';
+import { useTranslation } from 'react-i18next';
 import { getReplyText } from '../../../../utils/FeedUtils';
 import ProfilePicture from '../../../common/ProfilePicture/ProfilePicture';
 import { FeedFooterProp } from '../ActivityFeedCard.interface';
@@ -25,6 +26,7 @@ const FeedCardFooter: FC<FeedFooterProp> = ({
   onThreadSelect,
   isFooterVisible,
 }) => {
+  const { t } = useTranslation();
   const repliesCount = isUndefined(replies) ? 0 : replies;
 
   return (
@@ -48,7 +50,7 @@ const FeedCardFooter: FC<FeedFooterProp> = ({
             className="tw-ml-1 tw-text-info tw-text-xs tw-underline tw-self-center"
             data-testid="reply-count"
             onClick={() => onThreadSelect?.(threadId as string)}>
-            {`View ${getReplyText(repliesCount)}`}
+            {`${t('label.view')} ${getReplyText(repliesCount)}`}
           </span>
         </div>
       ) : null}

@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -55,7 +55,7 @@ export const LEFT_PANEL_DETAILS = {
 export const NAVBAR_DETAILS = {
   explore: {
     testid: '[data-testid="appbar-item-explore"]',
-    url: `${BASE_URL}/explore/tables/?page=1`,
+    url: `${BASE_URL}/explore/tables?page=1`,
   },
   quality: {
     testid: '[data-testid="appbar-item-data-quality"]',
@@ -83,7 +83,7 @@ export const NAVBAR_DETAILS = {
     testid: '[data-testid="dropdown-profile"]',
     subMenu: '[data-testid="greeting-text"] [data-testid="user-name"]',
     url: `${BASE_URL}/users/admin`,
-  }
+  },
 };
 
 export const SETTINGS_LEFT_PANEL = {
@@ -162,5 +162,5 @@ export const SETTINGS_LEFT_PANEL = {
   bots: {
     testid: '[data-menu-id*="bots"]',
     url: `${BASE_URL}/settings/integrations/bots`,
-  }
-}
+  },
+};

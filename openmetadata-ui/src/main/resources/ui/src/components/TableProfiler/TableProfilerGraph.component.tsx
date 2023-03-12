@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { t } from 'i18next';
 import React, { FC, ReactNode } from 'react';
 import { Area, AreaChart, Tooltip } from 'recharts';
 
@@ -25,8 +26,12 @@ const CustomTooltip = ({
   if (active && payload && payload.length) {
     return (
       <div className="tw-py-1.5 tw-px-1 tw-bg-black tw-opacity-50 tw-rounded tw-text-white tw-text-xs tw-font-medium">
-        <div>Value {payload[0].value}</div>
-        <div>Date {payload[0].payload.date.toString()}</div>
+        <div>
+          {t('label.value')} {payload[0].value}
+        </div>
+        <div>
+          {t('label.date')} {payload[0].payload.date.toString()}
+        </div>
       </div>
     );
   }

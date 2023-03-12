@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -12,9 +12,8 @@
  */
 
 /* eslint-disable max-len */
-/* eslint-disable @typescript-eslint/camelcase */
 
-import { ExploreSearchIndex } from '../components/Explore/explore.interface';
+import { ExploreSearchIndex } from 'components/Explore/explore.interface';
 import { SearchIndex } from '../enums/search.enum';
 import {
   Constraint,
@@ -3660,7 +3659,7 @@ export const mockSearchData: SearchResponse<ExploreSearchIndex> = {
               labelType: LabelType.Manual,
               description:
                 'PII which if lost, compromised, or disclosed without authorization, could result in substantial harm, embarrassment, inconvenience, or unfairness to an individual.',
-              source: TagSource.Tag,
+              source: TagSource.Classification,
               state: State.Confirmed,
             },
           ],

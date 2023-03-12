@@ -4,6 +4,8 @@ import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
+import static org.openmetadata.service.util.TestUtils.assertListNotNull;
+import static org.openmetadata.service.util.TestUtils.assertListNull;
 import static org.openmetadata.service.util.TestUtils.assertResponse;
 
 import java.io.IOException;
@@ -22,7 +24,6 @@ import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.OpenMetadataApplicationTest;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.TestUtils;
@@ -36,19 +37,14 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
         "testSuite",
         TestSuiteResource.FIELDS);
     supportsEmptyDescription = false;
-    supportsFollowers = false;
-    supportsAuthorizedMetadataOperations = false;
-    supportsOwner = false;
   }
 
   public void setupTestSuites(TestInfo test) throws IOException {
     TestSuiteResourceTest testSuiteResourceTest = new TestSuiteResourceTest();
     CreateTestSuite createTestSuite = testSuiteResourceTest.createRequest(test);
     TEST_SUITE1 = testSuiteResourceTest.createAndCheckEntity(createTestSuite, ADMIN_AUTH_HEADERS);
-    TEST_SUITE1_REFERENCE = TEST_SUITE1.getEntityReference();
     createTestSuite = testSuiteResourceTest.createRequest("testSuite2");
     TEST_SUITE2 = testSuiteResourceTest.createAndCheckEntity(createTestSuite, ADMIN_AUTH_HEADERS);
-    TEST_SUITE2_REFERENCE = TEST_SUITE2.getEntityReference();
   }
 
   @Test
@@ -67,19 +63,19 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
     List<EntityReference> testCases2 = new ArrayList<>();
     CreateTestSuite createTestSuite1 = createRequest(test);
     TestSuite testSuite1 = createAndCheckEntity(createTestSuite1, ADMIN_AUTH_HEADERS);
-    CreateTestSuite createTestSuite2 = createRequest(test.getDisplayName() + UUID.randomUUID());
+    CreateTestSuite createTestSuite2 = createRequest(test, 1);
     TestSuite testSuite2 = createAndCheckEntity(createTestSuite2, ADMIN_AUTH_HEADERS);
 
     for (int i = 0; i < 5; i++) {
       CreateTestCase createTestCase =
-          testCaseResourceTest.createRequest("test_testSuite_1_" + i).withTestSuite(testSuite1.getEntityReference());
+          testCaseResourceTest.createRequest("test_testSuite_1_" + i).withTestSuite(testSuite1.getFullyQualifiedName());
       TestCase testCase = testCaseResourceTest.createAndCheckEntity(createTestCase, ADMIN_AUTH_HEADERS);
       testCases1.add(testCase.getEntityReference());
     }
 
     for (int i = 5; i < 10; i++) {
       CreateTestCase create =
-          testCaseResourceTest.createRequest("test_testSuite_2_" + i).withTestSuite(testSuite2.getEntityReference());
+          testCaseResourceTest.createRequest("test_testSuite_2_" + i).withTestSuite(testSuite2.getFullyQualifiedName());
       TestCase testCase = testCaseResourceTest.createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
       testCases2.add(testCase.getEntityReference());
     }
@@ -104,9 +100,9 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
     assertEquals(deletedTestSuite.getDeleted(), true);
   }
 
-  public static ResultList<TestSuite> getTestSuites(Integer limit, String fields, Map<String, String> authHeaders)
+  public ResultList<TestSuite> getTestSuites(Integer limit, String fields, Map<String, String> authHeaders)
       throws HttpResponseException {
-    WebTarget target = OpenMetadataApplicationTest.getResource("testSuite");
+    WebTarget target = getResource("testSuite");
     target = limit != null ? target.queryParam("limit", limit) : target;
     target = target.queryParam("fields", fields);
     return TestUtils.get(target, TestSuiteResource.TestSuiteList.class, authHeaders);
@@ -156,8 +152,20 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
   }
 
   @Override
-  public TestSuite validateGetWithDifferentFields(TestSuite entity, boolean byName) {
-    return null;
+  public TestSuite validateGetWithDifferentFields(TestSuite entity, boolean byName) throws HttpResponseException {
+    String fields = "";
+    entity =
+        byName
+            ? getEntityByName(entity.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
+            : getEntity(entity.getId(), null, ADMIN_AUTH_HEADERS);
+    assertListNull(entity.getOwner(), entity.getTests());
+    fields = "owner,tests";
+    entity =
+        byName
+            ? getEntityByName(entity.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
+            : getEntity(entity.getId(), fields, ADMIN_AUTH_HEADERS);
+    assertListNotNull(entity.getOwner(), entity.getTests());
+    return entity;
   }
 
   @Override

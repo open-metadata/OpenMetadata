@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,13 +11,14 @@
  *  limitations under the License.
  */
 
-import React, { Fragment, FunctionComponent, useEffect, useState } from 'react';
+import React, { FunctionComponent, useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { EntityReference } from '../../generated/type/entityReference';
 import { getRecentlyViewedData, prepareLabel } from '../../utils/CommonUtils';
 import { EntityListWithAntd } from '../EntityList/EntityList';
-import Loader from '../Loader/Loader';
 
 const RecentlyViewed: FunctionComponent = () => {
+  const { t } = useTranslation();
   const recentlyViewedData = getRecentlyViewedData();
   const [data, setData] = useState<Array<EntityReference>>([]);
   const [isLoading, setIsloading] = useState<boolean>(false);
@@ -45,18 +46,13 @@ const RecentlyViewed: FunctionComponent = () => {
   }, []);
 
   return (
-    <Fragment>
-      {isLoading ? (
-        <Loader />
-      ) : (
-        <EntityListWithAntd
-          entityList={data}
-          headerTextLabel="Recent Views"
-          noDataPlaceholder={<>No recently viewed data.</>}
-          testIDText="Recently Viewed"
-        />
-      )}
-    </Fragment>
+    <EntityListWithAntd
+      entityList={data}
+      headerTextLabel={t('label.recent-views')}
+      loading={isLoading}
+      noDataPlaceholder={<>{t('message.no-recently-viewed-date')}</>}
+      testIDText={t('label.recently-viewed')}
+    />
   );
 };
 

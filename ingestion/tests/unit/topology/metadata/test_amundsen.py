@@ -27,7 +27,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.generated.schema.security.credentials.awsCredentials import AWSCredentials
 from metadata.generated.schema.type.basic import Href
-from metadata.ingestion.source.metadata.amundsen import AmundsenSource
+from metadata.ingestion.source.metadata.amundsen.metadata import AmundsenSource
 
 mock_amundsen_config = {
     "source": {
@@ -149,7 +149,6 @@ EXPECTED_SERVICE = [
                 awsConfig=AWSCredentials(awsRegion="aws_region"),
                 connectionArguments=None,
                 supportsMetadataExtraction=True,
-                supportsProfiler=True,
             )
         ),
         pipelines=None,
@@ -181,7 +180,9 @@ class AmundsenUnitTest(TestCase):
     Amundsen Unit Test
     """
 
-    @patch("metadata.ingestion.source.pipeline.pipeline_service.test_connection")
+    @patch(
+        "metadata.ingestion.source.pipeline.pipeline_service.PipelineServiceSource.test_connection"
+    )
     def __init__(self, methodName, test_connection) -> None:
         super().__init__(methodName)
         test_connection.return_value = False

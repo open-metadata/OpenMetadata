@@ -1,3 +1,16 @@
+/*
+ *  Copyright 2022 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
 import { Form, Input, Modal } from 'antd';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
@@ -34,9 +47,11 @@ const ChangePasswordForm: React.FC<ChangePasswordForm> = ({
         type: 'primary',
         htmlType: 'submit',
       }}
-      okText={t('label.update-password')}
-      title={t('label.change-password')}
-      visible={visible}
+      okText={t('label.update-entity', { entity: t('label.password') })}
+      open={visible}
+      title={t('label.change-entity', {
+        entity: t('label.password'),
+      })}
       width={500}
       onCancel={() => {
         form.resetFields();
@@ -60,7 +75,9 @@ const ChangePasswordForm: React.FC<ChangePasswordForm> = ({
             ]}>
             <Input.Password
               data-testid="name"
-              placeholder={t('label.enter-old-password')}
+              placeholder={t('label.enter-type-password', {
+                type: t('label.old'),
+              })}
             />
           </Form.Item>
         )}
@@ -76,7 +93,11 @@ const ChangePasswordForm: React.FC<ChangePasswordForm> = ({
               message: passwordErrorMessage,
             },
           ]}>
-          <Input.Password placeholder={t('label.enter-new-password')} />
+          <Input.Password
+            placeholder={t('label.enter-type-password', {
+              type: t('label.new'),
+            })}
+          />
         </Form.Item>
         <Form.Item
           label={t('label.confirm-new-password')}

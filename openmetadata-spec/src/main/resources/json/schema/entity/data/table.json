@@ -10,6 +10,13 @@
     "org.openmetadata.schema.EntityInterface"
   ],
   "definitions": {
+    "entityName": {
+      "description": "Name of a table. Expected to be unique within a database.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^((?!::).)*$"
+    },
     "profileSampleType": {
       "description": "Type of Profile Sample (percentage or rows)",
       "type": "string",
@@ -31,7 +38,8 @@
         "MaterializedView",
         "Iceberg",
         "Local",
-        "Partitioned"
+        "Partitioned",
+        "Foreign"
       ],
       "javaEnums": [
         {
@@ -57,6 +65,9 @@
         },
         {
           "name": "Partitioned"
+        },
+        {
+          "name": "Foreign"
         }
       ]
     },
@@ -108,7 +119,11 @@
         "POINT",
         "POLYGON",
         "BYTEA",
-        "AGGREGATEFUNCTION"
+        "AGGREGATEFUNCTION",
+        "ERROR",
+        "FIXED",
+        "RECORD",
+        "NULL"
       ]
     },
     "constraint": {
@@ -152,7 +167,8 @@
       "description": "Local name (not fully qualified name) of the column. ColumnName is `-` when the column is not named in struct dataType. For example, BigQuery supports struct with unnamed fields.",
       "type": "string",
       "minLength": 1,
-      "maxLength": 128
+      "maxLength": 128,
+      "pattern": "^((?!::).)*$"
     },
     "tablePartition": {
       "type": "object",
@@ -173,7 +189,8 @@
             "TIME-UNIT",
             "INTEGER-RANGE",
             "INGESTION-TIME",
-            "COLUMN-VALUE"
+            "COLUMN-VALUE",
+            "OTHER"
           ]
         },
         "interval": {
@@ -395,7 +412,7 @@
           "type": "number"
         },
         "valuesPercentage": {
-          "description": "Percentage of values in this column with respect to rowcount.",
+          "description": "Percentage of values in this column with respect to row count.",
           "type": "number"
         },
         "validCount": {
@@ -506,6 +523,22 @@
           "description": "Median of a column.",
           "type": "number"
         },
+        "firstQuartile": {
+          "description": "First quartile of a column.",
+          "type": "number"
+        },
+        "thirdQuartile": {
+          "description": "First quartile of a column.",
+          "type": "number"
+        },
+        "interQuartileRange": {
+          "description": "Inter quartile range of a column.",
+          "type": "number"
+        },
+        "nonParametricSkew": {
+          "description": "Non parametric skew of a column.",
+          "type": "number"
+        },
         "histogram": {
           "description": "Histogram of a column.",
           "properties": {
@@ -602,7 +635,9 @@
           "type": "string",
           "enum": [
             "TIME-UNIT",
-            "INGESTION-TIME"
+            "INTEGER-RANGE",
+            "INGESTION-TIME",
+            "COLUMN-VALUE"
           ]
         },
         "partitionInterval": {
@@ -622,6 +657,16 @@
         "partitionValues": {
           "description": "unit used for the partition interval",
           "type": "array"
+        },
+        "partitionIntegerRangeStart": {
+          "description": "start of the integer range for partitioning",
+          "type": "integer",
+          "default": null
+        },
+        "partitionIntegerRangeEnd": {
+          "description": "end of the integer range for partitioning",
+          "type": "integer",
+          "default": null
         }
       }
     },
@@ -814,7 +859,7 @@
     },
     "name": {
       "description": "Name of a table. Expected to be unique within a database.",
-      "$ref": "../../type/basic.json#/definitions/entityName"
+      "$ref": "#/definitions/entityName"
     },
     "displayName": {
       "description": "Display Name that identifies this table. It could be title or label from the source services.",

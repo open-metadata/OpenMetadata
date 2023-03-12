@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,12 +11,10 @@
  *  limitations under the License.
  */
 
-/* eslint-disable @typescript-eslint/camelcase */
-
 import { findByText, render } from '@testing-library/react';
+import { ExploreSearchIndex } from 'components/Explore/explore.interface';
 import React from 'react';
 import { MemoryRouter } from 'react-router';
-import { ExploreSearchIndex } from '../../components/Explore/explore.interface';
 import { SearchIndex } from '../../enums/search.enum';
 import {
   ConstraintType,
@@ -36,12 +34,10 @@ const aggregations = {
     buckets: [
       {
         key: 'user',
-        // eslint-disable-next-line @typescript-eslint/camelcase
         doc_count: 200,
       },
       {
         key: 'team',
-        // eslint-disable-next-line @typescript-eslint/camelcase
         doc_count: 15,
       },
     ],
@@ -65,7 +61,6 @@ const aggregations = {
 
 const mockData: SearchResponse<ExploreSearchIndex> = {
   took: 44,
-  // eslint-disable-next-line @typescript-eslint/camelcase
   timed_out: false,
   hits: {
     total: {
@@ -151,7 +146,7 @@ const mockData: SearchResponse<ExploreSearchIndex> = {
               labelType: LabelType.Manual,
               description:
                 'PII which if lost, compromised, or disclosed without authorization, could result in substantial harm, embarrassment, inconvenience, or unfairness to an individual.',
-              source: TagSource.Tag,
+              source: TagSource.Classification,
               state: State.Confirmed,
             },
           ],
@@ -297,11 +292,11 @@ jest.mock('../../AppState', () => ({
   updateExplorePageTab: jest.fn().mockReturnValue(''),
 }));
 
-jest.mock('../../components/Explore/Explore.component', () => {
+jest.mock('components/Explore/Explore.component', () => {
   return jest.fn().mockReturnValue(<p>Explore Component</p>);
 });
 
-jest.mock('../../axiosAPIs/searchAPI', () => ({
+jest.mock('rest/searchAPI', () => ({
   searchQuery: jest
     .fn()
     .mockImplementation(

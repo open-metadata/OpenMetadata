@@ -13,28 +13,33 @@
 
 package org.openmetadata.service.resources.tags;
 
-import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
+import static org.openmetadata.service.Entity.CLASSIFICATION;
 import static org.openmetadata.service.Entity.TAG;
-import static org.openmetadata.service.Entity.TAG_CATEGORY;
-import static org.openmetadata.service.util.EntityUtil.createOrUpdateOperation;
 
 import io.swagger.annotations.Api;
-import io.swagger.annotations.ApiOperation;
+import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.IOException;
-import java.net.URI;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
+import javax.json.JsonPatch;
 import javax.validation.Valid;
+import javax.validation.constraints.Max;
+import javax.validation.constraints.Min;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.DELETE;
+import javax.ws.rs.DefaultValue;
 import javax.ws.rs.GET;
+import javax.ws.rs.PATCH;
 import javax.ws.rs.POST;
 import javax.ws.rs.PUT;
 import javax.ws.rs.Path;
@@ -47,27 +52,28 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
-import org.openmetadata.schema.api.tags.CreateTag;
-import org.openmetadata.schema.api.tags.CreateTagCategory;
-import org.openmetadata.schema.entity.tags.Tag;
+import org.openmetadata.schema.api.classification.CreateTag;
+import org.openmetadata.schema.api.classification.LoadTags;
+import org.openmetadata.schema.api.data.RestoreEntity;
+import org.openmetadata.schema.entity.classification.Classification;
+import org.openmetadata.schema.entity.classification.Tag;
+import org.openmetadata.schema.type.EntityHistory;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
-import org.openmetadata.schema.type.MetadataOperation;
-import org.openmetadata.schema.type.TagCategory;
+import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.jdbi3.ClassificationRepository;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
-import org.openmetadata.service.jdbi3.TagCategoryRepository;
 import org.openmetadata.service.jdbi3.TagRepository;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
-import org.openmetadata.service.security.policyevaluator.OperationContext;
-import org.openmetadata.service.security.policyevaluator.ResourceContext;
-import org.openmetadata.service.util.EntityUtil.Fields;
+import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
-import org.openmetadata.service.util.RestUtil;
+import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
 
 @Slf4j
@@ -75,510 +81,438 @@ import org.openmetadata.service.util.ResultList;
 @Api(value = "Tags resources collection", tags = "Tags resources collection")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(name = "tags", order = 6) // initialize after Glossary and GlossaryTerm
-public class TagResource {
+@Collection(name = "tags", order = 5) // initialize after Classification, and before Glossary and GlossaryTerm
+public class TagResource extends EntityResource<Tag, TagRepository> {
+  private final CollectionDAO daoCollection;
   public static final String TAG_COLLECTION_PATH = "/v1/tags/";
-  private final TagRepository dao;
-  private final TagCategoryRepository daoCategory;
-  private final Authorizer authorizer;
 
-  static class CategoryList extends ResultList<TagCategory> {
+  static class TagList extends ResultList<Tag> {
     @SuppressWarnings("unused") // Empty constructor needed for deserialization
-    CategoryList() {}
+    TagList() {}
   }
 
   public TagResource(CollectionDAO collectionDAO, Authorizer authorizer) {
+    super(Tag.class, new TagRepository(collectionDAO), authorizer);
     Objects.requireNonNull(collectionDAO, "TagRepository must not be null");
-    this.dao = new TagRepository(collectionDAO);
-    this.daoCategory = new TagCategoryRepository(collectionDAO, dao);
-    this.authorizer = authorizer;
+    daoCollection = collectionDAO;
   }
 
-  @SuppressWarnings("unused") // Method used by reflection
+  private void migrateTags() {
+    // Just want to run it when upgrading to version above 0.13.1 where tag relationship are not there , once we have
+    // any entries we don't need to run it
+    if (!(daoCollection.relationshipDAO().findIfAnyRelationExist(CLASSIFICATION, TAG) > 0)) {
+      // We are missing relationship for classification -> tag, and also tag -> tag (parent relationship)
+      // Find tag definitions and load classifications from the json file, if necessary
+      ClassificationRepository classificationRepository =
+          (ClassificationRepository) Entity.getEntityRepository(CLASSIFICATION);
+      try {
+        List<Classification> classificationList =
+            classificationRepository.listAll(classificationRepository.getFields("*"), new ListFilter(Include.ALL));
+        List<String> jsons = dao.dao.listAfter(new ListFilter(Include.ALL), Integer.MAX_VALUE, "");
+        List<Tag> storedTags = JsonUtils.readObjects(jsons, Tag.class);
+        for (Tag tag : storedTags) {
+          if (tag.getFullyQualifiedName().contains(".")) {
+            // Either it has classification or a tag which is its parent
+            // Check Classification
+            String[] tokens = tag.getFullyQualifiedName().split("\\.", 2);
+            String classificationName = tokens[0];
+            String remainingPart = tokens[1];
+            for (Classification classification : classificationList) {
+              if (classification.getName().equals(classificationName)) {
+                // This means need to add a relationship
+                try {
+                  dao.addRelationship(classification.getId(), tag.getId(), CLASSIFICATION, TAG, Relationship.CONTAINS);
+                  break;
+                } catch (Exception ex) {
+                  LOG.info("Classification Relation already exists");
+                }
+              }
+            }
+            if (remainingPart.contains(".")) {
+              // Handle tag -> tag relationship
+              String parentTagName =
+                  tag.getFullyQualifiedName().substring(0, tag.getFullyQualifiedName().lastIndexOf("."));
+              for (Tag parentTag : storedTags) {
+                if (parentTag.getFullyQualifiedName().equals(parentTagName)) {
+                  try {
+                    dao.addRelationship(parentTag.getId(), tag.getId(), TAG, TAG, Relationship.CONTAINS);
+                    break;
+                  } catch (Exception ex) {
+                    LOG.info("Parent Tag Ownership already exists");
+                  }
+                }
+              }
+            }
+          }
+        }
+      } catch (Exception ex) {
+        LOG.error("Failed in Listing all the Stored Tags.");
+      }
+    }
+  }
+
+  @Override
   public void initialize(OpenMetadataApplicationConfig config) throws IOException {
-    // Find tag definitions and load tag categories from the json file, if necessary
-    List<TagCategory> tagCategories =
-        EntityRepository.getEntitiesFromSeedData(TAG_CATEGORY, ".*json/data/tags/.*\\.json$", TagCategory.class);
-    for (TagCategory tagCategory : tagCategories) {
-      long now = System.currentTimeMillis();
-      tagCategory.withId(UUID.randomUUID()).withUpdatedBy(ADMIN_USER_NAME).withUpdatedAt(now);
-      tagCategory
-          .getChildren()
-          .forEach(
-              t -> {
-                t.withId(UUID.randomUUID())
-                    .withUpdatedBy(ADMIN_USER_NAME)
-                    .withUpdatedAt(now)
-                    .withProvider(tagCategory.getProvider());
-                t.getChildren()
-                    .forEach(
-                        c ->
-                            c.withId(UUID.randomUUID())
-                                .withUpdatedBy(ADMIN_USER_NAME)
-                                .withUpdatedAt(now)
-                                .withProvider(tagCategory.getProvider()));
-              });
-      daoCategory.initCategory(tagCategory);
-      TagLabelCache.initialize();
+    // TODO: Once we have migrated to the version above 0.13.1, then this can be removed
+    migrateTags();
+    // Find tag definitions and load classifications from the json file, if necessary
+    ClassificationRepository classificationRepository =
+        (ClassificationRepository) Entity.getEntityRepository(CLASSIFICATION);
+    List<LoadTags> loadTagsList =
+        EntityRepository.getEntitiesFromSeedData(CLASSIFICATION, ".*json/data/tags/.*\\.json$", LoadTags.class);
+    for (LoadTags loadTags : loadTagsList) {
+      Classification classification =
+          ClassificationResource.getClassification(loadTags.getCreateClassification(), ADMIN_USER_NAME);
+      classificationRepository.initializeEntity(classification);
+
+      List<Tag> tagsToCreate = new ArrayList<>();
+      for (CreateTag createTag : loadTags.getCreateTags()) {
+        createTag.withClassification(classification.getName());
+        createTag.withProvider(classification.getProvider());
+        tagsToCreate.add(getTag(createTag, ADMIN_USER_NAME));
+      }
+
+      // Sort tags based on tag hierarchy
+      EntityUtil.sortByTagHierarchy(tagsToCreate);
+
+      for (Tag tag : tagsToCreate) {
+        dao.initializeEntity(tag);
+      }
     }
   }
 
-  static final String FIELDS = "usageCount";
-  protected static final List<String> ALLOWED_FIELDS = Entity.getEntityFields(Tag.class);
+  static final String FIELDS = "children, usageCount";
 
   @GET
+  @Valid
   @Operation(
-      operationId = "listTagCategories",
-      summary = "List tag categories",
-      tags = "tags",
-      description = "Get a list of tag categories.",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "The user ",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = CategoryList.class)))
-      })
-  public ResultList<TagCategory> getCategories(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Parameter(
-              description = "Fields requested in the returned resource",
-              schema = @Schema(type = "string", example = FIELDS))
-          @QueryParam("fields")
-          String fieldsParam)
-      throws IOException {
-    Fields fields = new Fields(ALLOWED_FIELDS, fieldsParam);
-    ListFilter filter = new ListFilter(Include.ALL);
-    ResultList<TagCategory> list = daoCategory.listAfter(uriInfo, fields, filter, 10000, null);
-    list.getData().forEach(category -> addHref(uriInfo, category));
-    return list;
-  }
-
-  @GET
-  @Path("{category}")
-  @Operation(
-      operationId = "getTagCategoryByName",
-      summary = "Get a tag category",
-      tags = "tags",
+      operationId = "listTags",
+      summary = "List tags",
+      tags = "classification",
       description =
-          "Get a tag category identified by name. The response includes tag category information along "
-              + "with the entire hierarchy of all the children tags.",
+          "Get a list of tags. Use `fields` parameter to get only necessary fields. "
+              + " Use cursor-based pagination to limit the number "
+              + "entries in the list using `limit` and `before` or `after` query params.",
       responses = {
         @ApiResponse(
             responseCode = "200",
-            description = "The user ",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = TagCategory.class))),
-        @ApiResponse(responseCode = "404", description = "TagCategory for instance {category} is not found")
+            description = "List of tags",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = TagList.class)))
       })
-  public TagCategory getCategory(
+  public ResultList<Tag> list(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Tag category name", schema = @Schema(type = "string")) @PathParam("category")
-          String category,
+      @Parameter(
+              description =
+                  "List tags filtered by children of tag identified by fqn given in `parent` parameter. The fqn "
+                      + "can either be classificationName or fqn of a parent tag",
+              schema = @Schema(type = "string", example = FIELDS))
+          @QueryParam("parent")
+          String parent,
       @Parameter(
               description = "Fields requested in the returned resource",
               schema = @Schema(type = "string", example = FIELDS))
           @QueryParam("fields")
-          String fieldsParam)
+          String fieldsParam,
+      @Parameter(description = "Limit the number tags returned. (1 to 1000000, " + "default = 10)")
+          @DefaultValue("10")
+          @Min(0)
+          @Max(1000000)
+          @QueryParam("limit")
+          int limitParam,
+      @Parameter(description = "Returns list of tags before this cursor", schema = @Schema(type = "string"))
+          @QueryParam("before")
+          String before,
+      @Parameter(description = "Returns list of tags after this cursor", schema = @Schema(type = "string"))
+          @QueryParam("after")
+          String after,
+      @Parameter(
+              description = "Include all, deleted, or non-deleted entities.",
+              schema = @Schema(implementation = Include.class))
+          @QueryParam("include")
+          @DefaultValue("non-deleted")
+          Include include)
       throws IOException {
-    Fields fields = new Fields(ALLOWED_FIELDS, fieldsParam);
-    return addHref(uriInfo, daoCategory.getByName(uriInfo, category, fields, Include.ALL));
+    ListFilter filter = new ListFilter(include).addQueryParam("parent", parent);
+    return super.listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
 
   @GET
+  @Path("/{id}")
   @Operation(
-      operationId = "getPrimaryTag",
-      summary = "Get a primary tag",
-      tags = "tags",
-      description =
-          "Get a primary tag identified by name. The response includes with the entire hierarchy of all"
-              + " the children tags.",
+      operationId = "getTagByID",
+      summary = "Get a tag by id",
+      tags = "classification",
+      description = "Get a tag by `id`.",
       responses = {
         @ApiResponse(
             responseCode = "200",
-            description = "The user ",
+            description = "The tag",
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = Tag.class))),
-        @ApiResponse(responseCode = "404", description = "TagCategory for instance {category} is not found"),
-        @ApiResponse(responseCode = "404", description = "Tag for instance {primaryTag} is not found")
+        @ApiResponse(responseCode = "404", description = "Tag for instance {id} is not found")
       })
-  @Path("{category}/{primaryTag}")
-  @ApiOperation(value = "Returns tag groups under the given category.", response = Tag.class)
-  public Tag getPrimaryTag(
+  public Tag get(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Tag category name", schema = @Schema(type = "string")) @PathParam("category")
-          String category,
-      @Parameter(
-              description = "Primary tag name",
-              schema =
-                  @Schema(type = "string", example = "<primaryTag> fully qualified name <categoryName>.<primaryTag>"))
-          @PathParam("primaryTag")
-          String primaryTag,
+      @Parameter(description = "Id of the tag", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
       @Parameter(
               description = "Fields requested in the returned resource",
               schema = @Schema(type = "string", example = FIELDS))
           @QueryParam("fields")
-          String fieldsParam)
+          String fieldsParam,
+      @Parameter(
+              description = "Include all, deleted, or non-deleted entities.",
+              schema = @Schema(implementation = Include.class))
+          @QueryParam("include")
+          @DefaultValue("non-deleted")
+          Include include)
       throws IOException {
-    String fqn = FullyQualifiedName.add(category, primaryTag);
-    Fields fields = new Fields(ALLOWED_FIELDS, fieldsParam);
-    Tag tag = dao.getByName(uriInfo, fqn, fields, Include.ALL);
-    URI categoryHref = RestUtil.getHref(uriInfo, TAG_COLLECTION_PATH, category);
-    return addHref(categoryHref, tag);
+    return getInternal(uriInfo, securityContext, id, fieldsParam, include);
   }
 
   @GET
-  @Path("{category}/{primaryTag}/{secondaryTag}")
+  @Path("/name/{fqn}")
   @Operation(
-      operationId = "getSecondaryTag",
-      summary = "Get a secondary tag",
-      tags = "tags",
-      description = "Get a secondary tag identified by name.",
+      operationId = "getTagByFQN",
+      summary = "Get a tag by fully qualified name",
+      tags = "classification",
+      description = "Get a tag by `fullyQualifiedName`.",
       responses = {
         @ApiResponse(
             responseCode = "200",
-            description = "The user ",
+            description = "The tag",
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = Tag.class))),
-        @ApiResponse(responseCode = "404", description = "TagCategory for instance {category} is not found"),
-        @ApiResponse(responseCode = "404", description = "Tag for instance {primaryTag} is not found"),
-        @ApiResponse(responseCode = "404", description = "Tag for instance {secondaryTag} is not found")
+        @ApiResponse(responseCode = "404", description = "Tag for instance {fqn} is not found")
       })
-  public Tag getSecondaryTag(
+  public Tag getByName(
       @Context UriInfo uriInfo,
+      @Parameter(description = "Fully qualified name of the tag", schema = @Schema(type = "string")) @PathParam("fqn")
+          String fqn,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Tag category name", schema = @Schema(type = "string")) @PathParam("category")
-          String category,
-      @Parameter(
-              description = "Primary tag name",
-              schema =
-                  @Schema(type = "string", example = "<primaryTag> fully qualified name <categoryName>.<primaryTag>"))
-          @PathParam("primaryTag")
-          String primaryTag,
-      @Parameter(
-              description = "Secondary tag name",
-              schema =
-                  @Schema(
-                      type = "string",
-                      example = "<secondaryTag> fully qualified name <categoryName>" + ".<primaryTag>.<SecondaryTag>"))
-          @PathParam("secondaryTag")
-          String secondaryTag,
       @Parameter(
               description = "Fields requested in the returned resource",
               schema = @Schema(type = "string", example = FIELDS))
           @QueryParam("fields")
-          String fieldsParam)
+          String fieldsParam,
+      @Parameter(
+              description = "Include all, deleted, or non-deleted entities.",
+              schema = @Schema(implementation = Include.class))
+          @QueryParam("include")
+          @DefaultValue("non-deleted")
+          Include include)
       throws IOException {
-    String fqn = FullyQualifiedName.build(category, primaryTag, secondaryTag);
-    Fields fields = new Fields(ALLOWED_FIELDS, fieldsParam);
-    Tag tag = dao.getByName(uriInfo, fqn, fields, Include.ALL);
-    URI categoryHref = RestUtil.getHref(uriInfo, TAG_COLLECTION_PATH, category + "/" + primaryTag);
-    return addHref(categoryHref, tag);
+    return getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include);
+  }
+
+  @GET
+  @Path("/{id}/versions")
+  @Operation(
+      operationId = "listAllTagVersion",
+      summary = "List tag versions",
+      tags = "classification",
+      description = "Get a list of all the versions of a tag identified by `id`",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "List of tag versions",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = EntityHistory.class)))
+      })
+  public EntityHistory listVersions(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the tag", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
+      throws IOException {
+    return super.listVersionsInternal(securityContext, id);
+  }
+
+  @GET
+  @Path("/{id}/versions/{version}")
+  @Operation(
+      operationId = "getSpecificTagVersion",
+      summary = "Get a version of the tags",
+      tags = "classification",
+      description = "Get a version of the tag by given `id`",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "tags",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Tag.class))),
+        @ApiResponse(
+            responseCode = "404",
+            description = "Tag for instance {id} and version {version} is " + "not found")
+      })
+  public Tag getVersion(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the tag", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Parameter(
+              description = "tag version number in the form `major`.`minor`",
+              schema = @Schema(type = "string", example = "0.1 or 1.1"))
+          @PathParam("version")
+          String version)
+      throws IOException {
+    return super.getVersionInternal(securityContext, id, version);
   }
 
   @POST
   @Operation(
-      operationId = "createTagCategory",
-      summary = "Create a tag category",
-      tags = "tags",
-      description =
-          "Create a new tag category. The request can include the children tags to be created along "
-              + "with the tag category.",
+      operationId = "createTag",
+      summary = "Create a tag",
+      tags = "classification",
+      description = "Create a new tag.",
       responses = {
         @ApiResponse(
             responseCode = "200",
-            description = "The user ",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = TagCategory.class))),
-        @ApiResponse(responseCode = "400", description = "Bad request")
-      })
-  public Response createCategory(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateTagCategory create)
-      throws IOException {
-    OperationContext operationContext = new OperationContext(TAG_CATEGORY, MetadataOperation.CREATE);
-    ResourceContext resourceContext = EntityResource.getResourceContext(TAG_CATEGORY, daoCategory).build();
-    authorizer.authorize(securityContext, operationContext, resourceContext);
-    TagCategory category = getTagCategory(securityContext, create);
-    category = addHref(uriInfo, daoCategory.create(uriInfo, category));
-    return Response.created(category.getHref()).entity(category).build();
-  }
-
-  @POST
-  @Path("{category}")
-  @Operation(
-      operationId = "createPrimaryTag",
-      summary = "Create a primary tag",
-      tags = "tags",
-      description = "Create a primary tag in the given tag category.",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "The user ",
+            description = "The tag",
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = Tag.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
-  public Response createPrimaryTag(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Parameter(description = "Tag category name", schema = @Schema(type = "string")) @PathParam("category")
-          String category,
-      @Valid CreateTag create)
+  public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateTag create)
       throws IOException {
-    OperationContext operationContext = new OperationContext(TAG, MetadataOperation.CREATE);
-    ResourceContext resourceContext = EntityResource.getResourceContext(TAG, dao).build();
-    authorizer.authorize(securityContext, operationContext, resourceContext);
-    Tag tag = getTag(securityContext, create, FullyQualifiedName.build(category));
-    URI categoryHref = RestUtil.getHref(uriInfo, TAG_COLLECTION_PATH, category);
-    tag = addHref(categoryHref, dao.create(uriInfo, tag));
-    return Response.created(tag.getHref()).entity(tag).build();
+    Tag tag = getTag(securityContext, create);
+    return create(uriInfo, securityContext, tag);
   }
 
-  @POST
-  @Path("{category}/{primaryTag}")
+  @PATCH
+  @Path("/{id}")
   @Operation(
-      operationId = "createSecondaryTag",
-      summary = "Create a secondary tag",
-      tags = "tags",
-      description = "Create a secondary tag under the given primary tag.",
+      operationId = "patchTag",
+      summary = "Update a tag",
+      tags = "classification",
+      description = "Update an existing tag using JsonPatch.",
+      externalDocs = @ExternalDocumentation(description = "JsonPatch RFC", url = "https://tools.ietf.org/html/rfc6902"))
+  @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
+  public Response patch(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the tag", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @RequestBody(
+              description = "JsonPatch with array of operations",
+              content =
+                  @Content(
+                      mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
+                      examples = {
+                        @ExampleObject("[" + "{op:remove, path:/a}," + "{op:add, path: /b, value: val}" + "]")
+                      }))
+          JsonPatch patch)
+      throws IOException {
+    return patchInternal(uriInfo, securityContext, id, patch);
+  }
+
+  @PUT
+  @Operation(
+      operationId = "createOrUpdateTag",
+      summary = "Create or update a tag",
+      tags = "classification",
+      description = "Create a new tag, if it does not exist or update an existing tag.",
       responses = {
         @ApiResponse(
             responseCode = "200",
-            description = "The user ",
+            description = "The tag",
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = Tag.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
-  public Response createSecondaryTag(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Parameter(description = "Tag category name", schema = @Schema(type = "string")) @PathParam("category")
-          String category,
-      @Parameter(
-              description = "Primary tag name",
-              schema =
-                  @Schema(
-                      type = "string",
-                      example = "<primaryTag> fully qualified name <categoryName>" + ".<primaryTag>"))
-          @PathParam("primaryTag")
-          String primaryTag,
-      @Valid CreateTag create)
-      throws IOException {
-    OperationContext operationContext = new OperationContext(TAG, MetadataOperation.CREATE);
-    ResourceContext resourceContext = EntityResource.getResourceContext(TAG, dao).build();
-    authorizer.authorize(securityContext, operationContext, resourceContext);
-    Tag tag = getTag(securityContext, create, FullyQualifiedName.build(category, primaryTag));
-    URI categoryHref = RestUtil.getHref(uriInfo, TAG_COLLECTION_PATH, category);
-    URI parentHRef = RestUtil.getHref(categoryHref, primaryTag);
-    tag = addHref(parentHRef, dao.create(uriInfo, tag));
-    return Response.created(tag.getHref()).entity(tag).build();
-  }
-
-  @PUT
-  @Path("{category}")
-  @Operation(
-      operationId = "createOrUpdateTagCategory",
-      summary = "Update a tag category",
-      tags = "tags",
-      description = "Update an existing category identify by category name")
-  public Response updateCategory(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Parameter(description = "Tag category name", schema = @Schema(type = "string")) @PathParam("category")
-          String categoryName,
-      @Valid CreateTagCategory create)
-      throws IOException {
-    TagCategory category = getTagCategory(securityContext, create);
-    ResourceContext resourceContext =
-        EntityResource.getResourceContext(TAG_CATEGORY, daoCategory).name(categoryName).build();
-    OperationContext operationContext = new OperationContext(TAG_CATEGORY, createOrUpdateOperation(resourceContext));
-
-    authorizer.authorize(securityContext, operationContext, resourceContext);
-    // TODO clean this up
-    if (categoryName.equals(create.getName())) { // Not changing the name
-      category = addHref(uriInfo, daoCategory.createOrUpdate(uriInfo, category).getEntity());
-    } else {
-      TagCategory origCategory =
-          getTagCategory(securityContext, create).withName(categoryName).withFullyQualifiedName(categoryName);
-      category = addHref(uriInfo, daoCategory.createOrUpdate(uriInfo, origCategory, category).getEntity());
-    }
-    return Response.ok(category).build();
-  }
-
-  @PUT
-  @Path("{category}/{primaryTag}")
-  @Operation(
-      operationId = "createOrUpdatePrimaryTag",
-      summary = "Update a primaryTag",
-      tags = "tags",
-      description = "Update an existing primaryTag identify by name")
-  public Response updatePrimaryTag(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Parameter(description = "Tag category name", schema = @Schema(type = "string")) @PathParam("category")
-          String categoryName,
-      @Parameter(
-              description = "Primary tag name",
-              schema =
-                  @Schema(
-                      type = "string",
-                      example = "<primaryTag> fully qualified name <categoryName>" + ".<primaryTag>"))
-          @PathParam("primaryTag")
-          String primaryTag,
-      @Valid CreateTag create)
-      throws IOException {
-    Tag tag = getTag(securityContext, create, FullyQualifiedName.build(categoryName));
-
-    ResourceContext resourceContext = EntityResource.getResourceContext(TAG, dao).name(categoryName).build();
-    OperationContext operationContext = new OperationContext(TAG, createOrUpdateOperation(resourceContext));
-    authorizer.authorize(securityContext, operationContext, resourceContext);
-
-    URI categoryHref = RestUtil.getHref(uriInfo, TAG_COLLECTION_PATH, categoryName);
-    RestUtil.PutResponse<?> response;
-    if (primaryTag.equals(create.getName())) { // Not changing the name
-      response = dao.createOrUpdate(uriInfo, tag);
-    } else {
-      Tag origTag =
-          getTag(securityContext, create, FullyQualifiedName.build(categoryName))
-              .withName(primaryTag)
-              .withFullyQualifiedName(FullyQualifiedName.build(categoryName, primaryTag));
-      response = dao.createOrUpdate(uriInfo, origTag, tag);
-    }
-    addHref(categoryHref, (Tag) response.getEntity());
-    return response.toResponse();
-  }
-
-  @PUT
-  @Path("{category}/{primaryTag}/{secondaryTag}")
-  @Operation(
-      operationId = "createOrUpdateSecondaryTag",
-      summary = "Update a secondaryTag",
-      tags = "tags",
-      description = "Update an existing secondaryTag identify by name")
-  public Response updateSecondaryTag(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Parameter(description = "Tag category name", schema = @Schema(type = "string")) @PathParam("category")
-          String categoryName,
-      @Parameter(
-              description = "Primary tag name",
-              schema =
-                  @Schema(
-                      type = "string",
-                      example = "<primaryTag> fully qualified name <categoryName>" + ".<primaryTag>"))
-          @PathParam("primaryTag")
-          String primaryTag,
-      @Parameter(
-              description = "SecondaryTag tag name",
-              schema =
-                  @Schema(
-                      type = "string",
-                      example = "<secondaryTag> fully qualified name <categoryName>" + ".<primaryTag>.<secondaryTag>"))
-          @PathParam("secondaryTag")
-          String secondaryTag,
-      @Valid CreateTag create)
-      throws IOException {
-    Tag tag = getTag(securityContext, create, FullyQualifiedName.build(categoryName, primaryTag));
-
-    // If entity does not exist, this is a create operation, else update operation
-    ResourceContext resourceContext =
-        EntityResource.getResourceContext(TAG, dao).name(tag.getFullyQualifiedName()).build();
-    OperationContext operationContext = new OperationContext(TAG, createOrUpdateOperation(resourceContext));
-    authorizer.authorize(securityContext, operationContext, resourceContext);
-
-    RestUtil.PutResponse<?> response;
-    // TODO clean this up
-    if (secondaryTag.equals(create.getName())) { // Not changing the name
-      response = dao.createOrUpdate(uriInfo, tag);
-    } else {
-      Tag origTag =
-          getTag(securityContext, create, FullyQualifiedName.build(categoryName, primaryTag)).withName(secondaryTag);
-      response = dao.createOrUpdate(uriInfo, origTag, tag);
-    }
-
-    URI categoryHref = RestUtil.getHref(uriInfo, TAG_COLLECTION_PATH, categoryName);
-    URI parentHRef = RestUtil.getHref(categoryHref, primaryTag);
-    addHref(parentHRef, (Tag) response.getEntity());
-    return response.toResponse();
+  public Response createOrUpdate(
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateTag create) throws IOException {
+    Tag tag = getTag(create, securityContext.getUserPrincipal().getName());
+    return createOrUpdate(uriInfo, securityContext, tag);
   }
 
   @DELETE
   @Path("/{id}")
   @Operation(
-      operationId = "deleteTagCategory",
-      summary = "Delete tag category",
-      tags = "tags",
-      description = "Delete a tag category and all the tags under it.")
-  public Response deleteCategory(
+      operationId = "deleteTag",
+      summary = "Delete a tag by id",
+      tags = "classification",
+      description = "Delete a tag by `id`.",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "OK"),
+        @ApiResponse(responseCode = "404", description = "tag for instance {id} is not found")
+      })
+  public Response delete(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Tag category id", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
+      @Parameter(description = "Recursively delete this entity and it's children. (Default `false`)")
+          @DefaultValue("false")
+          @QueryParam("recursive")
+          boolean recursive,
+      @Parameter(description = "Hard delete the entity. (Default = `false`)")
+          @QueryParam("hardDelete")
+          @DefaultValue("false")
+          boolean hardDelete,
+      @Parameter(description = "Id of the tag", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
       throws IOException {
-    OperationContext operationContext = new OperationContext(TAG_CATEGORY, MetadataOperation.DELETE);
-    ResourceContext resourceContext = EntityResource.getResourceContext(TAG_CATEGORY, daoCategory).id(id).build();
-    authorizer.authorize(securityContext, operationContext, resourceContext);
-    TagCategory tagCategory = daoCategory.delete(uriInfo, id);
-    addHref(uriInfo, tagCategory);
-    return new RestUtil.DeleteResponse<>(tagCategory, RestUtil.ENTITY_DELETED).toResponse();
+    return delete(uriInfo, securityContext, id, recursive, hardDelete);
   }
 
   @DELETE
-  @Path("/{category}/{id}")
+  @Path("/name/{fqn}")
   @Operation(
-      operationId = "deleteTags",
-      summary = "Delete tag",
-      tags = "tags",
-      description = "Delete a tag and all the tags under it.")
-  public Response deleteTags(
+      operationId = "deleteTagByName",
+      summary = "Delete a tag by fully qualified name",
+      tags = "classification",
+      description = "Delete a tag by `fullyQualifiedName`.",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "OK"),
+        @ApiResponse(responseCode = "404", description = "tag for instance {fqn} is not found")
+      })
+  public Response delete(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Tag category name", schema = @Schema(type = "string")) @PathParam("category")
-          String category,
-      @Parameter(description = "Tag id", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
+      @Parameter(description = "Hard delete the entity. (Default = `false`)")
+          @QueryParam("hardDelete")
+          @DefaultValue("false")
+          boolean hardDelete,
+      @Parameter(description = "Fully qualified name of the tag", schema = @Schema(type = "string")) @PathParam("fqn")
+          String fqn)
       throws IOException {
-    OperationContext operationContext = new OperationContext(TAG, MetadataOperation.DELETE);
-    ResourceContext resourceContext = EntityResource.getResourceContext(TAG, dao).id(id).build();
-    authorizer.authorize(securityContext, operationContext, resourceContext);
-
-    Tag tag = dao.delete(uriInfo, id);
-    URI categoryHref = RestUtil.getHref(uriInfo, TAG_COLLECTION_PATH, category);
-    addHref(categoryHref, tag);
-    return new RestUtil.DeleteResponse<>(tag, RestUtil.ENTITY_DELETED).toResponse();
+    return deleteByName(uriInfo, securityContext, fqn, false, hardDelete);
   }
 
-  private TagCategory addHref(UriInfo uriInfo, TagCategory category) {
-    category.setHref(RestUtil.getHref(uriInfo, TAG_COLLECTION_PATH, category.getName()));
-    addHref(category.getHref(), category.getChildren());
-    return category;
+  @PUT
+  @Path("/restore")
+  @Operation(
+      operationId = "restoreTag",
+      summary = "Restore a soft deleted tag.",
+      tags = "classification",
+      description = "Restore a soft deleted tag.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Successfully restored the Tag ",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Tag.class)))
+      })
+  public Response restore(
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid RestoreEntity restore)
+      throws IOException {
+    return restoreEntity(uriInfo, securityContext, restore.getId());
   }
 
-  private void addHref(URI parentHref, List<Tag> tags) {
-    for (Tag tag : listOrEmpty(tags)) {
-      addHref(parentHref, tag);
-    }
-  }
-
-  private Tag addHref(URI parentHref, Tag tag) {
-    tag.setHref(RestUtil.getHref(parentHref, tag.getName()));
-    addHref(tag.getHref(), tag.getChildren());
+  @Override
+  public Tag addHref(UriInfo uriInfo, Tag tag) {
+    Entity.withHref(uriInfo, tag.getClassification());
+    Entity.withHref(uriInfo, tag.getParent());
+    Entity.withHref(uriInfo, tag.getChildren());
     return tag;
   }
 
-  private TagCategory getTagCategory(SecurityContext securityContext, CreateTagCategory create) {
-    return new TagCategory()
-        .withId(UUID.randomUUID())
-        .withName(create.getName())
-        .withFullyQualifiedName(create.getName())
-        .withMutuallyExclusive(create.getMutuallyExclusive())
-        .withDescription(create.getDescription())
-        .withUpdatedBy(securityContext.getUserPrincipal().getName())
-        .withUpdatedAt(System.currentTimeMillis());
+  private Tag getTag(SecurityContext securityContext, CreateTag create) throws IOException {
+    return getTag(create, securityContext.getUserPrincipal().getName());
   }
 
-  private Tag getTag(SecurityContext securityContext, CreateTag create, String parentFQN) {
-    return new Tag()
-        .withId(UUID.randomUUID())
-        .withName(create.getName())
+  private Tag getTag(CreateTag create, String updateBy) throws IOException {
+    String parentFQN = create.getParent() != null ? create.getParent() : create.getClassification();
+    EntityReference classification =
+        new EntityReference().withFullyQualifiedName(create.getClassification()).withType(CLASSIFICATION);
+    EntityReference parent =
+        create.getParent() == null
+            ? null
+            : new EntityReference().withFullyQualifiedName(create.getParent()).withType(TAG);
+    return copy(new Tag(), create, updateBy)
         .withFullyQualifiedName(FullyQualifiedName.add(parentFQN, create.getName()))
-        .withDescription(create.getDescription())
-        .withUpdatedBy(securityContext.getUserPrincipal().getName())
-        .withUpdatedAt(System.currentTimeMillis())
+        .withParent(parent)
+        .withClassification(classification)
+        .withProvider(create.getProvider())
         .withMutuallyExclusive(create.getMutuallyExclusive());
   }
 }

@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 
+import { ExploreSearchIndex } from 'components/Explore/explore.interface';
+import { SortingField } from 'components/Explore/SortingDropDown';
 import { t } from 'i18next';
-import { ExploreSearchIndex } from '../components/Explore/explore.interface';
-import { SortingField } from '../components/Explore/SortingDropDown';
 import { SearchIndex } from '../enums/search.enum';
 import { Icons } from '../utils/SvgUtils';
 
@@ -53,7 +53,7 @@ export interface ExploreTabInfo {
 
 export const tabsInfo: { [K in ExploreSearchIndex]: ExploreTabInfo } = {
   [SearchIndex.TABLE]: {
-    label: t('label.tables'),
+    label: t('label.table-plural'),
     sortingFields: tableSortingFields,
     sortField: INITIAL_SORT_FIELD,
     path: 'tables',
@@ -61,7 +61,7 @@ export const tabsInfo: { [K in ExploreSearchIndex]: ExploreTabInfo } = {
     selectedIcon: Icons.TABLE,
   },
   [SearchIndex.TOPIC]: {
-    label: t('label.topics'),
+    label: t('label.topic-plural'),
     sortingFields: entitySortingFields,
     sortField: INITIAL_SORT_FIELD,
     path: 'topics',
@@ -69,7 +69,7 @@ export const tabsInfo: { [K in ExploreSearchIndex]: ExploreTabInfo } = {
     selectedIcon: Icons.TOPIC,
   },
   [SearchIndex.DASHBOARD]: {
-    label: t('label.dashboards'),
+    label: t('label.dashboard-plural'),
     sortingFields: entitySortingFields,
     sortField: INITIAL_SORT_FIELD,
     path: 'dashboards',
@@ -77,7 +77,7 @@ export const tabsInfo: { [K in ExploreSearchIndex]: ExploreTabInfo } = {
     selectedIcon: Icons.DASHBOARD,
   },
   [SearchIndex.PIPELINE]: {
-    label: t('label.pipelines'),
+    label: t('label.pipeline-plural'),
     sortingFields: entitySortingFields,
     sortField: INITIAL_SORT_FIELD,
     path: 'pipelines',
@@ -85,7 +85,7 @@ export const tabsInfo: { [K in ExploreSearchIndex]: ExploreTabInfo } = {
     selectedIcon: Icons.PIPELINE,
   },
   [SearchIndex.MLMODEL]: {
-    label: t('label.ml-models'),
+    label: t('label.ml-model-plural'),
     sortingFields: entitySortingFields,
     sortField: INITIAL_SORT_FIELD,
     path: 'mlmodels',

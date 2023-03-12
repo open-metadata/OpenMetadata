@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,13 +11,7 @@
  *  limitations under the License.
  */
 
-import {
-  EntityFieldThreadCount,
-  EntityTags,
-  LeafNodes,
-  LineagePos,
-  LoadingNodeState,
-} from 'Models';
+import { EntityTags } from 'Models';
 import { FeedFilter } from '../../enums/mydata.enum';
 import { CreateThread } from '../../generated/api/feed/createThread';
 import {
@@ -26,16 +20,25 @@ import {
   TableData,
   TableJoins,
   TableType,
-  TypeUsedToReturnUsageDetailsOfAnEntity,
+  UsageDetails,
 } from '../../generated/entity/data/table';
 import { Thread, ThreadType } from '../../generated/entity/feed/thread';
 import { EntityLineage } from '../../generated/type/entityLineage';
 import { EntityReference } from '../../generated/type/entityReference';
 import { Paging } from '../../generated/type/paging';
 import { TagLabel } from '../../generated/type/tagLabel';
-import { ThreadUpdatedFunc } from '../../interface/feed.interface';
+import {
+  EntityFieldThreadCount,
+  ThreadUpdatedFunc,
+} from '../../interface/feed.interface';
 import { TitleBreadcrumbProps } from '../common/title-breadcrumb/title-breadcrumb.interface';
-import { Edge, EdgeData } from '../EntityLineage/EntityLineage.interface';
+import {
+  Edge,
+  EdgeData,
+  LeafNodes,
+  LineagePos,
+  LoadingNodeState,
+} from '../EntityLineage/EntityLineage.interface';
 
 export interface DatasetDetailsProps {
   isNodeLoading: LoadingNodeState;
@@ -44,7 +47,7 @@ export interface DatasetDetailsProps {
   entityId?: string;
   joins: TableJoins;
   tableType: TableType;
-  usageSummary: TypeUsedToReturnUsageDetailsOfAnEntity;
+  usageSummary: UsageDetails;
   tableDetails: Table;
   entityName: string;
   datasetFQN: string;
@@ -63,6 +66,7 @@ export interface DatasetDetailsProps {
   slashedTableName: TitleBreadcrumbProps['titleLinks'];
   entityThread: Thread[];
   deleted?: boolean;
+  isTableProfileLoading?: boolean;
   isLineageLoading?: boolean;
   isSampleDataLoading?: boolean;
   isQueriesLoading?: boolean;

@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,14 +11,15 @@
  *  limitations under the License.
  */
 
-import { Button, Switch } from 'antd';
+import { Button, Space, Switch } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { Operation } from 'fast-json-patch';
 import { isEqual, isUndefined } from 'lodash';
 import React, { FC, Fragment, RefObject, useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { getAllFeeds } from 'rest/feedsAPI';
 import AppState from '../../../AppState';
-import { getAllFeeds } from '../../../axiosAPIs/feedsAPI';
 import { confirmStateInitialValue } from '../../../constants/Feeds.constants';
 import { observerOptions } from '../../../constants/Mydata.constants';
 import { FeedFilter } from '../../../enums/mydata.enum';
@@ -54,6 +55,7 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
   showHeader = true,
   threadType,
 }) => {
+  const { t } = useTranslation();
   const [threads, setThreads] = useState<Thread[]>([]);
   const [selectedThread, setSelectedThread] = useState<Thread>();
   const [selectedThreadId, setSelectedThreadId] = useState<string>('');
@@ -235,7 +237,11 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
           <FeedPanelHeader
             className="tw-px-4 tw-shadow-sm"
             entityField={entityField as string}
-            noun={isConversationType ? 'Conversations' : 'Tasks'}
+            noun={
+              isConversationType
+                ? t('label.conversation-plural')
+                : t('label.task-plural')
+            }
             onCancel={() => onCancel && onCancel()}
             onShowNewConversation={
               threads.length > 0 && isUndefined(selectedThread)
@@ -245,10 +251,13 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
           />
         )}
         {isTaskType && (
-          <div className="tw-flex tw-justify-end tw-mr-2 tw-mt-2">
+          <Space
+            align="center"
+            className="w-full justify-end p-r-xs m-t-xs"
+            size={4}>
             <Switch size="small" onChange={onSwitchChange} />
-            <span className="tw-ml-1">Closed Tasks</span>
-          </div>
+            <span className="tw-ml-1">{t('label.closed-task-plural')}</span>
+          </Space>
         )}
 
         {!isUndefined(selectedThread) ? (
@@ -258,7 +267,7 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
               size="small"
               type="link"
               onClick={onBack}>
-              Back
+              {t('label.back')}
             </Button>
             <ActivityThread
               className="tw-pb-4 tw-pl-5 tw-pr-2"
@@ -275,25 +284,31 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
                 {isConversationType && (
                   <Fragment>
                     <p className="tw-ml-9 tw-mr-2 tw-mb-2 tw-mt-1">
-                      You are starting a new conversation
+                      {t('message.new-conversation')}
                     </p>
                     <ActivityFeedEditor
                       buttonClass="tw-mr-4"
                       className="tw-ml-5 tw-mr-2"
-                      placeHolder="Enter a message"
+                      placeHolder={t('message.enter-a-field', {
+                        field: t('label.message-lowercase'),
+                      })}
                       onSave={onPostThread}
                     />
                   </Fragment>
                 )}
                 {isTaskType && (
                   <ErrorPlaceHolder>
-                    <p>{isTaskClosed ? 'No Closed Tasks' : 'No Open Tasks'}</p>
+                    <p>
+                      {isTaskClosed
+                        ? t('message.no-closed-task')
+                        : t('message.no-open-task')}
+                    </p>
                   </ErrorPlaceHolder>
                 )}
                 {isAnnouncementType && (
                   <ErrorPlaceHolder>
                     <p data-testid="announcement-error">
-                      No Announcements, Click on add announcement to add one.
+                      {t('message.no-announcement-message')}
                     </p>
                   </ErrorPlaceHolder>
                 )}

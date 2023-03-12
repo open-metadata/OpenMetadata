@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -14,8 +14,11 @@
 import { Button, Card, Form, FormProps, Input, Space } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
 import { AxiosError } from 'axios';
+import ProfilePicture from 'components/common/ProfilePicture/ProfilePicture';
+import { EditorContentRef } from 'components/common/rich-text-editor/RichTextEditor.interface';
+import TitleBreadcrumb from 'components/common/title-breadcrumb/title-breadcrumb.component';
 import { capitalize, isEmpty, isNil, isUndefined } from 'lodash';
-import { EditorContentRef, EntityTags } from 'Models';
+import { EntityTags } from 'Models';
 import React, {
   useCallback,
   useEffect,
@@ -23,11 +26,10 @@ import React, {
   useRef,
   useState,
 } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useHistory, useLocation, useParams } from 'react-router-dom';
+import { postThread } from 'rest/feedsAPI';
 import AppState from '../../../AppState';
-import { postThread } from '../../../axiosAPIs/feedsAPI';
-import ProfilePicture from '../../../components/common/ProfilePicture/ProfilePicture';
-import TitleBreadcrumb from '../../../components/common/title-breadcrumb/title-breadcrumb.component';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { EntityType } from '../../../enums/entity.enum';
@@ -58,6 +60,7 @@ import { cardStyles } from '../TaskPage.styles';
 import { EntityData, Option } from '../TasksPage.interface';
 
 const UpdateDescription = () => {
+  const { t } = useTranslation();
   const location = useLocation();
   const history = useHistory();
   const [form] = useForm();
@@ -110,9 +113,11 @@ const UpdateDescription = () => {
     if (!isNil(field) && !isNil(value) && field === EntityField.COLUMNS) {
       return (
         <div data-testid="column-details">
-          <p className="tw-font-semibold">Column Details</p>
+          <p className="tw-font-semibold">
+            {t('label.column-entity', { entity: t('label.detail-plural') })}
+          </p>
           <p>
-            <span className="tw-text-grey-muted">Type:</span>{' '}
+            <span className="tw-text-grey-muted">{`${t('label.type')}:`}</span>{' '}
             <span>{columnObject.dataTypeDisplay}</span>
           </p>
           <p>{columnObject?.tags?.map((tag) => `#${tag.tagFQN}`)?.join(' ')}</p>
@@ -162,12 +167,16 @@ const UpdateDescription = () => {
       };
       postThread(data)
         .then((res) => {
-          showSuccessToast('Task Created Successfully');
+          showSuccessToast(
+            t('server.create-entity-success', {
+              entity: t('label.task'),
+            })
+          );
           history.push(getTaskDetailPath(res.task?.id.toString() ?? ''));
         })
         .catch((err: AxiosError) => showErrorToast(err));
     } else {
-      showErrorToast('Cannot create a task without assignee');
+      showErrorToast(t('server.no-task-creation-without-assignee'));
     }
   };
 
@@ -201,25 +210,42 @@ const UpdateDescription = () => {
 
   return (
     <TaskPageLayout>
-      <TitleBreadcrumb
-        titleLinks={[
-          ...getBreadCrumbList(entityData, entityType as EntityType),
-          { name: 'Create Task', activeTitle: true, url: '' },
-        ]}
-      />
-      <div className="tw-grid tw-grid-cols-3 tw-gap-x-2">
+      <Space className="w-full" direction="vertical" size="middle">
+        <TitleBreadcrumb
+          titleLinks={[
+            ...getBreadCrumbList(entityData, entityType as EntityType),
+            {
+              name: t('label.create-entity', {
+                entity: t('label.task'),
+              }),
+              activeTitle: true,
+              url: '',
+            },
+          ]}
+        />
+
         <Card
-          className="tw-col-span-2"
+          className="m-t-0"
           key="update-description"
           style={{ ...cardStyles }}
-          title="Create Task">
+          title={t('label.create-entity', {
+            entity: t('label.task'),
+          })}>
           <Form form={form} layout="vertical" onFinish={onCreateTask}>
-            <Form.Item data-testid="title" label="Title:" name="title">
-              <Input placeholder="Task title" style={{ margin: '4px 0px' }} />
+            <Form.Item
+              data-testid="title"
+              label={`${t('label.title')}:`}
+              name="title">
+              <Input
+                placeholder={t('label.task-entity', {
+                  entity: t('label.title'),
+                })}
+                style={{ margin: '4px 0px' }}
+              />
             </Form.Item>
             <Form.Item
               data-testid="assignees"
-              label="Assignees:"
+              label={`${t('label.assignee-plural')}:`}
               name="assignees">
               <Assignees
                 assignees={assignees}
@@ -232,7 +258,7 @@ const UpdateDescription = () => {
             {currentDescription && (
               <Form.Item
                 data-testid="description-tabs"
-                label="Description:"
+                label={`${t('label.description')}:`}
                 name="description">
                 <DescriptionTabs
                   description={currentDescription}
@@ -248,51 +274,56 @@ const UpdateDescription = () => {
                 data-testid="cta-buttons"
                 size={16}>
                 <Button type="link" onClick={back}>
-                  Back
+                  {t('label.back')}
                 </Button>
                 <Button htmlType="submit" type="primary">
-                  Submit
+                  {t('label.submit')}
                 </Button>
               </Space>
             </Form.Item>
           </Form>
         </Card>
-
-        <div className="tw-pl-2" data-testid="entity-details">
-          <h6 className="tw-text-base">{capitalize(entityType)} Details</h6>
-          <div className="tw-flex tw-mb-4">
-            <span className="tw-text-grey-muted">Owner:</span>{' '}
-            <span>
-              {entityData.owner ? (
-                <span className="tw-flex tw-ml-1">
-                  <ProfilePicture
-                    displayName={getEntityName(entityData.owner)}
-                    id=""
-                    name={getEntityName(entityData.owner)}
-                    width="20"
-                  />
-                  <span className="tw-ml-1">
-                    {getEntityName(entityData.owner)}
-                  </span>
+      </Space>
+      <div className="m-t-xlg p-x-lg w-500" data-testid="entity-details">
+        <h6 className="tw-text-base">
+          {capitalize(entityType)} {t('label.detail-plural')}
+        </h6>
+        <div className="tw-flex tw-mb-4">
+          <span className="tw-text-grey-muted">{`${t('label.owner')}:`}</span>{' '}
+          <span>
+            {entityData.owner ? (
+              <span className="tw-flex tw-ml-1">
+                <ProfilePicture
+                  displayName={getEntityName(entityData.owner)}
+                  id=""
+                  name={getEntityName(entityData.owner)}
+                  width="20"
+                />
+                <span className="tw-ml-1">
+                  {getEntityName(entityData.owner)}
                 </span>
-              ) : (
-                <span className="tw-text-grey-muted tw-ml-1">No Owner</span>
-              )}
-            </span>
-          </div>
-
-          <p data-testid="tier">
-            {entityTier ? (
-              entityTier
+              </span>
             ) : (
-              <span className="tw-text-grey-muted">No Tier</span>
+              <span className="tw-text-grey-muted tw-ml-1">
+                {t('label.no-entity', { entity: t('label.owner') })}
+              </span>
             )}
-          </p>
-
-          <p data-testid="tags">{entityTags}</p>
-
-          {getColumnDetails()}
+          </span>
         </div>
+
+        <p data-testid="tier">
+          {entityTier ? (
+            entityTier
+          ) : (
+            <span className="tw-text-grey-muted">
+              {t('label.no-entity', { entity: t('label.tier') })}
+            </span>
+          )}
+        </p>
+
+        <p data-testid="tags">{entityTags}</p>
+
+        {getColumnDetails()}
       </div>
     </TaskPageLayout>
   );

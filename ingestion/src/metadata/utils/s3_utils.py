@@ -13,25 +13,26 @@
 Utils module to convert different file types from s3 buckets into a dataframe
 """
 
-import gzip
-import json
-import os
 import traceback
 from typing import Any
 
 import pandas as pd
-from pyarrow import fs
-from pyarrow.parquet import ParquetFile
+import pyarrow.parquet as pq
+import s3fs
 
+from metadata.ingestion.source.database.datalake.utils import (
+    read_from_avro,
+    read_from_json,
+)
+from metadata.utils.constants import CHUNKSIZE
 from metadata.utils.logger import utils_logger
 
 logger = utils_logger()
 
 
-def _get_json_text(key: str, text: bytes) -> str:
-    if key.endswith(".gz"):
-        return gzip.decompress(text)
-    return text.decode("utf-8")
+def get_file_text(client: Any, key: str, bucket_name: str):
+    obj = client.get_object(Bucket=bucket_name, Key=key)
+    return obj["Body"].read()
 
 
 def read_csv_from_s3(
@@ -46,7 +47,7 @@ def read_csv_from_s3(
     try:
         stream = client.get_object(Bucket=bucket_name, Key=key)["Body"]
         chunk_list = []
-        with pd.read_csv(stream, sep=sep, chunksize=200000) as reader:
+        with pd.read_csv(stream, sep=sep, chunksize=CHUNKSIZE) as reader:
             for chunks in reader:
                 chunk_list.append(chunks)
         return chunk_list
@@ -76,24 +77,41 @@ def read_json_from_s3(client: Any, key: str, bucket_name: str, sample_size=100):
     """
     Read the json file from the s3 bucket and return a dataframe
     """
-    obj = client.get_object(Bucket=bucket_name, Key=key)
-    json_text = obj["Body"].read()
-    data = json.loads(_get_json_text(key, json_text))
-    if isinstance(data, list):
-        return [pd.DataFrame.from_dict(data[:sample_size])]
-    return [
-        pd.DataFrame.from_dict({key: pd.Series(value) for key, value in data.items()})
-    ]
+    json_text = get_file_text(client=client, key=key, bucket_name=bucket_name)
+    return read_from_json(
+        key=key, json_text=json_text, sample_size=sample_size, decode=True
+    )
 
 
 def read_parquet_from_s3(client: Any, key: str, bucket_name: str):
     """
     Read the parquet file from the s3 bucket and return a dataframe
     """
+    client_kwargs = {}
+    if client.endPointURL:
+        client_kwargs["endpoint_url"] = client.endPointURL
 
-    s3_file = fs.S3FileSystem(region=client.meta.region_name)
-    return [
-        ParquetFile(s3_file.open_input_file(os.path.join(bucket_name, key)))
-        .read()
-        .to_pandas()
-    ]
+    if client.awsRegion:
+        client_kwargs["region_name"] = client.awsRegion
+
+    s3_fs = s3fs.S3FileSystem(client_kwargs=client_kwargs)
+
+    if client.awsAccessKeyId and client.awsSecretAccessKey:
+        s3_fs = s3fs.S3FileSystem(
+            key=client.awsAccessKeyId,
+            secret=client.awsSecretAccessKey.get_secret_value(),
+            token=client.awsSessionToken,
+            client_kwargs=client_kwargs,
+        )
+    bucket_uri = f"s3://{bucket_name}/{key}"
+    dataset = pq.ParquetDataset(bucket_uri, filesystem=s3_fs)
+    return [dataset.read_pandas().to_pandas()]
+
+
+def read_avro_from_s3(client: Any, key: str, bucket_name: str):
+    """
+    Read the avro file from the s3 bucket and return a dataframe
+    """
+    return read_from_avro(
+        get_file_text(client=client, key=key, bucket_name=bucket_name)
+    )

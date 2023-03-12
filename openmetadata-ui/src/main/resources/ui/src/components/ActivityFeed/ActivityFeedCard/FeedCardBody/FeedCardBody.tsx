@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -14,7 +14,8 @@
 import { Button, Space, Typography } from 'antd';
 import classNames from 'classnames';
 import { isUndefined } from 'lodash';
-import React, { FC, useEffect, useState } from 'react';
+import React, { FC, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   getFrontEndFormat,
   MarkdownToHTMLConverter,
@@ -35,6 +36,7 @@ const FeedCardBody: FC<FeedBodyProp> = ({
   onPostUpdate,
   onCancelPostUpdate,
 }) => {
+  const { t } = useTranslation();
   const [postMessage, setPostMessage] = useState<string>(message);
 
   const handleMessageUpdate = (updatedMessage: string) => {
@@ -48,47 +50,52 @@ const FeedCardBody: FC<FeedBodyProp> = ({
   const handleCancel = (e: React.MouseEvent<HTMLButtonElement>) => {
     e.stopPropagation();
     onCancelPostUpdate();
+    setPostMessage(getDefaultValue(message));
   };
 
   const getDefaultValue = (defaultMessage: string) => {
     return MarkdownToHTMLConverter.makeHtml(getFrontEndFormat(defaultMessage));
   };
 
-  const feedbody = isEditPost ? (
-    <ActivityFeedEditor
-      defaultValue={getDefaultValue(message)}
-      editAction={
-        <div className="tw-flex tw-justify-end tw-gap-2 tw-mr-1.5">
-          <Button
-            className="tw-border tw-border-primary tw-text-primary tw-rounded"
-            data-testid="cancel-button"
-            size="small"
-            onClick={handleCancel}>
-            Cancel
-          </Button>
-          <Button
-            className="tw-rounded"
-            data-testid="save-button"
-            disabled={!postMessage.length}
-            size="small"
-            type="primary"
-            onClick={(e) => {
-              e.stopPropagation();
-              handleSave();
-            }}>
-            Save
-          </Button>
-        </div>
-      }
-      editorClass="is_edit_post"
-      onSave={handleSave}
-      onTextChange={handleMessageUpdate}
-    />
-  ) : (
-    <RichTextEditorPreviewer
-      className="activity-feed-card-text"
-      markdown={getFrontEndFormat(postMessage)}
-    />
+  const FEED_BODY = useMemo(
+    () =>
+      isEditPost ? (
+        <ActivityFeedEditor
+          defaultValue={getDefaultValue(message)}
+          editAction={
+            <div className="tw-flex tw-justify-end tw-gap-2 tw-mr-1.5">
+              <Button
+                className="tw-border tw-border-primary tw-text-primary tw-rounded"
+                data-testid="cancel-button"
+                size="small"
+                onClick={handleCancel}>
+                {t('label.cancel')}
+              </Button>
+              <Button
+                className="tw-rounded"
+                data-testid="save-button"
+                disabled={!postMessage.length}
+                size="small"
+                type="primary"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleSave();
+                }}>
+                {t('label.save')}
+              </Button>
+            </div>
+          }
+          editorClass="is_edit_post"
+          onSave={handleSave}
+          onTextChange={handleMessageUpdate}
+        />
+      ) : (
+        <RichTextEditorPreviewer
+          className="activity-feed-card-text"
+          markdown={getFrontEndFormat(postMessage)}
+        />
+      ),
+    [isEditPost, message, postMessage]
   );
 
   useEffect(() => {
@@ -101,8 +108,9 @@ const FeedCardBody: FC<FeedBodyProp> = ({
         {!isUndefined(announcementDetails) ? (
           <Space direction="vertical" size={4}>
             <Typography.Text className="tw-text-xs tw-text-grey-muted">
-              Schedule{' '}
-              {getDateTimeByTimeStamp(announcementDetails.startTime * 1000)} to{' '}
+              {t('label.schedule')}{' '}
+              {getDateTimeByTimeStamp(announcementDetails.startTime * 1000)}{' '}
+              {t('label.to-lowercase')}{' '}
               {getDateTimeByTimeStamp(announcementDetails.endTime * 1000)}
             </Typography.Text>
             <Typography.Text className="tw-font-semibold">
@@ -114,7 +122,7 @@ const FeedCardBody: FC<FeedBodyProp> = ({
             />
           </Space>
         ) : (
-          feedbody
+          FEED_BODY
         )}
       </div>
       {Boolean(reactions?.length) && (

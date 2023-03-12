@@ -138,6 +138,10 @@
       "description": "References to pipelines deployed for this dashboard service.",
       "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
     },
+    "testConnectionResult": {
+      "description": "Last test connection results for this service",
+      "$ref": "connections/testConnectionResult.json"
+    },
     "tags": {
       "description": "Tags for this Dashboard Service.",
       "type": "array",

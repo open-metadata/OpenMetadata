@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+
 import {
   Button,
   Col,
@@ -24,10 +25,12 @@ import {
 import { RadioChangeEvent } from 'antd/lib/radio';
 import { SwitchChangeEventHandler } from 'antd/lib/switch';
 import { AxiosError } from 'axios';
+import PageLayoutV1 from 'components/containers/PageLayoutV1';
 import { EntityTags, ExtraInfo } from 'Models';
 import React, { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
-import { addFollower, removeFollower } from '../../axiosAPIs/tableAPI';
+import { addFollower, removeFollower } from 'rest/tableAPI';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import {
   getDatabaseDetailsPath,
@@ -70,7 +73,6 @@ import {
 import { showErrorToast } from '../../utils/ToastUtils';
 import EntityPageInfo from '../common/entityPageInfo/EntityPageInfo';
 import { TitleBreadcrumbProps } from '../common/title-breadcrumb/title-breadcrumb.interface';
-import PageLayout from '../containers/PageLayout';
 import { usePermissionProvider } from '../PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
@@ -94,6 +96,7 @@ const ProfilerDashboard: React.FC<ProfilerDashboardProps> = ({
   profilerData,
   onTableChange,
 }) => {
+  const { t } = useTranslation();
   const { getEntityPermission } = usePermissionProvider();
   const history = useHistory();
   const { entityTypeFQN, dashboardType, tab } = useParams<{
@@ -159,7 +162,7 @@ const ProfilerDashboard: React.FC<ProfilerDashboardProps> = ({
       value: value,
     }));
     testCaseStatus.unshift({
-      label: 'All',
+      label: t('label.all'),
       value: '',
     });
 
@@ -219,7 +222,7 @@ const ProfilerDashboard: React.FC<ProfilerDashboardProps> = ({
   const extraInfo: Array<ExtraInfo> = useMemo(() => {
     return [
       {
-        key: 'Owner',
+        key: t('label.owner'),
         value:
           table.owner?.type === OwnerType.TEAM
             ? getTeamAndUserDetailsPath(table.owner?.name || '')
@@ -234,10 +237,10 @@ const ProfilerDashboard: React.FC<ProfilerDashboardProps> = ({
           table.owner?.type === OwnerType.USER ? table.owner?.name : undefined,
       },
       {
-        key: 'Tier',
+        key: t('label.tier'),
         value: tier?.tagFQN ? tier.tagFQN.split(FQN_SEPARATOR_CHAR)[1] : '',
       },
-      { key: 'Type', value: `${table.tableType}`, showLabel: true },
+      { key: t('label.type'), value: `${table.tableType}`, showLabel: true },
       {
         value:
           getUsagePercentile(
@@ -248,7 +251,7 @@ const ProfilerDashboard: React.FC<ProfilerDashboardProps> = ({
       {
         value: `${
           table.usageSummary?.weeklyStats?.count.toLocaleString() || '--'
-        } Queries`,
+        } ${t('label.query-plural')}`,
       },
     ];
   }, [table]);
@@ -453,7 +456,7 @@ const ProfilerDashboard: React.FC<ProfilerDashboardProps> = ({
   }, [table]);
 
   return (
-    <PageLayout>
+    <PageLayoutV1 pageTitle={t('label.profiler')}>
       <Row gutter={[16, 16]}>
         <Col span={24}>
           <EntityPageInfo
@@ -510,13 +513,19 @@ const ProfilerDashboard: React.FC<ProfilerDashboardProps> = ({
             <Space size={16}>
               {activeTab === ProfilerDashboardTab.DATA_QUALITY && (
                 <>
-                  <Form.Item className="m-0 " label="Deleted Tests">
+                  <Form.Item
+                    className="m-0 "
+                    label={t('label.deleted-entity', {
+                      entity: t('label.test-plural'),
+                    })}>
                     <Switch
                       checked={showDeletedTest}
                       onClick={handleDeletedTestCaseClick}
                     />
                   </Form.Item>
-                  <Form.Item className="tw-mb-0 tw-w-40" label="Status">
+                  <Form.Item
+                    className="tw-mb-0 tw-w-40"
+                    label={t('label.status')}>
                     <Select
                       options={testCaseStatusOption}
                       value={selectedTestCaseStatus}
@@ -536,7 +545,7 @@ const ProfilerDashboard: React.FC<ProfilerDashboardProps> = ({
               <Tooltip
                 title={
                   tablePermissions.EditAll || tablePermissions.EditTests
-                    ? 'Add Test'
+                    ? t('label.add-entity', { entity: t('label.test') })
                     : NO_PERMISSION_FOR_ACTION
                 }>
                 <Button
@@ -546,7 +555,7 @@ const ProfilerDashboard: React.FC<ProfilerDashboardProps> = ({
                   }
                   type="primary"
                   onClick={handleAddTestClick}>
-                  Add Test
+                  {t('label.add-entity', { entity: t('label.test') })}
                 </Button>
               </Tooltip>
             </Space>
@@ -566,7 +575,6 @@ const ProfilerDashboard: React.FC<ProfilerDashboardProps> = ({
           <Col span={24}>
             <DataQualityTab
               deletedTable={showDeletedTest}
-              hasAccess={tablePermissions.EditAll}
               isLoading={isTestCaseLoading}
               testCases={getFilterTestCase()}
               onTestUpdate={handleTestUpdate}
@@ -574,7 +582,7 @@ const ProfilerDashboard: React.FC<ProfilerDashboardProps> = ({
           </Col>
         )}
       </Row>
-    </PageLayout>
+    </PageLayoutV1>
   );
 };
 

@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -12,14 +12,12 @@
  */
 
 import { fireEvent, render, screen } from '@testing-library/react';
-import { flatten } from 'lodash';
 import { TagOption } from 'Models';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { Column } from '../../generated/api/data/createTable';
 import { GlossaryTerm } from '../../generated/entity/data/glossaryTerm';
 import { Table } from '../../generated/entity/data/table';
-import { TagCategory, TagClass } from '../../generated/entity/tags/tagCategory';
 import EntityTableV1 from './EntityTable.component';
 
 const onEntityFieldSelect = jest.fn();
@@ -168,14 +166,6 @@ const mockGlossaryList = [
   },
 ];
 
-jest.mock('../../authentication/auth-provider/AuthProvider', () => {
-  return {
-    useAuthContext: jest.fn(() => ({
-      isAuthDisabled: false,
-    })),
-  };
-});
-
 jest.mock('../../hooks/authHooks', () => {
   return {
     useAuth: jest.fn().mockReturnValue({
@@ -185,15 +175,6 @@ jest.mock('../../hooks/authHooks', () => {
   };
 });
 
-jest.mock('@fortawesome/react-fontawesome', () => ({
-  FontAwesomeIcon: jest.fn().mockReturnValue(<i>Icon</i>),
-}));
-
-jest.mock('@fortawesome/free-solid-svg-icons', () => ({
-  faCaretDown: jest.fn().mockReturnValue(<i>faCaretDown</i>),
-  faCaretRight: jest.fn().mockReturnValue(<i>faCaretRight</i>),
-}));
-
 jest.mock('../common/rich-text-editor/RichTextEditorPreviewer', () => {
   return jest.fn().mockReturnValue(<p>RichTextEditorPreviewer</p>);
 });
@@ -202,7 +183,7 @@ jest.mock('../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor', () => ({
   ModalWithMarkdownEditor: jest.fn().mockReturnValue(<p>EditorModal</p>),
 }));
 
-jest.mock('../tags-container/tags-container', () => {
+jest.mock('components/Tag/TagsContainer/tags-container', () => {
   return jest.fn().mockImplementation(({ tagList }) => {
     return (
       <>
@@ -214,11 +195,11 @@ jest.mock('../tags-container/tags-container', () => {
   });
 });
 
-jest.mock('../tags-viewer/tags-viewer', () => {
+jest.mock('components/Tag/TagsViewer/tags-viewer', () => {
   return jest.fn().mockReturnValue(<p>TagViewer</p>);
 });
 
-jest.mock('../tags/tags', () => {
+jest.mock('components/Tag/Tags/tags', () => {
   return jest.fn().mockReturnValue(<p>Tag</p>);
 });
 
@@ -230,18 +211,7 @@ jest.mock('../../utils/GlossaryUtils', () => ({
 }));
 
 jest.mock('../../utils/TagsUtils', () => ({
-  getTagCategories: jest.fn(() => Promise.resolve({ data: mockTagList })),
-  getTaglist: jest.fn((categories) => {
-    const children = categories.map((category: TagCategory) => {
-      return category.children || [];
-    });
-    const allChildren = flatten(children);
-    const tagList = (allChildren as unknown as TagClass[]).map((tag) => {
-      return tag?.fullyQualifiedName || '';
-    });
-
-    return tagList;
-  }),
+  getClassifications: jest.fn(() => Promise.resolve({ data: mockTagList })),
 }));
 
 describe('Test EntityTable Component', () => {
@@ -291,6 +261,6 @@ describe('Test EntityTable Component', () => {
       new MouseEvent('click', { bubbles: true, cancelable: true })
     );
 
-    expect(onThreadLinkSelect).toBeCalled();
+    expect(onThreadLinkSelect).toHaveBeenCalled();
   });
 });

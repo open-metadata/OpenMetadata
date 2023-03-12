@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -13,7 +13,7 @@
 
 import { Card, Col, Row, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import { isEmpty, uniqueId } from 'lodash';
+import { isEmpty, round, uniqueId } from 'lodash';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -27,7 +27,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import { getAggregateChartData } from '../../axiosAPIs/DataInsightAPI';
+import { getAggregateChartData } from 'rest/DataInsightAPI';
 import {
   DEFAULT_CHART_OPACITY,
   GRAPH_BACKGROUND_COLOR,
@@ -151,7 +151,10 @@ const OwnerInsight: FC<Props> = ({ chartFilter, kpi, selectedDays }) => {
       {data.length ? (
         <Row gutter={DI_STRUCTURE.rowContainerGutter}>
           <Col span={DI_STRUCTURE.leftContainerSpan}>
-            <ResponsiveContainer debounce={1} minHeight={400}>
+            <ResponsiveContainer
+              debounce={1}
+              id="owner-summary-graph"
+              minHeight={400}>
               <LineChart data={data} margin={BAR_CHART_MARGIN}>
                 <CartesianGrid
                   stroke={GRAPH_BACKGROUND_COLOR}
@@ -226,7 +229,7 @@ const OwnerInsight: FC<Props> = ({ chartFilter, kpi, selectedDays }) => {
                       showEndValueAsLabel
                       progress={latestData[entity]}
                       showLabel={false}
-                      startValue={latestData[entity].toFixed(2)}
+                      startValue={round(latestData[entity] || 0, 2)}
                       successValue={entity}
                       suffix={isPercentageGraph ? '%' : ''}
                     />

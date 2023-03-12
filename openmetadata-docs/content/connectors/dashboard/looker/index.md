@@ -130,8 +130,8 @@ the changes.
 #### Connection Options
 
 - **Host and Port**: URL to the Looker instance.
-- **Username**: Specify the User to connect to Looker. It should have enough privileges to read all the metadata.
-- **Password**: Password to connect to Looker.
+- **Client ID**: Specify the Client ID to connect to Looker. It should have enough privileges to read all the metadata.
+- **Client Secret**: Client Secret to connect to Looker.
 - **Environment**: Looker Environment.
 
 ### 6. Configure Metadata Ingestion
@@ -156,6 +156,8 @@ Please follow the instructions below
   - **Exclude**: Explicitly exclude charts by adding a list of comma-separated regular expressions to the Exclude field. OpenMetadata will exclude all charts with names matching one or more of the supplied regular expressions. All other charts will be included.
 - **Database Service Name (Optional)**: Enter the name of Database Service which is already ingested in OpenMetadata to create lineage between dashboards and database tables.
 - **Enable Debug Log (toggle)**: Set the Enable Debug Log toggle to set the default log level to debug, these logs can be viewed later in Airflow.
+- **Override Current Owner(toggle)**: Set the Override Current Owner toggle to override current owner with new owner, if that is fetched during metadata ingestion
+For first time of metadata ingestion, kindly make sure to keep it enabled to get the owner.
 
 ### 7. Schedule the Ingestion and Deploy
 

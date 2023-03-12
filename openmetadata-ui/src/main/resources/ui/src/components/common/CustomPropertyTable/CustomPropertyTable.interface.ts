@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { Container } from 'generated/entity/data/container';
 import { EntityType } from '../../../enums/entity.enum';
 import { Dashboard } from '../../../generated/entity/data/dashboard';
 import { Mlmodel } from '../../../generated/entity/data/mlmodel';
@@ -18,10 +19,16 @@ import { Pipeline } from '../../../generated/entity/data/pipeline';
 import { Table } from '../../../generated/entity/data/table';
 import { Topic } from '../../../generated/entity/data/topic';
 
-export type EntityDetails = Table & Topic & Dashboard & Pipeline & Mlmodel;
+export type EntityDetails = Table &
+  Topic &
+  Dashboard &
+  Pipeline &
+  Mlmodel &
+  Container;
 
 export interface CustomPropertyProps {
   entityDetails: EntityDetails;
   entityType: EntityType;
   handleExtensionUpdate: (updatedTable: EntityDetails) => Promise<void>;
+  hasEditAccess: boolean;
 }

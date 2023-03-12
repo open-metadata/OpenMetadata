@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -13,7 +13,7 @@
 
 import { Card, Col, Row, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import { isEmpty, uniqueId } from 'lodash';
+import { isEmpty, round, uniqueId } from 'lodash';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -27,7 +27,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import { getAggregateChartData } from '../../axiosAPIs/DataInsightAPI';
+import { getAggregateChartData } from 'rest/DataInsightAPI';
 import {
   DEFAULT_CHART_OPACITY,
   GRAPH_BACKGROUND_COLOR,
@@ -145,7 +145,9 @@ const DescriptionInsight: FC<Props> = ({ chartFilter, kpi, selectedDays }) => {
             {t('label.data-insight-description-summary')}
           </Typography.Title>
           <Typography.Text className="data-insight-label-text">
-            {t('message.field-insight', { field: 'description' })}
+            {t('message.field-insight', {
+              field: t('label.description-lowercase'),
+            })}
           </Typography.Text>
         </>
       }>
@@ -208,7 +210,9 @@ const DescriptionInsight: FC<Props> = ({ chartFilter, kpi, selectedDays }) => {
                 <Typography.Paragraph
                   className="data-insight-label-text"
                   style={{ marginBottom: '4px' }}>
-                  {t('label.completed-description')}
+                  {t('label.completed-entity', {
+                    entity: t('label.description'),
+                  })}
                   {isPercentageGraph ? ' %' : ''}
                 </Typography.Paragraph>
                 <DataInsightProgressBar
@@ -228,7 +232,7 @@ const DescriptionInsight: FC<Props> = ({ chartFilter, kpi, selectedDays }) => {
                       showEndValueAsLabel
                       progress={latestData[entity]}
                       showLabel={false}
-                      startValue={latestData[entity].toFixed(2)}
+                      startValue={round(latestData[entity] || 0, 2)}
                       successValue={entity}
                       suffix={isPercentageGraph ? '%' : ''}
                     />

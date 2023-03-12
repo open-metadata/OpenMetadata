@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,18 +11,29 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Divider, Form, Input, Row, Typography } from 'antd';
+import {
+  Button,
+  Col,
+  Divider,
+  Form,
+  Image,
+  Input,
+  Row,
+  Typography,
+} from 'antd';
+import Logo from 'assets/svg/logo.svg';
 import classNames from 'classnames';
+import { useApplicationConfigProvider } from 'components/ApplicationConfigProvider/ApplicationConfigProvider';
+import { useAuthContext } from 'components/authentication/auth-provider/AuthProvider';
+import { useBasicAuth } from 'components/authentication/auth-provider/basic-auth.provider';
+import Loader from 'components/Loader/Loader';
+import LoginButton from 'components/LoginButton/LoginButton';
 import jwtDecode, { JwtPayload } from 'jwt-decode';
 import { observer } from 'mobx-react';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import loginBG from '../../assets/img/login-bg.png';
-import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
-import { useBasicAuth } from '../../authentication/auth-provider/basic-auth.provider';
-import Loader from '../../components/Loader/Loader';
-import LoginButton from '../../components/LoginButton/LoginButton';
 import { VALIDATION_MESSAGES } from '../../constants/auth.constants';
 import { ROUTES } from '../../constants/constants';
 import { AuthTypes } from '../../enums/signin.enum';
@@ -32,6 +43,7 @@ import './login.style.less';
 import LoginCarousel from './LoginCarousel';
 
 const SigninPage = () => {
+  const { logoConfig } = useApplicationConfigProvider();
   const [loading, setLoading] = useState(false);
   const [form] = Form.useForm();
 
@@ -65,6 +77,10 @@ const SigninPage = () => {
   const isAlreadyLoggedIn = useMemo(() => {
     return isAuthDisabled || isAuthenticated;
   }, [isAuthDisabled, isAuthenticated]);
+
+  const brandLogoUrl = useMemo(() => {
+    return logoConfig?.customLogoUrlPath ?? Logo;
+  }, [logoConfig]);
 
   const isTokenExpired = () => {
     const token = localState.getOidcToken();
@@ -131,7 +147,13 @@ const SigninPage = () => {
         break;
       }
       default: {
-        return <div>SSO Provider {authConfig?.provider} is not supported.</div>;
+        return (
+          <div>
+            {t('message.sso-provider-not-supported', {
+              provider: authConfig?.provider,
+            })}
+          </div>
+        );
       }
     }
 
@@ -181,16 +203,23 @@ const SigninPage = () => {
   const onClickForgotPassword = () => history.push(ROUTES.FORGOT_PASSWORD);
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="d-flex flex-col h-full">
       <Row className="flex bg-body-main flex-grow" data-testid="signin-page">
         <Col span={10}>
           <div
             className={classNames('mt-24 text-center flex-center flex-col', {
               'sso-container': !isAuthProviderBasic,
             })}>
-            <SVGIcons alt="OpenMetadata Logo" icon={Icons.LOGO} width="152" />
+            <Image
+              alt="OpenMetadata Logo"
+              data-testid="brand-logo-image"
+              fallback={Logo}
+              preview={false}
+              src={brandLogoUrl}
+              width={152}
+            />
             <Typography.Text className="mt-8 w-80 text-xl font-medium text-grey-muted">
-              {t('label.om-description')}{' '}
+              {t('message.om-description')}{' '}
             </Typography.Text>
 
             {isAuthProviderBasic ? (
@@ -240,9 +269,9 @@ const SigninPage = () => {
                 </Form>
                 {loginError && (
                   <div
-                    className="flex flex-col m-y-md"
+                    className="d-flex flex-col m-y-md"
                     data-testid="login-error-container">
-                    <div className="flex border-1 border-main rounded-4 p-sm error-alert ">
+                    <div className="flex global-border rounded-4 p-sm error-alert ">
                       <div className="m-r-xs">
                         <SVGIcons
                           alt="failed"
@@ -271,15 +300,17 @@ const SigninPage = () => {
                       </Typography.Text>
                     </Divider>
 
-                    <div className="mt-4 flex flex-center">
+                    <div className="mt-4 d-flex flex-center">
                       <Typography.Text className="mr-4">
-                        {t('label.new-to-the-platform')}
+                        {t('message.new-to-the-platform')}
                       </Typography.Text>
                       <Button
                         data-testid="signup"
                         type="link"
                         onClick={onClickSignUp}>
-                        {t('label.create-account')}
+                        {t('label.create-entity', {
+                          entity: t('label.account'),
+                        })}
                       </Button>
                     </div>
                   </>

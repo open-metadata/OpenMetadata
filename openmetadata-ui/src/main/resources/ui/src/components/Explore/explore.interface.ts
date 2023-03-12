@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -12,7 +12,7 @@
  */
 
 import { DefaultOptionType } from 'antd/lib/select';
-import { JsonTree } from 'react-awesome-query-builder';
+import { SORT_ORDER } from 'enums/common.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { Dashboard } from '../../generated/entity/data/dashboard';
 import { Mlmodel } from '../../generated/entity/data/mlmodel';
@@ -49,8 +49,6 @@ export interface ExploreProps {
 
   searchResults?: SearchResponse<ExploreSearchIndex>;
 
-  advancedSearchJsonTree?: JsonTree;
-  onChangeAdvancedSearchJsonTree: (jsonTree: JsonTree | undefined) => void;
   onChangeAdvancedSearchQueryFilter: (
     queryFilter: Record<string, unknown> | undefined
   ) => void;
@@ -65,7 +63,7 @@ export interface ExploreProps {
   onChangeSortValue: (sortValue: string) => void;
 
   sortOrder: string;
-  onChangeSortOder: (sortOder: string) => void;
+  onChangeSortOder: (sortOder: SORT_ORDER) => void;
 
   showDeleted: boolean;
   onChangeShowDeleted: (showDeleted: boolean) => void;

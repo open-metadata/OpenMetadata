@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -13,18 +13,15 @@
 
 import { Button, Form, FormProps, Input, Select, Space } from 'antd';
 import { AxiosError } from 'axios';
+import { CreateTestCase } from 'generated/api/tests/createTestCase';
+import { t } from 'i18next';
 import { isEmpty } from 'lodash';
-import { EditorContentRef } from 'Models';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import {
-  getListTestCase,
-  getListTestDefinitions,
-} from '../../../axiosAPIs/testAPI';
+import { getListTestCase, getListTestDefinitions } from 'rest/testAPI';
 import { API_RES_MAX_SIZE } from '../../../constants/constants';
 import { CSMode } from '../../../enums/codemirror.enum';
 import { ProfilerDashboardType } from '../../../enums/table.enum';
-import { EntityReference } from '../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import {
   TestCase,
   TestCaseParameterValue,
@@ -43,6 +40,7 @@ import { getDecodedFqn } from '../../../utils/StringsUtils';
 import { generateEntityLink } from '../../../utils/TableUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import RichTextEditor from '../../common/rich-text-editor/RichTextEditor';
+import { EditorContentRef } from '../../common/rich-text-editor/RichTextEditor.interface';
 import SchemaEditor from '../../schema-editor/SchemaEditor';
 import { TestCaseFormProps } from '../AddDataQualityTest.interface';
 import ParameterForm from './ParameterForm';
@@ -60,7 +58,7 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
   const markdownRef = useRef<EditorContentRef>();
   const [testDefinitions, setTestDefinitions] = useState<TestDefinition[]>([]);
   const [selectedTestType, setSelectedTestType] = useState<string | undefined>(
-    initialValue?.testDefinition?.id
+    initialValue?.testDefinition
   );
   const [testCases, setTestCases] = useState<TestCase[]>([]);
   const [sqlQuery, setSqlQuery] = useState({
@@ -101,9 +99,11 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
   };
 
   const getSelectedTestDefinition = () => {
-    const testType = initialValue?.testDefinition?.id ?? selectedTestType;
+    const testType = initialValue?.testSuite ?? selectedTestType;
 
-    return testDefinitions.find((definition) => definition.id === testType);
+    return testDefinitions.find(
+      (definition) => definition.fullyQualifiedName === testType
+    );
   };
 
   const GenerateParamsField = useCallback(() => {
@@ -115,9 +115,9 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
           <Form.Item
             data-testid="sql-editor-container"
             key={name}
-            label="SQL Query"
+            label={t('label.sql-uppercase-query')}
             name={name}
-            tooltip="Queries returning 1 or more rows will result in the test failing.">
+            tooltip={t('message.queries-result-test')}>
             <SchemaEditor
               className="profiler-setting-sql-editor"
               mode={{ name: CSMode.SQL }}
@@ -131,7 +131,7 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
         );
       }
 
-      return <ParameterForm definition={selectedDefinition} />;
+      return <ParameterForm definition={selectedDefinition} table={table} />;
     }
 
     return;
@@ -163,13 +163,10 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
       name: value.testName,
       entityLink: generateEntityLink(decodedEntityFQN, isColumnFqn),
       parameterValues: parameterValues as TestCaseParameterValue[],
-      testDefinition: {
-        id: value.testTypeId,
-        type: 'testDefinition',
-      },
+      testDefinition: value.testTypeId,
       description: markdownRef.current?.getEditorContent(),
-      testSuite: {} as EntityReference,
-    };
+      testSuite: '',
+    } as CreateTestCase;
   };
 
   const handleFormSubmit: FormProps['onFinish'] = (value) => {
@@ -200,7 +197,7 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
   const handleValueChange: FormProps['onValuesChange'] = (value) => {
     if (value.testTypeId) {
       const testType = testDefinitions.find(
-        (test) => test.id === value.testTypeId
+        (test) => test.fullyQualifiedName === value.testTypeId
       );
       setSelectedTestType(value.testTypeId);
       const testCount = testCases.filter((test) =>
@@ -229,7 +226,7 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
       testName: replaceAllSpacialCharWith_(
         initialValue?.name ?? getNameFromFQN(decodedEntityFQN)
       ),
-      testTypeId: initialValue?.testDefinition?.id,
+      testTypeId: initialValue?.testDefinition,
       params: initialValue?.parameterValues?.length
         ? getParamsValue()
         : undefined,
@@ -245,45 +242,56 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
       onFinish={handleFormSubmit}
       onValuesChange={handleValueChange}>
       <Form.Item
-        label="Name:"
+        label={`${t('label.name')}:`}
         name="testName"
         rules={[
           {
             required: true,
-            message: 'Name is required!',
+            message: `${t('label.field-required', { field: t('label.name') })}`,
           },
           {
             pattern: /^[A-Za-z0-9_]*$/g,
-            message: 'Spacial character is not allowed!',
+            message: t('message.special-character-not-allowed'),
           },
           {
             validator: (_, value) => {
               if (testCases.some((test) => test.name === value)) {
-                return Promise.reject('Name already exist!');
+                return Promise.reject(
+                  t('message.entity-already-exists', {
+                    entity: t('label.name'),
+                  })
+                );
               }
 
               return Promise.resolve();
             },
           },
         ]}>
-        <Input placeholder="Enter test case name" />
+        <Input placeholder={t('message.enter-test-case-name')} />
       </Form.Item>
       <Form.Item
-        label="Test Type:"
+        label={`${t('label.test-type')}`}
         name="testTypeId"
-        rules={[{ required: true, message: 'Test type is required' }]}>
+        rules={[
+          {
+            required: true,
+            message: `${t('label.field-required', {
+              field: t('label.test-type'),
+            })}`,
+          },
+        ]}>
         <Select
           options={testDefinitions.map((suite) => ({
             label: suite.name,
-            value: suite.id,
+            value: suite.fullyQualifiedName,
           }))}
-          placeholder="Select test type"
+          placeholder={t('label.select-field', { field: t('label.test-type') })}
         />
       </Form.Item>
 
       {GenerateParamsField()}
 
-      <Form.Item label="Description:" name="description">
+      <Form.Item label={`${t('label.description')}`} name="description">
         <RichTextEditor
           initialValue={initialValue?.description || ''}
           ref={markdownRef}
@@ -295,9 +303,9 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
 
       <Form.Item noStyle>
         <Space className="tw-w-full tw-justify-end" size={16}>
-          <Button onClick={onBack}>Back</Button>
+          <Button onClick={onBack}>{t('label.back')}</Button>
           <Button data-testid="submit-test" htmlType="submit" type="primary">
-            Submit
+            {t('label.submit')}
           </Button>
         </Space>
       </Form.Item>

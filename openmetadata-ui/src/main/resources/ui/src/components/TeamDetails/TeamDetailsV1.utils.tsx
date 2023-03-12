@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { t } from 'i18next';
 import { isEmpty, isUndefined } from 'lodash';
 import { Team } from '../../generated/entity/teams/team';
 import { Paging } from '../../generated/type/paging';
@@ -25,31 +26,31 @@ export const getTabs = (
 ) => {
   const tabs = {
     teams: {
-      name: 'Teams',
+      name: t('label.team-plural'),
       isProtected: false,
       position: 1,
       count: teamsCount,
     },
     users: {
-      name: 'Users',
+      name: t('label.user-plural'),
       isProtected: false,
       position: 2,
       count: teamUserPagin?.total,
     },
     assets: {
-      name: 'Assets',
+      name: t('label.asset-plural'),
       isProtected: false,
       position: 3,
       count: filterEntityAssets(currentTeam?.owns || []).length,
     },
     roles: {
-      name: 'Roles',
+      name: t('label.role-plural'),
       isProtected: false,
       position: 4,
       count: currentTeam?.defaultRoles?.length,
     },
     policies: {
-      name: 'Policies',
+      name: t('label.policy-plural'),
       isProtected: false,
       position: 5,
       count: currentTeam?.policies?.length,

@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -13,34 +13,34 @@
 
 import { Col, Row } from 'antd';
 import { AxiosError } from 'axios';
+import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
+import Loader from 'components/Loader/Loader';
+import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
+import Services from 'components/Services/Services';
 import { isEmpty } from 'lodash';
-import { ServiceCategory } from 'Models';
 import React, { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router-dom';
-import { getServices } from '../../axiosAPIs/serviceAPI';
-import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
-import Loader from '../../components/Loader/Loader';
-import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
-import Services from '../../components/Services/Services';
+import { getServices } from 'rest/serviceAPI';
 import { pagingObject, SERVICE_VIEW_CAP } from '../../constants/constants';
 import { NO_PERMISSION_TO_VIEW } from '../../constants/HelperTextUtil';
 import { SERVICE_CATEGORY } from '../../constants/Services.constant';
-import { ServiceCategory as Category } from '../../enums/service.enum';
+import { ServiceCategory } from '../../enums/service.enum';
 import { Paging } from '../../generated/type/paging';
 import { ServicesType } from '../../interface/service.interface';
-import jsonData from '../../jsons/en';
 import { userPermissions } from '../../utils/PermissionsUtils';
 import { getResourceEntityFromServiceCategory } from '../../utils/ServiceUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
 const ServicesPage = () => {
-  const { tab } = useParams<{ [key: string]: keyof ServiceCategory }>();
+  const { tab } = useParams<{ tab: string }>();
+  const { t } = useTranslation();
 
   const [isLoading, setIsLoading] = useState(true);
   const [serviceDetails, setServiceDetails] = useState<ServicesType[]>([]);
   const [paging, setPaging] = useState<Paging>(pagingObject);
-  const [serviceName, setServiceName] = useState<Category>(
-    Category.DATABASE_SERVICES
+  const [serviceName, setServiceName] = useState<ServiceCategory>(
+    ServiceCategory.DATABASE_SERVICES
   );
   const [currentPage, setCurrentPage] = useState<number>(1);
 
@@ -67,7 +67,7 @@ const ServicesPage = () => {
       setPaging(pagingObject);
       showErrorToast(
         error as AxiosError,
-        jsonData['api-error-messages']['fetch-services-error']
+        t('server.entity-fetch-error', { entity: t('label.service-plural') })
       );
     } finally {
       setIsLoading(false);

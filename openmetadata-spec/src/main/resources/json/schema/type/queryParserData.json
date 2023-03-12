@@ -49,6 +49,10 @@
         "databaseSchema": {
           "description": "Database schema of the associated with query",
           "type": "string"
+        },
+        "duration": {
+          "description": "How long did the query took to run in seconds.",
+          "type": "number"
         }
       },
       "required": ["sql", "serviceName", "tables"]

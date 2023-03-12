@@ -23,6 +23,7 @@ import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
 import static org.openmetadata.service.Entity.SEPARATOR;
 import static org.openmetadata.service.security.SecurityUtil.authHeaders;
 
+import java.lang.reflect.Field;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.text.DateFormat;
@@ -37,6 +38,7 @@ import java.util.Map;
 import java.util.UUID;
 import javax.json.JsonObject;
 import javax.json.JsonPatch;
+import javax.validation.constraints.Size;
 import javax.ws.rs.client.Entity;
 import javax.ws.rs.client.WebTarget;
 import javax.ws.rs.core.MediaType;
@@ -48,13 +50,13 @@ import org.eclipse.jetty.http.HttpStatus;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.function.Executable;
 import org.openmetadata.schema.api.services.DatabaseConnection;
+import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.services.MetadataConnection;
-import org.openmetadata.schema.entity.tags.Tag;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.entity.type.CustomProperty;
 import org.openmetadata.schema.security.credentials.AWSCredentials;
-import org.openmetadata.schema.services.connections.dashboard.SupersetConnection;
+import org.openmetadata.schema.services.connections.dashboard.MetabaseConnection;
 import org.openmetadata.schema.services.connections.database.BigQueryConnection;
 import org.openmetadata.schema.services.connections.database.MysqlConnection;
 import org.openmetadata.schema.services.connections.database.RedshiftConnection;
@@ -63,12 +65,14 @@ import org.openmetadata.schema.services.connections.messaging.KafkaConnection;
 import org.openmetadata.schema.services.connections.metadata.AmundsenConnection;
 import org.openmetadata.schema.services.connections.metadata.AtlasConnection;
 import org.openmetadata.schema.services.connections.mlmodel.MlflowConnection;
+import org.openmetadata.schema.services.connections.objectstore.S3Connection;
 import org.openmetadata.schema.services.connections.pipeline.AirflowConnection;
 import org.openmetadata.schema.services.connections.pipeline.GluePipelineConnection;
 import org.openmetadata.schema.type.DashboardConnection;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.MessagingConnection;
 import org.openmetadata.schema.type.MlModelConnection;
+import org.openmetadata.schema.type.ObjectStoreConnection;
 import org.openmetadata.schema.type.PipelineConnection;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TagLabel.TagSource;
@@ -79,12 +83,7 @@ import org.openmetadata.service.security.SecurityUtil;
 
 @Slf4j
 public final class TestUtils {
-  // Entity name length allowed is 128 characters
-  public static final int ENTITY_NAME_MAX_LEN = 128;
-  public static final String LONG_ENTITY_NAME = "1".repeat(ENTITY_NAME_MAX_LEN + 1);
-  public static final String ENTITY_NAME_LENGTH_ERROR =
-      String.format("[name size must be between 1 and %d]", ENTITY_NAME_MAX_LEN);
-
+  public static final String LONG_ENTITY_NAME = "a".repeat(128 + 1);
   public static final Map<String, String> ADMIN_AUTH_HEADERS = authHeaders(ADMIN_USER_NAME + "@open-metadata.org");
   public static final String INGESTION_BOT = "ingestion-bot";
   public static final Map<String, String> INGESTION_BOT_AUTH_HEADERS =
@@ -103,13 +102,16 @@ public final class TestUtils {
   public static PipelineConnection GLUE_CONNECTION;
 
   public static MessagingConnection KAFKA_CONNECTION;
-  public static DashboardConnection SUPERSET_CONNECTION;
+  public static DashboardConnection METABASE_CONNECTION;
 
   public static final MlModelConnection MLFLOW_CONNECTION;
+  public static final ObjectStoreConnection OBJECT_STORE_CONNECTION;
   public static MetadataConnection AMUNDSEN_CONNECTION;
   public static MetadataConnection ATLAS_CONNECTION;
 
   public static URI PIPELINE_URL;
+
+  public static AWSCredentials AWS_CREDENTIALS;
 
   public static void assertCustomProperties(List<CustomProperty> expected, List<CustomProperty> actual) {
     if (expected == actual) { // Take care of both being null
@@ -166,15 +168,15 @@ public final class TestUtils {
 
   static {
     try {
-      SUPERSET_CONNECTION =
+      METABASE_CONNECTION =
           new DashboardConnection()
               .withConfig(
-                  new SupersetConnection()
+                  new MetabaseConnection()
                       .withHostPort(new URI("http://localhost:8080"))
                       .withUsername("admin")
                       .withPassword("admin"));
     } catch (URISyntaxException e) {
-      SUPERSET_CONNECTION = null;
+      METABASE_CONNECTION = null;
       e.printStackTrace();
     }
   }
@@ -189,21 +191,26 @@ public final class TestUtils {
   }
 
   static {
+    AWS_CREDENTIALS =
+        new AWSCredentials().withAwsAccessKeyId("ABCD").withAwsSecretAccessKey("1234").withAwsRegion("eu-west-2");
+  }
+
+  static {
+    OBJECT_STORE_CONNECTION = new ObjectStoreConnection().withConfig(new S3Connection().withAwsConfig(AWS_CREDENTIALS));
+  }
+
+  static {
     try {
       PIPELINE_URL = new URI("http://localhost:8080");
       AIRFLOW_CONNECTION =
           new PipelineConnection()
-              .withConfig(new AirflowConnection().withHostPort(PIPELINE_URL).withConnection(MYSQL_DATABASE_CONNECTION));
+              .withConfig(
+                  new AirflowConnection()
+                      .withHostPort(PIPELINE_URL)
+                      .withConnection(MYSQL_DATABASE_CONNECTION.getConfig()));
 
       GLUE_CONNECTION =
-          new PipelineConnection()
-              .withConfig(
-                  new GluePipelineConnection()
-                      .withAwsConfig(
-                          new AWSCredentials()
-                              .withAwsAccessKeyId("ABCD")
-                              .withAwsSecretAccessKey("1234")
-                              .withAwsRegion("eu-west-2")));
+          new PipelineConnection().withConfig(new GluePipelineConnection().withAwsConfig(AWS_CREDENTIALS));
     } catch (URISyntaxException e) {
       PIPELINE_URL = null;
       e.printStackTrace();
@@ -272,9 +279,12 @@ public final class TestUtils {
       Executable executable, Response.Status expectedStatus, String expectedReason) {
     HttpResponseException exception = assertThrows(HttpResponseException.class, executable);
     assertEquals(expectedStatus.getStatusCode(), exception.getStatusCode());
-    assertTrue(
-        exception.getReasonPhrase().contains(expectedReason),
-        expectedReason + " not in actual " + exception.getReasonPhrase());
+
+    // Strip "[" at the beginning and "]" at the end as actual reason may contain more than one error messages
+    expectedReason =
+        expectedReason.startsWith("[") ? expectedReason.substring(1, expectedReason.length() - 1) : expectedReason;
+    String actualReason = exception.getReasonPhrase();
+    assertTrue(actualReason.contains(expectedReason), expectedReason + " not in actual " + actualReason);
   }
 
   public static <T> void assertEntityPagination(List<T> allEntities, ResultList<T> actual, int limit, int offset) {
@@ -323,12 +333,6 @@ public final class TestUtils {
     return readResponse(response, clz, Status.OK.getStatusCode());
   }
 
-  public static <T> T put(WebTarget target, Class<T> clz, Status expectedStatus, Map<String, String> headers)
-      throws HttpResponseException {
-    Response response = SecurityUtil.addHeaders(target, headers).method("PUT");
-    return readResponse(response, clz, expectedStatus.getStatusCode());
-  }
-
   public static <K> void put(WebTarget target, K request, Status expectedStatus, Map<String, String> headers)
       throws HttpResponseException {
     Response response =
@@ -344,6 +348,14 @@ public final class TestUtils {
     return readResponse(response, clz, expectedStatus.getStatusCode());
   }
 
+  public static <T> T putCsv(
+      WebTarget target, String request, Class<T> clz, Status expectedStatus, Map<String, String> headers)
+      throws HttpResponseException {
+    Response response =
+        SecurityUtil.addHeaders(target, headers).method("PUT", Entity.entity(request, MediaType.TEXT_PLAIN));
+    return readResponse(response, clz, expectedStatus.getStatusCode());
+  }
+
   public static void get(WebTarget target, Map<String, String> headers) throws HttpResponseException {
     final Response response = SecurityUtil.addHeaders(target, headers).get();
     readResponse(response, Status.NO_CONTENT.getStatusCode());
@@ -352,6 +364,12 @@ public final class TestUtils {
   public static <T> T get(WebTarget target, Class<T> clz, Map<String, String> headers) throws HttpResponseException {
     final Response response = SecurityUtil.addHeaders(target, headers).get();
     return readResponse(response, clz, Status.OK.getStatusCode());
+  }
+
+  public static <T> T getWithResponse(WebTarget target, Class<T> clz, Map<String, String> headers, int statusConde)
+      throws HttpResponseException {
+    final Response response = SecurityUtil.addHeaders(target, headers).get();
+    return readResponse(response, clz, statusConde);
   }
 
   public static <T> T delete(WebTarget target, Class<T> clz, Map<String, String> headers) throws HttpResponseException {
@@ -415,13 +433,14 @@ public final class TestUtils {
     List<TagLabel> updatedExpectedList = new ArrayList<>();
     EntityUtil.mergeTags(updatedExpectedList, expectedList);
 
+    TagResourceTest tagResourceTest = new TagResourceTest();
     for (TagLabel expected : expectedList) {
       if (expected.getSource() == TagSource.GLOSSARY) {
         GlossaryTerm glossaryTerm =
             new GlossaryTermResourceTest().getEntityByName(expected.getTagFQN(), null, "tags", ADMIN_AUTH_HEADERS);
         List<TagLabel> derived = new ArrayList<>();
         for (TagLabel tag : listOrEmpty(glossaryTerm.getTags())) {
-          Tag associatedTag = TagResourceTest.getTag(tag.getTagFQN(), ADMIN_AUTH_HEADERS);
+          Tag associatedTag = tagResourceTest.getEntityByName(tag.getTagFQN(), ADMIN_AUTH_HEADERS);
           derived.add(
               new TagLabel()
                   .withTagFQN(tag.getTagFQN())
@@ -474,12 +493,13 @@ public final class TestUtils {
     if (expected == null && actual == null) {
       return;
     }
-    if (listOrEmpty(expected).isEmpty()) {
+    expected = listOrEmpty(expected);
+    actual = listOrEmpty(actual);
+    if (expected.isEmpty()) {
       return;
     }
-    for (UUID id : listOrEmpty(expected)) {
-      actual = listOrEmpty(actual);
-      assertEquals(expected.size(), actual.size());
+    assertEquals(expected.size(), actual.size());
+    for (UUID id : expected) {
       assertNotNull(actual.stream().filter(entity -> entity.getId().equals(id)).findAny().orElse(null));
     }
     validateEntityReferences(actual);
@@ -496,7 +516,16 @@ public final class TestUtils {
         TestUtils.existsInEntityReferenceList(actual, e.getId(), true);
       }
     }
-    validateEntityReferences(actual);
+  }
+
+  public static void assertEntityReferenceNames(List<String> expected, List<EntityReference> actual) {
+    if (expected != null) {
+      actual = listOrEmpty(actual);
+      assertEquals(expected.size(), actual.size());
+      for (String e : expected) {
+        TestUtils.existsInEntityReferenceList(actual, e, true);
+      }
+    }
   }
 
   public static void existsInEntityReferenceList(List<EntityReference> list, UUID id, boolean expectedExistsInList) {
@@ -513,6 +542,26 @@ public final class TestUtils {
     } else {
       if (ref != null) {
         assertTrue(ref.getDeleted(), "EntityReference is not deleted as expected " + id);
+      }
+    }
+  }
+
+  // TODO clean up
+  public static void existsInEntityReferenceList(List<EntityReference> list, String fqn, boolean expectedExistsInList) {
+    EntityReference ref = null;
+    for (EntityReference r : list) {
+      // TODO Change description does not href in EntityReferences
+      // validateEntityReference(r);
+      if (r.getFullyQualifiedName().equals(fqn)) {
+        ref = r;
+        break;
+      }
+    }
+    if (expectedExistsInList) {
+      assertNotNull(ref, "EntityReference does not exist for " + fqn);
+    } else {
+      if (ref != null) {
+        assertTrue(ref.getDeleted(), "EntityReference is not deleted as expected " + fqn);
       }
     }
   }
@@ -561,5 +610,16 @@ public final class TestUtils {
     DateFormat formatter = new SimpleDateFormat("yyyy-MM-dd");
     Date date = formatter.parse(dateStr);
     return date.getTime();
+  }
+
+  public static <T> String getEntityNameLengthError(Class<T> clazz) {
+    try {
+      Field field = clazz.getDeclaredField("name");
+      Size size = field.getAnnotation(Size.class);
+      return String.format("[name size must be between %d and %d]", size.min(), size.max());
+    } catch (NoSuchFieldException e) {
+      LOG.warn("Failed to find constraints for the entity {}", clazz.getSimpleName(), e);
+    }
+    return null;
   }
 }

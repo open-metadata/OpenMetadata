@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -13,13 +13,14 @@
 
 import { Button, Card, Col, Form, Row, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
+import TitleBreadcrumb from 'components/common/title-breadcrumb/title-breadcrumb.component';
+import Loader from 'components/Loader/Loader';
 import { compare } from 'fast-json-patch';
 import { trim } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
-import { getPolicyByName, patchPolicy } from '../../../axiosAPIs/rolesAPIV1';
-import TitleBreadcrumb from '../../../components/common/title-breadcrumb/title-breadcrumb.component';
-import Loader from '../../../components/Loader/Loader';
+import { getPolicyByName, patchPolicy } from 'rest/rolesAPIV1';
 import { GlobalSettingOptions } from '../../../constants/GlobalSettings.constants';
 import { Effect, Rule } from '../../../generated/api/policies/createPolicy';
 import { Policy } from '../../../generated/entity/policies/policy';
@@ -35,6 +36,7 @@ import RuleForm from '../RuleForm/RuleForm';
 const policiesPath = getPath(GlobalSettingOptions.POLICIES);
 
 const AddRulePage = () => {
+  const { t } = useTranslation();
   const history = useHistory();
   const { fqn } = useParams<{ fqn: string }>();
   const [isLoading, setLoading] = useState<boolean>(false);
@@ -51,11 +53,11 @@ const AddRulePage = () => {
   const breadcrumb = useMemo(
     () => [
       {
-        name: 'Settings',
+        name: t('label.setting-plural'),
         url: getSettingPath(),
       },
       {
-        name: 'Policies',
+        name: t('label.policy-plural'),
         url: policiesPath,
       },
       {
@@ -64,7 +66,9 @@ const AddRulePage = () => {
       },
 
       {
-        name: 'Add New Rule',
+        name: t('label.add-new-entity', {
+          entity: t('label.rule'),
+        }),
         url: '',
       },
     ],
@@ -112,14 +116,14 @@ const AddRulePage = () => {
   }
 
   return (
-    <Row className="tw-bg-body-main tw-h-auto p-y-lg" gutter={[16, 16]}>
+    <Row className="bg-body-main h-auto p-y-lg" gutter={[16, 16]}>
       <Col offset={5} span={14}>
         <TitleBreadcrumb className="m-b-md" titleLinks={breadcrumb} />
         <Card>
           <Typography.Paragraph
-            className="tw-text-base"
+            className="text-base"
             data-testid="add-rule-title">
-            Add New Rule
+            {t('label.add-new-entity', { entity: t('label.rule') })}
           </Typography.Paragraph>
           <Form
             data-testid="rule-form"
@@ -130,16 +134,16 @@ const AddRulePage = () => {
             layout="vertical"
             onFinish={handleSubmit}>
             <RuleForm ruleData={ruleData} setRuleData={setRuleData} />
-            <Space align="center" className="tw-w-full tw-justify-end">
+            <Space align="center" className="w-full justify-end">
               <Button data-testid="cancel-btn" type="link" onClick={handleBack}>
-                Cancel
+                {t('label.cancel')}
               </Button>
               <Button
                 data-testid="submit-btn"
                 form="rule-form"
                 htmlType="submit"
                 type="primary">
-                Submit
+                {t('label.submit')}
               </Button>
             </Space>
           </Form>

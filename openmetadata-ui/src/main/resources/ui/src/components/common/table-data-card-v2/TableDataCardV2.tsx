@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,12 +11,12 @@
  *  limitations under the License.
  */
 
-import { faExclamationCircle } from '@fortawesome/free-solid-svg-icons';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { ExclamationCircleOutlined } from '@ant-design/icons';
 import classNames from 'classnames';
 import { isString, startCase, uniqueId } from 'lodash';
 import { ExtraInfo } from 'Models';
 import React, { useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useLocation, useParams } from 'react-router-dom';
 import AppState from '../../../AppState';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
@@ -64,6 +64,7 @@ const TableDataCardV2: React.FC<TableDataCardPropsV2> = ({
   searchIndex,
   handleSummaryPanelDisplay,
 }) => {
+  const { t } = useTranslation();
   const location = useLocation();
   const { tab } = useParams<{ tab: string }>();
 
@@ -160,11 +161,8 @@ const TableDataCardV2: React.FC<TableDataCardPropsV2> = ({
               <div
                 className="tw-rounded tw-bg-error-lite tw-text-error tw-text-xs tw-font-medium tw-h-5 tw-px-1.5 tw-py-0.5 tw-ml-2"
                 data-testid="deleted">
-                <FontAwesomeIcon
-                  className="tw-mr-1"
-                  icon={faExclamationCircle}
-                />
-                Deleted
+                <ExclamationCircleOutlined className="tw-mr-1" />
+                {t('label.deleted')}
               </div>
             </>
           )}
@@ -179,7 +177,7 @@ const TableDataCardV2: React.FC<TableDataCardPropsV2> = ({
       </div>
       {matches && matches.length > 0 ? (
         <div className="tw-pt-2" data-testid="matches-stats">
-          <span className="tw-text-grey-muted">Matches :</span>
+          <span className="tw-text-grey-muted">{`${t('label.matches')}:`}</span>
           {matches.map((data, i) => (
             <span className="tw-ml-2" key={uniqueId()}>
               {`${data.value} in ${startCase(data.key)}${

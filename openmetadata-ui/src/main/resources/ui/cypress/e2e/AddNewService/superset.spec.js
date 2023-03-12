@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -12,12 +12,12 @@
  */
 
 import {
-    deleteCreatedService,
-    editOwnerforCreatedService,
-    goToAddNewServicePage,
-    testServiceCreationAndIngestion,
-    updateDescriptionForIngestedTables,
-    uuid
+  deleteCreatedService,
+  editOwnerforCreatedService,
+  goToAddNewServicePage,
+  testServiceCreationAndIngestion,
+  updateDescriptionForIngestedTables,
+  uuid,
 } from '../../common/common';
 import { API_SERVICE, SERVICE_TYPE } from '../../constants/constants';
 
@@ -30,11 +30,15 @@ describe('Superset Ingestion', () => {
   beforeEach(() => {
     cy.login();
   });
+
   it('add and ingest data', () => {
     goToAddNewServicePage(SERVICE_TYPE.Dashboard);
 
     // Select Dashboard services
-    cy.get('[data-testid="service-category"]').select('dashboardServices');
+    cy.get('[data-testid="service-category"]').should('be.visible').click();
+    cy.get('.ant-select-item-option-content')
+      .contains('Dashboard Services')
+      .click();
 
     const connectionInput = () => {
       cy.get('#root_username').type(Cypress.env('supersetUsername'));
@@ -50,11 +54,12 @@ describe('Superset Ingestion', () => {
 
     const addIngestionInput = () => {
       cy.get('[data-testid="dashboard-filter-pattern-checkbox"]')
-      .invoke('show').trigger('mouseover')
-      .check();
+        .invoke('show')
+        .trigger('mouseover')
+        .check();
       cy.get('[data-testid="filter-pattern-includes-dashboard"]')
-      .should('be.visible')
-      .type(tableName);
+        .should('be.visible')
+        .type(tableName);
     };
 
     testServiceCreationAndIngestion(
@@ -85,6 +90,10 @@ describe('Superset Ingestion', () => {
   });
 
   it('delete created service', () => {
-    deleteCreatedService(SERVICE_TYPE.Dashboard, serviceName, API_SERVICE.dashboardServices);
+    deleteCreatedService(
+      SERVICE_TYPE.Dashboard,
+      serviceName,
+      API_SERVICE.dashboardServices
+    );
   });
 });

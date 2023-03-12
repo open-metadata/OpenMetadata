@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -33,13 +33,13 @@ const mockColumns: Column[] = [
       {
         tagFQN: 'string',
         labelType: LabelType.Manual,
-        source: TagSource.Tag,
+        source: TagSource.Classification,
         state: State.Confirmed,
       },
       {
         tagFQN: 'string2',
         labelType: LabelType.Derived,
-        source: TagSource.Tag,
+        source: TagSource.Classification,
         state: State.Confirmed,
       },
     ],

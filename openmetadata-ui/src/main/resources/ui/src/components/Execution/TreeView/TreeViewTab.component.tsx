@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+
 import { Card, Col, Empty, Row, Typography } from 'antd';
 import Tree from 'antd/lib/tree';
 import { isEmpty } from 'lodash';
@@ -60,8 +61,9 @@ const TreeViewTab = ({
         </Col>
         <Col>
           <Typography.Text className="p-b-0 m-b-0 font-medium">
-            {formatDateTimeFromSeconds(startTime)} to{' '}
-            {formatDateTimeFromSeconds(endTime)}
+            {`${formatDateTimeFromSeconds(startTime)} ${t(
+              'label.to-lowercase'
+            )} ${formatDateTimeFromSeconds(endTime)}`}
           </Typography.Text>
         </Col>
         <Col>
@@ -72,7 +74,7 @@ const TreeViewTab = ({
       {isEmpty(viewData) ? (
         <Empty
           className="my-4"
-          description={t('label.no-execution-runs-found')}
+          description={t('message.no-execution-runs-found')}
         />
       ) : (
         <Row className="w-full">

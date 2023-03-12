@@ -110,9 +110,9 @@ public class MetricsResource extends EntityResource<Metrics, MetricsRepository> 
   @Path("/{id}")
   @Operation(
       operationId = "getMetricByID",
-      summary = "Get a metric",
+      summary = "Get a metric by Id",
       tags = "metrics",
-      description = "Get a metric by `id`.",
+      description = "Get a metric by `Id`.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -123,7 +123,7 @@ public class MetricsResource extends EntityResource<Metrics, MetricsRepository> 
   public Metrics get(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @PathParam("id") UUID id,
+      @Parameter(description = "Id of the metric", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
       @Parameter(
               description = "Fields requested in the returned resource",
               schema = @Schema(type = "string", example = FIELDS))

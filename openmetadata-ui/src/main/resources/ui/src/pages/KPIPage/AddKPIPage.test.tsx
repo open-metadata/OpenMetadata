@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -22,9 +22,7 @@ import {
 import userEvent from '@testing-library/user-event';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
-
 import AddKPIPage from './AddKPIPage';
-
 import { KPI_CHARTS, KPI_DATA, KPI_LIST } from './KPIMock.mock';
 
 const mockPush = jest.fn();
@@ -35,23 +33,21 @@ jest.mock('react-router-dom', () => ({
   }),
 }));
 
-jest.mock('../../axiosAPIs/DataInsightAPI', () => ({
+jest.mock('rest/DataInsightAPI', () => ({
   getListDataInsightCharts: jest
     .fn()
     .mockImplementation(() => Promise.resolve({ data: KPI_CHARTS })),
 }));
 
-jest.mock('../../components/common/rich-text-editor/RichTextEditor', () =>
+jest.mock('components/common/rich-text-editor/RichTextEditor', () =>
   jest.fn().mockReturnValue(<div data-testid="editor">Editor</div>)
 );
 
-jest.mock(
-  '../../components/common/title-breadcrumb/title-breadcrumb.component',
-  () =>
-    jest.fn().mockReturnValue(<div data-testid="breadcrumb">BreadCrumb</div>)
+jest.mock('components/common/title-breadcrumb/title-breadcrumb.component', () =>
+  jest.fn().mockReturnValue(<div data-testid="breadcrumb">BreadCrumb</div>)
 );
 
-jest.mock('../../axiosAPIs/KpiAPI', () => ({
+jest.mock('rest/KpiAPI', () => ({
   getListKPIs: jest
     .fn()
     .mockImplementation(() => Promise.resolve({ data: KPI_LIST })),
@@ -86,7 +82,7 @@ describe('Add KPI page', () => {
 
     expect(formTitle).toBeInTheDocument();
 
-    expect(formTitle.textContent).toContain('label.add-new-kpi');
+    expect(formTitle.textContent).toContain('label.add-new-entity');
 
     const formContainer = await screen.findByTestId('kpi-form');
 

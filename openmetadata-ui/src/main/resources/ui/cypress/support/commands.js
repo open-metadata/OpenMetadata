@@ -1,3 +1,15 @@
+/*
+ *  Copyright 2022 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
 // ***********************************************
 // This example commands.js shows you how to
 // create various custom commands and overwrite
@@ -65,16 +77,19 @@ Cypress.Commands.add('loginByGoogleApi', () => {
   });
 });
 
-Cypress.Commands.add('goToHomePage', () => {
-  interceptURL('GET', '/api/v1/util/entities/count', 'count');
-  interceptURL('GET', '/api/v1/feed', 'feed');
-  interceptURL('GET', '/api/v1/users/name/*?fields=profile', 'userProfile');
-  cy.get('[data-testid="whats-new-dialog"]').should('exist').then(() => {
-    cy.get('[role="dialog"]').should('be.visible');
-  });
+Cypress.Commands.add('goToHomePage', (doNotNavigate) => {
+  interceptURL('GET', '/api/v1/system/entities/count', 'entitiesCount');
+  interceptURL('GET', '/api/v1/feed*', 'feed');
+  interceptURL('GET', '/api/v1/users/*?fields=*', 'userProfile');
+  !doNotNavigate && cy.visit('/');
+  cy.get('[data-testid="whats-new-dialog"]')
+    .should('exist')
+    .then(() => {
+      cy.get('[role="dialog"]').should('be.visible');
+    });
   cy.get('[data-testid="closeWhatsNew"]').click();
   cy.get('[data-testid="whats-new-dialog"]').should('not.exist');
-  verifyResponseStatusCode('@count', 200);
+  verifyResponseStatusCode('@entitiesCount', 200);
   verifyResponseStatusCode('@feed', 200);
   verifyResponseStatusCode('@userProfile', 200);
 });
@@ -114,6 +129,5 @@ Cypress.Commands.add('storeSession', (username, password) => {
 
 Cypress.Commands.add('login', () => {
   cy.storeSession(LOGIN.username, LOGIN.password);
-  cy.visit('/');
   cy.goToHomePage();
 });

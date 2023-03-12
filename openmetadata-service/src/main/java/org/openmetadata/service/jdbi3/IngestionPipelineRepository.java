@@ -13,8 +13,6 @@
 
 package org.openmetadata.service.jdbi3;
 
-import static org.openmetadata.service.Entity.FIELD_OWNER;
-
 import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
 import java.util.List;
@@ -34,7 +32,9 @@ import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.FieldChange;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.sdk.PipelineServiceClient;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.services.ingestionpipelines.IngestionPipelineResource;
 import org.openmetadata.service.secrets.SecretsManager;
@@ -42,7 +42,6 @@ import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
-import org.openmetadata.service.util.PipelineServiceClient;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
 
@@ -72,14 +71,12 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
 
   @Override
   public IngestionPipeline setFields(IngestionPipeline ingestionPipeline, Fields fields) throws IOException {
-    ingestionPipeline.setService(getContainer(ingestionPipeline.getId()));
-    ingestionPipeline.setOwner(fields.contains(FIELD_OWNER) ? getOwner(ingestionPipeline) : null);
-    return ingestionPipeline;
+    return ingestionPipeline.withService(getContainer(ingestionPipeline.getId()));
   }
 
   @Override
   public void prepare(IngestionPipeline ingestionPipeline) throws IOException {
-    EntityReference entityReference = Entity.getEntityReference(ingestionPipeline.getService());
+    EntityReference entityReference = Entity.getEntityReference(ingestionPipeline.getService(), Include.NON_DELETED);
     ingestionPipeline.setService(entityReference);
   }
 
@@ -88,19 +85,25 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
     // Relationships and fields such as href are derived and not stored as part of json
     EntityReference owner = ingestionPipeline.getOwner();
     EntityReference service = ingestionPipeline.getService();
+    OpenMetadataConnection openmetadataConnection = ingestionPipeline.getOpenMetadataServerConnection();
 
     SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
+
     if (secretsManager != null) {
-      ingestionPipeline = secretsManager.encryptOrDecryptIngestionPipeline(ingestionPipeline, true);
+      secretsManager.encryptOrDecryptIngestionPipeline(ingestionPipeline, true);
+      // We store the OM sensitive values in SM separately
+      openmetadataConnection =
+          secretsManager.encryptOrDecryptOpenMetadataConnection(openmetadataConnection, true, true);
     }
 
     // Don't store owner. Build it on the fly based on relationships
-    ingestionPipeline.withOwner(null).withService(null).withHref(null);
+    // We don't want to store the OM connection.
+    ingestionPipeline.withOwner(null).withService(null).withHref(null).withOpenMetadataServerConnection(null);
 
     store(ingestionPipeline, update);
 
     // Restore the relationships
-    ingestionPipeline.withOwner(owner).withService(service);
+    ingestionPipeline.withOwner(owner).withService(service).withOpenMetadataServerConnection(openmetadataConnection);
   }
 
   @Override
@@ -123,7 +126,7 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
 
   @Override
   protected void postDelete(IngestionPipeline entity) {
-    pipelineServiceClient.deletePipeline(entity.getName());
+    pipelineServiceClient.deletePipeline(entity);
   }
 
   public void setPipelineServiceClient(PipelineServiceClient client) {
@@ -233,8 +236,6 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
     public void entitySpecificUpdate() throws IOException {
       updateSourceConfig();
       updateAirflowConfig(original.getAirflowConfig(), updated.getAirflowConfig());
-      updateOpenMetadataServerConnection(
-          original.getOpenMetadataServerConnection(), updated.getOpenMetadataServerConnection());
       updateLogLevel(original.getLoggerLevel(), updated.getLoggerLevel());
       updateEnabled(original.getEnabled(), updated.getEnabled());
       updateDeployed(original.getDeployed(), updated.getDeployed());
@@ -254,17 +255,6 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
         throws JsonProcessingException {
       if (!origAirflowConfig.equals(updatedAirflowConfig)) {
         recordChange("airflowConfig", origAirflowConfig, updatedAirflowConfig);
-      }
-    }
-
-    private void updateOpenMetadataServerConnection(
-        OpenMetadataConnection origConfig, OpenMetadataConnection updatedConfig) throws JsonProcessingException {
-
-      JSONObject origConfigJson = new JSONObject(JsonUtils.pojoToJson(origConfig));
-      JSONObject updatedConfigJson = new JSONObject(JsonUtils.pojoToJson(updatedConfig));
-
-      if (!origConfigJson.similar(updatedConfigJson)) {
-        recordChange("openMetadataServerConnection", origConfig, updatedConfig);
       }
     }
 
@@ -289,7 +279,7 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
 
   private static IngestionPipeline buildIngestionPipelineDecrypted(IngestionPipeline original) {
     IngestionPipeline decrypted = JsonUtils.convertValue(JsonUtils.getMap(original), IngestionPipeline.class);
-    decrypted = SecretsManagerFactory.getSecretsManager().encryptOrDecryptIngestionPipeline(decrypted, false);
+    SecretsManagerFactory.getSecretsManager().encryptOrDecryptIngestionPipeline(decrypted, false);
     return decrypted;
   }
 }

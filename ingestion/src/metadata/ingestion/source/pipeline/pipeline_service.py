@@ -32,7 +32,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.ingestion.api.source import Source, SourceStatus
 from metadata.ingestion.api.topology_runner import TopologyRunnerMixin
-from metadata.ingestion.models.ometa_tag_category import OMetaTagAndCategory
+from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
 from metadata.ingestion.models.topology import (
     NodeStage,
@@ -41,7 +41,7 @@ from metadata.ingestion.models.topology import (
     create_source_context,
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.utils.connections import get_connection, test_connection
+from metadata.ingestion.source.connections import get_connection, get_test_connection_fn
 from metadata.utils.filters import filter_by_pipeline
 from metadata.utils.logger import ingestion_logger
 
@@ -73,7 +73,7 @@ class PipelineServiceTopology(ServiceTopology):
         producer="get_pipeline",
         stages=[
             NodeStage(
-                type_=OMetaTagAndCategory,
+                type_=OMetaTagAndClassification,
                 context="tags",
                 processor="yield_tag",
                 ack_sink=False,
@@ -171,7 +171,7 @@ class PipelineServiceSource(TopologyRunnerMixin, Source, ABC):
 
     def yield_tag(
         self, *args, **kwargs  # pylint: disable=W0613
-    ) -> Optional[Iterable[OMetaTagAndCategory]]:
+    ) -> Optional[Iterable[OMetaTagAndClassification]]:
         """
         Method to fetch pipeline tags
         """
@@ -235,7 +235,8 @@ class PipelineServiceSource(TopologyRunnerMixin, Source, ABC):
             yield pipeline_detail
 
     def test_connection(self) -> None:
-        test_connection(self.connection)
+        test_connection_fn = get_test_connection_fn(self.service_connection)
+        test_connection_fn(self.connection, self.service_connection)
 
     def prepare(self):
         """
