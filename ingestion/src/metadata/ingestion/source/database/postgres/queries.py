@@ -99,7 +99,7 @@ POSTGRES_TABLE_COMMENTS = """
 
 POSTGRES_VIEW_DEFINITIONS = """
 SELECT 
-	n.nspname schema,
+	n.nspname "schema",
 	c.relname view_name,
 	pg_get_viewdef(c.oid) view_def
 FROM pg_class c 

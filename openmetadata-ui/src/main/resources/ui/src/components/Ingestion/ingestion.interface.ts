@@ -39,7 +39,7 @@ export interface IngestionProps {
   paging: Paging;
   ingestionList: Array<IngestionPipeline>;
   serviceList: Array<DatabaseService>;
-  currrentPage: number;
+  currentPage: number;
   permissions: OperationPermission;
   pagingHandler: (value: string | number, activePage?: number) => void;
   deleteIngestion: (id: string, displayName: string) => Promise<void>;

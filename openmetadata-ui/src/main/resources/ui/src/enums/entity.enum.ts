@@ -40,6 +40,7 @@ export enum EntityType {
   DATA_INSIGHT_CHART = 'dataInsightChart',
   KPI = 'kpi',
   ALERT = 'alert',
+  CONTAINER = 'container',
 }
 
 export enum AssetsType {

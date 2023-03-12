@@ -397,9 +397,9 @@ class OMetaPatchMixin(Generic[T]):
 
         # Don't change existing data without force
         if instance.owner and not force:
-            logger.error(
+            logger.warning(
                 f"The entity with id [{model_str(entity_id)}] already has an owner."
-                " To overwrite it, set `force` to True."
+                " To overwrite it, set `overrideOwner` to True."
             )
             return None
 

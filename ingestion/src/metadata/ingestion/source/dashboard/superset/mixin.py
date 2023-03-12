@@ -88,6 +88,16 @@ class SupersetSourceMixin(DashboardServiceSource):
 
         return None
 
+    def process_owner(self, dashboard_details: dict) -> Optional[Lineage_Dashboard]:
+        owner = self.get_owner_details(dashboard_details=dashboard_details)
+        if owner and self.source_config.overrideOwner:
+            self.metadata.patch_owner(
+                self.metadata,
+                entity=Lineage_Dashboard,
+                entity_id=self.context.dashboard.id,
+                force=True,
+            )
+
     def get_owner_details(self, dashboard_details: dict) -> EntityReference:
         for owner in dashboard_details.get("owners", []):
             user = self._get_user_by_email(owner["email"])
