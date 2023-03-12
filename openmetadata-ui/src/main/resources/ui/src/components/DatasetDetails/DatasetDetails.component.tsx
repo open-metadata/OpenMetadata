@@ -533,7 +533,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
     if (tableDetails) {
       const updatedTableDetails = {
         ...tableDetails,
-        tags: undefined,
+        tags: getTagsWithoutTier(tableDetails.tags ?? []),
       };
       settingsUpdateHandler(updatedTableDetails);
     }
