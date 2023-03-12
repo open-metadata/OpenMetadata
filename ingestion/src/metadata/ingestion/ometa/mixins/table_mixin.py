@@ -184,7 +184,7 @@ class OMetaTableMixin:
                 # convert object to json array string
                 table_ref_json = "[" + table_ref.json() + "]"
                 self.client.put(
-                    f"/query/{query.get('id')}/addQueryUsage", data=table_ref_json
+                    f"/query/{query.get('id')}/usage", data=table_ref_json
                 )
 
     def publish_table_usage(
