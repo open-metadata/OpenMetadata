@@ -183,9 +183,7 @@ class OMetaTableMixin:
                 table_ref = EntityReference(id=table.id.__root__, type="table")
                 # convert object to json array string
                 table_ref_json = "[" + table_ref.json() + "]"
-                self.client.put(
-                    f"/query/{query.get('id')}/usage", data=table_ref_json
-                )
+                self.client.put(f"/query/{query.get('id')}/usage", data=table_ref_json)
 
     def publish_table_usage(
         self, table: Table, table_usage_request: UsageRequest
