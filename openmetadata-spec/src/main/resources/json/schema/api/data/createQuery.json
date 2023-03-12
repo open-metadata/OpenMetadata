@@ -39,8 +39,8 @@
       "$ref": "../../type/basic.json#/definitions/sqlQuery"
     },
     "duration": {
-      "description": "How long did the query took to run.",
-      "$ref": "../../type/basic.json#/definitions/duration"
+      "description": "How long did the query took to run in seconds.",
+      "type": "number"
     },
     "users": {
       "description": "UserName of the user running the query.",

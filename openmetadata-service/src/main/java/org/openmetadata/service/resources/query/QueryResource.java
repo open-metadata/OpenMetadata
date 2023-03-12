@@ -34,6 +34,7 @@ import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.api.data.CreateQuery;
+import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.entity.data.Query;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityHistory;
@@ -344,6 +345,30 @@ public class QueryResource extends EntityResource<Query, QueryRepository> {
     return dao.addFollower(securityContext.getUserPrincipal().getName(), id, userId).toResponse();
   }
 
+  @PUT
+  @Path("/{id}/vote/{updateVote}")
+  @Operation(
+      operationId = "updateVote",
+      summary = "Update Vote for a query",
+      tags = "query",
+      description = "Update vote for a query",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "OK",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ChangeEvent.class))),
+        @ApiResponse(responseCode = "404", description = "model for instance {id} is not found")
+      })
+  public Response updateVote(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the Query", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Parameter(description = "Updated Vote of the Query", schema = @Schema(type = "integer")) @PathParam("updateVote")
+          int updateVote)
+      throws IOException {
+    return dao.updateVote(securityContext.getUserPrincipal().getName(), id, updateVote).toResponse();
+  }
+
   @DELETE
   @Path("/{id}/followers/{userId}")
   @Operation(
@@ -368,29 +393,6 @@ public class QueryResource extends EntityResource<Query, QueryRepository> {
     return dao.deleteFollower(securityContext.getUserPrincipal().getName(), id, userId).toResponse();
   }
 
-  @DELETE
-  @Path("/{id}")
-  @Operation(
-      operationId = "deleteQuery",
-      summary = "Delete a query",
-      tags = "query",
-      description = "Delete a query by `id`.",
-      responses = {
-        @ApiResponse(responseCode = "200", description = "OK"),
-        @ApiResponse(responseCode = "404", description = "Query for instance {id} is not found")
-      })
-  public Response delete(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Parameter(description = "Hard delete the entity. (Default = `false`)")
-          @QueryParam("hardDelete")
-          @DefaultValue("false")
-          boolean hardDelete,
-      @Parameter(description = "Id of the query", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
-      throws IOException {
-    return delete(uriInfo, securityContext, id, false, hardDelete);
-  }
-
   @PUT
   @Path("/{id}/usage")
   @Operation(
@@ -404,7 +406,7 @@ public class QueryResource extends EntityResource<Query, QueryRepository> {
             description = "OK",
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = Query.class)))
       })
-  public Query addQuery(
+  public Query addQueryUsage(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "Id of the query", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
@@ -439,6 +441,48 @@ public class QueryResource extends EntityResource<Query, QueryRepository> {
     return dao.removeQueryUsedIn(id, entityIds);
   }
 
+  @PUT
+  @Path("/restore")
+  @Operation(
+      operationId = "restore",
+      summary = "Restore a soft deleted Query",
+      tags = "query",
+      description = "Restore a soft deleted Query.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Successfully restored the Query ",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Query.class)))
+      })
+  public Response restoreQuery(
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid RestoreEntity restore)
+      throws IOException {
+    return restoreEntity(uriInfo, securityContext, restore.getId());
+  }
+
+  @DELETE
+  @Path("/{id}")
+  @Operation(
+      operationId = "deleteQuery",
+      summary = "Delete a query",
+      tags = "query",
+      description = "Delete a query by `id`.",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "OK"),
+        @ApiResponse(responseCode = "404", description = "Query for instance {id} is not found")
+      })
+  public Response delete(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Hard delete the entity. (Default = `false`)")
+          @QueryParam("hardDelete")
+          @DefaultValue("false")
+          boolean hardDelete,
+      @Parameter(description = "Id of the query", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
+      throws IOException {
+    return delete(uriInfo, securityContext, id, false, hardDelete);
+  }
+
   @DELETE
   @Path("/name/{fqn}")
   @Operation(
@@ -453,11 +497,15 @@ public class QueryResource extends EntityResource<Query, QueryRepository> {
   public Response delete(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
+      @Parameter(description = "Hard delete the entity. (Default = `false`)")
+          @QueryParam("hardDelete")
+          @DefaultValue("false")
+          boolean hardDelete,
       @Parameter(description = "Fully qualified name of the location", schema = @Schema(type = "string"))
           @PathParam("fqn")
           String fqn)
       throws IOException {
-    return deleteByName(uriInfo, securityContext, fqn, false, true);
+    return deleteByName(uriInfo, securityContext, fqn, false, hardDelete);
   }
 
   private Query getQuery(CreateQuery create, String user) throws IOException {

@@ -20,7 +20,7 @@ public class TableIndex implements ElasticSearchIndex {
           "tableProfile",
           "joins",
           "changeDescription",
-          "tableQueries, viewDefinition, tableProfilerConfig, profile, location, tableQueries, " + "tests, dataModel");
+          "viewDefinition, tableProfilerConfig, profile, location, tableQueries, " + "tests, dataModel");
 
   final Table table;
 

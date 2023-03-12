@@ -54,7 +54,7 @@
     },
     "duration": {
       "description": "How long did the query took to run in seconds.",
-      "$ref": "../../type/basic.json#/definitions/duration"
+      "type": "number"
     },
     "users": {
       "description": "List of users who ran this query.",
@@ -96,6 +96,11 @@
     "queryUsedIn": {
       "description": "Entities that are using this query",
       "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
+    },
+    "deleted": {
+      "description": "When `true` indicates the entity has been soft deleted.",
+      "type": "boolean",
+      "default": false
     }
   },
   "required": ["name","query"],
