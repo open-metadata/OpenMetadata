@@ -57,11 +57,19 @@ export const SEARCH_ENTITY_TABLE = {
   },
   table_2: {
     term: 'fact_session',
+    displayName: 'fact_session',
     entity: MYDATA_SUMMARY_OPTIONS.tables,
     serviceName: 'sample_data',
   },
   table_3: {
     term: 'raw_product_catalog',
+    displayName: 'raw_product_catalog',
+    entity: MYDATA_SUMMARY_OPTIONS.tables,
+    serviceName: 'sample_data',
+  },
+  table_4: {
+    term: 'dim_address',
+    displayName: 'dim_address',
     entity: MYDATA_SUMMARY_OPTIONS.tables,
     serviceName: 'sample_data',
   },
