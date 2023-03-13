@@ -24,7 +24,6 @@ import sqlalchemy.types
 from sqlalchemy import Column, Integer, String
 from sqlalchemy.orm import declarative_base
 
-from metadata.generated.schema.entity.data.table import Histogram
 from metadata.generated.schema.api.data.createTableProfile import (
     CreateTableProfileRequest,
 )
@@ -33,6 +32,7 @@ from metadata.generated.schema.entity.data.table import (
     ColumnName,
     ColumnProfile,
     DataType,
+    Histogram,
     Table,
     TableProfile,
 )
