@@ -12,6 +12,8 @@
  */
 
 import { Checkbox, Col, Form, Input, Modal, Row, Select } from 'antd';
+import { SearchIndexMappingLanguage } from 'generated/configuration/elasticSearchConfiguration';
+import { map } from 'lodash';
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -105,6 +107,17 @@ const ReIndexAllModal = ({
             placeholder={t('label.enter-entity', {
               entity: t('label.batch-size'),
             })}
+          />
+        </Form.Item>
+        <Form.Item
+          label={`${t('label.language')}:`}
+          name="searchIndexMappingLanguage">
+          <Select
+            defaultValue={SearchIndexMappingLanguage.En}
+            options={map(SearchIndexMappingLanguage, (value) => ({
+              label: value,
+              value,
+            }))}
           />
         </Form.Item>
       </Form>
