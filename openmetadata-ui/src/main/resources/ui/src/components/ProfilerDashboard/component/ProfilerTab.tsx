@@ -13,7 +13,7 @@
 
 import { Card, Col, Row, Statistic, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import { sortBy } from 'lodash';
+import { isString, sortBy } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router-dom';
@@ -58,6 +58,7 @@ const ProfilerTab: React.FC<ProfilerTabProps> = ({
   const [sumMetrics, setSumMetrics] = useState<MetricChartType>(
     INITIAL_SUM_METRIC_VALUE
   );
+  const [isMinMaxStringData, setIsMinMaxStringData] = useState(false);
   const [tableTests, setTableTests] = useState<TableTestsType>({
     tests: [],
     results: INITIAL_TEST_RESULT_SUMMARY,
@@ -132,8 +133,8 @@ const ProfilerTab: React.FC<ProfilerTabProps> = ({
       mathMetricData.push({
         name: x,
         timestamp: col.timestamp || 0,
-        max: (col.max as number) || 0,
-        min: (col.min as number) || 0,
+        max: col.max || 0,
+        min: col.min || 0,
         mean: col.mean || 0,
         median: col.median || 0,
       });
@@ -192,6 +193,12 @@ const ProfilerTab: React.FC<ProfilerTabProps> = ({
       information: sumMetricInfo,
       data: sumMetricData,
     }));
+
+    // only min/max category can be string
+    const isMinMaxString =
+      isString(updateProfilerData[0]?.min) ||
+      isString(updateProfilerData[0]?.max);
+    setIsMinMaxStringData(isMinMaxString);
   };
 
   const fetchAllTests = async () => {
@@ -289,7 +296,12 @@ const ProfilerTab: React.FC<ProfilerTabProps> = ({
         />
       </Col>
       <Col span={24}>
-        <ProfilerDetailsCard chartCollection={mathMetrics} name="math" />
+        <ProfilerDetailsCard
+          chartCollection={mathMetrics}
+          name="math"
+          // only min/max category can be string
+          showYAxisCategory={isMinMaxStringData}
+        />
       </Col>
       <Col span={24}>
         <ProfilerDetailsCard chartCollection={sumMetrics} name="sum" />

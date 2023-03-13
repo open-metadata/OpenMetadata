@@ -316,7 +316,7 @@ const ConfigureIngestion = ({
       <div>
         <label>
           {t('label.entity-count', {
-            thread: t('label.thread'),
+            entity: t('label.thread'),
           })}
         </label>
         <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-sm">
