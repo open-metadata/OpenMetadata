@@ -522,9 +522,7 @@ const EntityTable = ({
       return (
         <div className="hover-icon-group">
           {isReadOnly ? (
-            <div className="tw-flex tw-flex-wrap">
-              <TagsViewer sizeCap={-1} tags={tags || []} />
-            </div>
+            <TagsViewer sizeCap={-1} tags={tags || []} />
           ) : (
             <div
               className={classNames(
