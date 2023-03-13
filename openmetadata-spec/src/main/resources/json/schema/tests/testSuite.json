@@ -5,8 +5,22 @@
   "description": "TestSuite is a set of test cases to capture data quality tests against data entities.",
   "type": "object",
   "javaType": "org.openmetadata.schema.tests.TestSuite",
-  "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
-  "definitions": {},
+  "javaInterfaces": [
+    "org.openmetadata.schema.ServiceEntityInterface"
+  ],
+  "definitions": {
+    "testSuiteConnection": {
+      "type": "object",
+      "javaInterfaces": [
+        "org.openmetadata.schema.ServiceConnectionEntityInterface"
+      ],
+      "properties": {
+        "config": {
+          "type": "null"
+        }
+      }
+    }
+  },
   "properties": {
     "id": {
       "description": "Unique identifier of this test suite instance.",
@@ -35,10 +49,22 @@
       },
       "default": null
     },
-    "pipeline": {
+    "connection": {
+      "$ref": "#/definitions/testSuiteConnection"
+    },
+    "testConnectionResult": {
+      "$ref": "../entity/services/connections/testConnectionResult.json"
+    },
+    "pipelines": {
       "description": "References to pipelines deployed for this database service to extract metadata, usage, lineage etc..",
-      "$ref": "../type/entityReference.json",
+      "$ref": "../type/entityReference.json#/definitions/entityReferenceList",
       "default": null
+    },
+    "serviceType": {
+      "description": "Type of database service such as MySQL, BigQuery, Snowflake, Redshift, Postgres...",
+      "javaInterfaces": ["org.openmetadata.schema.EnumInterface"],
+      "type": "string",
+      "enum": ["TestSuite"]
     },
     "owner": {
       "description": "Owner of this TestCase definition.",
