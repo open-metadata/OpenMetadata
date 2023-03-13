@@ -20,7 +20,7 @@ import { getEntityName } from './CommonUtils';
 
 export type OwnerItem = {
   name: string;
-  value: string | undefined;
+  value: string;
   group: string;
   type: string;
 } & Record<string, ReactNode>;
