@@ -140,7 +140,7 @@ public class QueryResource extends EntityResource<Query, QueryRepository> {
   @GET
   @Path("/{id}")
   @Operation(
-      operationId = "getQueryByID",
+      operationId = "getQueryById",
       summary = "Get a query",
       tags = "query",
       description = "Get a Query by `id`",
@@ -280,7 +280,7 @@ public class QueryResource extends EntityResource<Query, QueryRepository> {
   @Operation(
       operationId = "createOrUpdateQuery",
       summary = "Create or update a query",
-      tags = "tables",
+      tags = "query",
       description = "Create a query, if it does not exist. If a query already exists, update the query.",
       responses = {
         @ApiResponse(
@@ -374,7 +374,7 @@ public class QueryResource extends EntityResource<Query, QueryRepository> {
   @Operation(
       operationId = "deleteFollower",
       summary = "Remove a follower",
-      tags = "mlModels",
+      tags = "query",
       description = "Remove the user identified `userId` as a follower of the model.",
       responses = {
         @ApiResponse(

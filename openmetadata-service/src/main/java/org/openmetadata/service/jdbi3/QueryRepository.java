@@ -92,7 +92,7 @@ public class QueryRepository extends EntityRepository<Query> {
   @SneakyThrows
   public void prepare(Query entity) throws IOException {
     if (CommonUtil.nullOrEmpty(entity.getName())) {
-      String checkSum = QueryUtil.getCheckSum(entity.getName());
+      String checkSum = QueryUtil.getCheckSum(entity.getQuery());
       entity.setChecksum(checkSum);
       entity.setName(checkSum);
     }

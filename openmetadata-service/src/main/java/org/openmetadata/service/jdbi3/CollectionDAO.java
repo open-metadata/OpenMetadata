@@ -1937,14 +1937,14 @@ public interface CollectionDAO {
     default int listCount(ListFilter filter) {
       String entityId = filter.getQueryParam("entityId");
       String condition = "INNER JOIN entity_relationship ON query_entity.id = entity_relationship.toId";
-      Map<String, String> bindMap = new HashMap<>();
+      Map<String, Object> bindMap = new HashMap<>();
       if (!CommonUtil.nullOrEmpty(entityId)) {
         condition =
             String.format(
                 "%s WHERE entity_relationship.fromId = :id and entity_relationship.relation = :relation and entity_relationship.toEntity = :toEntityType",
                 condition);
         bindMap.put("id", entityId);
-        bindMap.put("relation", String.valueOf(MENTIONED_IN.ordinal()));
+        bindMap.put("relation", MENTIONED_IN.ordinal());
         bindMap.put("toEntityType", QUERY);
         return listQueryCount(condition, bindMap);
       }
@@ -1998,7 +1998,7 @@ public interface CollectionDAO {
     List<String> listBeforeQueriesByEntityId(@Define("cond") String cond, @BindMap Map<String, Object> bindings);
 
     @SqlQuery("SELECT count(*) FROM query_entity <cond> ")
-    int listQueryCount(@Define("cond") String cond, @BindMap Map<String, String> bindings);
+    int listQueryCount(@Define("cond") String cond, @BindMap Map<String, Object> bindings);
   }
 
   interface PipelineDAO extends EntityDAO<Pipeline> {
