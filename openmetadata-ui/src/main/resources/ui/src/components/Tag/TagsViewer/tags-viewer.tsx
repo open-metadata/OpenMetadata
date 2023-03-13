@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Popover } from 'antd';
+import { Popover, Space } from 'antd';
 import classNames from 'classnames';
 import Tags from 'components/Tag/Tags/tags';
 import { sortBy, uniqBy } from 'lodash';
@@ -56,33 +56,39 @@ const TagsViewer: FunctionComponent<TagsViewerProps> = ({
     [tags]
   );
 
-  return sizeCap > -1 ? (
-    <>
-      {sortedTagsBySource
-        .slice(0, sizeCap)
-        .map((tag, index) => getTagsElement(tag, index))}
+  return (
+    <Space wrap>
+      {sizeCap > -1 ? (
+        <>
+          {sortedTagsBySource
+            .slice(0, sizeCap)
+            .map((tag, index) => getTagsElement(tag, index))}
 
-      {sortedTagsBySource.slice(sizeCap).length > 0 && (
-        <Popover
-          content={
-            <>
-              {sortedTagsBySource.slice(sizeCap).map((tag, index) => (
-                <p className="text-left" key={index}>
-                  {getTagsElement(tag, index)}
-                </p>
-              ))}
-            </>
-          }
-          placement="bottom"
-          trigger="click">
-          <span className="cursor-pointer text-xs link-text v-align-sub">
-            {ELLIPSES}
-          </span>
-        </Popover>
+          {sortedTagsBySource.slice(sizeCap).length > 0 && (
+            <Popover
+              content={
+                <>
+                  {sortedTagsBySource.slice(sizeCap).map((tag, index) => (
+                    <p className="text-left" key={index}>
+                      {getTagsElement(tag, index)}
+                    </p>
+                  ))}
+                </>
+              }
+              placement="bottom"
+              trigger="click">
+              <span className="cursor-pointer text-xs link-text v-align-sub">
+                {ELLIPSES}
+              </span>
+            </Popover>
+          )}
+        </>
+      ) : (
+        <>
+          {sortedTagsBySource.map((tag, index) => getTagsElement(tag, index))}
+        </>
       )}
-    </>
-  ) : (
-    <>{sortedTagsBySource.map((tag, index) => getTagsElement(tag, index))}</>
+    </Space>
   );
 };
 
