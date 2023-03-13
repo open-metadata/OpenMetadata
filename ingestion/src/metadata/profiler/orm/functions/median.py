@@ -40,7 +40,7 @@ def _(elements, compiler, **kwargs):
     col, _, percentile = [
         compiler.process(element, **kwargs) for element in elements.clauses
     ]
-    return "percentile_cont(%s , %.1f) OVER()" % (col, percentile)
+    return "percentile_cont(%s , %s) OVER()" % (col, percentile)
 
 
 @compiles(MedianFn, Dialects.ClickHouse)
@@ -48,7 +48,7 @@ def _(elements, compiler, **kwargs):
     col, _, percentile = [
         compiler.process(element, **kwargs) for element in elements.clauses
     ]
-    return "quantile(%.1f)(%s)" % (percentile, col)
+    return "quantile(%s)(%s)" % (percentile, col)
 
 
 # pylint: disable=unused-argument
@@ -79,7 +79,7 @@ def _(elements, compiler, **kwargs):
     col, _, percentile = [
         compiler.process(element, **kwargs) for element in elements.clauses
     ]
-    return "percentile(cast(%s as BIGINT), %.1f)" % (col, percentile)
+    return "percentile(cast(%s as BIGINT), %s)" % (col, percentile)
 
 
 @compiles(MedianFn, Dialects.MySQL)
