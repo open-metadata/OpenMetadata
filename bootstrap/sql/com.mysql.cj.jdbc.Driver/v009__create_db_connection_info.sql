@@ -78,4 +78,5 @@ CREATE TABLE IF NOT EXISTS automations_workflow (
 UPDATE ingestion_pipeline_entity
 SET json = JSON_REMOVE(json, '$.openMetadataServerConnection');
 
-ALTER TABLE user_tokens MODIFY expiryDate BIGINT UNSIGNED;
+ALTER TABLE user_tokens MODIFY COLUMN expiryDate BIGINT UNSIGNED GENERATED ALWAYS AS (json ->> '$.expiryDate');
+

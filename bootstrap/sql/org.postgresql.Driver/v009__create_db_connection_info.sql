@@ -78,4 +78,4 @@ CREATE TABLE IF NOT EXISTS automations_workflow (
 UPDATE ingestion_pipeline_entity
 SET json = json::jsonb #- '{openMetadataServerConnection}';
 
-ALTER TABLE user_tokens MODIFY COLUMN expiryDate BIGINT UNSIGNED GENERATED ALWAYS AS (json ->> '$.expiryDate');
+ALTER TABLE user_tokens ALTER COLUMN expiryDate DROP NOT NULL;
