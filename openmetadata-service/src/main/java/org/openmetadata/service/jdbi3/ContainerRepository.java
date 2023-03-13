@@ -189,15 +189,21 @@ public class ContainerRepository extends EntityRepository<Container> {
 
     private void updateDataModel(Container original, Container updated) throws IOException {
 
+      if (original.getDataModel() == null || updated.getDataModel() == null) {
+        recordChange("dataModel", original.getDataModel(), updated.getDataModel(), true);
+      }
+
       if (original.getDataModel() != null && updated.getDataModel() != null) {
         updateColumns(
-            "dataModel",
+            "dataModel.columns",
             original.getDataModel().getColumns(),
             updated.getDataModel().getColumns(),
             EntityUtil.columnMatch);
+        recordChange(
+            "dataModel.partition",
+            original.getDataModel().getIsPartitioned(),
+            updated.getDataModel().getIsPartitioned());
       }
-
-      recordChange("dataModel", original.getDataModel(), updated.getDataModel(), true);
     }
   }
 }

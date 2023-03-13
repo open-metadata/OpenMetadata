@@ -12,7 +12,6 @@ import static org.openmetadata.service.resources.databases.TableResourceTest.get
 import static org.openmetadata.service.util.EntityUtil.fieldAdded;
 import static org.openmetadata.service.util.EntityUtil.fieldUpdated;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
-import static org.openmetadata.service.util.TestUtils.UpdateType.MAJOR_UPDATE;
 import static org.openmetadata.service.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.service.util.TestUtils.UpdateType.NO_CHANGE;
 import static org.openmetadata.service.util.TestUtils.assertListNotNull;
@@ -20,8 +19,6 @@ import static org.openmetadata.service.util.TestUtils.assertListNull;
 import static org.openmetadata.service.util.TestUtils.assertResponse;
 
 import java.io.IOException;
-import java.util.Arrays;
-import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
@@ -37,6 +34,7 @@ import org.junit.jupiter.api.TestMethodOrder;
 import org.openmetadata.schema.api.data.CreateContainer;
 import org.openmetadata.schema.entity.data.Container;
 import org.openmetadata.schema.type.ChangeDescription;
+import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.ContainerDataModel;
 import org.openmetadata.schema.type.ContainerFileFormat;
@@ -53,14 +51,14 @@ import org.openmetadata.service.util.TestUtils;
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class ContainerResourceTest extends EntityResourceTest<Container, CreateContainer> {
 
+  public static final List<Column> dataModelColumns =
+      List.of(
+          getColumn(C1, BIGINT, USER_ADDRESS_TAG_LABEL),
+          getColumn(C2, ColumnDataType.VARCHAR, USER_ADDRESS_TAG_LABEL).withDataLength(10),
+          getColumn(C3, BIGINT, GLOSSARY1_TERM1_LABEL));
+
   public static final ContainerDataModel PARTITIONED_DATA_MODEL =
-      new ContainerDataModel()
-          .withIsPartitioned(true)
-          .withColumns(
-              Arrays.asList(
-                  getColumn(C1, BIGINT, USER_ADDRESS_TAG_LABEL),
-                  getColumn(C2, ColumnDataType.VARCHAR, USER_ADDRESS_TAG_LABEL).withDataLength(10),
-                  getColumn(C3, BIGINT, GLOSSARY1_TERM1_LABEL)));
+      new ContainerDataModel().withIsPartitioned(true).withColumns(dataModelColumns);
 
   public static final List<ContainerFileFormat> FILE_FORMATS = List.of(ContainerFileFormat.Parquet);
 
@@ -156,10 +154,9 @@ public class ContainerResourceTest extends EntityResourceTest<Container, CreateC
     ChangeDescription change = getChangeDescription(container.getVersion());
 
     // We are removing the columns here. This is a major change
-    ContainerDataModel newDataModel =
-        new ContainerDataModel().withIsPartitioned(false).withColumns(Collections.emptyList());
-    fieldUpdated(change, "dataModel", PARTITIONED_DATA_MODEL, newDataModel);
-    updateAndCheckEntity(request.withDataModel(newDataModel), OK, ADMIN_AUTH_HEADERS, MAJOR_UPDATE, change);
+    ContainerDataModel newDataModel = PARTITIONED_DATA_MODEL.withIsPartitioned(false);
+    fieldUpdated(change, "dataModel.partition", true, false);
+    updateAndCheckEntity(request.withDataModel(newDataModel), OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
   }
 
   @Test
