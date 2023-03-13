@@ -22,17 +22,14 @@ import { getUserPath } from 'constants/constants';
 import { NO_PERMISSION_FOR_ACTION } from 'constants/HelperTextUtil';
 import { EntityReference, Glossary } from 'generated/entity/data/glossary';
 import { GlossaryTerm } from 'generated/entity/data/glossaryTerm';
-import { cloneDeep, debounce, includes, isEqual } from 'lodash';
+import { cloneDeep, debounce, includes, isEqual, lowerCase } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { getEntityName } from 'utils/CommonUtils';
 import { getOwnerList, OwnerItem } from 'utils/ManageUtils';
 import SVGIcons, { Icons } from 'utils/SvgUtils';
-import {
-  searchFormattedUsersAndTeams,
-  suggestFormattedUsersAndTeams,
-} from 'utils/UserDataUtils';
+import { searchFormattedUsersAndTeams } from 'utils/UserDataUtils';
 
 export interface GlossaryHeaderProps {
   supportAddOwner?: boolean;
@@ -57,6 +54,8 @@ const GlossaryHeader = ({
   const [ownersList, setOwnersList] = useState<OwnerItem[]>([]);
   const [searchText, setSearchText] = useState<string>('');
   const [showReviewerModal, setShowReviewerModal] = useState<boolean>(false);
+  const [totalUsersCount, setTotalUsersCount] = useState<number>(0);
+  const [totalTeamsCount, setTotalTeamsCount] = useState<number>(0);
 
   const editDisplayNamePermission = useMemo(() => {
     return permissions.EditAll || permissions.EditDisplayName;
@@ -99,7 +98,9 @@ const GlossaryHeader = ({
       setIsUserLoading(true);
       searchFormattedUsersAndTeams(searchQuery, from)
         .then((res) => {
-          const { users, teams } = res;
+          const { users, teams, teamsTotal, usersTotal } = res;
+          setTotalTeamsCount(teamsTotal ?? 0);
+          setTotalUsersCount(usersTotal ?? 0);
           setOwnersList(getOwnerList(users, teams, false, searchQuery));
         })
         .catch(() => {
@@ -122,33 +123,12 @@ const GlossaryHeader = ({
       return newState;
     });
   };
-  const getOwnerSuggestion = useCallback(
-    (qSearchText = '') => {
-      setIsUserLoading(true);
-      suggestFormattedUsersAndTeams(qSearchText)
-        .then((res) => {
-          const { users, teams } = res;
-          setOwnersList(getOwnerList(users, teams, false, qSearchText));
-        })
-        .catch(() => {
-          setOwnersList([]);
-        })
-        .finally(() => {
-          setIsUserLoading(false);
-        });
-    },
-    [setOwnersList, setIsUserLoading]
-  );
 
   const debouncedOnChange = useCallback(
     (text: string): void => {
-      if (text) {
-        getOwnerSuggestion(text);
-      } else {
-        getOwnerSearch();
-      }
+      getOwnerSearch(text || WILD_CARD_CHAR);
     },
-    [getOwnerSuggestion, getOwnerSearch]
+    [getOwnerSearch]
   );
 
   const debounceOnSearch = useCallback(debounce(debouncedOnChange, 400), [
@@ -225,6 +205,21 @@ const GlossaryHeader = ({
       onUpdate(updatedGlossary);
     }
     setShowReviewerModal(false);
+  };
+
+  /**
+   *
+   * @param groupName users|teams
+   * @returns total count for respective group
+   */
+  const handleTotalCountForGroup = (groupName: string) => {
+    if (lowerCase(groupName) === 'users') {
+      return totalUsersCount;
+    } else if (lowerCase(groupName) === 'teams') {
+      return totalTeamsCount;
+    } else {
+      return 0;
+    }
   };
 
   useEffect(() => {
@@ -338,6 +333,7 @@ const GlossaryHeader = ({
                   showSearchBar
                   controlledSearchStr={searchText}
                   dropDownList={ownersList}
+                  getTotalCountForGroup={handleTotalCountForGroup}
                   groupType="tab"
                   horzPosRight={false}
                   isLoading={isUserLoading}
