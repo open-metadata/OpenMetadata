@@ -24,6 +24,7 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useReactFlow } from 'reactflow';
+import { getEntityName } from 'utils/EntityUtils';
 import { NO_PERMISSION_FOR_ACTION } from '../../constants/HelperTextUtil';
 import {
   MAX_ZOOM_VALUE,
@@ -32,7 +33,6 @@ import {
   ZOOM_SLIDER_STEP,
   ZOOM_TRANSITION_DURATION,
 } from '../../constants/Lineage.constants';
-import { getEntityName } from '../../utils/CommonUtils';
 import { getLoadingStatusValue } from '../../utils/EntityLineageUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { ControlProps } from './EntityLineage.interface';

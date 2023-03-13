@@ -34,7 +34,7 @@ jest.mock('components/common/rich-text-editor/RichTextEditorPreviewer', () =>
   jest.fn().mockReturnValue(<div data-testid="previewer">Previewer</div>)
 );
 
-jest.mock('../../../utils/CommonUtils', () => ({
+jest.mock('utils/EntityUtils', () => ({
   getEntityName: jest.fn().mockReturnValue('data'),
 }));
 

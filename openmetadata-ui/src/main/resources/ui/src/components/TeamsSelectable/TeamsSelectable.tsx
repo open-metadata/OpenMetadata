@@ -15,8 +15,8 @@ import { TreeSelect } from 'antd';
 import { t } from 'i18next';
 import React, { useEffect, useState } from 'react';
 import { getTeamsHierarchy } from 'rest/teamsAPI';
+import { getEntityName } from 'utils/EntityUtils';
 import { TeamHierarchy } from '../../generated/entity/teams/teamHierarchy';
-import { getEntityName } from '../../utils/CommonUtils';
 import SVGIcons from '../../utils/SvgUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 

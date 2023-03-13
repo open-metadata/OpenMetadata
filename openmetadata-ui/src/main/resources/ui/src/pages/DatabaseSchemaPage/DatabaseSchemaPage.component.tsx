@@ -83,17 +83,14 @@ import { Paging } from '../../generated/type/paging';
 import { useInfiniteScroll } from '../../hooks/useInfiniteScroll';
 import { EntityFieldThreadCount } from '../../interface/feed.interface';
 import jsonData from '../../jsons/en';
-import {
-  getEntityName,
-  getPartialNameFromTableFQN,
-} from '../../utils/CommonUtils';
+import { getPartialNameFromTableFQN } from '../../utils/CommonUtils';
 import {
   databaseSchemaDetailsTabs,
   getCurrentDatabaseSchemaDetailsTab,
   getQueryStringForSchemaTables,
   getTablesFromSearchResponse,
 } from '../../utils/DatabaseSchemaDetailsUtils';
-import { getEntityFeedLink } from '../../utils/EntityUtils';
+import { getEntityFeedLink, getEntityName } from '../../utils/EntityUtils';
 import {
   deletePost,
   getEntityFieldThreadCounts,

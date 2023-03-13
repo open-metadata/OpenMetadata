@@ -27,6 +27,7 @@ import {
   triggerIngestionPipelineById,
 } from 'rest/ingestionPipelineAPI';
 import { fetchAirflowConfig } from 'rest/miscAPI';
+import { getEntityName } from 'utils/EntityUtils';
 import { Operation } from '../../generated/entity/policies/policy';
 import { IngestionPipeline } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { useAirflowStatus } from '../../hooks/useAirflowStatus';
@@ -310,11 +311,13 @@ const TestSuitePipelineTab = () => {
         title: t('label.name'),
         dataIndex: 'name',
         key: 'name',
-        render: (name: string) => {
+        render: (_, record) => {
+          const felidName = getEntityName(record);
+
           return (
             <Tooltip
               title={
-                viewPermission ? name : t('message.no-permission-to-view')
+                viewPermission ? felidName : t('message.no-permission-to-view')
               }>
               <Button type="link">
                 <a
@@ -323,7 +326,7 @@ const TestSuitePipelineTab = () => {
                   href={`${airFlowEndPoint}`}
                   rel="noopener noreferrer"
                   target="_blank">
-                  {name}
+                  {felidName}
                   <SVGIcons
                     alt="external-link"
                     className="tw-align-middle tw-ml-1"

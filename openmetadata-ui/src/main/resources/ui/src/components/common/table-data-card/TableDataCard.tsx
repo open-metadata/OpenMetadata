@@ -24,6 +24,7 @@ import { ExtraInfo } from 'Models';
 import React, { FunctionComponent, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useLocation } from 'react-router-dom';
+import { getEntityId, getEntityName } from 'utils/EntityUtils';
 import i18n from 'utils/i18next/LocalUtil';
 import AppState from '../../../AppState';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
@@ -36,8 +37,6 @@ import { TableType } from '../../../generated/entity/data/table';
 import { EntityReference } from '../../../generated/type/entityReference';
 import { TagLabel } from '../../../generated/type/tagLabel';
 import {
-  getEntityId,
-  getEntityName,
   getEntityPlaceHolder,
   getNameFromFQN,
   getOwnerValue,

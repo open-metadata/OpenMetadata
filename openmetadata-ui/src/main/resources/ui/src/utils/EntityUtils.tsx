@@ -52,7 +52,6 @@ import { Edge, EntityLineage } from '../generated/type/entityLineage';
 import { EntityReference } from '../generated/type/entityUsage';
 import { TagLabel } from '../generated/type/tagLabel';
 import {
-  getEntityName,
   getOwnerValue,
   getPartialNameFromTableFQN,
   getTableFQNFromColumnFQN,
@@ -68,6 +67,20 @@ export enum DRAWER_NAVIGATION_OPTIONS {
   explore = 'Explore',
   lineage = 'Lineage',
 }
+
+/**
+ * Take entity reference as input and return name for entity
+ * @param entity - entity reference
+ * @returns - entity name
+ */
+export const getEntityName = (entity?: {
+  name?: string;
+  displayName?: string;
+}) => {
+  return entity?.displayName || entity?.name || '';
+};
+
+export const getEntityId = (entity?: { id?: string }) => entity?.id || '';
 
 export const getEntityTags = (
   type: string,
