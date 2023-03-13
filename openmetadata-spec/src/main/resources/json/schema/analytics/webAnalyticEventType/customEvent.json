@@ -6,7 +6,7 @@
   "javaType": "org.openmetadata.schema.analytics.customEvent",
   "description": "Event tracker (e.g. clicks, etc.)",
   "definitions": {
-    "eventTypes": {
+    "customEventTypes": {
       "description": "Type of events that can be performed",
       "type": "string",
       "enum": [
@@ -33,7 +33,7 @@
         },
         "eventType": {
           "description": "Type of event that was performed",
-          "$ref": "#/definitions/eventTypes"
+          "$ref": "#/definitions/customEventTypes"
         },
         "eventValue": {
             "description": "Value of the event",
