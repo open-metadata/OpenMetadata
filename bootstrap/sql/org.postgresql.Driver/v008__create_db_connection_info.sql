@@ -67,3 +67,4 @@ jsonb_build_object('connection',jsonb_build_object(
 'provider',json #>'{connection,config,provider}'
 )), true)
 where servicetype = 'Superset';
+
