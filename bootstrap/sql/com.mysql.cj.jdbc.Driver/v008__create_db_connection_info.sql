@@ -45,7 +45,7 @@ SET json = JSON_INSERT(
 )
 WHERE name = 'columnValuesToBeBetween';
 
-UPDATE pipeline_entity
+UPDATE pipeline_entity 
 SET json = JSON_INSERT(
         JSON_REMOVE(json, '$.name'),
         '$.name',
