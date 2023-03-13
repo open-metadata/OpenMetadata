@@ -24,8 +24,11 @@ from metadata.clients.aws_client import AWSClient
 from metadata.generated.schema.entity.services.connections.objectstore.s3ObjectStoreConnection import (
     S3StoreConnection,
 )
-from metadata.ingestion.connections.test_connections import TestConnectionResult, \
-    TestConnectionStep, test_connection_steps
+from metadata.ingestion.connections.test_connections import (
+    TestConnectionResult,
+    TestConnectionStep,
+    test_connection_steps,
+)
 
 
 @dataclass
