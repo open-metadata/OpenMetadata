@@ -316,7 +316,7 @@ const DashboardDetails = ({
     if (dashboardDetails) {
       const updatedDashboardDetails = {
         ...dashboardDetails,
-        tags: undefined,
+        tags: getTagsWithoutTier(dashboardDetails.tags ?? []),
       };
       settingsUpdateHandler(updatedDashboardDetails);
     }
@@ -442,7 +442,7 @@ const DashboardDetails = ({
         ) {
           const tagList = await getTaglist(values[0].value.data);
           tagsAndTerms = tagList.map((tag) => {
-            return { fqn: tag, source: 'Tag' };
+            return { fqn: tag, source: 'Classification' };
           });
         }
         if (
@@ -616,9 +616,7 @@ const DashboardDetails = ({
               data-testid="tags-wrapper"
               onClick={() => handleTagContainerClick(record, index)}>
               {deleted ? (
-                <Space>
-                  <TagsViewer sizeCap={-1} tags={tags || []} />
-                </Space>
+                <TagsViewer sizeCap={-1} tags={tags || []} />
               ) : (
                 <TagsContainer
                   editable={editChartTags?.index === index}

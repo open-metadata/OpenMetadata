@@ -132,7 +132,7 @@ const MlModelFeaturesList: FC<MlModelFeaturesListProp> = ({
         ) {
           const tagList = await getTaglist(values[0].value.data);
           tagsAndTerms = tagList.map((tag) => {
-            return { fqn: tag, source: 'Tag' };
+            return { fqn: tag, source: 'Classification' };
           });
         }
         if (

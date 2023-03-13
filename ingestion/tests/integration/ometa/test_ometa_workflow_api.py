@@ -28,6 +28,7 @@ from metadata.generated.schema.entity.automations.workflow import (
 )
 from metadata.generated.schema.entity.services.connections.database.mysqlConnection import (
     MysqlConnection,
+    MySQLType,
 )
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
@@ -72,6 +73,7 @@ class OMetaWorkflowTest(TestCase):
             fullyQualifiedName="test",
             request=TestServiceConnectionRequest(
                 serviceType=ServiceType.Database,
+                connectionType=MySQLType.Mysql.value,
                 connection=DatabaseConnection(
                     config=MysqlConnection(
                         username="username",
@@ -91,6 +93,7 @@ class OMetaWorkflowTest(TestCase):
             workflowType=WorkflowType.TEST_CONNECTION,
             request=TestServiceConnectionRequest(
                 serviceType=ServiceType.Database,
+                connectionType=MySQLType.Mysql.value,
                 connection=DatabaseConnection(
                     config=MysqlConnection(
                         username="username",

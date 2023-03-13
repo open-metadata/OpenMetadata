@@ -51,13 +51,6 @@ logger = ingestion_logger()
 LINEAGE_PARSING_TIMEOUT = 10
 
 
-@timeout(seconds=LINEAGE_PARSING_TIMEOUT)
-def get_sqlfluff_lineage_runner(query: str, dialect: str) -> LineageRunner:
-    lr_sqlfluff = LineageRunner(query, dialect=dialect)
-    lr_sqlfluff.get_column_lineage()
-    return lr_sqlfluff
-
-
 class LineageParser:
     """
     Class that acts like a wrapper for the LineageRunner library usage
@@ -67,10 +60,17 @@ class LineageParser:
     query: str
     _clean_query: str
 
-    def __init__(self, query: str, dialect: Dialect = Dialect.ANSI):
+    def __init__(
+        self,
+        query: str,
+        dialect: Dialect = Dialect.ANSI,
+        timeout_seconds: int = LINEAGE_PARSING_TIMEOUT,
+    ):
         self.query = query
         self._clean_query = self.clean_raw_query(query)
-        self.parser = self._evaluate_best_parser(self._clean_query, dialect=dialect)
+        self.parser = self._evaluate_best_parser(
+            self._clean_query, dialect=dialect, timeout_seconds=timeout_seconds
+        )
 
     @cached_property
     def involved_tables(self) -> Optional[List[Table]]:
@@ -367,8 +367,14 @@ class LineageParser:
 
     @staticmethod
     def _evaluate_best_parser(
-        query: str, dialect: Dialect = Dialect.ANSI
+        query: str, dialect: Dialect, timeout_seconds: int
     ) -> LineageRunner:
+        @timeout(seconds=timeout_seconds)
+        def get_sqlfluff_lineage_runner(qry: str, dlct: str) -> LineageRunner:
+            lr_dialect = LineageRunner(qry, dialect=dlct)
+            lr_dialect.get_column_lineage()
+            return lr_dialect
+
         sqlfluff_count = 0
         try:
             lr_sqlfluff = get_sqlfluff_lineage_runner(query, dialect.value)
@@ -382,7 +388,7 @@ class LineageParser:
         except TimeoutError:
             logger.debug(
                 f"Lineage with SqlFluff failed for the [{dialect.value}] query: [{query}]: "
-                f"Parser has been running for more than {LINEAGE_PARSING_TIMEOUT} seconds."
+                f"Parser has been running for more than {timeout_seconds} seconds."
             )
             lr_sqlfluff = None
         except Exception:

@@ -121,7 +121,7 @@ describe('Test Ingestion page', () => {
       <Ingestion
         isRequiredDetailsAvailable
         airflowEndpoint=""
-        currrentPage={1}
+        currentPage={1}
         deleteIngestion={mockDeleteIngestion}
         deployIngestion={mockDeployIngestion}
         handleEnableDisableIngestion={handleEnableDisableIngestion}
@@ -165,7 +165,7 @@ describe('Test Ingestion page', () => {
       <Ingestion
         isRequiredDetailsAvailable
         airflowEndpoint=""
-        currrentPage={1}
+        currentPage={1}
         deleteIngestion={mockDeleteIngestion}
         deployIngestion={mockDeployIngestion}
         handleEnableDisableIngestion={handleEnableDisableIngestion}
@@ -214,7 +214,7 @@ describe('Test Ingestion page', () => {
       <Ingestion
         isRequiredDetailsAvailable
         airflowEndpoint=""
-        currrentPage={1}
+        currentPage={1}
         deleteIngestion={mockDeleteIngestion}
         deployIngestion={mockDeployIngestion}
         handleEnableDisableIngestion={handleEnableDisableIngestion}
@@ -252,7 +252,7 @@ describe('Test Ingestion page', () => {
       <Ingestion
         isRequiredDetailsAvailable
         airflowEndpoint=""
-        currrentPage={1}
+        currentPage={1}
         deleteIngestion={mockDeleteIngestion}
         deployIngestion={mockDeployIngestion}
         handleEnableDisableIngestion={handleEnableDisableIngestion}
@@ -292,7 +292,7 @@ describe('Test Ingestion page', () => {
       <Ingestion
         isRequiredDetailsAvailable
         airflowEndpoint=""
-        currrentPage={1}
+        currentPage={1}
         deleteIngestion={mockDeleteIngestion}
         deployIngestion={mockDeployIngestion}
         handleEnableDisableIngestion={handleEnableDisableIngestion}
@@ -345,7 +345,7 @@ describe('Test Ingestion page', () => {
       <Ingestion
         isRequiredDetailsAvailable
         airflowEndpoint="http://localhost"
-        currrentPage={1}
+        currentPage={1}
         deleteIngestion={mockDeleteIngestion}
         deployIngestion={mockDeployIngestion}
         handleEnableDisableIngestion={handleEnableDisableIngestion}
@@ -377,7 +377,7 @@ describe('Test Ingestion page', () => {
       <Ingestion
         isRequiredDetailsAvailable
         airflowEndpoint="http://localhost"
-        currrentPage={1}
+        currentPage={1}
         deleteIngestion={mockDeleteIngestion}
         deployIngestion={mockDeployIngestion}
         handleEnableDisableIngestion={handleEnableDisableIngestion}
@@ -413,7 +413,7 @@ describe('Test Ingestion page', () => {
       <Ingestion
         isRequiredDetailsAvailable
         airflowEndpoint="http://localhost"
-        currrentPage={1}
+        currentPage={1}
         deleteIngestion={mockDeleteIngestion}
         deployIngestion={mockDeployIngestion}
         handleEnableDisableIngestion={handleEnableDisableIngestion}
@@ -459,7 +459,7 @@ describe('Test Ingestion page', () => {
       <Ingestion
         isRequiredDetailsAvailable
         airflowEndpoint=""
-        currrentPage={1}
+        currentPage={1}
         deleteIngestion={mockDeleteIngestion}
         deployIngestion={mockDeployIngestion}
         handleEnableDisableIngestion={handleEnableDisableIngestion}
