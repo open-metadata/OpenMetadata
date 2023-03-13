@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { AxiosError } from 'axios';
 import PageContainerV1 from 'components/containers/PageContainerV1';
 import Explore from 'components/Explore/Explore.component';
 import {
@@ -20,7 +21,7 @@ import {
   UrlParams,
 } from 'components/Explore/explore.interface';
 import { SORT_ORDER } from 'enums/common.enum';
-import { isEmpty, isNil, isString } from 'lodash';
+import { has, isEmpty, isNil, isString } from 'lodash';
 import Qs from 'qs';
 import React, {
   FunctionComponent,
@@ -40,7 +41,7 @@ import {
   tabsInfo,
 } from '../../constants/explore.constants';
 import { SearchIndex } from '../../enums/search.enum';
-import { SearchResponse } from '../../interface/search.interface';
+import { Aggregations, SearchResponse } from '../../interface/search.interface';
 import {
   filterObjectToElasticsearchQuery,
   isFilterObject,
@@ -56,6 +57,8 @@ const ExplorePage: FunctionComponent = () => {
 
   const [searchResults, setSearchResults] =
     useState<SearchResponse<ExploreSearchIndex>>();
+
+  const [aggregations, setAggregations] = useState<Aggregations>();
 
   const [advancesSearchQueryFilter, setAdvancedSearchQueryFilter] =
     useState<Record<string, unknown>>();
@@ -119,10 +122,14 @@ const ExplorePage: FunctionComponent = () => {
   }, [location.search]);
 
   const commonQuickFilters = useMemo(() => {
+    if (isEmpty(queryFilter) || !has(queryFilter, 'query.bool.must')) {
+      return undefined;
+    }
+
     return {
       query: {
         bool: {
-          must: queryFilter?.query.bool.must.filter(
+          must: queryFilter.query.bool.must.filter(
             (filterCategory: QueryFieldInterface) =>
               !isEmpty(filterCategory.bool.should) &&
               COMMON_FILTERS_FOR_DIFFERENT_TABS.find(
@@ -143,7 +150,7 @@ const ExplorePage: FunctionComponent = () => {
             tab: tabsInfo[nSearchIndex].path,
             extraParameters: {
               page: '1',
-              queryFilter: queryFilter
+              queryFilter: commonQuickFilters
                 ? JSON.stringify(commonQuickFilters)
                 : undefined,
             },
@@ -151,7 +158,7 @@ const ExplorePage: FunctionComponent = () => {
           })
         );
       },
-      [queryFilter, commonQuickFilters]
+      [commonQuickFilters]
     );
 
   const handleQueryFilterChange = useCallback(
@@ -220,6 +227,24 @@ const ExplorePage: FunctionComponent = () => {
 
     return showDeletedParam === 'true';
   }, [parsedSearch.showDeleted]);
+
+  const fetchFilterAggregations = async () => {
+    try {
+      const res = await searchQuery({
+        searchIndex,
+        pageNumber: 0,
+        pageSize: 0,
+        includeDeleted: showDeleted,
+      });
+      setAggregations(res.aggregations);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  };
+
+  useEffect(() => {
+    fetchFilterAggregations();
+  }, [searchIndex, showDeleted]);
 
   useDeepCompareEffect(() => {
     setIsLoading(true);
@@ -304,6 +329,7 @@ const ExplorePage: FunctionComponent = () => {
   return (
     <PageContainerV1>
       <Explore
+        aggregations={aggregations}
         loading={isLoading}
         page={page}
         postFilter={postFilter}

@@ -14,7 +14,7 @@
 import { Button, Divider } from 'antd';
 import classNames from 'classnames';
 import { AggregationEntry } from 'interface/search.interface';
-import { isEmpty, isNil } from 'lodash';
+import { isEmpty, isNil, isUndefined } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getSortedTierBucketList } from 'utils/EntityUtils';
@@ -45,6 +45,10 @@ const FacetFilter: React.FC<FacetFilterProps> = ({
    * we add an empty bucket with value `v` and 0 elements so the UI displays that the filter exists.
    */
   const aggregationEntries = useMemo(() => {
+    if (isUndefined(aggregations) || isEmpty(aggregations)) {
+      return [];
+    }
+
     if (isNil(filters) || isEmpty(filters)) {
       const { 'tier.tagFQN': tier, ...restProps } = aggregations;
 

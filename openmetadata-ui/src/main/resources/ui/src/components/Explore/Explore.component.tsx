@@ -59,6 +59,7 @@ import ExploreQuickFilters from './ExploreQuickFilters';
 import SortingDropDown from './SortingDropDown';
 
 const Explore: React.FC<ExploreProps> = ({
+  aggregations,
   searchResults,
   tabCounts,
   onChangeAdvancedSearchQueryFilter,
@@ -277,7 +278,7 @@ const Explore: React.FC<ExploreProps> = ({
           data-testid="data-summary-container">
           <ExploreSkeleton loading={Boolean(loading)}>
             <FacetFilter
-              aggregations={omit(searchResults?.aggregations, 'entityType')}
+              aggregations={omit(aggregations, 'entityType')}
               filters={postFilter}
               showDeleted={showDeleted}
               onChangeShowDeleted={onChangeShowDeleted}
