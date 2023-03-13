@@ -54,7 +54,12 @@ from metadata.generated.schema.security.credentials.gcsValues import (
     MultipleProjectId,
     SingleProjectId,
 )
-from metadata.generated.schema.type.tagLabel import TagLabel
+from metadata.generated.schema.type.tagLabel import (
+    LabelType,
+    State,
+    TagLabel,
+    TagSource,
+)
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.source.connections import get_connection
@@ -234,9 +239,9 @@ class BigquerySource(CommonDbSourceService):
                             classification_name=label_classification,
                             tag_name=label_tag_name,
                         ),
-                        labelType="Automated",
-                        state="Suggested",
-                        source="Classification",
+                        labelType=LabelType.Automated.value,
+                        state=State.Suggested.value,
+                        source=TagSource.Classification.value,
                     )
                 ]
         yield database_schema_request_obj
@@ -264,9 +269,9 @@ class BigquerySource(CommonDbSourceService):
                         classification_name=column["taxonomy"],
                         tag_name=column["policy_tags"],
                     ),
-                    labelType="Automated",
-                    state="Suggested",
-                    source="Classification",
+                    labelType=LabelType.Automated.value,
+                    state=State.Suggested.value,
+                    source=TagSource.Classification.value,
                 )
             ]
         return None
