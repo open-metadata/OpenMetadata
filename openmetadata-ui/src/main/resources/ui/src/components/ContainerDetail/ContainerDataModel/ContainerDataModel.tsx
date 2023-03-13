@@ -153,9 +153,7 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
     return (
       <>
         {isReadOnly ? (
-          <Space wrap>
-            <TagsViewer sizeCap={-1} tags={tags || []} />
-          </Space>
+          <TagsViewer sizeCap={-1} tags={tags || []} />
         ) : (
           <Space
             align={isUpdatingTags ? 'start' : 'center'}
