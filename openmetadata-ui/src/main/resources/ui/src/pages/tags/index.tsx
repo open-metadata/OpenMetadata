@@ -717,9 +717,7 @@ const TagsPage = () => {
           title: t('label.name'),
           dataIndex: 'name',
           key: 'name',
-          render: (_, record: Tag) => {
-            getEntityName(record);
-          },
+          render: (_, record: Tag) => getEntityName(record),
         },
         {
           title: t('label.description'),
