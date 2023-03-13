@@ -274,7 +274,7 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
             entity=DashboardService, config=config
         )
 
-    def process_owner(self, dashbaord_details: dict):
+    def process_owner(self, dashboard_details: dict):
         pass
 
     @staticmethod
