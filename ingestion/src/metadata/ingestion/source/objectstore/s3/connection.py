@@ -9,17 +9,23 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 """
-Source connection handler for S3 object store
+Source connection handler for S3 object store. For this to work, it requires the following S3 permissions for all
+the buckets which require ingestion: s3:ListBucket, s3:GetObject and s3:GetBucketLocation
+The cloudwatch client is used to fetch the total size in bytes for a bucket, and the total nr of files. This requires
+the cloudwatch:GetMetricData permissions
+
 """
 from dataclasses import dataclass
+from functools import partial
 
-from botocore.client import BaseClient, ClientError
+from botocore.client import BaseClient
 
 from metadata.clients.aws_client import AWSClient
 from metadata.generated.schema.entity.services.connections.objectstore.s3ObjectStoreConnection import (
     S3StoreConnection,
 )
-from metadata.ingestion.connections.test_connections import SourceConnectionException
+from metadata.ingestion.connections.test_connections import TestConnectionResult, \
+    TestConnectionStep, test_connection_steps
 
 
 @dataclass
@@ -39,16 +45,23 @@ def get_connection(connection: S3StoreConnection) -> S3ObjectStoreClient:
     )
 
 
-def test_connection(client: S3ObjectStoreClient) -> None:
+def test_connection(client: S3ObjectStoreClient) -> TestConnectionResult:
     """
-    Test connection to both s3 and cloudwatch
+    Test connection
     """
-    try:
-        client.s3_client.list_buckets()
-        client.cloudwatch_client.list_dashboards()
-    except ClientError as err:
-        msg = f"Connection error for {client}: {err}. Check the connection details."
-        raise SourceConnectionException(msg) from err
-    except Exception as exc:
-        msg = f"Unknown error connecting with {client}: {exc}."
-        raise SourceConnectionException(msg) from exc
+    steps = [
+        TestConnectionStep(
+            function=client.s3_client.list_buckets,
+            name="List buckets",
+        ),
+        TestConnectionStep(
+            function=partial(
+                client.cloudwatch_client.list_metrics,
+                Namespace="AWS/S3",
+            ),
+            name="Get Cloudwatch AWS/S3 metrics",
+            mandatory=False,
+        ),
+    ]
+
+    return test_connection_steps(steps)
