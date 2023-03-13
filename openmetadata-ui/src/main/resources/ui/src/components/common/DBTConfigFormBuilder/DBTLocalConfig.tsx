@@ -35,6 +35,8 @@ interface Props extends DBTFormCommonProps, DbtConfigLocal {
   handleRunResultsFilePathChange: (value: string) => void;
   handleUpdateDescriptions: (value: boolean) => void;
   handleUpdateDBTClassification: (value: string) => void;
+  enableDebugLog: boolean;
+  handleEnableDebugLogCheck: (value: boolean) => void;
 }
 
 export const DBTLocalConfig: FunctionComponent<Props> = ({
@@ -52,6 +54,8 @@ export const DBTLocalConfig: FunctionComponent<Props> = ({
   handleUpdateDescriptions,
   dbtClassificationName,
   handleUpdateDBTClassification,
+  enableDebugLog,
+  handleEnableDebugLogCheck,
 }: Props) => {
   const [errors, setErrors] = useState<ErrorDbtLocal>();
 
@@ -144,6 +148,8 @@ export const DBTLocalConfig: FunctionComponent<Props> = ({
         dbtClassificationName={dbtClassificationName}
         dbtUpdateDescriptions={dbtUpdateDescriptions}
         descriptionId="local-update-description"
+        enableDebugLog={enableDebugLog}
+        handleEnableDebugLogCheck={handleEnableDebugLogCheck}
         handleUpdateDBTClassification={handleUpdateDBTClassification}
         handleUpdateDescriptions={handleUpdateDescriptions}
       />

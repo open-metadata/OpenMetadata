@@ -35,6 +35,8 @@ interface Props extends DBTFormCommonProps, DbtConfigHttp {
   handleRunResultsHttpPathChange: (value: string) => void;
   handleUpdateDescriptions: (value: boolean) => void;
   handleUpdateDBTClassification: (value: string) => void;
+  enableDebugLog: boolean;
+  handleEnableDebugLogCheck: (value: boolean) => void;
 }
 
 export const DBTHttpConfig: FunctionComponent<Props> = ({
@@ -52,6 +54,8 @@ export const DBTHttpConfig: FunctionComponent<Props> = ({
   handleUpdateDescriptions,
   dbtClassificationName,
   handleUpdateDBTClassification,
+  enableDebugLog,
+  handleEnableDebugLogCheck,
 }: Props) => {
   const [errors, setErrors] = useState<ErrorDbtHttp>();
   const { t } = useTranslation();
@@ -143,6 +147,8 @@ export const DBTHttpConfig: FunctionComponent<Props> = ({
         dbtClassificationName={dbtClassificationName}
         dbtUpdateDescriptions={dbtUpdateDescriptions}
         descriptionId="http-update-description"
+        enableDebugLog={enableDebugLog as boolean}
+        handleEnableDebugLogCheck={handleEnableDebugLogCheck}
         handleUpdateDBTClassification={handleUpdateDBTClassification}
         handleUpdateDescriptions={handleUpdateDescriptions}
       />
