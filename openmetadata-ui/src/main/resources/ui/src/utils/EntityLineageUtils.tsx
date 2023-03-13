@@ -12,6 +12,7 @@
  */
 
 import { CheckOutlined, LeftOutlined, RightOutlined } from '@ant-design/icons';
+import { Button, Typography } from 'antd';
 import {
   CustomEdgeData,
   CustomElement,
@@ -29,7 +30,7 @@ import LineageNodeLabel from 'components/EntityLineage/LineageNodeLabel';
 import Loader from 'components/Loader/Loader';
 import dagre from 'dagre';
 import { t } from 'i18next';
-import { isEmpty, isNil, isUndefined } from 'lodash';
+import { isEmpty, isNil, isUndefined, lowerCase } from 'lodash';
 import { LoadingState } from 'Models';
 import React, { Fragment, MouseEvent as ReactMouseEvent } from 'react';
 import { Link } from 'react-router-dom';
@@ -76,6 +77,13 @@ import { getEncodedFqn } from './StringsUtils';
 import SVGIcons from './SvgUtils';
 import { getEntityLink } from './TableUtils';
 
+import { ReactComponent as DashboardIcon } from '../assets/svg/dashboard-grey.svg';
+import { ReactComponent as MlModelIcon } from '../assets/svg/mlmodal.svg';
+import { ReactComponent as PipelineIcon } from '../assets/svg/pipeline-grey.svg';
+
+import { ReactComponent as TableIcon } from '../assets/svg/table-grey.svg';
+import { ReactComponent as TopicIcon } from '../assets/svg/topic-grey.svg';
+
 export const getHeaderLabel = (
   name = '',
   fqn = '',
@@ -91,13 +99,20 @@ export const getHeaderLabel = (
           {name || prepareLabel(type, fqn, false)}
         </span>
       ) : (
-        <span
-          className="tw-break-words description-text tw-self-center link-text tw-font-medium"
-          data-testid="lineage-entity">
-          <Link to={getEntityLink(type, fqn)}>
-            {name || prepareLabel(type, fqn, false)}
+        <Typography.Title
+          ellipsis
+          className="m-b-0 text-base"
+          level={5}
+          title={name || prepareLabel(type, fqn, false)}>
+          <Link className="" to={getEntityLink(type, fqn)}>
+            <Button
+              className="text-base font-semibold p-0"
+              data-testid="link-button"
+              type="link">
+              {name || prepareLabel(type, fqn, false)}
+            </Button>
           </Link>
-        </span>
+        </Typography.Title>
       )}
     </Fragment>
   );
@@ -1116,4 +1131,22 @@ export const getEdgeStyle = (value: boolean) => {
     strokeWidth: value ? 2 : 1,
     stroke: value ? SECONDARY_COLOR : undefined,
   };
+};
+
+// Nodes Icons
+export const getEntityNodeIcon = (label: string) => {
+  switch (lowerCase(label)) {
+    case EntityType.TABLE:
+      return TableIcon;
+    case EntityType.DASHBOARD:
+      return DashboardIcon;
+    case EntityType.TOPIC:
+      return TopicIcon;
+    case EntityType.PIPELINE:
+      return PipelineIcon;
+    case EntityType.MLMODEL:
+      return MlModelIcon;
+    default:
+      return TableIcon;
+  }
 };

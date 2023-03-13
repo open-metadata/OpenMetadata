@@ -19,6 +19,7 @@ import { debounce, toString } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { NavLink, useHistory } from 'react-router-dom';
+import { refreshPage } from 'utils/CommonUtils';
 import AppState from '../../AppState';
 import Logo from '../../assets/svg/logo-monogram.svg';
 
@@ -284,6 +285,7 @@ const NavBar = ({
   const handleLanguageChange = useCallback((langCode: string) => {
     setLanguage(langCode);
     i18next.changeLanguage(langCode);
+    refreshPage();
   }, []);
 
   const handleModalCancel = useCallback(() => handleFeatureModal(false), []);

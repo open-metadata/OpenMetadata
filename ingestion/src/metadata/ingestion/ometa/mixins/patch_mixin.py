@@ -253,7 +253,7 @@ class OMetaPatchMixin(Generic[T]):
                                 PATH: ENTITY_TAG.format(tag_index=tag_index),
                                 VALUE: {
                                     "labelType": LabelType.Automated.value,
-                                    "source": TagSource.Tag.value
+                                    "source": TagSource.Classification.value
                                     if not from_glossary
                                     else TagSource.Glossary.value,
                                     "state": State.Confirmed.value,
@@ -333,7 +333,7 @@ class OMetaPatchMixin(Generic[T]):
                                 ),
                                 VALUE: {
                                     "labelType": LabelType.Automated.value,
-                                    "source": TagSource.Tag.value
+                                    "source": TagSource.Classification.value
                                     if not from_glossary
                                     else TagSource.Glossary.value,
                                     "state": State.Suggested.value
@@ -397,9 +397,9 @@ class OMetaPatchMixin(Generic[T]):
 
         # Don't change existing data without force
         if instance.owner and not force:
-            logger.error(
+            logger.warning(
                 f"The entity with id [{model_str(entity_id)}] already has an owner."
-                " To overwrite it, set `force` to True."
+                " To overwrite it, set `overrideOwner` to True."
             )
             return None
 

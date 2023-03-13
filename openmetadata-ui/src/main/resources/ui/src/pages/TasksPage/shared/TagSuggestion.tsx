@@ -43,7 +43,9 @@ const TagSuggestion: React.FC<Props> = ({ onChange, selectedTags }) => {
     selectedTags.map((tag) => ({
       label: tag.tagFQN,
       value: tag.tagFQN,
-      'data-sourcetype': isEqual(tag.source, 'Tag') ? 'tag' : 'glossaryTerm',
+      'data-sourcetype': isEqual(tag.source, 'Classification')
+        ? 'tag'
+        : 'glossaryTerm',
     }));
 
   const [options, setOptions] = useState<SelectOption[]>([]);
@@ -81,7 +83,7 @@ const TagSuggestion: React.FC<Props> = ({ onChange, selectedTags }) => {
       labelType: LabelType.Manual,
       state: State.Suggested,
       source: isEqual(value['data-sourcetype'], 'tag')
-        ? TagSource.Tag
+        ? TagSource.Classification
         : TagSource.Glossary,
       tagFQN: value.value,
     }));

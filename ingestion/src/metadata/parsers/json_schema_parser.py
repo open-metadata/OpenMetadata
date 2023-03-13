@@ -44,7 +44,14 @@ def parse_json_schema(schema_text: str) -> Optional[List[FieldModel]]:
     """
     try:
         json_schema_data = json.loads(schema_text)
-        field_models = get_json_schema_fields(json_schema_data.get("properties"))
+        field_models = [
+            FieldModel(
+                name=json_schema_data.get("title", "default"),
+                dataType=JsonSchemaDataTypes(json_schema_data.get("type")).name,
+                description=json_schema_data.get("description"),
+                children=get_json_schema_fields(json_schema_data.get("properties")),
+            )
+        ]
         return field_models
     except Exception as exc:  # pylint: disable=broad-except
         logger.debug(traceback.format_exc())

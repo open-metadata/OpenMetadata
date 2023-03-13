@@ -104,7 +104,7 @@
     "preinstall": "cd ../../../../.. && yarn install --frozen-lockfile",
     "postinstall": "yarn run build-check",
     "pre-commit": "lint-staged --concurrent false",
-    "test": "jest --passWithNoTests --maxWorkers=3 ",
+    "test": "jest --passWithNoTests --maxWorkers=3 --silent",
     "prepare": "cd ../../../../.. && husky install openmetadata-ui/src/main/resources/ui/.husky",
     "test:watch": "jest --passWithNoTests --watch --maxWorkers=3",
     "test:coverage": "jest --passWithNoTests --coverage --maxWorkers=3",
@@ -122,7 +122,7 @@
     "cypress:open": "cypress open --e2e",
     "cypress:run": "cypress run --config-file=cypress.config.ts",
     "cypress:run:record": "cypress run --config-file=cypress.config.ts --record --parallel",
-    "i18n": "sync-i18n --files '**/locale/languages/*.json' --primary en-us --space 2 -e ",
+    "i18n": "sync-i18n --files '**/locale/languages/*.json' --primary en-us --space 2 ",
     "check-i18n": "npm run i18n -- --check"
   },
   "browserslist": {

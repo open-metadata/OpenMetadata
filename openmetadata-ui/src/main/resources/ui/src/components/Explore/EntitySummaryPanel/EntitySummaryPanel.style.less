@@ -33,31 +33,25 @@
   -ms-overflow-style: none;
   scrollbar-width: none;
 
-  .ant-typography {
-    color: #37352f;
+  .ant-drawer-content-wrapper {
+    box-shadow: -2px 2px 4px rgba(0, 0, 0, 0.12);
+  }
+  .ant-drawer-body {
+    padding: unset;
   }
 
   .summary-panel-statistics-count {
-    color: #37352f;
+    color: @text-color-secondary;
     font-size: 18px;
     line-height: 24px;
     font-weight: 700;
-  }
-
-  .text-gray {
-    color: @label-color;
-  }
-
-  .section-header {
-    font-size: 16px;
-    color: @section-header-color;
   }
 
   .success {
     color: @successColor;
   }
   .failed {
-    color: @failedColor;
+    color: @failed-color;
   }
   .aborted {
     color: @abortedColor;

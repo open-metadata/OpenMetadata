@@ -15,6 +15,7 @@ package org.openmetadata.service.secrets.masker;
 
 import java.util.Set;
 import org.openmetadata.schema.auth.BasicAuthMechanism;
+import org.openmetadata.schema.entity.automations.Workflow;
 import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
@@ -32,6 +33,8 @@ public abstract class EntityMasker {
 
   public abstract void maskIngestionPipeline(IngestionPipeline ingestionPipeline);
 
+  public abstract Workflow maskWorkflow(Workflow workflow);
+
   public abstract Object unmaskServiceConnectionConfig(
       Object connectionConfig, Object originalConnectionConfig, String connectionType, ServiceType serviceType);
 
@@ -42,4 +45,6 @@ public abstract class EntityMasker {
       String name,
       AuthenticationMechanism authenticationMechanism,
       AuthenticationMechanism originalAuthenticationMechanism);
+
+  public abstract Workflow unmaskWorkflow(Workflow workflow, Workflow originalWorkflow);
 }

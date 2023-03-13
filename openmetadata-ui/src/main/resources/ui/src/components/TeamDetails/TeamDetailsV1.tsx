@@ -963,7 +963,9 @@ const TeamDetailsV1 = ({
               data-testid="synonyms"
               id="synonyms"
               name="synonyms"
-              placeholder={t('message.enter-comma-separated-term')}
+              placeholder={t('message.enter-comma-separated-field', {
+                field: t('label.term-lowercase'),
+              })}
               type="text"
               value={heading}
               onChange={(e) => setHeading(e.target.value)}

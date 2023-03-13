@@ -29,3 +29,8 @@ export interface TopicSchemaFieldsProps
   isReadOnly: boolean;
   onUpdate: (updatedMessageSchema: Topic['messageSchema']) => Promise<void>;
 }
+
+export enum SchemaViewType {
+  FIELDS = 'fields',
+  TEXT = 'text',
+}

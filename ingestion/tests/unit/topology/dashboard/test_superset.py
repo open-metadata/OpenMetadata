@@ -147,7 +147,6 @@ EXPECTED_DASH = CreateDashboardRequest(
     displayName="My DASH",
     description="",
     dashboardUrl="/superset/dashboard/14/",
-    owner=EXPECTED_USER,
     charts=[chart.fullyQualifiedName for chart in EXPECTED_CHATRT_ENTITY],
     service=EXPECTED_DASH_SERVICE.fullyQualifiedName,
 )

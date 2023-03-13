@@ -47,7 +47,7 @@ export const mockTableEntityDetails: Table = {
           tagFQN: 'PersonalData.SpecialCategory',
           description:
             'GDPR special category data is personal information of data subjects that is especially sensitive.',
-          source: TagSource.Tag,
+          source: TagSource.Classification,
           labelType: LabelType.Manual,
           state: State.Confirmed,
         },
@@ -74,7 +74,7 @@ export const mockTableEntityDetails: Table = {
       tagFQN: 'PersonalData.SpecialCategory',
       description:
         'GDPR special category data is personal information of data subjects that is especially sensitive.',
-      source: TagSource.Tag,
+      source: TagSource.Classification,
       labelType: LabelType.Manual,
       state: State.Confirmed,
     },
@@ -97,5 +97,48 @@ export const mockTableEntityDetails: Table = {
       queryDate: mockDate,
     },
   ],
+  service: {
+    id: '0875717c-5855-427c-8dd6-92d4cbfe7c51',
+    type: 'databaseService',
+    name: 'sample_data',
+    fullyQualifiedName: 'sample_data',
+    deleted: false,
+    href: 'http://localhost:8585/api/v1/services/databaseServices/0875717c-5855-427c-8dd6-92d4cbfe7c51',
+  },
+  usageSummary: {
+    dailyStats: {
+      count: 0,
+      percentileRank: 0,
+    },
+    weeklyStats: {
+      count: 2,
+      percentileRank: 0,
+    },
+    monthlyStats: {
+      count: 0,
+      percentileRank: 0,
+    },
+    date: '2023-02-01' as unknown as Date,
+  },
+  databaseSchema: {
+    id: '406d4782-b480-42a4-ab8b-e6fed20f3eef',
+    type: 'databaseSchema',
+    name: 'shopify',
+    fullyQualifiedName: 'sample_data.ecommerce_db.shopify',
+    description:
+      'This **mock** database contains schema related to shopify sales and orders with related dimension tables.',
+    deleted: false,
+    href: 'http://localhost:8585/api/v1/databaseSchemas/406d4782-b480-42a4-ab8b-e6fed20f3eef',
+  },
+  database: {
+    id: '78a58be0-26a9-4ac8-b515-067db85bbb41',
+    type: 'database',
+    name: 'ecommerce_db',
+    fullyQualifiedName: 'sample_data.ecommerce_db',
+    description:
+      'This **mock** database contains schemas related to shopify sales and orders with related dimension tables.',
+    deleted: false,
+    href: 'http://localhost:8585/api/v1/databases/78a58be0-26a9-4ac8-b515-067db85bbb41',
+  },
   followers: [],
 };

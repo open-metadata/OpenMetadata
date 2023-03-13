@@ -135,15 +135,15 @@
               "tags": [],
               "usageSummary": {
                   "dailyStats": {
-                      "count": 100,
+                      "count": 73,
                       "percentileRank": 45
                   },
                   "weeklyStats": {
-                      "count": 100,
+                      "count": 73,
                       "percentileRank": 45
                   },
                   "monthlyStats": {
-                      "count": 100,
+                      "count": 67,
                       "percentileRank": 45
                   },
                   "date": "2021-12-01"
@@ -803,15 +803,15 @@
               "tags": [],
               "usageSummary": {
                   "dailyStats": {
-                      "count": 100,
+                      "count": 87,
                       "percentileRank": 45
                   },
                   "weeklyStats": {
-                      "count": 100,
+                      "count": 87,
                       "percentileRank": 45
                   },
                   "monthlyStats": {
-                      "count": 100,
+                      "count": 87,
                       "percentileRank": 45
                   },
                   "date": "2021-12-01"

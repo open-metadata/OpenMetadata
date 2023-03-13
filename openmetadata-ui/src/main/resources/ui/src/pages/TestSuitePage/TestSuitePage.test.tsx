@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { act, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { getListTestSuites } from 'rest/testAPI';
@@ -101,11 +101,15 @@ describe('Test Suite Page', () => {
     });
 
     const testSuitePage = await screen.findByTestId('pageLayoutV1');
+    const addTestSuite = await screen.findByTestId('add-test-suite');
+    const switchButton = await screen.findByTestId('switch-deleted');
 
     expect(testSuitePage).toBeInTheDocument();
+    expect(addTestSuite).toBeInTheDocument();
+    expect(switchButton).toBeInTheDocument();
   });
 
-  it('Component should render table and add test suite button', async () => {
+  it('Component should render table', async () => {
     await act(async () => {
       render(<TestSuitePage />, {
         wrapper: MemoryRouter,
@@ -113,11 +117,9 @@ describe('Test Suite Page', () => {
     });
 
     const testSuitePage = await screen.findByTestId('pageLayoutV1');
-    const addTestSuite = await screen.findByTestId('add-test-suite');
     const testSuiteTable = await screen.findByTestId('test-suite-table');
 
     expect(testSuitePage).toBeInTheDocument();
-    expect(addTestSuite).toBeInTheDocument();
     expect(testSuiteTable).toBeInTheDocument();
   });
 
@@ -142,6 +144,36 @@ describe('Test Suite Page', () => {
     expect(descriptionColumn).toBeInTheDocument();
 
     expect(rows).toHaveLength(MOCK_TABLE_DATA.data.length + 1);
+  });
+
+  it('Component should render empty table on change to show deleted test suite', async () => {
+    await act(async () => {
+      render(<TestSuitePage />, {
+        wrapper: MemoryRouter,
+      });
+    });
+    const mockTestSuite = getListTestSuites as jest.Mock;
+
+    expect(mockTestSuite.mock.calls[0][0]).toEqual({
+      fields: 'owner,tests',
+      limit: 15,
+      before: undefined,
+      after: undefined,
+      include: 'non-deleted',
+    });
+
+    const switchButton = await screen.findByTestId('switch-deleted');
+    await act(async () => {
+      fireEvent.click(switchButton);
+    });
+
+    expect(mockTestSuite.mock.calls[1][0]).toEqual({
+      fields: 'owner,tests',
+      limit: 15,
+      before: undefined,
+      after: undefined,
+      include: 'deleted',
+    });
   });
 
   it('Should render Next Button when test suite is more than 15', async () => {

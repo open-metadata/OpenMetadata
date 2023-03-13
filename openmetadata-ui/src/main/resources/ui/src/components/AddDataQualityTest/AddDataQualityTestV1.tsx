@@ -119,7 +119,7 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({
           url: getTableTabPath(entityTypeFQN, 'profiler'),
         },
         {
-          name: t('message.add-entity-test', { entity: t('label.column') }),
+          name: t('label.add-entity-test', { entity: t('label.column') }),
           url: '',
           activeTitle: true,
         },
@@ -127,7 +127,7 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({
       data.push(...colVal);
     } else {
       data.push({
-        name: t('message.add-entity-test', { entity: t('label.table') }),
+        name: t('label.add-entity-test', { entity: t('label.table') }),
         url: '',
         activeTitle: true,
       });
@@ -289,7 +289,7 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({
             <Typography.Paragraph
               className="tw-heading tw-text-base"
               data-testid="header">
-              {t('message.add-entity-test', {
+              {t('label.add-entity-test', {
                 entity: isColumnFqn ? t('label.column') : t('label.table'),
               })}
             </Typography.Paragraph>
