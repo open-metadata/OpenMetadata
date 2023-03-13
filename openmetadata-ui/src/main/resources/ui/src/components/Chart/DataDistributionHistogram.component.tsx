@@ -72,7 +72,7 @@ const DataDistributionHistogram = ({
           frequency,
         }));
 
-        const date = getFormattedDateFromSeconds(
+        const graphDate = getFormattedDateFromSeconds(
           columnProfile?.timestamp || 0,
           'dd/MMM'
         );
@@ -84,7 +84,7 @@ const DataDistributionHistogram = ({
                 data-testid="date"
                 offset={showSingleGraph ? 1 : 2}
                 span={24}>
-                {date}
+                {graphDate}
               </Col>
               <Col offset={showSingleGraph ? 1 : 2} span={24}>
                 <Tag data-testid="skew-tag">{`${t('label.skew')}: ${
