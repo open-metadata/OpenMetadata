@@ -7,7 +7,6 @@ import static org.openmetadata.service.Entity.FIELD_FOLLOWERS;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
 import static org.openmetadata.service.Entity.OBJECT_STORE_SERVICE;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.google.common.collect.Lists;
 import java.io.IOException;
 import java.util.Collections;
@@ -178,7 +177,7 @@ public class ContainerRepository extends EntityRepository<Container> {
   }
 
   /** Handles entity updated from PUT and POST operations */
-  public class ContainerUpdater extends EntityUpdater {
+  public class ContainerUpdater extends EntityUpdaterWithColumns {
     public ContainerUpdater(Container original, Container updated, Operation operation) {
       super(original, updated, operation);
     }
@@ -188,7 +187,16 @@ public class ContainerRepository extends EntityRepository<Container> {
       updateDataModel(original, updated);
     }
 
-    private void updateDataModel(Container original, Container updated) throws JsonProcessingException {
+    private void updateDataModel(Container original, Container updated) throws IOException {
+
+      if (original.getDataModel() != null && updated.getDataModel() != null) {
+        updateColumns(
+            "dataModel",
+            original.getDataModel().getColumns(),
+            updated.getDataModel().getColumns(),
+            EntityUtil.columnMatch);
+      }
+
       recordChange("dataModel", original.getDataModel(), updated.getDataModel(), true);
     }
   }
