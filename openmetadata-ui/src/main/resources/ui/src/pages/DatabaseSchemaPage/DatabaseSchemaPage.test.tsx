@@ -46,14 +46,6 @@ jest.mock('components/containers/PageContainerV1', () =>
     ))
 );
 
-jest.mock('components/common/title-breadcrumb/title-breadcrumb.component', () =>
-  jest
-    .fn()
-    .mockImplementation(() => (
-      <div data-testid="TitleBreadcrumb">titleBreadcrumb</div>
-    ))
-);
-
 jest.mock('components/common/TabsPane/TabsPane', () =>
   jest.fn().mockImplementation(() => <div data-testid="TabsPane">TabsPane</div>)
 );
@@ -81,19 +73,12 @@ jest.mock('components/common/error-with-placeholder/ErrorPlaceHolder', () =>
       <div data-testid="ErrorPlaceHolder">{children}</div>
     ))
 );
-jest.mock('components/common/EntitySummaryDetails/EntitySummaryDetails', () =>
-  jest
-    .fn()
-    .mockImplementation(() => (
-      <div data-testid="EntitySummaryDetails">EntitySummaryDetails</div>
-    ))
-);
 
-jest.mock('components/common/entityPageInfo/ManageButton/ManageButton', () =>
+jest.mock('components/common/entityPageInfo/EntityPageInfo', () =>
   jest
     .fn()
     .mockImplementation(() => (
-      <div data-testid="ManageButton">ManageButton</div>
+      <div data-testid="entityPageInfo">EntityPageInfo</div>
     ))
 );
 
@@ -205,15 +190,11 @@ describe('Tests for DatabaseSchemaPage', () => {
     });
 
     const pageContainer = await screen.findByTestId('PageContainer');
-    const titleBreadcrumb = await screen.findByTestId('TitleBreadcrumb');
+    const entityPageInfo = await screen.findByTestId('entityPageInfo');
     const tabsPane = await screen.findByTestId('TabsPane');
     const richTextEditorPreviewer = await screen.findAllByTestId(
       'RichTextEditorPreviewer'
     );
-    const entitySummaryDetails = await screen.findByTestId(
-      'EntitySummaryDetails'
-    );
-    const manageButton = await screen.findByTestId('ManageButton');
     const description = await screen.findByTestId('Description');
     const nextPrevious = await screen.findByTestId('NextPrevious');
     const databaseSchemaTable = await screen.findByTestId(
@@ -221,11 +202,9 @@ describe('Tests for DatabaseSchemaPage', () => {
     );
 
     expect(pageContainer).toBeInTheDocument();
-    expect(titleBreadcrumb).toBeInTheDocument();
+    expect(entityPageInfo).toBeInTheDocument();
     expect(tabsPane).toBeInTheDocument();
     expect(richTextEditorPreviewer).toHaveLength(10);
-    expect(entitySummaryDetails).toBeInTheDocument();
-    expect(manageButton).toBeInTheDocument();
     expect(description).toBeInTheDocument();
     expect(nextPrevious).toBeInTheDocument();
     expect(databaseSchemaTable).toBeInTheDocument();
