@@ -12,6 +12,7 @@ import static org.openmetadata.service.resources.databases.TableResourceTest.get
 import static org.openmetadata.service.util.EntityUtil.fieldAdded;
 import static org.openmetadata.service.util.EntityUtil.fieldUpdated;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
+import static org.openmetadata.service.util.TestUtils.UpdateType.MAJOR_UPDATE;
 import static org.openmetadata.service.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.service.util.TestUtils.UpdateType.NO_CHANGE;
 import static org.openmetadata.service.util.TestUtils.assertListNotNull;
@@ -154,10 +155,11 @@ public class ContainerResourceTest extends EntityResourceTest<Container, CreateC
     Container container = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
     ChangeDescription change = getChangeDescription(container.getVersion());
 
+    // We are removing the columns here. This is a major change
     ContainerDataModel newDataModel =
         new ContainerDataModel().withIsPartitioned(false).withColumns(Collections.emptyList());
     fieldUpdated(change, "dataModel", PARTITIONED_DATA_MODEL, newDataModel);
-    updateAndCheckEntity(request.withDataModel(newDataModel), OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+    updateAndCheckEntity(request.withDataModel(newDataModel), OK, ADMIN_AUTH_HEADERS, MAJOR_UPDATE, change);
   }
 
   @Test
