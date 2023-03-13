@@ -106,7 +106,7 @@ EXPECTED_DATA_MODELS = [
             TagLabel(
                 tagFQN="dbtTags.model_tag_one",
                 description=None,
-                source="Tag",
+                source="Classification",
                 labelType="Automated",
                 state="Confirmed",
                 href=None,
@@ -114,7 +114,7 @@ EXPECTED_DATA_MODELS = [
             TagLabel(
                 tagFQN="dbtTags.model_tag_two",
                 description=None,
-                source="Tag",
+                source="Classification",
                 labelType="Automated",
                 state="Confirmed",
                 href=None,
@@ -237,19 +237,19 @@ MOCK_TAG_LABELS = [
         tagFQN="dbtTags.tag1",
         labelType=LabelType.Automated,
         state=State.Confirmed,
-        source=TagSource.Tag,
+        source=TagSource.Classification,
     ),
     TagLabel(
         tagFQN="dbtTags.tag2name",
         labelType=LabelType.Automated,
         state=State.Confirmed,
-        source=TagSource.Tag,
+        source=TagSource.Classification,
     ),
     TagLabel(
         tagFQN="dbtTags.tag3",
         labelType=LabelType.Automated,
         state=State.Confirmed,
-        source=TagSource.Tag,
+        source=TagSource.Classification,
     ),
 ]
 

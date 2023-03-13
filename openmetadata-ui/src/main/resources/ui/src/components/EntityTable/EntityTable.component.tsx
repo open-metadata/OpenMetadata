@@ -119,7 +119,7 @@ const EntityTable = ({
               ? tagList.map((tag) => {
                   return {
                     fqn: tag,
-                    source: 'Tag',
+                    source: 'Classification',
                   };
                 })
               : [];
@@ -522,9 +522,7 @@ const EntityTable = ({
       return (
         <div className="hover-icon-group">
           {isReadOnly ? (
-            <div className="tw-flex tw-flex-wrap">
-              <TagsViewer sizeCap={-1} tags={tags || []} />
-            </div>
+            <TagsViewer sizeCap={-1} tags={tags || []} />
           ) : (
             <div
               className={classNames(

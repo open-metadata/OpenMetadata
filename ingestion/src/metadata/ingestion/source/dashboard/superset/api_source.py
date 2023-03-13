@@ -71,7 +71,6 @@ class SupersetAPISource(SupersetSourceMixin):
             displayName=dashboard_details["dashboard_title"],
             description="",
             dashboardUrl=dashboard_details["url"],
-            owner=self.get_owner_details(dashboard_details),
             charts=[
                 fqn.build(
                     self.metadata,

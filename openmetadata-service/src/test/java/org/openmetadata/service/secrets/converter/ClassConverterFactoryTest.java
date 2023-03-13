@@ -7,6 +7,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.openmetadata.schema.auth.SSOAuthMechanism;
+import org.openmetadata.schema.entity.automations.TestServiceConnectionRequest;
+import org.openmetadata.schema.entity.automations.Workflow;
 import org.openmetadata.schema.metadataIngestion.DbtPipeline;
 import org.openmetadata.schema.metadataIngestion.dbtconfig.DbtGCSConfig;
 import org.openmetadata.schema.security.credentials.GCSCredentials;
@@ -33,7 +35,9 @@ public class ClassConverterFactoryTest {
         GcsConnection.class,
         GCSConfig.class,
         BigQueryConnection.class,
-        DbtGCSConfig.class
+        DbtGCSConfig.class,
+        TestServiceConnectionRequest.class,
+        Workflow.class
       })
   void testClassConverterIsSet(Class<?> clazz) {
     assertFalse(ClassConverterFactory.getConverter(clazz) instanceof DefaultConnectionClassConverter);
@@ -41,6 +45,6 @@ public class ClassConverterFactoryTest {
 
   @Test
   void testClassConvertedMapIsNotModified() {
-    assertEquals(ClassConverterFactory.getConverterMap().size(), 11);
+    assertEquals(ClassConverterFactory.getConverterMap().size(), 13);
   }
 }

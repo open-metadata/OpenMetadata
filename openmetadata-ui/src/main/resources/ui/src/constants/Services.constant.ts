@@ -11,6 +11,9 @@
  *  limitations under the License.
  */
 
+import amazonS3 from 'assets/img/service-icon-amazon-s3.svg';
+import gcs from 'assets/img/service-icon-gcs.png';
+import msAzure from 'assets/img/service-icon-ms-azure.png';
 import { ObjectStoreServiceType } from 'generated/entity/services/objectstoreService';
 import { map, startCase } from 'lodash';
 import { ServiceTypes } from 'Models';
@@ -143,6 +146,9 @@ export const KINESIS = kinesis;
 export const QUICKSIGHT = quicksight;
 export const DOMO = domo;
 export const SAGEMAKER = sagemaker;
+export const AMAZON_S3 = amazonS3;
+export const GCS = gcs;
+export const MS_AZURE = msAzure;
 
 export const PLUS = plus;
 export const NOSERVICE = noService;

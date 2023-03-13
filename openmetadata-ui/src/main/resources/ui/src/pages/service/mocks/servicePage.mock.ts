@@ -113,14 +113,14 @@ export const DASHBOARD_DATA = [
       {
         tagFQN: 'PersonalData.SpecialCategory',
         description: 'GDPR',
-        source: 'Tag',
+        source: 'Classification',
         labelType: 'Manual',
         state: 'Confirmed',
       },
       {
         tagFQN: 'PII.None',
         description: 'Non PII',
-        source: 'Tag',
+        source: 'Classification',
         labelType: 'Manual',
         state: 'Confirmed',
       },
@@ -277,14 +277,14 @@ export const CONTAINERS_DATA = [
       {
         tagFQN: 'PersonalData.SpecialCategory',
         description: 'GDPR',
-        source: 'Tag',
+        source: 'Classification',
         labelType: 'Manual',
         state: 'Confirmed',
       },
       {
         tagFQN: 'PII.None',
         description: 'Non PII',
-        source: 'Tag',
+        source: 'Classification',
         labelType: 'Manual',
         state: 'Confirmed',
       },

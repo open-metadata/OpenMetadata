@@ -137,6 +137,7 @@ public class IngestionPipelineResourceTest extends EntityResourceTest<IngestionP
       IngestionPipeline ingestion, CreateIngestionPipeline createRequest, Map<String, String> authHeaders) {
     assertEquals(createRequest.getAirflowConfig().getConcurrency(), ingestion.getAirflowConfig().getConcurrency());
     validateSourceConfig(createRequest.getSourceConfig(), ingestion.getSourceConfig(), ingestion);
+    assertNotNull(ingestion.getOpenMetadataServerConnection());
   }
 
   @Override

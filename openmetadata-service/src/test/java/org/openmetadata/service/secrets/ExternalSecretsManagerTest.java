@@ -20,7 +20,10 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.openmetadata.schema.api.services.CreateDatabaseService;
+import org.openmetadata.schema.api.services.DatabaseConnection;
 import org.openmetadata.schema.auth.SSOAuthMechanism;
+import org.openmetadata.schema.entity.automations.TestServiceConnectionRequest;
+import org.openmetadata.schema.entity.automations.Workflow;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
@@ -29,14 +32,17 @@ import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
 import org.openmetadata.schema.metadataIngestion.DbtPipeline;
 import org.openmetadata.schema.metadataIngestion.SourceConfig;
 import org.openmetadata.schema.metadataIngestion.dbtconfig.DbtS3Config;
+import org.openmetadata.schema.security.client.GoogleSSOClientConfig;
 import org.openmetadata.schema.security.client.OktaSSOClientConfig;
 import org.openmetadata.schema.security.credentials.AWSCredentials;
 import org.openmetadata.schema.security.secrets.Parameters;
 import org.openmetadata.schema.security.secrets.SecretsManagerConfiguration;
 import org.openmetadata.schema.security.secrets.SecretsManagerProvider;
 import org.openmetadata.schema.services.connections.database.MysqlConnection;
+import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.fernet.Fernet;
+import org.openmetadata.service.util.JsonUtils;
 
 @ExtendWith(MockitoExtension.class)
 public abstract class ExternalSecretsManagerTest {
@@ -90,6 +96,16 @@ public abstract class ExternalSecretsManagerTest {
   }
 
   @Test
+  void testDecryptWorkflow() {
+    testEncryptWorkflowObject(DECRYPT);
+  }
+
+  @Test
+  void testEncryptWorkflow() {
+    testEncryptWorkflowObject(ENCRYPT);
+  }
+
+  @Test
   void testReturnsExpectedSecretManagerProvider() {
     assertEquals(expectedSecretManagerProvider(), secretsManager.getSecretsManagerProvider());
   }
@@ -127,12 +143,7 @@ public abstract class ExternalSecretsManagerTest {
                 new SSOAuthMechanism().withAuthConfig(config).withSsoServiceType(SSOAuthMechanism.SsoServiceType.OKTA));
 
     AuthenticationMechanism actualAuthenticationMechanism =
-        new AuthenticationMechanism()
-            .withAuthType(AuthenticationMechanism.AuthType.SSO)
-            .withConfig(
-                new SSOAuthMechanism()
-                    .withSsoServiceType(SSOAuthMechanism.SsoServiceType.OKTA)
-                    .withAuthConfig(Map.of("privateKey", "this-is-a-test")));
+        JsonUtils.convertValue(expectedAuthenticationMechanism, AuthenticationMechanism.class);
 
     secretsManager.encryptOrDecryptAuthenticationMechanism("bot", actualAuthenticationMechanism, decrypt);
 
@@ -165,20 +176,7 @@ public abstract class ExternalSecretsManagerTest {
                                             .withAwsRegion("eu-west-1")))));
 
     IngestionPipeline actualIngestionPipeline =
-        new IngestionPipeline()
-            .withName("my-pipeline")
-            .withPipelineType(PipelineType.DBT)
-            .withService(new DatabaseService().getEntityReference().withType(Entity.DATABASE_SERVICE))
-            .withSourceConfig(
-                new SourceConfig()
-                    .withConfig(
-                        Map.of(
-                            "dbtConfigSource",
-                            Map.of(
-                                "dbtSecurityConfig",
-                                Map.of(
-                                    "awsSecretAccessKey", "secret-password",
-                                    "awsRegion", "eu-west-1")))));
+        JsonUtils.convertValue(expectedIngestionPipeline, IngestionPipeline.class);
 
     secretsManager.encryptOrDecryptIngestionPipeline(actualIngestionPipeline, decrypt);
 
@@ -200,6 +198,50 @@ public abstract class ExternalSecretsManagerTest {
     }
 
     assertEquals(expectedIngestionPipeline, actualIngestionPipeline);
+  }
+
+  void testEncryptWorkflowObject(boolean encrypt) {
+    Workflow expectedWorkflow =
+        new Workflow()
+            .withName("my-workflow")
+            .withOpenMetadataServerConnection(
+                new OpenMetadataConnection()
+                    .withSecretsManagerCredentials(new AWSCredentials().withAwsSecretAccessKey("aws-secret"))
+                    .withSecurityConfig(new GoogleSSOClientConfig().withSecretKey("google-secret")))
+            .withRequest(
+                new TestServiceConnectionRequest()
+                    .withConnection(
+                        new DatabaseConnection().withConfig(new MysqlConnection().withPassword("openmetadata-test")))
+                    .withServiceType(ServiceType.DATABASE)
+                    .withConnectionType("Mysql"));
+
+    Workflow workflow = JsonUtils.convertValue(expectedWorkflow, Workflow.class);
+
+    Workflow actualWorkflow = secretsManager.encryptOrDecryptWorkflow(workflow, encrypt);
+
+    if (encrypt) {
+      ((MysqlConnection)
+              ((DatabaseConnection) ((TestServiceConnectionRequest) expectedWorkflow.getRequest()).getConnection())
+                  .getConfig())
+          .setPassword("secret:/openmetadata/workflow/my-workflow/request/connection/config/password");
+      MysqlConnection mysqlConnection =
+          (MysqlConnection)
+              ((DatabaseConnection) ((TestServiceConnectionRequest) actualWorkflow.getRequest()).getConnection())
+                  .getConfig();
+      mysqlConnection.setPassword(Fernet.getInstance().decrypt(mysqlConnection.getPassword()));
+      ((GoogleSSOClientConfig) (expectedWorkflow.getOpenMetadataServerConnection()).getSecurityConfig())
+          .setSecretKey("secret:/openmetadata/serverconnection/securityconfig/secretkey");
+      GoogleSSOClientConfig googleSSOClientConfig =
+          ((GoogleSSOClientConfig) (actualWorkflow.getOpenMetadataServerConnection()).getSecurityConfig());
+      googleSSOClientConfig.setSecretKey(Fernet.getInstance().decrypt(googleSSOClientConfig.getSecretKey()));
+      ((AWSCredentials) (expectedWorkflow.getOpenMetadataServerConnection()).getSecretsManagerCredentials())
+          .setAwsSecretAccessKey("secret:/openmetadata/serverconnection/secretsmanagercredentials/awssecretaccesskey");
+      AWSCredentials awsCredentials =
+          ((AWSCredentials) (actualWorkflow.getOpenMetadataServerConnection()).getSecretsManagerCredentials());
+      awsCredentials.setAwsSecretAccessKey(Fernet.getInstance().decrypt(awsCredentials.getAwsSecretAccessKey()));
+    }
+
+    assertEquals(expectedWorkflow, actualWorkflow);
   }
 
   protected abstract SecretsManagerProvider expectedSecretManagerProvider();

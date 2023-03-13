@@ -11,7 +11,16 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Row, Space, Table, Tooltip, Typography } from 'antd';
+import {
+  Button,
+  Col,
+  Row,
+  Space,
+  Switch,
+  Table,
+  Tooltip,
+  Typography,
+} from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import NextPrevious from 'components/common/next-previous/NextPrevious';
@@ -40,6 +49,7 @@ import { WEBHOOK_DOCS } from '../../constants/docs.constants';
 import { TEST_SUITE_BREADCRUMB } from '../../constants/TestSuite.constant';
 import { Operation } from '../../generated/entity/policies/policy';
 import { TestSuite } from '../../generated/tests/testSuite';
+import { Include } from '../../generated/type/include';
 import { Paging } from '../../generated/type/paging';
 import { getEntityName, pluralize } from '../../utils/CommonUtils';
 import { getTestSuitePath } from '../../utils/RouterUtils';
@@ -51,6 +61,8 @@ const TestSuitePage = () => {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [testSuitePage, setTestSuitePage] = useState(INITIAL_PAGING_VALUE);
   const [testSuitePaging, setTestSuitePaging] = useState<Paging>(pagingObject);
+  const [showDeleted, setShowDeleted] = useState(false);
+
   const { permissions } = usePermissionProvider();
 
   const createPermission = useMemo(() => {
@@ -61,6 +73,10 @@ const TestSuitePage = () => {
     );
   }, [permissions]);
 
+  const handleShowDeleted = (checked: boolean) => {
+    setShowDeleted(checked);
+  };
+
   const fetchTestSuites = async (param?: Record<string, string>) => {
     try {
       setIsLoading(true);
@@ -69,6 +85,7 @@ const TestSuitePage = () => {
         limit: PAGE_SIZE_MEDIUM,
         before: param && param.before,
         after: param && param.after,
+        include: showDeleted ? Include.Deleted : Include.NonDeleted,
       });
       setTestSuites(response.data);
       setTestSuitePaging(response.paging);
@@ -86,7 +103,11 @@ const TestSuitePage = () => {
         dataIndex: 'name',
         key: 'name',
         render: (_, record) => (
-          <Link to={getTestSuitePath(record.name)}>{record.name}</Link>
+          <Link
+            data-testid={`test-suite-${record.name}`}
+            to={getTestSuitePath(record.name)}>
+            {record.name}
+          </Link>
         ),
       },
       {
@@ -148,7 +169,7 @@ const TestSuitePage = () => {
 
   useEffect(() => {
     fetchTestSuites();
-  }, []);
+  }, [showDeleted]);
 
   const fetchErrorPlaceHolder = useCallback(
     () => (
@@ -181,32 +202,49 @@ const TestSuitePage = () => {
     return <Loader />;
   }
 
-  if (isEmpty(testSuites)) {
+  if (isEmpty(testSuites) && !showDeleted) {
     return <PageContainerV1>{fetchErrorPlaceHolder()}</PageContainerV1>;
   }
 
   return (
     <PageContainerV1>
       <PageLayoutV1 pageTitle={t('label.test-suite')}>
-        <Space align="center" className="w-full justify-between" size={16}>
-          <TitleBreadcrumb titleLinks={TEST_SUITE_BREADCRUMB} />
-          <Tooltip
-            placement="topRight"
-            title={!createPermission && t('message.no-permission-for-action')}>
-            <Button
-              data-testid="add-test-suite"
-              disabled={!createPermission}
-              type="primary"
-              onClick={onAddTestSuite}>
-              {t('label.add-entity', {
-                entity: t('label.test-suite'),
-              })}
-            </Button>
-          </Tooltip>
-        </Space>
-
-        <Row className="w-full mt-4">
+        <Row>
           <Col span={24}>
+            <Space align="center" className="w-full justify-between" size={16}>
+              <TitleBreadcrumb titleLinks={TEST_SUITE_BREADCRUMB} />
+
+              <Space align="center" className="w-full justify-end" size={16}>
+                <Space align="end" size={5}>
+                  <Switch
+                    checked={showDeleted}
+                    data-testid="switch-deleted"
+                    onClick={handleShowDeleted}
+                  />
+                  <label htmlFor="switch-deleted">
+                    {t('label.show-deleted')}
+                  </label>
+                </Space>
+                <Tooltip
+                  placement="topRight"
+                  title={
+                    !createPermission && t('message.no-permission-for-action')
+                  }>
+                  <Button
+                    data-testid="add-test-suite"
+                    disabled={!createPermission}
+                    type="primary"
+                    onClick={onAddTestSuite}>
+                    {t('label.add-entity', {
+                      entity: t('label.test-suite'),
+                    })}
+                  </Button>
+                </Tooltip>
+              </Space>
+            </Space>
+          </Col>
+
+          <Col className="m-t-lg" span={24}>
             <Table
               bordered
               columns={columns}

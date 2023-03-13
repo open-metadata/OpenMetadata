@@ -91,14 +91,12 @@ function SummaryListItem({
                       className="w-12 h-12"
                       data-testid="tag-grey-icon"
                     />
-                    <Row wrap>
-                      <TagsViewer
-                        sizeCap={-1}
-                        tags={(entityDetails.tags || []).map((tag) =>
-                          getTagValue(tag)
-                        )}
-                      />
-                    </Row>
+                    <TagsViewer
+                      sizeCap={-1}
+                      tags={(entityDetails.tags || []).map((tag) =>
+                        getTagValue(tag)
+                      )}
+                    />
                   </Space>
                 </Col>
               </>

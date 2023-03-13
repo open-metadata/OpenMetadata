@@ -13,6 +13,7 @@
 
 package org.openmetadata.service.secrets.masker;
 
+import org.openmetadata.schema.entity.automations.Workflow;
 import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
@@ -46,6 +47,11 @@ public class NoopEntityMasker extends EntityMasker {
   }
 
   @Override
+  public Workflow maskWorkflow(Workflow workflow) {
+    return workflow;
+  }
+
+  @Override
   public Object unmaskServiceConnectionConfig(
       Object connectionConfig, Object originalConnectionConfig, String connectionType, ServiceType serviceType) {
     return connectionConfig;
@@ -63,5 +69,10 @@ public class NoopEntityMasker extends EntityMasker {
       AuthenticationMechanism authenticationMechanism,
       AuthenticationMechanism originalAuthenticationMechanism) {
     // do nothing
+  }
+
+  @Override
+  public Workflow unmaskWorkflow(Workflow workflow, Workflow originalWorkflow) {
+    return workflow;
   }
 }

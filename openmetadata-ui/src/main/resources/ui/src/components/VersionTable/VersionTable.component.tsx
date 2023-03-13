@@ -92,9 +92,7 @@ const VersionTable = ({ columnName, columns, joins }: VersionTableProps) => {
         accessor: 'tags',
         width: 272,
         render: (tags: Column['tags']) => (
-          <div className="d-flex flex-wrap">
-            <TagsViewer sizeCap={-1} tags={tags || []} />
-          </div>
+          <TagsViewer sizeCap={-1} tags={tags || []} />
         ),
       },
     ],
