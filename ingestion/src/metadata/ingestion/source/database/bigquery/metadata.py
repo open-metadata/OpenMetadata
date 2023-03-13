@@ -27,6 +27,9 @@ from metadata.generated.schema.api.classification.createClassification import (
     CreateClassificationRequest,
 )
 from metadata.generated.schema.api.classification.createTag import CreateTagRequest
+from metadata.generated.schema.api.data.createDatabaseSchema import (
+    CreateDatabaseSchemaRequest,
+)
 from metadata.generated.schema.entity.classification.tag import Tag
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import (
@@ -155,13 +158,29 @@ class BigquerySource(CommonDbSourceService):
         _, project_ids = auth.default()
         return project_ids
 
-    def yield_tag(self, _: str) -> Iterable[OMetaTagAndClassification]:
+    def yield_tag(self, schema_name: str) -> Iterable[OMetaTagAndClassification]:
         """
         Build tag context
         :param _:
         :return:
         """
         try:
+            # Fetching labels on the databaseSchema ( dataset ) level
+            dataset_obj = self.client.get_dataset(schema_name)
+            if dataset_obj.labels:
+                for key, value in dataset_obj.labels.items():
+                    yield OMetaTagAndClassification(
+                        classification_request=CreateClassificationRequest(
+                            name=key,
+                            description="",
+                        ),
+                        tag_request=CreateTagRequest(
+                            classification=key,
+                            name=value,
+                            description="Bigquery Dataset Label",
+                        ),
+                    )
+            # Fetching policy tags on the column level
             list_project_ids = [self.context.database.name.__root__]
             if not self.service_connection.taxonomyProjectID:
                 self.service_connection.taxonomyProjectID = []
@@ -189,6 +208,38 @@ class BigquerySource(CommonDbSourceService):
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning(f"Skipping Policy Tag: {exc}")
+
+    def yield_database_schema(
+        self, schema_name: str
+    ) -> Iterable[CreateDatabaseSchemaRequest]:
+        """
+        From topology.
+        Prepare a database schema request and pass it to the sink
+        """
+
+        database_schema_request_obj = CreateDatabaseSchemaRequest(
+            name=schema_name,
+            database=self.context.database.fullyQualifiedName,
+            description=self.get_schema_description(schema_name),
+        )
+
+        dataset_obj = self.client.get_dataset(schema_name)
+        if dataset_obj.labels:
+            for label_classification, label_tag_name in dataset_obj.labels.items():
+                database_schema_request_obj.tags = [
+                    TagLabel(
+                        tagFQN=fqn.build(
+                            self.metadata,
+                            entity_type=Tag,
+                            classification_name=label_classification,
+                            tag_name=label_tag_name,
+                        ),
+                        labelType="Automated",
+                        state="Suggested",
+                        source="Classification",
+                    )
+                ]
+        yield database_schema_request_obj
 
     def get_tag_labels(self, table_name: str) -> Optional[List[TagLabel]]:
         """
