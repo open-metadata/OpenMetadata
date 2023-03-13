@@ -45,10 +45,10 @@ from metadata.ingestion.source.objectstore.objectstore_service import (
 )
 from metadata.utils.filters import filter_by_container
 from metadata.utils.logger import ingestion_logger
-from metadata.utils.s3_utils import S3_CLIENT_ROOT_RESPONSE, prefix_exits
 
 logger = ingestion_logger()
 
+S3_CLIENT_ROOT_RESPONSE = "Contents"
 OPENMETADATA_TEMPLATE_FILE_NAME = "openmetadata.json"
 S3_KEY_SEPARATOR = "/"
 
@@ -125,35 +125,17 @@ class S3Source(ObjectStoreServiceSource):
         return cls(config, metadata_config)
 
     def get_containers(self) -> Iterable[S3ContainerDetails]:
-        """
-        List and filter containers
-        """
-        buckets = []
+        bucket_results = self.fetch_buckets()
         try:
-            buckets = self.s3_client.list_buckets().get("Buckets")
-            if not buckets:
-                logger.info("No S3 buckets found in account, terminating.")
-                return
-        except Exception as err:
-            logger.debug(traceback.format_exc())
-            logger.error(f"Failed to fetch buckets list - {err}")
-
-        # No pagination required, as there is a hard 1000 limit on nr of buckets per aws account
-        for bucket in buckets:
-            bucket_response: S3BucketResponse = S3BucketResponse.parse_obj(bucket)
-            bucket_name = bucket_response.name
-            try:
-                if filter_by_container(
-                    self.source_config.containerFilterPattern,
-                    container_name=bucket_name,
-                ):
-                    self.status.filter(bucket_name, "Bucket name pattern not allowed")
-                    continue
-                metadata_config = self._load_metadata_file(bucket_name=bucket_name)
+            for bucket_response in bucket_results:
+                metadata_config = self._load_metadata_file(
+                    bucket_name=bucket_response.name
+                )
                 if metadata_config:
                     for metadata_entry in metadata_config.entries:
                         logger.info(
-                            f"Extracting metadata from path {metadata_entry.dataPath.strip(S3_KEY_SEPARATOR)}:"
+                            f"Extracting metadata from path {metadata_entry.dataPath.strip(S3_KEY_SEPARATOR)} "
+                            f"and generating structured container"
                         )
                         structured_container: Optional[
                             S3ContainerDetails
@@ -164,20 +146,22 @@ class S3Source(ObjectStoreServiceSource):
                         if structured_container:
                             yield structured_container
                 else:
+                    logger.info(
+                        f"No metadata found for bucket {bucket_response.name}, generating unstructured container.."
+                    )
                     yield self._generate_unstructured_container(
                         bucket_response=bucket_response
                     )
-            except ValidationError as err:
-                logger.debug(traceback.format_exc())
-                logger.warning(
-                    f"Validation error while creating Container from bucket details - {err}"
-                )
-            except Exception as err:
-                logger.debug(traceback.format_exc())
-                logger.warning(
-                    f"Wild error while creating Container from bucket details - {err}"
-                )
-            continue
+        except ValidationError as err:
+            logger.debug(traceback.format_exc())
+            logger.warning(
+                f"Validation error while creating Container from bucket details - {err}"
+            )
+        except Exception as err:
+            logger.debug(traceback.format_exc())
+            logger.warning(
+                f"Wild error while creating Container from bucket details - {err}"
+            )
 
     def yield_create_container_requests(
         self, container_details: S3ContainerDetails
@@ -238,6 +222,23 @@ class S3Source(ObjectStoreServiceSource):
         if isinstance(data_structure_details, DatalakeColumnWrapper):
             columns = data_structure_details.columns  # pylint: disable=no-member
         return columns
+
+    def fetch_buckets(self) -> List[S3BucketResponse]:
+        results: List[S3BucketResponse] = []
+        try:
+            # No pagination required, as there is a hard 1000 limit on nr of buckets per aws account
+            for bucket in self.s3_client.list_buckets().get("Buckets") or []:
+                if filter_by_container(
+                    self.source_config.containerFilterPattern,
+                    container_name=bucket["Name"],
+                ):
+                    self.status.filter(bucket["Name"], "Bucket Filtered Out")
+                else:
+                    results.append(S3BucketResponse.parse_obj(bucket))
+        except Exception as err:
+            logger.debug(traceback.format_exc())
+            logger.error(f"Failed to fetch buckets list - {err}")
+        return results
 
     def _fetch_metric(self, bucket_name: str, metric: S3Metric) -> float:
         try:
@@ -309,8 +310,7 @@ class S3Source(ObjectStoreServiceSource):
         return None
 
     def _is_metadata_file_present(self, bucket_name: str):
-        return prefix_exits(
-            self.s3_client,
+        return self.prefix_exits(
             bucket_name=bucket_name,
             prefix=OPENMETADATA_TEMPLATE_FILE_NAME,
         )
@@ -332,13 +332,8 @@ class S3Source(ObjectStoreServiceSource):
             data_model=None,
         )
 
-    def _get_sample_file_path(
-        self, bucket_name: str, metadata_entry: MetadataEntry
-    ) -> Optional[str]:
-        """
-        Given a bucket and a metadata entry, returns the full path key to a file which can then be used to infer schema
-        or None in the case of a non-structured metadata entry, or if no such keys can be found
-        """
+    @staticmethod
+    def _get_sample_file_prefix(metadata_entry: MetadataEntry) -> Optional[str]:
         result = f"{metadata_entry.dataPath.strip(S3_KEY_SEPARATOR)}"
         if not metadata_entry.isStructured:
             logger.warning(f"Ignoring un-structured metadata entry {result}")
@@ -347,14 +342,24 @@ class S3Source(ObjectStoreServiceSource):
             result = (
                 f"{result}/{metadata_entry.partitionColumn.strip(S3_KEY_SEPARATOR)}"
             )
+        return result
+
+    def _get_sample_file_path(
+        self, bucket_name: str, metadata_entry: MetadataEntry
+    ) -> Optional[str]:
+        """
+        Given a bucket and a metadata entry, returns the full path key to a file which can then be used to infer schema
+        or None in the case of a non-structured metadata entry, or if no such keys can be found
+        """
+        prefix = self._get_sample_file_prefix(metadata_entry=metadata_entry)
         # no objects found in the data path
-        if not prefix_exits(self.s3_client, bucket_name=bucket_name, prefix=result):
-            logger.warning(f"Ignoring metadata entry {result} - no files found")
+        if not self.prefix_exits(bucket_name=bucket_name, prefix=prefix):
+            logger.warning(f"Ignoring metadata entry {prefix} - no files found")
             return None
         # this will look only in the first 1000 files under that path (default for list_objects_v2).
         # We'd rather not do pagination here as it would incur unwanted costs
         try:
-            response = self.s3_client.list_objects_v2(Bucket=bucket_name, Prefix=result)
+            response = self.s3_client.list_objects_v2(Bucket=bucket_name, Prefix=prefix)
             candidate_keys = [
                 entry["Key"]
                 for entry in response[S3_CLIENT_ROOT_RESPONSE]
@@ -370,12 +375,28 @@ class S3Source(ObjectStoreServiceSource):
                 )
                 return result_key
             logger.warning(
-                f"No sample files found in {result} with {metadata_entry.structureFormat} extension"
+                f"No sample files found in {prefix} with {metadata_entry.structureFormat} extension"
             )
             return None
         except Exception:
             logger.debug(traceback.format_exc())
             logger.warning(
-                f"Error when trying to list objects in S3 bucket {bucket_name} at prefix {result}"
+                f"Error when trying to list objects in S3 bucket {bucket_name} at prefix {prefix}"
             )
             return None
+
+    def prefix_exits(self, bucket_name: str, prefix: str) -> bool:
+        """
+        Checks if a given prefix exists in a bucket
+        """
+        try:
+            res = self.s3_client.list_objects_v2(
+                Bucket=bucket_name, Prefix=prefix, MaxKeys=1
+            )
+            return S3_CLIENT_ROOT_RESPONSE in res
+        except Exception:
+            logger.debug(traceback.format_exc())
+            logger.warning(
+                f"Failed when trying to check if S3 prefix {prefix} exists in bucket {bucket_name}"
+            )
+            return False
