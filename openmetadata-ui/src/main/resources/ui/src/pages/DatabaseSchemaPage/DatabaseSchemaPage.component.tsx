@@ -483,37 +483,22 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     });
   };
 
-  const onTagUpdate = (selectedTags?: Array<EntityTags>) => {
+  const onTagUpdate = async (selectedTags?: Array<EntityTags>) => {
     if (selectedTags) {
       const updatedTags = [...(tier ? [tier] : []), ...selectedTags];
       const updatedData = { ...databaseSchema, tags: updatedTags };
 
-      new Promise<void>((_, reject) => {
-        saveUpdatedDatabaseSchemaData(updatedData as DatabaseSchema)
-          .then((res) => {
-            if (res) {
-              setDatabaseSchema(res);
-              setTags(getTagsWithoutTier(res.tags || []));
-              setTier(getTierTags(res.tags ?? []));
-
-              getEntityFeedCount();
-              reject();
-            } else {
-              reject();
-
-              throw jsonData['api-error-messages'][
-                'unexpected-server-response'
-              ];
-            }
-          })
-          .catch((err: AxiosError) => {
-            showErrorToast(
-              err,
-              jsonData['api-error-messages']['update-databaseSchema-error']
-            );
-            reject();
-          });
-      });
+      try {
+        const res = await saveUpdatedDatabaseSchemaData(
+          updatedData as DatabaseSchema
+        );
+        setDatabaseSchema(res);
+        setTags(getTagsWithoutTier(res.tags || []));
+        setTier(getTierTags(res.tags ?? []));
+        getEntityFeedCount();
+      } catch (error) {
+        showErrorToast(error as AxiosError, t('server.api-error'));
+      }
     }
   };
 
