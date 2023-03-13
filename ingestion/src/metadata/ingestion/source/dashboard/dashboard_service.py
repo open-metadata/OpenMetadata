@@ -274,8 +274,10 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
             entity=DashboardService, config=config
         )
 
-    def process_owner(self, dashboard_details: dict):
-        pass
+    def process_owner(self, dashboard_details: dict):  # pylint: disable=unused-argument
+        logger.debug(
+            f"Processing ownership is not supported for {self.service_connection.type.name}"
+        )
 
     @staticmethod
     def _get_add_lineage_request(
