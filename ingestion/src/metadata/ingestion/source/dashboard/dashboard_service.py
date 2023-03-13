@@ -274,6 +274,9 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
             entity=DashboardService, config=config
         )
 
+    def process_owner(self, dashbaord_details: dict):
+        pass
+
     @staticmethod
     def _get_add_lineage_request(
         to_entity: Dashboard, from_entity: Table
