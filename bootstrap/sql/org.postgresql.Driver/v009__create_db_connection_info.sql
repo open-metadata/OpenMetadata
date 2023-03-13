@@ -6,10 +6,10 @@ ADD UNIQUE (email);
 -- Remove classificationName in BigQuery
 UPDATE dbservice_entity SET json = json #- '{connection,config,classificationName}' where serviceType in ('BigQuery');
 
--- migrate ingestAllDatabases in postgres
-UPDATE dbservice_entity de2
+-- migrate ingestAllDatabases in postgres 
+UPDATE dbservice_entity de2 
 SET json = JSONB_SET(
-    json || JSONB_SET(json,'{connection,config}', json#>'{connection,config}'||
+    json || JSONB_SET(json,'{connection,config}', json#>'{connection,config}'|| 
     jsonb_build_object('database',
     (SELECT json->>'name' 
         FROM database_entity de 
@@ -73,6 +73,10 @@ CREATE TABLE IF NOT EXISTS automations_workflow (
     PRIMARY KEY (id),
     UNIQUE (name)
 );
+
+-- Do not store OM server connection, we'll set it dynamically on the resource
+UPDATE ingestion_pipeline_entity
+SET json = json::jsonb #- '{openMetadataServerConnection}';
 
 DELETE FROM alert_entity;
 drop table alert_action_def;

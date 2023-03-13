@@ -77,7 +77,6 @@ class SupersetDBSource(SupersetSourceMixin):
             displayName=dashboard_details["dashboard_title"],
             description="",
             dashboardUrl=f"/superset/dashboard/{dashboard_details['id']}/",
-            owner=self.get_owner_details(dashboard_details),
             charts=[
                 fqn.build(
                     self.metadata,

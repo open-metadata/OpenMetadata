@@ -43,15 +43,13 @@ const GlobalSettingLeftPanel = () => {
     () =>
       getGlobalSettingsMenuWithPermission(permissions, isAdminUser).reduce(
         (acc: ItemType[], curr: MenuList) => {
-          const menuItem = getGlobalSettingMenuItem(
-            curr.category,
-            camelCase(curr.category),
-            '',
-            '',
-            curr.items,
-            'group',
-            curr.isBeta
-          );
+          const menuItem = getGlobalSettingMenuItem({
+            label: curr.category,
+            key: camelCase(curr.category),
+            children: curr.items,
+            type: 'group',
+            isBeta: curr.isBeta,
+          });
           if (menuItem.children?.length) {
             return [...acc, menuItem];
           } else {

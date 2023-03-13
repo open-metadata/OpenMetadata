@@ -264,7 +264,7 @@ describe('Glossary page should work properly', () => {
         labelType: 'Manual',
         state: 'Confirmed',
         tagFQN: 'PersonalData.Personal',
-        source: 'Tag',
+        source: 'Classification',
       });
 
       cy.url().should('include', '/glossary/');
@@ -864,7 +864,7 @@ describe('Glossary page should work properly', () => {
         labelType: 'Manual',
         state: 'Confirmed',
         tagFQN: 'PersonalData.Personal',
-        source: 'Tag',
+        source: 'Classification',
       });
     });
   });

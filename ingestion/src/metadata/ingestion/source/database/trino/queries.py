@@ -25,3 +25,7 @@ TRINO_TABLE_COMMENTS = textwrap.dedent(
     and "comment" is not null
     """
 )
+
+TRINO_GET_DATABASE = """
+SHOW CATALOGS
+"""

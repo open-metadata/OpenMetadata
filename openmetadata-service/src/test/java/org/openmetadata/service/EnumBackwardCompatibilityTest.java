@@ -65,7 +65,7 @@ class EnumBackwardCompatibilityTest {
    */
   @Test
   void testTagSourceEnumBackwardCompatible() {
-    assertEquals(0, TagSource.TAG.ordinal());
+    assertEquals(0, TagSource.CLASSIFICATION.ordinal());
     assertEquals(1, TagSource.GLOSSARY.ordinal());
   }
 

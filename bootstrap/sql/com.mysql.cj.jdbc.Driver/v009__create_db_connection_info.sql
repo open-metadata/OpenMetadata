@@ -74,6 +74,10 @@ CREATE TABLE IF NOT EXISTS automations_workflow (
     UNIQUE (name)
 );
 
+-- Do not store OM server connection, we'll set it dynamically on the resource
+UPDATE ingestion_pipeline_entity
+SET json = JSON_REMOVE(json, '$.openMetadataServerConnection');
+
 DELETE FROM alert_entity;
 drop table alert_action_def;
 

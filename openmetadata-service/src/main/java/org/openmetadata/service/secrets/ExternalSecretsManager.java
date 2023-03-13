@@ -29,11 +29,13 @@ public abstract class ExternalSecretsManager extends SecretsManager {
   }
 
   @Override
-  protected String storeValue(String fieldName, String value, String secretId) {
+  protected String storeValue(String fieldName, String value, String secretId, boolean store) {
     String fieldSecretId = buildSecretId(false, secretId, fieldName.toLowerCase(Locale.ROOT));
     // check if value does not start with 'config:' only String can have password annotation
     if (!value.startsWith(SECRET_FIELD_PREFIX)) {
-      upsertSecret(fieldSecretId, value);
+      if (store) {
+        upsertSecret(fieldSecretId, value);
+      }
       return SECRET_FIELD_PREFIX + fieldSecretId;
     } else {
       return value;

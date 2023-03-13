@@ -68,7 +68,7 @@ const Ingestion: React.FC<IngestionProps> = ({
   paging,
   pagingHandler,
   handleEnableDisableIngestion,
-  currrentPage,
+  currentPage,
   onIngestionWorkflowsUpdate,
   permissions,
 }: IngestionProps) => {
@@ -606,6 +606,7 @@ const Ingestion: React.FC<IngestionProps> = ({
       isKillModalOpen,
       selectedPipeline,
       onIngestionWorkflowsUpdate,
+      ingestionData,
     ]
   );
 
@@ -656,7 +657,7 @@ const Ingestion: React.FC<IngestionProps> = ({
 
             {Boolean(!isNil(paging.after) || !isNil(paging.before)) && (
               <NextPrevious
-                currentPage={currrentPage}
+                currentPage={currentPage}
                 pageSize={PAGE_SIZE}
                 paging={paging}
                 pagingHandler={pagingHandler}
