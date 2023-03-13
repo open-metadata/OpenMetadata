@@ -13,6 +13,7 @@
 
 package org.openmetadata.service.resources.teams;
 
+import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.CONFLICT;
 import static javax.ws.rs.core.Response.Status.OK;
 import static org.openmetadata.schema.api.teams.CreateUser.CreatePasswordType.ADMIN_CREATE;
@@ -20,6 +21,7 @@ import static org.openmetadata.schema.auth.ChangePasswordRequest.RequestType.SEL
 import static org.openmetadata.schema.entity.teams.AuthenticationMechanism.AuthType.BASIC;
 import static org.openmetadata.schema.entity.teams.AuthenticationMechanism.AuthType.JWT;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.EMAIL_SENDING_ISSUE;
+import static org.openmetadata.service.security.jwt.JWTTokenGenerator.getExpiryDate;
 
 import at.favre.lib.crypto.bcrypt.BCrypt;
 import freemarker.template.TemplateException;
@@ -42,6 +44,7 @@ import java.util.Base64;
 import java.util.Date;
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import javax.json.JsonObject;
 import javax.json.JsonPatch;
 import javax.json.JsonValue;
@@ -68,6 +71,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.jetbrains.annotations.Nullable;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.TokenInterface;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.teams.CreateUser;
@@ -80,10 +84,13 @@ import org.openmetadata.schema.auth.JWTTokenExpiry;
 import org.openmetadata.schema.auth.LoginRequest;
 import org.openmetadata.schema.auth.LogoutRequest;
 import org.openmetadata.schema.auth.PasswordResetRequest;
+import org.openmetadata.schema.auth.PersonalAccessToken;
 import org.openmetadata.schema.auth.RegistrationRequest;
 import org.openmetadata.schema.auth.RevokeTokenRequest;
 import org.openmetadata.schema.auth.SSOAuthMechanism;
+import org.openmetadata.schema.auth.ServiceTokenType;
 import org.openmetadata.schema.auth.TokenRefreshRequest;
+import org.openmetadata.schema.auth.TokenType;
 import org.openmetadata.schema.email.SmtpSettings;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
 import org.openmetadata.schema.entity.teams.User;
@@ -96,7 +103,9 @@ import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.auth.JwtResponse;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
+import org.openmetadata.service.exception.CustomExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.ListFilter;
@@ -112,6 +121,7 @@ import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.auth.AuthenticatorHandler;
 import org.openmetadata.service.security.auth.BotTokenCache;
+import org.openmetadata.service.security.auth.UserTokenCache;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
@@ -124,6 +134,7 @@ import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.PasswordUtil;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
+import org.openmetadata.service.util.TokenUtil;
 import org.openmetadata.service.util.UserUtil;
 
 @Slf4j
@@ -156,6 +167,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
     jwtTokenGenerator = JWTTokenGenerator.getInstance();
     allowedFields.remove(USER_PROTECTED_FIELDS);
     tokenRepository = new TokenRepository(dao);
+    UserTokenCache.initialize(dao);
     authHandler = authenticatorHandler;
   }
 
@@ -1007,14 +1019,18 @@ public class UserResource extends EntityResource<User, UserRepository> {
         @ApiResponse(
             responseCode = "200",
             description = "Returns the Jwt Token Response ",
-            content =
-                @Content(mediaType = "application/json", schema = @Schema(implementation = JWTTokenExpiry.class))),
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = JwtResponse.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response loginUserWithPassword(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid LoginRequest loginRequest)
       throws IOException, TemplateException {
-    byte[] decodedBytes = Base64.getDecoder().decode(loginRequest.getPassword());
+    byte[] decodedBytes;
+    try {
+      decodedBytes = Base64.getDecoder().decode(loginRequest.getPassword());
+    } catch (Exception ex) {
+      throw new IllegalArgumentException("Password need to be encoded in Base-64.");
+    }
     loginRequest.withPassword(new String(decodedBytes));
     return Response.status(Response.Status.OK).entity(authHandler.loginUser(loginRequest)).build();
   }
@@ -1030,14 +1046,108 @@ public class UserResource extends EntityResource<User, UserRepository> {
         @ApiResponse(
             responseCode = "200",
             description = "The user ",
-            content =
-                @Content(mediaType = "application/json", schema = @Schema(implementation = JWTTokenExpiry.class))),
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = JwtResponse.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response refreshToken(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid TokenRefreshRequest refreshRequest)
       throws IOException {
     return Response.status(Response.Status.OK).entity(authHandler.getNewAccessToken(refreshRequest)).build();
+  }
+
+  @GET
+  @Path("/token/personal")
+  @Operation(
+      operationId = "getPersonalAccessToken",
+      summary = "Get personal access token to User",
+      tags = "users",
+      description = "Get a personal access token",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "The user ",
+            content =
+                @Content(mediaType = "application/json", schema = @Schema(implementation = PersonalAccessToken.class))),
+        @ApiResponse(responseCode = "400", description = "Bad request")
+      })
+  public Response getPersonalAccessToken(@Context UriInfo uriInfo, @Context SecurityContext securityContext)
+      throws IOException {
+    String userName = securityContext.getUserPrincipal().getName();
+    User user = dao.getByName(null, userName, getFields("id"), Include.NON_DELETED);
+    List<TokenInterface> tokens =
+        tokenRepository.findByUserIdAndType(user.getId().toString(), TokenType.PERSONAL_ACCESS.value());
+    return Response.status(Response.Status.OK).entity(tokens).build();
+  }
+
+  @PUT
+  @Path("/token/revoke")
+  @Operation(
+      operationId = "revokePersonalAccessToken",
+      summary = "Revoke personal access token to User",
+      tags = "users",
+      description = "Revoke personal access token",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "The user ",
+            content =
+                @Content(mediaType = "application/json", schema = @Schema(implementation = PersonalAccessToken.class))),
+        @ApiResponse(responseCode = "400", description = "Bad request")
+      })
+  public Response revokePersonalAccessToken(@Context UriInfo uriInfo, @Context SecurityContext securityContext)
+      throws IOException {
+    String userName = securityContext.getUserPrincipal().getName();
+    User user = dao.getByName(null, userName, getFields("id"), Include.NON_DELETED);
+    tokenRepository.deleteTokenByUserAndType(user.getId().toString(), TokenType.PERSONAL_ACCESS.value());
+    UserTokenCache.getInstance().invalidateToken(userName);
+    return Response.status(Response.Status.OK).build();
+  }
+
+  @POST
+  @Path("/token/personal")
+  @Operation(
+      operationId = "createPersonalAccessToken",
+      summary = "Provide access token to User",
+      tags = "users",
+      description = "Provide access token to User",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "The user ",
+            content =
+                @Content(mediaType = "application/json", schema = @Schema(implementation = PersonalAccessToken.class))),
+        @ApiResponse(responseCode = "400", description = "Bad request")
+      })
+  public Response createAccessToken(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Valid GenerateTokenRequest generateTokenRequest)
+      throws IOException {
+    String userName = securityContext.getUserPrincipal().getName();
+    User user = dao.getByName(null, userName, getFields("id,email,isBot"), Include.NON_DELETED);
+    if (!user.getIsBot()) {
+      // remove users existing Personal Tokens
+      List<TokenInterface> existingToken =
+          tokenRepository.findByUserIdAndType(user.getId().toString(), TokenType.PERSONAL_ACCESS.value());
+      // Create Personal Access Token
+      JWTAuthMechanism authMechanism =
+          JWTTokenGenerator.getInstance()
+              .getJwtAuthMechanism(
+                  userName,
+                  user.getEmail(),
+                  false,
+                  ServiceTokenType.PERSONAL_ACCESS,
+                  getExpiryDate(generateTokenRequest.getJWTTokenExpiry()));
+      PersonalAccessToken personalAccessToken = TokenUtil.getPersonalAccessToken(user, authMechanism);
+      tokenRepository.insertToken(personalAccessToken);
+
+      // Remove the previous tokens from DB and Cache
+      List<String> tokens = existingToken.stream().map((t) -> t.getToken().toString()).collect(Collectors.toList());
+      tokenRepository.deleteAllToken(tokens);
+      UserTokenCache.getInstance().invalidateToken(userName);
+      return Response.status(Response.Status.OK).entity(personalAccessToken).build();
+    }
+    throw new CustomExceptionMessage(BAD_REQUEST, "Bots cannot have a Personal Access Token.");
   }
 
   @GET

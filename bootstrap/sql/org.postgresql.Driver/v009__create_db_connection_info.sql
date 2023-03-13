@@ -77,3 +77,5 @@ CREATE TABLE IF NOT EXISTS automations_workflow (
 -- Do not store OM server connection, we'll set it dynamically on the resource
 UPDATE ingestion_pipeline_entity
 SET json = json::jsonb #- '{openMetadataServerConnection}';
+
+ALTER TABLE user_tokens MODIFY COLUMN expiryDate BIGINT UNSIGNED GENERATED ALWAYS AS (json ->> '$.expiryDate');

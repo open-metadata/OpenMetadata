@@ -52,6 +52,7 @@ import org.openmetadata.schema.analytics.ReportData;
 import org.openmetadata.schema.analytics.WebAnalyticEvent;
 import org.openmetadata.schema.auth.EmailVerificationToken;
 import org.openmetadata.schema.auth.PasswordResetToken;
+import org.openmetadata.schema.auth.PersonalAccessToken;
 import org.openmetadata.schema.auth.RefreshToken;
 import org.openmetadata.schema.auth.TokenType;
 import org.openmetadata.schema.dataInsight.DataInsightChart;
@@ -3392,6 +3393,9 @@ public interface CollectionDAO {
         case REFRESH_TOKEN:
           resp = JsonUtils.readValue(json, RefreshToken.class);
           break;
+        case PERSONAL_ACCESS:
+          resp = JsonUtils.readValue(json, PersonalAccessToken.class);
+          break;
         default:
           throw new IllegalArgumentException("Invalid Token Type.");
       }
@@ -3425,6 +3429,9 @@ public interface CollectionDAO {
 
     @SqlUpdate(value = "DELETE from user_tokens WHERE token = :token")
     void delete(@Bind("token") String token);
+
+    @SqlUpdate(value = "DELETE from user_tokens WHERE token IN (<tokenIds>)")
+    void deleteAll(@BindList("tokenIds") List<String> tokens);
 
     @SqlUpdate(value = "DELETE from user_tokens WHERE userid = :userid AND tokenType = :tokenType")
     void deleteTokenByUserAndType(@Bind("userid") String userid, @Bind("tokenType") String tokenType);

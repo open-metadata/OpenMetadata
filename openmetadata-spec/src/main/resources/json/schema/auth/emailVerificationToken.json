@@ -9,12 +9,23 @@
   "definitions": {
     "tokenType": {
       "javaType": "org.openmetadata.schema.auth.TokenType",
-      "description": "Refresh Count",
+      "description": "Different Type of User token",
       "type": "string",
       "enum": [
         "REFRESH_TOKEN",
         "EMAIL_VERIFICATION",
-        "PASSWORD_RESET"
+        "PASSWORD_RESET",
+        "PERSONAL_ACCESS"
+      ]
+    },
+    "serviceTokenType": {
+      "javaType": "org.openmetadata.schema.auth.ServiceTokenType",
+      "description": "Different Type of OpenMetadata Service tokens",
+      "type": "string",
+      "enum": [
+        "BOT",
+        "OM_USER",
+        "PERSONAL_ACCESS"
       ]
     }
   },
