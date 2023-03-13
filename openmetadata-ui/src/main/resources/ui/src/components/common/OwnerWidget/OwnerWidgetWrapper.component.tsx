@@ -53,7 +53,7 @@ const OwnerWidgetWrapper = ({
   const { isAdminUser } = useAuth();
   const [statusOwner, setStatusOwner] = useState<LoadingState>('initial');
 
-  const [listOwners, setListOwners] = useState<OwnerItem[]>([]);
+  const [ownersList, setOwnersList] = useState<OwnerItem[]>([]);
   const [isUserLoading, setIsUserLoading] = useState<boolean>(true);
   const [owner, setOwner] = useState(currentUser);
 
@@ -76,7 +76,7 @@ const OwnerWidgetWrapper = ({
 
   const fetchGroupTypeTeams = async () => {
     try {
-      if (listOwners.length === 0) {
+      if (ownersList.length === 0) {
         const data = await getGroupTypeTeams();
         const updatedData = data.map((team) => ({
           name: getEntityName(team),
@@ -86,7 +86,7 @@ const OwnerWidgetWrapper = ({
         }));
         // set team count for logged in user
         setTotalTeamsCount(data.length);
-        setListOwners([...updatedData, ...userDetails]);
+        setOwnersList([...updatedData, ...userDetails]);
       }
     } catch (error) {
       showErrorToast(error as AxiosError);
@@ -104,16 +104,16 @@ const OwnerWidgetWrapper = ({
           // set team and user count for admin user
           setTotalTeamsCount(teamsTotal ?? 0);
           setTotalUsersCount(usersTotal ?? 0);
-          setListOwners(getOwnerList(users, teams, false, searchQuery));
+          setOwnersList(getOwnerList(users, teams, false, searchQuery));
         })
         .catch(() => {
-          setListOwners([]);
+          setOwnersList([]);
         })
         .finally(() => {
           setIsUserLoading(false);
         });
     },
-    [setListOwners, setIsUserLoading]
+    [setOwnersList, setIsUserLoading]
   );
 
   const debouncedOnChange = useCallback(
@@ -135,7 +135,7 @@ const OwnerWidgetWrapper = ({
     _e: React.MouseEvent<HTMLElement, MouseEvent>,
     value = ''
   ) => {
-    const owner = listOwners.find((item) => item.value === value);
+    const owner = ownersList.find((item) => item.value === value);
 
     if (owner) {
       const newOwner = prepareOwner({
@@ -226,7 +226,7 @@ const OwnerWidgetWrapper = ({
       showSearchBar
       className="edit-owner-dropdown"
       controlledSearchStr={searchText}
-      dropDownList={listOwners}
+      dropDownList={ownersList}
       getTotalCountForGroup={handleTotalCountForGroup}
       groupType={ownerGroupList.length > 1 ? 'tab' : 'label'}
       isLoading={isUserLoading}

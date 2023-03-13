@@ -54,7 +54,7 @@ const GlossaryHeader = ({
     useState<boolean>(false);
   const [listVisible, setListVisible] = useState<boolean>(false);
   const [isUserLoading, setIsUserLoading] = useState<boolean>(false);
-  const [listOwners, setListOwners] = useState<OwnerItem[]>([]);
+  const [ownersList, setOwnersList] = useState<OwnerItem[]>([]);
   const [searchText, setSearchText] = useState<string>('');
   const [showReviewerModal, setShowReviewerModal] = useState<boolean>(false);
 
@@ -100,16 +100,16 @@ const GlossaryHeader = ({
       searchFormattedUsersAndTeams(searchQuery, from)
         .then((res) => {
           const { users, teams } = res;
-          setListOwners(getOwnerList(users, teams, false, searchQuery));
+          setOwnersList(getOwnerList(users, teams, false, searchQuery));
         })
         .catch(() => {
-          setListOwners([]);
+          setOwnersList([]);
         })
         .finally(() => {
           setIsUserLoading(false);
         });
     },
-    [setListOwners, setIsUserLoading]
+    [setOwnersList, setIsUserLoading]
   );
   const handleSelectOwnerDropdown = () => {
     setListVisible((visible) => {
@@ -128,16 +128,16 @@ const GlossaryHeader = ({
       suggestFormattedUsersAndTeams(qSearchText)
         .then((res) => {
           const { users, teams } = res;
-          setListOwners(getOwnerList(users, teams, false, qSearchText));
+          setOwnersList(getOwnerList(users, teams, false, qSearchText));
         })
         .catch(() => {
-          setListOwners([]);
+          setOwnersList([]);
         })
         .finally(() => {
           setIsUserLoading(false);
         });
     },
-    [setListOwners, setIsUserLoading]
+    [setOwnersList, setIsUserLoading]
   );
 
   const debouncedOnChange = useCallback(
@@ -182,7 +182,7 @@ const GlossaryHeader = ({
     _e: React.MouseEvent<HTMLElement, MouseEvent>,
     value = ''
   ) => {
-    const owner = listOwners.find((item) => item.value === value);
+    const owner = ownersList.find((item) => item.value === value);
 
     if (owner) {
       const newOwner = prepareOwner({
@@ -337,7 +337,7 @@ const GlossaryHeader = ({
                   showEmptyList
                   showSearchBar
                   controlledSearchStr={searchText}
-                  dropDownList={listOwners}
+                  dropDownList={ownersList}
                   groupType="tab"
                   horzPosRight={false}
                   isLoading={isUserLoading}
