@@ -22,12 +22,9 @@ import { Table } from '../../../generated/entity/data/table';
 import { EntityReference } from '../../../generated/type/entityReference';
 import { useAuth } from '../../../hooks/authHooks';
 import { getEntityName } from '../../../utils/CommonUtils';
-import { getOwnerList } from '../../../utils/ManageUtils';
+import { getOwnerList, OwnerItem } from '../../../utils/ManageUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import {
-  isCurrentUserAdmin,
-  searchFormattedUsersAndTeams,
-} from '../../../utils/UserDataUtils';
+import { searchFormattedUsersAndTeams } from '../../../utils/UserDataUtils';
 import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
 import DropDownList from '../../dropdown/DropDownList';
 import './OwnerWidgetWrapper.style.less';
@@ -56,14 +53,7 @@ const OwnerWidgetWrapper = ({
   const { isAdminUser } = useAuth();
   const [statusOwner, setStatusOwner] = useState<LoadingState>('initial');
 
-  const [listOwners, setListOwners] = useState<
-    {
-      name: string;
-      value: string | undefined;
-      group: string;
-      type: string;
-    }[]
-  >([]);
+  const [listOwners, setListOwners] = useState<OwnerItem[]>([]);
   const [isUserLoading, setIsUserLoading] = useState<boolean>(true);
   const [owner, setOwner] = useState(currentUser);
 
@@ -233,6 +223,7 @@ const OwnerWidgetWrapper = ({
   return visible ? (
     <DropDownList
       showEmptyList
+      showSearchBar
       className="edit-owner-dropdown"
       controlledSearchStr={searchText}
       dropDownList={listOwners}
@@ -241,7 +232,6 @@ const OwnerWidgetWrapper = ({
       isLoading={isUserLoading}
       listGroups={ownerGroupList}
       removeOwner={handleRemoveOwner}
-      showSearchBar={isCurrentUserAdmin()}
       value={owner?.id || ''}
       onSearchTextChange={handleSearchOwnerDropdown}
       onSelect={handleOwnerSelection}

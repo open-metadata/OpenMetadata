@@ -27,10 +27,9 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { getEntityName } from 'utils/CommonUtils';
-import { getOwnerList } from 'utils/ManageUtils';
+import { getOwnerList, OwnerItem } from 'utils/ManageUtils';
 import SVGIcons, { Icons } from 'utils/SvgUtils';
 import {
-  isCurrentUserAdmin,
   searchFormattedUsersAndTeams,
   suggestFormattedUsersAndTeams,
 } from 'utils/UserDataUtils';
@@ -55,7 +54,7 @@ const GlossaryHeader = ({
     useState<boolean>(false);
   const [listVisible, setListVisible] = useState<boolean>(false);
   const [isUserLoading, setIsUserLoading] = useState<boolean>(false);
-  const [listOwners, setListOwners] = useState(getOwnerList());
+  const [listOwners, setListOwners] = useState<OwnerItem[]>([]);
   const [searchText, setSearchText] = useState<string>('');
   const [showReviewerModal, setShowReviewerModal] = useState<boolean>(false);
 
@@ -336,6 +335,7 @@ const GlossaryHeader = ({
               {listVisible && (
                 <DropDownList
                   showEmptyList
+                  showSearchBar
                   controlledSearchStr={searchText}
                   dropDownList={listOwners}
                   groupType="tab"
@@ -343,7 +343,6 @@ const GlossaryHeader = ({
                   isLoading={isUserLoading}
                   listGroups={['Teams', 'Users']}
                   removeOwner={onRemoveOwner}
-                  showSearchBar={isCurrentUserAdmin()}
                   value={selectedData.owner?.id || ''}
                   onSearchTextChange={handleOwnerSearch}
                   onSelect={handleOwnerSelection}
