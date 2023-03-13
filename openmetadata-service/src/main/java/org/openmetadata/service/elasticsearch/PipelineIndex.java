@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import org.openmetadata.schema.entity.data.Pipeline;
+import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.Task;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.util.JsonUtils;
@@ -22,15 +23,22 @@ public class PipelineIndex implements ElasticSearchIndex {
     List<ElasticSearchSuggest> suggest = new ArrayList<>();
     List<ElasticSearchSuggest> serviceSuggest = new ArrayList<>();
     List<ElasticSearchSuggest> taskSuggest = new ArrayList<>();
+    List<TagLabel> tags = new ArrayList<>();
     suggest.add(ElasticSearchSuggest.builder().input(pipeline.getFullyQualifiedName()).weight(5).build());
     suggest.add(ElasticSearchSuggest.builder().input(pipeline.getDisplayName()).weight(10).build());
     serviceSuggest.add(ElasticSearchSuggest.builder().input(pipeline.getService().getName()).weight(5).build());
-    ParseTags parseTags = new ParseTags(ElasticSearchIndexUtils.parseTags(pipeline.getTags()));
+
     if (pipeline.getTasks() != null) {
       for (Task task : pipeline.getTasks()) {
         taskSuggest.add(ElasticSearchSuggest.builder().input(task.getName()).weight(5).build());
+        if (task.getTags() != null) {
+          tags.addAll(task.getTags());
+        }
       }
     }
+    tags.addAll(ElasticSearchIndexUtils.parseTags(pipeline.getTags()));
+    
+    ParseTags parseTags = new ParseTags(tags);
     doc.put("name", pipeline.getName() != null ? pipeline.getName() : pipeline.getDisplayName());
     doc.put("displayName", pipeline.getDisplayName() != null ? pipeline.getDisplayName() : pipeline.getName());
     doc.put("followers", ElasticSearchIndexUtils.parseFollowers(pipeline.getFollowers()));
