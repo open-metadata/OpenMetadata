@@ -39,6 +39,7 @@ export const CopyToClipboardButton: FunctionComponent<Props> = ({
 
   return (
     <Popover
+      destroyTooltipOnHide
       content={
         <span
           className="tw-text-grey-body tw-text-xs tw-font-medium tw-italic"
