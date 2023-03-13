@@ -84,6 +84,7 @@ interface Props {
   removeTier?: () => void;
   onRestoreEntity?: () => void;
   allowSoftDelete?: boolean;
+  isRecursiveDelete?: boolean;
 }
 
 const EntityPageInfo = ({
@@ -115,6 +116,7 @@ const EntityPageInfo = ({
   entityFieldTasks,
   removeTier,
   onRestoreEntity,
+  isRecursiveDelete = false,
   allowSoftDelete,
 }: Props) => {
   const history = useHistory();
@@ -456,6 +458,7 @@ const EntityPageInfo = ({
               entityId={entityId}
               entityName={entityName}
               entityType={entityType}
+              isRecursiveDelete={isRecursiveDelete}
               onAnnouncementClick={() => setIsAnnouncementDrawer(true)}
               onRestoreEntity={onRestoreEntity}
             />

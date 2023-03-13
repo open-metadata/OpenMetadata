@@ -759,6 +759,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
                   <>
                     <Col span={24}>
                       <EntityPageInfo
+                        isRecursiveDelete
                         allowSoftDelete={false}
                         canDelete={databaseSchemaPermission.Delete}
                         currentOwner={databaseSchema?.owner}

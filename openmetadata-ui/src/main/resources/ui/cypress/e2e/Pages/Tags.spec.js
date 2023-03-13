@@ -16,6 +16,7 @@ import {
   descriptionBox,
   interceptURL,
   verifyResponseStatusCode,
+  visitEntityDetailsPage,
 } from '../../common/common';
 import {
   DELETE_TERM,
@@ -153,6 +154,75 @@ describe('Tags page should work', () => {
   it('Use newly created tag to any entity should work', () => {
     const entity = SEARCH_ENTITY_TABLE.table_2;
     addNewTagToEntity(entity, `${NEW_TAG_CATEGORY.name}.${NEW_TAG.name}`);
+  });
+
+  it('Add tag at DatabaseSchema level should work', () => {
+    const entity = SEARCH_ENTITY_TABLE.table_2;
+    const term = `${NEW_TAG_CATEGORY.name}.${NEW_TAG.name}`;
+    const term2 = 'PersonalData.Personal';
+    visitEntityDetailsPage(entity.term, entity.serviceName, entity.entity);
+
+    cy.get(':nth-child(3) > .link-title')
+      .contains(entity.schemaName)
+      .should('exist')
+      .click();
+
+    cy.wait(500);
+
+    cy.get('[data-testid="tags"] > [data-testid="add-tag"]')
+      .should('be.visible')
+      .click();
+
+    cy.get('[data-testid="tag-selector"] input')
+      .should('be.visible')
+      .type(term);
+
+    cy.get('.ant-select-item-option-content')
+      .contains(term)
+      .should('be.visible')
+      .click();
+    cy.get(
+      '[data-testid="tags-wrapper"] > [data-testid="tag-container"]'
+    ).contains(term);
+    cy.get('[data-testid="saveAssociatedTag"]').should('be.visible').click();
+    cy.get('[data-testid="entity-tags"]')
+      .scrollIntoView()
+      .should('be.visible')
+      .contains(term);
+
+    cy.get('[data-testid="tag-thread-count"]').should('exist').contains(1);
+
+    // Create task to add tags
+    cy.get('[data-testid="request-entity-tags"] > [data-testid="image"]')
+      .should('exist')
+      .click();
+
+    cy.get(
+      '[data-testid="select-tags"] > .ant-select-selector > .ant-select-selection-overflow'
+    )
+      .should('be.visible')
+      .click()
+      .type(term2);
+    cy.get('.ant-select-item-option-content').contains(term2).click();
+
+    cy.get('[data-testid="tags-label"]').click();
+
+    cy.get('[data-testid="submit-test"]').should('be.visible').click();
+
+    // Accept the tag suggestion which is created
+    cy.get('.ant-btn-compact-first-item')
+      .should('be.visible')
+      .contains('Accept Suggestion')
+      .click();
+
+    cy.wait(500);
+
+    cy.get('[data-testid="entity-tags"]')
+      .scrollIntoView()
+      .should('be.visible')
+      .contains(term2);
+
+    cy.get('[data-testid="tag-thread-count"]').should('exist').contains(2);
   });
 
   it('Check Usage of tag and it should redirect to explore page with tags filter', () => {
