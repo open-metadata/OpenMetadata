@@ -45,7 +45,7 @@ class KinesisSource(MessagingServiceSource):
     def __init__(self, config: WorkflowSource, metadata_config: OpenMetadataConnection):
         super().__init__(config, metadata_config)
         self.generate_sample_data = self.config.sourceConfig.config.generateSampleData
-        self.kinesis = self.connection.client
+        self.kinesis = self.connection
 
     @classmethod
     def create(cls, config_dict, metadata_config: OpenMetadataConnection):
