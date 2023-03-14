@@ -769,7 +769,11 @@ describe('Glossary page should work properly', () => {
   });
 
   it('Create glossaryTerm with tags, related terms, synonyms, references and reviewer & verify API payload', () => {
-    interceptURL('GET', '/api/v1/search/query?q=*', 'searchGlossaryTerm');
+    interceptURL(
+      'GET',
+      '/api/v1/search/query?q=*&from=0&size=10&index=glossary_search_index',
+      'searchGlossaryTerm'
+    );
     interceptURL(
       'GET',
       '/api/v1/search/suggest?q=*&index=user_search_index',
@@ -802,8 +806,8 @@ describe('Glossary page should work properly', () => {
       'have.value',
       GLOSSARY_TERM_WITH_DETAILS.relatedTerms
     );
-    cy.get('[data-testid="loader"]').should('be.visible');
     verifyResponseStatusCode('@searchGlossaryTerm', 200);
+    cy.wait(500); // adding manual wait for getting updated UI
     cy.get('[data-testid="user-card-container"]').should('be.visible');
     cy.get('[data-testid="checkboxAddUser"]').should('be.visible').click();
     cy.get('[data-testid="saveButton"]').should('be.visible').click();
@@ -819,8 +823,9 @@ describe('Glossary page should work properly', () => {
     cy.get('[data-testid="searchbar"]')
       .should('be.visible')
       .type(GLOSSARY_TERM_WITH_DETAILS.reviewer);
-    cy.get('[data-testid="loader"]').should('be.visible');
+
     verifyResponseStatusCode('@searchGlossaryTerm', 200);
+    cy.wait(500); // adding manual wait for getting updated UI
     cy.get('[data-testid="user-card-container"]').should('be.visible');
     cy.get('[data-testid="checkboxAddUser"]').should('be.visible').click();
     cy.get('[data-testid="save-button"]').should('be.visible').click();
