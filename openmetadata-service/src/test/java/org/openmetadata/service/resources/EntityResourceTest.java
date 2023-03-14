@@ -1249,10 +1249,13 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
     deleteEntity(entityId, ADMIN_AUTH_HEADERS);
 
-    Map<String, String> queryParams = new HashMap<>();
-    queryParams.put("include", "deleted");
-    entity = getEntity(entityId, queryParams, FIELD_FOLLOWERS, ADMIN_AUTH_HEADERS);
-    TestUtils.existsInEntityReferenceList(entity.getFollowers(), user1.getId(), true);
+    // in case of only soft delete
+    if (supportsSoftDelete) {
+      Map<String, String> queryParams = new HashMap<>();
+      queryParams.put("include", "deleted");
+      entity = getEntity(entityId, queryParams, FIELD_FOLLOWERS, ADMIN_AUTH_HEADERS);
+      TestUtils.existsInEntityReferenceList(entity.getFollowers(), user1.getId(), true);
+    }
   }
 
   @Test
