@@ -21,7 +21,7 @@ import {
   UrlParams,
 } from 'components/Explore/explore.interface';
 import { SORT_ORDER } from 'enums/common.enum';
-import { has, isEmpty, isNil, isString } from 'lodash';
+import { get, has, isEmpty, isNil, isString } from 'lodash';
 import Qs from 'qs';
 import React, {
   FunctionComponent,
@@ -70,6 +70,9 @@ const ExplorePage: FunctionComponent = () => {
   const [searchHitCounts, setSearchHitCounts] = useState<SearchHitCounts>();
 
   const [isLoading, setIsLoading] = useState(true);
+
+  const [isElasticSearchIssue, setIsElasticSearchIssue] =
+    useState<boolean>(false);
 
   const parsedSearch = useMemo(
     () =>
@@ -300,7 +303,16 @@ const ExplorePage: FunctionComponent = () => {
         }
       ),
     ])
-      .catch((err) => showErrorToast(err))
+      .catch((err) => {
+        showErrorToast(err);
+        if (
+          get(err, 'response.data.responseMessage', '').includes(
+            'elasticsearch'
+          )
+        ) {
+          setIsElasticSearchIssue(true);
+        }
+      })
       .finally(() => setIsLoading(false));
   }, [
     searchIndex,
@@ -330,6 +342,7 @@ const ExplorePage: FunctionComponent = () => {
     <PageContainerV1>
       <Explore
         aggregations={aggregations}
+        isElasticSearchIssue={isElasticSearchIssue}
         loading={isLoading}
         page={page}
         postFilter={postFilter}

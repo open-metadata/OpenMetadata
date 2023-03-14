@@ -78,6 +78,7 @@ export interface ExploreProps {
   loading?: boolean;
 
   queryFilter?: QueryFilterInterface;
+  isElasticSearchIssue?: boolean;
 }
 
 export interface ExploreQuickFilterField {
