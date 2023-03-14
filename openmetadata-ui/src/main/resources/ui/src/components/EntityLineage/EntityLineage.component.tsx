@@ -210,10 +210,6 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
     params[getParamByEntityType(entityType)] ?? params['entityFQN'];
   const history = useHistory();
 
-  useEffect(() => {
-    fetchLineageData();
-  }, []);
-
   const onFullScreenClick = useCallback(() => {
     history.push(getLineageViewPath(entityType, entityFQN));
   }, [entityType, entityFQN]);
@@ -222,12 +218,8 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
     setIsLineageLoading(true);
     try {
       const res = await getLineageByFQN(entityFQN, entityType);
-      if (res) {
-        setEntityLineage(res);
-        setUpdatedLineageData(res);
-      } else {
-        showErrorToast(jsonData['api-error-messages']['fetch-lineage-error']);
-      }
+      setEntityLineage(res);
+      setUpdatedLineageData(res);
     } catch (err) {
       showErrorToast(
         err as AxiosError,
@@ -249,10 +241,6 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
         if (res && entityLineage) {
           setLeafNode(res, pos);
           setEntityLineage(getEntityLineage(entityLineage, res, pos));
-        } else {
-          showErrorToast(
-            jsonData['api-error-messages']['fetch-lineage-node-error']
-          );
         }
       } catch (err) {
         showErrorToast(
@@ -266,20 +254,23 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
     [entityLineage]
   );
 
-  const setLeafNode = useCallback((val: EntityLineage, pos: LineagePos) => {
-    if (pos === 'to' && val.downstreamEdges?.length === 0) {
-      setLeafNodes((prev) => ({
-        ...prev,
-        downStreamNode: [...(prev.downStreamNode ?? []), val.entity.id],
-      }));
-    }
-    if (pos === 'from' && val.upstreamEdges?.length === 0) {
-      setLeafNodes((prev) => ({
-        ...prev,
-        upStreamNode: [...(prev.upStreamNode ?? []), val.entity.id],
-      }));
-    }
-  }, []);
+  const setLeafNode = useCallback(
+    (val: EntityLineage, pos: LineagePos) => {
+      if (pos === 'to' && val.downstreamEdges?.length === 0) {
+        setLeafNodes((prev) => ({
+          ...prev,
+          downStreamNode: [...(prev.downStreamNode ?? []), val.entity.id],
+        }));
+      }
+      if (pos === 'from' && val.upstreamEdges?.length === 0) {
+        setLeafNodes((prev) => ({
+          ...prev,
+          upStreamNode: [...(prev.upStreamNode ?? []), val.entity.id],
+        }));
+      }
+    },
+    [setLeafNodes]
+  );
 
   const onExitFullScreenViewClick = useCallback(() => {
     const path = getEntityLineagePath(entityType, entityFQN);
@@ -1517,6 +1508,10 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
       });
     }
   };
+
+  useEffect(() => {
+    fetchLineageData();
+  }, []);
 
   useEffect(() => {
     if (!entityLineage) {
