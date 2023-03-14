@@ -124,15 +124,19 @@ def get_columns(self, connection, table_name, schema=None, **kw):
             "comment": _comment,
         }
         if col_type in {"array", "struct", "map"}:
-            if db_name is not None:
+            if db_name and schema:
                 rows = dict(
                     connection.execute(
-                        f"DESCRIBE {db_name}.{table_name} {col_name}"
+                        f"DESCRIBE {db_name}.{schema}.{table_name} {col_name}"
                     ).fetchall()
                 )
             else:
                 rows = dict(
-                    connection.execute(f"DESCRIBE {table_name} {col_name}").fetchall()
+                    connection.execute(
+                        f"DESCRIBE {schema}.{table_name} {col_name}"
+                        if schema
+                        else f"DESCRIBE {table_name} {col_name}"
+                    ).fetchall()
                 )
 
             col_info["raw_data_type"] = rows["data_type"]
@@ -201,13 +205,16 @@ def get_table_comment(  # pylint: disable=unused-argument
 def get_view_definition(
     self, connection, table_name, schema=None, **kw  # pylint: disable=unused-argument
 ):
-    return get_view_definition_wrapper(
-        self,
-        connection,
-        table_name=table_name,
-        schema=schema,
-        query=DATABRICKS_VIEW_DEFINITIONS,
-    )
+    schema_name = [row[0] for row in connection.execute("SHOW SCHEMAS")]
+    if "information_schema" in schema_name:
+        return get_view_definition_wrapper(
+            self,
+            connection,
+            table_name=table_name,
+            schema=schema,
+            query=DATABRICKS_VIEW_DEFINITIONS,
+        )
+    return None
 
 
 DatabricksDialect.get_table_comment = get_table_comment
