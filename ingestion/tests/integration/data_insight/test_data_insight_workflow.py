@@ -156,7 +156,7 @@ class DataInsightWorkflowTests(unittest.TestCase):
             metricType="PERCENTAGE",
         )
 
-        # cls.metadata.create_kpi(create)
+        cls.metadata.create_kpi(create)
 
         table: Table = cls.metadata.get_by_name(
             Table, 'sample_data.ecommerce_db.shopify."dim.shop"'
