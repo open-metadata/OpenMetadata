@@ -64,7 +64,8 @@
       "description": "Type of database service such as MySQL, BigQuery, Snowflake, Redshift, Postgres...",
       "javaInterfaces": ["org.openmetadata.schema.EnumInterface"],
       "type": "string",
-      "enum": ["TestSuite"]
+      "enum": ["TestSuite"],
+      "default": "TestSuite"
     },
     "owner": {
       "description": "Owner of this TestCase definition.",
