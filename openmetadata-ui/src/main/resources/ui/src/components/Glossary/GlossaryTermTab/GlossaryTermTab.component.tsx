@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Row, Table, Tag, Tooltip } from 'antd';
+import { Button, Col, Modal, Row, Table, Tag, Tooltip } from 'antd';
 import { ColumnsType, ExpandableConfig } from 'antd/lib/table/interface';
 import { AxiosError } from 'axios';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
@@ -23,13 +23,22 @@ import { ResourceEntity } from 'components/PermissionProvider/PermissionProvider
 import { FQN_SEPARATOR_CHAR } from 'constants/char.constants';
 import { API_RES_MAX_SIZE } from 'constants/constants';
 import { NO_PERMISSION_FOR_ACTION } from 'constants/HelperTextUtil';
-import { TagLabel } from 'generated/entity/data/glossaryTerm';
+import { TABLE_CONSTANTS } from 'constants/Teams.constants';
+import { compare } from 'fast-json-patch';
+import { GlossaryTerm, TagLabel } from 'generated/entity/data/glossaryTerm';
 import { Operation } from 'generated/entity/policies/policy';
 import { isEmpty } from 'lodash';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { DndProvider } from 'react-dnd';
+import { HTML5Backend } from 'react-dnd-html5-backend';
 import { useTranslation } from 'react-i18next';
 import { Link, useHistory, useParams } from 'react-router-dom';
-import { getGlossaryTerms, ListGlossaryTermsParams } from 'rest/glossaryAPI';
+import {
+  getGlossaryTerms,
+  ListGlossaryTermsParams,
+  patchGlossaryTerm,
+} from 'rest/glossaryAPI';
+import { Transi18next } from 'utils/CommonUtils';
 import { getEntityName } from 'utils/EntityUtils';
 import {
   createGlossaryTermTree,
@@ -45,8 +54,10 @@ import {
 import { getTableExpandableConfig } from 'utils/TableUtils';
 import { showErrorToast } from 'utils/ToastUtils';
 import {
+  DraggableBodyRowProps,
   GlossaryTermTabProps,
   ModifiedGlossaryTerm,
+  MoveGlossaryTermType,
 } from './GlossaryTermTab.interface';
 
 const GlossaryTermTab = ({
@@ -65,6 +76,10 @@ const GlossaryTermTab = ({
     []
   );
   const [filterData, setFilterData] = useState<ModifiedGlossaryTerm[]>([]);
+  const [movedGlossaryTerm, setMovedGlossaryTerm] =
+    useState<MoveGlossaryTermType>();
+  const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
+  const [isTableLoading, setIsTableLoading] = useState(false);
 
   const createGlossaryTermPermission = useMemo(
     () =>
@@ -176,9 +191,10 @@ const GlossaryTermTab = ({
 
   const fetchGlossaryTerm = async (
     params?: ListGlossaryTermsParams,
-    updateChild = false
+    updateChild = false,
+    isLoading = true
   ) => {
-    !updateChild && setIsLoading(true);
+    setIsLoading(isLoading);
     try {
       const { data } = await getGlossaryTerms({
         ...params,
@@ -220,15 +236,60 @@ const GlossaryTermTab = ({
 
   const expandableConfig: ExpandableConfig<ModifiedGlossaryTerm> = useMemo(
     () => ({
-      ...getTableExpandableConfig<ModifiedGlossaryTerm>(),
+      ...getTableExpandableConfig<ModifiedGlossaryTerm>(true),
       onExpand: (isOpen, record) => {
         if (isOpen) {
-          fetchGlossaryTerm({ parent: record.id }, true);
+          fetchGlossaryTerm({ parent: record.id }, true, false);
         }
       },
     }),
     [fetchGlossaryTerm]
   );
+
+  const handleMoveRow = useCallback(
+    async (dragRecord: GlossaryTerm, dropRecord: GlossaryTerm) => {
+      if (dragRecord.id === dropRecord.id) {
+        return;
+      }
+
+      setMovedGlossaryTerm({
+        from: dragRecord,
+        to: dropRecord,
+      });
+      setIsModalOpen(true);
+    },
+    []
+  );
+
+  const handleChangeGlossaryTerm = async () => {
+    if (movedGlossaryTerm) {
+      setIsTableLoading(true);
+      const updatedGlossaryTerm = {
+        ...movedGlossaryTerm.from,
+        parent: {
+          fullyQualifiedName: movedGlossaryTerm.to.fullyQualifiedName,
+        },
+      };
+      const jsonPatch = compare(
+        movedGlossaryTerm.from as GlossaryTerm,
+        updatedGlossaryTerm
+      );
+
+      try {
+        await patchGlossaryTerm(movedGlossaryTerm.from?.id || '', jsonPatch);
+        fetchGlossaryTerm(
+          { glossary: glossaryId, parent: glossaryTermId },
+          false,
+          false
+        );
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      } finally {
+        setIsTableLoading(false);
+        setIsModalOpen(false);
+      }
+    }
+  };
 
   useEffect(() => {
     fetchGlossaryTerm({ glossary: glossaryId, parent: glossaryTermId });
@@ -297,15 +358,29 @@ const GlossaryTermTab = ({
       </Col>
       <Col span={24}>
         {filterData.length > 0 ? (
-          <Table
-            bordered
-            columns={columns}
-            dataSource={filterData}
-            expandable={expandableConfig}
-            pagination={false}
-            rowKey="name"
-            size="small"
-          />
+          <DndProvider backend={HTML5Backend}>
+            <Table
+              bordered
+              className="drop-over-background"
+              columns={columns}
+              components={TABLE_CONSTANTS}
+              dataSource={filterData}
+              expandable={expandableConfig}
+              loading={isTableLoading}
+              pagination={false}
+              rowKey="name"
+              size="small"
+              onRow={(record, index) => {
+                const attr = {
+                  index,
+                  handleMoveRow,
+                  record,
+                };
+
+                return attr as DraggableBodyRowProps;
+              }}
+            />
+          </DndProvider>
         ) : (
           <ErrorPlaceHolder>
             {t('message.no-entity-found-for-name', {
@@ -314,6 +389,29 @@ const GlossaryTermTab = ({
             })}
           </ErrorPlaceHolder>
         )}
+        <Modal
+          centered
+          destroyOnClose
+          closable={false}
+          confirmLoading={isTableLoading}
+          data-testid="confirmation-modal"
+          okText={t('label.confirm')}
+          open={isModalOpen}
+          title={t('label.move-the-entity', {
+            entity: t('label.glossary-term'),
+          })}
+          onCancel={() => setIsModalOpen(false)}
+          onOk={handleChangeGlossaryTerm}>
+          <Transi18next
+            i18nKey="message.entity-transfer-message"
+            renderElement={<strong />}
+            values={{
+              from: movedGlossaryTerm?.from.name,
+              to: movedGlossaryTerm?.to.name,
+              entity: t('label.term-lowercase'),
+            }}
+          />
+        </Modal>
       </Col>
     </Row>
   );
