@@ -13,7 +13,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
 
-public class TableIndex implements ElasticSearchIndex {
+public class TableIndex implements ColumnIndex {
   private static final List<String> excludeFields =
       List.of(
           "sampleData",
@@ -80,30 +80,6 @@ public class TableIndex implements ElasticSearchIndex {
       String[] fqnPartsWithoutDB = fqnPartsWithoutService[1].split(Pattern.quote(Entity.SEPARATOR), 2);
       if (fqnPartsWithoutDB.length == 2) {
         suggest.add(ElasticSearchSuggest.builder().input(fqnPartsWithoutDB[1]).weight(5).build());
-      }
-    }
-  }
-
-  private void parseColumns(List<Column> columns, List<FlattenColumn> flattenColumns, String parentColumn) {
-    Optional<String> optParentColumn = Optional.ofNullable(parentColumn).filter(Predicate.not(String::isEmpty));
-    List<TagLabel> tags = new ArrayList<>();
-    for (Column col : columns) {
-      String columnName = col.getName();
-      if (optParentColumn.isPresent()) {
-        columnName = FullyQualifiedName.add(optParentColumn.get(), columnName);
-      }
-      if (col.getTags() != null) {
-        tags = col.getTags();
-      }
-
-      FlattenColumn flattenColumn = FlattenColumn.builder().name(columnName).description(col.getDescription()).build();
-
-      if (!tags.isEmpty()) {
-        flattenColumn.tags = tags;
-      }
-      flattenColumns.add(flattenColumn);
-      if (col.getChildren() != null) {
-        parseColumns(col.getChildren(), flattenColumns, col.getName());
       }
     }
   }

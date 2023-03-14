@@ -3,16 +3,12 @@ package org.openmetadata.service.elasticsearch;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
-import java.util.function.Predicate;
 import org.openmetadata.schema.entity.data.Container;
-import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
 
-public class ContainerIndex {
+public class ContainerIndex implements ColumnIndex {
   private static final List<String> excludeFields = List.of("changeDescription");
 
   final Container container;
@@ -55,29 +51,5 @@ public class ContainerIndex {
     doc.put("entityType", Entity.CONTAINER);
     doc.put("serviceType", container.getServiceType());
     return doc;
-  }
-
-  private void parseColumns(List<Column> columns, List<FlattenColumn> flattenColumns, String parentColumn) {
-    Optional<String> optParentColumn = Optional.ofNullable(parentColumn).filter(Predicate.not(String::isEmpty));
-    List<TagLabel> tags = new ArrayList<>();
-    for (Column col : columns) {
-      String columnName = col.getName();
-      if (optParentColumn.isPresent()) {
-        columnName = FullyQualifiedName.add(optParentColumn.get(), columnName);
-      }
-      if (col.getTags() != null) {
-        tags = col.getTags();
-      }
-
-      FlattenColumn flattenColumn = FlattenColumn.builder().name(columnName).description(col.getDescription()).build();
-
-      if (!tags.isEmpty()) {
-        flattenColumn.tags = tags;
-      }
-      flattenColumns.add(flattenColumn);
-      if (col.getChildren() != null) {
-        parseColumns(col.getChildren(), flattenColumns, col.getName());
-      }
-    }
   }
 }
