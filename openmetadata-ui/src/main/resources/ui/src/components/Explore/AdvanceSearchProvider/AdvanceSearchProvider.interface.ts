@@ -26,3 +26,5 @@ export interface AdvanceSearchContext {
   config: Config;
   onReset: () => void;
 }
+
+export type FilterObject = Record<string, string[]>;
