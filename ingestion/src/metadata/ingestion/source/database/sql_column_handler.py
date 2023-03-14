@@ -81,8 +81,8 @@ class SqlColumnHandlerMixin:
         data_type_display = None
         arr_data_type = None
         parsed_string = None
-        if "raw_data_type" in column and column["raw_data_type"] is not None:
-            column["raw_data_type"] = self.parse_raw_data_type(column["raw_data_type"])
+        if column.get("raw_data_type") and column.get("is_complex"):
+            column["raw_data_type"] = self.clean_raw_data_type(column["raw_data_type"])
             if not column["raw_data_type"].startswith(schema):
                 parsed_string = ColumnTypeParser._parse_datatype_string(  # pylint: disable=protected-access
                     column["raw_data_type"]
@@ -271,13 +271,14 @@ class SqlColumnHandlerMixin:
                         # Passing whitespace if column name is an empty string
                         # since pydantic doesn't accept empty string
                         if column["name"] else " ",
-                        description=column.get("comment", None),
+                        description=column.get("comment"),
                         dataType=col_type,
                         dataTypeDisplay=data_type_display,
                         dataLength=col_data_length,
                         constraint=col_constraint,
                         children=children,
                         arrayDataType=arr_data_type,
+                        systemDataType=column.get("raw_data_type"),
                     )
                     if precision:
                         om_column.precision = precision[0]
@@ -331,5 +332,5 @@ class SqlColumnHandlerMixin:
             constraint = Constraint.UNIQUE
         return constraint
 
-    def parse_raw_data_type(self, raw_data_type):
+    def clean_raw_data_type(self, raw_data_type):
         return raw_data_type

@@ -244,6 +244,10 @@
           "description": "Data type of the column (int, date etc.).",
           "$ref": "#/definitions/dataType"
         },
+        "systemDataType": {
+          "description": "Store the raw system data type of column.",
+          "type": "string"
+        },
         "arrayDataType": {
           "description": "Data type used array in dataType. For example, `array<int>` has dataType as `array` and arrayDataType as `int`.",
           "$ref": "#/definitions/dataType"

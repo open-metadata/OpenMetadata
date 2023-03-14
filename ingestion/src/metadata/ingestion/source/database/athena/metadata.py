@@ -35,6 +35,7 @@ from metadata.ingestion.source.database.common_db_source import (
     TableNameAndType,
 )
 from metadata.utils.logger import ingestion_logger
+from metadata.utils.sqlalchemy_utils import is_complex_type
 
 logger = ingestion_logger()
 
@@ -104,15 +105,6 @@ def _get_column_type(self, type_):
     return col_type(*args)
 
 
-def is_complex(type_: str):
-    return (
-        type_.startswith("array")
-        or type_.startswith("map")
-        or type_.startswith("struct")
-        or type_.startswith("row")
-    )
-
-
 @reflection.cache
 def get_columns(self, connection, table_name, schema=None, **kw):
     """
@@ -129,7 +121,8 @@ def get_columns(self, connection, table_name, schema=None, **kw):
             "default": None,
             "autoincrement": False,
             "comment": c.comment,
-            "raw_data_type": c.type if is_complex(c.type) else None,
+            "raw_data_type": c.type,
+            "is_complex": is_complex_type(c.type),
             "dialect_options": {"awsathena_partition": None},
         }
         for c in metadata.columns
@@ -142,7 +135,8 @@ def get_columns(self, connection, table_name, schema=None, **kw):
             "default": None,
             "autoincrement": False,
             "comment": c.comment,
-            "raw_data_type": c.type if is_complex(c.type) else None,
+            "raw_data_type": c.type,
+            "is_complex": is_complex_type(c.type),
             "dialect_options": {"awsathena_partition": True},
         }
         for c in metadata.partition_keys

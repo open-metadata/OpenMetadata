@@ -208,19 +208,21 @@ def _get_column_info(
         default_type, default_expression
     )
 
+    raw_type = format_type.lower().replace("(", "<").replace(")", ">")
     result = {
         "name": name,
         "type": col_type,
         "nullable": format_type.startswith("Nullable("),
         "default": col_default,
         "comment": comment or None,
+        "raw_data_type": raw_type,
     }
-    raw_type = format_type.lower().replace("(", "<").replace(")", ">")
+
     if col_type in [Map, Array, Tuple, Enum]:
         result["display_type"] = raw_type
 
     if col_type == Array:
-        result["raw_data_type"] = raw_type
+        result["is_complex"] = True
     return result
 
 

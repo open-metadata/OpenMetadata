@@ -66,3 +66,12 @@ def get_schema_descriptions(engine: Engine, query: str):
     for row in results:
         schema_desc_map[row.schema_name] = row.comment
     return schema_desc_map
+
+
+def is_complex_type(col_type: str):
+    return (
+        col_type.lower().startswith("array")
+        or col_type.lower().startswith("map")
+        or col_type.lower().startswith("struct")
+        or col_type.lower().startswith("row")
+    )
