@@ -19,7 +19,6 @@ from sqlalchemy import sql
 from sqlalchemy.dialects.postgresql.base import PGDialect, ischema_names
 from sqlalchemy.engine import reflection
 from sqlalchemy.engine.reflection import Inspector
-from sqlalchemy.sql.sqltypes import String
 
 from metadata.generated.schema.api.classification.createClassification import (
     CreateClassificationRequest,
@@ -42,6 +41,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
+from metadata.ingestion.source.database.column_type_parser import create_sqlalchemy_type
 from metadata.ingestion.source.database.common_db_source import (
     CommonDbSourceService,
     TableNameAndType,
@@ -82,25 +82,23 @@ RELKIND_MAP = {
 }
 
 
-class GEOMETRY(String):
-    """The SQL GEOMETRY type."""
-
-    __visit_name__ = "GEOMETRY"
-
-
-class POINT(String):
-    """The SQL POINT type."""
-
-    __visit_name__ = "POINT"
-
-
-class POLYGON(String):
-    """The SQL GEOMETRY type."""
-
-    __visit_name__ = "POLYGON"
-
-
-ischema_names.update({"geometry": GEOMETRY, "point": POINT, "polygon": POLYGON})
+ischema_names.update(
+    {
+        "geometry": create_sqlalchemy_type("GEOMETRY"),
+        "point": create_sqlalchemy_type("POINT"),
+        "polygon": create_sqlalchemy_type("POLYGON"),
+        "box": create_sqlalchemy_type("BOX"),
+        "circle": create_sqlalchemy_type("CIRCLE"),
+        "line": create_sqlalchemy_type("LINE"),
+        "lseg": create_sqlalchemy_type("LSEG"),
+        "path": create_sqlalchemy_type("PATH"),
+        "pg_lsn": create_sqlalchemy_type("PG_LSN"),
+        "pg_snapshot": create_sqlalchemy_type("PG_SNAPSHOT"),
+        "tsquery": create_sqlalchemy_type("TSQUERY"),
+        "txid_snapshot": create_sqlalchemy_type("TXID_SNAPSHOT"),
+        "xml": create_sqlalchemy_type("XML"),
+    }
+)
 
 
 @reflection.cache

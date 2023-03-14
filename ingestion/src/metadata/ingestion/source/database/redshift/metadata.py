@@ -26,6 +26,7 @@ from sqlalchemy.engine import reflection
 from sqlalchemy.engine.reflection import Inspector
 from sqlalchemy.sql import sqltypes
 from sqlalchemy_redshift.dialect import (
+    REDSHIFT_ISCHEMA_NAMES,
     RedshiftDialect,
     RedshiftDialectMixin,
     RelationKey,
@@ -49,6 +50,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.ingestion.api.source import InvalidSourceException
+from metadata.ingestion.source.database.column_type_parser import create_sqlalchemy_type
 from metadata.ingestion.source.database.common_db_source import (
     CommonDbSourceService,
     TableNameAndType,
@@ -73,7 +75,10 @@ sa_version = Version(sa.__version__)
 logger = ingestion_logger()
 
 ischema_names = pg_ischema_names
+GEOGRAPHY = create_sqlalchemy_type("GEOGRAPHY")
+ischema_names["geography"] = GEOGRAPHY
 ischema_names.update({"binary varying": sqltypes.VARBINARY})
+ischema_names.update(REDSHIFT_ISCHEMA_NAMES)
 
 # pylint: disable=protected-access
 @reflection.cache

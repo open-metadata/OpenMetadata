@@ -20,6 +20,8 @@ from google.cloud.bigquery.client import Client
 from google.cloud.datacatalog_v1 import PolicyTagManagerClient
 from sqlalchemy import inspect
 from sqlalchemy.engine.reflection import Inspector
+from sqlalchemy.sql.sqltypes import Interval
+from sqlalchemy.types import UserDefinedType
 from sqlalchemy_bigquery import BigQueryDialect, _types
 from sqlalchemy_bigquery._types import _get_sqla_column_type
 
@@ -69,9 +71,23 @@ from metadata.utils import fqn
 from metadata.utils.filters import filter_by_database
 from metadata.utils.logger import ingestion_logger
 
+
+class BQ_JSON(UserDefinedType):
+    """The SQL JSON type."""
+
+    def get_col_spec(self, **kw):
+        return "JSON"
+
+
 logger = ingestion_logger()
-GEOGRAPHY = create_sqlalchemy_type("GEOGRAPHY")
-_types._type_map["GEOGRAPHY"] = GEOGRAPHY  # pylint: disable=protected-access
+# pylint: disable=protected-access
+_types._type_map.update(
+    {
+        "GEOGRAPHY": create_sqlalchemy_type("GEOGRAPHY"),
+        "JSON": BQ_JSON,
+        "INTERVAL": Interval,
+    }
+)
 
 
 def get_columns(bq_schema):

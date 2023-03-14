@@ -73,7 +73,7 @@ class SqlColumnHandlerMixin:
         )
         if col_type == "ARRAY":
             if arr_data_type is None:
-                arr_data_type = DataType.VARCHAR.value
+                arr_data_type = DataType.UNKNOWN.value
             data_type_display = f"array<{arr_data_type}>"
         return data_type_display
 
@@ -100,7 +100,7 @@ class SqlColumnHandlerMixin:
                     arr_data_type = ColumnTypeParser.get_column_type(arr_data_type[0])
                 data_type_display = column["type"]
             if col_type == DataType.ARRAY.value and not arr_data_type:
-                arr_data_type = DataType.VARCHAR.value
+                arr_data_type = DataType.UNKNOWN.value
             data_type_display = data_type_display or column.get("display_type")
         return data_type_display, arr_data_type, parsed_string
 
@@ -253,10 +253,10 @@ class SqlColumnHandlerMixin:
                         col_type, column["type"]
                     )
                     if col_type is None:
-                        col_type = DataType.VARCHAR.name
+                        col_type = DataType.UNKNOWN.name
                         data_type_display = col_type.lower()
                         logger.warning(
-                            f"Unknown type {repr(column['type'])} mapped to VARCHAR: {column['name']}"
+                            f"Unknown type {repr(column['type'])}: {column['name']}"
                         )
                     data_type_display = self._get_display_datatype(
                         data_type_display,

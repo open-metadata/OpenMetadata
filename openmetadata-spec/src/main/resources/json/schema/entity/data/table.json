@@ -123,7 +123,25 @@
         "ERROR",
         "FIXED",
         "RECORD",
-        "NULL"
+        "NULL",
+        "SUPER",
+        "HLLSKETCH",
+        "BOX",
+        "CIRCLE",
+        "LINE",
+        "LSEG",
+        "PATH",
+        "PG_LSN",
+        "PG_SNAPSHOT",
+        "TSQUERY",
+        "TXID_SNAPSHOT",
+        "XML",
+        "MACADDR",
+        "MACADDR8",
+        "TSVECTOR",
+        "UNKNOWN",
+        "CIDR",
+        "INET"
       ]
     },
     "constraint": {

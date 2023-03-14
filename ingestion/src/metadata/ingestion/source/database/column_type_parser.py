@@ -194,6 +194,26 @@ class ColumnTypeParser:
         "POLYGON": "POLYGON",
         "AggregateFunction()": "AGGREGATEFUNCTION",
         "BYTEA": "BYTEA",
+        "UNKNOWN": "UNKNOWN",
+        # redshift
+        "HLLSKETCH": "HLLSKETCH",
+        "SUPER": "SUPER",
+        # postgres
+        "BOX": "BOX",
+        "CIRCLE": "CIRCLE",
+        "LINE": "LINE",
+        "LSEG": "LSEG",
+        "PATH": "PATH",
+        "PG_LSN": "PG_LSN",
+        "PG_SNAPSHOT": "PG_SNAPSHOT",
+        "TSQUERY": "TSQUERY",
+        "TXID_SNAPSHOT": "TXID_SNAPSHOT",
+        "XML": "XML",
+        "TSVECTOR": "TSVECTOR",
+        "MACADDR": "MACADDR",
+        "MACADDR8": "MACADDR8",
+        "CIDR": "CIDR",
+        "INET": "INET",
     }
 
     _COMPLEX_TYPE = re.compile("^(struct|map|array|uniontype)")
@@ -225,7 +245,7 @@ class ColumnTypeParser:
         if column_type_result:
             return column_type_result
 
-        return ColumnTypeParser._SOURCE_TYPE_TO_OM_TYPE.get("VARCHAR")
+        return ColumnTypeParser._SOURCE_TYPE_TO_OM_TYPE.get("UNKNOWN")
 
     @staticmethod
     def get_column_type_mapping(column_type: Any) -> str:
