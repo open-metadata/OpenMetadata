@@ -613,7 +613,7 @@ const EntityTable = ({
         dataIndex: 'name',
         key: 'name',
         accessor: 'name',
-        width: 250,
+        width: 220,
         render: (name: Column['name'], record: Column) => (
           <Space
             align="start"
@@ -669,7 +669,7 @@ const EntityTable = ({
         dataIndex: 'tags',
         key: 'tags',
         accessor: 'tags',
-        width: 250,
+        width: 350,
         render: renderTags,
       },
     ],
