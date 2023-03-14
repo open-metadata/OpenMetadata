@@ -233,7 +233,11 @@ public class ElasticSearchIndexUtil {
       // Delete index
       elasticSearchIndexDefinition.deleteIndex(indexType);
       // Create index
-      elasticSearchIndexDefinition.createIndex(indexType, lang);
+      String language =
+          createRequest.getSearchIndexMappingLanguage() == null
+              ? lang
+              : createRequest.getSearchIndexMappingLanguage().value();
+      elasticSearchIndexDefinition.createIndex(indexType, language);
     }
 
     // Start fetching a list of Report Data and pushing them to ES
