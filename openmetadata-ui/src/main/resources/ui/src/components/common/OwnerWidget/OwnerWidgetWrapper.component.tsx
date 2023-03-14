@@ -11,15 +11,16 @@
  *  limitations under the License.
  */
 
+import DropDownList from 'components/dropdown/DropDownList';
+import { WILD_CARD_CHAR } from 'constants/char.constants';
+import { Table } from 'generated/entity/data/table';
+import { EntityReference } from 'generated/type/entityReference';
 import { debounce, isEqual, lowerCase } from 'lodash';
 import { LoadingState } from 'Models';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { WILD_CARD_CHAR } from '../../../constants/char.constants';
-import { Table } from '../../../generated/entity/data/table';
-import { EntityReference } from '../../../generated/type/entityReference';
-import { getOwnerList, OwnerItem } from '../../../utils/ManageUtils';
-import { searchFormattedUsersAndTeams } from '../../../utils/UserDataUtils';
-import DropDownList from '../../dropdown/DropDownList';
+import { getOwnerList, OwnerItem } from 'utils/ManageUtils';
+import { searchFormattedUsersAndTeams } from 'utils/UserDataUtils';
+
 import './OwnerWidgetWrapper.style.less';
 
 interface OwnerWidgetWrapperProps {
