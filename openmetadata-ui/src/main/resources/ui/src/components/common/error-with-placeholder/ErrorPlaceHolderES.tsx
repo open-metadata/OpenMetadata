@@ -12,18 +12,24 @@
  */
 
 import { Typography } from 'antd';
+import { ELASTICSEARCH_ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { uniqueId } from 'lodash';
 import { observer } from 'mobx-react';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import i18n from 'utils/i18next/LocalUtil';
 import AppState from '../../../AppState';
-import { CONNECTORS_DOCS } from '../../../constants/docs.constants';
+import {
+  CONNECTORS_DOCS,
+  INGESTION_DOCS,
+  LOCAL_DEPLOYMENT,
+  OMD_SLACK_LINK,
+} from '../../../constants/docs.constants';
 import { NoDataFoundPlaceHolder } from '../../../constants/Services.constant';
 import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
 
 type Props = {
-  type: 'error' | 'noData';
+  type: ELASTICSEARCH_ERROR_PLACEHOLDER_TYPE;
   errorMessage?: string;
   query?: string;
 };
@@ -33,25 +39,25 @@ const stepsData = [
     step: 1,
     title: i18n.t('label.ingest-sample-data'),
     description: i18n.t('message.run-sample-data-to-ingest-sample-data'),
-    link: 'https://docs.open-metadata.org/openmetadata/ingestion/workflows/profiler',
+    link: INGESTION_DOCS,
   },
   {
     step: 2,
     title: i18n.t('label.start-elasticsearch-docker'),
     description: i18n.t('message.ensure-elasticsearch-is-up-and-running'),
-    link: 'https://docs.open-metadata.org/quick-start/local-deployment',
+    link: LOCAL_DEPLOYMENT,
   },
   {
     step: 3,
     title: i18n.t('label.install-service-connectors'),
     description: i18n.t('message.checkout-service-connectors-doc'),
-    link: 'https://docs.open-metadata.org/integrations/connectors',
+    link: CONNECTORS_DOCS,
   },
   {
     step: 4,
     title: i18n.t('label.more-help'),
     description: i18n.t('message.still-running-into-issue'),
-    link: 'https://slack.open-metadata.org',
+    link: OMD_SLACK_LINK,
   },
 ];
 
@@ -167,13 +173,14 @@ const ErrorPlaceHolderES = ({ type, errorMessage, query = '' }: Props) => {
 
   return (
     <div className="tw-mt-10 tw-text-base tw-font-medium">
-      {type !== 'noData' && (
+      {type !== ELASTICSEARCH_ERROR_PLACEHOLDER_TYPE.NO_DATA && (
         <p className="tw-text-center tw-text-lg tw-font-bold tw-mb-1 tw-text-primary">
           {`Hi, ${getUserDisplayName()}!`}
         </p>
       )}
-      {type === 'noData' && noRecordForES()}
-      {type === 'error' && elasticSearchError()}
+      {type === ELASTICSEARCH_ERROR_PLACEHOLDER_TYPE.NO_DATA && noRecordForES()}
+      {type === ELASTICSEARCH_ERROR_PLACEHOLDER_TYPE.ERROR &&
+        elasticSearchError()}
     </div>
   );
 };
