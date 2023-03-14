@@ -129,11 +129,9 @@ class CommonDbSourceService(
         Sources with multiple databases should overwrite this and
         apply the necessary filters.
         """
-        custom_database_name = self.service_connection.__dict__.get(
-            "databaseName", None
-        )
+        custom_database_name = self.service_connection.__dict__.get("databaseName")
 
-        database_name = self.service_connection.__dict__.get("database", "default")
+        database_name = self.service_connection.__dict__.get("database")
         if database_name is None:
             database_name = (
                 custom_database_name if custom_database_name is not None else "default"
