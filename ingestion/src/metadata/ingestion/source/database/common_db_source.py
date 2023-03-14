@@ -131,11 +131,9 @@ class CommonDbSourceService(
         """
         custom_database_name = self.service_connection.__dict__.get("databaseName")
 
-        database_name = self.service_connection.__dict__.get("database")
-        if database_name is None:
-            database_name = (
-                custom_database_name if custom_database_name is not None else "default"
-            )
+        database_name = self.service_connection.__dict__.get(
+            "database", custom_database_name or "default"
+        )
 
         # By default, set the inspector on the created engine
         self.inspector = inspect(self.engine)
