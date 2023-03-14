@@ -39,7 +39,12 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.generated.schema.type.tagLabel import TagLabel
+from metadata.generated.schema.type.tagLabel import (
+    LabelType,
+    State,
+    TagLabel,
+    TagSource,
+)
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.lineage.parser import LineageParser
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
@@ -125,9 +130,9 @@ class RedashSource(DashboardServiceSource):
                         classification_name=REDASH_TAG_CATEGORY,
                         tag_name=tag,
                     ),
-                    labelType="Automated",
-                    state="Suggested",
-                    source="Classification",
+                    labelType=LabelType.Automated.value,
+                    state=State.Suggested.value,
+                    source=TagSource.Classification.value,
                 )
                 for tag in tags
             ]
