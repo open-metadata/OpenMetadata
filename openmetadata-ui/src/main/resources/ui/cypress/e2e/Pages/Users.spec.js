@@ -29,25 +29,6 @@ const adminEmail = `${adminName}@gmail.com`;
 
 const searchBotText = 'bot';
 
-const searchBotUser = () => {
-  interceptURL(
-    'GET',
-    `/api/v1/search/query?q=*${searchBotText}***isBot:false&from=0&size=15&index=user_search_index`,
-    'searchUser'
-  );
-  cy.get('[data-testid="searchbar"]')
-    .should('exist')
-    .should('be.visible')
-    .type(searchBotText);
-
-  verifyResponseStatusCode('@searchUser', 200);
-
-  cy.get('.ant-table-placeholder > .ant-table-cell').should(
-    'contain',
-    searchBotText
-  );
-};
-
 describe('Users flow should work properly', () => {
   beforeEach(() => {
     cy.login();
@@ -97,8 +78,23 @@ describe('Users flow should work properly', () => {
     deleteSoftDeletedUser(userName);
   });
 
-  it('Search bot user', () => {
-    searchBotUser();
+  it('Search for bot user', () => {
+    interceptURL(
+      'GET',
+      `/api/v1/search/query?q=*${searchBotText}***isBot:false&from=0&size=15&index=user_search_index`,
+      'searchUser'
+    );
+    cy.get('[data-testid="searchbar"]')
+      .should('exist')
+      .should('be.visible')
+      .type(searchBotText);
+
+    verifyResponseStatusCode('@searchUser', 200);
+
+    cy.get('.ant-table-placeholder > .ant-table-cell').should(
+      'contain',
+      searchBotText
+    );
   });
 });
 
