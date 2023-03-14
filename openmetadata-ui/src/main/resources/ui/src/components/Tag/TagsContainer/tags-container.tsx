@@ -28,6 +28,7 @@ import React, {
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { TagSource } from '../../../generated/type/tagLabel';
 import { withLoader } from '../../../hoc/withLoader';
+import Fqn from '../../../utils/Fqn';
 import { TagsContainerProps } from './tags-container.interface';
 
 const TagsContainer: FunctionComponent<TagsContainerProps> = ({
@@ -49,8 +50,12 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
     const newTags = (tagList as TagOption[])
       .filter((tag) => !tag.fqn?.startsWith(`Tier${FQN_SEPARATOR_CHAR}Tier`)) // To filter out Tier tags
       .map((tag) => {
+        const parts = Fqn.split(tag.fqn);
+        const lastPartOfTag = parts.slice(-1).join('.');
+
         return {
           label: tag.fqn,
+          displayName: lastPartOfTag,
           value: tag.fqn,
         };
       });
@@ -155,14 +160,14 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
             defaultValue={selectedTagsInternal}
             mode="multiple"
             onChange={handleTagSelection}>
-            {tagOptions.map(({ label, value }) => (
+            {tagOptions.map(({ label, value, displayName }) => (
               <Select.Option key={label} value={value}>
                 <Tooltip
                   destroyTooltipOnHide
                   placement="topLeft"
                   title={label}
                   trigger="hover">
-                  {label}
+                  {displayName}
                 </Tooltip>
               </Select.Option>
             ))}
