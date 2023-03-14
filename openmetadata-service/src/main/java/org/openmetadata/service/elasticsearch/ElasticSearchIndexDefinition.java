@@ -281,6 +281,14 @@ class FlattenColumn {
   List<TagLabel> tags;
 }
 
+@Getter
+@Builder
+class FlattenSchemaField {
+  String name;
+  String description;
+  List<TagLabel> tags;
+}
+
 class ParseTags {
   TagLabel tierTag;
   final List<TagLabel> tags;

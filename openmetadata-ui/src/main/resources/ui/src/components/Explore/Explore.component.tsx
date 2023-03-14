@@ -74,6 +74,7 @@ const Explore: React.FC<ExploreProps> = ({
   page = 1,
   onChangePage = noop,
   loading,
+  isElasticSearchIssue = false,
 }) => {
   const { t } = useTranslation();
   const { tab } = useParams<{ tab: string }>();
@@ -322,6 +323,7 @@ const Explore: React.FC<ExploreProps> = ({
                   currentPage={page}
                   data={searchResults?.hits.hits ?? []}
                   handleSummaryPanelDisplay={handleSummaryPanelDisplay}
+                  isElasticSearchIssue={isElasticSearchIssue}
                   isSummaryPanelVisible={showSummaryPanel}
                   paginate={(value) => {
                     if (isNumber(value)) {

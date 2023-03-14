@@ -131,7 +131,7 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
         );
       }
 
-      return <ParameterForm definition={selectedDefinition} />;
+      return <ParameterForm definition={selectedDefinition} table={table} />;
     }
 
     return;

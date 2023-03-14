@@ -134,6 +134,7 @@ export interface AddIngestionState {
   topicFilterPattern: FilterPattern;
   useFqnFilter: boolean;
   processPii: boolean;
+  overrideOwner: boolean;
 }
 
 export enum ShowFilter {
