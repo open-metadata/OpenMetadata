@@ -408,6 +408,7 @@
     "lineage-lowercase": "lineage",
     "list": "列表",
     "list-entity": "List {{entity}}",
+    "load-more": "Load More",
     "loading": "Loading",
     "local-config-source": "Local Config Source",
     "log-plural": "日志",
