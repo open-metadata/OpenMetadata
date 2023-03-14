@@ -239,19 +239,19 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
           node.type
         );
         if (res && entityLineage) {
+          setNodeLoading((prev) => ({ ...prev, id: node.id, state: false }));
           setLeafNode(res, pos);
           setEntityLineage(getEntityLineage(entityLineage, res, pos));
         }
       } catch (err) {
+        setNodeLoading((prev) => ({ ...prev, id: node.id, state: false }));
         showErrorToast(
           err as AxiosError,
           jsonData['api-error-messages']['fetch-lineage-node-error']
         );
-      } finally {
-        setNodeLoading((prev) => ({ ...prev, id: node.id, state: false }));
       }
     },
-    [entityLineage]
+    [entityLineage, setNodeLoading]
   );
 
   const setLeafNode = useCallback(
