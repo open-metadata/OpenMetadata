@@ -14,7 +14,7 @@
 import { Card, Col, Row, Statistic, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import DataDistributionHistogram from 'components/Chart/DataDistributionHistogram.component';
-import { first, last, sortBy } from 'lodash';
+import { first, isString, last, sortBy } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router-dom';
@@ -60,6 +60,7 @@ const ProfilerTab: React.FC<ProfilerTabProps> = ({
   const [sumMetrics, setSumMetrics] = useState<MetricChartType>(
     INITIAL_SUM_METRIC_VALUE
   );
+  const [isMinMaxStringData, setIsMinMaxStringData] = useState(false);
   const [quartileMetrics, setQuartileMetrics] = useState<MetricChartType>(
     INITIAL_QUARTILE_METRIC_VALUE
   );
@@ -145,8 +146,8 @@ const ProfilerTab: React.FC<ProfilerTabProps> = ({
       mathMetricData.push({
         name: x,
         timestamp: col.timestamp || 0,
-        max: (col.max as number) || 0,
-        min: (col.min as number) || 0,
+        max: col.max || 0,
+        min: col.min || 0,
         mean: col.mean || 0,
       });
 
@@ -223,6 +224,12 @@ const ProfilerTab: React.FC<ProfilerTabProps> = ({
       information: quartileMetricInfo,
       data: quartileMetricData,
     }));
+
+    // only min/max category can be string
+    const isMinMaxString =
+      isString(updateProfilerData[0]?.min) ||
+      isString(updateProfilerData[0]?.max);
+    setIsMinMaxStringData(isMinMaxString);
   };
 
   const fetchAllTests = async () => {
@@ -323,7 +330,12 @@ const ProfilerTab: React.FC<ProfilerTabProps> = ({
         />
       </Col>
       <Col span={24}>
-        <ProfilerDetailsCard chartCollection={mathMetrics} name="math" />
+        <ProfilerDetailsCard
+          chartCollection={mathMetrics}
+          name="math"
+          // only min/max category can be string
+          showYAxisCategory={isMinMaxStringData}
+        />
       </Col>
       <Col span={24}>
         <ProfilerDetailsCard chartCollection={sumMetrics} name="sum" />
