@@ -49,6 +49,7 @@ import ReactFlow, {
 } from 'reactflow';
 import { searchData } from 'rest/miscAPI';
 import { getTableDetails } from 'rest/tableAPI';
+import { getEntityName } from 'utils/EntityUtils';
 import { PAGE_SIZE } from '../../constants/constants';
 import {
   ELEMENT_DELETE_STATE,
@@ -70,7 +71,6 @@ import {
 } from '../../generated/type/entityLineage';
 import { EntityReference } from '../../generated/type/entityReference';
 import { withLoader } from '../../hoc/withLoader';
-import { getEntityName } from '../../utils/CommonUtils';
 import {
   createNewEdge,
   dragHandle,

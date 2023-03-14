@@ -30,6 +30,7 @@ import React, {
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import { restoreMlmodel } from 'rest/mlModelAPI';
+import { getEntityName } from 'utils/EntityUtils';
 import AppState from '../../AppState';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import {
@@ -50,7 +51,6 @@ import { LabelType, State, TagLabel } from '../../generated/type/tagLabel';
 import { useInfiniteScroll } from '../../hooks/useInfiniteScroll';
 import {
   getEmptyPlaceholder,
-  getEntityName,
   getEntityPlaceHolder,
   getOwnerValue,
   refreshPage,

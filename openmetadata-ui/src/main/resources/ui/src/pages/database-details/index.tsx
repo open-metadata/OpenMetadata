@@ -85,12 +85,11 @@ import { Paging } from '../../generated/type/paging';
 import { useInfiniteScroll } from '../../hooks/useInfiniteScroll';
 import { EntityFieldThreadCount } from '../../interface/feed.interface';
 import jsonData from '../../jsons/en';
-import { getEntityName } from '../../utils/CommonUtils';
 import {
   databaseDetailsTabs,
   getCurrentDatabaseDetailsTab,
 } from '../../utils/DatabaseDetailsUtils';
-import { getEntityFeedLink } from '../../utils/EntityUtils';
+import { getEntityFeedLink, getEntityName } from '../../utils/EntityUtils';
 import {
   deletePost,
   getEntityFieldThreadCounts,
@@ -628,14 +627,14 @@ const DatabaseDetails: FunctionComponent = () => {
         title: t('label.schema-name'),
         dataIndex: 'name',
         key: 'name',
-        render: (text: string, record: DatabaseSchema) => (
+        render: (_, record: DatabaseSchema) => (
           <Link
             to={
               record.fullyQualifiedName
                 ? getDatabaseSchemaDetailsPath(record.fullyQualifiedName)
                 : ''
             }>
-            {text}
+            {getEntityName(record)}
           </Link>
         ),
       },

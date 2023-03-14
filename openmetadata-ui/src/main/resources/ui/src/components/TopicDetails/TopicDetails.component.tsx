@@ -19,6 +19,7 @@ import React, { RefObject, useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import { restoreTopic } from 'rest/topicsAPI';
+import { getEntityName } from 'utils/EntityUtils';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { EntityField } from '../../constants/Feeds.constants';
 import { observerOptions } from '../../constants/Mydata.constants';
@@ -32,7 +33,6 @@ import { LabelType, State } from '../../generated/type/tagLabel';
 import { useInfiniteScroll } from '../../hooks/useInfiniteScroll';
 import {
   getCurrentUserId,
-  getEntityName,
   getEntityPlaceHolder,
   getOwnerValue,
   refreshPage,

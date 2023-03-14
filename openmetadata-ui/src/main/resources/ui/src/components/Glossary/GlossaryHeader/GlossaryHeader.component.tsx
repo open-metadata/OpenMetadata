@@ -25,7 +25,7 @@ import { cloneDeep, includes, isEqual } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { getEntityName } from 'utils/CommonUtils';
+import { getEntityName } from 'utils/EntityUtils';
 import SVGIcons, { Icons } from 'utils/SvgUtils';
 
 export interface GlossaryHeaderProps {

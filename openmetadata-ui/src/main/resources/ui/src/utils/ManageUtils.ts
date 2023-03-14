@@ -15,7 +15,7 @@ import { ReactNode } from 'react';
 import AppState from '../AppState';
 import { Team } from '../generated/entity/teams/team';
 import { User } from '../generated/entity/teams/user';
-import { getEntityName } from './CommonUtils';
+import { getEntityName } from './EntityUtils';
 
 export type OwnerItem = {
   name: string;

@@ -28,6 +28,7 @@ import React, {
 import { useTranslation } from 'react-i18next';
 import { Link, useHistory } from 'react-router-dom';
 import { restoreDashboard } from 'rest/dashboardAPI';
+import { getEntityName } from 'utils/EntityUtils';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { EntityField } from '../../constants/Feeds.constants';
 import { observerOptions } from '../../constants/Mydata.constants';
@@ -42,7 +43,6 @@ import { LabelType, State, TagLabel } from '../../generated/type/tagLabel';
 import { useInfiniteScroll } from '../../hooks/useInfiniteScroll';
 import {
   getCurrentUserId,
-  getEntityName,
   getEntityPlaceHolder,
   getOwnerValue,
   refreshPage,

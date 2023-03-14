@@ -20,7 +20,6 @@ import { LoadingState } from 'Models';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { getOwnerList, OwnerItem } from 'utils/ManageUtils';
 import { searchFormattedUsersAndTeams } from 'utils/UserDataUtils';
-
 import './OwnerWidgetWrapper.style.less';
 
 interface OwnerWidgetWrapperProps {
