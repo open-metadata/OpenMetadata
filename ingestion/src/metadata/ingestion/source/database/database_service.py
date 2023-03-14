@@ -140,18 +140,18 @@ class DatabaseServiceTopology(ServiceTopology):
         producer="get_database_schema_names",
         stages=[
             NodeStage(
-                type_=DatabaseSchema,
-                context="database_schema",
-                processor="yield_database_schema",
-                consumer=["database_service", "database"],
-            ),
-            NodeStage(
                 type_=OMetaTagAndClassification,
                 context="tags",
                 processor="yield_tag_details",
                 ack_sink=False,
                 nullable=True,
                 cache_all=True,
+            ),
+            NodeStage(
+                type_=DatabaseSchema,
+                context="database_schema",
+                processor="yield_database_schema",
+                consumer=["database_service", "database"],
             ),
         ],
         children=["table"],
