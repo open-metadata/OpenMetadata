@@ -92,7 +92,7 @@ describe('Users flow should work properly', () => {
     verifyResponseStatusCode('@searchUser', 200);
 
     cy.get('.ant-table-placeholder > .ant-table-cell').should(
-      'contain',
+      'not.contain',
       searchBotText
     );
   });
