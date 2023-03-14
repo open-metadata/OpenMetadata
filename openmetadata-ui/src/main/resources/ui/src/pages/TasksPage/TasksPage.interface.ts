@@ -11,13 +11,20 @@
  *  limitations under the License.
  */
 
+import { DatabaseSchema } from 'generated/entity/data/databaseSchema';
 import { Dashboard } from '../../generated/entity/data/dashboard';
 import { Mlmodel } from '../../generated/entity/data/mlmodel';
 import { Pipeline } from '../../generated/entity/data/pipeline';
 import { Table } from '../../generated/entity/data/table';
 import { Topic } from '../../generated/entity/data/topic';
 
-export type EntityData = Table | Topic | Dashboard | Pipeline | Mlmodel;
+export type EntityData =
+  | Table
+  | Topic
+  | Dashboard
+  | Pipeline
+  | Mlmodel
+  | DatabaseSchema;
 
 export interface Option {
   label: string;

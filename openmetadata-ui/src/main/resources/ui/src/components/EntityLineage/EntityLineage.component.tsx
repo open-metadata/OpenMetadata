@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Modal } from 'antd';
+import { Modal, Space } from 'antd';
 import { AxiosError } from 'axios';
 import jsonData from 'jsons/en';
 import {
@@ -19,7 +19,6 @@ import {
   isEmpty,
   isNil,
   isUndefined,
-  lowerCase,
   union,
   uniqueId,
   upperCase,
@@ -93,6 +92,7 @@ import {
   getEdgeStyle,
   getEdgeType,
   getEntityLineagePath,
+  getEntityNodeIcon,
   getLayoutedElements,
   getLineageData,
   getLoadingStatusValue,
@@ -120,7 +120,6 @@ import {
   removeLineageHandler,
 } from '../../utils/EntityLineageUtils';
 import { getEntityReferenceFromPipeline } from '../../utils/PipelineServiceUtils';
-import SVGIcons from '../../utils/SvgUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import EdgeInfoDrawer from '../EntityInfoDrawer/EdgeInfoDrawer.component';
 import EntityInfoDrawer from '../EntityInfoDrawer/EntityInfoDrawer.component';
@@ -1205,6 +1204,7 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
         y: event.clientY - (reactFlowBounds?.top ?? 0),
       });
       const [label, nodeType] = type.split('-');
+      const Icon = getEntityNodeIcon(label);
       const newNode = {
         id: uniqueId(),
         nodeType,
@@ -1219,18 +1219,18 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
               {getNodeRemoveButton(() => {
                 removeNodeHandler(newNode as Node);
               })}
-              <div className="tw-flex">
-                <SVGIcons
-                  alt="entity-icon"
-                  className="tw-mr-2"
-                  icon={`${lowerCase(label)}-grey`}
-                  width="16px"
+              <Space align="center" size={2}>
+                <Icon
+                  className="m-r-xs"
+                  height={16}
+                  name="entity-icon"
+                  width={16}
                 />
                 <NodeSuggestions
                   entityType={upperCase(label)}
                   onSelectHandler={setSelectedEntity}
                 />
-              </div>
+              </Space>
             </div>
           ),
           removeNodeHandler,

@@ -44,6 +44,7 @@ import {
   isEqual,
   isNil,
   isUndefined,
+  lowerCase,
   uniqueId,
   uniqWith,
 } from 'lodash';
@@ -103,6 +104,13 @@ import { getEntityLink } from './TableUtils';
 import { showErrorToast } from './ToastUtils';
 
 export const MAX_LINEAGE_LENGTH = 20;
+
+import { ReactComponent as DashboardIcon } from '../assets/svg/dashboard-grey.svg';
+import { ReactComponent as MlModelIcon } from '../assets/svg/mlmodal.svg';
+import { ReactComponent as PipelineIcon } from '../assets/svg/pipeline-grey.svg';
+
+import { ReactComponent as TableIcon } from '../assets/svg/table-grey.svg';
+import { ReactComponent as TopicIcon } from '../assets/svg/topic-grey.svg';
 
 export const getHeaderLabel = (
   name = '',
@@ -1450,5 +1458,23 @@ export const getEntityLineagePath = (
 
     default:
       return '';
+  }
+};
+
+// Nodes Icons
+export const getEntityNodeIcon = (label: string) => {
+  switch (lowerCase(label)) {
+    case EntityType.TABLE:
+      return TableIcon;
+    case EntityType.DASHBOARD:
+      return DashboardIcon;
+    case EntityType.TOPIC:
+      return TopicIcon;
+    case EntityType.PIPELINE:
+      return PipelineIcon;
+    case EntityType.MLMODEL:
+      return MlModelIcon;
+    default:
+      return TableIcon;
   }
 };

@@ -12,6 +12,7 @@
  */
 
 import { Card } from 'antd';
+import { ELASTICSEARCH_ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { observer } from 'mobx-react';
 import React, {
   RefObject,
@@ -235,7 +236,10 @@ const MyData: React.FC<MyDataProps> = ({
       pageTitle={t('label.my-data')}
       rightPanel={getRightPanel()}>
       {error ? (
-        <ErrorPlaceHolderES errorMessage={error} type="error" />
+        <ErrorPlaceHolderES
+          errorMessage={error}
+          type={ELASTICSEARCH_ERROR_PLACEHOLDER_TYPE.ERROR}
+        />
       ) : (
         <>
           {showActivityFeedList ? (

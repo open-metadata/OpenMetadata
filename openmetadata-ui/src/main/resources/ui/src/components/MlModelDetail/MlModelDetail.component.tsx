@@ -342,7 +342,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
     if (mlModelDetail) {
       const updatedMlModelDetails = {
         ...mlModelDetail,
-        tags: undefined,
+        tags: getTagsWithoutTier(mlModelDetail.tags ?? []),
       };
       settingsUpdateHandler(updatedMlModelDetails);
     }

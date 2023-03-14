@@ -83,6 +83,8 @@ interface Props {
   currentOwner?: Dashboard['owner'];
   removeTier?: () => void;
   onRestoreEntity?: () => void;
+  allowSoftDelete?: boolean;
+  isRecursiveDelete?: boolean;
 }
 
 const EntityPageInfo = ({
@@ -114,6 +116,8 @@ const EntityPageInfo = ({
   entityFieldTasks,
   removeTier,
   onRestoreEntity,
+  isRecursiveDelete = false,
+  allowSoftDelete,
 }: Props) => {
   const history = useHistory();
   const tagThread = entityFieldThreads?.[0];
@@ -387,14 +391,10 @@ const EntityPageInfo = ({
             }
           />
           {deleted && (
-            <>
-              <div
-                className="tw-rounded tw-bg-error-lite tw-text-error tw-font-medium tw-h-6 tw-px-2 tw-py-0.5 tw-ml-2"
-                data-testid="deleted-badge">
-                <ExclamationCircleOutlined className="tw-mr-1" />
-                {t('label.deleted')}
-              </div>
-            </>
+            <div className="deleted-badge-button" data-testid="deleted-badge">
+              <ExclamationCircleOutlined className="tw-mr-1" />
+              {t('label.deleted')}
+            </div>
           )}
         </Space>
         <Space align="center" id="version-and-follow-section">
@@ -447,13 +447,18 @@ const EntityPageInfo = ({
           ) : null}
           {!isVersionSelected && (
             <ManageButton
-              allowSoftDelete={!deleted}
+              allowSoftDelete={
+                entityType === EntityType.DATABASE_SCHEMA
+                  ? allowSoftDelete
+                  : !deleted
+              }
               canDelete={canDelete}
               deleted={deleted}
               entityFQN={entityFqn}
               entityId={entityId}
               entityName={entityName}
               entityType={entityType}
+              isRecursiveDelete={isRecursiveDelete}
               onAnnouncementClick={() => setIsAnnouncementDrawer(true)}
               onRestoreEntity={onRestoreEntity}
             />

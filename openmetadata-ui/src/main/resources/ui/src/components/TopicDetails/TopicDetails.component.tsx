@@ -310,7 +310,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
     if (topicDetails) {
       const updatedTopicDetails = {
         ...topicDetails,
-        tags: undefined,
+        tags: getTagsWithoutTier(topicDetails.tags ?? []),
       };
       settingsUpdateHandler(updatedTopicDetails);
     }
