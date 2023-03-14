@@ -15,8 +15,9 @@ import plugins from './cypress/plugins/index.js';
 
 export default defineConfig({
   projectId: 'a9yxci',
-  viewportWidth: 1240,
-  viewportHeight: 660,
+  // screen size of macbook-15 ref:- https://docs.cypress.io/api/commands/viewport
+  viewportWidth: 1440,
+  viewportHeight: 900,
   watchForFileChanges: false,
   defaultCommandTimeout: 5000,
   videoUploadOnPasses: false,
