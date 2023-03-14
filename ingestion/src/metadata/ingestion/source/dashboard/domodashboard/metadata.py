@@ -115,14 +115,18 @@ class DomodashboardSource(DashboardServiceSource):
     def process_owner(
         self, dashboard_details: DomoDashboardDetails
     ) -> Optional[Dashboard]:
-        owner = self.get_owner_details(owners=dashboard_details.owners)
-        if owner and self.source_config.overrideOwner:
-            self.metadata.patch_owner(
-                entity=Dashboard,
-                entity_id=self.context.dashboard.id,
-                owner=owner,
-                force=True,
-            )
+        try:
+            owner = self.get_owner_details(owners=dashboard_details.owners)
+            if owner and self.source_config.overrideOwner:
+                self.metadata.patch_owner(
+                    entity=Dashboard,
+                    entity_id=self.context.dashboard.id,
+                    owner=owner,
+                    force=True,
+                )
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Error processing owner for {dashboard_details}: {exc}")
 
     def yield_dashboard(
         self, dashboard_details: DomoDashboardDetails

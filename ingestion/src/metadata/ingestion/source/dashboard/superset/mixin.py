@@ -89,14 +89,18 @@ class SupersetSourceMixin(DashboardServiceSource):
         return None
 
     def process_owner(self, dashboard_details: dict) -> Optional[Lineage_Dashboard]:
-        owner = self.get_owner_details(dashboard_details=dashboard_details)
-        if owner and self.source_config.overrideOwner:
-            self.metadata.patch_owner(
-                self.metadata,
-                entity=Lineage_Dashboard,
-                entity_id=self.context.dashboard.id,
-                force=True,
-            )
+        try:
+            owner = self.get_owner_details(dashboard_details=dashboard_details)
+            if owner and self.source_config.overrideOwner:
+                self.metadata.patch_owner(
+                    self.metadata,
+                    entity=Lineage_Dashboard,
+                    entity_id=self.context.dashboard.id,
+                    force=True,
+                )
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Error processing owner for {dashboard_details}: {exc}")
 
     def get_owner_details(self, dashboard_details: dict) -> EntityReference:
         for owner in dashboard_details.get("owners", []):
