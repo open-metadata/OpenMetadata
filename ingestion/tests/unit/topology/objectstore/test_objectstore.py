@@ -75,7 +75,6 @@ MOCK_S3_METADATA_FILE_RESPONSE = {
     "entries": [
         {
             "dataPath": "transactions",
-            "isStructured": True,
             "structureFormat": "csv",
             "isPartitioned": False,
         }
@@ -165,7 +164,6 @@ class ObjectStoreUnitTest(TestCase):
         self.assertEqual(
             MetadataEntry(
                 dataPath="transactions",
-                isStructured=True,
                 structureFormat="csv",
                 isPartitioned=False,
             ),
@@ -236,7 +234,6 @@ class ObjectStoreUnitTest(TestCase):
                 ),
                 MetadataEntry(
                     dataPath="transactions",
-                    isStructured=True,
                     structureFormat="csv",
                     isPartitioned=False,
                 ),
@@ -277,7 +274,6 @@ class ObjectStoreUnitTest(TestCase):
     def test_get_sample_file_prefix_for_structured_and_partitioned_metadata(self):
         input_metadata = MetadataEntry(
             dataPath="transactions",
-            isStructured=True,
             structureFormat="parquet",
             isPartitioned=True,
             partitionColumn="date",
@@ -290,7 +286,7 @@ class ObjectStoreUnitTest(TestCase):
         )
 
     def test_get_sample_file_prefix_for_unstructured_metadata(self):
-        input_metadata = MetadataEntry(dataPath="transactions", isStructured=False)
+        input_metadata = MetadataEntry(dataPath="transactions")
         self.assertIsNone(
             self.object_store_source._get_sample_file_prefix(
                 metadata_entry=input_metadata
@@ -300,7 +296,6 @@ class ObjectStoreUnitTest(TestCase):
     def test_get_sample_file_prefix_for_structured_and_not_partitioned_metadata(self):
         input_metadata = MetadataEntry(
             dataPath="transactions",
-            isStructured=True,
             structureFormat="csv",
             isPartitioned=False,
         )
@@ -320,7 +315,6 @@ class ObjectStoreUnitTest(TestCase):
                 bucket_name="test_bucket",
                 metadata_entry=MetadataEntry(
                     dataPath="invalid_path",
-                    isStructured=True,
                     structureFormat="csv",
                     isPartitioned=False,
                 ),
@@ -340,7 +334,6 @@ class ObjectStoreUnitTest(TestCase):
             bucket_name="test_bucket",
             metadata_entry=MetadataEntry(
                 dataPath="/transactions",
-                isStructured=False,
                 structureFormat="csv",
                 isPartitioned=False,
             ),

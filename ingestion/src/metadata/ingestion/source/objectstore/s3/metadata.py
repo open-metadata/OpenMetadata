@@ -335,7 +335,7 @@ class S3Source(ObjectStoreServiceSource):
     @staticmethod
     def _get_sample_file_prefix(metadata_entry: MetadataEntry) -> Optional[str]:
         result = f"{metadata_entry.dataPath.strip(S3_KEY_SEPARATOR)}"
-        if not metadata_entry.isStructured:
+        if not metadata_entry.structureFormat:
             logger.warning(f"Ignoring un-structured metadata entry {result}")
             return None
         if metadata_entry.isPartitioned and metadata_entry.partitionColumn:

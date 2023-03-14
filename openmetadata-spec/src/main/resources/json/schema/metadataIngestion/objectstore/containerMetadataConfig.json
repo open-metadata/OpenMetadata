@@ -15,12 +15,6 @@
           "description": "The path where the data resides in the container, excluding the bucket name",
           "type": "string"
         },
-        "isStructured": {
-          "title": "Is Structured",
-          "description": "Whether the container defines a supported structure like avro, parquet, csv.",
-          "type": "boolean",
-          "default": false
-        },
         "structureFormat": {
           "title": "Schema format",
           "description": "What's the schema format for the container, eg. avro, parquet, csv.",
