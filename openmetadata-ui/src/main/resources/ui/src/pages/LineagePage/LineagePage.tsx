@@ -55,11 +55,8 @@ import { Topic } from '../../generated/entity/data/topic';
 import { EntityLineage } from '../../generated/type/entityLineage';
 import { EntityReference } from '../../generated/type/entityReference';
 import jsonData from '../../jsons/en';
-import {
-  getEntityName,
-  getPartialNameFromTableFQN,
-} from '../../utils/CommonUtils';
-import { getEntityLineage } from '../../utils/EntityUtils';
+import { getPartialNameFromTableFQN } from '../../utils/CommonUtils';
+import { getEntityLineage, getEntityName } from '../../utils/EntityUtils';
 import { serviceTypeLogo } from '../../utils/ServiceUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 // css import

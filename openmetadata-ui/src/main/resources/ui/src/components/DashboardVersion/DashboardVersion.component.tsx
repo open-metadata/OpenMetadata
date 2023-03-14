@@ -20,6 +20,7 @@ import { ExtraInfo } from 'Models';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
+import { getEntityName } from 'utils/EntityUtils';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { EntityField } from '../../constants/Feeds.constants';
 import { OwnerType } from '../../enums/user.enum';
@@ -221,7 +222,7 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
         render: (text, record) => (
           <Link target="_blank" to={{ pathname: text }}>
             <Space>
-              <span>{record.displayName}</span>
+              <span>{getEntityName(record)}</span>
               <SVGIcons
                 alt="external-link"
                 className="tw-align-middle"

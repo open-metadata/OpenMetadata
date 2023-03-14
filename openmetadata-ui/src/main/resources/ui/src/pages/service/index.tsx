@@ -58,6 +58,7 @@ import {
   updateService,
 } from 'rest/serviceAPI';
 import { getTopics } from 'rest/topicsAPI';
+import { getEntityName } from 'utils/EntityUtils';
 import {
   getServiceDetailsPath,
   getTeamAndUserDetailsPath,
@@ -83,11 +84,10 @@ import { DashboardConnection } from '../../generated/entity/services/dashboardSe
 import { DatabaseService } from '../../generated/entity/services/databaseService';
 import { IngestionPipeline } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { MetadataServiceType } from '../../generated/entity/services/metadataService';
-import { EntityReference } from '../../generated/type/entityReference';
 import { Paging } from '../../generated/type/paging';
 import { useAirflowStatus } from '../../hooks/useAirflowStatus';
 import { ConfigData, ServicesType } from '../../interface/service.interface';
-import { getEntityMissingError, getEntityName } from '../../utils/CommonUtils';
+import { getEntityMissingError } from '../../utils/CommonUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { getEditConnectionPath, getSettingPath } from '../../utils/RouterUtils';
 import {
@@ -972,12 +972,10 @@ const ServicePage: FunctionComponent = () => {
         title: firstColumn,
         dataIndex: 'displayName',
         key: 'displayName',
-        render: (text: string, record: ServicePageData) => {
+        render: (_, record: ServicePageData) => {
           return (
             <Link to={getLinkForFqn(record.fullyQualifiedName || '')}>
-              {isUndefined(text)
-                ? getEntityName(record as unknown as EntityReference)
-                : text}
+              {getEntityName(record)}
             </Link>
           );
         },

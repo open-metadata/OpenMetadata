@@ -17,7 +17,7 @@ import { WILD_CARD_CHAR } from '../constants/char.constants';
 import { Team } from '../generated/entity/teams/team';
 import { User } from '../generated/entity/teams/user';
 import { EntityReference } from '../generated/type/entityUsage';
-import { getEntityName } from './CommonUtils';
+import { getEntityName } from './EntityUtils';
 
 /**
  * @param listUsers - List of users

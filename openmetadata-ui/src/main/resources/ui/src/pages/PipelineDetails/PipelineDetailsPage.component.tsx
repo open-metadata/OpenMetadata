@@ -56,9 +56,8 @@ import {
   addToRecentViewed,
   getCurrentUserId,
   getEntityMissingError,
-  getEntityName,
 } from '../../utils/CommonUtils';
-import { getEntityLineage } from '../../utils/EntityUtils';
+import { getEntityLineage, getEntityName } from '../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { defaultFields } from '../../utils/PipelineDetailsUtils';
 import { serviceTypeLogo } from '../../utils/ServiceUtils';

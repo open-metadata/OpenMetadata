@@ -66,7 +66,6 @@ import {
   addToRecentViewed,
   getCurrentUserId,
   getEntityMissingError,
-  getEntityName,
   getFeedCounts,
 } from '../../utils/CommonUtils';
 import {
@@ -76,7 +75,11 @@ import {
   getCurrentDashboardTab,
   sortTagsForCharts,
 } from '../../utils/DashboardDetailsUtils';
-import { getEntityFeedLink, getEntityLineage } from '../../utils/EntityUtils';
+import {
+  getEntityFeedLink,
+  getEntityLineage,
+  getEntityName,
+} from '../../utils/EntityUtils';
 import { deletePost, updateThreadData } from '../../utils/FeedUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { serviceTypeLogo } from '../../utils/ServiceUtils';
