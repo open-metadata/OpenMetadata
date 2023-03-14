@@ -226,6 +226,9 @@ public class SearchResource {
       case "tag_search_index":
         searchSourceBuilder = buildTagSearchBuilder(query, from, size);
         break;
+      case "container_search_index":
+        searchSourceBuilder = buildContainerSearchBuilder(query, from, size);
+        break;
       default:
         searchSourceBuilder = buildAggregateSearchBuilder(query, from, size);
         break;
@@ -562,6 +565,52 @@ public class SearchResource {
     hb.field(highlightTasks);
     hb.field(highlightTaskDescriptions);
     SearchSourceBuilder searchSourceBuilder = searchBuilder(queryBuilder, hb, from, size);
+    return addAggregation(searchSourceBuilder);
+  }
+
+  private SearchSourceBuilder buildContainerSearchBuilder(String query, int from, int size) {
+    QueryStringQueryBuilder queryStringBuilder =
+        QueryBuilders.queryStringQuery(query)
+            .field(FIELD_DISPLAY_NAME, 15.0f)
+            .field(FIELD_DISPLAY_NAME_NGRAM)
+            .field(FIELD_NAME, 15.0f)
+            .field(FIELD_DESCRIPTION, 1.0f)
+            .field("dataModel.columns.name", 2.0f)
+            .field("dataModel.columns.name.ngram")
+            .field("dataModel.columns.displayName", 2.0f)
+            .field("dataModel.columns.displayName.ngram")
+            .field("dataModel.columns.description", 1.0f)
+            .field("dataModel.columns.children.name", 2.0f)
+            .defaultOperator(Operator.AND)
+            .fuzziness(Fuzziness.AUTO);
+    FieldValueFactorFunctionBuilder boostScoreBuilder =
+        ScoreFunctionBuilders.fieldValueFactorFunction("usageSummary.weeklyStats.count").missing(0).factor(0.2f);
+    FunctionScoreQueryBuilder.FilterFunctionBuilder[] functions =
+        new FunctionScoreQueryBuilder.FilterFunctionBuilder[] {
+            new FunctionScoreQueryBuilder.FilterFunctionBuilder(boostScoreBuilder)
+        };
+    FunctionScoreQueryBuilder queryBuilder = QueryBuilders.functionScoreQuery(queryStringBuilder, functions);
+    queryBuilder.boostMode(CombineFunction.SUM);
+    HighlightBuilder.Field highlightContainerName = new HighlightBuilder.Field(FIELD_DISPLAY_NAME);
+    highlightContainerName.highlighterType(UNIFIED);
+    HighlightBuilder.Field highlightDescription = new HighlightBuilder.Field(DESCRIPTION);
+    highlightDescription.highlighterType(UNIFIED);
+    HighlightBuilder hb = new HighlightBuilder();
+    HighlightBuilder.Field highlightColumns = new HighlightBuilder.Field("dataModel.columns.name");
+    highlightColumns.highlighterType(UNIFIED);
+    HighlightBuilder.Field highlightColumnDescriptions = new HighlightBuilder.Field("dataModel.columns.description");
+    highlightColumnDescriptions.highlighterType(UNIFIED);
+    HighlightBuilder.Field highlightColumnChildren = new HighlightBuilder.Field("dataModel.columns.children.name");
+    highlightColumnDescriptions.highlighterType(UNIFIED);
+    hb.field(highlightDescription);
+    hb.field(highlightContainerName);
+    hb.field(highlightColumns);
+    hb.field(highlightColumnDescriptions);
+    hb.field(highlightColumnChildren);
+    hb.preTags("<span class=\"text-highlighter\">");
+    hb.postTags("</span>");
+    SearchSourceBuilder searchSourceBuilder =
+        new SearchSourceBuilder().query(queryBuilder).highlighter(hb).from(from).size(size);
     return addAggregation(searchSourceBuilder);
   }
 
