@@ -52,7 +52,7 @@ import ReactFlow, {
 import { getLineageByFQN } from 'rest/lineageAPI';
 import { searchData } from 'rest/miscAPI';
 import { getTableDetails } from 'rest/tableAPI';
-import { getEntityLineage } from 'utils/EntityUtils';
+import { getEntityLineage, getEntityName } from 'utils/EntityUtils';
 import { getLineageViewPath } from 'utils/RouterUtils';
 import { PAGE_SIZE } from '../../constants/constants';
 import {
@@ -75,7 +75,6 @@ import {
 } from '../../generated/type/entityLineage';
 import { EntityReference } from '../../generated/type/entityReference';
 import { withLoader } from '../../hoc/withLoader';
-import { getEntityName } from '../../utils/CommonUtils';
 import {
   addLineageHandler,
   createNewEdge,

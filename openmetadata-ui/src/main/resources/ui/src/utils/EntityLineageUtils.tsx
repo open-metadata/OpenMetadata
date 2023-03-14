@@ -92,12 +92,11 @@ import {
 } from '../generated/type/entityLineage';
 import { EntityReference } from '../generated/type/entityReference';
 import {
-  getEntityName,
   getPartialNameFromFQN,
   getPartialNameFromTableFQN,
   prepareLabel,
 } from './CommonUtils';
-import { isLeafNode } from './EntityUtils';
+import { getEntityName, isLeafNode } from './EntityUtils';
 import { getEncodedFqn } from './StringsUtils';
 import SVGIcons from './SvgUtils';
 import { getEntityLink } from './TableUtils';

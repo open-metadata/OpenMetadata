@@ -56,13 +56,12 @@ import { EntityFieldThreadCount } from '../../interface/feed.interface';
 import {
   getCountBadge,
   getCurrentUserId,
-  getEntityName,
   getEntityPlaceHolder,
   getFeedCounts,
   getOwnerValue,
   refreshPage,
 } from '../../utils/CommonUtils';
-import { getEntityFeedLink } from '../../utils/EntityUtils';
+import { getEntityFeedLink, getEntityName } from '../../utils/EntityUtils';
 import {
   deletePost,
   getEntityFieldThreadCounts,
@@ -550,9 +549,9 @@ const PipelineDetails = ({
         key: t('label.name'),
         dataIndex: 'name',
         title: t('label.name'),
-        render: (name, record) => (
+        render: (_, record) => (
           <Link target="_blank" to={{ pathname: record.taskUrl }}>
-            <span>{name}</span>
+            <span>{getEntityName(record)}</span>
             <SVGIcons
               alt="external-link"
               className="align-middle m-l-xs"

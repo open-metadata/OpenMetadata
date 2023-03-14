@@ -18,9 +18,9 @@ import { noop, trim } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getAlertActionForAlerts, getAlertsFromName } from 'rest/alertsAPI';
+import { getEntityName } from 'utils/EntityUtils';
 import { AlertAction } from '../../generated/alerts/alertAction';
 import { AlertFilterRule, Alerts } from '../../generated/alerts/alerts';
-import { getEntityName } from '../../utils/CommonUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
 const AlertsActivityFeedPage = () => {

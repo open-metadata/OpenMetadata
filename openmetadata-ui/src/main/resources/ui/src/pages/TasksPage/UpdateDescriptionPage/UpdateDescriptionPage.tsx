@@ -39,10 +39,10 @@ import {
   ThreadType,
 } from '../../../generated/api/feed/createThread';
 import { Table } from '../../../generated/entity/data/table';
-import { getEntityName } from '../../../utils/CommonUtils';
 import {
   ENTITY_LINK_SEPARATOR,
   getEntityFeedLink,
+  getEntityName,
 } from '../../../utils/EntityUtils';
 import { getTagsWithoutTier, getTierTags } from '../../../utils/TableUtils';
 import {

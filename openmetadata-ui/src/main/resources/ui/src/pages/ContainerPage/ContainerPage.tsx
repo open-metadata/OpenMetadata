@@ -65,13 +65,12 @@ import {
 import {
   getCurrentUserId,
   getEntityMissingError,
-  getEntityName,
   getEntityPlaceHolder,
   getOwnerValue,
   refreshPage,
 } from 'utils/CommonUtils';
 import { getContainerDetailPath } from 'utils/ContainerDetailUtils';
-import { getEntityLineage } from 'utils/EntityUtils';
+import { getEntityLineage, getEntityName } from 'utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from 'utils/PermissionsUtils';
 import { getLineageViewPath } from 'utils/RouterUtils';
 import { serviceTypeLogo } from 'utils/ServiceUtils';
