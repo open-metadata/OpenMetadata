@@ -72,6 +72,7 @@ export interface ExploreProps {
   onChangePage?: (page: number) => void;
 
   loading?: boolean;
+  isElasticSearchIssue?: boolean;
 }
 
 export interface ExploreQuickFilterField {

@@ -84,7 +84,7 @@ public class DatabaseSchemaResource extends EntityResource<DatabaseSchema, Datab
     DatabaseSchemaList() {}
   }
 
-  static final String FIELDS = "owner,tables,usageSummary";
+  static final String FIELDS = "owner,tables,usageSummary,tags";
 
   @GET
   @Operation(
@@ -396,6 +396,7 @@ public class DatabaseSchemaResource extends EntityResource<DatabaseSchema, Datab
 
   private DatabaseSchema getDatabaseSchema(CreateDatabaseSchema create, String user) throws IOException {
     return copy(new DatabaseSchema(), create, user)
-        .withDatabase(getEntityReference(Entity.DATABASE, create.getDatabase()));
+        .withDatabase(getEntityReference(Entity.DATABASE, create.getDatabase()))
+        .withTags(create.getTags());
   }
 }

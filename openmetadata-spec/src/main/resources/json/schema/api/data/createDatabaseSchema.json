@@ -5,8 +5,9 @@
   "description": "Create Database Schema entity request",
   "type": "object",
   "javaType": "org.openmetadata.schema.api.data.CreateDatabaseSchema",
-  "javaInterfaces": ["org.openmetadata.schema.CreateEntity"],
-
+  "javaInterfaces": [
+    "org.openmetadata.schema.CreateEntity"
+  ],
   "properties": {
     "name": {
       "description": "Name that identifies this database schema instance uniquely.",
@@ -27,8 +28,19 @@
     "database": {
       "description": "Link to the database fully qualified name where this schema is hosted in",
       "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+    },
+    "tags": {
+      "description": "Tags for this table",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/tagLabel.json"
+      },
+      "default": null
     }
   },
-  "required": ["name", "database"],
+  "required": [
+    "name",
+    "database"
+  ],
   "additionalProperties": false
 }
