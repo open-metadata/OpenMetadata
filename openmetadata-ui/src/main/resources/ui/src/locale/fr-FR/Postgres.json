@@ -1,0 +1,7 @@
+{
+  "document": {
+    "hostPort": "Hôte et port du service Postgres.\n\n Exemple : `localhost:8000`\n",
+    "password": "Mot de passe pour se connecter à Postgres.\n\n Doit être fort et contenir `@$#[0-9][a-z][A-Z]`\n",
+    "username": "Nom d'utilisateur pour se connecter à Postgres. Cet utilisateur doit avoir des privilèges pour lire toutes les métadonnées dans Postgres."
+  }
+}

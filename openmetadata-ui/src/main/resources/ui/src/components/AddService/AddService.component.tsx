@@ -14,8 +14,9 @@
 import { t } from 'i18next';
 import { capitalize, isUndefined } from 'lodash';
 import { LoadingState } from 'Models';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useHistory } from 'react-router-dom';
+import { addLocalResource } from 'utils/i18next/LocalUtil';
 import { getServiceDetailsPath } from '../../constants/constants';
 import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
 import { STEPS_FOR_ADD_SERVICE } from '../../constants/Ingestions.constant';
@@ -78,6 +79,8 @@ const AddService = ({
   const [saveServiceState, setSaveServiceState] =
     useState<LoadingState>('initial');
   const [isAirflowRunning, setIsAirflowRunning] = useState(true);
+
+  const [activeField, setActiveField] = useState<string>('');
 
   const resetServiceData = () => {
     setServiceName('');
@@ -224,6 +227,8 @@ const AddService = ({
     }
   };
 
+  const handleFieldFocus = (fieldName: string) => setActiveField(fieldName);
+
   const addNewService = () => {
     return (
       <div data-testid="add-new-service-container">
@@ -273,6 +278,7 @@ const AddService = ({
               serviceType={selectServiceType}
               status={saveServiceState}
               onCancel={handleConnectionDetailsBackClick}
+              onFocus={handleFieldFocus}
               onSave={(e) => {
                 handleConfigUpdate(e.formData);
               }}
@@ -309,9 +315,17 @@ const AddService = ({
       PipelineType.Metadata,
       isDeployed(),
       false,
-      isAirflowRunning
+      isAirflowRunning,
+      activeField,
+      selectServiceType
     );
   };
+
+  useEffect(() => {
+    if (selectServiceType) {
+      addLocalResource(selectServiceType);
+    }
+  }, [selectServiceType]);
 
   return (
     <div className="tw-self-center">

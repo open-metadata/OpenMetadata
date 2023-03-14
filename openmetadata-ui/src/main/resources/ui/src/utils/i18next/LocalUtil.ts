@@ -22,4 +22,24 @@ i18n
   .use(initReactI18next)
   .init(getInitOptions());
 
+export const addLocalResource = async (nameSpace: string) => {
+  const hasLocalResource = i18n.hasResourceBundle(i18n.language, nameSpace);
+
+  if (!hasLocalResource) {
+    try {
+      const translation = await import(
+        `../../locale/${i18n.language}/${nameSpace}.json`
+      );
+
+      i18n.addResourceBundle(
+        i18n.language,
+        nameSpace,
+        translation?.default ?? {}
+      );
+    } catch (error) {
+      // handle error
+    }
+  }
+};
+
 export default i18n;

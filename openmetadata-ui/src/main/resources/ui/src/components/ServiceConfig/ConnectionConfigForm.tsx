@@ -49,9 +49,10 @@ interface Props {
   serviceType: string;
   serviceCategory: ServiceCategory;
   status: LoadingState;
-  onCancel?: () => void;
+  onFocus: (fieldName: string) => void;
   onSave: (data: ISubmitEvent<ConfigData>) => void;
   disableTestConnection?: boolean;
+  onCancel?: () => void;
 }
 
 const ConnectionConfigForm: FunctionComponent<Props> = ({
@@ -63,6 +64,7 @@ const ConnectionConfigForm: FunctionComponent<Props> = ({
   status,
   onCancel,
   onSave,
+  onFocus,
   disableTestConnection = false,
 }: Props) => {
   const { t } = useTranslation();
@@ -107,7 +109,7 @@ const ConnectionConfigForm: FunctionComponent<Props> = ({
     });
   };
 
-  const getDatabaseFields = () => {
+  const getConfigFields = () => {
     let connSch = {
       schema: {},
       uiSchema: {},
@@ -170,6 +172,7 @@ const ConnectionConfigForm: FunctionComponent<Props> = ({
         status={status}
         uiSchema={connSch.uiSchema}
         onCancel={onCancel}
+        onFocus={onFocus}
         onSubmit={handleSave}
         onTestConnection={
           allowTestConn && isAirflowAvailable ? handleTestConnection : undefined
@@ -178,7 +181,7 @@ const ConnectionConfigForm: FunctionComponent<Props> = ({
     );
   };
 
-  return <Fragment>{getDatabaseFields()}</Fragment>;
+  return <Fragment>{getConfigFields()}</Fragment>;
 };
 
 export default ConnectionConfigForm;

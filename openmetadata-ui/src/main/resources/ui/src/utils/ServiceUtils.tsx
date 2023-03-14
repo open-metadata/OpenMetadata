@@ -12,6 +12,7 @@
  */
 
 import { AxiosError } from 'axios';
+import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
 import {
   OperationPermission,
   ResourceEntity,
@@ -502,7 +503,9 @@ export const getServiceIngestionStepGuide = (
   ingestionType: IngestionPipelineType,
   showDeployTitle: boolean,
   isUpdated: boolean,
-  isAirflowSetup = true
+  isAirflowSetup = true,
+  activeField?: string,
+  serviceType?: string
 ) => {
   let guide;
   if (isIngestion) {
@@ -557,6 +560,17 @@ export const getServiceIngestionStepGuide = (
 
     return isUpdated ? update : newTitle;
   };
+
+  if (activeField) {
+    return (
+      <>
+        <h6 className="tw-heading tw-text-base">{t('label.documentation')}</h6>
+        <RichTextEditorPreviewer
+          markdown={t(`document.${activeField}`, { ns: serviceType })}
+        />
+      </>
+    );
+  }
 
   return (
     <>

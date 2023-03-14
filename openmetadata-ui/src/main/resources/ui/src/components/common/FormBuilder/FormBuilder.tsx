@@ -32,11 +32,15 @@ interface Props extends FormProps<ConfigData> {
   okText: string;
   cancelText: string;
   isAirflowAvailable: boolean;
+  disableTestConnection: boolean;
   showFormHeader?: boolean;
   status?: LoadingState;
   onCancel?: () => void;
   onTestConnection?: (formData: ConfigData) => Promise<void>;
-  disableTestConnection: boolean;
+  onFocus: (
+    fieldName: string,
+    fields: FormProps<ConfigData>['schema']['properties']
+  ) => void;
 }
 
 const FormBuilder: FunctionComponent<Props> = ({
@@ -52,6 +56,7 @@ const FormBuilder: FunctionComponent<Props> = ({
   uiSchema,
   isAirflowAvailable,
   disableTestConnection,
+  onFocus,
   ...props
 }: Props) => {
   const formRef = useRef<CoreForm<ConfigData>>();
@@ -159,6 +164,8 @@ const FormBuilder: FunctionComponent<Props> = ({
         'no-header': !showFormHeader,
       })}
       formData={localFormData}
+      idPrefix=""
+      idSeparator=""
       ref={formRef}
       schema={schema}
       showErrorList={false}
@@ -168,6 +175,7 @@ const FormBuilder: FunctionComponent<Props> = ({
         handleChange(e.formData);
         props.onChange && props.onChange(e);
       }}
+      onFocus={(id: string) => onFocus(id, schema.properties)}
       onSubmit={onSubmit}
       {...props}>
       {isEmpty(schema) && (
