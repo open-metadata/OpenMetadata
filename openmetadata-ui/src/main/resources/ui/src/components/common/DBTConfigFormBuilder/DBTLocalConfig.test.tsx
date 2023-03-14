@@ -22,6 +22,7 @@ const mockManifestChange = jest.fn();
 const mockRunResultsFilePathChange = jest.fn();
 const mockUpdateDescriptions = jest.fn();
 const mockUpdateDBTClassification = jest.fn();
+const mockHandleEnableDebugLogCheck = jest.fn();
 
 const mockProps = {
   dbtCatalogFilePath: '',
@@ -37,6 +38,8 @@ const mockProps = {
   handleRunResultsFilePathChange: mockRunResultsFilePathChange,
   handleUpdateDescriptions: mockUpdateDescriptions,
   handleUpdateDBTClassification: mockUpdateDBTClassification,
+  enableDebugLog: false,
+  handleEnableDebugLogCheck: mockHandleEnableDebugLogCheck,
 };
 
 jest.mock('./DBTCommonFields.component', () =>
