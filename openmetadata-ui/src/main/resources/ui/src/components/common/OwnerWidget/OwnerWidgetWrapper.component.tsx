@@ -61,7 +61,7 @@ const OwnerWidgetWrapper = ({
           const { users, teams, teamsTotal, usersTotal } = res;
           setTotalTeamsCount(teamsTotal ?? 0);
           setTotalUsersCount(usersTotal ?? 0);
-          setOwnersList(getOwnerList(users, teams, false, searchQuery));
+          setOwnersList(getOwnerList(users, teams, false));
         })
         .catch(() => {
           setOwnersList([]);
