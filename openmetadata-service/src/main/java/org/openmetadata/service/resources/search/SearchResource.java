@@ -569,7 +569,7 @@ public class SearchResource {
   }
 
   private SearchSourceBuilder buildContainerSearchBuilder(String query, int from, int size) {
-    QueryStringQueryBuilder queryStringBuilder =
+    QueryStringQueryBuilder queryBuilder =
         QueryBuilders.queryStringQuery(query)
             .field(FIELD_DISPLAY_NAME, 15.0f)
             .field(FIELD_DISPLAY_NAME_NGRAM)
@@ -583,14 +583,6 @@ public class SearchResource {
             .field("dataModel.columns.children.name", 2.0f)
             .defaultOperator(Operator.AND)
             .fuzziness(Fuzziness.AUTO);
-    FieldValueFactorFunctionBuilder boostScoreBuilder =
-        ScoreFunctionBuilders.fieldValueFactorFunction("usageSummary.weeklyStats.count").missing(0).factor(0.2f);
-    FunctionScoreQueryBuilder.FilterFunctionBuilder[] functions =
-        new FunctionScoreQueryBuilder.FilterFunctionBuilder[] {
-            new FunctionScoreQueryBuilder.FilterFunctionBuilder(boostScoreBuilder)
-        };
-    FunctionScoreQueryBuilder queryBuilder = QueryBuilders.functionScoreQuery(queryStringBuilder, functions);
-    queryBuilder.boostMode(CombineFunction.SUM);
     HighlightBuilder.Field highlightContainerName = new HighlightBuilder.Field(FIELD_DISPLAY_NAME);
     highlightContainerName.highlighterType(UNIFIED);
     HighlightBuilder.Field highlightDescription = new HighlightBuilder.Field(DESCRIPTION);
