@@ -16,12 +16,12 @@ import { debounce, isEqual, lowerCase } from 'lodash';
 import { LoadingState } from 'Models';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { getGroupTypeTeams } from 'rest/userAPI';
+import { getEntityName } from 'utils/EntityUtils';
 import { default as AppState, default as appState } from '../../../AppState';
 import { WILD_CARD_CHAR } from '../../../constants/char.constants';
 import { Table } from '../../../generated/entity/data/table';
 import { EntityReference } from '../../../generated/type/entityReference';
 import { useAuth } from '../../../hooks/authHooks';
-import { getEntityName } from '../../../utils/CommonUtils';
 import { getOwnerList } from '../../../utils/ManageUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import {
