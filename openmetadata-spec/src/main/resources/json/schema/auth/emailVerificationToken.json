@@ -17,16 +17,6 @@
         "PASSWORD_RESET",
         "PERSONAL_ACCESS"
       ]
-    },
-    "serviceTokenType": {
-      "javaType": "org.openmetadata.schema.auth.ServiceTokenType",
-      "description": "Different Type of OpenMetadata Service tokens",
-      "type": "string",
-      "enum": [
-        "BOT",
-        "OM_USER",
-        "PERSONAL_ACCESS"
-      ]
     }
   },
   "properties": {
