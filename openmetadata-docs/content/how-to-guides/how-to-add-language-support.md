@@ -59,4 +59,4 @@ To check the language translation functionality, please follow the steps outline
 
 Please refer to the image below for assistance:
 
-<Image alt="language-support" src="/images/how-to-guides/language-support.png">
+<Image alt="language-support" src="/images/how-to-guides/language-support.png"/>
