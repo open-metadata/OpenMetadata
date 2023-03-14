@@ -35,7 +35,6 @@ export interface PipeLineDetailsProp {
   followers: Array<EntityReference>;
   slashedPipelineName: TitleBreadcrumbProps['titleLinks'];
   entityLineage: EntityLineage;
-  pipelineHostPort?: string;
   paging: Paging;
   followPipelineHandler: () => void;
   unfollowPipelineHandler: () => void;

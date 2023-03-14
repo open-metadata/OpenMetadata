@@ -38,7 +38,6 @@ import {
   patchPipelineDetails,
   removeFollower,
 } from 'rest/pipelineAPI';
-import { getServiceByFQN } from 'rest/serviceAPI';
 import {
   getServiceDetailsPath,
   getVersionPath,
@@ -47,7 +46,6 @@ import { NO_PERMISSION_TO_VIEW } from '../../constants/HelperTextUtil';
 import { EntityType } from '../../enums/entity.enum';
 import { ServiceCategory } from '../../enums/service.enum';
 import { Pipeline } from '../../generated/entity/data/pipeline';
-import { Connection } from '../../generated/entity/services/dashboardService';
 import { EntityLineage } from '../../generated/type/entityLineage';
 import { EntityReference } from '../../generated/type/entityReference';
 import { Paging } from '../../generated/type/paging';
@@ -79,7 +77,6 @@ const PipelineDetailsPage = () => {
   const [isLoading, setLoading] = useState<boolean>(true);
   const [followers, setFollowers] = useState<Array<EntityReference>>([]);
 
-  const [pipelineHostPort, setPipelineHostPort] = useState<string>();
   const [displayName, setDisplayName] = useState<string>('');
   const [slashedPipelineName, setSlashedPipelineName] = useState<
     TitleBreadcrumbProps['titleLinks']
@@ -137,28 +134,6 @@ const PipelineDetailsPage = () => {
     return patchPipelineDetails(pipelineId, jsonPatch);
   };
 
-  const fetchServiceDetails = (type: string, fqn: string) => {
-    return new Promise<string>((resolve, reject) => {
-      getServiceByFQN(type + 's', fqn, ['owner'])
-        .then((resService) => {
-          if (resService) {
-            const hostPort =
-              (resService.connection?.config as Connection)?.hostPort || '';
-            resolve(hostPort);
-          } else {
-            throw null;
-          }
-        })
-        .catch((err: AxiosError) => {
-          showErrorToast(
-            err,
-            jsonData['api-error-messages']['fetch-pipeline-details-error']
-          );
-          reject(err);
-        });
-    });
-  };
-
   const fetchPipelineDetail = (pipelineFQN: string) => {
     setLoading(true);
     getPipelineByFqn(pipelineFQN, defaultFields)
@@ -201,15 +176,6 @@ const PipelineDetailsPage = () => {
             timestamp: 0,
             id: id,
           });
-
-          fetchServiceDetails(service.type, service.name ?? '')
-            .then((hostPort: string) => {
-              setPipelineHostPort(hostPort);
-              setLoading(false);
-            })
-            .catch((err: AxiosError) => {
-              throw err;
-            });
         } else {
           setIsError(true);
 
@@ -470,7 +436,6 @@ const PipelineDetailsPage = () => {
               paging={paging}
               pipelineDetails={pipelineDetails}
               pipelineFQN={pipelineFQN}
-              pipelineHostPort={pipelineHostPort}
               removeLineageHandler={removeLineageHandler}
               settingsUpdateHandler={settingsUpdateHandler}
               slashedPipelineName={slashedPipelineName}

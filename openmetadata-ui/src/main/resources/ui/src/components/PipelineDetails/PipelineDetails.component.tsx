@@ -106,7 +106,6 @@ const PipelineDetails = ({
   unfollowPipelineHandler,
   tagUpdateHandler,
   settingsUpdateHandler,
-  pipelineHostPort,
   taskUpdateHandler,
   loadNodeHandler,
   lineageLeafNodes,
@@ -249,11 +248,11 @@ const PipelineDetails = ({
       key: EntityInfo.TIER,
       value: tier?.tagFQN ? tier.tagFQN.split(FQN_SEPARATOR_CHAR)[1] : '',
     },
-    ...(pipelineDetails.pipelineUrl && pipelineHostPort
+    ...(pipelineDetails.pipelineUrl
       ? [
           {
             key: `${serviceType} ${EntityInfo.URL}`,
-            value: pipelineHostPort + pipelineDetails.pipelineUrl,
+            value: pipelineDetails.pipelineUrl,
             placeholderText: entityName,
             isLink: true,
             openInNewTab: true,
@@ -585,13 +584,13 @@ const PipelineDetails = ({
         dataIndex: 'name',
         title: t('label.name'),
         render: (name, record) =>
-          isEmpty(record.taskUrl) || isUndefined(pipelineHostPort) ? (
+          isEmpty(record.taskUrl) ? (
             <span>{name}</span>
           ) : (
             <Link
               className="flex items-center gap-2"
               target="_blank"
-              to={{ pathname: pipelineHostPort + record.taskUrl }}>
+              to={{ pathname: record.taskUrl }}>
               <span>{name}</span>
               <ExternalLinkIcon height={14} width={14} />
             </Link>
@@ -654,14 +653,7 @@ const PipelineDetails = ({
         render: renderTags,
       },
     ],
-    [
-      pipelinePermissions,
-      editTask,
-      editTaskTags,
-      tagList,
-      deleted,
-      pipelineHostPort,
-    ]
+    [pipelinePermissions, editTask, editTaskTags, tagList, deleted]
   );
 
   const getLineageData = () => {
