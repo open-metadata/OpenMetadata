@@ -13,7 +13,6 @@
 
 import { ReactNode } from 'react';
 import AppState from '../AppState';
-import { WILD_CARD_CHAR } from '../constants/char.constants';
 import { Team } from '../generated/entity/teams/team';
 import { User } from '../generated/entity/teams/user';
 import { getEntityName } from './CommonUtils';
@@ -35,14 +34,9 @@ export type OwnerItem = {
 export const getOwnerList = (
   listUsers: User[] = [],
   listTeams: Team[] = [],
-  excludeCurrentUser = false,
-  searchQuery = ''
+  excludeCurrentUser = false
 ): OwnerItem[] => {
   const userDetails = AppState.getCurrentUserDetails();
-
-  const isAdminIncludeInQuery =
-    getEntityName(userDetails).includes(searchQuery) ??
-    searchQuery === WILD_CARD_CHAR;
 
   const users = listUsers.flatMap((user) =>
     user.id !== userDetails?.id
@@ -65,7 +59,7 @@ export const getOwnerList = (
   }));
 
   const currentUser =
-    !excludeCurrentUser && isAdminIncludeInQuery && userDetails
+    !excludeCurrentUser && userDetails
       ? [
           {
             name: getEntityName(userDetails),
