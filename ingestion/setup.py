@@ -193,7 +193,7 @@ plugins: Dict[str, Set[str]] = {
     "presto": {*COMMONS["hive"]},
     "pymssql": {"pymssql==2.2.5"},
     "quicksight": {VERSIONS["boto3"]},
-    "redash": {"redash-toolbelt~=0.1"},
+    "redash": {"packaging==21.3"},
     "redpanda": {*COMMONS["kafka"]},
     "redshift": {
         "sqlalchemy-redshift~=0.8",
