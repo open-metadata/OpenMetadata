@@ -37,10 +37,7 @@ interface Props extends FormProps<ConfigData> {
   status?: LoadingState;
   onCancel?: () => void;
   onTestConnection?: (formData: ConfigData) => Promise<void>;
-  onFocus: (
-    fieldName: string,
-    fields: FormProps<ConfigData>['schema']['properties']
-  ) => void;
+  onFocus: (fieldName: string) => void;
 }
 
 const FormBuilder: FunctionComponent<Props> = ({
@@ -171,11 +168,12 @@ const FormBuilder: FunctionComponent<Props> = ({
       showErrorList={false}
       transformErrors={transformErrors}
       uiSchema={uiSchema}
+      onBlur={() => onFocus('')}
       onChange={(e: IChangeEvent) => {
         handleChange(e.formData);
         props.onChange && props.onChange(e);
       }}
-      onFocus={(id: string) => onFocus(id, schema.properties)}
+      onFocus={onFocus}
       onSubmit={onSubmit}
       {...props}>
       {isEmpty(schema) && (
