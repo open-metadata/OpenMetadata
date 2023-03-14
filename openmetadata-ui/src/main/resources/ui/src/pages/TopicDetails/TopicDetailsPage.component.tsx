@@ -14,13 +14,6 @@
 import { AxiosError } from 'axios';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import { TitleBreadcrumbProps } from 'components/common/title-breadcrumb/title-breadcrumb.interface';
-import {
-  Edge,
-  EdgeData,
-  LeafNodes,
-  LineagePos,
-  LoadingNodeState,
-} from 'components/EntityLineage/EntityLineage.interface';
 import Loader from 'components/Loader/Loader';
 import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
 import {
@@ -29,14 +22,12 @@ import {
 } from 'components/PermissionProvider/PermissionProvider.interface';
 import TopicDetails from 'components/TopicDetails/TopicDetails.component';
 import { compare, Operation } from 'fast-json-patch';
-import { isEmpty, isUndefined, omitBy } from 'lodash';
+import { isUndefined, omitBy } from 'lodash';
 import { observer } from 'mobx-react';
 import { EntityTags } from 'Models';
 import React, { FunctionComponent, useEffect, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
 import { getAllFeeds, postFeedById, postThread } from 'rest/feedsAPI';
-import { getLineageByFQN } from 'rest/lineageAPI';
-import { addLineage, deleteLineageEdge } from 'rest/miscAPI';
 import {
   addFollower,
   getTopicByFqn,
@@ -56,7 +47,6 @@ import { ServiceCategory } from '../../enums/service.enum';
 import { CreateThread } from '../../generated/api/feed/createThread';
 import { Topic, TopicSampleData } from '../../generated/entity/data/topic';
 import { Post, Thread, ThreadType } from '../../generated/entity/feed/thread';
-import { EntityLineage } from '../../generated/type/entityLineage';
 import { EntityReference } from '../../generated/type/entityReference';
 import { Paging } from '../../generated/type/paging';
 import { TagLabel } from '../../generated/type/tagLabel';
@@ -68,11 +58,7 @@ import {
   getEntityMissingError,
   getFeedCounts,
 } from '../../utils/CommonUtils';
-import {
-  getEntityFeedLink,
-  getEntityLineage,
-  getEntityName,
-} from '../../utils/EntityUtils';
+import { getEntityFeedLink, getEntityName } from '../../utils/EntityUtils';
 import { deletePost, updateThreadData } from '../../utils/FeedUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { serviceTypeLogo } from '../../utils/ServiceUtils';
@@ -125,113 +111,10 @@ const TopicDetailsPage: FunctionComponent = () => {
   const [sampleData, setSampleData] = useState<TopicSampleData>();
   const [isSampleDataLoading, setIsSampleDataLoading] =
     useState<boolean>(false);
-  const [entityLineage, setEntityLineage] = useState<EntityLineage>(
-    {} as EntityLineage
-  );
-  const [leafNodes, setLeafNodes] = useState<LeafNodes>({} as LeafNodes);
-  const [isNodeLoading, setNodeLoading] = useState<LoadingNodeState>({
-    id: undefined,
-    state: false,
-  });
-  const [isLineageLoading, setIsLineageLoading] = useState<boolean>(false);
 
   const [topicPermissions, setTopicPermissions] = useState<OperationPermission>(
     DEFAULT_ENTITY_PERMISSION
   );
-
-  const getLineageData = () => {
-    setIsLineageLoading(true);
-    getLineageByFQN(topicFQN, EntityType.TOPIC)
-      .then((res) => {
-        if (res) {
-          setEntityLineage(res);
-        } else {
-          showErrorToast(jsonData['api-error-messages']['fetch-lineage-error']);
-        }
-      })
-      .catch((err: AxiosError) => {
-        showErrorToast(
-          err,
-          jsonData['api-error-messages']['fetch-lineage-error']
-        );
-      })
-      .finally(() => {
-        setIsLineageLoading(false);
-      });
-  };
-
-  const setLeafNode = (val: EntityLineage, pos: LineagePos) => {
-    if (pos === 'to' && val.downstreamEdges?.length === 0) {
-      setLeafNodes((prev) => ({
-        ...prev,
-        downStreamNode: [...(prev.downStreamNode ?? []), val.entity.id],
-      }));
-    }
-    if (pos === 'from' && val.upstreamEdges?.length === 0) {
-      setLeafNodes((prev) => ({
-        ...prev,
-        upStreamNode: [...(prev.upStreamNode ?? []), val.entity.id],
-      }));
-    }
-  };
-
-  const entityLineageHandler = (lineage: EntityLineage) => {
-    setEntityLineage(lineage);
-  };
-
-  const loadNodeHandler = (node: EntityReference, pos: LineagePos) => {
-    setNodeLoading({ id: node.id, state: true });
-    getLineageByFQN(node.fullyQualifiedName ?? '', node.type)
-      .then((res) => {
-        if (res) {
-          setLeafNode(res, pos);
-          setEntityLineage(getEntityLineage(entityLineage, res, pos));
-        } else {
-          showErrorToast(
-            jsonData['api-error-messages']['fetch-lineage-node-error']
-          );
-        }
-        setTimeout(() => {
-          setNodeLoading((prev) => ({ ...prev, state: false }));
-        }, 500);
-      })
-      .catch((err: AxiosError) => {
-        showErrorToast(
-          err,
-          jsonData['api-error-messages']['fetch-lineage-node-error']
-        );
-      });
-  };
-
-  const addLineageHandler = (edge: Edge): Promise<void> => {
-    return new Promise<void>((resolve, reject) => {
-      addLineage(edge)
-        .then(() => {
-          resolve();
-        })
-        .catch((err: AxiosError) => {
-          showErrorToast(
-            err,
-            jsonData['api-error-messages']['add-lineage-error']
-          );
-          reject();
-        });
-    });
-  };
-
-  const removeLineageHandler = (data: EdgeData) => {
-    deleteLineageEdge(
-      data.fromEntity,
-      data.fromId,
-      data.toEntity,
-      data.toId
-    ).catch((err: AxiosError) => {
-      showErrorToast(
-        err,
-        jsonData['api-error-messages']['delete-lineage-error']
-      );
-    });
-  };
 
   const activeTabHandler = (tabValue: number) => {
     const currentTabIndex = tabValue - 1;
@@ -336,14 +219,6 @@ const TopicDetailsPage: FunctionComponent = () => {
       }
 
       case TabSpecificField.LINEAGE: {
-        if (!deleted) {
-          if (isEmpty(entityLineage)) {
-            getLineageData();
-          }
-
-          break;
-        }
-
         break;
       }
 
@@ -720,16 +595,6 @@ const TopicDetailsPage: FunctionComponent = () => {
               followers={followers}
               isSampleDataLoading={isSampleDataLoading}
               isentityThreadLoading={isentityThreadLoading}
-              lineageTabData={{
-                loadNodeHandler,
-                addLineageHandler,
-                removeLineageHandler,
-                entityLineageHandler,
-                isLineageLoading,
-                entityLineage,
-                lineageLeafNodes: leafNodes,
-                isNodeLoading,
-              }}
               maximumMessageSize={maximumMessageSize}
               owner={owner as EntityReference}
               paging={paging}
