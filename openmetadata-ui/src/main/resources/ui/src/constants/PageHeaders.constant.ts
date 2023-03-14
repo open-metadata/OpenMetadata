@@ -11,6 +11,8 @@
  *  limitations under the License.
  */
 
+import i18n from 'utils/i18next/LocalUtil';
+
 export const PAGE_HEADERS = {
   ADVANCE_SEARCH: {
     header: 'Advanced Search',
@@ -113,6 +115,12 @@ export const PAGE_HEADERS = {
     header: 'ML Models',
     subHeader:
       'Define custom properties for ML models to serve your organizational needs.',
+  },
+  CONTAINER_CUSTOM_ATTRIBUTES: {
+    header: i18n.t('label.container-plural'),
+    subHeader: i18n.t('message.define-custom-property-for-entity', {
+      entity: i18n.t('label.container-plural'),
+    }),
   },
   BOTS: {
     header: 'Bots',

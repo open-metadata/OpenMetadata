@@ -179,9 +179,7 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
     return (
       <>
         {isReadOnly ? (
-          <Space wrap>
-            <TagsViewer sizeCap={-1} tags={tags || []} />
-          </Space>
+          <TagsViewer sizeCap={-1} tags={tags || []} />
         ) : (
           <Space
             align={styleFlag ? 'start' : 'center'}

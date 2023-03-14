@@ -69,6 +69,7 @@ class DomodatabaseSource(DatabaseServiceSource):
         self.domo_client = get_connection(self.service_connection)
         self.client = DomoClient(self.service_connection)
         super().__init__()
+        self.test_connection()
 
     @classmethod
     def create(cls, config_dict: dict, metadata_config: OpenMetadataConnection):

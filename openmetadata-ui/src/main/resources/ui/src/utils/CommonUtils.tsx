@@ -23,6 +23,7 @@ import {
 } from 'components/common/CronEditor/CronEditor.constant';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import Loader from 'components/Loader/Loader';
+import { Container } from 'generated/entity/data/container';
 import { t } from 'i18next';
 import {
   capitalize,
@@ -71,7 +72,7 @@ import { Dashboard } from '../generated/entity/data/dashboard';
 import { Database } from '../generated/entity/data/database';
 import { GlossaryTerm } from '../generated/entity/data/glossaryTerm';
 import { Pipeline } from '../generated/entity/data/pipeline';
-import { Table } from '../generated/entity/data/table';
+import { Column, Table } from '../generated/entity/data/table';
 import { Topic } from '../generated/entity/data/topic';
 import { Webhook } from '../generated/entity/events/webhook';
 import { ThreadTaskStatus, ThreadType } from '../generated/entity/feed/thread';
@@ -572,6 +573,8 @@ export const getEntityName = (
     | Kpi
     | Classification
     | Field
+    | Container
+    | Column
 ) => {
   return entity?.displayName || entity?.name || '';
 };

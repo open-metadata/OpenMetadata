@@ -310,7 +310,7 @@ const PipelineDetails = ({
     if (pipelineDetails) {
       const updatedPipelineDetails = {
         ...pipelineDetails,
-        tags: undefined,
+        tags: getTagsWithoutTier(pipelineDetails.tags ?? []),
       };
       settingsUpdateHandler(updatedPipelineDetails);
     }
@@ -542,9 +542,7 @@ const PipelineDetails = ({
         data-testid="tags-wrapper"
         onClick={() => handleEditTaskTag(record, index)}>
         {deleted ? (
-          <div className="tw-flex tw-flex-wrap">
-            <TagsViewer sizeCap={-1} tags={text || []} />
-          </div>
+          <TagsViewer sizeCap={-1} tags={text || []} />
         ) : (
           <TagsContainer
             editable={editTaskTags?.index === index}

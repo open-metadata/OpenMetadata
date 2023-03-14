@@ -17,6 +17,7 @@ import {
   ResourceEntity,
 } from 'components/PermissionProvider/PermissionProvider.interface';
 import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
+import { ObjectStoreServiceType } from 'generated/entity/data/container';
 import { t } from 'i18next';
 import {
   Bucket,
@@ -39,6 +40,7 @@ import {
 import {
   AIRBYTE,
   AIRFLOW,
+  AMAZON_S3,
   AMUNDSEN,
   ATHENA,
   ATLAS,
@@ -56,6 +58,7 @@ import {
   DRUID,
   DYNAMODB,
   FIVETRAN,
+  GCS,
   GLUE,
   HIVE,
   IBMDB2,
@@ -68,6 +71,7 @@ import {
   MLFLOW,
   MODE,
   MSSQL,
+  MS_AZURE,
   MYSQL,
   NIFI,
   ORACLE,
@@ -282,6 +286,15 @@ export const serviceTypeLogo = (type: string) => {
 
     case MetadataServiceType.OpenMetadata:
       return LOGO;
+
+    case ObjectStoreServiceType.Azure:
+      return MS_AZURE;
+
+    case ObjectStoreServiceType.S3:
+      return AMAZON_S3;
+
+    case ObjectStoreServiceType.Gcs:
+      return GCS;
 
     default: {
       let logo;

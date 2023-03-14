@@ -180,6 +180,7 @@ source:
   sourceConfig:
     config:
       type: DashboardMetadata
+      overrideOwner: True
       # dbServiceNames:
       #   - service1
       #   - service2
@@ -226,6 +227,7 @@ The `sourceConfig` is defined [here](https://github.com/open-metadata/OpenMetada
 
 - `dbServiceNames`: Database Service Name for the creation of lineage, if the source supports it.
 - `dashboardFilterPattern` and `chartFilterPattern`: Note that the `dashboardFilterPattern` and `chartFilterPattern` both support regex as include or exclude. E.g.,
+- `overrideOwner`: Flag to override current owner by new owner from source, if found during metadata ingestion
 
 ```yaml
 dashboardFilterPattern:

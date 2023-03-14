@@ -159,7 +159,6 @@ class LookerSource(DashboardServiceSource):
         Returns:
             Optional[EntityReference]
         """
-
         try:
             if (
                 dashboard_details.user_id is not None
@@ -183,6 +182,18 @@ class LookerSource(DashboardServiceSource):
 
         return self._owners_ref.get(dashboard_details.user_id)
 
+    def process_owner(
+        self, dashboard_details: LookerDashboard
+    ) -> Optional[MetadataDashboard]:
+        owner = self.get_owner_details(dashboard_details=dashboard_details)
+        if owner and self.source_config.overrideOwner:
+            self.metadata.patch_owner(
+                entity=MetadataDashboard,
+                entity_id=self.context.dashboard.id,
+                owner=owner,
+                force=True,
+            )
+
     def yield_dashboard(
         self, dashboard_details: LookerDashboard
     ) -> CreateDashboardRequest:
@@ -205,7 +216,6 @@ class LookerSource(DashboardServiceSource):
             ],
             dashboardUrl=f"/dashboards/{dashboard_details.id}",
             service=self.context.dashboard_service.fullyQualifiedName.__root__,
-            owner=self.get_owner_details(dashboard_details),
         )
 
     @staticmethod

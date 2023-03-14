@@ -164,13 +164,15 @@ class SqlLineageTest(TestCase):
         # When
         with self.assertLogs(Loggers.INGESTION.value, level="DEBUG") as logger:
             LineageParser(
-                query.format(values="\n".join(values)), dialect=Dialect.SNOWFLAKE
+                query.format(values="\n".join(values)),
+                dialect=Dialect.SNOWFLAKE,
+                timeout_seconds=1,
             )
             # Then
             self.assertTrue(
                 any(
-                    "Parser has been running for more than 10 seconds." in log
+                    "Parser has been running for more than 1 seconds." in log
                     for log in logger.output
                 ),
-                "Parser finished before the 10 expected seconds!",
+                "Parser finished before the 1 expected seconds!",
             )

@@ -59,6 +59,7 @@ export const SEARCH_ENTITY_TABLE = {
     term: 'fact_session',
     entity: MYDATA_SUMMARY_OPTIONS.tables,
     serviceName: 'sample_data',
+    schemaName: 'shopify',
   },
   table_3: {
     term: 'raw_product_catalog',
