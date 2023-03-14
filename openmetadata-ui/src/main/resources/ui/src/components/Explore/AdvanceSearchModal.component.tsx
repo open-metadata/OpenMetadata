@@ -13,17 +13,14 @@
 
 import { Button, Modal, Space, Typography } from 'antd';
 import React, { FunctionComponent } from 'react';
-import { Builder, JsonTree, Query } from 'react-awesome-query-builder';
+import { Builder, Query } from 'react-awesome-query-builder';
 import { useTranslation } from 'react-i18next';
-import { SearchIndex } from '../../enums/search.enum';
 import { useAdvanceSearch } from './AdvanceSearchProvider/AdvanceSearchProvider.component';
 
 interface Props {
   visible: boolean;
-  jsonTree?: JsonTree;
   onSubmit: () => void;
   onCancel: () => void;
-  searchIndex: SearchIndex;
 }
 
 export const AdvancedSearchModal: FunctionComponent<Props> = ({

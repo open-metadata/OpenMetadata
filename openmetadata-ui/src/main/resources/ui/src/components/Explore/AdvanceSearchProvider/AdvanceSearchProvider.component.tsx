@@ -61,6 +61,12 @@ export const AdvanceSearchProvider = ({
 
     return tabInfo[0] as ExploreSearchIndex;
   }, [tab]);
+  const [config, setConfig] = useState<Config>(getQbConfigs(searchIndex));
+
+  const defaultTree = useMemo(
+    () => QbUtils.checkTree(QbUtils.loadTree(emptyJsonTree), config),
+    []
+  );
 
   const parsedSearch = useMemo(
     () =>
@@ -74,7 +80,7 @@ export const AdvanceSearchProvider = ({
 
   const jsonTree = useMemo(() => {
     if (!isString(parsedSearch.queryFilter)) {
-      return emptyJsonTree;
+      return undefined;
     }
 
     try {
@@ -90,19 +96,18 @@ export const AdvanceSearchProvider = ({
     return emptyJsonTree;
   }, [parsedSearch]);
 
-  const [config, setConfig] = useState<Config>(getQbConfigs(searchIndex));
-  const [treeInternal, setTreeInternal] = useState<ImmutableTree>(
-    QbUtils.checkTree(QbUtils.loadTree(jsonTree), config)
+  const [showModal, setShowModal] = useState(false);
+  const [treeInternal, setTreeInternal] = useState<ImmutableTree>(() =>
+    jsonTree
+      ? QbUtils.checkTree(QbUtils.loadTree(jsonTree), config)
+      : defaultTree
   );
   const [queryFilter, setQueryFilter] = useState<
     Record<string, unknown> | undefined
-  >({
-    query: elasticSearchFormat(treeInternal, config),
-  });
+  >();
   const [sqlQuery, setSQLQuery] = useState(
     treeInternal ? QbUtils.sqlFormat(treeInternal, config) ?? '' : ''
   );
-  const [showModal, setShowModal] = useState(false);
 
   useEffect(() => setConfig(getQbConfigs(searchIndex)), [searchIndex]);
 
@@ -111,7 +116,7 @@ export const AdvanceSearchProvider = ({
       setConfig(nConfig);
       setTreeInternal(nTree);
     },
-    [setConfig]
+    [setConfig, setTreeInternal]
   );
 
   const handleTreeUpdate = useCallback(
@@ -125,7 +130,7 @@ export const AdvanceSearchProvider = ({
         }),
       });
     },
-    [history, parsedSearch]
+    [history, parsedSearch, location.pathname]
   );
 
   const toggleModal = (show: boolean) => {
@@ -134,7 +139,17 @@ export const AdvanceSearchProvider = ({
 
   const handleReset = useCallback(() => {
     setTreeInternal(QbUtils.checkTree(QbUtils.loadTree(emptyJsonTree), config));
+    setQueryFilter(undefined);
+    setSQLQuery('');
   }, []);
+
+  useEffect(() => {
+    if (jsonTree) {
+      setTreeInternal(QbUtils.checkTree(QbUtils.loadTree(jsonTree), config));
+    } else {
+      handleReset();
+    }
+  }, [jsonTree]);
 
   const handleSubmit = useCallback(() => {
     const qFilter = {
@@ -147,6 +162,16 @@ export const AdvanceSearchProvider = ({
     handleTreeUpdate(treeInternal);
     setShowModal(false);
   }, [treeInternal, config, handleTreeUpdate]);
+
+  useEffect(() => {
+    const qFilter = {
+      query: elasticSearchFormat(treeInternal, config),
+    };
+    setQueryFilter(qFilter);
+    setSQLQuery(
+      treeInternal ? QbUtils.sqlFormat(treeInternal, config) ?? '' : ''
+    );
+  }, []);
 
   return (
     <AdvancedSearchContext.Provider
@@ -161,8 +186,6 @@ export const AdvanceSearchProvider = ({
       }}>
       {children}
       <AdvancedSearchModal
-        jsonTree={jsonTree}
-        searchIndex={searchIndex}
         visible={showModal}
         onCancel={() => setShowModal(false)}
         onSubmit={handleSubmit}

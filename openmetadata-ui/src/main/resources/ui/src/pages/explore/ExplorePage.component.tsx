@@ -253,6 +253,7 @@ const ExplorePage: FunctionComponent = () => {
     showDeleted,
     advancesSearchQueryFilter,
     elasticsearchQueryFilter,
+    queryFilter,
     page,
   ]);
 
