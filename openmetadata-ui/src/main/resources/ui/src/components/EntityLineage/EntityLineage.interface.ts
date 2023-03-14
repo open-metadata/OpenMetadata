@@ -159,3 +159,10 @@ export interface LineageConfig {
   downstreamDepth: number;
   nodesPerLayer: number;
 }
+
+export interface LineageConfigModalProps {
+  visible: boolean;
+  config: LineageConfig;
+  onCancel: () => void;
+  onSave: (config: LineageConfig) => void;
+}

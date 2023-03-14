@@ -12,14 +12,10 @@
  */
 import { Form, InputNumber, Modal, Select } from 'antd';
 import React, { useState } from 'react';
-import { LineageConfig } from './EntityLineage.interface';
-
-interface Props {
-  visible: boolean;
-  config: LineageConfig;
-  onCancel: () => void;
-  onSave: (config: LineageConfig) => void;
-}
+import {
+  LineageConfig,
+  LineageConfigModalProps,
+} from './EntityLineage.interface';
 
 const SELECT_OPTIONS = [1, 2, 3].map((value) => (
   <Select.Option key={value} value={value}>
@@ -27,7 +23,7 @@ const SELECT_OPTIONS = [1, 2, 3].map((value) => (
   </Select.Option>
 ));
 
-const LineageConfigModal: React.FC<Props> = ({
+const LineageConfigModal: React.FC<LineageConfigModalProps> = ({
   visible,
   config,
   onCancel,
@@ -74,7 +70,9 @@ const LineageConfigModal: React.FC<Props> = ({
               message: 'Please select a value for upstream depth',
             },
           ]}>
-          <Select onChange={(value) => setUpstreamDepth(value as number)}>
+          <Select
+            data-testid="field-upstream"
+            onChange={(value) => setUpstreamDepth(value as number)}>
             {SELECT_OPTIONS}
           </Select>
         </Form.Item>
@@ -89,7 +87,9 @@ const LineageConfigModal: React.FC<Props> = ({
               message: 'Please select a value for downstream depth',
             },
           ]}>
-          <Select onChange={(value) => setDownstreamDepth(value as number)}>
+          <Select
+            data-testid="field-downstream"
+            onChange={(value) => setDownstreamDepth(value as number)}>
             {SELECT_OPTIONS}
           </Select>
         </Form.Item>
@@ -106,6 +106,7 @@ const LineageConfigModal: React.FC<Props> = ({
           ]}>
           <InputNumber
             className="w-full"
+            data-testid="field-nodes-per-layer"
             min={1}
             onChange={(value) => setNodesPerLayer(value as number)}
           />

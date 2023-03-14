@@ -151,10 +151,13 @@ const CustomControls: FC<ControlProps> = ({
     );
   }, [isEditMode]);
 
-  const handleDialogSave = useCallback((config: LineageConfig) => {
-    onLineageConfigUpdate(config);
-    setDialogVisible(false);
-  }, []);
+  const handleDialogSave = useCallback(
+    (config: LineageConfig) => {
+      onLineageConfigUpdate(config);
+      setDialogVisible(false);
+    },
+    [onLineageConfigUpdate, setDialogVisible]
+  );
 
   return (
     <>
