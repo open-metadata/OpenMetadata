@@ -26,7 +26,6 @@ import './OwnerWidgetWrapper.style.less';
 interface OwnerWidgetWrapperProps {
   currentOwner?: Table['owner'];
   updateUser?: (value: Table['owner']) => void;
-  isListLoading?: boolean;
   visible: boolean;
   currentUser?: EntityReference;
   allowTeamOwner?: boolean;

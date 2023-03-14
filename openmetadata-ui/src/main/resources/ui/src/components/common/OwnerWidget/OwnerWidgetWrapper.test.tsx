@@ -10,20 +10,28 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import React from 'react';
 
 import OwnerWidgetWrapper from './OwnerWidgetWrapper.component';
 
-const dummyProps = {
+const mockSearchAPI = jest.fn();
+const mockHideWidget = jest.fn();
+
+jest.mock('utils/UserDataUtils', () => ({
+  searchFormattedUsersAndTeams: mockSearchAPI,
+}));
+
+const mockProps = {
   visible: true,
   currentUser: { id: '1', type: 'User' },
-  hideWidget: jest.fn(),
+  hideWidget: mockHideWidget,
 };
 
 describe('OwnerWidgetWrapper', () => {
   it('Should renders the component when visible is true', () => {
-    render(<OwnerWidgetWrapper {...dummyProps} />);
+    render(<OwnerWidgetWrapper {...mockProps} />);
     const dropDownList = screen.getByTestId('dropdown-list');
     const searchBox = screen.getByTestId('searchInputText');
 
@@ -32,10 +40,38 @@ describe('OwnerWidgetWrapper', () => {
   });
 
   it('Should not render the component when visible is false', () => {
-    render(<OwnerWidgetWrapper {...dummyProps} visible={false} />);
+    render(<OwnerWidgetWrapper {...mockProps} visible={false} />);
 
     const component = screen.queryByTestId('dropdown-list');
 
     expect(component).toBeNull();
+  });
+
+  it('Search Should work', async () => {
+    render(<OwnerWidgetWrapper {...mockProps} />);
+
+    const searchInput = screen.getByTestId('searchInputText');
+
+    await act(async () => {
+      fireEvent.change(searchInput, {
+        target: {
+          value: 'user1',
+        },
+      });
+    });
+
+    expect(searchInput).toHaveValue('user1');
+  });
+
+  it('Hide Widget should work', async () => {
+    render(<OwnerWidgetWrapper {...mockProps} />);
+
+    const backdropButton = screen.getByTestId('backdrop-button');
+
+    await act(async () => {
+      userEvent.click(backdropButton);
+    });
+
+    expect(mockHideWidget).toHaveBeenCalled();
   });
 });
