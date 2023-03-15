@@ -142,11 +142,11 @@ class DatabricksClient:
                 timeout=10,
             ).json()
 
-            job_list.extend(response["jobs"])
+            job_list.extend(response.get("jobs"))
 
             while response["has_more"]:
 
-                data["offset"] = len(response["jobs"])
+                data["offset"] = len(response.get("jobs"))
 
                 response = self.client.get(
                     self.jobs_list_url,
@@ -155,7 +155,7 @@ class DatabricksClient:
                     timeout=10,
                 ).json()
 
-                job_list.extend(response["jobs"])
+                job_list.extend(response.get("jobs"))
 
         except Exception as exc:
             logger.debug(traceback.format_exc())
@@ -184,7 +184,7 @@ class DatabricksClient:
                 timeout=10,
             ).json()
 
-            job_runs.extend(response["runs"])
+            job_runs.extend(response.get("runs"))
 
             while response["has_more"]:
 
@@ -197,7 +197,7 @@ class DatabricksClient:
                     timeout=10,
                 ).json()
 
-                job_runs.extend(response["runs"])
+                job_runs.extend(response.get("runs"))
 
         except Exception as exc:
             logger.debug(traceback.format_exc())
