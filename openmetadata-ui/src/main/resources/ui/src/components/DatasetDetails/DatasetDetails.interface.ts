@@ -23,7 +23,6 @@ import {
   UsageDetails,
 } from '../../generated/entity/data/table';
 import { Thread, ThreadType } from '../../generated/entity/feed/thread';
-import { EntityLineage } from '../../generated/type/entityLineage';
 import { EntityReference } from '../../generated/type/entityReference';
 import { Paging } from '../../generated/type/paging';
 import { TagLabel } from '../../generated/type/tagLabel';
@@ -32,17 +31,8 @@ import {
   ThreadUpdatedFunc,
 } from '../../interface/feed.interface';
 import { TitleBreadcrumbProps } from '../common/title-breadcrumb/title-breadcrumb.interface';
-import {
-  Edge,
-  EdgeData,
-  LeafNodes,
-  LineagePos,
-  LoadingNodeState,
-} from '../EntityLineage/EntityLineage.interface';
 
 export interface DatasetDetailsProps {
-  isNodeLoading: LoadingNodeState;
-  lineageLeafNodes: LeafNodes;
   version?: string;
   entityId?: string;
   joins: TableJoins;
@@ -60,14 +50,12 @@ export interface DatasetDetailsProps {
   columns: Column[];
   tier: TagLabel;
   sampleData: TableData;
-  entityLineage: EntityLineage;
   followers: Array<EntityReference>;
   tableTags: Array<EntityTags>;
   slashedTableName: TitleBreadcrumbProps['titleLinks'];
   entityThread: Thread[];
   deleted?: boolean;
   isTableProfileLoading?: boolean;
-  isLineageLoading?: boolean;
   isSampleDataLoading?: boolean;
   isQueriesLoading?: boolean;
   isentityThreadLoading: boolean;
@@ -84,10 +72,6 @@ export interface DatasetDetailsProps {
   descriptionUpdateHandler: (updatedTable: Table) => Promise<void>;
   tagUpdateHandler: (updatedTable: Table) => void;
   versionHandler: () => void;
-  loadNodeHandler: (node: EntityReference, pos: LineagePos) => void;
-  addLineageHandler: (edge: Edge) => Promise<void>;
-  removeLineageHandler: (data: EdgeData) => void;
-  entityLineageHandler: (lineage: EntityLineage) => void;
   postFeedHandler: (value: string, id: string) => void;
   deletePostHandler: (
     threadId: string,

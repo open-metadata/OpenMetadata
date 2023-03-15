@@ -30,7 +30,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useHistory, useParams } from 'react-router-dom';
 import { getGlossaryTerms, ListGlossaryTermsParams } from 'rest/glossaryAPI';
-import { getEntityName } from 'utils/CommonUtils';
+import { getEntityName } from 'utils/EntityUtils';
 import {
   createGlossaryTermTree,
   getRootLevelGlossaryTerm,

@@ -172,6 +172,15 @@ class WebAnalyticEntityViewReportDataProcessor(DataProcessor):
                 except IndexError:
                     entity_href = None
 
+                if (
+                    owner_id is not None
+                    and event.eventData is not None
+                    and owner_id == str(event.eventData.userId.__root__)
+                ):  # type: ignore
+                    # we won't count views if the owner is the one visiting
+                    # the entity
+                    continue
+
                 refined_data[split_url[1]] = {
                     "entityType": ENTITIES[entity_type].__name__,
                     "entityTier": entity_tier,

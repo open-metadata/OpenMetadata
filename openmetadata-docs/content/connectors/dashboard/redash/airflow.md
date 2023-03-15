@@ -55,6 +55,7 @@ source:
       hostPort: http://localhost:5000
       apiKey: api_key
       username: random
+      redashVersion: 10.0.0
   sourceConfig:
     config:
       type: DashboardMetadata
@@ -91,6 +92,7 @@ workflowConfig:
 - **hostPort**: URL to the Redash instance.
 - **username**: Specify the User to connect to Redash. It should have enough privileges to read all the metadata.
 - **apiKey**: API key of the redash instance to access.
+- **Redash Version**: (Default: 10.0.0) Redash version of your redash instance. Enter the numerical value from the [Redash Releases](https://github.com/getredash/redash/releases) page.
 
 #### Source Configuration - Source Config
 
