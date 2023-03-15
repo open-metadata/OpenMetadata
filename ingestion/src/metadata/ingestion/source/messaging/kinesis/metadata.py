@@ -11,6 +11,7 @@
 """
 Kafka source ingestion
 """
+import binascii
 import traceback
 from base64 import b64decode
 from typing import Any, Dict, Iterable, List
@@ -27,6 +28,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.ingestion.api.source import InvalidSourceException
+from metadata.ingestion.models.ometa_topic_data import OMetaTopicSampleData
 from metadata.ingestion.source.messaging.messaging_service import (
     BrokerTopicDetails,
     MessagingServiceSource,
@@ -95,10 +97,6 @@ class KinesisSource(MessagingServiceSource):
                 ),
                 maximumMessageSize=self._get_max_message_size(),
             )
-            if self.generate_sample_data:
-                topic.sampleData = self._get_sample_data(
-                    topic_details.topic_name, topic_details.topic_metadata["partitions"]
-                )
             self.status.topic_scanned(topic.name.__root__)
             yield topic
 
@@ -146,6 +144,20 @@ class KinesisSource(MessagingServiceSource):
             )
         return all_partitions
 
+    def yield_topic_sample_data(
+        self, topic_details: BrokerTopicDetails
+    ) -> TopicSampleData:
+        """
+        Method to Get Sample Data of Messaging Entity
+        """
+        if self.context.topic and self.generate_sample_data:
+            yield OMetaTopicSampleData(
+                topic=self.context.topic,
+                sample_data=self._get_sample_data(
+                    topic_details.topic_name, topic_details.topic_metadata["partitions"]
+                ),
+            )
+
     def _get_sample_data(self, topic_name, partitions) -> TopicSampleData:
         data = []
         try:
@@ -160,9 +172,11 @@ class KinesisSource(MessagingServiceSource):
                     "Records"
                 ]
 
-                data.extend(
-                    [b64decode(record["Data"]).decode("utf-8") for record in records]
-                )
+                for record in records:
+                    try:
+                        data.append(b64decode(record["Data"]).decode("utf-8"))
+                    except (binascii.Error, UnicodeDecodeError):
+                        data.append(record["Data"].decode("utf-8"))
                 if data:
                     break
         except Exception as err:
