@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { SearchIndexMappingLanguage } from 'generated/configuration/elasticSearchConfiguration';
 import { t } from 'i18next';
 
 export const ELASTIC_SEARCH_INDEX_ENTITIES = [
@@ -82,6 +83,7 @@ export const ELASTIC_SEARCH_INITIAL_VALUES = {
   batchSize: 100,
   flushIntervalInSec: 30,
   recreateIndex: false,
+  searchIndexMappingLanguage: SearchIndexMappingLanguage.En,
 };
 
 export const RECREATE_INDEX_OPTIONS = [
