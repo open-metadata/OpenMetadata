@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Card } from 'antd';
+import { Affix, Card } from 'antd';
 import { AxiosError } from 'axios';
 import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
 import {
@@ -603,9 +603,9 @@ export const getServiceIngestionStepGuide = (args: {
   ) : null;
 
   return (
-    <Card className="service-right-panel-doc-card">
-      {activeField ? activeFieldElement : guideElement}
-    </Card>
+    <Affix offsetTop={0}>
+      <Card>{activeField ? activeFieldElement : guideElement}</Card>
+    </Affix>
   );
 };
 
