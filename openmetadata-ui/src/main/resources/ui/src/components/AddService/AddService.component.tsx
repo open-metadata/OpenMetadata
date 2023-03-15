@@ -13,6 +13,7 @@
 
 import { Card } from 'antd';
 import PageLayoutV1 from 'components/containers/PageLayoutV1';
+import { STEPS_FOR_ADD_SERVICE } from 'constants/Services.constant';
 import { t } from 'i18next';
 import { capitalize, isUndefined } from 'lodash';
 import { LoadingState } from 'Models';
@@ -21,7 +22,6 @@ import { useHistory } from 'react-router-dom';
 import { addLocalResource } from 'utils/i18next/LocalUtil';
 import { getServiceDetailsPath } from '../../constants/constants';
 import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
-import { STEPS_FOR_ADD_SERVICE } from '../../constants/Ingestions.constant';
 import { delimiterRegex, nameWithSpace } from '../../constants/regex.constants';
 import { FormSubmitType } from '../../enums/form.enum';
 import { ServiceCategory } from '../../enums/service.enum';
@@ -43,6 +43,7 @@ import ConnectionConfigForm from '../ServiceConfig/ConnectionConfigForm';
 import { AddServiceProps } from './AddService.interface';
 import ConfigureService from './Steps/ConfigureService';
 import SelectServiceType from './Steps/SelectServiceType';
+import ServiceRequirements from './Steps/ServiceRequirements';
 
 const AddService = ({
   serviceCategory,
@@ -118,7 +119,14 @@ const AddService = ({
   };
 
   const handleConfigureServiceBackClick = () => {
+    setActiveServiceStep(2);
+  };
+
+  const handleServiceRequirementsBackClick = () => {
     setActiveServiceStep(1);
+  };
+  const handleServiceRequirementsNextClick = () => {
+    setActiveServiceStep(3);
   };
 
   const handleConfigureServiceNextClick = (descriptionValue: string) => {
@@ -151,7 +159,7 @@ const AddService = ({
         isError: true,
       });
     } else if (!showErrorMessage.isError) {
-      setActiveServiceStep(3);
+      setActiveServiceStep(4);
     }
   };
 
@@ -202,7 +210,7 @@ const AddService = ({
   };
 
   const handleConnectionDetailsBackClick = () => {
-    setActiveServiceStep(2);
+    setActiveServiceStep(3);
   };
 
   const handleViewServiceClick = () => {
@@ -254,6 +262,14 @@ const AddService = ({
           )}
 
           {activeServiceStep === 2 && (
+            <ServiceRequirements
+              selectServiceType={selectServiceType}
+              onCancel={handleServiceRequirementsBackClick}
+              onNext={handleServiceRequirementsNextClick}
+            />
+          )}
+
+          {activeServiceStep === 3 && (
             <ConfigureService
               description={description}
               handleValidation={handleValidation}
@@ -272,7 +288,7 @@ const AddService = ({
             />
           )}
 
-          {activeServiceStep === 3 && (
+          {activeServiceStep === 4 && (
             <ConnectionConfigForm
               cancelText={t('label.back')}
               serviceCategory={serviceCategory}
@@ -286,7 +302,7 @@ const AddService = ({
             />
           )}
 
-          {activeServiceStep > 3 && (
+          {activeServiceStep > 4 && (
             <SuccessScreen
               showIngestionButton
               handleIngestionClick={() => handleAddIngestion(true)}

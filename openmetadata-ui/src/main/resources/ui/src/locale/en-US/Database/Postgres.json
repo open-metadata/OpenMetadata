@@ -4,5 +4,5 @@
     "password": "Password to connect to Postgres.\n\n Should be strong and contain `@$#[0-9][a-z][A-Z]`\n",
     "username": "Username to connect to Postgres. This user should have privileges to read all the metadata in Postgres."
   },
-  "requirement": ""
+  "requirement": "# Requirements for setting up the Postgres service\n - Step1\n Configure example"
 }
