@@ -182,9 +182,10 @@ describe('Tags page should work', () => {
       .contains(term)
       .should('be.visible')
       .click();
-    cy.get(
-      '[data-testid="tags-wrapper"] > [data-testid="tag-container"]'
-    ).contains(term);
+
+    cy.get('[data-testid="tag-selector"] > .ant-select-selector').contains(
+      term
+    );
     interceptURL('PATCH', '/api/v1/databaseSchemas/*', 'addTags');
     cy.get('[data-testid="saveAssociatedTag"]').should('be.visible').click();
     verifyResponseStatusCode('@addTags', 200);
