@@ -438,7 +438,7 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
     pipeline = patchEntityAndCheck(pipeline, origJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
     pipeline = getPipeline(pipeline.getId(), "*", ADMIN_AUTH_HEADERS);
     // validate tasks
-   validateTasks(updatedTasks, pipeline.getTasks());
+    validateTasks(updatedTasks, pipeline.getTasks());
 
     // add a description to an existing task
     origJson = JsonUtils.pojoToJson(pipeline);
