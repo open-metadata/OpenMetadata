@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { PlusOutlined } from '@ant-design/icons';
 import { Button, Space, Switch, Typography } from 'antd';
+import { UserSelectableList } from 'components/common/UserSelectableList/UserSelectableList.component';
 import Tags from 'components/Tag/Tags/tags';
 import { LOADING_STATE } from 'enums/common.enum';
 import { cloneDeep, toString } from 'lodash';
@@ -30,7 +30,6 @@ import RichTextEditor from '../common/rich-text-editor/RichTextEditor';
 import { EditorContentRef } from '../common/rich-text-editor/RichTextEditor.interface';
 import TitleBreadcrumb from '../common/title-breadcrumb/title-breadcrumb.component';
 import PageLayout from '../containers/PageLayout';
-import ReviewerModal from '../Modals/ReviewerModal/ReviewerModal.component';
 import { AddGlossaryError, AddGlossaryProps } from './AddGlossary.interface';
 
 const Field = ({ children }: { children: React.ReactNode }) => {
@@ -56,7 +55,7 @@ const AddGlossary = ({
 
   const [name, setName] = useState('');
   const [description] = useState<string>('');
-  const [showReviewerModal, setShowReviewerModal] = useState(false);
+
   const [tags, setTags] = useState<EntityTags[]>([]);
   const [mutuallyExclusive, setMutuallyExclusive] = useState(false);
   const [reviewer, setReviewer] = useState<Array<EntityReference>>([]);
@@ -65,13 +64,8 @@ const AddGlossary = ({
     return markdownRef.current?.getEditorContent() || '';
   };
 
-  const onReviewerModalCancel = () => {
-    setShowReviewerModal(false);
-  };
-
   const handleReviewerSave = (reviewer: Array<EntityReference>) => {
     setReviewer(reviewer);
-    onReviewerModalCancel();
   };
 
   const handleValidation = (
@@ -235,13 +229,12 @@ const AddGlossary = ({
               <span className="w-form-label tw-mr-3">
                 {`${t('label.reviewer-plural')}:`}
               </span>
-              <Button
-                data-testid="add-reviewers"
-                size="small"
-                type="primary"
-                onClick={() => setShowReviewerModal(true)}>
-                <PlusOutlined style={{ color: 'white' }} />
-              </Button>
+              <UserSelectableList
+                // TODO: Update below with actual permission
+                hasPermission
+                selectedUsers={reviewer ?? []}
+                onUpdate={handleReviewerSave}
+              />
             </div>
             <div className="tw-my-4" data-testid="reviewers-container">
               {Boolean(reviewer.length) &&
@@ -279,15 +272,6 @@ const AddGlossary = ({
             </Button>
           </div>
         </div>
-        <ReviewerModal
-          header={t('label.add-entity', {
-            entity: t('label.reviewer'),
-          })}
-          reviewer={reviewer}
-          visible={showReviewerModal}
-          onCancel={onReviewerModalCancel}
-          onSave={handleReviewerSave}
-        />
       </div>
     </PageLayout>
   );

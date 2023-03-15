@@ -14,6 +14,7 @@
 import { CheckOutlined, PlusOutlined } from '@ant-design/icons';
 import { Space, Switch } from 'antd';
 import classNames from 'classnames';
+import { UserSelectableList } from 'components/common/UserSelectableList/UserSelectableList.component';
 import Tags from 'components/Tag/Tags/tags';
 import { t } from 'i18next';
 import { cloneDeep, isEmpty, isUndefined } from 'lodash';
@@ -37,7 +38,6 @@ import TitleBreadcrumb from '../common/title-breadcrumb/title-breadcrumb.compone
 import PageLayout from '../containers/PageLayout';
 import Loader from '../Loader/Loader';
 import RelatedTermsModal from '../Modals/RelatedTermsModal/RelatedTermsModal';
-import ReviewerModal from '../Modals/ReviewerModal/ReviewerModal.component';
 import { AddGlossaryTermProps } from './AddGlossaryTerm.interface';
 
 const Field = ({
@@ -70,7 +70,7 @@ const AddGlossaryTerm = ({
 
   const [name, setName] = useState('');
   const [description] = useState<string>('');
-  const [showReviewerModal, setShowReviewerModal] = useState(false);
+
   const [showRelatedTermsModal, setShowRelatedTermsModal] = useState(false);
   const [reviewer, setReviewer] = useState<Array<EntityReference>>([]);
   const [tags, setTags] = useState<EntityTags[]>([]);
@@ -98,13 +98,8 @@ const AddGlossaryTerm = ({
     onRelatedTermsModalCancel();
   };
 
-  const onReviewerModalCancel = () => {
-    setShowReviewerModal(false);
-  };
-
   const handleReviewerSave = (reviewer: Array<EntityReference>) => {
     setReviewer(reviewer);
-    onReviewerModalCancel();
   };
 
   const handleReviewerRemove = (
@@ -514,15 +509,12 @@ const AddGlossaryTerm = ({
               <p className="w-form-label tw-mr-3">
                 {t('label.reviewer-plural')}
               </p>
-              <Button
-                className="tw-h-5 tw-px-2"
-                data-testid="add-reviewers"
-                size="x-small"
-                theme="primary"
-                variant="contained"
-                onClick={() => setShowReviewerModal(true)}>
-                <PlusOutlined />
-              </Button>
+              <UserSelectableList
+                // TODO: Update below with actual permission
+                hasPermission
+                selectedUsers={reviewer ?? []}
+                onUpdate={handleReviewerSave}
+              />
             </div>
             <div className="tw-my-4">
               {Boolean(reviewer.length) &&
@@ -563,16 +555,6 @@ const AddGlossaryTerm = ({
           visible={showRelatedTermsModal}
           onCancel={onRelatedTermsModalCancel}
           onSave={handleRelatedTermsSave}
-        />
-
-        <ReviewerModal
-          header={t('label.add-entity', {
-            entity: t('label.reviewer-plural'),
-          })}
-          reviewer={reviewer}
-          visible={showReviewerModal}
-          onCancel={onReviewerModalCancel}
-          onSave={handleReviewerSave}
         />
       </div>
     </PageLayout>
