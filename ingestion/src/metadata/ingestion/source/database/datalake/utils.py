@@ -22,7 +22,7 @@ from typing import List, Union
 import pandas as pd
 from avro.datafile import DataFileReader
 from avro.io import DatumReader
-
+from avro.errors import InvalidAvroBinaryEncoding
 from metadata.generated.schema.entity.data.table import Column
 from metadata.generated.schema.type.schema import DataTypeTopic
 from metadata.ingestion.source.database.datalake.models import DatalakeColumnWrapper
