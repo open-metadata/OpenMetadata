@@ -62,10 +62,10 @@ export const FIELDS = {
   Tags: {
     name: 'Tags',
     testid: '[title="Tags"]',
-    searchCriteriaFirstGroup: 'PersonalData.Personal',
-    responseValueFirstGroup: '"tagFQN":"PersonalData.Personal"',
-    searchCriteriaSecondGroup: 'PersonalData.SpecialCategory',
-    responseValueSecondGroup: '"tagFQN":"PersonalData.SpecialCategory"',
+    searchCriteriaFirstGroup: 'Personal',
+    responseValueFirstGroup: '"tagFQN":"Personal"',
+    searchCriteriaSecondGroup: 'SpecialCategory',
+    responseValueSecondGroup: '"tagFQN":"SpecialCategory"',
   },
   Tiers: {
     name: 'Tier',
