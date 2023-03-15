@@ -91,6 +91,7 @@ class TableauChart(TableauBaseModel):
     workbook_id: str
     sheet_type: str
     view_url_name: str
+    content_url: str
     tags: List[str]
 
 
@@ -166,6 +167,7 @@ class TableauSource(DashboardServiceSource):
                 sheet_type=chart["sheetType"],
                 view_url_name=chart["viewUrlName"],
                 tags=[tag["label"] for tag in chart.get("tags", {}).get("tag") or []],
+                content_url=chart["contentUrl"],
             )
             for chart in extract_pages(
                 self.client.query_views_for_site,
@@ -375,15 +377,18 @@ class TableauSource(DashboardServiceSource):
                 if filter_by_chart(self.source_config.chartFilterPattern, chart.name):
                     self.status.filter(chart.name, "Chart Pattern not allowed")
                     continue
-                workbook_name = dashboard_details.name.replace(" ", "")
                 site_url = (
                     f"site/{self.service_connection.siteUrl}/"
                     if self.service_connection.siteUrl
                     else ""
                 )
-                chart_url = (
-                    f"#/{site_url}" f"views/{workbook_name}/" f"{chart.view_url_name}"
-                )
+                chart_url = None
+                if "/sheets/" in chart.content_url:
+                    chart_url = (
+                        f"#{site_url}"
+                        f"views/{chart.content_url.split('/')[0]}/"
+                        f"{chart.content_url.split('/')[2]}"
+                    )
                 yield CreateChartRequest(
                     name=chart.id,
                     displayName=chart.name,
