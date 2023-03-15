@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { Card } from 'antd';
 import PageLayoutV1 from 'components/containers/PageLayoutV1';
 import { t } from 'i18next';
 import { capitalize, isUndefined } from 'lodash';
@@ -335,7 +336,7 @@ const AddService = ({
         header={<TitleBreadcrumb titleLinks={slashedBreadcrumb} />}
         pageTitle={t('label.add-entity', { entity: t('label.service') })}
         rightPanel={fetchRightPanel()}>
-        <div className="tw-form-container">
+        <Card className="p-lg">
           {addIngestion ? (
             <AddIngestion
               activeIngestionStep={activeIngestionStep}
@@ -360,7 +361,7 @@ const AddService = ({
           ) : (
             addNewService()
           )}
-        </div>
+        </Card>
       </PageLayoutV1>
     </div>
   );
