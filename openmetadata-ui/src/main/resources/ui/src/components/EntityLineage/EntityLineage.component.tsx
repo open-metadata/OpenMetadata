@@ -134,6 +134,7 @@ import {
   EntityLineageProp,
   EntityReferenceChild,
   LeafNodes,
+  LineageConfig,
   LineagePos,
   LoadingNodeState,
   ModifiedColumn,
@@ -150,6 +151,7 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
   deleted,
   hasEditAccess,
   entityType,
+  isFullScreen = false,
 }: EntityLineageProp) => {
   const { t } = useTranslation();
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
@@ -1457,7 +1459,7 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
             updatedLineageData,
             childMap,
             paginationData,
-            lineageConfig
+            lineageConfig.nodesPerLayer
           );
           const newNodes = union(nodes, path);
           setElementsHandle(
@@ -1639,7 +1641,9 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
                   minZoom: MIN_ZOOM_VALUE,
                   maxZoom: MAX_ZOOM_VALUE,
                 }}
-                handleFullScreenViewClick={onFullScreenClick}
+                handleFullScreenViewClick={
+                  !isFullScreen ? onFullScreenClick : undefined
+                }
                 hasEditAccess={hasEditAccess}
                 isColumnsExpanded={expandAllColumns}
                 isEditMode={isEditMode}
@@ -1649,7 +1653,9 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
                 status={status}
                 zoomValue={zoomValue}
                 onEditLinageClick={handleEditLineageClick}
-                onExitFullScreenViewClick={onExitFullScreenViewClick}
+                onExitFullScreenViewClick={
+                  isFullScreen ? onExitFullScreenViewClick : undefined
+                }
                 onExpandColumnClick={handleExpandColumnClick}
                 onLineageConfigUpdate={handleLineageConfigUpdate}
                 onOptionSelect={handleOptionSelect}

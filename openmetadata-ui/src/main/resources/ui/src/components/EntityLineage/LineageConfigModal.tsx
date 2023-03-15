@@ -61,7 +61,6 @@ const LineageConfigModal: React.FC<LineageConfigModalProps> = ({
         layout="vertical"
         onFinish={handleSave}>
         <Form.Item
-          extra="Display up to 3 nodes of upstream lineage to identify the source (parent levels)."
           label="Upstream Depth"
           name="upstreamDepth"
           rules={[
@@ -69,7 +68,8 @@ const LineageConfigModal: React.FC<LineageConfigModalProps> = ({
               required: true,
               message: 'Please select a value for upstream depth',
             },
-          ]}>
+          ]}
+          tooltip="Display up to 3 nodes of upstream lineage to identify the source (parent levels).">
           <Select
             data-testid="field-upstream"
             onChange={(value) => setUpstreamDepth(value as number)}>
@@ -78,7 +78,6 @@ const LineageConfigModal: React.FC<LineageConfigModalProps> = ({
         </Form.Item>
 
         <Form.Item
-          extra="Display up to 3 nodes of downstream lineage to identify the target (child levels)."
           label="Downstream Depth"
           name="downstreamDepth"
           rules={[
@@ -86,7 +85,8 @@ const LineageConfigModal: React.FC<LineageConfigModalProps> = ({
               required: true,
               message: 'Please select a value for downstream depth',
             },
-          ]}>
+          ]}
+          tooltip="Display up to 3 nodes of downstream lineage to identify the target (child levels).">
           <Select
             data-testid="field-downstream"
             onChange={(value) => setDownstreamDepth(value as number)}>
@@ -95,7 +95,6 @@ const LineageConfigModal: React.FC<LineageConfigModalProps> = ({
         </Form.Item>
 
         <Form.Item
-          extra="Choose to display ‘n’ number of nodes per layer. If the existing nodes exceed the defined number of nodes, then pagination will be shown."
           label="Nodes per Layer"
           name="nodesPerLayer"
           rules={[
@@ -103,11 +102,12 @@ const LineageConfigModal: React.FC<LineageConfigModalProps> = ({
               required: true,
               message: 'Please enter a value for nodes per layer',
             },
-          ]}>
+          ]}
+          tooltip="Choose to display ‘n’ number of nodes per layer. If the existing nodes exceed the defined number of nodes, then pagination will be shown.">
           <InputNumber
             className="w-full"
             data-testid="field-nodes-per-layer"
-            min={1}
+            min={5}
             onChange={(value) => setNodesPerLayer(value as number)}
           />
         </Form.Item>

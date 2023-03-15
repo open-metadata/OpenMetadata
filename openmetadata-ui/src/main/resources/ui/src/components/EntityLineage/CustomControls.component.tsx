@@ -184,14 +184,6 @@ const CustomControls: FC<ControlProps> = ({
           <Space className="justify-end w-full" size={16}>
             <Button
               ghost
-              data-testid="lineage-config-btn"
-              icon={<SettingOutlined />}
-              type="primary"
-              onClick={() => setDialogVisible(true)}
-            />
-
-            <Button
-              ghost
               data-testid="expand-column"
               type="primary"
               onClick={onExpandColumnClick}>
@@ -237,6 +229,7 @@ const CustomControls: FC<ControlProps> = ({
             {showFitView && (
               <ControlButton
                 className="custom-control-basic-button custom-control-fit-screen-button"
+                title={t('label.fit-to-screen')}
                 onClick={onFitViewHandler}>
                 <SVGIcons alt="fit-view" icon={Icons.FITVEW} width="16" />
               </ControlButton>
@@ -244,6 +237,7 @@ const CustomControls: FC<ControlProps> = ({
             {handleFullScreenViewClick && (
               <ControlButton
                 className="custom-control-basic-button custom-control-fit-screen-button"
+                title={t('label.full-screen')}
                 onClick={handleFullScreenViewClick}>
                 <SVGIcons
                   alt="fullScreenViewicon"
@@ -255,6 +249,7 @@ const CustomControls: FC<ControlProps> = ({
             {onExitFullScreenViewClick && (
               <ControlButton
                 className="custom-control-basic-button custom-control-fit-screen-button"
+                title={t('label.exit-fit-to-screen')}
                 onClick={onExitFullScreenViewClick}>
                 <SVGIcons
                   alt="exitFullScreenViewIcon"
@@ -263,6 +258,14 @@ const CustomControls: FC<ControlProps> = ({
                 />
               </ControlButton>
             )}
+
+            <ControlButton
+              className="custom-control-basic-button custom-control-fit-screen-button"
+              title={t('label.setting-plural')}
+              onClick={() => setDialogVisible(true)}>
+              <SettingOutlined style={{ fontSize: '16px', color: '#7147E8' }} />
+            </ControlButton>
+
             {!deleted && (
               <ControlButton
                 className={classNames(
