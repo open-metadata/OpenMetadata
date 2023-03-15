@@ -23,6 +23,7 @@ import { Link, useHistory, useLocation } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { getVersion } from 'rest/miscAPI';
 import { extractDetailsFromToken } from 'utils/AuthProvider.util';
+import { getEntityName } from 'utils/EntityUtils';
 import appState from '../../AppState';
 import { ReactComponent as IconAPI } from '../../assets/svg/api.svg';
 import { ReactComponent as IconDoc } from '../../assets/svg/doc.svg';
@@ -45,7 +46,6 @@ import { useAuth } from '../../hooks/authHooks';
 import jsonData from '../../jsons/en';
 import {
   addToRecentSearched,
-  getEntityName,
   getNonDeletedTeams,
 } from '../../utils/CommonUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
