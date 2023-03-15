@@ -34,10 +34,10 @@ import {
 import { Table } from '../../../generated/entity/data/table';
 import { ThreadType } from '../../../generated/entity/feed/thread';
 import { TagLabel } from '../../../generated/type/tagLabel';
-import { getEntityName } from '../../../utils/CommonUtils';
 import {
   ENTITY_LINK_SEPARATOR,
   getEntityFeedLink,
+  getEntityName,
 } from '../../../utils/EntityUtils';
 import { getTagsWithoutTier, getTierTags } from '../../../utils/TableUtils';
 import {

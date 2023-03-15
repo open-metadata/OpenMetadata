@@ -46,7 +46,7 @@ jest.mock('rest/teamsAPI', () => ({
     .mockImplementation(() => Promise.resolve(MOCK_CURRENT_TEAM)),
 }));
 
-jest.mock('../../utils/CommonUtils', () => ({
+jest.mock('utils/EntityUtils', () => ({
   getEntityName: jest.fn().mockReturnValue('entityName'),
 }));
 

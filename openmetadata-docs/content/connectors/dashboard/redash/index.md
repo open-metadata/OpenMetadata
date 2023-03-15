@@ -132,6 +132,7 @@ the changes.
 - **Host and Port**: URL to the Redash instance.
 - **Username**: Specify the User to connect to Redash. It should have enough privileges to read all the metadata.
 - **API Key**: API key of the redash instance to access.
+- **Redash Version**: (Default: 10.0.0) Redash version of your redash instance. Enter the numerical value from the [Redash Releases](https://github.com/getredash/redash/releases) page
 
 ### 6. Configure Metadata Ingestion
 

@@ -180,18 +180,26 @@ public final class ChangeEventParser {
   }
 
   public static String getEntityUrl(PUBLISH_TO publishTo, ChangeEvent event) {
+    String fqn;
+    String entityType;
     EntityInterface entity = (EntityInterface) event.getEntity();
     URI urlInstance = entity.getHref();
-    String fqn = event.getEntityFullyQualifiedName();
+    if (entity instanceof TestCase) {
+      fqn = ((TestCase) entity).getTestSuite().getFullyQualifiedName();
+      entityType = "test-suites";
+    } else {
+      fqn = event.getEntityFullyQualifiedName();
+      entityType = event.getEntityType();
+    }
     if (Objects.nonNull(urlInstance)) {
       String scheme = urlInstance.getScheme();
       String host = urlInstance.getHost();
       if (publishTo == PUBLISH_TO.SLACK || publishTo == PUBLISH_TO.GCHAT) {
-        return String.format("<%s://%s/%s/%s|%s>", scheme, host, event.getEntityType(), fqn, fqn);
+        return String.format("<%s://%s/%s/%s|%s>", scheme, host, entityType, fqn, fqn);
       } else if (publishTo == PUBLISH_TO.TEAMS) {
-        return String.format("[%s](%s://%s/%s/%s)", fqn, scheme, host, event.getEntityType(), fqn);
+        return String.format("[%s](%s://%s/%s/%s)", fqn, scheme, host, entityType, fqn);
       } else if (publishTo == PUBLISH_TO.EMAIL) {
-        return String.format("%s://%s/%s/%s", scheme, host, event.getEntityType(), fqn);
+        return String.format("%s://%s/%s/%s", scheme, host, entityType, fqn);
       }
     }
     return "";
@@ -201,7 +209,13 @@ public final class ChangeEventParser {
     SlackMessage slackMessage = new SlackMessage();
     slackMessage.setUsername(event.getUserName());
     if (event.getEntity() != null) {
-      String headerTxt = "%s posted on " + event.getEntityType() + " %s";
+      String eventType;
+      if ((EntityInterface) event.getEntity() instanceof TestCase) {
+        eventType = "testSuite";
+      } else {
+        eventType = event.getEntityType();
+      }
+      String headerTxt = "%s posted on " + eventType + " %s";
       String headerText = String.format(headerTxt, event.getUserName(), getEntityUrl(PUBLISH_TO.SLACK, event));
       slackMessage.setText(headerText);
     }
@@ -594,10 +608,10 @@ public final class ChangeEventParser {
     if (result != null) {
       String format =
           String.format(
-              "Test Case %s is %s in %s/%s",
-              getBold(publishTo),
+              "Test Case status for %s against table/column %s is %s in test suite %s",
               getBold(publishTo),
               EntityLink.parse(testCaseEntity.getEntityLink()).getEntityFQN(),
+              getBold(publishTo),
               testCaseEntity.getTestSuite().getName());
       return String.format(format, testCaseName, result.getTestCaseStatus());
     } else {

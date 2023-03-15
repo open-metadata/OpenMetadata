@@ -302,14 +302,14 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
           newParent = newParentTerm.getEntityReference();
         }
         LOG.info(
-            "Scenario iteration [{}, {}] move {} from glossary{} parent {} to glossary {} and parent {}",
+            "Scenario iteration [{}, {}] move {} from glossary {} parent {} to glossary {} and parent {}",
             i,
             j,
             getFqn(termToMove),
             getFqn(termToMove.getGlossary()),
             getFqn(termToMove.getParent()),
-            getFqn(newParent),
-            getFqn(newGlossary));
+            getFqn(newGlossary),
+            getFqn(newParent));
         updatedTerm = moveGlossaryTermAndBack(newGlossary, newParent, termToMove, table);
         copyGlossaryTerm(updatedTerm, termToMove);
       }
