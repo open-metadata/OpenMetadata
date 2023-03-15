@@ -308,18 +308,18 @@ const AddService = ({
   const fetchRightPanel = () => {
     const stepData = addIngestion ? activeIngestionStep : activeServiceStep;
 
-    return getServiceIngestionStepGuide(
-      stepData,
-      addIngestion,
-      `${serviceName}_${PipelineType.Metadata}`,
+    return getServiceIngestionStepGuide({
+      step: stepData,
+      isIngestion: addIngestion,
+      ingestionName: `${serviceName}_${PipelineType.Metadata}`,
       serviceName,
-      PipelineType.Metadata,
-      isDeployed(),
-      false,
-      isAirflowRunning,
+      ingestionType: PipelineType.Metadata,
+      showDeployTitle: isDeployed(),
+      isUpdated: false,
+      isAirflowSetup: isAirflowRunning,
       activeField,
-      selectServiceType
-    );
+      serviceType: selectServiceType,
+    });
   };
 
   useEffect(() => {

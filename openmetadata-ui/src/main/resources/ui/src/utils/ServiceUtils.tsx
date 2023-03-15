@@ -495,18 +495,30 @@ export const getFormattedGuideText = (
   return text.replace(regExp, replacement);
 };
 
-export const getServiceIngestionStepGuide = (
-  step: number,
-  isIngestion: boolean,
-  ingestionName: string,
-  serviceName: string,
-  ingestionType: IngestionPipelineType,
-  showDeployTitle: boolean,
-  isUpdated: boolean,
-  isAirflowSetup = true,
-  activeField?: string,
-  serviceType?: string
-) => {
+export const getServiceIngestionStepGuide = (args: {
+  step: number;
+  isIngestion: boolean;
+  ingestionName: string;
+  serviceName: string;
+  ingestionType: IngestionPipelineType;
+  showDeployTitle: boolean;
+  isUpdated: boolean;
+  isAirflowSetup?: boolean;
+  activeField?: string;
+  serviceType?: string;
+}) => {
+  const {
+    step,
+    ingestionName,
+    ingestionType,
+    isAirflowSetup = true,
+    isIngestion,
+    isUpdated,
+    serviceName,
+    showDeployTitle,
+    activeField,
+    serviceType,
+  } = args;
   let guide;
   if (isIngestion) {
     switch (ingestionType) {
