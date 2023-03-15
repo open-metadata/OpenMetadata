@@ -13,6 +13,7 @@ import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.TestMethodOrder;
+import org.openmetadata.schema.api.data.CreateContainer;
 import org.openmetadata.schema.api.data.CreateDashboard;
 import org.openmetadata.schema.api.data.CreatePipeline;
 import org.openmetadata.schema.api.data.CreateTable;
@@ -21,6 +22,7 @@ import org.openmetadata.schema.api.services.CreateDashboardService;
 import org.openmetadata.schema.api.services.CreateDatabaseService;
 import org.openmetadata.schema.api.services.CreateMessagingService;
 import org.openmetadata.schema.api.services.CreateMlModelService;
+import org.openmetadata.schema.api.services.CreateObjectStoreService;
 import org.openmetadata.schema.api.services.CreatePipelineService;
 import org.openmetadata.schema.api.teams.CreateTeam;
 import org.openmetadata.schema.api.teams.CreateUser;
@@ -36,11 +38,13 @@ import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.dashboards.DashboardResourceTest;
 import org.openmetadata.service.resources.databases.TableResourceTest;
 import org.openmetadata.service.resources.dqtests.TestSuiteResourceTest;
+import org.openmetadata.service.resources.objectstores.ContainerResourceTest;
 import org.openmetadata.service.resources.pipelines.PipelineResourceTest;
 import org.openmetadata.service.resources.services.DashboardServiceResourceTest;
 import org.openmetadata.service.resources.services.DatabaseServiceResourceTest;
 import org.openmetadata.service.resources.services.MessagingServiceResourceTest;
 import org.openmetadata.service.resources.services.MlModelServiceResourceTest;
+import org.openmetadata.service.resources.services.ObjectStoreServiceResourceTest;
 import org.openmetadata.service.resources.services.PipelineServiceResourceTest;
 import org.openmetadata.service.resources.teams.TeamResourceTest;
 import org.openmetadata.service.resources.teams.UserResourceTest;
@@ -102,6 +106,11 @@ public class SystemResourceTest extends OpenMetadataApplicationTest {
     CreateTestSuite createTestSuite = testSuiteResourceTest.createRequest(test);
     testSuiteResourceTest.createEntity(createTestSuite, ADMIN_AUTH_HEADERS);
 
+    // Create Storage Container
+    ContainerResourceTest containerResourceTest = new ContainerResourceTest();
+    CreateContainer createContainer = containerResourceTest.createRequest(test);
+    containerResourceTest.createEntity(createContainer, ADMIN_AUTH_HEADERS);
+
     // Ensure counts of entities is increased by 1
     EntitiesCount afterCount = getEntitiesCount();
     Assertions.assertEquals(beforeCount.getDashboardCount() + 1, afterCount.getDashboardCount());
@@ -112,6 +121,7 @@ public class SystemResourceTest extends OpenMetadataApplicationTest {
     Assertions.assertEquals(beforeCount.getTeamCount() + 1, afterCount.getTeamCount());
     Assertions.assertEquals(beforeCount.getTopicCount() + 1, afterCount.getTopicCount());
     Assertions.assertEquals(beforeCount.getTestSuiteCount() + 1, afterCount.getTestSuiteCount());
+    Assertions.assertEquals(beforeCount.getStorageContainerCount() + 1, afterCount.getStorageContainerCount());
   }
 
   @Test
@@ -144,12 +154,18 @@ public class SystemResourceTest extends OpenMetadataApplicationTest {
     CreateMlModelService createMlModelService = mlModelServiceResourceTest.createRequest(test);
     mlModelServiceResourceTest.createEntity(createMlModelService, ADMIN_AUTH_HEADERS);
 
+    // Create ObjectStore Service
+    ObjectStoreServiceResourceTest objectStoreServiceResourceTest = new ObjectStoreServiceResourceTest();
+    CreateObjectStoreService createObjectStoreService = objectStoreServiceResourceTest.createRequest(test);
+    objectStoreServiceResourceTest.createEntity(createObjectStoreService, ADMIN_AUTH_HEADERS);
+
     // Get count after creating services and ensure it increased by 1
     ServicesCount afterCount = getServicesCount();
     Assertions.assertEquals(beforeCount.getMessagingServiceCount() + 1, afterCount.getMessagingServiceCount());
     Assertions.assertEquals(beforeCount.getDashboardServiceCount() + 1, afterCount.getDashboardServiceCount());
     Assertions.assertEquals(beforeCount.getPipelineServiceCount() + 1, afterCount.getPipelineServiceCount());
     Assertions.assertEquals(beforeCount.getMlModelServiceCount() + 1, afterCount.getMlModelServiceCount());
+    Assertions.assertEquals(beforeCount.getObjectStorageServiceCount() + 1, afterCount.getObjectStorageServiceCount());
   }
 
   @Test

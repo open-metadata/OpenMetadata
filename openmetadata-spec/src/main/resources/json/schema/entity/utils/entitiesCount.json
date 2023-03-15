@@ -41,6 +41,10 @@
     "testSuiteCount": {
       "description": "Test Suite Count",
       "type": "integer"
+    },
+    "storageContainerCount": {
+      "description": "Storage Container Count",
+      "type": "integer"
     }
   },
   "additionalProperties": false
