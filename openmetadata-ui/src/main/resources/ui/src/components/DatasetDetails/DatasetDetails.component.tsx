@@ -24,8 +24,8 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
 import { restoreTable } from 'rest/tableAPI';
+import { getEntityId, getEntityName } from 'utils/EntityUtils';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { ROUTES } from '../../constants/constants';
 import { EntityField } from '../../constants/Feeds.constants';
@@ -47,8 +47,6 @@ import { LabelType, State } from '../../generated/type/tagLabel';
 import { useInfiniteScroll } from '../../hooks/useInfiniteScroll';
 import {
   getCurrentUserId,
-  getEntityId,
-  getEntityName,
   getEntityPlaceHolder,
   getOwnerValue,
   getPartialNameFromTableFQN,
@@ -57,7 +55,6 @@ import {
 } from '../../utils/CommonUtils';
 import { getEntityFieldThreadCounts } from '../../utils/FeedUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
-import { getLineageViewPath } from '../../utils/RouterUtils';
 import { getTagsWithoutTier, getUsagePercentile } from '../../utils/TableUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import ActivityFeedList from '../ActivityFeed/ActivityFeedList/ActivityFeedList';
@@ -96,7 +93,6 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
   tableProfile,
   columns,
   tier,
-  entityLineage,
   followTableHandler,
   unfollowTableHandler,
   followers,
@@ -111,16 +107,9 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
   tableType,
   version,
   versionHandler,
-  loadNodeHandler,
-  lineageLeafNodes,
-  isNodeLoading,
   dataModel,
   deleted,
   tagUpdateHandler,
-  addLineageHandler,
-  removeLineageHandler,
-  entityLineageHandler,
-  isLineageLoading,
   entityThread,
   isentityThreadLoading,
   postFeedHandler,
@@ -136,7 +125,6 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
   isTableProfileLoading,
 }: DatasetDetailsProps) => {
   const { t } = useTranslation();
-  const history = useHistory();
   const [isEdit, setIsEdit] = useState(false);
   const [followersCount, setFollowersCount] = useState(0);
   const [isFollowing, setIsFollowing] = useState(false);
@@ -594,10 +582,6 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
     setThreadLink('');
   };
 
-  const handleFullScreenClick = () => {
-    history.push(getLineageViewPath(EntityType.TABLE, datasetFQN));
-  };
-
   const getLoader = () => {
     return isentityThreadLoading ? <Loader /> : null;
   };
@@ -829,20 +813,11 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
                 )}
                 id="lineageDetails">
                 <EntityLineageComponent
-                  addLineageHandler={addLineageHandler}
                   deleted={deleted}
-                  entityLineage={entityLineage}
-                  entityLineageHandler={entityLineageHandler}
                   entityType={EntityType.TABLE}
                   hasEditAccess={
                     tablePermissions.EditAll || tablePermissions.EditLineage
                   }
-                  isLoading={isLineageLoading}
-                  isNodeLoading={isNodeLoading}
-                  lineageLeafNodes={lineageLeafNodes}
-                  loadNodeHandler={loadNodeHandler}
-                  removeLineageHandler={removeLineageHandler}
-                  onFullScreenClick={handleFullScreenClick}
                 />
               </Card>
             )}

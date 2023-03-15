@@ -1,5 +1,6 @@
 package org.openmetadata.service.security.policyevaluator;
 
+import static org.openmetadata.service.Entity.ALL_RESOURCES;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.permissionDenied;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
@@ -189,7 +190,7 @@ public class CompiledRule extends Rule {
   }
 
   protected boolean matchResource(String resource) {
-    return (getResources().get(0).equalsIgnoreCase("all") || getResources().contains(resource));
+    return (getResources().get(0).equalsIgnoreCase(ALL_RESOURCES) || getResources().contains(resource));
   }
 
   private boolean matchOperation(MetadataOperation operation) {

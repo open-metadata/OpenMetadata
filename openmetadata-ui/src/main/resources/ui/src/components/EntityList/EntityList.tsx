@@ -14,8 +14,8 @@
 import { Button, Card, Typography } from 'antd';
 import React, { Fragment, FunctionComponent } from 'react';
 import { Link } from 'react-router-dom';
+import { getEntityName } from 'utils/EntityUtils';
 import { EntityReference } from '../../generated/type/entityReference';
-import { getEntityName } from '../../utils/CommonUtils';
 import { getEntityIcon, getEntityLink } from '../../utils/TableUtils';
 import EntityListSkeleton from '../Skeleton/MyData/EntityListSkeleton/EntityListSkeleton.component';
 import './entity.less';

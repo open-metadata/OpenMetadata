@@ -14,6 +14,7 @@
 import { Input, Space, Switch, Typography } from 'antd';
 import React, { Fragment } from 'react';
 import { useTranslation } from 'react-i18next';
+import { getSeparator } from 'utils/CommonUtils';
 import { Field } from '../../Field/Field';
 
 interface Props {
@@ -22,6 +23,8 @@ interface Props {
   handleUpdateDBTClassification: (value: string) => void;
   dbtUpdateDescriptions: boolean;
   handleUpdateDescriptions: (value: boolean) => void;
+  enableDebugLog: boolean;
+  handleEnableDebugLogCheck: (value: boolean) => void;
 }
 
 function DBTCommonFields({
@@ -30,6 +33,8 @@ function DBTCommonFields({
   dbtClassificationName,
   handleUpdateDescriptions,
   handleUpdateDBTClassification,
+  handleEnableDebugLogCheck,
+  enableDebugLog,
 }: Props) {
   const { t } = useTranslation();
 
@@ -37,8 +42,28 @@ function DBTCommonFields({
     <Fragment>
       <Field>
         <Space align="end" className="m-b-xs">
+          <label className="tw-form-label m-b-0" htmlFor="enable-dbt-debug-log">
+            {t('label.enable-debug-log')}
+          </label>
+          <Switch
+            checked={enableDebugLog}
+            data-testid="enable-dbt-debug-log"
+            id="enable-dbt-debug-log"
+            onChange={handleEnableDebugLogCheck}
+          />
+        </Space>
+        <Typography.Text
+          className="d-block text-grey-muted m-b-xs text-xs"
+          data-testid="dbt-enable-debug-logging">
+          {t('message.enable-debug-logging')}
+        </Typography.Text>
+        {getSeparator('')}
+      </Field>
+
+      <Field>
+        <Space align="end" className="m-b-xs">
           <label
-            className="tw-form-label m-b-0 tw-mb-1"
+            className="tw-form-label m-b-0"
             data-testid={descriptionId}
             htmlFor={descriptionId}>
             {t('label.update-description')}

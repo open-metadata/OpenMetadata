@@ -20,6 +20,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { getAllAlerts } from 'rest/alertsAPI';
+import { getEntityName } from 'utils/EntityUtils';
 import { PAGE_SIZE_MEDIUM } from '../../constants/constants';
 import {
   GlobalSettingOptions,
@@ -81,8 +82,8 @@ const AlertsPage = () => {
         dataIndex: 'name',
         width: '200px',
         key: 'name',
-        render: (name: string, record: Alerts) => {
-          return <Link to={`alert/${record.id}`}>{name}</Link>;
+        render: (_: string, record: Alerts) => {
+          return <Link to={`alert/${record.id}`}>{getEntityName(record)}</Link>;
         },
       },
       {

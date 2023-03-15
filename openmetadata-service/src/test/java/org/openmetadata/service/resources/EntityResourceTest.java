@@ -564,12 +564,12 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
     // Test listing entities that include deleted, non-deleted, and all the entities
     Random random = new Random();
-    for (String include : List.of("non-deleted", "all", "deleted")) {
-      if (!supportsSoftDelete && include.equals("deleted")) {
+    for (Include include : List.of(Include.NON_DELETED, Include.ALL, Include.DELETED)) {
+      if (!supportsSoftDelete && include.equals(Include.DELETED)) {
         continue;
       }
       Map<String, String> queryParams = new HashMap<>();
-      queryParams.put("include", include);
+      queryParams.put("include", include.value());
 
       // List all entities and use it for checking pagination
       ResultList<T> allEntities = listEntities(queryParams, 1000000, null, null, ADMIN_AUTH_HEADERS);
@@ -607,7 +607,8 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
           pageCount++;
         } while (after != null);
 
-        if ("all".equals(include) || "deleted".equals(include)) {
+        boolean includeAllOrDeleted = Include.ALL.equals(include) || Include.DELETED.equals(include);
+        if (includeAllOrDeleted) {
           assertTrue(!supportsSoftDelete || foundDeleted);
         } else { // non-delete
           assertFalse(foundDeleted);
@@ -628,7 +629,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
           indexInAllTables -= forwardPage.getData().size();
         } while (before != null);
 
-        if ("all".equals(include) || "deleted".equals(include)) {
+        if (includeAllOrDeleted) {
           assertTrue(!supportsSoftDelete || foundDeleted);
         } else { // non-delete
           assertFalse(foundDeleted);
@@ -636,7 +637,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       }
 
       // before running "deleted" delete all created entries otherwise the test doesn't work with just one element.
-      if ("all".equals(include)) {
+      if (Include.ALL.equals(include)) {
         for (T toBeDeleted : allEntities.getData()) {
           if (createdUUIDs.contains(toBeDeleted.getId()) && Boolean.FALSE.equals(toBeDeleted.getDeleted())) {
             deleteAndCheckEntity(toBeDeleted, ADMIN_AUTH_HEADERS);
@@ -653,7 +654,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     if (container != null) {
       // List both deleted and non deleted entities
       Map<String, String> queryParams = new HashMap<>();
-      queryParams.put("include", "all");
+      queryParams.put("include", Include.ALL.value());
       ResultList<T> listBeforeDeletion = listEntities(queryParams, 1000, null, null, ADMIN_AUTH_HEADERS);
 
       // Delete non-empty container entity and ensure deletion is not allowed
@@ -798,8 +799,8 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
     // Ensure entity is returned in GET with include param set to deleted || all
     Map<String, String> queryParams = new HashMap<>();
-    for (String include : List.of("deleted", "all")) {
-      queryParams.put("include", include);
+    for (Include include : List.of(Include.DELETED, Include.ALL)) {
+      queryParams.put("include", include.value());
       T entityAfterDeletion = getEntity(entity.getId(), queryParams, allFields, ADMIN_AUTH_HEADERS);
       validateDeletedEntity(create, entityBeforeDeletion, entityAfterDeletion, ADMIN_AUTH_HEADERS);
       entityAfterDeletion = getEntityByName(entity.getFullyQualifiedName(), queryParams, allFields, ADMIN_AUTH_HEADERS);
@@ -2343,7 +2344,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
   public void assertEntityDeleted(T entity, boolean hardDelete) {
     Map<String, String> queryParams = new HashMap<>();
-    queryParams.put("include", hardDelete ? "all" : "non-deleted");
+    queryParams.put("include", hardDelete ? Include.ALL.value() : Include.NON_DELETED.value());
 
     // Make sure getting entity by ID get 404 not found response
     assertEntityDeleted(entity.getId(), hardDelete);
@@ -2357,7 +2358,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
   public void assertEntityDeleted(UUID id, boolean hardDelete) {
     Map<String, String> queryParams = new HashMap<>();
-    queryParams.put("include", hardDelete ? "all" : "non-deleted");
+    queryParams.put("include", hardDelete ? Include.ALL.value() : Include.NON_DELETED.value());
     assertResponse(() -> getEntity(id, queryParams, "", ADMIN_AUTH_HEADERS), NOT_FOUND, entityNotFound(entityType, id));
   }
 
