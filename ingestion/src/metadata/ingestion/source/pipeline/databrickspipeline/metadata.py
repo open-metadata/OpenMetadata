@@ -92,7 +92,7 @@ class DatabrickspipelineSource(PipelineServiceSource):
         """
         Get Pipeline Name
         """
-        return pipeline_details.get("settings").get("name")
+        return pipeline_details["settings"].get("name")
 
     def yield_pipeline(self, pipeline_details: Any) -> Iterable[CreatePipelineRequest]:
         """
@@ -102,8 +102,8 @@ class DatabrickspipelineSource(PipelineServiceSource):
         try:
             yield CreatePipelineRequest(
                 name=pipeline_details["job_id"],
-                displayName=pipeline_details.get("settings").get("name"),
-                description=pipeline_details.get("settings").get("name"),
+                displayName=pipeline_details["settings"].get("name"),
+                description=pipeline_details["settings"].get("name"),
                 tasks=self.get_tasks(pipeline_details),
                 pipelineUrl="",
                 service=self.context.pipeline_service.fullyQualifiedName.__root__,
@@ -129,9 +129,9 @@ class DatabrickspipelineSource(PipelineServiceSource):
         self.append_context(key="job_id_list", value=pipeline_details["job_id"])
 
         downstream_tasks = self.get_downstream_tasks(
-            pipeline_details.get("settings").get("tasks")
+            pipeline_details["settings"].get("tasks")
         )
-        for task in pipeline_details.get("settings").get("tasks"):
+        for task in pipeline_details["settings"].get("tasks"):
             task_list.append(
                 Task(
                     name=task["task_key"],
