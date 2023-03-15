@@ -22,7 +22,7 @@ import {
 } from 'components/Explore/explore.interface';
 import { withAdvanceSearch } from 'components/router/withAdvanceSearch';
 import { SORT_ORDER } from 'enums/common.enum';
-import { get, isNil, isString } from 'lodash';
+import { isNil, isString } from 'lodash';
 import Qs from 'qs';
 import React, {
   FunctionComponent,
@@ -71,8 +71,6 @@ const ExplorePage: FunctionComponent = () => {
   const [isLoading, setIsLoading] = useState(true);
 
   const { queryFilter } = useAdvanceSearch();
-  const [isElasticSearchIssue, setIsElasticSearchIssue] =
-    useState<boolean>(false);
 
   const parsedSearch = useMemo(
     () =>
@@ -236,13 +234,6 @@ const ExplorePage: FunctionComponent = () => {
     ])
       .catch((err) => {
         showErrorToast(err);
-        if (
-          get(err, 'response.data.responseMessage', '').includes(
-            'elasticsearch'
-          )
-        ) {
-          setIsElasticSearchIssue(true);
-        }
       })
       .finally(() => setIsLoading(false));
   }, [
@@ -272,7 +263,6 @@ const ExplorePage: FunctionComponent = () => {
   return (
     <PageContainerV1>
       <Explore
-        isElasticSearchIssue={isElasticSearchIssue}
         loading={isLoading}
         page={page}
         postFilter={postFilter}

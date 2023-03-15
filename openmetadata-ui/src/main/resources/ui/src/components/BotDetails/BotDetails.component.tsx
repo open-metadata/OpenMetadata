@@ -22,6 +22,7 @@ import {
   getAuthMechanismForBotUser,
   getRoles,
 } from 'rest/userAPI';
+import { getEntityName } from 'utils/EntityUtils';
 import { TERM_ADMIN } from '../../constants/constants';
 import {
   GlobalSettingOptions,
@@ -32,7 +33,6 @@ import {
   AuthenticationMechanism,
   AuthType,
 } from '../../generated/entity/teams/user';
-import { getEntityName } from '../../utils/CommonUtils';
 import { getSettingPath } from '../../utils/RouterUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { showErrorToast } from '../../utils/ToastUtils';

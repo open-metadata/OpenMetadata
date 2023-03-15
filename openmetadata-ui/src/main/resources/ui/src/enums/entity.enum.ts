@@ -67,6 +67,7 @@ export enum EntityLineageNodeType {
   OUTPUT = 'output',
   DEFAULT = 'default',
   NOT_CONNECTED = 'not-connected',
+  LOAD_MORE = 'load-more',
 }
 
 export enum TabSpecificField {

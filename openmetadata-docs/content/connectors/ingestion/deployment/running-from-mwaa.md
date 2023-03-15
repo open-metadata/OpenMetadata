@@ -17,6 +17,7 @@ We will now discuss pros and cons of each aspect and how to configure them.
 
 - It is the simplest approach
 - We don’t need to spin up any further infrastructure
+- If there are no requirements issues, this would be the simpler and preferred approach.
 
 ### CONs
 
@@ -130,48 +131,48 @@ We will now describe the steps, following the official AWS documentation.
 
 ### 1. Create an ECS Cluster
 
+Note that all this process has been extracted from the official AWS [docs](https://docs.aws.amazon.com/mwaa/latest/userguide/samples-ecs-operator.html).
+
+Summary of the steps:
 - The cluster just needs a task to run in `FARGATE` mode.
 - The required image is `docker.getcollate.io/openmetadata/ingestion-base:x.y.z`
   - The same logic as above applies. The `x.y.z` version needs to match the server version. For example, `docker.getcollate.io/openmetadata/ingestion-base:0.13.2`
-  
-We have tested this process with a Task Memory of 512MB and Task CPU (unit) of 256. This can be tuned depending on the amount of metadata that needs to be ingested.
 
 When creating the ECS Cluster, take notes on the log groups assigned, as we will need them to prepare the MWAA Executor Role policies.
 
+We'll now show screenshots on the steps you need to take:
+
+#### 1.1 Create the ECS Task Definition
+
+First, create the Task Definition in ECS with the following configurations. This is where we'll specify
+the docker image. For example, `docker.getcollate.io/openmetadata/ingestion-base:0.13.2`.
+
+<Image src="/images/openmetadata/connectors/deployment/create-ecs-task.png" alt="Create ECS Task Definition"/>
+
+<Image src="/images/openmetadata/connectors/deployment/create-ecs-task2.png" alt="Create ECS Task Definition Config"/>
+
+#### 1.2 Create the ECS Cluster
+
+Then, create the cluster. Make sure to specify the same VPC and subnets that you are using in your MWAA environment.
+
+<Image src="/images/openmetadata/connectors/deployment/create-ecs-cluster.png" alt="Create ECS Cluster"/>
+
+#### 1.3 Create the ECS Service
+
+Finally, we'll need to create a Service. This is what the DAG in MWAA will trigger when it executes. Note that in the
+networking, we are again specifying the MWAA network settings and the same security group. Also, the public IP
+needs to be enabled.
+
+<Image src="/images/openmetadata/connectors/deployment/create-ecs-service.png" alt="Create ECS Service"/>
+
+<Image src="/images/openmetadata/connectors/deployment/create-ecs-service-networking.png" alt="Create ECS Service Networking"/>
+
+
 ### 2. Update MWAA Executor Role policies
 
-- Identify your MWAA executor role. This can be obtained from the details view of your MWAA environment.
-- Add the following two policies to the role, the first with ECS permissions:
+Identify your MWAA executor role. This can be obtained from the details view of your MWAA environment. 
 
-```json
-{
-    "Version": "2012-10-17",
-    "Statement": [
-        {
-            "Sid": "VisualEditor0",
-            "Effect": "Allow",
-            "Action": [
-                "ecs:RunTask",
-                "ecs:DescribeTasks"
-            ],
-            "Resource": "*"
-        },
-        {
-            "Action": "iam:PassRole",
-            "Effect": "Allow",
-            "Resource": [
-                "*"
-            ],
-            "Condition": {
-                "StringLike": {
-                    "iam:PassedToService": "ecs-tasks.amazonaws.com"
-                }
-            }
-        }
-    ]
-}
-```
-
+First, add the following two policies to the role: [AmazonECS_FullAccess](https://us-east-1.console.aws.amazon.com/iam/home#/policies/arn:aws:iam::aws:policy/AmazonECS_FullAccess$jsonEditor).
 
 And for the Log Group permissions
 
@@ -195,7 +196,7 @@ And for the Log Group permissions
                 
 ```
 
-Note how you need to replace the `region`, `account-id` and the `log group` names for your Airflow Environment and ECS.
+Note how you need to replace the `region`, `account-id` and the `log group` names for your Airflow Environment and ECS cluster name.
 
 A DAG created using the ECS Operator will then look like this:
 
@@ -314,10 +315,18 @@ default_args = {
 
 def get_data():
     from airflow.settings import Session
+    
+    session = Session()
+    engine = session.bind
+    url = engine.url
 
     logging.info("SQL ALCHEMY CONN")
     sqlalchemy_conn = conf.get("core", "sql_alchemy_conn", fallback=None)
     logging.info(sqlalchemy_conn)
+    
+    # MWAA masks the password, so we need to bypass their masking
+    logging.info("Get the password from this list")
+    logging.warning(list(url.password))
 
 
 with DAG(
@@ -336,6 +345,8 @@ with DAG(
 ```
 
 After running the DAG, we can store the connection details and remove the dag file from S3.
+
+Note that we need to bypass MWAA security when logging the password. This process might need to change in the future.
 
 #### Preparing the metadata extraction
 
@@ -361,25 +372,26 @@ from airflow.utils.dates import days_ago
 import boto3
 
 
-CLUSTER_NAME="openmetadata-ingestion-vpc" #Replace value for CLUSTER_NAME with your information.
-CONTAINER_NAME="openmetadata-ingestion" #Replace value for CONTAINER_NAME with your information.
+CLUSTER_NAME="<your cluster name>"
+CONTAINER_NAME="<your container name>"
 LAUNCH_TYPE="FARGATE"
+LOG_GROUP="<your log group>"
 
 config = """
 source:
   type: airflow
-  serviceName: airflow_mwaa
+  serviceName: airflow_mwaa_ecs_op
   serviceConnection:
     config:
       type: Airflow
       hostPort: http://localhost:8080
       numberOfStatus: 10
       connection:
-        type: Postgres  # Typically MWAA uses Postgres
-        username: <user>
-        password: <password>
-        hostPort: <host>:<port>
-        database: <db>
+        type: Postgres
+        username: adminuser
+        password: <Extracted from the step above>
+        hostPort: vpce-...-c88g16we.vpce-svc-....us-east-2.vpce.amazonaws.com:5432
+        database: AirflowMetadata
   sourceConfig:
     config:
       type: PipelineMetadata
@@ -388,8 +400,11 @@ sink:
   config: {}
 workflowConfig:
   openMetadataServerConfig:
-    hostPort: <OpenMetadata host and port>
-    authProvider: <OpenMetadata auth provider>
+    enableVersionValidation: false
+    hostPort: https://sandbox.open-metadata.org/api
+    authProvider: openmetadata
+    securityConfig:
+      jwtToken: ...
 """
 
 
@@ -429,39 +444,7 @@ with DAG(
         },
 
         network_configuration=service['services'][0]['networkConfiguration'],
-        awslogs_group="/ecs/ingest",
+        awslogs_group=f"/ecs/{LOG_GROUP}",
         awslogs_stream_prefix=f"ecs/{CONTAINER_NAME}",
     )
-```
-
-A YAML connection example could be:
-
-```yaml
-source:
-  type: airflow
-  serviceName: airflow_mwaa_ecs_op
-  serviceConnection:
-    config:
-      type: Airflow
-      hostPort: http://localhost:8080
-      numberOfStatus: 10
-      connection:
-        type: Postgres
-        username: adminuser
-        password: ...
-        hostPort: vpce-075b93a08ef7a8ffc-c88g16we.vpce-svc-0dfc8a341f816c134.us-east-2.vpce.amazonaws.com:5432
-        database: AirflowMetadata
-  sourceConfig:
-    config:
-      type: PipelineMetadata
-sink:
-  type: metadata-rest
-  config: {}
-workflowConfig:
-  openMetadataServerConfig:
-    enableVersionValidation: false
-    hostPort: https://sandbox.open-metadata.org/api
-    authProvider: openmetadata
-    securityConfig:
-      jwtToken: ...
 ```
