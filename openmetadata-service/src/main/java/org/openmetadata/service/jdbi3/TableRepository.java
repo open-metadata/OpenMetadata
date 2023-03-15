@@ -1039,7 +1039,7 @@ public class TableRepository extends EntityRepository<Table> {
   }
 
   /** Handles entity updated from PUT and POST operation. */
-  public class TableUpdater extends EntityUpdaterWithColumns {
+  public class TableUpdater extends ColumnEntityUpdater {
     public TableUpdater(Table original, Table updated, Operation operation) {
       super(original, updated, operation);
     }

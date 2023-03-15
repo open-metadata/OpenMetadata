@@ -95,7 +95,6 @@ import org.openmetadata.service.exception.UnhandledServerException;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityVersionPair;
 import org.openmetadata.service.jdbi3.CollectionDAO.ExtensionRecord;
-import org.openmetadata.service.jdbi3.TableRepository.TableUpdater;
 import org.openmetadata.service.resources.tags.TagLabelCache;
 import org.openmetadata.service.security.policyevaluator.SubjectCache;
 import org.openmetadata.service.util.EntityUtil;
@@ -1209,7 +1208,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
    * Common entity attributes such as description, displayName, owner, tags are handled by this class. Override {@code
    * entitySpecificUpdate()} to add additional entity specific fields to be updated.
    *
-   * @see TableUpdater#entitySpecificUpdate() for example.
+   * @see TableRepository.TableUpdater#entitySpecificUpdate() for example.
    */
   public class EntityUpdater {
     protected final T original;
@@ -1599,9 +1598,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   /** Handle column-specific updates for entities such as Tables, Containers' dataModel or Dashboard Model Entities. */
-  abstract class EntityUpdaterWithColumns extends EntityUpdater {
+  abstract class ColumnEntityUpdater extends EntityUpdater {
 
-    public EntityUpdaterWithColumns(T original, T updated, Operation operation) {
+    public ColumnEntityUpdater(T original, T updated, Operation operation) {
       super(original, updated, operation);
     }
 

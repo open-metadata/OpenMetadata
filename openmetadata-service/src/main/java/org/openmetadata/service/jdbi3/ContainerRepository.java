@@ -173,11 +173,11 @@ public class ContainerRepository extends EntityRepository<Container> {
 
   @Override
   public EntityUpdater getUpdater(Container original, Container updated, Operation operation) {
-    return new ContainerRepository.ContainerUpdater(original, updated, operation);
+    return new ContainerUpdater(original, updated, operation);
   }
 
   /** Handles entity updated from PUT and POST operations */
-  public class ContainerUpdater extends EntityUpdaterWithColumns {
+  public class ContainerUpdater extends ColumnEntityUpdater {
     public ContainerUpdater(Container original, Container updated, Operation operation) {
       super(original, updated, operation);
     }
