@@ -258,39 +258,38 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
           node.type
         );
         if (res && entityLineage) {
+          setNodeLoading((prev) => ({ ...prev, id: node.id, state: false }));
           setLeafNode(res, pos);
           setEntityLineage(getEntityLineage(entityLineage, res, pos));
-        } else {
-          showErrorToast(
-            jsonData['api-error-messages']['fetch-lineage-node-error']
-          );
         }
       } catch (err) {
+        setNodeLoading((prev) => ({ ...prev, id: node.id, state: false }));
         showErrorToast(
           err as AxiosError,
           jsonData['api-error-messages']['fetch-lineage-node-error']
         );
-      } finally {
-        setNodeLoading((prev) => ({ ...prev, id: node.id, state: false }));
       }
     },
-    [entityLineage]
+    [entityLineage, setNodeLoading]
   );
 
-  const setLeafNode = useCallback((val: EntityLineage, pos: LineagePos) => {
-    if (pos === 'to' && val.downstreamEdges?.length === 0) {
-      setLeafNodes((prev) => ({
-        ...prev,
-        downStreamNode: [...(prev.downStreamNode ?? []), val.entity.id],
-      }));
-    }
-    if (pos === 'from' && val.upstreamEdges?.length === 0) {
-      setLeafNodes((prev) => ({
-        ...prev,
-        upStreamNode: [...(prev.upStreamNode ?? []), val.entity.id],
-      }));
-    }
-  }, []);
+  const setLeafNode = useCallback(
+    (val: EntityLineage, pos: LineagePos) => {
+      if (pos === 'to' && val.downstreamEdges?.length === 0) {
+        setLeafNodes((prev) => ({
+          ...prev,
+          downStreamNode: [...(prev.downStreamNode ?? []), val.entity.id],
+        }));
+      }
+      if (pos === 'from' && val.upstreamEdges?.length === 0) {
+        setLeafNodes((prev) => ({
+          ...prev,
+          upStreamNode: [...(prev.upStreamNode ?? []), val.entity.id],
+        }));
+      }
+    },
+    [setLeafNodes]
+  );
 
   const onExitFullScreenViewClick = useCallback(() => {
     const path = getEntityLineagePath(entityType, entityFQN);
