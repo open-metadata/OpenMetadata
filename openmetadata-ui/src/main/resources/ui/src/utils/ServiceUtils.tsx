@@ -626,7 +626,7 @@ export const shouldTestConnection = (serviceType: string) => {
   );
 };
 
-export const getTestConnectionType = (serviceCat: ServiceCategory) => {
+export const getServiceType = (serviceCat: ServiceCategory) => {
   switch (serviceCat) {
     case ServiceCategory.MESSAGING_SERVICES:
       return ServiceType.Messaging;
@@ -634,6 +634,8 @@ export const getTestConnectionType = (serviceCat: ServiceCategory) => {
       return ServiceType.Dashboard;
     case ServiceCategory.PIPELINE_SERVICES:
       return ServiceType.Pipeline;
+    case ServiceCategory.OBJECT_STORE_SERVICES:
+      return ServiceType.ObjectStore;
     case ServiceCategory.DATABASE_SERVICES:
     default:
       return ServiceType.Database;

@@ -11,10 +11,13 @@
  *  limitations under the License.
  */
 
+import { ServiceCategory } from 'enums/service.enum';
+import { ServiceType } from 'generated/entity/services/serviceType';
 import i18n from 'i18next';
 import LanguageDetector from 'i18next-browser-languagedetector';
 import { isEmpty } from 'lodash';
 import { initReactI18next } from 'react-i18next';
+import { getServiceType } from 'utils/ServiceUtils';
 import { getInitOptions, SupportedLocales } from './i18nextUtil';
 
 // Initialize i18next (language)
@@ -29,10 +32,14 @@ i18n
  * @param nameSpace fetch resource for nameSpace in the language
  * @returns translation records
  */
-const fetchTranslation = async (language: string, nameSpace: string) => {
+const fetchTranslation = async (
+  language: string,
+  nameSpace: string,
+  serviceType: ServiceType
+) => {
   try {
     const translation = await import(
-      `../../locale/${language}/${nameSpace}.json`
+      `../../locale/${language}/${serviceType}/${nameSpace}.json`
     );
 
     return translation.default ?? {};
@@ -62,14 +69,19 @@ const addTranslationsToI18n = (
  * Add resource for nameSpace in current language with fallback mechanism
  * @param nameSpace add resource for the nameSpace in language
  */
-export const addLocalResource = async (nameSpace: string) => {
+export const addLocalResource = async (
+  nameSpace: string,
+  serviceCategory: ServiceCategory
+) => {
   const isEnglishLanguage = i18n.language === SupportedLocales.English;
 
+  const serviceType = getServiceType(serviceCategory);
+
   const [translation, fallbackTranslation] = await Promise.allSettled([
-    fetchTranslation(i18n.language, nameSpace),
+    fetchTranslation(i18n.language, nameSpace, serviceType),
     isEnglishLanguage
       ? Promise.resolve({})
-      : fetchTranslation(SupportedLocales.English, nameSpace),
+      : fetchTranslation(SupportedLocales.English, nameSpace, serviceType),
   ]);
 
   if (translation.status === 'fulfilled') {

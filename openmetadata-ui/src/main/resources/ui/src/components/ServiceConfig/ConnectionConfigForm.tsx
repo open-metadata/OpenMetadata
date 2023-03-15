@@ -35,10 +35,7 @@ import { getMessagingConfig } from '../../utils/MessagingServiceUtils';
 import { getMetadataConfig } from '../../utils/MetadataServiceUtils';
 import { getMlmodelConfig } from '../../utils/MlmodelServiceUtils';
 import { getPipelineConfig } from '../../utils/PipelineServiceUtils';
-import {
-  getTestConnectionType,
-  shouldTestConnection,
-} from '../../utils/ServiceUtils';
+import { getServiceType, shouldTestConnection } from '../../utils/ServiceUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import FormBuilder from '../common/FormBuilder/FormBuilder';
 
@@ -89,7 +86,7 @@ const ConnectionConfigForm: FunctionComponent<Props> = ({
     return new Promise<void>((resolve, reject) => {
       TestConnection(
         updatedFormData,
-        getTestConnectionType(serviceCategory),
+        getServiceType(serviceCategory),
         serviceType,
         data?.name
       )

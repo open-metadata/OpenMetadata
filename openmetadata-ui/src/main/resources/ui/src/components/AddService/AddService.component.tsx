@@ -323,9 +323,9 @@ const AddService = ({
 
   useEffect(() => {
     if (selectServiceType) {
-      addLocalResource(selectServiceType);
+      addLocalResource(selectServiceType, serviceCategory);
     }
-  }, [selectServiceType]);
+  }, [selectServiceType, serviceCategory]);
 
   return (
     <div className="tw-self-center">
