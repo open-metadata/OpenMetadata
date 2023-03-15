@@ -411,10 +411,10 @@ class AirflowSource(PipelineServiceSource):
 
         xlets = get_xlets_from_dag(dag=dag)
         for xlet in xlets:
-            for from_fqn in xlet.inlets:
+            for from_fqn in xlet.inlets or []:
                 from_entity = self.metadata.get_by_name(entity=Table, fqn=from_fqn)
                 if from_entity:
-                    for to_fqn in xlet.outlets:
+                    for to_fqn in xlet.outlets or []:
                         to_entity = self.metadata.get_by_name(entity=Table, fqn=to_fqn)
                         if to_entity:
                             lineage = AddLineageRequest(
