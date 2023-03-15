@@ -11,11 +11,10 @@
  *  limitations under the License.
  */
 
-import { Modal, Table } from 'antd';
+import { Modal, Table, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { ExpandableConfig } from 'antd/lib/table/interface';
 import { AxiosError } from 'axios';
-import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
 import { TeamType } from 'generated/api/teams/createTeam';
 import { isEmpty } from 'lodash';
 import React, { FC, useCallback, useMemo, useState } from 'react';
@@ -93,12 +92,16 @@ const TeamHierarchy: FC<TeamHierarchyProps> = ({
         dataIndex: 'description',
         width: 450,
         key: 'description',
-        render: (description: string) =>
-          !isEmpty(description) ? (
-            <RichTextEditorPreviewer markdown={description} />
-          ) : (
-            '--'
-          ),
+        render: (description: string) => (
+          <Typography.Paragraph
+            className="m-b-0"
+            ellipsis={{
+              rows: 2,
+            }}
+            title={description}>
+            {isEmpty(description) ? '--' : description}
+          </Typography.Paragraph>
+        ),
       },
     ];
   }, [data, onTeamExpand]);
