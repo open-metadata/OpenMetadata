@@ -26,7 +26,7 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useHistory } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { restoreDashboard } from 'rest/dashboardAPI';
 import { getEntityName } from 'utils/EntityUtils';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
@@ -53,7 +53,6 @@ import {
   getGlossaryTermlist,
 } from '../../utils/GlossaryUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
-import { getLineageViewPath } from '../../utils/RouterUtils';
 import SVGIcons from '../../utils/SvgUtils';
 import { getTagsWithoutTier } from '../../utils/TableUtils';
 import { getClassifications, getTaglist } from '../../utils/TagsUtils';
@@ -97,17 +96,9 @@ const DashboardDetails = ({
   charts,
   chartDescriptionUpdateHandler,
   chartTagUpdateHandler,
-  entityLineage,
-  isNodeLoading,
-  lineageLeafNodes,
-  loadNodeHandler,
   versionHandler,
   version,
   deleted,
-  addLineageHandler,
-  removeLineageHandler,
-  entityLineageHandler,
-  isLineageLoading,
   entityThread,
   isentityThreadLoading,
   postFeedHandler,
@@ -123,7 +114,6 @@ const DashboardDetails = ({
   onExtensionUpdate,
 }: DashboardDetailsProps) => {
   const { t } = useTranslation();
-  const history = useHistory();
   const [isEdit, setIsEdit] = useState(false);
   const [followersCount, setFollowersCount] = useState(0);
   const [isFollowing, setIsFollowing] = useState(false);
@@ -476,10 +466,6 @@ const DashboardDetails = ({
       });
   };
 
-  const handleFullScreenClick = () => {
-    history.push(getLineageViewPath(EntityType.DASHBOARD, dashboardFQN));
-  };
-
   const onThreadLinkSelect = (link: string, threadType?: ThreadType) => {
     setThreadLink(link);
     if (threadType) {
@@ -788,21 +774,11 @@ const DashboardDetails = ({
           {activeTab === 3 && (
             <Card className={`${ENTITY_CARD_CLASS} card-body-full`}>
               <EntityLineageComponent
-                addLineageHandler={addLineageHandler}
-                deleted={deleted}
-                entityLineage={entityLineage}
-                entityLineageHandler={entityLineageHandler}
                 entityType={EntityType.DASHBOARD}
                 hasEditAccess={
                   dashboardPermissions.EditAll ||
                   dashboardPermissions.EditLineage
                 }
-                isLoading={isLineageLoading}
-                isNodeLoading={isNodeLoading}
-                lineageLeafNodes={lineageLeafNodes}
-                loadNodeHandler={loadNodeHandler}
-                removeLineageHandler={removeLineageHandler}
-                onFullScreenClick={handleFullScreenClick}
               />
             </Card>
           )}

@@ -88,7 +88,6 @@ jest.mock('../common/error-with-placeholder/ErrorPlaceHolderES', () => {
 });
 
 const MOCK_PROPS = {
-  isElasticSearchIssue: false,
   isFilterSelected: false,
   isSummaryPanelVisible: false,
   currentPage: 0,

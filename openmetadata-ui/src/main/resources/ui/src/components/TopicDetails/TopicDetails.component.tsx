@@ -17,7 +17,6 @@ import { ENTITY_CARD_CLASS } from 'constants/entity.constants';
 import { EntityTags, ExtraInfo } from 'Models';
 import React, { RefObject, useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
 import { restoreTopic } from 'rest/topicsAPI';
 import { getEntityName } from 'utils/EntityUtils';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
@@ -39,7 +38,6 @@ import {
 } from '../../utils/CommonUtils';
 import { getEntityFieldThreadCounts } from '../../utils/FeedUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
-import { getLineageViewPath } from '../../utils/RouterUtils';
 import { bytesToSize } from '../../utils/StringsUtils';
 import { getTagsWithoutTier } from '../../utils/TableUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
@@ -102,11 +100,9 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
   sampleData,
   updateThreadHandler,
   entityFieldTaskCount,
-  lineageTabData,
   onExtensionUpdate,
 }: TopicDetailsProps) => {
   const { t } = useTranslation();
-  const history = useHistory();
   const [isEdit, setIsEdit] = useState(false);
   const [followersCount, setFollowersCount] = useState(0);
   const [isFollowing, setIsFollowing] = useState(false);
@@ -375,10 +371,6 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
     }
   };
 
-  const handleFullScreenClick = () => {
-    history.push(getLineageViewPath(EntityType.TOPIC, topicFQN));
-  };
-
   const onTagUpdate = (selectedTags?: Array<EntityTags>) => {
     if (selectedTags) {
       const updatedTags = [...(tier ? [tier] : []), ...selectedTags];
@@ -586,20 +578,10 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
               className={`${ENTITY_CARD_CLASS} card-body-full`}
               data-testid="lineage-details">
               <EntityLineageComponent
-                addLineageHandler={lineageTabData.addLineageHandler}
-                deleted={deleted}
-                entityLineage={lineageTabData.entityLineage}
-                entityLineageHandler={lineageTabData.entityLineageHandler}
                 entityType={EntityType.TOPIC}
                 hasEditAccess={
                   topicPermissions.EditAll || topicPermissions.EditLineage
                 }
-                isLoading={lineageTabData.isLineageLoading}
-                isNodeLoading={lineageTabData.isNodeLoading}
-                lineageLeafNodes={lineageTabData.lineageLeafNodes}
-                loadNodeHandler={lineageTabData.loadNodeHandler}
-                removeLineageHandler={lineageTabData.removeLineageHandler}
-                onFullScreenClick={handleFullScreenClick}
               />
             </Card>
           )}
