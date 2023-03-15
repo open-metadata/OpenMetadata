@@ -612,6 +612,8 @@ public class SearchResource {
   private SearchSourceBuilder buildGlossaryTermSearchBuilder(String query, int from, int size) {
     QueryStringQueryBuilder queryBuilder =
         QueryBuilders.queryStringQuery(query)
+            .field(FIELD_DISPLAY_NAME, 10.0f)
+            .field(FIELD_DISPLAY_NAME_NGRAM, 1.0f)
             .field(FIELD_NAME, 10.0f)
             .field(DESCRIPTION, 3.0f)
             .defaultOperator(Operator.AND)
@@ -619,11 +621,14 @@ public class SearchResource {
 
     HighlightBuilder.Field highlightGlossaryName = new HighlightBuilder.Field(FIELD_NAME);
     highlightGlossaryName.highlighterType(UNIFIED);
+    HighlightBuilder.Field highlightGlossaryDisplayName = new HighlightBuilder.Field(FIELD_DISPLAY_NAME);
+    highlightGlossaryDisplayName.highlighterType(UNIFIED);
     HighlightBuilder.Field highlightDescription = new HighlightBuilder.Field(FIELD_DESCRIPTION);
     highlightDescription.highlighterType(UNIFIED);
     HighlightBuilder hb = new HighlightBuilder();
     hb.field(highlightDescription);
     hb.field(highlightGlossaryName);
+    hb.field(highlightGlossaryDisplayName);
     hb.preTags("<span class=\"text-highlighter\">");
     hb.postTags("</span>");
 
@@ -634,15 +639,20 @@ public class SearchResource {
     QueryStringQueryBuilder queryBuilder =
         QueryBuilders.queryStringQuery(query)
             .field(FIELD_NAME, 10.0f)
+            .field(FIELD_DISPLAY_NAME, 10.0f)
+            .field(FIELD_DISPLAY_NAME_NGRAM, 1.0f)
             .field(DESCRIPTION, 3.0f)
             .defaultOperator(Operator.AND)
             .fuzziness(Fuzziness.AUTO);
 
     HighlightBuilder.Field highlightTagName = new HighlightBuilder.Field(FIELD_NAME);
     highlightTagName.highlighterType(UNIFIED);
+    HighlightBuilder.Field highlightTagDisplayName = new HighlightBuilder.Field(FIELD_DISPLAY_NAME);
+    highlightTagDisplayName.highlighterType(UNIFIED);
     HighlightBuilder.Field highlightDescription = new HighlightBuilder.Field(FIELD_DESCRIPTION);
     highlightDescription.highlighterType(UNIFIED);
     HighlightBuilder hb = new HighlightBuilder();
+    hb.field(highlightTagDisplayName);
     hb.field(highlightDescription);
     hb.field(highlightTagName);
     hb.preTags("<span class=\"text-highlighter\">");

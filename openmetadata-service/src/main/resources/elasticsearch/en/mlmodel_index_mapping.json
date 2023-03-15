@@ -21,7 +21,10 @@
         "om_ngram": {
           "tokenizer": "ngram",
           "min_gram": 1,
-          "max_gram": 2
+          "max_gram": 2,
+          "filter": [
+            "lowercase"
+          ]
         }
       },
       "filter": {
@@ -54,6 +57,10 @@
         "type": "text",
         "analyzer": "om_analyzer",
         "fields": {
+          "keyword": {
+            "type": "keyword",
+            "ignore_above": 256
+          },
           "ngram": {
             "type": "text",
             "analyzer": "om_ngram"
