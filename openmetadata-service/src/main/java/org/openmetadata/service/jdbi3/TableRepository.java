@@ -19,14 +19,11 @@ import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.service.Entity.DATABASE_SCHEMA;
-import static org.openmetadata.service.Entity.FIELD_DESCRIPTION;
-import static org.openmetadata.service.Entity.FIELD_DISPLAY_NAME;
 import static org.openmetadata.service.Entity.FIELD_FOLLOWERS;
 import static org.openmetadata.service.Entity.FIELD_OWNER;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
 import static org.openmetadata.service.Entity.LOCATION;
 import static org.openmetadata.service.Entity.TABLE;
-import static org.openmetadata.service.util.EntityUtil.getColumnField;
 import static org.openmetadata.service.util.LambdaExceptionUtil.ignoringComparator;
 import static org.openmetadata.service.util.LambdaExceptionUtil.rethrowFunction;
 
@@ -41,8 +38,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
-import java.util.function.BiPredicate;
-import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -932,7 +927,7 @@ public class TableRepository extends EntityRepository<Table> {
   }
 
   /** Handles entity updated from PUT and POST operation. */
-  public class TableUpdater extends EntityUpdater {
+  public class TableUpdater extends ColumnEntityUpdater {
     public TableUpdater(Table original, Table updated, Operation operation) {
       super(original, updated, operation);
     }
@@ -961,126 +956,6 @@ public class TableRepository extends EntityRepository<Table> {
       List<TableConstraint> deleted = new ArrayList<>();
       recordListChange(
           "tableConstraints", origConstraints, updatedConstraints, added, deleted, EntityUtil.tableConstraintMatch);
-    }
-
-    private void updateColumns(
-        String fieldName,
-        List<Column> origColumns,
-        List<Column> updatedColumns,
-        BiPredicate<Column, Column> columnMatch)
-        throws IOException {
-      List<Column> deletedColumns = new ArrayList<>();
-      List<Column> addedColumns = new ArrayList<>();
-      recordListChange(fieldName, origColumns, updatedColumns, addedColumns, deletedColumns, columnMatch);
-      // carry forward tags and description if deletedColumns matches added column
-      Map<String, Column> addedColumnMap =
-          addedColumns.stream().collect(Collectors.toMap(Column::getName, Function.identity()));
-
-      for (Column deleted : deletedColumns) {
-        if (addedColumnMap.containsKey(deleted.getName())) {
-          Column addedColumn = addedColumnMap.get(deleted.getName());
-          if (nullOrEmpty(addedColumn.getDescription())) {
-            addedColumn.setDescription(deleted.getDescription());
-          }
-          if (nullOrEmpty(addedColumn.getTags()) && nullOrEmpty(deleted.getTags())) {
-            addedColumn.setTags(deleted.getTags());
-          }
-        }
-      }
-
-      // Delete tags related to deleted columns
-      deletedColumns.forEach(
-          deleted -> daoCollection.tagUsageDAO().deleteTagsByTarget(deleted.getFullyQualifiedName()));
-
-      // Add tags related to newly added columns
-      for (Column added : addedColumns) {
-        applyTags(added.getTags(), added.getFullyQualifiedName());
-      }
-
-      // Carry forward the user generated metadata from existing columns to new columns
-      for (Column updated : updatedColumns) {
-        // Find stored column matching name, data type and ordinal position
-        Column stored = origColumns.stream().filter(c -> columnMatch.test(c, updated)).findAny().orElse(null);
-        if (stored == null) { // New column added
-          continue;
-        }
-
-        updateColumnDescription(stored, updated);
-        updateColumnDisplayName(stored, updated);
-        updateColumnDataLength(stored, updated);
-        updateColumnPrecision(stored, updated);
-        updateColumnScale(stored, updated);
-        updateTags(
-            stored.getFullyQualifiedName(),
-            EntityUtil.getFieldName(fieldName, updated.getName(), FIELD_TAGS),
-            stored.getTags(),
-            updated.getTags());
-        updateColumnConstraint(stored, updated);
-
-        if (updated.getChildren() != null && stored.getChildren() != null) {
-          String childrenFieldName = EntityUtil.getFieldName(fieldName, updated.getName());
-          updateColumns(childrenFieldName, stored.getChildren(), updated.getChildren(), columnMatch);
-        }
-      }
-
-      majorVersionChange = majorVersionChange || !deletedColumns.isEmpty();
-    }
-
-    private void updateColumnDescription(Column origColumn, Column updatedColumn) throws JsonProcessingException {
-      if (operation.isPut() && !nullOrEmpty(origColumn.getDescription()) && updatedByBot()) {
-        // Revert the non-empty task description if being updated by a bot
-        updatedColumn.setDescription(origColumn.getDescription());
-        return;
-      }
-      String columnField = getColumnField(original, origColumn, FIELD_DESCRIPTION);
-      recordChange(columnField, origColumn.getDescription(), updatedColumn.getDescription());
-    }
-
-    private void updateColumnDisplayName(Column origColumn, Column updatedColumn) throws JsonProcessingException {
-      if (operation.isPut() && !nullOrEmpty(origColumn.getDescription()) && updatedByBot()) {
-        // Revert the non-empty task description if being updated by a bot
-        updatedColumn.setDisplayName(origColumn.getDisplayName());
-        return;
-      }
-      String columnField = getColumnField(original, origColumn, FIELD_DISPLAY_NAME);
-      recordChange(columnField, origColumn.getDisplayName(), updatedColumn.getDisplayName());
-    }
-
-    private void updateColumnConstraint(Column origColumn, Column updatedColumn) throws JsonProcessingException {
-      String columnField = getColumnField(original, origColumn, "constraint");
-      recordChange(columnField, origColumn.getConstraint(), updatedColumn.getConstraint());
-    }
-
-    protected void updateColumnDataLength(Column origColumn, Column updatedColumn) throws JsonProcessingException {
-      String columnField = getColumnField(original, origColumn, "dataLength");
-      boolean updated = recordChange(columnField, origColumn.getDataLength(), updatedColumn.getDataLength());
-      if (updated
-          && (origColumn.getDataLength() == null || updatedColumn.getDataLength() < origColumn.getDataLength())) {
-        // The data length of a column was reduced or added. Treat it as backward-incompatible change
-        majorVersionChange = true;
-      }
-    }
-
-    private void updateColumnPrecision(Column origColumn, Column updatedColumn) throws JsonProcessingException {
-      String columnField = getColumnField(original, origColumn, "precision");
-      boolean updated = recordChange(columnField, origColumn.getPrecision(), updatedColumn.getPrecision());
-      if (origColumn.getPrecision() != null
-          && updated
-          && updatedColumn.getPrecision() < origColumn.getPrecision()) { // Previously precision was set
-        // The precision was reduced. Treat it as backward-incompatible change
-        majorVersionChange = true;
-      }
-    }
-
-    private void updateColumnScale(Column origColumn, Column updatedColumn) throws JsonProcessingException {
-      String columnField = getColumnField(original, origColumn, "scale");
-      boolean updated = recordChange(columnField, origColumn.getScale(), updatedColumn.getScale());
-      if (origColumn.getScale() != null
-          && updated
-          && updatedColumn.getScale() < origColumn.getScale()) { // Previously scale was set
-        // The scale was reduced. Treat it as backward-incompatible change
-        majorVersionChange = true;
-      }
     }
   }
 }

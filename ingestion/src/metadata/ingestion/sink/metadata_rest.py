@@ -38,7 +38,7 @@ from metadata.ingestion.models.ometa_classification import OMetaTagAndClassifica
 from metadata.ingestion.models.ometa_topic_data import OMetaTopicSampleData
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
 from metadata.ingestion.models.profile_data import OMetaTableProfileSampleData
-from metadata.ingestion.models.table_metadata import DeleteTable
+from metadata.ingestion.models.table_metadata import DeleteTable, OMetaTableConstraints
 from metadata.ingestion.models.tests_data import (
     OMetaTestCaseResultsSample,
     OMetaTestCaseSample,
@@ -102,6 +102,7 @@ class MetadataRestSink(Sink[Entity]):
         self.write_record.register(DataModelLink, self.write_datamodel)
         self.write_record.register(TableLocationLink, self.write_table_location_link)
         self.write_record.register(DashboardUsage, self.write_dashboard_usage)
+        self.write_record.register(OMetaTableConstraints, self.write_table_constraints)
         self.write_record.register(
             OMetaTableProfileSampleData, self.write_profile_sample_data
         )
@@ -459,6 +460,24 @@ class MetadataRestSink(Sink[Entity]):
             logger.debug(traceback.format_exc())
             logger.error(
                 f"Unexpected error while ingesting sample data for topic [{record.topic.name.__root__}]: {exc}"
+            )
+
+    def write_table_constraints(self, record: OMetaTableConstraints):
+        """
+        Patch table constraints
+        """
+        try:
+            self.metadata.patch_table_constraints(
+                record.table_id,
+                record.constraints,
+            )
+            logger.debug(
+                f"Successfully ingested table constraints for table id {record.table_id}"
+            )
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.error(
+                f"Unexpected error while ingesting table constraints for table id [{record.table_id}]: {exc}"
             )
 
     def get_status(self):
