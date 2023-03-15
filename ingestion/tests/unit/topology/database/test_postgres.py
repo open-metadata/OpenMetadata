@@ -235,7 +235,7 @@ class PostgresUnitTest(TestCase):
         inspector.get_pk_constraint = lambda table_name, schema_name: []
         inspector.get_unique_constraints = lambda table_name, schema_name: []
         inspector.get_foreign_keys = lambda table_name, schema_name: []
-        result, _ = self.postgres_source.get_columns_and_constraints(
+        result, _, _ = self.postgres_source.get_columns_and_constraints(
             "public", "user", "postgres", inspector
         )
         for i in range(len(EXPECTED_COLUMN_VALUE)):
