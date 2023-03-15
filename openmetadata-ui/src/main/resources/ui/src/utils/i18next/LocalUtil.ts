@@ -13,8 +13,9 @@
 
 import i18n from 'i18next';
 import LanguageDetector from 'i18next-browser-languagedetector';
+import { isEmpty } from 'lodash';
 import { initReactI18next } from 'react-i18next';
-import { getInitOptions } from './i18nextUtil';
+import { getInitOptions, SupportedLocales } from './i18nextUtil';
 
 // Initialize i18next (language)
 i18n
@@ -22,23 +23,65 @@ i18n
   .use(initReactI18next)
   .init(getInitOptions());
 
+/**
+ *
+ * @param language fetch resource for the language
+ * @param nameSpace fetch resource for nameSpace in the language
+ * @returns translation records
+ */
+const fetchTranslation = async (language: string, nameSpace: string) => {
+  try {
+    const translation = await import(
+      `../../locale/${language}/${nameSpace}.json`
+    );
+
+    return translation.default ?? {};
+  } catch (error) {
+    // handle error
+    return {};
+  }
+};
+
+/**
+ *
+ * @param language add resource for the language
+ * @param nameSpace add resource for the nameSpace in language
+ * @param translation records key value pairs
+ */
+const addTranslationsToI18n = (
+  language: string,
+  nameSpace: string,
+  translation: Record<string, unknown>
+) => {
+  if (!isEmpty(translation)) {
+    i18n.addResourceBundle(language, nameSpace, translation);
+  }
+};
+
+/**
+ * Add resource for nameSpace in current language with fallback mechanism
+ * @param nameSpace add resource for the nameSpace in language
+ */
 export const addLocalResource = async (nameSpace: string) => {
-  const hasLocalResource = i18n.hasResourceBundle(i18n.language, nameSpace);
+  const isEnglishLanguage = i18n.language === SupportedLocales.English;
 
-  if (!hasLocalResource) {
-    try {
-      const translation = await import(
-        `../../locale/${i18n.language}/${nameSpace}.json`
-      );
+  const [translation, fallbackTranslation] = await Promise.allSettled([
+    fetchTranslation(i18n.language, nameSpace),
+    isEnglishLanguage
+      ? null
+      : fetchTranslation(SupportedLocales.English, nameSpace),
+  ]);
 
-      i18n.addResourceBundle(
-        i18n.language,
-        nameSpace,
-        translation?.default ?? {}
-      );
-    } catch (error) {
-      // handle error
-    }
+  if (translation.status === 'fulfilled') {
+    addTranslationsToI18n(i18n.language, nameSpace, translation.value);
+  }
+
+  if (!isEnglishLanguage && fallbackTranslation.status === 'fulfilled') {
+    addTranslationsToI18n(
+      SupportedLocales.English,
+      nameSpace,
+      fallbackTranslation.value
+    );
   }
 };
 
