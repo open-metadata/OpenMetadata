@@ -67,7 +67,7 @@ class OMetaPatchMixin(Generic[T]):
 
     client: REST
 
-    def _validate_instance_description(
+    def _fetch_entity_if_exists(
         self, entity: Type[T], entity_id: Union[str, basic.Uuid]
     ) -> Optional[T]:
         """
@@ -113,9 +113,7 @@ class OMetaPatchMixin(Generic[T]):
         Returns
             Updated Entity
         """
-        instance = self._validate_instance_description(
-            entity=entity, entity_id=entity_id
-        )
+        instance = self._fetch_entity_if_exists(entity=entity, entity_id=entity_id)
         if not instance:
             return None
 
@@ -167,7 +165,7 @@ class OMetaPatchMixin(Generic[T]):
         Returns
             Updated Entity
         """
-        table: Table = self._validate_instance_description(
+        table: Table = self._fetch_entity_if_exists(
             entity=Table,
             entity_id=entity_id,
         )
@@ -230,7 +228,7 @@ class OMetaPatchMixin(Generic[T]):
         Returns
             Updated Entity
         """
-        table: Table = self._validate_instance_description(
+        table: Table = self._fetch_entity_if_exists(
             entity=Table,
             entity_id=entity_id,
         )
@@ -290,9 +288,7 @@ class OMetaPatchMixin(Generic[T]):
         Returns
             Updated Entity
         """
-        instance = self._validate_instance_description(
-            entity=entity, entity_id=entity_id
-        )
+        instance = self._fetch_entity_if_exists(entity=entity, entity_id=entity_id)
         if not instance:
             return None
 
@@ -361,9 +357,7 @@ class OMetaPatchMixin(Generic[T]):
         Returns
             Updated Entity
         """
-        table: Table = self._validate_instance_description(
-            entity=Table, entity_id=entity_id
-        )
+        table: Table = self._fetch_entity_if_exists(entity=Table, entity_id=entity_id)
         if not table:
             return None
 
@@ -446,9 +440,7 @@ class OMetaPatchMixin(Generic[T]):
         Returns
             Updated Entity
         """
-        instance = self._validate_instance_description(
-            entity=entity, entity_id=entity_id
-        )
+        instance = self._fetch_entity_if_exists(entity=entity, entity_id=entity_id)
         if not instance:
             return None
 

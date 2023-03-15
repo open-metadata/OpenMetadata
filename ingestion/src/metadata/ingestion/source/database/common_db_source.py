@@ -497,10 +497,11 @@ class CommonDbSourceService(
                 database_name=None,
                 service_name=self.context.database_service.name.__root__,
             )
-            for column in constraint.get("referred_columns"):
-                col_fqn = get_column_fqn(table_entity=referred_table, column=column)
-                if col_fqn:
-                    referred_column_fqns.append(col_fqn)
+            if referred_table:
+                for column in constraint.get("referred_columns"):
+                    col_fqn = get_column_fqn(table_entity=referred_table, column=column)
+                    if col_fqn:
+                        referred_column_fqns.append(col_fqn)
             foreign_constraints.append(
                 TableConstraint(
                     constraintType=ConstraintType.FOREIGN_KEY,
