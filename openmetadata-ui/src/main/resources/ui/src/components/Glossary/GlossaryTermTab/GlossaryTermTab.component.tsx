@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Modal, Row, Table, Tag, Tooltip } from 'antd';
+import { Button, Col, Modal, Row, Table, TableProps, Tag, Tooltip } from 'antd';
 import { ColumnsType, ExpandableConfig } from 'antd/lib/table/interface';
 import { AxiosError } from 'axios';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
@@ -270,14 +270,11 @@ const GlossaryTermTab = ({
           fullyQualifiedName: movedGlossaryTerm.to.fullyQualifiedName,
         },
       };
-      const jsonPatch = compare(
-        movedGlossaryTerm.from as GlossaryTerm,
-        updatedGlossaryTerm
-      );
+      const jsonPatch = compare(movedGlossaryTerm.from, updatedGlossaryTerm);
 
       try {
         await patchGlossaryTerm(movedGlossaryTerm.from?.id || '', jsonPatch);
-        fetchGlossaryTerm(
+        await fetchGlossaryTerm(
           { glossary: glossaryId, parent: glossaryTermId },
           false,
           false
@@ -289,6 +286,19 @@ const GlossaryTermTab = ({
         setIsModalOpen(false);
       }
     }
+  };
+
+  const onTableRow: TableProps<ModifiedGlossaryTerm>['onRow'] = (
+    record,
+    index
+  ) => {
+    const attr = {
+      index,
+      handleMoveRow,
+      record,
+    };
+
+    return attr as DraggableBodyRowProps;
   };
 
   useEffect(() => {
@@ -370,15 +380,7 @@ const GlossaryTermTab = ({
               pagination={false}
               rowKey="name"
               size="small"
-              onRow={(record, index) => {
-                const attr = {
-                  index,
-                  handleMoveRow,
-                  record,
-                };
-
-                return attr as DraggableBodyRowProps;
-              }}
+              onRow={onTableRow}
             />
           </DndProvider>
         ) : (
