@@ -13,11 +13,10 @@
 
 import { Col, Row } from 'antd';
 import { AxiosError } from 'axios';
+import { Query } from 'generated/entity/data/query';
 import { isEmpty } from 'lodash';
 import React, { FC, useEffect, useState } from 'react';
-import { getTableQueryByTableId } from 'rest/tableAPI';
-import { Table } from '../../generated/entity/data/table';
-import { withLoader } from '../../hoc/withLoader';
+import { getQueriesList } from 'rest/queryAPI';
 import { showErrorToast } from '../../utils/ToastUtils';
 import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder';
 import Loader from '../Loader/Loader';
@@ -32,13 +31,15 @@ const TableQueries: FC<TableQueriesProp> = ({
   isTableDeleted,
   tableId,
 }: TableQueriesProp) => {
-  const [tableQueries, setTableQueries] = useState<Table['tableQueries']>([]);
+  const [tableQueries, setTableQueries] = useState<Query[]>([]);
   const [isQueriesLoading, setIsQueriesLoading] = useState(true);
+  const [selectedQuery, setSelectedQuery] = useState<Query>();
 
   const fetchTableQuery = async () => {
     try {
-      const queries = await getTableQueryByTableId(tableId);
-      setTableQueries(queries.tableQueries ?? []);
+      const queries = await getQueriesList({ entityId: tableId });
+      setTableQueries(queries.data);
+      setSelectedQuery(queries.data[0]);
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
@@ -62,13 +63,18 @@ const TableQueries: FC<TableQueriesProp> = ({
   return (
     <Row className="p-xs" gutter={32} id="tablequeries">
       {tableQueries && !isEmpty(tableQueries) ? (
-        <Col offset={3} span={18}>
-          <div className="m-y-lg" data-testid="queries-container">
-            {tableQueries.map((query, index) => (
-              <QueryCard key={index} query={query} />
-            ))}
-          </div>
-        </Col>
+        <>
+          <Col span={18}>
+            <div className="m-y-lg" data-testid="queries-container">
+              {tableQueries.map((query, index) => (
+                <QueryCard key={index} query={query} />
+              ))}
+            </div>
+          </Col>
+          <Col className="bg-white" span={6}>
+            {selectedQuery?.query}
+          </Col>
+        </>
       ) : (
         <Col className="flex-center font-medium" span={24}>
           <div data-testid="no-queries">
@@ -80,4 +86,4 @@ const TableQueries: FC<TableQueriesProp> = ({
   );
 };
 
-export default withLoader<TableQueriesProp>(TableQueries);
+export default TableQueries;
