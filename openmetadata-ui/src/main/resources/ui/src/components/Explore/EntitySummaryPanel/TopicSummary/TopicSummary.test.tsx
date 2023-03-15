@@ -20,16 +20,6 @@ import {
 } from '../mocks/TopicSummary.mock';
 import TopicSummary from './TopicSummary.component';
 
-jest.mock(
-  '../../../common/table-data-card-v2/TableDataCardTitle.component',
-  () =>
-    jest
-      .fn()
-      .mockImplementation(() => (
-        <div data-testid="TableDataCardTitle">TableDataCardTitle</div>
-      ))
-);
-
 jest.mock('../SummaryList/SummaryList.component', () =>
   jest
     .fn()
@@ -46,7 +36,6 @@ describe('TopicSummary component tests', () => {
       render(<TopicSummary entityDetails={mockTopicEntityDetails} />);
     });
 
-    const topicTitle = screen.getByTestId('TableDataCardTitle');
     const partitionsLabel = screen.getByTestId('Partitions-label');
     const replicationFactorLabel = screen.getByTestId(
       'Replication Factor-label'
@@ -64,13 +53,12 @@ describe('TopicSummary component tests', () => {
     const schemaHeader = screen.getByTestId('schema-header');
     const summaryList = screen.getByTestId('SummaryList');
 
-    expect(topicTitle).toBeInTheDocument();
     expect(partitionsLabel).toBeInTheDocument();
     expect(replicationFactorLabel).toBeInTheDocument();
     expect(retentionSizeLabel).toBeInTheDocument();
     expect(cleanUpPoliciesLabel).toBeInTheDocument();
     expect(maxMessageSizeLabel).toBeInTheDocument();
-    expect(partitionsValue).toContainHTML('128');
+    expect(partitionsValue).toContainHTML('-');
     expect(replicationFactorValue).toContainHTML('4');
     expect(retentionSizeValue).toContainHTML('1018.83 MB');
     expect(cleanUpPoliciesValue).toContainHTML('delete');

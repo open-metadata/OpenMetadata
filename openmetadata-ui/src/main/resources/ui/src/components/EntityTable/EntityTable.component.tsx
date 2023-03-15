@@ -38,6 +38,7 @@ import { EntityFieldThreads } from '../../interface/feed.interface';
 import { getPartialNameFromTableFQN } from '../../utils/CommonUtils';
 import {
   ENTITY_LINK_SEPARATOR,
+  getEntityName,
   getFrequentlyJoinedColumns,
 } from '../../utils/EntityUtils';
 import { getFieldThreadElement } from '../../utils/FeedElementUtils';
@@ -119,7 +120,7 @@ const EntityTable = ({
               ? tagList.map((tag) => {
                   return {
                     fqn: tag,
-                    source: 'Tag',
+                    source: 'Classification',
                   };
                 })
               : [];
@@ -522,9 +523,7 @@ const EntityTable = ({
       return (
         <div className="hover-icon-group">
           {isReadOnly ? (
-            <div className="tw-flex tw-flex-wrap">
-              <TagsViewer sizeCap={-1} tags={tags || []} />
-            </div>
+            <TagsViewer sizeCap={-1} tags={tags || []} />
           ) : (
             <div
               className={classNames(
@@ -544,6 +543,7 @@ const EntityTable = ({
                 }
               }}>
               <TagsContainer
+                className="w-min-15 "
                 editable={editColumnTag?.index === index}
                 isLoading={isTagLoading && editColumnTag?.index === index}
                 selectedTags={tags || []}
@@ -613,14 +613,14 @@ const EntityTable = ({
         dataIndex: 'name',
         key: 'name',
         accessor: 'name',
-        width: 300,
+        width: 220,
         render: (name: Column['name'], record: Column) => (
           <Space
             align="start"
             className="w-max-90 vertical-align-inherit"
             size={2}>
             {prepareConstraintIcon(name, record.constraint, tableConstraints)}
-            <span className="break-word">{name}</span>
+            <span className="break-word">{getEntityName(record)}</span>
           </Space>
         ),
       },
@@ -632,6 +632,30 @@ const EntityTable = ({
         ellipsis: true,
         width: 220,
         render: renderDataTypeDisplay,
+      },
+      {
+        title: t('label.scale'),
+        dataIndex: 'scale',
+        key: 'scale',
+        accessor: 'scale',
+        width: 80,
+        render: (scale: number) => scale || '--',
+      },
+      {
+        title: t('label.precision'),
+        dataIndex: 'precision',
+        key: 'precision',
+        accessor: 'precision',
+        width: 80,
+        render: (precision: number) => precision || '--',
+      },
+      {
+        title: t('label.ordinal-position'),
+        dataIndex: 'ordinalPosition',
+        key: 'ordinalPosition',
+        accessor: 'ordinalPosition',
+        width: 80,
+        render: (ordinalPosition: number) => ordinalPosition || '--',
       },
       {
         title: t('label.description'),

@@ -22,6 +22,7 @@ import { EntityTags, ExtraInfo, TagOption } from 'Models';
 import React, { Fragment, useCallback, useEffect, useState } from 'react';
 import { useHistory } from 'react-router-dom';
 import { getActiveAnnouncement } from 'rest/feedsAPI';
+import { ReactComponent as IconEdit } from '../../../assets/svg/ic-edit.svg';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { FOLLOWERS_VIEW_CAP } from '../../../constants/constants';
 import { EntityType } from '../../../enums/entity.enum';
@@ -82,6 +83,8 @@ interface Props {
   currentOwner?: Dashboard['owner'];
   removeTier?: () => void;
   onRestoreEntity?: () => void;
+  allowSoftDelete?: boolean;
+  isRecursiveDelete?: boolean;
 }
 
 const EntityPageInfo = ({
@@ -113,6 +116,8 @@ const EntityPageInfo = ({
   entityFieldTasks,
   removeTier,
   onRestoreEntity,
+  isRecursiveDelete = false,
+  allowSoftDelete,
 }: Props) => {
   const history = useHistory();
   const tagThread = entityFieldThreads?.[0];
@@ -210,7 +215,7 @@ const EntityPageInfo = ({
             ))}
           </div>
         ) : (
-          <p>{t('label.entity-does-not-have-followers', { entityName })}</p>
+          <p>{t('message.entity-does-not-have-followers', { entityName })}</p>
         )}
         {list.length > FOLLOWERS_VIEW_CAP && (
           <p
@@ -386,14 +391,10 @@ const EntityPageInfo = ({
             }
           />
           {deleted && (
-            <>
-              <div
-                className="tw-rounded tw-bg-error-lite tw-text-error tw-font-medium tw-h-6 tw-px-2 tw-py-0.5 tw-ml-2"
-                data-testid="deleted-badge">
-                <ExclamationCircleOutlined className="tw-mr-1" />
-                {t('label.deleted')}
-              </div>
-            </>
+            <div className="deleted-badge-button" data-testid="deleted-badge">
+              <ExclamationCircleOutlined className="tw-mr-1" />
+              {t('label.deleted')}
+            </div>
           )}
         </Space>
         <Space align="center" id="version-and-follow-section">
@@ -446,13 +447,18 @@ const EntityPageInfo = ({
           ) : null}
           {!isVersionSelected && (
             <ManageButton
-              allowSoftDelete={!deleted}
+              allowSoftDelete={
+                entityType === EntityType.DATABASE_SCHEMA
+                  ? allowSoftDelete
+                  : !deleted
+              }
               canDelete={canDelete}
               deleted={deleted}
               entityFQN={entityFqn}
               entityId={entityId}
               entityName={entityName}
               entityType={entityType}
+              isRecursiveDelete={isRecursiveDelete}
               onAnnouncementClick={() => setIsAnnouncementDrawer(true)}
               onRestoreEntity={onRestoreEntity}
             />
@@ -533,6 +539,7 @@ const EntityPageInfo = ({
                     setIsEditable(true);
                   }}>
                   <TagsContainer
+                    className="w-min-20"
                     dropDownHorzPosRight={false}
                     editable={isEditable}
                     isLoading={isTagLoading}
@@ -547,17 +554,18 @@ const EntityPageInfo = ({
                       handleTagSelection(tags);
                     }}>
                     {tags.length || tier ? (
-                      <button
-                        className="tw-w-7 tw-h-7 tw-flex-none focus:tw-outline-none"
-                        data-testid="edit-button">
-                        <SVGIcons
-                          alt="edit"
-                          className="tw--mt-3 "
-                          icon="icon-edit"
-                          title={t('label.edit')}
-                          width="16px"
-                        />
-                      </button>
+                      <Button
+                        className="w-7 h-7 p-0 d-flex justify-center"
+                        data-testid="edit-button"
+                        icon={
+                          <IconEdit
+                            height={16}
+                            name={t('label.edit')}
+                            width={16}
+                          />
+                        }
+                        type="text"
+                      />
                     ) : (
                       <span>
                         <Tags

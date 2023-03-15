@@ -25,9 +25,9 @@ buildNumber.properties
 catalog-services/catalog-services.iml
 
 # local docker volume
-docker/local-metadata/docker-volume
+docker/development/docker-volume
 docker-volume
-
+docker/docker-compose-quickstart/docker-volume
 # Java template
 *.class
 venv

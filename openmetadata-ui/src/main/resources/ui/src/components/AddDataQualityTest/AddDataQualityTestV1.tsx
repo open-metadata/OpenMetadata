@@ -19,6 +19,7 @@ import { isUndefined, toString } from 'lodash';
 import { default as React, useCallback, useMemo, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
 import { createTestCase, createTestSuites } from 'rest/testAPI';
+import { getEntityName } from 'utils/EntityUtils';
 import {
   getDatabaseDetailsPath,
   getDatabaseSchemaDetailsPath,
@@ -36,7 +37,6 @@ import { TestCase } from '../../generated/tests/testCase';
 import { TestSuite } from '../../generated/tests/testSuite';
 import {
   getCurrentUserId,
-  getEntityName,
   getPartialNameFromTableFQN,
 } from '../../utils/CommonUtils';
 import { getTestSuitePath } from '../../utils/RouterUtils';
@@ -119,7 +119,7 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({
           url: getTableTabPath(entityTypeFQN, 'profiler'),
         },
         {
-          name: t('message.add-entity-test', { entity: t('label.column') }),
+          name: t('label.add-entity-test', { entity: t('label.column') }),
           url: '',
           activeTitle: true,
         },
@@ -127,7 +127,7 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({
       data.push(...colVal);
     } else {
       data.push({
-        name: t('message.add-entity-test', { entity: t('label.table') }),
+        name: t('label.add-entity-test', { entity: t('label.table') }),
         url: '',
         activeTitle: true,
       });
@@ -289,7 +289,7 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({
             <Typography.Paragraph
               className="tw-heading tw-text-base"
               data-testid="header">
-              {t('message.add-entity-test', {
+              {t('label.add-entity-test', {
                 entity: isColumnFqn ? t('label.column') : t('label.table'),
               })}
             </Typography.Paragraph>

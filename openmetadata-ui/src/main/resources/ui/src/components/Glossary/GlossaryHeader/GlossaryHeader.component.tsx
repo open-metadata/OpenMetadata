@@ -26,7 +26,7 @@ import { cloneDeep, debounce, includes, isEqual } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { getEntityName } from 'utils/CommonUtils';
+import { getEntityName } from 'utils/EntityUtils';
 import { getOwnerList } from 'utils/ManageUtils';
 import SVGIcons, { Icons } from 'utils/SvgUtils';
 import {

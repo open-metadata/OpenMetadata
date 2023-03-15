@@ -12,6 +12,7 @@
  */
 
 import { getByTestId, getByText, render } from '@testing-library/react';
+import { ELASTICSEARCH_ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import React from 'react';
 import ErrorPlaceHolderES from './ErrorPlaceHolderES';
 
@@ -39,20 +40,27 @@ const mockErrorMessage =
 
 describe('Test Error placeholder ingestion Component', () => {
   it('Component should render error placeholder', () => {
-    const { container } = render(<ErrorPlaceHolderES type="error" />);
+    const { container } = render(
+      <ErrorPlaceHolderES type={ELASTICSEARCH_ERROR_PLACEHOLDER_TYPE.ERROR} />
+    );
 
     expect(getByTestId(container, 'es-error')).toBeInTheDocument();
   });
 
   it('Component should render no data placeholder', () => {
-    const { container } = render(<ErrorPlaceHolderES type="noData" />);
+    const { container } = render(
+      <ErrorPlaceHolderES type={ELASTICSEARCH_ERROR_PLACEHOLDER_TYPE.NO_DATA} />
+    );
 
     expect(getByTestId(container, 'no-search-results')).toBeInTheDocument();
   });
 
   it('Component should render no data placeholder for search text', () => {
     const { container } = render(
-      <ErrorPlaceHolderES query="test" type="noData" />
+      <ErrorPlaceHolderES
+        query="test"
+        type={ELASTICSEARCH_ERROR_PLACEHOLDER_TYPE.NO_DATA}
+      />
     );
     const noDataES = getByTestId(container, 'no-search-results');
     const searchText = getByText(noDataES, 'test');
@@ -62,7 +70,10 @@ describe('Test Error placeholder ingestion Component', () => {
 
   it('Component should render error placeholder with ES index', () => {
     const { container } = render(
-      <ErrorPlaceHolderES errorMessage={mockErrorMessage} type="error" />
+      <ErrorPlaceHolderES
+        errorMessage={mockErrorMessage}
+        type={ELASTICSEARCH_ERROR_PLACEHOLDER_TYPE.ERROR}
+      />
     );
     const errorES = getByTestId(container, 'es-error');
     const errMsg = getByTestId(errorES, 'error-text');

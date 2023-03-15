@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Modal } from 'antd';
+import { Modal, Space } from 'antd';
 import { AxiosError } from 'axios';
 import jsonData from 'jsons/en';
 import {
@@ -19,7 +19,7 @@ import {
   isEmpty,
   isNil,
   isUndefined,
-  lowerCase,
+  union,
   uniqueId,
   upperCase,
 } from 'lodash';
@@ -52,7 +52,7 @@ import ReactFlow, {
 import { getLineageByFQN } from 'rest/lineageAPI';
 import { searchData } from 'rest/miscAPI';
 import { getTableDetails } from 'rest/tableAPI';
-import { getEntityLineage } from 'utils/EntityUtils';
+import { getEntityLineage, getEntityName } from 'utils/EntityUtils';
 import { getLineageViewPath } from 'utils/RouterUtils';
 import { PAGE_SIZE } from '../../constants/constants';
 import {
@@ -75,7 +75,6 @@ import {
 } from '../../generated/type/entityLineage';
 import { EntityReference } from '../../generated/type/entityReference';
 import { withLoader } from '../../hoc/withLoader';
-import { getEntityName } from '../../utils/CommonUtils';
 import {
   addLineageHandler,
   createNewEdge,
@@ -92,6 +91,7 @@ import {
   getEdgeStyle,
   getEdgeType,
   getEntityLineagePath,
+  getEntityNodeIcon,
   getLayoutedElements,
   getLineageData,
   getLoadingStatusValue,
@@ -119,7 +119,6 @@ import {
   removeLineageHandler,
 } from '../../utils/EntityLineageUtils';
 import { getEntityReferenceFromPipeline } from '../../utils/PipelineServiceUtils';
-import SVGIcons from '../../utils/SvgUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import EdgeInfoDrawer from '../EntityInfoDrawer/EdgeInfoDrawer.component';
 import EntityInfoDrawer from '../EntityInfoDrawer/EntityInfoDrawer.component';
@@ -135,7 +134,6 @@ import {
   EntityLineageProp,
   EntityReferenceChild,
   LeafNodes,
-  LineageConfig,
   LineagePos,
   LoadingNodeState,
   ModifiedColumn,
@@ -215,10 +213,6 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
   const entityFQN =
     params[getParamByEntityType(entityType)] ?? params['entityFQN'];
   const history = useHistory();
-
-  useEffect(() => {
-    fetchLineageData(lineageConfig);
-  }, []);
 
   const onFullScreenClick = useCallback(() => {
     history.push(getLineageViewPath(entityType, entityFQN));
@@ -706,7 +700,7 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
     }
   };
 
-  const setElementsHandle = (data: EntityLineage) => {
+  const setElementsHandle = (data: EntityLineage, activeNodeId?: string) => {
     if (!isEmpty(data)) {
       const graphElements = getLineageData(
         data,
@@ -734,6 +728,12 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
       setEdges(edge);
 
       setConfirmDelete(false);
+      if (activeNodeId) {
+        const activeNode = node.find((item) => item.id === activeNodeId);
+        if (activeNode) {
+          selectNode(activeNode);
+        }
+      }
     }
   };
 
@@ -1213,6 +1213,7 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
         y: event.clientY - (reactFlowBounds?.top ?? 0),
       });
       const [label, nodeType] = type.split('-');
+      const Icon = getEntityNodeIcon(label);
       const newNode = {
         id: uniqueId(),
         nodeType,
@@ -1227,18 +1228,18 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
               {getNodeRemoveButton(() => {
                 removeNodeHandler(newNode as Node);
               })}
-              <div className="tw-flex">
-                <SVGIcons
-                  alt="entity-icon"
-                  className="tw-mr-2"
-                  icon={`${lowerCase(label)}-grey`}
-                  width="16px"
+              <Space align="center" size={2}>
+                <Icon
+                  className="m-r-xs"
+                  height={16}
+                  name="entity-icon"
+                  width={16}
                 />
                 <NodeSuggestions
                   entityType={upperCase(label)}
                   onSelectHandler={setSelectedEntity}
                 />
-              </div>
+              </Space>
             </div>
           ),
           removeNodeHandler,
@@ -1418,7 +1419,12 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
         )
       );
     } catch (error) {
-      showErrorToast(error as AxiosError, t('server.fetch-suggestions-error'));
+      showErrorToast(
+        error as AxiosError,
+        t('server.entity-fetch-error', {
+          entity: t('label.suggestion-lowercase-plural'),
+        })
+      );
     }
   };
 
@@ -1426,32 +1432,46 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
     setLineageConfig(config);
     fetchLineageData(config);
   }, []);
+  const selectNode = (node: Node) => {
+    const { position } = node;
+    onNodeClick(node);
+    // moving selected node in center
+    reactFlowInstance &&
+      reactFlowInstance.setCenter(position.x, position.y, {
+        duration: ZOOM_TRANSITION_DURATION,
+        zoom: zoomValue,
+      });
+  };
 
   const handleOptionSelect = (value?: string) => {
     if (value) {
       const selectedNode = nodes.find((node) => node.id === value);
 
       if (selectedNode) {
-        const { position } = selectedNode;
-        onNodeClick(selectedNode);
-        // moving selected node in center
-        reactFlowInstance &&
-          reactFlowInstance.setCenter(position.x, position.y, {
-            duration: ZOOM_TRANSITION_DURATION,
-            zoom: zoomValue,
-          });
+        selectNode(selectedNode);
       } else {
-        const path = findNodeById(value, childMap?.children, []);
-
-        // Perform Search here
-
-        setTimeout(() => {
-          if (path) {
-            const lastNode = path[path?.length - 1];
-            onNodeClick(lastNode as Node);
-            // onPaneClick();
-          }
-        }, 2000);
+        const path = findNodeById(value, childMap?.children, []) || [];
+        const lastNode = path[path?.length - 1];
+        if (updatedLineageData) {
+          const { nodes, edges } = getPaginatedChildMap(
+            updatedLineageData,
+            childMap,
+            paginationData,
+            lineageConfig
+          );
+          const newNodes = union(nodes, path);
+          setElementsHandle(
+            {
+              ...updatedLineageData,
+              nodes: newNodes,
+              downstreamEdges: [
+                ...(updatedLineageData.downstreamEdges || []),
+                ...edges,
+              ],
+            },
+            lastNode.id
+          );
+        }
       }
     }
   };
@@ -1512,6 +1532,10 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
       });
     }
   };
+
+  useEffect(() => {
+    fetchLineageData(lineageConfig);
+  }, []);
 
   useEffect(() => {
     if (!entityLineage) {

@@ -22,7 +22,7 @@ import { MlFeature } from '../generated/entity/data/mlmodel';
 import { Task } from '../generated/entity/data/pipeline';
 import { Column, TableConstraint } from '../generated/entity/data/table';
 import { Field } from '../generated/entity/data/topic';
-import { getEntityName } from './CommonUtils';
+import { getEntityName } from './EntityUtils';
 import SVGIcons from './SvgUtils';
 
 const { Text } = Typography;
@@ -57,7 +57,9 @@ export const getFormattedEntityData = (
         title: (
           <Link target="_blank" to={{ pathname: chart.chartUrl }}>
             <Space className="m-b-xs">
-              <Text className="entity-title link">{getEntityName(chart)}</Text>
+              <Text className="entity-title text-primary font-medium">
+                {getEntityName(chart)}
+              </Text>
               <SVGIcons alt="external-link" icon="external-link" width="12px" />
             </Space>
           </Link>
@@ -73,7 +75,9 @@ export const getFormattedEntityData = (
         title: (
           <Link target="_blank" to={{ pathname: task.taskUrl }}>
             <Space className="m-b-xs">
-              <Text className="entity-title link">{task.name}</Text>
+              <Text className="entity-title text-primary font-medium">
+                {task.name}
+              </Text>
               <SVGIcons alt="external-link" icon="external-link" width="12px" />
             </Space>
           </Link>

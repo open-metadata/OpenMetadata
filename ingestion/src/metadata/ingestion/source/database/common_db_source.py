@@ -51,7 +51,6 @@ from metadata.ingestion.source.database.database_service import (
     DatabaseServiceSource,
     SQLSourceStatus,
 )
-from metadata.ingestion.source.database.processor import PiiProcessor
 from metadata.ingestion.source.database.sql_column_handler import SqlColumnHandlerMixin
 from metadata.ingestion.source.database.sqlalchemy_source import SqlAlchemySource
 from metadata.ingestion.source.models import TableView
@@ -135,6 +134,7 @@ class CommonDbSourceService(
         database_name = self.service_connection.__dict__.get(
             "database", custom_database_name or "default"
         )
+
         # By default, set the inspector on the created engine
         self.inspector = inspect(self.engine)
         yield database_name
@@ -380,11 +380,6 @@ class CommonDbSourceService(
                     table_name=table_name
                 ),  # Pick tags from context info, if any
             )
-
-            # Process pii sensitive column and append tags
-            if self.source_config.processPiiSensitive:
-                processor = PiiProcessor(metadata_config=self.metadata)
-                processor.process(table_request)
 
             is_partitioned, partition_details = self.get_table_partition_details(
                 table_name=table_name, schema_name=schema_name, inspector=self.inspector

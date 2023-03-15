@@ -86,6 +86,11 @@ def _(
         List[Dict]:
     """
     logger.info(f"Fetching system metrics for {dialect}")
+    dml_stat_to_dml_statement_mapping = {
+        "inserted_row_count": "INSERT",
+        "deleted_row_count": "DELETE",
+        "updated_row_count": "UPDATE",
+    }
 
     region = (
         f"region-{conn_config.usageLocation}"
@@ -103,8 +108,8 @@ def _(
         FROM
             `{region}`.INFORMATION_SCHEMA.JOBS
         WHERE
-            DATE(creation_time) = CURRENT_DATE() - 1 AND
-            statement_type IN ('INSERT', 'UPDATE', 'INSERT')
+            DATE(creation_time) >= CURRENT_DATE() - 1 AND
+            statement_type IN ('INSERT', 'UPDATE', 'INSERT', 'MERGE')
         ORDER BY creation_time DESC;
         """
     )
@@ -140,6 +145,21 @@ def _(
                 rows_affected = row_jobs.dml_statistics.get("deleted_row_count")
             if row_jobs.query_type == "UPDATE":
                 rows_affected = row_jobs.dml_statistics.get("updated_row_count")
+            if row_jobs.query_type == "MERGE":
+                for i, key in enumerate(row_jobs.dml_statistics):
+                    if row_jobs.dml_statistics[key] != 0:
+                        metric_results.append(
+                            {
+                                # Merge statement can include multiple DML operations
+                                # We are padding timestamps by 0,1,2 millisesond to avoid
+                                # duplicate timestamps
+                                "timestamp": int(row_jobs.timestamp.timestamp() * 1000)
+                                + i,
+                                "operation": dml_stat_to_dml_statement_mapping.get(key),
+                                "rowsAffected": row_jobs.dml_statistics[key],
+                            }
+                        )
+                continue
 
             metric_results.append(
                 {
@@ -256,7 +276,7 @@ def _(
         query_text = row_insert.query_text
         operation = next(
             (
-                token.value
+                token.value.upper()
                 for token in query_text.tokens
                 if token.ttype is sqlparse.tokens.DML
                 and token.value.upper()
@@ -277,7 +297,7 @@ def _(
         query_text = row_deleted.query_text
         operation = next(
             (
-                token.value
+                token.value.upper()
                 for token in query_text.tokens
                 if token.ttype is sqlparse.tokens.DML and token.value != "UPDATE"
             ),
@@ -325,7 +345,8 @@ def _(
         SELECT * FROM "SNOWFLAKE"."ACCOUNT_USAGE"."QUERY_HISTORY"
         WHERE
         start_time>= DATEADD('DAY', -1, CURRENT_TIMESTAMP)
-        AND QUERY_TYPE IN ('INSERT', 'MERGE', 'DELETE', 'UPDATE');
+        AND QUERY_TYPE IN ('INSERT', 'MERGE', 'DELETE', 'UPDATE')
+        AND EXECUTION_STATUS = 'SUCCESS';
     """
     result_scan = """
     SELECT *

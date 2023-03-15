@@ -115,7 +115,7 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
           <Form.Item
             data-testid="sql-editor-container"
             key={name}
-            label={t('label.sql-query')}
+            label={t('label.sql-uppercase-query')}
             name={name}
             tooltip={t('message.queries-result-test')}>
             <SchemaEditor
@@ -131,7 +131,7 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
         );
       }
 
-      return <ParameterForm definition={selectedDefinition} />;
+      return <ParameterForm definition={selectedDefinition} table={table} />;
     }
 
     return;

@@ -20,6 +20,7 @@ import { isUndefined } from 'lodash';
 import { ExtraInfo } from 'Models';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { getEntityName } from 'utils/EntityUtils';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { EntityField } from '../../constants/Feeds.constants';
 import { OwnerType } from '../../enums/user.enum';
@@ -218,13 +219,15 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
   const tableColumn: ColumnsType<Task> = useMemo(
     () => [
       {
-        title: t('label.task-name'),
+        title: t('label.task-entity', {
+          entity: t('label.column-plural'),
+        }),
         dataIndex: 'displayName',
         key: 'displayName',
-        render: (text, record) => (
+        render: (_, record) => (
           <Link target="_blank" to={{ pathname: record.taskUrl }}>
             <Space>
-              <span>{text}</span>
+              <span>{getEntityName(record)}</span>
               <SVGIcons
                 alt="external-link"
                 className="tw-align-middle"
@@ -249,7 +252,7 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
           ),
       },
       {
-        title: t('label.task-type'),
+        title: t('label.task-entity', { entity: t('label.type-lowercase') }),
         dataIndex: 'taskType',
         key: 'taskType',
       },

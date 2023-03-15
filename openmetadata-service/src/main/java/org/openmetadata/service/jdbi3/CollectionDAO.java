@@ -60,6 +60,7 @@ import org.openmetadata.schema.entity.Bot;
 import org.openmetadata.schema.entity.Type;
 import org.openmetadata.schema.entity.alerts.Alert;
 import org.openmetadata.schema.entity.alerts.AlertAction;
+import org.openmetadata.schema.entity.automations.Workflow;
 import org.openmetadata.schema.entity.classification.Classification;
 import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.entity.data.Chart;
@@ -85,6 +86,7 @@ import org.openmetadata.schema.entity.services.MlModelService;
 import org.openmetadata.schema.entity.services.ObjectStoreService;
 import org.openmetadata.schema.entity.services.PipelineService;
 import org.openmetadata.schema.entity.services.StorageService;
+import org.openmetadata.schema.entity.services.connections.TestConnectionDefinition;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.entity.teams.Team;
@@ -243,6 +245,9 @@ public interface CollectionDAO {
   TestDefinitionDAO testDefinitionDAO();
 
   @CreateSqlObject
+  TestConnectionDefinitionDAO testConnectionDefinitionDAO();
+
+  @CreateSqlObject
   AlertActionDAO alertActionDAO();
 
   @CreateSqlObject
@@ -265,6 +270,9 @@ public interface CollectionDAO {
 
   @CreateSqlObject
   KpiDAO kpiDAO();
+
+  @CreateSqlObject
+  WorkflowDAO workflowDAO();
 
   interface DashboardDAO extends EntityDAO<Dashboard> {
     @Override
@@ -360,6 +368,23 @@ public interface CollectionDAO {
     @Override
     default Class<MetadataService> getEntityClass() {
       return MetadataService.class;
+    }
+
+    @Override
+    default String getNameColumn() {
+      return "name";
+    }
+  }
+
+  interface TestConnectionDefinitionDAO extends EntityDAO<TestConnectionDefinition> {
+    @Override
+    default String getTableName() {
+      return "test_connection_definition";
+    }
+
+    @Override
+    default Class<TestConnectionDefinition> getEntityClass() {
+      return TestConnectionDefinition.class;
     }
 
     @Override
@@ -2042,8 +2067,8 @@ public interface CollectionDAO {
         @Bind("labelType") int labelType,
         @Bind("state") int state);
 
-    @SqlQuery("SELECT targetFQN FROM tag_usage WHERE tagFQN = :tagFQN")
-    List<String> tagTargetFQN(@Bind("tagFQN") String tagFQN);
+    @SqlQuery("SELECT targetFQN FROM tag_usage WHERE source = :source AND tagFQN = :tagFQN")
+    List<String> getTargetFQNs(@Bind("source") int source, @Bind("tagFQN") String tagFQN);
 
     default List<TagLabel> getTags(String targetFQN) {
       List<TagLabel> tags = getTagsInternal(targetFQN);
@@ -2073,22 +2098,22 @@ public interface CollectionDAO {
     void deleteTagLabelsByTargetPrefix(@Bind("targetFQN") String targetFQN);
 
     /** Update all the tagFQN starting with oldPrefix to start with newPrefix due to tag or glossary name change */
-    default void updateTagPrefix(String oldPrefix, String newPrefix) {
+    default void updateTagPrefix(int source, String oldPrefix, String newPrefix) {
       String update =
           String.format(
-              "UPDATE tag_usage set tagFQN = REPLACE(tagFQN, '%s.', '%s.') WHERE tagFQN LIKE '%s.%%'",
-              escapeApostrophe(oldPrefix), escapeApostrophe(newPrefix), escape(oldPrefix));
+              "UPDATE tag_usage set tagFQN = REPLACE(tagFQN, '%s.', '%s.') WHERE source = %s AND tagFQN LIKE '%s.%%'",
+              escapeApostrophe(oldPrefix), escapeApostrophe(newPrefix), source, escape(oldPrefix));
       updateTagPrefixInternal(update);
     }
 
-    default void rename(String oldFQN, String newFQN) {
-      renameInternal(oldFQN, newFQN); // First rename tagFQN from oldFQN to newFQN
-      updateTagPrefix(oldFQN, newFQN); // Rename all the tagFQN prefixes starting with the oldFQN to newFQN
+    default void rename(int source, String oldFQN, String newFQN) {
+      renameInternal(source, oldFQN, newFQN); // First rename tagFQN from oldFQN to newFQN
+      updateTagPrefix(source, oldFQN, newFQN); // Rename all the tagFQN prefixes starting with the oldFQN to newFQN
     }
 
     /** Rename the tagFQN */
-    @SqlUpdate("Update tag_usage set tagFQN = :newFQN WHERE tagFQN = :oldFQN")
-    void renameInternal(@Bind("oldFQN") String oldFQN, @Bind("newFQN") String newFQN);
+    @SqlUpdate("Update tag_usage set tagFQN = :newFQN WHERE source = :source AND tagFQN = :oldFQN")
+    void renameInternal(@Bind("source") int source, @Bind("oldFQN") String oldFQN, @Bind("newFQN") String newFQN);
 
     @SqlUpdate("<update>")
     void updateTagPrefixInternal(@Define("update") String update);
@@ -3420,5 +3445,167 @@ public interface CollectionDAO {
     default String getNameColumn() {
       return "name";
     }
+  }
+
+  interface WorkflowDAO extends EntityDAO<Workflow> {
+    @Override
+    default String getTableName() {
+      return "automations_workflow";
+    }
+
+    @Override
+    default Class<Workflow> getEntityClass() {
+      return Workflow.class;
+    }
+
+    @Override
+    default String getNameColumn() {
+      return "name";
+    }
+
+    @Override
+    default List<String> listBefore(ListFilter filter, int limit, String before) {
+      String workflowType = filter.getQueryParam("workflowType");
+      String status = filter.getQueryParam("status");
+      String condition = filter.getCondition();
+
+      if (workflowType == null && status == null) {
+        return EntityDAO.super.listBefore(filter, limit, before);
+      }
+
+      StringBuilder mysqlCondition = new StringBuilder();
+      StringBuilder psqlCondition = new StringBuilder();
+
+      mysqlCondition.append(String.format("%s ", condition));
+      psqlCondition.append(String.format("%s ", condition));
+
+      if (workflowType != null) {
+        mysqlCondition.append(String.format("AND workflowType='%s' ", workflowType));
+        psqlCondition.append(String.format("AND workflowType='%s' ", workflowType));
+      }
+
+      if (status != null) {
+        mysqlCondition.append(String.format("AND status='%s' ", status));
+        psqlCondition.append(String.format("AND status='%s' ", status));
+      }
+
+      return listBefore(
+          getTableName(), getNameColumn(), mysqlCondition.toString(), psqlCondition.toString(), limit, before);
+    }
+
+    @Override
+    default List<String> listAfter(ListFilter filter, int limit, String after) {
+      String workflowType = filter.getQueryParam("workflowType");
+      String status = filter.getQueryParam("status");
+      String condition = filter.getCondition();
+
+      if (workflowType == null && status == null) {
+        return EntityDAO.super.listAfter(filter, limit, after);
+      }
+
+      StringBuilder mysqlCondition = new StringBuilder();
+      StringBuilder psqlCondition = new StringBuilder();
+
+      mysqlCondition.append(String.format("%s ", condition));
+      psqlCondition.append(String.format("%s ", condition));
+
+      if (workflowType != null) {
+        mysqlCondition.append(String.format("AND workflowType='%s' ", workflowType));
+        psqlCondition.append(String.format("AND workflowType='%s' ", workflowType));
+      }
+
+      if (status != null) {
+        mysqlCondition.append(String.format("AND status='%s' ", status));
+        psqlCondition.append(String.format("AND status='%s' ", status));
+      }
+
+      return listAfter(
+          getTableName(), getNameColumn(), mysqlCondition.toString(), psqlCondition.toString(), limit, after);
+    }
+
+    @Override
+    default int listCount(ListFilter filter) {
+      String workflowType = filter.getQueryParam("workflowType");
+      String status = filter.getQueryParam("status");
+      String condition = filter.getCondition();
+
+      if (workflowType == null && status == null) {
+        return EntityDAO.super.listCount(filter);
+      }
+
+      StringBuilder mysqlCondition = new StringBuilder();
+      StringBuilder psqlCondition = new StringBuilder();
+
+      mysqlCondition.append(String.format("%s ", condition));
+      psqlCondition.append(String.format("%s ", condition));
+
+      if (workflowType != null) {
+        mysqlCondition.append(String.format("AND workflowType='%s' ", workflowType));
+        psqlCondition.append(String.format("AND workflowType='%s' ", workflowType));
+      }
+
+      if (status != null) {
+        mysqlCondition.append(String.format("AND status='%s' ", status));
+        psqlCondition.append(String.format("AND status='%s' ", status));
+      }
+
+      return listCount(getTableName(), getNameColumn(), mysqlCondition.toString(), psqlCondition.toString());
+    }
+
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT json FROM ("
+                + "SELECT <nameColumn>, json FROM <table> <mysqlCond> AND "
+                + "<nameColumn> < :before "
+                + "ORDER BY <nameColumn> DESC "
+                + "LIMIT :limit"
+                + ") last_rows_subquery ORDER BY <nameColumn>",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT json FROM ("
+                + "SELECT <nameColumn>, json FROM <table> <psqlCond> AND "
+                + "<nameColumn> < :before "
+                + "ORDER BY <nameColumn> DESC "
+                + "LIMIT :limit"
+                + ") last_rows_subquery ORDER BY <nameColumn>",
+        connectionType = POSTGRES)
+    List<String> listBefore(
+        @Define("table") String table,
+        @Define("nameColumn") String nameColumn,
+        @Define("mysqlCond") String mysqlCond,
+        @Define("psqlCond") String psqlCond,
+        @Bind("limit") int limit,
+        @Bind("before") String before);
+
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT json FROM <table> <mysqlCond> AND "
+                + "<nameColumn> > :after "
+                + "ORDER BY <nameColumn> "
+                + "LIMIT :limit",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT json FROM <table> <psqlCond> AND "
+                + "<nameColumn> > :after "
+                + "ORDER BY <nameColumn> "
+                + "LIMIT :limit",
+        connectionType = POSTGRES)
+    List<String> listAfter(
+        @Define("table") String table,
+        @Define("nameColumn") String nameColumn,
+        @Define("mysqlCond") String mysqlCond,
+        @Define("psqlCond") String psqlCond,
+        @Bind("limit") int limit,
+        @Bind("after") String after);
+
+    @ConnectionAwareSqlQuery(value = "SELECT count(*) FROM <table> <mysqlCond>", connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(value = "SELECT count(*) FROM <table> <psqlCond>", connectionType = POSTGRES)
+    int listCount(
+        @Define("table") String table,
+        @Define("nameColumn") String nameColumn,
+        @Define("mysqlCond") String mysqlCond,
+        @Define("psqlCond") String psqlCond);
   }
 }

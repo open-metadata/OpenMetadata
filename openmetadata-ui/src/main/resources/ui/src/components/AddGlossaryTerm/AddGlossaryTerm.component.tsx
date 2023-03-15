@@ -371,7 +371,7 @@ const AddGlossaryTerm = ({
 
           <Field>
             <label className="tw-block tw-form-label" htmlFor="synonyms">
-              {`${t('label.synonyms')}:`}
+              {`${t('label.synonym-plural')}:`}
             </label>
 
             <input
@@ -379,7 +379,9 @@ const AddGlossaryTerm = ({
               data-testid="synonyms"
               id="synonyms"
               name="synonyms"
-              placeholder={t('message.enter-comma-separated-keywords')}
+              placeholder={t('message.enter-comma-separated-field', {
+                field: t('label.keyword-lowercase-plural'),
+              })}
               type="text"
               value={synonyms}
               onChange={handleValidation}

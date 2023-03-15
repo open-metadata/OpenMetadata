@@ -116,7 +116,7 @@ const CreateUser = ({
   const slashedBreadcrumbList = useMemo(
     () => [
       {
-        name: forceBot ? t('label.bot-plural') : t('label.users'),
+        name: forceBot ? t('label.bot-plural') : t('label.user-plural'),
         url: forceBot ? getBotsPagePath() : getUsersPagePath(),
       },
       {
@@ -606,7 +606,7 @@ const CreateUser = ({
               <Input
                 data-testid="oktaEmail"
                 name="oktaEmail"
-                placeholder={t('label.okta-email')}
+                placeholder={t('label.okta-service-account-email')}
                 value={ssoClientConfig?.email}
                 onChange={handleOnChange}
               />

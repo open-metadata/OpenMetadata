@@ -16,11 +16,11 @@ import { LOADING_STATE, OPERATION } from 'enums/common.enum';
 import { isEmpty } from 'lodash';
 import React, { FC, Fragment, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { getEntityName } from 'utils/EntityUtils';
 import { ReactComponent as IconDelete } from '../../assets/svg/ic-delete.svg';
 import { ReactComponent as IconEdit } from '../../assets/svg/ic-edit.svg';
 import { NO_PERMISSION_FOR_ACTION } from '../../constants/HelperTextUtil';
 import { CustomProperty } from '../../generated/entity/type';
-import { getEntityName } from '../../utils/CommonUtils';
 import RichTextEditorPreviewer from '../common/rich-text-editor/RichTextEditorPreviewer';
 import ConfirmationModal from '../Modals/ConfirmationModal/ConfirmationModal';
 import { ModalWithMarkdownEditor } from '../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
@@ -84,6 +84,7 @@ export const CustomPropertyTable: FC<CustomPropertyTableProp> = ({
         title: t('label.name'),
         dataIndex: 'name',
         key: 'name',
+        render: (_, record) => getEntityName(record),
       },
       {
         title: t('label.type'),
@@ -177,7 +178,9 @@ export const CustomPropertyTable: FC<CustomPropertyTableProp> = ({
           entityType: t('label.property'),
           entityName: selectedProperty.name,
         })}
-        placeholder={t('label.enter-property-description')}
+        placeholder={t('label.enter-field-description', {
+          field: t('label.property'),
+        })}
         value={selectedProperty.description || ''}
         visible={updateCheck}
         onCancel={resetSelectedProperty}

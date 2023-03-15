@@ -14,7 +14,7 @@ Test Profiler behavior
 """
 import os
 from concurrent.futures import TimeoutError
-from datetime import datetime, timezone
+from datetime import datetime
 from unittest import TestCase
 from unittest.mock import patch
 from uuid import uuid4
@@ -32,6 +32,7 @@ from metadata.generated.schema.entity.data.table import (
     ColumnName,
     ColumnProfile,
     DataType,
+    Histogram,
     Table,
     TableProfile,
 )
@@ -153,11 +154,13 @@ class ProfilerTest(TestCase):
             variance=None,
             distinctCount=2.0,
             distinctProportion=1.0,
-            median=30.5,
-            timestamp=datetime.now(tz=timezone.utc).timestamp()
-            # histogram=Histogram(
-            #     boundaries=["30.0 to 30.25", "31.0 to 31.25"], frequencies=[1, 1]
-            # ),
+            median=30.0,
+            timestamp=age_profile.timestamp,
+            firstQuartile=30.0,
+            thirdQuartile=31.0,
+            interQuartileRange=1.0,
+            nonParametricSkew=2.0,
+            histogram=Histogram(boundaries=["30.00 and up"], frequencies=[2]),
         )
 
     def test_required_metrics(self):

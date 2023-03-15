@@ -107,6 +107,7 @@ import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
+import org.openmetadata.service.secrets.masker.EntityMaskerFactory;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.auth.AuthenticatorHandler;
@@ -303,7 +304,9 @@ public class UserResource extends EntityResource<User, UserRepository> {
           @DefaultValue("non-deleted")
           Include include)
       throws IOException {
-    return decryptOrNullify(securityContext, getInternal(uriInfo, securityContext, id, fieldsParam, include));
+    User user = getInternal(uriInfo, securityContext, id, fieldsParam, include);
+    decryptOrNullify(securityContext, user);
+    return user;
   }
 
   @GET
@@ -337,7 +340,9 @@ public class UserResource extends EntityResource<User, UserRepository> {
           @DefaultValue("non-deleted")
           Include include)
       throws IOException {
-    return decryptOrNullify(securityContext, getByNameInternal(uriInfo, securityContext, name, fieldsParam, include));
+    User user = getByNameInternal(uriInfo, securityContext, name, fieldsParam, include);
+    decryptOrNullify(securityContext, user);
+    return user;
   }
 
   @GET
@@ -1152,6 +1157,9 @@ public class UserResource extends EntityResource<User, UserRepository> {
     }
     // TODO: review this flow on https://github.com/open-metadata/OpenMetadata/issues/8321
     if (original != null) {
+      EntityMaskerFactory.getEntityMasker()
+          .unmaskAuthenticationMechanism(
+              user.getName(), create.getAuthenticationMechanism(), original.getAuthenticationMechanism());
       user.setRoles(original.getRoles());
     } else if (bot != null && ProviderType.SYSTEM.equals(bot.getProvider())) {
       user.setRoles(UserUtil.getRoleForBot(botName));
@@ -1272,7 +1280,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
         String.format("Incomplete authentication mechanism parameters for bot user: [%s]", create.getName()));
   }
 
-  private User decryptOrNullify(SecurityContext securityContext, User user) {
+  private void decryptOrNullify(SecurityContext securityContext, User user) {
     SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
     if (Boolean.TRUE.equals(user.getIsBot()) && user.getAuthenticationMechanism() != null) {
       try {
@@ -1282,12 +1290,12 @@ public class UserResource extends EntityResource<User, UserRepository> {
             getResourceContextById(user.getId()));
       } catch (AuthorizationException | IOException e) {
         user.getAuthenticationMechanism().setConfig(null);
-        return user;
       }
-      user.withAuthenticationMechanism(
-          secretsManager.encryptOrDecryptAuthenticationMechanism(
-              user.getName(), user.getAuthenticationMechanism(), false));
+      secretsManager.encryptOrDecryptAuthenticationMechanism(user.getName(), user.getAuthenticationMechanism(), false);
+      if (authorizer.shouldMaskPasswords(securityContext)) {
+        EntityMaskerFactory.getEntityMasker()
+            .maskAuthenticationMechanism(user.getName(), user.getAuthenticationMechanism());
+      }
     }
-    return user;
   }
 }

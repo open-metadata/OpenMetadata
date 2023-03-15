@@ -32,6 +32,8 @@ import { usePermissionProvider } from 'components/PermissionProvider/PermissionP
 import { OperationPermission } from 'components/PermissionProvider/PermissionProvider.interface';
 import ServiceConnectionDetails from 'components/ServiceConnectionDetails/ServiceConnectionDetails.component';
 import TagsViewer from 'components/Tag/TagsViewer/tags-viewer';
+import { EntityType } from 'enums/entity.enum';
+import { Container } from 'generated/entity/data/container';
 import { isEmpty, isNil, isUndefined, startCase, toLower } from 'lodash';
 import { ExtraInfo, ServicesUpdateRequest, ServiceTypes } from 'Models';
 import React, { FunctionComponent, useEffect, useMemo, useState } from 'react';
@@ -48,6 +50,7 @@ import {
 } from 'rest/ingestionPipelineAPI';
 import { fetchAirflowConfig } from 'rest/miscAPI';
 import { getMlmodels } from 'rest/mlModelAPI';
+import { getContainers } from 'rest/objectStoreAPI';
 import { getPipelines } from 'rest/pipelineAPI';
 import {
   getServiceByFQN,
@@ -55,6 +58,7 @@ import {
   updateService,
 } from 'rest/serviceAPI';
 import { getTopics } from 'rest/topicsAPI';
+import { getEntityName } from 'utils/EntityUtils';
 import {
   getServiceDetailsPath,
   getTeamAndUserDetailsPath,
@@ -80,11 +84,10 @@ import { DashboardConnection } from '../../generated/entity/services/dashboardSe
 import { DatabaseService } from '../../generated/entity/services/databaseService';
 import { IngestionPipeline } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { MetadataServiceType } from '../../generated/entity/services/metadataService';
-import { EntityReference } from '../../generated/type/entityReference';
 import { Paging } from '../../generated/type/paging';
 import { useAirflowStatus } from '../../hooks/useAirflowStatus';
 import { ConfigData, ServicesType } from '../../interface/service.interface';
-import { getEntityMissingError, getEntityName } from '../../utils/CommonUtils';
+import { getEntityMissingError } from '../../utils/CommonUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { getEditConnectionPath, getSettingPath } from '../../utils/RouterUtils';
 import {
@@ -106,7 +109,13 @@ import { IcDeleteColored } from '../../utils/SvgUtils';
 import { getEntityLink, getUsagePercentile } from '../../utils/TableUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 
-export type ServicePageData = Database | Topic | Dashboard | Mlmodel | Pipeline;
+export type ServicePageData =
+  | Database
+  | Topic
+  | Dashboard
+  | Mlmodel
+  | Pipeline
+  | Container;
 
 const ServicePage: FunctionComponent = () => {
   const { t } = useTranslation();
@@ -127,7 +136,6 @@ const ServicePage: FunctionComponent = () => {
   const [data, setData] = useState<Array<ServicePageData>>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [paging, setPaging] = useState<Paging>(pagingObject);
-  const [instanceCount, setInstanceCount] = useState<number>(0);
   const [activeTab, setActiveTab] = useState(
     getCurrentServiceTab(tab, serviceName)
   );
@@ -174,11 +182,11 @@ const ServicePage: FunctionComponent = () => {
     () =>
       getServicePageTabs(
         serviceName,
-        instanceCount,
+        paging.total,
         ingestions,
         servicePermission
       ),
-    [serviceName, instanceCount, ingestions, servicePermission]
+    [serviceName, paging, ingestions, servicePermission]
   );
 
   const extraInfo: Array<ExtraInfo> = [
@@ -274,38 +282,42 @@ const ServicePage: FunctionComponent = () => {
       });
   };
 
-  const triggerIngestionById = (
+  const updateCurrentSelectedIngestion = (
     id: string,
-    displayName: string
-  ): Promise<void> => {
-    return new Promise<void>((resolve, reject) => {
-      triggerIngestionPipelineById(id)
-        .then((res) => {
-          if (res.data) {
-            resolve();
-            getAllIngestionWorkflows();
-          } else {
-            reject();
-            showErrorToast(
-              t('server.ingestion-workflow-operation-error', {
-                operation: t('label.triggering-lowercase'),
-                displayName,
-              })
-            );
-          }
+    data: IngestionPipeline | undefined,
+    updateKey: keyof IngestionPipeline,
+    isDeleted = false
+  ) => {
+    const rowIndex = ingestions.findIndex((row) => row.id === id);
+
+    const updatedRow = !isUndefined(data)
+      ? { ...ingestions[rowIndex], [updateKey]: data[updateKey] }
+      : null;
+
+    const updatedData = isDeleted
+      ? ingestions.filter((_, index) => index !== rowIndex)
+      : updatedRow
+      ? Object.assign([...ingestions], { [rowIndex]: updatedRow })
+      : [...ingestions];
+
+    setIngestions(updatedData);
+  };
+
+  const triggerIngestionById = async (id: string, displayName: string) => {
+    try {
+      const data = await triggerIngestionPipelineById(id);
+
+      updateCurrentSelectedIngestion(id, data, 'pipelineStatuses');
+    } catch (err) {
+      showErrorToast(
+        t('server.ingestion-workflow-operation-error', {
+          operation: t('label.triggering-lowercase'),
+          displayName,
         })
-        .catch((error: AxiosError) => {
-          showErrorToast(
-            error,
-            t('server.ingestion-workflow-operation-error', {
-              operation: t('label.triggering-lowercase'),
-              displayName,
-            })
-          );
-          reject();
-        })
-        .finally(() => setIsLoading(false));
-    });
+      );
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const deployIngestion = (id: string) => {
@@ -315,7 +327,12 @@ const ServicePage: FunctionComponent = () => {
           if (res.data) {
             resolve();
             setTimeout(() => {
-              getAllIngestionWorkflows();
+              updateCurrentSelectedIngestion(
+                id,
+                res.data,
+                'fullyQualifiedName'
+              );
+
               setIsLoading(false);
             }, 500);
           } else {
@@ -340,7 +357,7 @@ const ServicePage: FunctionComponent = () => {
     enableDisableIngestionPipelineById(id)
       .then((res) => {
         if (res.data) {
-          getAllIngestionWorkflows();
+          updateCurrentSelectedIngestion(id, res.data, 'enabled');
         } else {
           throw t('server.unexpected-response');
         }
@@ -358,7 +375,9 @@ const ServicePage: FunctionComponent = () => {
       deleteIngestionPipelineById(id)
         .then(() => {
           resolve();
-          getAllIngestionWorkflows();
+          setIngestions((ingestions) =>
+            ingestions.filter((ing) => ing.id !== id)
+          );
         })
         .catch((error: AxiosError) => {
           showErrorToast(
@@ -382,7 +401,6 @@ const ServicePage: FunctionComponent = () => {
           setServiceSchemaCount(res.data, setSchemaCount);
           setServiceTableCount(res.data, setTableCount);
           setPaging(res.paging);
-          setInstanceCount(res.paging.total);
           setIsLoading(false);
         } else {
           setData([]);
@@ -402,7 +420,6 @@ const ServicePage: FunctionComponent = () => {
         if (res.data) {
           setData(res.data);
           setPaging(res.paging);
-          setInstanceCount(res.paging.total);
           setIsLoading(false);
         } else {
           setData([]);
@@ -422,7 +439,6 @@ const ServicePage: FunctionComponent = () => {
         if (res.data) {
           setData(res.data);
           setPaging(res.paging);
-          setInstanceCount(res.paging.total);
           setIsLoading(false);
         } else {
           setData([]);
@@ -442,7 +458,6 @@ const ServicePage: FunctionComponent = () => {
         if (res.data) {
           setData(res.data);
           setPaging(res.paging);
-          setInstanceCount(res.paging.total);
           setIsLoading(false);
         } else {
           setData([]);
@@ -462,7 +477,6 @@ const ServicePage: FunctionComponent = () => {
         if (res.data) {
           setData(res.data);
           setPaging(res.paging);
-          setInstanceCount(res.paging.total);
           setIsLoading(false);
         } else {
           setData([]);
@@ -473,6 +487,25 @@ const ServicePage: FunctionComponent = () => {
       .catch(() => {
         setIsLoading(false);
       });
+  };
+
+  const fetchContainers = async (paging?: string) => {
+    setIsLoading(true);
+    try {
+      const response = await getContainers(
+        serviceFQN,
+        ['owner', 'tags'],
+        paging
+      );
+
+      setData(response.data);
+      setPaging(response.paging);
+    } catch (error) {
+      setData([]);
+      setPaging(pagingObject);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const getOtherDetails = (paging?: string) => {
@@ -502,6 +535,11 @@ const ServicePage: FunctionComponent = () => {
 
         break;
       }
+      case ServiceCategory.OBJECT_STORE_SERVICES: {
+        fetchContainers(paging);
+
+        break;
+      }
       default:
         break;
     }
@@ -520,6 +558,9 @@ const ServicePage: FunctionComponent = () => {
 
       case ServiceCategory.ML_MODEL_SERVICES:
         return getEntityLink(SearchIndex.MLMODEL, fqn);
+
+      case ServiceCategory.OBJECT_STORE_SERVICES:
+        return getEntityLink(EntityType.CONTAINER, fqn);
 
       case ServiceCategory.DATABASE_SERVICES:
       default:
@@ -596,6 +637,20 @@ const ServicePage: FunctionComponent = () => {
           '--'
         );
       }
+      case ServiceCategory.OBJECT_STORE_SERVICES: {
+        const container = data as Container;
+
+        return container.tags && container.tags.length > 0 ? (
+          <TagsViewer
+            showStartWith={false}
+            sizeCap={-1}
+            tags={container.tags}
+            type="border"
+          />
+        ) : (
+          '--'
+        );
+      }
       default:
         return <></>;
     }
@@ -607,7 +662,9 @@ const ServicePage: FunctionComponent = () => {
       try {
         const response = await TestConnection(
           connectionDetails,
-          getTestConnectionType(serviceCategory as ServiceCategory)
+          getTestConnectionType(serviceCategory as ServiceCategory),
+          serviceDetails?.serviceType,
+          serviceDetails?.name
         );
         // This api only responds with status 200 on success
         // No data sent on api success
@@ -838,7 +895,7 @@ const ServicePage: FunctionComponent = () => {
           <Ingestion
             isRequiredDetailsAvailable
             airflowEndpoint={airflowEndpoint}
-            currrentPage={ingestionCurrentPage}
+            currentPage={ingestionCurrentPage}
             deleteIngestion={deleteIngestionById}
             deployIngestion={deployIngestion}
             handleEnableDisableIngestion={handleEnableDisableIngestion}
@@ -899,6 +956,9 @@ const ServicePage: FunctionComponent = () => {
       case ServiceCategory.ML_MODEL_SERVICES: {
         return [t('label.model-name'), t('label.tag-plural')];
       }
+      case ServiceCategory.OBJECT_STORE_SERVICES: {
+        return [t('label.model-name'), t('label.tag-plural')];
+      }
       default:
         return [];
     }
@@ -912,12 +972,10 @@ const ServicePage: FunctionComponent = () => {
         title: firstColumn,
         dataIndex: 'displayName',
         key: 'displayName',
-        render: (text: string, record: ServicePageData) => {
+        render: (_, record: ServicePageData) => {
           return (
             <Link to={getLinkForFqn(record.fullyQualifiedName || '')}>
-              {isUndefined(text)
-                ? getEntityName(record as unknown as EntityReference)
-                : text}
+              {getEntityName(record)}
             </Link>
           );
         },
@@ -1035,7 +1093,7 @@ const ServicePage: FunctionComponent = () => {
                     allowSoftDelete={false}
                     deleteMessage={getDeleteEntityMessage(
                       serviceName || '',
-                      instanceCount,
+                      paging.total,
                       schemaCount,
                       tableCount
                     )}

@@ -12,6 +12,7 @@
  */
 
 import { CheckOutlined, LeftOutlined, RightOutlined } from '@ant-design/icons';
+import { Button, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { CustomEdge } from 'components/EntityLineage/CustomEdge.component';
 import CustomNode from 'components/EntityLineage/CustomNode.component';
@@ -43,6 +44,7 @@ import {
   isEqual,
   isNil,
   isUndefined,
+  lowerCase,
   uniqueId,
   uniqWith,
 } from 'lodash';
@@ -90,16 +92,24 @@ import {
 } from '../generated/type/entityLineage';
 import { EntityReference } from '../generated/type/entityReference';
 import {
-  getEntityName,
   getPartialNameFromFQN,
   getPartialNameFromTableFQN,
   prepareLabel,
 } from './CommonUtils';
-import { isLeafNode } from './EntityUtils';
+import { getEntityName, isLeafNode } from './EntityUtils';
 import { getEncodedFqn } from './StringsUtils';
 import SVGIcons from './SvgUtils';
 import { getEntityLink } from './TableUtils';
 import { showErrorToast } from './ToastUtils';
+
+export const MAX_LINEAGE_LENGTH = 20;
+
+import { ReactComponent as DashboardIcon } from '../assets/svg/dashboard-grey.svg';
+import { ReactComponent as MlModelIcon } from '../assets/svg/mlmodal.svg';
+import { ReactComponent as PipelineIcon } from '../assets/svg/pipeline-grey.svg';
+
+import { ReactComponent as TableIcon } from '../assets/svg/table-grey.svg';
+import { ReactComponent as TopicIcon } from '../assets/svg/topic-grey.svg';
 
 export const getHeaderLabel = (
   name = '',
@@ -116,13 +126,20 @@ export const getHeaderLabel = (
           {name || prepareLabel(type, fqn, false)}
         </span>
       ) : (
-        <span
-          className="tw-break-words description-text tw-self-center link-text tw-font-medium"
-          data-testid="lineage-entity">
-          <Link to={getEntityLink(type, fqn)}>
-            {name || prepareLabel(type, fqn, false)}
+        <Typography.Title
+          ellipsis
+          className="m-b-0 text-base"
+          level={5}
+          title={name || prepareLabel(type, fqn, false)}>
+          <Link className="" to={getEntityLink(type, fqn)}>
+            <Button
+              className="text-base font-semibold p-0"
+              data-testid="link-button"
+              type="link">
+              {name || prepareLabel(type, fqn, false)}
+            </Button>
           </Link>
-        </span>
+        </Typography.Title>
       )}
     </Fragment>
   );
@@ -1463,5 +1480,23 @@ export const getEntityLineagePath = (
 
     default:
       return '';
+  }
+};
+
+// Nodes Icons
+export const getEntityNodeIcon = (label: string) => {
+  switch (lowerCase(label)) {
+    case EntityType.TABLE:
+      return TableIcon;
+    case EntityType.DASHBOARD:
+      return DashboardIcon;
+    case EntityType.TOPIC:
+      return TopicIcon;
+    case EntityType.PIPELINE:
+      return PipelineIcon;
+    case EntityType.MLMODEL:
+      return MlModelIcon;
+    default:
+      return TableIcon;
   }
 };

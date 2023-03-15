@@ -19,7 +19,7 @@
       "default": "DatabaseMetadata"
     },
     "markDeletedTables": {
-      "description": "Optional configuration to soft delete tables in OpenMetadata if the source tables are deleted.",
+      "description": "Optional configuration to soft delete tables in OpenMetadata if the source tables are deleted. Also, if the table is deleted, all the associated entities like testSuite, lineage, etc., with that table will be deleted",
       "type": "boolean",
       "default": true
     },
@@ -40,11 +40,6 @@
     },
     "includeTags": {
       "description": "Optional configuration to turn off fetching metadata for tags.",
-      "type": "boolean",
-      "default": true
-    },
-    "processPiiSensitive": {
-      "description": "Optional configuration to automatically tag columns that might contain sensitive information",
       "type": "boolean",
       "default": true
     },

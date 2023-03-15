@@ -204,7 +204,10 @@ public final class TestUtils {
       PIPELINE_URL = new URI("http://localhost:8080");
       AIRFLOW_CONNECTION =
           new PipelineConnection()
-              .withConfig(new AirflowConnection().withHostPort(PIPELINE_URL).withConnection(MYSQL_DATABASE_CONNECTION));
+              .withConfig(
+                  new AirflowConnection()
+                      .withHostPort(PIPELINE_URL)
+                      .withConnection(MYSQL_DATABASE_CONNECTION.getConfig()));
 
       GLUE_CONNECTION =
           new PipelineConnection().withConfig(new GluePipelineConnection().withAwsConfig(AWS_CREDENTIALS));

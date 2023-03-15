@@ -41,10 +41,10 @@ import {
 } from '../../../generated/api/feed/createThread';
 import { Table } from '../../../generated/entity/data/table';
 import { ThreadType } from '../../../generated/entity/feed/thread';
-import { getEntityName } from '../../../utils/CommonUtils';
 import {
   ENTITY_LINK_SEPARATOR,
   getEntityFeedLink,
+  getEntityName,
 } from '../../../utils/EntityUtils';
 import { getTagsWithoutTier, getTierTags } from '../../../utils/TableUtils';
 import {
@@ -115,7 +115,9 @@ const RequestDescription = () => {
 
       return (
         <div data-testid="column-details">
-          <p className="tw-font-semibold">{t('label.column-details')}</p>
+          <p className="tw-font-semibold">
+            {t('label.column-entity', { entity: t('label.detail-plural') })}
+          </p>
           <p>
             <span className="tw-text-grey-muted">{`${t('label.type')}:`}</span>{' '}
             <span>{columnObject.dataTypeDisplay}</span>

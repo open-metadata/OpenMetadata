@@ -11,7 +11,19 @@
  *  limitations under the License.
  */
 
+@import url('../variables.less');
+
 .ant-card {
   box-shadow: @card-shadow;
-  border: 1px #dde3ea solid;
+  background: @background-color;
+  border: @global-border;
+  border-radius: @border-radius-base;
+  width: 100%;
+}
+
+.card-body-full {
+  .ant-card-body {
+    height: 100%;
+    padding: 16px;
+  }
 }

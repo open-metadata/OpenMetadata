@@ -32,10 +32,12 @@ from metadata.generated.schema.entity.data.table import (
     SystemProfile,
     TableProfile,
 )
+from metadata.ingestion.processor.pii import NERScanner
 from metadata.profiler.api.models import ProfilerResponse
 from metadata.profiler.metrics.core import (
     ComposedMetric,
     CustomMetric,
+    HybridMetric,
     MetricTypes,
     QueryMetric,
     StaticMetric,
@@ -58,6 +60,8 @@ class MissingMetricException(Exception):
     """
 
 
+# pylint: disable=too-many-public-methods
+# Pylint error above indicates that this class needs to be refactored
 class Profiler(Generic[TMetric]):
     """
     Core Profiler.
@@ -220,6 +224,10 @@ class Profiler(Generic[TMetric]):
     def system_metrics(self) -> List[Type[SystemMetric]]:
         return self._filter_metrics(SystemMetric)
 
+    @property
+    def hybrid_metric(self) -> List[Type[HybridMetric]]:
+        return self._filter_metrics(HybridMetric)
+
     def get_col_metrics(
         self, metrics: List[Type[TMetric]], column: Optional[Column] = None
     ) -> List[Type[TMetric]]:
@@ -298,6 +306,30 @@ class Profiler(Generic[TMetric]):
                 current_col_results,
             )
 
+    def run_hybrid_metrics(self, col: Column):
+        """Run hybrid metrics
+
+        Args:
+            col (Column): column to run distribution metrics on
+        """
+        logger.debug("Running distribution metrics...")
+        current_col_results: Dict[str, Any] = self._column_results.get(col.name)
+        if not current_col_results:
+            logger.error(
+                "We do not have any results to base our Composed Metrics. Stopping!"
+            )
+            return
+        for metric in self.get_col_metrics(self.hybrid_metric):
+            logger.debug(f"Running hybrid metric {metric.name()} for {col.name}")
+            self._column_results[col.name][
+                metric.name()
+            ] = self.profiler_interface.get_hybrid_metrics(
+                col,
+                metric,
+                current_col_results,
+                table=self.table,
+            )
+
     def _prepare_table_metrics(self) -> List:
         """prepare table metrics"""
         table_metrics = [
@@ -345,7 +377,11 @@ class Profiler(Generic[TMetric]):
         column_metrics_for_thread_pool = [
             *[
                 (
-                    self.get_col_metrics(self.static_metrics, column),
+                    [
+                        metric
+                        for metric in self.get_col_metrics(self.static_metrics, column)
+                        if not metric.is_window_metric()
+                    ],
                     MetricTypes.Static,
                     column,
                     self.table,
@@ -364,17 +400,16 @@ class Profiler(Generic[TMetric]):
             ],
             *[
                 (
-                    metric,
+                    [
+                        metric
+                        for metric in self.get_col_metrics(self.static_metrics, column)
+                        if metric.is_window_metric()
+                    ],
                     MetricTypes.Window,
                     column,
                     self.table,
                 )
                 for column in self.columns
-                for metric in [
-                    metric
-                    for metric in self.get_col_metrics(self.static_metrics, column)
-                    if metric.is_window_metric()
-                ]
             ],
         ]
 
@@ -403,6 +438,7 @@ class Profiler(Generic[TMetric]):
         self.profile_entity()
         for column in self.columns:
             self.run_composed_metrics(column)
+            self.run_hybrid_metrics(column)
 
         return self
 
@@ -423,6 +459,23 @@ class Profiler(Generic[TMetric]):
                     f"Fetching sample data for {self.profiler_interface.table_entity.fullyQualifiedName.__root__}..."
                 )
                 sample_data = self.profiler_interface.fetch_sample_data(self.table)
+
+                if self.profiler_interface.source_config.processPiiSensitive:
+                    try:
+                        entity_scanner = NERScanner(
+                            metadata=self.profiler_interface.ometa_client
+                        )
+                        entity_scanner.process(
+                            sample_data,
+                            self.profiler_interface.table_entity,
+                            self.profiler_interface.ometa_client,
+                        )
+                    except Exception as exc:
+                        logger.warning(
+                            f"Unexpected error while processing sample data for auto pii tagging - {exc}"
+                        )
+                        logger.debug(traceback.format_exc())
+
                 logger.info(
                     "Successfully fetched sample data for "
                     f"{self.profiler_interface.table_entity.fullyQualifiedName.__root__}..."

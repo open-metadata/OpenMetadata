@@ -11,16 +11,16 @@
  *  limitations under the License.
  */
 
-import { Col, Row, Table } from 'antd';
+import { Card, Col, Row, Table } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
+import { ENTITY_CARD_CLASS } from 'constants/entity.constants';
 import { isEmpty, isUndefined, startCase, uniqueId } from 'lodash';
 import { observer } from 'mobx-react';
 import { EntityTags, ExtraInfo } from 'Models';
 import React, {
   FC,
-  Fragment,
   RefObject,
   useCallback,
   useEffect,
@@ -29,6 +29,7 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { restoreMlmodel } from 'rest/mlModelAPI';
+import { getEntityName } from 'utils/EntityUtils';
 import AppState from '../../AppState';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import {
@@ -49,7 +50,6 @@ import { LabelType, State, TagLabel } from '../../generated/type/tagLabel';
 import { useInfiniteScroll } from '../../hooks/useInfiniteScroll';
 import {
   getEmptyPlaceholder,
-  getEntityName,
   getEntityPlaceHolder,
   getOwnerValue,
   refreshPage,
@@ -342,7 +342,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
     if (mlModelDetail) {
       const updatedMlModelDetails = {
         ...mlModelDetail,
-        tags: undefined,
+        tags: getTagsWithoutTier(mlModelDetail.tags ?? []),
       };
       settingsUpdateHandler(updatedMlModelDetails);
     }
@@ -594,97 +594,99 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
             setActiveTab={setActiveTabHandler}
             tabs={tabs}
           />
-          <div className="tw-flex-grow tw-flex tw-flex-col tw-py-4">
-            <div className="tw-bg-white tw-flex-grow tw-p-4 tw-shadow tw-rounded-md">
-              {activeTab === 1 && (
-                <Fragment>
-                  <Description
-                    description={mlModelDetail.description}
-                    entityFieldTasks={getEntityFieldThreadCounts(
-                      EntityField.DESCRIPTION,
-                      entityFieldTaskCount
-                    )}
-                    entityFieldThreads={getEntityFieldThreadCounts(
-                      EntityField.DESCRIPTION,
-                      entityFieldThreadCount
-                    )}
-                    entityFqn={mlModelDetail.fullyQualifiedName}
+          {activeTab === 1 && (
+            <Card className={ENTITY_CARD_CLASS}>
+              <Description
+                description={mlModelDetail.description}
+                entityFieldTasks={getEntityFieldThreadCounts(
+                  EntityField.DESCRIPTION,
+                  entityFieldTaskCount
+                )}
+                entityFieldThreads={getEntityFieldThreadCounts(
+                  EntityField.DESCRIPTION,
+                  entityFieldThreadCount
+                )}
+                entityFqn={mlModelDetail.fullyQualifiedName}
+                entityName={mlModelDetail.name}
+                entityType={EntityType.MLMODEL}
+                hasEditAccess={
+                  mlModelPermissions.EditAll ||
+                  mlModelPermissions.EditDescription
+                }
+                isEdit={isEdit}
+                isReadOnly={mlModelDetail.deleted}
+                owner={mlModelDetail.owner}
+                onCancel={onCancel}
+                onDescriptionEdit={onDescriptionEdit}
+                onDescriptionUpdate={onDescriptionUpdate}
+                onThreadLinkSelect={handleThreadLinkSelect}
+              />
+              <MlModelFeaturesList
+                handleFeaturesUpdate={onFeaturesUpdate}
+                mlFeatures={mlModelDetail.mlFeatures}
+                permissions={mlModelPermissions}
+              />
+            </Card>
+          )}
+          {activeTab === 2 && (
+            <Card className={ENTITY_CARD_CLASS} id="activityfeed">
+              <Row>
+                <Col offset={3} span={18}>
+                  <ActivityFeedList
+                    isEntityFeed
+                    withSidePanel
+                    deletePostHandler={deletePostHandler}
                     entityName={mlModelDetail.name}
-                    entityType={EntityType.MLMODEL}
-                    hasEditAccess={
-                      mlModelPermissions.EditAll ||
-                      mlModelPermissions.EditDescription
-                    }
-                    isEdit={isEdit}
-                    isReadOnly={mlModelDetail.deleted}
-                    owner={mlModelDetail.owner}
-                    onCancel={onCancel}
-                    onDescriptionEdit={onDescriptionEdit}
-                    onDescriptionUpdate={onDescriptionUpdate}
-                    onThreadLinkSelect={handleThreadLinkSelect}
+                    feedList={entityThread}
+                    isFeedLoading={isEntityThreadLoading}
+                    postFeedHandler={postFeedHandler}
+                    updateThreadHandler={updateThreadHandler}
+                    onFeedFiltersUpdate={handleFeedFilterChange}
                   />
-                  <MlModelFeaturesList
-                    handleFeaturesUpdate={onFeaturesUpdate}
-                    mlFeatures={mlModelDetail.mlFeatures}
-                    permissions={mlModelPermissions}
-                  />
-                </Fragment>
-              )}
-              {activeTab === 2 && (
-                <Row id="activityfeed">
-                  <Col offset={3} span={18}>
-                    <ActivityFeedList
-                      isEntityFeed
-                      withSidePanel
-                      deletePostHandler={deletePostHandler}
-                      entityName={mlModelDetail.name}
-                      feedList={entityThread}
-                      isFeedLoading={isEntityThreadLoading}
-                      postFeedHandler={postFeedHandler}
-                      updateThreadHandler={updateThreadHandler}
-                      onFeedFiltersUpdate={handleFeedFilterChange}
-                    />
-                  </Col>
-                </Row>
-              )}
-              {activeTab === 3 && (
-                <div className="tw-grid tw-grid-cols-2 tw-gap-x-6">
-                  {getMlHyperParameters()}
-                  {getMlModelStore()}
-                </div>
-              )}
-              {activeTab === 4 && (
-                <div className="h-full" data-testid="lineage-details">
-                  <EntityLineageComponent
-                    deleted={mlModelDetail.deleted}
-                    entityType={EntityType.MLMODEL}
-                    hasEditAccess={
-                      mlModelPermissions.EditAll ||
-                      mlModelPermissions.EditLineage
-                    }
-                  />
-                </div>
-              )}
-              {activeTab === 5 && (
-                <CustomPropertyTable
-                  entityDetails={
-                    mlModelDetail as CustomPropertyProps['entityDetails']
-                  }
-                  entityType={EntityType.MLMODEL}
-                  handleExtensionUpdate={onExtensionUpdate}
-                  hasEditAccess={
-                    mlModelPermissions.EditAll ||
-                    mlModelPermissions.EditCustomFields
-                  }
-                />
-              )}
-              <div
-                data-testid="observer-element"
-                id="observer-element"
-                ref={elementRef as RefObject<HTMLDivElement>}>
-                {isEntityThreadLoading ? <Loader /> : null}
+                </Col>
+              </Row>
+            </Card>
+          )}
+          {activeTab === 3 && (
+            <Card className={ENTITY_CARD_CLASS}>
+              <div className="tw-grid tw-grid-cols-2 tw-gap-x-6">
+                {getMlHyperParameters()}
+                {getMlModelStore()}
               </div>
-            </div>
+            </Card>
+          )}
+          {activeTab === 4 && (
+            <Card
+              className={`${ENTITY_CARD_CLASS} card-body-full`}
+              data-testid="lineage-details">
+              <EntityLineageComponent
+                entityType={EntityType.MLMODEL}
+                hasEditAccess={
+                  mlModelPermissions.EditAll || mlModelPermissions.EditLineage
+                }
+              />
+            </Card>
+          )}
+          {activeTab === 5 && (
+            <Card className={ENTITY_CARD_CLASS}>
+              <CustomPropertyTable
+                entityDetails={
+                  mlModelDetail as CustomPropertyProps['entityDetails']
+                }
+                entityType={EntityType.MLMODEL}
+                handleExtensionUpdate={onExtensionUpdate}
+                hasEditAccess={
+                  mlModelPermissions.EditAll ||
+                  mlModelPermissions.EditCustomFields
+                }
+              />
+            </Card>
+          )}
+          <div
+            data-testid="observer-element"
+            id="observer-element"
+            ref={elementRef as RefObject<HTMLDivElement>}>
+            {isEntityThreadLoading ? <Loader /> : null}
           </div>
         </div>
       </div>

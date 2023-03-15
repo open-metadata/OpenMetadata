@@ -30,6 +30,7 @@ from metadata.generated.schema.entity.services.dashboardService import (
     DashboardConnection,
     DashboardService,
 )
+from metadata.generated.schema.entity.teams.user import User
 from metadata.generated.schema.metadataIngestion.dashboardServiceMetadataPipeline import (
     DashboardServiceMetadataPipeline,
 )
@@ -110,6 +111,12 @@ class DashboardServiceTopology(ServiceTopology):
                 type_=Dashboard,
                 context="dashboard",
                 processor="yield_dashboard",
+                consumer=["dashboard_service"],
+            ),
+            NodeStage(
+                type_=User,
+                context="owner",
+                processor="process_owner",
                 consumer=["dashboard_service"],
             ),
             NodeStage(
@@ -214,7 +221,7 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
         """
         Method to fetch dashboard tags
         """
-        return  # Dashboard does not support fetching tags except Tableau
+        return  # Dashboard does not support fetching tags except Tableau and Redash
 
     def yield_dashboard_usage(
         self, *args, **kwargs  # pylint: disable=W0613
@@ -265,6 +272,11 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
     def yield_create_request_dashboard_service(self, config: WorkflowSource):
         yield self.metadata.get_create_service_from_source(
             entity=DashboardService, config=config
+        )
+
+    def process_owner(self, dashboard_details: dict):  # pylint: disable=unused-argument
+        logger.debug(
+            f"Processing ownership is not supported for {self.service_connection.type.name}"
         )
 
     @staticmethod

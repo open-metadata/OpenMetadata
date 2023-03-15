@@ -30,6 +30,9 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.ingestion.api.source import InvalidSourceException
+from metadata.ingestion.source.database.column_helpers import (
+    remove_table_from_column_name,
+)
 from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
 from metadata.ingestion.source.database.hive.queries import HIVE_GET_COMMENTS
 
@@ -56,7 +59,6 @@ def get_columns(
     rows = [[col.strip() if col else None for col in row] for row in rows]
     rows = [row for row in rows if row[0] and row[0] != "# col_name"]
     result = []
-    args = ()
     for (col_name, col_type, comment) in rows:
         if col_name == "# Partition Information":
             break
@@ -183,8 +185,40 @@ def get_table_comment(  # pylint: disable=unused-argument
     return {"text": None}
 
 
+def get_impala_columns(self, connection, table_name, schema=None, **kwargs):
+    """
+    Extracted from the Impala Dialect. We'll tune the implementation.
+
+    By default, this gives us the column name as `table.column`. We just
+    want to get `column`.
+    """
+    # pylint: disable=unused-argument
+    full_table_name = f"{schema}.{table_name}" if schema is not None else table_name
+    query = f"SELECT * FROM {full_table_name} LIMIT 0"
+    cursor = connection.execute(query)
+    schema = cursor.cursor.description
+    # We need to fetch the empty results otherwise these queries remain in
+    # flight
+    cursor.fetchall()
+    column_info = []
+    for col in schema:
+        column_info.append(
+            {
+                "name": remove_table_from_column_name(table_name, col[0]),
+                # Using Hive's map instead of Impala's, as we are pointing to a Hive Server
+                # Passing the lower as Hive's map is based on lower strings.
+                "type": _type_map[col[1].lower()],
+                "nullable": True,
+                "autoincrement": False,
+            }
+        )
+    return column_info
+
+
 HiveDialect.get_columns = get_columns
 HiveDialect.get_table_comment = get_table_comment
+
+ImpalaDialect.get_columns = get_impala_columns
 ImpalaDialect.get_table_comment = get_table_comment
 
 
@@ -225,10 +259,6 @@ class HiveSource(CommonDbSourceService):
         ):
             HiveDialect.get_table_names = get_table_names
             HiveDialect.get_view_names = get_view_names
-            ImpalaDialect.get_table_names = get_table_names
-            ImpalaDialect.get_table_names = get_view_names
         else:
             HiveDialect.get_table_names = get_table_names_older_versions
             HiveDialect.get_view_names = get_view_names_older_versions
-            ImpalaDialect.get_table_names = get_table_names_older_versions
-            ImpalaDialect.get_table_names = get_view_names_older_versions

@@ -60,6 +60,7 @@ import {
   patchClassification,
   patchTag,
 } from 'rest/tagAPI';
+import { getEntityName } from 'utils/EntityUtils';
 import { ReactComponent as PlusIcon } from '../../assets/svg/plus-primary.svg';
 import {
   getExplorePath,
@@ -79,7 +80,6 @@ import {
   getActiveCatClass,
   getCountBadge,
   getEntityDeleteMessage,
-  getEntityName,
   isUrlFriendlyName,
 } from '../../utils/CommonUtils';
 import {
@@ -209,7 +209,9 @@ const TagsPage = () => {
     } catch (error) {
       const errMsg = getErrorText(
         error as AxiosError,
-        t('server.fetch-tags-category-error')
+        t('server.entity-fetch-error', {
+          entity: t('label.tag-category-lowercase'),
+        })
       );
       showErrorToast(errMsg);
       setError(errMsg);
@@ -248,7 +250,9 @@ const TagsPage = () => {
       } catch (err) {
         const errMsg = getErrorText(
           err as AxiosError,
-          t('server.fetch-tags-category-error')
+          t('server.entity-fetch-error', {
+            entity: t('label.tag-category-lowercase'),
+          })
         );
         showErrorToast(errMsg);
         setError(errMsg);
@@ -310,7 +314,12 @@ const TagsPage = () => {
           }
         })
         .catch((err: AxiosError) => {
-          showErrorToast(err, t('server.create-tag-category-error'));
+          showErrorToast(
+            err,
+            t('server.create-entity-error', {
+              entity: t('label.tag-category-lowercase'),
+            })
+          );
         })
         .finally(() => {
           setIsAddingClassification(false);
@@ -361,11 +370,20 @@ const TagsPage = () => {
             return updatedClassification;
           });
         } else {
-          showErrorToast(t('server.delete-tag-category-error'));
+          showErrorToast(
+            t('server.delete-entity-error', {
+              entity: t('label.tag-category-lowercase'),
+            })
+          );
         }
       })
       .catch((err: AxiosError) => {
-        showErrorToast(err, t('server.delete-tag-category-error'));
+        showErrorToast(
+          err,
+          t('server.delete-entity-error', {
+            entity: t('label.tag-category-lowercase'),
+          })
+        );
       })
       .finally(() => {
         setDeleteTags({ data: undefined, state: false });
@@ -390,11 +408,18 @@ const TagsPage = () => {
             });
           }
         } else {
-          showErrorToast(t('server.delete-tag-error'));
+          showErrorToast(
+            t('server.delete-entity-error', {
+              entity: t('label.tag-lowercase'),
+            })
+          );
         }
       })
       .catch((err: AxiosError) => {
-        showErrorToast(err, t('server.delete-tag-error'));
+        showErrorToast(
+          err,
+          t('server.delete-entity-error', { entity: t('label.tag-lowercase') })
+        );
       })
       .finally(() => {
         setDeleteTags({ data: undefined, state: false });
@@ -513,7 +538,12 @@ const TagsPage = () => {
           }
         })
         .catch((err: AxiosError) => {
-          showErrorToast(err, t('label.create-tag-error'));
+          showErrorToast(
+            err,
+            t('label.create-entity-error', {
+              entity: t('label.tag-lowercase'),
+            })
+          );
         })
         .finally(() => {
           setIsAddingTag(false);
@@ -680,88 +710,92 @@ const TagsPage = () => {
     );
   };
 
-  const tableColumn: ColumnsType<Tag> = useMemo(
-    () => [
-      {
-        title: t('label.name'),
-        dataIndex: 'name',
-        key: 'name',
-      },
-      {
-        title: t('label.description'),
-        dataIndex: 'description',
-        key: 'description',
-        render: (text: string, record: Tag) => (
-          <div className="tw-group tableBody-cell">
-            <div className="cursor-pointer d-flex">
-              <div>
-                {text ? (
-                  <RichTextEditorPreviewer markdown={text} />
+  const tableColumn = useMemo(
+    () =>
+      [
+        {
+          title: t('label.name'),
+          dataIndex: 'name',
+          key: 'name',
+          render: (_, record: Tag) => getEntityName(record),
+        },
+        {
+          title: t('label.description'),
+          dataIndex: 'description',
+          key: 'description',
+          render: (text: string, record: Tag) => (
+            <div className="tw-group tableBody-cell">
+              <div className="cursor-pointer d-flex">
+                <div>
+                  {text ? (
+                    <RichTextEditorPreviewer markdown={text} />
+                  ) : (
+                    <span className="tw-no-description">
+                      {t('label.no-entity', {
+                        entity: t('label.description'),
+                      })}
+                    </span>
+                  )}
+                </div>
+
+                {(classificationPermissions.EditDescription ||
+                  classificationPermissions.EditAll) && (
+                  <button
+                    className="tw-self-start tw-w-8 tw-h-auto tw-opacity-0 tw-ml-1 group-hover:tw-opacity-100 focus:tw-outline-none"
+                    onClick={() => {
+                      setIsEditTag(true);
+                      setEditTag(record);
+                    }}>
+                    <SVGIcons
+                      alt="edit"
+                      data-testid="editTagDescription"
+                      icon="icon-edit"
+                      title="Edit"
+                      width="16px"
+                    />
+                  </button>
+                )}
+              </div>
+              <div className="tw-mt-1" data-testid="usage">
+                <span className="tw-text-grey-muted tw-mr-1">
+                  {`${t('label.usage')}:`}
+                </span>
+                {record.usageCount ? (
+                  <Link
+                    className="link-text tw-align-middle"
+                    data-testid="usage-count"
+                    to={getUsageCountLink(record.fullyQualifiedName || '')}>
+                    {record.usageCount}
+                  </Link>
                 ) : (
                   <span className="tw-no-description">
-                    {t('label.no-entity', {
-                      entity: t('label.description'),
-                    })}
+                    {t('label.not-used')}
                   </span>
                 )}
               </div>
-
-              {(classificationPermissions.EditDescription ||
-                classificationPermissions.EditAll) && (
-                <button
-                  className="tw-self-start tw-w-8 tw-h-auto tw-opacity-0 tw-ml-1 group-hover:tw-opacity-100 focus:tw-outline-none"
-                  onClick={() => {
-                    setIsEditTag(true);
-                    setEditTag(record);
-                  }}>
-                  <SVGIcons
-                    alt="edit"
-                    data-testid="editTagDescription"
-                    icon="icon-edit"
-                    title="Edit"
-                    width="16px"
-                  />
-                </button>
-              )}
             </div>
-            <div className="tw-mt-1" data-testid="usage">
-              <span className="tw-text-grey-muted tw-mr-1">
-                {`${t('label.usage')}:`}
-              </span>
-              {record.usageCount ? (
-                <Link
-                  className="link-text tw-align-middle"
-                  data-testid="usage-count"
-                  to={getUsageCountLink(record.fullyQualifiedName || '')}>
-                  {record.usageCount}
-                </Link>
-              ) : (
-                <span className="tw-no-description">{t('label.not-used')}</span>
-              )}
-            </div>
-          </div>
-        ),
-      },
-      {
-        title: t('label.action-plural'),
-        dataIndex: 'actions',
-        key: 'actions',
-        width: 120,
-        align: 'center',
-        render: (_, record: Tag) => (
-          <button
-            className="link-text"
-            data-testid="delete-tag"
-            disabled={
-              record.provider === ProviderType.System ||
-              !classificationPermissions.EditAll
-            }
-            onClick={() => handleActionDeleteTag(record)}>
-            {getDeleteIcon(deleteTags, record.id)}
-          </button>
-        ),
-      },
-    ],
+          ),
+        },
+        {
+          title: t('label.action-plural'),
+          dataIndex: 'actions',
+          key: 'actions',
+          width: 120,
+          align: 'center',
+          render: (_, record: Tag) => (
+            <button
+              className="link-text"
+              data-testid="delete-tag"
+              disabled={
+                record.provider === ProviderType.System ||
+                !classificationPermissions.EditAll
+              }
+              onClick={() => handleActionDeleteTag(record)}>
+              {getDeleteIcon(deleteTags, record.id)}
+            </button>
+          ),
+        },
+      ] as ColumnsType<Tag>,
     [
       currentClassification,
       classificationPermissions,

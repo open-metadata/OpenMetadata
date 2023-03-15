@@ -132,6 +132,11 @@ class WebAnalyticEntityViewReportDataProcessor(DataProcessor):
                     fields=["*"],
                 )
 
+                if not entity:
+                    # If a user visits an entity and then deletes this entity, we will try to get the entity
+                    # object as we will have a reference to it in the web analytics events.
+                    continue
+
                 try:
                     tags = (
                         [tag.tagFQN.__root__ for tag in entity.tags]
@@ -166,6 +171,15 @@ class WebAnalyticEntityViewReportDataProcessor(DataProcessor):
                     )
                 except IndexError:
                     entity_href = None
+
+                if (
+                    owner_id is not None
+                    and event.eventData is not None
+                    and owner_id == str(event.eventData.userId.__root__)
+                ):  # type: ignore
+                    # we won't count views if the owner is the one visiting
+                    # the entity
+                    continue
 
                 refined_data[split_url[1]] = {
                     "entityType": ENTITIES[entity_type].__name__,

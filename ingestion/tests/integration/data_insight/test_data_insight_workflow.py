@@ -54,9 +54,12 @@ from metadata.generated.schema.dataInsight.type.percentageOfEntitiesWithDescript
 from metadata.generated.schema.dataInsight.type.percentageOfEntitiesWithOwnerByType import (
     PercentageOfEntitiesWithOwnerByType,
 )
+from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
+from metadata.generated.schema.entity.teams.user import User
+from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.parser import ParsingConfigurationError
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 
@@ -88,8 +91,8 @@ WEB_EVENT_DATA = [
         timestamp=int((datetime.utcnow() - timedelta(days=1)).timestamp() * 1000),
         eventType=WebAnalyticEventType.PageView,
         eventData=PageViewData(
-            fullUrl="http://localhost:8585/table/sample_data.ecommerce_db.shopify.%22dim.shop%22",
-            url="/table/sample_data.ecommerce_db.shopify.%22dim.shop%22",
+            fullUrl='http://localhost:8585/table/sample_data.ecommerce_db.shopify."dim.shop"',
+            url='/table/sample_data.ecommerce_db.shopify."dim.shop"',
             hostname="localhost",
             language="en-US",
             screenSize="1280x720",
@@ -155,8 +158,43 @@ class DataInsightWorkflowTests(unittest.TestCase):
 
         cls.metadata.create_kpi(create)
 
+        table: Table = cls.metadata.get_by_name(
+            Table, 'sample_data.ecommerce_db.shopify."dim.shop"'
+        )
+        user: User = cls.metadata.get_by_name(User, "aaron_johnson0")
+        cls.metadata.patch_owner(
+            Table,
+            table.id,
+            EntityReference(
+                id=user.id,
+                type="user",
+            ),
+            True,
+        )
+
         for event in WEB_EVENT_DATA:
             cls.metadata.add_web_analytic_events(event)
+
+        cls.metadata.add_web_analytic_events(
+            WebAnalyticEventData(
+                eventId=None,
+                timestamp=int(
+                    (datetime.utcnow() - timedelta(days=1)).timestamp() * 1000
+                ),
+                eventType=WebAnalyticEventType.PageView,
+                eventData=PageViewData(
+                    fullUrl='http://localhost:8585/table/sample_data.ecommerce_db.shopify."dim.shop"',
+                    url='/table/sample_data.ecommerce_db.shopify."dim.shop"',
+                    hostname="localhost",
+                    language="en-US",
+                    screenSize="1280x720",
+                    userId=user.id,
+                    sessionId=uuid.uuid4(),
+                    pageLoadTime=0.0,
+                    referrer="",
+                ),
+            ),
+        )
 
     def test_create_method(self):
         """Test validation of the workflow config is properly happening"""

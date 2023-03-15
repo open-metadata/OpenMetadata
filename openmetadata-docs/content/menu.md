@@ -165,7 +165,7 @@ site_menu:
     url: /deployment/upgrade/versions/011-to-012
   - category: Deployment / Upgrade OpenMetadata / Upgrade Version Instructions / 0.12 to 0.13
     url: /deployment/upgrade/versions/012-to-013
-  
+
   - category: Deployment / Backup & Restore Metadata
     url: /deployment/backup-restore-metadata
 
@@ -543,6 +543,8 @@ site_menu:
     url: /connectors/ingestion/lineage/edit-lineage-manually
   - category: Connectors / Ingestion / Versioning
     url: /connectors/ingestion/versioning
+  - category: Connectors / Ingestion / Auto Tagging
+    url: /connectors/ingestion/auto_tagging
   - category: Connectors / Ingestion / Versioning / Change Feeds
     url: /connectors/ingestion/versioning/change-feeds
   - category: Connectors / Ingestion / Versioning / Change Events
@@ -577,6 +579,8 @@ site_menu:
     url: /how-to-guides/how-to-add-custom-property-to-an-entity
   - category: How to guides / How to add Custom Logo
     url: /how-to-guides/custom-logo/how-to-add-custom-logo
+  - category: How to guides / How to Add Language Support
+    url: /how-to-guides/how-to-add-language-support
 
   - category: Features
     url: /openmetadata

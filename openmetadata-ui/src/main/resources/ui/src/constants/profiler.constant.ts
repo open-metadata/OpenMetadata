@@ -13,6 +13,7 @@
 
 import { t } from 'i18next';
 import { StepperStepType } from 'Models';
+import i18n from 'utils/i18next/LocalUtil';
 import { CSMode } from '../enums/codemirror.enum';
 import { DMLOperationType } from '../generated/api/data/createTableProfile';
 import {
@@ -171,24 +172,19 @@ export const INITIAL_PROPORTION_METRIC_VALUE = {
 export const INITIAL_MATH_METRIC_VALUE = {
   information: [
     {
-      title: t('label.median'),
-      dataKey: 'median',
-      color: '#1890FF',
-    },
-    {
       title: t('label.max'),
       dataKey: 'max',
-      color: '#7147E8',
+      color: '#1890FF',
     },
     {
       title: t('label.mean'),
       dataKey: 'mean',
-      color: '#008376',
+      color: '#7147E8',
     },
     {
       title: t('label.min'),
       dataKey: 'min',
-      color: '#B02AAC',
+      color: '#008376',
     },
   ],
   data: [],
@@ -200,6 +196,31 @@ export const INITIAL_SUM_METRIC_VALUE = {
       title: t('label.sum'),
       dataKey: 'sum',
       color: '#1890FF',
+    },
+  ],
+  data: [],
+};
+export const INITIAL_QUARTILE_METRIC_VALUE = {
+  information: [
+    {
+      title: i18n.t('label.first-quartile'),
+      dataKey: 'firstQuartile',
+      color: '#1890FF',
+    },
+    {
+      title: i18n.t('label.median'),
+      dataKey: 'median',
+      color: '#7147E8',
+    },
+    {
+      title: i18n.t('label.inter-quartile-range'),
+      dataKey: 'interQuartileRange',
+      color: '#008376',
+    },
+    {
+      title: i18n.t('label.third-quartile'),
+      dataKey: 'thirdQuartile',
+      color: '#B02AAC',
     },
   ],
   data: [],
@@ -285,7 +306,12 @@ export const codeMirrorOption = {
 
 export const STEPS_FOR_ADD_TEST_CASE: Array<StepperStepType> = [
   { name: t('label.select-add-test-suite'), step: 1 },
-  { name: t('label.configure-test-case'), step: 2 },
+  {
+    name: t('label.configure-entity', {
+      entity: t('label.test-case-lowercase'),
+    }),
+    step: 2,
+  },
 ];
 
 export const SUPPORTED_PARTITION_TYPE = [
@@ -322,3 +348,8 @@ export const PROFILE_SAMPLE_OPTIONS = [
     value: ProfileSampleType.Rows,
   },
 ];
+
+export const DEFAULT_HISTOGRAM_DATA = {
+  boundaries: [],
+  frequencies: [],
+};

@@ -111,7 +111,7 @@ class DagsterSource(PipelineServiceSource):
                 ),
                 labelType="Automated",
                 state="Suggested",
-                source="Tag",
+                source="Classification",
             )
         ]
 

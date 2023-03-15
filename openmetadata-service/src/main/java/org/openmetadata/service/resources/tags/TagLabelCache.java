@@ -48,7 +48,7 @@ public class TagLabelCache {
   protected static TagRepository TAG_REPOSITORY;
   protected static ClassificationRepository TAG_CLASSIFICATION_REPOSITORY;
   protected static LoadingCache<String, Tag> TAG_CACHE; // Tag fqn to Tag
-  protected static LoadingCache<String, Classification> TAG_CATEGORY_CACHE; // Classification name to Classification
+  protected static LoadingCache<String, Classification> CLASSIFICATION_CACHE; // Classification name to Classification
 
   protected static GlossaryTermRepository GLOSSARY_TERM_REPOSITORY;
   protected static GlossaryRepository GLOSSARY_REPOSITORY;
@@ -58,7 +58,7 @@ public class TagLabelCache {
   // Expected to be called only once from the TagResource during initialization
   public static void initialize() {
     if (!INITIALIZED) {
-      TAG_CATEGORY_CACHE =
+      CLASSIFICATION_CACHE =
           CacheBuilder.newBuilder()
               .maximumSize(25)
               .expireAfterWrite(2, TimeUnit.MINUTES)
@@ -87,9 +87,9 @@ public class TagLabelCache {
     return INSTANCE;
   }
 
-  public Classification getClassification(String categoryName) {
+  public Classification getClassification(String classificationName) {
     try {
-      return TAG_CATEGORY_CACHE.get(categoryName);
+      return CLASSIFICATION_CACHE.get(classificationName);
     } catch (ExecutionException | UncheckedExecutionException ex) {
       throw new EntityNotFoundException(ex.getMessage());
     }
@@ -120,7 +120,7 @@ public class TagLabelCache {
   }
 
   public String getDescription(TagLabel label) {
-    if (label.getSource() == TagSource.TAG) {
+    if (label.getSource() == TagSource.CLASSIFICATION) {
       return getTag(label.getTagFQN()).getDescription();
     } else if (label.getSource() == TagSource.GLOSSARY) {
       return getGlossaryTerm(label.getTagFQN()).getDescription();
@@ -134,7 +134,7 @@ public class TagLabelCache {
     String[] fqnParts = FullyQualifiedName.split(label.getTagFQN());
     String parentFqn = FullyQualifiedName.getParent(fqnParts);
     boolean rootParent = fqnParts.length == 2;
-    if (label.getSource() == TagSource.TAG) {
+    if (label.getSource() == TagSource.CLASSIFICATION) {
       return rootParent
           ? getClassification(parentFqn).getMutuallyExclusive()
           : getTag(parentFqn).getMutuallyExclusive();
@@ -151,17 +151,18 @@ public class TagLabelCache {
     @Override
     public Tag load(@CheckForNull String tagName) throws IOException {
       Tag tag = TAG_REPOSITORY.getByName(null, tagName, Fields.EMPTY_FIELDS);
-      LOG.info("Loaded user {}:{}", tag.getName(), tag.getId());
+      LOG.info("Loaded tag {}:{}", tag.getName(), tag.getId());
       return tag;
     }
   }
 
   static class ClassificationLoader extends CacheLoader<String, Classification> {
     @Override
-    public Classification load(@CheckForNull String categoryName) throws IOException {
-      Classification category = TAG_CLASSIFICATION_REPOSITORY.getByName(null, categoryName, Fields.EMPTY_FIELDS);
-      LOG.info("Loaded user {}:{}", category.getName(), category.getId());
-      return category;
+    public Classification load(@CheckForNull String classificationName) throws IOException {
+      Classification classification =
+          TAG_CLASSIFICATION_REPOSITORY.getByName(null, classificationName, Fields.EMPTY_FIELDS);
+      LOG.info("Loaded classification {}:{}", classification.getName(), classification.getId());
+      return classification;
     }
   }
 

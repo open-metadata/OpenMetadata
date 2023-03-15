@@ -119,6 +119,7 @@ export const INGESTION_NAME = ':ingestionName';
 export const LOG_ENTITY_NAME = ':logEntityName';
 export const KPI_NAME = ':kpiName';
 export const PLACEHOLDER_ACTION = ':action';
+export const PLACEHOLDER_CONTAINER_NAME = ':containerName';
 
 export const pagingObject = { after: '', before: '', total: 0 };
 
@@ -255,6 +256,9 @@ export const ROUTES = {
   KPI_LIST: `/data-insights/kpi`,
   ADD_KPI: `/data-insights/kpi/add-kpi`,
   EDIT_KPI: `/data-insights/kpi/edit-kpi/${KPI_NAME}`,
+
+  CONTAINER_DETAILS: `/container/${PLACEHOLDER_CONTAINER_NAME}`,
+  CONTAINER_DETAILS_WITH_TAB: `/container/${PLACEHOLDER_CONTAINER_NAME}/${PLACEHOLDER_ROUTE_TAB}`,
 };
 
 export const SOCKET_EVENTS = {
@@ -532,6 +536,7 @@ export const ENTITY_PATH: Record<string, string> = {
   dashboards: 'dashboard',
   pipelines: 'pipeline',
   mlmodels: 'mlmodel',
+  containers: 'container',
 };
 
 export const VALIDATE_MESSAGES = {

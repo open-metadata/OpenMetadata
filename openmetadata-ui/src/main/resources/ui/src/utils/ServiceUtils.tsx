@@ -17,6 +17,7 @@ import {
   ResourceEntity,
 } from 'components/PermissionProvider/PermissionProvider.interface';
 import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
+import { ObjectStoreServiceType } from 'generated/entity/data/container';
 import { t } from 'i18next';
 import {
   Bucket,
@@ -39,6 +40,7 @@ import {
 import {
   AIRBYTE,
   AIRFLOW,
+  AMAZON_S3,
   AMUNDSEN,
   ATHENA,
   ATLAS,
@@ -56,6 +58,7 @@ import {
   DRUID,
   DYNAMODB,
   FIVETRAN,
+  GCS,
   GLUE,
   HIVE,
   IBMDB2,
@@ -68,6 +71,7 @@ import {
   MLFLOW,
   MODE,
   MSSQL,
+  MS_AZURE,
   MYSQL,
   NIFI,
   ORACLE,
@@ -96,7 +100,6 @@ import {
 } from '../constants/Services.constant';
 import { PROMISE_STATE } from '../enums/common.enum';
 import { ServiceCategory } from '../enums/service.enum';
-import { ConnectionTypeEnum } from '../generated/api/services/ingestionPipelines/testServiceConnection';
 import { Database } from '../generated/entity/data/database';
 import { MlModelServiceType } from '../generated/entity/data/mlmodel';
 import {
@@ -118,6 +121,7 @@ import {
   PipelineService,
   PipelineServiceType,
 } from '../generated/entity/services/pipelineService';
+import { ServiceType } from '../generated/entity/services/serviceType';
 import { ServicesType } from '../interface/service.interface';
 import { getEntityDeleteMessage, pluralize } from './CommonUtils';
 import { getDashboardURL } from './DashboardServiceUtils';
@@ -282,6 +286,15 @@ export const serviceTypeLogo = (type: string) => {
 
     case MetadataServiceType.OpenMetadata:
       return LOGO;
+
+    case ObjectStoreServiceType.Azure:
+      return MS_AZURE;
+
+    case ObjectStoreServiceType.S3:
+      return AMAZON_S3;
+
+    case ObjectStoreServiceType.Gcs:
+      return GCS;
 
     default: {
       let logo;
@@ -602,14 +615,14 @@ export const shouldTestConnection = (serviceType: string) => {
 export const getTestConnectionType = (serviceCat: ServiceCategory) => {
   switch (serviceCat) {
     case ServiceCategory.MESSAGING_SERVICES:
-      return ConnectionTypeEnum.Messaging;
+      return ServiceType.Messaging;
     case ServiceCategory.DASHBOARD_SERVICES:
-      return ConnectionTypeEnum.Dashboard;
+      return ServiceType.Dashboard;
     case ServiceCategory.PIPELINE_SERVICES:
-      return ConnectionTypeEnum.Pipeline;
+      return ServiceType.Pipeline;
     case ServiceCategory.DATABASE_SERVICES:
     default:
-      return ConnectionTypeEnum.Database;
+      return ServiceType.Database;
   }
 };
 
@@ -807,6 +820,12 @@ export const getDeleteEntityMessage = (
         pluralize(instanceCount, t('label.metadata'))
       );
 
+    case ServiceCategory.OBJECT_STORE_SERVICES:
+      return getEntityDeleteMessage(
+        service || t('label.service'),
+        pluralize(instanceCount, t('label.container'))
+      );
+
     default:
       return;
   }
@@ -827,6 +846,9 @@ export const getServiceRouteFromServiceType = (type: ServiceTypes) => {
   }
   if (type === 'metadataServices') {
     return GlobalSettingOptions.METADATA;
+  }
+  if (type === 'objectstoreServices') {
+    return GlobalSettingOptions.OBJECT_STORES;
   }
 
   return GlobalSettingOptions.DATABASES;
@@ -859,6 +881,10 @@ export const getResourceEntityFromServiceCategory = (
     case 'metadata':
     case ServiceCategory.METADATA_SERVICES:
       return ResourceEntity.METADATA_SERVICE;
+
+    case 'objectStores':
+    case ServiceCategory.OBJECT_STORE_SERVICES:
+      return ResourceEntity.OBJECT_STORE_SERVICE;
   }
 
   return ResourceEntity.DATABASE_SERVICE;
@@ -867,16 +893,18 @@ export const getResourceEntityFromServiceCategory = (
 export const getCountLabel = (serviceName: ServiceTypes) => {
   switch (serviceName) {
     case ServiceCategory.DASHBOARD_SERVICES:
-      return 'Dashboards';
+      return t('label.dashboard-plural');
     case ServiceCategory.MESSAGING_SERVICES:
-      return 'Topics';
+      return t('label.topic-plural');
     case ServiceCategory.PIPELINE_SERVICES:
-      return 'Pipelines';
+      return t('label.pipeline-plural');
     case ServiceCategory.ML_MODEL_SERVICES:
-      return 'Models';
+      return t('label.ml-model-plural');
+    case ServiceCategory.OBJECT_STORE_SERVICES:
+      return t('label.container-plural');
     case ServiceCategory.DATABASE_SERVICES:
     default:
-      return 'Databases';
+      return t('label.database-plural');
   }
 };
 

@@ -61,7 +61,7 @@ public class SlackWebhookEventPublisher extends AlertsActionPublisher {
         if (response.getStatus() >= 300 && response.getStatus() < 400) {
           // 3xx response/redirection is not allowed for callback. Set the webhook state as in error
           setErrorStatus(attemptTime, response.getStatus(), response.getStatusInfo().getReasonPhrase());
-        } else if (response.getStatus() >= 300 && response.getStatus() < 600) {
+        } else if (response.getStatus() >= 400 && response.getStatus() < 600) {
           // 4xx, 5xx response retry delivering events after timeout
           setNextBackOff();
           setAwaitingRetry(attemptTime, response.getStatus(), response.getStatusInfo().getReasonPhrase());

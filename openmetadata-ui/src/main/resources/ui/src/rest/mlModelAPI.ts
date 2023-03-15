@@ -41,7 +41,7 @@ export const getMlModelVersion = async (id: string, version: string) => {
 
 export const getMlModelByFQN = async (
   fqn: string,
-  arrQueryFields: string,
+  arrQueryFields: string | string[],
   include = Include.All
 ) => {
   const url = getURLWithQueryFields(

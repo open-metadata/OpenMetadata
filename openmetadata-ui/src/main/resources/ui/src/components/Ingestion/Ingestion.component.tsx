@@ -21,6 +21,7 @@ import { isEmpty, isNil, lowerCase, startCase } from 'lodash';
 import React, { Fragment, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
+import { getEntityName } from 'utils/EntityUtils';
 import { PAGE_SIZE } from '../../constants/constants';
 import { WORKFLOWS_METADATA_DOCS } from '../../constants/docs.constants';
 import { PIPELINE_TYPE_LOCALIZATION } from '../../constants/Ingestions.constant';
@@ -68,7 +69,7 @@ const Ingestion: React.FC<IngestionProps> = ({
   paging,
   pagingHandler,
   handleEnableDisableIngestion,
-  currrentPage,
+  currentPage,
   onIngestionWorkflowsUpdate,
   permissions,
 }: IngestionProps) => {
@@ -420,7 +421,7 @@ const Ingestion: React.FC<IngestionProps> = ({
         title: t('label.name'),
         dataIndex: 'name',
         key: 'name',
-        render: (text) =>
+        render: (text, record) =>
           airflowEndpoint ? (
             <Tooltip
               title={
@@ -438,7 +439,7 @@ const Ingestion: React.FC<IngestionProps> = ({
                 rel="noopener noreferrer"
                 target="_blank"
                 type="link">
-                {text}
+                {getEntityName(record)}
                 <SVGIcons
                   alt="external-link"
                   className="tw-align-middle tw-ml-1"
@@ -448,7 +449,7 @@ const Ingestion: React.FC<IngestionProps> = ({
               </Button>
             </Tooltip>
           ) : (
-            text
+            getEntityName(record)
           ),
       },
       {
@@ -606,6 +607,7 @@ const Ingestion: React.FC<IngestionProps> = ({
       isKillModalOpen,
       selectedPipeline,
       onIngestionWorkflowsUpdate,
+      ingestionData,
     ]
   );
 
@@ -656,7 +658,7 @@ const Ingestion: React.FC<IngestionProps> = ({
 
             {Boolean(!isNil(paging.after) || !isNil(paging.before)) && (
               <NextPrevious
-                currentPage={currrentPage}
+                currentPage={currentPage}
                 pageSize={PAGE_SIZE}
                 paging={paging}
                 pagingHandler={pagingHandler}

@@ -19,6 +19,7 @@ import { debounce, toString } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { NavLink, useHistory } from 'react-router-dom';
+import { refreshPage } from 'utils/CommonUtils';
 import AppState from '../../AppState';
 import Logo from '../../assets/svg/logo-monogram.svg';
 
@@ -284,6 +285,7 @@ const NavBar = ({
   const handleLanguageChange = useCallback((langCode: string) => {
     setLanguage(langCode);
     i18next.changeLanguage(langCode);
+    refreshPage();
   }, []);
 
   const handleModalCancel = useCallback(() => handleFeatureModal(false), []);
@@ -363,12 +365,11 @@ const NavBar = ({
             data-testid="appbar-item">
             <Input
               autoComplete="off"
-              className="tw-relative search-grey hover:tw-outline-none focus:tw-outline-none tw-pl-2 tw-pt-2 tw-pb-1.5 tw-ml-4 tw-z-41"
+              className="tw-relative search-grey hover:tw-outline-none focus:tw-outline-none tw-pl-2 tw-pt-2 tw-pb-1.5 tw-ml-4 tw-z-41 rounded-4"
               data-testid="searchBox"
               id="searchBox"
               placeholder={t('message.search-for-entity-types')}
               style={{
-                borderRadius: '0.24rem',
                 boxShadow: 'none',
                 height: '37px',
               }}

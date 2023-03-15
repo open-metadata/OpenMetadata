@@ -132,7 +132,7 @@ const MlModelFeaturesList: FC<MlModelFeaturesListProp> = ({
         ) {
           const tagList = await getTaglist(values[0].value.data);
           tagsAndTerms = tagList.map((tag) => {
-            return { fqn: tag, source: 'Tag' };
+            return { fqn: tag, source: 'Classification' };
           });
         }
         if (
@@ -184,15 +184,14 @@ const MlModelFeaturesList: FC<MlModelFeaturesListProp> = ({
           </Col>
           <Col span={24}>
             <Typography.Title level={5}>
-              {t('label.features-used')}
+              {t('label.feature-plural-used')}
             </Typography.Title>
           </Col>
 
           {mlFeatures.map((feature: MlFeature) => (
             <Col key={feature.fullyQualifiedName} span={24}>
               <Card
-                bordered
-                className="m-b-xlg"
+                className="m-b-lg shadow-none"
                 data-testid="feature-card"
                 key={feature.fullyQualifiedName}>
                 <Row>

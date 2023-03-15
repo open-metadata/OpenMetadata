@@ -69,6 +69,7 @@ class DomodatabaseSource(DatabaseServiceSource):
         self.domo_client = get_connection(self.service_connection)
         self.client = DomoClient(self.service_connection)
         super().__init__()
+        self.test_connection()
 
     @classmethod
     def create(cls, config_dict: dict, metadata_config: OpenMetadataConnection):
@@ -154,9 +155,6 @@ class DomodatabaseSource(DatabaseServiceSource):
                 columns=columns,
                 tableConstraints=table_constraints,
                 databaseSchema=self.context.database_schema.fullyQualifiedName,
-            )
-            self.process_pii_sensitive_column(
-                metadata_config=self.metadata, table_request=table_request
             )
             yield table_request
             self.register_record(table_request=table_request)

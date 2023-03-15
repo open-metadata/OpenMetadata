@@ -26,13 +26,14 @@ import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router-dom';
 import { getServiceByFQN, updateService } from 'rest/serviceAPI';
+import { getEntityName } from 'utils/EntityUtils';
 import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
 import { addServiceGuide } from '../../constants/service-guide.constant';
 import { OPENMETADATA } from '../../constants/Services.constant';
 import { ServiceCategory } from '../../enums/service.enum';
 import { ConfigData, ServicesType } from '../../interface/service.interface';
 import jsonData from '../../jsons/en';
-import { getEntityMissingError, getEntityName } from '../../utils/CommonUtils';
+import { getEntityMissingError } from '../../utils/CommonUtils';
 import { getPathByServiceFQN, getSettingPath } from '../../utils/RouterUtils';
 import {
   getServiceRouteFromServiceType,
@@ -120,7 +121,7 @@ function EditConnectionFormPage() {
               url: getPathByServiceFQN(serviceCategory, serviceFQN),
             },
             {
-              name: t('label.edit-connection'),
+              name: t('label.edit-entity', { entity: t('label.connection') }),
               url: '',
               activeTitle: true,
             },
@@ -150,7 +151,9 @@ function EditConnectionFormPage() {
         {getEntityMissingError(serviceCategory, serviceFQN)}
       </ErrorPlaceHolder>
     ) : (
-      <PageLayoutV1 center pageTitle={t('label.edit-connection')}>
+      <PageLayoutV1
+        center
+        pageTitle={t('label.edit-entity', { entity: t('label.connection') })}>
         <Space direction="vertical" size="middle">
           <TitleBreadcrumb titleLinks={slashedBreadcrumb} />
           <div className="form-container">

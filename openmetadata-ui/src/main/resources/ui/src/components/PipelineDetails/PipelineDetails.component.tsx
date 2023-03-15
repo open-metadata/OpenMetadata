@@ -56,13 +56,12 @@ import { EntityFieldThreadCount } from '../../interface/feed.interface';
 import {
   getCountBadge,
   getCurrentUserId,
-  getEntityName,
   getEntityPlaceHolder,
   getFeedCounts,
   getOwnerValue,
   refreshPage,
 } from '../../utils/CommonUtils';
-import { getEntityFeedLink } from '../../utils/EntityUtils';
+import { getEntityFeedLink, getEntityName } from '../../utils/EntityUtils';
 import {
   deletePost,
   getEntityFieldThreadCounts,
@@ -291,7 +290,7 @@ const PipelineDetails = ({
     if (pipelineDetails) {
       const updatedPipelineDetails = {
         ...pipelineDetails,
-        tags: undefined,
+        tags: getTagsWithoutTier(pipelineDetails.tags ?? []),
       };
       settingsUpdateHandler(updatedPipelineDetails);
     }
@@ -514,9 +513,7 @@ const PipelineDetails = ({
         data-testid="tags-wrapper"
         onClick={() => handleEditTaskTag(record, index)}>
         {deleted ? (
-          <div className="tw-flex tw-flex-wrap">
-            <TagsViewer sizeCap={-1} tags={text || []} />
-          </div>
+          <TagsViewer sizeCap={-1} tags={text || []} />
         ) : (
           <TagsContainer
             editable={editTaskTags?.index === index}
@@ -552,9 +549,9 @@ const PipelineDetails = ({
         key: t('label.name'),
         dataIndex: 'name',
         title: t('label.name'),
-        render: (name, record) => (
+        render: (_, record) => (
           <Link target="_blank" to={{ pathname: record.taskUrl }}>
-            <span>{name}</span>
+            <span>{getEntityName(record)}</span>
             <SVGIcons
               alt="external-link"
               className="align-middle m-l-xs"
@@ -794,78 +791,78 @@ const PipelineDetails = ({
                 {t('label.task-plural')}
               </span>
             }>
-            <Row
-              className="tw-bg-white tw-flex-grow tw-p-4 tw-shadow tw-rounded-md"
-              gutter={[0, 16]}>
-              <Col span={24}>
-                <Description
-                  description={description}
-                  entityFieldTasks={getEntityFieldThreadCounts(
-                    EntityField.DESCRIPTION,
-                    entityFieldTaskCount
-                  )}
-                  entityFieldThreads={getEntityFieldThreadCounts(
-                    EntityField.DESCRIPTION,
-                    entityFieldThreadCount
-                  )}
-                  entityFqn={pipelineFQN}
-                  entityName={entityName}
-                  entityType={EntityType.PIPELINE}
-                  hasEditAccess={
-                    pipelinePermissions.EditAll ||
-                    pipelinePermissions.EditDescription
-                  }
-                  isEdit={isEdit}
-                  isReadOnly={deleted}
-                  owner={owner}
-                  onCancel={onCancel}
-                  onDescriptionEdit={onDescriptionEdit}
-                  onDescriptionUpdate={onDescriptionUpdate}
-                  onThreadLinkSelect={onThreadLinkSelect}
-                />
-              </Col>
-              <Col span={24}>
-                <Radio.Group
-                  buttonStyle="solid"
-                  className="radio-switch"
-                  data-testid="pipeline-task-switch"
-                  optionType="button"
-                  options={Object.values(PIPELINE_TASK_TABS)}
-                  value={activeTab}
-                  onChange={(e) => setActiveTab(e.target.value)}
-                />
-              </Col>
-              <Col span={24}>
-                {activeTab === PIPELINE_TASK_TABS.LIST_VIEW ? (
-                  <Table
-                    bordered
-                    columns={taskColumns}
-                    data-testid="task-table"
-                    dataSource={tasksInternal}
-                    pagination={false}
-                    rowKey="name"
-                    size="small"
+            <Card className="h-full">
+              <Row gutter={[0, 16]}>
+                <Col span={24}>
+                  <Description
+                    description={description}
+                    entityFieldTasks={getEntityFieldThreadCounts(
+                      EntityField.DESCRIPTION,
+                      entityFieldTaskCount
+                    )}
+                    entityFieldThreads={getEntityFieldThreadCounts(
+                      EntityField.DESCRIPTION,
+                      entityFieldThreadCount
+                    )}
+                    entityFqn={pipelineFQN}
+                    entityName={entityName}
+                    entityType={EntityType.PIPELINE}
+                    hasEditAccess={
+                      pipelinePermissions.EditAll ||
+                      pipelinePermissions.EditDescription
+                    }
+                    isEdit={isEdit}
+                    isReadOnly={deleted}
+                    owner={owner}
+                    onCancel={onCancel}
+                    onDescriptionEdit={onDescriptionEdit}
+                    onDescriptionUpdate={onDescriptionUpdate}
+                    onThreadLinkSelect={onThreadLinkSelect}
                   />
-                ) : !isEmpty(tasks) ? (
-                  <Card
-                    headStyle={{ background: '#fafafa' }}
-                    title={t('label.dag-view')}>
-                    <div className="h-100">
-                      <TasksDAGView
-                        selectedExec={selectedExecution}
-                        tasks={tasks}
-                      />
+                </Col>
+                <Col span={24}>
+                  <Radio.Group
+                    buttonStyle="solid"
+                    className="radio-switch"
+                    data-testid="pipeline-task-switch"
+                    optionType="button"
+                    options={Object.values(PIPELINE_TASK_TABS)}
+                    value={activeTab}
+                    onChange={(e) => setActiveTab(e.target.value)}
+                  />
+                </Col>
+                <Col span={24}>
+                  {activeTab === PIPELINE_TASK_TABS.LIST_VIEW ? (
+                    <Table
+                      bordered
+                      columns={taskColumns}
+                      data-testid="task-table"
+                      dataSource={tasksInternal}
+                      pagination={false}
+                      rowKey="name"
+                      size="small"
+                    />
+                  ) : !isEmpty(tasks) ? (
+                    <Card
+                      headStyle={{ background: '#fafafa' }}
+                      title={t('label.dag-view')}>
+                      <div className="h-100">
+                        <TasksDAGView
+                          selectedExec={selectedExecution}
+                          tasks={tasks}
+                        />
+                      </div>
+                    </Card>
+                  ) : (
+                    <div
+                      className="tw-mt-4 tw-ml-4 tw-flex tw-justify-center tw-font-medium tw-items-center tw-border tw-border-main tw-rounded-md tw-p-8"
+                      data-testid="no-tasks-data">
+                      <span>{t('label.no-task-available')}</span>
                     </div>
-                  </Card>
-                ) : (
-                  <div
-                    className="tw-mt-4 tw-ml-4 tw-flex tw-justify-center tw-font-medium tw-items-center tw-border tw-border-main tw-rounded-md tw-p-8"
-                    data-testid="no-tasks-data">
-                    <span>{t('label.no-task-available')}</span>
-                  </div>
-                )}
-              </Col>
-            </Row>
+                  )}
+                </Col>
+              </Row>
+            </Card>
           </Tabs.TabPane>
           <Tabs.TabPane
             className="h-full"
@@ -880,7 +877,7 @@ const PipelineDetails = ({
                 )}
               </span>
             }>
-            <Card className="h-min-full">
+            <Card className="h-full">
               <Row justify="center">
                 <Col span={18}>
                   <div id="activityfeed">
@@ -920,7 +917,7 @@ const PipelineDetails = ({
           <Tabs.TabPane
             key={PIPELINE_DETAILS_TABS.Lineage}
             tab={<span data-testid="Lineage">{t('label.lineage')}</span>}>
-            <div className="h-full bg-white">
+            <Card className="h-full card-body-full">
               <EntityLineageComponent
                 deleted={deleted}
                 entityType={EntityType.PIPELINE}
@@ -928,7 +925,7 @@ const PipelineDetails = ({
                   pipelinePermissions.EditAll || pipelinePermissions.EditLineage
                 }
               />
-            </div>
+            </Card>
           </Tabs.TabPane>
 
           <Tabs.TabPane
@@ -938,17 +935,19 @@ const PipelineDetails = ({
                 {t('label.custom-property-plural')}
               </span>
             }>
-            <CustomPropertyTable
-              entityDetails={
-                pipelineDetails as CustomPropertyProps['entityDetails']
-              }
-              entityType={EntityType.PIPELINE}
-              handleExtensionUpdate={onExtensionUpdate}
-              hasEditAccess={
-                pipelinePermissions.EditAll ||
-                pipelinePermissions.EditCustomFields
-              }
-            />
+            <Card className="h-full">
+              <CustomPropertyTable
+                entityDetails={
+                  pipelineDetails as CustomPropertyProps['entityDetails']
+                }
+                entityType={EntityType.PIPELINE}
+                handleExtensionUpdate={onExtensionUpdate}
+                hasEditAccess={
+                  pipelinePermissions.EditAll ||
+                  pipelinePermissions.EditCustomFields
+                }
+              />
+            </Card>
           </Tabs.TabPane>
           <Tabs.TabPane key="*" tab="">
             <Redirect to={ROUTES.NOT_FOUND} />

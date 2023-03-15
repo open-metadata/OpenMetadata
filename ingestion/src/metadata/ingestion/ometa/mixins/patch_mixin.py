@@ -15,12 +15,13 @@ To be used by OpenMetadata class
 """
 import json
 import traceback
-from typing import Generic, Optional, Type, TypeVar, Union
+from typing import Dict, Generic, List, Optional, Type, TypeVar, Union
 
 from pydantic import BaseModel
 
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.type import basic
+from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.tagLabel import LabelType, State, TagSource
 from metadata.ingestion.ometa.client import REST
 from metadata.ingestion.ometa.utils import model_str
@@ -34,6 +35,8 @@ T = TypeVar("T", bound=BaseModel)
 OPERATION = "op"
 PATH = "path"
 VALUE = "value"
+VALUE_ID: str = "id"
+VALUE_TYPE: str = "type"
 
 # Operations
 ADD = "add"
@@ -46,6 +49,11 @@ COL_DESCRIPTION = "/columns/{index}/description"
 
 ENTITY_TAG = "/tags/{tag_index}"
 COL_TAG = "/columns/{index}/tags/{tag_index}"
+
+# Paths
+OWNER_PATH: str = "/owner"
+
+OWNER_TYPES: List[str] = ["user", "team"]
 
 
 class OMetaPatchMixin(Generic[T]):
@@ -245,7 +253,7 @@ class OMetaPatchMixin(Generic[T]):
                                 PATH: ENTITY_TAG.format(tag_index=tag_index),
                                 VALUE: {
                                     "labelType": LabelType.Automated.value,
-                                    "source": TagSource.Tag.value
+                                    "source": TagSource.Classification.value
                                     if not from_glossary
                                     else TagSource.Glossary.value,
                                     "state": State.Confirmed.value,
@@ -284,6 +292,7 @@ class OMetaPatchMixin(Generic[T]):
         tag_fqn: str,
         from_glossary: bool = False,
         operation: str = ADD,
+        is_suggested: bool = False,
     ) -> Optional[T]:
         """Given an Entity ID, JSON PATCH the tag of the column
 
@@ -324,10 +333,12 @@ class OMetaPatchMixin(Generic[T]):
                                 ),
                                 VALUE: {
                                     "labelType": LabelType.Automated.value,
-                                    "source": TagSource.Tag.value
+                                    "source": TagSource.Classification.value
                                     if not from_glossary
                                     else TagSource.Glossary.value,
-                                    "state": State.Confirmed.value,
+                                    "state": State.Suggested.value
+                                    if is_suggested
+                                    else State.Confirmed.value,
                                     "tagFQN": tag_fqn,
                                 },
                             }
@@ -354,6 +365,76 @@ class OMetaPatchMixin(Generic[T]):
             logger.debug(traceback.format_exc())
             logger.warning(
                 f"Error trying to PATCH tags for Table Column: {entity_id}, {column_name}: {exc}"
+            )
+
+        return None
+
+    def patch_owner(
+        self,
+        entity: Type[T],
+        entity_id: Union[str, basic.Uuid],
+        owner: EntityReference = None,
+        force: bool = False,
+    ) -> Optional[T]:
+        """
+        Given an Entity type and ID, JSON PATCH the owner. If not owner Entity type and
+        not owner ID are provided, the owner is removed.
+
+        Args
+            entity (T): Entity Type of the entity to be patched
+            entity_id: ID of the entity to be patched
+            owner: Entity Reference of the owner. If None, the owner will be removed
+            force: if True, we will patch any existing owner. Otherwise, we will maintain
+                the existing data.
+        Returns
+            Updated Entity
+        """
+        instance = self._validate_instance_description(
+            entity=entity, entity_id=entity_id
+        )
+        if not instance:
+            return None
+
+        # Don't change existing data without force
+        if instance.owner and not force:
+            logger.warning(
+                f"The entity with id [{model_str(entity_id)}] already has an owner."
+                " To overwrite it, set `overrideOwner` to True."
+            )
+            return None
+
+        data: Dict = {
+            PATH: OWNER_PATH,
+        }
+
+        if owner is None:
+            data[OPERATION] = REMOVE
+        else:
+            if owner.type not in OWNER_TYPES:
+                valid_owner_types: str = ", ".join(f'"{o}"' for o in OWNER_TYPES)
+                logger.error(
+                    f"The entity with id [{model_str(entity_id)}] was provided an invalid"
+                    f" owner type. Must be one of {valid_owner_types}."
+                )
+                return None
+
+            data[OPERATION] = ADD if instance.owner is None else REPLACE
+            data[VALUE] = {
+                VALUE_ID: model_str(owner.id),
+                VALUE_TYPE: owner.type,
+            }
+
+        try:
+            res = self.client.patch(
+                path=f"{self.get_suffix(entity)}/{model_str(entity_id)}",
+                data=json.dumps([data]),
+            )
+            return entity(**res)
+
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.error(
+                f"Error trying to PATCH description for {entity.__class__.__name__} [{entity_id}]: {exc}"
             )
 
         return None
