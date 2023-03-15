@@ -15,8 +15,8 @@ import ProfilePicture from 'components/common/ProfilePicture/ProfilePicture';
 import { EntityTags } from 'Models';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import { getEntityName } from 'utils/EntityUtils';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
-import { getEntityName } from '../../../utils/CommonUtils';
 import { getTagsWithoutTier, getTierTags } from '../../../utils/TableUtils';
 import { EntityData } from '../TasksPage.interface';
 

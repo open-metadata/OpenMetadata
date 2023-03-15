@@ -78,5 +78,4 @@ export interface SearchedDataProps {
     details: EntityDetailsType,
     entityType: string
   ) => void;
-  isElasticSearchIssue: boolean;
 }

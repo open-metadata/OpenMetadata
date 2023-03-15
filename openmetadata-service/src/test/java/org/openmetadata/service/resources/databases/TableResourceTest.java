@@ -108,6 +108,7 @@ import org.openmetadata.schema.type.ColumnProfilerConfig;
 import org.openmetadata.schema.type.DataModel;
 import org.openmetadata.schema.type.DataModel.ModelType;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.JoinedWith;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.SQLQuery;
@@ -1701,7 +1702,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     addAndCheckLocation(table, location.getId(), OK, TEST_AUTH_HEADERS);
     deleteAndCheckEntity(table, ADMIN_AUTH_HEADERS);
     Map<String, String> queryParams = new HashMap<>();
-    queryParams.put("include", "all");
+    queryParams.put("include", Include.ALL.value());
 
     table = getEntity(table.getId(), queryParams, "location", ADMIN_AUTH_HEADERS);
     assertNotNull(table.getLocation(), "The location is missing");

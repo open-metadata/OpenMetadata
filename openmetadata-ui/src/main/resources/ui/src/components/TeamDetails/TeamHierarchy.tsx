@@ -23,9 +23,10 @@ import { HTML5Backend } from 'react-dnd-html5-backend';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { getTeamByName, updateTeam } from 'rest/teamsAPI';
+import { getEntityName } from 'utils/EntityUtils';
 import { TABLE_CONSTANTS } from '../../constants/Teams.constants';
 import { Team } from '../../generated/entity/teams/team';
-import { getEntityName, Transi18next } from '../../utils/CommonUtils';
+import { Transi18next } from '../../utils/CommonUtils';
 import { getTeamsWithFqnPath } from '../../utils/RouterUtils';
 import { getTableExpandableConfig } from '../../utils/TableUtils';
 import { getMovedTeamData } from '../../utils/TeamUtils';
@@ -183,15 +184,16 @@ const TeamHierarchy: FC<TeamHierarchyProps> = ({
         data-testid="confirmation-modal"
         okText={t('label.confirm')}
         open={isModalOpen}
-        title={t('label.move-the-team')}
+        title={t('label.move-the-entity', { entity: t('label.team') })}
         onCancel={() => setIsModalOpen(false)}
         onOk={handleChangeTeam}>
         <Transi18next
-          i18nKey="message.team-transfer-message"
+          i18nKey="message.entity-transfer-message"
           renderElement={<strong />}
           values={{
             from: movedTeam?.from?.name,
             to: movedTeam?.to?.name,
+            entity: t('label.team-lowercase'),
           }}
         />
       </Modal>

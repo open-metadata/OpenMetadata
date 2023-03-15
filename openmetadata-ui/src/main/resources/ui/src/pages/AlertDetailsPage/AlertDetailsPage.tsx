@@ -19,6 +19,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router-dom';
 import { getAlertActionForAlerts, getAlertsFromId } from 'rest/alertsAPI';
+import { getEntityName } from 'utils/EntityUtils';
 import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
@@ -26,7 +27,6 @@ import {
 import { EntityType } from '../../enums/entity.enum';
 import { AlertAction } from '../../generated/alerts/alertAction';
 import { AlertFilterRule, Alerts } from '../../generated/alerts/alerts';
-import { getEntityName } from '../../utils/CommonUtils';
 import { getSettingPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 

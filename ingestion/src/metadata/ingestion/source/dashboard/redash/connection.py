@@ -12,26 +12,26 @@
 """
 Source connection handler
 """
-from redash_toolbelt import Redash
 
 from metadata.generated.schema.entity.services.connections.dashboard.redashConnection import (
     RedashConnection,
 )
 from metadata.ingestion.connections.test_connections import SourceConnectionException
+from metadata.ingestion.source.dashboard.redash.client import RedashApiClient
 
 
-def get_connection(connection: RedashConnection) -> Redash:
+def get_connection(connection: RedashConnection) -> RedashApiClient:
     """
     Create connection
     """
     try:
-        return Redash(connection.hostPort, connection.apiKey.get_secret_value())
+        return RedashApiClient(connection)
     except Exception as exc:
         msg = f"Unknown error connecting with {connection}: {exc}."
         raise SourceConnectionException(msg) from exc
 
 
-def test_connection(client: Redash, _) -> None:
+def test_connection(client: RedashApiClient, _) -> None:
     """
     Test connection
     """
