@@ -13,7 +13,7 @@ Generic call to handle table columns for sql connectors.
 """
 import re
 import traceback
-from typing import List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 
 from sqlalchemy.engine.reflection import Inspector
 
@@ -42,6 +42,13 @@ class SqlColumnHandlerMixin:
         if self.source_config.includeTags:
             logger.info("Fetching tags not implemented for this connector")
             self.source_config.includeTags = False
+
+    def process_additional_table_constraints(
+        self, column: dict, table_constraints: List[TableConstraint]
+    ) -> None:
+        """
+        By Default there are no additional table constraints
+        """
 
     def _get_display_datatype(
         self,
@@ -100,7 +107,7 @@ class SqlColumnHandlerMixin:
     @staticmethod
     def _get_columns_with_constraints(
         schema_name: str, table_name: str, inspector: Inspector
-    ) -> Tuple[List, List]:
+    ) -> Tuple[List, List, List]:
         pk_constraints = inspector.get_pk_constraint(table_name, schema_name)
         try:
             unique_constraints = inspector.get_unique_constraints(
@@ -130,24 +137,35 @@ class SqlColumnHandlerMixin:
             if len(foreign_constraint) > 0 and foreign_constraint.get(
                 "constrained_columns"
             ):
-                foreign_columns.extend(foreign_constraint.get("constrained_columns"))
+                foreign_constraint.update(
+                    {
+                        "constrained_columns": [
+                            clean_up_starting_ending_double_quotes_in_string(column)
+                            for column in foreign_constraint.get("constrained_columns")
+                        ],
+                        "referred_columns": [
+                            clean_up_starting_ending_double_quotes_in_string(column)
+                            for column in foreign_constraint.get("referred_columns")
+                        ],
+                    }
+                )
+                foreign_columns.append(foreign_constraint)
 
         unique_columns = []
         for constraint in unique_constraints:
             if constraint.get("column_names"):
-                unique_columns.extend(constraint.get("column_names"))
+                unique_columns.append(
+                    [
+                        clean_up_starting_ending_double_quotes_in_string(column)
+                        for column in constraint.get("column_names")
+                    ]
+                )
+
         pk_columns = [
             clean_up_starting_ending_double_quotes_in_string(pk_column)
             for pk_column in pk_columns
         ]
-        unique_columns = [
-            clean_up_starting_ending_double_quotes_in_string(unique_column)
-            for unique_column in unique_columns
-        ]
-        foreign_columns = [
-            clean_up_starting_ending_double_quotes_in_string(foreign_column)
-            for foreign_column in foreign_columns
-        ]
+
         return pk_columns, unique_columns, foreign_columns
 
     def _process_complex_col_type(self, parsed_string: dict, column: dict) -> Column:
@@ -176,25 +194,43 @@ class SqlColumnHandlerMixin:
 
     def get_columns_and_constraints(  # pylint: disable=too-many-locals
         self, schema_name: str, table_name: str, db_name: str, inspector: Inspector
-    ) -> Tuple[Optional[List[Column]], Optional[List[TableConstraint]]]:
+    ) -> Tuple[
+        Optional[List[Column]], Optional[List[TableConstraint]], Optional[List[Dict]]
+    ]:
         """
         Get columns types and constraints information
         """
+
+        table_constraints = []
+
         # Get inspector information:
         (
             pk_columns,
             unique_columns,
             foreign_columns,
         ) = self._get_columns_with_constraints(schema_name, table_name, inspector)
-        table_columns = []
-        table_constraints = []
-        if foreign_columns:
+
+        column_level_unique_constraints = set()
+        for col in unique_columns:
+            if len(col) == 1:
+                column_level_unique_constraints.add(col[0])
+            else:
+                table_constraints.append(
+                    TableConstraint(
+                        constraintType=ConstraintType.UNIQUE,
+                        columns=col,
+                    )
+                )
+        if len(pk_columns) > 1:
             table_constraints.append(
                 TableConstraint(
-                    constraintType=ConstraintType.FOREIGN_KEY,
-                    columns=foreign_columns,
+                    constraintType=ConstraintType.PRIMARY_KEY,
+                    columns=pk_columns,
                 )
             )
+
+        table_columns = []
+
         columns = inspector.get_columns(table_name, schema_name, db_name=db_name)
         for column in columns:
             try:
@@ -204,18 +240,14 @@ class SqlColumnHandlerMixin:
                     arr_data_type,
                     parsed_string,
                 ) = self._process_col_type(column, schema_name)
+                self.process_additional_table_constraints(
+                    column=column, table_constraints=table_constraints
+                )
                 if parsed_string is None:
                     col_type = ColumnTypeParser.get_column_type(column["type"])
                     col_constraint = self._get_column_constraints(
-                        column, pk_columns, unique_columns
+                        column, pk_columns, column_level_unique_constraints
                     )
-                    if not col_constraint and len(pk_columns) > 1:
-                        table_constraints.append(
-                            TableConstraint(
-                                constraintType=ConstraintType.PRIMARY_KEY,
-                                columns=[column["name"]],
-                            )
-                        )
                     col_data_length = self._check_col_length(col_type, column["type"])
                     precision = ColumnTypeParser.check_col_precision(
                         col_type, column["type"]
@@ -266,7 +298,7 @@ class SqlColumnHandlerMixin:
                 )
                 continue
             table_columns.append(om_column)
-        return table_columns, table_constraints
+        return table_columns, table_constraints, foreign_columns
 
     @staticmethod
     def _check_col_length(datatype: str, col_raw_type: object):

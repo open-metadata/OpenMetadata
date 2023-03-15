@@ -150,7 +150,9 @@
           "enum": [
             "UNIQUE",
             "PRIMARY_KEY",
-            "FOREIGN_KEY"
+            "FOREIGN_KEY",
+            "SORT_KEY",
+            "DIST_KEY"
           ]
         },
         "columns": {
@@ -159,6 +161,14 @@
           "items": {
             "type": "string"
           }
+        },
+        "referredColumns": {
+          "description": "List of referred columns for the constraint.",
+          "type": "array",
+          "items": {
+            "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+          },
+          "default": null
         }
       },
       "additionalProperties": false
