@@ -88,6 +88,7 @@ public class SearchResource {
   private static final Integer MAX_RESULT_HITS = 10000;
   private static final String NAME_KEYWORD = "name.keyword";
   private static final String DISPLAY_NAME = "displayName";
+  private static final String FIELD_NAME_NGRAM = "name.ngram";
   private static final String DISPLAY_NAME_KEYWORD = "displayName.keyword";
   public static final String FIELD_DISPLAY_NAME_NGRAM = "displayName.ngram";
   private static final String DESCRIPTION = "description";
@@ -407,6 +408,7 @@ public class SearchResource {
             .field(FIELD_DISPLAY_NAME, 15.0f)
             .field(FIELD_DISPLAY_NAME_NGRAM)
             .field(FIELD_NAME, 15.0f)
+            .field(FIELD_NAME_NGRAM)
             .field(FIELD_DESCRIPTION, 1.0f)
             .field("columns.name", 2.0f)
             .field("columns.name.ngram")
@@ -458,6 +460,7 @@ public class SearchResource {
             .field(FIELD_DISPLAY_NAME, 15.0f)
             .field(FIELD_DISPLAY_NAME_NGRAM)
             .field(FIELD_NAME, 15.0f)
+            .field(FIELD_NAME_NGRAM)
             .field(FIELD_DESCRIPTION, 1.0f)
             .field("messageSchema.schemaFields.name", 2.0f)
             .field("messageSchema.schemaFields.description", 1.0f)
@@ -485,6 +488,7 @@ public class SearchResource {
             .field(FIELD_DISPLAY_NAME, 15.0f)
             .field(FIELD_DISPLAY_NAME_NGRAM)
             .field(FIELD_NAME, 15.0f)
+            .field(FIELD_NAME_NGRAM)
             .field(FIELD_DESCRIPTION, 1.0f)
             .field("charts.name", 2.0f)
             .field("charts.description", 1.0f)
@@ -592,6 +596,7 @@ public class SearchResource {
         QueryBuilders.queryStringQuery(query)
             .field(DISPLAY_NAME, 5.0f)
             .field(DISPLAY_NAME_KEYWORD, 3.0f)
+            .field(FIELD_DISPLAY_NAME_NGRAM)
             .field(FIELD_NAME, 2.0f)
             .field(NAME_KEYWORD, 3.0f)
             .fuzziness(Fuzziness.AUTO);
@@ -603,6 +608,7 @@ public class SearchResource {
         QueryBuilders.queryStringQuery(query)
             .field(DISPLAY_NAME, 5.0f)
             .field(DISPLAY_NAME_KEYWORD, 3.0f)
+            .field(FIELD_DISPLAY_NAME_NGRAM)
             .field(FIELD_NAME, 2.0f)
             .field(NAME_KEYWORD, 3.0f)
             .fuzziness(Fuzziness.AUTO);
