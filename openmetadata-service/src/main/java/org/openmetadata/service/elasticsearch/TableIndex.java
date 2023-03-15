@@ -3,14 +3,10 @@ package org.openmetadata.service.elasticsearch;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
-import java.util.function.Predicate;
 import java.util.regex.Pattern;
 import org.openmetadata.schema.entity.data.Table;
-import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
 
 public class TableIndex implements ColumnIndex {

@@ -1,13 +1,12 @@
 package org.openmetadata.service.elasticsearch;
 
-import org.openmetadata.schema.type.Column;
-import org.openmetadata.schema.type.TagLabel;
-import org.openmetadata.service.util.FullyQualifiedName;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.function.Predicate;
+import org.openmetadata.schema.type.Column;
+import org.openmetadata.schema.type.TagLabel;
+import org.openmetadata.service.util.FullyQualifiedName;
 
 public interface ColumnIndex extends ElasticSearchIndex {
   default void parseColumns(List<Column> columns, List<FlattenColumn> flattenColumns, String parentColumn) {
