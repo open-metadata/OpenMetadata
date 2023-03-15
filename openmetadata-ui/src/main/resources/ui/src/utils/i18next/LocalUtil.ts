@@ -27,17 +27,18 @@ i18n
 /**
  *
  * @param language fetch resource for the language
- * @param nameSpace fetch resource for nameSpace in the language
+ * @param serviceName fetch resource for service name in the selected service Type
+ * @param serviceType selected service Type Database, Dashboard, etc.
  * @returns translation records
  */
 const fetchTranslation = async (
   language: string,
-  nameSpace: string,
+  serviceName: string,
   serviceType: ServiceType
 ) => {
   try {
     const translation = await import(
-      `../../locale/${language}/${serviceType}/${nameSpace}.json`
+      `../../locale/${language}/${serviceType}/${serviceName}.json`
     );
 
     return translation.default ?? {};
@@ -64,30 +65,33 @@ const addTranslationsToI18n = (
 };
 
 /**
- * Add resource for nameSpace in current language with fallback mechanism
- * @param nameSpace add resource for the nameSpace in language
+ * Add resource for serviceName in current language with fallback mechanism
+ * @param serviceName fetch resource for service name in the selected service Type
+ * @param serviceType selected service Type Database, Dashboard, etc.
  */
 export const addLocalResource = async (
-  nameSpace: string,
+  serviceName: string,
   serviceType: ServiceType
 ) => {
   const isEnglishLanguage = i18n.language === SupportedLocales.English;
 
+  // fetch resource of current serviceType and serviceName
   const [translation, fallbackTranslation] = await Promise.allSettled([
-    fetchTranslation(i18n.language, nameSpace, serviceType),
+    fetchTranslation(i18n.language, serviceName, serviceType),
     isEnglishLanguage
       ? Promise.reject({})
-      : fetchTranslation(SupportedLocales.English, nameSpace, serviceType),
+      : fetchTranslation(SupportedLocales.English, serviceName, serviceType),
   ]);
 
+  // add resources for current language, serviceType and serviceName
   if (translation.status === 'fulfilled') {
-    addTranslationsToI18n(i18n.language, nameSpace, translation.value);
+    addTranslationsToI18n(i18n.language, serviceName, translation.value);
   }
 
   if (!isEnglishLanguage && fallbackTranslation.status === 'fulfilled') {
     addTranslationsToI18n(
       SupportedLocales.English,
-      nameSpace,
+      serviceName,
       fallbackTranslation.value
     );
   }
