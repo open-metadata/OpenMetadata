@@ -20,6 +20,7 @@ import { isUndefined } from 'lodash';
 import { ExtraInfo } from 'Models';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { getEntityName } from 'utils/EntityUtils';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { EntityField } from '../../constants/Feeds.constants';
 import { OwnerType } from '../../enums/user.enum';
@@ -223,10 +224,10 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
         }),
         dataIndex: 'displayName',
         key: 'displayName',
-        render: (text, record) => (
+        render: (_, record) => (
           <Link target="_blank" to={{ pathname: record.taskUrl }}>
             <Space>
-              <span>{text}</span>
+              <span>{getEntityName(record)}</span>
               <SVGIcons
                 alt="external-link"
                 className="tw-align-middle"

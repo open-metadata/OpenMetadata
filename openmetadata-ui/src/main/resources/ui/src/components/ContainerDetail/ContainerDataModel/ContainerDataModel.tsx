@@ -33,7 +33,7 @@ import {
 
 import { ReactComponent as EditIcon } from 'assets/svg/ic-edit.svg';
 import { ModalWithMarkdownEditor } from 'components/Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
-import { getEntityName } from 'utils/CommonUtils';
+import { getEntityName } from 'utils/EntityUtils';
 
 const ContainerDataModel: FC<ContainerDataModelProps> = ({
   dataModel,

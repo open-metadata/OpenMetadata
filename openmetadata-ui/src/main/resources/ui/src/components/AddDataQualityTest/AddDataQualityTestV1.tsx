@@ -19,6 +19,7 @@ import { isUndefined, toString } from 'lodash';
 import { default as React, useCallback, useMemo, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
 import { createTestCase, createTestSuites } from 'rest/testAPI';
+import { getEntityName } from 'utils/EntityUtils';
 import {
   getDatabaseDetailsPath,
   getDatabaseSchemaDetailsPath,
@@ -36,7 +37,6 @@ import { TestCase } from '../../generated/tests/testCase';
 import { TestSuite } from '../../generated/tests/testSuite';
 import {
   getCurrentUserId,
-  getEntityName,
   getPartialNameFromTableFQN,
 } from '../../utils/CommonUtils';
 import { getTestSuitePath } from '../../utils/RouterUtils';

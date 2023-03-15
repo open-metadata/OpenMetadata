@@ -84,7 +84,9 @@ public class LdapAuthenticator implements AuthenticatorHandler {
                 sslUtil.createSSLSocketFactory(),
                 connectionOptions,
                 ldapConfiguration.getHost(),
-                ldapConfiguration.getPort())) {
+                ldapConfiguration.getPort(),
+                ldapConfiguration.getDnAdminPrincipal(),
+                ldapConfiguration.getDnAdminPassword())) {
           // Use the connection here.
           return new LDAPConnectionPool(connection, ldapConfiguration.getMaxPoolSize());
         } catch (GeneralSecurityException e) {
