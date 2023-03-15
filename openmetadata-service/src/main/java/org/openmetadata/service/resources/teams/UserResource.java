@@ -70,6 +70,7 @@ import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.jetbrains.annotations.Nullable;
+import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.TokenInterface;
 import org.openmetadata.schema.api.data.RestoreEntity;
@@ -77,6 +78,7 @@ import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.auth.BasicAuthMechanism;
 import org.openmetadata.schema.auth.ChangePasswordRequest;
+import org.openmetadata.schema.auth.CreatePersonalToken;
 import org.openmetadata.schema.auth.EmailRequest;
 import org.openmetadata.schema.auth.GenerateTokenRequest;
 import org.openmetadata.schema.auth.JWTAuthMechanism;
@@ -86,6 +88,7 @@ import org.openmetadata.schema.auth.LogoutRequest;
 import org.openmetadata.schema.auth.PasswordResetRequest;
 import org.openmetadata.schema.auth.PersonalAccessToken;
 import org.openmetadata.schema.auth.RegistrationRequest;
+import org.openmetadata.schema.auth.RevokePersonalTokenRequest;
 import org.openmetadata.schema.auth.RevokeTokenRequest;
 import org.openmetadata.schema.auth.SSOAuthMechanism;
 import org.openmetadata.schema.auth.ServiceTokenType;
@@ -1056,7 +1059,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
   }
 
   @GET
-  @Path("/token/personal")
+  @Path("/security/token")
   @Operation(
       operationId = "getPersonalAccessToken",
       summary = "Get personal access token to User",
@@ -1065,22 +1068,30 @@ public class UserResource extends EntityResource<User, UserRepository> {
       responses = {
         @ApiResponse(
             responseCode = "200",
-            description = "The user ",
+            description = "List Of Personal Access Tokens ",
             content =
                 @Content(mediaType = "application/json", schema = @Schema(implementation = PersonalAccessToken.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
-  public Response getPersonalAccessToken(@Context UriInfo uriInfo, @Context SecurityContext securityContext)
+  public Response getPersonalAccessToken(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "User Name of the User for which to get. (Default = `false`)") @QueryParam("username")
+          String userName)
       throws IOException {
-    String userName = securityContext.getUserPrincipal().getName();
+    if (userName != null) {
+      authorizer.authorizeAdmin(securityContext);
+    } else {
+      userName = securityContext.getUserPrincipal().getName();
+    }
     User user = dao.getByName(null, userName, getFields("id"), Include.NON_DELETED);
     List<TokenInterface> tokens =
-        tokenRepository.findByUserIdAndType(user.getId().toString(), TokenType.PERSONAL_ACCESS.value());
+        tokenRepository.findByUserIdAndType(user.getId().toString(), TokenType.PERSONAL_ACCESS_TOKEN.value());
     return Response.status(Response.Status.OK).entity(tokens).build();
   }
 
   @PUT
-  @Path("/token/revoke")
+  @Path("/security/token/revoke")
   @Operation(
       operationId = "revokePersonalAccessToken",
       summary = "Revoke personal access token to User",
@@ -1089,22 +1100,42 @@ public class UserResource extends EntityResource<User, UserRepository> {
       responses = {
         @ApiResponse(
             responseCode = "200",
-            description = "The user ",
+            description = "The Personal access token ",
             content =
                 @Content(mediaType = "application/json", schema = @Schema(implementation = PersonalAccessToken.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
-  public Response revokePersonalAccessToken(@Context UriInfo uriInfo, @Context SecurityContext securityContext)
+  public Response revokePersonalAccessToken(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Username in case admin is revoking. (Default = `false`)") @QueryParam("username")
+          String userName,
+      @Parameter(description = "Remove All tokens of the user. (Default = `false`)")
+          @QueryParam("removeAll")
+          @DefaultValue("false")
+          boolean removeAll,
+      @Valid RevokePersonalTokenRequest request)
       throws IOException {
-    String userName = securityContext.getUserPrincipal().getName();
+    if (!CommonUtil.nullOrEmpty(userName)) {
+      authorizer.authorizeAdmin(securityContext);
+    } else {
+      userName = securityContext.getUserPrincipal().getName();
+    }
     User user = dao.getByName(null, userName, getFields("id"), Include.NON_DELETED);
-    tokenRepository.deleteTokenByUserAndType(user.getId().toString(), TokenType.PERSONAL_ACCESS.value());
-    UserTokenCache.getInstance().invalidateToken(userName);
-    return Response.status(Response.Status.OK).build();
+    if (removeAll) {
+      tokenRepository.deleteTokenByUserAndType(user.getId().toString(), TokenType.PERSONAL_ACCESS_TOKEN.value());
+    } else {
+      List<String> ids = request.getTokenIds().stream().map(UUID::toString).collect(Collectors.toList());
+      tokenRepository.deleteAllToken(ids);
+    }
+    UserTokenCache.getInstance().invalidateToken(user.getName());
+    return Response.status(Response.Status.OK)
+        .entity(tokenRepository.findByUserIdAndType(user.getId().toString(), TokenType.PERSONAL_ACCESS_TOKEN.value()))
+        .build();
   }
 
   @POST
-  @Path("/token/personal")
+  @Path("/security/token")
   @Operation(
       operationId = "createPersonalAccessToken",
       summary = "Provide access token to User",
@@ -1119,16 +1150,11 @@ public class UserResource extends EntityResource<User, UserRepository> {
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response createAccessToken(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Valid GenerateTokenRequest generateTokenRequest)
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreatePersonalToken tokenRequest)
       throws IOException {
     String userName = securityContext.getUserPrincipal().getName();
-    User user = dao.getByName(null, userName, getFields("id,email,isBot"), Include.NON_DELETED);
+    User user = dao.getByName(null, userName, getFields("email,isBot"), Include.NON_DELETED);
     if (!user.getIsBot()) {
-      // remove users existing Personal Tokens
-      List<TokenInterface> existingToken =
-          tokenRepository.findByUserIdAndType(user.getId().toString(), TokenType.PERSONAL_ACCESS.value());
       // Create Personal Access Token
       JWTAuthMechanism authMechanism =
           JWTTokenGenerator.getInstance()
@@ -1137,14 +1163,9 @@ public class UserResource extends EntityResource<User, UserRepository> {
                   user.getEmail(),
                   false,
                   ServiceTokenType.PERSONAL_ACCESS,
-                  getExpiryDate(generateTokenRequest.getJWTTokenExpiry()));
-      PersonalAccessToken personalAccessToken = TokenUtil.getPersonalAccessToken(user, authMechanism);
+                  getExpiryDate(tokenRequest.getJWTTokenExpiry()));
+      PersonalAccessToken personalAccessToken = TokenUtil.getPersonalAccessToken(tokenRequest, user, authMechanism);
       tokenRepository.insertToken(personalAccessToken);
-
-      // Remove the previous tokens from DB and Cache
-      List<String> tokens = existingToken.stream().map((t) -> t.getToken().toString()).collect(Collectors.toList());
-      tokenRepository.deleteAllToken(tokens);
-      UserTokenCache.getInstance().invalidateToken(userName);
       return Response.status(Response.Status.OK).entity(personalAccessToken).build();
     }
     throw new CustomExceptionMessage(BAD_REQUEST, "Bots cannot have a Personal Access Token.");

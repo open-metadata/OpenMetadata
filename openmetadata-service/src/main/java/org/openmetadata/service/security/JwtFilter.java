@@ -244,7 +244,7 @@ public class JwtFilter implements ContainerRequestFilter {
   }
 
   private void validatePersonalAccessToken(String tokenFromHeader, String userName) {
-    if (tokenFromHeader.equals(UserTokenCache.getInstance().getToken(userName))) {
+    if (UserTokenCache.getInstance().getToken(userName).contains(tokenFromHeader)) {
       return;
     }
     throw new AuthenticationException("Not Authorized! Invalid Token");

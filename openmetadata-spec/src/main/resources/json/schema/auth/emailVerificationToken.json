@@ -15,7 +15,7 @@
         "REFRESH_TOKEN",
         "EMAIL_VERIFICATION",
         "PASSWORD_RESET",
-        "PERSONAL_ACCESS"
+        "PERSONAL_ACCESS_TOKEN"
       ]
     }
   },

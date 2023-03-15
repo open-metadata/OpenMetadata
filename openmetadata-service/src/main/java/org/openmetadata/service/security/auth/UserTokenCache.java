@@ -7,11 +7,13 @@ import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
 import com.google.common.util.concurrent.UncheckedExecutionException;
 import java.io.IOException;
+import java.util.HashSet;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import javax.annotation.CheckForNull;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.TokenInterface;
 import org.openmetadata.schema.auth.PersonalAccessToken;
 import org.openmetadata.schema.auth.TokenType;
 import org.openmetadata.schema.entity.teams.User;
@@ -25,7 +27,7 @@ import org.openmetadata.service.util.EntityUtil;
 @Slf4j
 public class UserTokenCache {
   private static UserTokenCache INSTANCE;
-  private static LoadingCache<String, String> USER_TOKEN_CACHE;
+  private static LoadingCache<String, HashSet<String>> USER_TOKEN_CACHE;
   private static volatile boolean INITIALIZED = false;
   private static TokenRepository tokenRepository;
 
@@ -45,7 +47,7 @@ public class UserTokenCache {
     }
   }
 
-  public String getToken(String userName) {
+  public HashSet<String> getToken(String userName) {
     try {
       return USER_TOKEN_CACHE.get(userName);
     } catch (ExecutionException | UncheckedExecutionException ex) {
@@ -65,19 +67,18 @@ public class UserTokenCache {
     return INSTANCE;
   }
 
-  static class UserTokenLoader extends CacheLoader<String, String> {
+  static class UserTokenLoader extends CacheLoader<String, HashSet<String>> {
     @Override
-    public String load(@CheckForNull String userName) throws IOException {
+    public HashSet<String> load(@CheckForNull String userName) throws IOException {
+      HashSet<String> result = new HashSet<>();
       UserRepository userRepository = (UserRepository) Entity.getEntityRepository(Entity.USER);
       User user =
           userRepository.getByName(
               null, userName, new EntityUtil.Fields(List.of(UserResource.USER_PROTECTED_FIELDS)), NON_DELETED);
-      // Here since as of now we are only creating one Personal Access Token we can do this, but when a user can have
-      // multiple access token it will need updating
-      PersonalAccessToken token =
-          (PersonalAccessToken)
-              tokenRepository.findByUserIdAndType(user.getId().toString(), TokenType.PERSONAL_ACCESS.value()).get(0);
-      return token.getJwtToken();
+      List<TokenInterface> tokens =
+          tokenRepository.findByUserIdAndType(user.getId().toString(), TokenType.PERSONAL_ACCESS_TOKEN.value());
+      tokens.forEach((t) -> result.add(((PersonalAccessToken) t).getJwtToken()));
+      return result;
     }
   }
 }

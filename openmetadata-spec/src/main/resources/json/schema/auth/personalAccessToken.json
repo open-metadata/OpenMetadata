@@ -11,6 +11,10 @@
       "description": "Unique Refresh Token for user",
       "$ref": "../type/basic.json#/definitions/uuid"
     },
+    "tokenName": {
+      "description": "Name of the token",
+      "type": "string"
+    },
     "userId": {
       "description": "User Id of the User this refresh token is given to",
       "$ref": "../type/basic.json#/definitions/uuid"

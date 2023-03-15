@@ -17,6 +17,7 @@ import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.UUID;
 import org.openmetadata.schema.TokenInterface;
+import org.openmetadata.schema.auth.CreatePersonalToken;
 import org.openmetadata.schema.auth.EmailVerificationToken;
 import org.openmetadata.schema.auth.JWTAuthMechanism;
 import org.openmetadata.schema.auth.PasswordResetToken;
@@ -73,11 +74,13 @@ public class TokenUtil {
     return refreshToken;
   }
 
-  public static PersonalAccessToken getPersonalAccessToken(User user, JWTAuthMechanism authMechanism) {
+  public static PersonalAccessToken getPersonalAccessToken(
+      CreatePersonalToken request, User user, JWTAuthMechanism authMechanism) {
     PersonalAccessToken personalAccessToken = new PersonalAccessToken();
     personalAccessToken.setToken(UUID.randomUUID());
+    personalAccessToken.setTokenName(request.getTokenName());
     personalAccessToken.setUserId(user.getId());
-    personalAccessToken.setTokenType(TokenType.PERSONAL_ACCESS);
+    personalAccessToken.setTokenType(TokenType.PERSONAL_ACCESS_TOKEN);
     personalAccessToken.setJwtToken(authMechanism.getJWTToken());
     personalAccessToken.setExpiryDate(authMechanism.getJWTTokenExpiresAt());
     return personalAccessToken;

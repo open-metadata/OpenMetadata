@@ -3393,7 +3393,7 @@ public interface CollectionDAO {
         case REFRESH_TOKEN:
           resp = JsonUtils.readValue(json, RefreshToken.class);
           break;
-        case PERSONAL_ACCESS:
+        case PERSONAL_ACCESS_TOKEN:
           resp = JsonUtils.readValue(json, PersonalAccessToken.class);
           break;
         default:
