@@ -28,11 +28,15 @@ const ServiceRequirements: FC<ServiceRequirementsProp> = ({
 }) => {
   const { t } = useTranslation();
 
+  const markdownText = t('requirement', { ns: selectServiceType });
+
   return (
     <Row data-testid="service-requirements">
       <Col span={24}>
         <RichTextEditorPreviewer
-          markdown={t('requirement', { ns: selectServiceType })}
+          enableSeeMoreVariant={false}
+          markdown={markdownText}
+          maxLength={markdownText.length}
         />
       </Col>
       <Col className="d-flex justify-end mt-12" span={24}>
