@@ -198,7 +198,7 @@ const AddService = ({
       onAddServiceSave(configData)
         .then(() => {
           handleAirflowStatusCheck().finally(() => {
-            setActiveServiceStep(4);
+            setActiveServiceStep(5);
             resolve();
           });
         })
