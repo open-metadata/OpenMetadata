@@ -15,16 +15,22 @@ supporting sqlalchemy abstraction layer
 """
 
 import traceback
+import random
 from collections import defaultdict
 from datetime import datetime, timezone
 from typing import Dict, List
 
 from sqlalchemy import Column
 
-from metadata.generated.schema.entity.data.table import DataType, TableData
+from metadata.generated.schema.entity.data.table import (
+    DataType,
+    TableData,
+    ProfileSampleType,
+)
 from metadata.generated.schema.entity.services.connections.database.datalakeConnection import (
     DatalakeConnection,
 )
+
 from metadata.ingestion.api.processor import ProfilerProcessorStatus
 from metadata.ingestion.source.connections import get_connection
 from metadata.ingestion.source.database.datalake.metadata import (
@@ -85,6 +91,38 @@ class PandasProfilerInterface(ProfilerProtocol, PandasInterfaceMixin):
             client=self.client,
             table=self.table,
         )
+        # shuffling sample data for profiling
+        random.shuffle(self.dfs)
+
+        # sampling data based on profiler config (if any)
+        if hasattr(self.profile_sample_config, "profile_sample"):
+            if (
+                self.profile_sample_config.profile_sample_type
+                == ProfileSampleType.PERCENTAGE
+            ):
+                self.dfs = [
+                    df.sample(
+                        frac=self.profile_sample_config.profile_sample / 100,
+                        random_state=random.randint(0, 100),
+                        replace=True,
+                    )
+                    for df in self.dfs
+                ]
+            elif (
+                self.profile_sample_config.profile_sample_type == ProfileSampleType.ROWS
+            ):
+                # TODO add ROWS logic
+                pass
+        else:
+            # randomize the samples
+            self.dfs = [
+                df.sample(
+                    frac=1,
+                    random_state=random.randint(0, 100),
+                )
+                for df in self.dfs
+            ]
+
         if self.dfs and self.table_partition_config:
             self.dfs = [self.get_partitioned_df(df) for df in self.dfs]
 
@@ -101,7 +139,6 @@ class PandasProfilerInterface(ProfilerProtocol, PandasInterfaceMixin):
         self,
         metric_type: str,
         metrics: List[Metrics],
-        dfs: List,
         *args,
         **kwargs,
     ):
@@ -118,10 +155,14 @@ class PandasProfilerInterface(ProfilerProtocol, PandasInterfaceMixin):
         try:
             row = []
             for metric in metrics:
-                for df in dfs:
-                    row.append(
-                        metric().df_fn(df.astype(object).where(pd.notnull(df), None))
+                row.append(
+                    metric().df_fn(
+                        [
+                            df.astype(object).where(pd.notnull(df), None)
+                            for df in self.dfs
+                        ]
                     )
+                )
             if row:
                 if isinstance(row, list):
                     row_dict = {}
@@ -143,7 +184,6 @@ class PandasProfilerInterface(ProfilerProtocol, PandasInterfaceMixin):
         metric_type: str,
         metrics: List[Metrics],
         column,
-        dfs,
         *args,
         **kwargs,
     ):
@@ -161,12 +201,8 @@ class PandasProfilerInterface(ProfilerProtocol, PandasInterfaceMixin):
         try:
             row = []
             for metric in metrics:
-                for df in dfs:
-                    row.append(
-                        metric(column).df_fn(
-                            df.astype(object).where(pd.notnull(df), None)
-                        )
-                    )
+                metric_resp = metric(column).df_fn(self.dfs)
+                row.append(None if pd.isnull(metric_resp) else metric_resp)
             row_dict = {}
             for index, column_metric in enumerate(metrics):
                 row_dict[column_metric.name()] = row[index]
@@ -184,7 +220,6 @@ class PandasProfilerInterface(ProfilerProtocol, PandasInterfaceMixin):
         metric_type: str,
         metrics: Metrics,
         column,
-        dfs,
         *args,
         **kwargs,
     ):
@@ -198,8 +233,7 @@ class PandasProfilerInterface(ProfilerProtocol, PandasInterfaceMixin):
             dictionnary of results
         """
         col_metric = None
-        for df in dfs:
-            col_metric = metrics(column).df_fn(df)
+        col_metric = metrics(column).df_fn(self.dfs)
         if not col_metric:
             return None
         return {metrics.name(): col_metric}
@@ -254,7 +288,6 @@ class PandasProfilerInterface(ProfilerProtocol, PandasInterfaceMixin):
                 metric_type.value,
                 metrics,
                 session=self.client,
-                dfs=self.dfs,
                 column=column,
             )
         except Exception as exc:

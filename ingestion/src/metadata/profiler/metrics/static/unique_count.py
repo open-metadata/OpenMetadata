@@ -65,16 +65,12 @@ class UniqueCount(QueryMetric):
         only_once_cte = only_once.cte("only_once")
         return session.query(func.count().label(self.name())).select_from(only_once_cte)
 
-    def df_fn(self, df=None):
+    def df_fn(self, dfs=None):
         """
         Build the Unique Count metric
         """
-        from pandas import DataFrame  # pylint: disable=import-outside-toplevel
-
-        df = cast(DataFrame, df)
-
         try:
-            return df[self.col.name].nunique()
+            return sum([len(df[self.col.name].unique()) for df in dfs])
         except Exception as err:
             logger.debug(
                 f"Don't know how to process type {self.col.type}"

@@ -21,7 +21,6 @@ from typing import List, Union
 
 import pandas as pd
 from avro.datafile import DataFileReader
-from avro.errors import InvalidAvroBinaryEncoding
 from avro.io import DatumReader
 
 from metadata.generated.schema.entity.data.table import Column
@@ -45,6 +44,8 @@ PD_AVRO_FIELD_MAP = {
 
 AVRO_SCHEMA = "avro.schema"
 
+class InvalidAvroBinaryEncoding(Exception):
+    """For invalid numbers of bytes read."""
 
 COMPLEX_COLUMN_SEPARATOR = "_##"
 

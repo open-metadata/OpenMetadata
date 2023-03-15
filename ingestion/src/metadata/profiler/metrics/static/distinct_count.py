@@ -43,13 +43,9 @@ class DistinctCount(StaticMetric):
     def fn(self):
         return func.count(distinct(column(self.col.name)))
 
-    def df_fn(self, df=None):
-        from pandas import DataFrame  # pylint: disable=import-outside-toplevel
-
-        df = cast(DataFrame, df)
-
+    def df_fn(self, dfs=None):
         try:
-            return len(set(df[self.col.name].values.tolist()))
+            return sum(df[self.col.name].nunique() for df in dfs)
         except Exception as err:
             logger.debug(
                 f"Don't know how to process type {self.col.type} "

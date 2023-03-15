@@ -58,18 +58,12 @@ class MaxLength(StaticMetric):
         return None
 
     # pylint: disable=import-outside-toplevel
-    def df_fn(self, df=None):
+    def df_fn(self, dfs=None):
         """dataframe function"""
-        import pandas as pd
         from numpy import vectorize
-
-        df = cast(pd.DataFrame, df)  # satisfy mypy
-
         if self._is_concatenable():
             length_vector_fn = vectorize(len)
-            return length_vector_fn(
-                df[self.col.name][~df[self.col.name].isnull()]
-            ).max()
+            return max([length_vector_fn(df[self.col.name]).max() for df in dfs])
         logger.debug(
             f"Don't know how to process type {self.col.type} when computing MAX_LENGTH"
         )

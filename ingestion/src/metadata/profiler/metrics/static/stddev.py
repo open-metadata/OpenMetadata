@@ -20,7 +20,7 @@ from typing import cast
 from sqlalchemy import column
 from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.sql.functions import FunctionElement
-
+import statistics
 from metadata.profiler.metrics.core import CACHE, StaticMetric, _label
 from metadata.profiler.orm.registry import Dialects, is_quantifiable
 from metadata.utils.logger import profiler_logger
@@ -90,17 +90,11 @@ class StdDev(StaticMetric):
         )
         return None
 
-    def df_fn(self, df=None):
+    def df_fn(self, dfs=None):
         """pandas function"""
-        import pandas as pd  # pylint: disable=import-outside-toplevel
-
-        df = cast(pd.DataFrame, df)
-
         if is_quantifiable(self.col.type):
-            stddev = df[self.col.name].std()
-            if pd.isnull(stddev):
-                return None
-            return stddev
+            return statistics.fmean([df[self.col.name].std() for df in dfs])
+
         logger.debug(
             f"{self.col.name} has type {self.col.type}, which is not listed as quantifiable."
             + " We won't compute STDDEV for it."

@@ -84,9 +84,9 @@ class ColumnNames(StaticMetric):
         col_names = ",".join(inspect(self.table).c.keys())
         return ColunNameFn(literal(col_names, type_=sqlalchemy.types.String))
 
-    def df_fn(self, df=None):
+    def df_fn(self, dfs=None):
         from pandas import DataFrame  # pylint: disable=import-outside-toplevel
 
-        df = cast(DataFrame, df)
+        df = cast(DataFrame, dfs[0])
 
         return df.columns.values.tolist()

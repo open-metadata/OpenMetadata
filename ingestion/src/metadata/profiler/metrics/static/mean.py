@@ -16,7 +16,7 @@ AVG Metric definition
 
 
 from typing import cast
-
+import statistics
 from sqlalchemy import column, func
 from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.sql.functions import GenericFunction
@@ -84,19 +84,18 @@ class Mean(StaticMetric):
         return None
 
     # pylint: disable=import-outside-toplevel
-    def df_fn(self, df=None):
+    def df_fn(self, dfs=None):
         """dataframe function"""
         from numpy import vectorize
-        from pandas import DataFrame
-
-        df = cast(DataFrame, df)  # satisfy mypy
 
         if is_quantifiable(self.col.type):
-            return df[self.col.name].mean()
+            return statistics.fmean([df[self.col.name].mean() for df in dfs])
 
-        if is_concatenable(self.col.type):
+        elif is_concatenable(self.col.type):
             length_vector_fn = vectorize(len)
-            return length_vector_fn(df[self.col.name]).mean()
+            return statistics.fmean(
+                [length_vector_fn(df[self.col.name]).mean() for df in dfs]
+            )
 
         logger.warning(
             f"Don't know how to process type {self.col.type} when computing MEAN"

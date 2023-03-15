@@ -58,18 +58,12 @@ class MinLength(StaticMetric):
         return None
 
     # pylint: disable=import-outside-toplevel
-    def df_fn(self, df=None):
+    def df_fn(self, dfs=None):
         """dataframe function"""
         from numpy import vectorize
-        from pandas import DataFrame
-
-        df = cast(DataFrame, df)  # satisfy mypy
-
         if self._is_concatenable():
             length_vector_fn = vectorize(len)
-            return length_vector_fn(
-                df[self.col.name][~df[self.col.name].isnull()]
-            ).min()
+            return min([length_vector_fn(df[self.col.name]).min() for df in dfs])
         logger.debug(
             f"Don't know how to process type {self.col.type} when computing MIN_LENGTH"
         )

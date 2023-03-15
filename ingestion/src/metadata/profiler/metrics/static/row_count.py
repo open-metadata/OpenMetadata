@@ -48,9 +48,7 @@ class RowCount(StaticMetric):
         """sqlalchemy function"""
         return func.count()
 
-    def df_fn(self, df=None):
+    def df_fn(self, dfs=None):
         """pandas function"""
         from pandas import DataFrame  # pylint: disable=import-outside-toplevel
-
-        df = cast(DataFrame, df)
-        return len(df.index)
+        return sum([len(cast(DataFrame,df).index) for df in dfs])

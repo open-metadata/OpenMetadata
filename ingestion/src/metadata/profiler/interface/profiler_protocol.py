@@ -128,17 +128,13 @@ class ProfilerProtocol(ABC):
                 profile_sample=entity_config.profileSample,
                 profile_sample_type=entity_config.profileSampleType,
             )
-
-        try:
-            profile_sample = entity.tableProfilerConfig.profileSample
-        except AttributeError:
-            pass
-        else:
-            if profile_sample:
-                return ProfileSampleConfig(
-                    profile_sample=entity.tableProfilerConfig.profileSample,
-                    profile_sample_type=entity.tableProfilerConfig.profileSampleType,
-                )
+        if hasattr(entity.tableProfilerConfig, "profileSample") and hasattr(
+            entity.tableProfilerConfig, "profileSampleType"
+        ):
+            return ProfileSampleConfig(
+                profile_sample=entity.tableProfilerConfig.profileSample,
+                profile_sample_type=entity.tableProfilerConfig.profileSampleType,
+            )
 
         if source_config.profileSample:
             return ProfileSampleConfig(

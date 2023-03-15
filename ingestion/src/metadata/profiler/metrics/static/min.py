@@ -41,16 +41,8 @@ class Min(StaticMetric):
         return func.min(column(self.col.name))
 
     # pylint: disable=import-outside-toplevel
-    def df_fn(self, df=None):
+    def df_fn(self, dfs=None):
         """pandas function"""
-        from pandas import DataFrame
-
-        df = cast(DataFrame, df)
-
         if is_quantifiable(self.col.type) or is_date_time(self.col.type):
-            return (
-                df[self.col.name].min()
-                if not isinstance(df[self.col.name].min(), list)
-                else df[self.col.name].apply(max).max()
-            )
+            return min([df[self.col.name].min() for df in dfs])
         return 0
