@@ -53,7 +53,7 @@ class OMetaQueryMixin:
                 )
 
     def get_entity_queries(
-        self, entity_id: Union[Uuid, str], fields: Optional[List[str]] = []
+        self, entity_id: Union[Uuid, str], fields: Optional[List[str]] = None
     ) -> Optional[List[Query]]:
         """Get the queries attached to a table
 
