@@ -383,7 +383,10 @@ class TableauSource(DashboardServiceSource):
                     else ""
                 )
                 chart_url = None
-                if "/sheets/" in chart.content_url:
+                if (
+                    "/sheets/" in chart.content_url
+                    and len(chart.content_url.split("/")) > 1
+                ):
                     chart_url = (
                         f"#{site_url}"
                         f"views/{chart.content_url.split('/')[0]}/"
