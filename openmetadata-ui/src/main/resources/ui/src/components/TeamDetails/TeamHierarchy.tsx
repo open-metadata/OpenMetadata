@@ -184,15 +184,16 @@ const TeamHierarchy: FC<TeamHierarchyProps> = ({
         data-testid="confirmation-modal"
         okText={t('label.confirm')}
         open={isModalOpen}
-        title={t('label.move-the-team')}
+        title={t('label.move-the-entity', { entity: t('label.team') })}
         onCancel={() => setIsModalOpen(false)}
         onOk={handleChangeTeam}>
         <Transi18next
-          i18nKey="message.team-transfer-message"
+          i18nKey="message.entity-transfer-message"
           renderElement={<strong />}
           values={{
             from: movedTeam?.from?.name,
             to: movedTeam?.to?.name,
+            entity: t('label.team-lowercase'),
           }}
         />
       </Modal>

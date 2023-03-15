@@ -27,7 +27,6 @@ from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.chart import Chart
-from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.entity.services.connections.dashboard.domoDashboardConnection import (
     DomoDashboardConnection,
 )
@@ -95,8 +94,10 @@ class DomodashboardSource(DashboardServiceSource):
     def get_dashboard_details(self, dashboard: DomoDashboardDetails) -> dict:
         return dashboard
 
-    def get_owner_details(self, owners: List[DomoOwner]) -> Optional[EntityReference]:
-        for owner in owners:
+    def get_owner_details(
+        self, dashboard_details: DomoDashboardDetails
+    ) -> Optional[EntityReference]:
+        for owner in dashboard_details.owners:
             try:
                 owner_details = self.client.users_get(owner.id)
                 if owner_details.get("email"):
@@ -111,18 +112,6 @@ class DomodashboardSource(DashboardServiceSource):
                     f"Error while getting details of user {owner.displayName} - {exc}"
                 )
         return None
-
-    def process_owner(
-        self, dashboard_details: DomoDashboardDetails
-    ) -> Optional[Dashboard]:
-        owner = self.get_owner_details(owners=dashboard_details.owners)
-        if owner and self.source_config.overrideOwner:
-            self.metadata.patch_owner(
-                entity=Dashboard,
-                entity_id=self.context.dashboard.id,
-                owner=owner,
-                force=True,
-            )
 
     def yield_dashboard(
         self, dashboard_details: DomoDashboardDetails
