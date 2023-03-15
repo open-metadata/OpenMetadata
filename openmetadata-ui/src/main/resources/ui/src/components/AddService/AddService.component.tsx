@@ -32,6 +32,7 @@ import {
   getServiceCreatedLabel,
   getServiceIngestionStepGuide,
   getServiceRouteFromServiceType,
+  getServiceType,
 } from '../../utils/ServiceUtils';
 import AddIngestion from '../AddIngestion/AddIngestion.component';
 import SuccessScreen from '../common/success-screen/SuccessScreen';
@@ -323,7 +324,7 @@ const AddService = ({
 
   useEffect(() => {
     if (selectServiceType) {
-      addLocalResource(selectServiceType, serviceCategory);
+      addLocalResource(selectServiceType, getServiceType(serviceCategory));
     }
   }, [selectServiceType, serviceCategory]);
 

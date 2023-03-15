@@ -11,13 +11,11 @@
  *  limitations under the License.
  */
 
-import { ServiceCategory } from 'enums/service.enum';
 import { ServiceType } from 'generated/entity/services/serviceType';
 import i18n from 'i18next';
 import LanguageDetector from 'i18next-browser-languagedetector';
 import { isEmpty } from 'lodash';
 import { initReactI18next } from 'react-i18next';
-import { getServiceType } from 'utils/ServiceUtils';
 import { getInitOptions, SupportedLocales } from './i18nextUtil';
 
 // Initialize i18next (language)
@@ -71,11 +69,9 @@ const addTranslationsToI18n = (
  */
 export const addLocalResource = async (
   nameSpace: string,
-  serviceCategory: ServiceCategory
+  serviceType: ServiceType
 ) => {
   const isEnglishLanguage = i18n.language === SupportedLocales.English;
-
-  const serviceType = getServiceType(serviceCategory);
 
   const [translation, fallbackTranslation] = await Promise.allSettled([
     fetchTranslation(i18n.language, nameSpace, serviceType),
