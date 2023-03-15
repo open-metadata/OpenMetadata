@@ -147,7 +147,7 @@ class PowerbiSource(DashboardServiceSource):
         """
         Get List of all dashboards
         """
-        return self.context.workspace.get("dashboards")
+        return self.context.workspace.get("dashboards", [])
 
     def get_dashboard_name(self, dashboard: dict) -> str:
         """

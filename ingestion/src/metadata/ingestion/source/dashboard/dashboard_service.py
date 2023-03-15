@@ -221,7 +221,7 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
         """
         Method to fetch dashboard tags
         """
-        return  # Dashboard does not support fetching tags except Tableau
+        return  # Dashboard does not support fetching tags except Tableau and Redash
 
     def yield_dashboard_usage(
         self, *args, **kwargs  # pylint: disable=W0613

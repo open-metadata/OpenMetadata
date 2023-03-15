@@ -37,6 +37,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useHistory } from 'react-router-dom';
 import { getListTestSuites } from 'rest/testAPI';
+import { getEntityName } from 'utils/EntityUtils';
 import { checkPermission } from 'utils/PermissionsUtils';
 import {
   INITIAL_PAGING_VALUE,
@@ -51,7 +52,7 @@ import { Operation } from '../../generated/entity/policies/policy';
 import { TestSuite } from '../../generated/tests/testSuite';
 import { Include } from '../../generated/type/include';
 import { Paging } from '../../generated/type/paging';
-import { getEntityName, pluralize } from '../../utils/CommonUtils';
+import { pluralize } from '../../utils/CommonUtils';
 import { getTestSuitePath } from '../../utils/RouterUtils';
 
 const TestSuitePage = () => {
@@ -106,7 +107,7 @@ const TestSuitePage = () => {
           <Link
             data-testid={`test-suite-${record.name}`}
             to={getTestSuitePath(record.name)}>
-            {record.name}
+            {getEntityName(record)}
           </Link>
         ),
       },

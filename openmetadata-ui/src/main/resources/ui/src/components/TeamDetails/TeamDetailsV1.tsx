@@ -66,12 +66,8 @@ import {
   PlaceholderProps,
   TeamDetailsProp,
 } from '../../interface/teamsAndUsers.interface';
-import {
-  getEntityName,
-  getTierFromEntityInfo,
-  hasEditAccess,
-} from '../../utils/CommonUtils';
-import { filterEntityAssets } from '../../utils/EntityUtils';
+import { getTierFromEntityInfo, hasEditAccess } from '../../utils/CommonUtils';
+import { filterEntityAssets, getEntityName } from '../../utils/EntityUtils';
 import {
   checkPermission,
   DEFAULT_ENTITY_PERMISSION,
