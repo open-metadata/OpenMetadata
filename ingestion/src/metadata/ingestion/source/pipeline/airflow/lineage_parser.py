@@ -89,7 +89,9 @@ def parse_xlets(xlet: List[dict]) -> Optional[Dict[str, List[str]]]:
         xlet_dict = xlet[0]
 
         return {
-            key: value for key, value in xlet_dict.items() if isinstance(value, list)
+            key: value["tables"]
+            for key, value in xlet_dict.items()
+            if isinstance(value, dict) and isinstance(value.get("tables"), list)
         }
 
     return None
