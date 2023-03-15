@@ -14,13 +14,14 @@
 import { Col, Row } from 'antd';
 import { AxiosError } from 'axios';
 import { Query } from 'generated/entity/data/query';
-import { isEmpty } from 'lodash';
+import { isUndefined } from 'lodash';
 import React, { FC, useEffect, useState } from 'react';
 import { getQueriesList } from 'rest/queryAPI';
 import { showErrorToast } from '../../utils/ToastUtils';
 import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder';
 import Loader from '../Loader/Loader';
 import QueryCard from './QueryCard';
+import TableQueryRightPanel from './TableQueryRightPanel/TableQueryRightPanel.component';
 
 interface TableQueriesProp {
   isTableDeleted?: boolean;
@@ -47,6 +48,10 @@ const TableQueries: FC<TableQueriesProp> = ({
     }
   };
 
+  const handleSelectedQuery = (query: Query) => {
+    setSelectedQuery(query);
+  };
+
   useEffect(() => {
     setIsQueriesLoading(true);
     if (tableId && !isTableDeleted) {
@@ -61,18 +66,24 @@ const TableQueries: FC<TableQueriesProp> = ({
   }
 
   return (
-    <Row className="p-xs" gutter={32} id="tablequeries">
-      {tableQueries && !isEmpty(tableQueries) ? (
+    <Row gutter={32} id="tablequeries">
+      {tableQueries.length && !isUndefined(selectedQuery) ? (
         <>
           <Col span={18}>
             <div className="m-y-lg" data-testid="queries-container">
               {tableQueries.map((query, index) => (
-                <QueryCard key={index} query={query} />
+                <QueryCard
+                  key={index}
+                  query={query}
+                  onQuerySelection={handleSelectedQuery}
+                />
               ))}
             </div>
           </Col>
           <Col className="bg-white" span={6}>
-            {selectedQuery?.query}
+            <div className="tw-sticky tw-top-0">
+              <TableQueryRightPanel query={selectedQuery} />
+            </div>
           </Col>
         </>
       ) : (

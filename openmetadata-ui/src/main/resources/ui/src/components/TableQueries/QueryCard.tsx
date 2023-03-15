@@ -23,8 +23,13 @@ import CopyToClipboardButton from '../buttons/CopyToClipboardButton/CopyToClipbo
 import SchemaEditor from '../schema-editor/SchemaEditor';
 interface QueryCardProp extends HTMLAttributes<HTMLDivElement> {
   query: Query;
+  onQuerySelection: (query: Query) => void;
 }
-const QueryCard: FC<QueryCardProp> = ({ className, query }) => {
+const QueryCard: FC<QueryCardProp> = ({
+  className,
+  query,
+  onQuerySelection,
+}: QueryCardProp) => {
   const [expanded, setExpanded] = useState<boolean>(false);
 
   return (
@@ -33,7 +38,10 @@ const QueryCard: FC<QueryCardProp> = ({ className, query }) => {
         'tw-bg-white tw-py-3 tw-mb-3 tw-cursor-pointer',
         className
       )}
-      onClick={() => setExpanded((pre) => !pre)}>
+      onClick={() => {
+        setExpanded((pre) => !pre);
+        onQuerySelection(query);
+      }}>
       {/* {!isUndefined(query.user) && !isUndefined(query.duration) ? (
         <div data-testid="query-header">
           <p>
