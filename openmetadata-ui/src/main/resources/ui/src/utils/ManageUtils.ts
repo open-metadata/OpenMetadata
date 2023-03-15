@@ -11,73 +11,64 @@
  *  limitations under the License.
  */
 
-import { toString } from 'lodash';
+import { ReactNode } from 'react';
 import AppState from '../AppState';
-import { WILD_CARD_CHAR } from '../constants/char.constants';
 import { Team } from '../generated/entity/teams/team';
 import { User } from '../generated/entity/teams/user';
-import { EntityReference } from '../generated/type/entityUsage';
 import { getEntityName } from './EntityUtils';
+
+export type OwnerItem = {
+  name: string;
+  value: string;
+  group: string;
+  type: string;
+} & Record<string, ReactNode>;
 
 /**
  * @param listUsers - List of users
  * @param listTeams - List of teams
- * @param excludeCurrentUser - Wether to exclude current user to be on list. Needed when calls from searching
- * @param searchQuery - search query for user or team
- * @returns List of user or team
+ * @param excludeCurrentUser - Whether to exclude current user from the list
+ * @param searchQuery - Search query for user or team
+ * @returns List of users or teams
  */
 export const getOwnerList = (
-  listUsers?: User[],
-  listTeams?: Team[],
-  excludeCurrentUser?: boolean,
-  searchQuery?: string
-) => {
+  listUsers: User[] = [],
+  listTeams: Team[] = [],
+  excludeCurrentUser = false
+): OwnerItem[] => {
   const userDetails = AppState.getCurrentUserDetails();
 
-  const isAdminIncludeInQuery =
-    getEntityName(userDetails).includes(toString(searchQuery)) ||
-    searchQuery === WILD_CARD_CHAR
-      ? true
-      : false;
+  const users = listUsers.flatMap((user) =>
+    user.id !== userDetails?.id
+      ? [
+          {
+            name: getEntityName(user),
+            value: user.id,
+            group: 'Users',
+            type: 'user',
+          },
+        ]
+      : []
+  );
 
-  if (userDetails?.isAdmin) {
-    const users = (listUsers || [])
-      .map((user) => ({
-        name: getEntityName(user as unknown as EntityReference),
-        value: user.id,
-        group: 'Users',
-        type: 'user',
-      }))
-      .filter((u) => u.value !== userDetails.id);
-    const teams = (listTeams || []).map((team) => ({
-      name: getEntityName(team),
-      value: team.id,
-      group: 'Teams',
-      type: 'team',
-    }));
+  const teams = listTeams.map((team) => ({
+    name: getEntityName(team),
+    value: team.id,
+    group: 'Teams',
+    type: 'team',
+  }));
 
-    return [
-      ...(!excludeCurrentUser && isAdminIncludeInQuery
-        ? [
-            {
-              name: getEntityName(userDetails),
-              value: userDetails.id,
-              group: 'Users',
-              type: 'user',
-            },
-          ]
-        : []),
-      ...users,
-      ...teams,
-    ];
-  } else {
-    return [
-      {
-        name: getEntityName(userDetails),
-        value: userDetails?.id,
-        group: 'Users',
-        type: 'user',
-      },
-    ];
-  }
+  const currentUser =
+    !excludeCurrentUser && userDetails
+      ? [
+          {
+            name: getEntityName(userDetails),
+            value: userDetails.id,
+            group: 'Users',
+            type: 'user',
+          },
+        ]
+      : [];
+
+  return [...currentUser, ...users, ...teams];
 };
