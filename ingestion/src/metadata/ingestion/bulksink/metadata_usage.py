@@ -119,7 +119,10 @@ class MetadataUsageBulkSink(BulkSink):
             table_usage_request = None
             try:
                 table_usage_request = UsageRequest(
-                    date=value_dict["usage_date"], count=value_dict["usage_count"]
+                    date=datetime.fromtimestamp(int(value_dict["usage_date"])).strftime(
+                        "%Y-%m-%d"
+                    ),
+                    count=value_dict["usage_count"],
                 )
                 self.metadata.publish_table_usage(
                     value_dict["table_entity"], table_usage_request
