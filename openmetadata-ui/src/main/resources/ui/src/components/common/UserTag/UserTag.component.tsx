@@ -11,21 +11,49 @@
  *  limitations under the License.
  */
 
+import { CloseOutlined } from '@ant-design/icons';
 import { Space } from 'antd';
-import { isUndefined } from 'lodash';
+import classNames from 'classnames';
+import { isUndefined, toString } from 'lodash';
 import React from 'react';
 import ProfilePicture from '../ProfilePicture/ProfilePicture';
-import { UserTags } from './UserTag.interface';
+import './user-tag.less';
+import { UserTags, UserTagSize } from './UserTag.interface';
 
-export const UserTag = ({ id, name }: UserTags) => {
+export const UserTag = ({
+  id,
+  name,
+  onClose,
+  closable = false,
+  bordered,
+  size = UserTagSize.default,
+}: UserTags) => {
   if (isUndefined(id) && isUndefined(name)) {
     return null;
   }
 
+  let width = 24;
+  if (size === UserTagSize.small) {
+    width = 16;
+  } else if (size === UserTagSize.large) {
+    width = 32;
+  }
+
   return (
-    <Space data-testid="user-tag">
-      <ProfilePicture id={id} name={name} width="22" />
+    <Space
+      align="center"
+      className={classNames(
+        {
+          bordered: bordered,
+        },
+        'user-tag',
+        UserTagSize[size]
+      )}
+      data-testid="user-tag"
+      size={4}>
+      <ProfilePicture id={id} name={name} width={toString(width)} />
       <span>{name}</span>
+      {closable && <CloseOutlined size={width} onClick={onClose} />}
     </Space>
   );
 };
