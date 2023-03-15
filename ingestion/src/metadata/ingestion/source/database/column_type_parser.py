@@ -53,7 +53,7 @@ class ColumnTypeParser:
         types.ARRAY: "ARRAY",
         types.Boolean: "BOOLEAN",
         types.CHAR: "CHAR",
-        types.CLOB: "BINARY",
+        types.CLOB: "CLOB",
         types.Date: "DATE",
         types.DATE: "DATE",
         types.DateTime: "DATETIME",
@@ -187,8 +187,6 @@ class ColumnTypeParser:
         "VARIANT": "JSON",
         "JSON": "JSON",
         "JSONB": "JSON",
-        "XML": "BINARY",
-        "XMLTYPE": "BINARY",
         "UUID": "UUID",
         "POINT": "POINT",
         "POLYGON": "POLYGON",
@@ -211,9 +209,17 @@ class ColumnTypeParser:
         "XML": "XML",
         "TSVECTOR": "TSVECTOR",
         "MACADDR": "MACADDR",
-        "MACADDR8": "MACADDR8",
+        "MACADDR8": "MACADDR",
         "CIDR": "CIDR",
         "INET": "INET",
+        # ORACLE
+        "BINARY_DOUBLE": "DOUBLE",
+        "BINARY_FLOAT": "FLOAT",
+        "XMLTYPE": "XML",
+        "BFILE": "BINARY",
+        "ROWID": "ROWID",
+        "CLOB": "CLOB",
+        "NCLOB": "CLOB",
     }
 
     _COMPLEX_TYPE = re.compile("^(struct|map|array|uniontype)")

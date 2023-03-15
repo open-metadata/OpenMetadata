@@ -137,11 +137,12 @@
         "TXID_SNAPSHOT",
         "XML",
         "MACADDR",
-        "MACADDR8",
         "TSVECTOR",
         "UNKNOWN",
         "CIDR",
-        "INET"
+        "INET",
+        "CLOB",
+        "ROWID"
       ]
     },
     "constraint": {
