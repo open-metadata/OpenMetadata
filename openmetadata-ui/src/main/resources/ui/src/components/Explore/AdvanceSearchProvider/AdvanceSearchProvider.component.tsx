@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import Loader from 'components/Loader/Loader';
 import {
   emptyJsonTree,
   getQbConfigs,
@@ -50,7 +51,7 @@ export const AdvanceSearchProvider = ({
   const location = useLocation();
   const history = useHistory();
   const { tab } = useParams<UrlParams>();
-
+  const [loading, setLoading] = useState(true);
   const searchIndex = useMemo(() => {
     const tabInfo = Object.entries(tabsInfo).find(
       ([, tabInfo]) => tabInfo.path === tab
@@ -90,10 +91,10 @@ export const AdvanceSearchProvider = ({
         return filter as JsonTree;
       }
     } catch {
-      return emptyJsonTree;
+      return undefined;
     }
 
-    return emptyJsonTree;
+    return undefined;
   }, [parsedSearch]);
 
   const [showModal, setShowModal] = useState(false);
@@ -145,10 +146,18 @@ export const AdvanceSearchProvider = ({
 
   useEffect(() => {
     if (jsonTree) {
-      setTreeInternal(QbUtils.checkTree(QbUtils.loadTree(jsonTree), config));
+      const tree = QbUtils.checkTree(QbUtils.loadTree(jsonTree), config);
+      setTreeInternal(tree);
+      const qFilter = {
+        query: elasticSearchFormat(tree, config),
+      };
+      setQueryFilter(qFilter);
+      setSQLQuery(QbUtils.sqlFormat(tree, config) ?? '');
     } else {
       handleReset();
     }
+
+    setLoading(false);
   }, [jsonTree]);
 
   const handleSubmit = useCallback(() => {
@@ -163,16 +172,6 @@ export const AdvanceSearchProvider = ({
     setShowModal(false);
   }, [treeInternal, config, handleTreeUpdate]);
 
-  useEffect(() => {
-    const qFilter = {
-      query: elasticSearchFormat(treeInternal, config),
-    };
-    setQueryFilter(qFilter);
-    setSQLQuery(
-      treeInternal ? QbUtils.sqlFormat(treeInternal, config) ?? '' : ''
-    );
-  }, []);
-
   return (
     <AdvancedSearchContext.Provider
       value={{
@@ -184,7 +183,7 @@ export const AdvanceSearchProvider = ({
         config,
         onReset: handleReset,
       }}>
-      {children}
+      {loading ? <Loader /> : children}
       <AdvancedSearchModal
         visible={showModal}
         onCancel={() => setShowModal(false)}
