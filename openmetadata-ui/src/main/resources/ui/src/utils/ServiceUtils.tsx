@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { Card } from 'antd';
 import { AxiosError } from 'axios';
 import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
 import {
@@ -573,38 +574,38 @@ export const getServiceIngestionStepGuide = (args: {
     return isUpdated ? update : newTitle;
   };
 
-  if (activeField) {
-    return (
-      <>
-        <h6 className="tw-heading tw-text-base">{t('label.documentation')}</h6>
-        <RichTextEditorPreviewer
-          markdown={t(`document.${activeField}`, { ns: serviceType })}
-        />
-      </>
-    );
-  }
+  const guideElement = guide ? (
+    <>
+      <h6 className="tw-heading tw-text-base">{getTitle(guide.title)}</h6>
+      <div className="tw-mb-5">
+        {isIngestion
+          ? getFormattedGuideText(
+              guide.description,
+              `<${t('label.ingestion-pipeline-name')}>`,
+              `${ingestionName}`
+            )
+          : getFormattedGuideText(
+              guide.description,
+              `<${t('label.service-name')}>`,
+              serviceName
+            )}
+      </div>
+    </>
+  ) : null;
+
+  const activeFieldElement = activeField ? (
+    <>
+      <h6 className="tw-heading tw-text-base">{t('label.documentation')}</h6>
+      <RichTextEditorPreviewer
+        markdown={t(`document.${activeField}`, { ns: serviceType })}
+      />
+    </>
+  ) : null;
 
   return (
-    <>
-      {guide && (
-        <>
-          <h6 className="tw-heading tw-text-base">{getTitle(guide.title)}</h6>
-          <div className="tw-mb-5">
-            {isIngestion
-              ? getFormattedGuideText(
-                  guide.description,
-                  `<${t('label.ingestion-pipeline-name')}>`,
-                  `${ingestionName}`
-                )
-              : getFormattedGuideText(
-                  guide.description,
-                  `<${t('label.service-name')}>`,
-                  serviceName
-                )}
-          </div>
-        </>
-      )}
-    </>
+    <Card className="service-right-panel-doc-card">
+      {activeField ? activeFieldElement : guideElement}
+    </Card>
   );
 };
 

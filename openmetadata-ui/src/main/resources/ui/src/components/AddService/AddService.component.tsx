@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import PageLayoutV1 from 'components/containers/PageLayoutV1';
 import { t } from 'i18next';
 import { capitalize, isUndefined } from 'lodash';
 import { LoadingState } from 'Models';
@@ -22,7 +23,6 @@ import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.const
 import { STEPS_FOR_ADD_SERVICE } from '../../constants/Ingestions.constant';
 import { delimiterRegex, nameWithSpace } from '../../constants/regex.constants';
 import { FormSubmitType } from '../../enums/form.enum';
-import { PageLayoutType } from '../../enums/layout.enum';
 import { ServiceCategory } from '../../enums/service.enum';
 import { PipelineType } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { ConfigData, DataObj } from '../../interface/service.interface';
@@ -37,7 +37,6 @@ import {
 import AddIngestion from '../AddIngestion/AddIngestion.component';
 import SuccessScreen from '../common/success-screen/SuccessScreen';
 import TitleBreadcrumb from '../common/title-breadcrumb/title-breadcrumb.component';
-import PageLayout from '../containers/PageLayout';
 import IngestionStepper from '../IngestionStepper/IngestionStepper.component';
 import ConnectionConfigForm from '../ServiceConfig/ConnectionConfigForm';
 import { AddServiceProps } from './AddService.interface';
@@ -331,10 +330,9 @@ const AddService = ({
   return (
     <div className="tw-self-center">
       {' '}
-      <PageLayout
-        classes="tw-max-w-full-hd tw-h-full tw-pt-4"
+      <PageLayoutV1
+        className="tw-max-w-full-hd tw-h-full tw-pt-4"
         header={<TitleBreadcrumb titleLinks={slashedBreadcrumb} />}
-        layout={PageLayoutType['2ColRTL']}
         pageTitle={t('label.add-entity', { entity: t('label.service') })}
         rightPanel={fetchRightPanel()}>
         <div className="tw-form-container">
@@ -363,7 +361,7 @@ const AddService = ({
             addNewService()
           )}
         </div>
-      </PageLayout>
+      </PageLayoutV1>
     </div>
   );
 };
