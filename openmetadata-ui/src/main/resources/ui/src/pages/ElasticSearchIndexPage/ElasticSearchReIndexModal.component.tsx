@@ -17,9 +17,10 @@ import { map } from 'lodash';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-  ELASTIC_SEARCH_INDEX_ENTITIES,
   ELASTIC_SEARCH_INITIAL_VALUES,
   RECREATE_INDEX_OPTIONS,
+  ENTITY_TREE_OPTIONS,
+  RE_INDEX_LANG_OPTIONS
 } from '../../constants/elasticsearch.constant';
 import { CreateEventPublisherJob } from '../../generated/api/createEventPublisherJob';
 
@@ -38,25 +39,7 @@ const ReIndexAllModal = ({
 }: ReIndexAllModalInterface) => {
   const { t } = useTranslation();
 
-  const entityOptions = [
-    {
-      title: 'All',
-      value: 'all',
-      key: 'all',
-      children: [
-        ...ELASTIC_SEARCH_INDEX_ENTITIES.map(({ value, label }) => ({
-          title: label,
-          value: value,
-          key: value,
-        })),
-      ],
-    },
-  ];
-
-  const langOptions = map(SearchIndexMappingLanguage, (value) => ({
-    label: value,
-    value,
-  }));
+  
 
   return (
     <Modal
@@ -91,7 +74,7 @@ const ReIndexAllModal = ({
           <TreeSelect
             treeCheckable
             treeDefaultExpandAll
-            treeData={entityOptions}
+            treeData={ENTITY_TREE_OPTIONS}
           />
         </Form.Item>
         <Form.Item
@@ -116,7 +99,7 @@ const ReIndexAllModal = ({
         <Form.Item
           label={`${t('label.language')}:`}
           name="searchIndexMappingLanguage">
-          <Select options={langOptions} />
+          <Select options={RE_INDEX_LANG_OPTIONS} />
         </Form.Item>
       </Form>
     </Modal>
