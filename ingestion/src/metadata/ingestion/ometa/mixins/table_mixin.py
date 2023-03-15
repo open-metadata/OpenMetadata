@@ -20,7 +20,6 @@ from typing import List, Optional, Type, TypeVar
 from pydantic import BaseModel
 from requests.utils import quote
 
-from metadata.generated.schema.api.data.createQuery import CreateQueryRequest
 from metadata.generated.schema.api.data.createTableProfile import (
     CreateTableProfileRequest,
 )
@@ -35,7 +34,6 @@ from metadata.generated.schema.entity.data.table import (
     TableProfilerConfig,
 )
 from metadata.generated.schema.type.basic import FullyQualifiedEntityName, Uuid
-from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.usageRequest import UsageRequest
 from metadata.ingestion.ometa.client import REST
 from metadata.ingestion.ometa.models import EntityList
@@ -167,25 +165,6 @@ class OMetaTableMixin:
             data=data_model.json(),
         )
         return Table(**resp)
-
-    def ingest_table_queries_data(
-        self, table: Table, table_queries: List[CreateQueryRequest]
-    ) -> None:
-        """
-        PUT table queries for a table
-
-        :param table: Table Entity to update
-        :param table_queries: SqlQuery to add
-        """
-        for table_query in table_queries:
-            query = self.client.put("/queries", data=table_query.json())
-            if query and query.get("id"):
-                table_ref = EntityReference(id=table.id.__root__, type="table")
-                # convert object to json array string
-                table_ref_json = "[" + table_ref.json() + "]"
-                self.client.put(
-                    f"/queries/{query.get('id')}/usage", data=table_ref_json
-                )
 
     def publish_table_usage(
         self, table: Table, table_usage_request: UsageRequest
@@ -322,14 +301,3 @@ class OMetaTableMixin:
             Optional[Table]: OM table object
         """
         return self._get(Table, f"{quote(model_str(fqn))}/tableProfile/latest")
-
-    def get_table_queries(self, table_id: Uuid) -> Optional[Table]:
-        """Get the queries attached to a table
-
-        Args:
-            id (str): table fully qualified name
-
-        Returns:
-            Optional[Table]: OM table object
-        """
-        return self._get(Table, f"{model_str(table_id)}/tableQuery")

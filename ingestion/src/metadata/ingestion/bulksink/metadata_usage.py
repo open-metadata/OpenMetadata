@@ -223,8 +223,8 @@ class MetadataUsageBulkSink(BulkSink):
                         )
 
                     if table_usage.sqlQueries:
-                        self.metadata.ingest_table_queries_data(
-                            table=table_entity, table_queries=table_usage.sqlQueries
+                        self.metadata.ingest_entity_queries_data(
+                            entity=table_entity, queries=table_usage.sqlQueries
                         )
                 except APIError as err:
                     logger.debug(traceback.format_exc())
