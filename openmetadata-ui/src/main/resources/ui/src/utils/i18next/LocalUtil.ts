@@ -68,7 +68,7 @@ export const addLocalResource = async (nameSpace: string) => {
   const [translation, fallbackTranslation] = await Promise.allSettled([
     fetchTranslation(i18n.language, nameSpace),
     isEnglishLanguage
-      ? null
+      ? Promise.resolve({})
       : fetchTranslation(SupportedLocales.English, nameSpace),
   ]);
 
