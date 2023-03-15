@@ -220,6 +220,7 @@ class ColumnTypeParser:
         "ROWID": "ROWID",
         "CLOB": "CLOB",
         "NCLOB": "CLOB",
+        "LONG": "LONG",
     }
 
     _COMPLEX_TYPE = re.compile("^(struct|map|array|uniontype)")
