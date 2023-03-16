@@ -383,14 +383,12 @@ class TableauSource(DashboardServiceSource):
                     else ""
                 )
                 chart_url = None
-                if (
-                    "/sheets/" in chart.content_url
-                    and len(chart.content_url.split("/")) > 1
-                ):
+                workbook_chart_name = chart.content_url.split("/")
+                if "/sheets/" in chart.content_url and len(workbook_chart_name) > 1:
                     chart_url = (
                         f"#{site_url}"
-                        f"views/{chart.content_url.split('/')[0]}/"
-                        f"{chart.content_url.split('/')[2]}"
+                        f"views/{workbook_chart_name[0]}/"
+                        f"{workbook_chart_name[2]}"
                     )
                 yield CreateChartRequest(
                     name=chart.id,
