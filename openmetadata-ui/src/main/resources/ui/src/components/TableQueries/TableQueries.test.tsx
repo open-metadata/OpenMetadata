@@ -19,7 +19,7 @@ import {
 } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
-import { MOCK_TABLE } from '../../mocks/TableData.mock';
+import { MOCK_TABLE_QUERY } from '../../mocks/TableData.mock';
 import TableQueries from './TableQueries';
 
 const mockTableQueriesProp = {
@@ -29,10 +29,10 @@ const mockTableQueriesProp = {
 jest.mock('./QueryCard', () => {
   return jest.fn().mockReturnValue(<p>QueryCard</p>);
 });
-jest.mock('rest/tableAPI', () => ({
-  getTableQueryByTableId: jest
+jest.mock('rest/queryAPI', () => ({
+  getQueriesList: jest
     .fn()
-    .mockImplementation(() => Promise.resolve(MOCK_TABLE)),
+    .mockImplementation(() => Promise.resolve({ data: MOCK_TABLE_QUERY })),
 }));
 
 describe('Test TableQueries Component', () => {
@@ -46,7 +46,7 @@ describe('Test TableQueries Component', () => {
   });
 
   it('Check if TableQueries component has n query card', async () => {
-    const queriesLength = MOCK_TABLE.tableQueries?.length || 0;
+    const queriesLength = MOCK_TABLE_QUERY?.length || 0;
     const { container } = render(<TableQueries {...mockTableQueriesProp} />, {
       wrapper: MemoryRouter,
     });

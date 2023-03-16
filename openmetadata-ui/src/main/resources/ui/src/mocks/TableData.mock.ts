@@ -191,14 +191,6 @@ export const MOCK_TABLE = {
     columnCount: 12,
     rowCount: 14567,
   },
-  tableQueries: [
-    {
-      query:
-        'create table shopify.dim_address_clean as select address_id, shop_id, first_name, last_name, address1 as address, company, city, region, zip, country, phone from shopify.dim_address',
-      vote: 1,
-      checksum: 'cd59a9d0d0b8a245f7382264afac8bdc',
-    },
-  ],
   sampleData: {
     columns: ['address_id', 'shop_id', 'first_name', 'last_name'],
     rows: [
@@ -329,5 +321,14 @@ export const COLUMN_PROFILER_RESULT = [
     sum: 1367.0,
     stddev: 35.0,
     median: 7344.0,
+  },
+];
+
+export const MOCK_TABLE_QUERY = [
+  {
+    query:
+      'create table shopify.dim_address_clean as select address_id, shop_id, first_name, last_name, address1 as address, company, city, region, zip, country, phone from shopify.dim_address',
+    vote: 1,
+    checksum: 'cd59a9d0d0b8a245f7382264afac8bdc',
   },
 ];
