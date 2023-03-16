@@ -24,6 +24,7 @@ const mockDbtCloudProjectId = jest.fn();
 const mockDbtCloudJobId = jest.fn();
 const mockUpdateDBTClassification = jest.fn();
 const mockUpdateDBTCloudUrl = jest.fn();
+const mockHandleEnableDebugLogCheck = jest.fn();
 
 const mockProps = {
   dbtCloudAccountId: '',
@@ -41,6 +42,8 @@ const mockProps = {
   handleDbtCloudJobId: mockDbtCloudJobId,
   handleDbtCloudUrl: mockUpdateDBTCloudUrl,
   handleUpdateDBTClassification: mockUpdateDBTClassification,
+  enableDebugLog: false,
+  handleEnableDebugLogCheck: mockHandleEnableDebugLogCheck,
 };
 
 jest.mock('./DBTCommonFields.component', () =>

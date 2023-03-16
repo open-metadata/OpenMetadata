@@ -39,6 +39,7 @@ import {
   restoreTestSuite,
   updateTestSuiteById,
 } from 'rest/testAPI';
+import { getEntityName } from 'utils/EntityUtils';
 import {
   getTeamAndUserDetailsPath,
   INITIAL_PAGING_VALUE,
@@ -54,7 +55,7 @@ import { TestSuite } from '../../generated/tests/testSuite';
 import { Include } from '../../generated/type/include';
 import { Paging } from '../../generated/type/paging';
 import jsonData from '../../jsons/en';
-import { getEntityName, getEntityPlaceHolder } from '../../utils/CommonUtils';
+import { getEntityPlaceHolder } from '../../utils/CommonUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import './TestSuiteDetailsPage.styles.less';

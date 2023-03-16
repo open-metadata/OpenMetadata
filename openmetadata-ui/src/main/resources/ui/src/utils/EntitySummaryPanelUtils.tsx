@@ -22,7 +22,7 @@ import { MlFeature } from '../generated/entity/data/mlmodel';
 import { Task } from '../generated/entity/data/pipeline';
 import { Column, TableConstraint } from '../generated/entity/data/table';
 import { Field } from '../generated/entity/data/topic';
-import { getEntityName } from './CommonUtils';
+import { getEntityName } from './EntityUtils';
 import SVGIcons from './SvgUtils';
 
 const { Text } = Typography;

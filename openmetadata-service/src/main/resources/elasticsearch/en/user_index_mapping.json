@@ -42,7 +42,10 @@
         "type": "text"
       },
       "isAdmin": {
-        "type": "text"
+        "type": "boolean"
+      },
+      "isBot": {
+        "type": "boolean"
       },
       "teams": {
         "properties": {

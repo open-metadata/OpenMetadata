@@ -91,7 +91,13 @@ class PowerbiSource(DashboardServiceSource):
                     response = self.client.fetch_workspace_scan_result(
                         scan_id=workspace_scan_id
                     )
-                    self.workspace_data.extend(response.get("workspaces"))
+                    self.workspace_data.extend(
+                        [
+                            active_workspace
+                            for active_workspace in response.get("workspaces")
+                            if active_workspace.get("state") == "Active"
+                        ]
+                    )
                 else:
                     logger.error("Error in fetching dashboards and charts")
                 count += 1
@@ -141,7 +147,7 @@ class PowerbiSource(DashboardServiceSource):
         """
         Get List of all dashboards
         """
-        return self.context.workspace.get("dashboards")
+        return self.context.workspace.get("dashboards", [])
 
     def get_dashboard_name(self, dashboard: dict) -> str:
         """

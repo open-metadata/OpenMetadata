@@ -15,8 +15,8 @@ import { Button, Modal, Select } from 'antd';
 import { t } from 'i18next';
 import { isUndefined } from 'lodash';
 import React from 'react';
+import { getEntityName } from 'utils/EntityUtils';
 import { EntityReference } from '../../generated/api/services/createPipelineService';
-import { getEntityName } from '../../utils/CommonUtils';
 
 interface AddPipeLineModalType {
   showAddPipelineModal: boolean;

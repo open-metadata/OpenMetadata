@@ -45,6 +45,10 @@ const FacetFilter: React.FC<FacetFilterProps> = ({
    * we add an empty bucket with value `v` and 0 elements so the UI displays that the filter exists.
    */
   const aggregationEntries = useMemo(() => {
+    if (isEmpty(aggregations)) {
+      return [];
+    }
+
     if (isNil(filters) || isEmpty(filters)) {
       const { 'tier.tagFQN': tier, ...restProps } = aggregations;
 
@@ -109,7 +113,7 @@ const FacetFilter: React.FC<FacetFilterProps> = ({
   }, [aggregations]);
 
   return (
-    <>
+    <div data-testid="face-filter">
       <div className="sidebar-my-data-holder mt-2 mb-3">
         <Button
           className="text-primary cursor-pointer p-0"
@@ -214,7 +218,7 @@ const FacetFilter: React.FC<FacetFilterProps> = ({
           </div>
         )
       )}
-    </>
+    </div>
   );
 };
 

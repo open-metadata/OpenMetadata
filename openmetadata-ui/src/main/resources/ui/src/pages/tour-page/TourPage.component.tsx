@@ -12,7 +12,6 @@
  */
 
 import DatasetDetails from 'components/DatasetDetails/DatasetDetails.component';
-import { LeafNodes } from 'components/EntityLineage/EntityLineage.interface';
 import Explore from 'components/Explore/Explore.component';
 import MyData from 'components/MyData/MyData.component';
 import { MyDataProps } from 'components/MyData/MyData.interface';
@@ -70,10 +69,6 @@ const TourPage = () => {
 
   const handleCountChange = async () => {
     setExplorePageCounts(exploreCount);
-  };
-
-  const mockPromiseFunction = (): Promise<void> => {
-    return new Promise<void>((resolve) => resolve());
   };
 
   const clearSearchTerm = () => {
@@ -174,7 +169,6 @@ const TourPage = () => {
         return (
           <DatasetDetails
             activeTab={datasetActiveTab}
-            addLineageHandler={mockPromiseFunction}
             columns={mockDatasetData.columns as unknown as Table['columns']}
             columnsUpdateHandler={handleCountChange}
             createThread={handleCountChange}
@@ -184,8 +178,6 @@ const TourPage = () => {
             descriptionUpdateHandler={handleCountChange}
             entityFieldTaskCount={[]}
             entityFieldThreadCount={[]}
-            entityLineage={mockDatasetData.entityLineage}
-            entityLineageHandler={handleCountChange}
             entityName={mockDatasetData.entityName}
             entityThread={mockFeedData}
             feedCount={0}
@@ -193,18 +185,11 @@ const TourPage = () => {
             followTableHandler={handleCountChange}
             followers={mockDatasetData.followers}
             handleExtensionUpdate={handleCountChange}
-            isNodeLoading={{
-              id: undefined,
-              state: false,
-            }}
             isentityThreadLoading={false}
             joins={mockDatasetData.joins as unknown as TableJoins}
-            lineageLeafNodes={{} as LeafNodes}
-            loadNodeHandler={handleCountChange}
             owner={undefined as unknown as EntityReference}
             paging={{} as Paging}
             postFeedHandler={handleCountChange}
-            removeLineageHandler={handleCountChange}
             sampleData={mockDatasetData.sampleData}
             setActiveTabHandler={(tab) => setdatasetActiveTab(tab)}
             settingsUpdateHandler={() => Promise.resolve()}
@@ -213,7 +198,6 @@ const TourPage = () => {
             tableProfile={
               mockDatasetData.tableProfile as unknown as Table['profile']
             }
-            tableQueries={[]}
             tableTags={mockDatasetData.tableTags}
             tableType={mockDatasetData.tableType as TableType}
             tagUpdateHandler={handleCountChange}

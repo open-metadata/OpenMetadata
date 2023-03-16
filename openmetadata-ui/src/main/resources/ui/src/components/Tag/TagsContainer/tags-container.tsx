@@ -25,6 +25,7 @@ import React, {
   useMemo,
   useState,
 } from 'react';
+import { useTranslation } from 'react-i18next';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { TagSource } from '../../../generated/type/tagLabel';
 import { withLoader } from '../../../hoc/withLoader';
@@ -43,6 +44,7 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
   showTags = true,
   showAddTagButton = false,
 }: TagsContainerProps) => {
+  const { t } = useTranslation();
   const [tags, setTags] = useState<Array<EntityTags>>(selectedTags);
 
   const tagOptions = useMemo(() => {
@@ -131,7 +133,7 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
       className={classNames('w-full', containerClass)}
       data-testid="tag-container"
       size={16}>
-      <div className="tw-flex tw-flex-wrap">
+      <Fragment>
         {showTags && !editable && (
           <Fragment>
             {showAddTagButton && (
@@ -154,6 +156,9 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
             data-testid="tag-selector"
             defaultValue={selectedTagsInternal}
             mode="multiple"
+            placeholder={t('label.select-field', {
+              field: t('label.tag-plural'),
+            })}
             onChange={handleTagSelection}>
             {tagOptions.map(({ label, value }) => (
               <Select.Option key={label} value={value}>
@@ -170,22 +175,22 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
         ) : (
           children
         )}
-      </div>
+      </Fragment>
       {editable && (
         <Space
           className={classNames('', buttonContainerClass)}
           data-testid="buttons"
           size={4}>
           <Button
-            className="h-8"
+            className="w-6 p-x-05"
             data-testid="cancelAssociatedTag"
             size="small"
             type="primary"
             onMouseDown={handleCancel}>
-            <CloseOutlined />
+            <CloseOutlined height={14} width={14} />
           </Button>
           <Button
-            className="h-8"
+            className="w-6 p-x-05"
             data-testid="saveAssociatedTag"
             size="small"
             type="primary"
