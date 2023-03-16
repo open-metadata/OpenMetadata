@@ -113,6 +113,7 @@ DELETE FROM entity_extension WHERE id in
 
 DROP TABLE temp_query_migration;
 
+-- remove the audience if it was wrongfully sent from the UI after editing the OM service
 UPDATE metadata_service_entity
 SET json = json::jsonb #- '{connection,config,securityConfig,audience}'
 WHERE name = 'OpenMetadata'
