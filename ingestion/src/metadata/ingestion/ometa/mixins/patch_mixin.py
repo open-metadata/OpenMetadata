@@ -19,7 +19,7 @@ from typing import Dict, Generic, List, Optional, Type, TypeVar, Union
 
 from pydantic import BaseModel
 
-from metadata.generated.schema.entity.data.table import Table
+from metadata.generated.schema.entity.data.table import Table, TableConstraint
 from metadata.generated.schema.type import basic
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.tagLabel import LabelType, State, TagSource
@@ -46,6 +46,8 @@ REMOVE = "remove"
 # OM specific description handling
 ENTITY_DESCRIPTION = "/description"
 COL_DESCRIPTION = "/columns/{index}/description"
+TABLE_CONSTRAINTS = "/tableConstraints"
+
 
 ENTITY_TAG = "/tags/{tag_index}"
 COL_TAG = "/columns/{index}/tags/{tag_index}"
@@ -65,7 +67,7 @@ class OMetaPatchMixin(Generic[T]):
 
     client: REST
 
-    def _validate_instance_description(
+    def _fetch_entity_if_exists(
         self, entity: Type[T], entity_id: Union[str, basic.Uuid]
     ) -> Optional[T]:
         """
@@ -111,9 +113,7 @@ class OMetaPatchMixin(Generic[T]):
         Returns
             Updated Entity
         """
-        instance = self._validate_instance_description(
-            entity=entity, entity_id=entity_id
-        )
+        instance = self._fetch_entity_if_exists(entity=entity, entity_id=entity_id)
         if not instance:
             return None
 
@@ -165,7 +165,7 @@ class OMetaPatchMixin(Generic[T]):
         Returns
             Updated Entity
         """
-        table: Table = self._validate_instance_description(
+        table: Table = self._fetch_entity_if_exists(
             entity=Table,
             entity_id=entity_id,
         )
@@ -213,6 +213,61 @@ class OMetaPatchMixin(Generic[T]):
 
         return None
 
+    def patch_table_constraints(
+        self,
+        entity_id: Union[str, basic.Uuid],
+        table_constraints: List[TableConstraint],
+    ) -> Optional[T]:
+        """Given an Entity ID, JSON PATCH the table constraints of table
+
+        Args
+            entity_id: ID
+            description: new description to add
+            table_constraints: table constraints to add
+
+        Returns
+            Updated Entity
+        """
+        table: Table = self._fetch_entity_if_exists(
+            entity=Table,
+            entity_id=entity_id,
+        )
+        if not table:
+            return None
+
+        try:
+            res = self.client.patch(
+                path=f"{self.get_suffix(Table)}/{model_str(entity_id)}",
+                data=json.dumps(
+                    [
+                        {
+                            OPERATION: ADD if not table.tableConstraints else REPLACE,
+                            PATH: TABLE_CONSTRAINTS,
+                            VALUE: [
+                                {
+                                    "constraintType": constraint.constraintType.value,
+                                    "columns": constraint.columns,
+                                    "referredColumns": [
+                                        col.__root__
+                                        for col in constraint.referredColumns or []
+                                    ],
+                                }
+                                for constraint in table_constraints
+                            ],
+                        }
+                    ]
+                ),
+            )
+            return Table(**res)
+
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(
+                f"Error trying to PATCH description for Table Constraint: {entity_id}: {exc}"
+            )
+
+        return None
+
     def patch_tag(
         self,
         entity: Type[T],
@@ -233,9 +288,7 @@ class OMetaPatchMixin(Generic[T]):
         Returns
             Updated Entity
         """
-        instance = self._validate_instance_description(
-            entity=entity, entity_id=entity_id
-        )
+        instance = self._fetch_entity_if_exists(entity=entity, entity_id=entity_id)
         if not instance:
             return None
 
@@ -304,9 +357,7 @@ class OMetaPatchMixin(Generic[T]):
         Returns
             Updated Entity
         """
-        table: Table = self._validate_instance_description(
-            entity=Table, entity_id=entity_id
-        )
+        table: Table = self._fetch_entity_if_exists(entity=Table, entity_id=entity_id)
         if not table:
             return None
 
@@ -389,9 +440,7 @@ class OMetaPatchMixin(Generic[T]):
         Returns
             Updated Entity
         """
-        instance = self._validate_instance_description(
-            entity=entity, entity_id=entity_id
-        )
+        instance = self._fetch_entity_if_exists(entity=entity, entity_id=entity_id)
         if not instance:
             return None
 
