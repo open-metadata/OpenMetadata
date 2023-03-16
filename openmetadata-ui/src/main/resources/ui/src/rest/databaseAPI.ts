@@ -13,6 +13,7 @@
 
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
+import { PagingWithoutTotal } from 'Models';
 import { Database } from '../generated/entity/data/database';
 import { DatabaseSchema } from '../generated/entity/data/databaseSchema';
 import { Paging } from '../generated/type/paging';
@@ -20,19 +21,16 @@ import { getURLWithQueryFields } from '../utils/APIUtils';
 import APIClient from './index';
 
 export const getDatabases = async (
-  serviceName: string,
-  arrQueryFields: string | string[],
-  paging?: string
+  service: string,
+  fields: string,
+  paging?: PagingWithoutTotal
 ) => {
-  const url = `${getURLWithQueryFields(
-    `/databases`,
-    arrQueryFields
-  )}&service=${serviceName}${paging ? paging : ''}`;
-
   const response = await APIClient.get<{
     data: Database[];
     paging: Paging;
-  }>(url);
+  }>(`/databases`, {
+    params: { service, fields, after: paging?.after, before: paging?.before },
+  });
 
   return response.data;
 };

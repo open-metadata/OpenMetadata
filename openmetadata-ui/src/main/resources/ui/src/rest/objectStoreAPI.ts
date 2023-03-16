@@ -15,9 +15,8 @@ import { Operation } from 'fast-json-patch';
 import { Container } from 'generated/entity/data/container';
 import { EntityReference } from 'generated/type/entityReference';
 import { Paging } from 'generated/type/paging';
-import { RestoreRequestType } from 'Models';
+import { PagingWithoutTotal, RestoreRequestType } from 'Models';
 import { ServicePageData } from 'pages/service';
-import { getURLWithQueryFields } from 'utils/APIUtils';
 import APIClient from './index';
 
 const configOptionsForPatch = {
@@ -30,21 +29,22 @@ const configOptions = {
 
 export const getContainers = async (args: {
   service: string;
-  arrQueryFields: string | string[];
-  paging?: string;
+  fields: string;
+  paging?: PagingWithoutTotal;
   root?: boolean;
 }) => {
-  const { service, arrQueryFields, paging, root } = args;
-
-  const url = `${getURLWithQueryFields(
-    `/containers`,
-    arrQueryFields
-  )}&service=${service}${paging ? paging : ''}&root=${root}`;
+  const { paging, ...rest } = args;
 
   const response = await APIClient.get<{
     data: ServicePageData[];
     paging: Paging;
-  }>(url);
+  }>(`/containers`, {
+    params: {
+      ...rest,
+      after: paging?.after,
+      before: paging?.before,
+    },
+  });
 
   return response.data;
 };
