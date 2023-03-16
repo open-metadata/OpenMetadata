@@ -265,6 +265,12 @@ public class ContainerResourceTest extends EntityResourceTest<Container, CreateC
     assertEquals("s3.0_root.1_child_1.3_child_3", childThreeContainer.getFullyQualifiedName());
     assertEquals(returnedChildThreeContainer.getParent().getId(), childOneContainer.getId());
     assertEquals(0, returnedChildThreeContainer.getChildren().size());
+
+    // Test that we can list only the root level containers (no parents)
+    queryParams.put("root", "true");
+    ResultList<Container> rootContainerList = listEntities(queryParams, ADMIN_AUTH_HEADERS);
+    assertEquals(1, rootContainerList.getData().size());
+    assertEquals("s3.0_root", rootContainerList.getData().get(0).getFullyQualifiedName());
   }
 
   @Override

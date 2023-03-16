@@ -95,6 +95,9 @@ public final class Entity {
   public static final String ALERT = "alert";
   public static final String THREAD = "THREAD";
   public static final String LOCATION = "location";
+
+  public static final String QUERY = "query";
+
   public static final String GLOSSARY = "glossary";
   public static final String GLOSSARY_TERM = "glossaryTerm";
   public static final String TAG = "tag";

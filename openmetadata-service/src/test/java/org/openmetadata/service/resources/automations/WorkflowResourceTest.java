@@ -1,4 +1,4 @@
-package org.openmetadata.service.resources.operations;
+package org.openmetadata.service.resources.automations;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -26,7 +26,7 @@ public class WorkflowResourceTest extends EntityResourceTest<Workflow, CreateWor
         Entity.WORKFLOW,
         Workflow.class,
         WorkflowResource.WorkflowList.class,
-        "operations/workflow",
+        "automations/workflow",
         WorkflowResource.FIELDS);
     supportsEmptyDescription = true;
   }

@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate.
+ *  Copyright 2023 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,18 +10,21 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { ReactNode } from 'react';
+import { Config, ImmutableTree } from 'react-awesome-query-builder';
 
-import { JsonTree } from 'react-awesome-query-builder';
-import { SearchIndex } from '../../enums/search.enum';
+export interface AdvanceSearchProviderProps {
+  children: ReactNode;
+}
 
-export interface AdvancedSearchProps {
-  jsonTree: JsonTree | undefined;
-  searchIndex: SearchIndex;
-  onChangeJsonTree: (tree: JsonTree) => void;
-  onChangeQueryFilter: (
-    queryFilter: Record<string, unknown> | undefined,
-    sqlFilter: string
-  ) => void;
+export interface AdvanceSearchContext {
+  queryFilter?: Record<string, unknown>;
+  sqlQuery: string;
+  onTreeUpdate: (nTree: ImmutableTree, nConfig: Config) => void;
+  toggleModal: (show: boolean) => void;
+  treeInternal: ImmutableTree;
+  config: Config;
+  onReset: () => void;
 }
 
 export type FilterObject = Record<string, string[]>;
