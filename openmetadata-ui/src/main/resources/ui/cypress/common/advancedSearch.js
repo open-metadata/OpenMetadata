@@ -62,7 +62,7 @@ export const FIELDS = {
   Tags: {
     name: 'Tags',
     testid: '[title="Tags"]',
-    searchCriteriaFirstGroup: 'Personal',
+    searchCriteriaFirstGroup: 'PersonalData.Personal',
     responseValueFirstGroup: '"tagFQN":"Personal"',
     searchCriteriaSecondGroup: 'SpecialCategory',
     responseValueSecondGroup: '"tagFQN":"SpecialCategory"',
