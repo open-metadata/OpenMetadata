@@ -37,6 +37,7 @@ from metadata.generated.schema.security.client.openMetadataJWTClientConfig impor
 )
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.ometa.patch import PatchOperation
 from metadata.ingestion.ometa.utils import model_str
 
 # Conditions
@@ -377,7 +378,7 @@ class OMetaRolePolicyTest(TestCase):
         res: Policy = self.metadata.patch_policy_rule(
             entity_id=policy.id,
             rule=self.rule_3,
-            operation="add",
+            operation=PatchOperation.ADD,
         )
         self.assertIsNotNone(res)
         self.assertEqual(len(res.rules.__root__), 3)
@@ -387,7 +388,7 @@ class OMetaRolePolicyTest(TestCase):
         res = self.metadata.patch_policy_rule(
             entity_id=policy.id,
             rule=self.rule_3,
-            operation="remove",
+            operation=PatchOperation.REMOVE,
         )
         self.assertIsNotNone(res)
         self.assertEqual(len(res.rules.__root__), 2)
@@ -397,13 +398,13 @@ class OMetaRolePolicyTest(TestCase):
         self.metadata.patch_policy_rule(
             entity_id=policy.id,
             rule=self.rule_3,
-            operation="add",
+            operation=PatchOperation.ADD,
         )
 
         res = self.metadata.patch_policy_rule(
             entity_id=policy.id,
             rule=self.rule_2,
-            operation="remove",
+            operation=PatchOperation.REMOVE,
         )
         self.assertIsNotNone(res)
         self.assertEqual(len(res.rules.__root__), 2)
@@ -418,7 +419,7 @@ class OMetaRolePolicyTest(TestCase):
         res = self.metadata.patch_policy_rule(
             entity_id=policy.id,
             rule=self.rule_1,
-            operation="remove",
+            operation=PatchOperation.REMOVE,
         )
         self.assertIsNotNone(res)
         self.assertEqual(len(res.rules.__root__), 1)
@@ -434,7 +435,7 @@ class OMetaRolePolicyTest(TestCase):
         res = self.metadata.patch_policy_rule(
             entity_id=policy.id,
             rule=self.rule_2,
-            operation="remove",
+            operation=PatchOperation.REMOVE,
         )
         self.assertIsNone(res)
 
@@ -443,7 +444,7 @@ class OMetaRolePolicyTest(TestCase):
         res = self.metadata.patch_policy_rule(
             entity_id=policy.id,
             rule=self.rule_3,
-            operation="remove",
+            operation=PatchOperation.REMOVE,
         )
         self.assertIsNone(res)
 
@@ -451,7 +452,7 @@ class OMetaRolePolicyTest(TestCase):
         res = self.metadata.patch_policy_rule(
             entity_id=str(uuid.uuid4()),
             rule=self.rule_3,
-            operation="add",
+            operation=PatchOperation.ADD,
         )
 
     def test_role_create(self):
@@ -693,7 +694,7 @@ class OMetaRolePolicyTest(TestCase):
         res = self.metadata.patch_role_policy(
             entity_id=role.id,
             policy_id=self.role_policy_2.id,
-            operation="remove",
+            operation=PatchOperation.REMOVE,
         )
         assert res
         assert res.id == role.id
@@ -704,12 +705,12 @@ class OMetaRolePolicyTest(TestCase):
         res: Role = self.metadata.patch_role_policy(
             entity_id=role.id,
             policy_id=self.role_policy_2.id,
-            operation="add",
+            operation=PatchOperation.ADD,
         )
         res = self.metadata.patch_role_policy(
             entity_id=role.id,
             policy_id=self.role_policy_1.id,
-            operation="remove",
+            operation=PatchOperation.REMOVE,
         )
         assert res
         assert res.id == role.id
@@ -718,7 +719,9 @@ class OMetaRolePolicyTest(TestCase):
 
         # Try to remove the only policy - Fail
         res = self.metadata.patch_role_policy(
-            entity_id=role.id, policy_id=self.role_policy_2.id, operation="remove"
+            entity_id=role.id,
+            policy_id=self.role_policy_2.id,
+            operation=PatchOperation.REMOVE,
         )
         self.assertEqual(res, None)
 
@@ -726,7 +729,7 @@ class OMetaRolePolicyTest(TestCase):
         res = self.metadata.patch_role_policy(
             entity_id=str(uuid.uuid4()),
             policy_id=self.role_policy_1.id,
-            operation="add",
+            operation=PatchOperation.ADD,
         )
         self.assertEqual(res, None)
 
@@ -734,9 +737,11 @@ class OMetaRolePolicyTest(TestCase):
         res: Role = self.metadata.patch_role_policy(
             entity_id=role.id,
             policy_id=self.role_policy_1.id,
-            operation="add",
+            operation=PatchOperation.ADD,
         )
         res = self.metadata.patch_role_policy(
-            entity_id=role.id, policy_id=str(uuid.uuid4()), operation="remove"
+            entity_id=role.id,
+            policy_id=str(uuid.uuid4()),
+            operation=PatchOperation.REMOVE,
         )
         self.assertEqual(res, None)

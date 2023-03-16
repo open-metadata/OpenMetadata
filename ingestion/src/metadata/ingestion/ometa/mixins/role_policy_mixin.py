@@ -24,50 +24,18 @@ from metadata.generated.schema.entity.policies.policy import Policy
 from metadata.generated.schema.entity.teams.role import Role
 from metadata.generated.schema.type import basic
 from metadata.ingestion.ometa.client import REST
+from metadata.ingestion.ometa.patch import (
+    PatchField,
+    PatchOperation,
+    PatchPath,
+    PatchValue,
+)
 from metadata.ingestion.ometa.utils import model_str
 from metadata.utils.logger import ometa_logger
 
 logger = ometa_logger()
 
 T = TypeVar("T", bound=BaseModel)
-
-OPERATION = "op"
-PATH = "path"
-VALUE = "value"
-VALUE_ID = "id"
-VALUE_TYPE = "type"
-VALUE_POLICY = "policy"
-VALUE_CONDITION: str = "condition"
-VALUE_DESCRIPTION: str = "description"
-VALUE_EFFECT: str = "effect"
-VALUE_FQN: str = "fullyQualifiedName"
-VALUE_NAME: str = "name"
-VALUE_OPERATIONS: str = "operations"
-VALUE_RESOURCES: str = "resources"
-
-# Operations
-ADD = "add"
-REPLACE = "replace"
-REMOVE = "remove"
-
-# Paths
-ROLES_PATH: str = "/roles/{role_id}"
-POLICIES_PATH: str = "/policies/{index}"
-POLICIES_HREF_PATH: str = "/policies/{index}/href"
-POLICIES_DESCRIPTION_PATH: str = "/policies/{index}/description"
-POLICIES_FQN_PATH: str = "/policies/{index}/fullyQualifiedName"
-POLICIES_NAME_PATH: str = "/policies/{index}/name"
-POLICIES_ID_PATH: str = "/policies/{index}/id"
-POLICIES_DISPLAY_NAME_PATH: str = "/policies/{index}/displayName"
-DESCRIPTION_PATH: str = "/description"
-RULES_PATH: str = "/rules/{rule_index}"
-RULES_CONDITION_PATH: str = "/rules/{rule_index}/condition"
-RULES_DESCRIPTION_PATH: str = "/rules/{rule_index}/description"
-RULES_EFFECT_PATH: str = "/rules/{rule_index}/effect"
-RULES_FQN_PATH: str = "/rules/{rule_index}/fullyQualifiedName"
-RULES_NAME_PATH: str = "/rules/{rule_index}/name"
-RULES_OPERATIONS_PATH: str = "/rules/{rule_index}/operations/{index}"
-RULES_RESOURCES_PATH: str = "/rules/{rule_index}/resources/{index}"
 
 
 class OMetaRolePolicyMixin(Generic[T]):
@@ -116,28 +84,37 @@ class OMetaRolePolicyMixin(Generic[T]):
     ) -> List[Dict]:
         """
         Get the operations required to overwrite the set (resources or operations) of a rule.
-        :param previous: the previous set to be overwritten by current
-        :param current: the current set to overwrite previous
-        :param rule_index: the index of the rule on which we are being operated
-        :param path: the formattable string that names the path
-        :param is_enum: is the set enums or not
-        :return: List of patch operations
+
+        Args
+            previous: the previous set to be overwritten by current
+            current: the current set to overwrite previous
+            rule_index: the index of the rule on which we are being operated
+            path: the formattable string that names the path
+            is_enum: is the set enums or not
+        Returns
+            List of patch operations
         """
         data: List[Dict] = []
         for index in range(len(previous) - 1, len(current) - 1, -1):
             data.append(
                 {
-                    OPERATION: REMOVE,
-                    PATH: path.format(rule_index=rule_index - 1, index=index),
+                    PatchField.OPERATION: PatchOperation.REMOVE,
+                    PatchField.PATH: path.format(
+                        rule_index=rule_index - 1, index=index
+                    ),
                 }
             )
         index: int = 0
         for item in current:
             data.append(
                 {
-                    OPERATION: REPLACE if index < len(previous) else ADD,
-                    PATH: path.format(rule_index=rule_index - 1, index=index),
-                    VALUE: item.name if is_enum else item,
+                    PatchField.OPERATION: PatchOperation.REPLACE
+                    if index < len(previous)
+                    else PatchOperation.ADD,
+                    PatchField.PATH: path.format(
+                        rule_index=rule_index - 1, index=index
+                    ),
+                    PatchField.VALUE: item.name if is_enum else item,
                 }
             )
             index += 1
@@ -152,27 +129,32 @@ class OMetaRolePolicyMixin(Generic[T]):
     ) -> List[Dict]:
         """
         Get the operations required to update an optional rule field
-        :param previous: the field from the previous rule
-        :param current: the field from the current rule
-        :param rule_index: the index of the previous rule
-        :param path: path string for the filed
-        :return: list with one dict describing the operation to update the field
+
+        Args
+            previous: the field from the previous rule
+            current: the field from the current rule
+            rule_index: the index of the previous rule
+            path: path string for the filed
+        Returns
+            list with one dict describing the operation to update the field
         """
         data: List[Dict] = []
         if current is None:
             if previous is not None:
                 data = [
                     {
-                        OPERATION: REMOVE,
-                        PATH: path.format(rule_index=rule_index),
+                        PatchField.OPERATION: PatchOperation.REMOVE,
+                        PatchField.PATH: path.format(rule_index=rule_index),
                     }
                 ]
         else:
             data = [
                 {
-                    OPERATION: ADD if previous is None else REPLACE,
-                    PATH: path.format(rule_index=rule_index),
-                    VALUE: str(current.__root__),
+                    PatchField.OPERATION: PatchOperation.ADD
+                    if previous is None
+                    else PatchOperation.REPLACE,
+                    PatchField.PATH: path.format(rule_index=rule_index),
+                    PatchField.VALUE: str(current.__root__),
                 }
             ]
         return data
@@ -181,7 +163,9 @@ class OMetaRolePolicyMixin(Generic[T]):
         self,
         entity_id: Union[str, basic.Uuid],
         policy_id: Union[str, basic.Uuid],
-        operation: Union[ADD, REMOVE] = ADD,
+        operation: Union[
+            PatchOperation.ADD, PatchOperation.REMOVE
+        ] = PatchOperation.ADD,
     ) -> Optional[Role]:
         """
         Given a Role ID, JSON PATCH the policies.
@@ -201,7 +185,7 @@ class OMetaRolePolicyMixin(Generic[T]):
 
         policy_index: int = len(instance.policies.__root__) - 1
         data: List
-        if operation is REMOVE:
+        if operation is PatchOperation.REMOVE:
             if len(instance.policies.__root__) == 1:
                 logger.error(
                     f"The Role with id [{model_str(entity_id)}] has only one (1)"
@@ -209,7 +193,12 @@ class OMetaRolePolicyMixin(Generic[T]):
                 )
                 return None
 
-            data = [{OPERATION: REMOVE, PATH: POLICIES_PATH.format(index=policy_index)}]
+            data = [
+                {
+                    PatchField.OPERATION: PatchOperation.REMOVE,
+                    PatchField.PATH: PatchPath.POLICIES.format(index=policy_index),
+                }
+            ]
 
             index: int = 0
             is_policy_found: bool = False
@@ -219,46 +208,52 @@ class OMetaRolePolicyMixin(Generic[T]):
                     continue
                 data.append(
                     {
-                        OPERATION: REPLACE,
-                        PATH: POLICIES_DESCRIPTION_PATH.format(index=index),
-                        VALUE: model_str(policy.description.__root__),
+                        PatchField.OPERATION: PatchOperation.REPLACE,
+                        PatchField.PATH: PatchPath.POLICIES_DESCRIPTION.format(
+                            index=index
+                        ),
+                        PatchField.VALUE: model_str(policy.description.__root__),
                     }
                 )
                 data.append(
                     {
-                        OPERATION: REPLACE if policy.displayName else ADD,
-                        PATH: POLICIES_DISPLAY_NAME_PATH.format(index=index),
-                        VALUE: model_str(
+                        PatchField.OPERATION: PatchOperation.REPLACE
+                        if policy.displayName
+                        else PatchOperation.ADD,
+                        PatchField.PATH: PatchPath.POLICIES_DISPLAY_NAME.format(
+                            index=index
+                        ),
+                        PatchField.VALUE: model_str(
                             policy.displayName if policy.displayName else policy.name
                         ),
                     }
                 )
                 data.append(
                     {
-                        OPERATION: REPLACE,
-                        PATH: POLICIES_FQN_PATH.format(index=index),
-                        VALUE: model_str(policy.fullyQualifiedName),
+                        PatchField.OPERATION: PatchOperation.REPLACE,
+                        PatchField.PATH: PatchPath.POLICIES_FQN.format(index=index),
+                        PatchField.VALUE: model_str(policy.fullyQualifiedName),
                     }
                 )
                 data.append(
                     {
-                        OPERATION: REPLACE,
-                        PATH: POLICIES_HREF_PATH.format(index=index),
-                        VALUE: model_str(policy.href),
+                        PatchField.OPERATION: PatchOperation.REPLACE,
+                        PatchField.PATH: PatchPath.POLICIES_HREF.format(index=index),
+                        PatchField.VALUE: model_str(policy.href),
                     }
                 )
                 data.append(
                     {
-                        OPERATION: REPLACE,
-                        PATH: POLICIES_ID_PATH.format(index=index),
-                        VALUE: model_str(policy.id),
+                        PatchField.OPERATION: PatchOperation.REPLACE,
+                        PatchField.PATH: PatchPath.POLICIES_ID.format(index=index),
+                        PatchField.VALUE: model_str(policy.id),
                     }
                 )
                 data.append(
                     {
-                        OPERATION: REPLACE,
-                        PATH: POLICIES_NAME_PATH.format(index=index),
-                        VALUE: model_str(policy.name),
+                        PatchField.OPERATION: PatchOperation.REPLACE,
+                        PatchField.PATH: PatchPath.POLICIES_NAME.format(index=index),
+                        PatchField.VALUE: model_str(policy.name),
                     }
                 )
                 index += 1
@@ -272,18 +267,18 @@ class OMetaRolePolicyMixin(Generic[T]):
         else:
             data = [
                 {
-                    OPERATION: operation,
-                    PATH: POLICIES_PATH.format(index=policy_index),
-                    VALUE: {
-                        VALUE_ID: model_str(policy_id),
-                        VALUE_TYPE: VALUE_POLICY,
+                    PatchField.OPERATION: operation,
+                    PatchField.PATH: PatchPath.POLICIES.format(index=policy_index),
+                    PatchField.VALUE: {
+                        PatchValue.ID: model_str(policy_id),
+                        PatchValue.TYPE: PatchValue.POLICY,
                     },
                 }
             ]
 
         try:
             res = self.client.patch(
-                path=ROLES_PATH.format(role_id=model_str(entity_id)),
+                path=PatchPath.ROLES.format(role_id=model_str(entity_id)),
                 data=json.dumps(data),
             )
             return Role(**res)
@@ -300,7 +295,9 @@ class OMetaRolePolicyMixin(Generic[T]):
         self,
         entity_id: Union[str, basic.Uuid],
         rule: Optional[Rule] = None,
-        operation: Union[ADD, REMOVE] = ADD,
+        operation: Union[
+            PatchOperation.ADD, PatchOperation.REMOVE
+        ] = PatchOperation.ADD,
     ) -> Optional[Policy]:
         """
         Given a Policy ID, JSON PATCH the rule (add or remove).
@@ -320,27 +317,31 @@ class OMetaRolePolicyMixin(Generic[T]):
 
         rule_index: int = len(instance.rules.__root__) - 1
         data: List[Dict]
-        if operation == ADD:
+        if operation == PatchOperation.ADD:
             data = [
                 {
-                    OPERATION: ADD,
-                    PATH: RULES_PATH.format(rule_index=rule_index + 1),
-                    VALUE: {
-                        VALUE_NAME: rule.name,
-                        VALUE_CONDITION: rule.condition.__root__,
-                        VALUE_EFFECT: rule.effect.name,
-                        VALUE_OPERATIONS: [
+                    PatchField.OPERATION: PatchOperation.ADD,
+                    PatchField.PATH: PatchPath.RULES.format(rule_index=rule_index + 1),
+                    PatchField.VALUE: {
+                        PatchValue.NAME: rule.name,
+                        PatchValue.CONDITION: rule.condition.__root__,
+                        PatchValue.EFFECT: rule.effect.name,
+                        PatchValue.OPERATIONS: [
                             operation.name for operation in rule.operations
                         ],
-                        VALUE_RESOURCES: list(rule.resources),
+                        PatchValue.RESOURCES: list(rule.resources),
                     },
                 }
             ]
             if rule.description is not None:
-                data[0][VALUE][VALUE_DESCRIPTION] = str(rule.description.__root__)
+                data[0][PatchField.VALUE][PatchValue.DESCRIPTION] = str(
+                    rule.description.__root__
+                )
 
             if rule.fullyQualifiedName is not None:
-                data[0][VALUE][VALUE_FQN] = str(rule.fullyQualifiedName.__root__)
+                data[0][PatchField.VALUE][PatchValue.FQN] = str(
+                    rule.fullyQualifiedName.__root__
+                )
 
         else:
             if rule_index == 0:
@@ -349,8 +350,8 @@ class OMetaRolePolicyMixin(Generic[T]):
 
             data = [
                 {
-                    OPERATION: REMOVE,
-                    PATH: RULES_PATH.format(rule_index=rule_index),
+                    PatchField.OPERATION: PatchOperation.REMOVE,
+                    PatchField.PATH: PatchPath.RULES.format(rule_index=rule_index),
                 }
             ]
 
@@ -369,9 +370,11 @@ class OMetaRolePolicyMixin(Generic[T]):
                 # Condition
                 data.append(
                     {
-                        OPERATION: REPLACE,
-                        PATH: RULES_CONDITION_PATH.format(rule_index=rule_index - 1),
-                        VALUE: current_rule.condition.__root__,
+                        PatchField.OPERATION: PatchOperation.REPLACE,
+                        PatchField.PATH: PatchPath.RULES_CONDITION.format(
+                            rule_index=rule_index - 1
+                        ),
+                        PatchField.VALUE: current_rule.condition.__root__,
                     }
                 )
                 # Description - Optional
@@ -379,15 +382,17 @@ class OMetaRolePolicyMixin(Generic[T]):
                     previous=previous_rule.description,
                     current=current_rule.description,
                     rule_index=rule_index - 1,
-                    path=RULES_DESCRIPTION_PATH,
+                    path=PatchPath.RULES_DESCRIPTION,
                 )
 
                 # Effect
                 data.append(
                     {
-                        OPERATION: REPLACE,
-                        PATH: RULES_EFFECT_PATH.format(rule_index=rule_index - 1),
-                        VALUE: current_rule.effect.name,
+                        PatchField.OPERATION: PatchOperation.REPLACE,
+                        PatchField.PATH: PatchPath.RULES_EFFECT.format(
+                            rule_index=rule_index - 1
+                        ),
+                        PatchField.VALUE: current_rule.effect.name,
                     }
                 )
 
@@ -396,15 +401,17 @@ class OMetaRolePolicyMixin(Generic[T]):
                     previous=previous_rule.fullyQualifiedName,
                     current=current_rule.fullyQualifiedName,
                     rule_index=rule_index - 1,
-                    path=RULES_FQN_PATH,
+                    path=PatchPath.RULES_FQN,
                 )
 
                 # Name
                 data.append(
                     {
-                        OPERATION: REPLACE,
-                        PATH: RULES_NAME_PATH.format(rule_index=rule_index - 1),
-                        VALUE: current_rule.name,
+                        PatchField.OPERATION: PatchOperation.REPLACE,
+                        PatchField.PATH: PatchPath.RULES_NAME.format(
+                            rule_index=rule_index - 1
+                        ),
+                        PatchField.VALUE: current_rule.name,
                     }
                 )
                 # Operations
@@ -412,7 +419,7 @@ class OMetaRolePolicyMixin(Generic[T]):
                     previous=previous_rule.operations,
                     current=current_rule.operations,
                     rule_index=rule_index,
-                    path=RULES_OPERATIONS_PATH,
+                    path=PatchPath.RULES_OPERATIONS,
                     is_enum=True,
                 )
                 # Resources
@@ -420,13 +427,13 @@ class OMetaRolePolicyMixin(Generic[T]):
                     previous=previous_rule.resources,
                     current=current_rule.resources,
                     rule_index=rule_index,
-                    path=RULES_RESOURCES_PATH,
+                    path=PatchPath.RULES_RESOURCES,
                     is_enum=False,
                 )
 
         try:
             res = self.client.patch(
-                path=POLICIES_PATH.format(index=model_str(entity_id)),
+                path=PatchPath.POLICIES.format(index=model_str(entity_id)),
                 data=json.dumps(data),
             )
             return Policy(**res)
