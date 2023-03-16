@@ -18,7 +18,7 @@
 import { InfoCircleOutlined } from '@ant-design/icons';
 import { Card, Tooltip } from 'antd';
 import { ObjectStoreServiceType } from 'generated/entity/services/objectstoreService';
-import { isEmpty, isNull, isObject } from 'lodash';
+import { get, isEmpty, isNull, isObject } from 'lodash';
 import React, { ReactNode, useEffect, useState } from 'react';
 import { getObjectStoreConfig } from 'utils/ObjectStoreServiceUtils';
 import { DEF_UI_SCHEMA, JWT_CONFIG } from '../../constants/Services.constant';
@@ -92,13 +92,13 @@ const ServiceConnectionDetails = ({
                   value.securityConfig?.awsAccessKeyId ||
                   value.securityConfig?.awsSecretAccessKey
                 ) {
-                  const newSchemaPropertyObject =
-                    schema.definitions.S3Config.properties.securityConfig
-                      .properties;
-
                   return getKeyValues(
                     value.securityConfig,
-                    newSchemaPropertyObject
+                    get(
+                      schema,
+                      'definitions.S3Config.properties.securityConfig.properties',
+                      {}
+                    )
                   );
                 }
               } else if (
@@ -115,21 +115,25 @@ const ServiceConnectionDetails = ({
             } else {
               if (isObject(value.securityConfig.gcsConfig)) {
                 // Condition for GCS Credentials value
-                const newGcsSchemaPropertyObject =
-                  schema.definitions.GCSConfig.properties.securityConfig
-                    .definitions.GCSValues.properties;
-
                 return getKeyValues(
                   value.securityConfig.gcsConfig,
-                  newGcsSchemaPropertyObject
+                  get(
+                    schema,
+                    'definitions.GCSConfig.properties.securityConfig.definitions.GCSValues.properties',
+                    {}
+                  )
                 );
               } else {
                 // Condition for GCS Credentials path
-                const newSchemaPropertyObject =
-                  schema.definitions.GCSConfig.properties.securityConfig
-                    .definitions.GCSCredentialsPath;
 
-                return getKeyValues(value, newSchemaPropertyObject);
+                return getKeyValues(
+                  value,
+                  get(
+                    schema,
+                    'definitions.GCSConfig.properties.securityConfig.definitions.GCSCredentialsPath',
+                    {}
+                  )
+                );
               }
             }
           }
