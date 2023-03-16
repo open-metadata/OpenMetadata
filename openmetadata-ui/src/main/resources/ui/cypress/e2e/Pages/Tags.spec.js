@@ -198,9 +198,7 @@ describe('Tags page should work', () => {
 
     // Create task to add tags
     interceptURL('POST', '/api/v1/feed', 'taskCreated');
-    cy.get('[data-testid="request-entity-tags"] > [data-testid="image"]')
-      .should('exist')
-      .click();
+    cy.get('[data-testid="request-entity-tags"]').should('exist').click();
 
     // set assignees for task
     cy.get(
