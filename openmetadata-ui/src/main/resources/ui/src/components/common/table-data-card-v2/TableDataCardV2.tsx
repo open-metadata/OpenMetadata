@@ -18,6 +18,7 @@ import { ExtraInfo } from 'Models';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useParams } from 'react-router-dom';
+import { getEntityId, getEntityName } from 'utils/EntityUtils';
 import AppState from '../../../AppState';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { ROUTES } from '../../../constants/constants';
@@ -27,8 +28,6 @@ import { CurrentTourPageType } from '../../../enums/tour.enum';
 import { OwnerType } from '../../../enums/user.enum';
 import { EntityReference } from '../../../generated/entity/type';
 import {
-  getEntityId,
-  getEntityName,
   getEntityPlaceHolder,
   getOwnerValue,
 } from '../../../utils/CommonUtils';

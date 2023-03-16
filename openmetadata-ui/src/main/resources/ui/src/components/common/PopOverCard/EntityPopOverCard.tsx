@@ -27,6 +27,7 @@ import { getMlModelByFQN } from 'rest/mlModelAPI';
 import { getPipelineByFqn } from 'rest/pipelineAPI';
 import { getTableDetailsByFQN } from 'rest/tableAPI';
 import { getTopicByFqn } from 'rest/topicsAPI';
+import { getEntityName } from 'utils/EntityUtils';
 import AppState from '../../../AppState';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { EntityType } from '../../../enums/entity.enum';
@@ -38,7 +39,6 @@ import { Pipeline } from '../../../generated/entity/data/pipeline';
 import { Table } from '../../../generated/entity/data/table';
 import { Topic } from '../../../generated/entity/data/topic';
 import { TagSource } from '../../../generated/type/tagLabel';
-import { getEntityName } from '../../../utils/CommonUtils';
 import SVGIcons from '../../../utils/SvgUtils';
 import {
   getEntityLink,

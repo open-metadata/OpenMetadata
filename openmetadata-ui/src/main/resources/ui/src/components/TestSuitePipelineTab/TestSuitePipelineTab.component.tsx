@@ -27,6 +27,7 @@ import {
   triggerIngestionPipelineById,
 } from 'rest/ingestionPipelineAPI';
 import { fetchAirflowConfig } from 'rest/miscAPI';
+import { getEntityName } from 'utils/EntityUtils';
 import { Operation } from '../../generated/entity/policies/policy';
 import { IngestionPipeline } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { useAirflowStatus } from '../../hooks/useAirflowStatus';
@@ -310,7 +311,9 @@ const TestSuitePipelineTab = () => {
         title: t('label.name'),
         dataIndex: 'name',
         key: 'name',
-        render: (name: string) => {
+        render: (_, record) => {
+          const name = getEntityName(record);
+
           return (
             <Tooltip
               title={
