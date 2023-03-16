@@ -13,6 +13,7 @@
 
 import { AxiosError } from 'axios';
 import PageContainerV1 from 'components/containers/PageContainerV1';
+import { useAdvanceSearch } from 'components/Explore/AdvanceSearchProvider/AdvanceSearchProvider.component';
 import Explore from 'components/Explore/Explore.component';
 import {
   ExploreProps,
@@ -20,8 +21,9 @@ import {
   SearchHitCounts,
   UrlParams,
 } from 'components/Explore/explore.interface';
+import { withAdvanceSearch } from 'components/router/withAdvanceSearch';
 import { SORT_ORDER } from 'enums/common.enum';
-import { get, has, isEmpty, isNil, isString } from 'lodash';
+import { has, isEmpty, isNil, isString } from 'lodash';
 import Qs from 'qs';
 import React, {
   FunctionComponent,
@@ -47,7 +49,10 @@ import {
   isFilterObject,
 } from '../../utils/FilterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
-import { QueryFieldInterface } from './ExplorePage.interface';
+import {
+  QueryFieldInterface,
+  QueryFilterInterface,
+} from './ExplorePage.interface';
 
 const ExplorePage: FunctionComponent = () => {
   const location = useLocation();
@@ -71,8 +76,7 @@ const ExplorePage: FunctionComponent = () => {
 
   const [isLoading, setIsLoading] = useState(true);
 
-  const [isElasticSearchIssue, setIsElasticSearchIssue] =
-    useState<boolean>(false);
+  const { queryFilter } = useAdvanceSearch();
 
   const parsedSearch = useMemo(
     () =>
@@ -105,24 +109,6 @@ const ExplorePage: FunctionComponent = () => {
   const handlePageChange: ExploreProps['onChangePage'] = (page) => {
     history.push({ search: Qs.stringify({ ...parsedSearch, page }) });
   };
-  const queryFilter = useMemo(() => {
-    if (!isString(parsedSearch.queryFilter)) {
-      setAdvancedSearchQueryFilter(undefined);
-
-      return undefined;
-    }
-
-    try {
-      const queryFilter = JSON.parse(parsedSearch.queryFilter);
-      setAdvancedSearchQueryFilter(queryFilter);
-
-      return queryFilter;
-    } catch {
-      setAdvancedSearchQueryFilter(undefined);
-
-      return undefined;
-    }
-  }, [location.search]);
 
   const commonQuickFilters = useMemo(() => {
     if (isEmpty(queryFilter) || !has(queryFilter, 'query.bool.must')) {
@@ -132,7 +118,9 @@ const ExplorePage: FunctionComponent = () => {
     return {
       query: {
         bool: {
-          must: queryFilter.query.bool.must.filter(
+          must: (
+            queryFilter as unknown as QueryFilterInterface
+          ).query.bool.must.filter(
             (filterCategory: QueryFieldInterface) =>
               !isEmpty(filterCategory.bool.should) &&
               COMMON_FILTERS_FOR_DIFFERENT_TABS.find(
@@ -164,19 +152,6 @@ const ExplorePage: FunctionComponent = () => {
       [commonQuickFilters]
     );
 
-  const handleQueryFilterChange = useCallback(
-    (queryFilter) => {
-      history.push({
-        search: Qs.stringify({
-          ...parsedSearch,
-          queryFilter: queryFilter ? JSON.stringify(queryFilter) : undefined,
-          page: 1,
-        }),
-      });
-    },
-    [history, parsedSearch]
-  );
-
   const handlePostFilterChange: ExploreProps['onChangePostFilter'] = (
     postFilter
   ) => {
@@ -192,10 +167,6 @@ const ExplorePage: FunctionComponent = () => {
       search: Qs.stringify({ ...parsedSearch, showDeleted, page: 1 }),
     });
   };
-
-  useEffect(() => {
-    handleQueryFilterChange(queryFilter);
-  }, [queryFilter]);
 
   const searchIndex = useMemo(() => {
     const tabInfo = Object.entries(tabsInfo).find(
@@ -305,13 +276,6 @@ const ExplorePage: FunctionComponent = () => {
     ])
       .catch((err) => {
         showErrorToast(err);
-        if (
-          get(err, 'response.data.responseMessage', '').includes(
-            'elasticsearch'
-          )
-        ) {
-          setIsElasticSearchIssue(true);
-        }
       })
       .finally(() => setIsLoading(false));
   }, [
@@ -322,14 +286,14 @@ const ExplorePage: FunctionComponent = () => {
     showDeleted,
     advancesSearchQueryFilter,
     elasticsearchQueryFilter,
+    queryFilter,
     page,
   ]);
 
   const handleAdvanceSearchQueryFilterChange = useCallback(
-    (filter?: Record<string, unknown>, updateParameters?: boolean) => {
+    (filter?: Record<string, unknown>) => {
       handlePageChange(1);
       setAdvancedSearchQueryFilter(filter);
-      updateParameters && handleQueryFilterChange(filter);
     },
     [setAdvancedSearchQueryFilter, history, parsedSearch]
   );
@@ -342,11 +306,10 @@ const ExplorePage: FunctionComponent = () => {
     <PageContainerV1>
       <Explore
         aggregations={aggregations}
-        isElasticSearchIssue={isElasticSearchIssue}
         loading={isLoading}
         page={page}
         postFilter={postFilter}
-        queryFilter={queryFilter}
+        queryFilter={queryFilter as unknown as QueryFilterInterface}
         searchIndex={searchIndex}
         searchResults={searchResults}
         showDeleted={showDeleted}
@@ -371,4 +334,4 @@ const ExplorePage: FunctionComponent = () => {
   );
 };
 
-export default ExplorePage;
+export default withAdvanceSearch(ExplorePage);

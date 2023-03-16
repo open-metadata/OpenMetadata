@@ -15,13 +15,14 @@ import { act, fireEvent, render, screen } from '@testing-library/react';
 import { mockedGlossaries, mockedGlossaryTerms } from 'mocks/Glossary.mock';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
-import { getGlossaryTerms } from 'rest/glossaryAPI';
+import { getGlossaryTerms, patchGlossaryTerm } from 'rest/glossaryAPI';
 import GlossaryTermTab from './GlossaryTermTab.component';
 
 jest.mock('rest/glossaryAPI', () => ({
   getGlossaryTerms: jest
     .fn()
     .mockImplementation(() => Promise.resolve({ data: mockedGlossaryTerms })),
+  patchGlossaryTerm: jest.fn().mockImplementation(() => Promise.resolve()),
 }));
 jest.mock('components/common/searchbar/Searchbar', () => {
   return jest
@@ -56,7 +57,7 @@ describe('Test GlossaryTermTab component', () => {
       await screen.findByText(mockedGlossaryTerms[0].name)
     ).toBeInTheDocument();
     expect(await screen.findByTestId('add-new-tag-button')).toBeInTheDocument();
-    expect(await screen.findByTestId('description')).toBeInTheDocument();
+    expect(await screen.findAllByTestId('description')).toHaveLength(2);
     expect(
       await screen.findByText(mockedGlossaryTerms[0].name)
     ).toBeInTheDocument();
@@ -124,6 +125,53 @@ describe('Test GlossaryTermTab component', () => {
     expect(
       await screen.findByText(mockedGlossaryTerms[0].name)
     ).toBeInTheDocument();
+  });
+
+  it('Move glossaryTerm to another term', async () => {
+    const mockPatchGlossaryTerm = patchGlossaryTerm as jest.Mock;
+    const mockGetGlossaryTerms = getGlossaryTerms as jest.Mock;
+    await act(async () => {
+      render(<GlossaryTermTab glossaryId={mockedGlossaries[0].id} />, {
+        wrapper: MemoryRouter,
+      });
+    });
+    const tableRows = await screen.findAllByRole('row');
+    const firstGlossary = tableRows[1];
+    const secondGlossary = tableRows[2];
+
+    await act(async () => {
+      fireEvent.dragStart(firstGlossary);
+      fireEvent.dragEnter(secondGlossary);
+      fireEvent.dragOver(secondGlossary);
+      fireEvent.drop(secondGlossary);
+    });
+
+    const modal = await screen.findByTestId('confirmation-modal');
+    const confirmBtn = await screen.findByText('label.confirm');
+
+    expect(modal).toBeInTheDocument();
+    expect(confirmBtn).toBeInTheDocument();
+
+    await act(async () => {
+      fireEvent.click(confirmBtn);
+    });
+
+    const id = mockPatchGlossaryTerm.mock.calls[0][0];
+    const jsonPatch = mockPatchGlossaryTerm.mock.calls[0][1];
+    const params = mockGetGlossaryTerms.mock.calls[1][0];
+
+    expect(mockPatchGlossaryTerm.mock.calls).toHaveLength(1);
+    expect(id).toStrictEqual(mockedGlossaryTerms[0].id);
+    expect(jsonPatch).toStrictEqual([
+      {
+        op: 'add',
+        path: '/parent',
+        value: { fullyQualifiedName: 'Business Glossary.Sales' },
+      },
+    ]);
+    expect(mockGetGlossaryTerms.mock.calls).toHaveLength(2);
+    expect(params.glossary).toBe(mockedGlossaries[0].id);
+    expect(params.parent).toBeUndefined();
   });
 
   it('No data placeholder should visible if there is no data', async () => {

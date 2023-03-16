@@ -160,6 +160,8 @@ describe('Tags page should work', () => {
     const entity = SEARCH_ENTITY_TABLE.table_2;
     const term = `${NEW_TAG_CATEGORY.name}.${NEW_TAG.name}`;
     const term2 = 'PersonalData.Personal';
+    const assignee = 'admin';
+
     visitEntityDetailsPage(entity.term, entity.serviceName, entity.entity);
 
     cy.get('[data-testid="breadcrumb-link"]')
@@ -198,6 +200,15 @@ describe('Tags page should work', () => {
     cy.get('[data-testid="request-entity-tags"] > [data-testid="image"]')
       .should('exist')
       .click();
+
+    // set assignees for task
+    cy.get(
+      '[data-testid="select-assignee"] > .ant-select-selector > .ant-select-selection-overflow'
+    )
+      .should('be.visible')
+      .click()
+      .type(assignee);
+    cy.get('.ant-select-item-option-content').contains(assignee).click();
 
     cy.get(
       '[data-testid="select-tags"] > .ant-select-selector > .ant-select-selection-overflow'

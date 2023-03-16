@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { AxiosResponse } from 'axios';
 import axiosClient from '.';
 import { CreateEventPublisherJob } from '../generated/api/createEventPublisherJob';
 import {
@@ -27,23 +28,16 @@ export const getAllReIndexStatus = async (mode: RunMode) => {
   return res.data;
 };
 
-export const reIndexByPublisher = async ({
-  runMode,
-  entities = ['all'],
-  recreateIndex = true,
-  batchSize,
-  flushIntervalInSec,
-}: CreateEventPublisherJob) => {
+export const reIndexByPublisher = async (data: CreateEventPublisherJob) => {
   const payload = {
+    ...data,
     publisherType: PublisherType.ElasticSearch,
-    runMode,
-    recreateIndex,
-    entities,
-    batchSize,
-    flushIntervalInSec,
   };
 
-  const res = await axiosClient.post('/indexResource/reindex', payload);
+  const res = await axiosClient.post<
+    CreateEventPublisherJob,
+    AxiosResponse<EventPublisherJob>
+  >('/indexResource/reindex', payload);
 
   return res.data;
 };

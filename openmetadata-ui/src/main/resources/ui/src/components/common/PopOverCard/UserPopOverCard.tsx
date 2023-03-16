@@ -23,11 +23,12 @@ import React, {
 } from 'react';
 import { useHistory } from 'react-router-dom';
 import { getUserByName } from 'rest/userAPI';
+import { getEntityName } from 'utils/EntityUtils';
 import AppState from '../../../AppState';
 import { getUserPath, TERM_ADMIN } from '../../../constants/constants';
 import { User } from '../../../generated/entity/teams/user';
 import { EntityReference } from '../../../generated/type/entityReference';
-import { getEntityName, getNonDeletedTeams } from '../../../utils/CommonUtils';
+import { getNonDeletedTeams } from '../../../utils/CommonUtils';
 import SVGIcons, { Icons } from '../../../utils/SvgUtils';
 import Loader from '../../Loader/Loader';
 import ProfilePicture from '../ProfilePicture/ProfilePicture';

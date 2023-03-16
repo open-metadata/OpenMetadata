@@ -42,7 +42,7 @@ import { FacetFilterProps } from '../common/facetfilter/facetFilter.interface';
 import PageLayoutV1 from '../containers/PageLayoutV1';
 import Loader from '../Loader/Loader';
 import ExploreSkeleton from '../Skeleton/Explore/ExploreLeftPanelSkeleton.component';
-import { AdvancedSearchModal } from './AdvanceSearchModal.component';
+import { useAdvanceSearch } from './AdvanceSearchProvider/AdvanceSearchProvider.component';
 import AppliedFilterText from './AppliedFilterText/AppliedFilterText';
 import EntitySummaryPanel from './EntitySummaryPanel/EntitySummaryPanel.component';
 import {
@@ -77,11 +77,9 @@ const Explore: React.FC<ExploreProps> = ({
   onChangePage = noop,
   loading,
   queryFilter,
-  isElasticSearchIssue = false,
 }) => {
   const { t } = useTranslation();
   const { tab } = useParams<{ tab: string }>();
-  const [showAdvanceSearchModal, setShowAdvanceSearchModal] = useState(false);
 
   const [selectedQuickFilters, setSelectedQuickFilters] = useState<
     ExploreQuickFilterField[]
@@ -90,8 +88,7 @@ const Explore: React.FC<ExploreProps> = ({
   const [entityDetails, setEntityDetails] =
     useState<{ details: EntityDetailsType; entityType: string }>();
 
-  const [appliedFilterSQLFormat, setAppliedFilterSQLFormat] =
-    useState<string>('');
+  const { toggleModal, sqlQuery } = useAdvanceSearch();
 
   const handleClosePanel = () => {
     setShowSummaryPanel(false);
@@ -265,11 +262,6 @@ const Explore: React.FC<ExploreProps> = ({
     }
   }, [tab, searchResults]);
 
-  useEffect(() => {
-    // reset Applied Filter SQL Format on tab change
-    setAppliedFilterSQLFormat('');
-  }, [tab]);
-
   return (
     <PageLayoutV1
       className="explore-page-container"
@@ -331,15 +323,15 @@ const Explore: React.FC<ExploreProps> = ({
               <ExploreQuickFilters
                 fields={selectedQuickFilters}
                 index={searchIndex}
-                onAdvanceSearch={() => setShowAdvanceSearchModal(true)}
+                onAdvanceSearch={() => toggleModal(true)}
                 onFieldValueSelect={handleQuickFiltersValueSelect}
               />
             </Col>
-            {appliedFilterSQLFormat && (
+            {sqlQuery && (
               <Col span={24}>
                 <AppliedFilterText
-                  filterText={appliedFilterSQLFormat}
-                  onEdit={() => setShowAdvanceSearchModal(true)}
+                  filterText={sqlQuery}
+                  onEdit={() => toggleModal(true)}
                 />
               </Col>
             )}
@@ -352,7 +344,6 @@ const Explore: React.FC<ExploreProps> = ({
                   currentPage={page}
                   data={searchResults?.hits.hits ?? []}
                   handleSummaryPanelDisplay={handleSummaryPanelDisplay}
-                  isElasticSearchIssue={isElasticSearchIssue}
                   isSummaryPanelVisible={showSummaryPanel}
                   paginate={(value) => {
                     if (isNumber(value)) {
@@ -381,15 +372,6 @@ const Explore: React.FC<ExploreProps> = ({
           </Col>
         )}
       </Row>
-      <AdvancedSearchModal
-        searchIndex={searchIndex}
-        visible={showAdvanceSearchModal}
-        onCancel={() => setShowAdvanceSearchModal(false)}
-        onSubmit={(query, sqlFilter) => {
-          onChangeAdvancedSearchQueryFilter(query);
-          setAppliedFilterSQLFormat(sqlFilter);
-        }}
-      />
     </PageLayoutV1>
   );
 };

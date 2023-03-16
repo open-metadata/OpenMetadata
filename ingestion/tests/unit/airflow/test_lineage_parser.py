@@ -93,13 +93,13 @@ class TestAirflowLineageParser(TestCase):
             BashOperator(
                 task_id="print_date",
                 bash_command="date",
-                inlets={"tables": ["A"]},
+                inlets={"__var": {"tables": ["A"]}},
             )
 
             BashOperator(
                 task_id="sleep",
                 bash_command="sleep 1",
-                outlets={"tables": ["B"]},
+                outlets={"__var": {"tables": ["B"]}},
             )
 
             self.assertEqual(

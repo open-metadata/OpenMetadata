@@ -148,7 +148,7 @@ If you are planning on going to PROD, we recommend to validate below points:
 - MySQL and OpenSearch (ElasticSearch) are available.
 - OpenMetadata-Server require the minimum configuration of 2vCPU and 6Memory (GiB)
 - OpenMetadata-Ingestion require the minimum configuration of 2vCPU and 8Memory (GiB)
-- We also recommend to bind Docker Volumes for data persistence. Minimum disck space required would be 128 Gib. Learn how to do so [here](/deployment/docker/volumes).
+- We also recommend to bind Docker Volumes for data persistence. Minimum disk space required would be 128 Gib. Learn how to do so [here](/deployment/docker/volumes).
 ### Steps for Deploying Ingestion 
 - Download the docker-compose.yml file from the release page [here](https://github.com/open-metadata/OpenMetadata/releases).
 - Update the environment variables below for OpenMetadata-Ingestion Docker Compose backed systems to connect with Database. 
