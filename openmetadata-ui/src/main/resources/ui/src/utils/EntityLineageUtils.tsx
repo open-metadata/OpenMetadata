@@ -497,11 +497,14 @@ export const getDataLabel = (
       <span
         className="tw-break-words tw-self-center w-72"
         data-testid="lineage-entity">
-        {type === 'table'
-          ? databaseName && schemaName
-            ? `${databaseName}${FQN_SEPARATOR_CHAR}${schemaName}${FQN_SEPARATOR_CHAR}${label}`
-            : label
-          : label}
+        {type === 'table' && databaseName && schemaName ? (
+          <span className="d-block text-xs custom-lineage-heading">
+            {databaseName}
+            {FQN_SEPARATOR_CHAR}
+            {schemaName}
+          </span>
+        ) : null}
+        <span className="">{label}</span>
       </span>
     );
   }
@@ -1199,16 +1202,18 @@ export const getChildMap = (obj: EntityLineage) => {
   newData.downstreamEdges = removeDuplicates(newData.downstreamEdges || []);
   newData.upstreamEdges = removeDuplicates(newData.upstreamEdges || []);
 
-  const childMap: EntityReferenceChild[] = getChildren(
+  const childMap: EntityReferenceChild[] = getLineageChildParents(
     newData,
     nodeSet,
-    obj.entity.id
+    obj.entity.id,
+    false
   );
 
-  const parentsMap: EntityReferenceChild[] = getParents(
+  const parentsMap: EntityReferenceChild[] = getLineageChildParents(
     newData,
     nodeSet,
-    obj.entity.id
+    obj.entity.id,
+    true
   );
 
   const map: EntityReferenceChild = {
@@ -1223,14 +1228,33 @@ export const getChildMap = (obj: EntityLineage) => {
 export const getPaginatedChildMap = (
   obj: EntityLineage,
   map: EntityReferenceChild | undefined,
-  pagination_data: Record<string, NodeIndexMap>
+  pagination_data: Record<string, NodeIndexMap>,
+  maxLineageLength: number
 ) => {
   const nodes = [];
   const edges: EntityLineageEdge[] = [];
   nodes.push(obj.entity);
   if (map) {
-    flattenObj(obj, map, true, obj.entity.id, nodes, edges, pagination_data);
-    flattenObj(obj, map, false, obj.entity.id, nodes, edges, pagination_data);
+    flattenObj(
+      obj,
+      map,
+      true,
+      obj.entity.id,
+      nodes,
+      edges,
+      pagination_data,
+      maxLineageLength
+    );
+    flattenObj(
+      obj,
+      map,
+      false,
+      obj.entity.id,
+      nodes,
+      edges,
+      pagination_data,
+      maxLineageLength
+    );
   }
 
   return { nodes, edges };
@@ -1243,7 +1267,8 @@ export const flattenObj = (
   id: string,
   nodes: EntityReference[],
   edges: EntityLineageEdge[],
-  pagination_data: Record<string, NodeIndexMap>
+  pagination_data: Record<string, NodeIndexMap>,
+  maxLineageLength = 50
 ) => {
   const children = downwards ? childMapObj.children : childMapObj.parents;
   if (!children) {
@@ -1251,8 +1276,8 @@ export const flattenObj = (
   }
   const startIndex =
     pagination_data[id]?.[downwards ? 'downstream' : 'upstream'][0] ?? 0;
-  const hasMoreThanLimit = children.length > startIndex + MAX_LINEAGE_LENGTH;
-  const endIndex = startIndex + MAX_LINEAGE_LENGTH;
+  const hasMoreThanLimit = children.length > startIndex + maxLineageLength;
+  const endIndex = startIndex + maxLineageLength;
 
   children.slice(0, endIndex).forEach((item) => {
     if (item) {
@@ -1294,47 +1319,45 @@ export const flattenObj = (
   }
 };
 
-export const getChildren = (
+export const getLineageChildParents = (
   obj: EntityLineage,
   nodeSet: Set<string>,
   id: string,
+  isParent = false,
   index = 0
 ) => {
-  const downStreamEdges = obj.downstreamEdges || [];
-  const filtered = downStreamEdges.filter((edge) => edge.fromEntity === id);
+  const edges = isParent ? obj.upstreamEdges || [] : obj.downstreamEdges || [];
+  const filtered = edges.filter((edge) => {
+    return isParent ? edge.toEntity === id : edge.fromEntity === id;
+  });
 
   return filtered.reduce((childMap: EntityReferenceChild[], edge, i) => {
-    const node = obj.nodes?.find((node) => node.id === edge.toEntity);
+    const node = obj.nodes?.find((node) => {
+      return isParent ? node.id === edge.fromEntity : node.id === edge.toEntity;
+    });
+
     if (node && !nodeSet.has(node.id)) {
       nodeSet.add(node.id);
-      const childNodes = getChildren(obj, nodeSet, node.id, i);
-      childMap.push({ ...node, children: childNodes, pageIndex: index + i });
+      const childNodes = getLineageChildParents(
+        obj,
+        nodeSet,
+        node.id,
+        isParent,
+        i
+      );
+      const lineage: EntityReferenceChild = { ...node, pageIndex: index + i };
+
+      if (isParent) {
+        lineage.parents = childNodes;
+      } else {
+        lineage.children = childNodes;
+      }
+
+      childMap.push(lineage);
     }
 
     return childMap;
   }, []);
-};
-
-export const getParents = (
-  obj: EntityLineage,
-  nodeSet: Set<string>,
-  id: string,
-  index = 0
-) => {
-  const upstreamEdges = obj.upstreamEdges || [];
-
-  return upstreamEdges
-    .filter((edge) => edge.toEntity === id)
-    .reduce((childMap: EntityReferenceChild[], edge, i) => {
-      const node = obj.nodes?.find((node) => node.id === edge.fromEntity);
-      if (node && !nodeSet.has(node.id)) {
-        nodeSet.add(node.id);
-        const childNodes = getParents(obj, nodeSet, node.id, i);
-        childMap.push({ ...node, parents: childNodes, pageIndex: index + i });
-      }
-
-      return childMap;
-    }, []);
 };
 
 export const removeDuplicates = (arr: EntityLineageEdge[]) => {
