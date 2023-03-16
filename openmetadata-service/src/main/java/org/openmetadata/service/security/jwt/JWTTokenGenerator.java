@@ -68,18 +68,19 @@ public class JWTTokenGenerator {
   }
 
   public JWTAuthMechanism generateJWTToken(User user, JWTTokenExpiry expiry) {
-    return getJwtAuthMechanism(user.getName(), user.getEmail(), true, ServiceTokenType.BOT, getExpiryDate(expiry));
+    return getJwtAuthMechanism(
+        user.getName(), user.getEmail(), true, ServiceTokenType.BOT, getExpiryDate(expiry), expiry);
   }
 
   public JWTAuthMechanism generateJWTToken(
       String userName, String email, long expiryInSeconds, boolean isBot, ServiceTokenType tokenType) {
-    return getJwtAuthMechanism(userName, email, isBot, tokenType, getCustomExpiryDate(expiryInSeconds));
+    return getJwtAuthMechanism(userName, email, isBot, tokenType, getCustomExpiryDate(expiryInSeconds), null);
   }
 
   public JWTAuthMechanism getJwtAuthMechanism(
-      String userName, String email, boolean isBot, ServiceTokenType tokenType, Date expires) {
+      String userName, String email, boolean isBot, ServiceTokenType tokenType, Date expires, JWTTokenExpiry expiry) {
     try {
-      JWTAuthMechanism jwtAuthMechanism = new JWTAuthMechanism();
+      JWTAuthMechanism jwtAuthMechanism = new JWTAuthMechanism().withJWTTokenExpiry(expiry);
       Algorithm algorithm = Algorithm.RSA256(null, privateKey);
       String token =
           JWT.create()

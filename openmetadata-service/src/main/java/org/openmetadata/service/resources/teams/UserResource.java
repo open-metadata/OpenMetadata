@@ -1163,7 +1163,8 @@ public class UserResource extends EntityResource<User, UserRepository> {
                   user.getEmail(),
                   false,
                   ServiceTokenType.PERSONAL_ACCESS,
-                  getExpiryDate(tokenRequest.getJWTTokenExpiry()));
+                  getExpiryDate(tokenRequest.getJWTTokenExpiry()),
+                  null);
       PersonalAccessToken personalAccessToken = TokenUtil.getPersonalAccessToken(tokenRequest, user, authMechanism);
       tokenRepository.insertToken(personalAccessToken);
       return Response.status(Response.Status.OK).entity(personalAccessToken).build();
