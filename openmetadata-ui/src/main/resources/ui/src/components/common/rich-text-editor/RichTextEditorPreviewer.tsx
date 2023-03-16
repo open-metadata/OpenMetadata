@@ -58,6 +58,7 @@ const RichTextEditorPreviewer = ({
               : `${getTrimmedContent(content, maxLength)}...`
           }
           key={uniqueId()}
+          linkAttributes={{ target: '_blank' }}
         />
       </div>
       {enableSeeMoreVariant && markdown.length > maxLength && (
