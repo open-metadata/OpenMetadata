@@ -92,5 +92,5 @@ def test_connection(engine: Engine, service_connection) -> TestConnectionResult:
         ),
     ]
 
-    timeout_seconds = service_connection.timeOut
+    timeout_seconds = service_connection.connectionTimeout
     return test_connection_db_common(engine, steps, timeout_seconds)
