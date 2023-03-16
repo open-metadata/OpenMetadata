@@ -12,6 +12,7 @@
  */
 
 import PageContainerV1 from 'components/containers/PageContainerV1';
+import { useAdvanceSearch } from 'components/Explore/AdvanceSearchProvider/AdvanceSearchProvider.component';
 import Explore from 'components/Explore/Explore.component';
 import {
   ExploreProps,
@@ -19,8 +20,9 @@ import {
   SearchHitCounts,
   UrlParams,
 } from 'components/Explore/explore.interface';
+import { withAdvanceSearch } from 'components/router/withAdvanceSearch';
 import { SORT_ORDER } from 'enums/common.enum';
-import { get, isNil, isString } from 'lodash';
+import { isNil, isString } from 'lodash';
 import Qs from 'qs';
 import React, {
   FunctionComponent,
@@ -29,7 +31,6 @@ import React, {
   useMemo,
   useState,
 } from 'react';
-import { JsonTree, Utils as QbUtils } from 'react-awesome-query-builder';
 import { useHistory, useLocation, useParams } from 'react-router-dom';
 import { searchQuery } from 'rest/searchAPI';
 import useDeepCompareEffect from 'use-deep-compare-effect';
@@ -69,8 +70,7 @@ const ExplorePage: FunctionComponent = () => {
 
   const [isLoading, setIsLoading] = useState(true);
 
-  const [isElasticSearchIssue, setIsElasticSearchIssue] =
-    useState<boolean>(false);
+  const { queryFilter } = useAdvanceSearch();
 
   const parsedSearch = useMemo(
     () =>
@@ -117,19 +117,6 @@ const ExplorePage: FunctionComponent = () => {
     setAdvancedSearchQueryFilter(undefined);
   };
 
-  const handleQueryFilterChange = useCallback(
-    (queryFilter) => {
-      history.push({
-        search: Qs.stringify({
-          ...parsedSearch,
-          queryFilter: queryFilter ? JSON.stringify(queryFilter) : undefined,
-          page: 1,
-        }),
-      });
-    },
-    [history, parsedSearch]
-  );
-
   const handlePostFilterChange: ExploreProps['onChangePostFilter'] = (
     postFilter
   ) => {
@@ -145,28 +132,6 @@ const ExplorePage: FunctionComponent = () => {
       search: Qs.stringify({ ...parsedSearch, showDeleted, page: 1 }),
     });
   };
-
-  const queryFilter = useMemo(() => {
-    if (!isString(parsedSearch.queryFilter)) {
-      return undefined;
-    }
-
-    try {
-      const queryFilter = JSON.parse(parsedSearch.queryFilter);
-      const immutableTree = QbUtils.loadTree(queryFilter as JsonTree);
-      if (QbUtils.isValidTree(immutableTree)) {
-        return queryFilter as JsonTree;
-      }
-    } catch {
-      return undefined;
-    }
-
-    return undefined;
-  }, [location.search]);
-
-  useEffect(() => {
-    handleQueryFilterChange(queryFilter);
-  }, [queryFilter]);
 
   const searchIndex = useMemo(() => {
     const tabInfo = Object.entries(tabsInfo).find(
@@ -209,9 +174,10 @@ const ExplorePage: FunctionComponent = () => {
       // That is why I first did typecast it into QueryFilterInterface type to access the properties.
       getCombinedQueryFilterObject(
         elasticsearchQueryFilter as unknown as QueryFilterInterface,
-        advancesSearchQueryFilter as unknown as QueryFilterInterface
+        (advancesSearchQueryFilter as unknown as QueryFilterInterface) ??
+          queryFilter
       ),
-    [elasticsearchQueryFilter, advancesSearchQueryFilter]
+    [elasticsearchQueryFilter, advancesSearchQueryFilter, queryFilter]
   );
 
   useDeepCompareEffect(() => {
@@ -268,13 +234,6 @@ const ExplorePage: FunctionComponent = () => {
     ])
       .catch((err) => {
         showErrorToast(err);
-        if (
-          get(err, 'response.data.responseMessage', '').includes(
-            'elasticsearch'
-          )
-        ) {
-          setIsElasticSearchIssue(true);
-        }
       })
       .finally(() => setIsLoading(false));
   }, [
@@ -285,6 +244,7 @@ const ExplorePage: FunctionComponent = () => {
     showDeleted,
     advancesSearchQueryFilter,
     elasticsearchQueryFilter,
+    queryFilter,
     page,
   ]);
 
@@ -303,7 +263,6 @@ const ExplorePage: FunctionComponent = () => {
   return (
     <PageContainerV1>
       <Explore
-        isElasticSearchIssue={isElasticSearchIssue}
         loading={isLoading}
         page={page}
         postFilter={postFilter}
@@ -331,4 +290,4 @@ const ExplorePage: FunctionComponent = () => {
   );
 };
 
-export default ExplorePage;
+export default withAdvanceSearch(ExplorePage);

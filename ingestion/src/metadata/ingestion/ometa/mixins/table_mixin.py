@@ -27,7 +27,6 @@ from metadata.generated.schema.entity.data.location import Location
 from metadata.generated.schema.entity.data.table import (
     ColumnProfile,
     DataModel,
-    SqlQuery,
     Table,
     TableData,
     TableJoins,
@@ -40,7 +39,6 @@ from metadata.ingestion.ometa.client import REST
 from metadata.ingestion.ometa.models import EntityList
 from metadata.ingestion.ometa.utils import model_str
 from metadata.utils.logger import ometa_logger
-from metadata.utils.lru_cache import LRUCache
 from metadata.utils.uuid_encoder import UUIDEncoder
 
 logger = ometa_logger()
@@ -167,24 +165,6 @@ class OMetaTableMixin:
             data=data_model.json(),
         )
         return Table(**resp)
-
-    def ingest_table_queries_data(
-        self, table: Table, table_queries: List[SqlQuery]
-    ) -> None:
-        """
-        PUT table queries for a table
-
-        :param table: Table Entity to update
-        :param table_queries: SqlQuery to add
-        """
-        seen_queries = LRUCache(LRU_CACHE_SIZE)
-        for query in table_queries:
-            if query.query not in seen_queries:
-                self.client.put(
-                    f"{self.get_suffix(Table)}/{table.id.__root__}/tableQuery",
-                    data=query.json(),
-                )
-                seen_queries.put(query.query, None)
 
     def publish_table_usage(
         self, table: Table, table_usage_request: UsageRequest
@@ -321,14 +301,3 @@ class OMetaTableMixin:
             Optional[Table]: OM table object
         """
         return self._get(Table, f"{quote(model_str(fqn))}/tableProfile/latest")
-
-    def get_table_queries(self, table_id: Uuid) -> Optional[Table]:
-        """Get the queries attached to a table
-
-        Args:
-            id (str): table fully qualified name
-
-        Returns:
-            Optional[Table]: OM table object
-        """
-        return self._get(Table, f"{model_str(table_id)}/tableQuery")

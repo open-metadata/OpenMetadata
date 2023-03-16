@@ -173,20 +173,6 @@ class RedashSource(DashboardServiceSource):
                 return EntityReference(id=user.id.__root__, type="user")
         return None
 
-    def process_owner(self, dashboard_details) -> Optional[LineageDashboard]:
-        try:
-            owner = self.get_owner_details(dashboard_details=dashboard_details)
-            if owner and self.source_config.overrideOwner:
-                self.metadata.patch_owner(
-                    entity=LineageDashboard,
-                    entity_id=self.context.dashboard.id,
-                    owner=owner,
-                    force=True,
-                )
-        except Exception as exc:
-            logger.debug(traceback.format_exc())
-            logger.warning(f"Error processing owner for {dashboard_details}: {exc}")
-
     def get_dashboard_url(self, dashboard_details: dict) -> str:
         if version.parse(self.service_connection.redashVersion) > version.parse(
             INCOMPATIBLE_REDASH_VERSION
