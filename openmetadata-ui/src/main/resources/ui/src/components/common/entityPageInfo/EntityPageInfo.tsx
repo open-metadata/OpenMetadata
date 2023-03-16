@@ -22,7 +22,13 @@ import { EntityTags, ExtraInfo, TagOption } from 'Models';
 import React, { Fragment, useCallback, useEffect, useState } from 'react';
 import { useHistory } from 'react-router-dom';
 import { getActiveAnnouncement } from 'rest/feedsAPI';
+import { ReactComponent as IconCommentPlus } from '../../../assets/svg/add-chat.svg';
+import { ReactComponent as IconComments } from '../../../assets/svg/comment.svg';
 import { ReactComponent as IconEdit } from '../../../assets/svg/ic-edit.svg';
+import { ReactComponent as IconRequest } from '../../../assets/svg/request-icon.svg';
+import { ReactComponent as IconTagGrey } from '../../../assets/svg/tag-grey.svg';
+import { ReactComponent as IconTaskColor } from '../../../assets/svg/Task-ic.svg';
+
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { FOLLOWERS_VIEW_CAP } from '../../../constants/constants';
 import { EntityType } from '../../../enums/entity.enum';
@@ -35,7 +41,7 @@ import { useAfterMount } from '../../../hooks/useAfterMount';
 import { EntityFieldThreads } from '../../../interface/feed.interface';
 import { ANNOUNCEMENT_ENTITIES } from '../../../utils/AnnouncementsUtils';
 import { getEntityFeedLink } from '../../../utils/EntityUtils';
-import SVGIcons, { Icons } from '../../../utils/SvgUtils';
+import SVGIcons from '../../../utils/SvgUtils';
 import { fetchTagsAndGlossaryTerms } from '../../../utils/TagsUtils';
 import {
   getRequestTagsPath,
@@ -274,34 +280,30 @@ const EntityPageInfo = ({
   const getThreadElements = () => {
     if (!isUndefined(entityFieldThreads)) {
       return !isUndefined(tagThread) ? (
-        <button
-          className="tw-w-7 tw-h-7 tw-flex-none link-text focus:tw-outline-none"
+        <Button
+          className="p-0"
           data-testid="tag-thread"
+          size="small"
+          type="text"
           onClick={() => onThreadLinkSelect?.(tagThread.entityLink)}>
-          <span className="tw-flex">
-            <SVGIcons
-              alt="comments"
-              className="tw-mt-0.5"
-              height="16px"
-              icon={Icons.COMMENT}
-              width="16px"
-            />
-            <span className="tw-ml-1" data-testid="tag-thread-count">
-              {tagThread.count}
-            </span>
-          </span>
-        </button>
+          <Space align="center" className="w-full h-full" size={2}>
+            <IconComments height={16} name="comments" width={16} />
+            <span data-testid="tag-thread-count">{tagThread.count}</span>
+          </Space>
+        </Button>
       ) : (
-        <button
-          className="tw-w-7 tw-h-7 tw-flex-none link-text focus:tw-outline-none tw-align-top"
+        <Button
+          className="p-0"
           data-testid="start-tag-thread"
+          size="small"
+          type="text"
           onClick={() =>
             onThreadLinkSelect?.(
               getEntityFeedLink(entityType, entityFqn, 'tags')
             )
           }>
-          <SVGIcons alt="comments" icon={Icons.COMMENT_PLUS} width="16px" />
-        </button>
+          <IconCommentPlus height={16} name="comments" width={16} />
+        </Button>
       );
     } else {
       return null;
@@ -316,9 +318,11 @@ const EntityPageInfo = ({
 
     return onThreadLinkSelect &&
       TASK_ENTITIES.includes(entityType as EntityType) ? (
-      <button
-        className="tw-w-7 tw-h-7 tw-mr-1 tw-flex-none link-text focus:tw-outline-none tw-align-top"
+      <Button
+        className="p-0"
         data-testid="request-entity-tags"
+        size="small"
+        type="text"
         onClick={hasTags ? handleUpdateTags : handleRequestTags}>
         <Popover
           destroyTooltipOnHide
@@ -326,27 +330,32 @@ const EntityPageInfo = ({
           overlayClassName="ant-popover-request-description"
           trigger="hover"
           zIndex={9999}>
-          <SVGIcons alt="request-tags" icon={Icons.REQUEST} />
+          <IconRequest
+            className="anticon"
+            height={16}
+            name="request-tags"
+            width={16}
+          />
         </Popover>
-      </button>
+      </Button>
     ) : null;
   }, [tags]);
 
   const getTaskElement = useCallback(() => {
     return !isUndefined(tagTask) ? (
-      <button
-        className="tw-w-8 tw-h-8 tw-mr-1 tw--mt-0.5 tw-flex-none link-text focus:tw-outline-none"
+      <Button
+        className="p-0"
         data-testid="tag-task"
+        size="small"
+        type="text"
         onClick={() =>
           onThreadLinkSelect?.(tagTask.entityLink, ThreadType.Task)
         }>
-        <span className="tw-flex">
-          <SVGIcons alt="comments" icon={Icons.TASK_ICON} width="16px" />
-          <span className="tw-ml-1" data-testid="tag-task-count">
-            {tagTask.count}
-          </span>
-        </span>
-      </button>
+        <Space align="center" className="w-full h-full" size={2}>
+          <IconTaskColor height={16} name="comments" width={16} />
+          <span data-testid="tag-task-count">{tagTask.count}</span>
+        </Space>
+      </Button>
     ) : null;
   }, [tagTask]);
 
@@ -468,12 +477,7 @@ const EntityPageInfo = ({
 
       <Space wrap className="tw-justify-between" style={{ width: '100%' }}>
         <Space direction="vertical">
-          <Space
-            wrap
-            align="center"
-            className="m-t-xss"
-            data-testid="extrainfo"
-            size={4}>
+          <Space wrap align="center" data-testid="extrainfo" size={4}>
             {extraInfo.map((info, index) => (
               <span
                 className="tw-flex tw-items-center"
@@ -497,21 +501,13 @@ const EntityPageInfo = ({
               </span>
             ))}
           </Space>
-          <Space
-            wrap
-            align="start"
-            className="m-t-xss"
-            data-testid="entity-tags"
-            size={2}>
+          <Space wrap align="center" data-testid="entity-tags" size={6}>
             {(!isEditable || !isTagEditable || deleted) && (
               <>
                 {(tags.length > 0 || !isEmpty(tier)) && (
-                  <SVGIcons
-                    alt="icon-tag"
-                    className="tw-mx-1"
-                    icon="icon-tag-grey"
-                    width="16px"
-                  />
+                  <span className="d-flex align-center h-4">
+                    <IconTagGrey height={18} name="icon-tag" width={18} />
+                  </span>
                 )}
                 {tier?.tagFQN && (
                   <Tags
@@ -528,8 +524,9 @@ const EntityPageInfo = ({
             )}
             {isTagEditable && !deleted && (
               <Fragment>
-                <div
-                  className="tw-inline-block"
+                <Space
+                  align="center"
+                  className="w-full h-full"
                   data-testid="tags-wrapper"
                   onClick={() => {
                     // Fetch tags and terms only once
@@ -555,36 +552,34 @@ const EntityPageInfo = ({
                     }}>
                     {tags.length || tier ? (
                       <Button
-                        className="w-7 h-7 p-0 d-flex justify-center"
+                        className="p-0"
                         data-testid="edit-button"
-                        icon={
-                          <IconEdit
-                            height={16}
-                            name={t('label.edit')}
-                            width={16}
-                          />
-                        }
-                        type="text"
-                      />
-                    ) : (
-                      <span>
-                        <Tags
-                          className="tw-text-primary"
-                          startWith="+ "
-                          tag={t('label.add-entity', {
-                            entity: t('label.tag-lowercase'),
-                          })}
-                          type="label"
+                        size="small"
+                        type="text">
+                        <IconEdit
+                          className="anticon"
+                          height={16}
+                          name={t('label.edit')}
+                          width={16}
                         />
-                      </span>
+                      </Button>
+                    ) : (
+                      <Tags
+                        className="tw-text-primary"
+                        startWith="+ "
+                        tag={t('label.add-entity', {
+                          entity: t('label.tag-lowercase'),
+                        })}
+                        type="label"
+                      />
                     )}
                   </TagsContainer>
-                </div>
-                <div className="tw--mt-1.5">
+                </Space>
+                <Space align="center" size={6}>
                   {getRequestTagsElements()}
                   {getTaskElement()}
                   {getThreadElements()}
-                </div>
+                </Space>
               </Fragment>
             )}
           </Space>
