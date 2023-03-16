@@ -33,6 +33,7 @@ from metadata.ingestion.source.messaging.messaging_service import (
     BrokerTopicDetails,
     MessagingServiceSource,
 )
+from metadata.utils.constants import UTF_8
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -66,7 +67,8 @@ class KinesisSource(MessagingServiceSource):
                 topics = self.kinesis.list_streams(**args)
                 all_topics.extend(topics["StreamNames"])
                 has_more_topics = topics["HasMoreStreams"]
-                args["ExclusiveStartStreamName"] = all_topics[-1]
+                if len(all_topics) > 0:
+                    args["ExclusiveStartStreamName"] = all_topics[-1]
         except Exception as err:
             logger.debug(traceback.format_exc())
             logger.error(f"Failed to fetch models list - {err}")
@@ -174,9 +176,9 @@ class KinesisSource(MessagingServiceSource):
 
                 for record in records:
                     try:
-                        data.append(b64decode(record["Data"]).decode("utf-8"))
+                        data.append(b64decode(record["Data"]).decode(UTF_8))
                     except (binascii.Error, UnicodeDecodeError):
-                        data.append(record["Data"].decode("utf-8"))
+                        data.append(record["Data"].decode(UTF_8))
                 if data:
                     break
         except Exception as err:
