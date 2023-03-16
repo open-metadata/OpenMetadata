@@ -112,6 +112,7 @@ DELETE FROM entity_extension WHERE id IN
 
 DROP Table temp_query_migration;
 
+-- remove the audience if it was wrongfully sent from the UI after editing the OM service
 UPDATE metadata_service_entity
 SET json = JSON_REMOVE(json, '$.connection.config.securityConfig.audience')
 WHERE name = 'OpenMetadata' AND JSON_EXTRACT(json, '$.connection.config.authProvider') != 'google';
