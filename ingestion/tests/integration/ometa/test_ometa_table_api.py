@@ -15,12 +15,14 @@ OpenMetadata high-level API Table test
 import uuid
 from copy import deepcopy
 from datetime import datetime, timezone
+from typing import List
 from unittest import TestCase
 
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
 from metadata.generated.schema.api.data.createDatabaseSchema import (
     CreateDatabaseSchemaRequest,
 )
+from metadata.generated.schema.api.data.createQuery import CreateQueryRequest
 from metadata.generated.schema.api.data.createTable import CreateTableRequest
 from metadata.generated.schema.api.data.createTableProfile import (
     CreateTableProfileRequest,
@@ -29,13 +31,13 @@ from metadata.generated.schema.api.services.createDatabaseService import (
     CreateDatabaseServiceRequest,
 )
 from metadata.generated.schema.api.teams.createUser import CreateUserRequest
+from metadata.generated.schema.entity.data.query import Query
 from metadata.generated.schema.entity.data.table import (
     Column,
     ColumnJoins,
     ColumnProfile,
     DataType,
     JoinedWith,
-    SqlQuery,
     SystemProfile,
     Table,
     TableData,
@@ -54,6 +56,7 @@ from metadata.generated.schema.entity.services.databaseService import (
     DatabaseService,
     DatabaseServiceType,
 )
+from metadata.generated.schema.entity.teams.user import User
 from metadata.generated.schema.security.client.openMetadataJWTClientConfig import (
     OpenMetadataJWTClientConfig,
 )
@@ -81,10 +84,12 @@ class OMetaTableTest(TestCase):
 
     assert metadata.health_check()
 
-    user = metadata.create_or_update(
+    user: User = metadata.create_or_update(
         data=CreateUserRequest(name="random-user", email="random@user.com"),
     )
-    owner = EntityReference(id=user.id, type="user")
+    owner = EntityReference(
+        id=user.id, type="user", fullyQualifiedName=user.fullyQualifiedName.__root__
+    )
 
     service = CreateDatabaseServiceRequest(
         name="test-service-table",
@@ -439,28 +444,31 @@ class OMetaTableTest(TestCase):
             entity=Table, fqn=self.entity.fullyQualifiedName
         )
 
-        query_no_user = SqlQuery(query="select * from awesome")
+        query_no_user = CreateQueryRequest(query="select * from awesome")
 
-        self.metadata.ingest_table_queries_data(
-            table=res, table_queries=[query_no_user]
+        self.metadata.ingest_entity_queries_data(entity=res, queries=[query_no_user])
+        table_with_query: List[Query] = self.metadata.get_entity_queries(
+            res.id, fields=["*"]
         )
-        table_with_query: Table = self.metadata.get_table_queries(res.id)
 
-        assert len(table_with_query.tableQueries) == 1
-        assert table_with_query.tableQueries[0].query == query_no_user.query
-        assert table_with_query.tableQueries[0].users is None
+        assert len(table_with_query) == 1
+        assert table_with_query[0].query == query_no_user.query
+        assert table_with_query[0].users == []
 
         # Validate that we can properly add user information
-        query_with_user = SqlQuery(query="select * from awesome", users=[self.owner])
-
-        self.metadata.ingest_table_queries_data(
-            table=res, table_queries=[query_with_user]
+        query_with_user = CreateQueryRequest(
+            query="select * from awesome", users=[self.owner.fullyQualifiedName]
         )
-        table_with_query: Table = self.metadata.get_table_queries(res.id)
 
-        assert len(table_with_query.tableQueries) == 1
-        assert table_with_query.tableQueries[0].query == query_with_user.query
-        assert table_with_query.tableQueries[0].users == [self.owner]
+        self.metadata.ingest_entity_queries_data(entity=res, queries=[query_with_user])
+        table_with_query: List[Query] = self.metadata.get_entity_queries(
+            res.id, fields=["*"]
+        )
+
+        assert len(table_with_query) == 1
+        assert table_with_query[0].query == query_with_user.query
+        assert len(table_with_query[0].users) == 1
+        assert table_with_query[0].users[0].id == self.owner.id
 
     def test_list_versions(self):
         """

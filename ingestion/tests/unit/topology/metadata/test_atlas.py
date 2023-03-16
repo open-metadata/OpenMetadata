@@ -293,7 +293,6 @@ EXPTECTED_TABLE = Table(
     sampleData=None,
     tableProfilerConfig=None,
     profile=None,
-    tableQueries=None,
     dataModel=None,
     changeDescription=None,
     deleted=False,

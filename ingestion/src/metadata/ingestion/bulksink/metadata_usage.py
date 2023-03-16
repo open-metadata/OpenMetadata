@@ -102,7 +102,6 @@ class MetadataUsageBulkSink(BulkSink):
             self.table_usage_map[table_entity.id.__root__] = {
                 "table_entity": table_entity,
                 "usage_count": table_usage.count,
-                "sql_queries": list(table_usage.sqlQueries or []),
                 "usage_date": table_usage.date,
                 "database": table_usage.databaseName,
                 "database_schema": table_usage.databaseSchema,
@@ -111,9 +110,6 @@ class MetadataUsageBulkSink(BulkSink):
             self.table_usage_map[table_entity.id.__root__][
                 "usage_count"
             ] += table_usage.count
-            self.table_usage_map[table_entity.id.__root__]["sql_queries"].extend(
-                table_usage.sqlQueries
-            )
 
     def __publish_usage_records(self) -> None:
         """
@@ -123,11 +119,10 @@ class MetadataUsageBulkSink(BulkSink):
             table_usage_request = None
             try:
                 table_usage_request = UsageRequest(
-                    date=value_dict["usage_date"], count=value_dict["usage_count"]
-                )
-                self.metadata.ingest_table_queries_data(
-                    table=value_dict["table_entity"],
-                    table_queries=value_dict["sql_queries"],
+                    date=datetime.fromtimestamp(int(value_dict["usage_date"])).strftime(
+                        "%Y-%m-%d"
+                    ),
+                    count=value_dict["usage_count"],
                 )
                 self.metadata.publish_table_usage(
                     value_dict["table_entity"], table_usage_request
@@ -225,6 +220,11 @@ class MetadataUsageBulkSink(BulkSink):
                     ):
                         self.metadata.publish_frequently_joined_with(
                             table_entity, table_join_request
+                        )
+
+                    if table_usage.sqlQueries:
+                        self.metadata.ingest_entity_queries_data(
+                            entity=table_entity, queries=table_usage.sqlQueries
                         )
                 except APIError as err:
                     logger.debug(traceback.format_exc())
