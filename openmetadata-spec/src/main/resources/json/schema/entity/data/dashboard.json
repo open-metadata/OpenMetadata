@@ -52,6 +52,11 @@
       },
       "default": null
     },
+    "dataModels": {
+      "description": "List of data models used by this dashboard or the charts contained on it.",
+      "$ref": "../../type/entityReference.json#/definitions/entityReferenceList",
+      "default": null
+    },
     "href": {
       "description": "Link to the resource corresponding to this entity.",
       "$ref": "../../type/basic.json#/definitions/href"

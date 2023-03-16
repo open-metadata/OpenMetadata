@@ -980,7 +980,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
     DatabaseUtil.validateConstraints(table.getColumns(), table.getTableConstraints());
     DatabaseUtil.validateTablePartition(table.getColumns(), table.getTablePartition());
     DatabaseUtil.validateViewDefinition(table.getTableType(), table.getViewDefinition());
-    DatabaseUtil.validateColumns(table);
+    DatabaseUtil.validateColumns(table.getColumns());
     return table;
   }
 

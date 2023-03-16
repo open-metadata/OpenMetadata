@@ -5,6 +5,7 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import java.util.ArrayList;
 import java.util.List;
 import org.openmetadata.schema.type.Column;
+import org.openmetadata.service.util.FullyQualifiedName;
 
 public final class ColumnUtil {
   private ColumnUtil() {}
@@ -34,5 +35,16 @@ public final class ColumnUtil {
         .withScale(column.getScale())
         .withOrdinalPosition(column.getOrdinalPosition())
         .withChildren(children);
+  }
+
+  public static void setColumnFQN(String parentFQN, List<Column> columns) {
+    columns.forEach(
+        c -> {
+          String columnFqn = FullyQualifiedName.add(parentFQN, c.getName());
+          c.setFullyQualifiedName(columnFqn);
+          if (c.getChildren() != null) {
+            setColumnFQN(columnFqn, c.getChildren());
+          }
+        });
   }
 }

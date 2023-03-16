@@ -113,6 +113,8 @@ public final class Entity {
   public static final String WEB_ANALYTIC_EVENT = "webAnalyticEvent";
   public static final String DATA_INSIGHT_CHART = "dataInsightChart";
 
+  public static final String DATA_MODEL = "dataModel";
+
   //
   // Policy entity
   //

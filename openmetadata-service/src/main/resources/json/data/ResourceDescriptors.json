@@ -552,5 +552,19 @@
       "ViewAll",
       "EditDescription"
     ]
+  },
+  {
+    "name": "dataModel",
+    "operations": [
+      "Create",
+      "Delete",
+      "ViewAll",
+      "EditAll",
+      "EditDescription",
+      "EditDisplayName",
+      "EditTags",
+      "EditOwner",
+      "EditLineage"
+    ]
   }
 ]

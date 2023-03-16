@@ -119,3 +119,15 @@ SET json = json::jsonb #- '{connection,config,securityConfig,audience}'
 WHERE name = 'OpenMetadata'
     AND json#>'{connection,config,authProvider}' IS NOT NULL
     AND json -> 'connection' -> 'config' ->> 'authProvider' != 'google';
+
+-- create data model table
+CREATE TABLE IF NOT EXISTS data_model_entity (
+    id VARCHAR(36) GENERATED ALWAYS AS (json ->> 'id') STORED NOT NULL,
+    json JSONB NOT NULL,
+    updatedAt BIGINT GENERATED ALWAYS AS ((json ->> 'updatedAt')::bigint) STORED NOT NULL,
+    updatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> 'updatedBy') STORED NOT NULL,
+    deleted BOOLEAN GENERATED ALWAYS AS ((json ->> 'deleted')::boolean) STORED,
+    fullyQualifiedName VARCHAR(256) GENERATED ALWAYS AS (json ->> 'fullyQualifiedName') STORED NOT NULL,
+    PRIMARY KEY (id),
+    UNIQUE (fullyQualifiedName)
+);
