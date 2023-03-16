@@ -66,7 +66,7 @@ CREATE TABLE IF NOT EXISTS automations_workflow (
     name VARCHAR(256) GENERATED ALWAYS AS (json ->> 'name') STORED NOT NULL,
     workflowType VARCHAR(256) GENERATED ALWAYS AS (json ->> 'workflowType') STORED NOT NULL,
     status VARCHAR(256) GENERATED ALWAYS AS (json ->> 'status') STORED,
-     json JSONB NOT NULL,
+    json JSONB NOT NULL,
     updatedAt BIGINT GENERATED ALWAYS AS ((json ->> 'updatedAt')::bigint) STORED NOT NULL,
     updatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> 'updatedBy') STORED NOT NULL,
     deleted BOOLEAN GENERATED ALWAYS AS ((json ->> 'deleted')::boolean) STORED,
