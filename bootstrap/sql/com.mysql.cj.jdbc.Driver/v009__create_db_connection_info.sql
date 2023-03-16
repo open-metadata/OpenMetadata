@@ -77,3 +77,7 @@ CREATE TABLE IF NOT EXISTS automations_workflow (
 -- Do not store OM server connection, we'll set it dynamically on the resource
 UPDATE ingestion_pipeline_entity
 SET json = JSON_REMOVE(json, '$.openMetadataServerConnection');
+
+UPDATE metadata_service_entity
+SET json = JSON_REMOVE(json, '$.connection.config.securityConfig.audience')
+WHERE name = 'OpenMetadata' AND JSON_EXTRACT(json, '$.connection.config.authProvider') != 'google';

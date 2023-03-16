@@ -66,7 +66,7 @@ CREATE TABLE IF NOT EXISTS automations_workflow (
     name VARCHAR(256) GENERATED ALWAYS AS (json ->> 'name') STORED NOT NULL,
     workflowType VARCHAR(256) GENERATED ALWAYS AS (json ->> 'workflowType') STORED NOT NULL,
     status VARCHAR(256) GENERATED ALWAYS AS (json ->> 'status') STORED,
-    json JSONB NOT NULL,
+     json JSONB NOT NULL,
     updatedAt BIGINT GENERATED ALWAYS AS ((json ->> 'updatedAt')::bigint) STORED NOT NULL,
     updatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> 'updatedBy') STORED NOT NULL,
     deleted BOOLEAN GENERATED ALWAYS AS ((json ->> 'deleted')::boolean) STORED,
@@ -77,3 +77,9 @@ CREATE TABLE IF NOT EXISTS automations_workflow (
 -- Do not store OM server connection, we'll set it dynamically on the resource
 UPDATE ingestion_pipeline_entity
 SET json = json::jsonb #- '{openMetadataServerConnection}';
+
+UPDATE metadata_service_entity
+SET json = json::jsonb #- '{connection,config,securityConfig,audience}'
+WHERE name = 'OpenMetadata'
+    AND json#>'{connection,config,authProvider}' IS NOT NULL
+    AND json -> 'connection' -> 'config' ->> 'authProvider' != 'google';
