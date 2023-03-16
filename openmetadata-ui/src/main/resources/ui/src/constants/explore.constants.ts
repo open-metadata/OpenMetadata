@@ -90,4 +90,10 @@ export const tabsInfo: { [K in ExploreSearchIndex]: ExploreTabInfo } = {
     sortField: INITIAL_SORT_FIELD,
     path: 'mlmodels',
   },
+  [SearchIndex.CONTAINER]: {
+    label: t('label.container-plural'),
+    sortingFields: entitySortingFields,
+    sortField: INITIAL_SORT_FIELD,
+    path: 'containers',
+  },
 };

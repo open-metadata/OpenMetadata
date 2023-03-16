@@ -12,14 +12,15 @@
  */
 
 import { Popover } from 'antd';
-import { EntityData } from 'components/common/PopOverCard/EntityPopOverCard';
 import ProfilePicture from 'components/common/ProfilePicture/ProfilePicture';
 import {
   LeafNodes,
   LineagePos,
 } from 'components/EntityLineage/EntityLineage.interface';
+import { EntityUnion } from 'components/Explore/explore.interface';
 import { ResourceEntity } from 'components/PermissionProvider/PermissionProvider.interface';
 import { ExplorePageTabs } from 'enums/Explore.enum';
+import { Container } from 'generated/entity/data/container';
 import { Mlmodel } from 'generated/entity/data/mlmodel';
 import i18next from 'i18next';
 import { isEmpty, isNil, isUndefined, lowerCase, startCase } from 'lodash';
@@ -125,7 +126,7 @@ export const getOwnerNameWithProfilePic = (
 
 export const getEntityOverview = (
   type: string,
-  entityDetail: EntityData
+  entityDetail: EntityUnion
 ): Array<{
   name: string;
   value: string | number | React.ReactNode;
@@ -423,6 +424,24 @@ export const getEntityOverview = (
             DRAWER_NAVIGATION_OPTIONS.lineage,
             DRAWER_NAVIGATION_OPTIONS.explore,
           ],
+        },
+      ];
+
+      return overview;
+    }
+    case ExplorePageTabs.CONTAINERS: {
+      const { owner } = entityDetail as Container;
+      const overview = [
+        {
+          name: i18next.t('label.owner'),
+          value:
+            getOwnerNameWithProfilePic(owner) ||
+            i18next.t('label.no-entity', {
+              entity: i18next.t('label.owner'),
+            }),
+          url: getOwnerValue(owner as EntityReference),
+          isLink: owner?.name ? true : false,
+          visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
         },
       ];
 
