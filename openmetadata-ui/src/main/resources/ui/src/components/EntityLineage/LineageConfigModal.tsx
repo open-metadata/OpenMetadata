@@ -12,6 +12,7 @@
  */
 import { Form, InputNumber, Modal, Select } from 'antd';
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   LineageConfig,
   LineageConfigModalProps,
@@ -29,6 +30,7 @@ const LineageConfigModal: React.FC<LineageConfigModalProps> = ({
   onCancel,
   onSave,
 }) => {
+  const { t } = useTranslation();
   const [form] = Form.useForm();
   const [upstreamDepth, setUpstreamDepth] = useState<number>(
     config.upstreamDepth || 1
@@ -51,7 +53,7 @@ const LineageConfigModal: React.FC<LineageConfigModalProps> = ({
 
   return (
     <Modal
-      title="Lineage Config"
+      title={t('label.lineage-config')}
       visible={visible}
       onCancel={onCancel}
       onOk={form.submit}>
@@ -61,15 +63,15 @@ const LineageConfigModal: React.FC<LineageConfigModalProps> = ({
         layout="vertical"
         onFinish={handleSave}>
         <Form.Item
-          label="Upstream Depth"
+          label={t('label.upstream-depth')}
           name="upstreamDepth"
           rules={[
             {
               required: true,
-              message: 'Please select a value for upstream depth',
+              message: t('message.upstream-depth-message'),
             },
           ]}
-          tooltip="Display up to 3 nodes of upstream lineage to identify the source (parent levels).">
+          tooltip={t('message.upstream-depth-tooltip')}>
           <Select
             data-testid="field-upstream"
             onChange={(value) => setUpstreamDepth(value as number)}>
@@ -78,15 +80,15 @@ const LineageConfigModal: React.FC<LineageConfigModalProps> = ({
         </Form.Item>
 
         <Form.Item
-          label="Downstream Depth"
+          label={t('label.downstream-depth')}
           name="downstreamDepth"
           rules={[
             {
               required: true,
-              message: 'Please select a value for downstream depth',
+              message: t('message.downstream-depth-message'),
             },
           ]}
-          tooltip="Display up to 3 nodes of downstream lineage to identify the target (child levels).">
+          tooltip={t('message.downstream-depth-tooltip')}>
           <Select
             data-testid="field-downstream"
             onChange={(value) => setDownstreamDepth(value as number)}>
@@ -95,15 +97,15 @@ const LineageConfigModal: React.FC<LineageConfigModalProps> = ({
         </Form.Item>
 
         <Form.Item
-          label="Nodes per Layer"
+          label={t('label.nodes-per-layer')}
           name="nodesPerLayer"
           rules={[
             {
               required: true,
-              message: 'Please enter a value for nodes per layer',
+              message: t('message.nodes-per-layer-message'),
             },
           ]}
-          tooltip="Choose to display ‘n’ number of nodes per layer. If the existing nodes exceed the defined number of nodes, then pagination will be shown.">
+          tooltip={t('message.nodes-per-layer-tooltip')}>
           <InputNumber
             className="w-full"
             data-testid="field-nodes-per-layer"
