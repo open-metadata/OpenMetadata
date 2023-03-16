@@ -58,7 +58,7 @@ def parse_sql_statement(record: TableQuery, dialect: Dialect) -> Optional[Parsed
         databaseSchema=record.databaseSchema,
         sql=record.query,
         userName=record.userName,
-        date=start_date.__root__.strftime("%Y-%m-%d"),
+        date=int(start_date.__root__.timestamp()),
         serviceName=record.serviceName,
         duration=record.duration,
     )
