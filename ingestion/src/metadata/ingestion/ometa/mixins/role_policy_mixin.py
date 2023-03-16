@@ -47,7 +47,7 @@ class OMetaRolePolicyMixin(Generic[T]):
 
     client: REST
 
-    def _validate_instance_description(
+    def _fetch_entity_if_exists(
         self, entity: Type[T], entity_id: Union[str, basic.Uuid]
     ) -> Optional[T]:
         """
@@ -177,9 +177,7 @@ class OMetaRolePolicyMixin(Generic[T]):
         Returns
             Updated Entity
         """
-        instance: Role = self._validate_instance_description(
-            entity=Role, entity_id=entity_id
-        )
+        instance: Role = self._fetch_entity_if_exists(entity=Role, entity_id=entity_id)
         if not instance:
             return None
 
@@ -309,7 +307,7 @@ class OMetaRolePolicyMixin(Generic[T]):
         Returns
             Updated Entity
         """
-        instance: Policy = self._validate_instance_description(
+        instance: Policy = self._fetch_entity_if_exists(
             entity=Policy, entity_id=entity_id
         )
         if not instance:

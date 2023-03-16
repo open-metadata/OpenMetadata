@@ -31,7 +31,9 @@ class PatchValue(str, Enum):
     """
 
     ID = "id"
+    COLUMNS = "columns"
     CONDITION = "condition"
+    CONSTRAINT_TYPE = "constraintType"
     DESCRIPTION = "description"
     EFFECT = "effect"
     FQN = "fullyQualifiedName"
@@ -39,6 +41,7 @@ class PatchValue(str, Enum):
     NAME = "name"
     OPERATIONS = "operations"
     POLICY = "policy"
+    REFERRED_COLUMNS = "referredColumns"
     RESOURCES = "resources"
     SOURCE = "source"
     STATE = "state"
@@ -71,6 +74,7 @@ class PatchPath(str, Enum):
     RULES_NAME = "/rules/{rule_index}/name"
     RULES_OPERATIONS = "/rules/{rule_index}/operations/{index}"
     RULES_RESOURCES = "/rules/{rule_index}/resources/{index}"
+    TABLE_CONSTRAINTS = "/tableConstraints"
     TAGS = "/tags/{tag_index}"
 
 

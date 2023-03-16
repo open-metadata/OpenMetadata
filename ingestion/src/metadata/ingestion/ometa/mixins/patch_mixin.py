@@ -150,7 +150,7 @@ class OMetaPatchMixin(Generic[T]):
         Returns
             Updated Entity
         """
-        table: Table = self._validate_instance_description(
+        table: Table = self._fetch_entity_if_exists(
             entity=Table,
             entity_id=entity_id,
         )
@@ -230,13 +230,15 @@ class OMetaPatchMixin(Generic[T]):
                 data=json.dumps(
                     [
                         {
-                            OPERATION: ADD if not table.tableConstraints else REPLACE,
-                            PATH: TABLE_CONSTRAINTS,
-                            VALUE: [
+                            PatchField.OPERATION: PatchOperation.ADD
+                            if not table.tableConstraints
+                            else PatchOperation.REPLACE,
+                            PatchField.PATH: PatchPath.TABLE_CONSTRAINTS,
+                            PatchField.VALUE: [
                                 {
-                                    "constraintType": constraint.constraintType.value,
-                                    "columns": constraint.columns,
-                                    "referredColumns": [
+                                    PatchValue.CONSTRAINT_TYPE: constraint.constraintType.value,
+                                    PatchValue.COLUMNS: constraint.columns,
+                                    PatchValue.REFERRED_COLUMNS: [
                                         col.__root__
                                         for col in constraint.referredColumns or []
                                     ],
@@ -279,9 +281,7 @@ class OMetaPatchMixin(Generic[T]):
         Returns
             Updated Entity
         """
-        instance = self._validate_instance_description(
-            entity=entity, entity_id=entity_id
-        )
+        instance = self._fetch_entity_if_exists(entity=entity, entity_id=entity_id)
         if not instance:
             return None
 
@@ -401,8 +401,8 @@ class OMetaPatchMixin(Generic[T]):
                     data=json.dumps(
                         [
                             {
-                                OPERATION: REMOVE,
-                                PATH: COL_TAG.format(
+                                PatchField.OPERATION: PatchOperation.REMOVE,
+                                PatchField.PATH: PatchPath.COLUMNS_TAGS.format(
                                     index=col_index, tag_index=tag_index
                                 ),
                             }
