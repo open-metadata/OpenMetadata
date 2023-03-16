@@ -20,6 +20,7 @@ import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { searchData } from 'rest/miscAPI';
 import { getUsers } from 'rest/userAPI';
+import { getEntityName } from 'utils/EntityUtils';
 import {
   ADD_USER_CONTAINER_HEIGHT,
   PAGE_SIZE_MEDIUM,
@@ -34,7 +35,6 @@ import {
 import { Paging } from '../../generated/type/paging';
 import { SearchResponse } from '../../interface/search.interface';
 import { formatUsersResponse } from '../../utils/APIUtils';
-import { getEntityName } from '../../utils/CommonUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import './AddUsersModal.less';
 import UserCard from './UserCard';

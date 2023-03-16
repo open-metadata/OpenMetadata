@@ -43,6 +43,7 @@ export type MetricChartType = {
 };
 
 export interface ProfilerDetailsCardProps {
+  showYAxisCategory?: boolean;
   chartCollection: MetricChartType;
   name: string;
   tickFormatter?: string;

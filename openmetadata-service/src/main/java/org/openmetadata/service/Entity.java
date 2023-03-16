@@ -95,6 +95,9 @@ public final class Entity {
   public static final String ALERT = "alert";
   public static final String THREAD = "THREAD";
   public static final String LOCATION = "location";
+
+  public static final String QUERY = "query";
+
   public static final String GLOSSARY = "glossary";
   public static final String GLOSSARY_TERM = "glossaryTerm";
   public static final String TAG = "tag";
@@ -141,6 +144,7 @@ public final class Entity {
   public static final String PROFILER_BOT_ROLE = "ProfilerBotRole";
   public static final String QUALITY_BOT_NAME = "quality-bot";
   public static final String QUALITY_BOT_ROLE = "QualityBotRole";
+  public static final String ALL_RESOURCES = "All";
 
   // ServiceType - Service Entity name map
   public static final Map<ServiceType, String> SERVICE_TYPE_ENTITY_MAP =

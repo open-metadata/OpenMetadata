@@ -17,6 +17,7 @@ import { isEmpty } from 'lodash';
 import React, { Fragment, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useHistory } from 'react-router-dom';
+import { getEntityName } from 'utils/EntityUtils';
 import {
   getServiceDetailsPath,
   SERVICE_VIEW_CAP,
@@ -29,11 +30,7 @@ import { ServiceCategory } from '../../enums/service.enum';
 import { Operation } from '../../generated/entity/policies/policy';
 import { Paging } from '../../generated/type/paging';
 import { ServicesType } from '../../interface/service.interface';
-import {
-  getEntityName,
-  getServiceLogo,
-  showPagination,
-} from '../../utils/CommonUtils';
+import { getServiceLogo, showPagination } from '../../utils/CommonUtils';
 import { checkPermission } from '../../utils/PermissionsUtils';
 import { getAddServicePath } from '../../utils/RouterUtils';
 import {

@@ -49,7 +49,6 @@ const SearchedData: React.FC<SearchedDataProps> = ({
   searchText,
   selectedEntityId,
   handleSummaryPanelDisplay,
-  isElasticSearchIssue,
 }) => {
   const highlightSearchResult = () => {
     return data.map(({ _source: table, highlight, _index }, index) => {
@@ -162,11 +161,7 @@ const SearchedData: React.FC<SearchedDataProps> = ({
               {children}
               <ErrorPlaceHolderES
                 query={searchText}
-                type={
-                  isElasticSearchIssue
-                    ? ELASTICSEARCH_ERROR_PLACEHOLDER_TYPE.ERROR
-                    : ELASTICSEARCH_ERROR_PLACEHOLDER_TYPE.NO_DATA
-                }
+                type={ELASTICSEARCH_ERROR_PLACEHOLDER_TYPE.NO_DATA}
               />
             </>
           )}

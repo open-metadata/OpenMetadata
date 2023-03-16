@@ -20,11 +20,11 @@ import Loader from 'components/Loader/Loader';
 import React, { FC, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getPolicies, getRoles } from 'rest/rolesAPIV1';
+import { getEntityName } from 'utils/EntityUtils';
 import { EntityType } from '../../../enums/entity.enum';
 import { Policy } from '../../../generated/entity/policies/policy';
 import { Role } from '../../../generated/entity/teams/role';
 import { EntityReference } from '../../../generated/type/entityReference';
-import { getEntityName } from '../../../utils/CommonUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import './AddAttributeModal.less';
 
