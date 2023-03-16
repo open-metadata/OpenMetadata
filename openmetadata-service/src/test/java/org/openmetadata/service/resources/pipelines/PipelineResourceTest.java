@@ -125,6 +125,9 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
       assertTrue(
           expectedTask.getName().equals(actualTask.getName())
               || expectedTask.getName().equals(actualTask.getDisplayName()));
+      if (expectedTask.getTags() != null && !expectedTask.getTags().isEmpty() && actualTask.getTags() != null) {
+        assertEquals(expectedTask.getTags(), actualTask.getTags());
+      }
       i++;
     }
   }
@@ -423,16 +426,19 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
     // Add a task without description
     ChangeDescription change = getChangeDescription(pipeline.getVersion());
     List<Task> tasks = new ArrayList<>();
-    Task taskEmptyDesc = new Task().withName("taskEmpty").withTaskUrl("http://localhost:0");
+    Task taskEmptyDesc =
+        new Task().withName("taskEmpty").withTaskUrl("http://localhost:0").withTags(List.of(USER_ADDRESS_TAG_LABEL));
     tasks.add(taskEmptyDesc);
     fieldAdded(change, "tasks", tasks);
     fieldUpdated(change, "description", "", "newDescription");
-
     // Create new request with all the Tasks
     List<Task> updatedTasks = Stream.concat(TASKS.stream(), tasks.stream()).collect(Collectors.toList());
     pipeline.setTasks(updatedTasks);
     pipeline.setDescription("newDescription");
     pipeline = patchEntityAndCheck(pipeline, origJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+    pipeline = getPipeline(pipeline.getId(), "*", ADMIN_AUTH_HEADERS);
+    // validate tasks
+    validateTasks(updatedTasks, pipeline.getTasks());
 
     // add a description to an existing task
     origJson = JsonUtils.pojoToJson(pipeline);
