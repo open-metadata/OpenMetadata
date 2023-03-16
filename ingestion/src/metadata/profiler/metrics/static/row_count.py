@@ -51,4 +51,5 @@ class RowCount(StaticMetric):
     def df_fn(self, dfs=None):
         """pandas function"""
         from pandas import DataFrame  # pylint: disable=import-outside-toplevel
-        return sum([len(cast(DataFrame,df).index) for df in dfs])
+
+        return sum(map(lambda df: len(cast(DataFrame, df).index), dfs))

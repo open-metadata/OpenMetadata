@@ -14,8 +14,8 @@ Interfaces with database for all database engine
 supporting sqlalchemy abstraction layer
 """
 
-import traceback
 import random
+import traceback
 from collections import defaultdict
 from datetime import datetime, timezone
 from typing import Dict, List
@@ -24,13 +24,12 @@ from sqlalchemy import Column
 
 from metadata.generated.schema.entity.data.table import (
     DataType,
-    TableData,
     ProfileSampleType,
+    TableData,
 )
 from metadata.generated.schema.entity.services.connections.database.datalakeConnection import (
     DatalakeConnection,
 )
-
 from metadata.ingestion.api.processor import ProfilerProcessorStatus
 from metadata.ingestion.source.connections import get_connection
 from metadata.ingestion.source.database.datalake.metadata import (
@@ -69,6 +68,8 @@ class PandasProfilerInterface(ProfilerProtocol, PandasInterfaceMixin):
         table_partition_config=None,
         **kwargs,
     ):
+        from pandas import notnull
+
         """Instantiate SQA Interface object"""
         self._thread_count = thread_count
         self.table_entity = entity
@@ -91,6 +92,7 @@ class PandasProfilerInterface(ProfilerProtocol, PandasInterfaceMixin):
             client=self.client,
             table=self.table,
         )
+
         # shuffling sample data for profiling
         random.shuffle(self.dfs)
 

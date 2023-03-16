@@ -14,7 +14,6 @@ MIN_LENGTH Metric definition
 """
 # pylint: disable=duplicate-code
 
-from typing import cast
 
 from sqlalchemy import column, func
 
@@ -61,9 +60,22 @@ class MinLength(StaticMetric):
     def df_fn(self, dfs=None):
         """dataframe function"""
         from numpy import vectorize
+        from pandas import notnull
+
+        length_vectorize_func = vectorize(len)
+
         if self._is_concatenable():
-            length_vector_fn = vectorize(len)
-            return min([length_vector_fn(df[self.col.name]).min() for df in dfs])
+            return min(
+                map(
+                    lambda df: length_vectorize_func(
+                        df.astype(object).where(
+                            notnull(df),
+                            "",
+                        )[self.col.name]
+                    ).min(),
+                    dfs,
+                )
+            )
         logger.debug(
             f"Don't know how to process type {self.col.type} when computing MIN_LENGTH"
         )

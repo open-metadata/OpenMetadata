@@ -14,7 +14,7 @@ Distinct Count Metric definition
 """
 # pylint: disable=duplicate-code
 
-from typing import cast
+import statistics
 
 from sqlalchemy import column, distinct, func
 
@@ -45,7 +45,10 @@ class DistinctCount(StaticMetric):
 
     def df_fn(self, dfs=None):
         try:
-            return sum(df[self.col.name].nunique() for df in dfs)
+
+            return statistics.fmean(
+                [len(df[self.col.name].drop_duplicates()) for df in dfs]
+            )
         except Exception as err:
             logger.debug(
                 f"Don't know how to process type {self.col.type} "

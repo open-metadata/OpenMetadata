@@ -12,13 +12,10 @@
 Helper module to handle data sampling
 for the profiler
 """
-import math
-import random
 from typing import Any, Optional
 
-from metadata.generated.schema.entity.data.table import ProfileSampleType, TableData
+from metadata.generated.schema.entity.data.table import TableData
 from metadata.profiler.api.models import ProfileSampleConfig
-from metadata.utils.constants import CHUNKSIZE
 
 RANDOM_LABEL = "random"
 
@@ -49,6 +46,7 @@ class DatalakeSampler:
 
     def _fetch_rows(self, data_frame):
         from pandas import notnull  # pylint: disable=import-outside-toplevel
+
         return (
             data_frame.astype(object)
             .where(
@@ -66,7 +64,7 @@ class DatalakeSampler:
         rows = []
         cols = data_frame[0].columns.tolist()
         for chunk in data_frame:
-            rows.extend(self._fetch_rows(chunk)[:100-len(rows)])
+            rows.extend(self._fetch_rows(chunk)[: 100 - len(rows)])
             if len(rows) >= self.sample_limit:
                 break
         return cols, rows

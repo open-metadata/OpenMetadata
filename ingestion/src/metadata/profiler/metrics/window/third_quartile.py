@@ -78,7 +78,9 @@ class ThirdQuartile(StaticMetric):
                     f"We recommend using a smaller sample size or partitionning."
                 )
                 return None
-            return np.percentile(df[self.col.name], 75)
+            # check if nan
+            compute_resp = np.percentile(df[self.col.name], 75)
+            return None if pd.isnull(compute_resp) else compute_resp
         logger.debug(
             f"Don't know how to process type {self.col.type} when computing Third Quartile"
         )

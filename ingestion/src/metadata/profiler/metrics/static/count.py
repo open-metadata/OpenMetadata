@@ -14,7 +14,6 @@ Count Metric definition
 """
 # pylint: disable=duplicate-code
 
-from typing import cast
 
 from sqlalchemy import column, func
 

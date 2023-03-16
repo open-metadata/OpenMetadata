@@ -15,8 +15,8 @@ AVG Metric definition
 # pylint: disable=duplicate-code
 
 
-from typing import cast
 import statistics
+
 from sqlalchemy import column, func
 from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.sql.functions import GenericFunction
@@ -87,14 +87,25 @@ class Mean(StaticMetric):
     def df_fn(self, dfs=None):
         """dataframe function"""
         from numpy import vectorize
+        from pandas import notnull
+
+        length_vectorize_func = vectorize(len)
 
         if is_quantifiable(self.col.type):
             return statistics.fmean([df[self.col.name].mean() for df in dfs])
 
-        elif is_concatenable(self.col.type):
-            length_vector_fn = vectorize(len)
+        if is_concatenable(self.col.type):
+
             return statistics.fmean(
-                [length_vector_fn(df[self.col.name]).mean() for df in dfs]
+                [
+                    length_vectorize_func(
+                        df.astype(object).where(
+                            notnull(df),
+                            "",
+                        )[self.col.name]
+                    ).mean()
+                    for df in dfs
+                ]
             )
 
         logger.warning(

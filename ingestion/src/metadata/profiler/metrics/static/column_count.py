@@ -85,4 +85,5 @@ class ColumnCount(StaticMetric):
     def df_fn(self, dfs=None):
         """dataframe function"""
         from pandas import DataFrame  # pylint: disable=import-outside-toplevel
+
         return len(cast(DataFrame, dfs[0]).columns)

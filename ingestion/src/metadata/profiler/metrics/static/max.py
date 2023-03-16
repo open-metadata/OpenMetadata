@@ -14,7 +14,6 @@ Max Metric definition
 """
 # pylint: disable=duplicate-code
 
-from typing import cast
 
 from sqlalchemy import column, func
 
@@ -40,11 +39,8 @@ class Max(StaticMetric):
             return None
         return func.max(column(self.col.name))
 
-    # pylint: disable=import-outside-toplevel
     def df_fn(self, dfs=None):
         """pandas function"""
         if is_quantifiable(self.col.type) or is_date_time(self.col.type):
-            return (
-               max([df[self.col.name].max() for df in dfs])
-            )
+            return max((df[self.col.name].max() for df in dfs))
         return 0

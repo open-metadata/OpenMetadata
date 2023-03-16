@@ -15,12 +15,13 @@ Population Standard deviation Metric definition
 
 # Keep SQA docs style defining custom constructs
 # pylint: disable=consider-using-f-string,duplicate-code
-from typing import cast
+
+import statistics
 
 from sqlalchemy import column
 from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.sql.functions import FunctionElement
-import statistics
+
 from metadata.profiler.metrics.core import CACHE, StaticMetric, _label
 from metadata.profiler.orm.registry import Dialects, is_quantifiable
 from metadata.utils.logger import profiler_logger

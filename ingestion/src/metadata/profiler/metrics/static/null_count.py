@@ -14,7 +14,6 @@ Null Count Metric definition
 """
 # pylint: disable=duplicate-code
 
-from typing import cast
 
 from sqlalchemy import case, column
 
@@ -52,5 +51,4 @@ class NullCount(StaticMetric):
 
     def df_fn(self, dfs=None):
         """pandas function"""
-        return sum([df[self.col.name].isnull().sum() for df in dfs])
-
+        return sum(map(lambda df: df[self.col.name].isnull().sum(), dfs))

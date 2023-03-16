@@ -12,7 +12,7 @@
 """
 Unique Count Metric definition
 """
-from typing import Optional, cast
+from typing import Optional
 
 from sqlalchemy import column, func
 from sqlalchemy.orm import DeclarativeMeta, Session
@@ -70,7 +70,7 @@ class UniqueCount(QueryMetric):
         Build the Unique Count metric
         """
         try:
-            return sum([len(df[self.col.name].unique()) for df in dfs])
+            return sum(map(lambda df: len(df[self.col.name].unique()), dfs))
         except Exception as err:
             logger.debug(
                 f"Don't know how to process type {self.col.type}"

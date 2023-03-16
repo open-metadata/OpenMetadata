@@ -14,7 +14,6 @@ Min Metric definition
 """
 # pylint: disable=duplicate-code
 
-from typing import cast
 
 from sqlalchemy import column, func
 
@@ -40,9 +39,8 @@ class Min(StaticMetric):
             return None
         return func.min(column(self.col.name))
 
-    # pylint: disable=import-outside-toplevel
     def df_fn(self, dfs=None):
         """pandas function"""
         if is_quantifiable(self.col.type) or is_date_time(self.col.type):
-            return min([df[self.col.name].min() for df in dfs])
+            return min((df[self.col.name].min() for df in dfs))
         return 0
