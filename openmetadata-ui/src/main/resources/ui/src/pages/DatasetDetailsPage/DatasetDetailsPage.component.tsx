@@ -91,8 +91,6 @@ const DatasetDetailsPage: FunctionComponent = () => {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isSampleDataLoading, setIsSampleDataLoading] =
     useState<boolean>(false);
-  const [isTableQueriesLoading, setIsTableQueriesLoading] =
-    useState<boolean>(false);
   const [isentityThreadLoading, setIsentityThreadLoading] =
     useState<boolean>(false);
   const [isTableProfileLoading, setIsTableProfileLoading] =
@@ -137,7 +135,6 @@ const DatasetDetailsPage: FunctionComponent = () => {
   );
   const [deleted, setDeleted] = useState<boolean>(false);
   const [isError, setIsError] = useState(false);
-  const [tableQueries, setTableQueries] = useState<Table['tableQueries']>([]);
   const [entityThread, setEntityThread] = useState<Thread[]>([]);
 
   const [feedCount, setFeedCount] = useState<number>(0);
@@ -398,33 +395,6 @@ const DatasetDetailsPage: FunctionComponent = () => {
         break;
       }
 
-      case TabSpecificField.TABLE_QUERIES: {
-        if ((tableQueries?.length ?? 0) > 0) {
-          break;
-        } else {
-          setIsTableQueriesLoading(true);
-          getTableDetailsByFQN(tableFQN, tabField)
-            .then((res) => {
-              if (res) {
-                const { tableQueries } = res;
-                setTableQueries(tableQueries);
-              } else {
-                showErrorToast(
-                  jsonData['api-error-messages']['fetch-table-queries-error']
-                );
-              }
-            })
-            .catch((err: AxiosError) => {
-              showErrorToast(
-                err,
-                jsonData['api-error-messages']['fetch-table-queries-error']
-              );
-            })
-            .finally(() => setIsTableQueriesLoading(false));
-
-          break;
-        }
-      }
       case TabSpecificField.ACTIVITY_FEED: {
         getFeedData();
 
@@ -748,7 +718,6 @@ const DatasetDetailsPage: FunctionComponent = () => {
               followTableHandler={followTable}
               followers={followers}
               handleExtensionUpdate={handleExtentionUpdate}
-              isQueriesLoading={isTableQueriesLoading}
               isSampleDataLoading={isSampleDataLoading}
               isTableProfileLoading={isTableProfileLoading}
               isentityThreadLoading={isentityThreadLoading}
@@ -762,7 +731,6 @@ const DatasetDetailsPage: FunctionComponent = () => {
               slashedTableName={slashedTableName}
               tableDetails={tableDetails}
               tableProfile={tableProfile}
-              tableQueries={tableQueries}
               tableTags={tableTags}
               tableType={tableType}
               tagUpdateHandler={onTagUpdate}

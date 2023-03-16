@@ -98,7 +98,6 @@ export const RECREATE_INDEX_OPTIONS = [
   },
 ];
 
-
 export const ENTITY_TREE_OPTIONS = [
   {
     title: 'All',
@@ -114,7 +113,10 @@ export const ENTITY_TREE_OPTIONS = [
   },
 ];
 
-export const RE_INDEX_LANG_OPTIONS = map(SearchIndexMappingLanguage, (value) => ({
-  label: value,
-  value,
-}));
+export const RE_INDEX_LANG_OPTIONS = map(
+  SearchIndexMappingLanguage,
+  (value) => ({
+    label: value,
+    value,
+  })
+);
