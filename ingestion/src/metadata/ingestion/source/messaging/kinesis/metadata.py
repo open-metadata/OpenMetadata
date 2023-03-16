@@ -152,12 +152,19 @@ class KinesisSource(MessagingServiceSource):
         """
         Method to Get Sample Data of Messaging Entity
         """
-        if self.context.topic and self.generate_sample_data:
-            yield OMetaTopicSampleData(
-                topic=self.context.topic,
-                sample_data=self._get_sample_data(
-                    topic_details.topic_name, topic_details.topic_metadata["partitions"]
-                ),
+        try:
+            if self.context.topic and self.generate_sample_data:
+                yield OMetaTopicSampleData(
+                    topic=self.context.topic,
+                    sample_data=self._get_sample_data(
+                        topic_details.topic_name,
+                        topic_details.topic_metadata["partitions"],
+                    ),
+                )
+        except Exception as err:
+            logger.debug(traceback.format_exc())
+            logger.warning(
+                f"Error while yielding topic sample data for topic: {topic_details.topic_name} - {err}"
             )
 
     def _get_sample_data(self, topic_name, partitions) -> TopicSampleData:
