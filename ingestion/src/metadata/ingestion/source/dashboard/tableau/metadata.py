@@ -95,6 +95,12 @@ class TableauChart(TableauBaseModel):
     tags: List[str]
 
 
+class ChartUrl(BaseModel):
+    workbook_name: str
+    sheets: str
+    chart_url_name: str
+
+
 class TableauDashboard(TableauBaseModel):
     """
     Response from Tableau API
@@ -382,14 +388,22 @@ class TableauSource(DashboardServiceSource):
                     if self.service_connection.siteUrl
                     else ""
                 )
-                chart_url = None
-                workbook_chart_name = chart.content_url.split("/")
-                if "/sheets/" in chart.content_url and len(workbook_chart_name) > 1:
-                    chart_url = (
-                        f"#{site_url}"
-                        f"views/{workbook_chart_name[0]}/"
-                        f"{workbook_chart_name[2]}"
+                workbook_chart_name: ChartUrl = (
+                    ChartUrl(
+                        workbook_name=chart.content_url.split("/")[0],
+                        sheets=chart.content_url.split("/")[1],
+                        chart_url_name=chart.content_url.split("/")[2],
                     )
+                    if "/" in chart.content_url
+                    else None
+                )
+
+                chart_url = (
+                    f"#{site_url}"
+                    f"views/{workbook_chart_name.workbook_name}/"
+                    f"{workbook_chart_name.chart_url_name}"
+                )
+
                 yield CreateChartRequest(
                     name=chart.id,
                     displayName=chart.name,
