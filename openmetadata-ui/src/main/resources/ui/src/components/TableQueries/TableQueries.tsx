@@ -13,15 +13,16 @@
 
 import { Col, Row } from 'antd';
 import { AxiosError } from 'axios';
+import { compare } from 'fast-json-patch';
 import { Query } from 'generated/entity/data/query';
-import { isEmpty } from 'lodash';
+import { isUndefined } from 'lodash';
 import React, { FC, useEffect, useState } from 'react';
-import { getQueriesList } from 'rest/queryAPI';
-import { withLoader } from '../../hoc/withLoader';
+import { getQueriesList, patchQueries } from 'rest/queryAPI';
 import { showErrorToast } from '../../utils/ToastUtils';
 import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder';
 import Loader from '../Loader/Loader';
 import QueryCard from './QueryCard';
+import TableQueryRightPanel from './TableQueryRightPanel/TableQueryRightPanel.component';
 
 interface TableQueriesProp {
   isTableDeleted?: boolean;
@@ -34,16 +35,43 @@ const TableQueries: FC<TableQueriesProp> = ({
 }: TableQueriesProp) => {
   const [tableQueries, setTableQueries] = useState<Query[]>([]);
   const [isQueriesLoading, setIsQueriesLoading] = useState(true);
+  const [selectedQuery, setSelectedQuery] = useState<Query>();
 
   const fetchTableQuery = async () => {
     try {
-      const queries = await getQueriesList({ entityId: tableId });
+      const queries = await getQueriesList({
+        entityId: tableId,
+        fields: 'owner,vote,tags,queryUsedIn',
+      });
       setTableQueries(queries.data);
+      setSelectedQuery(queries.data[0]);
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
       setIsQueriesLoading(false);
     }
+  };
+
+  const handleQueryUpdate = async (updatedQuery: Query) => {
+    if (isUndefined(selectedQuery)) {
+      return;
+    }
+
+    const jsonPatch = compare(selectedQuery, updatedQuery);
+
+    try {
+      const res = await patchQueries(selectedQuery.id || '', jsonPatch);
+      setSelectedQuery(res);
+      setTableQueries((pre) => {
+        return pre.map((query) => (query.id === updatedQuery.id ? res : query));
+      });
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  };
+
+  const handleSelectedQuery = (query: Query) => {
+    setSelectedQuery(query);
   };
 
   useEffect(() => {
@@ -60,15 +88,29 @@ const TableQueries: FC<TableQueriesProp> = ({
   }
 
   return (
-    <Row className="p-xs" gutter={32} id="tablequeries">
-      {tableQueries && !isEmpty(tableQueries) ? (
-        <Col offset={3} span={18}>
-          <div className="m-y-lg" data-testid="queries-container">
-            {tableQueries.map((query, index) => (
-              <QueryCard key={index} query={query} />
-            ))}
-          </div>
-        </Col>
+    <Row id="tablequeries">
+      {tableQueries.length && !isUndefined(selectedQuery) ? (
+        <>
+          <Col span={18}>
+            <div className="m-y-lg m-r-lg" data-testid="queries-container">
+              {tableQueries.map((query, index) => (
+                <QueryCard
+                  key={index}
+                  query={query}
+                  onQuerySelection={handleSelectedQuery}
+                />
+              ))}
+            </div>
+          </Col>
+          <Col className="bg-white" span={6}>
+            <div className="sticky top-0">
+              <TableQueryRightPanel
+                query={selectedQuery}
+                onQueryUpdate={handleQueryUpdate}
+              />
+            </div>
+          </Col>
+        </>
       ) : (
         <Col className="flex-center font-medium" span={24}>
           <div data-testid="no-queries">
@@ -80,4 +122,4 @@ const TableQueries: FC<TableQueriesProp> = ({
   );
 };
 
-export default withLoader<TableQueriesProp>(TableQueries);
+export default TableQueries;

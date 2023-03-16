@@ -12,6 +12,7 @@
  */
 
 import { AxiosResponse } from 'axios';
+import { Operation } from 'fast-json-patch';
 import { CreateQuery } from 'generated/api/data/createQuery';
 import { Query } from 'generated/entity/data/query';
 import { Include } from 'generated/type/include';
@@ -43,6 +44,19 @@ export const postQuery = async (query: CreateQuery) => {
   const response = await APIClient.post<CreateQuery, AxiosResponse<Query>>(
     BASE_URL,
     query
+  );
+
+  return response.data;
+};
+export const patchQueries = async (id: string, patch: Operation[]) => {
+  const configOptions = {
+    headers: { 'Content-type': 'application/json-patch+json' },
+  };
+
+  const response = await APIClient.patch<Operation[], AxiosResponse<Query>>(
+    `${BASE_URL}/${id}`,
+    patch,
+    configOptions
   );
 
   return response.data;
