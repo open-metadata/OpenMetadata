@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { FilterObject } from 'components/AdvancedSearch/AdvancedSearch.interface';
+import { FilterObject } from 'components/Explore/AdvanceSearchProvider/AdvanceSearchProvider.interface';
 import { isArray, isNil, isObject, isString } from 'lodash';
 
 export function isFilterObject(obj: unknown): obj is FilterObject {
