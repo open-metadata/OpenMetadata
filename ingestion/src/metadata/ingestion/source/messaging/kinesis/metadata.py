@@ -14,10 +14,7 @@ Kinesis source ingestion
 import binascii
 import traceback
 from base64 import b64decode
-from enum import Enum
-from typing import Any, Dict, Iterable, List, Optional
-
-from pydantic import BaseModel
+from typing import Iterable, List, Optional
 
 from metadata.generated.schema.api.data.createTopic import CreateTopicRequest
 from metadata.generated.schema.entity.data.topic import TopicSampleData
@@ -32,6 +29,12 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.models.ometa_topic_data import OMetaTopicSampleData
+from metadata.ingestion.source.messaging.kinesis.models import (
+    KinesisEnum,
+    KinesisStreamModel,
+    KinesisSummaryModel,
+    KinesisTopicMetadataModel,
+)
 from metadata.ingestion.source.messaging.messaging_service import (
     BrokerTopicDetails,
     MessagingServiceSource,
@@ -40,41 +43,6 @@ from metadata.utils.constants import UTF_8
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
-
-
-class KinesisTopicModel(BaseModel):
-    """
-    Chart (View) representation from API
-    """
-
-    stream_names: List[str]
-    has_more_streams: bool
-
-
-class KinesisTopicMetadataModel(BaseModel):
-    summary: Optional[dict]
-    partitions: Optional[List[str]]
-
-
-class KinesisEnum(Enum):
-    """
-    Common enum for dbt
-    """
-
-    LIMIT = "Limit"
-    STREAM_NAMES = "StreamNames"
-    STREAM_NAME = "StreamName"
-    HAS_MORE_STREAMS = "HasMoreStreams"
-    EXCLUSIVE_START_STREAM_NAME = "ExclusiveStartStreamName"
-    STREAM_DESCRIPTION_SUMMARY = "StreamDescriptionSummary"
-    RETENTION_PERIOD_HOURS = "RetentionPeriodHours"
-    NEXT_TOKEN = "NextToken"
-    SHARDS = "Shards"
-    SHARD_ID = "ShardId"
-    RECORDS = "Records"
-    DATA = "Data"
-    SHARD_ITERATOR = "ShardIterator"
-    TRIM_HORIZON = "TRIM_HORIZON"
 
 
 class KinesisSource(MessagingServiceSource):
@@ -106,12 +74,9 @@ class KinesisSource(MessagingServiceSource):
         while has_more_topics:
             try:
                 topics = self.kinesis.list_streams(**args)
-                kinesis_topic_model = KinesisTopicModel(
-                    stream_names=topics.get(KinesisEnum.STREAM_NAMES.value),
-                    has_more_streams=topics.get(KinesisEnum.HAS_MORE_STREAMS.value),
-                )
-                all_topics.extend(kinesis_topic_model.stream_names)
-                has_more_topics = kinesis_topic_model.has_more_streams
+                kinesis_topic_model = KinesisStreamModel(**topics)
+                all_topics.extend(kinesis_topic_model.StreamNames)
+                has_more_topics = kinesis_topic_model.HasMoreStreams
                 if len(all_topics) > 0:
                     args[KinesisEnum.EXCLUSIVE_START_STREAM_NAME.value] = all_topics[-1]
             except Exception as err:
@@ -145,15 +110,13 @@ class KinesisSource(MessagingServiceSource):
         """
         try:
             logger.info(f"Fetching topic details {topic_details.topic_name}")
+
             topic = CreateTopicRequest(
                 name=topic_details.topic_name,
                 service=self.context.messaging_service.fullyQualifiedName.__root__,
                 partitions=len(topic_details.topic_metadata.partitions),
-                retentionTime=float(
-                    topic_details.topic_metadata.summary.get(
-                        KinesisEnum.RETENTION_PERIOD_HOURS.value, 0
-                    )
-                    * 3600000
+                retentionTime=self._compute_retention_time(
+                    topic_details.topic_metadata.summary
                 ),
                 maximumMessageSize=self._get_max_message_size(),
             )
@@ -172,14 +135,22 @@ class KinesisSource(MessagingServiceSource):
     def get_topic_name(self, topic_details: BrokerTopicDetails) -> str:
         return topic_details.topic_name
 
+    def _compute_retention_time(self, summary: Optional[KinesisSummaryModel]) -> float:
+        retention_time = 0
+        if summary:
+            retention_time = (
+                summary.StreamDescriptionSummary.RetentionPeriodHours * 3600000
+            )
+        return float(retention_time)
+
     def _get_max_message_size(self) -> int:
         # max message size supported by Kinesis is 1MB and is not configurable
         return 1000000
 
-    def _get_topic_details(self, topic_name: str) -> Optional[Dict[str, Any]]:
+    def _get_topic_details(self, topic_name: str) -> Optional[KinesisSummaryModel]:
         try:
-            topic = self.kinesis.describe_stream_summary(StreamName=topic_name)
-            return topic.get(KinesisEnum.STREAM_DESCRIPTION_SUMMARY.value)
+            topic_summary = self.kinesis.describe_stream_summary(StreamName=topic_name)
+            return KinesisSummaryModel(**topic_summary)
         except Exception as err:
             logger.debug(traceback.format_exc())
             logger.warning(
