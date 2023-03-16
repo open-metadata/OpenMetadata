@@ -109,6 +109,7 @@ class ColumnTypeParser:
         "ENUM": "ENUM",
         "FLOAT": "FLOAT",
         "FLOAT4": "FLOAT",
+        "FLOAT32": "FLOAT",
         "FLOAT64": "DOUBLE",
         "FLOAT8": "DOUBLE",
         "GEOGRAPHY": "GEOGRAPHY",
@@ -221,6 +222,10 @@ class ColumnTypeParser:
         "CLOB": "CLOB",
         "NCLOB": "CLOB",
         "LONG": "LONG",
+        # clickhouse
+        "LOWCARDINALITY": "LOWCARDINALITY",
+        "DATETIME64": "DATETIME",
+        "SimpleAggregateFunction()": "AGGREGATEFUNCTION",
     }
 
     _COMPLEX_TYPE = re.compile("^(struct|map|array|uniontype)")

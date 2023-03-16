@@ -142,7 +142,8 @@
         "CIDR",
         "INET",
         "CLOB",
-        "ROWID"
+        "ROWID",
+        "LOWCARDINALITY"
       ]
     },
     "constraint": {
