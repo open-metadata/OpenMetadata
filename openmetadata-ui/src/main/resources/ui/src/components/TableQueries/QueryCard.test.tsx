@@ -14,10 +14,10 @@
 import {
   findByTestId,
   findByText,
-  // getByTestId,
   queryByTestId,
   render,
 } from '@testing-library/react';
+import { Query } from 'generated/entity/data/query';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import QueryCard from './QueryCard';
@@ -36,7 +36,7 @@ const mockQueryData = {
   ],
   vote: 1,
   checksum: '0232b0368458aadb29230ccc531462c9',
-};
+} as Query;
 
 jest.mock('../schema-editor/SchemaEditor', () => {
   return jest.fn().mockReturnValue(<p>SchemaEditor</p>);
