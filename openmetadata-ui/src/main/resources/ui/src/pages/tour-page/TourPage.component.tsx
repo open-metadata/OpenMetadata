@@ -198,7 +198,6 @@ const TourPage = () => {
             tableProfile={
               mockDatasetData.tableProfile as unknown as Table['profile']
             }
-            tableQueries={[]}
             tableTags={mockDatasetData.tableTags}
             tableType={mockDatasetData.tableType as TableType}
             tagUpdateHandler={handleCountChange}
