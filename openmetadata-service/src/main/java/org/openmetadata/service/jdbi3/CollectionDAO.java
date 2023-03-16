@@ -3418,7 +3418,9 @@ public interface CollectionDAO {
           .withUserCount(rs.getInt("userCount"))
           .withTeamCount(rs.getInt("teamCount"))
           .withTestSuiteCount(rs.getInt("testSuiteCount"))
-          .withStorageContainerCount(rs.getInt("storageContainerCount"));
+          .withStorageContainerCount(rs.getInt("storageContainerCount"))
+          .withGlossaryCount(rs.getInt("glossaryCount"))
+          .withGlossaryTermCount(rs.getInt("glossaryTermCount"));
     }
   }
 
@@ -3444,6 +3446,8 @@ public interface CollectionDAO {
                 + "(SELECT COUNT(*) FROM pipeline_entity <cond>) as pipelineCount, "
                 + "(SELECT COUNT(*) FROM ml_model_entity <cond>) as mlmodelCount, "
                 + "(SELECT COUNT(*) FROM objectstore_container_entity <cond>) as storageContainerCount, "
+                + "(SELECT COUNT(*) FROM glossary_entity <cond>) as glossaryCount, "
+                + "(SELECT COUNT(*) FROM glossary_term_entity <cond>) as glossaryTermCount, "
                 + "(SELECT (SELECT COUNT(*) FROM metadata_service_entity <cond>) + "
                 + "(SELECT COUNT(*) FROM dbservice_entity <cond>)+"
                 + "(SELECT COUNT(*) FROM messaging_service_entity <cond>)+ "
@@ -3463,6 +3467,8 @@ public interface CollectionDAO {
                 + "(SELECT COUNT(*) FROM pipeline_entity <cond>) as pipelineCount, "
                 + "(SELECT COUNT(*) FROM ml_model_entity <cond>) as mlmodelCount, "
                 + "(SELECT COUNT(*) FROM objectstore_container_entity <cond>) as storageContainerCount, "
+                + "(SELECT COUNT(*) FROM glossary_entity <cond>) as glossaryCount, "
+                + "(SELECT COUNT(*) FROM glossary_term_entity <cond>) as glossaryTermCount, "
                 + "(SELECT (SELECT COUNT(*) FROM metadata_service_entity <cond>) + "
                 + "(SELECT COUNT(*) FROM dbservice_entity <cond>)+ "
                 + "(SELECT COUNT(*) FROM messaging_service_entity <cond>)+ "
@@ -3472,7 +3478,7 @@ public interface CollectionDAO {
                 + "(SELECT COUNT(*) FROM objectstore_service_entity <cond>)) as servicesCount, "
                 + "(SELECT COUNT(*) FROM user_entity <cond> AND (json#>'{isBot}' IS NULL OR ((json#>'{isBot}')::boolean) = FALSE)) as userCount, "
                 + "(SELECT COUNT(*) FROM team_entity <cond>) as teamCount, "
-                + "(SELECT COUNT(*) FROM test_suite <cond>  ) as testSuiteCount",
+                + "(SELECT COUNT(*) FROM test_suite <cond>) as testSuiteCount",
         connectionType = POSTGRES)
     @RegisterRowMapper(EntitiesCountRowMapper.class)
     EntitiesCount getAggregatedEntitiesCount(@Define("cond") String cond) throws StatementException;
