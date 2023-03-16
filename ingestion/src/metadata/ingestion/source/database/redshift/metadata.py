@@ -33,7 +33,9 @@ from sqlalchemy_redshift.dialect import (
 
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import (
+    ConstraintType,
     IntervalType,
+    TableConstraint,
     TablePartition,
     TableType,
 )
@@ -72,6 +74,40 @@ logger = ingestion_logger()
 
 ischema_names = pg_ischema_names
 ischema_names.update({"binary varying": sqltypes.VARBINARY})
+
+# pylint: disable=protected-access
+@reflection.cache
+def get_columns(self, connection, table_name, schema=None, **kw):
+    """
+    Return information about columns in `table_name`.
+
+    Overrides interface
+    :meth:`~sqlalchemy.engine.interfaces.Dialect.get_columns`.
+
+    overriding the default dialect method to include the
+    distkey and sortkey info
+    """
+    cols = self._get_redshift_columns(connection, table_name, schema, **kw)
+    if not self._domains:
+        self._domains = self._load_domains(connection)
+    domains = self._domains
+    columns = []
+    for col in cols:
+        column_info = self._get_column_info(
+            name=col.name,
+            format_type=col.format_type,
+            default=col.default,
+            notnull=col.notnull,
+            domains=domains,
+            enums=[],
+            schema=col.schema,
+            encode=col.encode,
+            comment=col.comment,
+        )
+        column_info["distkey"] = col.distkey
+        column_info["sortkey"] = col.sortkey
+        columns.append(column_info)
+    return columns
 
 
 def _get_column_info(self, *args, **kwargs):
@@ -118,6 +154,9 @@ def _get_schema_column_info(
         schema:
         **kw:
     Returns:
+
+    This method is responsible for fetching all the column details like
+    name, type, constraints, distkey and sortkey etc.
     """
     schema_clause = f"AND schema = '{schema if schema else ''}'"
     all_columns = defaultdict(list)
@@ -137,6 +176,7 @@ RedshiftDialectMixin._get_column_info = (  # pylint: disable=protected-access
 RedshiftDialectMixin._get_schema_column_info = (  # pylint: disable=protected-access
     _get_schema_column_info
 )
+RedshiftDialectMixin.get_columns = get_columns
 
 
 def _handle_array_type(attype):
@@ -483,3 +523,26 @@ class RedshiftSource(CommonDbSourceService):
             )
             return True, partition_details
         return False, None
+
+    def process_additional_table_constraints(
+        self, column: dict, table_constraints: List[TableConstraint]
+    ) -> None:
+        """
+        Process DIST_KEY & SORT_KEY column properties
+        """
+
+        if column.get("distkey"):
+            table_constraints.append(
+                TableConstraint(
+                    constraintType=ConstraintType.DIST_KEY,
+                    columns=[column.get("name")],
+                )
+            )
+
+        if column.get("sortkey"):
+            table_constraints.append(
+                TableConstraint(
+                    constraintType=ConstraintType.SORT_KEY,
+                    columns=[column.get("name")],
+                )
+            )

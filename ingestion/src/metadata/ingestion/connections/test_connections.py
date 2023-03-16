@@ -92,15 +92,7 @@ def test_connection_steps(steps: List[TestConnectionStep]) -> TestConnectionResu
     return test_connection_result
 
 
-@timeout(seconds=120)
-def test_connection_db_common(connection: Engine, steps=None) -> TestConnectionResult:
-    """
-    Default implementation is the engine to test.
-
-    Test that we can connect to the source using the given engine
-    :param connection: Engine to test
-    :return: None or raise an exception if we cannot connect
-    """
+def test_connection_engine(connection: Engine, steps=None) -> TestConnectionResult:
     try:
         with connection.connect() as conn:
             conn.execute(ConnTestFn())
@@ -116,3 +108,16 @@ def test_connection_db_common(connection: Engine, steps=None) -> TestConnectionR
         raise SourceConnectionException(msg) from exc
 
     return None
+
+
+def test_connection_db_common(
+    connection: Engine, steps=None, timeout_seconds: int = 120
+) -> TestConnectionResult:
+    """
+    Default implementation is the engine to test.
+
+    Test that we can connect to the source using the given engine
+    :param connection: Engine to test
+    :return: None or raise an exception if we cannot connect
+    """
+    return timeout(timeout_seconds)(test_connection_engine)(connection, steps)
