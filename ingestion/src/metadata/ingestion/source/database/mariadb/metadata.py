@@ -11,6 +11,10 @@
 """
 MariaDB source module
 """
+from sqlalchemy.dialects.mysql.base import ischema_names
+from sqlalchemy.dialects.mysql.mariadb import MariaDBDialect
+from sqlalchemy.sql.sqltypes import String
+
 from metadata.generated.schema.entity.services.connections.database.mariaDBConnection import (
     MariaDBConnection,
 )
@@ -22,6 +26,57 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
+
+
+class YEAR(String):
+    """The SQL GEOMETRY type."""
+
+    __visit_name__ = "GEOMETRY"
+
+
+class LONGTEXT(String):
+    """The SQL LONGTEXT type."""
+
+    __visit_name__ = "LONGTEXT"
+
+
+class TINYTEXT(String):
+    """The SQL TINYTEXT type."""
+
+    __visit_name__ = "TINYTEXT"
+
+
+class BOOL(String):
+    """The SQL BOOL type."""
+
+    __visit_name__ = "BOOL"
+
+
+class MEDIUMINT(String):
+    """The SQL MEDIUMINT type."""
+
+    __visit_name__ = "MEDIUMINT"
+
+
+class TINYBLOB(String):
+    """The SQL TINYBLOB type."""
+
+    __visit_name__ = "TINYBLOB"
+
+
+ischema_names.update(
+    {
+        "year": YEAR,
+        "longtext": LONGTEXT,
+        "tinytext": TINYTEXT,
+        "BOOL": BOOL,
+        "MEDIUMINT": MEDIUMINT,
+        "TINYBLOB": TINYBLOB,
+    }
+)
+
+
+MariaDBDialect.ischema_names = ischema_names
 
 
 class MariadbSource(CommonDbSourceService):

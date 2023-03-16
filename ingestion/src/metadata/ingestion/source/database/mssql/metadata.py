@@ -27,9 +27,11 @@ from sqlalchemy.dialects.mssql.base import (
     MSText,
     MSVarBinary,
     _db_plus_owner,
+    ischema_names,
 )
 from sqlalchemy.engine import reflection
 from sqlalchemy.sql import func
+from sqlalchemy.sql.sqltypes import String
 from sqlalchemy.types import NVARCHAR
 from sqlalchemy.util import compat
 
@@ -61,6 +63,120 @@ from metadata.utils.sqlalchemy_utils import (
 )
 
 logger = ingestion_logger()
+
+
+class NCHAR(String):
+    """The SQL NCHAR type."""
+
+    __visit_name__ = "NCHAR"
+
+
+class NVARCHAR(String):
+    """The SQL NVARCHAR type."""
+
+    __visit_name__ = "NVARCHAR"
+
+
+class NTEXT(String):
+    """The SQL NTEXT type."""
+
+    __visit_name__ = "NTEXT"
+
+
+class BINARY(String):
+    """The SQL BINARY type."""
+
+    __visit_name__ = "BINARY"
+
+
+class IMAGE(String):
+    """The SQL IMAGE type."""
+
+    __visit_name__ = "IMAGE"
+
+
+class BIT(String):
+    """The SQL BIT type."""
+
+    __visit_name__ = "BIT"
+
+
+class SMALLMONEY(String):
+    """The SQL SMALLMONEY type."""
+
+    __visit_name__ = "SMALLMONEY"
+
+
+class MONEY(String):
+    """The SQL MONEY type."""
+
+    __visit_name__ = "MONEY"
+
+
+class REAL(String):
+    """The SQL REAL type."""
+
+    __visit_name__ = "REAL"
+
+
+class SMALLDATETIME(String):
+    """The SQL SMALLDATETIME type."""
+
+    __visit_name__ = "SMALLDATETIME"
+
+
+class DATETIME2(String):
+    """The SQL DATETIME2 type."""
+
+    __visit_name__ = "DATETIME2"
+
+
+class DATETIMEOFFSET(String):
+    """The SQL DATETIMEOFFSET type."""
+
+    __visit_name__ = "DATETIMEOFFSET"
+
+
+class SQL_VARIANT(String):
+    """The SQL SQL_VARIANT type."""
+
+    __visit_name__ = "SQL_VARIANT"
+
+
+class UNIQUEIDENTIFIER(String):
+    """The SQL UNIQUEIDENTIFIER type."""
+
+    __visit_name__ = "UNIQUEIDENTIFIER"
+
+
+class XML(String):
+    """The SQL XML type."""
+
+    __visit_name__ = "XML"
+
+
+ischema_names.update(
+    {
+        "nvarchar": NVARCHAR,
+        "nchar": NCHAR,
+        "ntext": NTEXT,
+        "bit": BIT,
+        "image": IMAGE,
+        "binary": BINARY,
+        "smallmoney": SMALLMONEY,
+        "money": MONEY,
+        "real": REAL,
+        "smalldatetime": SMALLDATETIME,
+        "datetime2": DATETIME2,
+        "datetimeoffset": DATETIMEOFFSET,
+        "sql_variant": SQL_VARIANT,
+        "uniqueidentifier": UNIQUEIDENTIFIER,
+        "xml": XML,
+    }
+)
+
+
+MSDialect.ischema_names = ischema_names
 
 
 @reflection.cache

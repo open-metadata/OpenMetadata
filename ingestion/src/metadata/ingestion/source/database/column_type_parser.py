@@ -194,6 +194,12 @@ class ColumnTypeParser:
         "POLYGON": "POLYGON",
         "AggregateFunction()": "AGGREGATEFUNCTION",
         "BYTEA": "BYTEA",
+        "YEAR": "YEAR",
+        "LONGTEXT": "LONGTEXT",
+        "TINYTEXT": "TINYTEXT",
+        "MEDIUMINT": "MEDIUMINT",
+        "TINYBLOB": "TINYBLOB",
+        "BIT": "BIT",
     }
 
     _COMPLEX_TYPE = re.compile("^(struct|map|array|uniontype)")

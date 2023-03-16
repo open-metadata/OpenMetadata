@@ -123,7 +123,27 @@
         "ERROR",
         "FIXED",
         "RECORD",
-        "NULL"
+        "NULL",
+        "YEAR",
+        "LONGTEXT",
+        "TINYTEXT",
+        "BOOL",
+        "MEDIUMINT",
+        "TINYBLOB",
+        "NCHAR",
+        "NVARCHAR",
+        "NTEXT",
+        "IMAGE",
+        "BIT",
+        "SMALLMONEY",
+        "MONEY",
+        "REAL",
+        "SMALLDATETIME",
+        "DATETIME2",
+        "DATETIMEOFFSET",
+        "SQL_VARIANT",
+        "UNIQUEIDENTIFIER",
+        "XML"
       ]
     },
     "constraint": {
