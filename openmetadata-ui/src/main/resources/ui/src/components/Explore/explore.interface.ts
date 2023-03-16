@@ -20,8 +20,8 @@ import { Pipeline } from '../../generated/entity/data/pipeline';
 import { Table } from '../../generated/entity/data/table';
 import { Topic } from '../../generated/entity/data/topic';
 import { SearchResponse } from '../../interface/search.interface';
-import { FilterObject } from '../AdvancedSearch/AdvancedSearch.interface';
 import { SearchDropdownOption } from '../SearchDropdown/SearchDropdown.interface';
+import { FilterObject } from './AdvanceSearchProvider/AdvanceSearchProvider.interface';
 
 export type UrlParams = {
   searchQuery: string;
