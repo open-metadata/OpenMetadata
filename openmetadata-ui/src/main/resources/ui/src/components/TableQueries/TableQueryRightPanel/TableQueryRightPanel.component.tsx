@@ -12,8 +12,10 @@
  */
 
 import { Button, Col, Row, Space, Typography } from 'antd';
+import OwnerWidgetWrapper from 'components/common/OwnerWidget/OwnerWidgetWrapper.component';
 import { Query } from 'generated/entity/data/query';
-import React from 'react';
+import { Table } from 'generated/entity/data/table';
+import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '/assets/svg/ic-edit.svg';
 
@@ -23,6 +25,14 @@ interface TableQueryRightPanelProps {
 
 const TableQueryRightPanel = ({ query }: TableQueryRightPanelProps) => {
   const { t } = useTranslation();
+  const [isEditOwner, setIsEditOwner] = useState(false);
+
+  const handleRemoveOwner = () => {
+    console.log('handleRemoveOwner');
+  };
+  const handleUpdatedOwner = (owner: Table['owner']) => {
+    console.log(owner);
+  };
 
   return (
     <Row className="m-t-md" gutter={[16, 16]}>
@@ -31,12 +41,24 @@ const TableQueryRightPanel = ({ query }: TableQueryRightPanelProps) => {
           <Typography.Text className="text-grey-muted">
             {t('label.owner')}
           </Typography.Text>
-          <Button
-            className="flex-center p-0"
-            icon={<EditIcon height={16} width={16} />}
-            size="small"
-            type="text"
-          />
+          <div>
+            <Button
+              className="flex-center p-0"
+              icon={<EditIcon height={16} width={16} />}
+              size="small"
+              type="text"
+              onClick={() => setIsEditOwner(true)}
+            />
+            {isEditOwner && (
+              <OwnerWidgetWrapper
+                currentUser={query.owner}
+                hideWidget={() => setIsEditOwner(false)}
+                removeOwner={handleRemoveOwner}
+                updateUser={handleUpdatedOwner}
+                visible={isEditOwner}
+              />
+            )}
+          </div>
         </Space>
         {query.owner?.name || 'No owner'}
       </Col>
