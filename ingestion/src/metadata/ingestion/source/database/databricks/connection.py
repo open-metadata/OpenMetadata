@@ -12,7 +12,6 @@
 """
 Source connection handler
 """
-import threading
 from functools import partial
 
 from sqlalchemy.engine import Engine
@@ -29,7 +28,7 @@ from metadata.ingestion.connections.builders import (
 from metadata.ingestion.connections.test_connections import (
     TestConnectionResult,
     TestConnectionStep,
-    test_connection_engine,
+    test_connection_db_common,
 )
 
 
@@ -94,10 +93,4 @@ def test_connection(engine: Engine, service_connection) -> TestConnectionResult:
     ]
 
     timeout_seconds = service_connection.timeOut
-    timer = threading.Timer(timeout_seconds, lambda: None)
-    timer.start()
-    result = test_connection_engine(engine, steps)
-    timer.cancel()
-    if result is None:
-        raise TimeoutError(f"Connection timed out after {timeout_seconds} seconds")
-    return result
+    return test_connection_db_common(engine, steps, timeout_seconds)

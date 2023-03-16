@@ -110,8 +110,9 @@ def test_connection_engine(connection: Engine, steps=None) -> TestConnectionResu
     return None
 
 
-@timeout(seconds=120)
-def test_connection_db_common(connection: Engine, steps=None) -> TestConnectionResult:
+def test_connection_db_common(
+    connection: Engine, steps=None, timeout_seconds: int = 120
+) -> TestConnectionResult:
     """
     Default implementation is the engine to test.
 
@@ -119,4 +120,4 @@ def test_connection_db_common(connection: Engine, steps=None) -> TestConnectionR
     :param connection: Engine to test
     :return: None or raise an exception if we cannot connect
     """
-    return test_connection_engine(connection, steps)
+    return timeout(timeout_seconds)(test_connection_engine)(connection, steps)
