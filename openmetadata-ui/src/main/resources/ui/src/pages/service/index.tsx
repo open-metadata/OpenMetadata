@@ -492,11 +492,12 @@ const ServicePage: FunctionComponent = () => {
   const fetchContainers = async (paging?: string) => {
     setIsLoading(true);
     try {
-      const response = await getContainers(
-        serviceFQN,
-        ['owner', 'tags'],
-        paging
-      );
+      const response = await getContainers({
+        service: serviceFQN,
+        arrQueryFields: ['owner', 'tags'],
+        paging,
+        root: true,
+      });
 
       setData(response.data);
       setPaging(response.paging);
@@ -957,7 +958,10 @@ const ServicePage: FunctionComponent = () => {
         return [t('label.model-name'), t('label.tag-plural')];
       }
       case ServiceCategory.OBJECT_STORE_SERVICES: {
-        return [t('label.model-name'), t('label.tag-plural')];
+        return [
+          t('label.entity-name', { entity: t('label.container') }),
+          t('label.tag-plural'),
+        ];
       }
       default:
         return [];

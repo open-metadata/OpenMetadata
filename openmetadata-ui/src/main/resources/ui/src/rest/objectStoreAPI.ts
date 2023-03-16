@@ -28,15 +28,18 @@ const configOptions = {
   headers: { 'Content-type': 'application/json' },
 };
 
-export const getContainers = async (
-  serviceName: string,
-  arrQueryFields: string | string[],
-  paging?: string
-) => {
+export const getContainers = async (args: {
+  service: string;
+  arrQueryFields: string | string[];
+  paging?: string;
+  root?: boolean;
+}) => {
+  const { service, arrQueryFields, paging, root } = args;
+
   const url = `${getURLWithQueryFields(
     `/containers`,
     arrQueryFields
-  )}&service=${serviceName}${paging ? paging : ''}`;
+  )}&service=${service}${paging ? paging : ''}&root=${root}`;
 
   const response = await APIClient.get<{
     data: ServicePageData[];
