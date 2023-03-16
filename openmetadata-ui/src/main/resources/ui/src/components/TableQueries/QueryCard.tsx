@@ -12,17 +12,17 @@
  */
 
 import classNames from 'classnames';
+import { Query } from 'generated/entity/data/query';
 // import { isUndefined } from 'lodash';
 import React, { FC, HTMLAttributes, useState } from 'react';
 // import { Link } from 'react-router-dom';
 // import { getUserPath } from '../../constants/constants';
 import { CSMode } from '../../enums/codemirror.enum';
-import { SQLQuery } from '../../generated/entity/data/table';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import CopyToClipboardButton from '../buttons/CopyToClipboardButton/CopyToClipboardButton';
 import SchemaEditor from '../schema-editor/SchemaEditor';
 interface QueryCardProp extends HTMLAttributes<HTMLDivElement> {
-  query: SQLQuery;
+  query: Query;
 }
 const QueryCard: FC<QueryCardProp> = ({ className, query }) => {
   const [expanded, setExpanded] = useState<boolean>(false);
