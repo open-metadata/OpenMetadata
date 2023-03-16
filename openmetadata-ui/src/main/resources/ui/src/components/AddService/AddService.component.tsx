@@ -164,7 +164,7 @@ const AddService = ({
     });
   };
 
-  const handleConfigUpdate = (oData: ConfigData) => {
+  const handleConfigUpdate = (oData?: ConfigData) => {
     const data = {
       name: serviceName,
       serviceType: selectServiceType,

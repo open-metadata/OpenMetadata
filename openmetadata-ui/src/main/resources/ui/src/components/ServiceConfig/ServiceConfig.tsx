@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { ISubmitEvent } from '@rjsf/core';
+import { IChangeEvent } from '@rjsf/core';
 import { LoadingState, ServicesData } from 'Models';
 import React, { useState } from 'react';
 import { useHistory } from 'react-router-dom';
@@ -51,21 +51,23 @@ const ServiceConfig = ({
   const history = useHistory();
   const [status, setStatus] = useState<LoadingState>('initial');
 
-  const handleOnSaveClick = (e: ISubmitEvent<ConfigData>) => {
-    setStatus('waiting');
+  const handleOnSaveClick = (e: IChangeEvent<ConfigData>) => {
+    if (e.formData) {
+      setStatus('waiting');
 
-    handleUpdate(e.formData, serviceCategory)
-      .then(() => {
-        setTimeout(() => {
-          setStatus('success');
-          history.push(getPathByServiceFQN(serviceCategory, serviceFQN));
-        }, 200);
-      })
-      .finally(() => {
-        setTimeout(() => {
-          setStatus('initial');
-        }, 500);
-      });
+      handleUpdate(e.formData, serviceCategory)
+        .then(() => {
+          setTimeout(() => {
+            setStatus('success');
+            history.push(getPathByServiceFQN(serviceCategory, serviceFQN));
+          }, 200);
+        })
+        .finally(() => {
+          setTimeout(() => {
+            setStatus('initial');
+          }, 500);
+        });
+    }
   };
 
   const onCancel = () => {

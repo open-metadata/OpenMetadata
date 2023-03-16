@@ -12,7 +12,7 @@
  */
 
 import { PlusOutlined } from '@ant-design/icons';
-import { ObjectFieldTemplateProps } from '@rjsf/core';
+import { ObjectFieldTemplateProps } from '@rjsf/utils';
 import classNames from 'classnames';
 import React, { Fragment, FunctionComponent } from 'react';
 import { Button } from '../buttons/Button/Button';

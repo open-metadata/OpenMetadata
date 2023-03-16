@@ -11,11 +11,11 @@
  *  limitations under the License.
  */
 
-import { ISubmitEvent } from '@rjsf/core';
+import { IChangeEvent } from '@rjsf/core';
 import { ObjectStoreServiceType } from 'generated/entity/services/objectstoreService';
 import { cloneDeep, isNil } from 'lodash';
 import { LoadingState } from 'Models';
-import React, { Fragment, FunctionComponent, useMemo } from 'react';
+import React, { FunctionComponent, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { TestConnection } from 'rest/serviceAPI';
 import { getObjectStoreConfig } from 'utils/ObjectStoreServiceUtils';
@@ -50,7 +50,7 @@ interface Props {
   serviceCategory: ServiceCategory;
   status: LoadingState;
   onCancel?: () => void;
-  onSave: (data: ISubmitEvent<ConfigData>) => void;
+  onSave: (data: IChangeEvent<ConfigData>) => void;
   disableTestConnection?: boolean;
 }
 
@@ -72,42 +72,44 @@ const ConnectionConfigForm: FunctionComponent<Props> = ({
     return shouldTestConnection(serviceType);
   }, [serviceType]);
 
-  const config = !isNil(data)
-    ? ((data as ServicesType).connection?.config as ConfigData)
-    : ({} as ConfigData);
+  const config = useMemo(
+    () =>
+      !isNil(data)
+        ? ((data as ServicesType).connection?.config as ConfigData)
+        : ({} as ConfigData),
+    [data]
+  );
 
-  const handleSave = (data: ISubmitEvent<ConfigData>) => {
-    const updatedFormData = formatFormDataForSubmit(data.formData);
-    onSave({ ...data, formData: updatedFormData });
-  };
+  const handleTestConnection = useCallback(
+    (formData: ConfigData) => {
+      const updatedFormData = formatFormDataForSubmit(formData);
 
-  const handleTestConnection = (formData: ConfigData) => {
-    const updatedFormData = formatFormDataForSubmit(formData);
+      return new Promise<void>((resolve, reject) => {
+        TestConnection(
+          updatedFormData,
+          getTestConnectionType(serviceCategory),
+          serviceType,
+          data?.name
+        )
+          .then((res) => {
+            // This api only responds with status 200 on success
+            // No data sent on api success
+            if (res.status === 200) {
+              resolve();
+            } else {
+              throw t('server.unexpected-response');
+            }
+          })
+          .catch((err) => {
+            showErrorToast(err, t('server.test-connection-error'));
+            reject(err);
+          });
+      });
+    },
+    [serviceCategory, serviceType, data?.name]
+  );
 
-    return new Promise<void>((resolve, reject) => {
-      TestConnection(
-        updatedFormData,
-        getTestConnectionType(serviceCategory),
-        serviceType,
-        data?.name
-      )
-        .then((res) => {
-          // This api only responds with status 200 on success
-          // No data sent on api success
-          if (res.status === 200) {
-            resolve();
-          } else {
-            throw t('server.unexpected-response');
-          }
-        })
-        .catch((err) => {
-          showErrorToast(err, t('server.test-connection-error'));
-          reject(err);
-        });
-    });
-  };
-
-  const getDatabaseFields = () => {
+  const connectionSchema = useMemo(() => {
     let connSch = {
       schema: {},
       uiSchema: {},
@@ -159,26 +161,49 @@ const ConnectionConfigForm: FunctionComponent<Props> = ({
       }
     }
 
-    return (
-      <FormBuilder
-        cancelText={cancelText}
-        disableTestConnection={disableTestConnection}
-        formData={validConfig}
-        isAirflowAvailable={isAirflowAvailable}
-        okText={okText}
-        schema={connSch.schema}
-        status={status}
-        uiSchema={connSch.uiSchema}
-        onCancel={onCancel}
-        onSubmit={handleSave}
-        onTestConnection={
-          allowTestConn && isAirflowAvailable ? handleTestConnection : undefined
-        }
-      />
-    );
-  };
+    return { ...connSch, validConfig };
+  }, [serviceCategory, config]);
 
-  return <Fragment>{getDatabaseFields()}</Fragment>;
+  const handleSave = useCallback(
+    (formData: IChangeEvent<ConfigData>) => {
+      const updatedFormData = formatFormDataForSubmit(formData.formData);
+
+      onSave({ ...formData, formData: updatedFormData });
+    },
+    [onSave]
+  );
+
+  const validators = useMemo(
+    () => ({
+      isValid: () => true,
+      rawValidation: () => ({ errors: [] }),
+      toErrorList: () => [],
+      validateFormData: () => ({
+        errors: [],
+        errorSchema: {},
+      }),
+    }),
+    []
+  );
+
+  return (
+    <FormBuilder
+      cancelText={cancelText}
+      disableTestConnection={disableTestConnection}
+      formData={connectionSchema.validConfig}
+      isAirflowAvailable={isAirflowAvailable}
+      okText={okText}
+      schema={connectionSchema.schema}
+      status={status}
+      uiSchema={connectionSchema.uiSchema}
+      validator={validators}
+      onCancel={onCancel}
+      onSubmit={handleSave}
+      onTestConnection={
+        allowTestConn && isAirflowAvailable ? handleTestConnection : undefined
+      }
+    />
+  );
 };
 
 export default ConnectionConfigForm;

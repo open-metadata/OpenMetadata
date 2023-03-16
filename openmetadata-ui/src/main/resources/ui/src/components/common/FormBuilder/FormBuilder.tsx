@@ -12,13 +12,20 @@
  */
 
 import { CheckOutlined } from '@ant-design/icons';
-import Form from '@rjsf/antd';
-import CoreForm, { AjvError, FormProps, IChangeEvent } from '@rjsf/core';
+import CoreForm, { FormProps } from '@rjsf/core';
+import { ErrorTransformer } from '@rjsf/utils';
 import classNames from 'classnames';
 import { t } from 'i18next';
 import { isEmpty, startCase } from 'lodash';
 import { LoadingState } from 'Models';
-import React, { FunctionComponent, useEffect, useRef, useState } from 'react';
+import React, {
+  FunctionComponent,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { getPipelineServiceHostIp } from 'rest/ingestionPipelineAPI';
 import { ConfigData } from '../../../interface/service.interface';
 import { formatFormDataForRender } from '../../../utils/JSONSchemaFormUtils';
@@ -27,6 +34,15 @@ import { Button } from '../../buttons/Button/Button';
 import { ArrayFieldTemplate } from '../../JSONSchemaTemplate/ArrayFieldTemplate';
 import { ObjectFieldTemplate } from '../../JSONSchemaTemplate/ObjectFieldTemplate';
 import Loader from '../../Loader/Loader';
+
+const transformErrors: ErrorTransformer = (errors) =>
+  errors.map((error) => {
+    const fieldName = error.params.missingProperty;
+    const customMessage = `${startCase(fieldName)} is required`;
+    error.message = customMessage;
+
+    return error;
+  });
 
 interface Props extends FormProps<ConfigData> {
   okText: string;
@@ -52,9 +68,10 @@ const FormBuilder: FunctionComponent<Props> = ({
   uiSchema,
   isAirflowAvailable,
   disableTestConnection,
+  onChange,
   ...props
 }: Props) => {
-  const formRef = useRef<CoreForm<ConfigData>>();
+  const formRef = useRef<CoreForm<ConfigData>>(null);
   const [localFormData, setLocalFormData] = useState<ConfigData | undefined>(
     formatFormDataForRender(formData ?? {})
   );
@@ -79,20 +96,20 @@ const FormBuilder: FunctionComponent<Props> = ({
     }
   }, [isAirflowAvailable]);
 
-  const handleCancel = () => {
+  const handleCancel = useCallback(() => {
     setLocalFormData(formatFormDataForRender<ConfigData>(formData ?? {}));
     if (onCancel) {
       onCancel();
     }
-  };
+  }, [onCancel, setLocalFormData]);
 
-  const handleSubmit = () => {
+  const handleSubmit = useCallback(() => {
     if (formRef.current) {
       formRef.current.submit();
     }
-  };
+  }, []);
 
-  const handleTestConnection = () => {
+  const handleTestConnection = useCallback(() => {
     if (localFormData && onTestConnection) {
       setConnectionTesting(true);
       setConnectionTestingState('waiting');
@@ -107,13 +124,24 @@ const FormBuilder: FunctionComponent<Props> = ({
           setConnectionTesting(false);
         });
     }
-  };
+  }, [
+    setConnectionTesting,
+    localFormData,
+    onTestConnection,
+    setConnectionTestingState,
+  ]);
 
-  const handleChange = (updatedData: ConfigData) => {
-    setLocalFormData(updatedData);
-  };
+  const handleChange = useCallback<Required<FormProps>['onChange']>(
+    (e) => {
+      if (e.formData) {
+        setLocalFormData(e.formData);
+        onChange && onChange(e);
+      }
+    },
+    [setLocalFormData, onChange]
+  );
 
-  const getConnectionTestingMessage = () => {
+  const getConnectionTestingMessage = useCallback(() => {
     switch (connectionTestingState) {
       case 'waiting':
         return (
@@ -140,21 +168,104 @@ const FormBuilder: FunctionComponent<Props> = ({
       default:
         return t('message.test-your-connection-before-creating-service');
     }
-  };
+  }, [connectionTestingState]);
 
-  const transformErrors = (errors: AjvError[]) =>
-    errors.map((error) => {
-      const fieldName = error.params.missingProperty;
-      const customMessage = `${startCase(fieldName)} is required`;
-      error.message = customMessage;
-
-      return error;
-    });
+  const content = useMemo(() => {
+    return (
+      <>
+        {isEmpty(schema) && (
+          <div className="tw-text-grey-muted tw-text-center">
+            {t('message.no-config-available')}
+          </div>
+        )}
+        {!isEmpty(schema) && isAirflowAvailable && (
+          <div
+            className="tw-flex tw-justify-between tw-bg-white tw-border tw-border-main tw-shadow tw-rounded tw-p-3 tw-mt-4"
+            data-testid="ip-address">
+            <div className="tw-self-center">
+              {t('message.airflow-host-ip-address', { hostIp })}
+            </div>
+          </div>
+        )}
+        {!isEmpty(schema) && onTestConnection && (
+          <div className="tw-flex tw-justify-between tw-bg-white tw-border tw-border-main tw-shadow tw-rounded tw-p-3 tw-mt-4">
+            <div className="tw-self-center">
+              {getConnectionTestingMessage()}
+            </div>
+            <Button
+              className={classNames('tw-self-center tw-py-1 tw-px-1.5', {
+                'tw-opacity-40': connectionTesting,
+              })}
+              data-testid="test-connection-btn"
+              disabled={connectionTesting || disableTestConnection}
+              size="small"
+              theme="primary"
+              variant="outlined"
+              onClick={handleTestConnection}>
+              {t('label.test-entity', { entity: t('label.connection') })}
+            </Button>
+          </div>
+        )}
+        <div className="tw-mt-6 tw-flex tw-justify-between">
+          <div />
+          <div className="tw-text-right" data-testid="buttons">
+            <Button
+              size="regular"
+              theme="primary"
+              variant="text"
+              onClick={handleCancel}>
+              {cancelText}
+            </Button>
+            {status === 'waiting' ? (
+              <Button
+                disabled
+                className="tw-w-16 tw-h-10 disabled:tw-opacity-100"
+                size="regular"
+                theme="primary"
+                variant="contained">
+                <Loader size="small" type="white" />
+              </Button>
+            ) : status === 'success' ? (
+              <Button
+                disabled
+                className="tw-w-16 tw-h-10 disabled:tw-opacity-100"
+                size="regular"
+                theme="primary"
+                variant="contained">
+                <CheckOutlined />
+              </Button>
+            ) : (
+              <Button
+                className="tw-w-16 tw-h-10"
+                data-testid="submit-btn"
+                size="regular"
+                theme="primary"
+                variant="contained"
+                onClick={handleSubmit}>
+                {okText}
+              </Button>
+            )}
+          </div>
+        </div>
+      </>
+    );
+  }, [
+    getConnectionTestingMessage,
+    handleSubmit,
+    handleCancel,
+    handleTestConnection,
+    disableTestConnection,
+    connectionTesting,
+    onTestConnection,
+    schema,
+    okText,
+    hostIp,
+    isAirflowAvailable,
+    status,
+  ]);
 
   return (
-    <Form
-      ArrayFieldTemplate={ArrayFieldTemplate}
-      ObjectFieldTemplate={ObjectFieldTemplate}
+    <CoreForm
       className={classNames('rjsf', props.className, {
         'no-header': !showFormHeader,
       })}
@@ -162,87 +273,17 @@ const FormBuilder: FunctionComponent<Props> = ({
       ref={formRef}
       schema={schema}
       showErrorList={false}
+      templates={{
+        ArrayFieldTemplate: ArrayFieldTemplate,
+        ObjectFieldTemplate: ObjectFieldTemplate,
+      }}
       transformErrors={transformErrors}
       uiSchema={uiSchema}
-      onChange={(e: IChangeEvent) => {
-        handleChange(e.formData);
-        props.onChange && props.onChange(e);
-      }}
+      onChange={handleChange}
       onSubmit={onSubmit}
       {...props}>
-      {isEmpty(schema) && (
-        <div className="tw-text-grey-muted tw-text-center">
-          {t('message.no-config-available')}
-        </div>
-      )}
-      {!isEmpty(schema) && isAirflowAvailable && (
-        <div
-          className="tw-flex tw-justify-between tw-bg-white tw-border tw-border-main tw-shadow tw-rounded tw-p-3 tw-mt-4"
-          data-testid="ip-address">
-          <div className="tw-self-center">
-            {t('message.airflow-host-ip-address', { hostIp })}
-          </div>
-        </div>
-      )}
-      {!isEmpty(schema) && onTestConnection && (
-        <div className="tw-flex tw-justify-between tw-bg-white tw-border tw-border-main tw-shadow tw-rounded tw-p-3 tw-mt-4">
-          <div className="tw-self-center">{getConnectionTestingMessage()}</div>
-          <Button
-            className={classNames('tw-self-center tw-py-1 tw-px-1.5', {
-              'tw-opacity-40': connectionTesting,
-            })}
-            data-testid="test-connection-btn"
-            disabled={connectionTesting || disableTestConnection}
-            size="small"
-            theme="primary"
-            variant="outlined"
-            onClick={handleTestConnection}>
-            {t('label.test-entity', { entity: t('label.connection') })}
-          </Button>
-        </div>
-      )}
-      <div className="tw-mt-6 tw-flex tw-justify-between">
-        <div />
-        <div className="tw-text-right" data-testid="buttons">
-          <Button
-            size="regular"
-            theme="primary"
-            variant="text"
-            onClick={handleCancel}>
-            {cancelText}
-          </Button>
-          {status === 'waiting' ? (
-            <Button
-              disabled
-              className="tw-w-16 tw-h-10 disabled:tw-opacity-100"
-              size="regular"
-              theme="primary"
-              variant="contained">
-              <Loader size="small" type="white" />
-            </Button>
-          ) : status === 'success' ? (
-            <Button
-              disabled
-              className="tw-w-16 tw-h-10 disabled:tw-opacity-100"
-              size="regular"
-              theme="primary"
-              variant="contained">
-              <CheckOutlined />
-            </Button>
-          ) : (
-            <Button
-              className="tw-w-16 tw-h-10"
-              data-testid="submit-btn"
-              size="regular"
-              theme="primary"
-              variant="contained"
-              onClick={handleSubmit}>
-              {okText}
-            </Button>
-          )}
-        </div>
-      </div>
-    </Form>
+      {content}
+    </CoreForm>
   );
 };
 
