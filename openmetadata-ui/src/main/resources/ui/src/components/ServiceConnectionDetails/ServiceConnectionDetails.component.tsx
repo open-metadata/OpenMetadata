@@ -96,8 +96,9 @@ const ServiceConnectionDetails = ({
                     value.securityConfig,
                     get(
                       schema,
-                      'definitions.S3Config.properties.securityConfig.properties'
-                    ) || {}
+                      'definitions.S3Config.properties.securityConfig.properties',
+                      {}
+                    )
                   );
                 }
               } else if (
@@ -118,8 +119,9 @@ const ServiceConnectionDetails = ({
                   value.securityConfig.gcsConfig,
                   get(
                     schema,
-                    'definitions.GCSConfig.properties.securityConfig.definitions.GCSValues.properties'
-                  ) || {}
+                    'definitions.GCSConfig.properties.securityConfig.definitions.GCSValues.properties',
+                    {}
+                  )
                 );
               } else {
                 // Condition for GCS Credentials path
@@ -128,8 +130,9 @@ const ServiceConnectionDetails = ({
                   value,
                   get(
                     schema,
-                    'definitions.GCSConfig.properties.securityConfig.definitions.GCSCredentialsPath'
-                  ) || {}
+                    'definitions.GCSConfig.properties.securityConfig.definitions.GCSCredentialsPath',
+                    {}
+                  )
                 );
               }
             }
