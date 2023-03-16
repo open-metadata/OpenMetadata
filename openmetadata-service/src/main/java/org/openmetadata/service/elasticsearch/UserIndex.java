@@ -19,11 +19,15 @@ public class UserIndex implements ElasticSearchIndex {
     if (user.getDisplayName() == null) {
       user.setDisplayName(user.getName());
     }
+    if (user.getIsBot() == null) {
+      user.setIsBot(false);
+    }
     Map<String, Object> doc = JsonUtils.getMap(user);
     ElasticSearchIndexUtils.removeNonIndexableFields(doc, excludeFields);
     List<ElasticSearchSuggest> suggest = new ArrayList<>();
     suggest.add(ElasticSearchSuggest.builder().input(user.getName()).weight(5).build());
     suggest.add(ElasticSearchSuggest.builder().input(user.getDisplayName()).weight(10).build());
+
     doc.put("suggest", suggest);
     doc.put("entityType", Entity.USER);
     return doc;
