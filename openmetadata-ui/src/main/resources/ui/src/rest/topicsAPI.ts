@@ -47,7 +47,11 @@ export const getTopics = async (
     data: ServicePageData[];
     paging: Paging;
   }>(`/topics`, {
-    params: { service, fields, after: paging?.after, before: paging?.before },
+    params: {
+      service,
+      fields,
+      ...paging,
+    },
   });
 
   return response.data;

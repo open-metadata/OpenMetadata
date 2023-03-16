@@ -64,7 +64,11 @@ export const getMlModels = async (
     data: ServicePageData[];
     paging: Paging;
   }>(`/mlmodels`, {
-    params: { service, fields, after: paging?.after, before: paging?.before },
+    params: {
+      service,
+      fields,
+      ...paging,
+    },
   });
 
   return response.data;

@@ -47,7 +47,11 @@ export const getPipelines = async (
     data: ServicePageData[];
     paging: Paging;
   }>(`/pipelines`, {
-    params: { service, fields, after: paging?.after, before: paging?.before },
+    params: {
+      service,
+      fields,
+      ...paging,
+    },
   });
 
   return response.data;

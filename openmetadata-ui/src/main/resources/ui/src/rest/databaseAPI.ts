@@ -29,7 +29,11 @@ export const getDatabases = async (
     data: Database[];
     paging: Paging;
   }>(`/databases`, {
-    params: { service, fields, after: paging?.after, before: paging?.before },
+    params: {
+      service,
+      fields,
+      ...paging,
+    },
   });
 
   return response.data;

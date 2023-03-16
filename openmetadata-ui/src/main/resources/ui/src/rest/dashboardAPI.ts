@@ -46,7 +46,11 @@ export const getDashboards = async (
     data: ServicePageData[];
     paging: Paging;
   }>(`/dashboards`, {
-    params: { service, fields, after: paging?.after, before: paging?.before },
+    params: {
+      service,
+      fields,
+      ...paging,
+    },
   });
 
   return response.data;

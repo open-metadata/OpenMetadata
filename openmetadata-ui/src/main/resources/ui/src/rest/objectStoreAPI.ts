@@ -41,8 +41,7 @@ export const getContainers = async (args: {
   }>(`/containers`, {
     params: {
       ...rest,
-      after: paging?.after,
-      before: paging?.before,
+      ...paging,
     },
   });
 
