@@ -21,6 +21,7 @@ export enum SupportedLocales {
   English = 'en-US',
   Français = 'fr-FR',
   简体中文 = 'zh-CN',
+  日本語 = 'ja-JP',
 }
 
 export const languageSelectOptions = map(SupportedLocales, (value, key) => ({
@@ -36,6 +37,7 @@ export const getInitOptions = (): InitOptions => {
       'en-US': { translation: enUS },
       'fr-FR': { translation: frFR },
       'zh-CN': { translation: zhCN },
+      'ja-JP': { translation: jaJP },
     },
     fallbackLng: ['en-US'],
     detection: {
