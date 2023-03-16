@@ -12,15 +12,21 @@
  */
 
 export interface QueryFieldValueInterface {
-  term: Record<string, unknown>;
+  term: Record<string, string>;
 }
 
 export interface QueryFieldInterface {
   bool: {
-    should: Array<QueryFieldValueInterface>;
+    must?: Array<QueryFieldValueInterface>;
+    should?: Array<QueryFieldValueInterface>;
   };
 }
 
 export interface QueryFilterInterface {
-  query: { bool: { must: QueryFieldInterface[] } };
+  query: {
+    bool: {
+      must?: QueryFieldInterface[];
+      should?: QueryFieldInterface[];
+    };
+  };
 }

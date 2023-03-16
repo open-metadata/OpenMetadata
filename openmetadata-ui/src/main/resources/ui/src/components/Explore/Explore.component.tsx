@@ -36,6 +36,10 @@ import { useParams } from 'react-router-dom';
 import { ENTITY_PATH } from '../../constants/constants';
 import { tabsInfo } from '../../constants/explore.constants';
 import { SearchIndex } from '../../enums/search.enum';
+import {
+  QueryFieldInterface,
+  QueryFieldValueInterface,
+} from '../../pages/explore/ExplorePage.interface';
 import { getDropDownItems } from '../../utils/AdvancedSearchUtils';
 import { getCountBadge } from '../../utils/CommonUtils';
 import { FacetFilterProps } from '../common/facetfilter/facetFilter.interface';
@@ -62,9 +66,9 @@ const Explore: React.FC<ExploreProps> = ({
   aggregations,
   searchResults,
   tabCounts,
-  onChangeAdvancedSearchQueryFilter,
-  postFilter,
-  onChangePostFilter,
+  onChangeAdvancedSearchQuickFilters,
+  facetFilters,
+  onChangeFacetFilters,
   searchIndex,
   onChangeSearchIndex,
   sortOrder,
@@ -76,7 +80,7 @@ const Explore: React.FC<ExploreProps> = ({
   page = 1,
   onChangePage = noop,
   loading,
-  queryFilter,
+  quickFilters,
 }) => {
   const { t } = useTranslation();
   const { tab } = useParams<{ tab: string }>();
@@ -141,23 +145,23 @@ const Explore: React.FC<ExploreProps> = ({
     key
   ) => {
     const currKeyFilters =
-      isNil(postFilter) || !(key in postFilter)
+      isNil(facetFilters) || !(key in facetFilters)
         ? ([] as string[])
-        : postFilter[key];
+        : facetFilters[key];
     if (checked) {
-      onChangePostFilter({
-        ...postFilter,
+      onChangeFacetFilters({
+        ...facetFilters,
         [key]: unique([...currKeyFilters, value]),
       });
     } else {
       const filteredKeyFilters = currKeyFilters.filter((v) => v !== value);
       if (filteredKeyFilters.length) {
-        onChangePostFilter({
-          ...postFilter,
+        onChangeFacetFilters({
+          ...facetFilters,
           [key]: filteredKeyFilters,
         });
       } else {
-        onChangePostFilter(omit(postFilter, key));
+        onChangeFacetFilters(omit(facetFilters, key));
       }
     }
   };
@@ -171,16 +175,16 @@ const Explore: React.FC<ExploreProps> = ({
   );
 
   const handleQuickFiltersChange = (data: ExploreQuickFilterField[]) => {
-    const must = [] as Array<Record<string, unknown>>;
+    const must = [] as Array<QueryFieldInterface>;
 
     // Mapping the selected advanced search quick filter dropdown values
     // to form a queryFilter to pass as a search parameter
     data.forEach((filter) => {
       if (!isEmpty(filter.value)) {
-        const should = [] as Array<Record<string, unknown>>;
+        const should = [] as Array<QueryFieldValueInterface>;
         if (filter.value) {
           filter.value.forEach((filterValue) => {
-            const term = {} as Record<string, unknown>;
+            const term = {} as QueryFieldValueInterface['term'];
 
             term[filter.key] = filterValue.key;
 
@@ -192,13 +196,12 @@ const Explore: React.FC<ExploreProps> = ({
       }
     });
 
-    onChangeAdvancedSearchQueryFilter(
+    onChangeAdvancedSearchQuickFilters(
       isEmpty(must)
         ? undefined
         : {
             query: { bool: { must } },
-          },
-      true
+          }
     );
   };
 
@@ -240,11 +243,11 @@ const Explore: React.FC<ExploreProps> = ({
         value: getSelectedValuesFromQuickFilter(
           item,
           dropdownItems,
-          queryFilter
+          quickFilters
         ),
       }))
     );
-  }, [searchIndex, queryFilter]);
+  }, [searchIndex, quickFilters]);
 
   useEffect(() => {
     if (
@@ -272,10 +275,10 @@ const Explore: React.FC<ExploreProps> = ({
           <ExploreSkeleton loading={Boolean(loading)}>
             <FacetFilter
               aggregations={omit(aggregations, 'entityType')}
-              filters={postFilter}
+              filters={facetFilters}
               showDeleted={showDeleted}
               onChangeShowDeleted={onChangeShowDeleted}
-              onClearFilter={onChangePostFilter}
+              onClearFilter={onChangeFacetFilters}
               onSelectHandler={handleFacetFilterChange}
             />
           </ExploreSkeleton>
@@ -283,6 +286,7 @@ const Explore: React.FC<ExploreProps> = ({
       }
       pageTitle={t('label.explore')}>
       <Tabs
+        activeKey={searchIndex}
         defaultActiveKey={defaultActiveTab}
         items={tabItems}
         size="small"

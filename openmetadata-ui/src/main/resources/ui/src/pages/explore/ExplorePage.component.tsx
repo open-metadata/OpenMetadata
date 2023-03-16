@@ -23,7 +23,7 @@ import {
 } from 'components/Explore/explore.interface';
 import { withAdvanceSearch } from 'components/router/withAdvanceSearch';
 import { SORT_ORDER } from 'enums/common.enum';
-import { has, isEmpty, isNil, isString } from 'lodash';
+import { has, isEmpty, isNil, isString, isUndefined } from 'lodash';
 import Qs from 'qs';
 import React, {
   FunctionComponent,
@@ -35,6 +35,7 @@ import React, {
 import { useHistory, useLocation, useParams } from 'react-router-dom';
 import { searchQuery } from 'rest/searchAPI';
 import useDeepCompareEffect from 'use-deep-compare-effect';
+import { getCombinedQueryFilterObject } from 'utils/ExplorePage/ExplorePageUtils';
 import AppState from '../../AppState';
 import { getExplorePath, PAGE_SIZE } from '../../constants/constants';
 import {
@@ -63,10 +64,17 @@ const ExplorePage: FunctionComponent = () => {
   const [searchResults, setSearchResults] =
     useState<SearchResponse<ExploreSearchIndex>>();
 
-  const [aggregations, setAggregations] = useState<Aggregations>();
+  const [withoutFilterAggregations, setWithoutFilterAggregations] =
+    useState<Aggregations>();
 
-  const [advancesSearchQueryFilter, setAdvancedSearchQueryFilter] =
-    useState<Record<string, unknown>>();
+  const [withFilterAggregations, setWithFilterAggregations] =
+    useState<Aggregations>();
+
+  const [updatedAggregations, setUpdatedAggregations] =
+    useState<Aggregations>();
+
+  const [advancesSearchQuickFilters, setAdvancedSearchQuickFilters] =
+    useState<QueryFilterInterface>();
 
   const [sortValue, setSortValue] = useState<string>(INITIAL_SORT_FIELD);
 
@@ -93,45 +101,59 @@ const ExplorePage: FunctionComponent = () => {
     [location.search]
   );
 
-  const postFilter = useMemo(
+  const facetFilters = useMemo(
     () =>
-      isFilterObject(parsedSearch.postFilter)
-        ? parsedSearch.postFilter
+      isFilterObject(parsedSearch.facetFilter)
+        ? parsedSearch.facetFilter
         : undefined,
     [location.search]
   );
 
   const elasticsearchQueryFilter = useMemo(
-    () => filterObjectToElasticsearchQuery(postFilter),
-    [postFilter]
+    () => filterObjectToElasticsearchQuery(facetFilters),
+    [facetFilters]
   );
 
   const handlePageChange: ExploreProps['onChangePage'] = (page) => {
     history.push({ search: Qs.stringify({ ...parsedSearch, page }) });
   };
 
+  // Filters that can be common for all the Entities Ex. Tables, Topics, etc.
   const commonQuickFilters = useMemo(() => {
-    if (isEmpty(queryFilter) || !has(queryFilter, 'query.bool.must')) {
-      return undefined;
-    }
+    const noAdvancedSearchQuickFilters =
+      isUndefined(advancesSearchQuickFilters) ||
+      isEmpty(advancesSearchQuickFilters);
 
-    return {
-      query: {
-        bool: {
-          must: (
-            queryFilter as unknown as QueryFilterInterface
-          ).query.bool.must.filter(
-            (filterCategory: QueryFieldInterface) =>
+    if (
+      noAdvancedSearchQuickFilters ||
+      !has(advancesSearchQuickFilters, 'query.bool.must') ||
+      isUndefined(advancesSearchQuickFilters?.query.bool.must)
+    ) {
+      return undefined;
+    } else {
+      // Getting the filters that can be common for all the Entities
+      const must = advancesSearchQuickFilters?.query.bool.must.filter(
+        (filterCategory: QueryFieldInterface) =>
+          !isEmpty(filterCategory.bool.should) &&
+          COMMON_FILTERS_FOR_DIFFERENT_TABS.find(
+            (value) =>
               !isEmpty(filterCategory.bool.should) &&
-              COMMON_FILTERS_FOR_DIFFERENT_TABS.find(
-                (value) =>
-                  value === Object.keys(filterCategory.bool.should[0].term)[0]
-              )
-          ),
-        },
-      },
-    };
-  }, [queryFilter]);
+              !isUndefined(filterCategory.bool.should) &&
+              value === Object.keys(filterCategory.bool.should[0].term)[0]
+          )
+      );
+
+      return isEmpty(must)
+        ? undefined
+        : {
+            query: {
+              bool: {
+                must,
+              },
+            },
+          };
+    }
+  }, [advancesSearchQuickFilters]);
 
   const handleSearchIndexChange: (nSearchIndex: ExploreSearchIndex) => void =
     useCallback(
@@ -141,7 +163,7 @@ const ExplorePage: FunctionComponent = () => {
             tab: tabsInfo[nSearchIndex].path,
             extraParameters: {
               page: '1',
-              queryFilter: commonQuickFilters
+              quickFilter: commonQuickFilters
                 ? JSON.stringify(commonQuickFilters)
                 : undefined,
             },
@@ -152,11 +174,24 @@ const ExplorePage: FunctionComponent = () => {
       [commonQuickFilters]
     );
 
-  const handlePostFilterChange: ExploreProps['onChangePostFilter'] = (
-    postFilter
+  const handleQuickFilterChange = useCallback(
+    (quickFilter) => {
+      history.push({
+        search: Qs.stringify({
+          ...parsedSearch,
+          quickFilter: quickFilter ? JSON.stringify(quickFilter) : undefined,
+          page: 1,
+        }),
+      });
+    },
+    [history, parsedSearch]
+  );
+
+  const handleFacetFilterChange: ExploreProps['onChangeFacetFilters'] = (
+    facetFilter
   ) => {
     history.push({
-      search: Qs.stringify({ ...parsedSearch, postFilter, page: 1 }),
+      search: Qs.stringify({ ...parsedSearch, facetFilter, page: 1 }),
     });
   };
 
@@ -178,10 +213,6 @@ const ExplorePage: FunctionComponent = () => {
 
     return tabInfo[0] as ExploreSearchIndex;
   }, [tab]);
-
-  useEffect(() => {
-    handleSearchIndexChange(searchIndex);
-  }, [searchIndex, searchQueryParam]);
 
   const page = useMemo(() => {
     const pageParam = parsedSearch.page;
@@ -210,24 +241,51 @@ const ExplorePage: FunctionComponent = () => {
         pageSize: 0,
         includeDeleted: showDeleted,
       });
-      setAggregations(res.aggregations);
+      setUpdatedAggregations(res.aggregations);
+      setWithoutFilterAggregations(res.aggregations);
     } catch (error) {
       showErrorToast(error as AxiosError);
     }
   };
+
+  const getAdvancedSearchQuickFilters = useCallback(() => {
+    if (!isString(parsedSearch.quickFilter)) {
+      setAdvancedSearchQuickFilters(undefined);
+
+      return undefined;
+    } else {
+      try {
+        const parsedQueryFilter = JSON.parse(parsedSearch.quickFilter);
+        setAdvancedSearchQuickFilters(parsedQueryFilter);
+
+        return parsedQueryFilter;
+      } catch {
+        setAdvancedSearchQuickFilters(undefined);
+
+        return undefined;
+      }
+    }
+  }, [parsedSearch]);
 
   useEffect(() => {
     fetchFilterAggregations();
   }, [searchIndex, showDeleted]);
 
   useDeepCompareEffect(() => {
+    const updatedQuickFilters = getAdvancedSearchQuickFilters();
+
+    const combinedQueryFilter = getCombinedQueryFilterObject(
+      elasticsearchQueryFilter as unknown as QueryFilterInterface,
+      updatedQuickFilters as QueryFilterInterface,
+      queryFilter as unknown as QueryFilterInterface
+    );
+
     setIsLoading(true);
     Promise.all([
       searchQuery({
         query: searchQueryParam,
         searchIndex,
-        queryFilter: advancesSearchQueryFilter,
-        postFilter: elasticsearchQueryFilter,
+        queryFilter: combinedQueryFilter,
         sortField: sortValue,
         sortOrder,
         pageNumber: page,
@@ -235,7 +293,10 @@ const ExplorePage: FunctionComponent = () => {
         includeDeleted: showDeleted,
       })
         .then((res) => res)
-        .then((res) => setSearchResults(res)),
+        .then((res) => {
+          setSearchResults(res);
+          setWithFilterAggregations(res.aggregations);
+        }),
       Promise.all(
         [
           SearchIndex.TABLE,
@@ -248,8 +309,7 @@ const ExplorePage: FunctionComponent = () => {
             query: searchQueryParam,
             pageNumber: 0,
             pageSize: 0,
-            queryFilter: advancesSearchQueryFilter,
-            postFilter: elasticsearchQueryFilter,
+            queryFilter: combinedQueryFilter,
             searchIndex: index,
             includeDeleted: showDeleted,
             trackTotalHits: true,
@@ -279,24 +339,52 @@ const ExplorePage: FunctionComponent = () => {
       })
       .finally(() => setIsLoading(false));
   }, [
-    searchIndex,
+    location,
     searchQueryParam,
     sortValue,
     sortOrder,
     showDeleted,
-    advancesSearchQueryFilter,
     elasticsearchQueryFilter,
     queryFilter,
     page,
   ]);
 
-  const handleAdvanceSearchQueryFilterChange = useCallback(
-    (filter?: Record<string, unknown>) => {
+  const handleAdvanceSearchQuickFiltersChange = useCallback(
+    (filter?: QueryFilterInterface) => {
       handlePageChange(1);
-      setAdvancedSearchQueryFilter(filter);
+      setAdvancedSearchQuickFilters(filter);
+      handleQuickFilterChange(filter);
     },
-    [setAdvancedSearchQueryFilter, history, parsedSearch]
+    [setAdvancedSearchQuickFilters, history, parsedSearch]
   );
+
+  // Logic for facet filters update after selections
+  useEffect(() => {
+    if (!isEmpty(updatedAggregations) && !isEmpty(withFilterAggregations)) {
+      const appliedFilterKeys = Object.keys(facetFilters ?? []);
+
+      const newAggregates: Aggregations = {};
+
+      if (isEmpty(appliedFilterKeys)) {
+        setUpdatedAggregations(withoutFilterAggregations);
+      } else {
+        if (
+          !isUndefined(updatedAggregations) &&
+          !isUndefined(withFilterAggregations) &&
+          !isEmpty(appliedFilterKeys)
+        ) {
+          Object.keys(updatedAggregations).forEach((filterKey) => {
+            if (appliedFilterKeys.includes(filterKey)) {
+              newAggregates[filterKey] = updatedAggregations[filterKey];
+            } else {
+              newAggregates[filterKey] = withFilterAggregations[filterKey];
+            }
+          });
+        }
+        setUpdatedAggregations(newAggregates);
+      }
+    }
+  }, [withFilterAggregations, facetFilters]);
 
   useEffect(() => {
     AppState.updateExplorePageTab(tab);
@@ -305,20 +393,22 @@ const ExplorePage: FunctionComponent = () => {
   return (
     <PageContainerV1>
       <Explore
-        aggregations={aggregations}
+        aggregations={updatedAggregations}
+        facetFilters={facetFilters}
         loading={isLoading}
         page={page}
-        postFilter={postFilter}
-        queryFilter={queryFilter as unknown as QueryFilterInterface}
+        quickFilters={advancesSearchQuickFilters}
         searchIndex={searchIndex}
         searchResults={searchResults}
         showDeleted={showDeleted}
         sortOrder={sortOrder}
         sortValue={sortValue}
         tabCounts={searchHitCounts}
-        onChangeAdvancedSearchQueryFilter={handleAdvanceSearchQueryFilterChange}
+        onChangeAdvancedSearchQuickFilters={
+          handleAdvanceSearchQuickFiltersChange
+        }
+        onChangeFacetFilters={handleFacetFilterChange}
         onChangePage={handlePageChange}
-        onChangePostFilter={handlePostFilterChange}
         onChangeSearchIndex={handleSearchIndexChange}
         onChangeShowDeleted={handleShowDeletedChange}
         onChangeSortOder={(sort) => {

@@ -52,13 +52,12 @@ export interface ExploreProps {
 
   searchResults?: SearchResponse<ExploreSearchIndex>;
 
-  onChangeAdvancedSearchQueryFilter: (
-    queryFilter: Record<string, unknown> | undefined,
-    updateParameters?: boolean
+  onChangeAdvancedSearchQuickFilters: (
+    queryFilter: QueryFilterInterface | undefined
   ) => void;
 
-  postFilter?: FilterObject;
-  onChangePostFilter: (filter: FilterObject) => void;
+  facetFilters?: FilterObject;
+  onChangeFacetFilters: (filter: FilterObject) => void;
 
   searchIndex: ExploreSearchIndex;
   onChangeSearchIndex: (searchIndex: ExploreSearchIndex) => void;
@@ -77,7 +76,7 @@ export interface ExploreProps {
 
   loading?: boolean;
 
-  queryFilter?: QueryFilterInterface;
+  quickFilters?: QueryFilterInterface;
   isElasticSearchIssue?: boolean;
 }
 
