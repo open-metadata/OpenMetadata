@@ -12,6 +12,7 @@
 """
 Source connection handler
 """
+import threading
 from functools import partial
 
 from sqlalchemy.engine import Engine
@@ -28,7 +29,7 @@ from metadata.ingestion.connections.builders import (
 from metadata.ingestion.connections.test_connections import (
     TestConnectionResult,
     TestConnectionStep,
-    test_connection_db_common,
+    test_connection_engine,
 )
 
 
@@ -53,12 +54,13 @@ def get_connection(connection: DatabricksConnection) -> Engine:
     )
 
 
-def test_connection(engine: Engine, _) -> TestConnectionResult:
+def test_connection(engine: Engine, service_connection) -> TestConnectionResult:
     """
     Test connection
     """
 
     def custom_executor(engine, statement):
+
         cursor = engine.execute(statement)
         return [item[0] for item in list(cursor.all())]
 
@@ -91,4 +93,11 @@ def test_connection(engine: Engine, _) -> TestConnectionResult:
         ),
     ]
 
-    return test_connection_db_common(engine, steps)
+    timeout_seconds = service_connection.timeOut
+    timer = threading.Timer(timeout_seconds, lambda: None)
+    timer.start()
+    result = test_connection_engine(engine, steps)
+    timer.cancel()
+    if result is None:
+        raise TimeoutError(f"Connection timed out after {timeout_seconds} seconds")
+    return result
