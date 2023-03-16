@@ -151,7 +151,12 @@ export const testServiceCreationAndIngestion = (
   cy.get(`[data-testid="${serviceType}"]`).should('exist').click();
   cy.get('[data-testid="next-button"]').should('exist').click();
 
-  // Enter service name in step 2
+  // Should show requirements in step 2
+
+  cy.get('[data-testid="service-requirements"]').should('exist');
+  cy.get('[data-testid="next-button"]').should('exist').click();
+
+  // Enter service name in step 3
   cy.get('[data-testid="service-name"]').should('exist').type(serviceName);
   interceptURL(
     'GET',
@@ -160,7 +165,8 @@ export const testServiceCreationAndIngestion = (
   );
   cy.get('[data-testid="next-button"]').should('exist').click();
   verifyResponseStatusCode('@getIngestionPipelineStatus', 200);
-  // Connection Details in step 3
+
+  // Connection Details in step 4
   cy.get('[data-testid="add-new-service-container"]')
     .parent()
     .parent()
