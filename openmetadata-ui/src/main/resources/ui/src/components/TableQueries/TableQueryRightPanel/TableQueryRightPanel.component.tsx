@@ -11,16 +11,37 @@
  *  limitations under the License.
  */
 
-import { Row } from 'antd';
+import { Button, Col, Row, Space, Typography } from 'antd';
 import { Query } from 'generated/entity/data/query';
 import React from 'react';
+import { useTranslation } from 'react-i18next';
+import { ReactComponent as EditIcon } from '/assets/svg/ic-edit.svg';
 
 interface TableQueryRightPanelProps {
   query: Query;
 }
 
 const TableQueryRightPanel = ({ query }: TableQueryRightPanelProps) => {
-  return <Row>{query.query}</Row>;
+  const { t } = useTranslation();
+
+  return (
+    <Row className="m-t-md" gutter={[16, 16]}>
+      <Col span={24}>
+        <Space className="w-full justify-between">
+          <Typography.Text className="text-grey-muted">
+            {t('label.owner')}
+          </Typography.Text>
+          <Button
+            className="flex-center p-0"
+            icon={<EditIcon height={16} width={16} />}
+            size="small"
+            type="text"
+          />
+        </Space>
+        {query.owner?.name || 'No owner'}
+      </Col>
+    </Row>
+  );
 };
 
 export default TableQueryRightPanel;
