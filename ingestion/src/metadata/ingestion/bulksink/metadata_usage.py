@@ -221,11 +221,6 @@ class MetadataUsageBulkSink(BulkSink):
                         self.metadata.publish_frequently_joined_with(
                             table_entity, table_join_request
                         )
-
-                    if table_usage.sqlQueries:
-                        self.metadata.ingest_table_queries_data(
-                            table=table_entity, table_queries=table_usage.sqlQueries
-                        )
                 except APIError as err:
                     logger.debug(traceback.format_exc())
                     logger.warning(
