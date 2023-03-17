@@ -441,6 +441,103 @@ public interface CollectionDAO {
     default String getNameColumn() {
       return "fullyQualifiedName";
     }
+
+    @Override
+    default List<String> listBefore(ListFilter filter, int limit, String before) {
+      boolean root = Boolean.parseBoolean(filter.getQueryParam("root"));
+      String condition = filter.getCondition();
+
+      // By default, root will be false. We won't filter the results then
+      if (!root) {
+        return EntityDAO.super.listBefore(filter, limit, before);
+      }
+
+      String sqlCondition = String.format("%s AND er.toId is NULL", condition);
+
+      return listBefore(getTableName(), getNameColumn(), sqlCondition, limit, before);
+    }
+
+    @Override
+    default List<String> listAfter(ListFilter filter, int limit, String after) {
+      boolean root = Boolean.parseBoolean(filter.getQueryParam("root"));
+      String condition = filter.getCondition();
+
+      if (!root) {
+        return EntityDAO.super.listAfter(filter, limit, after);
+      }
+
+      String sqlCondition = String.format("%s AND er.toId is NULL", condition);
+
+      return listAfter(getTableName(), getNameColumn(), sqlCondition, limit, after);
+    }
+
+    @Override
+    default int listCount(ListFilter filter) {
+      boolean root = Boolean.parseBoolean(filter.getQueryParam("root"));
+      String condition = filter.getCondition();
+
+      if (!root) {
+        return EntityDAO.super.listCount(filter);
+      }
+
+      String sqlCondition = String.format("%s AND er.toId is NULL", condition);
+
+      return listCount(getTableName(), getNameColumn(), sqlCondition);
+    }
+
+    @SqlQuery(
+        value =
+            "SELECT json FROM ("
+                + "SELECT <nameColumn>, ce.json FROM <table> ce "
+                + "LEFT JOIN ("
+                + "  SELECT toId FROM entity_relationship "
+                + "  WHERE fromEntity = 'container' AND toEntity = 'container' AND relation = 0 "
+                + ") er "
+                + "on ce.id = er.toId "
+                + "<sqlCondition> AND "
+                + "<nameColumn> < :before "
+                + "ORDER BY <nameColumn> DESC "
+                + "LIMIT :limit"
+                + ") last_rows_subquery ORDER BY <nameColumn>")
+    List<String> listBefore(
+        @Define("table") String table,
+        @Define("nameColumn") String nameColumn,
+        @Define("sqlCondition") String sqlCondition,
+        @Bind("limit") int limit,
+        @Bind("before") String before);
+
+    @SqlQuery(
+        value =
+            "SELECT ce.json FROM <table> ce "
+                + "LEFT JOIN ("
+                + "  SELECT toId FROM entity_relationship "
+                + "  WHERE fromEntity = 'container' AND toEntity = 'container' AND relation = 0 "
+                + ") er "
+                + "on ce.id = er.toId "
+                + "<sqlCondition> AND "
+                + "<nameColumn> > :after "
+                + "ORDER BY <nameColumn> "
+                + "LIMIT :limit")
+    List<String> listAfter(
+        @Define("table") String table,
+        @Define("nameColumn") String nameColumn,
+        @Define("sqlCondition") String sqlCondition,
+        @Bind("limit") int limit,
+        @Bind("after") String after);
+
+    @SqlQuery(
+        value =
+            "SELECT count(*) FROM <table> ce "
+                + "LEFT JOIN ("
+                + "  SELECT toId FROM entity_relationship "
+                + "  WHERE fromEntity = 'container' AND toEntity = 'container' AND relation = 0 "
+                + ") er "
+                + "on ce.id = er.toId "
+                + "<sqlCondition>")
+    int listCount(
+        @Define("table") String table,
+        @Define("nameColumn") String nameColumn,
+        @Define("sqlCondition") String mysqlCond);
   }
 
   interface EntityExtensionDAO {
@@ -3258,7 +3355,10 @@ public interface CollectionDAO {
           .withServicesCount(rs.getInt("servicesCount"))
           .withUserCount(rs.getInt("userCount"))
           .withTeamCount(rs.getInt("teamCount"))
-          .withTestSuiteCount(rs.getInt("testSuiteCount"));
+          .withTestSuiteCount(rs.getInt("testSuiteCount"))
+          .withStorageContainerCount(rs.getInt("storageContainerCount"))
+          .withGlossaryCount(rs.getInt("glossaryCount"))
+          .withGlossaryTermCount(rs.getInt("glossaryTermCount"));
     }
   }
 
@@ -3270,7 +3370,8 @@ public interface CollectionDAO {
           .withMessagingServiceCount(rs.getInt("messagingServiceCount"))
           .withDashboardServiceCount(rs.getInt("dashboardServiceCount"))
           .withPipelineServiceCount(rs.getInt("pipelineServiceCount"))
-          .withMlModelServiceCount(rs.getInt("mlModelServiceCount"));
+          .withMlModelServiceCount(rs.getInt("mlModelServiceCount"))
+          .withObjectStorageServiceCount(rs.getInt("objectStorageServiceCount"));
     }
   }
 
@@ -3282,14 +3383,16 @@ public interface CollectionDAO {
                 + "(SELECT COUNT(*) FROM dashboard_entity <cond>) as dashboardCount, "
                 + "(SELECT COUNT(*) FROM pipeline_entity <cond>) as pipelineCount, "
                 + "(SELECT COUNT(*) FROM ml_model_entity <cond>) as mlmodelCount, "
-                + "(SELECT COUNT(*) FROM objectstore_container_entity <cond>) as containerCount, "
+                + "(SELECT COUNT(*) FROM objectstore_container_entity <cond>) as storageContainerCount, "
+                + "(SELECT COUNT(*) FROM glossary_entity <cond>) as glossaryCount, "
+                + "(SELECT COUNT(*) FROM glossary_term_entity <cond>) as glossaryTermCount, "
                 + "(SELECT (SELECT COUNT(*) FROM metadata_service_entity <cond>) + "
                 + "(SELECT COUNT(*) FROM dbservice_entity <cond>)+"
                 + "(SELECT COUNT(*) FROM messaging_service_entity <cond>)+ "
                 + "(SELECT COUNT(*) FROM dashboard_service_entity <cond>)+ "
                 + "(SELECT COUNT(*) FROM pipeline_service_entity <cond>)+ "
-                + "(SELECT COUNT(*) FROM mlmodel_service_entity <cond>)) as servicesCount, "
-                + "(SELECT COUNT(*) FROM objectstore_service_entity <cond>) as objectstoreservicesCount, "
+                + "(SELECT COUNT(*) FROM mlmodel_service_entity <cond>)+ "
+                + "(SELECT COUNT(*) FROM objectstore_service_entity <cond>)) as servicesCount, "
                 + "(SELECT COUNT(*) FROM user_entity <cond> AND (JSON_EXTRACT(json, '$.isBot') IS NULL OR JSON_EXTRACT(json, '$.isBot') = FALSE)) as userCount, "
                 + "(SELECT COUNT(*) FROM team_entity <cond>) as teamCount, "
                 + "(SELECT COUNT(*) FROM test_suite <cond>) as testSuiteCount",
@@ -3301,17 +3404,19 @@ public interface CollectionDAO {
                 + "(SELECT COUNT(*) FROM dashboard_entity <cond>) as dashboardCount, "
                 + "(SELECT COUNT(*) FROM pipeline_entity <cond>) as pipelineCount, "
                 + "(SELECT COUNT(*) FROM ml_model_entity <cond>) as mlmodelCount, "
-                + "(SELECT COUNT(*) FROM objectstore_container_entity <cond>) as containerCount, "
+                + "(SELECT COUNT(*) FROM objectstore_container_entity <cond>) as storageContainerCount, "
+                + "(SELECT COUNT(*) FROM glossary_entity <cond>) as glossaryCount, "
+                + "(SELECT COUNT(*) FROM glossary_term_entity <cond>) as glossaryTermCount, "
                 + "(SELECT (SELECT COUNT(*) FROM metadata_service_entity <cond>) + "
                 + "(SELECT COUNT(*) FROM dbservice_entity <cond>)+ "
                 + "(SELECT COUNT(*) FROM messaging_service_entity <cond>)+ "
                 + "(SELECT COUNT(*) FROM dashboard_service_entity <cond>)+ "
                 + "(SELECT COUNT(*) FROM pipeline_service_entity <cond>)+ "
-                + "(SELECT COUNT(*) FROM mlmodel_service_entity <cond>)) as servicesCount, "
-                + "(SELECT COUNT(*) FROM objectstore_service_entity <cond>) as objectstoreservicesCount, "
+                + "(SELECT COUNT(*) FROM mlmodel_service_entity <cond>)+ "
+                + "(SELECT COUNT(*) FROM objectstore_service_entity <cond>)) as servicesCount, "
                 + "(SELECT COUNT(*) FROM user_entity <cond> AND (json#>'{isBot}' IS NULL OR ((json#>'{isBot}')::boolean) = FALSE)) as userCount, "
                 + "(SELECT COUNT(*) FROM team_entity <cond>) as teamCount, "
-                + "(SELECT COUNT(*) FROM test_suite <cond>  ) as testSuiteCount",
+                + "(SELECT COUNT(*) FROM test_suite <cond>) as testSuiteCount",
         connectionType = POSTGRES)
     @RegisterRowMapper(EntitiesCountRowMapper.class)
     EntitiesCount getAggregatedEntitiesCount(@Define("cond") String cond) throws StatementException;
@@ -3321,7 +3426,8 @@ public interface CollectionDAO {
             + "(SELECT COUNT(*) FROM messaging_service_entity <cond>) as messagingServiceCount, "
             + "(SELECT COUNT(*) FROM dashboard_service_entity <cond>) as dashboardServiceCount, "
             + "(SELECT COUNT(*) FROM pipeline_service_entity <cond>) as pipelineServiceCount, "
-            + "(SELECT COUNT(*) FROM mlmodel_service_entity <cond>) as mlModelServiceCount")
+            + "(SELECT COUNT(*) FROM mlmodel_service_entity <cond>) as mlModelServiceCount, "
+            + "(SELECT COUNT(*) FROM objectstore_service_entity <cond>) as objectStorageServiceCount")
     @RegisterRowMapper(ServicesCountRowMapper.class)
     ServicesCount getAggregatedServicesCount(@Define("cond") String cond) throws StatementException;
 
@@ -3478,24 +3584,18 @@ public interface CollectionDAO {
         return EntityDAO.super.listBefore(filter, limit, before);
       }
 
-      StringBuilder mysqlCondition = new StringBuilder();
-      StringBuilder psqlCondition = new StringBuilder();
-
-      mysqlCondition.append(String.format("%s ", condition));
-      psqlCondition.append(String.format("%s ", condition));
+      StringBuilder sqlCondition = new StringBuilder();
+      sqlCondition.append(String.format("%s ", condition));
 
       if (workflowType != null) {
-        mysqlCondition.append(String.format("AND workflowType='%s' ", workflowType));
-        psqlCondition.append(String.format("AND workflowType='%s' ", workflowType));
+        sqlCondition.append(String.format("AND workflowType='%s' ", workflowType));
       }
 
       if (status != null) {
-        mysqlCondition.append(String.format("AND status='%s' ", status));
-        psqlCondition.append(String.format("AND status='%s' ", status));
+        sqlCondition.append(String.format("AND status='%s' ", status));
       }
 
-      return listBefore(
-          getTableName(), getNameColumn(), mysqlCondition.toString(), psqlCondition.toString(), limit, before);
+      return listBefore(getTableName(), getNameColumn(), sqlCondition.toString(), limit, before);
     }
 
     @Override
@@ -3508,24 +3608,18 @@ public interface CollectionDAO {
         return EntityDAO.super.listAfter(filter, limit, after);
       }
 
-      StringBuilder mysqlCondition = new StringBuilder();
-      StringBuilder psqlCondition = new StringBuilder();
-
-      mysqlCondition.append(String.format("%s ", condition));
-      psqlCondition.append(String.format("%s ", condition));
+      StringBuilder sqlCondition = new StringBuilder();
+      sqlCondition.append(String.format("%s ", condition));
 
       if (workflowType != null) {
-        mysqlCondition.append(String.format("AND workflowType='%s' ", workflowType));
-        psqlCondition.append(String.format("AND workflowType='%s' ", workflowType));
+        sqlCondition.append(String.format("AND workflowType='%s' ", workflowType));
       }
 
       if (status != null) {
-        mysqlCondition.append(String.format("AND status='%s' ", status));
-        psqlCondition.append(String.format("AND status='%s' ", status));
+        sqlCondition.append(String.format("AND status='%s' ", status));
       }
 
-      return listAfter(
-          getTableName(), getNameColumn(), mysqlCondition.toString(), psqlCondition.toString(), limit, after);
+      return listAfter(getTableName(), getNameColumn(), sqlCondition.toString(), limit, after);
     }
 
     @Override
@@ -3538,79 +3632,52 @@ public interface CollectionDAO {
         return EntityDAO.super.listCount(filter);
       }
 
-      StringBuilder mysqlCondition = new StringBuilder();
-      StringBuilder psqlCondition = new StringBuilder();
-
-      mysqlCondition.append(String.format("%s ", condition));
-      psqlCondition.append(String.format("%s ", condition));
+      StringBuilder sqlCondition = new StringBuilder();
+      sqlCondition.append(String.format("%s ", condition));
 
       if (workflowType != null) {
-        mysqlCondition.append(String.format("AND workflowType='%s' ", workflowType));
-        psqlCondition.append(String.format("AND workflowType='%s' ", workflowType));
+        sqlCondition.append(String.format("AND workflowType='%s' ", workflowType));
       }
 
       if (status != null) {
-        mysqlCondition.append(String.format("AND status='%s' ", status));
-        psqlCondition.append(String.format("AND status='%s' ", status));
+        sqlCondition.append(String.format("AND status='%s' ", status));
       }
 
-      return listCount(getTableName(), getNameColumn(), mysqlCondition.toString(), psqlCondition.toString());
+      return listCount(getTableName(), getNameColumn(), sqlCondition.toString());
     }
 
-    @ConnectionAwareSqlQuery(
+    @SqlQuery(
         value =
             "SELECT json FROM ("
-                + "SELECT <nameColumn>, json FROM <table> <mysqlCond> AND "
+                + "SELECT <nameColumn>, json FROM <table> <sqlCondition> AND "
                 + "<nameColumn> < :before "
                 + "ORDER BY <nameColumn> DESC "
                 + "LIMIT :limit"
-                + ") last_rows_subquery ORDER BY <nameColumn>",
-        connectionType = MYSQL)
-    @ConnectionAwareSqlQuery(
-        value =
-            "SELECT json FROM ("
-                + "SELECT <nameColumn>, json FROM <table> <psqlCond> AND "
-                + "<nameColumn> < :before "
-                + "ORDER BY <nameColumn> DESC "
-                + "LIMIT :limit"
-                + ") last_rows_subquery ORDER BY <nameColumn>",
-        connectionType = POSTGRES)
+                + ") last_rows_subquery ORDER BY <nameColumn>")
     List<String> listBefore(
         @Define("table") String table,
         @Define("nameColumn") String nameColumn,
-        @Define("mysqlCond") String mysqlCond,
-        @Define("psqlCond") String psqlCond,
+        @Define("sqlCondition") String sqlCondition,
         @Bind("limit") int limit,
         @Bind("before") String before);
 
-    @ConnectionAwareSqlQuery(
+    @SqlQuery(
         value =
-            "SELECT json FROM <table> <mysqlCond> AND "
+            "SELECT json FROM <table> <sqlCondition> AND "
                 + "<nameColumn> > :after "
                 + "ORDER BY <nameColumn> "
-                + "LIMIT :limit",
-        connectionType = MYSQL)
-    @ConnectionAwareSqlQuery(
-        value =
-            "SELECT json FROM <table> <psqlCond> AND "
-                + "<nameColumn> > :after "
-                + "ORDER BY <nameColumn> "
-                + "LIMIT :limit",
-        connectionType = POSTGRES)
+                + "LIMIT :limit")
     List<String> listAfter(
         @Define("table") String table,
         @Define("nameColumn") String nameColumn,
-        @Define("mysqlCond") String mysqlCond,
-        @Define("psqlCond") String psqlCond,
+        @Define("sqlCondition") String sqlCondition,
         @Bind("limit") int limit,
         @Bind("after") String after);
 
-    @ConnectionAwareSqlQuery(value = "SELECT count(*) FROM <table> <mysqlCond>", connectionType = MYSQL)
-    @ConnectionAwareSqlQuery(value = "SELECT count(*) FROM <table> <psqlCond>", connectionType = POSTGRES)
+    @SqlQuery(value = "SELECT count(*) FROM <table> <sqlCondition>")
     int listCount(
         @Define("table") String table,
         @Define("nameColumn") String nameColumn,
-        @Define("mysqlCond") String mysqlCond,
-        @Define("psqlCond") String psqlCond);
+        @Define("sqlCondition") String sqlCondition);
   }
 }
