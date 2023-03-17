@@ -137,7 +137,9 @@
         "CLOB",
         "ROWID",
         "LOWCARDINALITY",
-        "YEAR"
+        "YEAR",
+        "POINT",
+        "POLYGON"
       ]
     },
     "constraint": {
