@@ -599,6 +599,7 @@
     "region-name": "Region Name",
     "registry": "注册",
     "related-term-plural": "Related Terms",
+    "relevance": "Relevance",
     "remove": "删除",
     "remove-entity": "删除 {{entity}}",
     "removed": "Removed",
@@ -843,6 +844,7 @@
     "webhook-display-text": "Webhook {{displayText}}",
     "wednesday": "Wednesday",
     "week": "Week",
+    "weekly-usage": "Weekly Usage",
     "whats-new": "What's new",
     "yes": "是",
     "your-entity": "Your {{entity}}"

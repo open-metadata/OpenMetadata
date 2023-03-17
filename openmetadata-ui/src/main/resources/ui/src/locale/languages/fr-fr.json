@@ -599,6 +599,7 @@
     "region-name": "Nom de Région",
     "registry": "Registry",
     "related-term-plural": "Related Terms",
+    "relevance": "Relevance",
     "remove": "Enlever",
     "remove-entity": "Supprimer {{entity}}",
     "removed": "Removed",
@@ -843,6 +844,7 @@
     "webhook-display-text": "Webhook {{displayText}}",
     "wednesday": "Wednesday",
     "week": "Week",
+    "weekly-usage": "Weekly Usage",
     "whats-new": "Nouveau",
     "yes": "Yes",
     "your-entity": "Your {{entity}}"
