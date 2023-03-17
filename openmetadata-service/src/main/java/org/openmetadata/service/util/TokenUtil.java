@@ -17,10 +17,14 @@ import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.UUID;
 import org.openmetadata.schema.TokenInterface;
+import org.openmetadata.schema.auth.CreatePersonalToken;
 import org.openmetadata.schema.auth.EmailVerificationToken;
+import org.openmetadata.schema.auth.JWTAuthMechanism;
 import org.openmetadata.schema.auth.PasswordResetToken;
+import org.openmetadata.schema.auth.PersonalAccessToken;
 import org.openmetadata.schema.auth.RefreshToken;
 import org.openmetadata.schema.auth.TokenType;
+import org.openmetadata.schema.entity.teams.User;
 
 public class TokenUtil {
   private TokenUtil() {}
@@ -68,5 +72,17 @@ public class TokenUtil {
     refreshToken.setMaxRefreshCount(3);
     refreshToken.setExpiryDate(Instant.now().plus(30, ChronoUnit.DAYS).toEpochMilli());
     return refreshToken;
+  }
+
+  public static PersonalAccessToken getPersonalAccessToken(
+      CreatePersonalToken request, User user, JWTAuthMechanism authMechanism) {
+    PersonalAccessToken personalAccessToken = new PersonalAccessToken();
+    personalAccessToken.setToken(UUID.randomUUID());
+    personalAccessToken.setTokenName(request.getTokenName());
+    personalAccessToken.setUserId(user.getId());
+    personalAccessToken.setTokenType(TokenType.PERSONAL_ACCESS_TOKEN);
+    personalAccessToken.setJwtToken(authMechanism.getJWTToken());
+    personalAccessToken.setExpiryDate(authMechanism.getJWTTokenExpiresAt());
+    return personalAccessToken;
   }
 }
