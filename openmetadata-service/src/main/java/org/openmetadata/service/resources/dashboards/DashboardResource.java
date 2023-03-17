@@ -66,12 +66,15 @@ import org.openmetadata.service.util.ResultList;
 public class DashboardResource extends EntityResource<Dashboard, DashboardRepository> {
   public static final String COLLECTION_PATH = "v1/dashboards/";
 
+  protected static final String FIELDS = "owner,charts,followers,tags,usageSummary,extension,dataModels";
+
   @Override
   public Dashboard addHref(UriInfo uriInfo, Dashboard dashboard) {
     Entity.withHref(uriInfo, dashboard.getOwner());
     Entity.withHref(uriInfo, dashboard.getService());
     Entity.withHref(uriInfo, dashboard.getCharts());
     Entity.withHref(uriInfo, dashboard.getFollowers());
+    Entity.withHref(uriInfo, dashboard.getDataModels());
     return dashboard;
   }
 
@@ -85,8 +88,6 @@ public class DashboardResource extends EntityResource<Dashboard, DashboardReposi
       // Empty constructor needed for deserialization
     }
   }
-
-  static final String FIELDS = "owner,charts,followers,tags,usageSummary,extension";
 
   @GET
   @Valid
@@ -433,6 +434,7 @@ public class DashboardResource extends EntityResource<Dashboard, DashboardReposi
     return copy(new Dashboard(), create, user)
         .withService(getEntityReference(Entity.DASHBOARD_SERVICE, create.getService()))
         .withCharts(getEntityReferences(Entity.CHART, create.getCharts()))
+        .withDataModels(getEntityReferences(Entity.DATA_MODEL, create.getDataModels()))
         .withDashboardUrl(create.getDashboardUrl())
         .withTags(create.getTags());
   }

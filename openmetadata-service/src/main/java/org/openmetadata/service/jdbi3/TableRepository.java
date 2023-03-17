@@ -67,7 +67,6 @@ import org.openmetadata.schema.type.TableProfile;
 import org.openmetadata.schema.type.TableProfilerConfig;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.resources.databases.DatabaseUtil;
 import org.openmetadata.service.resources.databases.TableResource;
@@ -688,20 +687,6 @@ public class TableRepository extends EntityRepository<Table> {
     }
   }
 
-  // Validate if a given column exists in the table
-  public static void validateColumnFQN(Table table, String columnFQN) {
-    boolean validColumn = false;
-    for (Column column : table.getColumns()) {
-      if (column.getFullyQualifiedName().equals(columnFQN)) {
-        validColumn = true;
-        break;
-      }
-    }
-    if (!validColumn) {
-      throw new IllegalArgumentException(CatalogExceptionMessage.invalidColumnFQN(columnFQN));
-    }
-  }
-
   private void validateColumnFQNs(List<JoinedWith> joinedWithList) {
     for (JoinedWith joinedWith : joinedWithList) {
       // Validate table
@@ -709,7 +694,7 @@ public class TableRepository extends EntityRepository<Table> {
       Table joinedWithTable = dao.findEntityByName(tableFQN);
 
       // Validate column
-      validateColumnFQN(joinedWithTable, joinedWith.getFullyQualifiedName());
+      ColumnUtil.validateColumnFQN(joinedWithTable.getColumns(), joinedWith.getFullyQualifiedName());
     }
   }
 

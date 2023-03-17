@@ -17,6 +17,7 @@ import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
+import static org.openmetadata.service.util.TestUtils.assertListNotEmpty;
 import static org.openmetadata.service.util.TestUtils.assertListNotNull;
 import static org.openmetadata.service.util.TestUtils.assertListNull;
 import static org.openmetadata.service.util.TestUtils.assertResponse;
@@ -108,7 +109,7 @@ public class DataModelResourceTest extends EntityResourceTest<DataModel, CreateD
         .withService(getContainer().getName())
         .withServiceType(CreateDataModel.DashboardServiceType.Metabase)
         .withSql("SELECT * FROM tab1;")
-        .withDataModelType(DataModelType.TableauSheet)
+        .withDataModelType(DataModelType.MetabaseDataModel)
         .withColumns(COLUMNS);
   }
 
@@ -127,6 +128,9 @@ public class DataModelResourceTest extends EntityResourceTest<DataModel, CreateD
       DataModel dataModel, CreateDataModel createRequest, Map<String, String> authHeaders) {
     assertNotNull(dataModel.getServiceType());
     assertReference(createRequest.getService(), dataModel.getService());
+    assertEquals(createRequest.getSql(), dataModel.getSql());
+    assertEquals(createRequest.getDataModelType(), dataModel.getDataModelType());
+    assertListNotEmpty(dataModel.getColumns());
   }
 
   @Override

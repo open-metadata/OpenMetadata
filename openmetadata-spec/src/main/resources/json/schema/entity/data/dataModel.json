@@ -14,11 +14,19 @@
       "type": "string",
       "$comment": "Data Model types supported.",
       "enum": [
-        "TABLEAU_SHEET"
+        "TableauSheet",
+        "SupersetDataModel",
+        "MetabaseDataModel"
       ],
       "javaEnums": [
         {
           "name": "TableauSheet"
+        },
+        {
+          "name": "SupersetDataModel"
+        },
+        {
+          "name": "MetabaseDataModel"
         }
       ]
     }

@@ -46,6 +46,7 @@ import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Field;
 import org.openmetadata.schema.type.FieldChange;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.MlFeature;
 import org.openmetadata.schema.type.MlHyperParameter;
@@ -485,5 +486,22 @@ public final class EntityUtil {
     // Note - before calling this method - fullyQualifiedName should set up for the tags
     // Sort tags by tag hierarchy. Tags with parents null come first, followed by tags with
     tags.sort(Comparator.comparing(Tag::getFullyQualifiedName));
+  }
+
+  /**
+   * This method is used to populate the entity with all details of EntityReference Users/Tools can send minimum details
+   * required to set relationship as id, type are the only required fields in entity reference, whereas we need to send
+   * fully populated object such that ElasticSearch index has all the details.
+   */
+  public static List<EntityReference> getNonDeletedEntityReferences(List<EntityReference> entities) throws IOException {
+    if (nullOrEmpty(entities)) {
+      return Collections.emptyList();
+    }
+    List<EntityReference> refs = new ArrayList<>();
+    for (EntityReference entityReference : entities) {
+      EntityReference chartRef = Entity.getEntityReference(entityReference, Include.NON_DELETED);
+      refs.add(chartRef);
+    }
+    return refs.isEmpty() ? null : refs;
   }
 }

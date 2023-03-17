@@ -41,6 +41,7 @@ from metadata.generated.schema.entity.data.container import Container
 from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
+from metadata.generated.schema.entity.data.dataModel import DataModel
 from metadata.generated.schema.entity.data.glossary import Glossary
 from metadata.generated.schema.entity.data.glossaryTerm import GlossaryTerm
 from metadata.generated.schema.entity.data.location import Location
@@ -243,6 +244,11 @@ class OpenMetadata(
             entity, get_args(Union[Chart, self.get_create_entity_type(Chart)])
         ):
             return "/charts"
+
+        if issubclass(
+            entity, get_args(Union[DataModel, self.get_create_entity_type(DataModel)])
+        ):
+            return "/datamodels"
 
         if issubclass(
             entity, get_args(Union[Dashboard, self.get_create_entity_type(Dashboard)])
@@ -518,6 +524,7 @@ class OpenMetadata(
         file_name = (
             class_name.lower()
             .replace("glossaryterm", "glossaryTerm")
+            .replace("datamodel", "dataModel")
             .replace("testsuite", "testSuite")
             .replace("testdefinition", "testDefinition")
             .replace("testcase", "testCase")

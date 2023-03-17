@@ -1,6 +1,5 @@
 package org.openmetadata.service.jdbi3;
 
-import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.Entity.FIELD_FOLLOWERS;
 import static org.openmetadata.service.util.EntityUtil.fieldUpdated;
 
@@ -76,18 +75,6 @@ public class QueryRepository extends EntityRepository<Query> {
     return queryUsers;
   }
 
-  private List<EntityReference> getQueryUsers(List<EntityReference> users) throws IOException {
-    if (nullOrEmpty(users)) {
-      return Collections.emptyList();
-    }
-    List<EntityReference> userRefs = new ArrayList<>();
-    for (EntityReference user : users) {
-      EntityReference chartRef = Entity.getEntityReference(user, Include.NON_DELETED);
-      userRefs.add(chartRef);
-    }
-    return userRefs.isEmpty() ? null : userRefs;
-  }
-
   @Override
   @SneakyThrows
   public void prepare(Query entity) throws IOException {
@@ -97,7 +84,7 @@ public class QueryRepository extends EntityRepository<Query> {
       entity.setName(checkSum);
     }
 
-    entity.setUsers(getQueryUsers(entity.getUsers()));
+    entity.setUsers(EntityUtil.getNonDeletedEntityReferences(entity.getUsers()));
   }
 
   @Override

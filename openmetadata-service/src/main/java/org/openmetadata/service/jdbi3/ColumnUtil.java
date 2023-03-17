@@ -5,6 +5,7 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import java.util.ArrayList;
 import java.util.List;
 import org.openmetadata.schema.type.Column;
+import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 public final class ColumnUtil {
@@ -46,5 +47,19 @@ public final class ColumnUtil {
             setColumnFQN(columnFqn, c.getChildren());
           }
         });
+  }
+
+  // Validate if a given column exists in the table
+  public static void validateColumnFQN(List<Column> columns, String columnFQN) {
+    boolean validColumn = false;
+    for (Column column : columns) {
+      if (column.getFullyQualifiedName().equals(columnFQN)) {
+        validColumn = true;
+        break;
+      }
+    }
+    if (!validColumn) {
+      throw new IllegalArgumentException(CatalogExceptionMessage.invalidColumnFQN(columnFQN));
+    }
   }
 }
