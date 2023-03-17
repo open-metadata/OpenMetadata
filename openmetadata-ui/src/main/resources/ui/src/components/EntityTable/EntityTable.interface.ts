@@ -11,6 +11,8 @@
  *  limitations under the License.
  */
 
+import { TagLabel, TagSource } from 'generated/type/schema';
+import { EntityTags, TagOption } from 'Models';
 import { ReactNode } from 'react';
 import { ThreadType } from '../../generated/api/feed/createThread';
 import { Column, ColumnJoins, Table } from '../../generated/entity/data/table';
@@ -41,4 +43,46 @@ export type TableCellRendered<T, K extends keyof T> = (
 
 export interface DataTypeDisplayCellProps {
   dataTypeDisplay: Column['dataTypeDisplay'];
+}
+
+export interface EditColumnTag {
+  column: Column;
+  index: number;
+}
+
+export interface TagsCollection {
+  Classification: TagOption[];
+  Glossary: TagOption[];
+}
+
+export interface TableTagsProps {
+  Classification: TagLabel[];
+  Glossary: TagLabel[];
+}
+
+export interface EntityTableTagsProps {
+  allTags: TagOption[];
+  onUpdateTagsHandler: (cell: Column) => void;
+  isReadOnly?: boolean;
+  entityFqn?: string;
+  tags: TableTagsProps;
+  record: Column;
+  index: number;
+  isTagLoading: boolean;
+  hasTagEditAccess?: boolean;
+  handleTagSelection: (
+    selectedTags?: Array<EntityTags>,
+    columnFQN?: string,
+    editColumnTag?: EditColumnTag,
+    otherTags?: TagLabel[]
+  ) => void;
+  onRequestTagsHandler: (cell: Column) => void;
+  getColumnName: (cell: Column) => string;
+  entityFieldTasks?: EntityFieldThreads[];
+  onThreadLinkSelect?: (value: string, threadType?: ThreadType) => void;
+  entityFieldThreads?: EntityFieldThreads[];
+  tagFetchFailed: boolean;
+  tableColumns: Column[];
+  onUpdate?: (columns: Column[]) => Promise<void>;
+  type: TagSource;
 }

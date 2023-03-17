@@ -13,16 +13,18 @@
 
 import { Button, Popover, Space, Table, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
-import classNames from 'classnames';
-import { cloneDeep, isEmpty, isUndefined, lowerCase, toLower } from 'lodash';
+import { TagSource } from 'generated/type/schema';
+import {
+  cloneDeep,
+  isEmpty,
+  isUndefined,
+  lowerCase,
+  map,
+  reduce,
+  toLower,
+} from 'lodash';
 import { EntityTags, TagOption } from 'Models';
-import React, {
-  Fragment,
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-} from 'react';
+import React, { Fragment, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import { ReactComponent as IconEdit } from '../../assets/svg/ic-edit.svg';
@@ -61,10 +63,15 @@ import {
 } from '../../utils/TasksUtils';
 import RichTextEditorPreviewer from '../common/rich-text-editor/RichTextEditorPreviewer';
 import { ModalWithMarkdownEditor } from '../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
-import TagsContainer from '../Tag/TagsContainer/tags-container';
-import TagsViewer from '../Tag/TagsViewer/tags-viewer';
-import { EntityTableProps, TableCellRendered } from './EntityTable.interface';
+import {
+  EditColumnTag,
+  EntityTableProps,
+  TableCellRendered,
+  TableTagsProps,
+  TagsCollection,
+} from './EntityTable.interface';
 import './EntityTable.style.less';
+import EntityTableTags from './EntityTableTags.component';
 
 const EntityTable = ({
   tableColumns,
@@ -95,12 +102,10 @@ const EntityTable = ({
     index: number;
   }>();
 
-  const [editColumnTag, setEditColumnTag] = useState<{
-    column: Column;
-    index: number;
-  }>();
-
-  const [allTags, setAllTags] = useState<Array<TagOption>>([]);
+  const [allTags, setAllTags] = useState<TagsCollection>({
+    Classification: [],
+    Glossary: [],
+  });
   const [isTagLoading, setIsTagLoading] = useState<boolean>(false);
   const [tagFetchFailed, setTagFetchFailed] = useState<boolean>(false);
 
@@ -108,14 +113,17 @@ const EntityTable = ({
     setIsTagLoading(true);
     Promise.allSettled([getClassifications(), fetchGlossaryTerms()])
       .then(async (values) => {
-        let tagsAndTerms: TagOption[] = [];
+        const tagsAndTerms: Record<TagSource, TagOption[]> = {
+          Classification: [],
+          Glossary: [],
+        };
         if (
           values[0].status === SettledStatus.FULFILLED &&
           values[0].value.data
         ) {
           const tagList = await getTaglist(values[0].value.data);
 
-          tagsAndTerms =
+          tagsAndTerms[TagSource.Classification] =
             tagList.length !== 0
               ? tagList.map((tag) => {
                   return {
@@ -135,7 +143,7 @@ const EntityTable = ({
           ).map((tag) => {
             return { fqn: tag, source: 'Glossary' };
           });
-          tagsAndTerms = [...tagsAndTerms, ...glossaryTerms];
+          tagsAndTerms[TagSource.Glossary] = glossaryTerms;
         }
         setAllTags(tagsAndTerms);
         if (
@@ -149,7 +157,10 @@ const EntityTable = ({
         setIsTagLoading(false);
       })
       .catch(() => {
-        setAllTags([]);
+        setAllTags({
+          Classification: [],
+          Glossary: [],
+        });
         setTagFetchFailed(true);
       })
       .finally(() => {
@@ -162,10 +173,6 @@ const EntityTable = ({
   };
   const closeEditColumnModal = (): void => {
     setEditColumn(undefined);
-  };
-
-  const handleEditColumnTag = (column: Column, index: number): void => {
-    setEditColumnTag({ column, index });
   };
 
   const updateColumnDescription = (
@@ -240,13 +247,14 @@ const EntityTable = ({
   };
 
   const handleTagSelection = (
-    selectedTags?: Array<EntityTags>,
-    columnFQN = ''
+    selectedTags?: TagLabel[],
+    columnFQN = '',
+    editColumnTag?: EditColumnTag,
+    otherTags?: TagLabel[]
   ) => {
-    const newSelectedTags: TagOption[] | undefined = selectedTags?.map(
-      (tag) => {
-        return { fqn: tag.tagFQN, source: tag.source };
-      }
+    const newSelectedTags: TagOption[] = map(
+      [...(selectedTags || []), ...(otherTags || [])],
+      (tag) => ({ fqn: tag.tagFQN, source: tag.source })
     );
     if (newSelectedTags && (editColumnTag || columnFQN)) {
       const tableCols = cloneDeep(tableColumns);
@@ -257,7 +265,6 @@ const EntityTable = ({
       );
       onUpdate?.(tableCols);
     }
-    setEditColumnTag(undefined);
   };
 
   const searchInColumns = (table: Column[], searchText: string): Column[] => {
@@ -377,36 +384,6 @@ const EntityTable = ({
     );
   };
 
-  const getRequestTagsElement = (cell: Column) => {
-    const hasTags = !isEmpty(cell?.tags || []);
-    const text = hasTags
-      ? t('label.update-request-tag-plural')
-      : t('label.request-tag-plural');
-
-    return (
-      <Button
-        className="p-0 w-7 h-7 tw-flex-none link-text focus:tw-outline-none tw-align-top hover-cell-icon"
-        data-testid="request-tags"
-        type="text"
-        onClick={() =>
-          hasTags ? onUpdateTagsHandler(cell) : onRequestTagsHandler(cell)
-        }>
-        <Popover
-          destroyTooltipOnHide
-          content={text}
-          overlayClassName="ant-popover-request-description"
-          trigger="hover"
-          zIndex={9999}>
-          <IconRequest
-            height={16}
-            name={t('label.request-tag-plural')}
-            width={16}
-          />
-        </Popover>
-      </Button>
-    );
-  };
-
   const renderDataTypeDisplay: TableCellRendered<Column, 'dataTypeDisplay'> = (
     dataTypeDisplay
   ) => {
@@ -518,93 +495,18 @@ const EntityTable = ({
     );
   };
 
-  const renderTags: TableCellRendered<Column, 'tags'> = useCallback(
-    (tags, record: Column, index: number) => {
-      return (
-        <div className="hover-icon-group">
-          {isReadOnly ? (
-            <TagsViewer sizeCap={-1} tags={tags || []} />
-          ) : (
-            <div
-              className={classNames(
-                `tw-flex tw-justify-content`,
-                editColumnTag?.index === index || !isEmpty(tags)
-                  ? 'tw-flex-col tw-items-start'
-                  : 'tw-items-center'
-              )}
-              data-testid="tags-wrapper"
-              onClick={() => {
-                if (!editColumnTag) {
-                  handleEditColumnTag(record, index);
-                  // Fetch tags and terms only once
-                  if (allTags.length === 0 || tagFetchFailed) {
-                    fetchTagsAndGlossaryTerms();
-                  }
-                }
-              }}>
-              <TagsContainer
-                className="w-min-15 "
-                editable={editColumnTag?.index === index}
-                isLoading={isTagLoading && editColumnTag?.index === index}
-                selectedTags={tags || []}
-                showAddTagButton={hasTagEditAccess}
-                size="small"
-                tagList={allTags}
-                type="label"
-                onCancel={() => {
-                  handleTagSelection();
-                }}
-                onSelectionChange={(selectedTags) => {
-                  handleTagSelection(selectedTags, record?.fullyQualifiedName);
-                }}
-              />
-
-              <div className="tw-mt-1 tw-flex">
-                {getRequestTagsElement(record)}
-                {getFieldThreadElement(
-                  getColumnName(record),
-                  'tags',
-                  entityFieldThreads as EntityFieldThreads[],
-                  onThreadLinkSelect,
-                  EntityType.TABLE,
-                  entityFqn,
-                  `columns${ENTITY_LINK_SEPARATOR}${getColumnName(
-                    record
-                  )}${ENTITY_LINK_SEPARATOR}tags`,
-                  Boolean(record?.name?.length)
-                )}
-                {getFieldThreadElement(
-                  getColumnName(record),
-                  EntityField.TAGS,
-                  entityFieldTasks as EntityFieldThreads[],
-                  onThreadLinkSelect,
-                  EntityType.TABLE,
-                  entityFqn,
-                  `${
-                    EntityField.COLUMNS
-                  }${ENTITY_LINK_SEPARATOR}${getColumnName(
-                    record
-                  )}${ENTITY_LINK_SEPARATOR}${EntityField.TAGS}`,
-                  Boolean(record?.name),
-                  ThreadType.Task
-                )}
-              </div>
-            </div>
-          )}
-        </div>
-      );
-    },
-    [
-      isReadOnly,
-      editColumnTag,
-      hasTagEditAccess,
-      isTagLoading,
-      handleTagSelection,
-      handleEditColumnTag,
-      fetchTagsAndGlossaryTerms,
-      getRequestTagsElement,
-    ]
-  );
+  const getFilterTags = (tags: TagLabel[]): TableTagsProps =>
+    reduce(
+      tags,
+      (acc, cv) => {
+        if (cv.source === TagSource.Classification) {
+          return { ...acc, Classification: [...acc.Classification, cv] };
+        } else {
+          return { ...acc, Glossary: [...acc.Glossary, cv] };
+        }
+      },
+      { Classification: [] as TagLabel[], Glossary: [] as TagLabel[] }
+    );
 
   const columns: ColumnsType<Column> = useMemo(
     () => [
@@ -670,10 +572,62 @@ const EntityTable = ({
         key: 'tags',
         accessor: 'tags',
         width: 350,
-        render: renderTags,
+        render: (tags: TagLabel[], record, index) => (
+          <EntityTableTags
+            allTags={allTags[TagSource.Classification]}
+            entityFieldTasks={entityFieldTasks}
+            entityFieldThreads={entityFieldThreads}
+            entityFqn={entityFqn}
+            getColumnName={getColumnName}
+            handleTagSelection={handleTagSelection}
+            hasTagEditAccess={hasTagEditAccess}
+            index={index}
+            isReadOnly={isReadOnly}
+            isTagLoading={isTagLoading}
+            record={record}
+            tableColumns={tableColumns}
+            tagFetchFailed={tagFetchFailed}
+            tags={getFilterTags(tags)}
+            type={TagSource.Classification}
+            onRequestTagsHandler={onRequestTagsHandler}
+            onThreadLinkSelect={onThreadLinkSelect}
+            onUpdate={onUpdate}
+            onUpdateTagsHandler={onUpdateTagsHandler}
+          />
+        ),
+      },
+      {
+        title: t('label.glossary-term-plural'),
+        dataIndex: 'tags',
+        key: 'tags',
+        accessor: 'tags',
+        width: 350,
+        render: (tags: TagLabel[], record, index) => (
+          <EntityTableTags
+            allTags={allTags[TagSource.Glossary]}
+            entityFieldTasks={entityFieldTasks}
+            entityFieldThreads={entityFieldThreads}
+            entityFqn={entityFqn}
+            getColumnName={getColumnName}
+            handleTagSelection={handleTagSelection}
+            hasTagEditAccess={hasTagEditAccess}
+            index={index}
+            isReadOnly={isReadOnly}
+            isTagLoading={isTagLoading}
+            record={record}
+            tableColumns={tableColumns}
+            tagFetchFailed={tagFetchFailed}
+            tags={getFilterTags(tags)}
+            type={TagSource.Glossary}
+            onRequestTagsHandler={onRequestTagsHandler}
+            onThreadLinkSelect={onThreadLinkSelect}
+            onUpdate={onUpdate}
+            onUpdateTagsHandler={onUpdateTagsHandler}
+          />
+        ),
       },
     ],
-    [editColumnTag, isTagLoading, handleUpdate, handleTagSelection]
+    [isTagLoading, handleUpdate]
   );
 
   useEffect(() => {
@@ -684,6 +638,10 @@ const EntityTable = ({
       setSearchedColumns(searchCols);
     }
   }, [searchText, tableColumns]);
+
+  useEffect(() => {
+    fetchTagsAndGlossaryTerms();
+  }, []);
 
   return (
     <>
@@ -697,6 +655,7 @@ const EntityTable = ({
           rowExpandable: (record) => !isEmpty(record.children),
         }}
         pagination={false}
+        scroll={{ x: 1800 }}
         size="small"
       />
       {editColumn && (
