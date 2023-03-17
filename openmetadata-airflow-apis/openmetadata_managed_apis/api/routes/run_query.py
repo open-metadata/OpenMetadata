@@ -66,6 +66,12 @@ def get_fn(blueprint: Blueprint) -> Callable:
                     error="[limit] and [offset] must be specified for a [RUN] query request",
                 )
 
+            if run_query_config.limit > 100:
+                return ApiResponse.error(
+                    status=ApiResponse.STATUS_BAD_REQUEST,
+                    error="[limit] must be less than 100",
+                )
+
             return run_sql_query(run_query_config)
         except ValidationError as err:
             msg = f"Request Validation Error parsing payload: {err}"

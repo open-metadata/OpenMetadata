@@ -117,8 +117,20 @@ class TestHelpers(TestCase):
         SELECT * FROM foo
         """
 
+        transaction_query = """
+        BEGIN TRAN T1;  
+            UPDATE table1 ...;  
+            BEGIN TRAN M2 WITH MARK;  
+                UPDATE table2 ...;  
+                SELECT * from table1;  
+            COMMIT TRAN M2;  
+            UPDATE table3 ...;  
+        COMMIT TRAN T1;  
+        """
+
         self.assertFalse(is_safe_sql_query(delete_query))
         self.assertFalse(is_safe_sql_query(drop_query))
         self.assertFalse(is_safe_sql_query(create_query))
         self.assertTrue(is_safe_sql_query(select_query))
         self.assertTrue(is_safe_sql_query(cte_query))
+        self.assertFalse(is_safe_sql_query(transaction_query))

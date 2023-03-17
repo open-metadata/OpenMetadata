@@ -356,6 +356,7 @@ def is_safe_sql_query(sql_query: str) -> bool:
         "CALL",
         "EXPLAIN PLAN",
         "LOCK TABLE",
+        "UNLOCK TABLE",
         "GRANT",
         "REVOKE",
         "COMMIT",

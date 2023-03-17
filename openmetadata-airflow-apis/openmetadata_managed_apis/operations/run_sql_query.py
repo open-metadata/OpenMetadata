@@ -333,7 +333,7 @@ def run_sql_query(run_query_config: RunQueryRequest) -> Response:
 
     if not is_safe_sql_query(run_query_config.query):
         raise RuntimeError(
-            f"Query {run_query_config.query} does not seem to be"
+            f"Query [{run_query_config.query}] does not seem to be"
             " a `SELECT` statement. Safely stopping execution."
         )
 

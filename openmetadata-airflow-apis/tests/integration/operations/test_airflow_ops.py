@@ -426,3 +426,17 @@ class TestAirflowOps(TestCase):
             )
 
             self.assertEqual(resp.status_code, 400)
+
+            resp = run_sql_query(
+                RunQueryRequest(
+                    serviceType="Database",
+                    queryType=QueryTypes.RUN,
+                    query="Select * FROM FOO.users",
+                    serviceName="foo",
+                    openMetadataServerConnection=self.conn,
+                    offset=1,
+                    limit=1001,
+                )
+            )
+
+            self.assertEqual(resp.status_code, 400)
