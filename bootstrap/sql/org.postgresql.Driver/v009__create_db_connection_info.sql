@@ -113,6 +113,15 @@ DELETE FROM entity_extension WHERE id in
 
 DROP TABLE temp_query_migration;
 
+-- remove the audience if it was wrongfully sent from the UI after editing the OM service
+UPDATE metadata_service_entity
+SET json = json::jsonb #- '{connection,config,securityConfig,audience}'
+WHERE name = 'OpenMetadata'
+    AND json#>'{connection,config,authProvider}' IS NOT NULL
+    AND json -> 'connection' -> 'config' ->> 'authProvider' != 'google';
+
+ALTER TABLE user_tokens ALTER COLUMN expiryDate DROP NOT NULL;
+
 DELETE FROM alert_entity;
 drop table alert_action_def;
 

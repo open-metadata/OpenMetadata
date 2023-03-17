@@ -12,15 +12,13 @@
  */
 
 import { Form, Input, Modal, Select, TreeSelect } from 'antd';
-import { SearchIndexMappingLanguage } from 'generated/configuration/elasticSearchConfiguration';
-import { map } from 'lodash';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   ELASTIC_SEARCH_INITIAL_VALUES,
-  RECREATE_INDEX_OPTIONS,
   ENTITY_TREE_OPTIONS,
-  RE_INDEX_LANG_OPTIONS
+  RECREATE_INDEX_OPTIONS,
+  RE_INDEX_LANG_OPTIONS,
 } from '../../constants/elasticsearch.constant';
 import { CreateEventPublisherJob } from '../../generated/api/createEventPublisherJob';
 
@@ -38,8 +36,6 @@ const ReIndexAllModal = ({
   confirmLoading,
 }: ReIndexAllModalInterface) => {
   const { t } = useTranslation();
-
-  
 
   return (
     <Modal

@@ -46,7 +46,6 @@ export interface DatasetDetailsProps {
   owner: EntityReference;
   description: string;
   tableProfile: Table['profile'];
-  tableQueries: Table['tableQueries'];
   columns: Column[];
   tier: TagLabel;
   sampleData: TableData;
@@ -57,7 +56,6 @@ export interface DatasetDetailsProps {
   deleted?: boolean;
   isTableProfileLoading?: boolean;
   isSampleDataLoading?: boolean;
-  isQueriesLoading?: boolean;
   isentityThreadLoading: boolean;
   feedCount: number;
   entityFieldThreadCount: EntityFieldThreadCount[];
