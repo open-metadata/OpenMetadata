@@ -27,19 +27,19 @@ export const MAX_RESULT_HITS = 10000;
 // as it is used only in unit tests it's not needed for translation
 export const tableSortingFields: SortingField[] = [
   {
-    name: 'Last Updated',
+    name: t('label.last-updated'),
     value: 'updatedAt',
   },
-  { name: 'Weekly Usage', value: 'usageSummary.weeklyStats.count' },
-  { name: 'Relevance', value: '_score' },
+  { name: t('label.weekly-usage'), value: 'usageSummary.weeklyStats.count' },
+  { name: t('label.relevance'), value: '_score' },
 ];
 
 export const entitySortingFields = [
   {
-    name: 'Last Updated',
+    name: t('label.last-updated'),
     value: 'updatedAt',
   },
-  { name: 'Relevance', value: '_score' },
+  { name: t('label.relevance'), value: '_score' },
 ];
 
 export interface ExploreTabInfo {
