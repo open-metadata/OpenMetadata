@@ -528,6 +528,22 @@ def test_case_table_custom_sql_query():
 
 
 @pytest.fixture
+def test_case_unsafe_table_custom_sql_query():
+    """Test case for test custom sql test with unsafe sql expression"""
+    return TestCase(
+        name=TEST_CASE_NAME,
+        entityLink=ENTITY_LINK_NAME,
+        testSuite=EntityReference(id=uuid4(), type="TestSuite"),  # type: ignore
+        testDefinition=EntityReference(id=uuid4(), type="TestDefinition"),  # type: ignore
+        parameterValues=[
+            TestCaseParameterValue(
+                name="sqlExpression", value="DELETE FROM users WHERE age > 20"
+            ),
+        ],
+    )  # type: ignore
+
+
+@pytest.fixture
 def test_case_table_custom_sql_query_success():
     """Test case for test column_value_median_to_be_between"""
     return TestCase(

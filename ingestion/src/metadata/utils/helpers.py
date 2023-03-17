@@ -21,6 +21,9 @@ from functools import wraps
 from time import perf_counter
 from typing import Any, Dict, Iterable, List, Optional, Tuple, Union
 
+import sqlparse
+from sqlparse.sql import Statement
+
 from metadata.generated.schema.entity.data.chart import ChartType
 from metadata.generated.schema.entity.data.table import Column, Table
 from metadata.generated.schema.type.tagLabel import TagLabel
@@ -327,3 +330,45 @@ def get_entity_tier_from_tags(tags: list[TagLabel]) -> Optional[str]:
         ),
         None,
     )
+
+
+def is_safe_sql_query(sql_query: str) -> bool:
+    """Validate SQL query
+
+    Args:
+        sql_query (str): SQL query
+
+    Returns:
+        bool
+    """
+
+    forbiden_token = {
+        "CREATE",
+        "ALTER",
+        "DROP",
+        "TRUNCATE",
+        "COMMENT",
+        "RENAME",
+        "INSERT",
+        "UPDATE",
+        "DELETE",
+        "MERGE",
+        "CALL",
+        "EXPLAIN PLAN",
+        "LOCK TABLE",
+        "GRANT",
+        "REVOKE",
+        "COMMIT",
+        "ROLLBACK",
+        "SAVEPOINT",
+        "SET TRANSACTION",
+    }
+
+    parsed_queries: Tuple[Statement] = sqlparse.parse(sql_query)
+    for parsed_query in parsed_queries:
+        validation = [
+            token.normalized in forbiden_token for token in parsed_query.tokens
+        ]
+        if any(validation):
+            return False
+    return True

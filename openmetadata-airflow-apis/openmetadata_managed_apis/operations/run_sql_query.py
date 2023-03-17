@@ -13,7 +13,7 @@ Run SQL query against a source system
 """
 
 import json
-from typing import Tuple, cast
+from typing import cast
 
 import sqlparse
 from flask import Response
@@ -45,47 +45,7 @@ from metadata.ingestion.source.connections import get_connection
 from metadata.profiler.orm.registry import Dialects
 from metadata.utils.class_helper import get_service_class_from_service_type
 from metadata.utils.dispatch import valuedispatch
-
-FORBIDDEN_TOKENS = {
-    "CREATE",
-    "ALTER",
-    "DROP",
-    "TRUNCATE",
-    "COMMENT",
-    "RENAME",
-    "INSERT",
-    "UPDATE",
-    "DELETE",
-    "MERGE",
-    "CALL",
-    "EXPLAIN PLAN",
-    "LOCK TABLE",
-    "GRANT",
-    "REVOKE",
-    "COMMIT",
-    "ROLLBACK",
-    "SAVEPOINT",
-    "SET TRANSACTION",
-}
-
-
-def is_safe_sql_query(sql_query: str) -> bool:
-    """Validate SQL query
-
-    Args:
-        sql_query (str): SQL query
-
-    Returns:
-        bool
-    """
-    parsed_queries: Tuple[Statement] = sqlparse.parse(sql_query)
-    for parsed_query in parsed_queries:
-        validation = [
-            token.normalized in FORBIDDEN_TOKENS for token in parsed_query.tokens
-        ]
-        if any(validation):
-            return False
-    return True
+from metadata.utils.helpers import is_safe_sql_query
 
 
 def get_service_connection(

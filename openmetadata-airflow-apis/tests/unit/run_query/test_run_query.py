@@ -21,7 +21,6 @@ from openmetadata_managed_apis.operations.run_sql_query import (
     execute_sql_query,
     get_row_count,
     get_subquery_wrapper,
-    is_safe_sql_query,
 )
 from sqlalchemy import (
     TEXT,
@@ -118,42 +117,6 @@ class TestRunQuery(unittest.TestCase):
     def tearDownClass(cls) -> None:
         os.remove(cls.db_path)
         return super().tearDownClass()
-
-    def test_is_safe_sql_query(self):
-        """Test is_safe_sql_query function"""
-
-        delete_query = """
-        DELETE FROM airflow_task_instance
-        WHERE dag_id = 'test_dag_id'
-        """
-
-        drop_query = """
-        DROP TABLE IF EXISTS test_table
-        """
-
-        create_query = """
-        CREATE TABLE test_table (
-            id INT,
-            name VARCHAR(255)
-        )
-        """
-
-        select_query = """
-        SELECT * FROM test_table
-        """
-
-        cte_query = """
-        WITH foo AS (
-            SELECT * FROM test_table
-        )
-        SELECT * FROM foo
-        """
-
-        self.assertFalse(is_safe_sql_query(delete_query))
-        self.assertFalse(is_safe_sql_query(drop_query))
-        self.assertFalse(is_safe_sql_query(create_query))
-        self.assertTrue(is_safe_sql_query(select_query))
-        self.assertTrue(is_safe_sql_query(cte_query))
 
     def test_row_count(self):
         """Test row_count function"""

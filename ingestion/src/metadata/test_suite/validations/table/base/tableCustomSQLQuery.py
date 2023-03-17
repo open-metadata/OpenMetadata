@@ -23,6 +23,7 @@ from metadata.generated.schema.tests.basic import (
     TestResultValue,
 )
 from metadata.test_suite.validations.base_test_handler import BaseTestValidator
+from metadata.utils.helpers import is_safe_sql_query
 from metadata.utils.logger import test_suite_logger
 
 logger = test_suite_logger()
@@ -45,6 +46,19 @@ class BaseTableCustomSQLQueryValidator(BaseTestValidator):
             str,
         )
         sql_expression = cast(str, sql_expression)  # satisfy mypy
+
+        if not is_safe_sql_query(sql_expression):
+            msg = (
+                f"Query {sql_expression} does not seem to be a `SELECT` "
+                "statement. Safely stopping execution."
+            )
+            logger.error(msg)
+            return self.get_test_case_result_object(
+                self.execution_date,
+                TestCaseStatus.Aborted,
+                msg,
+                [TestResultValue(name=RESULT_ROW_COUNT, value=None)],
+            )
 
         try:
             rows = self._run_results(sql_expression)
