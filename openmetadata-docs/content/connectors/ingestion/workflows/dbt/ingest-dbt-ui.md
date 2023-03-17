@@ -42,6 +42,8 @@ OpenMetadata connects to the AWS s3 bucket via the credentials provided and scan
 
 The name of the s3 bucket and prefix path to the folder in which the dbt files are stored can be provided. In the case where these parameters are not provided all the buckets are scanned for the files.
 
+If the following represents the url for the folder in which the dbt files are stored `s3://bucket-name/main-dir/dbt-files/` enter the values in the `dbt Bucket Name` and `dbt Object Prefix` fields as shown in the image below
+
 <Image src="/images/openmetadata/ingestion/workflows/dbt/aws-s3.png" alt="aws-s3-bucket" caption="AWS S3 Bucket Config"/>
 
 #### Google Cloud Storage Buckets
@@ -49,6 +51,8 @@ The name of the s3 bucket and prefix path to the folder in which the dbt files a
 OpenMetadata connects to the GCS bucket via the credentials provided and scans the gcs buckets for `manifest.json`, `catalog.json` and `run_results.json` files.
 
 The name of the GCS bucket and prefix path to the folder in which the dbt files are stored can be provided. In the case where these parameters are not provided all the buckets are scanned for the files.
+
+If the following represents the url for the folder in which the dbt files are stored `bucket-name/main-dir/dbt_files` enter the values in the `dbt Bucket Name` and `dbt Object Prefix` fields as shown in the image below
 
 GCS credentials can be stored in two ways:
 1. Entering the credentials directly into the form
