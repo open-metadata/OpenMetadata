@@ -15,8 +15,8 @@ SQL Queries used during ingestion
 ORACLE_ALL_TABLE_COMMENTS = """
 SELECT 
 	comments table_comment,
-	table_name,
-	owner "schema" 	
+	LOWER(table_name) "table_name",
+	LOWER(owner) "schema" 	
 FROM all_tab_comments
 where comments is not null and owner not in ('SYSTEM', 'SYS')
 """
@@ -24,8 +24,8 @@ where comments is not null and owner not in ('SYSTEM', 'SYS')
 
 ORACLE_ALL_VIEW_DEFINITIONS = """
 SELECT 
-	view_name, 
-	owner "schema",
+	LOWER(view_name) "view_name", 
+	LOWER(owner) "schema",
 	text view_def 
 FROM all_views 
 where text is not null and owner not in ('SYSTEM', 'SYS')

@@ -84,26 +84,25 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
     }
   };
 
-  const handleFieldTagsChange = async (selectedTags: EntityTags[] = []) => {
-    if (!isUndefined(editFieldTags)) {
-      const newSelectedTags: TagOption[] = selectedTags.map((tag) => ({
-        fqn: tag.tagFQN,
-        source: tag.source,
-      }));
+  const handleFieldTagsChange = async (
+    selectedTags: EntityTags[] = [],
+    selectedField: Field
+  ) => {
+    const newSelectedTags: TagOption[] = selectedTags.map((tag) => ({
+      fqn: tag.tagFQN,
+      source: tag.source,
+    }));
 
-      const schema = cloneDeep(messageSchema);
+    const schema = cloneDeep(messageSchema);
 
-      updateFieldTags(
-        schema?.schemaFields,
-        editFieldTags?.name,
-        newSelectedTags
-      );
+    updateFieldTags(
+      schema?.schemaFields,
+      editFieldTags?.name ?? selectedField.name,
+      newSelectedTags
+    );
 
-      await onUpdate(schema);
-      setEditFieldTags(undefined);
-    } else {
-      setEditFieldTags(undefined);
-    }
+    await onUpdate(schema);
+    setEditFieldTags(undefined);
   };
 
   const handleAddTagClick = (record: Field) => {
@@ -200,7 +199,7 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
               tagList={tagList}
               type="label"
               onCancel={() => setEditFieldTags(undefined)}
-              onSelectionChange={handleFieldTagsChange}
+              onSelectionChange={(tags) => handleFieldTagsChange(tags, record)}
             />
           </Space>
         )}
