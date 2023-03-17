@@ -206,7 +206,7 @@ describe('RedShift Ingestion', () => {
 
     cy.get('[data-testid="lineage-entity"]').should(
       'contain',
-      DBT.dbtLineageNode
+      DBT.dbtLineageNodeLabel
     );
 
     // Verify Data Quality

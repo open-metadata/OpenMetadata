@@ -344,6 +344,7 @@ export const DBT = {
   tagName: 'model_tag_one',
   dbtQuery: 'select * from "dev"."dbt_jaffle"."stg_orders"',
   dbtLineageNode: 'dev.dbt_jaffle.raw_customers',
+  dbtLineageNodeLabel: 'raw_customers',
   dataQualityTest1: 'dbt_utils_equal_rowcount_customers_ref_orders_',
   dataQualityTest2: 'not_null_customers_customer_id',
 };
