@@ -50,16 +50,16 @@ const NodeSuggestions: FC<EntitySuggestionProps> = ({
   const [isOpen, setIsOpen] = useState<boolean>(false);
   const [searchValue, setSearchValue] = useState<string>('');
 
-  const getSuggestionLabel = (fqn: string, type: string, name: string) => {
+  const getSuggestionLabelHeading = (fqn: string, type: string) => {
     if (type === EntityType.TABLE) {
       const database = getPartialNameFromTableFQN(fqn, [FqnPart.Database]);
       const schema = getPartialNameFromTableFQN(fqn, [FqnPart.Schema]);
 
       return database && schema
-        ? `${database}${FQN_SEPARATOR_CHAR}${schema}${FQN_SEPARATOR_CHAR}${name}`
-        : name;
+        ? `${database}${FQN_SEPARATOR_CHAR}${schema}`
+        : '';
     } else {
-      return name;
+      return '';
     }
   };
 
@@ -150,16 +150,15 @@ const NodeSuggestions: FC<EntitySuggestionProps> = ({
         <div
           aria-labelledby="menu-button"
           aria-orientation="vertical"
-          className="tw-origin-top-right tw-absolute tw-z-20
-          tw-w-max tw-mt-1 tw-rounded-md tw-shadow-lg
+          className="suggestion-node-item tw-z-20
+           tw-mt-1 tw-rounded-md tw-shadow-lg
         tw-bg-white tw-ring-1 tw-ring-black tw-ring-opacity-5 focus:tw-outline-none text-body"
           role="menu">
           {data.map((entity) => (
-            <div
-              className="tw-flex tw-items-center hover:tw-bg-body-hover"
-              key={entity.fullyQualifiedName}>
-              <span
-                className="tw-block tw-px-2 tw-py-2 tw-text-sm tw-break-all"
+            <>
+              <div
+                className="w-full d-flex items-center tw-px-2 tw-py-2 tw-text-sm hover:tw-bg-body-hover"
+                key={entity.fullyQualifiedName}
                 onClick={() => {
                   setIsOpen(false);
                   onSelectHandler?.({
@@ -176,13 +175,20 @@ const NodeSuggestions: FC<EntitySuggestionProps> = ({
                   className="tw-inline tw-h-4 tw-mr-2"
                   src={serviceTypeLogo(entity.serviceType as string)}
                 />
-                {getSuggestionLabel(
-                  entity.fullyQualifiedName,
-                  entity.entityType as string,
-                  entity.name
-                )}
-              </span>
-            </div>
+                <div className="flex-1 text-left tw-px-2">
+                  {entity.entityType === EntityType.TABLE && (
+                    <p className="d-block text-xs custom-lineage-heading">
+                      {getSuggestionLabelHeading(
+                        entity.fullyQualifiedName,
+                        entity.entityType as string
+                      )}
+                    </p>
+                  )}
+                  <p className="">{entity.name}</p>
+                </div>
+              </div>
+              <hr className="tw-w-full" />
+            </>
           ))}
         </div>
       ) : (

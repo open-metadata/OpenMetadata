@@ -37,26 +37,39 @@ from metadata.utils.sqlalchemy_utils import (
 
 @reflection.cache
 def get_table_comment(
-    self, connection, table_name, schema=None, resolve_synonyms=False, dblink="", **kw
+    self,
+    connection,
+    table_name: str,
+    schema: str = None,
+    resolve_synonyms=False,
+    dblink="",
+    **kw,
 ):  # pylint: disable=unused-argument
     return get_table_comment_wrapper(
         self,
         connection,
-        table_name=table_name,
-        schema=schema,
+        table_name=table_name.lower(),
+        schema=schema.lower() if schema else None,
         query=ORACLE_ALL_TABLE_COMMENTS,
     )
 
 
 @reflection.cache
 def get_view_definition(
-    self, connection, view_name, schema=None, resolve_synonyms=False, dblink="", **kw
+    self,
+    connection,
+    view_name: str,
+    schema: str = None,
+    resolve_synonyms=False,
+    dblink="",
+    **kw,
 ):  # pylint: disable=unused-argument
+
     return get_view_definition_wrapper(
         self,
         connection,
-        table_name=view_name,
-        schema=schema,
+        table_name=view_name.lower(),
+        schema=schema.lower() if schema else None,
         query=ORACLE_ALL_VIEW_DEFINITIONS,
     )
 
