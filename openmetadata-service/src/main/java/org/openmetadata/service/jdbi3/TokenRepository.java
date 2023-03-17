@@ -38,6 +38,14 @@ public class TokenRepository {
     }
   }
 
+  public void deleteAllToken(List<String> tokens) {
+    try {
+      dao.getTokenDAO().deleteAll(tokens);
+    } catch (Exception ex) {
+      LOG.info("Token not present for the user");
+    }
+  }
+
   public void deleteTokenByUserAndType(String userId, String type) {
     try {
       dao.getTokenDAO().deleteTokenByUserAndType(userId, type);

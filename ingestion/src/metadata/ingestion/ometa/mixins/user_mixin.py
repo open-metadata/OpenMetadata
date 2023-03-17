@@ -45,6 +45,7 @@ class OMetaUserMixin:
         email: Optional[str],
         from_count: int = 0,
         size: int = 10,
+        fields: Optional[list] = None,
     ) -> Optional[User]:
         """
         GET user entity by name
@@ -62,7 +63,7 @@ class OMetaUserMixin:
 
             try:
                 entity_list = self._search_es_entity(
-                    entity_type=User, query_string=query_string
+                    entity_type=User, query_string=query_string, fields=fields
                 )
                 for user in entity_list or []:
                     return user
