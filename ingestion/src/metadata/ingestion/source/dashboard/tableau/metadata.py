@@ -95,10 +95,17 @@ class TableauChart(TableauBaseModel):
     tags: List[str]
 
 
-class ChartUrl(BaseModel):
+class ChartUrl:
     workbook_name: str
     sheets: str
     chart_url_name: str
+
+    def __init__(self, context_url: str) -> None:
+        self.workbook_name, self.sheets, self.chart_url_name = (
+            context_url.split("/") if "/" in context_url else "",
+            "",
+            "",
+        )
 
 
 class TableauDashboard(TableauBaseModel):
@@ -388,15 +395,7 @@ class TableauSource(DashboardServiceSource):
                     if self.service_connection.siteUrl
                     else ""
                 )
-                workbook_chart_name: ChartUrl = (
-                    ChartUrl(
-                        workbook_name=chart.content_url.split("/")[0],
-                        sheets=chart.content_url.split("/")[1],
-                        chart_url_name=chart.content_url.split("/")[2],
-                    )
-                    if "/" in chart.content_url
-                    else None
-                )
+                workbook_chart_name = ChartUrl(chart.content_url)
 
                 chart_url = (
                     f"#{site_url}"
