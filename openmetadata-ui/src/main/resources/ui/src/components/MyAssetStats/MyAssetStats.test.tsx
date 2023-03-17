@@ -45,14 +45,14 @@ describe('Test MyDataHeader Component', () => {
     expect(myDataHeader).toBeInTheDocument();
   });
 
-  it('Should have 9 data summary details', () => {
+  it('Should have 12 data summary details', () => {
     const { container } = render(<MyAssetStats {...mockProp} />, {
       wrapper: MemoryRouter,
     });
 
     const dataSummary = getAllByTestId(container, /-summary$/);
 
-    expect(dataSummary).toHaveLength(10);
+    expect(dataSummary).toHaveLength(12);
   });
 
   it('OnClick it should redirect to respective page', () => {
@@ -67,7 +67,9 @@ describe('Test MyDataHeader Component', () => {
     const containers = getByTestId(container, 'containers');
     const service = getByTestId(container, 'service');
     const user = getByTestId(container, 'user');
-    const terms = getByTestId(container, 'terms');
+    const teams = getByTestId(container, 'teams');
+    const glossaries = getByTestId(container, 'glossaries');
+    const glossaryTerms = getByTestId(container, 'glossary-terms');
 
     expect(tables).toHaveAttribute('href', '/explore/tables');
     expect(topics).toHaveAttribute('href', '/explore/topics');
@@ -77,9 +79,11 @@ describe('Test MyDataHeader Component', () => {
     expect(containers).toHaveAttribute('href', '/explore/containers');
     expect(service).toHaveAttribute('href', '/settings/services/databases');
     expect(user).toHaveAttribute('href', '/settings/members/users');
-    expect(terms).toHaveAttribute(
+    expect(teams).toHaveAttribute(
       'href',
       '/settings/members/teams/Organization'
     );
+    expect(glossaries).toHaveAttribute('href', '/glossary');
+    expect(glossaryTerms).toHaveAttribute('href', '/glossary');
   });
 });

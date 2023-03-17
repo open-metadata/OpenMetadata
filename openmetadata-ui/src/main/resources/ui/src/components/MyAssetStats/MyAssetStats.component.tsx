@@ -85,6 +85,20 @@ const MyAssetStats: FunctionComponent<MyAssetStatsProps> = ({
         link: ROUTES.TEST_SUITES,
         dataTestId: 'test-suite',
       },
+      glossaries: {
+        icon: Icons.GLOSSARY,
+        data: t('label.glossary-plural'),
+        count: entityCounts.glossaryCount,
+        link: ROUTES.GLOSSARY,
+        dataTestId: 'glossaries',
+      },
+      glossaryTerms: {
+        icon: Icons.GLOSSARY,
+        data: t('label.glossary-term-plural'),
+        count: entityCounts.glossaryTermCount,
+        link: ROUTES.GLOSSARY,
+        dataTestId: 'glossary-terms',
+      },
       service: {
         icon: Icons.SERVICE,
         data: t('label.service-plural'),
@@ -111,7 +125,7 @@ const MyAssetStats: FunctionComponent<MyAssetStatsProps> = ({
         data: t('label.team-plural'),
         count: entityCounts.teamCount,
         link: getTeamsWithFqnPath(TeamType.Organization),
-        dataTestId: 'terms',
+        dataTestId: 'teams',
       },
     }),
     [entityState]

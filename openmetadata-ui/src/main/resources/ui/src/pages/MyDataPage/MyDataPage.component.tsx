@@ -117,6 +117,8 @@ const MyDataPage = () => {
           pipelineCount: 0,
           mlmodelCount: 0,
           storageContainerCount: 0,
+          glossaryCount: 0,
+          glossaryTermCount: 0,
           servicesCount: 0,
           userCount: 0,
           teamCount: 0,
