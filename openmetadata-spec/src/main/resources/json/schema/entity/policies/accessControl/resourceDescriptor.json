@@ -35,7 +35,8 @@
         "EditQueries",
         "EditDataProfile",
         "EditSampleData",
-        "EditUsers"
+        "EditUsers",
+        "RunQuery"
       ]
     }
   },

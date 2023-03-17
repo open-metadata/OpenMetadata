@@ -25,7 +25,8 @@
       "EditQueries",
       "EditDataProfile",
       "EditSampleData",
-      "EditUsers"
+      "EditUsers",
+      "RunQuery"
     ]
   },
   {
@@ -133,7 +134,8 @@
       "EditAll",
       "EditDescription",
       "EditDisplayName",
-      "EditCustomFields"
+      "EditCustomFields",
+      "RunQuery"
     ]
   },
   {

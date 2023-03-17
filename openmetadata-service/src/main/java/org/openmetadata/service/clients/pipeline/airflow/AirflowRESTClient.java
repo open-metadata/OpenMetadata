@@ -28,6 +28,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.json.JSONObject;
 import org.openmetadata.schema.ServiceEntityInterface;
 import org.openmetadata.schema.api.configuration.pipelineServiceClient.PipelineServiceClientConfiguration;
+import org.openmetadata.schema.entity.automations.RunQueryRequest;
 import org.openmetadata.schema.entity.automations.TestServiceConnectionRequest;
 import org.openmetadata.schema.entity.automations.Workflow;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
@@ -245,6 +246,23 @@ public class AirflowRESTClient extends PipelineServiceClient {
       throw PipelineServiceClientException.byMessage("Failed to test connection.", e.getMessage());
     }
     throw new PipelineServiceClientException(String.format("Failed to test connection due to %s", response.body()));
+  }
+
+  @Override
+  public Response runQuery(RunQueryRequest runQueryRequest) {
+    HttpResponse<String> response;
+    try {
+      String runQueryEndPoint = "%s/%s/run_query";
+      String runQueryUrl = String.format(runQueryEndPoint, serviceURL, API_ENDPOINT);
+      String runQueryPayload = JsonUtils.pojoToJson(runQueryRequest);
+      response = post(runQueryUrl, runQueryPayload);
+      if (response.statusCode() == 200) {
+        return Response.status(response.statusCode()).entity(response.body()).build();
+      }
+    } catch (Exception e) {
+      throw PipelineServiceClientException.byMessage("Failed to run query.", e.getMessage());
+    }
+    throw new PipelineServiceClientException(String.format("Failed to run query due to %s", response.body()));
   }
 
   @Override

@@ -27,6 +27,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.ServiceEntityInterface;
 import org.openmetadata.schema.api.configuration.pipelineServiceClient.PipelineServiceClientConfiguration;
+import org.openmetadata.schema.entity.automations.RunQueryRequest;
 import org.openmetadata.schema.entity.automations.TestServiceConnectionRequest;
 import org.openmetadata.schema.entity.automations.Workflow;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
@@ -146,6 +147,9 @@ public abstract class PipelineServiceClient {
 
   /* Test the connection to the service such as database service a pipeline depends on. */
   public abstract Response testConnection(TestServiceConnectionRequest testServiceConnection);
+
+  /* Run query for a database service */
+  public abstract Response runQuery(RunQueryRequest runQueryRequest);
 
   /**
    * This workflow can be used to execute any necessary async automations from the pipeline service. This will be the

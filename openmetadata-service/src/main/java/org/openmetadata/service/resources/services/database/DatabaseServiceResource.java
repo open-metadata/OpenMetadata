@@ -50,13 +50,18 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.api.services.CreateDatabaseService;
 import org.openmetadata.schema.api.services.DatabaseConnection;
+import org.openmetadata.schema.entity.automations.RunQueryRequest;
+import org.openmetadata.schema.entity.automations.RunQueryResponse;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.schema.entity.services.connections.TestConnectionResult;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.sdk.PipelineServiceClient;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.DatabaseServiceRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
@@ -79,6 +84,7 @@ public class DatabaseServiceResource
     extends ServiceEntityResource<DatabaseService, DatabaseServiceRepository, DatabaseConnection> {
   public static final String COLLECTION_PATH = "v1/services/databaseServices/";
   static final String FIELDS = "pipelines,owner,tags";
+  private PipelineServiceClient pipelineServiceClient;
 
   @Override
   public DatabaseService addHref(UriInfo uriInfo, DatabaseService service) {
@@ -86,6 +92,14 @@ public class DatabaseServiceResource
     Entity.withHref(uriInfo, service.getOwner());
     Entity.withHref(uriInfo, service.getPipelines());
     return service;
+  }
+
+  @Override
+  public void initialize(OpenMetadataApplicationConfig config) {
+    OpenMetadataApplicationConfig openMetadataApplicationConfig = config;
+
+    this.pipelineServiceClient =
+        PipelineServiceClientFactory.createPipelineServiceClient(config.getPipelineServiceClientConfiguration());
   }
 
   public DatabaseServiceResource(CollectionDAO dao, Authorizer authorizer) {
@@ -332,6 +346,34 @@ public class DatabaseServiceResource
     Response response = create(uriInfo, securityContext, service);
     decryptOrNullify(securityContext, (DatabaseService) response.getEntity());
     return response;
+  }
+
+  @POST
+  @Path("/{id}/runQuery")
+  @Operation(
+      operationId = "runQuery",
+      summary = "Run query",
+      tags = "databaseServices",
+      description = "Run query on the database service.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Query result",
+            content =
+                @Content(mediaType = "application/json", schema = @Schema(implementation = RunQueryResponse.class))),
+        @ApiResponse(responseCode = "400", description = "Bad request")
+      })
+  public Response runQuery(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the database service", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Valid RunQueryRequest runQueryRequest)
+      throws IOException {
+    DatabaseService databaseService =
+        dao.getByName(uriInfo, runQueryRequest.getServiceName(), EntityUtil.Fields.EMPTY_FIELDS);
+    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.RUN_QUERY);
+    authorizer.authorize(securityContext, operationContext, getResourceContextByName(databaseService.getName()));
+    return pipelineServiceClient.runQuery(runQueryRequest);
   }
 
   @PUT
