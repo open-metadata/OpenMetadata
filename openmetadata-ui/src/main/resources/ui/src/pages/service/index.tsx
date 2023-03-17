@@ -35,7 +35,12 @@ import TagsViewer from 'components/Tag/TagsViewer/tags-viewer';
 import { EntityType } from 'enums/entity.enum';
 import { Container } from 'generated/entity/data/container';
 import { isEmpty, isNil, isUndefined, startCase, toLower } from 'lodash';
-import { ExtraInfo, ServicesUpdateRequest, ServiceTypes } from 'Models';
+import {
+  ExtraInfo,
+  PagingWithoutTotal,
+  ServicesUpdateRequest,
+  ServiceTypes,
+} from 'Models';
 import React, { FunctionComponent, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useHistory, useParams } from 'react-router-dom';
@@ -49,7 +54,7 @@ import {
   triggerIngestionPipelineById,
 } from 'rest/ingestionPipelineAPI';
 import { fetchAirflowConfig } from 'rest/miscAPI';
-import { getMlmodels } from 'rest/mlModelAPI';
+import { getMlModels } from 'rest/mlModelAPI';
 import { getContainers } from 'rest/objectStoreAPI';
 import { getPipelines } from 'rest/pipelineAPI';
 import {
@@ -392,111 +397,103 @@ const ServicePage: FunctionComponent = () => {
     }).finally(() => setIsLoading(false));
   };
 
-  const fetchDatabases = (paging?: string) => {
-    setIsLoading(true);
-    getDatabases(serviceFQN, ['owner', 'usageSummary'], paging)
-      .then((res) => {
-        if (res) {
-          setData(res.data as Database[]);
-          setServiceSchemaCount(res.data, setSchemaCount);
-          setServiceTableCount(res.data, setTableCount);
-          setPaging(res.paging);
-          setIsLoading(false);
-        } else {
-          setData([]);
-          setPaging(pagingObject);
-          setIsLoading(false);
-        }
-      })
-      .catch(() => {
-        setIsLoading(false);
-      });
-  };
-
-  const fetchTopics = (paging?: string) => {
-    setIsLoading(true);
-    getTopics(serviceFQN, ['owner', 'tags'], paging)
-      .then((res) => {
-        if (res.data) {
-          setData(res.data);
-          setPaging(res.paging);
-          setIsLoading(false);
-        } else {
-          setData([]);
-          setPaging(pagingObject);
-          setIsLoading(false);
-        }
-      })
-      .catch(() => {
-        setIsLoading(false);
-      });
-  };
-
-  const fetchDashboards = (paging?: string) => {
-    setIsLoading(true);
-    getDashboards(serviceFQN, ['owner', 'usageSummary', 'tags'], paging)
-      .then((res) => {
-        if (res.data) {
-          setData(res.data);
-          setPaging(res.paging);
-          setIsLoading(false);
-        } else {
-          setData([]);
-          setPaging(pagingObject);
-          setIsLoading(false);
-        }
-      })
-      .catch(() => {
-        setIsLoading(false);
-      });
-  };
-
-  const fetchPipeLines = (paging?: string) => {
-    setIsLoading(true);
-    getPipelines(serviceFQN, ['owner', 'tags'], paging)
-      .then((res) => {
-        if (res.data) {
-          setData(res.data);
-          setPaging(res.paging);
-          setIsLoading(false);
-        } else {
-          setData([]);
-          setPaging(pagingObject);
-          setIsLoading(false);
-        }
-      })
-      .catch(() => {
-        setIsLoading(false);
-      });
-  };
-
-  const fetchMlModal = (paging = '') => {
-    setIsLoading(true);
-    getMlmodels(serviceFQN, paging, ['owner', 'tags'])
-      .then((res) => {
-        if (res.data) {
-          setData(res.data);
-          setPaging(res.paging);
-          setIsLoading(false);
-        } else {
-          setData([]);
-          setPaging(pagingObject);
-          setIsLoading(false);
-        }
-      })
-      .catch(() => {
-        setIsLoading(false);
-      });
-  };
-
-  const fetchContainers = async (paging?: string) => {
+  const fetchDatabases = async (paging?: PagingWithoutTotal) => {
     setIsLoading(true);
     try {
-      const response = await getContainers(
+      const { data, paging: resPaging } = await getDatabases(
         serviceFQN,
-        ['owner', 'tags'],
+        'owner,usageSummary',
         paging
       );
+
+      setData(data);
+      setServiceSchemaCount(data, setSchemaCount);
+      setServiceTableCount(data, setTableCount);
+      setPaging(resPaging);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const fetchTopics = async (paging?: PagingWithoutTotal) => {
+    setIsLoading(true);
+    try {
+      const { data, paging: resPaging } = await getTopics(
+        serviceFQN,
+        'owner,tags',
+        paging
+      );
+      setData(data);
+      setPaging(resPaging);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const fetchDashboards = async (paging?: PagingWithoutTotal) => {
+    setIsLoading(true);
+    try {
+      const { data, paging: resPaging } = await getDashboards(
+        serviceFQN,
+        'owner,usageSummary,tags',
+        paging
+      );
+      setData(data);
+      setPaging(resPaging);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const fetchPipeLines = async (paging?: PagingWithoutTotal) => {
+    setIsLoading(true);
+    try {
+      const { data, paging: resPaging } = await getPipelines(
+        serviceFQN,
+        'owner,tags',
+        paging
+      );
+      setData(data);
+      setPaging(resPaging);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const fetchMlModal = async (paging?: PagingWithoutTotal) => {
+    setIsLoading(true);
+    try {
+      const { data, paging: resPaging } = await getMlModels(
+        serviceFQN,
+        'owner,tags',
+        paging
+      );
+      setData(data);
+      setPaging(resPaging);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const fetchContainers = async (paging?: PagingWithoutTotal) => {
+    setIsLoading(true);
+    try {
+      const response = await getContainers({
+        service: serviceFQN,
+        fields: 'owner,tags',
+        paging,
+        root: true,
+      });
 
       setData(response.data);
       setPaging(response.paging);
@@ -508,7 +505,7 @@ const ServicePage: FunctionComponent = () => {
     }
   };
 
-  const getOtherDetails = (paging?: string) => {
+  const getOtherDetails = (paging?: PagingWithoutTotal) => {
     switch (serviceName) {
       case ServiceCategory.DATABASE_SERVICES: {
         fetchDatabases(paging);
@@ -865,10 +862,9 @@ const ServicePage: FunctionComponent = () => {
   };
 
   const pagingHandler = (cursorType: string | number, activePage?: number) => {
-    const pagingString = `&${cursorType}=${
-      paging[cursorType as keyof typeof paging]
-    }`;
-    getOtherDetails(pagingString);
+    getOtherDetails({
+      [cursorType]: paging[cursorType as keyof typeof paging],
+    });
     setCurrentPage(activePage ?? 1);
   };
 
@@ -939,37 +935,15 @@ const ServicePage: FunctionComponent = () => {
     fetchServicePermission();
   }, [serviceFQN, serviceCategory]);
 
-  const getColumnDetails = (serviceName: ServiceTypes) => {
-    switch (serviceName) {
-      case ServiceCategory.DATABASE_SERVICES: {
-        return [t('label.database-name'), t('label.usage')];
-      }
-      case ServiceCategory.MESSAGING_SERVICES: {
-        return [t('label.topic-name'), t('label.tag-plural')];
-      }
-      case ServiceCategory.DASHBOARD_SERVICES: {
-        return [t('label.dashboard-name'), t('label.tag-plural')];
-      }
-      case ServiceCategory.PIPELINE_SERVICES: {
-        return [t('label.pipeline-name'), t('label.tag-plural')];
-      }
-      case ServiceCategory.ML_MODEL_SERVICES: {
-        return [t('label.model-name'), t('label.tag-plural')];
-      }
-      case ServiceCategory.OBJECT_STORE_SERVICES: {
-        return [t('label.model-name'), t('label.tag-plural')];
-      }
-      default:
-        return [];
-    }
-  };
-
   const tableColumn: ColumnsType<ServicePageData> = useMemo(() => {
-    const [firstColumn, lastColumn] = getColumnDetails(serviceName);
+    const lastColumn =
+      ServiceCategory.DATABASE_SERVICES === serviceName
+        ? t('label.usage')
+        : t('label.tag-plural');
 
     return [
       {
-        title: firstColumn,
+        title: t('label.name'),
         dataIndex: 'displayName',
         key: 'displayName',
         render: (_, record: ServicePageData) => {
@@ -1025,7 +999,7 @@ const ServicePage: FunctionComponent = () => {
         ),
       },
     ];
-  }, []);
+  }, [serviceName]);
 
   useEffect(() => {
     if (isAirflowAvailable) {
