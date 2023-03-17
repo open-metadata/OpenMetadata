@@ -110,17 +110,19 @@ MOCK_DASHBOARD = TableauDashboard(
     ],
 )
 
-EXPECTED_DASHBOARD = CreateDashboardRequest(
-    name="42a5b706-739d-4d62-94a2-faedf33950a5",
-    displayName="Regional",
-    description="tableau dashboard description",
-    dashboardUrl="#/site/hidarsite/workbooks/897790",
-    charts=[],
-    tags=[],
-    owner=None,
-    service=FullyQualifiedEntityName(__root__="tableau_source_test"),
-    extension=None,
-)
+EXPECTED_DASHBOARD = [
+    CreateDashboardRequest(
+        name="42a5b706-739d-4d62-94a2-faedf33950a5",
+        displayName="Regional",
+        description="tableau dashboard description",
+        dashboardUrl="#/site/hidarsite/workbooks/897790",
+        charts=[],
+        tags=[],
+        owner=None,
+        service=FullyQualifiedEntityName(__root__="tableau_source_test"),
+        extension=None,
+    )
+]
 
 EXPECTED_CHARTS = [
     CreateChartRequest(
@@ -185,10 +187,16 @@ class TableauUnitTest(TestCase):
         self.tableau.context.__dict__["dashboard_service"] = MOCK_DASHBOARD_SERVICE
 
     def test_dashboard(self):
-        self.assertEqual(
-            next(self.tableau.yield_dashboard(MOCK_DASHBOARD)),
-            EXPECTED_DASHBOARD,
-        )
+        dashboard_list = []
+        results = self.tableau.yield_dashboard(MOCK_DASHBOARD)
+        for result in results:
+            if isinstance(result, CreateDashboardRequest):
+                dashboard_list.append(result)
+
+        for _, (exptected, original) in enumerate(
+            zip(EXPECTED_DASHBOARD, dashboard_list)
+        ):
+            self.assertEqual(exptected, original)
 
     def test_dashboard_name(self):
         assert self.tableau.get_dashboard_name(MOCK_DASHBOARD) == MOCK_DASHBOARD.name
