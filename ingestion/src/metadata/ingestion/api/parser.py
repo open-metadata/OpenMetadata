@@ -11,10 +11,12 @@
 """
 Helper to parse workflow configurations
 """
+import json
 from typing import Optional, Type, TypeVar, Union
 
 from pydantic import BaseModel, ValidationError
 
+from metadata.generated.schema.entity.automations.runQueryRequest import RunQueryRequest
 from metadata.generated.schema.entity.automations.testServiceConnection import (
     TestServiceConnectionRequest,
 )
@@ -446,3 +448,21 @@ def parse_test_connection_request_gracefully(
         )
 
     raise ParsingConfigurationError("Uncaught error when parsing the workflow!")
+
+
+def parse_run_query_request_gracefully(config_dict: dict):
+    """Parsee run query
+
+    Args:
+        config_dict (dict): run query request dictionnary
+    """
+    try:
+        return RunQueryRequest.parse_obj(config_dict)
+    except ValidationError as err:
+        service_name = config_dict["serviceName"]
+        logger.error(
+            f"Error parsing the Workflow Configuration for {service_name} service: {err}\n\n"
+            "Config file should be structured as follow:\n"
+            f"{json.dumps(RunQueryRequest.schema(), indent=4)}"
+        )
+        raise ParsingConfigurationError()

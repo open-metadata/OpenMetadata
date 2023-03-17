@@ -1,0 +1,47 @@
+{
+    "$id": "https://open-metadata.org/schema/entity/automations/workflow/RunQuery.json",
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "RunQueryResponse",
+    "javaType": "org.openmetadata.schema.entity.automations.RunQueryResponse",
+    "description": "Response object query results.",
+    "type": "object",
+    "properties": {
+      "queryType": {
+        "description": "type of query to execute (TEST or RUN). TEST will return the count of rows, while RUN the actual rows",
+        "type": "string"
+      },
+      "data": {
+        "properties": {
+            "columnNames": {
+                "description": "column names returned by the query request",
+                "type": "array",
+                "items": {
+                    "type": "string"
+                }
+              },
+              "rowValues": {
+                "description": "row values",
+                "type": "array",
+                "items": {
+                    "type": "array"
+                }
+              }
+            }
+      },
+      "error": {
+        "description": "Potential error message reported by the database engine",
+        "type": "string",
+        "default": null
+      },
+      "offset": {
+        "description": "Offset value to execute the query",
+        "type": "integer"
+      },
+      "limit": {
+        "description": "Limit value to execute the query",
+        "type": "integer"
+      }
+    },
+    "additionalProperties": false,
+    "required": ["queryType", "data"]
+  }
