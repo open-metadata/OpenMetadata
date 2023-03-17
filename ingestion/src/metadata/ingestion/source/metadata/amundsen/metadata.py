@@ -109,20 +109,6 @@ SUPERSET_DEFAULT_CONFIG = {
 }
 
 
-class AmundsenStatus(SourceStatus):
-    success: List[str] = []
-    failures: List[str] = []
-    warnings: List[str] = []
-    filtered: List[str] = []
-
-    def scanned(self, record: str) -> None:
-        self.success.append(record)
-        logger.info(f"Entity Scanned: {record}")
-
-    def failure(self, key: str, reason: str) -> None:
-        self.failures.append({key: reason})
-
-
 class AmundsenSource(Source[Entity]):
     """
     Amundsen source class
@@ -138,7 +124,7 @@ class AmundsenSource(Source[Entity]):
         self.metadata = OpenMetadata(self.metadata_config)
         self.service_connection = self.config.serviceConnection.__root__.config
         self.client = get_connection(self.service_connection)
-        self.status = AmundsenStatus()
+        self.status = SourceStatus()
         self.database_service_map = {
             service.value.lower(): service.value for service in DatabaseServiceType
         }

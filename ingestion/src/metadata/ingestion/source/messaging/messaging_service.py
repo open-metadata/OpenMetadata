@@ -97,21 +97,6 @@ class MessagingServiceTopology(ServiceTopology):
     )
 
 
-class MessagingSourceStatus(SourceStatus):
-    """
-    Reports the source status after ingestion
-    """
-
-    topics_scanned: List[str] = []
-    filtered: List[str] = []
-
-    def topic_scanned(self, topic: str) -> None:
-        self.topics_scanned.append(topic)
-
-    def dropped(self, topic: str) -> None:
-        self.filtered.append(topic)
-
-
 class MessagingServiceSource(TopologyRunnerMixin, Source, ABC):
     """
     Base class for Messaging Services.
@@ -141,7 +126,7 @@ class MessagingServiceSource(TopologyRunnerMixin, Source, ABC):
         Get Topic Name
         """
 
-    status: MessagingSourceStatus
+    status: SourceStatus
     source_config: MessagingServiceMetadataPipeline
     config: WorkflowSource
     metadata: OpenMetadata
@@ -166,7 +151,7 @@ class MessagingServiceSource(TopologyRunnerMixin, Source, ABC):
         self.service_connection = self.config.serviceConnection.__root__.config
         self.connection = get_connection(self.service_connection)
         self.test_connection()
-        self.status = MessagingSourceStatus()
+        self.status = SourceStatus()
 
     def get_topic(self) -> Any:
         for topic_details in self.get_topic_list():

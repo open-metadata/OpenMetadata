@@ -105,21 +105,6 @@ class PipelineServiceTopology(ServiceTopology):
     )
 
 
-class PipelineSourceStatus(SourceStatus):
-    """
-    Reports the source status after ingestion
-    """
-
-    pipelines_scanned: List[str] = []
-    filtered: List[str] = []
-
-    def pipeline_scanned(self, topic: str) -> None:
-        self.pipelines_scanned.append(topic)
-
-    def dropped(self, topic: str) -> None:
-        self.filtered.append(topic)
-
-
 class PipelineServiceSource(TopologyRunnerMixin, Source, ABC):
     """
     Base class for Pipeline Services.
@@ -177,7 +162,7 @@ class PipelineServiceSource(TopologyRunnerMixin, Source, ABC):
         """
         return  # Pipeline does not support fetching tags except Dagster
 
-    status: PipelineSourceStatus
+    status: SourceStatus
     source_config: PipelineServiceMetadataPipeline
     config: WorkflowSource
     metadata: OpenMetadata
@@ -202,7 +187,7 @@ class PipelineServiceSource(TopologyRunnerMixin, Source, ABC):
         )
         self.connection = get_connection(self.service_connection)
         self.test_connection()
-        self.status = PipelineSourceStatus()
+        self.status = SourceStatus()
 
     def get_status(self) -> SourceStatus:
         return self.status

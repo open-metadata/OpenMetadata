@@ -22,9 +22,8 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.ingestion.api.source import InvalidSourceException
+from metadata.ingestion.api.source import InvalidSourceException, SourceStatus
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.database.common_db_source import SQLSourceStatus
 from metadata.ingestion.source.database.databricks.client import DatabricksClient
 from metadata.ingestion.source.database.query_parser_source import QueryParserSource
 from metadata.utils.helpers import get_start_and_end
@@ -50,7 +49,7 @@ class DatabricksQueryParserSource(QueryParserSource, ABC):
         self.service_connection = self.config.serviceConnection.__root__.config
         self.source_config = self.config.sourceConfig.config
         self.start, self.end = get_start_and_end(self.source_config.queryLogDuration)
-        self.report = SQLSourceStatus()
+        self.report = SourceStatus()
         self.client = DatabricksClient(self.connection)
 
     @classmethod

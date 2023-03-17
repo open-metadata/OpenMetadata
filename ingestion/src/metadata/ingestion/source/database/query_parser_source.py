@@ -26,7 +26,6 @@ from metadata.generated.schema.type.tableQuery import TableQuery
 from metadata.ingestion.api.source import Source, SourceStatus
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.connections import get_connection, get_test_connection_fn
-from metadata.ingestion.source.database.common_db_source import SQLSourceStatus
 from metadata.utils.helpers import get_start_and_end
 from metadata.utils.logger import ingestion_logger
 
@@ -55,7 +54,7 @@ class QueryParserSource(Source[Union[TableQuery, AddLineageRequest]], ABC):
         self.service_connection = self.config.serviceConnection.__root__.config
         self.source_config = self.config.sourceConfig.config
         self.start, self.end = get_start_and_end(self.source_config.queryLogDuration)
-        self.report = SQLSourceStatus()
+        self.report = SourceStatus()
         self.engine = get_connection(self.service_connection)
 
     def prepare(self):

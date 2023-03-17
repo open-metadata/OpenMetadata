@@ -39,10 +39,7 @@ from metadata.ingestion.models.ometa_classification import OMetaTagAndClassifica
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.connections import get_connection
 from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
-from metadata.ingestion.source.database.database_service import (
-    DatabaseServiceSource,
-    SQLSourceStatus,
-)
+from metadata.ingestion.source.database.database_service import DatabaseServiceSource
 from metadata.utils import fqn
 from metadata.utils.constants import DEFAULT_DATABASE
 from metadata.utils.filters import filter_by_table
@@ -58,7 +55,7 @@ class DynamodbSource(DatabaseServiceSource):
     """
 
     def __init__(self, config: WorkflowSource, metadata_config: OpenMetadataConnection):
-        self.status = SQLSourceStatus()
+        self.status = SourceStatus()
         self.config = config
         self.source_config: DatabaseServiceMetadataPipeline = (
             self.config.sourceConfig.config

@@ -53,10 +53,7 @@ from metadata.ingestion.api.source import InvalidSourceException, SourceStatus
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.connections import get_connection, get_test_connection_fn
-from metadata.ingestion.source.database.database_service import (
-    DatabaseServiceSource,
-    SQLSourceStatus,
-)
+from metadata.ingestion.source.database.database_service import DatabaseServiceSource
 from metadata.ingestion.source.database.datalake.models import DatalakeColumnWrapper
 from metadata.utils import fqn
 from metadata.utils.constants import DEFAULT_DATABASE
@@ -114,7 +111,7 @@ class DatalakeSource(DatabaseServiceSource):  # pylint: disable=too-many-public-
     """
 
     def __init__(self, config: WorkflowSource, metadata_config: OpenMetadataConnection):
-        self.status = SQLSourceStatus()
+        self.status = SourceStatus()
         self.config = config
         self.source_config: DatabaseServiceMetadataPipeline = (
             self.config.sourceConfig.config

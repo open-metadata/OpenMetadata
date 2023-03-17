@@ -68,7 +68,6 @@ from metadata.ingestion.lineage.sql_lineage import get_lineage_by_query
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
-from metadata.ingestion.source.database.common_db_source import SQLSourceStatus
 from metadata.ingestion.source.database.database_service import DataModelLink
 from metadata.ingestion.source.database.dbt.dbt_service import (
     DbtFiles,
@@ -167,7 +166,7 @@ class DbtSource(DbtServiceSource):  # pylint: disable=too-many-public-methods
         self.source_config = self.config.sourceConfig.config
         self.metadata_config = metadata_config
         self.metadata = OpenMetadata(metadata_config)
-        self.report = SQLSourceStatus()
+        self.report = SourceStatus()
         self.tag_classification_name = (
             self.source_config.dbtClassificationName
             if self.source_config.dbtClassificationName

@@ -45,7 +45,6 @@ from metadata.ingestion.source.connections import get_connection, get_test_conne
 from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
 from metadata.ingestion.source.database.database_service import (
     DatabaseServiceSource,
-    SQLSourceStatus,
     TableLocationLink,
 )
 from metadata.utils import fqn
@@ -69,7 +68,7 @@ class GlueSource(DatabaseServiceSource):
         self.metadata_config = metadata_config
         self.metadata = OpenMetadata(metadata_config)
         self.service_connection = self.config.serviceConnection.__root__.config
-        self.status = SQLSourceStatus()
+        self.status = SourceStatus()
         self.glue = get_connection(self.service_connection)
         super().__init__()
         self.test_connection()

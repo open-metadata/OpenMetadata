@@ -180,25 +180,6 @@ class DatabaseServiceTopology(ServiceTopology):
     )
 
 
-class SQLSourceStatus(SourceStatus):
-    """
-    Reports the source status after ingestion
-    """
-
-    success: List[str] = []
-    failures: List[str] = []
-    warnings: List[str] = []
-    filtered: List[str] = []
-
-    def scanned(self, record: str) -> None:
-        self.success.append(record)
-        logger.debug(f"Scanned [{record}]")
-
-    def filter(self, key: str, reason: str) -> None:
-        logger.debug(f"Filtered [{key}] due to {reason}")
-        self.filtered.append({key: reason})
-
-
 class DatabaseServiceSource(
     TopologyRunnerMixin, Source, ABC
 ):  # pylint: disable=too-many-public-methods
@@ -207,7 +188,7 @@ class DatabaseServiceSource(
     It implements the topology and context.
     """
 
-    status: SQLSourceStatus
+    status: SourceStatus
     source_config: DatabaseServiceMetadataPipeline
     config: WorkflowSource
     metadata: OpenMetadata

@@ -30,9 +30,8 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.generated.schema.type.tableQuery import TableQueries, TableQuery
-from metadata.ingestion.api.source import InvalidSourceException
+from metadata.ingestion.api.source import InvalidSourceException, SourceStatus
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.database.common_db_source import SQLSourceStatus
 from metadata.ingestion.source.database.sample_data import SampleDataSourceStatus
 from metadata.ingestion.source.database.usage_source import UsageSource
 
@@ -57,7 +56,7 @@ class SampleUsageSource(UsageSource):
         self.service_connection = config.serviceConnection.__root__.config
         self.source_config = config.sourceConfig.config
         self.metadata_config = metadata_config
-        self.report = SQLSourceStatus()
+        self.report = SourceStatus()
         self.metadata = OpenMetadata(metadata_config)
         self.analysis_date = datetime.utcnow()
 

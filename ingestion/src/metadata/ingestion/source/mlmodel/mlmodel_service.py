@@ -84,44 +84,13 @@ class MlModelServiceTopology(ServiceTopology):
     )
 
 
-class MlModelSourceStatus(SourceStatus):
-    """
-    ML Model specific Status
-    """
-
-    success: List[str] = []
-    failures: List[str] = []
-    warnings: List[str] = []
-
-    def scanned(self, record: str) -> None:
-        """
-        Log successful ML Model scans
-        """
-        self.success.append(record)
-        logger.debug("ML Model scanned: %s", record)
-
-    def failed(self, model_name: str, reason: str) -> None:
-        """
-        Log failed ML Model scans
-        """
-        self.failures.append(model_name)
-        logger.error("ML Model failed: %s - %s", model_name, reason)
-
-    def warned(self, model_name: str, reason: str) -> None:
-        """
-        Log Ml Model with warnings
-        """
-        self.warnings.append(model_name)
-        logger.warning("ML Model warning: %s - %s", model_name, reason)
-
-
 class MlModelServiceSource(TopologyRunnerMixin, Source, ABC):
     """
     Base class for MlModel services.
     It implements the topology and context
     """
 
-    status: MlModelSourceStatus
+    status: SourceStatus
     source_config: MlModelServiceMetadataPipeline
     config: WorkflowSource
     metadata: OpenMetadata
@@ -146,7 +115,7 @@ class MlModelServiceSource(TopologyRunnerMixin, Source, ABC):
         )
         self.connection = get_connection(self.service_connection)
         self.test_connection()
-        self.status = MlModelSourceStatus()
+        self.status = SourceStatus()
 
         self.client = self.connection
 

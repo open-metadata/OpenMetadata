@@ -65,17 +65,6 @@ ATLAS_TAG_CATEGORY = "AtlasMetadata"
 ATLAS_TABLE_TAG = "atlas_table"
 
 
-class AtlasSourceStatus(SourceStatus):
-    tables_scanned: List[str] = []
-    filtered: List[str] = []
-
-    def table_scanned(self, table: str) -> None:
-        self.tables_scanned.append(table)
-
-    def dropped(self, topic: str) -> None:
-        self.filtered.append(topic)
-
-
 @dataclass
 class AtlasSource(Source):
     """
@@ -84,7 +73,7 @@ class AtlasSource(Source):
 
     config: WorkflowSource
     atlas_client: AtlasClient
-    status: AtlasSourceStatus
+    status: SourceStatus
     tables: Dict[str, Any]
     topics: Dict[str, Any]
 
@@ -97,7 +86,7 @@ class AtlasSource(Source):
         self.metadata_config = metadata_config
         self.metadata = OpenMetadata(metadata_config)
         self.service_connection = self.config.serviceConnection.__root__.config
-        self.status = AtlasSourceStatus()
+        self.status = SourceStatus()
 
         self.atlas_client = get_connection(self.service_connection)
         self.tables: Dict[str, Any] = {}

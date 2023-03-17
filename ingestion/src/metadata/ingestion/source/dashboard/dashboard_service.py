@@ -139,20 +139,6 @@ class DashboardServiceTopology(ServiceTopology):
     )
 
 
-class DashboardSourceStatus(SourceStatus):
-    """
-    Reports the source status after ingestion
-    """
-
-    def scanned(self, record: str) -> None:
-        self.success.append(record)
-        logger.debug(f"Scanned: {record}")
-
-    def filter(self, key: str, reason: str) -> None:
-        self.filtered.append(key)
-        logger.debug(f"Filtered {key}: {reason}")
-
-
 class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
     """
     Base class for Database Services.
@@ -231,7 +217,7 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
         """
         return  # Dashboard usage currently only available for Looker
 
-    status: DashboardSourceStatus
+    status: SourceStatus
     source_config: DashboardServiceMetadataPipeline
     config: WorkflowSource
     metadata: OpenMetadata
@@ -256,7 +242,7 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
         )
         self.client = get_connection(self.service_connection)
         self.test_connection()
-        self.status = DashboardSourceStatus()
+        self.status = SourceStatus()
 
         self.metadata_client = OpenMetadata(self.metadata_config)
 

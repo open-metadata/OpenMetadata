@@ -170,22 +170,6 @@ def get_table_key(row: Dict[str, Any]) -> Union[TableKey, None]:
     return TableKey(schema=row["schema"], table_name=row["table_name"])
 
 
-class SampleDataSourceStatus(SourceStatus):
-    success: List[str] = []
-    failures: List[str] = []
-    warnings: List[str] = []
-
-    def scanned(  # pylint: disable=arguments-differ
-        self, entity_type: str, entity_name: str
-    ) -> None:
-        self.success.append(entity_name)
-        logger.info(f"{entity_type} Scanned: {entity_name}")
-
-    def filtered(self, entity_type: str, entity_name: str, err: str) -> None:
-        self.warnings.append(entity_name)
-        logger.warning(f"Dropped {entity_type} {entity_type} due to {err}")
-
-
 class SampleDataSource(
     Source[Entity]
 ):  # pylint: disable=too-many-instance-attributes,too-many-public-methods,disable=too-many-lines,
@@ -197,7 +181,7 @@ class SampleDataSource(
     def __init__(self, config: WorkflowSource, metadata_config: OpenMetadataConnection):
         # pylint: disable=too-many-statements
         super().__init__()
-        self.status = SampleDataSourceStatus()
+        self.status = SourceStatus()
         self.config = config
         self.service_connection = config.serviceConnection.__root__.config
         self.metadata_config = metadata_config
