@@ -11,87 +11,76 @@
  *  limitations under the License.
  */
 
+import { DownOutlined, UpOutlined } from '@ant-design/icons';
+import { Button, Card, Space, Typography } from 'antd';
 import classNames from 'classnames';
 import { Query } from 'generated/entity/data/query';
-// import { isUndefined } from 'lodash';
-import React, { FC, HTMLAttributes, useState } from 'react';
-// import { Link } from 'react-router-dom';
-// import { getUserPath } from '../../constants/constants';
+import { split } from 'lodash';
+import React, { FC, HTMLAttributes, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { getFormattedDateFromSeconds } from 'utils/TimeUtils';
 import { CSMode } from '../../enums/codemirror.enum';
-import SVGIcons, { Icons } from '../../utils/SvgUtils';
-import CopyToClipboardButton from '../buttons/CopyToClipboardButton/CopyToClipboardButton';
 import SchemaEditor from '../schema-editor/SchemaEditor';
+
+import './table-queries.style.less';
+
 interface QueryCardProp extends HTMLAttributes<HTMLDivElement> {
   query: Query;
   onQuerySelection: (query: Query) => void;
 }
+
 const QueryCard: FC<QueryCardProp> = ({
   className,
   query,
   onQuerySelection,
 }: QueryCardProp) => {
+  const { t } = useTranslation();
   const [expanded, setExpanded] = useState<boolean>(false);
 
-  return (
-    <div
-      className={classNames(
-        'tw-bg-white tw-py-3 tw-mb-3 tw-cursor-pointer',
-        className
-      )}
-      onClick={() => {
-        setExpanded((pre) => !pre);
-        onQuerySelection(query);
-      }}>
-      {/* {!isUndefined(query.user) && !isUndefined(query.duration) ? (
-        <div data-testid="query-header">
-          <p>
-            Last run by{' '}
-            <Link
-              className="button-comp"
-              to={getUserPath(query.user?.name as string)}>
-              <button className="tw-font-medium tw-text-grey-body ">
-                {query.user?.displayName ?? query.user?.name}
-              </button>{' '}
-            </Link>
-            and took{' '}
-            <span className="tw-font-medium">{query.duration} seconds</span>
-          </p>
-        </div>
-      ) : null} */}
-      <div className="tw-border tw-border-main tw-rounded-md tw-p-px">
-        <div
-          className={classNames('tw-overflow-hidden tw-relative', {
-            'tw-max-h-10': !expanded,
-          })}>
-          <span className="tw-absolute tw-right-4 tw-z-9999 tw--mt-0.5 tw-flex">
-            <button data-testid="expand-collapse-button">
-              {expanded ? (
-                <SVGIcons
-                  alt="arrow-up"
-                  className="tw-mr-2"
-                  icon={Icons.ICON_UP}
-                  width="16px"
-                />
-              ) : (
-                <SVGIcons
-                  alt="arrow-down"
-                  className="tw-mr-2"
-                  icon={Icons.ICON_DOWN}
-                  width="16px"
-                />
-              )}
-            </button>
-            <span
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-              }}>
-              <CopyToClipboardButton copyText={query.query ?? ''} />
-            </span>
-          </span>
+  const { isAllowExpand, queryDate } = useMemo(() => {
+    const queryArr = split(query.query, '\n');
+    const queryDate = getFormattedDateFromSeconds(
+      query.queryDate || 0,
+      "'On' MMMM do 'at' h:mma 'UTC'ZZ" // eg: On March 6th at 6:20pm UTC+1
+    );
 
+    return { isAllowExpand: queryArr.length > 6, queryDate };
+  }, [query]);
+
+  return (
+    <div className={className} onClick={() => onQuerySelection(query)}>
+      <Card
+        bodyStyle={{ padding: 0, paddingLeft: 8, paddingTop: 1 }}
+        className="tw-p-px relative"
+        title={
+          <Space className="tw-font-normal p-y-xs" size={8}>
+            <Typography.Text>{queryDate}</Typography.Text>
+            <Typography.Text>{`• ${t('label.by-lowercase')} ${
+              query.updatedBy
+            }`}</Typography.Text>
+          </Space>
+        }>
+        <Button
+          className="expand-collapse-icon"
+          data-testid="expand-collapse-button"
+          icon={expanded ? <DownOutlined /> : <UpOutlined />}
+          size="small"
+          type="text"
+          onClick={() => {
+            setExpanded((pre) => !pre);
+            onQuerySelection(query);
+          }}
+        />
+
+        <div
+          className={classNames('tw-overflow-hidden ', {
+            'tw-max-h-32': !isAllowExpand,
+            'tw-h-32': !expanded,
+          })}>
           <SchemaEditor
-            editorClass={classNames('table-query-editor')}
+            editorClass={classNames('custom-code-mirror-theme', {
+              'table-query-editor': isAllowExpand,
+            })}
             mode={{ name: CSMode.SQL }}
             options={{
               styleActiveLine: false,
@@ -99,7 +88,7 @@ const QueryCard: FC<QueryCardProp> = ({
             value={query.query ?? ''}
           />
         </div>
-      </div>
+      </Card>
     </div>
   );
 };

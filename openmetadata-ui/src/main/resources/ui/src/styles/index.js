@@ -18,6 +18,7 @@ import 'tailwindcss/tailwind.css';
 import '../fonts/Inter/Inter-VariableFont_slnt,wght.ttf';
 import './antd-master.less';
 import './app.less';
+import './components/code-mirror.less';
 import './components/glossary.less';
 import './components/menu.less';
 import './components/profiler.less';

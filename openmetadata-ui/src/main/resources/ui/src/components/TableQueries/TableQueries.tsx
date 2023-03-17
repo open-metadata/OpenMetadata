@@ -88,21 +88,27 @@ const TableQueries: FC<TableQueriesProp> = ({
   }
 
   return (
-    <Row id="tablequeries">
+    <Row className="h-full" id="tablequeries">
       {tableQueries.length && !isUndefined(selectedQuery) ? (
         <>
           <Col span={18}>
-            <div className="m-y-lg m-r-lg" data-testid="queries-container">
-              {tableQueries.map((query, index) => (
-                <QueryCard
-                  key={index}
-                  query={query}
-                  onQuerySelection={handleSelectedQuery}
-                />
+            <Row
+              className="p-r-lg"
+              data-testid="queries-container"
+              gutter={[16, 16]}>
+              {/* <Col span={24}>filters</Col> */}
+
+              {tableQueries.map((query) => (
+                <Col key={query.id} span={24}>
+                  <QueryCard
+                    query={query}
+                    onQuerySelection={handleSelectedQuery}
+                  />
+                </Col>
               ))}
-            </div>
+            </Row>
           </Col>
-          <Col className="bg-white" span={6}>
+          <Col className="bg-white border-main border-1 border-t-0" span={6}>
             <div className="sticky top-0">
               <TableQueryRightPanel
                 query={selectedQuery}

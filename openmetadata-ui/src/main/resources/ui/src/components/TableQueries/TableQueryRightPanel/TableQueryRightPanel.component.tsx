@@ -277,6 +277,9 @@ const TableQueryRightPanel = ({
           )}
         </div>
       </Col>
+      <Col span={24}>
+        <Divider className="m-y-md" />
+      </Col>
     </Row>
   );
 };
