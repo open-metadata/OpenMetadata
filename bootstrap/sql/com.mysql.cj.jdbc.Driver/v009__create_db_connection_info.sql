@@ -116,3 +116,5 @@ DROP Table temp_query_migration;
 UPDATE metadata_service_entity
 SET json = JSON_REMOVE(json, '$.connection.config.securityConfig.audience')
 WHERE name = 'OpenMetadata' AND JSON_EXTRACT(json, '$.connection.config.authProvider') != 'google';
+
+ALTER TABLE user_tokens MODIFY COLUMN expiryDate BIGINT UNSIGNED GENERATED ALWAYS AS (json ->> '$.expiryDate');
