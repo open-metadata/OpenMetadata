@@ -16,8 +16,6 @@ import classNames from 'classnames';
 import SummaryPanelSkeleton from 'components/Skeleton/SummaryPanelSkeleton/SummaryPanelSkeleton.component';
 import { SummaryEntityType } from 'enums/EntitySummary.enum';
 import { ExplorePageTabs } from 'enums/Explore.enum';
-import { Container } from 'generated/entity/data/container';
-import { TagLabel } from 'generated/type/tagLabel';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
@@ -29,21 +27,16 @@ import {
 import SVGIcons from 'utils/SvgUtils';
 import SummaryList from '../SummaryList/SummaryList.component';
 import { BasicEntityInfo } from '../SummaryList/SummaryList.interface';
-
-interface ContainerSummaryProps {
-  entityDetails: Container;
-  componentType?: string;
-  tags?: TagLabel[];
-  isLoading?: boolean;
-}
+import { ContainerSummaryProps } from './ContainerSummary.interface';
 
 function ContainerSummary({
   entityDetails,
   componentType = DRAWER_NAVIGATION_OPTIONS.explore,
-  tags,
   isLoading,
 }: ContainerSummaryProps) {
   const { t } = useTranslation();
+
+  console.log(entityDetails);
 
   const entityInfo = useMemo(
     () => getEntityOverview(ExplorePageTabs.CONTAINERS, entityDetails),
