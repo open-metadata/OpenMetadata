@@ -66,23 +66,25 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
     }
   };
 
-  const handleFieldTagsChange = async (selectedTags: EntityTags[] = []) => {
-    if (!isUndefined(editContainerColumnTags)) {
-      const newSelectedTags: TagOption[] = selectedTags.map((tag) => ({
-        fqn: tag.tagFQN,
-        source: tag.source,
-      }));
+  const handleFieldTagsChange = async (
+    selectedTags: EntityTags[] = [],
+    selectedColumn: Column
+  ) => {
+    const newSelectedTags: TagOption[] = selectedTags.map((tag) => ({
+      fqn: tag.tagFQN,
+      source: tag.source,
+    }));
 
-      const containerDataModel = cloneDeep(dataModel);
+    const containerDataModel = cloneDeep(dataModel);
 
-      updateContainerColumnTags(
-        containerDataModel?.columns,
-        editContainerColumnTags?.name,
-        newSelectedTags
-      );
+    updateContainerColumnTags(
+      containerDataModel?.columns,
+      editContainerColumnTags?.name ?? selectedColumn.name,
+      newSelectedTags
+    );
 
-      await onUpdate(containerDataModel);
-    }
+    await onUpdate(containerDataModel);
+
     setEditContainerColumnTags(undefined);
   };
 
@@ -170,7 +172,7 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
               tagList={tagList}
               type="label"
               onCancel={() => setEditContainerColumnTags(undefined)}
-              onSelectionChange={handleFieldTagsChange}
+              onSelectionChange={(tags) => handleFieldTagsChange(tags, record)}
             />
           </Space>
         )}

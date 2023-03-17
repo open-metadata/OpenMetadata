@@ -16,6 +16,7 @@ package org.openmetadata.service.jdbi3;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.Entity.FIELD_FOLLOWERS;
+import static org.openmetadata.service.Entity.FIELD_TAGS;
 import static org.openmetadata.service.util.EntityUtil.taskMatch;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -59,12 +60,14 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
   @Override
   public void setFullyQualifiedName(Pipeline pipeline) {
     pipeline.setFullyQualifiedName(FullyQualifiedName.add(pipeline.getService().getName(), pipeline.getName()));
+    setTaskFQN(pipeline.getFullyQualifiedName(), pipeline.getTasks());
   }
 
   @Override
   public Pipeline setFields(Pipeline pipeline, Fields fields) throws IOException {
     pipeline.setService(getContainer(pipeline.getId()));
     pipeline.setFollowers(fields.contains(FIELD_FOLLOWERS) ? getFollowers(pipeline) : null);
+    getTaskTags(fields.contains(FIELD_TAGS), pipeline.getTasks());
     if (!fields.contains("tasks")) {
       pipeline.withTasks(null);
     }
@@ -181,10 +184,13 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
     // Don't store owner, database, href and tags as JSON. Build it on the fly based on relationships
     pipeline.withOwner(null).withService(null).withHref(null).withTags(null);
 
+    // Don't store column tags as JSON but build it on the fly based on relationships
+    List<Task> taskWithTags = pipeline.getTasks();
+    pipeline.setTasks(cloneWithoutTags(taskWithTags));
     store(pipeline, update);
 
     // Restore the relationships
-    pipeline.withOwner(owner).withService(service).withTags(tags);
+    pipeline.withOwner(owner).withService(service).withTags(tags).withTasks(taskWithTags);
   }
 
   @Override
@@ -200,6 +206,37 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
   }
 
   @Override
+  public void applyTags(Pipeline pipeline) {
+    // Add table level tags by adding tag to table relationship
+    super.applyTags(pipeline);
+    applyTags(pipeline.getTasks());
+  }
+
+  private void applyTags(List<Task> tasks) {
+    if (tasks != null) {
+      for (Task task : tasks) {
+        applyTags(task.getTags(), task.getFullyQualifiedName());
+      }
+    }
+  }
+
+  private void getTaskTags(boolean setTags, List<Task> tasks) {
+    for (Task t : listOrEmpty(tasks)) {
+      t.setTags(setTags ? getTags(t.getFullyQualifiedName()) : null);
+    }
+  }
+
+  private void setTaskFQN(String parentFQN, List<Task> tasks) {
+    if (tasks != null) {
+      tasks.forEach(
+          t -> {
+            String taskFqn = FullyQualifiedName.add(parentFQN, t.getName());
+            t.setFullyQualifiedName(taskFqn);
+          });
+    }
+  }
+
+  @Override
   public EntityUpdater getUpdater(Pipeline original, Pipeline updated, Operation operation) {
     return new PipelineUpdater(original, updated, operation);
   }
@@ -208,6 +245,15 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
     PipelineService service = Entity.getEntity(pipeline.getService(), "", Include.NON_DELETED);
     pipeline.setService(service.getEntityReference());
     pipeline.setServiceType(service.getServiceType());
+  }
+
+  private static List<Task> cloneWithoutTags(List<Task> tasks) {
+    if (nullOrEmpty(tasks)) {
+      return tasks;
+    }
+    List<Task> copy = new ArrayList<>();
+    tasks.forEach(t -> copy.add(t.withTags(null)));
+    return copy;
   }
 
   /** Handles entity updated from PUT and POST operation. */
@@ -249,6 +295,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
         }
         updateTaskDescription(stored, updatedTask);
       }
+      applyTags(updatedTasks);
 
       boolean removedTasks = updatedTasks.size() < origTasks.size();
 

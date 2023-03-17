@@ -354,7 +354,7 @@ class OpenMetadata(
         if issubclass(
             entity, get_args(Union[Workflow, self.get_create_entity_type(Workflow)])
         ):
-            return "/operations/workflow"
+            return "/automations/workflow"
 
         # Services Schemas
         if issubclass(
