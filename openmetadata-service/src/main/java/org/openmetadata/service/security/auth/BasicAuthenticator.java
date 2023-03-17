@@ -45,6 +45,7 @@ import org.openmetadata.schema.auth.PasswordResetRequest;
 import org.openmetadata.schema.auth.PasswordResetToken;
 import org.openmetadata.schema.auth.RefreshToken;
 import org.openmetadata.schema.auth.RegistrationRequest;
+import org.openmetadata.schema.auth.ServiceTokenType;
 import org.openmetadata.schema.auth.TokenRefreshRequest;
 import org.openmetadata.schema.email.SmtpSettings;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
@@ -336,7 +337,11 @@ public class BasicAuthenticator implements AuthenticatorHandler {
     JWTAuthMechanism jwtAuthMechanism =
         JWTTokenGenerator.getInstance()
             .generateJWTToken(
-                storedUser.getName(), storedUser.getEmail(), loginConfiguration.getJwtTokenExpiryTime(), false);
+                storedUser.getName(),
+                storedUser.getEmail(),
+                loginConfiguration.getJwtTokenExpiryTime(),
+                false,
+                ServiceTokenType.OM_USER);
     JwtResponse response = new JwtResponse();
     response.setTokenType("Bearer");
     response.setAccessToken(jwtAuthMechanism.getJWTToken());
