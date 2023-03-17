@@ -12,7 +12,8 @@
  */
 import { Button, Col, Row } from 'antd';
 import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
-import React, { FC } from 'react';
+import Loader from 'components/Loader/Loader';
+import React, { FC, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 interface ServiceRequirementsProp {
@@ -28,15 +29,47 @@ const ServiceRequirements: FC<ServiceRequirementsProp> = ({
 }) => {
   const { t } = useTranslation();
 
-  const markdownText = t('requirement', { ns: selectServiceType });
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+
+  const [markdownContent, setMarkdownContent] = useState<string>('');
+
+  const fetchRequirement = async () => {
+    const filePath = t('requirement', { ns: selectServiceType });
+    setIsLoading(true);
+    try {
+      const res = await fetch(filePath, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'text/markdown',
+          Accept: 'text/markdown',
+        },
+      });
+
+      const data = await res.text();
+
+      setMarkdownContent(data);
+    } catch (error) {
+      // handle error
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchRequirement();
+  }, [selectServiceType]);
+
+  if (isLoading) {
+    return <Loader />;
+  }
 
   return (
     <Row data-testid="service-requirements">
       <Col span={24}>
         <RichTextEditorPreviewer
           enableSeeMoreVariant={false}
-          markdown={markdownText}
-          maxLength={markdownText.length}
+          markdown={markdownContent}
+          maxLength={markdownContent.length}
         />
       </Col>
       <Col className="d-flex justify-end mt-12" span={24}>
