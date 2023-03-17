@@ -119,3 +119,5 @@ SET json = json::jsonb #- '{connection,config,securityConfig,audience}'
 WHERE name = 'OpenMetadata'
     AND json#>'{connection,config,authProvider}' IS NOT NULL
     AND json -> 'connection' -> 'config' ->> 'authProvider' != 'google';
+
+ALTER TABLE user_tokens ALTER COLUMN expiryDate DROP NOT NULL;
