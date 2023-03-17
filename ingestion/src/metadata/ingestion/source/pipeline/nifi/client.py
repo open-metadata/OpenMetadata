@@ -52,12 +52,12 @@ class NifiClient:
         self.password = password
 
         if all(setting for setting in [self.username, self.password]):
+            self.data = f"username={self.username}&password={self.password}"
             self.verify = verify
             self.headers = {
                 "Authorization": f"Bearer {self.token}",
                 **self.content_headers,
             }
-            self.data = f"username={self.username}&password={self.password}"
             self.client_cert = None
         else:
             self.data = None

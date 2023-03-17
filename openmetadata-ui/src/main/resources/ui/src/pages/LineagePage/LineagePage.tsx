@@ -202,7 +202,11 @@ const LineagePage = () => {
         <div className="lineage-page-container">
           <TitleBreadcrumb titleLinks={titleBreadcrumb} />
           <Card className="h-full" size="default">
-            <EntityLineageComponent hasEditAccess entityType={entityType} />
+            <EntityLineageComponent
+              hasEditAccess
+              isFullScreen
+              entityType={entityType}
+            />
           </Card>
         </div>
       </PageLayoutV1>
