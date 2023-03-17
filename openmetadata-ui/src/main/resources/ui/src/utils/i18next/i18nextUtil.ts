@@ -15,6 +15,7 @@ import { InitOptions } from 'i18next';
 import { map } from 'lodash';
 import enUS from '../../locale/languages/en-us.json';
 import frFR from '../../locale/languages/fr-fr.json';
+import jaJP from '../../locale/languages/ja-jp.json';
 import zhCN from '../../locale/languages/zh-cn.json';
 
 export enum SupportedLocales {
