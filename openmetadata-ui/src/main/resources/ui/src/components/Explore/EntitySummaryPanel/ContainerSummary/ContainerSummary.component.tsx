@@ -13,19 +13,22 @@
 
 import { Col, Divider, Row, Typography } from 'antd';
 import classNames from 'classnames';
-import SummaryTagsDescription from 'components/common/SummaryTagsDescription/SummaryTagsDescription.component';
 import SummaryPanelSkeleton from 'components/Skeleton/SummaryPanelSkeleton/SummaryPanelSkeleton.component';
+import { SummaryEntityType } from 'enums/EntitySummary.enum';
 import { ExplorePageTabs } from 'enums/Explore.enum';
 import { Container } from 'generated/entity/data/container';
 import { TagLabel } from 'generated/type/tagLabel';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
+import { getFormattedEntityData } from 'utils/EntitySummaryPanelUtils';
 import {
   DRAWER_NAVIGATION_OPTIONS,
   getEntityOverview,
 } from 'utils/EntityUtils';
 import SVGIcons from 'utils/SvgUtils';
+import SummaryList from '../SummaryList/SummaryList.component';
+import { BasicEntityInfo } from '../SummaryList/SummaryList.interface';
 
 interface ContainerSummaryProps {
   entityDetails: Container;
@@ -47,9 +50,13 @@ function ContainerSummary({
     [entityDetails]
   );
 
-  const isExplore = useMemo(
-    () => componentType === DRAWER_NAVIGATION_OPTIONS.explore,
-    [componentType]
+  const formattedColumnsData: BasicEntityInfo[] = useMemo(
+    () =>
+      getFormattedEntityData(
+        SummaryEntityType.COLUMN,
+        entityDetails.dataModel?.columns
+      ),
+    [entityDetails]
   );
 
   return (
@@ -108,15 +115,21 @@ function ContainerSummary({
         </Row>
         <Divider className="m-y-xs" />
 
-        {!isExplore ? (
-          <>
-            <SummaryTagsDescription
-              entityDetail={entityDetails}
-              tags={tags ? tags : []}
+        <Row className="m-md" gutter={[0, 16]}>
+          <Col span={24}>
+            <Typography.Text
+              className="text-base text-grey-muted"
+              data-testid="schema-header">
+              {t('label.schema')}
+            </Typography.Text>
+          </Col>
+          <Col span={24}>
+            <SummaryList
+              entityType={SummaryEntityType.COLUMN}
+              formattedEntityData={formattedColumnsData}
             />
-            <Divider className="m-y-xs" />
-          </>
-        ) : null}
+          </Col>
+        </Row>
       </>
     </SummaryPanelSkeleton>
   );

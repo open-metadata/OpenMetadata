@@ -430,23 +430,34 @@ export const getEntityOverview = (
       return overview;
     }
     case ExplorePageTabs.CONTAINERS: {
-      const { owner } = entityDetail as Container;
+      const { numberOfObjects, serviceType, dataModel } =
+        entityDetail as Container;
+
       const overview = [
         {
-          name: i18next.t('label.owner'),
+          name: i18next.t('label.number-of-object'),
+          value: numberOfObjects,
+          isLink: false,
+          visible: [DRAWER_NAVIGATION_OPTIONS.explore],
+        },
+        {
+          name: i18next.t('label.service-type'),
+          value: serviceType,
+          isLink: false,
+          visible: [DRAWER_NAVIGATION_OPTIONS.explore],
+        },
+        {
+          name: i18next.t('label.column-plural'),
           value:
-            getOwnerNameWithProfilePic(owner) ||
-            i18next.t('label.no-entity', {
-              entity: i18next.t('label.owner'),
-            }),
-          url: getOwnerValue(owner as EntityReference),
-          isLink: owner?.name ? true : false,
-          visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
+            dataModel && dataModel.columns ? dataModel.columns.length : NO_DATA,
+          isLink: false,
+          visible: [DRAWER_NAVIGATION_OPTIONS.explore],
         },
       ];
 
       return overview;
     }
+
     default:
       return [];
   }
