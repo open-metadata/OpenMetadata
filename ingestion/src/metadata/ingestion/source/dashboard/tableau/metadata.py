@@ -180,7 +180,7 @@ class TableauSource(DashboardServiceSource):
                 sheet_type=chart["sheetType"],
                 view_url_name=chart["viewUrlName"],
                 tags=[tag["label"] for tag in chart.get("tags", {}).get("tag") or []],
-                content_url=chart["contentUrl"],
+                content_url=chart.get("contentUrl", ""),
             )
             for chart in extract_pages(
                 self.client.query_views_for_site,
