@@ -188,6 +188,11 @@ public class UserResource extends EntityResource<User, UserRepository> {
     public UserList() {}
   }
 
+  public static class PersonalAccessTokenList extends ResultList<PersonalAccessToken> {
+    @SuppressWarnings("unused") // Used for deserialization
+    public PersonalAccessTokenList() {}
+  }
+
   static final String FIELDS = "profile,roles,teams,follows,owns";
 
   @GET
@@ -1070,7 +1075,9 @@ public class UserResource extends EntityResource<User, UserRepository> {
             responseCode = "200",
             description = "List Of Personal Access Tokens ",
             content =
-                @Content(mediaType = "application/json", schema = @Schema(implementation = PersonalAccessToken.class))),
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = PersonalAccessTokenList.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response getPersonalAccessToken(
@@ -1087,7 +1094,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
     User user = dao.getByName(null, userName, getFields("id"), Include.NON_DELETED);
     List<TokenInterface> tokens =
         tokenRepository.findByUserIdAndType(user.getId().toString(), TokenType.PERSONAL_ACCESS_TOKEN.value());
-    return Response.status(Response.Status.OK).entity(tokens).build();
+    return Response.status(Response.Status.OK).entity(new ResultList<>(tokens)).build();
   }
 
   @PUT
@@ -1102,7 +1109,9 @@ public class UserResource extends EntityResource<User, UserRepository> {
             responseCode = "200",
             description = "The Personal access token ",
             content =
-                @Content(mediaType = "application/json", schema = @Schema(implementation = PersonalAccessToken.class))),
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = PersonalAccessTokenList.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response revokePersonalAccessToken(
@@ -1129,12 +1138,12 @@ public class UserResource extends EntityResource<User, UserRepository> {
       tokenRepository.deleteAllToken(ids);
     }
     UserTokenCache.getInstance().invalidateToken(user.getName());
-    return Response.status(Response.Status.OK)
-        .entity(tokenRepository.findByUserIdAndType(user.getId().toString(), TokenType.PERSONAL_ACCESS_TOKEN.value()))
-        .build();
+    List<TokenInterface> tokens =
+        tokenRepository.findByUserIdAndType(user.getId().toString(), TokenType.PERSONAL_ACCESS_TOKEN.value());
+    return Response.status(Response.Status.OK).entity(new ResultList<>(tokens)).build();
   }
 
-  @POST
+  @PUT
   @Path("/security/token")
   @Operation(
       operationId = "createPersonalAccessToken",
