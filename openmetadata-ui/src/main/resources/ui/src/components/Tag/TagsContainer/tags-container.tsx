@@ -12,13 +12,12 @@
  */
 
 import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
-import { Button, Select, Space, Tooltip } from 'antd';
+import { Button, Select, Space, Tooltip, Typography } from 'antd';
 import classNames from 'classnames';
 import Tags from 'components/Tag/Tags/tags';
 import { isEmpty } from 'lodash';
 import { EntityTags, TagOption } from 'Models';
 import React, {
-  Fragment,
   FunctionComponent,
   useCallback,
   useEffect,
@@ -41,7 +40,6 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
   onSelectionChange,
   className,
   containerClass,
-  buttonContainerClass,
   showTags = true,
   showAddTagButton = false,
 }: TagsContainerProps) => {
@@ -53,11 +51,21 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
       .filter((tag) => !tag.fqn?.startsWith(`Tier${FQN_SEPARATOR_CHAR}Tier`)) // To filter out Tier tags
       .map((tag) => {
         const parts = Fqn.split(tag.fqn);
-        const lastPartOfTag = parts.slice(-1).join('.');
+        const lastPartOfTag = parts.slice(-1).join(FQN_SEPARATOR_CHAR);
+        parts.unshift();
 
         return {
           label: tag.fqn,
-          displayName: lastPartOfTag,
+          displayName: (
+            <Space className="w-full" direction="vertical" size={0}>
+              <Typography.Paragraph
+                ellipsis
+                className="text-grey-muted m-0 p-0">
+                {parts.join(FQN_SEPARATOR_CHAR)}
+              </Typography.Paragraph>
+              <Typography.Text>{lastPartOfTag}</Typography.Text>
+            </Space>
+          ),
           value: tag.fqn,
         };
       });
@@ -137,30 +145,31 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
       align="center"
       className={classNames('w-full', containerClass)}
       data-testid="tag-container"
-      size={16}>
-      <Fragment>
-        {showTags && !editable && (
-          <Fragment>
-            {showAddTagButton && (
-              <span className="tw-text-primary">
-                <Tags
-                  className="tw-font-semibold"
-                  startWith="+ "
-                  tag="Tags"
-                  type="border"
-                />
-              </span>
-            )}
-            {tags.map(getTagsElement)}
-          </Fragment>
-        )}
-        {editable ? (
+      size={8}>
+      {showTags && !editable && (
+        <>
+          {showAddTagButton && (
+            <span className="tw-text-primary">
+              <Tags
+                className="tw-font-semibold"
+                startWith="+ "
+                tag="Tags"
+                type="border"
+              />
+            </span>
+          )}
+          {tags.map(getTagsElement)}
+        </>
+      )}
+      {editable ? (
+        <>
           <Select
             autoFocus
             className={classNames('w-min-10', className)}
             data-testid="tag-selector"
             defaultValue={selectedTagsInternal}
             mode="multiple"
+            optionLabelProp="label"
             placeholder={t('label.select-field', {
               field: t('label.tag-plural'),
             })}
@@ -177,32 +186,26 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
               </Select.Option>
             ))}
           </Select>
-        ) : (
-          children
-        )}
-      </Fragment>
-      {editable && (
-        <Space
-          className={classNames('', buttonContainerClass)}
-          data-testid="buttons"
-          size={4}>
-          <Button
-            className="w-6 p-x-05"
-            data-testid="cancelAssociatedTag"
-            size="small"
-            type="primary"
-            onMouseDown={handleCancel}>
-            <CloseOutlined height={14} width={14} />
-          </Button>
-          <Button
-            className="w-6 p-x-05"
-            data-testid="saveAssociatedTag"
-            size="small"
-            type="primary"
-            onMouseDown={handleSave}>
-            <CheckOutlined />
-          </Button>
-        </Space>
+          <>
+            <Button
+              className="w-6 p-x-05"
+              data-testid="cancelAssociatedTag"
+              icon={<CloseOutlined size={12} />}
+              size="small"
+              onClick={handleCancel}
+            />
+            <Button
+              className="w-6 p-x-05"
+              data-testid="saveAssociatedTag"
+              icon={<CheckOutlined size={12} />}
+              size="small"
+              type="primary"
+              onClick={handleSave}
+            />
+          </>
+        </>
+      ) : (
+        children
       )}
     </Space>
   );

@@ -259,7 +259,7 @@ export const AuthProvider = ({
 
       return localState.getOidcToken();
     } else {
-      throw 'No handler for renew token found';
+      throw new Error('No handler attached for Renew Token.');
     }
   };
 
