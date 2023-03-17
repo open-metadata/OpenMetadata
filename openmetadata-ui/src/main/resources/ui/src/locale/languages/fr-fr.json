@@ -85,6 +85,7 @@
     "bot-plural": "Bots",
     "broker-plural": "Brokers",
     "browse-csv-file": "Browse CSV file",
+    "by-lowercase": "by",
     "ca-certs": "Ca Certs",
     "cancel": "Annuler",
     "change-entity": "Change {{entity}}",
