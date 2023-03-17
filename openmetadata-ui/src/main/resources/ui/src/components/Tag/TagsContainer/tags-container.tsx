@@ -52,7 +52,7 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
       .map((tag) => {
         const parts = Fqn.split(tag.fqn);
         const lastPartOfTag = parts.slice(-1).join(FQN_SEPARATOR_CHAR);
-        parts.unshift();
+        parts.pop();
 
         return {
           label: tag.fqn,
