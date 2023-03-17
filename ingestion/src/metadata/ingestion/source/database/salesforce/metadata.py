@@ -231,15 +231,25 @@ class SalesforceSource(DatabaseServiceSource):
                     constraint=col_constraint,
                     ordinalPosition=row_order,
                     dataLength=column["length"],
+                    systemDataType=column["type"],
                 )
             )
             row_order += 1
         return columns
 
     def column_type(self, column_type: str):
-        if column_type in {"ID", "PHONE", "CURRENCY"}:
-            return "INT"
-        return "VARCHAR"
+        if column_type in {
+            "ID",
+            "PHONE",
+            "EMAIL",
+            "ENCRYPTEDSTRING",
+            "COMBOBOX",
+            "URL",
+            "TEXTAREA",
+            "ADDRESS",
+        }:
+            return "VARCHAR"
+        return "UNKNOWN"
 
     def yield_view_lineage(self) -> Optional[Iterable[AddLineageRequest]]:
         yield from []

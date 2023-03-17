@@ -116,8 +116,6 @@
         "UUID",
         "VARIANT",
         "GEOMETRY",
-        "POINT",
-        "POLYGON",
         "BYTEA",
         "AGGREGATEFUNCTION",
         "ERROR",
@@ -126,11 +124,6 @@
         "NULL",
         "SUPER",
         "HLLSKETCH",
-        "BOX",
-        "CIRCLE",
-        "LINE",
-        "LSEG",
-        "PATH",
         "PG_LSN",
         "PG_SNAPSHOT",
         "TSQUERY",
@@ -143,7 +136,8 @@
         "INET",
         "CLOB",
         "ROWID",
-        "LOWCARDINALITY"
+        "LOWCARDINALITY",
+        "YEAR"
       ]
     },
     "constraint": {

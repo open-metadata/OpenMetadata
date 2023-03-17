@@ -337,7 +337,9 @@ class DeltalakeSource(DatabaseServiceSource):
                 )[
                     "dataType"
                 ]
-            column = Column(name=row["col_name"], **parsed_string)
+            column = Column(
+                name=row["col_name"], systemDataType=row["data_type"], **parsed_string
+            )
         else:
             col_type = re.search(r"^\w+", row["data_type"]).group(0)
             charlen = re.search(r"\(([\d]+)\)", row["data_type"])
@@ -355,6 +357,7 @@ class DeltalakeSource(DatabaseServiceSource):
                 dataType=col_type,
                 dataLength=charlen,
                 displayName=row["data_type"],
+                systemDataType=row["data_type"],
             )
         return column
 
@@ -374,7 +377,7 @@ class DeltalakeSource(DatabaseServiceSource):
                 f"Unexpected exception getting columns for [{table_name}]: {exc}"
             )
             return []
-        parsed_columns: [Column] = []
+        parsed_columns: List[Column] = []
         partition_cols = False
         for row in raw_columns:
             col_name = row["col_name"]

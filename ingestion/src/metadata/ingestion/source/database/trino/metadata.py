@@ -116,13 +116,16 @@ def _get_columns(
             "type": col_type,
             "nullable": True,
             "comment": record.Comment,
+            "raw_data_type": record.Type,
         }
         type_str = record.Type.strip().lower()
         type_name, type_opts = get_type_name_and_opts(type_str)
         if type_opts and type_name == ROW_DATA_TYPE:
             column["raw_data_type"] = parse_row_data_type(type_str)
+            column["is_complex"] = True
         elif type_opts and type_name == ARRAY_DATA_TYPE:
             column["raw_data_type"] = parse_array_data_type(type_str)
+            column["is_complex"] = True
         columns.append(column)
     return columns
 

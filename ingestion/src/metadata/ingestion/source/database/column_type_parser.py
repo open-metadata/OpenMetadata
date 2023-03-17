@@ -189,8 +189,8 @@ class ColumnTypeParser:
         "JSON": "JSON",
         "JSONB": "JSON",
         "UUID": "UUID",
-        "POINT": "POINT",
-        "POLYGON": "POLYGON",
+        "POINT": "GEOMETRY",
+        "POLYGON": "GEOMETRY",
         "AggregateFunction()": "AGGREGATEFUNCTION",
         "BYTEA": "BYTEA",
         "UNKNOWN": "UNKNOWN",
@@ -198,11 +198,11 @@ class ColumnTypeParser:
         "HLLSKETCH": "HLLSKETCH",
         "SUPER": "SUPER",
         # postgres
-        "BOX": "BOX",
-        "CIRCLE": "CIRCLE",
-        "LINE": "LINE",
-        "LSEG": "LSEG",
-        "PATH": "PATH",
+        "BOX": "GEOMETRY",
+        "CIRCLE": "GEOMETRY",
+        "LINE": "GEOMETRY",
+        "LSEG": "GEOMETRY",
+        "PATH": "GEOMETRY",
         "PG_LSN": "PG_LSN",
         "PG_SNAPSHOT": "PG_SNAPSHOT",
         "TSQUERY": "TSQUERY",
@@ -218,7 +218,6 @@ class ColumnTypeParser:
         "BINARY_FLOAT": "FLOAT",
         "XMLTYPE": "XML",
         "BFILE": "BINARY",
-        "ROWID": "ROWID",
         "CLOB": "CLOB",
         "NCLOB": "CLOB",
         "LONG": "LONG",
@@ -226,6 +225,13 @@ class ColumnTypeParser:
         "LOWCARDINALITY": "LOWCARDINALITY",
         "DATETIME64": "DATETIME",
         "SimpleAggregateFunction()": "AGGREGATEFUNCTION",
+        # Databricks
+        "VOID": "NULL",
+        # mysql
+        "TINYBLOB": "BLOB",
+        "LONGTEXT": "TEXT",
+        "TINYTEXT": "TEXT",
+        "YEAR": "YEAR",
     }
 
     _COMPLEX_TYPE = re.compile("^(struct|map|array|uniontype)")
@@ -277,7 +283,7 @@ class ColumnTypeParser:
     def _parse_datatype_string(
         data_type: str, **kwargs: Any  # pylint: disable=unused-argument
     ) -> Union[object, Dict[str, object]]:
-        data_type = data_type.strip()
+        data_type = data_type.lower().strip()
         data_type = data_type.replace(" ", "")
         if data_type.startswith("array<"):
             if data_type[-1] != ">":

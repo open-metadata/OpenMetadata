@@ -19,8 +19,7 @@ from typing import Iterable, Optional
 from sqlalchemy import sql, util
 from sqlalchemy.engine import reflection
 from sqlalchemy.sql import sqltypes
-from sqlalchemy.sql.sqltypes import String
-from sqlalchemy_vertica.base import VerticaDialect
+from sqlalchemy_vertica.base import VerticaDialect, ischema_names
 
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.services.connections.database.verticaConnection import (
@@ -33,6 +32,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.ingestion.api.source import InvalidSourceException
+from metadata.ingestion.source.database.column_type_parser import create_sqlalchemy_type
 from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
 from metadata.ingestion.source.database.vertica.queries import (
     VERTICA_GET_COLUMNS,
@@ -53,12 +53,12 @@ from metadata.utils.sqlalchemy_utils import (
 
 logger = ingestion_logger()
 
-
-class UUID(String):
-
-    """The SQL UUID type."""
-
-    __visit_name__ = "UUID"
+ischema_names.update(
+    {
+        "UUID": create_sqlalchemy_type("UUID"),
+        "GEOGRAPHY": create_sqlalchemy_type("GEOGRAPHY"),
+    }
+)
 
 
 @reflection.cache
@@ -142,7 +142,7 @@ def _get_column_info(  # pylint: disable=too-many-locals,too-many-branches,too-m
             args = (int(prec), int(scale))
         else:
             args = ()
-    elif attype == "integer":
+    elif attype == "integer" or attype.startswith("geography"):
         args = ()
     elif attype in ("timestamptz", "timetz"):
         kwargs["timezone"] = True
@@ -167,14 +167,13 @@ def _get_column_info(  # pylint: disable=too-many-locals,too-many-branches,too-m
         args = ()
     elif charlen:
         args = (int(charlen),)
-    self.ischema_names["UUID"] = UUID
     if attype.upper() in self.ischema_names:
         coltype = self.ischema_names[attype.upper()]
     else:
         coltype = None
 
     if coltype:
-        coltype = coltype(*args, **kwargs)
+        coltype = coltype(*args, **kwargs) if callable(coltype) else coltype
     else:
         util.warn(f"Did not recognize type '{attype}' of column '{name}'")
         coltype = sqltypes.NULLTYPE
@@ -206,6 +205,7 @@ def _get_column_info(  # pylint: disable=too-many-locals,too-many-branches,too-m
         "name": name,
         "type": coltype,
         "nullable": nullable,
+        "raw_data_type": format_type,
         "default": default,
         "autoincrement": autoincrement,
         "comment": comment,

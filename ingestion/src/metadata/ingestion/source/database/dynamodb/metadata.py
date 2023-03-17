@@ -174,6 +174,7 @@ class DynamodbSource(DatabaseServiceSource):
                     parsed_string["dataType"] = "UNION"
                 parsed_string["name"] = column["AttributeName"][:64]
                 parsed_string["dataLength"] = parsed_string.get("dataLength", 1)
+                parsed_string["systemDataType"] = str(column["AttributeType"])
                 yield Column(**parsed_string)
             except Exception as exc:
                 logger.debug(traceback.format_exc())

@@ -118,7 +118,12 @@ def get_table_comment(
 
 
 @reflection.cache
-def get_columns(self, connection, table_name, schema=None, **kw):
+def get_columns(  # pylint: disable=too-many-locals
+    self, connection, table_name, schema=None, **kw
+):
+    """
+    Overriding the dialect method to add raw_data_type in response
+    """
 
     table_oid = self.get_table_oid(
         connection, table_name, schema, info_cache=kw.get("info_cache")
@@ -136,27 +141,29 @@ def get_columns(self, connection, table_name, schema=None, **kw):
     else:
         identity = "NULL as identity_options"
 
-    SQL_COLS = POSTGRES_SQL_COLUMNS.format(
+    sql_col_query = POSTGRES_SQL_COLUMNS.format(
         generated=generated,
         identity=identity,
     )
-    s = (
-        sql.text(SQL_COLS)
+    sql_col_query = (
+        sql.text(sql_col_query)
         .bindparams(sql.bindparam("table_oid", type_=sqltypes.Integer))
         .columns(attname=sqltypes.Unicode, default=sqltypes.Unicode)
     )
-    c = connection.execute(s, dict(table_oid=table_oid))
-    rows = c.fetchall()
+    conn = connection.execute(sql_col_query, {"table_oid": table_oid})
+    rows = conn.fetchall()
 
     # dictionary with (name, ) if default search path or (schema, name)
     # as keys
-    domains = self._load_domains(connection)
+    domains = self._load_domains(connection)  # pylint: disable=protected-access
 
     # dictionary with (name, ) if default search path or (schema, name)
     # as keys
     enums = dict(
         ((rec["name"],), rec) if rec["visible"] else ((rec["schema"], rec["name"]), rec)
-        for rec in self._load_enums(connection, schema="*")
+        for rec in self._load_enums(  # pylint: disable=protected-access
+            connection, schema="*"
+        )
     )
 
     # format columns
@@ -172,7 +179,7 @@ def get_columns(self, connection, table_name, schema=None, **kw):
         generated,
         identity,
     ) in rows:
-        column_info = self._get_column_info(
+        column_info = self._get_column_info(  # pylint: disable=protected-access
             name,
             format_type,
             default_,

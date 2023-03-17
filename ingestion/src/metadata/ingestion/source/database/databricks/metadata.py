@@ -34,6 +34,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.source.connections import get_connection
+from metadata.ingestion.source.database.column_type_parser import create_sqlalchemy_type
 from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
 from metadata.ingestion.source.database.databricks.queries import (
     DATABRICKS_GET_TABLE_COMMENTS,
@@ -73,7 +74,16 @@ class MAP(String):
 
 # overriding pyhive.sqlalchemy_hive._type_map
 # mapping struct, array & map to custom classed instead of sqltypes.String
-_type_map.update({"struct": STRUCT, "array": ARRAY, "map": MAP})
+_type_map.update(
+    {
+        "struct": STRUCT,
+        "array": ARRAY,
+        "map": MAP,
+        "void": create_sqlalchemy_type("VOID"),
+        "interval": create_sqlalchemy_type("INTERVAL"),
+        "binary": create_sqlalchemy_type("BINARY"),
+    }
+)
 
 
 def _get_column_rows(self, connection, table_name, schema):

@@ -173,6 +173,7 @@ class DomodatabaseSource(DatabaseServiceSource):
                     description=column.get("description", ""),
                     dataType=column["type"],
                     ordinalPosition=row_order,
+                    systemDataType=column["type"],
                 )
             )
             row_order += 1
