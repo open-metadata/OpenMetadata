@@ -66,7 +66,10 @@ def get_fn(blueprint: Blueprint) -> Callable:
                     error="[limit] and [offset] must be specified for a [RUN] query request",
                 )
 
-            if run_query_config.limit > 100:
+            if (
+                run_query_config.queryType == QueryTypes.RUN
+                and run_query_config.limit > 100
+            ):
                 return ApiResponse.error(
                     status=ApiResponse.STATUS_BAD_REQUEST,
                     error="[limit] must be less than 100",
