@@ -66,6 +66,7 @@ public class ConfigResource {
     AuthenticationConfiguration authenticationConfiguration = new AuthenticationConfiguration();
     if (openMetadataApplicationConfig.getAuthenticationConfiguration() != null) {
       authenticationConfiguration = openMetadataApplicationConfig.getAuthenticationConfiguration();
+      authenticationConfiguration.setLdapConfiguration(null);
     }
     return authenticationConfiguration;
   }
