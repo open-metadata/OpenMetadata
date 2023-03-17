@@ -2,8 +2,6 @@
 Test Domo Dashboard using the topology
 """
 
-import json
-from pathlib import Path
 from unittest import TestCase
 from unittest.mock import patch
 
@@ -24,13 +22,6 @@ from metadata.ingestion.source.dashboard.tableau.metadata import (
     TableauOwner,
     TableauSource,
 )
-
-mock_file_path = (
-    Path(__file__).parent.parent.parent
-    / "resources/datasets/domodashboard_dataset.json"
-)
-with open(mock_file_path, encoding="UTF-8") as file:
-    mock_data: dict = json.load(file)
 
 MOCK_DASHBOARD_SERVICE = DashboardService(
     id="c3eb265f-5445-4ad3-ba5e-797d3a3071bb",

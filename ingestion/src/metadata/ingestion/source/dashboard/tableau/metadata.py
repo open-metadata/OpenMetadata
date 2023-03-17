@@ -102,9 +102,7 @@ class ChartUrl:
 
     def __init__(self, context_url: str) -> None:
         self.workbook_name, self.sheets, self.chart_url_name = (
-            context_url.split("/") if "/" in context_url else "",
-            "",
-            "",
+            context_url.split("/") if "/" in context_url else ["", "", ""]
         )
 
 
