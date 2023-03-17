@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import IconGlossaryFolder from 'assets/svg/folder.svg';
+import IconFlatFolder from 'assets/svg/folder.svg';
+import IconFlatDoc from 'assets/svg/ic-flat-doc.svg';
 import { omit } from 'lodash';
 import React, { FunctionComponent } from 'react';
 import IconAuth0 from '../assets/img/icon-auth0.png';
@@ -404,7 +405,8 @@ export const Icons = {
   ARROW_DOWN_LIGHT: 'arrow-down-light',
   DRAG: 'drag',
   CONTAINER: 'container',
-  GLOSSARY: 'glossary',
+  FLAT_FOLDER: 'flat-folder',
+  FLAT_DOC: 'flat-doc',
 };
 
 /**
@@ -1192,8 +1194,12 @@ const SVGIcons: FunctionComponent<Props> = ({ icon, ...props }: Props) => {
       IconComponent = IconContainer;
 
       break;
-    case Icons.GLOSSARY:
-      IconComponent = IconGlossaryFolder;
+    case Icons.FLAT_FOLDER:
+      IconComponent = IconFlatFolder;
+
+      break;
+    case Icons.FLAT_DOC:
+      IconComponent = IconFlatDoc;
 
       break;
 

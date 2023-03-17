@@ -86,14 +86,14 @@ const MyAssetStats: FunctionComponent<MyAssetStatsProps> = ({
         dataTestId: 'test-suite',
       },
       glossaries: {
-        icon: Icons.GLOSSARY,
+        icon: Icons.FLAT_FOLDER,
         data: t('label.glossary-plural'),
         count: entityCounts.glossaryCount,
         link: ROUTES.GLOSSARY,
         dataTestId: 'glossaries',
       },
       glossaryTerms: {
-        icon: Icons.GLOSSARY,
+        icon: Icons.FLAT_DOC,
         data: t('label.glossary-term-plural'),
         count: entityCounts.glossaryTermCount,
         link: ROUTES.GLOSSARY,
