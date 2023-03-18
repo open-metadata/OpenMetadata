@@ -52,7 +52,7 @@ const TableQueries: FC<TableQueriesProp> = ({
     }
   };
 
-  const handleQueryUpdate = async (updatedQuery: Query) => {
+  const handleQueryUpdate = async (updatedQuery: Query, key: keyof Query) => {
     if (isUndefined(selectedQuery)) {
       return;
     }
@@ -61,9 +61,11 @@ const TableQueries: FC<TableQueriesProp> = ({
 
     try {
       const res = await patchQueries(selectedQuery.id || '', jsonPatch);
-      setSelectedQuery(res);
+      setSelectedQuery((pre) => (pre ? { ...pre, [key]: res[key] } : res));
       setTableQueries((pre) => {
-        return pre.map((query) => (query.id === updatedQuery.id ? res : query));
+        return pre.map((query) =>
+          query.id === updatedQuery.id ? { ...query, [key]: res[key] } : query
+        );
       });
     } catch (error) {
       showErrorToast(error as AxiosError);
@@ -102,7 +104,10 @@ const TableQueries: FC<TableQueriesProp> = ({
                 <Col key={query.id} span={24}>
                   <QueryCard
                     query={query}
+                    selectedId={selectedQuery.id}
+                    tableId={tableId}
                     onQuerySelection={handleSelectedQuery}
+                    onQueryUpdate={handleQueryUpdate}
                   />
                 </Col>
               ))}

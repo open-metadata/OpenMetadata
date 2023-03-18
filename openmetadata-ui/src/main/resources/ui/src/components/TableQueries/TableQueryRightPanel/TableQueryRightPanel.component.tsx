@@ -21,7 +21,6 @@ import TagsViewer from 'components/Tag/TagsViewer/tags-viewer';
 import { getUserPath } from 'constants/constants';
 import { SettledStatus } from 'enums/axios.enum';
 import { Query } from 'generated/entity/data/query';
-import { Table } from 'generated/entity/data/table';
 import { LabelType, State, TagLabel, TagSource } from 'generated/type/tagLabel';
 import { isEmpty, isUndefined } from 'lodash';
 import { EntityTags, TagOption } from 'Models';
@@ -35,7 +34,7 @@ import { ReactComponent as EditIcon } from '/assets/svg/ic-edit.svg';
 
 interface TableQueryRightPanelProps {
   query: Query;
-  onQueryUpdate: (updatedQuery: Query) => Promise<void>;
+  onQueryUpdate: (updatedQuery: Query, key: keyof Query) => Promise<void>;
 }
 
 const TableQueryRightPanel = ({
@@ -110,16 +109,16 @@ const TableQueryRightPanel = ({
       ...query,
       owner: undefined,
     };
-    await onQueryUpdate(updatedData);
+    await onQueryUpdate(updatedData, 'owner');
     setIsEditOwner(false);
   };
-  const handleUpdateOwner = async (owner: Table['owner']) => {
+  const handleUpdateOwner = async (owner: Query['owner']) => {
     if (!isUndefined(owner)) {
       const updatedData = {
         ...query,
         owner,
       };
-      await onQueryUpdate(updatedData);
+      await onQueryUpdate(updatedData, 'owner');
       setIsEditOwner(false);
     }
   };
@@ -128,7 +127,7 @@ const TableQueryRightPanel = ({
       ...query,
       description,
     };
-    await onQueryUpdate(updatedData);
+    await onQueryUpdate(updatedData, 'description');
     setIsEditDescription(false);
   };
   const handleTagSelection = async (selectedTags?: EntityTags[]) => {
@@ -145,7 +144,7 @@ const TableQueryRightPanel = ({
         ...query,
         tags: newSelectedTags,
       };
-      await onQueryUpdate(updatedData);
+      await onQueryUpdate(updatedData, 'tags');
       setIsEditTags(false);
     }
   };

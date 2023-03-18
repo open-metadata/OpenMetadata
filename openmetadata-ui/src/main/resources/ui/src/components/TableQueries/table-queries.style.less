@@ -10,6 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+@import url('../../styles/variables.less');
+
 .expand-collapse-icon {
   display: flex;
   justify-content: center;
@@ -17,4 +19,19 @@
   z-index: 10;
   top: 63px;
   left: 3px;
+}
+
+.query-card-container {
+  cursor: pointer;
+  position: relative;
+  border: @global-border;
+  border-radius: 4px;
+
+  .sql-editor-container {
+    overflow: hidden;
+    border-bottom-right-radius: 4px;
+  }
+}
+.query-card-container.selected {
+  border: 1px solid @info-color;
 }
