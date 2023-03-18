@@ -486,4 +486,11 @@ public final class EntityUtil {
     // Sort tags by tag hierarchy. Tags with parents null come first, followed by tags with
     tags.sort(Comparator.comparing(Tag::getFullyQualifiedName));
   }
+
+  public static void appendList(List toList, List fromList) {
+    if (nullOrEmpty(fromList)) {
+      return;
+    }
+    toList.addAll(fromList);
+  }
 }

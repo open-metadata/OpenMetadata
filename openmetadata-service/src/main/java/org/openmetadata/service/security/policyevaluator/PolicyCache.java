@@ -22,6 +22,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
 import javax.annotation.CheckForNull;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.policies.Policy;
@@ -48,7 +49,8 @@ public class PolicyCache {
   /** To be called during application startup by Default Authorizer */
   public static void initialize() {
     if (!INITIALIZED) {
-      POLICY_CACHE = CacheBuilder.newBuilder().maximumSize(100).build(new PolicyLoader());
+      POLICY_CACHE =
+              CacheBuilder.newBuilder().maximumSize(100).expireAfterWrite(3, TimeUnit.MINUTES).build(new PolicyLoader());
       POLICY_REPOSITORY = (PolicyRepository) Entity.getEntityRepository(Entity.POLICY);
       FIELDS = POLICY_REPOSITORY.getFields("rules");
       INITIALIZED = true;

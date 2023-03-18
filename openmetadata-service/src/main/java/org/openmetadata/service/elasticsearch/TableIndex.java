@@ -39,13 +39,10 @@ public class TableIndex implements ColumnIndex {
       parseColumns(table.getColumns(), cols, null);
 
       for (FlattenColumn col : cols) {
-        if (col.getTags() != null) {
-          tags.addAll(col.getTags());
-        }
         columnSuggest.add(ElasticSearchSuggest.builder().input(col.getName()).weight(5).build());
       }
     }
-    tags.addAll(ElasticSearchIndexUtils.parseTags(table.getTags()));
+    tags.addAll(ElasticSearchIndexUtils.parseTags(Entity.getEntityTags(Entity.TABLE, table)));
     parseTableSuggest(suggest);
     serviceSuggest.add(ElasticSearchSuggest.builder().input(table.getService().getName()).weight(5).build());
     databaseSuggest.add(ElasticSearchSuggest.builder().input(table.getDatabase().getName()).weight(5).build());

@@ -24,6 +24,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
+import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.data.Pipeline;
 import org.openmetadata.schema.entity.data.PipelineStatus;
 import org.openmetadata.schema.entity.services.PipelineService;
@@ -35,7 +36,9 @@ import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.Task;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.jdbi3.EntityRepository.EntityUpdater;
 import org.openmetadata.service.resources.pipelines.PipelineResource;
+import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
@@ -239,6 +242,15 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
   @Override
   public EntityUpdater getUpdater(Pipeline original, Pipeline updated, Operation operation) {
     return new PipelineUpdater(original, updated, operation);
+  }
+
+  @Override
+  public List<TagLabel> getAllTags(EntityInterface entity) {
+    List<TagLabel> allTags = new ArrayList<>();
+    Pipeline pipeline = (Pipeline) entity;
+    EntityUtil.appendList(allTags, pipeline.getTags());
+    pipeline.getTasks().forEach(task -> EntityUtil.appendList(allTags, task.getTags()));
+    return allTags;
   }
 
   private void populateService(Pipeline pipeline) throws IOException {

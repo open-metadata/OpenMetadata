@@ -1,5 +1,7 @@
 package org.openmetadata.service.elasticsearch;
 
+import static org.openmetadata.service.elasticsearch.ElasticSearchIndexUtils.parseTags;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -25,7 +27,7 @@ public class DashboardIndex implements ElasticSearchIndex {
     suggest.add(ElasticSearchSuggest.builder().input(dashboard.getFullyQualifiedName()).weight(5).build());
     suggest.add(ElasticSearchSuggest.builder().input(dashboard.getDisplayName()).weight(10).build());
     serviceSuggest.add(ElasticSearchSuggest.builder().input(dashboard.getService().getName()).weight(5).build());
-    ParseTags parseTags = new ParseTags(ElasticSearchIndexUtils.parseTags(dashboard.getTags()));
+    ParseTags parseTags = new ParseTags(parseTags(Entity.getEntityTags(Entity.DASHBOARD, dashboard)));
 
     if (dashboard.getCharts() != null) {
       for (EntityReference chart : dashboard.getCharts()) {

@@ -26,6 +26,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.data.MlModel;
 import org.openmetadata.schema.entity.services.MlModelService;
 import org.openmetadata.schema.type.EntityReference;
@@ -209,6 +210,21 @@ public class MlModelRepository extends EntityRepository<MlModel> {
   @Override
   public EntityUpdater getUpdater(MlModel original, MlModel updated, Operation operation) {
     return new MlModelUpdater(original, updated, operation);
+  }
+
+  @Override
+  public List<TagLabel> getAllTags(EntityInterface entity) {
+    List<TagLabel> allTags = new ArrayList<>();
+    MlModel mlModel = (MlModel) entity;
+    EntityUtil.appendList(allTags, mlModel.getTags());
+    mlModel
+        .getMlFeatures()
+        .forEach(
+            feature -> {
+              EntityUtil.appendList(allTags, feature.getTags());
+              feature.getFeatureSources().forEach(source -> EntityUtil.appendList(allTags, source.getTags()));
+            });
+    return allTags;
   }
 
   private void populateService(MlModel mlModel) throws IOException {

@@ -22,7 +22,7 @@ public class TopicIndex implements ElasticSearchIndex {
 
   public Map<String, Object> buildESDoc() {
     Map<String, Object> doc = JsonUtils.getMap(topic);
-    List<TagLabel> tags = new ArrayList<>();
+    List<TagLabel> tags = Entity.getEntityTags(Entity.TOPIC, topic);
     List<ElasticSearchSuggest> suggest = new ArrayList<>();
     List<ElasticSearchSuggest> fieldSuggest = new ArrayList<>();
     List<ElasticSearchSuggest> serviceSuggest = new ArrayList<>();
@@ -30,9 +30,6 @@ public class TopicIndex implements ElasticSearchIndex {
     suggest.add(ElasticSearchSuggest.builder().input(topic.getName()).weight(10).build());
     serviceSuggest.add(ElasticSearchSuggest.builder().input(topic.getService().getName()).weight(5).build());
     ElasticSearchIndexUtils.removeNonIndexableFields(doc, excludeTopicFields);
-    if (topic.getTags() != null) {
-      tags.addAll(topic.getTags());
-    }
 
     if (topic.getMessageSchema() != null
         && topic.getMessageSchema().getSchemaFields() != null

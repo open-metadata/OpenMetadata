@@ -151,7 +151,7 @@ public class PolicyEvaluator {
       PolicyContext policyContext = policies.next();
       for (CompiledRule rule : policyContext.getRules()) {
         LOG.debug("evaluating {}:{}:{}\n", policyContext.getRoleName(), policyContext.getPolicyName(), rule.getName());
-        rule.setPermission(resourcePermissionMap, policyContext);
+        rule.evaluatePermission(resourcePermissionMap, policyContext);
       }
     }
     return new ArrayList<>(resourcePermissionMap.values());
@@ -165,7 +165,7 @@ public class PolicyEvaluator {
       PolicyContext policyContext = policyIterator.next();
       for (CompiledRule rule : policyContext.getRules()) {
         LOG.debug("Evaluating {}:{}:{}\n", policyContext.getRoleName(), policyContext.getPolicyName(), rule.getName());
-        rule.setPermission(resourcePermissionMap, policyContext);
+        rule.evaluatePermission(resourcePermissionMap, policyContext);
       }
     }
     return new ArrayList<>(resourcePermissionMap.values());
@@ -182,14 +182,14 @@ public class PolicyEvaluator {
       PolicyContext policyContext = policies.next();
       for (CompiledRule rule : policyContext.getRules()) {
         LOG.debug("evaluating {}:{}:{}\n", policyContext.getRoleName(), policyContext.getPolicyName(), rule.getName());
-        rule.setPermission(resourceType, resourcePermission, policyContext);
+        rule.evaluatePermission(resourceType, resourcePermission, policyContext);
       }
     }
     return resourcePermission;
   }
 
   public static ResourcePermission getPermission(
-      @NonNull SubjectContext subjectContext, ResourceContextInterface resourceContext) {
+      @NonNull SubjectContext subjectContext, ResourceContextInterface resourceContext) throws IOException {
     // Initialize all permissions to NOT_ALLOW
     ResourcePermission resourcePermission = getResourcePermission(resourceContext.getResource(), Access.NOT_ALLOW);
 
@@ -199,7 +199,28 @@ public class PolicyEvaluator {
       PolicyContext policyContext = policies.next();
       for (CompiledRule rule : policyContext.getRules()) {
         LOG.debug("evaluating {}:{}:{}\n", policyContext.getRoleName(), policyContext.getPolicyName(), rule.getName());
-        rule.setPermission(subjectContext, resourceContext, resourcePermission, policyContext);
+        rule.evaluatePermission(subjectContext, resourceContext, resourcePermission, policyContext);
+      }
+    }
+
+    // Iterate through policies and set the permissions to DENY, ALLOW, CONDITIONAL_DENY, or CONDITIONAL_ALLOW
+    if (resourceContext == null || resourceContext.getOwner() == null) {
+      return resourcePermission; // No owner - No need to walk the hierarchy of user and teams that are resource owners
+    }
+    Iterator<PolicyContext> resourcePolicies = subjectContext.getResourcePolicies(resourceContext.getOwner());
+    while (resourcePolicies.hasNext()) {
+      PolicyContext policyContext = resourcePolicies.next();
+      for (CompiledRule rule : policyContext.getRules()) {
+        rule.getExpression();
+        if (rule.isResourceBased() == false) {
+          continue;
+        }
+        LOG.debug(
+            "evaluating resource policies {}:{}:{}\n",
+            policyContext.getRoleName(),
+            policyContext.getPolicyName(),
+            rule.getName());
+        rule.evaluatePermission(subjectContext, resourceContext, resourcePermission, policyContext);
       }
     }
     return resourcePermission;
