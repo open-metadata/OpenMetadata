@@ -52,7 +52,7 @@ describe('Test MyDataHeader Component', () => {
 
     const dataSummary = getAllByTestId(container, /-summary$/);
 
-    expect(dataSummary).toHaveLength(9);
+    expect(dataSummary).toHaveLength(10);
   });
 
   it('OnClick it should redirect to respective page', () => {
@@ -64,6 +64,7 @@ describe('Test MyDataHeader Component', () => {
     const dashboards = getByTestId(container, 'dashboards');
     const pipelines = getByTestId(container, 'pipelines');
     const mlmodel = getByTestId(container, 'mlmodels');
+    const containers = getByTestId(container, 'containers');
     const service = getByTestId(container, 'service');
     const user = getByTestId(container, 'user');
     const terms = getByTestId(container, 'terms');
@@ -73,6 +74,7 @@ describe('Test MyDataHeader Component', () => {
     expect(dashboards).toHaveAttribute('href', '/explore/dashboards');
     expect(pipelines).toHaveAttribute('href', '/explore/pipelines');
     expect(mlmodel).toHaveAttribute('href', '/explore/mlmodels');
+    expect(containers).toHaveAttribute('href', '/explore/containers');
     expect(service).toHaveAttribute('href', '/settings/services/databases');
     expect(user).toHaveAttribute('href', '/settings/members/users');
     expect(terms).toHaveAttribute(

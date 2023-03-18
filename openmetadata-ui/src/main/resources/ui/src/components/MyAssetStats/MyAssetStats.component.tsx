@@ -71,6 +71,13 @@ const MyAssetStats: FunctionComponent<MyAssetStatsProps> = ({
         link: getExplorePath({ tab: 'mlmodels' }),
         dataTestId: 'mlmodels',
       },
+      containers: {
+        icon: Icons.CONTAINER,
+        data: t('label.container-plural'),
+        count: entityCounts.storageContainerCount,
+        link: getExplorePath({ tab: 'containers' }),
+        dataTestId: 'containers',
+      },
       testSuite: {
         icon: Icons.TEST_SUITE,
         data: t('label.test-suite-plural'),
