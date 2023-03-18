@@ -30,7 +30,6 @@ import static org.openmetadata.service.util.EntityUtil.ruleMatch;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
-import java.net.URI;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -115,18 +114,11 @@ public class PolicyRepository extends EntityRepository<Policy> {
 
   @Override
   public void storeEntity(Policy policy, boolean update) throws IOException {
-    // Relationships and fields such as href are derived and not stored as part of json
-    EntityReference owner = policy.getOwner();
+    // Relationships and fields such as location are derived and not stored as part of json
     EntityReference location = policy.getLocation();
-    URI href = policy.getHref();
-
-    // Don't store owner, location and href as JSON. Build it on the fly based on relationships
-    policy.withOwner(null).withLocation(null).withHref(null);
-
+    policy.withLocation(null);
     store(policy, update);
-
-    // Restore the relationships
-    policy.withOwner(owner).withLocation(location).withHref(href);
+    policy.withLocation(location);
   }
 
   @Override

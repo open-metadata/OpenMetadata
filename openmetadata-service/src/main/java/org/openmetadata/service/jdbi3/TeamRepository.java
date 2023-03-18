@@ -123,7 +123,6 @@ public class TeamRepository extends EntityRepository<Team> {
   @Override
   public void storeEntity(Team team, boolean update) throws IOException {
     // Relationships and fields such as href are derived and not stored as part of json
-    EntityReference owner = team.getOwner();
     List<EntityReference> users = team.getUsers();
     List<EntityReference> defaultRoles = team.getDefaultRoles();
     List<EntityReference> parents = team.getParents();
@@ -131,14 +130,13 @@ public class TeamRepository extends EntityRepository<Team> {
     List<EntityReference> policies = team.getPolicies();
 
     // Don't store users, defaultRoles, href as JSON. Build it on the fly based on relationships
-    team.withUsers(null).withDefaultRoles(null).withHref(null).withOwner(null).withInheritedRoles(null);
+    team.withUsers(null).withDefaultRoles(null).withInheritedRoles(null);
 
     store(team, update);
 
     // Restore the relationships
     team.withUsers(users)
         .withDefaultRoles(defaultRoles)
-        .withOwner(owner)
         .withParents(parents)
         .withChildren(children)
         .withPolicies(policies);

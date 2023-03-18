@@ -113,7 +113,7 @@ public class UserRepository extends EntityRepository<User> {
     List<EntityReference> teams = user.getTeams();
 
     // Don't store roles, teams and href as JSON. Build it on the fly based on relationships
-    user.withRoles(null).withTeams(null).withHref(null).withInheritedRoles(null);
+    user.withRoles(null).withTeams(null).withInheritedRoles(null);
 
     SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
     if (secretsManager != null && Boolean.TRUE.equals(user.getIsBot())) {
