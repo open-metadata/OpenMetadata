@@ -25,6 +25,7 @@ import {
 } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
+import AppBadge from 'components/common/Badge/Badge.component';
 import Description from 'components/common/description/Description';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import LeftPanelCard from 'components/common/LeftPanelCard/LeftPanelCard';
@@ -44,7 +45,7 @@ import {
 import TagsLeftPanelSkeleton from 'components/Skeleton/Tags/TagsLeftPanelSkeleton.component';
 import { LOADING_STATE } from 'enums/common.enum';
 import { compare } from 'fast-json-patch';
-import { isEmpty, isUndefined, toLower, trim } from 'lodash';
+import { capitalize, isEmpty, isUndefined, toLower, trim } from 'lodash';
 import { FormErrorData } from 'Models';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -684,7 +685,7 @@ const TagsPage = () => {
             {classifications &&
               classifications.map((category: Classification) => (
                 <div
-                  className={`tw-group tw-text-grey-body tw-cursor-pointer tw-my-1 tw-text-body tw-py-1 tw-px-3 tw-flex tw-justify-between ${getActiveCatClass(
+                  className={`tw-group align-center content-box cursor-pointer tw-text-grey-body tw-text-body tw-flex p-y-xss p-x-sm m-y-xss ${getActiveCatClass(
                     category.name,
                     currentClassification?.name
                   )}`}
@@ -697,9 +698,18 @@ const TagsPage = () => {
                     ellipsis={{ rows: 1, tooltip: true }}>
                     {getEntityName(category as unknown as EntityReference)}
                   </Typography.Paragraph>
+
+                  {category.provider === ProviderType.System ? (
+                    <AppBadge
+                      className="m-l-xs"
+                      label={capitalize(category.provider)}
+                      status="processing"
+                    />
+                  ) : null}
+
                   {getCountBadge(
                     category.termCount,
-                    'tw-self-center',
+                    'self-center m-l-auto',
                     currentClassification?.name === category.name
                   )}
                 </div>

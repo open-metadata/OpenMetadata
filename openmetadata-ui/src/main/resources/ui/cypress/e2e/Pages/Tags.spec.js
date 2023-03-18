@@ -302,6 +302,50 @@ describe('Tags page should work', () => {
       .should('be.checked');
   });
 
+  it('Edit Tag flow should work properly', () => {
+    interceptURL(
+      'DELETE',
+      '/api/v1/tags/*?recursive=true&hardDelete=true',
+      'deleteTag'
+    );
+    interceptURL(
+      'GET',
+      `/api/v1/tags?fields=usageCount&parent=${NEW_TAG_CATEGORY.name}&limit=10`,
+      'getTagList'
+    );
+    cy.get('[data-testid="data-summary-container"]')
+      .contains(NEW_TAG_CATEGORY.name)
+      .should('be.visible')
+      .as('newCategory');
+
+    cy.get('@newCategory')
+      .click()
+      .parent()
+      .should('have.class', 'activeCategory');
+
+    verifyResponseStatusCode('@getTagList', 200);
+    cy.get('[data-testid="table"]')
+      .should('be.visible')
+      .should('contain', NEW_TAG.name);
+
+    cy.get('[data-testid="table"]')
+      .find('[data-testid="tag-edit-icon"]')
+      .should('exist')
+      .and('be.visible')
+      .click();
+
+    cy.get('[data-testid="header"]').should('exist');
+
+    cy.get('[data-testid="name"]')
+      .should('exist')
+      .clear()
+      .type(`${NEW_TAG.name}123`);
+
+    cy.get('[data-testid="saveButton"]').should('exist').click();
+
+    cy.contains(`${NEW_TAG.name}123`).should('be.visible');
+  });
+
   it('Delete Tag flow should work properly', () => {
     interceptURL(
       'DELETE',
