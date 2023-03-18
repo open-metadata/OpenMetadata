@@ -2876,10 +2876,10 @@
     classcat "^5.0.3"
     zustand "^4.1.1"
 
-"@rjsf/core@^5.2.1":
-  version "5.2.1"
-  resolved "https://registry.yarnpkg.com/@rjsf/core/-/core-5.2.1.tgz#38a366ee37d1ef4f727c768ad416ce6bf9cc7687"
-  integrity sha512-r/yY/7IOPKYQNkZj73wyH+AuBNIauygJr/CNXumFctra50y+Cd5zS9H4XJ4TRtKAHOjz29s6nsA1nTaH1fPHDw==
+"@rjsf/core@5.3.0":
+  version "5.3.0"
+  resolved "https://registry.yarnpkg.com/@rjsf/core/-/core-5.3.0.tgz#9de16dcfc2bc868aeef599fbada68cafd95dce53"
+  integrity sha512-7draAifdTZi802SWFlgyU7Effi4DP3y7nqOE0IbSOLHop04yGnAdzqFOeQX6+ZtzN/lzTLKziv3IbOSSLnsuIA==
   dependencies:
     lodash "^4.17.15"
     lodash-es "^4.17.15"
@@ -2887,16 +2887,26 @@
     nanoid "^3.3.4"
     prop-types "^15.7.2"
 
-"@rjsf/utils@^5.2.1":
-  version "5.2.1"
-  resolved "https://registry.yarnpkg.com/@rjsf/utils/-/utils-5.2.1.tgz#b8903304625d38eff0ba06437bb41f4e34294434"
-  integrity sha512-+Evan0KDj0t0NtOAxOFtV+/kPDUWz2NyG9zl9X7LLiOlNY2zOdDeUtYEOklbpu1APOqIkwCQc6z1VefQJNKH8Q==
+"@rjsf/utils@5.3.0":
+  version "5.3.0"
+  resolved "https://registry.yarnpkg.com/@rjsf/utils/-/utils-5.3.0.tgz#680df18f02a653dd1db452fc00f8e3ddf98aaafd"
+  integrity sha512-Blgey/mWddAtGZJ6AZDRdZMaLzif3L0WCCwZRSIojAPvfVx+GsWs0H+WZNxo/FCNLN22wnYT7AXKLwO+Ymk5PA==
   dependencies:
     json-schema-merge-allof "^0.8.1"
     jsonpointer "^5.0.1"
     lodash "^4.17.15"
     lodash-es "^4.17.15"
     react-is "^18.2.0"
+
+"@rjsf/validator-ajv8@5.3.0":
+  version "5.3.0"
+  resolved "https://registry.yarnpkg.com/@rjsf/validator-ajv8/-/validator-ajv8-5.3.0.tgz#b8a79d887e55f01bea10ae8f52e98843e1ee7f74"
+  integrity sha512-LYV/OqCUAMYKLDTHIEDLQ5ETEMgxIQbWmnBreG0eMoF55DpxjRoNU7KZwk04JtFWCVJIRN4/KXuqPPv9/nV7Lw==
+  dependencies:
+    ajv "^8.12.0"
+    ajv-formats "^2.1.1"
+    lodash "^4.17.15"
+    lodash-es "^4.17.15"
 
 "@sheerun/mutationobserver-shim@^0.3.2":
   version "0.3.3"
@@ -4366,6 +4376,16 @@ ajv@^8.0.1:
     require-from-string "^2.0.2"
     uri-js "^4.2.2"
 
+ajv@^8.12.0:
+  version "8.12.0"
+  resolved "https://registry.yarnpkg.com/ajv/-/ajv-8.12.0.tgz#d1a0527323e22f53562c567c00991577dfbe19d1"
+  integrity sha512-sRu1kpcO9yLtYxBKvqfTeh9KzZEwO3STyX1HT+4CaDzC6HpTGYhIhPIzj9XuKU7KYDwnaeh5hcOwjy1QuJzBPA==
+  dependencies:
+    fast-deep-equal "^3.1.1"
+    json-schema-traverse "^1.0.0"
+    require-from-string "^2.0.2"
+    uri-js "^4.2.2"
+
 amdefine@>=0.0.4:
   version "1.0.1"
   resolved "https://registry.yarnpkg.com/amdefine/-/amdefine-1.0.1.tgz#4a5282ac164729e93619bcfd3ad151f817ce91f5"
@@ -5234,15 +5254,10 @@ camelize@^1.0.0:
   resolved "https://registry.yarnpkg.com/camelize/-/camelize-1.0.1.tgz#89b7e16884056331a35d6b5ad064332c91daa6c3"
   integrity sha512-dU+Tx2fsypxTgtLoE36npi3UqcjSSMNYfkqgmoEhtZrraP5VWq0K7FkWVTYa8eMPtnU/G2txVsfdCJTn9uzpuQ==
 
-caniuse-lite@^1.0.30001109:
-  version "1.0.30001327"
-  resolved "https://registry.npmjs.org/caniuse-lite/-/caniuse-lite-1.0.30001327.tgz"
-  integrity sha512-1/Cg4jlD9qjZzhbzkzEaAC2JHsP0WrOc8Rd/3a3LuajGzGWR/hD7TVyvq99VqmTy99eVh8Zkmdq213OgvgXx7w==
-
-caniuse-lite@^1.0.30001400:
-  version "1.0.30001421"
-  resolved "https://registry.yarnpkg.com/caniuse-lite/-/caniuse-lite-1.0.30001421.tgz#979993aaacff5ab72a8d0d58c28ddbcb7b4deba6"
-  integrity sha512-Sw4eLbgUJAEhjLs1Fa+mk45sidp1wRn5y6GtDpHGBaNJ9OCDJaVh2tIaWWUnGfuXfKf1JCBaIarak3FkVAvEeA==
+caniuse-lite@^1.0.30001109, caniuse-lite@^1.0.30001400:
+  version "1.0.30001467"
+  resolved "https://registry.npmjs.org/caniuse-lite/-/caniuse-lite-1.0.30001467.tgz"
+  integrity sha512-cEdN/5e+RPikvl9AHm4uuLXxeCNq8rFsQ+lPHTfe/OtypP3WwnVVbjn+6uBV7PaFL6xUFzTh+sSCOz1rKhcO+Q==
 
 capture-exit@^2.0.0:
   version "2.0.0"
@@ -9924,9 +9939,9 @@ mark.js@^8.11.1:
   integrity sha1-GA8fnr74sOY45BZq1S24eb6y/8U=
 
 markdown-to-jsx@^7.1.9:
-  version "7.1.9"
-  resolved "https://registry.yarnpkg.com/markdown-to-jsx/-/markdown-to-jsx-7.1.9.tgz#1ffae0cda07c189163d273bd57a5b8f8f8745586"
-  integrity sha512-x4STVIKIJR0mGgZIZ5RyAeQD7FEZd5tS8m/htbcVGlex32J+hlSLj+ExrHCxP6nRKF1EKbcO7i6WhC1GtOpBlA==
+  version "7.2.0"
+  resolved "https://registry.yarnpkg.com/markdown-to-jsx/-/markdown-to-jsx-7.2.0.tgz#e7b46b65955f6a04d48a753acd55874a14bdda4b"
+  integrity sha512-3l4/Bigjm4bEqjCR6Xr+d4DtM1X6vvtGsMGSjJYyep8RjjIvcWtrXBS8Wbfe1/P+atKNMccpsraESIaWVplzVg==
 
 marked@^0.7.0:
   version "0.7.0"

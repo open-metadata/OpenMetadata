@@ -12,6 +12,7 @@
  */
 
 import { IChangeEvent } from '@rjsf/core';
+import validator from '@rjsf/validator-ajv8';
 import { ObjectStoreServiceType } from 'generated/entity/services/objectstoreService';
 import { cloneDeep, isNil } from 'lodash';
 import { LoadingState } from 'Models';
@@ -173,19 +174,6 @@ const ConnectionConfigForm: FunctionComponent<Props> = ({
     [onSave]
   );
 
-  const validators = useMemo(
-    () => ({
-      isValid: () => true,
-      rawValidation: () => ({ errors: [] }),
-      toErrorList: () => [],
-      validateFormData: () => ({
-        errors: [],
-        errorSchema: {},
-      }),
-    }),
-    []
-  );
-
   return (
     <FormBuilder
       cancelText={cancelText}
@@ -196,7 +184,7 @@ const ConnectionConfigForm: FunctionComponent<Props> = ({
       schema={connectionSchema.schema}
       status={status}
       uiSchema={connectionSchema.uiSchema}
-      validator={validators}
+      validator={validator}
       onCancel={onCancel}
       onSubmit={handleSave}
       onTestConnection={
