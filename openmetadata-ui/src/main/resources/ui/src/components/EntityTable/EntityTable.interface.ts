@@ -61,11 +61,11 @@ export interface TableTagsProps {
 }
 
 export interface EntityTableTagsProps {
+  tags: TableTagsProps;
   allTags: TagOption[];
   onUpdateTagsHandler: (cell: Column) => void;
   isReadOnly?: boolean;
   entityFqn?: string;
-  tags: TableTagsProps;
   record: Column;
   index: number;
   isTagLoading: boolean;
@@ -82,7 +82,8 @@ export interface EntityTableTagsProps {
   onThreadLinkSelect?: (value: string, threadType?: ThreadType) => void;
   entityFieldThreads?: EntityFieldThreads[];
   tagFetchFailed: boolean;
-  tableColumns: Column[];
   onUpdate?: (columns: Column[]) => Promise<void>;
   type: TagSource;
+  fetchTags: () => void;
+  dataTestId: string;
 }

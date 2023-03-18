@@ -723,8 +723,9 @@ describe('Glossary page should work properly', () => {
 
     // Add tag to schema table
     cy.get(
-      '[data-row-key="comments"] [data-testid="tags-wrapper"] [data-testid="tag-container"]'
+      '[data-row-key="comments"] [data-testid="glossary-tags"] [data-testid="tags-wrapper"] [data-testid="tag-container"]'
     )
+      .scrollIntoView()
       .should('be.visible')
       .first()
       .click();
@@ -972,7 +973,11 @@ describe('Glossary page should work properly', () => {
       .and('not.contain', 'Personal');
     // Remove the added column tag from entity
     interceptURL('PATCH', '/api/v1/tables/*', 'removeSchemaTags');
-    cy.get('[data-testid="remove"]').eq(0).should('be.visible').click();
+    cy.get('[data-testid="remove"]')
+      .scrollIntoView()
+      .eq(0)
+      .should('be.visible')
+      .click();
     verifyResponseStatusCode('@removeSchemaTags', 200);
 
     cy.get('[data-testid="tags"]')

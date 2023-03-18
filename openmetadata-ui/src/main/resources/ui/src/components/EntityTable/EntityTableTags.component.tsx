@@ -46,9 +46,10 @@ const EntityTableTags = ({
   allTags,
   handleTagSelection,
   type,
+  fetchTags,
+  tagFetchFailed,
+  dataTestId,
 }: EntityTableTagsProps) => {
-  console.log({ type, tags });
-
   const { t } = useTranslation();
   const otherTags =
     type === TagSource.Glossary
@@ -94,19 +95,27 @@ const EntityTableTags = ({
   };
 
   return (
-    <div className="hover-icon-group">
+    <div className="hover-icon-group" data-testid={dataTestId}>
       {isReadOnly ? (
         <TagsViewer sizeCap={-1} tags={tags[type] || []} />
       ) : (
         <div
           className={classNames(
-            `tw-flex tw-justify-content`,
+            `d-flex justify-content`,
             editColumnTag?.index === index || !isEmpty(tags)
-              ? 'tw-flex-col tw-items-start'
-              : 'tw-items-center'
+              ? 'flex-col items-start'
+              : 'items-center'
           )}
           data-testid="tags-wrapper"
-          onClick={() => !editColumnTag && handleEditColumnTag(record, index)}>
+          onClick={() => {
+            if (!editColumnTag) {
+              handleEditColumnTag(record, index);
+              // Fetch tags and terms only once
+              if (allTags.length === 0 || tagFetchFailed) {
+                fetchTags();
+              }
+            }
+          }}>
           <TagsContainer
             className="w-min-15 "
             editable={editColumnTag?.index === index}

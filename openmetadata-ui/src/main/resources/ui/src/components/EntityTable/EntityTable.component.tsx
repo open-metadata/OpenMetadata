@@ -13,7 +13,7 @@
 
 import { Button, Popover, Space, Table, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
-import { TagSource } from 'generated/type/schema';
+import { LabelType, State, TagSource } from 'generated/type/schema';
 import {
   cloneDeep,
   isEmpty,
@@ -31,11 +31,10 @@ import { ReactComponent as IconEdit } from '../../assets/svg/ic-edit.svg';
 import { ReactComponent as IconRequest } from '../../assets/svg/request-icon.svg';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { EntityField } from '../../constants/Feeds.constants';
-import { SettledStatus } from '../../enums/axios.enum';
 import { EntityType, FqnPart } from '../../enums/entity.enum';
 import { Column } from '../../generated/entity/data/table';
 import { ThreadType } from '../../generated/entity/feed/thread';
-import { LabelType, State, TagLabel } from '../../generated/type/tagLabel';
+import { TagLabel } from '../../generated/type/tagLabel';
 import { EntityFieldThreads } from '../../interface/feed.interface';
 import { getPartialNameFromTableFQN } from '../../utils/CommonUtils';
 import {
@@ -68,7 +67,6 @@ import {
   EntityTableProps,
   TableCellRendered,
   TableTagsProps,
-  TagsCollection,
 } from './EntityTable.interface';
 import './EntityTable.style.less';
 import EntityTableTags from './EntityTableTags.component';
@@ -102,70 +100,44 @@ const EntityTable = ({
     index: number;
   }>();
 
-  const [allTags, setAllTags] = useState<TagsCollection>({
-    Classification: [],
-    Glossary: [],
-  });
   const [isTagLoading, setIsTagLoading] = useState<boolean>(false);
   const [tagFetchFailed, setTagFetchFailed] = useState<boolean>(false);
+  const [glossaryTags, setGlossaryTags] = useState<TagOption[]>([]);
+  const [classificationTags, setClassificationTags] = useState<TagOption[]>([]);
 
-  const fetchTagsAndGlossaryTerms = () => {
+  const fetchGlossaryTags = async () => {
     setIsTagLoading(true);
-    Promise.allSettled([getClassifications(), fetchGlossaryTerms()])
-      .then(async (values) => {
-        const tagsAndTerms: Record<TagSource, TagOption[]> = {
-          Classification: [],
-          Glossary: [],
-        };
-        if (
-          values[0].status === SettledStatus.FULFILLED &&
-          values[0].value.data
-        ) {
-          const tagList = await getTaglist(values[0].value.data);
+    try {
+      const res = await fetchGlossaryTerms();
 
-          tagsAndTerms[TagSource.Classification] =
-            tagList.length !== 0
-              ? tagList.map((tag) => {
-                  return {
-                    fqn: tag,
-                    source: 'Classification',
-                  };
-                })
-              : [];
-        }
-        if (
-          values[1].status === SettledStatus.FULFILLED &&
-          values[1].value &&
-          values[1].value.length > 0
-        ) {
-          const glossaryTerms: TagOption[] = getGlossaryTermlist(
-            values[1].value
-          ).map((tag) => {
-            return { fqn: tag, source: 'Glossary' };
-          });
-          tagsAndTerms[TagSource.Glossary] = glossaryTerms;
-        }
-        setAllTags(tagsAndTerms);
-        if (
-          values[0].status === SettledStatus.FULFILLED &&
-          values[1].status === SettledStatus.FULFILLED
-        ) {
-          setTagFetchFailed(false);
-        } else {
-          setTagFetchFailed(true);
-        }
-        setIsTagLoading(false);
-      })
-      .catch(() => {
-        setAllTags({
-          Classification: [],
-          Glossary: [],
-        });
-        setTagFetchFailed(true);
-      })
-      .finally(() => {
-        setIsTagLoading(false);
-      });
+      const glossaryTerms: TagOption[] = getGlossaryTermlist(res).map(
+        (tag) => ({ fqn: tag, source: TagSource.Glossary })
+      );
+      setGlossaryTags(glossaryTerms);
+    } catch {
+      setTagFetchFailed(true);
+    } finally {
+      setIsTagLoading(false);
+    }
+  };
+
+  const fetchClassificationTags = async () => {
+    setIsTagLoading(true);
+    try {
+      const res = await getClassifications();
+      const tagList = await getTaglist(res.data);
+
+      const classificationTag: TagOption[] = map(tagList, (tag) => ({
+        fqn: tag,
+        source: TagSource.Classification,
+      }));
+
+      setClassificationTags(classificationTag);
+    } catch {
+      setTagFetchFailed(true);
+    } finally {
+      setIsTagLoading(false);
+    }
   };
 
   const handleEditColumn = (column: Column, index: number): void => {
@@ -193,34 +165,43 @@ const EntityTable = ({
     });
   };
 
+  const getUpdatedTags = (
+    column: Column,
+    newColumnTags: Array<EntityTags>
+  ): TagLabel[] => {
+    const prevTagsFqn = column?.tags?.map((tag) => tag.tagFQN);
+
+    return reduce(
+      newColumnTags,
+      (acc: Array<EntityTags>, cv: TagOption) => {
+        if (prevTagsFqn?.includes(cv.fqn)) {
+          const prev = column?.tags?.find((tag) => tag.tagFQN === cv.fqn);
+
+          return [...acc, prev];
+        } else {
+          return [
+            ...acc,
+            {
+              labelType: LabelType.Manual,
+              state: State.Confirmed,
+              source: cv.source,
+              tagFQN: cv.fqn,
+            },
+          ];
+        }
+      },
+      []
+    );
+  };
+
   const updateColumnTags = (
     tableCols: Column[],
     changedColFQN: string,
     newColumnTags: Array<TagOption>
   ) => {
-    const getUpdatedTags = (column: Column) => {
-      const prevTags = column?.tags?.filter((tag) => {
-        return newColumnTags.map((tag) => tag.fqn).includes(tag.tagFQN);
-      });
-
-      const newTags: Array<EntityTags> = newColumnTags
-        .filter((tag) => {
-          return !prevTags?.map((prevTag) => prevTag.tagFQN).includes(tag.fqn);
-        })
-        .map((tag) => ({
-          labelType: LabelType.Manual,
-          state: State.Confirmed,
-          source: tag.source,
-          tagFQN: tag.fqn,
-        }));
-      const updatedTags = [...(prevTags as TagLabel[]), ...newTags];
-
-      return updatedTags;
-    };
-
     tableCols?.forEach((col) => {
       if (col.fullyQualifiedName === changedColFQN) {
-        col.tags = getUpdatedTags(col);
+        col.tags = getUpdatedTags(col, newColumnTags);
       } else {
         updateColumnTags(
           col?.children as Column[],
@@ -247,7 +228,7 @@ const EntityTable = ({
   };
 
   const handleTagSelection = (
-    selectedTags?: TagLabel[],
+    selectedTags?: Array<EntityTags>,
     columnFQN = '',
     editColumnTag?: EditColumnTag,
     otherTags?: TagLabel[]
@@ -516,6 +497,7 @@ const EntityTable = ({
         key: 'name',
         accessor: 'name',
         width: 220,
+        fixed: 'left',
         render: (name: Column['name'], record: Column) => (
           <Space
             align="start"
@@ -572,12 +554,14 @@ const EntityTable = ({
         key: 'tags',
         accessor: 'tags',
         width: 350,
-        render: (tags: TagLabel[], record, index) => (
+        render: (tags: TagLabel[], record: Column, index: number) => (
           <EntityTableTags
-            allTags={allTags[TagSource.Classification]}
+            allTags={classificationTags}
+            dataTestId="classification-tags"
             entityFieldTasks={entityFieldTasks}
             entityFieldThreads={entityFieldThreads}
             entityFqn={entityFqn}
+            fetchTags={fetchClassificationTags}
             getColumnName={getColumnName}
             handleTagSelection={handleTagSelection}
             hasTagEditAccess={hasTagEditAccess}
@@ -585,7 +569,6 @@ const EntityTable = ({
             isReadOnly={isReadOnly}
             isTagLoading={isTagLoading}
             record={record}
-            tableColumns={tableColumns}
             tagFetchFailed={tagFetchFailed}
             tags={getFilterTags(tags)}
             type={TagSource.Classification}
@@ -602,12 +585,14 @@ const EntityTable = ({
         key: 'tags',
         accessor: 'tags',
         width: 350,
-        render: (tags: TagLabel[], record, index) => (
+        render: (tags: TagLabel[], record: Column, index: number) => (
           <EntityTableTags
-            allTags={allTags[TagSource.Glossary]}
+            allTags={glossaryTags}
+            dataTestId="glossary-tags"
             entityFieldTasks={entityFieldTasks}
             entityFieldThreads={entityFieldThreads}
             entityFqn={entityFqn}
+            fetchTags={fetchGlossaryTags}
             getColumnName={getColumnName}
             handleTagSelection={handleTagSelection}
             hasTagEditAccess={hasTagEditAccess}
@@ -615,7 +600,6 @@ const EntityTable = ({
             isReadOnly={isReadOnly}
             isTagLoading={isTagLoading}
             record={record}
-            tableColumns={tableColumns}
             tagFetchFailed={tagFetchFailed}
             tags={getFilterTags(tags)}
             type={TagSource.Glossary}
@@ -638,10 +622,6 @@ const EntityTable = ({
       setSearchedColumns(searchCols);
     }
   }, [searchText, tableColumns]);
-
-  useEffect(() => {
-    fetchTagsAndGlossaryTerms();
-  }, []);
 
   return (
     <>
