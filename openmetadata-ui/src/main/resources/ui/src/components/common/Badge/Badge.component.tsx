@@ -13,7 +13,7 @@
 import { Badge, BadgeProps } from 'antd';
 import classNames from 'classnames';
 import React from 'react';
-import './Badge.style.less';
+import './badge.style.less';
 
 interface AppBadgeProps extends BadgeProps {
   label: string;
