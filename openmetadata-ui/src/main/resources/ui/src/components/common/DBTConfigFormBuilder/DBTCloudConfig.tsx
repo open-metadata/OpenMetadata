@@ -37,6 +37,8 @@ interface Props extends DBTFormCommonProps, DbtConfigCloud {
   handleDbtCloudJobId: (value: string) => void;
   handleUpdateDBTClassification: (value: string) => void;
   handleDbtCloudUrl: (value: string) => void;
+  enableDebugLog: boolean;
+  handleEnableDebugLogCheck: (value: boolean) => void;
 }
 
 export const DBTCloudConfig: FunctionComponent<Props> = ({
@@ -58,6 +60,8 @@ export const DBTCloudConfig: FunctionComponent<Props> = ({
   dbtClassificationName,
   handleDbtCloudUrl,
   handleUpdateDBTClassification,
+  enableDebugLog,
+  handleEnableDebugLogCheck,
 }: Props) => {
   const [errors, setErrors] = useState<ErrorDbtCloud>();
 
@@ -185,6 +189,8 @@ export const DBTCloudConfig: FunctionComponent<Props> = ({
         dbtClassificationName={dbtClassificationName}
         dbtUpdateDescriptions={dbtUpdateDescriptions}
         descriptionId="cloud-update-description"
+        enableDebugLog={enableDebugLog}
+        handleEnableDebugLogCheck={handleEnableDebugLogCheck}
         handleUpdateDBTClassification={handleUpdateDBTClassification}
         handleUpdateDescriptions={handleUpdateDescriptions}
       />

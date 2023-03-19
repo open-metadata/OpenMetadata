@@ -21,6 +21,7 @@ import { isEmpty, isUndefined, uniqueId } from 'lodash';
 import React, { FC, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
+import { getEntityName } from 'utils/EntityUtils';
 import {
   NO_PERMISSION_FOR_ACTION,
   NO_PERMISSION_TO_VIEW,
@@ -28,7 +29,6 @@ import {
 import { EntityType } from '../../../enums/entity.enum';
 import { Operation, Policy } from '../../../generated/entity/policies/policy';
 import { Paging } from '../../../generated/type/paging';
-import { getEntityName } from '../../../utils/CommonUtils';
 import {
   checkPermission,
   LIST_CAP,

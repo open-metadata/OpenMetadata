@@ -59,16 +59,13 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
 
   @Override
   public void storeEntity(DatabaseSchema schema, boolean update) throws IOException {
-    // Relationships and fields such as href are derived and not stored as part of json
-    EntityReference owner = schema.getOwner();
+    // Relationships and fields such as service are derived and not stored as part of json
     EntityReference service = schema.getService();
-
-    // Don't store owner, database, href and tags as JSON. Build it on the fly based on relationships
-    schema.withOwner(null).withService(null).withHref(null);
+    schema.withService(null);
 
     store(schema, update);
     // Restore the relationships
-    schema.withOwner(owner).withService(service);
+    schema.withService(service);
   }
 
   @Override

@@ -44,6 +44,7 @@ from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.connections.session import create_and_bind_session
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
+from metadata.ingestion.source.pipeline.airflow.lineage_parser import get_xlets_from_dag
 from metadata.ingestion.source.pipeline.pipeline_service import PipelineServiceSource
 from metadata.utils.helpers import datetime_to_ts
 from metadata.utils.logger import ingestion_logger
@@ -408,11 +409,12 @@ class AirflowSource(PipelineServiceSource):
             )
         )
 
-        for task in dag.tasks:
-            for from_fqn in self.get_inlets(task) or []:
+        xlets = get_xlets_from_dag(dag=dag)
+        for xlet in xlets:
+            for from_fqn in xlet.inlets or []:
                 from_entity = self.metadata.get_by_name(entity=Table, fqn=from_fqn)
                 if from_entity:
-                    for to_fqn in self.get_outlets(task) or []:
+                    for to_fqn in xlet.outlets or []:
                         to_entity = self.metadata.get_by_name(entity=Table, fqn=to_fqn)
                         if to_entity:
                             lineage = AddLineageRequest(

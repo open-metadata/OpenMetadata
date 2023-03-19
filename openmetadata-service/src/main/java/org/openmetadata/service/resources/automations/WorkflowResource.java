@@ -1,4 +1,4 @@
-package org.openmetadata.service.resources.operations;
+package org.openmetadata.service.resources.automations;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.service.Entity.FIELD_OWNER;
@@ -70,14 +70,14 @@ import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
 
 @Slf4j
-@Path("/v1/operations/workflow")
-@Api(value = "Operations Workflow collection", tags = "Operations Workflow collection")
+@Path("/v1/automations/workflow")
+@Api(value = "Automations Workflow collection", tags = "Automations Workflow collection")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "Workflow")
 public class WorkflowResource extends EntityResource<Workflow, WorkflowRepository> {
 
-  public static final String COLLECTION_PATH = "/v1/operations/workflow";
+  public static final String COLLECTION_PATH = "/v1/automations/workflow";
   static final String FIELDS = "owner";
 
   private PipelineServiceClient pipelineServiceClient;
@@ -113,16 +113,16 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
   @GET
   @Operation(
       operationId = "listWorkflows",
-      summary = "List operations workflows",
+      summary = "List automations workflows",
       tags = "automationsWorkflow",
       description =
-          "Get a list of operations workflows. Use `fields` "
+          "Get a list of automations workflows. Use `fields` "
               + "parameter to get only necessary fields. Use cursor-based pagination to limit the number "
               + "entries in the list using `limit` and `before` or `after` query params.",
       responses = {
         @ApiResponse(
             responseCode = "200",
-            description = "List of operations workflows",
+            description = "List of automations workflows",
             content =
                 @Content(
                     mediaType = "application/json",
@@ -136,19 +136,19 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
               schema = @Schema(type = "string", example = FIELDS))
           @QueryParam("fields")
           String fieldsParam,
-      @Parameter(description = "Limit the number operations workflows returned. (1 to 1000000, default = " + "10)")
+      @Parameter(description = "Limit the number automations workflows returned. (1 to 1000000, default = " + "10)")
           @DefaultValue("10")
           @QueryParam("limit")
           @Min(0)
           @Max(1000000)
           int limitParam,
       @Parameter(
-              description = "Returns list of operations workflows before this cursor",
+              description = "Returns list of automations workflows before this cursor",
               schema = @Schema(type = "string"))
           @QueryParam("before")
           String before,
       @Parameter(
-              description = "Returns list of operations workflows after this cursor",
+              description = "Returns list of automations workflows after this cursor",
               schema = @Schema(type = "string"))
           @QueryParam("after")
           String after,

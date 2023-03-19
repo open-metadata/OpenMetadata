@@ -15,9 +15,14 @@ package org.openmetadata.service.jdbi3;
 
 import static java.lang.Boolean.FALSE;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+import static org.openmetadata.schema.type.MetadataOperation.EDIT_ALL;
+import static org.openmetadata.schema.type.MetadataOperation.VIEW_ALL;
+import static org.openmetadata.service.Entity.ALL_RESOURCES;
 import static org.openmetadata.service.Entity.FIELD_DESCRIPTION;
 import static org.openmetadata.service.Entity.LOCATION;
 import static org.openmetadata.service.Entity.POLICY;
+import static org.openmetadata.service.security.policyevaluator.OperationContext.isEditOperation;
+import static org.openmetadata.service.security.policyevaluator.OperationContext.isViewOperation;
 import static org.openmetadata.service.util.EntityUtil.entityReferenceMatch;
 import static org.openmetadata.service.util.EntityUtil.getId;
 import static org.openmetadata.service.util.EntityUtil.getRuleField;
@@ -25,10 +30,10 @@ import static org.openmetadata.service.util.EntityUtil.ruleMatch;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
-import java.net.URI;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.entity.data.Location;
@@ -109,18 +114,11 @@ public class PolicyRepository extends EntityRepository<Policy> {
 
   @Override
   public void storeEntity(Policy policy, boolean update) throws IOException {
-    // Relationships and fields such as href are derived and not stored as part of json
-    EntityReference owner = policy.getOwner();
+    // Relationships and fields such as location are derived and not stored as part of json
     EntityReference location = policy.getLocation();
-    URI href = policy.getHref();
-
-    // Don't store owner, location and href as JSON. Build it on the fly based on relationships
-    policy.withOwner(null).withLocation(null).withHref(null);
-
+    policy.withLocation(null);
     store(policy, update);
-
-    // Restore the relationships
-    policy.withOwner(owner).withLocation(location).withHref(href);
+    policy.withLocation(location);
   }
 
   @Override
@@ -156,6 +154,12 @@ public class PolicyRepository extends EntityRepository<Policy> {
       CompiledRule.validateExpression(rule.getCondition(), Boolean.class);
       rule.getResources().sort(String.CASE_INSENSITIVE_ORDER);
       rule.getOperations().sort(Comparator.comparing(MetadataOperation::value));
+
+      // Remove redundant resources
+      rule.setResources(filterRedundantResources(rule.getResources()));
+
+      // Remove redundant operations
+      rule.setOperations(filterRedundantOperations(rule.getOperations()));
     }
     rules.sort(Comparator.comparing(Rule::getName));
   }
@@ -165,6 +169,29 @@ public class PolicyRepository extends EntityRepository<Policy> {
       return;
     }
     addRelationship(policy.getId(), policy.getLocation().getId(), POLICY, Entity.LOCATION, Relationship.APPLIED_TO);
+  }
+
+  public static List<String> filterRedundantResources(List<String> resources) {
+    // If ALL_RESOURCES are in the resource list, remove redundant resources specifically mentioned
+    boolean containsAllResources = resources.stream().anyMatch(ALL_RESOURCES::equalsIgnoreCase);
+    return containsAllResources ? List.of(ALL_RESOURCES) : resources;
+  }
+
+  public static List<MetadataOperation> filterRedundantOperations(List<MetadataOperation> operations) {
+    // If VIEW_ALL is in the operation list, remove all the other specific view operations that are redundant
+    boolean containsViewAll = operations.stream().anyMatch(o -> o.equals(VIEW_ALL));
+    if (containsViewAll) {
+      operations =
+          operations.stream().filter(o -> o.equals(VIEW_ALL) || !isViewOperation(o)).collect(Collectors.toList());
+    }
+
+    // If EDIT_ALL is in the operation list, remove all the other specific edit operations that are redundant
+    boolean containsEditAll = operations.stream().anyMatch(o -> o.equals(EDIT_ALL));
+    if (containsEditAll) {
+      operations =
+          operations.stream().filter(o -> o.equals(EDIT_ALL) || !isEditOperation(o)).collect(Collectors.toList());
+    }
+    return operations;
   }
 
   /** Handles entity updated from PUT and POST operation. */

@@ -13,27 +13,20 @@
 import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
 import { Button, Col, Input, Row, Space, Tooltip, Typography } from 'antd';
 import Description from 'components/common/description/Description';
+import OwnerWidgetWrapper from 'components/common/OwnerWidget/OwnerWidgetWrapper.component';
 import ProfilePicture from 'components/common/ProfilePicture/ProfilePicture';
-import DropDownList from 'components/dropdown/DropDownList';
 import ReviewerModal from 'components/Modals/ReviewerModal/ReviewerModal.component';
 import { OperationPermission } from 'components/PermissionProvider/PermissionProvider.interface';
-import { WILD_CARD_CHAR } from 'constants/char.constants';
 import { getUserPath } from 'constants/constants';
 import { NO_PERMISSION_FOR_ACTION } from 'constants/HelperTextUtil';
 import { EntityReference, Glossary } from 'generated/entity/data/glossary';
 import { GlossaryTerm } from 'generated/entity/data/glossaryTerm';
-import { cloneDeep, debounce, includes, isEqual } from 'lodash';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { cloneDeep, includes, isEqual } from 'lodash';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { getEntityName } from 'utils/CommonUtils';
-import { getOwnerList } from 'utils/ManageUtils';
+import { getEntityName } from 'utils/EntityUtils';
 import SVGIcons, { Icons } from 'utils/SvgUtils';
-import {
-  isCurrentUserAdmin,
-  searchFormattedUsersAndTeams,
-  suggestFormattedUsersAndTeams,
-} from 'utils/UserDataUtils';
 
 export interface GlossaryHeaderProps {
   supportAddOwner?: boolean;
@@ -53,10 +46,7 @@ const GlossaryHeader = ({
   const [isNameEditing, setIsNameEditing] = useState<boolean>(false);
   const [isDescriptionEditable, setIsDescriptionEditable] =
     useState<boolean>(false);
-  const [listVisible, setListVisible] = useState<boolean>(false);
-  const [isUserLoading, setIsUserLoading] = useState<boolean>(false);
-  const [listOwners, setListOwners] = useState(getOwnerList());
-  const [searchText, setSearchText] = useState<string>('');
+  const [isEditOwner, setIsEditOwner] = useState<boolean>(false);
   const [showReviewerModal, setShowReviewerModal] = useState<boolean>(false);
 
   const editDisplayNamePermission = useMemo(() => {
@@ -95,71 +85,6 @@ const GlossaryHeader = ({
       setIsDescriptionEditable(false);
     }
   };
-  const getOwnerSearch = useCallback(
-    (searchQuery = WILD_CARD_CHAR, from = 1) => {
-      setIsUserLoading(true);
-      searchFormattedUsersAndTeams(searchQuery, from)
-        .then((res) => {
-          const { users, teams } = res;
-          setListOwners(getOwnerList(users, teams, false, searchQuery));
-        })
-        .catch(() => {
-          setListOwners([]);
-        })
-        .finally(() => {
-          setIsUserLoading(false);
-        });
-    },
-    [setListOwners, setIsUserLoading]
-  );
-  const handleSelectOwnerDropdown = () => {
-    setListVisible((visible) => {
-      const newState = !visible;
-
-      if (newState) {
-        getOwnerSearch();
-      }
-
-      return newState;
-    });
-  };
-  const getOwnerSuggestion = useCallback(
-    (qSearchText = '') => {
-      setIsUserLoading(true);
-      suggestFormattedUsersAndTeams(qSearchText)
-        .then((res) => {
-          const { users, teams } = res;
-          setListOwners(getOwnerList(users, teams, false, qSearchText));
-        })
-        .catch(() => {
-          setListOwners([]);
-        })
-        .finally(() => {
-          setIsUserLoading(false);
-        });
-    },
-    [setListOwners, setIsUserLoading]
-  );
-
-  const debouncedOnChange = useCallback(
-    (text: string): void => {
-      if (text) {
-        getOwnerSuggestion(text);
-      } else {
-        getOwnerSearch();
-      }
-    },
-    [getOwnerSuggestion, getOwnerSearch]
-  );
-
-  const debounceOnSearch = useCallback(debounce(debouncedOnChange, 400), [
-    debouncedOnChange,
-  ]);
-
-  const handleOwnerSearch = (text: string) => {
-    setSearchText(text);
-    debounceOnSearch(text);
-  };
 
   const handleRemoveReviewer = (id: string) => {
     let updatedGlossary = cloneDeep(selectedData);
@@ -174,39 +99,23 @@ const GlossaryHeader = ({
     onUpdate(updatedGlossary);
   };
 
-  const prepareOwner = (updatedOwner?: EntityReference) => {
-    return !isEqual(updatedOwner, selectedData.owner)
-      ? updatedOwner
-      : undefined;
-  };
-  const handleOwnerSelection = (
-    _e: React.MouseEvent<HTMLElement, MouseEvent>,
-    value = ''
-  ) => {
-    const owner = listOwners.find((item) => item.value === value);
-
-    if (owner) {
-      const newOwner = prepareOwner({
-        type: owner.type,
-        id: owner.value || '',
-      });
-      if (newOwner) {
-        const updatedData = {
-          ...selectedData,
-          owner: newOwner,
-        };
-        onUpdate(updatedData);
-      }
+  const handleUpdatedOwner = (newOwner: Glossary['owner']) => {
+    if (newOwner) {
+      const updatedData = {
+        ...selectedData,
+        owner: newOwner,
+      };
+      onUpdate(updatedData);
     }
-    setListVisible(false);
   };
-  const onRemoveOwner = () => {
+
+  const handleRemoveOwner = () => {
     const updatedData = {
       ...selectedData,
       owner: undefined,
     };
     onUpdate(updatedData);
-    setListVisible(false);
+    setIsEditOwner(false);
   };
 
   const handleReviewerSave = (data: Array<EntityReference>) => {
@@ -330,23 +239,16 @@ const GlossaryHeader = ({
                   }
                   size="small"
                   type="text"
-                  onClick={handleSelectOwnerDropdown}
+                  onClick={() => setIsEditOwner(true)}
                 />
               </Tooltip>
-              {listVisible && (
-                <DropDownList
-                  showEmptyList
-                  controlledSearchStr={searchText}
-                  dropDownList={listOwners}
-                  groupType="tab"
-                  horzPosRight={false}
-                  isLoading={isUserLoading}
-                  listGroups={['Teams', 'Users']}
-                  removeOwner={onRemoveOwner}
-                  showSearchBar={isCurrentUserAdmin()}
-                  value={selectedData.owner?.id || ''}
-                  onSearchTextChange={handleOwnerSearch}
-                  onSelect={handleOwnerSelection}
+              {isEditOwner && (
+                <OwnerWidgetWrapper
+                  currentUser={selectedData.owner}
+                  hideWidget={() => setIsEditOwner(false)}
+                  removeOwner={handleRemoveOwner}
+                  updateUser={handleUpdatedOwner}
+                  visible={isEditOwner}
                 />
               )}
             </div>

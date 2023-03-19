@@ -50,7 +50,7 @@ import {
   updateAlert,
 } from 'rest/alertsAPI';
 import { getSuggestions } from 'rest/miscAPI';
-import { getEntityName } from 'utils/CommonUtils';
+import { getEntityName } from 'utils/EntityUtils';
 import { searchFormattedUsersAndTeams } from 'utils/UserDataUtils';
 import {
   GlobalSettingOptions,
