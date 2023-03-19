@@ -741,6 +741,13 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   protected void store(T entity, boolean update) throws JsonProcessingException {
+    // Don't store owner, database, href and tags as JSON. Build it on the fly based on relationships
+    entity.withHref(null);
+    EntityReference owner = entity.getOwner();
+    entity.setOwner(null);
+    List<TagLabel> tags = entity.getTags();
+    entity.setTags(null);
+
     if (update) {
       dao.update(entity.getId(), JsonUtils.pojoToJson(entity));
       LOG.info("Updated {}:{}:{}", entityType, entity.getId(), entity.getFullyQualifiedName());
@@ -748,6 +755,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
       dao.insert(entity);
       LOG.info("Created {}:{}:{}", entityType, entity.getId(), entity.getFullyQualifiedName());
     }
+
+    // Restore the relationships
+    entity.setOwner(owner);
+    entity.setTags(tags);
   }
 
   public void validateExtension(T entity) {

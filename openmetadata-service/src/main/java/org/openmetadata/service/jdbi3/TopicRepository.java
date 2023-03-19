@@ -36,7 +36,6 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Field;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
-import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.topic.CleanupPolicy;
 import org.openmetadata.schema.type.topic.TopicSampleData;
 import org.openmetadata.service.Entity;
@@ -83,15 +82,11 @@ public class TopicRepository extends EntityRepository<Topic> {
 
   @Override
   public void storeEntity(Topic topic, boolean update) throws IOException {
-    // Relationships and fields such as href are derived and not stored as part of json
-    EntityReference owner = topic.getOwner();
-    List<TagLabel> tags = topic.getTags();
+    // Relationships and fields such as service are derived and not stored as part of json
     EntityReference service = topic.getService();
+    topic.withService(null);
 
-    // Don't store owner, database, href and tags as JSON. Build it on the fly based on relationships
-    topic.withOwner(null).withService(null).withHref(null).withTags(null);
-
-    // Don't store feild tags as JSON but build it on the fly based on relationships
+    // Don't store fields tags as JSON but build it on the fly based on relationships
     List<Field> fieldsWithTags = null;
     if (topic.getMessageSchema() != null) {
       fieldsWithTags = topic.getMessageSchema().getSchemaFields();
@@ -105,7 +100,7 @@ public class TopicRepository extends EntityRepository<Topic> {
     if (fieldsWithTags != null) {
       topic.getMessageSchema().withSchemaFields(fieldsWithTags);
     }
-    topic.withOwner(owner).withService(service).withTags(tags);
+    topic.withService(service);
   }
 
   @Override

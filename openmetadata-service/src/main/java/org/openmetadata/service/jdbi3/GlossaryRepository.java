@@ -43,7 +43,6 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.Relationship;
-import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TagLabel.TagSource;
 import org.openmetadata.schema.type.csv.CsvDocumentation;
 import org.openmetadata.schema.type.csv.CsvHeader;
@@ -86,18 +85,11 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
 
   @Override
   public void storeEntity(Glossary glossary, boolean update) throws IOException {
-    // Relationships and fields such as href are derived and not stored as part of json
-    EntityReference owner = glossary.getOwner();
-    List<TagLabel> tags = glossary.getTags();
+    // Relationships and fields such as reviewers are derived and not stored as part of json
     List<EntityReference> reviewers = glossary.getReviewers();
-
-    // Don't store owner, href and tags as JSON. Build it on the fly based on relationships
-    glossary.withOwner(null).withHref(null).withTags(null);
-
+    glossary.withReviewers(null);
     store(glossary, update);
-
-    // Restore the relationships
-    glossary.withOwner(owner).withTags(tags).withReviewers(reviewers);
+    glossary.withReviewers(reviewers);
   }
 
   @Override

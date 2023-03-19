@@ -137,34 +137,17 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
 
   @Override
   public void storeEntity(GlossaryTerm entity, boolean update) throws IOException {
-    // Relationships and fields such as href are derived and not stored as part of json
-    List<TagLabel> tags = entity.getTags();
+    // Relationships and fields such as parentTerm are derived and not stored as part of json
     EntityReference glossary = entity.getGlossary();
     EntityReference parentTerm = entity.getParent();
     List<EntityReference> relatedTerms = entity.getRelatedTerms();
     List<EntityReference> reviewers = entity.getReviewers();
-    EntityReference owner = entity.getOwner();
 
-    // Don't store owner, dashboard, href and tags as JSON. Build it on the fly based on relationships
-    entity
-        .withGlossary(null)
-        .withParent(null)
-        .withRelatedTerms(relatedTerms)
-        .withReviewers(null)
-        .withOwner(null)
-        .withHref(null)
-        .withTags(null);
-
+    entity.withGlossary(null).withParent(null).withRelatedTerms(relatedTerms).withReviewers(null);
     store(entity, update);
 
     // Restore the relationships
-    entity
-        .withGlossary(glossary)
-        .withParent(parentTerm)
-        .withRelatedTerms(relatedTerms)
-        .withReviewers(reviewers)
-        .withOwner(owner)
-        .withTags(tags);
+    entity.withGlossary(glossary).withParent(parentTerm).withRelatedTerms(relatedTerms).withReviewers(reviewers);
   }
 
   @Override
