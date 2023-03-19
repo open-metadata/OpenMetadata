@@ -139,11 +139,11 @@ const EntitySummaryDetails = ({
           ) : (
             <>
               {t('label.no-entity', { entity: t('label.owner') })}
-              {/* <span
-                data-testid={`edit-${data.key}-icon`}
-                onClick={() => setShow(!show)}>
-                {updateOwner && !deleted ? <EditIcon /> : null}
-              </span> */}
+              <UserTeamSelectableList
+                hasPermission={Boolean(updateOwner)}
+                owner={currentOwner}
+                onUpdate={updateOwner ?? noop}
+              />
             </>
           );
       }
@@ -270,6 +270,14 @@ const EntitySummaryDetails = ({
                   }
                 />
               ) : null}
+
+              {(isOwner || isTier) && (
+                <UserTeamSelectableList
+                  hasPermission={Boolean(updateOwner)}
+                  owner={currentOwner}
+                  onUpdate={updateOwner ?? noop}
+                />
+              )}
             </>
           ) : isOwner ? (
             <span
@@ -350,11 +358,6 @@ const EntitySummaryDetails = ({
           )}
         </>
       )}
-      <UserTeamSelectableList
-        hasPermission={Boolean(updateOwner)}
-        owner={currentOwner}
-        onUpdate={updateOwner ?? noop}
-      />
     </Space>
   );
 };
