@@ -17,7 +17,6 @@ import static org.openmetadata.service.Entity.FIELD_FOLLOWERS;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
-import java.util.List;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.data.Chart;
@@ -25,7 +24,6 @@ import org.openmetadata.schema.entity.services.DashboardService;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
-import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.charts.ChartResource;
 import org.openmetadata.service.util.EntityUtil.Fields;
@@ -61,18 +59,11 @@ public class ChartRepository extends EntityRepository<Chart> {
 
   @Override
   public void storeEntity(Chart chart, boolean update) throws JsonProcessingException {
-    // Relationships and fields such as href are derived and not stored as part of json
-    EntityReference owner = chart.getOwner();
-    List<TagLabel> tags = chart.getTags();
+    // Relationships and fields such as tags are not stored as part of json
     EntityReference service = chart.getService();
-
-    // Don't store owner, database, href and tags as JSON. Build it on the fly based on relationships
-    chart.withOwner(null).withService(null).withHref(null).withTags(null);
-
+    chart.withService(null);
     store(chart, update);
-
-    // Restore the relationships
-    chart.withOwner(owner).withService(service).withTags(tags);
+    chart.withService(service);
   }
 
   @Override
