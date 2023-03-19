@@ -18,3 +18,7 @@ export const ENTITY_DELETE_STATE = {
 };
 
 export const ENTITY_CARD_CLASS = 'h-full m-y-md';
+
+export const QUERY_USED_BY_TABLE_VIEW_CAP = 3;
+export const QUERY_LINE_HEIGHT = 6;
+export const QUERY_DATE_FORMAT = "'On' MMMM do 'at' h:mma 'UTC'ZZ"; // eg: On March 6th at 6:20pm UTC+1

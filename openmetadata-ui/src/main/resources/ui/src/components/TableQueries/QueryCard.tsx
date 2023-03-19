@@ -36,6 +36,11 @@ import { ReactComponent as EditIcon } from '/assets/svg/ic-edit.svg';
 import { ReactComponent as CopyIcon } from '/assets/svg/icon-copy.svg';
 
 import { getTableDetailsPath } from 'constants/constants';
+import {
+  QUERY_DATE_FORMAT,
+  QUERY_LINE_HEIGHT,
+  QUERY_USED_BY_TABLE_VIEW_CAP,
+} from 'constants/entity.constants';
 import { EntityReference } from 'generated/type/entityLineage';
 import { useClipboard } from 'hooks/useClipBoard';
 import { Link } from 'react-router-dom';
@@ -78,10 +83,10 @@ const QueryCard: FC<QueryCardProp> = ({
     const queryArr = split(query.query, '\n');
     const queryDate = getFormattedDateFromSeconds(
       query.queryDate || 0,
-      "'On' MMMM do 'at' h:mma 'UTC'ZZ" // eg: On March 6th at 6:20pm UTC+1
+      QUERY_DATE_FORMAT
     );
 
-    return { isAllowExpand: queryArr.length > 6, queryDate };
+    return { isAllowExpand: queryArr.length > QUERY_LINE_HEIGHT, queryDate };
   }, [query]);
 
   const { topThreeTable, remainingTable } = useMemo(() => {
@@ -95,10 +100,10 @@ const QueryCard: FC<QueryCardProp> = ({
 
     if (filterTable.length) {
       // Slice 3 table to display upfront in UI
-      data.topThreeTable = slice(filterTable, 0, 3);
-      if (filterTable.length > 3) {
+      data.topThreeTable = slice(filterTable, 0, QUERY_USED_BY_TABLE_VIEW_CAP);
+      if (filterTable.length > QUERY_USED_BY_TABLE_VIEW_CAP) {
         // Slice remaining tables to show in "view more"
-        data.remainingTable = slice(filterTable, 3);
+        data.remainingTable = slice(filterTable, QUERY_USED_BY_TABLE_VIEW_CAP);
       }
     }
 
@@ -117,7 +122,7 @@ const QueryCard: FC<QueryCardProp> = ({
         ),
       },
       {
-        key: 2,
+        key: 'copy-query',
         label: (
           <Space size={16} onClick={onCopyToClipBoard}>
             <CopyIcon height={16} width={16} />
