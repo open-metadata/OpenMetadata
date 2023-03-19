@@ -10,7 +10,6 @@ import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.analytics.WebAnalyticEvent;
 import org.openmetadata.schema.analytics.WebAnalyticEventData;
 import org.openmetadata.schema.analytics.type.WebAnalyticEventType;
-import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
@@ -44,12 +43,7 @@ public class WebAnalyticEventRepository extends EntityRepository<WebAnalyticEven
 
   @Override
   public void storeEntity(WebAnalyticEvent entity, boolean update) throws IOException {
-    EntityReference owner = entity.getOwner();
-
-    entity.withOwner(null).withHref(null);
     store(entity, update);
-
-    entity.withOwner(owner);
   }
 
   @Override
