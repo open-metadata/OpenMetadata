@@ -24,7 +24,7 @@ public class MlModelIndex implements ElasticSearchIndex {
     suggest.add(ElasticSearchSuggest.builder().input(mlModel.getFullyQualifiedName()).weight(5).build());
     suggest.add(ElasticSearchSuggest.builder().input(mlModel.getName()).weight(10).build());
 
-    ParseTags parseTags = new ParseTags(parseTags(Entity.getEntityTags(Entity.MLMODEL, mlModel)));
+    ParseTags parseTags = new ParseTags(Entity.getEntityTags(Entity.MLMODEL, mlModel));
     doc.put("displayName", mlModel.getDisplayName() != null ? mlModel.getDisplayName() : mlModel.getName());
     doc.put("tags", parseTags.tags);
     doc.put("tier", parseTags.tierTag);

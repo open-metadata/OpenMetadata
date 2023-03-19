@@ -42,7 +42,7 @@ public class TableIndex implements ColumnIndex {
         columnSuggest.add(ElasticSearchSuggest.builder().input(col.getName()).weight(5).build());
       }
     }
-    tags.addAll(ElasticSearchIndexUtils.parseTags(Entity.getEntityTags(Entity.TABLE, table)));
+    tags.addAll(Entity.getEntityTags(Entity.TABLE, table));
     parseTableSuggest(suggest);
     serviceSuggest.add(ElasticSearchSuggest.builder().input(table.getService().getName()).weight(5).build());
     databaseSuggest.add(ElasticSearchSuggest.builder().input(table.getDatabase().getName()).weight(5).build());

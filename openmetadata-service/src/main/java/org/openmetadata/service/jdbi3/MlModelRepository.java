@@ -13,6 +13,7 @@
 
 package org.openmetadata.service.jdbi3;
 
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.Entity.DASHBOARD;
 import static org.openmetadata.service.Entity.FIELD_FOLLOWERS;
@@ -216,14 +217,13 @@ public class MlModelRepository extends EntityRepository<MlModel> {
   public List<TagLabel> getAllTags(EntityInterface entity) {
     List<TagLabel> allTags = new ArrayList<>();
     MlModel mlModel = (MlModel) entity;
-    EntityUtil.appendList(allTags, mlModel.getTags());
-    mlModel
-        .getMlFeatures()
-        .forEach(
-            feature -> {
-              EntityUtil.appendList(allTags, feature.getTags());
-              feature.getFeatureSources().forEach(source -> EntityUtil.appendList(allTags, source.getTags()));
-            });
+    EntityUtil.mergeTags(allTags, mlModel.getTags());
+    for (MlFeature feature : listOrEmpty(mlModel.getMlFeatures())) {
+      EntityUtil.mergeTags(allTags, feature.getTags());
+      for (MlFeatureSource source : listOrEmpty(feature.getFeatureSources())) {
+        EntityUtil.mergeTags(allTags, source.getTags());
+      }
+    }
     return allTags;
   }
 

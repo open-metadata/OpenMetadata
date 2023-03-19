@@ -70,7 +70,6 @@ import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
-import org.openmetadata.service.jdbi3.EntityRepository.EntityUpdater;
 import org.openmetadata.service.resources.databases.DatabaseUtil;
 import org.openmetadata.service.resources.databases.TableResource;
 import org.openmetadata.service.util.EntityUtil;
@@ -682,9 +681,14 @@ public class TableRepository extends EntityRepository<Table> {
   public List<TagLabel> getAllTags(EntityInterface entity) {
     List<TagLabel> allTags = new ArrayList<>();
     Table table = (Table) entity;
-    EntityUtil.appendList(allTags, table.getTags());
-    table.getColumns().forEach(column -> EntityUtil.appendList(allTags, column.getTags()));
-    EntityUtil.appendList(allTags, table.getDataModel() != null ? table.getDataModel().getTags() : null);
+    EntityUtil.mergeTags(allTags, table.getTags());
+    table.getColumns().forEach(column -> EntityUtil.mergeTags(allTags, column.getTags()));
+    if (table.getDataModel() != null) {
+      EntityUtil.mergeTags(allTags, table.getDataModel().getTags());
+      for (Column column : listOrEmpty(table.getDataModel().getColumns())) {
+        EntityUtil.mergeTags(allTags, column.getTags());
+      }
+    }
     return allTags;
   }
 

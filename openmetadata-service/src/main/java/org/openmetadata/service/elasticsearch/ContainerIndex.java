@@ -22,7 +22,7 @@ public class ContainerIndex implements ColumnIndex {
     List<ElasticSearchSuggest> suggest = new ArrayList<>();
     List<ElasticSearchSuggest> columnSuggest = new ArrayList<>();
     List<ElasticSearchSuggest> serviceSuggest = new ArrayList<>();
-    List<TagLabel> tags = new ArrayList<>();
+    List<TagLabel> tags = Entity.getEntityTags(Entity.CONTAINER, container);
     ElasticSearchIndexUtils.removeNonIndexableFields(doc, excludeFields);
     suggest.add(ElasticSearchSuggest.builder().input(container.getFullyQualifiedName()).weight(5).build());
     suggest.add(ElasticSearchSuggest.builder().input(container.getName()).weight(10).build());
@@ -31,13 +31,9 @@ public class ContainerIndex implements ColumnIndex {
       parseColumns(container.getDataModel().getColumns(), cols, null);
 
       for (FlattenColumn col : cols) {
-        if (col.getTags() != null) {
-          tags.addAll(col.getTags());
-        }
         columnSuggest.add(ElasticSearchSuggest.builder().input(col.getName()).weight(5).build());
       }
     }
-    tags.addAll(ElasticSearchIndexUtils.parseTags(container.getTags()));
     serviceSuggest.add(ElasticSearchSuggest.builder().input(container.getService().getName()).weight(5).build());
     ParseTags parseTags = new ParseTags(tags);
 

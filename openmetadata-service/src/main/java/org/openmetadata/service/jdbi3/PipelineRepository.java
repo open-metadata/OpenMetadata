@@ -36,7 +36,6 @@ import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.Task;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
-import org.openmetadata.service.jdbi3.EntityRepository.EntityUpdater;
 import org.openmetadata.service.resources.pipelines.PipelineResource;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
@@ -248,8 +247,10 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
   public List<TagLabel> getAllTags(EntityInterface entity) {
     List<TagLabel> allTags = new ArrayList<>();
     Pipeline pipeline = (Pipeline) entity;
-    EntityUtil.appendList(allTags, pipeline.getTags());
-    pipeline.getTasks().forEach(task -> EntityUtil.appendList(allTags, task.getTags()));
+    EntityUtil.mergeTags(allTags, pipeline.getTags());
+    for (Task task : listOrEmpty(pipeline.getTasks())) {
+      EntityUtil.mergeTags(allTags, task.getTags());
+    }
     return allTags;
   }
 

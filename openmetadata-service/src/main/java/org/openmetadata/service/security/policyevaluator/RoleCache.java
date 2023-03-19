@@ -46,7 +46,7 @@ public class RoleCache {
   public static void initialize() {
     if (!INITIALIZED) {
       ROLE_CACHE =
-              CacheBuilder.newBuilder().maximumSize(100).expireAfterWrite(3, TimeUnit.MINUTES).build(new RoleLoader());
+          CacheBuilder.newBuilder().maximumSize(100).expireAfterWrite(3, TimeUnit.MINUTES).build(new RoleLoader());
       ROLE_REPOSITORY = (RoleRepository) Entity.getEntityRepository(Entity.ROLE);
       FIELDS = ROLE_REPOSITORY.getFields("policies");
       INITIALIZED = true;

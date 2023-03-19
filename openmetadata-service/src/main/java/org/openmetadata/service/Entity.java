@@ -303,8 +303,7 @@ public final class Entity {
     EntityRepository<? extends EntityInterface> entityRepository =
         ENTITY_REPOSITORY_MAP.get(SERVICE_TYPE_ENTITY_MAP.get(serviceType));
     if (entityRepository == null) {
-      throw EntityNotFoundException.byMessage(
-          CatalogExceptionMessage.entityTypeNotFound(serviceType.value()));
+      throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityTypeNotFound(serviceType.value()));
     }
     return entityRepository;
   }
