@@ -2876,10 +2876,10 @@
     classcat "^5.0.3"
     zustand "^4.1.1"
 
-"@rjsf/core@5.3.0":
-  version "5.3.0"
-  resolved "https://registry.yarnpkg.com/@rjsf/core/-/core-5.3.0.tgz#9de16dcfc2bc868aeef599fbada68cafd95dce53"
-  integrity sha512-7draAifdTZi802SWFlgyU7Effi4DP3y7nqOE0IbSOLHop04yGnAdzqFOeQX6+ZtzN/lzTLKziv3IbOSSLnsuIA==
+"@rjsf/core@5.2.1":
+  version "5.2.1"
+  resolved "https://registry.yarnpkg.com/@rjsf/core/-/core-5.2.1.tgz#38a366ee37d1ef4f727c768ad416ce6bf9cc7687"
+  integrity sha512-r/yY/7IOPKYQNkZj73wyH+AuBNIauygJr/CNXumFctra50y+Cd5zS9H4XJ4TRtKAHOjz29s6nsA1nTaH1fPHDw==
   dependencies:
     lodash "^4.17.15"
     lodash-es "^4.17.15"
@@ -2887,10 +2887,10 @@
     nanoid "^3.3.4"
     prop-types "^15.7.2"
 
-"@rjsf/utils@5.3.0":
-  version "5.3.0"
-  resolved "https://registry.yarnpkg.com/@rjsf/utils/-/utils-5.3.0.tgz#680df18f02a653dd1db452fc00f8e3ddf98aaafd"
-  integrity sha512-Blgey/mWddAtGZJ6AZDRdZMaLzif3L0WCCwZRSIojAPvfVx+GsWs0H+WZNxo/FCNLN22wnYT7AXKLwO+Ymk5PA==
+"@rjsf/utils@5.2.1":
+  version "5.2.1"
+  resolved "https://registry.yarnpkg.com/@rjsf/utils/-/utils-5.2.1.tgz#b8903304625d38eff0ba06437bb41f4e34294434"
+  integrity sha512-+Evan0KDj0t0NtOAxOFtV+/kPDUWz2NyG9zl9X7LLiOlNY2zOdDeUtYEOklbpu1APOqIkwCQc6z1VefQJNKH8Q==
   dependencies:
     json-schema-merge-allof "^0.8.1"
     jsonpointer "^5.0.1"
@@ -2898,10 +2898,10 @@
     lodash-es "^4.17.15"
     react-is "^18.2.0"
 
-"@rjsf/validator-ajv8@5.3.0":
-  version "5.3.0"
-  resolved "https://registry.yarnpkg.com/@rjsf/validator-ajv8/-/validator-ajv8-5.3.0.tgz#b8a79d887e55f01bea10ae8f52e98843e1ee7f74"
-  integrity sha512-LYV/OqCUAMYKLDTHIEDLQ5ETEMgxIQbWmnBreG0eMoF55DpxjRoNU7KZwk04JtFWCVJIRN4/KXuqPPv9/nV7Lw==
+"@rjsf/validator-ajv8@5.2.1":
+  version "5.2.1"
+  resolved "https://registry.yarnpkg.com/@rjsf/validator-ajv8/-/validator-ajv8-5.2.1.tgz#0a8df860cca3438ac5c53e1d0005bf5d224685f3"
+  integrity sha512-VHxlBECvzMQtpxfLnoB4E5HV7e+LLimID4gfXYBr+kf+tVS5Z3OVRNwTkEmInHLmBK4Zp2hIgBDE7dBIhHvnkg==
   dependencies:
     ajv "^8.12.0"
     ajv-formats "^2.1.1"
