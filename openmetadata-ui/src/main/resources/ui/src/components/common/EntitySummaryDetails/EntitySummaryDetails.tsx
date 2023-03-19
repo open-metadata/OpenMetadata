@@ -80,12 +80,11 @@ const EntitySummaryDetails = ({
   removeTier,
   currentOwner,
   deleted = false,
-  allowTeamOwner = true,
 }: GetInfoElementsProps) => {
   let retVal = <></>;
   const { t } = useTranslation();
   const displayVal = data.placeholderText || data.value;
-  const [show, setShow] = useState(false);
+
   const [showTypeSelector, setShowTypeSelector] = useState(false);
 
   const handleShowTypeSelector = useCallback((value: boolean) => {
@@ -140,11 +139,11 @@ const EntitySummaryDetails = ({
           ) : (
             <>
               {t('label.no-entity', { entity: t('label.owner') })}
-              <span
+              {/* <span
                 data-testid={`edit-${data.key}-icon`}
                 onClick={() => setShow(!show)}>
                 {updateOwner && !deleted ? <EditIcon /> : null}
-              </span>
+              </span> */}
             </>
           );
       }
@@ -271,14 +270,6 @@ const EntitySummaryDetails = ({
                   }
                 />
               ) : null}
-
-              {(isOwner || isTier) && (
-                <span
-                  data-testid={`edit-${data.key}-icon`}
-                  onClick={() => setShow(true)}>
-                  {updateOwner ? <EditIcon /> : null}
-                </span>
-              )}
             </>
           ) : isOwner ? (
             <span
@@ -297,13 +288,6 @@ const EntitySummaryDetails = ({
                 variant="text">
                 {displayVal}
               </Button>
-
-              <span
-                className="tw-ml-2"
-                data-testid={`edit-${data.key}-icon`}
-                onClick={() => setShow(true)}>
-                {updateOwner ? <EditIcon /> : null}
-              </span>
             </span>
           ) : isTier ? (
             <Space
@@ -367,7 +351,7 @@ const EntitySummaryDetails = ({
         </>
       )}
       <UserTeamSelectableList
-        hasPermission={allowTeamOwner}
+        hasPermission={Boolean(updateOwner)}
         owner={currentOwner}
         onUpdate={updateOwner ?? noop}
       />

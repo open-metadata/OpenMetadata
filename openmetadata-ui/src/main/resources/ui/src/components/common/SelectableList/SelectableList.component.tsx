@@ -165,7 +165,7 @@ export const SelectableList = ({
   };
 
   return (
-    <div>
+    <>
       <Searchbar
         removeMargin
         placeholder={searchPlaceholder ?? t('label.search')}
@@ -204,10 +204,11 @@ export const SelectableList = ({
             )}
           </Space>
         }
+        itemLayout="vertical"
         loading={{ spinning: fetching, indicator: <Loader /> }}
         size="small">
         <VirtualList
-          className="user-list"
+          className="w-40"
           data={uniqueOptions}
           height={ADD_USER_CONTAINER_HEIGHT}
           itemKey="id"
@@ -236,7 +237,7 @@ export const SelectableList = ({
           )}
         </VirtualList>
       </List>
-    </div>
+    </>
   );
 };
 
