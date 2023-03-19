@@ -17,6 +17,10 @@ working with OpenMetadata entities.
 import traceback
 from typing import Dict, Generic, Iterable, List, Optional, Type, TypeVar, Union
 
+from metadata.generated.schema.entity.services.connections.testConnectionDefinition import (
+    TestConnectionDefinition,
+)
+
 try:
     from typing import get_args
 except ImportError:
@@ -428,6 +432,12 @@ class OpenMetadata(
             IngestionPipeline,
         ):
             return "/services/ingestionPipelines"
+
+        if issubclass(
+            entity,
+            TestConnectionDefinition,
+        ):
+            return "/services/testConnectionDefinition"
 
         if issubclass(
             entity,

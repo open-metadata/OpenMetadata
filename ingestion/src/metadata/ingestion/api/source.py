@@ -23,6 +23,7 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 from metadata.ingestion.api.closeable import Closeable
 from metadata.ingestion.api.common import Entity
 from metadata.ingestion.api.status import Status
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 
 
 class InvalidSourceException(Exception):
@@ -73,6 +74,10 @@ class Source(Closeable, Generic[Entity], metaclass=ABCMeta):
     its next_record and pass them to the next step.
     """
 
+    metadata: OpenMetadata
+    connection_obj: Any
+    service_connection: Any
+
     @classmethod
     @abstractmethod
     def create(
@@ -90,8 +95,4 @@ class Source(Closeable, Generic[Entity], metaclass=ABCMeta):
 
     @abstractmethod
     def get_status(self) -> SourceStatus:
-        pass
-
-    @abstractmethod
-    def test_connection(self) -> None:
         pass

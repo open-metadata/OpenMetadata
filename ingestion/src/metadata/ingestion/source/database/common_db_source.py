@@ -106,6 +106,9 @@ class CommonDbSourceService(
         self.status = SQLSourceStatus()
 
         self.engine: Engine = get_connection(self.service_connection)
+
+        # Flag the connection for the test connection
+        self.connection_obj = self.engine
         self.test_connection()
 
         self._connection = None  # Lazy init as well
@@ -526,14 +529,6 @@ class CommonDbSourceService(
                 else:
                     table_constraints.constraints = foreign_constraints
             yield table_constraints
-
-    def test_connection(self) -> None:
-        """
-        Used a timed-bound function to test that the engine
-        can properly reach the source
-        """
-        test_connection_fn = get_test_connection_fn(self.service_connection)
-        test_connection_fn(self.engine, self.service_connection)
 
     @property
     def connection(self) -> Connection:

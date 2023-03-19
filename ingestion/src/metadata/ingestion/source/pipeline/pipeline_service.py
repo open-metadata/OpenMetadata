@@ -201,6 +201,9 @@ class PipelineServiceSource(TopologyRunnerMixin, Source, ABC):
             self.config.sourceConfig.config
         )
         self.connection = get_connection(self.service_connection)
+
+        # Flag the connection for the test connection
+        self.connection_obj = self.connection
         self.test_connection()
         self.status = PipelineSourceStatus()
 
@@ -236,7 +239,7 @@ class PipelineServiceSource(TopologyRunnerMixin, Source, ABC):
 
     def test_connection(self) -> None:
         test_connection_fn = get_test_connection_fn(self.service_connection)
-        test_connection_fn(self.connection, self.service_connection)
+        test_connection_fn(self.metadata, self.connection_obj, self.service_connection)
 
     def prepare(self):
         """

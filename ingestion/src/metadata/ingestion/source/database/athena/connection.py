@@ -30,6 +30,7 @@ from metadata.ingestion.connections.test_connections import (
     TestConnectionStep,
     test_connection_db_common,
 )
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 
 
 def get_connection_url(connection: AthenaConnection) -> str:
@@ -75,7 +76,7 @@ def get_connection(connection: AthenaConnection) -> Engine:
     )
 
 
-def test_connection(engine: Engine, _) -> TestConnectionResult:
+def test_connection(metadata: OpenMetadata, engine: Engine, _) -> TestConnectionResult:
     """
     Test connection
     """
@@ -95,4 +96,4 @@ def test_connection(engine: Engine, _) -> TestConnectionResult:
             mandatory=False,
         ),
     ]
-    return test_connection_db_common(engine, steps)
+    return test_connection_db_common(metadata, engine, steps)

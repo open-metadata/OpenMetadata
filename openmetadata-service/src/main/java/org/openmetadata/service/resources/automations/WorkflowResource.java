@@ -480,6 +480,8 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
         .withRequest(create.getRequest())
         .withWorkflowType(create.getWorkflowType())
         .withDisplayName(create.getDisplayName())
+        .withResponse(create.getResponse())
+        .withStatus(create.getStatus())
         .withOpenMetadataServerConnection(openMetadataServerConnection)
         .withName(create.getName());
   }
