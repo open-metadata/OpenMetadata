@@ -17,36 +17,13 @@ import { EntityReference } from 'generated/entity/data/table';
 import { Paging } from 'generated/type/paging';
 import { cloneDeep, isEmpty, sortBy } from 'lodash';
 import VirtualList from 'rc-virtual-list';
-import React, {
-  ReactNode,
-  UIEventHandler,
-  useCallback,
-  useEffect,
-  useState,
-} from 'react';
+import React, { UIEventHandler, useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import SVGIcons, { Icons } from 'utils/SvgUtils';
 import Searchbar from '../searchbar/Searchbar';
 import '../UserSelectableList/user-select-dropdown.less';
 import { UserTag } from '../UserTag/UserTag.component';
-
-interface PaginatedResponse {
-  data: EntityReference[];
-  paging: Paging;
-}
-
-interface Props {
-  fetchOptions: (
-    searchText: string,
-    after?: string
-  ) => Promise<PaginatedResponse>;
-  multiSelect?: boolean;
-  selectedItems: EntityReference[];
-  onCancel: () => void;
-  onUpdate: (updatedItems: EntityReference[]) => void;
-  searchPlaceholder?: string;
-  customTagRenderer?: (props: EntityReference) => ReactNode;
-}
+import { SelectableListProps } from './SelectableList.interface';
 
 export const SelectableList = ({
   fetchOptions,
@@ -56,7 +33,7 @@ export const SelectableList = ({
   onCancel,
   searchPlaceholder,
   customTagRenderer,
-}: Props) => {
+}: SelectableListProps) => {
   const [uniqueOptions, setUniqueOptions] = useState<EntityReference[]>([]);
   const [searchText, setSearchText] = useState('');
   const { t } = useTranslation();

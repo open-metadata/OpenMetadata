@@ -10,8 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Popover } from 'antd';
-import Tooltip from 'antd/es/tooltip';
+import { Button, Popover, Tooltip } from 'antd';
 import { PAGE_SIZE_MEDIUM } from 'constants/constants';
 import { NO_PERMISSION_FOR_ACTION } from 'constants/HelperTextUtil';
 import { SearchIndex } from 'enums/search.enum';
