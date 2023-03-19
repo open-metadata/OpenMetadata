@@ -139,7 +139,7 @@ public class QueryResourceTest extends EntityResourceTest<Query, CreateQuery> {
     // create query with vote 1
     CreateQuery create = createRequest(getEntityName(test));
     Query createdEntity = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
-    //1
+    // 1
     VoteRequest request = new VoteRequest().withUpdatedVoteType(VoteRequest.VoteType.VOTED_UP);
     WebTarget target = getResource(String.format("%s/%s/vote", collectionName, createdEntity.getId().toString()));
     ChangeEvent changeEvent = TestUtils.put(target, request, ChangeEvent.class, OK, ADMIN_AUTH_HEADERS);
@@ -147,8 +147,7 @@ public class QueryResourceTest extends EntityResourceTest<Query, CreateQuery> {
     assertEquals(1, updatedEntity.getVotes().getUpVotes());
     assertEquals(0, updatedEntity.getVotes().getDownVotes());
 
-
-    //2
+    // 2
     VoteRequest request2 = new VoteRequest().withUpdatedVoteType(VoteRequest.VoteType.VOTED_DOWN);
     ChangeEvent changeEvent2 = TestUtils.put(target, request2, ChangeEvent.class, OK, ADMIN_AUTH_HEADERS);
     Query updatedEntity2 = JsonUtils.convertValue(changeEvent2.getEntity(), Query.class);
