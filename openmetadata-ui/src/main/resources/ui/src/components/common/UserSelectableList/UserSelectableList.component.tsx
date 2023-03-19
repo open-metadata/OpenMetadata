@@ -16,10 +16,11 @@ import { PAGE_SIZE_MEDIUM } from 'constants/constants';
 import { NO_PERMISSION_FOR_ACTION } from 'constants/HelperTextUtil';
 import { SearchIndex } from 'enums/search.enum';
 import { OwnerType } from 'enums/user.enum';
+import { EntityReference } from 'generated/entity/data/table';
 import { User } from 'generated/entity/teams/user';
 import { SearchResponse } from 'interface/search.interface';
 import { noop } from 'lodash';
-import React, { useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { searchData } from 'rest/miscAPI';
 import { getUsers } from 'rest/userAPI';
@@ -94,6 +95,14 @@ export const UserSelectableList = ({
     }
   };
 
+  const handleUpdate = useCallback(
+    (users: EntityReference[]) => {
+      onUpdate(users);
+      setPopupVisible(false);
+    },
+    [onUpdate]
+  );
+
   return (
     <Popover
       content={
@@ -105,16 +114,14 @@ export const UserSelectableList = ({
           })}
           selectedItems={selectedUsers}
           onCancel={() => setPopupVisible(false)}
-          onUpdate={onUpdate}
+          onUpdate={handleUpdate}
         />
       }
       open={popupVisible}
       overlayClassName="user-team-select-popover card-shadow"
-      overlayInnerStyle={{ padding: '0px' }}
       overlayStyle={{ padding: 0 }}
       placement="bottomLeft"
       showArrow={false}
-      //   title={t('label.user-plural')}
       trigger="click"
       onOpenChange={setPopupVisible}>
       <Tooltip

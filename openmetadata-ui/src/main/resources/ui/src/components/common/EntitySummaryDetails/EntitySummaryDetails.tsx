@@ -14,7 +14,7 @@
 import { Button as AntdButton, Dropdown, Space } from 'antd';
 import Tooltip, { RenderFunction } from 'antd/lib/tooltip';
 import classNames from 'classnames';
-import { isString, isUndefined, toLower } from 'lodash';
+import { isString, isUndefined, noop, toLower } from 'lodash';
 import { ExtraInfo } from 'Models';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -25,10 +25,10 @@ import { TagLabel } from '../../../generated/type/tagLabel';
 import { getTeamsUser } from '../../../utils/CommonUtils';
 import SVGIcons, { Icons } from '../../../utils/SvgUtils';
 import { Button } from '../../buttons/Button/Button';
-import OwnerWidgetWrapper from '../OwnerWidget/OwnerWidgetWrapper.component';
 import ProfilePicture from '../ProfilePicture/ProfilePicture';
 import TeamTypeSelect from '../TeamTypeSelect/TeamTypeSelect.component';
 import TierCard from '../TierCard/TierCard';
+import { UserTeamSelectableList } from '../UserTeamSelectableList/UserTeamSelectableList.component';
 import './EntitySummaryDetails.style.less';
 
 export interface GetInfoElementsProps {
@@ -74,7 +74,6 @@ const EntitySummaryDetails = ({
   tier,
   teamType,
   showGroupOption,
-  removeOwner,
   updateOwner,
   updateTier,
   updateTeamType,
@@ -367,13 +366,10 @@ const EntitySummaryDetails = ({
           )}
         </>
       )}
-      <OwnerWidgetWrapper
-        allowTeamOwner={allowTeamOwner}
-        currentUser={currentOwner}
-        hideWidget={() => setShow(false)}
-        removeOwner={removeOwner}
-        updateUser={updateOwner}
-        visible={show}
+      <UserTeamSelectableList
+        hasPermission={allowTeamOwner}
+        owner={currentOwner}
+        onUpdate={updateOwner ?? noop}
       />
     </Space>
   );

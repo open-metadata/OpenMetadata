@@ -10,13 +10,20 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Affix, Button, Checkbox, List, Tooltip } from 'antd';
+import { Button, Checkbox, List, Space, Tooltip } from 'antd';
+import Loader from 'components/Loader/Loader';
 import { ADD_USER_CONTAINER_HEIGHT, pagingObject } from 'constants/constants';
 import { EntityReference } from 'generated/entity/data/table';
 import { Paging } from 'generated/type/paging';
-import { cloneDeep } from 'lodash';
+import { cloneDeep, isEmpty, sortBy } from 'lodash';
 import VirtualList from 'rc-virtual-list';
-import React, { UIEventHandler, useEffect, useState } from 'react';
+import React, {
+  ReactNode,
+  UIEventHandler,
+  useCallback,
+  useEffect,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import SVGIcons, { Icons } from 'utils/SvgUtils';
 import Searchbar from '../searchbar/Searchbar';
@@ -38,6 +45,7 @@ interface Props {
   onCancel: () => void;
   onUpdate: (updatedItems: EntityReference[]) => void;
   searchPlaceholder?: string;
+  customTagRenderer?: (props: EntityReference) => ReactNode;
 }
 
 export const SelectableList = ({
@@ -47,6 +55,7 @@ export const SelectableList = ({
   onUpdate,
   onCancel,
   searchPlaceholder,
+  customTagRenderer,
 }: Props) => {
   const [uniqueOptions, setUniqueOptions] = useState<EntityReference[]>([]);
   const [searchText, setSearchText] = useState('');
@@ -55,7 +64,16 @@ export const SelectableList = ({
 
   const [selectedItemsInternal, setSelectedItemInternal] = useState<
     Map<string, EntityReference>
-  >(new Map());
+  >(() => {
+    const selectedItemMap = new Map();
+
+    selectedItems.map((item) => selectedItemMap.set(item.id, item));
+
+    return selectedItemMap;
+  });
+
+  const [fetching, setFetching] = useState(false);
+  const [fetchOptionFailed, setFetchOptionFailed] = useState(false);
 
   useEffect(() => {
     setSelectedItemInternal(() => {
@@ -67,12 +85,35 @@ export const SelectableList = ({
     });
   }, [setSelectedItemInternal, selectedItems]);
 
-  const fetchListOptions = async () => {
-    const { data, paging } = await fetchOptions('');
+  const sortUniqueListFromSelectedList = (
+    items: string[],
+    listOptions: EntityReference[]
+  ) => {
+    if (isEmpty(items)) {
+      return listOptions;
+    }
 
-    setUniqueOptions(data);
-    setPagingInfo(paging);
+    return sortBy(listOptions, (a) => {
+      return items.indexOf(a.id) > -1 ? -1 : 0;
+    });
   };
+
+  const fetchListOptions = useCallback(async () => {
+    setFetching(true);
+    try {
+      const { data, paging } = await fetchOptions('');
+
+      setUniqueOptions(
+        sortUniqueListFromSelectedList([...selectedItemsInternal.keys()], data)
+      );
+      setPagingInfo(paging);
+      fetchOptionFailed && setFetchOptionFailed(false);
+    } catch (error) {
+      setFetchOptionFailed(true);
+    } finally {
+      setFetching(false);
+    }
+  }, [selectedItemsInternal]);
 
   useEffect(() => {
     fetchListOptions();
@@ -110,6 +151,10 @@ export const SelectableList = ({
             newItemsMap?.set(id, item);
           }
 
+          setUniqueOptions((options) =>
+            sortUniqueListFromSelectedList([...newItemsMap.keys()], options)
+          );
+
           return newItemsMap;
         })
       : onUpdate(selectedItemsInternal.has(item.id) ? [] : [item]);
@@ -128,7 +173,39 @@ export const SelectableList = ({
         typingInterval={500}
         onSearch={handleSearch}
       />
-      <List size="small">
+      <List
+        footer={
+          <Space className=" m-r-md" direction="vertical">
+            <p className="text-xs font-medium">
+              {t('label.count-of-total-entity', {
+                count: uniqueOptions.length,
+                total: pagingInfo.total,
+                entity: t('label.user-plural'),
+              })}
+            </p>
+            {multiSelect && (
+              <div className="text-right">
+                <Button
+                  className="m-l-auto"
+                  color="primary"
+                  size="small"
+                  type="text"
+                  onClick={onCancel}>
+                  {t('label.cancel')}
+                </Button>
+                <Button
+                  className="update-btn m-l-auto"
+                  size="small"
+                  type="default"
+                  onClick={handleUpdateClick}>
+                  {t('label.update')}
+                </Button>
+              </div>
+            )}
+          </Space>
+        }
+        loading={{ spinning: fetching, indicator: <Loader /> }}
+        size="small">
         <VirtualList
           className="user-list"
           data={uniqueOptions}
@@ -147,28 +224,18 @@ export const SelectableList = ({
               }
               key={item.id}
               onClick={() => selectionHandler(item)}>
-              <UserTag
-                id={item.fullyQualifiedName ?? ''}
-                name={item.displayName ?? ''}
-              />
+              {customTagRenderer ? (
+                customTagRenderer(item)
+              ) : (
+                <UserTag
+                  id={item.fullyQualifiedName ?? ''}
+                  name={item.displayName ?? ''}
+                />
+              )}
             </List.Item>
           )}
         </VirtualList>
       </List>
-      {multiSelect && (
-        <Affix className="dropdown-control-bar" offsetBottom={0}>
-          <Button
-            className="update-btn"
-            size="small"
-            type="default"
-            onClick={handleUpdateClick}>
-            {t('label.update')}
-          </Button>
-          <Button color="primary" size="small" type="text" onClick={onCancel}>
-            {t('label.cancel')}
-          </Button>
-        </Affix>
-      )}
     </div>
   );
 };

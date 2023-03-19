@@ -12,7 +12,7 @@
  */
 
 import { CloseOutlined } from '@ant-design/icons';
-import { Space } from 'antd';
+import { Space, Typography } from 'antd';
 import classNames from 'classnames';
 import { isUndefined, toString } from 'lodash';
 import React from 'react';
@@ -32,12 +32,17 @@ export const UserTag = ({
     return null;
   }
 
-  let width = 24;
-  if (size === UserTagSize.small) {
-    width = 16;
-  } else if (size === UserTagSize.large) {
-    width = 32;
-  }
+  const width = {
+    [UserTagSize.small]: 16,
+    [UserTagSize.default]: 24,
+    [UserTagSize.large]: 32,
+  };
+
+  const fontSizes = {
+    [UserTagSize.small]: 'text-xs',
+    [UserTagSize.default]: 'text-sm',
+    [UserTagSize.large]: 'text-base',
+  };
 
   return (
     <Space
@@ -51,9 +56,9 @@ export const UserTag = ({
       )}
       data-testid="user-tag"
       size={4}>
-      <ProfilePicture id={id} name={name} width={toString(width)} />
-      <span>{name}</span>
-      {closable && <CloseOutlined size={width} onClick={onClose} />}
+      <ProfilePicture id={id} name={name} width={toString(width[size])} />
+      <Typography.Text className={fontSizes[size]}>{name}</Typography.Text>
+      {closable && <CloseOutlined size={width[size]} onClick={onClose} />}
     </Space>
   );
 };

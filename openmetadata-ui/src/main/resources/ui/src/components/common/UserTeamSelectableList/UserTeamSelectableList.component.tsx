@@ -10,10 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Popover, Tabs, Tag } from 'antd';
+import { Button, Popover, Space, Tabs, Typography } from 'antd';
 import Tooltip from 'antd/es/tooltip';
 import { PAGE_SIZE_MEDIUM, pagingObject } from 'constants/constants';
 import { NO_PERMISSION_FOR_ACTION } from 'constants/HelperTextUtil';
+import { EntityType } from 'enums/entity.enum';
 import { SearchIndex } from 'enums/search.enum';
 import { OwnerType } from 'enums/user.enum';
 import { EntityReference } from 'generated/entity/data/table';
@@ -21,13 +22,14 @@ import { Team } from 'generated/entity/teams/team';
 import { User } from 'generated/entity/teams/user';
 import { Paging } from 'generated/type/paging';
 import { SearchResponse } from 'interface/search.interface';
-import { noop } from 'lodash';
-import React, { useState } from 'react';
+import { isEqual, noop } from 'lodash';
+import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { searchData } from 'rest/miscAPI';
 import { getTeams } from 'rest/teamsAPI';
 import { getUsers } from 'rest/userAPI';
 import { formatTeamsResponse, formatUsersResponse } from 'utils/APIUtils';
+import { getCountBadge } from 'utils/CommonUtils';
 import { getEntityName } from 'utils/EntityUtils';
 import SVGIcons, { Icons } from 'utils/SvgUtils';
 import { SelectableList } from '../SelectableList/SelectableList.component';
@@ -150,9 +152,25 @@ export const UserTeamSelectableList = ({
   };
 
   const handleUpdate = (updateItems: EntityReference[]) => {
-    onUpdate(updateItems[0]);
+    onUpdate({
+      id: updateItems[0].id,
+      type: activeTab === 'teams' ? EntityType.TEAM : EntityType.USER,
+    });
     setPopupVisible(false);
   };
+
+  // Fetch and store count for Users tab
+  const getUserCount = async () => {
+    const { paging } = await fetchUserOptions('');
+    setUserPaging(paging);
+  };
+
+  // To pre-cache user total count
+  useEffect(() => {
+    if (popupVisible && isEqual(userPaging, pagingObject)) {
+      getUserCount();
+    }
+  }, [popupVisible]);
 
   return (
     <Popover
@@ -161,57 +179,64 @@ export const UserTeamSelectableList = ({
           centered
           activeKey={activeTab}
           className="select-owner-tabs"
+          destroyInactiveTabPane={false}
+          items={[
+            {
+              label: (
+                <>
+                  {t('label.team-plural')}{' '}
+                  {getCountBadge(teamPaging.total, '', activeTab === 'teams')}
+                </>
+              ),
+              key: 'teams',
+              children: (
+                <SelectableList
+                  customTagRenderer={(props: EntityReference) => (
+                    <Space>
+                      <SVGIcons height="24px" icon={Icons.TEAMS} width="24px" />
+                      <Typography.Text>{getEntityName(props)}</Typography.Text>
+                    </Space>
+                  )}
+                  fetchOptions={fetchTeamOptions}
+                  searchPlaceholder={t('label.search-for-type', {
+                    type: t('label.team'),
+                  })}
+                  selectedItems={owner ? [owner] : []}
+                  onCancel={() => setPopupVisible(false)}
+                  onUpdate={handleUpdate}
+                />
+              ),
+            },
+            {
+              label: (
+                <>
+                  {t('label.user-plural')}
+                  {getCountBadge(userPaging.total, '', activeTab === 'users')}
+                </>
+              ),
+              key: 'users',
+              children: (
+                <SelectableList
+                  fetchOptions={fetchUserOptions}
+                  searchPlaceholder={t('label.search-for-type', {
+                    type: t('label.user'),
+                  })}
+                  selectedItems={owner ? [owner] : []}
+                  onCancel={() => setPopupVisible(false)}
+                  onUpdate={handleUpdate}
+                />
+              ),
+            },
+          ]}
           size="small"
-          onChange={(key: string) => setActiveTab(key as 'teams' | 'users')}>
-          <Tabs.TabPane
-            key="teams"
-            tab={
-              <>
-                {t('label.team-plural')}{' '}
-                <Tag color={activeTab === 'teams' ? '#7147e8' : 'default'}>
-                  {teamPaging.total}
-                </Tag>
-              </>
-            }>
-            <SelectableList
-              fetchOptions={fetchTeamOptions}
-              searchPlaceholder={t('label.search-for-type', {
-                type: t('label.team'),
-              })}
-              selectedItems={owner ? [owner] : []}
-              onCancel={() => setPopupVisible(false)}
-              onUpdate={handleUpdate}
-            />
-          </Tabs.TabPane>
-          <Tabs.TabPane
-            key="users"
-            tab={
-              <>
-                {t('label.user-plural')}{' '}
-                <Tag color={activeTab === 'users' ? '#7147e8' : 'default'}>
-                  {userPaging.total}
-                </Tag>
-              </>
-            }>
-            <SelectableList
-              fetchOptions={fetchUserOptions}
-              searchPlaceholder={t('label.search-for-type', {
-                type: t('label.user'),
-              })}
-              selectedItems={owner ? [owner] : []}
-              onCancel={() => setPopupVisible(false)}
-              onUpdate={handleUpdate}
-            />
-          </Tabs.TabPane>
-        </Tabs>
+          onChange={(key: string) => setActiveTab(key as 'teams' | 'users')}
+        />
       }
       open={popupVisible}
       overlayClassName="user-team-select-popover card-shadow"
-      overlayInnerStyle={{ padding: '0px' }}
       overlayStyle={{ padding: 0 }}
       placement="bottomLeft"
       showArrow={false}
-      //   title={t('label.user-plural')}
       trigger="click"
       onOpenChange={setPopupVisible}>
       <Tooltip

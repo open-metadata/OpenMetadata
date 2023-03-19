@@ -11,7 +11,17 @@
  *  limitations under the License.
  */
 import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
-import { Button, Col, Input, Row, Space, Tooltip, Typography } from 'antd';
+import {
+  Button,
+  Col,
+  Input,
+  Popover,
+  Row,
+  Space,
+  Tag,
+  Tooltip,
+  Typography,
+} from 'antd';
 import Description from 'components/common/description/Description';
 import ProfilePicture from 'components/common/ProfilePicture/ProfilePicture';
 import { UserSelectableList } from 'components/common/UserSelectableList/UserSelectableList.component';
@@ -221,10 +231,9 @@ const GlossaryHeader = ({
             </Typography.Text>{' '}
             {selectedData.reviewers && selectedData.reviewers.length ? (
               <>
-                {selectedData.reviewers.map((reviewer) => (
+                {selectedData.reviewers.slice(0, 3).map((reviewer) => (
                   <UserTag
                     bordered
-                    closable
                     data-testid={`reviewer-${reviewer.displayName}`}
                     id={reviewer.id}
                     key={reviewer.name}
@@ -233,6 +242,30 @@ const GlossaryHeader = ({
                     onClose={() => handleRemoveReviewer(reviewer.id)}
                   />
                 ))}
+                {selectedData.reviewers.length > 3 && (
+                  <Popover
+                    content={
+                      <Space direction="vertical" size={4}>
+                        {selectedData.reviewers.slice(3).map((reviewer) => (
+                          <UserTag
+                            bordered
+                            data-testid={`reviewer-${reviewer.displayName}`}
+                            id={reviewer.id}
+                            key={reviewer.name}
+                            name={getEntityName(reviewer)}
+                            size={UserTagSize.small}
+                            onClose={() => handleRemoveReviewer(reviewer.id)}
+                          />
+                        ))}
+                      </Space>
+                    }>
+                    <Tag color="processing">
+                      {t('label.plus-count-more', {
+                        count: selectedData.reviewers.length - 3,
+                      })}
+                    </Tag>
+                  </Popover>
+                )}
               </>
             ) : (
               <span className="text-grey-muted">
