@@ -4,7 +4,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import org.openmetadata.schema.entity.data.Container;
-import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.util.JsonUtils;
 
@@ -22,7 +21,6 @@ public class ContainerIndex implements ColumnIndex {
     List<ElasticSearchSuggest> suggest = new ArrayList<>();
     List<ElasticSearchSuggest> columnSuggest = new ArrayList<>();
     List<ElasticSearchSuggest> serviceSuggest = new ArrayList<>();
-    List<TagLabel> tags = Entity.getEntityTags(Entity.CONTAINER, container);
     ElasticSearchIndexUtils.removeNonIndexableFields(doc, excludeFields);
     suggest.add(ElasticSearchSuggest.builder().input(container.getFullyQualifiedName()).weight(5).build());
     suggest.add(ElasticSearchSuggest.builder().input(container.getName()).weight(10).build());
@@ -35,7 +33,7 @@ public class ContainerIndex implements ColumnIndex {
       }
     }
     serviceSuggest.add(ElasticSearchSuggest.builder().input(container.getService().getName()).weight(5).build());
-    ParseTags parseTags = new ParseTags(tags);
+    ParseTags parseTags = new ParseTags(Entity.getEntityTags(Entity.CONTAINER, container));
 
     doc.put("displayName", container.getDisplayName() != null ? container.getDisplayName() : container.getName());
     doc.put("tags", parseTags.tags);

@@ -67,7 +67,6 @@ public class SubjectContext {
     return isInTeam(parentTeam, user.getTeams());
   }
 
-  /** Returns true if the user of this SubjectContext is under the team hierarchy of parentTeam */
   /** Returns true if the given resource owner is under the team hierarchy of parentTeam */
   public boolean isTeamAsset(String parentTeam, EntityReference owner) {
     if (owner.getType().equals(Entity.USER)) {

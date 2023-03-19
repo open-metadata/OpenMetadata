@@ -22,7 +22,6 @@ public class TopicIndex implements ElasticSearchIndex {
 
   public Map<String, Object> buildESDoc() {
     Map<String, Object> doc = JsonUtils.getMap(topic);
-    List<TagLabel> tags = Entity.getEntityTags(Entity.TOPIC, topic);
     List<ElasticSearchSuggest> suggest = new ArrayList<>();
     List<ElasticSearchSuggest> fieldSuggest = new ArrayList<>();
     List<ElasticSearchSuggest> serviceSuggest = new ArrayList<>();
@@ -38,14 +37,11 @@ public class TopicIndex implements ElasticSearchIndex {
       parseSchemaFields(topic.getMessageSchema().getSchemaFields(), flattenFields, null);
 
       for (FlattenSchemaField field : flattenFields) {
-        if (field.getTags() != null) {
-          tags.addAll(field.getTags());
-        }
         fieldSuggest.add(ElasticSearchSuggest.builder().input(field.getName()).weight(5).build());
       }
     }
 
-    ParseTags parseTags = new ParseTags(tags);
+    ParseTags parseTags = new ParseTags(Entity.getEntityTags(Entity.TOPIC, topic));
     doc.put("displayName", topic.getDisplayName() != null ? topic.getDisplayName() : topic.getName());
     doc.put("tags", parseTags.tags);
     doc.put("tier", parseTags.tierTag);
