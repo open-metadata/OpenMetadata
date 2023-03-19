@@ -25,37 +25,37 @@ const mockCustomTagRenderer = jest
 
 describe('SelectableList Component Test', () => {
   it('should call fetchOptions on render', () => {
-    act(() => {
-      render(
-        <SelectableList
-          multiSelect
-          fetchOptions={mockFetchOptions}
-          selectedItems={[]}
-          onCancel={mockOnCancel}
-          onUpdate={mockOnUpdate}
-        />
-      );
-    });
+    render(
+      <SelectableList
+        multiSelect
+        fetchOptions={mockFetchOptions}
+        selectedItems={[]}
+        onCancel={mockOnCancel}
+        onUpdate={mockOnUpdate}
+      />
+    );
 
-    expect(mockFetchOptions).toHaveBeenCalledWith('');
+    act(() => {
+      expect(mockFetchOptions).toHaveBeenCalledWith('');
+    });
   });
 
   it('should render SearchBar', () => {
+    render(
+      <SelectableList
+        multiSelect
+        fetchOptions={mockFetchOptions}
+        selectedItems={[]}
+        onCancel={mockOnCancel}
+        onUpdate={mockOnUpdate}
+      />
+    );
+
     act(() => {
-      render(
-        <SelectableList
-          multiSelect
-          fetchOptions={mockFetchOptions}
-          selectedItems={[]}
-          onCancel={mockOnCancel}
-          onUpdate={mockOnUpdate}
-        />
-      );
+      const searchBar = screen.getByTestId('search-bar-container');
+
+      expect(searchBar).toBeInTheDocument();
     });
-
-    const searchBar = screen.getByTestId('search-bar-container');
-
-    expect(searchBar).toBeInTheDocument();
   });
 
   it('should render SearchBar, Update, Cancel and count info', () => {
@@ -64,27 +64,27 @@ describe('SelectableList Component Test', () => {
       paging: { total: 5 },
     });
 
+    render(
+      <SelectableList
+        multiSelect
+        fetchOptions={mockFetchOptions}
+        selectedItems={[]}
+        onCancel={mockOnCancel}
+        onUpdate={mockOnUpdate}
+      />
+    );
+
     act(() => {
-      render(
-        <SelectableList
-          multiSelect
-          fetchOptions={mockFetchOptions}
-          selectedItems={[]}
-          onCancel={mockOnCancel}
-          onUpdate={mockOnUpdate}
-        />
-      );
+      const searchBar = screen.getByTestId('search-bar-container');
+      const updateBtn = screen.getByText('label.update');
+      const cancelBtn = screen.getByText('label.cancel');
+      const countInfo = screen.getByText('label.count-of-total-entity');
+
+      expect(searchBar).toBeInTheDocument();
+      expect(updateBtn).toBeInTheDocument();
+      expect(cancelBtn).toBeInTheDocument();
+      expect(countInfo).toBeInTheDocument();
     });
-
-    const searchBar = screen.getByTestId('search-bar-container');
-    const updateBtn = screen.getByText('label.update');
-    const cancelBtn = screen.getByText('label.cancel');
-    const countInfo = screen.getByText('label.count-of-total-entity');
-
-    expect(searchBar).toBeInTheDocument();
-    expect(updateBtn).toBeInTheDocument();
-    expect(cancelBtn).toBeInTheDocument();
-    expect(countInfo).toBeInTheDocument();
   });
 
   it('should not render Update and Cancel if multiple prop is false', () => {
@@ -93,16 +93,14 @@ describe('SelectableList Component Test', () => {
       paging: { total: 5 },
     });
 
-    act(() => {
-      render(
-        <SelectableList
-          fetchOptions={mockFetchOptions}
-          selectedItems={[]}
-          onCancel={mockOnCancel}
-          onUpdate={mockOnUpdate}
-        />
-      );
-    });
+    render(
+      <SelectableList
+        fetchOptions={mockFetchOptions}
+        selectedItems={[]}
+        onCancel={mockOnCancel}
+        onUpdate={mockOnUpdate}
+      />
+    );
 
     const updateBtn = screen.queryByText('label.update');
     const cancelBtn = screen.queryByText('label.cancel');
@@ -123,21 +121,22 @@ describe('SelectableList Component Test', () => {
       paging: { total: 5 },
     });
 
-    act(() => {
-      render(
-        <SelectableList
-          customTagRenderer={mockCustomTagRenderer}
-          fetchOptions={mockFetchOptions}
-          selectedItems={[]}
-          onCancel={mockOnCancel}
-          onUpdate={mockOnUpdate}
-        />
-      );
+    render(
+      <SelectableList
+        customTagRenderer={mockCustomTagRenderer}
+        fetchOptions={mockFetchOptions}
+        selectedItems={[]}
+        onCancel={mockOnCancel}
+        onUpdate={mockOnUpdate}
+      />
+    );
+
+    await act(async () => {
+      const testItem = await screen.findByText('CustomRenderer');
+
+      expect(testItem).toBeInTheDocument();
     });
 
-    const testItem = await screen.findByText('CustomRenderer');
-
-    expect(testItem).toBeInTheDocument();
     expect(mockCustomTagRenderer).toHaveBeenCalled();
 
     expect(mockCustomTagRenderer).toHaveBeenCalledWith({
@@ -159,27 +158,27 @@ describe('SelectableList Component Test', () => {
       paging: { total: 5 },
     });
 
-    act(() => {
-      render(
-        <SelectableList
-          fetchOptions={mockFetchOptions}
-          selectedItems={[
-            {
-              displayName: 'test',
-              id: '1',
-              fullyQualifiedName: 'test',
-              type: 'user',
-            },
-          ]}
-          onCancel={mockOnCancel}
-          onUpdate={mockOnUpdate}
-        />
-      );
+    render(
+      <SelectableList
+        fetchOptions={mockFetchOptions}
+        selectedItems={[
+          {
+            displayName: 'test',
+            id: '1',
+            fullyQualifiedName: 'test',
+            type: 'user',
+          },
+        ]}
+        onCancel={mockOnCancel}
+        onUpdate={mockOnUpdate}
+      />
+    );
+
+    await act(async () => {
+      const removeIcon = await screen.findByTestId('remove-owner');
+
+      expect(removeIcon).toBeInTheDocument();
     });
-
-    const removeIcon = await screen.findByTestId('remove-owner');
-
-    expect(removeIcon).toBeInTheDocument();
   });
 
   it('should not render RemoveIcon for other options', async () => {
@@ -199,29 +198,30 @@ describe('SelectableList Component Test', () => {
       paging: { total: 5 },
     });
 
-    act(() => {
-      render(
-        <SelectableList
-          fetchOptions={mockFetchOptions}
-          selectedItems={[
-            {
-              displayName: 'test',
-              id: '1',
-              fullyQualifiedName: 'test',
-              type: 'user',
-            },
-          ]}
-          onCancel={mockOnCancel}
-          onUpdate={mockOnUpdate}
-        />
-      );
-    });
+    render(
+      <SelectableList
+        fetchOptions={mockFetchOptions}
+        selectedItems={[
+          {
+            displayName: 'test',
+            id: '1',
+            fullyQualifiedName: 'test',
+            type: 'user',
+          },
+        ]}
+        onCancel={mockOnCancel}
+        onUpdate={mockOnUpdate}
+      />
+    );
 
-    const userTag = await screen.findByText('test2');
+    await act(async () => {
+      const userTag = await screen.findByText('test2');
+
+      expect(userTag).toBeInTheDocument();
+    });
 
     const removeIcon = screen.queryAllByTestId('remove-owner');
 
-    expect(userTag).toBeInTheDocument();
     expect(removeIcon).toHaveLength(1);
   });
 });
