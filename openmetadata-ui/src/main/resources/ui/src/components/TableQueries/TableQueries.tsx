@@ -13,11 +13,18 @@
 
 import { Col, Row } from 'antd';
 import { AxiosError } from 'axios';
+import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
+import {
+  OperationPermission,
+  ResourceEntity,
+} from 'components/PermissionProvider/PermissionProvider.interface';
 import { compare } from 'fast-json-patch';
 import { Query } from 'generated/entity/data/query';
 import { isUndefined } from 'lodash';
 import React, { FC, useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { getQueriesList, patchQueries } from 'rest/queryAPI';
+import { DEFAULT_ENTITY_PERMISSION } from 'utils/PermissionsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder';
 import Loader from '../Loader/Loader';
@@ -33,9 +40,45 @@ const TableQueries: FC<TableQueriesProp> = ({
   isTableDeleted,
   tableId,
 }: TableQueriesProp) => {
+  const { t } = useTranslation();
+
   const [tableQueries, setTableQueries] = useState<Query[]>([]);
   const [isQueriesLoading, setIsQueriesLoading] = useState(true);
+  const [isRightPanelLoading, setIsRightPanelLoading] = useState(true);
   const [selectedQuery, setSelectedQuery] = useState<Query>();
+  const [queryPermissions, setQueryPermissions] = useState<OperationPermission>(
+    DEFAULT_ENTITY_PERMISSION
+  );
+
+  const { getEntityPermission } = usePermissionProvider();
+
+  const fetchResourcePermission = async () => {
+    if (isUndefined(selectedQuery)) {
+      return;
+    }
+    setIsRightPanelLoading(true);
+    try {
+      const permission = await getEntityPermission(
+        ResourceEntity.QUERY,
+        selectedQuery.id || ''
+      );
+      setQueryPermissions(permission);
+    } catch (error) {
+      showErrorToast(
+        t('label.fetch-entity-permissions-error', {
+          entity: t('label.resource-permission-lowercase'),
+        })
+      );
+    } finally {
+      setIsRightPanelLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (selectedQuery && selectedQuery.id) {
+      fetchResourcePermission();
+    }
+  }, [selectedQuery]);
 
   const fetchTableQuery = async () => {
     try {
@@ -73,7 +116,10 @@ const TableQueries: FC<TableQueriesProp> = ({
   };
 
   const handleSelectedQuery = (query: Query) => {
-    setSelectedQuery(query);
+    if (query.id !== selectedQuery?.id) {
+      setIsRightPanelLoading(true);
+      setSelectedQuery(query);
+    }
   };
 
   useEffect(() => {
@@ -103,6 +149,7 @@ const TableQueries: FC<TableQueriesProp> = ({
               {tableQueries.map((query) => (
                 <Col key={query.id} span={24}>
                   <QueryCard
+                    permission={queryPermissions}
                     query={query}
                     selectedId={selectedQuery.id}
                     tableId={tableId}
@@ -116,6 +163,8 @@ const TableQueries: FC<TableQueriesProp> = ({
           <Col className="bg-white border-main border-1 border-t-0" span={6}>
             <div className="sticky top-0">
               <TableQueryRightPanel
+                isLoading={isRightPanelLoading}
+                permission={queryPermissions}
                 query={selectedQuery}
                 onQueryUpdate={handleQueryUpdate}
               />

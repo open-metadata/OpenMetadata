@@ -137,7 +137,7 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
             {showAddTagButton && (
               <span className="tw-text-primary">
                 <Tags
-                  className="tw-font-semibold"
+                  className="tw-font-semibold cursor-pointer"
                   startWith="+ "
                   tag="Tags"
                   type="border"

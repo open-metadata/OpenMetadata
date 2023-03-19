@@ -11,14 +11,17 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Divider, Row, Space, Typography } from 'antd';
+import { Button, Col, Divider, Row, Space, Tooltip, Typography } from 'antd';
 import classNames from 'classnames';
 import Description from 'components/common/description/Description';
 import OwnerWidgetWrapper from 'components/common/OwnerWidget/OwnerWidgetWrapper.component';
 import ProfilePicture from 'components/common/ProfilePicture/ProfilePicture';
+import Loader from 'components/Loader/Loader';
+import { OperationPermission } from 'components/PermissionProvider/PermissionProvider.interface';
 import TagsContainer from 'components/Tag/TagsContainer/tags-container';
 import TagsViewer from 'components/Tag/TagsViewer/tags-viewer';
 import { getUserPath } from 'constants/constants';
+import { NO_PERMISSION_FOR_ACTION } from 'constants/HelperTextUtil';
 import { SettledStatus } from 'enums/axios.enum';
 import { Query } from 'generated/entity/data/query';
 import { LabelType, State, TagLabel, TagSource } from 'generated/type/tagLabel';
@@ -34,22 +37,29 @@ import { ReactComponent as EditIcon } from '/assets/svg/ic-edit.svg';
 
 interface TableQueryRightPanelProps {
   query: Query;
+  isLoading: boolean;
+  permission: OperationPermission;
   onQueryUpdate: (updatedQuery: Query, key: keyof Query) => Promise<void>;
 }
+
+type TagDetails = {
+  isLoading: boolean;
+  options: TagOption[];
+  isError: boolean;
+};
 
 const TableQueryRightPanel = ({
   query,
   onQueryUpdate,
+  isLoading,
+  permission,
 }: TableQueryRightPanelProps) => {
   const { t } = useTranslation();
+  const { EditAll, EditDescription, EditOwner, EditTags } = permission;
   const [isEditOwner, setIsEditOwner] = useState(false);
   const [isEditDescription, setIsEditDescription] = useState(false);
   const [isEditTags, setIsEditTags] = useState(false);
-  const [tagDetails, setTagDetails] = useState<{
-    isLoading: boolean;
-    options: TagOption[];
-    isError: boolean;
-  }>({
+  const [tagDetails, setTagDetails] = useState<TagDetails>({
     isLoading: false,
     options: [],
     isError: false,
@@ -149,7 +159,9 @@ const TableQueryRightPanel = ({
     }
   };
 
-  const isReadOnly = false;
+  if (isLoading) {
+    return <Loader />;
+  }
 
   return (
     <Row className="m-t-md" gutter={[8, 8]}>
@@ -158,14 +170,18 @@ const TableQueryRightPanel = ({
           <Typography.Text className="text-grey-muted">
             {t('label.owner')}
           </Typography.Text>
-
-          <Button
-            className="flex-center p-0"
-            icon={<EditIcon height={16} width={16} />}
-            size="small"
-            type="text"
-            onClick={() => setIsEditOwner(true)}
-          />
+          <Tooltip
+            placement="left"
+            title={!(EditAll || EditOwner) && NO_PERMISSION_FOR_ACTION}>
+            <Button
+              className="flex-center p-0"
+              disabled={!(EditOwner || EditAll)}
+              icon={<EditIcon height={16} width={16} />}
+              size="small"
+              type="text"
+              onClick={() => setIsEditOwner(true)}
+            />
+          </Tooltip>
           {isEditOwner && (
             <OwnerWidgetWrapper
               horzPosRight
@@ -211,14 +227,18 @@ const TableQueryRightPanel = ({
             <Typography.Text className="text-grey-muted">
               {t('label.description')}
             </Typography.Text>
-
-            <Button
-              className="flex-center p-0"
-              icon={<EditIcon height={16} width={16} />}
-              size="small"
-              type="text"
-              onClick={() => setIsEditDescription(true)}
-            />
+            <Tooltip
+              placement="left"
+              title={!(EditAll || EditDescription) && NO_PERMISSION_FOR_ACTION}>
+              <Button
+                className="flex-center p-0"
+                disabled={!(EditDescription || EditAll)}
+                icon={<EditIcon height={16} width={16} />}
+                size="small"
+                type="text"
+                onClick={() => setIsEditDescription(true)}
+              />
+            </Tooltip>
           </Space>
         </div>
       </Col>
@@ -242,9 +262,7 @@ const TableQueryRightPanel = ({
       </Col>
       <Col span={24}>
         <div className="p-x-md">
-          {isReadOnly ? (
-            <TagsViewer sizeCap={-1} tags={query?.tags || []} />
-          ) : (
+          {EditAll || EditTags ? (
             <div
               className={classNames(
                 `tw-flex tw-justify-content`,
@@ -273,6 +291,8 @@ const TableQueryRightPanel = ({
                 onSelectionChange={handleTagSelection}
               />
             </div>
+          ) : (
+            <TagsViewer sizeCap={-1} tags={query?.tags || []} />
           )}
         </div>
       </Col>

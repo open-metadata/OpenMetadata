@@ -35,12 +35,14 @@ import SchemaEditor from '../schema-editor/SchemaEditor';
 import { ReactComponent as EditIcon } from '/assets/svg/ic-edit.svg';
 import { ReactComponent as CopyIcon } from '/assets/svg/icon-copy.svg';
 
+import { OperationPermission } from 'components/PermissionProvider/PermissionProvider.interface';
 import { getTableDetailsPath } from 'constants/constants';
 import {
   QUERY_DATE_FORMAT,
   QUERY_LINE_HEIGHT,
   QUERY_USED_BY_TABLE_VIEW_CAP,
 } from 'constants/entity.constants';
+import { NO_PERMISSION_FOR_ACTION } from 'constants/HelperTextUtil';
 import { EntityReference } from 'generated/type/entityLineage';
 import { useClipboard } from 'hooks/useClipBoard';
 import { Link } from 'react-router-dom';
@@ -51,6 +53,7 @@ interface QueryCardProp extends HTMLAttributes<HTMLDivElement> {
   query: Query;
   selectedId?: string;
   tableId: string;
+  permission: OperationPermission;
   onQuerySelection: (query: Query) => void;
   onQueryUpdate: (updatedQuery: Query, key: keyof Query) => Promise<void>;
 }
@@ -69,8 +72,10 @@ const QueryCard: FC<QueryCardProp> = ({
   tableId,
   onQuerySelection,
   onQueryUpdate,
+  permission,
 }: QueryCardProp) => {
   const { t } = useTranslation();
+  const { EditAll, EditQueries } = permission;
   const { onCopyToClipBoard } = useClipboard(query.query);
   const [expanded, setExpanded] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
@@ -114,21 +119,23 @@ const QueryCard: FC<QueryCardProp> = ({
     const items: MenuProps['items'] = [
       {
         key: 'edit-query',
-        label: (
-          <Space size={16} onClick={() => setIsEditMode(true)}>
-            <EditIcon height={16} width={16} />
-            <Text>{t('label.edit')}</Text>
-          </Space>
+        label: t('label.edit'),
+        icon: (
+          <EditIcon
+            height={16}
+            opacity={EditAll || EditQueries ? 1 : 0.5}
+            width={16}
+          />
         ),
+        disabled: !(EditAll || EditQueries),
+        onClick: () => setIsEditMode(true),
+        title: EditAll || EditQueries ? undefined : NO_PERMISSION_FOR_ACTION,
       },
       {
         key: 'copy-query',
-        label: (
-          <Space size={16} onClick={onCopyToClipBoard}>
-            <CopyIcon height={16} width={16} />
-            <Text>{t('label.copy')}</Text>
-          </Space>
-        ),
+        label: t('label.copy'),
+        icon: <CopyIcon height={16} width={16} />,
+        onClick: onCopyToClipBoard,
       },
     ];
 
