@@ -21,6 +21,7 @@ import {
 import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
 import { ObjectStoreServiceType } from 'generated/entity/data/container';
 import { t } from 'i18next';
+import { startCase } from 'lodash';
 import {
   Bucket,
   DynamicFormFieldType,
@@ -531,7 +532,7 @@ const FieldDocument = ({
 
   return (
     <>
-      <h6 className="tw-heading tw-text-base">{t('label.documentation')}</h6>
+      <h6 className="tw-heading tw-text-base">{startCase(activeField)}</h6>
       <RichTextEditorPreviewer
         markdown={markdown}
         maxLength={markdown.length}
