@@ -167,8 +167,10 @@ def _get_column_info(  # pylint: disable=too-many-locals,too-many-branches,too-m
         args = ()
     elif charlen:
         args = (int(charlen),)
+    profile_key = None
     if attype.upper() in self.ischema_names:
         coltype = self.ischema_names[attype.upper()]
+        profile_key = attype.upper()
     else:
         coltype = None
 
@@ -206,6 +208,7 @@ def _get_column_info(  # pylint: disable=too-many-locals,too-many-branches,too-m
         "type": coltype,
         "nullable": nullable,
         "raw_data_type": format_type,
+        "profile_key": profile_key,
         "default": default,
         "autoincrement": autoincrement,
         "comment": comment,

@@ -204,6 +204,7 @@ def get_columns(self, connection, table_name, schema=None, **kw):
             "autoincrement": "auto",
             "comment": row.comments,
             "raw_data_type": raw_coltype,
+            "profile_key": raw_coltype,
         }
         if row.column_name.lower() == row.column_name:
             cdict["quote"] = True

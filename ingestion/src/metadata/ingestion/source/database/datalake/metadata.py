@@ -574,11 +574,11 @@ class DatalakeSource(DatabaseServiceSource):  # pylint: disable=too-many-public-
             df_columns = list(data_frame.columns)
             for column in df_columns:
                 # use String by default
-                data_type = DataType.STRING.value
+                data_type = DataType.UNKNOWN.value
                 try:
                     if hasattr(data_frame[column], "dtypes"):
                         data_type = DATALAKE_DATA_TYPES.get(
-                            data_frame[column].dtypes.name, DataType.STRING.value
+                            data_frame[column].dtypes.name, DataType.UNKNOWN.value
                         )
 
                     parsed_string = {

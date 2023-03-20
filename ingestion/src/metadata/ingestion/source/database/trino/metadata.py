@@ -12,16 +12,12 @@
 Trino source implementation.
 """
 import logging
-import re
 import sys
 import traceback
 from copy import deepcopy
-from typing import Any, Dict, Iterable, List, Optional, Tuple
+from typing import Iterable
 
-from sqlalchemy import exc, inspect, sql, util
-from sqlalchemy.engine.base import Connection
-from sqlalchemy.sql import sqltypes
-from trino.sqlalchemy import datatype, error
+from sqlalchemy import inspect
 from trino.sqlalchemy.dialect import TrinoDialect
 
 from metadata.generated.schema.entity.data.database import Database
@@ -37,137 +33,12 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.source.connections import get_connection
 from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
-from metadata.ingestion.source.database.trino.queries import TRINO_TABLE_COMMENTS
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_database
 from metadata.utils.logger import ANSI, ingestion_logger, log_ansi_encoded_string
 from metadata.utils.sqlalchemy_utils import get_all_table_comments
 
 logger = ingestion_logger()
-ROW_DATA_TYPE = "row"
-ARRAY_DATA_TYPE = "array"
-
-
-def get_type_name_and_opts(type_str: str) -> Tuple[str, Optional[str]]:
-    match = re.match(r"^(?P<type>\w+)\s*(?:\((?P<options>.*)\))?", type_str)
-    if not match:
-        util.warn(f"Could not parse type name '{type_str}'")
-        return sqltypes.NULLTYPE
-    type_name = match.group("type")
-    type_opts = match.group("options")
-    return type_name, type_opts
-
-
-def parse_array_data_type(type_str: str) -> str:
-    """
-    This mehtod is used to convert the complex array datatype to the format that is supported by OpenMetadata
-    For Example:
-    If we have a row type as array(row(col1 bigint, col2 string))
-    this method will return type as -> array<struct<col1:bigint,col2:string>>
-    """
-    type_name, type_opts = get_type_name_and_opts(type_str)
-    final = type_name + "<"
-    if type_opts:
-        if type_opts.startswith(ROW_DATA_TYPE):
-            final += parse_row_data_type(type_opts)
-        elif type_opts.startswith(ARRAY_DATA_TYPE):
-            final += parse_array_data_type(type_opts)
-        else:
-            final += type_opts
-    return final + ">"
-
-
-def parse_row_data_type(type_str: str) -> str:
-    """
-    This mehtod is used to convert the complex row datatype to the format that is supported by OpenMetadata
-    For Example:
-    If we have a row type as row(col1 bigint, col2 bigint, col3 row(col4 string, col5 bigint))
-    this method will return type as -> struct<col1:bigint,col2:bigint,col3:struct<col4:string,col5:bigint>>
-    """
-    type_name, type_opts = get_type_name_and_opts(type_str)
-    final = type_name.replace(ROW_DATA_TYPE, "struct") + "<"
-    if type_opts:
-        for data_type in datatype.aware_split(type_opts) or []:
-            attr_name, attr_type_str = datatype.aware_split(
-                data_type.strip(), delimiter=" ", maxsplit=1
-            )
-            if attr_type_str.startswith(ROW_DATA_TYPE):
-                final += attr_name + ":" + parse_row_data_type(attr_type_str) + ","
-            elif attr_type_str.startswith(ARRAY_DATA_TYPE):
-                final += attr_name + ":" + parse_array_data_type(attr_type_str) + ","
-            else:
-                final += attr_name + ":" + attr_type_str + ","
-    return final[:-1] + ">"
-
-
-def _get_columns(
-    self, connection: Connection, table_name: str, schema: str = None, **__
-) -> List[Dict[str, Any]]:
-    # pylint: disable=protected-access
-    schema = schema or self._get_default_schema_name(connection)
-    query = f"SHOW COLUMNS FROM {schema}.{table_name}"
-
-    res = connection.execute(sql.text(query), schema=schema, table=table_name)
-    columns = []
-    for record in res:
-        col_type = datatype.parse_sqltype(record.Type)
-        column = {
-            "name": record.Column,
-            "type": col_type,
-            "nullable": True,
-            "comment": record.Comment,
-            "raw_data_type": record.Type,
-        }
-        type_str = record.Type.strip().lower()
-        type_name, type_opts = get_type_name_and_opts(type_str)
-        if type_opts and type_name == ROW_DATA_TYPE:
-            column["raw_data_type"] = parse_row_data_type(type_str)
-            column["is_complex"] = True
-        elif type_opts and type_name == ARRAY_DATA_TYPE:
-            column["raw_data_type"] = parse_array_data_type(type_str)
-            column["is_complex"] = True
-        columns.append(column)
-    return columns
-
-
-def get_table_comment(  # pylint: disable=unused-argument
-    self, connection: Connection, table_name: str, schema: str = None, **kw
-) -> Dict[str, Any]:
-    """
-    Override get table comment method to batch process comments
-    """
-    catalog_name = self._get_default_catalog_name(  # pylint: disable=protected-access
-        connection
-    )
-    if catalog_name is None:
-        raise exc.NoSuchTableError("catalog is required in connection")
-    schema_name = (
-        self._get_default_schema_name(connection)  # pylint: disable=protected-access
-        or schema
-    )
-    if schema_name is None:
-        raise exc.NoSuchTableError("schema is required")
-    self.processed_schema = (
-        self.processed_schema if hasattr(self, "processed_schema") else set()
-    )
-    try:
-        if (
-            not hasattr(self, "all_table_comments")
-            or self.current_db != connection.engine.url.database
-            or schema not in self.processed_schema
-        ):
-            self.processed_schema.add(schema)
-            self.get_all_table_comments(
-                connection,
-                TRINO_TABLE_COMMENTS.format(
-                    catalog_name=catalog_name, schema_name=schema
-                ),
-            )
-        return {"text": self.all_table_comments.get((table_name, schema))}
-    except error.TrinoQueryError as exe:
-        if exe.error_name in (error.PERMISSION_DENIED,):
-            return {"text": None}
-        raise
 
 
 TrinoDialect._get_columns = _get_columns  # pylint: disable=protected-access

@@ -70,6 +70,7 @@ ischema_names.update(
         "UInt32": create_sqlalchemy_type("INTEGER"),
         "UInt16": create_sqlalchemy_type("SMALLINT"),
         "UInt8": create_sqlalchemy_type("SMALLINT"),
+        "NullType": create_sqlalchemy_type("NullType"),
     }
 )
 
@@ -78,55 +79,58 @@ ischema_names.update(
 def _get_column_type(
     self, name, spec
 ):  # pylint: disable=protected-access,too-many-branches,too-many-return-statements
+    col_key = None
 
     if spec.startswith("Array"):
-        return self.ischema_names["Array"]
+        return self.ischema_names["Array"], "Array"
 
     if spec.startswith("FixedString"):
-        return self.ischema_names["FixedString"]
+        return self.ischema_names["FixedString"], "FixedString"
 
     if spec.startswith("Nullable"):
         inner = spec[9:-1]
         coltype = self.ischema_names["_nullable"]
-        return self._get_column_type(name, inner)
+        col_type, *_ = self._get_column_type(name, inner)
+        return col_type, "_nullable"
 
     if spec.startswith("LowCardinality"):
         inner = spec[15:-1]
         coltype = self.ischema_names["_lowcardinality"]
-        return coltype(self._get_column_type(name, inner))
+        col_type, *_ = self._get_column_type(name, inner)
+        return coltype(col_type), "_lowcardinality"
 
     if spec.startswith("Tuple"):
-        return self.ischema_names["Tuple"]
+        return self.ischema_names["Tuple"], "Tuple"
 
     if spec.startswith("Map"):
-        return self.ischema_names["Map"]
+        return self.ischema_names["Map"], "Map"
 
     if spec.startswith("Enum"):
-        return self.ischema_names["Enum"]
+        return self.ischema_names["Enum"], "Enum"
 
     if spec.startswith("DateTime64"):
-        return self.ischema_names["DateTime64"]
+        return self.ischema_names["DateTime64"], "DateTime64"
 
     if spec.startswith("DateTime"):
-        return self.ischema_names["DateTime"]
+        return self.ischema_names["DateTime"], "DateTime"
 
     if spec.startswith("IP"):
-        return self.ischema_names["String"]
+        return self.ischema_names["String"], "String"
 
     if spec.lower().startswith("decimal"):
         coltype = self.ischema_names["Decimal"]
-        return coltype(*self._parse_decimal_params(spec))
+        return coltype(*self._parse_decimal_params(spec)), "Decimal"
 
     if spec.lower().startswith("aggregatefunction"):
-        return self.ischema_names["AggregateFunction"]
+        return self.ischema_names["AggregateFunction"], "AggregateFunction"
 
     if spec.lower().startswith("simpleaggregatefunction"):
-        return self.ischema_names["SimpleAggregateFunction"]
+        return self.ischema_names["SimpleAggregateFunction"], "SimpleAggregateFunction"
     try:
-        return self.ischema_names[spec]
+        return self.ischema_names[spec], spec
     except KeyError:
         warn(f"Did not recognize type '{spec}' of column '{name}'")
-        return sqltypes.NullType
+        return sqltypes.NullType, "NullType"
 
 
 def execute(self, query, params=None):
@@ -200,7 +204,7 @@ def get_table_comment(
 def _get_column_info(
     self, name, format_type, default_type, default_expression, comment
 ):
-    col_type = self._get_column_type(  # pylint: disable=protected-access
+    col_type, name_key = self._get_column_type(  # pylint: disable=protected-access
         name, format_type
     )
     col_default = self._get_column_default(  # pylint: disable=protected-access
@@ -215,6 +219,7 @@ def _get_column_info(
         "default": col_default,
         "comment": comment or None,
         "raw_data_type": raw_type,
+        "profile_key": name_key,
     }
 
     if col_type in [Map, Array, Tuple, Enum]:

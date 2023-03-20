@@ -121,6 +121,7 @@ def get_columns(self, connection, table_name, schema=None, **kw):
         #      'decimal(10,1)' -> decimal
         raw_col_type = col_type
         col_type = re.search(r"^\w+", col_type).group(0)
+        profile_key = col_type
         try:
             coltype = _type_map[col_type]
         except KeyError:
@@ -134,6 +135,7 @@ def get_columns(self, connection, table_name, schema=None, **kw):
             "default": None,
             "comment": _comment,
             "raw_data_type": raw_col_type,
+            "profile_key": profile_key,
         }
         if col_type in {"array", "struct", "map"}:
             if db_name and schema:

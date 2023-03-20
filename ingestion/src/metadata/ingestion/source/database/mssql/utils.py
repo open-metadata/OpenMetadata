@@ -184,6 +184,7 @@ def get_columns(
             "name": name,
             "type": coltype,
             "raw_data_type": type_,
+            "profile_key": type_,
             "nullable": nullable,
             "default": default,
             "autoincrement": is_identity is not None,

@@ -96,13 +96,14 @@ def _get_column_type(self, type_):
             )
         )
         col_type = col_map["array"]
+        name = "array"
         args = [col_map.get(parsed_type.get("arrayDataType").lower(), types.String)]
     elif col_map.get(name):
         col_type = col_map.get(name)
     else:
         logger.warning(f"Did not recognize type '{type_}'")
         col_type = types.NullType
-    return col_type(*args)
+    return col_type(*args), name
 
 
 @reflection.cache
@@ -113,34 +114,38 @@ def get_columns(self, connection, table_name, schema=None, **kw):
     metadata = self._get_table(  # pylint: disable=protected-access
         connection, table_name, schema=schema, **kw
     )
-    columns = [
-        {
+    columns = []
+    for c in metadata.columns:
+        col_type, raw_key = self._get_column_type(c.type)
+        col = {
             "name": c.name,
-            "type": self._get_column_type(c.type),  # pylint: disable=protected-access
+            "type": col_type,  # pylint: disable=protected-access
             "nullable": True,
             "default": None,
             "autoincrement": False,
             "comment": c.comment,
+            "profile_key": raw_key,
             "raw_data_type": c.type,
             "is_complex": is_complex_type(c.type),
             "dialect_options": {"awsathena_partition": None},
         }
-        for c in metadata.columns
-    ]
-    columns += [
-        {
+        columns.append(col)
+    for c in metadata.partition_keys:
+        col_type, raw_key = self._get_column_type(c.type)
+        col = {
             "name": c.name,
-            "type": self._get_column_type(c.type),  # pylint: disable=protected-access
+            "type": col_type,  # pylint: disable=protected-access
             "nullable": True,
             "default": None,
             "autoincrement": False,
             "comment": c.comment,
             "raw_data_type": c.type,
+            "profile_key": raw_key,
             "is_complex": is_complex_type(c.type),
             "dialect_options": {"awsathena_partition": True},
         }
-        for c in metadata.partition_keys
-    ]
+        columns.append(col)
+
     return columns
 
 

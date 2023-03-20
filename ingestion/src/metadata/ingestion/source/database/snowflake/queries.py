@@ -87,3 +87,21 @@ FROM information_schema.schemata
 SNOWFLAKE_GET_DATABASE_COMMENTS = """
 select DATABASE_NAME,COMMENT from information_schema.databases
 """
+
+
+SNOWFLAKE_GET_COLUMNS = """
+    SELECT /* sqlalchemy:get_table_columns */
+            ic.table_name,
+            ic.column_name,
+            ic.data_type,
+            ic.character_maximum_length,
+            ic.numeric_precision,
+            ic.numeric_scale,
+            ic.is_nullable,
+            ic.column_default,
+            ic.is_identity,
+            ic.comment
+        FROM information_schema.columns ic
+        WHERE ic.table_schema=:table_schema
+        AND ic.table_name=:table_name
+        ORDER BY ic.ordinal_position"""

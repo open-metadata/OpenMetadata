@@ -17,9 +17,7 @@ from typing import Iterable, Tuple
 
 from sqlalchemy import sql
 from sqlalchemy.dialects.postgresql.base import PGDialect, ischema_names
-from sqlalchemy.engine import reflection
 from sqlalchemy.engine.reflection import Inspector
-from sqlalchemy.sql import sqltypes
 
 from metadata.generated.schema.api.classification.createClassification import (
     CreateClassificationRequest,
@@ -48,14 +46,15 @@ from metadata.ingestion.source.database.common_db_source import (
     TableNameAndType,
 )
 from metadata.ingestion.source.database.postgres.queries import (
-    POSTGRES_COL_IDENTITY,
     POSTGRES_GET_ALL_TABLE_PG_POLICY,
     POSTGRES_GET_DB_NAMES,
     POSTGRES_GET_TABLE_NAMES,
     POSTGRES_PARTITION_DETAILS,
-    POSTGRES_SQL_COLUMNS,
-    POSTGRES_TABLE_COMMENTS,
-    POSTGRES_VIEW_DEFINITIONS,
+)
+from metadata.ingestion.source.database.postgres.utils import (
+    get_column_info,
+    get_table_comment,
+    get_view_definition,
 )
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_database
@@ -63,8 +62,6 @@ from metadata.utils.logger import ingestion_logger
 from metadata.utils.sqlalchemy_utils import (
     get_all_table_comments,
     get_all_view_definitions,
-    get_table_comment_wrapper,
-    get_view_definition_wrapper,
 )
 
 TableKey = namedtuple("TableKey", ["schema", "table_name"])
@@ -104,117 +101,12 @@ ischema_names.update(
 )
 
 
-@reflection.cache
-def get_table_comment(
-    self, connection, table_name, schema=None, **kw
-):  # pylint: disable=unused-argument
-    return get_table_comment_wrapper(
-        self,
-        connection,
-        table_name=table_name,
-        schema=schema,
-        query=POSTGRES_TABLE_COMMENTS,
-    )
-
-
-@reflection.cache
-def get_columns(  # pylint: disable=too-many-locals
-    self, connection, table_name, schema=None, **kw
-):
-    """
-    Overriding the dialect method to add raw_data_type in response
-    """
-
-    table_oid = self.get_table_oid(
-        connection, table_name, schema, info_cache=kw.get("info_cache")
-    )
-
-    generated = (
-        "a.attgenerated as generated"
-        if self.server_version_info >= (12,)
-        else "NULL as generated"
-    )
-    if self.server_version_info >= (10,):
-        # a.attidentity != '' is required or it will reflect also
-        # serial columns as identity.
-        identity = POSTGRES_COL_IDENTITY
-    else:
-        identity = "NULL as identity_options"
-
-    sql_col_query = POSTGRES_SQL_COLUMNS.format(
-        generated=generated,
-        identity=identity,
-    )
-    sql_col_query = (
-        sql.text(sql_col_query)
-        .bindparams(sql.bindparam("table_oid", type_=sqltypes.Integer))
-        .columns(attname=sqltypes.Unicode, default=sqltypes.Unicode)
-    )
-    conn = connection.execute(sql_col_query, {"table_oid": table_oid})
-    rows = conn.fetchall()
-
-    # dictionary with (name, ) if default search path or (schema, name)
-    # as keys
-    domains = self._load_domains(connection)  # pylint: disable=protected-access
-
-    # dictionary with (name, ) if default search path or (schema, name)
-    # as keys
-    enums = dict(
-        ((rec["name"],), rec) if rec["visible"] else ((rec["schema"], rec["name"]), rec)
-        for rec in self._load_enums(  # pylint: disable=protected-access
-            connection, schema="*"
-        )
-    )
-
-    # format columns
-    columns = []
-
-    for (
-        name,
-        format_type,
-        default_,
-        notnull,
-        table_oid,
-        comment,
-        generated,
-        identity,
-    ) in rows:
-        column_info = self._get_column_info(  # pylint: disable=protected-access
-            name,
-            format_type,
-            default_,
-            notnull,
-            domains,
-            enums,
-            schema,
-            comment,
-            generated,
-            identity,
-        )
-        column_info["raw_data_type"] = format_type
-        columns.append(column_info)
-    return columns
-
-
 PGDialect.get_all_table_comments = get_all_table_comments
 PGDialect.get_table_comment = get_table_comment
 
 
-@reflection.cache
-def get_view_definition(
-    self, connection, table_name, schema=None, **kw
-):  # pylint: disable=unused-argument
-    return get_view_definition_wrapper(
-        self,
-        connection,
-        table_name=table_name,
-        schema=schema,
-        query=POSTGRES_VIEW_DEFINITIONS,
-    )
-
-
 PGDialect.get_view_definition = get_view_definition
-PGDialect.get_columns = get_columns
+PGDialect._get_column_info = get_column_info
 PGDialect.get_all_view_definitions = get_all_view_definitions
 
 PGDialect.ischema_names = ischema_names

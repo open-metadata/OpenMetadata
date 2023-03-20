@@ -108,6 +108,7 @@ def get_columns(bq_schema):
             "scale": field.scale,
             "max_length": field.max_length,
             "raw_data_type": str(col_type),
+            "profile_key": field.field_type if field.mode == "REPEATED" else "ARRAY",
             "is_complex": is_complex_type(str(col_type)),
             "policy_tags": None,
         }

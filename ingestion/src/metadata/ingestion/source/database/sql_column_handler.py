@@ -173,6 +173,8 @@ class SqlColumnHandlerMixin:
             parsed_string["dataType"], column["type"]
         )
         parsed_string["description"] = column.get("comment")
+        parsed_string["profileKey"] = column.get("profile_key")
+        parsed_string["systemDataType"] = column.get("raw_data_type")
         if column["raw_data_type"] == "array":
             array_data_type_display = (
                 repr(column["type"])
@@ -279,6 +281,7 @@ class SqlColumnHandlerMixin:
                         children=children,
                         arrayDataType=arr_data_type,
                         systemDataType=column.get("raw_data_type"),
+                        profileKey=column.get("profile_key"),
                     )
                     if precision:
                         om_column.precision = precision[0]

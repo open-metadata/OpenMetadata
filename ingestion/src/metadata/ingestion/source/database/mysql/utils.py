@@ -138,6 +138,7 @@ def parse_column(self, line, state):
         "default": default,
         "comment": comment,
         "raw_data_type": type_,
+        "profile_key": type_,
     }
     col_d.update(col_kw)
     state.columns.append(col_d)

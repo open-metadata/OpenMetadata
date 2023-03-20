@@ -66,6 +66,7 @@ def get_columns(
         col_raw_type = col_type
         attype = re.sub(r"\(.*\)", "", col_type)
         col_type = re.search(r"^\w+", col_type).group(0)
+        profile_key = col_type
         try:
             coltype = _type_map[col_type]
 
@@ -90,6 +91,7 @@ def get_columns(
                 "nullable": True,
                 "default": None,
                 "raw_data_type": col_raw_type,
+                "profile_key": profile_key,
                 "is_complex": col_type in complex_data_types,
             }
         )

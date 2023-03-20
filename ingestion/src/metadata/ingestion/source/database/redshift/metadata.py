@@ -55,6 +55,9 @@ from metadata.ingestion.source.database.common_db_source import (
     CommonDbSourceService,
     TableNameAndType,
 )
+from metadata.ingestion.source.database.postgres.utils import (
+    get_column_info as pg_get_column_info,
+)
 from metadata.ingestion.source.database.redshift.queries import (
     REDSHIFT_GET_ALL_RELATION_INFO,
     REDSHIFT_GET_DATABASE_NAMES,
@@ -178,6 +181,7 @@ def _get_schema_column_info(
 RedshiftDialectMixin._get_column_info = (  # pylint: disable=protected-access
     _get_column_info
 )
+PGDialect._get_column_info = pg_get_column_info
 RedshiftDialectMixin._get_schema_column_info = (  # pylint: disable=protected-access
     _get_schema_column_info
 )
