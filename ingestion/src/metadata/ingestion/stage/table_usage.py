@@ -17,6 +17,7 @@ import json
 import os
 import shutil
 import traceback
+from pathlib import Path
 
 from metadata.config.common import ConfigModel
 from metadata.generated.schema.api.data.createQuery import CreateQueryRequest
@@ -61,18 +62,26 @@ class TableUsageStage(Stage[QueryParserData]):
         self.status = StageStatus()
         self.table_usage = {}
         self.table_queries = {}
-        isdir = os.path.isdir(self.config.filename)
-        if not isdir:
-            os.mkdir(self.config.filename)
-        else:
-            shutil.rmtree(self.config.filename)
-            os.mkdir(self.config.filename)
+
+        self.init_location()
+
         self.wrote_something = False
 
     @classmethod
     def create(cls, config_dict: dict, metadata_config: OpenMetadataConnection):
         config = TableStageConfig.parse_obj(config_dict)
         return cls(config, metadata_config)
+
+    def init_location(self) -> None:
+        """
+        Prepare the usage location
+        """
+        location = Path(self.config.filename)
+        if location.is_dir():
+            logger.info(f"Location exists, cleaning it up")
+            shutil.rmtree(self.config.filename)
+        logger.info(f"Creating the directory to store staging data in {location}")
+        location.mkdir(parents=True, exist_ok=True)
 
     def _get_user_entity(self, username: str):
         if username:
