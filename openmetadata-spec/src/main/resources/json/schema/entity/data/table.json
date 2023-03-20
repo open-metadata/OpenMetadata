@@ -246,6 +246,10 @@
           "description": "Store the raw system data type of column.",
           "type": "string"
         },
+        "profileKey": {
+          "description": "Key for mapping get the sqlalchamey class of column type.",
+          "type": "string"
+        },
         "arrayDataType": {
           "description": "Data type used array in dataType. For example, `array<int>` has dataType as `array` and arrayDataType as `int`.",
           "$ref": "#/definitions/dataType"

@@ -34,6 +34,7 @@ public final class ColumnUtil {
         .withScale(column.getScale())
         .withOrdinalPosition(column.getOrdinalPosition())
         .withChildren(children)
-        .withSystemDataType(column.getSystemDataType());
+        .withSystemDataType(column.getSystemDataType())
+        .withProfileKey(column.getProfileKey());
   }
 }
