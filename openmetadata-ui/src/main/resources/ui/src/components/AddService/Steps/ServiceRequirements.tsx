@@ -15,6 +15,7 @@ import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichText
 import Loader from 'components/Loader/Loader';
 import React, { FC, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { fetchMarkdownFile } from 'rest/miscAPI';
 
 interface ServiceRequirementsProp {
   selectServiceType: string;
@@ -34,20 +35,12 @@ const ServiceRequirements: FC<ServiceRequirementsProp> = ({
   const [markdownContent, setMarkdownContent] = useState<string>('');
 
   const fetchRequirement = async () => {
-    const filePath = t('requirement', { ns: selectServiceType });
+    const filePath = 'en-US/Database/Mysql/requirements.md';
     setIsLoading(true);
     try {
-      const res = await fetch(filePath, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'text/markdown',
-          Accept: 'text/markdown',
-        },
-      });
+      const response = await fetchMarkdownFile(filePath);
 
-      const data = await res.text();
-
-      setMarkdownContent(data);
+      setMarkdownContent(response);
     } catch (error) {
       // handle error
     } finally {
