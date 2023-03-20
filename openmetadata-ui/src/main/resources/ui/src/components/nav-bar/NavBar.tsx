@@ -95,12 +95,12 @@ const NavBar = ({
     useState<boolean>(false);
   const [activeTab, setActiveTab] = useState<string>('Task');
   const [isImgUrlValid, setIsImgUrlValid] = useState<boolean>(true);
-  const [searchCriteria, setSearchCriteria] = useState<
-    SearchIndex | undefined
-  >();
+  const [searchCriteria, setSearchCriteria] = useState<SearchIndex | null>(
+    null
+  );
   const globalSearchOptions = useMemo(
     () => [
-      { value: undefined, label: t('label.all') },
+      { value: null, label: t('label.all') },
       { value: SearchIndex.TABLE, label: t('label.table') },
       { value: SearchIndex.TOPIC, label: t('label.topic') },
       { value: SearchIndex.DASHBOARD, label: t('label.dashboard') },
@@ -112,16 +112,15 @@ const NavBar = ({
     []
   );
 
-  const updateSearchCriteria = (criteria: SearchIndex | undefined) => {
+  const updateSearchCriteria = (criteria: SearchIndex | null) => {
     setSearchCriteria(criteria);
-    handleSearchChange('');
   };
 
   const entitiesSelect = useMemo(
     () => (
       <Select
+        defaultActiveFirstOption
         className="global-search-select"
-        defaultValue={undefined}
         value={searchCriteria}
         onChange={updateSearchCriteria}>
         {globalSearchOptions.map(({ value, label }) => (
