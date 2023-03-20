@@ -494,6 +494,7 @@
     "notification-plural": "通知",
     "november": "11月",
     "null": "Null",
+    "number-of-object": "Number of objects",
     "number-of-rows": "行数",
     "object-store": "オブジェクトストア",
     "object-store-plural": "オブジェクトストア",
@@ -601,6 +602,7 @@
     "region-name": "リージョン名",
     "registry": "レジストリ",
     "related-term-plural": "関連する用語",
+    "relevance": "Relevance",
     "remove": "除外",
     "remove-entity": "{{entity}}を除外",
     "removed": "除外",
@@ -845,6 +847,7 @@
     "webhook-display-text": "ウェブフック {{displayText}}",
     "wednesday": "水曜日",
     "week": "週",
+    "weekly-usage": "Weekly Usage",
     "whats-new": "最新情報",
     "yes": "はい",
     "your-entity": "あなたの{{entity}}"
