@@ -12,7 +12,7 @@
 Base class for ingesting mlmodel services
 """
 from abc import ABC, abstractmethod
-from typing import Any, Iterable, List, Optional
+from typing import Any, Iterable, List, Optional, Set
 
 from metadata.generated.schema.api.data.createMlModel import CreateMlModelRequest
 from metadata.generated.schema.entity.data.mlmodel import (
@@ -36,6 +36,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.ingestion.api.source import Source, SourceStatus
 from metadata.ingestion.api.topology_runner import TopologyRunnerMixin
+from metadata.ingestion.models.delete_entity import DeleteEntity
 from metadata.ingestion.models.topology import (
     NodeStage,
     ServiceTopology,
@@ -44,6 +45,7 @@ from metadata.ingestion.models.topology import (
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.connections import get_connection, get_test_connection_fn
+from metadata.utils import fqn
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -70,6 +72,7 @@ class MlModelServiceTopology(ServiceTopology):
             ),
         ],
         children=["mlmodel"],
+        post_process=["mark_mlmodels_as_deleted"],
     )
     mlmodel = TopologyNode(
         producer="get_mlmodels",
@@ -130,6 +133,7 @@ class MlModelServiceSource(TopologyRunnerMixin, Source, ABC):
 
     topology = MlModelServiceTopology()
     context = create_source_context(topology)
+    mlmodel_source_state: Set = set()
 
     def __init__(
         self,
@@ -204,6 +208,42 @@ class MlModelServiceSource(TopologyRunnerMixin, Source, ABC):
     def test_connection(self) -> None:
         test_connection_fn = get_test_connection_fn(self.service_connection)
         test_connection_fn(self.connection, self.service_connection)
+
+    def mark_mlmodels_as_deleted(self):
+        """
+        Method to mark the mlmodels as deleted
+        """
+        if self.source_config.markDeletedMlModels:
+            mlmodel_state = self.metadata.list_all_entities(
+                entity=MlModel,
+                params={
+                    "service": self.context.mlmodel_service.fullyQualifiedName.__root__
+                },
+            )
+            logger.info(f"Mark Deleted MlModels set to True")
+            for mlmodel in mlmodel_state:
+                if (
+                    str(mlmodel.fullyQualifiedName.__root__)
+                    not in self.mlmodel_source_state
+                ):
+                    yield DeleteEntity(
+                        entity=mlmodel,
+                        mark_deleted_entities=self.source_config.markDeletedMlModels,
+                    )
+
+    def register_record(self, mlmodel_request: CreateMlModelRequest) -> None:
+        """
+        Mark the mlmodel record as scanned and update the mlmodel_source_state
+        """
+        mlmodel_fqn = fqn.build(
+            self.metadata,
+            entity_type=MlModel,
+            service_name=mlmodel_request.service.__root__,
+            mlmodel_name=mlmodel_request.name.__root__,
+        )
+
+        self.mlmodel_source_state.add(mlmodel_fqn)
+        self.status.scanned(mlmodel_fqn)
 
     def prepare(self):
         pass

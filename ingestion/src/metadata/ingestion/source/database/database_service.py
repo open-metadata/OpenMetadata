@@ -58,8 +58,9 @@ from metadata.generated.schema.type.tagLabel import (
 )
 from metadata.ingestion.api.source import Source, SourceStatus
 from metadata.ingestion.api.topology_runner import TopologyRunnerMixin
+from metadata.ingestion.models.delete_entity import DeleteEntity
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
-from metadata.ingestion.models.table_metadata import DeleteTable, OMetaTableConstraints
+from metadata.ingestion.models.table_metadata import OMetaTableConstraints
 from metadata.ingestion.models.topology import (
     NodeStage,
     ServiceTopology,
@@ -424,7 +425,7 @@ class DatabaseServiceSource(
         self.database_source_state.add(table_fqn)
         self.status.scanned(table_fqn)
 
-    def delete_schema_tables(self, schema_fqn: str) -> Iterable[DeleteTable]:
+    def delete_schema_tables(self, schema_fqn: str) -> Iterable[DeleteEntity]:
         """
         Returns Deleted tables
         """
@@ -433,9 +434,9 @@ class DatabaseServiceSource(
         )
         for table in database_state:
             if str(table.fullyQualifiedName.__root__) not in self.database_source_state:
-                yield DeleteTable(
-                    table=table,
-                    mark_deleted_tables=self.source_config.markDeletedTables,
+                yield DeleteEntity(
+                    entity=table,
+                    mark_deleted_entities=self.source_config.markDeletedTables,
                 )
 
     def fetch_all_schema_and_delete_tables(self):

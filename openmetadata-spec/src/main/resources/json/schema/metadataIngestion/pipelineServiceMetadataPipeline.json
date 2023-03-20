@@ -25,6 +25,11 @@
     "pipelineFilterPattern": {
       "description": "Regex exclude pipelines.",
       "$ref": "../type/filterPattern.json#/definitions/filterPattern"
+    },
+    "markDeletedPipelines": {
+      "description": "Optional configuration to soft delete Pipelines in OpenMetadata if the source Pipelines are deleted. Also, if the Pipeline is deleted, all the associated entities like lineage, etc., with that Pipeline will be deleted",
+      "type": "boolean",
+      "default": true
     }
   },
   "additionalProperties": false

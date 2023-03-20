@@ -293,7 +293,7 @@ class TableauSource(DashboardServiceSource):
         Method to Get Dashboard Entity
         """
         workbook_url = urlparse(dashboard_details.webpage_url).fragment
-        yield CreateDashboardRequest(
+        dashboard_request = CreateDashboardRequest(
             name=dashboard_details.id,
             displayName=dashboard_details.name,
             description=dashboard_details.description,
@@ -310,6 +310,8 @@ class TableauSource(DashboardServiceSource):
             dashboardUrl=f"#{workbook_url}",
             service=self.context.dashboard_service.fullyQualifiedName.__root__,
         )
+        yield dashboard_request
+        self.register_record(dashboard_request=dashboard_request)
 
     def yield_dashboard_lineage_details(
         self, dashboard_details: TableauDashboard, db_service_name: str

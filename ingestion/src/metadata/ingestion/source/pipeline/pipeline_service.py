@@ -12,7 +12,7 @@
 Base class for ingesting database services
 """
 from abc import ABC, abstractmethod
-from typing import Any, Iterable, List, Optional
+from typing import Any, Iterable, List, Optional, Set
 
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
@@ -32,6 +32,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.ingestion.api.source import Source, SourceStatus
 from metadata.ingestion.api.topology_runner import TopologyRunnerMixin
+from metadata.ingestion.models.delete_entity import DeleteEntity
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
 from metadata.ingestion.models.topology import (
@@ -42,6 +43,7 @@ from metadata.ingestion.models.topology import (
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.connections import get_connection, get_test_connection_fn
+from metadata.utils import fqn
 from metadata.utils.filters import filter_by_pipeline
 from metadata.utils.logger import ingestion_logger
 
@@ -68,6 +70,7 @@ class PipelineServiceTopology(ServiceTopology):
             ),
         ],
         children=["pipeline"],
+        post_process=["mark_pipelines_as_deleted"],
     )
     pipeline = TopologyNode(
         producer="get_pipeline",
@@ -185,6 +188,7 @@ class PipelineServiceSource(TopologyRunnerMixin, Source, ABC):
     service_connection: PipelineConnection.__fields__["config"].type_
 
     topology = PipelineServiceTopology()
+    pipeline_source_state: Set = set()
     context = create_source_context(topology)
 
     def __init__(
@@ -237,6 +241,42 @@ class PipelineServiceSource(TopologyRunnerMixin, Source, ABC):
     def test_connection(self) -> None:
         test_connection_fn = get_test_connection_fn(self.service_connection)
         test_connection_fn(self.connection, self.service_connection)
+
+    def register_record(self, pipeline_request: CreatePipelineRequest) -> None:
+        """
+        Mark the pipeline record as scanned and update the pipeline_source_state
+        """
+        pipeline_fqn = fqn.build(
+            self.metadata,
+            entity_type=Pipeline,
+            service_name=pipeline_request.service.__root__,
+            pipeline_name=pipeline_request.name.__root__,
+        )
+
+        self.pipeline_source_state.add(pipeline_fqn)
+        self.status.scanned(pipeline_fqn)
+
+    def mark_pipelines_as_deleted(self):
+        """
+        Method to mark the pipelines as deleted
+        """
+        if self.source_config.markDeletedPipelines:
+            pipeline_state = self.metadata.list_all_entities(
+                entity=Pipeline,
+                params={
+                    "service": self.context.pipeline_service.fullyQualifiedName.__root__
+                },
+            )
+            logger.info(f"Mark Deleted Pipelines set to True")
+            for pipeline in pipeline_state:
+                if (
+                    str(pipeline.fullyQualifiedName.__root__)
+                    not in self.pipeline_source_state
+                ):
+                    yield DeleteEntity(
+                        entity=pipeline,
+                        mark_deleted_entities=self.source_config.markDeletedPipelines,
+                    )
 
     def prepare(self):
         """

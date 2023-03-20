@@ -323,7 +323,7 @@ class AirflowSource(PipelineServiceSource):
 
         try:
             dag: SerializedDAG = self._build_dag(pipeline_details.data)
-            yield CreatePipelineRequest(
+            pipeline_request = CreatePipelineRequest(
                 name=pipeline_details.dag_id,
                 description=dag.description,
                 pipelineUrl=f"/tree?dag_id={dag.dag_id}",  # Just the suffix
@@ -333,6 +333,8 @@ class AirflowSource(PipelineServiceSource):
                 tasks=self.get_tasks_from_dag(dag),
                 service=self.context.pipeline_service.fullyQualifiedName.__root__,
             )
+            yield pipeline_request
+            self.register_record(pipeline_request=pipeline_request)
         except TypeError as err:
             logger.debug(traceback.format_exc())
             logger.warning(

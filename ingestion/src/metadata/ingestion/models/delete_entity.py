@@ -9,20 +9,17 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 """
-Table related pydantic definitions
+Pydantic definition for deleting entites
 """
-from typing import Dict, List, Optional
+from typing import Any, Optional
 
 from pydantic import BaseModel
 
-from metadata.generated.schema.entity.data.table import TableConstraint
 
-
-class OMetaTableConstraints(BaseModel):
+class DeleteEntity(BaseModel):
     """
-    Model to club table with its constraints
+    Entity Reference of the entity to be deleted
     """
 
-    table_id: str
-    foreign_constraints: Optional[List[Dict]]
-    constraints: Optional[List[TableConstraint]]
+    entity: Any
+    mark_deleted_entities: Optional[bool] = False

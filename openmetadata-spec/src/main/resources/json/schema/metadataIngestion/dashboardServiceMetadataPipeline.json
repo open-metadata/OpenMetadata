@@ -35,6 +35,11 @@
       "description": "Enabling this flag will override current owner with new owner from the source,if that is fetched during metadata ingestion. Kindly make to keep it enabled, to get the owner, for first time metadata ingestion.",
       "type": "boolean",
       "default": "false"
+    },
+    "markDeletedDashboards": {
+      "description": "Optional configuration to soft delete dashboards in OpenMetadata if the source dashboards are deleted. Also, if the dashboard is deleted, all the associated entities like lineage, etc., with that dashboard will be deleted",
+      "type": "boolean",
+      "default": true
     }
   },
   "additionalProperties": false

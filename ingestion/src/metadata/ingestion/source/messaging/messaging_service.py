@@ -13,7 +13,7 @@ Base class for ingesting messaging services
 """
 
 from abc import ABC, abstractmethod
-from typing import Any, Iterable, List, Optional
+from typing import Any, Iterable, List, Optional, Set
 
 from pydantic import BaseModel
 
@@ -34,6 +34,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.ingestion.api.source import Source, SourceStatus
 from metadata.ingestion.api.topology_runner import TopologyRunnerMixin
+from metadata.ingestion.models.delete_entity import DeleteEntity
 from metadata.ingestion.models.topology import (
     NodeStage,
     ServiceTopology,
@@ -42,7 +43,11 @@ from metadata.ingestion.models.topology import (
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.connections import get_connection, get_test_connection_fn
+from metadata.utils import fqn
 from metadata.utils.filters import filter_by_topic
+from metadata.utils.logger import ingestion_logger
+
+logger = ingestion_logger()
 
 
 class BrokerTopicDetails(BaseModel):
@@ -75,6 +80,7 @@ class MessagingServiceTopology(ServiceTopology):
             )
         ],
         children=["topic"],
+        post_process=["mark_topics_as_deleted"],
     )
     topic = TopologyNode(
         producer="get_topic",
@@ -150,6 +156,7 @@ class MessagingServiceSource(TopologyRunnerMixin, Source, ABC):
 
     topology = MessagingServiceTopology()
     context = create_source_context(topology)
+    topics_source_state: Set = set()
 
     def __init__(
         self,
@@ -199,6 +206,42 @@ class MessagingServiceSource(TopologyRunnerMixin, Source, ABC):
     def test_connection(self) -> None:
         test_connection_fn = get_test_connection_fn(self.service_connection)
         test_connection_fn(self.connection, self.service_connection)
+
+    def mark_topics_as_deleted(self):
+        """
+        Method to mark the topics as deleted
+        """
+        if self.source_config.markDeletedTopics:
+            topic_state = self.metadata.list_all_entities(
+                entity=Topic,
+                params={
+                    "service": self.context.messaging_service.fullyQualifiedName.__root__
+                },
+            )
+            logger.info(f"Mark Deleted Topcis set to True")
+            for topic in topic_state:
+                if (
+                    str(topic.fullyQualifiedName.__root__)
+                    not in self.topic_source_state
+                ):
+                    yield DeleteEntity(
+                        entity=topic,
+                        mark_deleted_entities=self.source_config.markDeletedTopics,
+                    )
+
+    def register_record(self, topic_request: CreateTopicRequest) -> None:
+        """
+        Mark the topic record as scanned and update the topic_source_state
+        """
+        topic_fqn = fqn.build(
+            self.metadata,
+            entity_type=Topic,
+            service_name=topic_request.service.__root__,
+            topic_name=topic_request.name.__root__,
+        )
+
+        self.topic_source_state.add(topic_fqn)
+        self.status.topic_scanned(topic_request.name.__root__)
 
     def close(self):
         pass

@@ -89,7 +89,7 @@ class ModeSource(DashboardServiceSource):
         """
         Method to Get Dashboard Entity
         """
-        yield CreateDashboardRequest(
+        dashboard_request = CreateDashboardRequest(
             name=dashboard_details.get(client.TOKEN),
             dashboardUrl=dashboard_details[client.LINKS][client.SHARE][client.HREF],
             displayName=dashboard_details.get(client.NAME),
@@ -107,6 +107,8 @@ class ModeSource(DashboardServiceSource):
             ],
             service=self.context.dashboard_service.fullyQualifiedName.__root__,
         )
+        yield dashboard_request
+        self.register_record(dashboard_request=dashboard_request)
 
     def yield_dashboard_lineage_details(
         self, dashboard_details: dict, db_service_name: str

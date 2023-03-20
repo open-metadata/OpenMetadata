@@ -100,7 +100,7 @@ class DatabrickspipelineSource(PipelineServiceSource):
         """
         self.context.job_id_list = []
         try:
-            yield CreatePipelineRequest(
+            pipeline_request = CreatePipelineRequest(
                 name=pipeline_details["job_id"],
                 displayName=pipeline_details["settings"].get("name"),
                 description=pipeline_details["settings"].get("name"),
@@ -108,6 +108,8 @@ class DatabrickspipelineSource(PipelineServiceSource):
                 pipelineUrl="",
                 service=self.context.pipeline_service.fullyQualifiedName.__root__,
             )
+            yield pipeline_request
+            self.register_record(pipeline_request=pipeline_request)
 
         except TypeError as err:
             logger.debug(traceback.format_exc())

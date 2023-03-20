@@ -156,7 +156,7 @@ class DagsterSource(PipelineServiceSource):
 
             task_list.append(task)
 
-        yield CreatePipelineRequest(
+        pipeline_request = CreatePipelineRequest(
             name=pipeline_details["id"].replace(":", ""),
             displayName=pipeline_details["name"],
             description=pipeline_details.get("description", ""),
@@ -164,6 +164,8 @@ class DagsterSource(PipelineServiceSource):
             service=self.context.pipeline_service.fullyQualifiedName.__root__,
             tags=self.get_tag_labels(self.context.repository_name),
         )
+        yield pipeline_request
+        self.register_record(pipeline_request=pipeline_request)
 
     def yield_tag(self, *_, **__) -> OMetaTagAndClassification:
         classification = OMetaTagAndClassification(

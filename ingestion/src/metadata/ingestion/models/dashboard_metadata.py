@@ -11,18 +11,17 @@
 """
 Table related pydantic definitions
 """
-from typing import Dict, List, Optional
+from typing import Optional
 
 from pydantic import BaseModel
 
-from metadata.generated.schema.entity.data.table import TableConstraint
+from metadata.generated.schema.entity.data.dashboard import Dashboard
 
 
-class OMetaTableConstraints(BaseModel):
+class DeleteDashboard(BaseModel):
     """
-    Model to club table with its constraints
+    Entity Reference of a dashboard to be deleted
     """
 
-    table_id: str
-    foreign_constraints: Optional[List[Dict]]
-    constraints: Optional[List[TableConstraint]]
+    dashboard: Dashboard
+    mark_deleted_dashboards: Optional[bool] = False

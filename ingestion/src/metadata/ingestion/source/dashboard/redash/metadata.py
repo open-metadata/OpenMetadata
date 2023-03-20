@@ -193,7 +193,7 @@ class RedashSource(DashboardServiceSource):
             for widgets in dashboard_details.get("widgets") or []:
                 dashboard_description = widgets.get("text")
 
-            yield CreateDashboardRequest(
+            dashboard_request = CreateDashboardRequest(
                 name=dashboard_details["id"],
                 displayName=dashboard_details.get("name"),
                 description=dashboard_description,
@@ -210,7 +210,8 @@ class RedashSource(DashboardServiceSource):
                 dashboardUrl=self.get_dashboard_url(dashboard_details),
                 tags=self.get_tag_labels(dashboard_details.get("tags")),
             )
-            self.status.scanned(dashboard_details["name"])
+            yield dashboard_request
+            self.register_record(dashboard_request=dashboard_request)
 
         except Exception as exc:
             logger.debug(traceback.format_exc())

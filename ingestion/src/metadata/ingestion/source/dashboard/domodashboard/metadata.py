@@ -121,7 +121,7 @@ class DomodashboardSource(DashboardServiceSource):
                 f"{self.service_connection.sandboxDomain}/page/{dashboard_details.id}"
             )
 
-            yield CreateDashboardRequest(
+            dashboard_request = CreateDashboardRequest(
                 name=dashboard_details.id,
                 dashboardUrl=dashboard_url,
                 displayName=dashboard_details.name,
@@ -137,6 +137,8 @@ class DomodashboardSource(DashboardServiceSource):
                 ],
                 service=self.context.dashboard_service.fullyQualifiedName.__root__,
             )
+            yield dashboard_request
+            self.register_record(dashboard_request=dashboard_request)
         except KeyError as err:
             logger.warning(
                 f"Error extracting data from {dashboard_details.name} - {err}"

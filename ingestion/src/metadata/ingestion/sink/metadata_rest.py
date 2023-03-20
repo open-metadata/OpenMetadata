@@ -25,6 +25,7 @@ from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.api.teams.createRole import CreateRoleRequest
 from metadata.generated.schema.api.teams.createTeam import CreateTeamRequest
 from metadata.generated.schema.api.teams.createUser import CreateUserRequest
+from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.entity.data.location import Location
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
@@ -34,11 +35,12 @@ from metadata.generated.schema.entity.teams.role import Role
 from metadata.generated.schema.entity.teams.team import Team
 from metadata.ingestion.api.common import Entity
 from metadata.ingestion.api.sink import Sink, SinkStatus
+from metadata.ingestion.models.delete_entity import DeleteEntity
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.models.ometa_topic_data import OMetaTopicSampleData
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
 from metadata.ingestion.models.profile_data import OMetaTableProfileSampleData
-from metadata.ingestion.models.table_metadata import DeleteTable, OMetaTableConstraints
+from metadata.ingestion.models.table_metadata import OMetaTableConstraints
 from metadata.ingestion.models.tests_data import (
     OMetaTestCaseResultsSample,
     OMetaTestCaseSample,
@@ -97,7 +99,7 @@ class MetadataRestSink(Sink[Entity]):
         self.write_record.register(AddLineageRequest, self.write_lineage)
         self.write_record.register(OMetaUserProfile, self.write_users)
         self.write_record.register(OMetaTagAndClassification, self.write_classification)
-        self.write_record.register(DeleteTable, self.delete_table)
+        self.write_record.register(DeleteEntity, self.delete_entity)
         self.write_record.register(OMetaPipelineStatus, self.write_pipeline_status)
         self.write_record.register(DataModelLink, self.write_datamodel)
         self.write_record.register(TableLocationLink, self.write_table_location_link)
@@ -338,21 +340,21 @@ class MetadataRestSink(Sink[Entity]):
             logger.debug(traceback.format_exc())
             logger.error(f"Unexpected error writing user [{metadata_user}]: {exc}")
 
-    def delete_table(self, record: DeleteTable):
+    def delete_entity(self, record: DeleteEntity):
         try:
 
             self.metadata.delete(
-                entity=Table,
-                entity_id=record.table.id,
-                recursive=record.mark_deleted_tables,
+                entity=type(record.entity),
+                entity_id=record.entity.id,
+                recursive=record.mark_deleted_entities,
             )
             logger.debug(
-                f"{record.table.name} doesn't exist in source state, marking it as deleted"
+                f"{record.entity.name} doesn't exist in source state, marking it as deleted"
             )
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.error(
-                f"Unexpected error deleting table [{record.table.name}]: {exc}"
+                f"Unexpected error deleting table [{record.entity.name}]: {exc}"
             )
 
     def write_pipeline_status(self, record: OMetaPipelineStatus) -> None:

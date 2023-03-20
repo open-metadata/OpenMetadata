@@ -99,7 +99,7 @@ class KinesisSource(MessagingServiceSource):
                 topic.sampleData = self._get_sample_data(
                     topic_details.topic_name, topic_details.topic_metadata["partitions"]
                 )
-            self.status.topic_scanned(topic.name.__root__)
+            self.register_record(topic_request=topic)
             yield topic
 
         except Exception as exc:

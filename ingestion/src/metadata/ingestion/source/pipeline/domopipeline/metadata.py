@@ -83,7 +83,7 @@ class DomopipelineSource(PipelineServiceSource):
                 description=pipeline_details.get("description", ""),
             )
 
-            pipeline_yield = CreatePipelineRequest(
+            pipeline_request = CreatePipelineRequest(
                 name=pipeline_name,
                 displayName=pipeline_details.get("name"),
                 description=pipeline_details.get("description", ""),
@@ -91,7 +91,8 @@ class DomopipelineSource(PipelineServiceSource):
                 service=self.context.pipeline_service.fullyQualifiedName.__root__,
                 startDate=pipeline_details.get("created"),
             )
-            yield pipeline_yield
+            yield pipeline_request
+            self.register_record(pipeline_request=pipeline_request)
 
         except KeyError as err:
             logger.error(
