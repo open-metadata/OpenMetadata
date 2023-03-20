@@ -119,6 +119,15 @@ const QueryCard: FC<QueryCardProp> = ({
     setSqlQuery((pre) => ({ ...pre, query: value }));
   };
 
+  const handleExpandClick = () => {
+    setExpanded((pre) => !pre);
+    onQuerySelection(query);
+  };
+
+  const handleCardClick = () => {
+    onQuerySelection(query);
+  };
+
   return (
     <Row gutter={[0, 8]}>
       <Col span={24}>
@@ -144,7 +153,7 @@ const QueryCard: FC<QueryCardProp> = ({
               <Text>{`• ${t('label.by-lowercase')} ${query.updatedBy}`}</Text>
             </Space>
           }
-          onClick={() => onQuerySelection(query)}>
+          onClick={handleCardClick}>
           {isAllowExpand && (
             <Button
               className="expand-collapse-icon"
@@ -152,10 +161,7 @@ const QueryCard: FC<QueryCardProp> = ({
               icon={expanded ? <DownOutlined /> : <UpOutlined />}
               size="small"
               type="text"
-              onClick={() => {
-                setExpanded((pre) => !pre);
-                onQuerySelection(query);
-              }}
+              onClick={handleExpandClick}
             />
           )}
 
