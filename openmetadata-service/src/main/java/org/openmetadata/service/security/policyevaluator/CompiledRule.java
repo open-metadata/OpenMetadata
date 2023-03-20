@@ -7,7 +7,6 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.policies.accessControl.Rule;
 import org.openmetadata.schema.type.MetadataOperation;
@@ -15,7 +14,6 @@ import org.openmetadata.schema.type.Permission;
 import org.openmetadata.schema.type.Permission.Access;
 import org.openmetadata.schema.type.ResourcePermission;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
-import org.openmetadata.service.resources.CollectionRegistry;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.policyevaluator.SubjectContext.PolicyContext;
 import org.springframework.expression.Expression;
@@ -27,7 +25,6 @@ import org.springframework.expression.spel.support.StandardEvaluationContext;
 public class CompiledRule extends Rule {
   private static final SpelExpressionParser EXPRESSION_PARSER = new SpelExpressionParser();
   @JsonIgnore private Expression expression;
-  @JsonIgnore @Getter private boolean resourceBased = false;
 
   public CompiledRule(Rule rule) {
     super();
@@ -72,13 +69,6 @@ public class CompiledRule extends Rule {
     }
     if (expression == null) {
       expression = parseExpression(getCondition());
-      List<String> resourceBasedFunctions = CollectionRegistry.getInstance().getResourceBasedFunctions();
-      for (String function : resourceBasedFunctions) {
-        if (getCondition().contains(function)) {
-          resourceBased = true;
-          break;
-        }
-      }
     }
     return expression;
   }
