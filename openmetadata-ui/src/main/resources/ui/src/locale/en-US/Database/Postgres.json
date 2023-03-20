@@ -1,9 +1,9 @@
 {
-  "document": {
-    "hostPort": "Host and port of the Postgres service.\n\n Example: `localhost:8000`\n",
-    "password": "Password to connect to Postgres.\n\n Should be strong and contain `@$#[0-9][a-z][A-Z]`\n",
-    "username": "Username to connect to Postgres. This user should have privileges to read all the metadata in Postgres."
+  "fields": {
+    "hostPort": "/en-US/Database/Postgres/Fields/hostPort.md",
+    "password": "/en-US/Database/Postgres/Fields/password.md",
+    "username": "/en-US/Database/Postgres/Fields/username.md"
   },
 
-  "requirement": "/en-US/Database/Postgres.md"
+  "requirement": "/en-US/Database/Postgres/requirements.md"
 }

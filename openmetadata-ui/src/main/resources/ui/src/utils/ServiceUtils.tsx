@@ -27,7 +27,7 @@ import {
   ServicesData,
   ServiceTypes,
 } from 'Models';
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { getEntityCount } from 'rest/miscAPI';
 import { GlobalSettingOptions } from '../constants/GlobalSettings.constants';
 import {
@@ -496,6 +496,50 @@ export const getFormattedGuideText = (
   return text.replace(regExp, replacement);
 };
 
+const FieldDocument = ({
+  activeField,
+  serviceType,
+}: {
+  activeField?: string;
+  serviceType?: string;
+}) => {
+  const [markdown, setMarkdown] = useState<string>('');
+
+  const fetchFieldDocument = async () => {
+    const filePath = t(`fields.${activeField}`, { ns: serviceType });
+
+    try {
+      const res = await fetch(filePath, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'text/markdown',
+          Accept: 'text/markdown',
+        },
+      });
+
+      const data = await res.text();
+
+      setMarkdown(data);
+    } catch (error) {
+      // handle error
+    }
+  };
+
+  useEffect(() => {
+    fetchFieldDocument();
+  }, [serviceType, activeField]);
+
+  return (
+    <>
+      <h6 className="tw-heading tw-text-base">{t('label.documentation')}</h6>
+      <RichTextEditorPreviewer
+        markdown={markdown}
+        maxLength={markdown.length}
+      />
+    </>
+  );
+};
+
 export const getServiceIngestionStepGuide = (args: {
   step: number;
   isIngestion: boolean;
@@ -594,12 +638,7 @@ export const getServiceIngestionStepGuide = (args: {
   ) : null;
 
   const activeFieldElement = activeField ? (
-    <>
-      <h6 className="tw-heading tw-text-base">{t('label.documentation')}</h6>
-      <RichTextEditorPreviewer
-        markdown={t(`document.${activeField}`, { ns: serviceType })}
-      />
-    </>
+    <FieldDocument activeField={activeField} serviceType={serviceType} />
   ) : null;
 
   return (
