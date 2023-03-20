@@ -34,7 +34,6 @@ import org.openmetadata.schema.type.MlFeature;
 import org.openmetadata.schema.type.MlFeatureSource;
 import org.openmetadata.schema.type.MlHyperParameter;
 import org.openmetadata.schema.type.Relationship;
-import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.mlmodels.MlModelResource;
 import org.openmetadata.service.util.EntityUtil;
@@ -140,19 +139,12 @@ public class MlModelRepository extends EntityRepository<MlModel> {
 
   @Override
   public void storeEntity(MlModel mlModel, boolean update) throws IOException {
-    // Relationships and fields such as href are derived and not stored as part of json
-    EntityReference owner = mlModel.getOwner();
-    List<TagLabel> tags = mlModel.getTags();
+    // Relationships and fields such as service are derived and not stored as part of json
     EntityReference dashboard = mlModel.getDashboard();
     EntityReference service = mlModel.getService();
-
-    // Don't store owner, dashboard, href and tags as JSON. Build it on the fly based on relationships
-    mlModel.withService(null).withOwner(null).withDashboard(null).withHref(null).withTags(null);
-
+    mlModel.withService(null).withDashboard(null);
     store(mlModel, update);
-
-    // Restore the relationships
-    mlModel.withService(service).withOwner(owner).withDashboard(dashboard).withTags(tags);
+    mlModel.withService(service).withDashboard(dashboard);
   }
 
   @Override

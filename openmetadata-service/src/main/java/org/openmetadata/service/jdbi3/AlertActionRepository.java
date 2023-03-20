@@ -5,7 +5,6 @@ import static org.openmetadata.service.Entity.ALERT_ACTION;
 import java.io.IOException;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.alerts.AlertAction;
-import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.alerts.AlertsPublisherManager;
 import org.openmetadata.service.resources.dqtests.TestDefinitionResource;
 import org.openmetadata.service.util.EntityUtil;
@@ -40,13 +39,7 @@ public class AlertActionRepository extends EntityRepository<AlertAction> {
 
   @Override
   public void storeEntity(AlertAction entity, boolean update) throws IOException {
-    EntityReference owner = entity.getOwner();
-    // Don't store owner, database, href and tags as JSON. Build it on the fly based on relationships
-    entity.withOwner(null).withHref(null);
     store(entity, update);
-
-    // Restore the relationships
-    entity.withOwner(owner);
   }
 
   @Override

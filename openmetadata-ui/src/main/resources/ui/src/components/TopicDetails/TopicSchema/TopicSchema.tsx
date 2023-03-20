@@ -196,9 +196,7 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
               tagList={tagList}
               type="label"
               onCancel={() => setEditFieldTags(undefined)}
-              onSelectionChange={(selectedTags) =>
-                handleFieldTagsChange(selectedTags, record)
-              }
+              onSelectionChange={(tags) => handleFieldTagsChange(tags, record)}
             />
           </Space>
         )}

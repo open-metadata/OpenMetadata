@@ -105,16 +105,15 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
 
   @Override
   public void storeEntity(TestCase test, boolean update) throws IOException {
-    EntityReference owner = test.getOwner();
     EntityReference testSuite = test.getTestSuite();
     EntityReference testDefinition = test.getTestDefinition();
 
     // Don't store owner, database, href and tags as JSON. Build it on the fly based on relationships
-    test.withOwner(null).withHref(null).withTestSuite(null).withTestDefinition(null);
+    test.withTestSuite(null).withTestDefinition(null);
     store(test, update);
 
     // Restore the relationships
-    test.withOwner(owner).withTestSuite(testSuite).withTestDefinition(testDefinition);
+    test.withTestSuite(testSuite).withTestDefinition(testDefinition);
   }
 
   @Override

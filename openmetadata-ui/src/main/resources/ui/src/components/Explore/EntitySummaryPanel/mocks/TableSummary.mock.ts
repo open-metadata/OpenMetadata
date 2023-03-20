@@ -20,8 +20,6 @@ import {
   TagSource,
 } from '../../../../generated/entity/data/table';
 
-const mockDate = new Date('2023-01-03');
-
 export const mockTableEntityDetails: Table = {
   id: '8dd1f238-6ba0-46c6-a091-7db81f2a6bed',
   name: 'dim.api/client',
@@ -77,24 +75,6 @@ export const mockTableEntityDetails: Table = {
       source: TagSource.Classification,
       labelType: LabelType.Manual,
       state: State.Confirmed,
-    },
-  ],
-  tableQueries: [
-    {
-      query:
-        'select cust.customer_id, fact_order.order_id from dim_customer cust join fact_order on',
-      users: [],
-      vote: 1,
-      checksum: 'ff727cf70d5a7a9810704532f3571b82',
-      queryDate: mockDate,
-    },
-    {
-      query:
-        'select sale.sale_id, cust.customer_id, fact_order.order_ir from shopify.',
-      users: [],
-      vote: 1,
-      checksum: 'e14e02c387dd8482d10c4ec7d3d4c69a',
-      queryDate: mockDate,
     },
   ],
   service: {

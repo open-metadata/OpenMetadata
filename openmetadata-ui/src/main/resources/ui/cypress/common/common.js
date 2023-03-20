@@ -502,9 +502,7 @@ export const addNewTagToEntity = (entityObj, term) => {
     .contains(term)
     .should('be.visible')
     .click();
-  cy.get(
-    '[data-testid="tags-wrapper"] > [data-testid="tag-container"]'
-  ).contains(term);
+  cy.get('[data-testid="tag-selector"] > .ant-select-selector').contains(term);
   cy.get('[data-testid="saveAssociatedTag"]').should('be.visible').click();
   cy.get('[data-testid="entity-tags"]')
     .scrollIntoView()
