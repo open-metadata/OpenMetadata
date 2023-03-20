@@ -13,6 +13,7 @@
 
 package org.openmetadata.service.jdbi3;
 
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.Entity.DASHBOARD;
 import static org.openmetadata.service.Entity.FIELD_FOLLOWERS;
@@ -26,6 +27,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.data.MlModel;
 import org.openmetadata.schema.entity.services.MlModelService;
 import org.openmetadata.schema.type.EntityReference;
@@ -201,6 +203,20 @@ public class MlModelRepository extends EntityRepository<MlModel> {
   @Override
   public EntityUpdater getUpdater(MlModel original, MlModel updated, Operation operation) {
     return new MlModelUpdater(original, updated, operation);
+  }
+
+  @Override
+  public List<TagLabel> getAllTags(EntityInterface entity) {
+    List<TagLabel> allTags = new ArrayList<>();
+    MlModel mlModel = (MlModel) entity;
+    EntityUtil.mergeTags(allTags, mlModel.getTags());
+    for (MlFeature feature : listOrEmpty(mlModel.getMlFeatures())) {
+      EntityUtil.mergeTags(allTags, feature.getTags());
+      for (MlFeatureSource source : listOrEmpty(feature.getFeatureSources())) {
+        EntityUtil.mergeTags(allTags, source.getTags());
+      }
+    }
+    return allTags;
   }
 
   private void populateService(MlModel mlModel) throws IOException {
