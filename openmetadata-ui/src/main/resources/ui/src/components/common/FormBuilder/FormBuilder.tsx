@@ -12,7 +12,7 @@
  */
 
 import { CheckOutlined } from '@ant-design/icons';
-import CoreForm, { FormProps } from '@rjsf/core';
+import CoreForm, { FormProps, IChangeEvent } from '@rjsf/core';
 import { ErrorTransformer } from '@rjsf/utils';
 import classNames from 'classnames';
 import { t } from 'i18next';
@@ -27,6 +27,7 @@ import React, {
   useState,
 } from 'react';
 import { getPipelineServiceHostIp } from 'rest/ingestionPipelineAPI';
+import { formatFormDataForRender } from 'utils/JSONSchemaFormUtils';
 import { ConfigData } from '../../../interface/service.interface';
 import SVGIcons, { Icons } from '../../../utils/SvgUtils';
 import { Button } from '../../buttons/Button/Button';
@@ -56,6 +57,7 @@ interface Props extends FormProps<ConfigData> {
 }
 
 const FormBuilder: FunctionComponent<Props> = ({
+  formData,
   schema,
   okText,
   cancelText,
@@ -71,6 +73,9 @@ const FormBuilder: FunctionComponent<Props> = ({
   ...props
 }: Props) => {
   const formRef = useRef<CoreForm<ConfigData>>(null);
+  const [localFormData, setLocalFormData] = useState<ConfigData | undefined>(
+    formatFormDataForRender(formData ?? {})
+  );
   const [connectionTesting, setConnectionTesting] = useState<boolean>(false);
   const [connectionTestingState, setConnectionTestingState] =
     useState<LoadingState>('initial');
@@ -93,6 +98,7 @@ const FormBuilder: FunctionComponent<Props> = ({
   }, [isAirflowAvailable]);
 
   const handleCancel = useCallback(() => {
+    setLocalFormData(formatFormDataForRender<ConfigData>(formData ?? {}));
     if (onCancel) {
       onCancel();
     }
@@ -105,10 +111,10 @@ const FormBuilder: FunctionComponent<Props> = ({
   }, []);
 
   const handleTestConnection = useCallback(() => {
-    if (onTestConnection && formRef.current?.state.formData) {
+    if (onTestConnection && localFormData) {
       setConnectionTesting(true);
       setConnectionTestingState('waiting');
-      onTestConnection(formRef.current?.state.formData)
+      onTestConnection(localFormData)
         .then(() => {
           setConnectionTestingState('success');
         })
@@ -119,7 +125,16 @@ const FormBuilder: FunctionComponent<Props> = ({
           setConnectionTesting(false);
         });
     }
-  }, [setConnectionTesting, onTestConnection, setConnectionTestingState]);
+  }, [
+    setConnectionTesting,
+    onTestConnection,
+    setConnectionTestingState,
+    localFormData,
+  ]);
+
+  const handleChange = (updatedData: ConfigData) => {
+    setLocalFormData(updatedData);
+  };
 
   const getConnectionTestingMessage = useCallback(() => {
     switch (connectionTestingState) {
@@ -249,6 +264,7 @@ const FormBuilder: FunctionComponent<Props> = ({
       className={classNames('rjsf', props.className, {
         'no-header': !showFormHeader,
       })}
+      formData={localFormData}
       ref={formRef}
       schema={schema}
       showErrorList={false}
@@ -258,7 +274,10 @@ const FormBuilder: FunctionComponent<Props> = ({
       }}
       transformErrors={transformErrors}
       uiSchema={uiSchema}
-      onChange={onChange}
+      onChange={(e: IChangeEvent) => {
+        handleChange(e.formData);
+        onChange && onChange(e);
+      }}
       onSubmit={onSubmit}
       {...props}>
       {content}

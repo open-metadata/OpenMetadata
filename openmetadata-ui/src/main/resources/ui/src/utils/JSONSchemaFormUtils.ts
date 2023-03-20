@@ -80,3 +80,32 @@ export function formatFormDataForSubmit<T>(formData: T): T {
 
   return formData;
 }
+
+function formatConnectionFieldsForRender<T extends object>(
+  formData: T,
+  field: string
+): T {
+  if (formData && formData[field as keyof T]) {
+    // Since connection options support value of type string or object
+    // convert object into string
+    const options = formData[field as keyof T];
+
+    for (const key in options) {
+      const value = options[key];
+      if (typeof value === 'object') {
+        formData[field as keyof T][key] = JSON.stringify(
+          value
+        ) as unknown as T[keyof T][Extract<keyof T[keyof T], string>];
+      }
+    }
+  }
+
+  return formData;
+}
+
+export function formatFormDataForRender<T extends object>(formData: T): T {
+  formData = cloneDeep(formData);
+  formData = formatConnectionFieldsForRender(formData, 'connectionArguments');
+
+  return formData;
+}
