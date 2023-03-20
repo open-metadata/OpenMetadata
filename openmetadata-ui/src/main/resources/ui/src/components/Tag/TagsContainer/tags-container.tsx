@@ -133,7 +133,7 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
       className={classNames('w-full', containerClass)}
       data-testid="tag-container"
       size={16}>
-      <Fragment>
+      <Space className="flex-wrap">
         {showTags && !editable && (
           <Fragment>
             {showAddTagButton && (
@@ -175,7 +175,7 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
         ) : (
           children
         )}
-      </Fragment>
+      </Space>
       {editable && (
         <Space
           className={classNames('', buttonContainerClass)}

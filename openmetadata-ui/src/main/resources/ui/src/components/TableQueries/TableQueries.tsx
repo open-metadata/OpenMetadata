@@ -13,17 +13,20 @@
 
 import { Col, Row } from 'antd';
 import { AxiosError } from 'axios';
+import NextPrevious from 'components/common/next-previous/NextPrevious';
 import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
   ResourceEntity,
 } from 'components/PermissionProvider/PermissionProvider.interface';
+import { INITIAL_PAGING_VALUE, PAGE_SIZE } from 'constants/constants';
 import { compare } from 'fast-json-patch';
 import { Query } from 'generated/entity/data/query';
-import { isUndefined } from 'lodash';
+import { isNil, isString, isUndefined } from 'lodash';
+import { PagingResponse } from 'Models';
 import React, { FC, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { getQueriesList, patchQueries } from 'rest/queryAPI';
+import { getQueriesList, ListQueriesParams, patchQueries } from 'rest/queryAPI';
 import { DEFAULT_ENTITY_PERMISSION } from 'utils/PermissionsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder';
@@ -42,13 +45,17 @@ const TableQueries: FC<TableQueriesProp> = ({
 }: TableQueriesProp) => {
   const { t } = useTranslation();
 
-  const [tableQueries, setTableQueries] = useState<Query[]>([]);
+  const [tableQueries, setTableQueries] = useState<PagingResponse<Query[]>>({
+    data: [],
+    paging: INITIAL_PAGING_VALUE,
+  });
   const [isQueriesLoading, setIsQueriesLoading] = useState(true);
   const [isRightPanelLoading, setIsRightPanelLoading] = useState(true);
   const [selectedQuery, setSelectedQuery] = useState<Query>();
   const [queryPermissions, setQueryPermissions] = useState<OperationPermission>(
     DEFAULT_ENTITY_PERMISSION
   );
+  const [currentPage, setCurrentPage] = useState(1);
 
   const { getEntityPermission } = usePermissionProvider();
 
@@ -80,13 +87,16 @@ const TableQueries: FC<TableQueriesProp> = ({
     }
   }, [selectedQuery]);
 
-  const fetchTableQuery = async () => {
+  const fetchTableQuery = async (params?: ListQueriesParams) => {
+    setIsQueriesLoading(true);
     try {
       const queries = await getQueriesList({
+        ...params,
+        limit: PAGE_SIZE,
         entityId: tableId,
         fields: 'owner,vote,tags,queryUsedIn',
       });
-      setTableQueries(queries.data);
+      setTableQueries(queries);
       setSelectedQuery(queries.data[0]);
     } catch (error) {
       showErrorToast(error as AxiosError);
@@ -106,12 +116,24 @@ const TableQueries: FC<TableQueriesProp> = ({
       const res = await patchQueries(selectedQuery.id || '', jsonPatch);
       setSelectedQuery((pre) => (pre ? { ...pre, [key]: res[key] } : res));
       setTableQueries((pre) => {
-        return pre.map((query) =>
-          query.id === updatedQuery.id ? { ...query, [key]: res[key] } : query
-        );
+        return {
+          ...pre,
+          data: pre.data.map((query) =>
+            query.id === updatedQuery.id ? { ...query, [key]: res[key] } : query
+          ),
+        };
       });
     } catch (error) {
       showErrorToast(error as AxiosError);
+    }
+  };
+
+  const pagingHandler = (cursorType: string | number, activePage?: number) => {
+    console.log({ cursorType, activePage });
+    if (isString(cursorType)) {
+      const { paging } = tableQueries;
+      fetchTableQuery({ [cursorType]: paging[cursorType] });
+      activePage && setCurrentPage(activePage);
     }
   };
 
@@ -137,7 +159,7 @@ const TableQueries: FC<TableQueriesProp> = ({
 
   return (
     <Row className="h-full" id="tablequeries">
-      {tableQueries.length && !isUndefined(selectedQuery) ? (
+      {tableQueries.data.length && !isUndefined(selectedQuery) ? (
         <>
           <Col span={18}>
             <Row
@@ -146,7 +168,7 @@ const TableQueries: FC<TableQueriesProp> = ({
               gutter={[16, 16]}>
               {/* <Col span={24}>filters</Col> */}
 
-              {tableQueries.map((query) => (
+              {tableQueries.data.map((query) => (
                 <Col key={query.id} span={24}>
                   <QueryCard
                     permission={queryPermissions}
@@ -158,6 +180,20 @@ const TableQueries: FC<TableQueriesProp> = ({
                   />
                 </Col>
               ))}
+              <Col span={24}>
+                {Boolean(
+                  !isNil(tableQueries.paging.after) ||
+                    !isNil(tableQueries.paging.before)
+                ) && (
+                  <NextPrevious
+                    currentPage={currentPage}
+                    pageSize={PAGE_SIZE}
+                    paging={tableQueries.paging}
+                    pagingHandler={pagingHandler}
+                    totalCount={tableQueries.paging.total}
+                  />
+                )}
+              </Col>
             </Row>
           </Col>
           <Col className="bg-white border-main border-1 border-t-0" span={6}>
