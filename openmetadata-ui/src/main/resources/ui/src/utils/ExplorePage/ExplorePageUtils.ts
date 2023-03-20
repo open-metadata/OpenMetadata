@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { Bucket } from 'interface/search.interface';
 import { isEmpty, isEqual, isUndefined, uniqWith } from 'lodash';
 import {
   QueryFieldInterface,
@@ -72,3 +73,22 @@ export const getCombinedQueryFilterObject = (
     },
   };
 };
+
+// Function to get buckets with updated counts for facet filters
+export const getBucketWithUpdatedCounts = (
+  currentBucket: Bucket[],
+  withFilterBucket: Bucket[]
+): Bucket[] =>
+  currentBucket.map((currentBucketItem) => {
+    const item = withFilterBucket.find(
+      (withFilterBucketItem) =>
+        withFilterBucketItem.key === currentBucketItem.key
+    );
+    // Take updated count for filter if present else show 0 count
+    const docCount = item ? item.doc_count : 0;
+
+    return {
+      ...currentBucketItem,
+      doc_count: docCount,
+    };
+  });
