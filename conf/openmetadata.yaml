@@ -199,6 +199,8 @@ elasticsearch:
 eventMonitoringConfiguration:
   eventMonitor: ${EVENT_MONITOR:-prometheus}  # Possible values are "prometheus", "cloudwatch"
   batchSize: ${EVENT_MONITOR_BATCH_SIZE:-10}
+  pathPattern: ${EVENT_MONITOR_PATH_PATTERN:-["/api/v1/users/*", "/api/v1/analytics/*"]}
+#  pathPattern: ${EVENT_MONITOR_PATH_PATTERN:-["/*"]}
   # it will use the default auth provider for AWS services if parameters are not set
   # parameters:
   #   region: ${OM_MONITOR_REGION:-""}
