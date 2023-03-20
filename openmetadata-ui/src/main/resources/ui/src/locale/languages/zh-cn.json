@@ -296,6 +296,7 @@
     "field-plural": "域",
     "field-required": "需要 {{field}}",
     "field-required-plural": "需要 {{field}}",
+    "filter": "Filter",
     "filter-pattern": "Filter Pattern",
     "filter-plural": "过滤器",
     "first": "First",

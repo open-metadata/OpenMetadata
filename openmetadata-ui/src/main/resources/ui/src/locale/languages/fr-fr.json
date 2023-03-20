@@ -296,6 +296,7 @@
     "field-plural": "Champs",
     "field-required": "{{field}} est obligatoire",
     "field-required-plural": "{{field}} sont obligatoires",
+    "filter": "Filter",
     "filter-pattern": "Filter Pattern",
     "filter-plural": "Filters",
     "first": "First",

@@ -296,6 +296,7 @@
     "field-plural": "フィールド",
     "field-required": "{{field}}は必須です",
     "field-required-plural": "{{field}}は必須です",
+    "filter": "Filter",
     "filter-pattern": "フィルターのパターン",
     "filter-plural": "フィルター",
     "first": "最初",
