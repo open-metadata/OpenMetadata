@@ -16,7 +16,7 @@ import gcs from 'assets/img/service-icon-gcs.png';
 import msAzure from 'assets/img/service-icon-ms-azure.png';
 import { ObjectStoreServiceType } from 'generated/entity/services/objectstoreService';
 import { map, startCase } from 'lodash';
-import { ServiceTypes } from 'Models';
+import { ServiceTypes, StepperStepType } from 'Models';
 import i18n from 'utils/i18next/LocalUtil';
 import addPlaceHolder from '../assets/img/add-placeholder.svg';
 import airbyte from '../assets/img/Airbyte.png';
@@ -262,3 +262,28 @@ export const SERVICE_CATEGORY_OPTIONS = map(ServiceCategory, (value) => ({
   label: startCase(value),
   value,
 }));
+
+export const STEPS_FOR_ADD_SERVICE: Array<StepperStepType> = [
+  {
+    name: i18n.t('label.select-field', {
+      field: i18n.t('label.service-type'),
+    }),
+    step: 1,
+  },
+  {
+    name: i18n.t('label.requirement-plural'),
+    step: 2,
+  },
+  {
+    name: i18n.t('label.configure-entity', {
+      entity: i18n.t('label.service'),
+    }),
+    step: 3,
+  },
+  {
+    name: i18n.t('label.connection-entity', {
+      entity: i18n.t('label.detail-plural'),
+    }),
+    step: 4,
+  },
+];

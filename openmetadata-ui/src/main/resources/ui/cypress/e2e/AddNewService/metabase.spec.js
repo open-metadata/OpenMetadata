@@ -41,11 +41,11 @@ describe('Metabase Ingestion', () => {
       .click();
 
     const connectionInput = () => {
-      cy.get('#root_username').type(Cypress.env('metabaseUsername'));
-      cy.get('#root_password')
+      cy.get('#username').type(Cypress.env('metabaseUsername'));
+      cy.get('#password')
         .scrollIntoView()
         .type(Cypress.env('metabasePassword'));
-      cy.get('#root_hostPort')
+      cy.get('#hostPort')
         .scrollIntoView()
         .type(Cypress.env('metabaseHostPort'));
     };

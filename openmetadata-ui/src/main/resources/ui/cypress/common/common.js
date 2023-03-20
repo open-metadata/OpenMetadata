@@ -151,7 +151,12 @@ export const testServiceCreationAndIngestion = (
   cy.get(`[data-testid="${serviceType}"]`).should('exist').click();
   cy.get('[data-testid="next-button"]').should('exist').click();
 
-  // Enter service name in step 2
+  // Should show requirements in step 2
+
+  cy.get('[data-testid="service-requirements"]').should('exist');
+  cy.get('[data-testid="next-button"]').should('exist').click();
+
+  // Enter service name in step 3
   cy.get('[data-testid="service-name"]').should('exist').type(serviceName);
   interceptURL(
     'GET',
@@ -160,7 +165,8 @@ export const testServiceCreationAndIngestion = (
   );
   cy.get('[data-testid="next-button"]').should('exist').click();
   verifyResponseStatusCode('@getIngestionPipelineStatus', 200);
-  // Connection Details in step 3
+
+  // Connection Details in step 4
   cy.get('[data-testid="add-new-service-container"]')
     .parent()
     .parent()
@@ -851,10 +857,10 @@ export const updateOwner = (isAddingOwnerToTeam = false) => {
 };
 
 export const mySqlConnectionInput = () => {
-  cy.get('#root_username').type(Cypress.env('mysqlUsername'));
-  cy.get('#root_password').type(Cypress.env('mysqlPassword'));
-  cy.get('#root_hostPort').type(Cypress.env('mysqlHostPort'));
-  cy.get('#root_databaseSchema').type(Cypress.env('mysqlDatabaseSchema'));
+  cy.get('#username').type(Cypress.env('mysqlUsername'));
+  cy.get('#password').type(Cypress.env('mysqlPassword'));
+  cy.get('#hostPort').type(Cypress.env('mysqlHostPort'));
+  cy.get('#databaseSchema').type(Cypress.env('mysqlDatabaseSchema'));
 };
 
 export const login = (username, password) => {

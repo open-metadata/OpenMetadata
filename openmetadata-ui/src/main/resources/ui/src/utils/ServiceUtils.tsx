@@ -11,7 +11,9 @@
  *  limitations under the License.
  */
 
+import { Affix, Card } from 'antd';
 import { AxiosError } from 'axios';
+import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
 import {
   OperationPermission,
   ResourceEntity,
@@ -19,13 +21,14 @@ import {
 import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
 import { ObjectStoreServiceType } from 'generated/entity/data/container';
 import { t } from 'i18next';
+import { startCase } from 'lodash';
 import {
   Bucket,
   DynamicFormFieldType,
   ServicesData,
   ServiceTypes,
 } from 'Models';
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { getEntityCount } from 'rest/miscAPI';
 import { GlobalSettingOptions } from '../constants/GlobalSettings.constants';
 import {
@@ -494,16 +497,74 @@ export const getFormattedGuideText = (
   return text.replace(regExp, replacement);
 };
 
-export const getServiceIngestionStepGuide = (
-  step: number,
-  isIngestion: boolean,
-  ingestionName: string,
-  serviceName: string,
-  ingestionType: IngestionPipelineType,
-  showDeployTitle: boolean,
-  isUpdated: boolean,
-  isAirflowSetup = true
-) => {
+const FieldDocument = ({
+  activeField,
+  serviceType,
+}: {
+  activeField?: string;
+  serviceType?: string;
+}) => {
+  const [markdown, setMarkdown] = useState<string>('');
+
+  const fetchFieldDocument = async () => {
+    const filePath = t(`fields.${activeField}`, { ns: serviceType });
+
+    try {
+      const res = await fetch(filePath, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'text/markdown',
+          Accept: 'text/markdown',
+        },
+      });
+
+      const data = await res.text();
+
+      setMarkdown(data);
+    } catch (error) {
+      // handle error
+    }
+  };
+
+  useEffect(() => {
+    fetchFieldDocument();
+  }, [serviceType, activeField]);
+
+  return (
+    <>
+      <h6 className="tw-heading tw-text-base">{startCase(activeField)}</h6>
+      <RichTextEditorPreviewer
+        markdown={markdown}
+        maxLength={markdown.length}
+      />
+    </>
+  );
+};
+
+export const getServiceIngestionStepGuide = (args: {
+  step: number;
+  isIngestion: boolean;
+  ingestionName: string;
+  serviceName: string;
+  ingestionType: IngestionPipelineType;
+  showDeployTitle: boolean;
+  isUpdated: boolean;
+  isAirflowSetup?: boolean;
+  activeField?: string;
+  serviceType?: string;
+}) => {
+  const {
+    step,
+    ingestionName,
+    ingestionType,
+    isAirflowSetup = true,
+    isIngestion,
+    isUpdated,
+    serviceName,
+    showDeployTitle,
+    activeField,
+    serviceType,
+  } = args;
   let guide;
   if (isIngestion) {
     switch (ingestionType) {
@@ -558,27 +619,33 @@ export const getServiceIngestionStepGuide = (
     return isUpdated ? update : newTitle;
   };
 
-  return (
+  const guideElement = guide ? (
     <>
-      {guide && (
-        <>
-          <h6 className="tw-heading tw-text-base">{getTitle(guide.title)}</h6>
-          <div className="tw-mb-5">
-            {isIngestion
-              ? getFormattedGuideText(
-                  guide.description,
-                  `<${t('label.ingestion-pipeline-name')}>`,
-                  `${ingestionName}`
-                )
-              : getFormattedGuideText(
-                  guide.description,
-                  `<${t('label.service-name')}>`,
-                  serviceName
-                )}
-          </div>
-        </>
-      )}
+      <h6 className="tw-heading tw-text-base">{getTitle(guide.title)}</h6>
+      <div className="tw-mb-5">
+        {isIngestion
+          ? getFormattedGuideText(
+              guide.description,
+              `<${t('label.ingestion-pipeline-name')}>`,
+              `${ingestionName}`
+            )
+          : getFormattedGuideText(
+              guide.description,
+              `<${t('label.service-name')}>`,
+              serviceName
+            )}
+      </div>
     </>
+  ) : null;
+
+  const activeFieldElement = activeField ? (
+    <FieldDocument activeField={activeField} serviceType={serviceType} />
+  ) : null;
+
+  return (
+    <Affix offsetTop={0}>
+      <Card>{activeField ? activeFieldElement : guideElement}</Card>
+    </Affix>
   );
 };
 
@@ -612,7 +679,7 @@ export const shouldTestConnection = (serviceType: string) => {
   );
 };
 
-export const getTestConnectionType = (serviceCat: ServiceCategory) => {
+export const getServiceType = (serviceCat: ServiceCategory) => {
   switch (serviceCat) {
     case ServiceCategory.MESSAGING_SERVICES:
       return ServiceType.Messaging;
@@ -620,6 +687,8 @@ export const getTestConnectionType = (serviceCat: ServiceCategory) => {
       return ServiceType.Dashboard;
     case ServiceCategory.PIPELINE_SERVICES:
       return ServiceType.Pipeline;
+    case ServiceCategory.OBJECT_STORE_SERVICES:
+      return ServiceType.ObjectStore;
     case ServiceCategory.DATABASE_SERVICES:
     default:
       return ServiceType.Database;

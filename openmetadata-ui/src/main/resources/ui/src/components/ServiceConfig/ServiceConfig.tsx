@@ -87,6 +87,9 @@ const ServiceConfig = ({
         serviceType={serviceType}
         status={status}
         onCancel={onCancel}
+        onFocus={() => {
+          // temp
+        }}
         onSave={handleOnSaveClick}
       />
     );

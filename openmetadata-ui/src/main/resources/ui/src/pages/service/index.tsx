@@ -103,7 +103,7 @@ import {
   getServiceCategoryFromType,
   getServicePageTabs,
   getServiceRouteFromServiceType,
-  getTestConnectionType,
+  getServiceType,
   servicePageTabs,
   serviceTypeLogo,
   setServiceSchemaCount,
@@ -659,7 +659,7 @@ const ServicePage: FunctionComponent = () => {
       try {
         const response = await TestConnection(
           connectionDetails,
-          getTestConnectionType(serviceCategory as ServiceCategory),
+          getServiceType(serviceCategory as ServiceCategory),
           serviceDetails?.serviceType,
           serviceDetails?.name
         );
