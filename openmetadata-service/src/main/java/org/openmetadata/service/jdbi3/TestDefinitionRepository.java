@@ -5,7 +5,6 @@ import static org.openmetadata.service.Entity.TEST_DEFINITION;
 import java.io.IOException;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.tests.TestDefinition;
-import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.dqtests.TestDefinitionResource;
 import org.openmetadata.service.util.EntityUtil;
@@ -40,13 +39,7 @@ public class TestDefinitionRepository extends EntityRepository<TestDefinition> {
 
   @Override
   public void storeEntity(TestDefinition entity, boolean update) throws IOException {
-    EntityReference owner = entity.getOwner();
-    // Don't store owner, database, href and tags as JSON. Build it on the fly based on relationships
-    entity.withOwner(null).withHref(null);
     store(entity, update);
-
-    // Restore the relationships
-    entity.withOwner(owner);
   }
 
   @Override
