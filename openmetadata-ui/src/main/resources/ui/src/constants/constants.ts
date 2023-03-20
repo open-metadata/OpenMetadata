@@ -12,6 +12,7 @@
  */
 
 import { COOKIE_VERSION } from 'components/Modals/WhatsNewModal/whatsNewData';
+import { SearchIndex } from 'enums/search.enum';
 import { t } from 'i18next';
 import { isUndefined } from 'lodash';
 import Qs from 'qs';
@@ -133,6 +134,17 @@ export const tiers = [
   { key: `Tier${FQN_SEPARATOR_CHAR}Tier3`, doc_count: 0 },
   { key: `Tier${FQN_SEPARATOR_CHAR}Tier4`, doc_count: 0 },
   { key: `Tier${FQN_SEPARATOR_CHAR}Tier5`, doc_count: 0 },
+];
+
+export const globalSearchOptions = [
+  { value: undefined, label: t('label.all') },
+  { value: SearchIndex.TABLE, label: t('label.table') },
+  { value: SearchIndex.TOPIC, label: t('label.topic') },
+  { value: SearchIndex.DASHBOARD, label: t('label.dashboard') },
+  { value: SearchIndex.PIPELINE, label: t('label.pipeline') },
+  { value: SearchIndex.MLMODEL, label: t('label.ml-model') },
+  { value: SearchIndex.GLOSSARY, label: t('label.glossary') },
+  { value: SearchIndex.TAG, label: t('label.tag') },
 ];
 
 export const versionTypes = [
@@ -274,6 +286,13 @@ export const IN_PAGE_SEARCH_ROUTES: Record<string, Array<string>> = {
 export const getTableDetailsPath = (tableFQN: string, columnName?: string) => {
   let path = ROUTES.TABLE_DETAILS;
   path = path.replace(PLACEHOLDER_ROUTE_TABLE_FQN, tableFQN);
+
+  return `${path}${columnName ? `.${columnName}` : ''}`;
+};
+
+export const getTagsDetailsPath = (entityFQN: string, columnName?: string) => {
+  let path = ROUTES.TAG_DETAILS;
+  path = path.replace(PLACEHOLDER_TAG_NAME, entityFQN);
 
   return `${path}${columnName ? `.${columnName}` : ''}`;
 };

@@ -45,6 +45,7 @@ import {
   getPipelineDetailsPath,
   getServiceDetailsPath,
   getTableDetailsPath,
+  getTagsDetailsPath,
   getTopicDetailsPath,
 } from '../constants/constants';
 import { GlobalSettingsMenuCategory } from '../constants/GlobalSettings.constants';
@@ -225,6 +226,7 @@ export const getEntityLink = (
 
     case EntityType.GLOSSARY:
     case EntityType.GLOSSARY_TERM:
+    case SearchIndex.GLOSSARY:
       return getGlossaryPath(fullyQualifiedName);
 
     case EntityType.DATABASE_SERVICE:
@@ -249,6 +251,8 @@ export const getEntityLink = (
     case EntityType.CONTAINER:
     case SearchIndex.CONTAINER:
       return getContainerDetailPath(fullyQualifiedName);
+    case SearchIndex.TAG:
+      return getTagsDetailsPath(fullyQualifiedName);
 
     case SearchIndex.TABLE:
     case EntityType.TABLE:

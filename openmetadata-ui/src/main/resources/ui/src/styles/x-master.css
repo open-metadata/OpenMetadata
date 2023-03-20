@@ -177,6 +177,9 @@ pre {
 .search-grey::placeholder {
   color: #6b7280;
 }
+.global-search-select {
+  width: 115px;
+}
 
 /* Breadcrumb */
 .breadcrumb {

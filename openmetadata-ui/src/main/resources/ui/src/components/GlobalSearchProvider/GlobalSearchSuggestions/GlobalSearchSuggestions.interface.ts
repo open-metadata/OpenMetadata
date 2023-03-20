@@ -56,6 +56,16 @@ export interface MlModelSource extends CommonSource {
   mlmodel_name: string;
 }
 
+export interface GlossarySource extends CommonSource {
+  glossary_id: string;
+  glossary_name: string;
+}
+
+export interface TagSource extends CommonSource {
+  tag_id: string;
+  tag_name: string;
+}
+
 export interface Option {
   _index: string;
   _id: string;
@@ -63,5 +73,7 @@ export interface Option {
     DashboardSource &
     TopicSource &
     PipelineSource &
-    MlModelSource;
+    MlModelSource &
+    GlossarySource &
+    TagSource;
 }

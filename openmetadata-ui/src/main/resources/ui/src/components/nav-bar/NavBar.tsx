@@ -14,6 +14,7 @@
 import { Badge, Dropdown, Image, Input, Select, Space, Tooltip } from 'antd';
 import { useApplicationConfigProvider } from 'components/ApplicationConfigProvider/ApplicationConfigProvider';
 import { CookieStorage } from 'cookie-storage';
+import { SearchIndex } from 'enums/search.enum';
 import i18next from 'i18next';
 import { debounce, toString } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
@@ -85,6 +86,7 @@ const NavBar = ({
   );
   const history = useHistory();
   const { t } = useTranslation();
+  const { Option } = Select;
   const [searchIcon, setSearchIcon] = useState<string>('icon-searchv1');
   const [suggestionSearch, setSuggestionSearch] = useState<string>('');
   const [hasTaskNotification, setHasTaskNotification] =
@@ -93,6 +95,44 @@ const NavBar = ({
     useState<boolean>(false);
   const [activeTab, setActiveTab] = useState<string>('Task');
   const [isImgUrlValid, setIsImgUrlValid] = useState<boolean>(true);
+  const [searchCriteria, setSearchCriteria] = useState<
+    SearchIndex | undefined
+  >();
+  const globalSearchOptions = useMemo(
+    () => [
+      { value: undefined, label: t('label.all') },
+      { value: SearchIndex.TABLE, label: t('label.table') },
+      { value: SearchIndex.TOPIC, label: t('label.topic') },
+      { value: SearchIndex.DASHBOARD, label: t('label.dashboard') },
+      { value: SearchIndex.PIPELINE, label: t('label.pipeline') },
+      { value: SearchIndex.MLMODEL, label: t('label.ml-model') },
+      { value: SearchIndex.GLOSSARY, label: t('label.glossary') },
+      { value: SearchIndex.TAG, label: t('label.tag') },
+    ],
+    []
+  );
+
+  const updateSearchCriteria = (criteria: SearchIndex | undefined) => {
+    setSearchCriteria(criteria);
+    handleSearchChange('');
+  };
+
+  const entitiesSelect = useMemo(
+    () => (
+      <Select
+        className="global-search-select"
+        defaultValue={undefined}
+        value={searchCriteria}
+        onChange={updateSearchCriteria}>
+        {globalSearchOptions.map(({ value, label }) => (
+          <Option key={value} value={value}>
+            {label}
+          </Option>
+        ))}
+      </Select>
+    ),
+    [searchCriteria, globalSearchOptions, updateSearchCriteria]
+  );
 
   const profilePicture = useMemo(
     () => currentUser?.profile?.images?.image512,
@@ -364,8 +404,10 @@ const NavBar = ({
             className="tw-flex-none tw-relative tw-justify-items-center tw-ml-16"
             data-testid="appbar-item">
             <Input
+              allowClear
+              addonBefore={entitiesSelect}
               autoComplete="off"
-              className="tw-relative search-grey hover:tw-outline-none focus:tw-outline-none tw-pl-2 tw-pt-2 tw-pb-1.5 tw-ml-4 tw-z-41 rounded-4"
+              className="search-grey rounded-4"
               data-testid="searchBox"
               id="searchBox"
               placeholder={t('message.search-for-entity-types')}
@@ -411,6 +453,7 @@ const NavBar = ({
               ) : (
                 <Suggestions
                   isOpen={isSearchBoxOpen}
+                  searchCriteria={searchCriteria}
                   searchText={suggestionSearch}
                   setIsOpen={handleSearchBoxOpen}
                 />
