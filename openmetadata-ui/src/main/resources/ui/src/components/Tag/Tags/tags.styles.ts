@@ -12,8 +12,8 @@
  */
 
 export const tagStyles = {
-  base: `tw-relative tw-inline-flex tw-text-xs tw-font-medium 
-      tw-rounded tw-whitespace-nowrap`,
+  base: `relative tw-inline-flex text-xs font-medium 
+      rounded-4 whitespace-nowrap`,
   contained: 'tw-bg-badge tw-mr-2 tw-my-0.5',
   outlined: 'tw-bg-transparent tw-mr-2 tw-my-0.5',
   label: 'tw-bg-transparent tw-border-none tw-text-grey-body',
