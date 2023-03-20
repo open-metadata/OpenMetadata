@@ -138,7 +138,7 @@ import org.openmetadata.service.util.ResultList;
 public abstract class EntityRepository<T extends EntityInterface> {
   private final String collectionPath;
   private final Class<T> entityClass;
-  protected final String entityType;
+  @Getter protected final String entityType;
   public final EntityDAO<T> dao;
   protected final CollectionDAO daoCollection;
   @Getter protected final List<String> allowedFields;
@@ -1173,6 +1173,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
   /** Load CSV provided for bulk upload */
   public CsvImportResult importFromCsv(String name, String csv, boolean dryRun, String user) throws IOException {
     throw new IllegalArgumentException(csvNotSupported(entityType));
+  }
+
+  public List<TagLabel> getAllTags(EntityInterface entity) {
+    return entity.getTags();
   }
 
   public enum Operation {

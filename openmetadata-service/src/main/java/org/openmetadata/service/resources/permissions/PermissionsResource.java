@@ -140,8 +140,9 @@ public class PermissionsResource {
           String user,
       @Parameter(description = "Resource type", schema = @Schema(type = "String")) @PathParam("resource")
           String resource,
-      @Parameter(description = "Entity Id", schema = @Schema(type = "UUID")) @PathParam("id") UUID id) {
-    EntityRepository<EntityInterface> entityRepository = Entity.getEntityRepository(resource);
+      @Parameter(description = "Id of the entity", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
+      throws IOException {
+    EntityRepository<? extends EntityInterface> entityRepository = Entity.getEntityRepository(resource);
     ResourceContext resourceContext =
         ResourceContext.builder().resource(resource).id(id).entityRepository(entityRepository).build();
     return authorizer.getPermission(securityContext, user, resourceContext);
@@ -173,8 +174,9 @@ public class PermissionsResource {
           String user,
       @Parameter(description = "Resource type", schema = @Schema(type = "String")) @PathParam("resource")
           String resource,
-      @Parameter(description = "Entity Name", schema = @Schema(type = "String")) @PathParam("name") String name) {
-    EntityRepository<EntityInterface> entityRepository = Entity.getEntityRepository(resource);
+      @Parameter(description = "Name of the entity", schema = @Schema(type = "String")) @PathParam("name") String name)
+      throws IOException {
+    EntityRepository<? extends EntityInterface> entityRepository = Entity.getEntityRepository(resource);
     ResourceContext resourceContext =
         ResourceContext.builder().resource(resource).name(name).entityRepository(entityRepository).build();
     return authorizer.getPermission(securityContext, user, resourceContext);

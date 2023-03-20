@@ -20,6 +20,7 @@ import com.google.common.util.concurrent.UncheckedExecutionException;
 import java.io.IOException;
 import java.util.UUID;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
 import javax.annotation.CheckForNull;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.teams.Role;
@@ -44,7 +45,8 @@ public class RoleCache {
   /** To be called only once during the application start from DefaultAuthorizer */
   public static void initialize() {
     if (!INITIALIZED) {
-      ROLE_CACHE = CacheBuilder.newBuilder().maximumSize(100).build(new RoleLoader());
+      ROLE_CACHE =
+          CacheBuilder.newBuilder().maximumSize(100).expireAfterWrite(3, TimeUnit.MINUTES).build(new RoleLoader());
       ROLE_REPOSITORY = Entity.getEntityRepository(Entity.ROLE);
       FIELDS = ROLE_REPOSITORY.getFields("policies");
       INITIALIZED = true;

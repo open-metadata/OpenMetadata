@@ -13,8 +13,6 @@
 
 package org.openmetadata.service.security.policyevaluator;
 
-import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
-
 import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
@@ -56,7 +54,7 @@ public class TestCaseResourceContext implements ResourceContextInterface {
   @Override
   public List<TagLabel> getTags() throws IOException {
     resolveEntity();
-    return entity == null ? null : listOrEmpty(entity.getTags());
+    return entity == null ? null : Entity.getEntityTags(getResource(), entity);
   }
 
   @Override
