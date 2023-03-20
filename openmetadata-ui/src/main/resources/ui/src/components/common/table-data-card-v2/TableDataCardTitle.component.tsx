@@ -25,14 +25,13 @@ import {
 } from '../../../utils/CommonUtils';
 import { stringToHTML } from '../../../utils/StringsUtils';
 import { getEntityLink } from '../../../utils/TableUtils';
-import { SourceType } from '../../searched-data/SearchedData.interface';
 import './TableDataCardTitle.less';
 
 interface TableDataCardTitleProps {
   dataTestId?: string;
   id?: string;
   searchIndex: SearchIndex | EntityType;
-  source: SourceType;
+  source: { fullyQualifiedName?: string; displayName?: string };
   isPanel?: boolean;
   handleLinkClick?: (e: React.MouseEvent) => void;
 }

@@ -1,0 +1,41 @@
+{
+  "$id": "https://open-metadata.org/schema/type/votes.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Votes",
+  "description": "This schema defines the Votes for a Data Asset.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.type.Votes",
+  "definitions": {
+    "voteType": {
+      "description": "Vote Type",
+      "type": "string",
+      "enum": [
+        "votedUp",
+        "votedDown",
+        "unVoted"
+      ],
+      "default": "unVoted"
+    }
+  },
+  "properties": {
+    "upVotes": {
+      "description": "Total up-votes the entity has",
+      "type": "integer",
+      "default": 0
+    },
+    "downVotes": {
+      "description": "Total down-votes the entity has",
+      "type": "integer",
+      "default": 0
+    },
+    "upVoters": {
+      "description": "List of all the Users who upVoted",
+      "$ref": "./entityReference.json#/definitions/entityReferenceList"
+    },
+    "downVoters": {
+      "description": "List of all the Users who downVoted",
+      "$ref": "./entityReference.json#/definitions/entityReferenceList"
+    }
+  },
+  "additionalProperties": false
+}
