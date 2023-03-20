@@ -14,7 +14,7 @@
 import { Button, Col, Dropdown, Modal, Row, Tooltip, Typography } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import classNames from 'classnames';
-import { DROPDOWN_ICON_SIZE_PROPS } from 'constants/constants';
+import { DROPDOWN_ICON_SIZE_PROPS } from 'constants/ManageButton.constants';
 import React, { FC, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconAnnouncementsBlack } from '../../../../assets/svg/announcements-black.svg';

@@ -28,6 +28,7 @@ import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
+import { DROPDOWN_ICON_SIZE_PROPS } from 'constants/ManageButton.constants';
 import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { compare } from 'fast-json-patch';
 import { cloneDeep, isEmpty, isUndefined, orderBy, uniqueId } from 'lodash';
@@ -47,7 +48,6 @@ import { ReactComponent as IconOpenLock } from '../../assets/svg/open-lock.svg';
 import { ReactComponent as IconRemove } from '../../assets/svg/Remove.svg';
 import { ReactComponent as IconShowPassword } from '../../assets/svg/show-password.svg';
 import {
-  DROPDOWN_ICON_SIZE_PROPS,
   getTeamAndUserDetailsPath,
   getUserPath,
   LIST_SIZE,

@@ -39,6 +39,7 @@ import {
   OperationPermission,
   ResourceEntity,
 } from 'components/PermissionProvider/PermissionProvider.interface';
+import { DROPDOWN_ICON_SIZE_PROPS } from 'constants/ManageButton.constants';
 import { compare, Operation } from 'fast-json-patch';
 import { TagLabel } from 'generated/type/tagLabel';
 import { isUndefined, startCase, toNumber } from 'lodash';
@@ -71,7 +72,6 @@ import { ReactComponent as IconHidePassword } from '../../assets/svg/hide-passwo
 import { ReactComponent as IconShowPassword } from '../../assets/svg/show-password.svg';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import {
-  DROPDOWN_ICON_SIZE_PROPS,
   getDatabaseDetailsPath,
   getDatabaseSchemaDetailsPath,
   getServiceDetailsPath,
@@ -684,10 +684,6 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     );
   };
 
-  const handleShowDeletedTables = (checked: boolean) => {
-    setShowDeletedTables(checked);
-  };
-
   const deletedTeamIcon = useMemo(
     () =>
       showDeletedTables ? (
@@ -726,7 +722,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
                     checked={showDeletedTables}
                     data-testid="deleted-table-menu-item-switch"
                     size="small"
-                    onChange={handleShowDeletedTables}
+                    onChange={setShowDeletedTables}
                   />
                 </Col>
 
@@ -784,7 +780,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     fetchDatabaseSchemaPermission();
   }, [databaseSchemaFQN]);
 
-  // alwyas Keep this useEffect at the end...
+  // always Keep this useEffect at the end...
   useEffect(() => {
     isMounting.current = false;
     appState.inPageSearchText = '';
