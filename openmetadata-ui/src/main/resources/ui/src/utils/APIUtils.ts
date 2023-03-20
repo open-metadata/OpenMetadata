@@ -25,6 +25,7 @@ export type SearchEntityHits = SearchResponse<
   | SearchIndex.TABLE
   | SearchIndex.MLMODEL
   | SearchIndex.TOPIC
+  | SearchIndex.CONTAINER
 >['hits']['hits'];
 
 // if more value is added, also update its interface file at -> interface/types.d.ts

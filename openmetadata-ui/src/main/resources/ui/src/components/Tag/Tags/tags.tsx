@@ -86,7 +86,7 @@ const Tags: FunctionComponent<TagProps> = ({
         {editable && isRemovable && (
           <span
             className="tw-py-0.5 tw-px-2 tw-rounded tw-cursor-pointer"
-            data-testid="remove"
+            data-testid={`remove-${tag}-tag`}
             onClick={(e: React.MouseEvent<HTMLElement, MouseEvent>) => {
               e.preventDefault();
               e.stopPropagation();
