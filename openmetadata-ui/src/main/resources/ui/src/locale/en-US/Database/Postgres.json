@@ -1,9 +1,0 @@
-{
-  "fields": {
-    "hostPort": "/en-US/Database/Postgres/Fields/hostPort.md",
-    "password": "/en-US/Database/Postgres/Fields/password.md",
-    "username": "/en-US/Database/Postgres/Fields/username.md"
-  },
-
-  "requirement": "/en-US/Database/Postgres/requirements.md"
-}
