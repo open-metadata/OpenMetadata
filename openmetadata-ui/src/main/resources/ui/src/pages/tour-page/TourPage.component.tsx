@@ -52,6 +52,7 @@ const exploreCount = {
   [SearchIndex.DASHBOARD]: 0,
   [SearchIndex.PIPELINE]: 0,
   [SearchIndex.MLMODEL]: 0,
+  [SearchIndex.CONTAINER]: 0,
 };
 
 const TourPage = () => {

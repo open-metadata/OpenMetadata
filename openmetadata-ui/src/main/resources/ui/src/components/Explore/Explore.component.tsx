@@ -51,7 +51,7 @@ import AppliedFilterText from './AppliedFilterText/AppliedFilterText';
 import EntitySummaryPanel from './EntitySummaryPanel/EntitySummaryPanel.component';
 import {
   EntityDetailsObjectInterface,
-  EntityDetailsType,
+  EntityUnion,
   ExploreProps,
   ExploreQuickFilterField,
   ExploreSearchIndex,
@@ -90,7 +90,7 @@ const Explore: React.FC<ExploreProps> = ({
   >([] as ExploreQuickFilterField[]);
   const [showSummaryPanel, setShowSummaryPanel] = useState(false);
   const [entityDetails, setEntityDetails] =
-    useState<{ details: EntityDetailsType; entityType: string }>();
+    useState<{ details: EntityUnion; entityType: string }>();
 
   const { toggleModal, sqlQuery } = useAdvanceSearch();
 
@@ -167,7 +167,7 @@ const Explore: React.FC<ExploreProps> = ({
   };
 
   const handleSummaryPanelDisplay = useCallback(
-    (details: EntityDetailsType, entityType: string) => {
+    (details: EntityUnion, entityType: string) => {
       setShowSummaryPanel(true);
       setEntityDetails({ details, entityType });
     },
@@ -256,7 +256,7 @@ const Explore: React.FC<ExploreProps> = ({
       searchResults?.hits?.hits[0]._index === searchIndex
     ) {
       handleSummaryPanelDisplay(
-        searchResults?.hits?.hits[0]._source as EntityDetailsType,
+        searchResults?.hits?.hits[0]._source as EntityUnion,
         tab
       );
     } else {

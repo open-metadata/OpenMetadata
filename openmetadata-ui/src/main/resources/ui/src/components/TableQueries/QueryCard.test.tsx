@@ -34,7 +34,6 @@ const mockQueryData = {
       href: 'http://localhost:8585/api/v1/users/d4785e53-bbdb-4dbd-b368-009fdb50c2c6',
     },
   ],
-  vote: 1,
   checksum: '0232b0368458aadb29230ccc531462c9',
 } as Query;
 

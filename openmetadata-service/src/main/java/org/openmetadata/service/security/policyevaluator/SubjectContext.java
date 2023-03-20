@@ -67,7 +67,6 @@ public class SubjectContext {
     return isInTeam(parentTeam, user.getTeams());
   }
 
-  /** Returns true if the user of this SubjectContext is under the team hierarchy of parentTeam */
   /** Returns true if the given resource owner is under the team hierarchy of parentTeam */
   public boolean isTeamAsset(String parentTeam, EntityReference owner) {
     if (owner.getType().equals(Entity.USER)) {
@@ -126,10 +125,23 @@ public class SubjectContext {
 
   /** PolicyIterator goes over policies in a set of policies one by one. */
   static class PolicyIterator implements Iterator<PolicyContext> {
+
+    // When executing roles from a policy, entity type User or Team to which the Role is attached to.
+    // In case of executing a policy attached to a team, the entityType is Team
     private final String entityType;
+
+    // User or Team name to which the Role or Policy is attached to
+
     private final String entityName;
+
+    // Name of the role from which the policy is from. If policy is not part of the role, but from directly attaching
+    // it to a Team, then null
     private final String roleName;
+
+    // Index to the current policy being evaluation
     private int policyIndex = 0;
+
+    // List of policies to execute
     private final List<EntityReference> policies;
 
     PolicyIterator(String entityType, String entityName, String roleName, List<EntityReference> policies) {
@@ -161,9 +173,13 @@ public class SubjectContext {
 
   /** RolePolicyIterator goes over policies in a set of roles one by one. */
   static class RolePolicyIterator implements Iterator<PolicyContext> {
+    // Either User or Team to which the policies from a Role are attached to
     private final String entityType;
+    // Either User or Team name to which the policies from a Role are attached to
     private final String entityName;
+    // Index in the iterator points to the current policy being evaluated
     private int iteratorIndex = 0;
+    // List of policies from the role to evaluate
     private final List<PolicyIterator> policyIterators = new ArrayList<>();
 
     RolePolicyIterator(String entityType, String entityName, List<EntityReference> roles) {
