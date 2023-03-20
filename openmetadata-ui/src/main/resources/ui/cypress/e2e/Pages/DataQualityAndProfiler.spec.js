@@ -99,9 +99,7 @@ describe('Data Quality and Profiler should work properly', () => {
 
     cy.clickOnLogo();
 
-    cy.get('[data-testid="service-summary"] [data-testid="service"]')
-      .should('be.visible')
-      .click();
+    cy.get('[data-testid="appbar-item-settings"]').should('be.visible').click();
     cy.intercept('/api/v1/services/ingestionPipelines?*').as('ingestionData');
     interceptURL(
       'GET',
