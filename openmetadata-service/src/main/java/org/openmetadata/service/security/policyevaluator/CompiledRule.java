@@ -1,5 +1,6 @@
 package org.openmetadata.service.security.policyevaluator;
 
+import static org.openmetadata.service.Entity.ALL_RESOURCES;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.permissionDenied;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
@@ -139,13 +140,13 @@ public class CompiledRule extends Rule {
     }
   }
 
-  public void setPermission(Map<String, ResourcePermission> resourcePermissionMap, PolicyContext policyContext) {
+  public void evaluatePermission(Map<String, ResourcePermission> resourcePermissionMap, PolicyContext policyContext) {
     for (ResourcePermission resourcePermission : resourcePermissionMap.values()) {
-      setPermission(resourcePermission.getResource(), resourcePermission, policyContext);
+      evaluatePermission(resourcePermission.getResource(), resourcePermission, policyContext);
     }
   }
 
-  public void setPermission(String resource, ResourcePermission resourcePermission, PolicyContext policyContext) {
+  public void evaluatePermission(String resource, ResourcePermission resourcePermission, PolicyContext policyContext) {
     if (!matchResource(resource)) {
       return;
     }
@@ -163,7 +164,7 @@ public class CompiledRule extends Rule {
     }
   }
 
-  public void setPermission(
+  public void evaluatePermission(
       SubjectContext subjectContext,
       ResourceContextInterface resourceContext,
       ResourcePermission resourcePermission,
@@ -189,7 +190,7 @@ public class CompiledRule extends Rule {
   }
 
   protected boolean matchResource(String resource) {
-    return (getResources().get(0).equalsIgnoreCase("all") || getResources().contains(resource));
+    return (getResources().get(0).equalsIgnoreCase(ALL_RESOURCES) || getResources().contains(resource));
   }
 
   private boolean matchOperation(MetadataOperation operation) {

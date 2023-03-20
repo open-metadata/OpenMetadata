@@ -18,8 +18,8 @@ import { EntityReference } from 'generated/type/entityReference';
 import React, { FC, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { getEntityName } from 'utils/CommonUtils';
 import { getContainerDetailPath } from 'utils/ContainerDetailUtils';
+import { getEntityName } from 'utils/EntityUtils';
 
 interface ContainerChildrenProps {
   childrenList: Container['children'];

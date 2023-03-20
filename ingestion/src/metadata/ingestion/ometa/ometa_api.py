@@ -47,6 +47,7 @@ from metadata.generated.schema.entity.data.location import Location
 from metadata.generated.schema.entity.data.metrics import Metrics
 from metadata.generated.schema.entity.data.mlmodel import MlModel
 from metadata.generated.schema.entity.data.pipeline import Pipeline
+from metadata.generated.schema.entity.data.query import Query
 from metadata.generated.schema.entity.data.report import Report
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.data.topic import Topic
@@ -90,6 +91,8 @@ from metadata.ingestion.ometa.mixins.ingestion_pipeline_mixin import (
 from metadata.ingestion.ometa.mixins.mlmodel_mixin import OMetaMlModelMixin
 from metadata.ingestion.ometa.mixins.patch_mixin import OMetaPatchMixin
 from metadata.ingestion.ometa.mixins.pipeline_mixin import OMetaPipelineMixin
+from metadata.ingestion.ometa.mixins.query_mixin import OMetaQueryMixin
+from metadata.ingestion.ometa.mixins.role_policy_mixin import OMetaRolePolicyMixin
 from metadata.ingestion.ometa.mixins.server_mixin import OMetaServerMixin
 from metadata.ingestion.ometa.mixins.service_mixin import OMetaServiceMixin
 from metadata.ingestion.ometa.mixins.table_mixin import OMetaTableMixin
@@ -164,6 +167,8 @@ class OpenMetadata(
     DataInsightMixin,
     OMetaIngestionPipelineMixin,
     OMetaUserMixin,
+    OMetaQueryMixin,
+    OMetaRolePolicyMixin,
     Generic[T, C],
 ):
     """
@@ -332,6 +337,11 @@ class OpenMetadata(
         if issubclass(entity, get_args(Union[Role, self.get_create_entity_type(Role)])):
             return "/roles"
 
+        if issubclass(
+            entity, get_args(Union[Query, self.get_create_entity_type(Query)])
+        ):
+            return "/queries"
+
         if issubclass(entity, get_args(Union[Team, self.get_create_entity_type(Team)])):
             return "/teams"
 
@@ -346,7 +356,7 @@ class OpenMetadata(
         if issubclass(
             entity, get_args(Union[Workflow, self.get_create_entity_type(Workflow)])
         ):
-            return "/operations/workflow"
+            return "/automations/workflow"
 
         # Services Schemas
         if issubclass(

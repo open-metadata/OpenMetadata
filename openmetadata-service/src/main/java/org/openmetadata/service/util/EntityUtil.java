@@ -213,15 +213,15 @@ public final class EntityUtil {
     return details;
   }
 
-  /** Merge derivedTags into tags, if it already does not exist in tags */
-  public static void mergeTags(List<TagLabel> tags, List<TagLabel> derivedTags) {
-    if (nullOrEmpty(derivedTags)) {
+  /** Merge two sets of tags */
+  public static void mergeTags(List<TagLabel> mergeTo, List<TagLabel> mergeFrom) {
+    if (nullOrEmpty(mergeFrom)) {
       return;
     }
-    for (TagLabel derivedTag : derivedTags) {
-      TagLabel tag = tags.stream().filter(t -> tagLabelMatch.test(t, derivedTag)).findAny().orElse(null);
-      if (tag == null) { // Derived tag does not exist in the list. Add it.
-        tags.add(derivedTag);
+    for (TagLabel fromTag : mergeFrom) {
+      TagLabel tag = mergeTo.stream().filter(t -> tagLabelMatch.test(t, fromTag)).findAny().orElse(null);
+      if (tag == null) { // The tag does not exist in the mergeTo list. Add it.
+        mergeTo.add(fromTag);
       }
     }
   }
@@ -328,10 +328,11 @@ public final class EntityUtil {
   }
 
   /** Return column field name of format "columns".columnName.columnFieldName */
-  public static String getColumnField(Table table, Column column, String columnField) {
+  public static <T extends EntityInterface> String getColumnField(
+      T entityWithColumns, Column column, String columnField) {
     // Remove table FQN from column FQN to get the local name
     String localColumnName =
-        EntityUtil.getLocalColumnName(table.getFullyQualifiedName(), column.getFullyQualifiedName());
+        EntityUtil.getLocalColumnName(entityWithColumns.getFullyQualifiedName(), column.getFullyQualifiedName());
     return columnField == null
         ? FullyQualifiedName.build("columns", localColumnName)
         : FullyQualifiedName.build("columns", localColumnName, columnField);

@@ -245,4 +245,6 @@ declare module 'Models' {
     id: string;
     state: string;
   }
+
+  export type PagingWithoutTotal = Omit<Paging, 'total'>;
 }

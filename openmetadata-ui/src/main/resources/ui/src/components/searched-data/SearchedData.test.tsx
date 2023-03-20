@@ -87,23 +87,22 @@ jest.mock('../common/error-with-placeholder/ErrorPlaceHolderES', () => {
   return jest.fn().mockReturnValue(<p>ErrorPlaceHolderES</p>);
 });
 
+const MOCK_PROPS = {
+  isFilterSelected: false,
+  isSummaryPanelVisible: false,
+  currentPage: 0,
+  data: mockData,
+  handleSummaryPanelDisplay: mockHandleSummaryPanelDisplay,
+  paginate: mockPaginate,
+  selectedEntityId: 'name1',
+  totalValue: 10,
+};
+
 describe('Test SearchedData Component', () => {
   it('Component should render', () => {
-    const { container } = render(
-      <SearchedData
-        isFilterSelected
-        isSummaryPanelVisible
-        currentPage={0}
-        data={mockData}
-        handleSummaryPanelDisplay={mockHandleSummaryPanelDisplay}
-        paginate={mockPaginate}
-        selectedEntityId="name1"
-        totalValue={10}
-      />,
-      {
-        wrapper: MemoryRouter,
-      }
-    );
+    const { container } = render(<SearchedData {...MOCK_PROPS} />, {
+      wrapper: MemoryRouter,
+    });
 
     const searchedDataContainer = getByTestId(container, 'search-container');
 
@@ -111,21 +110,9 @@ describe('Test SearchedData Component', () => {
   });
 
   it('Should display table card according to data provided in props', () => {
-    const { container } = render(
-      <SearchedData
-        isFilterSelected
-        isSummaryPanelVisible
-        currentPage={0}
-        data={mockData}
-        handleSummaryPanelDisplay={mockHandleSummaryPanelDisplay}
-        paginate={mockPaginate}
-        selectedEntityId="name1"
-        totalValue={10}
-      />,
-      {
-        wrapper: MemoryRouter,
-      }
-    );
+    const { container } = render(<SearchedData {...MOCK_PROPS} />, {
+      wrapper: MemoryRouter,
+    });
 
     const searchedDataContainer = getAllByTestId(container, 'table-data-card');
 
@@ -134,15 +121,7 @@ describe('Test SearchedData Component', () => {
 
   it('If children is provided it should display', () => {
     const { container } = render(
-      <SearchedData
-        isFilterSelected
-        isSummaryPanelVisible
-        currentPage={0}
-        data={mockData}
-        handleSummaryPanelDisplay={mockHandleSummaryPanelDisplay}
-        paginate={mockPaginate}
-        selectedEntityId="name1"
-        totalValue={10}>
+      <SearchedData {...MOCK_PROPS}>
         <p>hello world</p>
       </SearchedData>,
       {
@@ -155,15 +134,7 @@ describe('Test SearchedData Component', () => {
 
   it('Pagination Should be there if data is more than 10 count', () => {
     const { container } = render(
-      <SearchedData
-        isFilterSelected
-        isSummaryPanelVisible
-        currentPage={0}
-        data={mockData}
-        handleSummaryPanelDisplay={mockHandleSummaryPanelDisplay}
-        paginate={mockPaginate}
-        selectedEntityId="name1"
-        totalValue={11}>
+      <SearchedData {...MOCK_PROPS} totalValue={11}>
         <p>hello world</p>
       </SearchedData>,
       {
@@ -177,14 +148,9 @@ describe('Test SearchedData Component', () => {
   it('Onboarding component should display if there is showOnboardingTemplate is true', () => {
     const { container } = render(
       <SearchedData
-        isFilterSelected
-        isSummaryPanelVisible
+        {...MOCK_PROPS}
         showOnboardingTemplate
-        currentPage={0}
         data={[]}
-        handleSummaryPanelDisplay={mockHandleSummaryPanelDisplay}
-        paginate={mockPaginate}
-        selectedEntityId="name1"
         totalValue={0}
       />,
       {
@@ -197,16 +163,7 @@ describe('Test SearchedData Component', () => {
 
   it('ErrorPlaceHolderES component should display if there is no data', () => {
     const { container } = render(
-      <SearchedData
-        isFilterSelected
-        isSummaryPanelVisible
-        currentPage={0}
-        data={[]}
-        handleSummaryPanelDisplay={mockHandleSummaryPanelDisplay}
-        paginate={mockPaginate}
-        selectedEntityId="name1"
-        totalValue={0}
-      />,
+      <SearchedData {...MOCK_PROPS} data={[]} totalValue={0} />,
       {
         wrapper: MemoryRouter,
       }

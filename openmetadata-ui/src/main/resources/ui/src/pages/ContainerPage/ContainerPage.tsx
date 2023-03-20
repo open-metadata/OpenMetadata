@@ -65,13 +65,12 @@ import {
 import {
   getCurrentUserId,
   getEntityMissingError,
-  getEntityName,
   getEntityPlaceHolder,
   getOwnerValue,
   refreshPage,
 } from 'utils/CommonUtils';
 import { getContainerDetailPath } from 'utils/ContainerDetailUtils';
-import { getEntityLineage } from 'utils/EntityUtils';
+import { getEntityLineage, getEntityName } from 'utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from 'utils/PermissionsUtils';
 import { getLineageViewPath } from 'utils/RouterUtils';
 import { serviceTypeLogo } from 'utils/ServiceUtils';
@@ -89,8 +88,8 @@ const ContainerPage = () => {
   const history = useHistory();
   const { t } = useTranslation();
   const { getEntityPermissionByFqn } = usePermissionProvider();
-  const { containerName, tab = CONTAINER_DETAILS_TABS.SCHEME } =
-    useParams<{ containerName: string; tab: CONTAINER_DETAILS_TABS }>();
+  const { entityFQN: containerName, tab = CONTAINER_DETAILS_TABS.SCHEME } =
+    useParams<{ entityFQN: string; tab: CONTAINER_DETAILS_TABS }>();
 
   // Local states
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -712,7 +711,9 @@ const ContainerPage = () => {
                 addLineageHandler={handleAddLineage}
                 deleted={deleted}
                 entityLineage={entityLineage}
-                entityLineageHandler={(lineage) => setEntityLineage(lineage)}
+                entityLineageHandler={(lineage: EntityLineage) =>
+                  setEntityLineage(lineage)
+                }
                 entityType={EntityType.CONTAINER}
                 hasEditAccess={hasEditLineagePermission}
                 isLoading={isLineageLoading}

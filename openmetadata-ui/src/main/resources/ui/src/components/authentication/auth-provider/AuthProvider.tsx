@@ -253,14 +253,14 @@ export const AuthProvider = ({
    * This method will be called when the id token is about to expire.
    */
   const renewIdToken = async () => {
-    try {
-      const onRenewIdTokenHandlerPromise = onRenewIdTokenHandler();
-      onRenewIdTokenHandlerPromise && (await onRenewIdTokenHandlerPromise);
-    } catch (error) {
-      console.error((error as AxiosError).message);
-    }
+    const onRenewIdTokenHandlerPromise = onRenewIdTokenHandler();
+    if (onRenewIdTokenHandlerPromise) {
+      await onRenewIdTokenHandlerPromise;
 
-    return localState.getOidcToken();
+      return localState.getOidcToken();
+    } else {
+      throw new Error('No handler attached for Renew Token.');
+    }
   };
 
   /**

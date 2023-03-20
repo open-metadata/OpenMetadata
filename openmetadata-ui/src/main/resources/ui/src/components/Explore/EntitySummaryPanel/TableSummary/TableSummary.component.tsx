@@ -27,10 +27,7 @@ import {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import {
-  getLatestTableProfileByFqn,
-  getTableQueryByTableId,
-} from 'rest/tableAPI';
+import { getLatestTableProfileByFqn } from 'rest/tableAPI';
 import { getListTestCase } from 'rest/testAPI';
 import {
   DRAWER_NAVIGATION_OPTIONS,
@@ -115,15 +112,9 @@ function TableSummary({
 
       const { profile, tableConstraints } = profileResponse;
 
-      const queriesResponse = await getTableQueryByTableId(
-        entityDetails.id || ''
-      );
-
-      const { tableQueries } = queriesResponse;
-
       setTableDetails((prev) => {
         if (prev) {
-          return { ...prev, profile, tableQueries, tableConstraints };
+          return { ...prev, profile, tableConstraints };
         } else {
           return {} as Table;
         }

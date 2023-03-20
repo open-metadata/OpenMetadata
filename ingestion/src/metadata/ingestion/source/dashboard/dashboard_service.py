@@ -221,7 +221,7 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
         """
         Method to fetch dashboard tags
         """
-        return  # Dashboard does not support fetching tags except Tableau
+        return  # Dashboard does not support fetching tags except Tableau and Redash
 
     def yield_dashboard_usage(
         self, *args, **kwargs  # pylint: disable=W0613
@@ -274,10 +274,36 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
             entity=DashboardService, config=config
         )
 
-    def process_owner(self, dashboard_details: dict):  # pylint: disable=unused-argument
+    def process_owner(self, dashboard_details):
+        try:
+            owner = self.get_owner_details(  # pylint: disable=assignment-from-none
+                dashboard_details=dashboard_details
+            )
+            if owner and self.source_config.overrideOwner:
+                self.metadata.patch_owner(
+                    entity=Dashboard,
+                    entity_id=self.context.dashboard.id,
+                    owner=owner,
+                    force=True,
+                )
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Error processing owner for {dashboard_details}: {exc}")
+
+    def get_owner_details(  # pylint: disable=useless-return
+        self, dashboard_details  # pylint: disable=unused-argument
+    ) -> Optional[EntityReference]:
+        """Get dashboard owner
+
+        Args:
+            dashboard_details:
+        Returns:
+            Optional[EntityReference]
+        """
         logger.debug(
             f"Processing ownership is not supported for {self.service_connection.type.name}"
         )
+        return None
 
     @staticmethod
     def _get_add_lineage_request(

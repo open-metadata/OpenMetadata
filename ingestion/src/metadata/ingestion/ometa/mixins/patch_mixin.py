@@ -19,11 +19,17 @@ from typing import Dict, Generic, List, Optional, Type, TypeVar, Union
 
 from pydantic import BaseModel
 
-from metadata.generated.schema.entity.data.table import Table
+from metadata.generated.schema.entity.data.table import Table, TableConstraint
 from metadata.generated.schema.type import basic
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.tagLabel import LabelType, State, TagSource
 from metadata.ingestion.ometa.client import REST
+from metadata.ingestion.ometa.patch import (
+    PatchField,
+    PatchOperation,
+    PatchPath,
+    PatchValue,
+)
 from metadata.ingestion.ometa.utils import model_str
 from metadata.utils.helpers import find_column_in_table_with_index
 from metadata.utils.logger import ometa_logger
@@ -31,27 +37,6 @@ from metadata.utils.logger import ometa_logger
 logger = ometa_logger()
 
 T = TypeVar("T", bound=BaseModel)
-
-OPERATION = "op"
-PATH = "path"
-VALUE = "value"
-VALUE_ID: str = "id"
-VALUE_TYPE: str = "type"
-
-# Operations
-ADD = "add"
-REPLACE = "replace"
-REMOVE = "remove"
-
-# OM specific description handling
-ENTITY_DESCRIPTION = "/description"
-COL_DESCRIPTION = "/columns/{index}/description"
-
-ENTITY_TAG = "/tags/{tag_index}"
-COL_TAG = "/columns/{index}/tags/{tag_index}"
-
-# Paths
-OWNER_PATH: str = "/owner"
 
 OWNER_TYPES: List[str] = ["user", "team"]
 
@@ -65,7 +50,7 @@ class OMetaPatchMixin(Generic[T]):
 
     client: REST
 
-    def _validate_instance_description(
+    def _fetch_entity_if_exists(
         self, entity: Type[T], entity_id: Union[str, basic.Uuid]
     ) -> Optional[T]:
         """
@@ -111,9 +96,7 @@ class OMetaPatchMixin(Generic[T]):
         Returns
             Updated Entity
         """
-        instance = self._validate_instance_description(
-            entity=entity, entity_id=entity_id
-        )
+        instance = self._fetch_entity_if_exists(entity=entity, entity_id=entity_id)
         if not instance:
             return None
 
@@ -130,9 +113,11 @@ class OMetaPatchMixin(Generic[T]):
                 data=json.dumps(
                     [
                         {
-                            OPERATION: ADD if not instance.description else REPLACE,
-                            PATH: ENTITY_DESCRIPTION,
-                            VALUE: description,
+                            PatchField.OPERATION: PatchOperation.ADD
+                            if not instance.description
+                            else PatchOperation.REPLACE,
+                            PatchField.PATH: PatchPath.DESCRIPTION,
+                            PatchField.VALUE: description,
                         }
                     ]
                 ),
@@ -165,7 +150,7 @@ class OMetaPatchMixin(Generic[T]):
         Returns
             Updated Entity
         """
-        table: Table = self._validate_instance_description(
+        table: Table = self._fetch_entity_if_exists(
             entity=Table,
             entity_id=entity_id,
         )
@@ -196,9 +181,13 @@ class OMetaPatchMixin(Generic[T]):
                 data=json.dumps(
                     [
                         {
-                            OPERATION: ADD if not col.description else REPLACE,
-                            PATH: COL_DESCRIPTION.format(index=col_index),
-                            VALUE: description,
+                            PatchField.OPERATION: PatchOperation.ADD
+                            if not col.description
+                            else PatchOperation.REPLACE,
+                            PatchField.PATH: PatchPath.COLUMNS_DESCRIPTION.format(
+                                index=col_index
+                            ),
+                            PatchField.VALUE: description,
                         }
                     ]
                 ),
@@ -213,13 +202,72 @@ class OMetaPatchMixin(Generic[T]):
 
         return None
 
+    def patch_table_constraints(
+        self,
+        entity_id: Union[str, basic.Uuid],
+        table_constraints: List[TableConstraint],
+    ) -> Optional[T]:
+        """Given an Entity ID, JSON PATCH the table constraints of table
+
+        Args
+            entity_id: ID
+            description: new description to add
+            table_constraints: table constraints to add
+
+        Returns
+            Updated Entity
+        """
+        table: Table = self._fetch_entity_if_exists(
+            entity=Table,
+            entity_id=entity_id,
+        )
+        if not table:
+            return None
+
+        try:
+            res = self.client.patch(
+                path=f"{self.get_suffix(Table)}/{model_str(entity_id)}",
+                data=json.dumps(
+                    [
+                        {
+                            PatchField.OPERATION: PatchOperation.ADD
+                            if not table.tableConstraints
+                            else PatchOperation.REPLACE,
+                            PatchField.PATH: PatchPath.TABLE_CONSTRAINTS,
+                            PatchField.VALUE: [
+                                {
+                                    PatchValue.CONSTRAINT_TYPE: constraint.constraintType.value,
+                                    PatchValue.COLUMNS: constraint.columns,
+                                    PatchValue.REFERRED_COLUMNS: [
+                                        col.__root__
+                                        for col in constraint.referredColumns or []
+                                    ],
+                                }
+                                for constraint in table_constraints
+                            ],
+                        }
+                    ]
+                ),
+            )
+            return Table(**res)
+
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(
+                f"Error trying to PATCH description for Table Constraint: {entity_id}: {exc}"
+            )
+
+        return None
+
     def patch_tag(
         self,
         entity: Type[T],
         entity_id: Union[str, basic.Uuid],
         tag_fqn: str,
         from_glossary: bool = False,
-        operation: str = ADD,
+        operation: Union[
+            PatchOperation.ADD, PatchOperation.REMOVE
+        ] = PatchOperation.ADD,
     ) -> Optional[T]:
         """
         Given an Entity type and ID, JSON PATCH the tag.
@@ -233,9 +281,7 @@ class OMetaPatchMixin(Generic[T]):
         Returns
             Updated Entity
         """
-        instance = self._validate_instance_description(
-            entity=entity, entity_id=entity_id
-        )
+        instance = self._fetch_entity_if_exists(entity=entity, entity_id=entity_id)
         if not instance:
             return None
 
@@ -243,15 +289,17 @@ class OMetaPatchMixin(Generic[T]):
 
         try:
             res = None
-            if operation == ADD:
+            if operation == PatchOperation.ADD:
                 res = self.client.patch(
                     path=f"{self.get_suffix(entity)}/{model_str(entity_id)}",
                     data=json.dumps(
                         [
                             {
-                                OPERATION: ADD,
-                                PATH: ENTITY_TAG.format(tag_index=tag_index),
-                                VALUE: {
+                                PatchField.OPERATION: PatchOperation.ADD,
+                                PatchField.PATH: PatchPath.TAGS.format(
+                                    tag_index=tag_index
+                                ),
+                                PatchField.VALUE: {
                                     "labelType": LabelType.Automated.value,
                                     "source": TagSource.Classification.value
                                     if not from_glossary
@@ -263,14 +311,16 @@ class OMetaPatchMixin(Generic[T]):
                         ]
                     ),
                 )
-            elif operation == REMOVE:
+            elif operation == PatchOperation.REMOVE:
                 res = self.client.patch(
                     path=f"{self.get_suffix(entity)}/{model_str(entity_id)}",
                     data=json.dumps(
                         [
                             {
-                                OPERATION: REMOVE,
-                                PATH: ENTITY_TAG.format(tag_index=tag_index),
+                                PatchField.OPERATION: PatchOperation.REMOVE,
+                                PatchField.PATH: PatchPath.TAGS.format(
+                                    tag_index=tag_index
+                                ),
                             }
                         ]
                     ),
@@ -291,7 +341,9 @@ class OMetaPatchMixin(Generic[T]):
         column_name: str,
         tag_fqn: str,
         from_glossary: bool = False,
-        operation: str = ADD,
+        operation: Union[
+            PatchOperation.ADD, PatchOperation.REMOVE
+        ] = PatchOperation.ADD,
         is_suggested: bool = False,
     ) -> Optional[T]:
         """Given an Entity ID, JSON PATCH the tag of the column
@@ -304,9 +356,7 @@ class OMetaPatchMixin(Generic[T]):
         Returns
             Updated Entity
         """
-        table: Table = self._validate_instance_description(
-            entity=Table, entity_id=entity_id
-        )
+        table: Table = self._fetch_entity_if_exists(entity=Table, entity_id=entity_id)
         if not table:
             return None
 
@@ -321,38 +371,38 @@ class OMetaPatchMixin(Generic[T]):
         tag_index = len(col.tags) - 1 if col.tags else 0
         try:
             res = None
-            if operation == ADD:
+            if operation == PatchOperation.ADD:
                 res = self.client.patch(
                     path=f"{self.get_suffix(Table)}/{model_str(entity_id)}",
                     data=json.dumps(
                         [
                             {
-                                OPERATION: ADD,
-                                PATH: COL_TAG.format(
+                                PatchField.OPERATION: PatchOperation.ADD,
+                                PatchField.PATH: PatchPath.COLUMNS_TAGS.format(
                                     index=col_index, tag_index=tag_index
                                 ),
-                                VALUE: {
-                                    "labelType": LabelType.Automated.value,
-                                    "source": TagSource.Classification.value
+                                PatchField.VALUE: {
+                                    PatchValue.LABEL_TYPE: LabelType.Automated.value,
+                                    PatchValue.SOURCE: TagSource.Classification.value
                                     if not from_glossary
                                     else TagSource.Glossary.value,
-                                    "state": State.Suggested.value
+                                    PatchValue.STATE: State.Suggested.value
                                     if is_suggested
                                     else State.Confirmed.value,
-                                    "tagFQN": tag_fqn,
+                                    PatchValue.TAG_FQN: tag_fqn,
                                 },
                             }
                         ]
                     ),
                 )
-            elif operation == REMOVE:
+            elif operation == PatchOperation.REMOVE:
                 res = self.client.patch(
                     path=f"{self.get_suffix(Table)}/{model_str(entity_id)}",
                     data=json.dumps(
                         [
                             {
-                                OPERATION: REMOVE,
-                                PATH: COL_TAG.format(
+                                PatchField.OPERATION: PatchOperation.REMOVE,
+                                PatchField.PATH: PatchPath.COLUMNS_TAGS.format(
                                     index=col_index, tag_index=tag_index
                                 ),
                             }
@@ -389,9 +439,7 @@ class OMetaPatchMixin(Generic[T]):
         Returns
             Updated Entity
         """
-        instance = self._validate_instance_description(
-            entity=entity, entity_id=entity_id
-        )
+        instance = self._fetch_entity_if_exists(entity=entity, entity_id=entity_id)
         if not instance:
             return None
 
@@ -404,11 +452,11 @@ class OMetaPatchMixin(Generic[T]):
             return None
 
         data: Dict = {
-            PATH: OWNER_PATH,
+            PatchField.PATH: PatchPath.OWNER,
         }
 
         if owner is None:
-            data[OPERATION] = REMOVE
+            data[PatchField.OPERATION] = PatchOperation.REMOVE
         else:
             if owner.type not in OWNER_TYPES:
                 valid_owner_types: str = ", ".join(f'"{o}"' for o in OWNER_TYPES)
@@ -418,10 +466,12 @@ class OMetaPatchMixin(Generic[T]):
                 )
                 return None
 
-            data[OPERATION] = ADD if instance.owner is None else REPLACE
-            data[VALUE] = {
-                VALUE_ID: model_str(owner.id),
-                VALUE_TYPE: owner.type,
+            data[PatchField.OPERATION] = (
+                PatchOperation.ADD if instance.owner is None else PatchOperation.REPLACE
+            )
+            data[PatchField.VALUE] = {
+                PatchValue.ID: model_str(owner.id),
+                PatchValue.TYPE: owner.type,
             }
 
         try:
