@@ -63,7 +63,7 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
                 className="text-grey-muted m-0 p-0">
                 {parts.join(FQN_SEPARATOR_CHAR)}
               </Typography.Paragraph>
-              <Typography.Text>{lastPartOfTag}</Typography.Text>
+              <Typography.Text ellipsis>{lastPartOfTag}</Typography.Text>
             </Space>
           ),
           value: tag.fqn,
