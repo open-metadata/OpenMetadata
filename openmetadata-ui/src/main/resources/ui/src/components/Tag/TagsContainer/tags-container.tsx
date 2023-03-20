@@ -147,7 +147,7 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
       data-testid="tag-container"
       size={8}>
       {showTags && !editable && (
-        <Space className="flex-wrap">
+        <Space wrap>
           {showAddTagButton && (
             <span className="tw-text-primary">
               <Tags
