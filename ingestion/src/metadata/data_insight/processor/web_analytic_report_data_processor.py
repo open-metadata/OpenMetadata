@@ -102,7 +102,7 @@ class WebAnalyticEntityViewReportDataProcessor(DataProcessor):
 
         while True:
             event = yield refined_data
-            split_url = [url for url in event.eventData.url.split("/") if url]  # type: ignore
+            split_url = [url for url in event.eventData.url.__root__.split("/") if url]  # type: ignore
 
             if not split_url or split_url[0] not in ENTITIES:
                 continue
@@ -118,7 +118,7 @@ class WebAnalyticEntityViewReportDataProcessor(DataProcessor):
                 # if we've seen the entity previously but were not able to get
                 # the URL we'll try again from the new event.
                 try:
-                    entity_href = re.search(re_pattern, event.eventData.fullUrl).group(
+                    entity_href = re.search(re_pattern, event.eventData.fullUrl.__root__).group(
                         1
                     )
                     refined_data[entity_obj.fqn]["entityHref"] = entity_href
@@ -166,7 +166,7 @@ class WebAnalyticEntityViewReportDataProcessor(DataProcessor):
                     )
 
                 try:
-                    entity_href = re.search(re_pattern, event.eventData.fullUrl).group(
+                    entity_href = re.search(re_pattern, event.eventData.fullUrl.__root__).group(
                         1
                     )
                 except IndexError:

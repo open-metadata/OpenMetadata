@@ -17,19 +17,19 @@
   "properties": {
         "fullUrl": {
           "description": "complete URL of the page",
-          "type": "string"
+          "$ref": "../basic.json#/definitions/fullUrl"
         },
         "url": {
           "description": "url part after the domain specification",
-          "type": "string"
+          "$ref": "../basic.json#/definitions/url"
         },
         "hostname": {
           "description": "domain name",
-          "type": "string"
+          "$ref": "../basic.json#/definitions/hostname"
         },
         "sessionId": {
           "description": "Unique ID identifying a session",
-          "$ref": "../../type/basic.json#/definitions/uuid"
+          "$ref": "../basic.json#/definitions/sessionId"
         },
         "eventType": {
           "description": "Type of event that was performed",
