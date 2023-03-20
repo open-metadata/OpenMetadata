@@ -65,7 +65,6 @@ import org.openmetadata.schema.type.TableData;
 import org.openmetadata.schema.type.TableJoins;
 import org.openmetadata.schema.type.TableProfile;
 import org.openmetadata.schema.type.TableProfilerConfig;
-import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
@@ -623,13 +622,9 @@ public class TableRepository extends EntityRepository<Table> {
 
   @Override
   public void storeEntity(Table table, boolean update) throws IOException {
-    // Relationships and fields such as href are derived and not stored as part of json
-    EntityReference owner = table.getOwner();
-    List<TagLabel> tags = table.getTags();
+    // Relationships and fields such as service are derived and not stored as part of json
     EntityReference service = table.getService();
-
-    // Don't store owner, database, href and tags as JSON. Build it on the fly based on relationships
-    table.withOwner(null).withHref(null).withTags(null).withService(null);
+    table.withService(null);
 
     // Don't store column tags as JSON but build it on the fly based on relationships
     List<Column> columnWithTags = table.getColumns();
@@ -639,7 +634,7 @@ public class TableRepository extends EntityRepository<Table> {
     store(table, update);
 
     // Restore the relationships
-    table.withOwner(owner).withTags(tags).withColumns(columnWithTags).withService(service);
+    table.withColumns(columnWithTags).withService(service);
   }
 
   @Override
