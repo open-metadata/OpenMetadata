@@ -1,6 +1,7 @@
 package org.openmetadata.service.security.policyevaluator;
 
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.Function;
@@ -38,7 +39,8 @@ public class RuleEvaluator {
       name = "isOwner",
       input = "none",
       description = "Returns true if the logged in user is the owner of the entity being accessed",
-      examples = {"isOwner()", "!isOwner", "noOwner() || isOwner()"})
+      examples = {"isOwner()", "!isOwner", "noOwner() || isOwner()"},
+      resourceBased = true)
   public boolean isOwner() throws IOException {
     return subjectContext != null && subjectContext.isOwner(resourceContext.getOwner());
   }
@@ -47,12 +49,14 @@ public class RuleEvaluator {
       name = "matchAllTags",
       input = "List of comma separated tag or glossary fully qualified names",
       description = "Returns true if the entity being accessed has all the tags given as input",
-      examples = {"matchAllTags('PersonalData.Personal', 'Tier.Tier1', 'Business Glossary.Clothing')"})
+      examples = {"matchAllTags('PersonalData.Personal', 'Tier.Tier1', 'Business Glossary.Clothing')"},
+      resourceBased = true)
   public boolean matchAllTags(String... tagFQNs) throws IOException {
     if (resourceContext == null) {
       return false;
     }
     List<TagLabel> tags = resourceContext.getTags();
+    LOG.debug("matchAllTags {} resourceTags {}", Arrays.toString(tagFQNs), tags.toString());
     for (String tagFQN : tagFQNs) {
       TagLabel found = tags.stream().filter(t -> t.getTagFQN().equals(tagFQN)).findAny().orElse(null);
       if (found == null) {
@@ -66,12 +70,14 @@ public class RuleEvaluator {
       name = "matchAnyTag",
       input = "List of comma separated tag or glossary fully qualified names",
       description = "Returns true if the entity being accessed has at least one of the tags given as input",
-      examples = {"matchAnyTag('PersonalData.Personal', 'Tier.Tier1', 'Business Glossary.Clothing')"})
+      examples = {"matchAnyTag('PersonalData.Personal', 'Tier.Tier1', 'Business Glossary.Clothing')"},
+      resourceBased = true)
   public boolean matchAnyTag(String... tagFQNs) throws IOException {
     if (resourceContext == null) {
       return false;
     }
     List<TagLabel> tags = resourceContext.getTags();
+    LOG.debug("matchAnyTag {} resourceTags {}", Arrays.toString(tagFQNs), tags.toString());
     for (String tagFQN : tagFQNs) {
       TagLabel found = tags.stream().filter(t -> t.getTagFQN().equals(tagFQN)).findAny().orElse(null);
       if (found != null) {

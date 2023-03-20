@@ -2,6 +2,7 @@ package org.openmetadata.service.security.policyevaluator;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
 import static org.openmetadata.service.security.policyevaluator.CompiledRule.parseExpression;
 
 import java.util.ArrayList;
@@ -10,12 +11,14 @@ import java.util.UUID;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
+import org.mockito.stubbing.Answer;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.CollectionDAO.TableDAO;
 import org.openmetadata.service.jdbi3.CollectionDAO.TeamDAO;
 import org.openmetadata.service.jdbi3.CollectionDAO.UserDAO;
 import org.openmetadata.service.jdbi3.TableRepository;
@@ -25,7 +28,7 @@ import org.springframework.expression.EvaluationContext;
 import org.springframework.expression.spel.support.StandardEvaluationContext;
 
 class RuleEvaluatorTest {
-  private static Table table;
+  private static Table table = new Table().withName("table");
   private static User user;
   private static EvaluationContext evaluationContext;
 
@@ -33,7 +36,12 @@ class RuleEvaluatorTest {
   public static void setup() {
     Entity.registerEntity(User.class, Entity.USER, Mockito.mock(UserDAO.class), Mockito.mock(UserRepository.class));
     Entity.registerEntity(Team.class, Entity.TEAM, Mockito.mock(TeamDAO.class), Mockito.mock(TeamRepository.class));
-    table = new Table().withName("table");
+
+    TableRepository tableRepository = Mockito.mock(TableRepository.class);
+    Mockito.when(tableRepository.getAllTags(any()))
+        .thenAnswer((Answer<List<TagLabel>>) invocationOnMock -> table.getTags());
+    Entity.registerEntity(Table.class, Entity.TABLE, Mockito.mock(TableDAO.class), tableRepository);
+
     user = new User().withId(UUID.randomUUID()).withName("user");
     ResourceContext resourceContext =
         ResourceContext.builder()
@@ -41,6 +49,7 @@ class RuleEvaluatorTest {
             .entity(table)
             .entityRepository(Mockito.mock(TableRepository.class))
             .build();
+
     SubjectContext subjectContext = new SubjectContext(user);
     RuleEvaluator ruleEvaluator = new RuleEvaluator(null, subjectContext, resourceContext);
     evaluationContext = new StandardEvaluationContext(ruleEvaluator);
