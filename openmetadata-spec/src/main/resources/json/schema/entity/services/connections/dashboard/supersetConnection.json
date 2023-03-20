@@ -33,10 +33,10 @@
       "description": "Choose between API or database connection fetch metadata from superset.",
       "oneOf": [
         {
-          "$ref": "../../../utils/supersetApiConnection.json"
+          "$ref": "../database/postgresConnection.json"
         },
         {
-          "$ref": "../database/postgresConnection.json"
+          "$ref": "../../../utils/supersetApiConnection.json"
         },
         {
           "$ref": "../database/mysqlConnection.json"
