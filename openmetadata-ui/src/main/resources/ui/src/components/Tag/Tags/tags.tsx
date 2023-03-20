@@ -60,7 +60,7 @@ const Tags: FunctionComponent<TagProps> = ({
       : tag;
 
     return (
-      <span
+      <div
         className={classNames(baseStyle, layoutStyles, className)}
         data-testid="tags"
         onClick={() => {
@@ -95,7 +95,7 @@ const Tags: FunctionComponent<TagProps> = ({
             <CloseOutlined className="tw-text-primary" />
           </span>
         )}
-      </span>
+      </div>
     );
   };
 

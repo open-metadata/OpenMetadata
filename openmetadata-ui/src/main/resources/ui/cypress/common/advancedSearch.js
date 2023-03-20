@@ -62,6 +62,7 @@ export const FIELDS = {
   Tags: {
     name: 'Tags',
     testid: '[title="Tags"]',
+    createTagName: 'Personal',
     searchCriteriaFirstGroup: 'PersonalData.Personal',
     responseValueFirstGroup: '"tagFQN":"PersonalData.Personal"',
     searchCriteriaSecondGroup: 'PersonalData.SpecialCategory',
@@ -349,8 +350,11 @@ export const addTag = (tag) => {
 
   cy.get('[data-testid="tag-selector"]').should('be.visible').click().type(tag);
 
-  cy.get('.ant-select-item-option-content').should('be.visible').click();
-
+  cy.get('.ant-select-item-option-content')
+    .contains(tag)
+    .should('be.visible')
+    .click();  
+    
   cy.get('[data-testid="tag-selector"] > .ant-select-selector').contains(tag);
 
   cy.get('[data-testid="saveAssociatedTag"]').should('be.visible').click();
