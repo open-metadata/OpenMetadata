@@ -319,12 +319,14 @@ class SnowflakeSource(CommonDbSourceService):
         if self.config.sourceConfig.config.skipTempTables:
 
             return [
-                TableNameAndType(name=table_name[0])
-                for table_name in self.inspector.get_table_names(schema_name) or []
-                if table_name[1] == "NO"
+                TableNameAndType(name=table_name)
+                for table_name in self.inspector.get_table_names(
+                    schema=schema_name, skip_temp_tables="True"
+                )
+                or []
             ]
 
         return [
-            TableNameAndType(name=table_name[0])
-            for table_name in self.inspector.get_table_names(schema_name) or []
+            TableNameAndType(name=table_name)
+            for table_name in self.inspector.get_table_names(schema=schema_name) or []
         ]

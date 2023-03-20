@@ -46,7 +46,11 @@ SNOWFLAKE_FETCH_ALL_TAGS = textwrap.dedent(
 )
 
 SNOWFLAKE_GET_TABLE_NAMES = """
-select TABLE_NAME, IS_TRANSIENT from information_schema.tables where TABLE_SCHEMA = '{}' and TABLE_TYPE = 'BASE TABLE'
+select TABLE_NAME from information_schema.tables where TABLE_SCHEMA = '{}' and TABLE_TYPE = 'BASE TABLE'
+"""
+
+SNOWFLAKE_GET_WITHOUT_TRANSIENT_TABLE_NAMES = """
+select TABLE_NAME from information_schema.tables where TABLE_SCHEMA = '{}' and IS_TRANSIENT = 'NO'
 """
 
 SNOWFLAKE_GET_VIEW_NAMES = """
