@@ -26,12 +26,19 @@ import { isNil, isString, isUndefined } from 'lodash';
 import { PagingResponse } from 'Models';
 import React, { FC, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { getQueriesList, ListQueriesParams, patchQueries } from 'rest/queryAPI';
+import {
+  getQueriesList,
+  getQueryById,
+  ListQueriesParams,
+  patchQueries,
+  updateQueryVote,
+} from 'rest/queryAPI';
 import { DEFAULT_ENTITY_PERMISSION } from 'utils/PermissionsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder';
 import Loader from '../Loader/Loader';
 import QueryCard from './QueryCard';
+import { QueryVote } from './TableQueries.interface';
 import TableQueryRightPanel from './TableQueryRightPanel/TableQueryRightPanel.component';
 
 interface TableQueriesProp {
@@ -94,7 +101,7 @@ const TableQueries: FC<TableQueriesProp> = ({
         ...params,
         limit: PAGE_SIZE,
         entityId: tableId,
-        fields: 'owner,vote,tags,queryUsedIn',
+        fields: 'owner,votes,tags,queryUsedIn',
       });
       setTableQueries(queries);
       setSelectedQuery(queries.data[0]);
@@ -120,6 +127,26 @@ const TableQueries: FC<TableQueriesProp> = ({
           ...pre,
           data: pre.data.map((query) =>
             query.id === updatedQuery.id ? { ...query, [key]: res[key] } : query
+          ),
+        };
+      });
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  };
+
+  const updateVote = async (data: QueryVote, id?: string) => {
+    try {
+      await updateQueryVote(id || '', data);
+      const response = await getQueryById(id || '', {
+        fields: 'owner,votes,tags,queryUsedIn',
+      });
+      setSelectedQuery(response);
+      setTableQueries((pre) => {
+        return {
+          ...pre,
+          data: pre.data.map((query) =>
+            query.id === response.id ? response : query
           ),
         };
       });
@@ -165,7 +192,7 @@ const TableQueries: FC<TableQueriesProp> = ({
             <Row
               className="p-r-lg"
               data-testid="queries-container"
-              gutter={[16, 16]}>
+              gutter={[8, 16]}>
               {/* <Col span={24}>filters</Col> */}
 
               {tableQueries.data.map((query) => (
@@ -177,6 +204,7 @@ const TableQueries: FC<TableQueriesProp> = ({
                     tableId={tableId}
                     onQuerySelection={handleSelectedQuery}
                     onQueryUpdate={handleQueryUpdate}
+                    onUpdateVote={updateVote}
                   />
                 </Col>
               ))}

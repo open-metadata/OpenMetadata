@@ -12,6 +12,7 @@
  */
 
 import { AxiosResponse } from 'axios';
+import { QueryVote } from 'components/TableQueries/TableQueries.interface';
 import { Operation } from 'fast-json-patch';
 import { CreateQuery } from 'generated/api/data/createQuery';
 import { Query } from 'generated/entity/data/query';
@@ -31,10 +32,19 @@ export type ListQueriesParams = Params & {
   entityId?: string;
 };
 
+export type QueryByIdParams = Pick<Params, 'fields' | 'include'>;
+
 const BASE_URL = '/queries';
 
 export const getQueriesList = async (params?: ListQueriesParams) => {
   const response = await APIClient.get<PagingResponse<Query[]>>(BASE_URL, {
+    params,
+  });
+
+  return response.data;
+};
+export const getQueryById = async (id: string, params?: QueryByIdParams) => {
+  const response = await APIClient.get<Query>(`${BASE_URL}/${id}`, {
     params,
   });
 
@@ -57,6 +67,14 @@ export const patchQueries = async (id: string, patch: Operation[]) => {
     `${BASE_URL}/${id}`,
     patch,
     configOptions
+  );
+
+  return response.data;
+};
+export const updateQueryVote = async (id: string, data: QueryVote) => {
+  const response = await APIClient.put<QueryVote, AxiosResponse<Query>>(
+    `${BASE_URL}/${id}/vote`,
+    data
   );
 
   return response.data;

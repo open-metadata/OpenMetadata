@@ -12,29 +12,8 @@
  */
 
 import { DownOutlined, UpOutlined } from '@ant-design/icons';
-import {
-  Button,
-  Card,
-  Col,
-  Dropdown,
-  MenuProps,
-  Popover,
-  Row,
-  Space,
-  Typography,
-} from 'antd';
-import { ReactComponent as IconDropdown } from 'assets/svg/menu.svg';
+import { Button, Card, Col, Popover, Row, Space, Typography } from 'antd';
 import classNames from 'classnames';
-import { Query } from 'generated/entity/data/query';
-import { slice, split } from 'lodash';
-import React, { FC, HTMLAttributes, useMemo, useState } from 'react';
-import { useTranslation } from 'react-i18next';
-import { getFormattedDateFromSeconds } from 'utils/TimeUtils';
-import { CSMode } from '../../enums/codemirror.enum';
-import SchemaEditor from '../schema-editor/SchemaEditor';
-import { ReactComponent as EditIcon } from '/assets/svg/ic-edit.svg';
-import { ReactComponent as CopyIcon } from '/assets/svg/icon-copy.svg';
-
 import { OperationPermission } from 'components/PermissionProvider/PermissionProvider.interface';
 import { getTableDetailsPath } from 'constants/constants';
 import {
@@ -42,12 +21,19 @@ import {
   QUERY_LINE_HEIGHT,
   QUERY_USED_BY_TABLE_VIEW_CAP,
 } from 'constants/entity.constants';
-import { NO_PERMISSION_FOR_ACTION } from 'constants/HelperTextUtil';
+import { Query } from 'generated/entity/data/query';
 import { EntityReference } from 'generated/type/entityLineage';
-import { useClipboard } from 'hooks/useClipBoard';
+import { slice, split } from 'lodash';
+import React, { FC, HTMLAttributes, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { getEntityName } from 'utils/EntityUtils';
+import { getFormattedDateFromSeconds } from 'utils/TimeUtils';
+import { CSMode } from '../../enums/codemirror.enum';
+import SchemaEditor from '../schema-editor/SchemaEditor';
+import QueryCardExtraOption from './QueryCardExtraOption/QueryCardExtraOption.component';
 import './table-queries.style.less';
+import { QueryVote } from './TableQueries.interface';
 
 interface QueryCardProp extends HTMLAttributes<HTMLDivElement> {
   query: Query;
@@ -56,6 +42,7 @@ interface QueryCardProp extends HTMLAttributes<HTMLDivElement> {
   permission: OperationPermission;
   onQuerySelection: (query: Query) => void;
   onQueryUpdate: (updatedQuery: Query, key: keyof Query) => Promise<void>;
+  onUpdateVote: (data: QueryVote, id?: string) => Promise<void>;
 }
 
 type QueryUsedByTable = {
@@ -73,10 +60,10 @@ const QueryCard: FC<QueryCardProp> = ({
   onQuerySelection,
   onQueryUpdate,
   permission,
+  onUpdateVote,
 }: QueryCardProp) => {
   const { t } = useTranslation();
-  const { EditAll, EditQueries } = permission;
-  const { onCopyToClipBoard } = useClipboard(query.query);
+
   const [expanded, setExpanded] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
   const [sqlQuery, setSqlQuery] = useState({
@@ -115,33 +102,6 @@ const QueryCard: FC<QueryCardProp> = ({
     return data;
   }, [query]);
 
-  const dropdownItems = useMemo(() => {
-    const items: MenuProps['items'] = [
-      {
-        key: 'edit-query',
-        label: t('label.edit'),
-        icon: (
-          <EditIcon
-            height={16}
-            opacity={EditAll || EditQueries ? 1 : 0.5}
-            width={16}
-          />
-        ),
-        disabled: !(EditAll || EditQueries),
-        onClick: () => setIsEditMode(true),
-        title: EditAll || EditQueries ? undefined : NO_PERMISSION_FOR_ACTION,
-      },
-      {
-        key: 'copy-query',
-        label: t('label.copy'),
-        icon: <CopyIcon height={16} width={16} />,
-        onClick: onCopyToClipBoard,
-      },
-    ];
-
-    return items;
-  }, []);
-
   const updateSqlQuery = async () => {
     setSqlQuery((pre) => ({ ...pre, isLoading: true }));
     if (query.query !== sqlQuery.query) {
@@ -171,18 +131,12 @@ const QueryCard: FC<QueryCardProp> = ({
             className
           )}
           extra={
-            <Dropdown
-              destroyPopupOnHide
-              arrow={{ pointAtCenter: true }}
-              menu={{ items: dropdownItems }}
-              placement="bottom"
-              trigger={['click']}>
-              <Button
-                className="flex-center"
-                icon={<IconDropdown />}
-                type="text"
-              />
-            </Dropdown>
+            <QueryCardExtraOption
+              permission={permission}
+              query={query}
+              onEditClick={setIsEditMode}
+              onUpdateVote={onUpdateVote}
+            />
           }
           title={
             <Space className="font-normal p-y-xs" size={8}>
@@ -248,15 +202,14 @@ const QueryCard: FC<QueryCardProp> = ({
         </Card>
       </Col>
       <Col span={24}>
-        <Paragraph className="m-l-md">
+        <Paragraph className="m-l-md m-b-0">
           <Text>{`${t('message.query-used-by-other-tables')}: `} </Text>
           {topThreeTable.length
             ? topThreeTable.map((table, index) => (
                 <Text className="m-r-xss" key={table.name}>
                   <Link
                     to={getTableDetailsPath(table.fullyQualifiedName || '')}>
-                    {/* Todo: need to remove table.id from below, once backend change for entity ref is merged */}
-                    {getEntityName(table) || table.id}
+                    {getEntityName(table)}
                   </Link>
                   {topThreeTable.length - 1 !== index && ','}
                 </Text>
@@ -274,8 +227,7 @@ const QueryCard: FC<QueryCardProp> = ({
                           to={getTableDetailsPath(
                             table.fullyQualifiedName || ''
                           )}>
-                          {/* Todo: need to remove table.id from below, once backend change for entity ref is merged */}
-                          {getEntityName(table) || table.id}
+                          {getEntityName(table)}
                         </Link>
                         {remainingTable.length - 1 !== index && ','}
                       </Text>
