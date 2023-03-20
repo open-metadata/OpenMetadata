@@ -33,7 +33,7 @@ public class JWTTokenGenerator {
   private static final String IS_BOT_CLAIM = "isBot";
   public static final String TOKEN_TYPE = "tokenType";
   private static final JWTTokenGenerator INSTANCE = new JWTTokenGenerator();
-  private RSAPrivateKey privateKey;
+  @Getter private RSAPrivateKey privateKey;
   @Getter private RSAPublicKey publicKey;
   private String issuer;
   private String kid;

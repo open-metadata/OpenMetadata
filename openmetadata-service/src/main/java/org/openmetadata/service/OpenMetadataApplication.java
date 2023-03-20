@@ -29,18 +29,20 @@ import io.dropwizard.setup.Bootstrap;
 import io.dropwizard.setup.Environment;
 import io.federecio.dropwizard.swagger.SwaggerBundle;
 import io.federecio.dropwizard.swagger.SwaggerBundleConfiguration;
-import io.github.maksymdolgykh.dropwizard.micrometer.MicrometerHttpFilter;
 import io.socket.engineio.server.EngineIoServerOptions;
 import io.socket.engineio.server.JettyWebSocketHandler;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
+import java.security.KeyStoreException;
+import java.security.NoSuchAlgorithmException;
+import java.security.cert.CertificateException;
 import java.time.temporal.ChronoUnit;
 import java.util.EnumSet;
 import java.util.Optional;
 import javax.naming.ConfigurationException;
 import javax.servlet.DispatcherType;
-import javax.servlet.FilterRegistration;
 import javax.servlet.ServletException;
+import javax.servlet.ServletRegistration;
 import javax.ws.rs.container.ContainerRequestFilter;
 import javax.ws.rs.container.ContainerResponseFilter;
 import javax.ws.rs.core.Response;
@@ -60,6 +62,7 @@ import org.jdbi.v3.core.statement.StatementContext;
 import org.jdbi.v3.sqlobject.SqlObjects;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
+import org.openmetadata.schema.auth.SSOAuthMechanism;
 import org.openmetadata.service.elasticsearch.ElasticSearchEventPublisher;
 import org.openmetadata.service.events.EventFilter;
 import org.openmetadata.service.events.EventPubSub;
@@ -87,6 +90,10 @@ import org.openmetadata.service.security.auth.BasicAuthenticator;
 import org.openmetadata.service.security.auth.LdapAuthenticator;
 import org.openmetadata.service.security.auth.NoopAuthenticator;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
+import org.openmetadata.service.security.saml.SamlLogoutServlet;
+import org.openmetadata.service.security.saml.SamlRedirectServlet;
+import org.openmetadata.service.security.saml.SamlResponseServlet;
+import org.openmetadata.service.security.saml.SamlSettingsHolder;
 import org.openmetadata.service.socket.FeedServlet;
 import org.openmetadata.service.socket.OpenMetadataAssetServlet;
 import org.openmetadata.service.socket.SocketAddressFilter;
@@ -104,7 +111,8 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
   @Override
   public void run(OpenMetadataApplicationConfig catalogConfig, Environment environment)
       throws ClassNotFoundException, IllegalAccessException, InstantiationException, NoSuchMethodException,
-          InvocationTargetException, IOException, ConfigurationException {
+          InvocationTargetException, IOException, ConfigurationException, CertificateException, KeyStoreException,
+          NoSuchAlgorithmException {
     validateConfiguration(catalogConfig);
 
     // init email Util for handling
@@ -174,16 +182,37 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     // authenticationHandler Handles auth related activities
     authenticatorHandler.init(catalogConfig, jdbi);
 
-    FilterRegistration.Dynamic micrometerFilter =
-        environment.servlets().addFilter("MicrometerHttpFilter", new MicrometerHttpFilter());
-    micrometerFilter.addMappingForUrlPatterns(EnumSet.allOf(DispatcherType.class), true, "/*");
+    //    FilterRegistration.Dynamic micrometerFilter =
+    //        environment.servlets().addFilter("MicrometerHttpFilter", new MicrometerHttpFilter());
+    //    micrometerFilter.addMappingForUrlPatterns(EnumSet.allOf(DispatcherType.class), true, "/*");
 
     initializeWebsockets(catalogConfig, environment);
+    registerSamlHandlers(catalogConfig, environment);
 
     // Handle Asset Using Servlet
     OpenMetadataAssetServlet assetServlet = new OpenMetadataAssetServlet("/assets", "/", "index.html");
     String pathPattern = "/" + '*';
     environment.servlets().addServlet("static", assetServlet).addMapping(pathPattern);
+  }
+
+  private void registerSamlHandlers(OpenMetadataApplicationConfig catalogConfig, Environment environment)
+      throws IOException, CertificateException, KeyStoreException, NoSuchAlgorithmException {
+    if (catalogConfig.getAuthenticationConfiguration() != null
+        && catalogConfig
+            .getAuthenticationConfiguration()
+            .getProvider()
+            .equals(SSOAuthMechanism.SsoServiceType.SAML.toString())) {
+      SamlSettingsHolder.getInstance().initDefaultSettings(catalogConfig);
+      ServletRegistration.Dynamic samlRedirectServlet =
+          environment.servlets().addServlet("SAML Login", new SamlRedirectServlet());
+      samlRedirectServlet.addMapping("/api/v1/saml/login");
+      ServletRegistration.Dynamic samlRecieverServlet =
+          environment.servlets().addServlet("SAML ACS", new SamlResponseServlet());
+      samlRecieverServlet.addMapping("/api/v1/saml/acs");
+      ServletRegistration.Dynamic samlLogoutServlet =
+          environment.servlets().addServlet("SAML Logout", new SamlLogoutServlet());
+      samlLogoutServlet.addMapping("/api/v1/saml/logout");
+    }
   }
 
   private Jdbi createAndSetupJDBI(Environment environment, DataSourceFactory dbFactory) {

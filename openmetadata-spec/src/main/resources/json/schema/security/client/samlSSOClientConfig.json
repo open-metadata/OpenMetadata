@@ -1,0 +1,110 @@
+{
+  "$id": "https://open-metadata.org/schema/security/client/samlSSOClientConfig.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "SamlSSOClientConfig",
+  "description": "SAML SSO client security configs.",
+  "type": "object",
+  "javaType": "org.openmetadata.catalog.security.client.SamlSSOClientConfig",
+  "definitions": {
+    "idp": {
+      "javaType": "org.openmetadata.catalog.type.IdentityProviderConfig",
+      "description": "This schema defines defines the identity provider config.",
+      "type": "object",
+      "properties": {
+        "entityId": {
+          "description": "Identity Provider Entity ID usually same as the SSO login URL.",
+          "type": "string"
+        },
+        "ssoLoginUrl": {
+          "description": "SSO Login URL.",
+          "type": "string"
+        },
+        "ssoLogoutUrl": {
+          "description": "SSO Logout URL.",
+          "type": "string"
+        },
+        "idpX509Certificate": {
+          "description": "X509 Certificate ",
+          "type": "string"
+        },
+        "authorityUrl": {
+          "description": "Authority URL to redirect the users on Sign In page",
+          "type": "string"
+        },
+        "wantAuthRequestSigned": {
+          "description": "Want Auth Request Signed",
+          "type": "boolean",
+          "default": false
+        },
+        "wantAssertionEncrypted": {
+          "description": "Want Assertion Encrypted",
+          "type": "boolean",
+          "default": false
+        },
+        "nameId": {
+          "description": "Authority URL to redirect the users on Sign In page",
+          "type": "string",
+          "default": "urn:oasis:names:tc:SAML:2.0:nameid-format:emailAddress"
+        }
+      },
+      "required": ["entityId", "ssoLoginUrl"],
+      "additionalProperties": false
+    },
+    "sp": {
+      "javaType": "org.openmetadata.catalog.type.ServiceProviderConfig",
+      "description": "This schema defines defines the identity provider config.",
+      "type": "object",
+      "properties": {
+        "entityId": {
+          "description": "Service Provider Entity ID usually same as the SSO login URL.",
+          "type": "string"
+        },
+        "acs": {
+          "description": "Assertion Consumer URL.",
+          "type": "string"
+        },
+        "logoutUrl": {
+          "description": "SSO Logout URL.",
+          "type": "string"
+        },
+        "spX509Certificate": {
+          "description": "X509 Certificate ",
+          "type": "string"
+        },
+        "callback": {
+          "description": "Service Provider Entity ID usually same as the SSO login URL.",
+          "type": "string"
+        },
+        "tokenValidity": {
+          "description": "Validity for the JWT Token created from SAML Response",
+          "type": "integer",
+          "default": "3600"
+        },
+        "keyStoreFilePath": {
+          "description": "KeyStore File Path",
+          "type": "string"
+        },
+        "keyStoreAlias": {
+          "description": "KeyStore Alias",
+          "type": "string"
+        },
+        "keyStorePassword": {
+          "description": "KeyStore Password",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": ["entityId", "acs"]
+    }
+  },
+  "properties": {
+    "idp": {
+      "$ref": "#/definitions/idp"
+    },
+    "sp": {
+      "$ref": "#/definitions/sp"
+    }
+  },
+  "additionalProperties": false,
+  "required": ["idp", "sp"]
+}

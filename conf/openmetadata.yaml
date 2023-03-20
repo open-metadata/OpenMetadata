@@ -151,6 +151,26 @@ authenticationConfiguration:
   callbackUrl: ${AUTHENTICATION_CALLBACK_URL:-""}
   jwtPrincipalClaims: ${AUTHENTICATION_JWT_PRINCIPAL_CLAIMS:-[email,preferred_username,sub]}
   enableSelfSignup : ${AUTHENTICATION_ENABLE_SELF_SIGNUP:-true}
+  samlConfiguration:
+    idp:
+      entityId: ${SAML_IDP_ENTITY_ID:-""}
+      ssoLoginUrl: ${SAML_IDP_SSO_LOGIN_URL:-""}
+      ssoLogoutUrl: ${SAML_IDP_SSO_LOGOUT_URL:-""}
+      idpX509Certificate: ${SAML_IDP_CERTIFICATE:-""}
+      authorityUrl: ${SAML_AUTHORITY_URL:-""}
+      nameId: ${SAML_IDP_NAMEID:-"urn:oasis:names:tc:SAML:2.0:nameid-format:emailAddress"}
+      wantAuthRequestSigned: ${SAML_AUTH_REQUEST_SIGNED:-false}
+      wantAssertionEncrypted: ${SAML_ASSERTION_ENCRYPTED:-false}
+    sp:
+      entityId: ${SAML_SP_ENTITY_ID:-"http://localhost:8585/api/v1/saml/acs"}
+      acs: ${SAML_SP_ACS:-"http://localhost:8585/api/v1/saml/acs"}
+      logoutUrl: ${SAML_SP_SSO_LOGOUT_URL:-"http://localhost:8585/api/v1/saml/logout"}
+      spX509Certificate: ${SAML_SP_CERTIFICATE:-""}
+      callback: ${SAML_SP_CALLBACK:-"http://localhost:8585/saml/callback"}
+      tokenValidity: ${SAML_SP_TOKEN_VALIDITY:-"3600"}
+      keyStoreFilePath: ${SAML_KEYSTORE_FILE_PATH:-""}
+      keyStoreAlias: ${SAML_KEYSTORE_ALIAS:-""}
+      keyStorePassword: ${SAML_KEYSTORE_PASSWORD:-""}
   ldapConfiguration:
     host: ${AUTHENTICATION_LDAP_HOST:-}
     port: ${AUTHENTICATION_LDAP_PORT:-}

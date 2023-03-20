@@ -131,7 +131,7 @@ public class FeedRepository {
     thread.withEntityId(entityId);
 
     // if thread is of type "task", assign a taskId
-    if (thread.getType().equals(ThreadType.Task)) {
+    if (thread.getType() != null && thread.getType().equals(ThreadType.Task)) {
       thread.withTask(thread.getTask().withId(getNextTaskId()));
     }
 
