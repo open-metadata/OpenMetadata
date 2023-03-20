@@ -47,8 +47,16 @@ export const LEFT_PANEL_DETAILS = {
     url: `${BASE_URL}/settings/members/users`,
   },
   teams: {
-    testid: '[data-testid="terms"]',
+    testid: '[data-testid="teams"]',
     url: `${BASE_URL}/settings/members/teams`,
+  },
+  glossaries: {
+    testid: '[data-testid="glossaries"]',
+    url: `${BASE_URL}/glossary`,
+  },
+  glossaryTerms: {
+    testid: '[data-testid="glossary-terms"]',
+    url: `${BASE_URL}/glossary`,
   },
 };
 

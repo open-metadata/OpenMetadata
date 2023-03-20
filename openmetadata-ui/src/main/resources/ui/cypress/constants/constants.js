@@ -26,8 +26,11 @@ export const MYDATA_SUMMARY_OPTIONS = {
   pipelines: 'pipelines',
   service: 'service',
   user: 'user',
-  terms: 'terms',
+  teams: 'teams',
   mlmodels: 'mlmodels',
+  containers: 'containers',
+  glossaries: 'glossaries',
+  glossaryTerms: 'glossary-terms',
 };
 
 export const SEARCH_INDEX = {
