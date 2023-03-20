@@ -247,6 +247,7 @@ export const getEntityLink = (
       return getMlModelPath(fullyQualifiedName);
 
     case EntityType.CONTAINER:
+    case SearchIndex.CONTAINER:
       return getContainerDetailPath(fullyQualifiedName);
 
     case SearchIndex.TABLE:

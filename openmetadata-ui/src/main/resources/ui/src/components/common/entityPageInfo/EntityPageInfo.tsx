@@ -28,7 +28,6 @@ import { ReactComponent as IconEdit } from '../../../assets/svg/ic-edit.svg';
 import { ReactComponent as IconRequest } from '../../../assets/svg/request-icon.svg';
 import { ReactComponent as IconTagGrey } from '../../../assets/svg/tag-grey.svg';
 import { ReactComponent as IconTaskColor } from '../../../assets/svg/Task-ic.svg';
-
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { FOLLOWERS_VIEW_CAP } from '../../../constants/constants';
 import { EntityType } from '../../../enums/entity.enum';
@@ -528,6 +527,7 @@ const EntityPageInfo = ({
                   align="center"
                   className="w-full h-full"
                   data-testid="tags-wrapper"
+                  size={8}
                   onClick={() => {
                     // Fetch tags and terms only once
                     if (tagList.length === 0) {
@@ -575,11 +575,11 @@ const EntityPageInfo = ({
                     )}
                   </TagsContainer>
                 </Space>
-                <Space align="center" size={6}>
+                <>
                   {getRequestTagsElements()}
                   {getTaskElement()}
                   {getThreadElements()}
-                </Space>
+                </>
               </Fragment>
             )}
           </Space>
