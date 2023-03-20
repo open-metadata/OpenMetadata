@@ -58,6 +58,7 @@ public final class Entity {
   public static final String FIELD_NAME = "name";
   public static final String FIELD_DESCRIPTION = "description";
   public static final String FIELD_FOLLOWERS = "followers";
+  public static final String FIELD_VOTES = "votes";
   public static final String FIELD_TAGS = "tags";
   public static final String FIELD_DELETED = "deleted";
   public static final String FIELD_PIPELINE_STATUS = "pipelineStatus";
@@ -130,7 +131,6 @@ public final class Entity {
   // Operation related entities
   //
   public static final String INGESTION_PIPELINE = "ingestionPipeline";
-  public static final String WEBHOOK = "webhook";
 
   //
   // Reserved names in OpenMetadata

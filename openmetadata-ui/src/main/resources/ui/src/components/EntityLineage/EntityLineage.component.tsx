@@ -1388,10 +1388,13 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
     if (expandAllColumns) {
       toggleColumnView(false);
     } else {
-      const allTableNodes = [
-        updatedLineageData.entity,
-        ...(updatedLineageData.nodes || []),
-      ].filter(
+      const { nodes } = getPaginatedChildMap(
+        updatedLineageData,
+        childMap,
+        paginationData,
+        lineageConfig.nodesPerLayer
+      );
+      const allTableNodes = nodes.filter(
         (node) =>
           node.type === EntityType.TABLE &&
           isUndefined(tableColumnsRef.current[node.id])

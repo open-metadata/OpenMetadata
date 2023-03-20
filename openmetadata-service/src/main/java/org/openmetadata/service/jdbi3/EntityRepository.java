@@ -26,6 +26,8 @@ import static org.openmetadata.service.Entity.FIELD_EXTENSION;
 import static org.openmetadata.service.Entity.FIELD_FOLLOWERS;
 import static org.openmetadata.service.Entity.FIELD_OWNER;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
+import static org.openmetadata.service.Entity.FIELD_VOTES;
+import static org.openmetadata.service.Entity.USER;
 import static org.openmetadata.service.Entity.getEntityFields;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.csvNotSupported;
 import static org.openmetadata.service.util.EntityUtil.compareTagLabel;
@@ -67,6 +69,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.api.VoteRequest;
 import org.openmetadata.schema.api.teams.CreateTeam;
 import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
@@ -85,6 +88,7 @@ import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TagLabel.TagSource;
+import org.openmetadata.schema.type.Votes;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
@@ -150,6 +154,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   @Getter protected final boolean supportsTags;
   @Getter protected final boolean supportsOwner;
   protected final boolean supportsFollower;
+  protected final boolean supportsVotes;
 
   /** Fields that can be updated during PATCH operation */
   @Getter private final Fields patchFields;
@@ -178,6 +183,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     this.supportsOwner = allowedFields.contains(FIELD_OWNER);
     this.supportsSoftDelete = allowedFields.contains(FIELD_DELETED);
     this.supportsFollower = allowedFields.contains(FIELD_FOLLOWERS);
+    this.supportsVotes = allowedFields.contains(FIELD_VOTES);
     Entity.registerEntity(entityClass, entityType, dao, this);
   }
 
@@ -354,7 +360,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   @Transaction
-  public final ResultList<T> listAfter(UriInfo uriInfo, Fields fields, ListFilter filter, int limitParam, String after)
+  public ResultList<T> listAfter(UriInfo uriInfo, Fields fields, ListFilter filter, int limitParam, String after)
       throws IOException {
     int total = dao.listCount(filter);
     List<T> entities = new ArrayList<>();
@@ -382,8 +388,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   @Transaction
-  public final ResultList<T> listBefore(
-      UriInfo uriInfo, Fields fields, ListFilter filter, int limitParam, String before) throws IOException {
+  public ResultList<T> listBefore(UriInfo uriInfo, Fields fields, ListFilter filter, int limitParam, String before)
+      throws IOException {
     // Reverse scrolling - Get one extra result used for computing before cursor
     List<String> jsons = dao.listBefore(filter, limitParam + 1, RestUtil.decodeCursor(before));
 
@@ -582,6 +588,53 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return new PutResponse<>(Status.OK, changeEvent, RestUtil.ENTITY_FIELDS_CHANGED);
   }
 
+  @Transaction
+  public PutResponse<T> updateVote(String updatedBy, UUID entityId, VoteRequest request) throws IOException {
+    // Get entity
+    T originalEntity = dao.findEntityById(entityId);
+
+    // Validate User
+    User user = daoCollection.userDAO().findEntityByName(updatedBy);
+    UUID userId = user.getId();
+    if (Boolean.TRUE.equals(user.getDeleted())) {
+      throw new IllegalArgumentException(CatalogExceptionMessage.deletedUser(userId));
+    }
+
+    ChangeDescription change = new ChangeDescription().withPreviousVersion(originalEntity.getVersion());
+
+    // Add or Delete relationship
+    if (request.getUpdatedVoteType() == VoteRequest.VoteType.UN_VOTED) {
+      deleteRelationship(userId, Entity.USER, entityId, entityType, Relationship.VOTED);
+      fieldDeleted(change, FIELD_VOTES, request.getUpdatedVoteType());
+    } else {
+      addRelationship(
+          userId,
+          entityId,
+          Entity.USER,
+          entityType,
+          Relationship.VOTED,
+          JsonUtils.pojoToJson(request.getUpdatedVoteType()),
+          false);
+      fieldAdded(change, FIELD_VOTES, request.getUpdatedVoteType());
+    }
+
+    setFieldsInternal(originalEntity, new EntityUtil.Fields(allowedFields, "votes"));
+    ChangeEvent changeEvent =
+        new ChangeEvent()
+            .withEntity(originalEntity)
+            .withChangeDescription(change)
+            .withEventType(EventType.ENTITY_UPDATED)
+            .withEntityType(entityType)
+            .withEntityId(entityId)
+            .withEntityFullyQualifiedName(originalEntity.getFullyQualifiedName())
+            .withUserName(updatedBy)
+            .withTimestamp(System.currentTimeMillis())
+            .withCurrentVersion(originalEntity.getVersion())
+            .withPreviousVersion(change.getPreviousVersion());
+
+    return new PutResponse<>(Status.OK, changeEvent, RestUtil.ENTITY_FIELDS_CHANGED);
+  }
+
   public final DeleteResponse<T> delete(String updatedBy, UUID id, boolean recursive, boolean hardDelete)
       throws IOException {
     DeleteResponse<T> response = deleteInternal(updatedBy, id, recursive, hardDelete);
@@ -741,6 +794,13 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   protected void store(T entity, boolean update) throws JsonProcessingException {
+    // Don't store owner, database, href and tags as JSON. Build it on the fly based on relationships
+    entity.withHref(null);
+    EntityReference owner = entity.getOwner();
+    entity.setOwner(null);
+    List<TagLabel> tags = entity.getTags();
+    entity.setTags(null);
+
     if (update) {
       dao.update(entity.getId(), JsonUtils.pojoToJson(entity));
       LOG.info("Updated {}:{}:{}", entityType, entity.getId(), entity.getFullyQualifiedName());
@@ -748,6 +808,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
       dao.insert(entity);
       LOG.info("Created {}:{}:{}", entityType, entity.getId(), entity.getFullyQualifiedName());
     }
+
+    // Restore the relationships
+    entity.setOwner(owner);
+    entity.setTags(tags);
   }
 
   public void validateExtension(T entity) {
@@ -900,12 +964,30 @@ public abstract class EntityRepository<T extends EntityInterface> {
     if (!supportsFollower || entity == null) {
       return Collections.emptyList();
     }
-    List<EntityReference> followers = new ArrayList<>();
     List<EntityRelationshipRecord> records = findFrom(entity.getId(), entityType, Relationship.FOLLOWS, Entity.USER);
-    for (EntityRelationshipRecord entityRelationshipRecord : records) {
-      followers.add(daoCollection.userDAO().findEntityReferenceById(entityRelationshipRecord.getId(), ALL));
+    return EntityUtil.populateEntityReferences(records, USER);
+  }
+
+  protected Votes getVotes(T entity) throws IOException {
+    if (!supportsVotes || entity == null) {
+      return new Votes();
     }
-    return followers;
+    List<EntityReference> upVoters = new ArrayList<>();
+    List<EntityReference> downVoters = new ArrayList<>();
+    List<EntityRelationshipRecord> records = findFrom(entity.getId(), entityType, Relationship.VOTED, Entity.USER);
+    for (EntityRelationshipRecord entityRelationshipRecord : records) {
+      VoteRequest.VoteType type = JsonUtils.readValue(entityRelationshipRecord.getJson(), VoteRequest.VoteType.class);
+      if (type == VoteRequest.VoteType.VOTED_UP) {
+        upVoters.add(daoCollection.userDAO().findEntityReferenceById(entityRelationshipRecord.getId(), ALL));
+      } else if (type == VoteRequest.VoteType.VOTED_DOWN) {
+        downVoters.add(daoCollection.userDAO().findEntityReferenceById(entityRelationshipRecord.getId(), ALL));
+      }
+    }
+    return new Votes()
+        .withUpVotes(upVoters.size())
+        .withDownVotes(downVoters.size())
+        .withUpVoters(upVoters)
+        .withDownVoters(downVoters);
   }
 
   public T withHref(UriInfo uriInfo, T entity) {
