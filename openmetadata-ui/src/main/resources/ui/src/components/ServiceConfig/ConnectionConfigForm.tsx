@@ -12,7 +12,7 @@
  */
 
 import { IChangeEvent } from '@rjsf/core';
-import validator from '@rjsf/validator-ajv8';
+import validator from '@rjsf/validator-ajv6';
 import { ObjectStoreServiceType } from 'generated/entity/services/objectstoreService';
 import { cloneDeep, isNil } from 'lodash';
 import { LoadingState } from 'Models';
