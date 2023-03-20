@@ -14,7 +14,7 @@ Kinesis Models
 from enum import Enum
 from typing import List, Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Extra
 
 
 class KinesisEnum(Enum):
@@ -22,16 +22,6 @@ class KinesisEnum(Enum):
     Enum for Kinesis
     """
 
-    LIMIT = "Limit"
-    STREAM_NAMES = "StreamNames"
-    STREAM_NAME = "StreamName"
-    EXCLUSIVE_START_STREAM_NAME = "ExclusiveStartStreamName"
-    NEXT_TOKEN = "NextToken"
-    SHARDS = "Shards"
-    SHARD_ID = "ShardId"
-    RECORDS = "Records"
-    DATA = "Data"
-    SHARD_ITERATOR = "ShardIterator"
     TRIM_HORIZON = "TRIM_HORIZON"
 
 
@@ -67,3 +57,66 @@ class KinesisTopicMetadataModel(BaseModel):
 
     summary: Optional[KinesisSummaryModel]
     partitions: Optional[List[str]]
+
+
+class KinesisArgs(BaseModel):
+    """
+    Model for Kinesis API Arguments
+    """
+
+    class Config:
+        extra = Extra.allow
+
+    Limit: int = 100
+
+
+class KinesisStreamArgs(BaseModel):
+    """
+    Model for Kinesis Stream API Arguments
+    """
+
+    class Config:
+        extra = Extra.allow
+
+    StreamName: str
+
+
+class KinesisShards(BaseModel):
+    """
+    Model for Kinesis Shards
+    """
+
+    ShardId: str
+
+
+class KinesisPartitions(BaseModel):
+    """
+    Model for Kinesis Partitions
+    """
+
+    Shards: Optional[List[KinesisShards]]
+    NextToken: Optional[str]
+
+
+class KinesisShardIterator(BaseModel):
+    """
+    Model for Kinesis Shard Iterator
+    """
+
+    ShardIterator: Optional[str]
+
+
+class KinesisData(BaseModel):
+    """
+    Model for Kinesis Sample Data
+    """
+
+    Data: Optional[bytes]
+
+
+class KinesisRecords(BaseModel):
+    """
+    Model for Kinesis Records
+    """
+
+    Records: Optional[List[KinesisData]]

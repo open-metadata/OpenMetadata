@@ -30,7 +30,13 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.models.ometa_topic_data import OMetaTopicSampleData
 from metadata.ingestion.source.messaging.kinesis.models import (
+    KinesisArgs,
+    KinesisData,
     KinesisEnum,
+    KinesisPartitions,
+    KinesisRecords,
+    KinesisShardIterator,
+    KinesisStreamArgs,
     KinesisStreamModel,
     KinesisSummaryModel,
     KinesisTopicMetadataModel,
@@ -70,15 +76,15 @@ class KinesisSource(MessagingServiceSource):
         """
         Get the list of all the streams
         """
-        all_topics, has_more_topics, args = [], True, {KinesisEnum.LIMIT.value: 100}
+        all_topics, has_more_topics, args = [], True, KinesisArgs(Limit=100)
         while has_more_topics:
             try:
-                topics = self.kinesis.list_streams(**args)
+                topics = self.kinesis.list_streams(**args.dict())
                 kinesis_topic_model = KinesisStreamModel(**topics)
                 all_topics.extend(kinesis_topic_model.StreamNames)
                 has_more_topics = kinesis_topic_model.HasMoreStreams
                 if len(all_topics) > 0:
-                    args[KinesisEnum.EXCLUSIVE_START_STREAM_NAME.value] = all_topics[-1]
+                    args.ExclusiveStartStreamName = all_topics[-1]
             except Exception as err:
                 logger.debug(traceback.format_exc())
                 logger.error(f"Failed to fetch kinesis stream - {err}")
@@ -162,19 +168,20 @@ class KinesisSource(MessagingServiceSource):
         all_partitions, has_more_partitions, args = (
             [],
             True,
-            {KinesisEnum.STREAM_NAME.value: topic_name},
+            KinesisStreamArgs(StreamName=topic_name),
         )
         try:
             while has_more_partitions:
-                partitions = self.kinesis.list_shards(**args)
+                partitions = self.kinesis.list_shards(**args.dict())
+                kinesis_partitions_model = KinesisPartitions(**partitions)
                 all_partitions.extend(
                     [
-                        partition.get(KinesisEnum.SHARD_ID.value)
-                        for partition in partitions.get(KinesisEnum.SHARDS.value) or []
+                        partition.ShardId
+                        for partition in kinesis_partitions_model.Shards or []
                     ]
                 )
-                has_more_partitions = partitions.get(KinesisEnum.NEXT_TOKEN.value)
-                args[KinesisEnum.NEXT_TOKEN.value] = has_more_partitions
+                has_more_partitions = kinesis_partitions_model.NextToken
+                args.NextToken = has_more_partitions
         except Exception as err:
             logger.debug(traceback.format_exc())
             logger.warning(
@@ -211,16 +218,18 @@ class KinesisSource(MessagingServiceSource):
                     StreamName=topic_name,
                     ShardId=shard,
                     ShardIteratorType=KinesisEnum.TRIM_HORIZON.value,
-                ).get(KinesisEnum.SHARD_ITERATOR.value)
+                )
+                shard_iterator_model = KinesisShardIterator(**shard_iterator)
 
-                if shard_iterator:
-                    records = (
-                        self.kinesis.get_records(ShardIterator=shard_iterator).get(
-                            KinesisEnum.RECORDS.value
-                        )
-                        or []
+                if shard_iterator_model.ShardIterator:
+                    records = self.kinesis.get_records(
+                        ShardIterator=shard_iterator_model.ShardIterator
                     )
-                    data.extend(self._get_sample_records(records=records))
+                    records_model = KinesisRecords(**records)
+                    if records_model.Records:
+                        data.extend(
+                            self._get_sample_records(records=records_model.Records)
+                        )
 
                 if data:
                     break
@@ -231,11 +240,11 @@ class KinesisSource(MessagingServiceSource):
             )
         return TopicSampleData(messages=data)
 
-    def _get_sample_records(self, records: List) -> List:
+    def _get_sample_records(self, records: List[KinesisData]) -> List:
         sample_data = []
         try:
             for record in records:
-                record_data = record.get(KinesisEnum.DATA.value)
+                record_data = record.Data
                 if record_data:
                     try:
                         sample_data.append(b64decode(record_data).decode(UTF_8))
