@@ -1,5 +1,7 @@
 package org.openmetadata.service.resources.query;
 
+import static org.openmetadata.service.Entity.USER;
+
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
@@ -33,6 +35,7 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import org.openmetadata.common.utils.CommonUtil;
+import org.openmetadata.schema.api.VoteRequest;
 import org.openmetadata.schema.api.data.CreateQuery;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.entity.data.Query;
@@ -80,7 +83,7 @@ public class QueryResource extends EntityResource<Query, QueryRepository> {
     }
   }
 
-  static final String FIELDS = "owner,followers,users,vote,tags,queryUsedIn";
+  static final String FIELDS = "owner,followers,users,votes,tags,queryUsedIn";
 
   @GET
   @Operation(
@@ -346,7 +349,7 @@ public class QueryResource extends EntityResource<Query, QueryRepository> {
   }
 
   @PUT
-  @Path("/{id}/vote/{updateVote}")
+  @Path("/{id}/vote")
   @Operation(
       operationId = "updateVote",
       summary = "Update Vote for a query",
@@ -363,10 +366,9 @@ public class QueryResource extends EntityResource<Query, QueryRepository> {
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "Id of the Query", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
-      @Parameter(description = "Updated Vote of the Query", schema = @Schema(type = "integer")) @PathParam("updateVote")
-          int updateVote)
+      @Valid VoteRequest request)
       throws IOException {
-    return dao.updateVote(securityContext.getUserPrincipal().getName(), id, updateVote).toResponse();
+    return dao.updateVote(securityContext.getUserPrincipal().getName(), id, request).toResponse();
   }
 
   @DELETE
@@ -505,7 +507,7 @@ public class QueryResource extends EntityResource<Query, QueryRepository> {
         .withTags(create.getTags())
         .withQuery(create.getQuery())
         .withDuration(create.getDuration())
-        .withUsers(getEntityReferences(Entity.USER, create.getUsers()))
+        .withUsers(getEntityReferences(USER, create.getUsers()))
         .withQueryUsedIn(create.getQueryUsedIn())
         .withQueryDate(create.getQueryDate());
   }

@@ -9,8 +9,10 @@ import static org.openmetadata.service.Entity.OBJECT_STORE_SERVICE;
 
 import com.google.common.collect.Lists;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.data.Container;
 import org.openmetadata.schema.entity.services.ObjectStoreService;
 import org.openmetadata.schema.type.Column;
@@ -174,6 +176,19 @@ public class ContainerRepository extends EntityRepository<Container> {
   @Override
   public EntityUpdater getUpdater(Container original, Container updated, Operation operation) {
     return new ContainerUpdater(original, updated, operation);
+  }
+
+  @Override
+  public List<TagLabel> getAllTags(EntityInterface entity) {
+    List<TagLabel> allTags = new ArrayList<>();
+    Container container = (Container) entity;
+    EntityUtil.mergeTags(allTags, container.getTags());
+    if (container.getDataModel() != null) {
+      for (Column column : listOrEmpty(container.getDataModel().getColumns())) {
+        EntityUtil.mergeTags(allTags, column.getTags());
+      }
+    }
+    return allTags;
   }
 
   /** Handles entity updated from PUT and POST operations */
