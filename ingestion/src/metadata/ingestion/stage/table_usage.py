@@ -78,7 +78,7 @@ class TableUsageStage(Stage[QueryParserData]):
         """
         location = Path(self.config.filename)
         if location.is_dir():
-            logger.info(f"Location exists, cleaning it up")
+            logger.info("Location exists, cleaning it up")
             shutil.rmtree(self.config.filename)
         logger.info(f"Creating the directory to store staging data in {location}")
         location.mkdir(parents=True, exist_ok=True)
