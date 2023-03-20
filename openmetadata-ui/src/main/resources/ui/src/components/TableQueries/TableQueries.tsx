@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Col, Row } from 'antd';
+import { Col, Row, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import NextPrevious from 'components/common/next-previous/NextPrevious';
 import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
@@ -19,13 +19,17 @@ import {
   OperationPermission,
   ResourceEntity,
 } from 'components/PermissionProvider/PermissionProvider.interface';
+import SearchDropdown from 'components/SearchDropdown/SearchDropdown';
+import { SearchDropdownOption } from 'components/SearchDropdown/SearchDropdown.interface';
+import { WILD_CARD_CHAR } from 'constants/char.constants';
 import { INITIAL_PAGING_VALUE, PAGE_SIZE } from 'constants/constants';
 import { compare } from 'fast-json-patch';
 import { Query } from 'generated/entity/data/query';
-import { isNil, isString, isUndefined } from 'lodash';
+import { debounce, isEmpty, isNil, isString, isUndefined } from 'lodash';
 import { PagingResponse } from 'Models';
 import React, { FC, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { getSearchedUsers, getSuggestedUsers } from 'rest/miscAPI';
 import {
   getQueriesList,
   getQueryById,
@@ -63,6 +67,15 @@ const TableQueries: FC<TableQueriesProp> = ({
     DEFAULT_ENTITY_PERMISSION
   );
   const [currentPage, setCurrentPage] = useState(1);
+  const [initialUsersFilter, setInitialUsersFilter] = useState<
+    SearchDropdownOption[]
+  >([]);
+  const [userFilerOptions, setUserFilerOptions] = useState<
+    SearchDropdownOption[]
+  >([]);
+  const [selectedFilter, setSelectedFilter] = useState<SearchDropdownOption[]>(
+    []
+  );
 
   const { getEntityPermission } = usePermissionProvider();
 
@@ -180,6 +193,52 @@ const TableQueries: FC<TableQueriesProp> = ({
     }
   }, [tableId]);
 
+  const onOwnerFilterChange = (value: SearchDropdownOption[]) => {
+    setSelectedFilter(value);
+  };
+
+  const onOwnerSearch = async (searchText: string) => {
+    if (isEmpty(searchText)) {
+      setUserFilerOptions(initialUsersFilter);
+
+      return;
+    }
+
+    try {
+      const users = await getSuggestedUsers(searchText);
+      const userList = users.data.suggest['metadata-suggest'][0].options;
+      const options = userList.map((user) => ({
+        key: user._source.id,
+        label: user._source.displayName || user._source.name,
+      }));
+      setUserFilerOptions(options);
+    } catch (error) {
+      setUserFilerOptions([]);
+    }
+  };
+
+  const debounceOnSearch = debounce(onOwnerSearch, 400);
+
+  const getInitialUser = async () => {
+    try {
+      const users = await getSearchedUsers(WILD_CARD_CHAR, 1);
+      const userList = users.data.hits.hits;
+      const options = userList.map((user) => ({
+        key: user._source.id,
+        label: user._source.displayName || user._source.name,
+      }));
+      setInitialUsersFilter(options);
+      setUserFilerOptions(options);
+    } catch (_error) {
+      setUserFilerOptions([]);
+      setInitialUsersFilter([]);
+    }
+  };
+
+  useEffect(() => {
+    getInitialUser();
+  }, []);
+
   if (isQueriesLoading) {
     return <Loader />;
   }
@@ -190,10 +249,27 @@ const TableQueries: FC<TableQueriesProp> = ({
         <>
           <Col span={18}>
             <Row
-              className="p-r-lg"
+              className="p-r-lg m-t-md"
               data-testid="queries-container"
               gutter={[8, 16]}>
-              {/* <Col span={24}>filters</Col> */}
+              <Col span={24}>
+                <Space size={16}>
+                  <Typography.Paragraph className="m-b-0">
+                    {`${t('label.filter')}:`}
+                  </Typography.Paragraph>
+                  <SearchDropdown
+                    label={t('label.owner')}
+                    options={userFilerOptions}
+                    searchKey="owner"
+                    selectedKeys={selectedFilter}
+                    onChange={onOwnerFilterChange}
+                    onGetInitialOptions={() =>
+                      setUserFilerOptions(initialUsersFilter)
+                    }
+                    onSearch={debounceOnSearch}
+                  />
+                </Space>
+              </Col>
 
               {tableQueries.data.map((query) => (
                 <Col key={query.id} span={24}>

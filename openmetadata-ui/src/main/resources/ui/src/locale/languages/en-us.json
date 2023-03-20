@@ -296,6 +296,7 @@
     "field-plural": "Fields",
     "field-required": "{{field}} is required",
     "field-required-plural": "{{field}} are required",
+    "filter": "Filter",
     "filter-pattern": "Filter Pattern",
     "filter-plural": "Filters",
     "first": "First",
