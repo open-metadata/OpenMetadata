@@ -11,7 +11,16 @@
  *  limitations under the License.
  */
 
-import { Card, Col, Row, Skeleton, Table as TableAntd } from 'antd';
+import {
+  Card,
+  Col,
+  Row,
+  Skeleton,
+  Switch,
+  Table as TableAntd,
+  Typography,
+} from 'antd';
+import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import ActivityFeedList from 'components/ActivityFeed/ActivityFeedList/ActivityFeedList';
@@ -58,8 +67,11 @@ import {
 } from 'rest/feedsAPI';
 import { searchQuery } from 'rest/searchAPI';
 import { default as AppState, default as appState } from '../../AppState';
+import { ReactComponent as IconHidePassword } from '../../assets/svg/hide-password.svg';
+import { ReactComponent as IconShowPassword } from '../../assets/svg/show-password.svg';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import {
+  DROPDOWN_ICON_SIZE_PROPS,
   getDatabaseDetailsPath,
   getDatabaseSchemaDetailsPath,
   getServiceDetailsPath,
@@ -159,6 +171,8 @@ const DatabaseSchemaPage: FunctionComponent = () => {
 
   const [tags, setTags] = useState<Array<EntityTags>>([]);
   const [tier, setTier] = useState<TagLabel>();
+
+  const [showDeletedTables, setShowDeletedTables] = useState<boolean>(false);
 
   const fetchDatabaseSchemaPermission = async () => {
     setIsLoading(true);
@@ -347,7 +361,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
         sortOrder: 'asc',
         pageSize: PAGE_SIZE,
         searchIndex: SearchIndex.TABLE,
-        includeDeleted: false,
+        includeDeleted: showDeletedTables,
       });
       setTableData(getTablesFromSearchResponse(res));
       setTableInstanceCount(res.hits.total.value);
@@ -670,6 +684,70 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     );
   };
 
+  const handleShowDeletedTables = (checked: boolean) => {
+    setShowDeletedTables(checked);
+  };
+
+  const deletedTeamIcon = useMemo(
+    () =>
+      showDeletedTables ? (
+        <IconHidePassword {...DROPDOWN_ICON_SIZE_PROPS} />
+      ) : (
+        <IconShowPassword {...DROPDOWN_ICON_SIZE_PROPS} />
+      ),
+    [showDeletedTables]
+  );
+
+  const extraDropdownContent: ItemType[] = useMemo(
+    () => [
+      {
+        label: (
+          <Row className="cursor-pointer" data-testid="deleted-table-menu-item">
+            <Col span={3}>{deletedTeamIcon}</Col>
+            <Col span={21}>
+              <Row>
+                <Col span={21}>
+                  <Typography.Text
+                    className="font-medium"
+                    data-testid="deleted-table-menu-item-label">
+                    {t(
+                      showDeletedTables
+                        ? 'label.hide-deleted-entity'
+                        : 'label.show-deleted-entity',
+                      {
+                        entity: t('label.table'),
+                      }
+                    )}
+                  </Typography.Text>
+                </Col>
+
+                <Col span={3}>
+                  <Switch
+                    checked={showDeletedTables}
+                    data-testid="deleted-table-menu-item-switch"
+                    size="small"
+                    onChange={handleShowDeletedTables}
+                  />
+                </Col>
+
+                <Col className="p-t-xss">
+                  <Typography.Paragraph className="text-grey-muted text-xs m-b-0 line-height-16">
+                    {t('message.view-deleted-entity', {
+                      entity: t('label.table-plural'),
+                      parent: t('label.schema'),
+                    })}
+                  </Typography.Paragraph>
+                </Col>
+              </Row>
+            </Col>
+          </Row>
+        ),
+        key: 'deleted-team-dropdown',
+      },
+    ],
+    [showDeletedTables]
+  );
+
   useEffect(() => {
     if (TabSpecificField.ACTIVITY_FEED === tab) {
       fetchActivityFeed();
@@ -700,7 +778,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
 
   useEffect(() => {
     tablePaginationHandler(INITIAL_PAGING_VALUE);
-  }, [databaseSchema]);
+  }, [showDeletedTables, databaseSchema]);
 
   useEffect(() => {
     fetchDatabaseSchemaPermission();
@@ -753,6 +831,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
                         entityId={databaseSchemaId}
                         entityName={databaseSchemaName}
                         entityType={EntityType.DATABASE_SCHEMA}
+                        extraDropdownContent={extraDropdownContent}
                         extraInfo={extraInfo}
                         followersList={[]}
                         isTagEditable={

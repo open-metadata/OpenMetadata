@@ -38,9 +38,16 @@ import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { restoreTeam } from 'rest/teamsAPI';
 import AppState from '../../AppState';
+import { ReactComponent as IconClosedLock } from '../../assets/svg/closed-lock.svg';
+import { ReactComponent as IconHidePassword } from '../../assets/svg/hide-password.svg';
 import { ReactComponent as IconEdit } from '../../assets/svg/ic-edit.svg';
+import { ReactComponent as IconRestore } from '../../assets/svg/ic-restore.svg';
 import { ReactComponent as IconDropdown } from '../../assets/svg/menu.svg';
+import { ReactComponent as IconOpenLock } from '../../assets/svg/open-lock.svg';
+import { ReactComponent as IconRemove } from '../../assets/svg/Remove.svg';
+import { ReactComponent as IconShowPassword } from '../../assets/svg/show-password.svg';
 import {
+  DROPDOWN_ICON_SIZE_PROPS,
   getTeamAndUserDetailsPath,
   getUserPath,
   LIST_SIZE,
@@ -73,7 +80,6 @@ import {
   DEFAULT_ENTITY_PERMISSION,
 } from '../../utils/PermissionsUtils';
 import { getTeamsWithFqnPath } from '../../utils/RouterUtils';
-import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import {
   filterChildTeams,
   getDeleteMessagePostFix,
@@ -290,13 +296,7 @@ const TeamDetailsV1 = ({
               <Button
                 data-testid="remove-user-btn"
                 disabled={!entityPermissions.EditAll}
-                icon={
-                  <SVGIcons
-                    alt={t('label.remove')}
-                    className="tw-w-4 tw-mb-2.5"
-                    icon={Icons.ICON_REMOVE}
-                  />
-                }
+                icon={<IconRemove name={t('label.remove')} />}
                 type="text"
                 onClick={() => deleteUserHandler(record.id)}
               />
@@ -625,28 +625,28 @@ const TeamDetailsV1 = ({
   };
 
   const deletedTeamIcon = useMemo(
-    () => (
-      <SVGIcons
-        alt={t('label.delete')}
-        icon={showDeletedTeam ? Icons.HIDE_PASSWORD : Icons.SHOW_PASSWORD}
-      />
-    ),
+    () =>
+      showDeletedTeam ? (
+        <IconHidePassword {...DROPDOWN_ICON_SIZE_PROPS} />
+      ) : (
+        <IconShowPassword {...DROPDOWN_ICON_SIZE_PROPS} />
+      ),
     [showDeletedTeam]
   );
 
   const openGroupIcon = useMemo(
-    () => (
-      <SVGIcons
-        alt={t('label.delete')}
-        icon={currentTeam.isJoinable ? Icons.OPEN_LOCK : Icons.CLOSED_LOCK}
-      />
-    ),
+    () =>
+      currentTeam.isJoinable ? (
+        <IconOpenLock {...DROPDOWN_ICON_SIZE_PROPS} />
+      ) : (
+        <IconClosedLock {...DROPDOWN_ICON_SIZE_PROPS} />
+      ),
     [currentTeam.isJoinable]
   );
 
   const restoreIcon = useMemo(
     () => (
-      <SVGIcons alt={t('label.restore')} icon={Icons.RESTORE} width="16px" />
+      <IconRestore {...DROPDOWN_ICON_SIZE_PROPS} name={t('label.restore')} />
     ),
     [currentTeam.isJoinable]
   );
@@ -663,8 +663,11 @@ const TeamDetailsV1 = ({
                 data-testid="deleted-menu-item-label">
                 {t(
                   showDeletedTeam
-                    ? 'label.hide-deleted-team'
-                    : 'label.show-deleted-team'
+                    ? 'label.hide-deleted-entity'
+                    : 'label.show-deleted-entity',
+                  {
+                    entity: t('label.team'),
+                  }
                 )}
               </Typography.Text>
             </Col>
@@ -680,7 +683,10 @@ const TeamDetailsV1 = ({
 
             <Col className="p-t-xss">
               <Typography.Paragraph className="text-grey-muted text-xs m-b-0 line-height-16">
-                {t('message.view-deleted-teams')}
+                {t('message.view-deleted-entity', {
+                  entity: t('label.team-plural'),
+                  parent: t('label.team'),
+                })}
               </Typography.Paragraph>
             </Col>
           </Row>

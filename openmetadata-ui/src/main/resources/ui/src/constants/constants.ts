@@ -543,3 +543,8 @@ export const VALIDATE_MESSAGES = {
     fieldText: '${label}',
   }),
 };
+
+export const DROPDOWN_ICON_SIZE_PROPS = {
+  width: 20,
+  height: 20,
+};
