@@ -17,9 +17,8 @@ import { STEPS_FOR_ADD_SERVICE } from 'constants/Services.constant';
 import { t } from 'i18next';
 import { capitalize, isUndefined } from 'lodash';
 import { LoadingState } from 'Models';
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { useHistory } from 'react-router-dom';
-import { addLocalResource } from 'utils/i18next/LocalUtil';
 import { getServiceDetailsPath } from '../../constants/constants';
 import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
 import { delimiterRegex, nameWithSpace } from '../../constants/regex.constants';
@@ -263,7 +262,8 @@ const AddService = ({
 
           {activeServiceStep === 2 && (
             <ServiceRequirements
-              selectServiceType={selectServiceType}
+              serviceName={selectServiceType}
+              serviceType={getServiceType(serviceCategory)}
               onCancel={handleServiceRequirementsBackClick}
               onNext={handleServiceRequirementsNextClick}
             />
@@ -337,12 +337,6 @@ const AddService = ({
       serviceType: selectServiceType,
     });
   };
-
-  useEffect(() => {
-    if (selectServiceType) {
-      addLocalResource(selectServiceType, getServiceType(serviceCategory));
-    }
-  }, [selectServiceType, serviceCategory]);
 
   return (
     <div className="tw-self-center">

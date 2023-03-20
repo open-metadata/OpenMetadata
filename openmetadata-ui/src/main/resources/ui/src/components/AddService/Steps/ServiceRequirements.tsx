@@ -18,31 +18,34 @@ import { useTranslation } from 'react-i18next';
 import { fetchMarkdownFile } from 'rest/miscAPI';
 
 interface ServiceRequirementsProp {
-  selectServiceType: string;
+  serviceName: string;
+  serviceType: string;
   onCancel: () => void;
   onNext: () => void;
 }
 
 const ServiceRequirements: FC<ServiceRequirementsProp> = ({
-  selectServiceType,
+  serviceType,
+  serviceName,
   onCancel,
   onNext,
 }) => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
 
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
   const [markdownContent, setMarkdownContent] = useState<string>('');
 
   const fetchRequirement = async () => {
-    const filePath = 'en-US/Database/Mysql/requirements.md';
+    const filePath = `${i18n.language}/${serviceType}/${serviceName}/requirements.md`;
+
     setIsLoading(true);
     try {
       const response = await fetchMarkdownFile(filePath);
 
       setMarkdownContent(response);
     } catch (error) {
-      // handle error
+      setMarkdownContent('');
     } finally {
       setIsLoading(false);
     }
@@ -50,7 +53,7 @@ const ServiceRequirements: FC<ServiceRequirementsProp> = ({
 
   useEffect(() => {
     fetchRequirement();
-  }, [selectServiceType]);
+  }, [serviceName, serviceType]);
 
   if (isLoading) {
     return <Loader />;
