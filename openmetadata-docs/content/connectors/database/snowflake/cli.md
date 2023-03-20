@@ -141,6 +141,7 @@ source:
   sourceConfig:
     config:
       type: DatabaseMetadata
+      skipTempTables: true
       markDeletedTables: true
       includeTables: true
       includeViews: true
@@ -197,6 +198,7 @@ workflowConfig:
 The `sourceConfig` is defined [here](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-spec/src/main/resources/json/schema/metadataIngestion/databaseServiceMetadataPipeline.json):
 
 - `markDeletedTables`: To flag tables as soft-deleted if they are not present anymore in the source system.
+- `skipTempTables`: Optional configuration for ingestion of TRANSIENT and TEMPORARY tables, By default, it will skip the TRANSIENT and TEMPORARY tables.
 - `includeTables`: true or false, to ingest table data. Default is true.
 - `includeViews`: true or false, to ingest views definitions.
 - `databaseFilterPattern`, `schemaFilterPattern`, `tableFilternPattern`: Note that the they support regex as include or exclude. E.g.,

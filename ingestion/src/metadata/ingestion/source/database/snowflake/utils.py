@@ -31,10 +31,47 @@ from metadata.utils.sqlalchemy_utils import (
     get_table_comment_wrapper,
 )
 
+def get_table_names_reflection(self, schema=None, **kw):
+    """Return all table names in referred to within a particular schema.
 
-def get_table_names(self, connection, schema, **kw):  # pylint: disable=unused-argument
+    The names are expected to be real tables only, not views.
+    Views are instead returned using the
+    :meth:`_reflection.Inspector.get_view_names`
+    method.
+
+
+    :param schema: Schema name. If ``schema`` is left at ``None``, the
+        database's default schema is
+        used, else the named schema is searched.  If the database does not
+        support named schemas, behavior is undefined if ``schema`` is not
+        passed as ``None``.  For special quoting, use :class:`.quoted_name`.
+
+    .. seealso::
+
+        :meth:`_reflection.Inspector.get_sorted_table_and_fkc_names`
+
+        :attr:`_schema.MetaData.sorted_tables`
+
+    """
+
+    with self._operation_context() as conn:  # pylint: disable=protected-access
+        return self.dialect.get_table_names(
+            conn, schema, info_cache=self.info_cache, **kw
+        )
+
+
+def get_table_names(self, connection, schema, **kw):
+
+    if kw.get("skip_temp_tables"):
+        cursor = connection.execute(
+            SNOWFLAKE_GET_WITHOUT_TRANSIENT_TABLE_NAMES.format(schema)
+        )
+        result = [self.normalize_name(row[0]) for row in cursor]
+        return result
+
     cursor = connection.execute(SNOWFLAKE_GET_TABLE_NAMES.format(schema))
     result = [self.normalize_name(row[0]) for row in cursor]
+
     return result
 
 

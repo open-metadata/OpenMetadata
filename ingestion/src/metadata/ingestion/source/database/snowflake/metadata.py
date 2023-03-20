@@ -39,7 +39,10 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.source.database.column_type_parser import create_sqlalchemy_type
-from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
+from metadata.ingestion.source.database.common_db_source import (
+    CommonDbSourceService,
+    TableNameAndType,
+)
 from metadata.ingestion.source.database.snowflake.queries import (
     SNOWFLAKE_FETCH_ALL_TAGS,
     SNOWFLAKE_GET_CLUSTER_KEY,
@@ -300,3 +303,29 @@ class SnowflakeSource(CommonDbSourceService):
                         description="SNOWFLAKE TAG VALUE",
                     ),
                 )
+
+    def query_table_names_and_types(
+        self, schema_name: str
+    ) -> Iterable[TableNameAndType]:
+        """
+        Connect to the source database to get the table
+        name and type. By default, use the inspector method
+        to get the names and pass the Regular type.
+
+        This is useful for sources where we need fine-grained
+        logic on how to handle table types, e.g., external, foreign,...
+        """
+
+        if self.config.sourceConfig.config.skipTempTables:
+
+            return [
+                TableNameAndType(name=table_name[0])
+                for table_name in self.inspector.get_table_names(schema_name) or []
+                if table_name[1] == "NO"
+            ]
+
+        else:
+            return [
+                TableNameAndType(name=table_name[0])
+                for table_name in self.inspector.get_table_names(schema_name) or []
+            ]

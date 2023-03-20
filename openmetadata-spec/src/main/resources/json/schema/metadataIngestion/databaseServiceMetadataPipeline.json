@@ -59,6 +59,11 @@
     "databaseFilterPattern": {
       "description": "Regex to only fetch databases that matches the pattern.",
       "$ref": "../type/filterPattern.json#/definitions/filterPattern"
+    },
+    "skipTempTables": {
+      "description": "Optional configuration for ingestion of TRANSIENT and TEMPORARY tables, By default, it will skip the TRANSIENT and TEMPORARY tables.",
+      "type": "boolean",
+      "default": true
     }
   },
   "additionalProperties": false
