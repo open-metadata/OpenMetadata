@@ -927,6 +927,7 @@ describe('Glossary page should work properly', () => {
   });
 
   it('Remove Glossary term from entity should work properly', () => {
+    const glossaryName = NEW_GLOSSARY_1.name;
     const term = NEW_GLOSSARY_1_TERMS.term_1.name;
     const entity = SEARCH_ENTITY_TABLE.table_3;
 
@@ -972,7 +973,9 @@ describe('Glossary page should work properly', () => {
       .and('not.contain', 'Personal');
     // Remove the added column tag from entity
     interceptURL('PATCH', '/api/v1/tables/*', 'removeSchemaTags');
-    cy.get('[data-testid="remove"]').eq(0).should('be.visible').click();
+    cy.get(`[data-testid="remove-${glossaryName}.${term}-tag"]`)
+      .should('be.visible')
+      .click();
     verifyResponseStatusCode('@removeSchemaTags', 200);
 
     cy.get('[data-testid="tags"]')
