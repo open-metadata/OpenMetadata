@@ -324,8 +324,7 @@ class SnowflakeSource(CommonDbSourceService):
                 if table_name[1] == "NO"
             ]
 
-        else:
-            return [
-                TableNameAndType(name=table_name[0])
-                for table_name in self.inspector.get_table_names(schema_name) or []
-            ]
+        return [
+            TableNameAndType(name=table_name[0])
+            for table_name in self.inspector.get_table_names(schema_name) or []
+        ]
