@@ -13,7 +13,7 @@
 Module for sqlalchmey dialect utils
 """
 
-from typing import Dict, Tuple
+from typing import Dict, Optional, Tuple
 
 from sqlalchemy.engine import Engine, reflection
 
@@ -75,3 +75,17 @@ def is_complex_type(col_type: str):
         or col_type.lower().startswith("struct")
         or col_type.lower().startswith("row")
     )
+
+
+def get_display_datatype(
+    col_type: str,
+    char_len: Optional[int],
+    precision: Optional[int],
+    scale: Optional[int],
+):
+    if char_len or (precision is not None and scale is None):
+        l = char_len or scale
+        return f"{col_type}({str(l)})"
+    if scale is not None and precision is not None:
+        return f"{col_type}({str(precision)},{str(scale)})"
+    return col_type

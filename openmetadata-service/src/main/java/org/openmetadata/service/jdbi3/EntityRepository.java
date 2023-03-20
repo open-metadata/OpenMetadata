@@ -1650,7 +1650,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
         updateColumnDisplayName(stored, updated);
         updateColumnDataLength(stored, updated);
         updateColumnPrecision(stored, updated);
-        updateColumnSystemDataType(stored, updated);
         updateColumnScale(stored, updated);
         updateTags(
             stored.getFullyQualifiedName(),
@@ -1686,11 +1685,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
       }
       String columnField = getColumnField(original, origColumn, FIELD_DISPLAY_NAME);
       recordChange(columnField, origColumn.getDisplayName(), updatedColumn.getDisplayName());
-    }
-
-    private void updateColumnSystemDataType(Column origColumn, Column updatedColumn) throws JsonProcessingException {
-      String columnField = getColumnField(original, origColumn, "systemDataType");
-      recordChange(columnField, origColumn.getSystemDataType(), updatedColumn.getSystemDataType());
     }
 
     private void updateColumnConstraint(Column origColumn, Column updatedColumn) throws JsonProcessingException {

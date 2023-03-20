@@ -273,12 +273,11 @@ class SqlColumnHandlerMixin:
                         if column["name"] else " ",
                         description=column.get("comment"),
                         dataType=col_type,
-                        dataTypeDisplay=data_type_display,
+                        dataTypeDisplay=column.get("raw_data_type", data_type_display),
                         dataLength=col_data_length,
                         constraint=col_constraint,
                         children=children,
                         arrayDataType=arr_data_type,
-                        systemDataType=column.get("raw_data_type"),
                     )
                     if precision:
                         om_column.precision = precision[0]

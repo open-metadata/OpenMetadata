@@ -20,6 +20,7 @@ from sqlalchemy.dialects.mysql.types import DATETIME, TIME, TIMESTAMP
 from sqlalchemy.sql import sqltypes
 
 from metadata.ingestion.source.database.column_type_parser import create_sqlalchemy_type
+from metadata.utils.sqlalchemy_utils import get_display_datatype
 
 col_type_map = {
     "bool": create_sqlalchemy_type("BOOL"),
@@ -132,12 +133,21 @@ def parse_column(self, line, state):
             computed["persisted"] = persisted == "STORED"
         col_kw["computed"] = computed
 
+    raw_type = get_display_datatype(
+        col_type=type_,
+        char_len=type_instance.length if hasattr(type_instance, "length") else None,
+        precision=type_instance.precision
+        if hasattr(type_instance, "precision")
+        else None,
+        scale=type_instance.scale if hasattr(type_instance, "scale") else None,
+    )
+
     col_d = {
         "name": name,
         "type": type_instance,
         "default": default,
         "comment": comment,
-        "raw_data_type": type_,
+        "raw_data_type": raw_type,
     }
     col_d.update(col_kw)
     state.columns.append(col_d)

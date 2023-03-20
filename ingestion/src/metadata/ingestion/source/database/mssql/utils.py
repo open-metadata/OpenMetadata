@@ -40,6 +40,7 @@ from metadata.ingestion.source.database.mssql.queries import (
 )
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.sqlalchemy_utils import (
+    get_display_datatype,
     get_table_comment_wrapper,
     get_view_definition_wrapper,
 )
@@ -169,21 +170,28 @@ def get_columns(
             if collation:
                 kwargs["collation"] = collation
 
+        precision = None
+        scale = None
         if coltype is None:
             util.warn(f"Did not recognize type '{type_}' of column '{name}'")
             coltype = sqltypes.NULLTYPE
         else:
             if issubclass(coltype, sqltypes.Numeric):
                 kwargs["precision"] = numericprec
+                precision = numericprec
 
                 if not issubclass(coltype, sqltypes.Float):
                     kwargs["scale"] = numericscale
+                    scale = numericscale
 
             coltype = coltype(**kwargs)
+        raw_data_type = get_display_datatype(
+            type_, char_len=charlen, precision=precision, scale=scale
+        )
         cdict = {
             "name": name,
             "type": coltype,
-            "raw_data_type": type_,
+            "raw_data_type": raw_data_type,
             "nullable": nullable,
             "default": default,
             "autoincrement": is_identity is not None,

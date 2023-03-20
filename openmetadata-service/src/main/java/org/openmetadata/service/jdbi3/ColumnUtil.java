@@ -33,7 +33,6 @@ public final class ColumnUtil {
         .withPrecision(column.getPrecision())
         .withScale(column.getScale())
         .withOrdinalPosition(column.getOrdinalPosition())
-        .withChildren(children)
-        .withSystemDataType(column.getSystemDataType());
+        .withChildren(children);
   }
 }

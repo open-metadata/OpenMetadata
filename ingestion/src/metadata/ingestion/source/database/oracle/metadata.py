@@ -100,16 +100,25 @@ def get_view_definition(
 
 
 def _get_col_type(self, coltype, precision, scale, length, colname):
+    raw_type = coltype
     if coltype == "NUMBER":
         if precision is None and scale == 0:
             coltype = INTEGER()
         else:
             coltype = NUMBER(precision, scale)
+            if precision is not None:
+                if scale is not None:
+                    raw_type += f"({precision},{scale})"
+                else:
+                    raw_type += f"({precision})"
+
     elif coltype == "FLOAT":
         # TODO: support "precision" here as "binary_precision"
         coltype = FLOAT()
     elif coltype in ("VARCHAR2", "NVARCHAR2", "CHAR", "NCHAR"):
         coltype = self.ischema_names.get(coltype)(length)
+        if length:
+            raw_type += f"({length})"
     elif "WITH TIME ZONE" in coltype or "TIMESTAMP" in coltype:
         coltype = TIMESTAMP(timezone=True)
     elif "INTERVAL" in coltype:
@@ -121,7 +130,7 @@ def _get_col_type(self, coltype, precision, scale, length, colname):
         except KeyError:
             util.warn(f"Did not recognize type '{coltype}' of column '{colname}'")
             coltype = sqltypes.NULLTYPE
-    return coltype
+    return coltype, raw_type
 
 
 # pylint: disable=too-many-locals
@@ -180,9 +189,8 @@ def get_columns(self, connection, table_name, schema=None, **kw):
         generated = row[8]
         default_on_nul = row[9]
         identity_options = row[10]
-        raw_coltype = row.data_type
 
-        coltype = self._get_col_type(
+        coltype, raw_coltype = self._get_col_type(
             row.data_type, row.data_precision, row.data_scale, length, colname
         )
 

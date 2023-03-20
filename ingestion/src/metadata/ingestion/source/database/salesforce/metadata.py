@@ -23,6 +23,7 @@ from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.table import (
     Column,
     Constraint,
+    DataType,
     Table,
     TableType,
 )
@@ -231,7 +232,6 @@ class SalesforceSource(DatabaseServiceSource):
                     constraint=col_constraint,
                     ordinalPosition=row_order,
                     dataLength=column["length"],
-                    systemDataType=column["type"],
                 )
             )
             row_order += 1
@@ -248,8 +248,8 @@ class SalesforceSource(DatabaseServiceSource):
             "TEXTAREA",
             "ADDRESS",
         }:
-            return "VARCHAR"
-        return "UNKNOWN"
+            return DataType.VARCHAR.value
+        return DataType.UNKNOWN.value
 
     def yield_view_lineage(self) -> Optional[Iterable[AddLineageRequest]]:
         yield from []
