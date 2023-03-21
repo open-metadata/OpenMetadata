@@ -37,10 +37,9 @@ const ServiceRequirements: FC<ServiceRequirementsProp> = ({
   const [markdownContent, setMarkdownContent] = useState<string>('');
 
   const fetchRequirement = async () => {
-    const filePath = `${i18n.language}/${serviceType}/${serviceName}/requirements.md`;
-
     setIsLoading(true);
     try {
+      const filePath = `${i18n.language}/${serviceType}/${serviceName}/requirements.md`;
       const response = await fetchMarkdownFile(filePath);
 
       setMarkdownContent(response);

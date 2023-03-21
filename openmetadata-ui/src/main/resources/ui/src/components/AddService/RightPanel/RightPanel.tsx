@@ -29,7 +29,7 @@ import { useTranslation } from 'react-i18next';
 import { fetchMarkdownFile } from 'rest/miscAPI';
 import { getFormattedGuideText, getServiceType } from 'utils/ServiceUtils';
 
-type ExcludedPipelineType = Exclude<
+export type ExcludedPipelineType = Exclude<
   PipelineType,
   | PipelineType.DataInsight
   | PipelineType.ElasticSearchReindex
@@ -127,7 +127,7 @@ const RightPanel: FC<RightPanelProps> = ({
       <h6 className="tw-heading tw-text-base">
         {getActiveStepTitle(activeStepGuide.title)}
       </h6>
-      <div className="tw-mb-5">
+      <div className="tw-mb-5" data-test="current-step-guide">
         {getActiveStepDescription(activeStepGuide.description)}
       </div>
     </>
@@ -135,7 +135,9 @@ const RightPanel: FC<RightPanelProps> = ({
 
   const activeFieldDocumentElement = activeFieldName ? (
     <>
-      <h6 className="tw-heading tw-text-base">{startCase(activeFieldName)}</h6>
+      <h6 className="tw-heading tw-text-base" data-testid="active-field-name">
+        {startCase(activeFieldName)}
+      </h6>
       <RichTextEditorPreviewer
         enableSeeMoreVariant={false}
         markdown={activeFieldDocument}
@@ -145,11 +147,11 @@ const RightPanel: FC<RightPanelProps> = ({
   ) : null;
 
   const fetchFieldDocument = async () => {
-    const filePath = `${i18n.language}/${getServiceType(
-      selectedServiceCategory
-    )}/${selectedService}/connections/fields/${activeFieldName}.md`;
-
     try {
+      const filePath = `${i18n.language}/${getServiceType(
+        selectedServiceCategory
+      )}/${selectedService}/connections/fields/${activeFieldName}.md`;
+
       const response = await fetchMarkdownFile(filePath);
 
       setActiveFieldDocument(response);
