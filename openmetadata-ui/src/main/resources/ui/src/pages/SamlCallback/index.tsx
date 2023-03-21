@@ -51,6 +51,7 @@ const SamlCallback = () => {
           name: name || '',
           picture: '',
           locale: '',
+          sub: '',
         },
       };
       handleSuccessfulLogin(oidcUser);
