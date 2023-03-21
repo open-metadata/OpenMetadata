@@ -102,7 +102,7 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
     EntityReference service = dashboard.getService();
     List<EntityReference> charts = dashboard.getCharts();
     List<EntityReference> dataModels = dashboard.getDataModels();
-   
+
     dashboard.withService(null).withCharts(null).withDataModels(null);
     store(dashboard, update);
     dashboard.withService(service).withCharts(charts).withDataModels(dataModels);
