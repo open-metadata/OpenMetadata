@@ -39,8 +39,6 @@ import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { restoreTeam } from 'rest/teamsAPI';
 import AppState from '../../AppState';
-import { ReactComponent as IconClosedLock } from '../../assets/svg/closed-lock.svg';
-import { ReactComponent as IconHidePassword } from '../../assets/svg/hide-password.svg';
 import { ReactComponent as IconEdit } from '../../assets/svg/ic-edit.svg';
 import { ReactComponent as IconRestore } from '../../assets/svg/ic-restore.svg';
 import { ReactComponent as IconDropdown } from '../../assets/svg/menu.svg';
@@ -624,26 +622,6 @@ const TeamDetailsV1 = ({
     return t('message.are-you-sure-want-to-text', { text });
   };
 
-  const deletedTeamIcon = useMemo(
-    () =>
-      showDeletedTeam ? (
-        <IconHidePassword {...DROPDOWN_ICON_SIZE_PROPS} />
-      ) : (
-        <IconShowPassword {...DROPDOWN_ICON_SIZE_PROPS} />
-      ),
-    [showDeletedTeam]
-  );
-
-  const openGroupIcon = useMemo(
-    () =>
-      currentTeam.isJoinable ? (
-        <IconOpenLock {...DROPDOWN_ICON_SIZE_PROPS} />
-      ) : (
-        <IconClosedLock {...DROPDOWN_ICON_SIZE_PROPS} />
-      ),
-    [currentTeam.isJoinable]
-  );
-
   const restoreIcon = useMemo(
     () => (
       <IconRestore {...DROPDOWN_ICON_SIZE_PROPS} name={t('label.restore')} />
@@ -654,21 +632,18 @@ const TeamDetailsV1 = ({
   const DELETED_TOGGLE_MENU_ITEM = {
     label: (
       <Row className="cursor-pointer" data-testid="deleted-team-menu-item">
-        <Col span={3}>{deletedTeamIcon}</Col>
+        <Col span={3}>
+          <IconShowPassword {...DROPDOWN_ICON_SIZE_PROPS} />
+        </Col>
         <Col span={21}>
           <Row>
             <Col span={21}>
               <Typography.Text
                 className="font-medium"
                 data-testid="deleted-menu-item-label">
-                {t(
-                  showDeletedTeam
-                    ? 'label.hide-deleted-entity'
-                    : 'label.show-deleted-entity',
-                  {
-                    entity: t('label.team'),
-                  }
-                )}
+                {t('label.show-deleted-entity', {
+                  entity: t('label.team'),
+                })}
               </Typography.Text>
             </Col>
 
@@ -734,18 +709,16 @@ const TeamDetailsV1 = ({
             className="cursor-pointer"
             data-testid="deleted-team-menu-item"
             onClick={handleOpenToJoinToggle}>
-            <Col span={3}>{openGroupIcon}</Col>
+            <Col span={3}>
+              <IconOpenLock {...DROPDOWN_ICON_SIZE_PROPS} />
+            </Col>
             <Col data-testid="open-group" span={21}>
               <Row>
                 <Col span={21}>
                   <Typography.Text
                     className="font-medium"
                     data-testid="open-group-label">
-                    {`${
-                      currentTeam.isJoinable
-                        ? t('label.close')
-                        : t('label.open')
-                    } ${t('label.group')}`}
+                    {t('label.public-team')}
                   </Typography.Text>
                 </Col>
 

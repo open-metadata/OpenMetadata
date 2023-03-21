@@ -68,7 +68,6 @@ import {
 } from 'rest/feedsAPI';
 import { searchQuery } from 'rest/searchAPI';
 import { default as AppState, default as appState } from '../../AppState';
-import { ReactComponent as IconHidePassword } from '../../assets/svg/hide-password.svg';
 import { ReactComponent as IconShowPassword } from '../../assets/svg/show-password.svg';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import {
@@ -684,36 +683,23 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     );
   };
 
-  const deletedTeamIcon = useMemo(
-    () =>
-      showDeletedTables ? (
-        <IconHidePassword {...DROPDOWN_ICON_SIZE_PROPS} />
-      ) : (
-        <IconShowPassword {...DROPDOWN_ICON_SIZE_PROPS} />
-      ),
-    [showDeletedTables]
-  );
-
   const extraDropdownContent: ItemType[] = useMemo(
     () => [
       {
         label: (
           <Row className="cursor-pointer" data-testid="deleted-table-menu-item">
-            <Col span={3}>{deletedTeamIcon}</Col>
+            <Col span={3}>
+              <IconShowPassword {...DROPDOWN_ICON_SIZE_PROPS} />
+            </Col>
             <Col span={21}>
               <Row>
                 <Col span={21}>
                   <Typography.Text
                     className="font-medium"
                     data-testid="deleted-table-menu-item-label">
-                    {t(
-                      showDeletedTables
-                        ? 'label.hide-deleted-entity'
-                        : 'label.show-deleted-entity',
-                      {
-                        entity: t('label.table'),
-                      }
-                    )}
+                    {t('label.show-deleted-entity', {
+                      entity: t('label.table'),
+                    })}
                   </Typography.Text>
                 </Col>
 
