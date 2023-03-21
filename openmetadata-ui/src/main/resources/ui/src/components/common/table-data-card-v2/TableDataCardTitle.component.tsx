@@ -21,7 +21,6 @@ import { EntityType, FqnPart } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import {
   getNameFromFQN,
-  getPartialNameFromFQN,
   getPartialNameFromTableFQN,
 } from '../../../utils/CommonUtils';
 import { stringToHTML } from '../../../utils/StringsUtils';
@@ -52,23 +51,6 @@ const TableDataCardTitle = ({
 }: TableDataCardTitleProps) => {
   const isTourRoute = location.pathname.includes(ROUTES.TOUR);
 
-  const getDisplayName = (source: {
-    fullyQualifiedName?: string;
-    displayName?: string;
-    name?: string;
-    type?: string;
-  }) => {
-    if (source.type === 'tag') {
-      const tagName = getPartialNameFromFQN(source.fullyQualifiedName || '', [
-        'database',
-      ]);
-
-      return toString(tagName);
-    } else {
-      return toString(source.displayName);
-    }
-  };
-
   const { testId, displayName } = useMemo(
     () => ({
       testId: dataTestId
@@ -76,9 +58,12 @@ const TableDataCardTitle = ({
         : `${getPartialNameFromTableFQN(source.fullyQualifiedName ?? '', [
             FqnPart.Service,
           ])}-${getNameFromFQN(source.fullyQualifiedName ?? '')}`,
-      displayName: getDisplayName(source),
+      displayName:
+        source.type === 'tag'
+          ? toString(getNameFromFQN(source.fullyQualifiedName ?? ''))
+          : toString(source.displayName),
     }),
-    [dataTestId, source, getDisplayName]
+    [dataTestId, source]
   );
 
   const title = (

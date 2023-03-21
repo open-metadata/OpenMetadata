@@ -18,6 +18,10 @@ import { isEmpty } from 'lodash';
 import React from 'react';
 import { Link } from 'react-router-dom';
 import {
+  Option,
+  SearchSuggestions,
+} from '../components/GlobalSearchProvider/GlobalSearchSuggestions/GlobalSearchSuggestions.interface';
+import {
   FQN_SEPARATOR_CHAR,
   WILD_CARD_CHAR,
 } from '../constants/char.constants';
@@ -146,13 +150,12 @@ export const getGroupLabel = (index: string, wrapInSelectOption = false) => {
 };
 
 export const getSuggestionElement = (
-  fqdn: string,
-  serviceType: string,
-  name: string,
+  suggestion: SearchSuggestions[number],
   index: string,
   wrapInSelectOption: boolean,
   onClickHandler?: () => void
 ) => {
+  const { fullyQualifiedName: fqdn = '', name, serviceType = '' } = suggestion;
   let database;
   let schema;
   if (index === SearchIndex.TABLE) {
@@ -199,3 +202,11 @@ export const getSuggestionElement = (
 
   return retn;
 };
+
+export const filterOptionsByIndex = (
+  options: Array<Option>,
+  searchIndex: SearchIndex
+) =>
+  options
+    .filter((option) => option._index === searchIndex)
+    .map((option) => option._source);

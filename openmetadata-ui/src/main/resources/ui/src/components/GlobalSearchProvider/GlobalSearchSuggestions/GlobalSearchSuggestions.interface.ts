@@ -79,3 +79,13 @@ export interface Option {
     GlossarySource &
     TagSource;
 }
+
+export type SearchSuggestions =
+  | TableSource[]
+  | TopicSource[]
+  | PipelineSource[]
+  | TagSource[]
+  | GlossarySource[]
+  | ContainerSearchSource[]
+  | DashboardSource[]
+  | MlModelSource[];

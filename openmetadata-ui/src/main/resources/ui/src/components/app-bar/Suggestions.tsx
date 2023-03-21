@@ -15,7 +15,11 @@ import { AxiosError } from 'axios';
 import { ContainerSearchSource } from 'interface/search.interface';
 import React, { useEffect, useRef, useState } from 'react';
 import { getSuggestions } from 'rest/miscAPI';
-import { getGroupLabel, getSuggestionElement } from 'utils/SearchUtils';
+import {
+  filterOptionsByIndex,
+  getGroupLabel,
+  getSuggestionElement,
+} from 'utils/SearchUtils';
 import { SearchIndex } from '../../enums/search.enum';
 import jsonData from '../../jsons/en';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -25,6 +29,7 @@ import {
   MlModelSource,
   Option,
   PipelineSource,
+  SearchSuggestions,
   TableSource,
   TagSource,
   TopicSource,
@@ -66,58 +71,22 @@ const Suggestions = ({
   const isMounting = useRef(true);
 
   const setSuggestions = (options: Array<Option>) => {
-    setTableSuggestions(
-      options
-        .filter((option) => option._index === SearchIndex.TABLE)
-        .map((option) => option._source)
-    );
-    setTopicSuggestions(
-      options
-        .filter((option) => option._index === SearchIndex.TOPIC)
-        .map((option) => option._source)
-    );
+    setTableSuggestions(filterOptionsByIndex(options, SearchIndex.TABLE));
+    setTopicSuggestions(filterOptionsByIndex(options, SearchIndex.TOPIC));
     setDashboardSuggestions(
-      options
-        .filter((option) => option._index === SearchIndex.DASHBOARD)
-        .map((option) => option._source)
+      filterOptionsByIndex(options, SearchIndex.DASHBOARD)
     );
-    setPipelineSuggestions(
-      options
-        .filter((option) => option._index === SearchIndex.PIPELINE)
-        .map((option) => option._source)
-    );
-    setMlModelSuggestions(
-      options
-        .filter((option) => option._index === SearchIndex.MLMODEL)
-        .map((option) => option._source)
-    );
+    setPipelineSuggestions(filterOptionsByIndex(options, SearchIndex.PIPELINE));
+    setMlModelSuggestions(filterOptionsByIndex(options, SearchIndex.MLMODEL));
     setContainerSuggestions(
-      options
-        .filter((option) => option._index === SearchIndex.CONTAINER)
-        .map((option) => option._source)
+      filterOptionsByIndex(options, SearchIndex.CONTAINER)
     );
-    setGlossarySuggestions(
-      options
-        .filter((option) => option._index === SearchIndex.GLOSSARY)
-        .map((option) => option._source)
-    );
-    setTagSuggestions(
-      options
-        .filter((option) => option._index === SearchIndex.TAG)
-        .map((option) => option._source)
-    );
+    setGlossarySuggestions(filterOptionsByIndex(options, SearchIndex.GLOSSARY));
+    setTagSuggestions(filterOptionsByIndex(options, SearchIndex.TAG));
   };
 
   const getSuggestionsForIndex = (
-    suggestions:
-      | TableSource[]
-      | TopicSource[]
-      | PipelineSource[]
-      | TagSource[]
-      | GlossarySource[]
-      | DashboardSource[]
-      | MlModelSource[]
-      | ContainerSearchSource[],
+    suggestions: SearchSuggestions,
     searchIndex: SearchIndex
   ) => {
     if (suggestions.length === 0) {
@@ -127,34 +96,11 @@ const Suggestions = ({
     return (
       <>
         {getGroupLabel(searchIndex)}
-        {suggestions.map(
-          (
-            suggestion:
-              | TableSource
-              | TopicSource
-              | PipelineSource
-              | TagSource
-              | GlossarySource
-              | DashboardSource
-              | MlModelSource
-              | ContainerSearchSource
-          ) => {
-            const {
-              fullyQualifiedName = '',
-              name,
-              serviceType = '',
-            } = suggestion;
-
-            return getSuggestionElement(
-              fullyQualifiedName,
-              serviceType,
-              name,
-              searchIndex,
-              false,
-              () => setIsOpen(false)
-            );
-          }
-        )}
+        {suggestions.map((suggestion: SearchSuggestions[number]) => {
+          return getSuggestionElement(suggestion, searchIndex, false, () =>
+            setIsOpen(false)
+          );
+        })}
       </>
     );
   };
