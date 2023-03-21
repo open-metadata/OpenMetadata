@@ -17,7 +17,6 @@ import Description from 'components/common/description/Description';
 import OwnerWidgetWrapper from 'components/common/OwnerWidget/OwnerWidgetWrapper.component';
 import ProfilePicture from 'components/common/ProfilePicture/ProfilePicture';
 import Loader from 'components/Loader/Loader';
-import { OperationPermission } from 'components/PermissionProvider/PermissionProvider.interface';
 import TagsContainer from 'components/Tag/TagsContainer/tags-container';
 import TagsViewer from 'components/Tag/TagsViewer/tags-viewer';
 import { getUserPath } from 'constants/constants';
@@ -33,20 +32,11 @@ import { Link } from 'react-router-dom';
 import { getEntityName } from 'utils/EntityUtils';
 import { fetchGlossaryTerms, getGlossaryTermlist } from 'utils/GlossaryUtils';
 import { getClassifications, getTaglist } from 'utils/TagsUtils';
+import {
+  TableQueryRightPanelProps,
+  TagDetails,
+} from './TableQueryRightPanel.interface';
 import { ReactComponent as EditIcon } from '/assets/svg/ic-edit.svg';
-
-interface TableQueryRightPanelProps {
-  query: Query;
-  isLoading: boolean;
-  permission: OperationPermission;
-  onQueryUpdate: (updatedQuery: Query, key: keyof Query) => Promise<void>;
-}
-
-type TagDetails = {
-  isLoading: boolean;
-  options: TagOption[];
-  isError: boolean;
-};
 
 const TableQueryRightPanel = ({
   query,

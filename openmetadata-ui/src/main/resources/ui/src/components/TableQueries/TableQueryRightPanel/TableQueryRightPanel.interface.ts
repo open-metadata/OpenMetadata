@@ -13,35 +13,17 @@
 
 import { OperationPermission } from 'components/PermissionProvider/PermissionProvider.interface';
 import { Query } from 'generated/entity/data/query';
-import { EntityReference } from 'generated/type/entityReference';
-import { HTMLAttributes } from 'react';
+import { TagOption } from 'Models';
 
-export enum QueryVoteType {
-  'votedUp' = 'votedUp',
-  'votedDown' = 'votedDown',
-  'unVoted' = 'unVoted',
-}
-
-export type QueryVote = {
-  updatedVoteType: QueryVoteType;
-};
-
-export interface TableQueriesProp {
-  isTableDeleted?: boolean;
-  tableId: string;
-}
-
-export interface QueryCardProp extends HTMLAttributes<HTMLDivElement> {
+export interface TableQueryRightPanelProps {
   query: Query;
-  selectedId?: string;
-  tableId: string;
+  isLoading: boolean;
   permission: OperationPermission;
-  onQuerySelection: (query: Query) => void;
   onQueryUpdate: (updatedQuery: Query, key: keyof Query) => Promise<void>;
-  onUpdateVote: (data: QueryVote, id?: string) => Promise<void>;
 }
 
-export type QueryUsedByTable = {
-  topThreeTable: EntityReference[];
-  remainingTable: EntityReference[];
+export type TagDetails = {
+  isLoading: boolean;
+  options: TagOption[];
+  isError: boolean;
 };
