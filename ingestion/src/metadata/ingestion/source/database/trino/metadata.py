@@ -38,7 +38,7 @@ from metadata.ingestion.source.database.common_db_source import CommonDbSourceSe
 from metadata.ingestion.source.database.trino.queries import TRINO_TABLE_COMMENTS
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_database
-from metadata.utils.logger import ANSI, ingestion_logger, log_ansi_encoded_string
+from metadata.utils.logger import ingestion_logger
 from metadata.utils.sqlalchemy_utils import get_all_table_comments
 
 logger = ingestion_logger()
@@ -199,7 +199,7 @@ class TrinoSource(CommonDbSourceService):
         self.inspector = inspect(self.engine)
 
     def get_database_names(self) -> Iterable[str]:
-        configured_catalog = self.trino_connection.catalog
+        configured_catalog = self.service_connection.catalog
         if configured_catalog:
             self.set_inspector(database_name=configured_catalog)
             yield configured_catalog
