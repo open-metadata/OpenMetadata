@@ -76,22 +76,26 @@ public final class UserUtil {
 
   public static void addUserForBasicAuth(String username, String pwd, String domain) throws IOException {
     UserRepository userRepository = (UserRepository) Entity.getEntityRepository(Entity.USER);
-    User originalUser;
-    try {
+    boolean exist = userRepository.checkEmailAlreadyExists(String.format("%s@%s", username, domain));
+    if (exist) {
       List<String> fields = userRepository.getAllowedFieldsCopy();
+      fields.removeIf(s -> s.equals("owns") || s.equals("follows"));
       fields.add(USER_PROTECTED_FIELDS);
-      originalUser = userRepository.getByName(null, username, new EntityUtil.Fields(fields, String.join(",", fields)));
+      User originalUser =
+          userRepository.getByName(null, username, new EntityUtil.Fields(fields, String.join(",", fields)));
       if (originalUser.getAuthenticationMechanism() == null) {
-        updateUserWithHashedPwd(originalUser, pwd);
+        updateBasicAuthUser(originalUser, pwd);
       }
-      addOrUpdateUser(originalUser);
-    } catch (EntityNotFoundException e) {
-      // TODO: Not the best way ! :(
+    } else {
       User user = user(username, domain, username).withIsAdmin(true).withIsEmailVerified(true);
-      updateUserWithHashedPwd(user, pwd);
-      addOrUpdateUser(user);
-      EmailUtil.sendInviteMailToAdmin(user, pwd);
+      updateBasicAuthUser(user, pwd);
     }
+  }
+
+  private static void updateBasicAuthUser(User user, String pwd) {
+    updateUserWithHashedPwd(user, pwd);
+    addOrUpdateUser(user);
+    EmailUtil.sendInviteMailToAdmin(user, pwd);
   }
 
   public static void updateUserWithHashedPwd(User user, String pwd) {
