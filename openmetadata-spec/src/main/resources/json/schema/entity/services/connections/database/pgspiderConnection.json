@@ -16,7 +16,7 @@
       "description": "SQLAlchemy driver scheme options.",
       "type": "string",
       "enum": ["postgresql+psycopg2"],
-      "default": "pgspider+psycopg2"
+      "default": "postgresql+psycopg2"
     }
   },
   "properties": {
