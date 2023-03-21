@@ -55,6 +55,12 @@ Security requirements for your **production** environment:
 
 - Click on `Save` button.
 
+<Note>
+
+Note: You need to add the `openid`, `email` & `profile` scopes for your scope.
+
+</Note>
+
 
 <Note>
 
