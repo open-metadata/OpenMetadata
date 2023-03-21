@@ -70,8 +70,8 @@ pip3 install "openmetadata-ingestion[bigquery-usage]"
 | 7    | bigquery.jobs.listAll         | Metadata Ingestion      |
 | 8    | datacatalog.taxonomies.get    | Fetch Policy Tags       |
 | 9    | datacatalog.taxonomies.list   | Fetch Policy Tags       |
-| 10   | bigquery.readsessions.create  | Bigquery Usage Workflow |
-| 11   | bigquery.readsessions.getData | Bigquery Usage Workflow |
+| 10   | bigquery.readsessions.create  | Bigquery Usage & Lineage Workflow |
+| 11   | bigquery.readsessions.getData | Bigquery Usage & Lineage Workflow |
 
 </Table>
 
