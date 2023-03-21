@@ -41,7 +41,6 @@ from metadata.generated.schema.metadataIngestion.workflow import WorkflowConfig
 from metadata.generated.schema.type.basic import ComponentConfig
 from metadata.ingestion.models.encoders import show_secrets_encoder
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.utils.constants import ES_SOURCE_TO_ES_OBJ_ARGS
 
 
 def data_insight_workflow(workflow_config: OpenMetadataWorkflowConfig):

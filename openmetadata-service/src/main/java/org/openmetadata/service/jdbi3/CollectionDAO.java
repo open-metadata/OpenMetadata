@@ -59,8 +59,6 @@ import org.openmetadata.schema.dataInsight.DataInsightChart;
 import org.openmetadata.schema.dataInsight.kpi.Kpi;
 import org.openmetadata.schema.entity.Bot;
 import org.openmetadata.schema.entity.Type;
-import org.openmetadata.schema.entity.alerts.Alert;
-import org.openmetadata.schema.entity.alerts.AlertAction;
 import org.openmetadata.schema.entity.automations.Workflow;
 import org.openmetadata.schema.entity.classification.Classification;
 import org.openmetadata.schema.entity.classification.Tag;
@@ -79,6 +77,7 @@ import org.openmetadata.schema.entity.data.Query;
 import org.openmetadata.schema.entity.data.Report;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.data.Topic;
+import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.policies.Policy;
 import org.openmetadata.schema.entity.services.DashboardService;
 import org.openmetadata.schema.entity.services.DatabaseService;
@@ -191,7 +190,7 @@ public interface CollectionDAO {
   BotDAO botDAO();
 
   @CreateSqlObject
-  AlertDAO alertDAO();
+  EventSubscriptionDAO eventSubscriptionDAO();
 
   @CreateSqlObject
   PolicyDAO policyDAO();
@@ -246,9 +245,6 @@ public interface CollectionDAO {
 
   @CreateSqlObject
   TestConnectionDefinitionDAO testConnectionDefinitionDAO();
-
-  @CreateSqlObject
-  AlertActionDAO alertActionDAO();
 
   @CreateSqlObject
   TestSuiteDAO testSuiteDAO();
@@ -1714,15 +1710,15 @@ public interface CollectionDAO {
     }
   }
 
-  interface AlertDAO extends EntityDAO<Alert> {
+  interface EventSubscriptionDAO extends EntityDAO<EventSubscription> {
     @Override
     default String getTableName() {
-      return "alert_entity";
+      return "event_subscription_entity";
     }
 
     @Override
-    default Class<Alert> getEntityClass() {
-      return Alert.class;
+    default Class<EventSubscription> getEntityClass() {
+      return EventSubscription.class;
     }
 
     @Override
@@ -1731,7 +1727,7 @@ public interface CollectionDAO {
     }
 
     @SqlQuery("SELECT json FROM <table>")
-    List<String> listAllAlerts(@Define("table") String table);
+    List<String> listAllEventsSubscriptions(@Define("table") String table);
   }
 
   interface ChartDAO extends EntityDAO<Chart> {
@@ -3112,23 +3108,6 @@ public interface CollectionDAO {
     @Override
     default Class<TestSuite> getEntityClass() {
       return TestSuite.class;
-    }
-
-    @Override
-    default String getNameColumn() {
-      return "name";
-    }
-  }
-
-  interface AlertActionDAO extends EntityDAO<AlertAction> {
-    @Override
-    default String getTableName() {
-      return "alert_action_def";
-    }
-
-    @Override
-    default Class<AlertAction> getEntityClass() {
-      return AlertAction.class;
     }
 
     @Override
