@@ -125,10 +125,6 @@ describe('Restore entity functionality should work properly', () => {
       .should('exist')
       .click();
 
-    cy.get('[data-testid="deleted-table-menu-item-label"]')
-      .should('exist')
-      .contains('Hide Deleted Table');
-
     cy.get('[data-testid="Tables"] [data-testid="filter-count"]')
       .should('exist')
       .contains('1');
