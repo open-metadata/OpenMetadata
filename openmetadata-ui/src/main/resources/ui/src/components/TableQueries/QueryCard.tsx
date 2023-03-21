@@ -11,20 +11,17 @@
  *  limitations under the License.
  */
 
-import { DownOutlined, UpOutlined } from '@ant-design/icons';
+import { DownOutlined, RightOutlined } from '@ant-design/icons';
 import { Button, Card, Col, Popover, Row, Space, Typography } from 'antd';
 import classNames from 'classnames';
-import { OperationPermission } from 'components/PermissionProvider/PermissionProvider.interface';
 import { getTableDetailsPath } from 'constants/constants';
 import {
   QUERY_DATE_FORMAT,
   QUERY_LINE_HEIGHT,
   QUERY_USED_BY_TABLE_VIEW_CAP,
 } from 'constants/entity.constants';
-import { Query } from 'generated/entity/data/query';
-import { EntityReference } from 'generated/type/entityLineage';
 import { slice, split } from 'lodash';
-import React, { FC, HTMLAttributes, useMemo, useState } from 'react';
+import React, { FC, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { getEntityName } from 'utils/EntityUtils';
@@ -33,22 +30,7 @@ import { CSMode } from '../../enums/codemirror.enum';
 import SchemaEditor from '../schema-editor/SchemaEditor';
 import QueryCardExtraOption from './QueryCardExtraOption/QueryCardExtraOption.component';
 import './table-queries.style.less';
-import { QueryVote } from './TableQueries.interface';
-
-interface QueryCardProp extends HTMLAttributes<HTMLDivElement> {
-  query: Query;
-  selectedId?: string;
-  tableId: string;
-  permission: OperationPermission;
-  onQuerySelection: (query: Query) => void;
-  onQueryUpdate: (updatedQuery: Query, key: keyof Query) => Promise<void>;
-  onUpdateVote: (data: QueryVote, id?: string) => Promise<void>;
-}
-
-type QueryUsedByTable = {
-  topThreeTable: EntityReference[];
-  remainingTable: EntityReference[];
-};
+import { QueryCardProp, QueryUsedByTable } from './TableQueries.interface';
 
 const { Text, Paragraph } = Typography;
 
@@ -132,7 +114,7 @@ const QueryCard: FC<QueryCardProp> = ({
     <Row gutter={[0, 8]}>
       <Col span={24}>
         <Card
-          bodyStyle={{ padding: 0, paddingLeft: 8, paddingTop: 1 }}
+          bodyStyle={{ padding: 0, paddingLeft: 12, paddingTop: 1 }}
           bordered={false}
           className={classNames(
             'query-card-container',
@@ -158,7 +140,7 @@ const QueryCard: FC<QueryCardProp> = ({
             <Button
               className="expand-collapse-icon"
               data-testid="expand-collapse-button"
-              icon={expanded ? <DownOutlined /> : <UpOutlined />}
+              icon={expanded ? <DownOutlined /> : <RightOutlined />}
               size="small"
               type="text"
               onClick={handleExpandClick}
@@ -167,8 +149,8 @@ const QueryCard: FC<QueryCardProp> = ({
 
           <div
             className={classNames('sql-editor-container', {
-              'h-max-32': !isAllowExpand,
-              'h-32': !expanded,
+              'h-max-24': !isAllowExpand,
+              'h-24': !expanded,
             })}>
             <SchemaEditor
               editorClass={classNames('custom-code-mirror-theme', {

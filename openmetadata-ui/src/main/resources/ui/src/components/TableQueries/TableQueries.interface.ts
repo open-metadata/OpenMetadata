@@ -1,3 +1,8 @@
+import { OperationPermission } from 'components/PermissionProvider/PermissionProvider.interface';
+import { Query } from 'generated/entity/data/query';
+import { EntityReference } from 'generated/type/entityReference';
+import { HTMLAttributes } from 'react';
+
 /*
  *  Copyright 2023 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,4 +23,24 @@ export enum QueryVoteType {
 
 export type QueryVote = {
   updatedVoteType: QueryVoteType;
+};
+
+export interface TableQueriesProp {
+  isTableDeleted?: boolean;
+  tableId: string;
+}
+
+export interface QueryCardProp extends HTMLAttributes<HTMLDivElement> {
+  query: Query;
+  selectedId?: string;
+  tableId: string;
+  permission: OperationPermission;
+  onQuerySelection: (query: Query) => void;
+  onQueryUpdate: (updatedQuery: Query, key: keyof Query) => Promise<void>;
+  onUpdateVote: (data: QueryVote, id?: string) => Promise<void>;
+}
+
+export type QueryUsedByTable = {
+  topThreeTable: EntityReference[];
+  remainingTable: EntityReference[];
 };

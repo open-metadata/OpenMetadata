@@ -10,14 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Dropdown, MenuProps, Space } from 'antd';
+import { Button, Dropdown, MenuProps, Space, Tag } from 'antd';
 import { ReactComponent as IconDropdown } from 'assets/svg/menu.svg';
 import { NO_PERMISSION_FOR_ACTION } from 'constants/HelperTextUtil';
 import { useClipboard } from 'hooks/useClipBoard';
-import { isUndefined } from 'lodash';
+import { isUndefined, split } from 'lodash';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { getCurrentUserId } from 'utils/CommonUtils';
+import { getCurrentUserId, pluralize } from 'utils/CommonUtils';
 import { QueryVoteType } from '../TableQueries.interface';
 import { QueryCardExtraOptionProps } from './QueryCardExtraOption.interface';
 import { ReactComponent as EditIcon } from '/assets/svg/ic-edit.svg';
@@ -61,6 +61,12 @@ const QueryCardExtraOption = ({
     return items;
   }, [permission]);
 
+  const queryLine = useMemo(() => {
+    const lineCount = split(query.query, '\n').length;
+
+    return pluralize(lineCount, t('label.line'));
+  }, [query]);
+
   const voteStatus = useMemo(() => {
     const { votes } = query;
     const userId = getCurrentUserId();
@@ -95,6 +101,9 @@ const QueryCardExtraOption = ({
 
   return (
     <Space size={8}>
+      <Tag className="m-r-0 rounded-12 text-grey-muted border" color="#EEEEEE">
+        {queryLine}
+      </Tag>
       <Button
         className="flex items-center gap-2"
         icon={
@@ -136,7 +145,12 @@ const QueryCardExtraOption = ({
         menu={{ items: dropdownItems }}
         placement="bottom"
         trigger={['click']}>
-        <Button className="flex-center" icon={<IconDropdown />} type="text" />
+        <Button
+          className="flex-center"
+          icon={<IconDropdown />}
+          size="small"
+          type="text"
+        />
       </Dropdown>
     </Space>
   );

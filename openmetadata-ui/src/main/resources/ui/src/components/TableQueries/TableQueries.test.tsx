@@ -17,12 +17,14 @@ import {
   queryAllByText,
   render,
 } from '@testing-library/react';
+import { INITIAL_PAGING_VALUE } from 'constants/constants';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { MOCK_TABLE_QUERY } from '../../mocks/TableData.mock';
 import TableQueries from './TableQueries';
+import { TableQueriesProp } from './TableQueries.interface';
 
-const mockTableQueriesProp = {
+const mockTableQueriesProp: TableQueriesProp = {
   tableId: 'id',
 };
 
@@ -32,7 +34,9 @@ jest.mock('./QueryCard', () => {
 jest.mock('rest/queryAPI', () => ({
   getQueriesList: jest
     .fn()
-    .mockImplementation(() => Promise.resolve({ data: MOCK_TABLE_QUERY })),
+    .mockImplementation(() =>
+      Promise.resolve({ data: MOCK_TABLE_QUERY, paging: INITIAL_PAGING_VALUE })
+    ),
 }));
 
 describe('Test TableQueries Component', () => {
@@ -58,24 +62,18 @@ describe('Test TableQueries Component', () => {
   });
 
   it('Check if TableQueries component has queries as undefined', async () => {
-    const { container } = render(
-      <TableQueries {...mockTableQueriesProp} queries={undefined} />,
-      {
-        wrapper: MemoryRouter,
-      }
-    );
+    const { container } = render(<TableQueries {...mockTableQueriesProp} />, {
+      wrapper: MemoryRouter,
+    });
     const queryCards = queryAllByText(container, /QueryCard/i);
 
     expect(queryCards).toHaveLength(0);
   });
 
   it('Check if TableQueries component has queries as empty list', async () => {
-    const { container } = render(
-      <TableQueries {...mockTableQueriesProp} queries={[]} />,
-      {
-        wrapper: MemoryRouter,
-      }
-    );
+    const { container } = render(<TableQueries {...mockTableQueriesProp} />, {
+      wrapper: MemoryRouter,
+    });
     const queryCards = queryAllByText(container, /QueryCard/i);
 
     expect(queryCards).toHaveLength(0);

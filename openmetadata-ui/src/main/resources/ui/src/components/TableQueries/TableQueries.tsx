@@ -42,13 +42,8 @@ import { showErrorToast } from '../../utils/ToastUtils';
 import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder';
 import Loader from '../Loader/Loader';
 import QueryCard from './QueryCard';
-import { QueryVote } from './TableQueries.interface';
+import { QueryVote, TableQueriesProp } from './TableQueries.interface';
 import TableQueryRightPanel from './TableQueryRightPanel/TableQueryRightPanel.component';
-
-interface TableQueriesProp {
-  isTableDeleted?: boolean;
-  tableId: string;
-}
 
 const TableQueries: FC<TableQueriesProp> = ({
   isTableDeleted,
