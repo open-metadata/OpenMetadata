@@ -91,6 +91,14 @@ const RightPanel: FC<RightPanelProps> = ({
     return guideTemp;
   }, [isIngestion, pipelineType, activeField, isAirflowRunning]);
 
+  const activeFieldName = useMemo(() => {
+    /**
+     * active field is like root_fieldName
+     * so we need to split and get the fieldName
+     */
+    return activeField?.split('_')[1];
+  }, [activeField]);
+
   const getActiveStepTitle = (title: string) => {
     const deployMessage = showDeployedTitle ? ` & ${t('label.deployed')}` : '';
     const updateTitle = title.replace(
@@ -125,9 +133,9 @@ const RightPanel: FC<RightPanelProps> = ({
     </>
   ) : null;
 
-  const activeFieldDocumentElement = activeField ? (
+  const activeFieldDocumentElement = activeFieldName ? (
     <>
-      <h6 className="tw-heading tw-text-base">{startCase(activeField)}</h6>
+      <h6 className="tw-heading tw-text-base">{startCase(activeFieldName)}</h6>
       <RichTextEditorPreviewer
         enableSeeMoreVariant={false}
         markdown={activeFieldDocument}
@@ -137,14 +145,9 @@ const RightPanel: FC<RightPanelProps> = ({
   ) : null;
 
   const fetchFieldDocument = async () => {
-    /**
-     * active field id like #root_fieldName
-     * so we need to split and get the fieldName
-     */
-    const fieldName = activeField?.split('_')[1];
     const filePath = `${i18n.language}/${getServiceType(
       selectedServiceCategory
-    )}/${selectedService}/connections/fields/${fieldName}.md`;
+    )}/${selectedService}/connections/fields/${activeFieldName}.md`;
 
     try {
       const response = await fetchMarkdownFile(filePath);
@@ -157,12 +160,12 @@ const RightPanel: FC<RightPanelProps> = ({
 
   useEffect(() => {
     // only fetch file when required fields are present
-    if (selectedService && selectedServiceCategory && activeField) {
+    if (selectedService && selectedServiceCategory && activeFieldName) {
       fetchFieldDocument();
     }
-  }, [selectedService, selectedServiceCategory, activeField]);
+  }, [selectedService, selectedServiceCategory, activeFieldName]);
 
-  const showActiveFieldDocument = activeField && activeFieldDocument;
+  const showActiveFieldDocument = activeFieldName && activeFieldDocument;
 
   return (
     <Affix offsetTop={0}>
