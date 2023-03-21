@@ -150,8 +150,8 @@ class SnowflakeSource(CommonDbSourceService):
     """
 
     def __init__(self, config, metadata_config):
-        self.partition_details = {}
         super().__init__(config, metadata_config)
+        self.partition_details = {}
         self.schema_desc_map = {}
         self.database_desc_map = {}
 

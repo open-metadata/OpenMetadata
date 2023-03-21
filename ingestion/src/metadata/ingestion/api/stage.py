@@ -45,6 +45,15 @@ class StageStatus(Status):
 
 @dataclass  # type: ignore[misc]
 class Stage(Closeable, Generic[Entity], metaclass=ABCMeta):
+    """
+    Stage class
+    """
+
+    status: StageStatus
+
+    def __init__(self):
+        self.status = StageStatus()
+
     @classmethod
     @abstractmethod
     def create(cls, config_dict: dict, metadata_config: dict) -> "Stage":
@@ -54,9 +63,8 @@ class Stage(Closeable, Generic[Entity], metaclass=ABCMeta):
     def stage_record(self, record: Entity):
         pass
 
-    @abstractmethod
     def get_status(self) -> StageStatus:
-        pass
+        return self.status
 
     @abstractmethod
     def close(self) -> None:
