@@ -11,7 +11,12 @@
  *  limitations under the License.
  */
 
-import { fireEvent, getByTestId, render } from '@testing-library/react';
+import {
+  fireEvent,
+  getByTestId,
+  queryByTestId,
+  render,
+} from '@testing-library/react';
 import { LabelType, State, TagSource } from 'generated/type/tagLabel';
 import React from 'react';
 import Tags from './tags';
@@ -35,7 +40,7 @@ describe('Test tags Component', () => {
       <Tags editable removeTag={mockCallback} startWith="#" tag="test" />
     );
     const tags = getByTestId(container, 'tags');
-    const remove = getByTestId(container, 'remove');
+    const remove = getByTestId(container, 'remove-test-tag');
 
     expect(tags).toBeInTheDocument();
     expect(remove).toBeInTheDocument();
@@ -43,13 +48,13 @@ describe('Test tags Component', () => {
 
   it('Component should render properly for add tag button', () => {
     const { container } = render(
-      <Tags editable removeTag={mockCallback} startWith="+ " tag="add tag" />
+      <Tags removeTag={mockCallback} startWith="+ " tag="add tag" />
     );
     const tags = getByTestId(container, 'tags');
-    const remove = getByTestId(container, 'remove');
+    const remove = queryByTestId(container, 'remove-test-tag');
 
     expect(tags).toBeInTheDocument();
-    expect(remove).toBeInTheDocument();
+    expect(remove).toBeNull();
   });
 
   it('onClick of X callback function should call', () => {
@@ -62,7 +67,7 @@ describe('Test tags Component', () => {
         tag="test"
       />
     );
-    const remove = getByTestId(container, 'remove');
+    const remove = getByTestId(container, 'remove-test-tag');
     fireEvent.click(
       remove,
       new MouseEvent('click', {

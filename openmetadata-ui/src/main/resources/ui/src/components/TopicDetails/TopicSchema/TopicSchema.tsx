@@ -86,8 +86,9 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
 
   const handleFieldTagsChange = async (
     selectedTags: EntityTags[] = [],
-    selectedField: Field
+    field: Field
   ) => {
+    const selectedField = isUndefined(editFieldTags) ? field : editFieldTags;
     const newSelectedTags: TagOption[] = selectedTags.map((tag) => ({
       fqn: tag.tagFQN,
       source: tag.source,
@@ -95,11 +96,7 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
 
     const schema = cloneDeep(messageSchema);
 
-    updateFieldTags(
-      schema?.schemaFields,
-      editFieldTags?.name ?? selectedField.name,
-      newSelectedTags
-    );
+    updateFieldTags(schema?.schemaFields, selectedField?.name, newSelectedTags);
 
     await onUpdate(schema);
     setEditFieldTags(undefined);
