@@ -12,7 +12,7 @@
  */
 
 import { CloseOutlined } from '@ant-design/icons';
-import { Tooltip } from 'antd';
+import { Space, Tooltip } from 'antd';
 import classNames from 'classnames';
 import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
 import { FQN_SEPARATOR_CHAR } from 'constants/char.constants';
@@ -21,8 +21,8 @@ import { isEmpty, isString } from 'lodash';
 import React, { FunctionComponent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
-import SVGIcons, { Icons } from 'utils/SvgUtils';
 import { getTagDisplay } from 'utils/TagsUtils';
+import { ReactComponent as PlusIcon } from '../../../assets/svg/plus-primary.svg';
 import { TagProps } from './tags.interface';
 import { tagStyles } from './tags.styles';
 
@@ -51,11 +51,7 @@ const Tags: FunctionComponent<TagProps> = ({
   const getTag = (tag: string, startWith = '', source?: string) => {
     const startIcon =
       startWith === '+ ' ? (
-        <SVGIcons
-          alt="plus"
-          className="tw-w-3.5 tw-mr-1"
-          icon={Icons.ICON_PLUS_PRIMARY}
-        />
+        <PlusIcon height={16} name="plus" width={16} />
       ) : (
         startWith
       );
@@ -64,7 +60,7 @@ const Tags: FunctionComponent<TagProps> = ({
       : tag;
 
     return (
-      <span
+      <div
         className={classNames(baseStyle, layoutStyles, className)}
         data-testid="tags"
         onClick={() => {
@@ -74,21 +70,23 @@ const Tags: FunctionComponent<TagProps> = ({
               : history.push(`${ROUTES.TAGS}/${tag.split('.')[0]}`);
           }
         }}>
-        <span
+        <Space
+          align="center"
           className={classNames(
             textBaseStyle,
             textLayoutStyles,
             textEditStyles,
-            'tw-flex tw-items-center'
+            'd-flex items-center cursor-pointer'
           )}
-          data-testid={editable && isRemovable ? `tag-${tag}` : `add-tag`}>
+          data-testid={editable && isRemovable ? `tag-${tag}` : `add-tag`}
+          size={2}>
           {startIcon}
-          <span>{getTagDisplay(tagName)}</span>
-        </span>
+          <span className="text-xs font-medium">{getTagDisplay(tagName)}</span>
+        </Space>
         {editable && isRemovable && (
           <span
             className="tw-py-0.5 tw-px-2 tw-rounded tw-cursor-pointer"
-            data-testid="remove"
+            data-testid={`remove-${tag}-tag`}
             onClick={(e: React.MouseEvent<HTMLElement, MouseEvent>) => {
               e.preventDefault();
               e.stopPropagation();
@@ -97,7 +95,7 @@ const Tags: FunctionComponent<TagProps> = ({
             <CloseOutlined className="tw-text-primary" />
           </span>
         )}
-      </span>
+      </div>
     );
   };
 

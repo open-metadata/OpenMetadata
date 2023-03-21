@@ -140,7 +140,7 @@ services:
       DB_HOST: ${AIRFLOW_DB_HOST:-mysql}
       DB_PORT: ${AIRFLOW_DB_PORT:-3306}
       AIRFLOW_DB: ${AIRFLOW_DB:-airflow_db}
-      AIRFLOW_DB_SCHEME: ${AIRFLOW_DB_SCHEME:-mysql+pymysql}
+      DB_SCHEME: ${AIRFLOW_DB_SCHEME:-mysql+pymysql}
       DB_USER: ${AIRFLOW_DB_USER:-airflow_user}
       DB_PASSWORD: ${AIRFLOW_DB_PASSWORD:-airflow_pass}
     entrypoint: /bin/bash

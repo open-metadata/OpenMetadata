@@ -90,11 +90,11 @@ public class RoleRepository extends EntityRepository<Role> {
   @Override
   @Transaction
   public void storeEntity(Role role, boolean update) throws IOException {
-    // Don't store policy and href as JSON. Build it on the fly based on relationships
+    // Don't store policy. Build it on the fly based on relationships
     List<EntityReference> policies = role.getPolicies();
-    role.withPolicies(null).withHref(null);
+    role.withPolicies(null);
     store(role, update);
-    role.withPolicies(policies); // Restore policies
+    role.withPolicies(policies);
   }
 
   @Override

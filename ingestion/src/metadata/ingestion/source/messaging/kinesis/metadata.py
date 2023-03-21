@@ -126,7 +126,7 @@ class KinesisSource(MessagingServiceSource):
                 ),
                 maximumMessageSize=self._get_max_message_size(),
             )
-            self.status.topic_scanned(topic.name.__root__)
+            self.status.scanned(topic.name.__root__)
             yield topic
 
         except Exception as exc:

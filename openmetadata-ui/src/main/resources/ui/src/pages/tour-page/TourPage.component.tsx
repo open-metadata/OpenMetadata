@@ -52,6 +52,7 @@ const exploreCount = {
   [SearchIndex.DASHBOARD]: 0,
   [SearchIndex.PIPELINE]: 0,
   [SearchIndex.MLMODEL]: 0,
+  [SearchIndex.CONTAINER]: 0,
 };
 
 const TourPage = () => {
@@ -198,7 +199,6 @@ const TourPage = () => {
             tableProfile={
               mockDatasetData.tableProfile as unknown as Table['profile']
             }
-            tableQueries={[]}
             tableTags={mockDatasetData.tableTags}
             tableType={mockDatasetData.tableType as TableType}
             tagUpdateHandler={handleCountChange}

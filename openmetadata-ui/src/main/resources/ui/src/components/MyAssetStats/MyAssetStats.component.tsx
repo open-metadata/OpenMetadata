@@ -17,13 +17,7 @@ import React, { FunctionComponent, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { getExplorePath, ROUTES } from '../../constants/constants';
-import {
-  GlobalSettingOptions,
-  GlobalSettingsMenuCategory,
-} from '../../constants/GlobalSettings.constants';
-import { TeamType } from '../../generated/entity/teams/team';
 import { getCountBadge } from '../../utils/CommonUtils';
-import { getSettingPath, getTeamsWithFqnPath } from '../../utils/RouterUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import EntityListSkeleton from '../Skeleton/MyData/EntityListSkeleton/EntityListSkeleton.component';
 import { MyAssetStatsProps } from './MyAssetStats.interface';
@@ -71,6 +65,13 @@ const MyAssetStats: FunctionComponent<MyAssetStatsProps> = ({
         link: getExplorePath({ tab: 'mlmodels' }),
         dataTestId: 'mlmodels',
       },
+      containers: {
+        icon: Icons.CONTAINER,
+        data: t('label.container-plural'),
+        count: entityCounts.storageContainerCount,
+        link: getExplorePath({ tab: 'containers' }),
+        dataTestId: 'containers',
+      },
       testSuite: {
         icon: Icons.TEST_SUITE,
         data: t('label.test-suite-plural'),
@@ -78,33 +79,19 @@ const MyAssetStats: FunctionComponent<MyAssetStatsProps> = ({
         link: ROUTES.TEST_SUITES,
         dataTestId: 'test-suite',
       },
-      service: {
-        icon: Icons.SERVICE,
-        data: t('label.service-plural'),
-        count: entityCounts.servicesCount,
-        link: getSettingPath(
-          GlobalSettingsMenuCategory.SERVICES,
-          GlobalSettingOptions.DATABASES
-        ),
-        dataTestId: 'service',
+      glossaries: {
+        icon: Icons.FLAT_FOLDER,
+        data: t('label.glossary-plural'),
+        count: entityCounts.glossaryCount,
+        link: ROUTES.GLOSSARY,
+        dataTestId: 'glossaries',
       },
-      user: {
-        icon: Icons.USERS,
-        data: t('label.user-plural'),
-        count: entityCounts.userCount,
-        link: getSettingPath(
-          GlobalSettingsMenuCategory.MEMBERS,
-          GlobalSettingOptions.USERS
-        ),
-        dataTestId: 'user',
-        adminOnly: true,
-      },
-      teams: {
-        icon: Icons.TEAMS_GREY,
-        data: t('label.team-plural'),
-        count: entityCounts.teamCount,
-        link: getTeamsWithFqnPath(TeamType.Organization),
-        dataTestId: 'terms',
+      glossaryTerms: {
+        icon: Icons.FLAT_DOC,
+        data: t('label.glossary-term-plural'),
+        count: entityCounts.glossaryTermCount,
+        link: ROUTES.GLOSSARY,
+        dataTestId: 'glossary-terms',
       },
     }),
     [entityState]

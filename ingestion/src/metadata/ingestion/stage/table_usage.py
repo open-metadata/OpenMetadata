@@ -17,9 +17,10 @@ import json
 import os
 import shutil
 import traceback
+from pathlib import Path
 
 from metadata.config.common import ConfigModel
-from metadata.generated.schema.entity.data.table import SqlQuery
+from metadata.generated.schema.api.data.createQuery import CreateQueryRequest
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
@@ -27,7 +28,7 @@ from metadata.generated.schema.entity.teams.user import User
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.queryParserData import QueryParserData
 from metadata.generated.schema.type.tableUsageCount import TableUsageCount
-from metadata.ingestion.api.stage import Stage, StageStatus
+from metadata.ingestion.api.stage import Stage
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.constants import UTF_8
 from metadata.utils.logger import ingestion_logger
@@ -48,31 +49,38 @@ class TableUsageStage(Stage[QueryParserData]):
     """
 
     config: TableStageConfig
-    status: StageStatus
 
     def __init__(
         self,
         config: TableStageConfig,
         metadata_config: OpenMetadataConnection,
     ):
+        super().__init__()
         self.config = config
         self.metadata_config = metadata_config
         self.metadata = OpenMetadata(self.metadata_config)
-        self.status = StageStatus()
         self.table_usage = {}
         self.table_queries = {}
-        isdir = os.path.isdir(self.config.filename)
-        if not isdir:
-            os.mkdir(self.config.filename)
-        else:
-            shutil.rmtree(self.config.filename)
-            os.mkdir(self.config.filename)
+
+        self.init_location()
+
         self.wrote_something = False
 
     @classmethod
     def create(cls, config_dict: dict, metadata_config: OpenMetadataConnection):
         config = TableStageConfig.parse_obj(config_dict)
         return cls(config, metadata_config)
+
+    def init_location(self) -> None:
+        """
+        Prepare the usage location
+        """
+        location = Path(self.config.filename)
+        if location.is_dir():
+            logger.info("Location exists, cleaning it up")
+            shutil.rmtree(self.config.filename)
+        logger.info(f"Creating the directory to store staging data in {location}")
+        location.mkdir(parents=True, exist_ok=True)
 
     def _get_user_entity(self, username: str):
         if username:
@@ -95,7 +103,7 @@ class TableUsageStage(Stage[QueryParserData]):
     def _add_sql_query(self, record, table):
         if self.table_queries.get((table, record.date)):
             self.table_queries[(table, record.date)].append(
-                SqlQuery(
+                CreateQueryRequest(
                     query=record.sql,
                     users=self._get_user_entity(record.userName),
                     queryDate=record.date,
@@ -104,7 +112,7 @@ class TableUsageStage(Stage[QueryParserData]):
             )
         else:
             self.table_queries[(table, record.date)] = [
-                SqlQuery(
+                CreateQueryRequest(
                     query=record.sql,
                     users=self._get_user_entity(record.userName),
                     queryDate=record.date,
@@ -153,9 +161,6 @@ class TableUsageStage(Stage[QueryParserData]):
                 self.table_usage[(table, parsed_data.date)] = table_usage_count
                 logger.info(f"Successfully record staged for {table}")
         self.dump_data_to_file()
-
-    def get_status(self):
-        return self.status
 
     def dump_data_to_file(self):
         for key, value in self.table_usage.items():

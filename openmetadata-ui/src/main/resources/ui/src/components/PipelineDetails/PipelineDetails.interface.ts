@@ -13,19 +13,17 @@
 
 import { Operation } from 'fast-json-patch';
 
-import { Pipeline, Task } from '../../generated/entity/data/pipeline';
+import { Pipeline } from '../../generated/entity/data/pipeline';
 import { EntityReference } from '../../generated/type/entityReference';
 import { Paging } from '../../generated/type/paging';
 import { TitleBreadcrumbProps } from '../common/title-breadcrumb/title-breadcrumb.interface';
 
 export interface PipeLineDetailsProp {
   pipelineFQN: string;
-  pipelineUrl: string;
   entityName: string;
   pipelineDetails: Pipeline;
   followers: Array<EntityReference>;
   slashedPipelineName: TitleBreadcrumbProps['titleLinks'];
-  tasks: Task[];
   paging: Paging;
   followPipelineHandler: () => void;
   unfollowPipelineHandler: () => void;

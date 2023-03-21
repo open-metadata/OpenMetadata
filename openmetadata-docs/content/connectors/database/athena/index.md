@@ -9,7 +9,7 @@ slug: /connectors/database/athena
 
 | Stage | Metadata |Query Usage | Data Profiler | Data Quality | Lineage | DBT | Supported Versions |
 |:------:|:------:|:-----------:|:-------------:|:------------:|:-------:|:---:|:------------------:|
-|  PROD  |   ✅   |      ❌      |       ✅       |       ✅      |    Partially via Views    |  ✅  |  --  |
+|  PROD  |   ✅   |      ❌      |       ✅       |       ✅      |    1.0 ( upcoming release )    |  ✅  |  --  |
 
 </Table>
 
@@ -17,7 +17,7 @@ slug: /connectors/database/athena
 
 | Lineage | Table-level | Column-level |
 |:------:|:-----------:|:-------------:|
-| Partially via Views | ✅ | ✅ |
+| 1.0 ( upcoming release ) | TBD | TBD |
 
 </Table>
 

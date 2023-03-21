@@ -58,6 +58,20 @@
     ]
   },
   {
+    "name" : "query",
+    "operations" : [
+      "Create",
+      "Delete",
+      "ViewAll",
+      "ViewQueries",
+      "EditAll",
+      "EditDescription",
+      "EditDisplayName",
+      "EditTags",
+      "EditOwner"
+    ]
+  },
+  {
     "name" : "dashboard",
     "operations" : [
       "Create",
@@ -522,16 +536,7 @@
     ]
   },
   {
-    "name" : "alert",
-    "operations" : [
-      "Create",
-      "Delete",
-      "ViewAll",
-      "EditDescription"
-    ]
-  },
-  {
-    "name" : "alertAction",
+    "name" : "eventsubscription",
     "operations" : [
       "Create",
       "Delete",

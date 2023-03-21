@@ -30,6 +30,7 @@ import java.util.function.BiPredicate;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
+import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.data.Topic;
 import org.openmetadata.schema.entity.services.MessagingService;
 import org.openmetadata.schema.type.EntityReference;
@@ -83,15 +84,11 @@ public class TopicRepository extends EntityRepository<Topic> {
 
   @Override
   public void storeEntity(Topic topic, boolean update) throws IOException {
-    // Relationships and fields such as href are derived and not stored as part of json
-    EntityReference owner = topic.getOwner();
-    List<TagLabel> tags = topic.getTags();
+    // Relationships and fields such as service are derived and not stored as part of json
     EntityReference service = topic.getService();
+    topic.withService(null);
 
-    // Don't store owner, database, href and tags as JSON. Build it on the fly based on relationships
-    topic.withOwner(null).withService(null).withHref(null).withTags(null);
-
-    // Don't store feild tags as JSON but build it on the fly based on relationships
+    // Don't store fields tags as JSON but build it on the fly based on relationships
     List<Field> fieldsWithTags = null;
     if (topic.getMessageSchema() != null) {
       fieldsWithTags = topic.getMessageSchema().getSchemaFields();
@@ -105,7 +102,7 @@ public class TopicRepository extends EntityRepository<Topic> {
     if (fieldsWithTags != null) {
       topic.getMessageSchema().withSchemaFields(fieldsWithTags);
     }
-    topic.withOwner(owner).withService(service).withTags(tags);
+    topic.withService(service);
   }
 
   @Override
@@ -224,6 +221,18 @@ public class TopicRepository extends EntityRepository<Topic> {
     if (topic.getMessageSchema() != null) {
       applyTags(topic.getMessageSchema().getSchemaFields());
     }
+  }
+
+  @Override
+  public List<TagLabel> getAllTags(EntityInterface entity) {
+    List<TagLabel> allTags = new ArrayList<>();
+    Topic topic = (Topic) entity;
+    EntityUtil.mergeTags(allTags, topic.getTags());
+    List<Field> schemaFields = topic.getMessageSchema() != null ? topic.getMessageSchema().getSchemaFields() : null;
+    for (Field schemaField : listOrEmpty(schemaFields)) {
+      EntityUtil.mergeTags(allTags, schemaField.getTags());
+    }
+    return allTags;
   }
 
   public class TopicUpdater extends EntityUpdater {

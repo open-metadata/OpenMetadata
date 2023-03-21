@@ -11,6 +11,8 @@
  *  limitations under the License.
  */
 
+import IconFlatFolder from 'assets/svg/folder.svg';
+import IconFlatDoc from 'assets/svg/ic-flat-doc.svg';
 import { omit } from 'lodash';
 import React, { FunctionComponent } from 'react';
 import IconAuth0 from '../assets/img/icon-auth0.png';
@@ -110,6 +112,7 @@ import IconMentionsPrimary from '../assets/svg/ic-mentions-primary.svg';
 import IconMentions from '../assets/svg/ic-mentions.svg';
 import IconMenu from '../assets/svg/ic-menu.svg';
 import IconMyData from '../assets/svg/ic-mydata.svg';
+import IconContainer from '../assets/svg/ic-object-store.svg';
 import IconQuality from '../assets/svg/ic-quality.svg';
 import IconReply from '../assets/svg/ic-reply.svg';
 import IconReports from '../assets/svg/ic-reports.svg';
@@ -401,6 +404,9 @@ export const Icons = {
   ARROW_RIGHT_LIGHT: 'arrow-right-light',
   ARROW_DOWN_LIGHT: 'arrow-down-light',
   DRAG: 'drag',
+  CONTAINER: 'container',
+  FLAT_FOLDER: 'flat-folder',
+  FLAT_DOC: 'flat-doc',
 };
 
 /**
@@ -1182,6 +1188,18 @@ const SVGIcons: FunctionComponent<Props> = ({ icon, ...props }: Props) => {
 
     case Icons.NO_DATA_PLACEHOLDER:
       IconComponent = IconNoDataFoundPlaceHolder;
+
+      break;
+    case Icons.CONTAINER:
+      IconComponent = IconContainer;
+
+      break;
+    case Icons.FLAT_FOLDER:
+      IconComponent = IconFlatFolder;
+
+      break;
+    case Icons.FLAT_DOC:
+      IconComponent = IconFlatDoc;
 
       break;
 

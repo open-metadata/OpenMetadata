@@ -30,14 +30,10 @@ import static org.openmetadata.service.util.LambdaExceptionUtil.rethrowFunction;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.google.common.collect.Streams;
 import java.io.IOException;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.Date;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -46,11 +42,11 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.codec.binary.Hex;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.commons.lang3.tuple.Triple;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.common.utils.CommonUtil;
+import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.data.CreateTableProfile;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Table;
@@ -64,7 +60,6 @@ import org.openmetadata.schema.type.DataModel;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.JoinedWith;
 import org.openmetadata.schema.type.Relationship;
-import org.openmetadata.schema.type.SQLQuery;
 import org.openmetadata.schema.type.SystemProfile;
 import org.openmetadata.schema.type.TableConstraint;
 import org.openmetadata.schema.type.TableData;
@@ -471,112 +466,6 @@ public class TableRepository extends EntityRepository<Table> {
   }
 
   @Transaction
-  public Table addQuery(UUID tableId, SQLQuery query) throws IOException {
-    // Validate the request content
-    try {
-      byte[] checksum = MessageDigest.getInstance("MD5").digest(query.getQuery().getBytes());
-      query.setChecksum(Hex.encodeHexString(checksum));
-    } catch (NoSuchAlgorithmException e) {
-      throw new RuntimeException(e);
-    }
-    Table table = dao.findEntityById(tableId);
-    List<SQLQuery> storedQueries = getQueries(table);
-    Map<String, SQLQuery> storedMapQueries = new HashMap<>();
-    if (storedQueries != null) {
-      for (SQLQuery q : storedQueries) {
-        storedMapQueries.put(q.getChecksum(), q);
-      }
-    }
-    SQLQuery oldQuery = storedMapQueries.get(query.getChecksum());
-    if (oldQuery != null && query.getUsers() != null) {
-      // Merge old and new users
-      List<EntityReference> userList = query.getUsers();
-      if (oldQuery.getUsers() != null) {
-        userList.addAll(oldQuery.getUsers());
-      }
-      HashSet<EntityReference> userSet = new HashSet<>(userList);
-      query.setUsers(new ArrayList<>(userSet));
-    }
-    storedMapQueries.put(query.getChecksum(), query);
-    List<SQLQuery> updatedQueries = new ArrayList<>(storedMapQueries.values());
-    daoCollection
-        .entityExtensionDAO()
-        .insert(tableId.toString(), "table.tableQueries", "sqlQuery", JsonUtils.pojoToJson(updatedQueries));
-    setFieldsInternal(table, Fields.EMPTY_FIELDS);
-    return table.withTableQueries(getQueries(table));
-  }
-
-  @Transaction
-  public Table getQueries(UUID tableId) throws IOException {
-    // Validate the request content
-    Table table = setFieldsInternal(dao.findEntityById(tableId), Fields.EMPTY_FIELDS);
-    return table.withTableQueries(getQueries(table));
-  }
-
-  public ResultList<SQLQuery> getQueriesForPagination(UUID id, int limit, String before, String after) {
-    RestUtil.validateCursors(before, after);
-    int total = daoCollection.entityExtensionDAO().getTotalQueriesCount(id.toString());
-    List<SQLQuery> tableQueries;
-    if (before != null) {
-      tableQueries =
-          daoCollection
-              .entityExtensionDAO()
-              .listBeforeTableQueries(id.toString(), "table.tableQueries", limit + 1, RestUtil.decodeCursor(before));
-    } else {
-      tableQueries =
-          daoCollection
-              .entityExtensionDAO()
-              .getExtensionPagination(
-                  id.toString(), "table.tableQueries", limit + 1, after == null ? "" : RestUtil.decodeCursor(after));
-    }
-    ResultList<SQLQuery> tablQueriesList;
-    if (before != null) {
-      tablQueriesList = getBeforeListForTableQueries(tableQueries, limit, total);
-    } else {
-      tablQueriesList = getAfterListForTableQueries(after, tableQueries, limit, total);
-    }
-    return tablQueriesList;
-  }
-
-  private ResultList<SQLQuery> getBeforeListForTableQueries(List<SQLQuery> tableQueries, int limit, int total) {
-    String beforeCursor = null;
-    String afterCursor;
-    if (tableQueries.size() > limit) { // If extra result exists, then previous page exists - return before cursor
-      tableQueries.remove(0);
-      beforeCursor = tableQueries.get(0).getQuery();
-    }
-    afterCursor = tableQueries.get(tableQueries.size() - 1).getQuery();
-    return getQueryResultList(tableQueries, beforeCursor, afterCursor, total);
-  }
-
-  private ResultList<SQLQuery> getAfterListForTableQueries(
-      String after, List<SQLQuery> tableQueries, int limit, int total) {
-    String beforeCursor;
-    String afterCursor = null;
-    beforeCursor = after == null ? null : tableQueries.get(0).getQuery();
-    if (tableQueries.size() > limit) { // If extra result exists, then next page exists - return after cursor
-      tableQueries.remove(limit);
-      afterCursor = tableQueries.get(limit - 1).getQuery();
-    }
-    return getQueryResultList(tableQueries, beforeCursor, afterCursor, total);
-  }
-
-  private ResultList<SQLQuery> getQueryResultList(List<SQLQuery> queries, String before, String after, int total) {
-    return new ResultList<>(queries, before, after, total);
-  }
-
-  private List<SQLQuery> getQueries(Table table) throws IOException {
-    List<SQLQuery> tableQueries =
-        JsonUtils.readObjects(
-            daoCollection.entityExtensionDAO().getExtension(table.getId().toString(), "table.tableQueries"),
-            SQLQuery.class);
-    if (tableQueries != null) {
-      tableQueries.sort(Comparator.comparing(SQLQuery::getVote, Comparator.reverseOrder()));
-    }
-    return tableQueries;
-  }
-
-  @Transaction
   public Table addCustomMetric(UUID tableId, CustomMetric customMetric) throws IOException {
     // Validate the request content
     Table table = dao.findEntityById(tableId);
@@ -735,13 +624,9 @@ public class TableRepository extends EntityRepository<Table> {
 
   @Override
   public void storeEntity(Table table, boolean update) throws IOException {
-    // Relationships and fields such as href are derived and not stored as part of json
-    EntityReference owner = table.getOwner();
-    List<TagLabel> tags = table.getTags();
+    // Relationships and fields such as service are derived and not stored as part of json
     EntityReference service = table.getService();
-
-    // Don't store owner, database, href and tags as JSON. Build it on the fly based on relationships
-    table.withOwner(null).withHref(null).withTags(null).withService(null);
+    table.withService(null);
 
     // Don't store column tags as JSON but build it on the fly based on relationships
     List<Column> columnWithTags = table.getColumns();
@@ -751,7 +636,7 @@ public class TableRepository extends EntityRepository<Table> {
     store(table, update);
 
     // Restore the relationships
-    table.withOwner(owner).withTags(tags).withColumns(columnWithTags).withService(service);
+    table.withColumns(columnWithTags).withService(service);
   }
 
   @Override
@@ -786,6 +671,21 @@ public class TableRepository extends EntityRepository<Table> {
     // Add table level tags by adding tag to table relationship
     super.applyTags(table);
     applyTags(table.getColumns());
+  }
+
+  @Override
+  public List<TagLabel> getAllTags(EntityInterface entity) {
+    List<TagLabel> allTags = new ArrayList<>();
+    Table table = (Table) entity;
+    EntityUtil.mergeTags(allTags, table.getTags());
+    table.getColumns().forEach(column -> EntityUtil.mergeTags(allTags, column.getTags()));
+    if (table.getDataModel() != null) {
+      EntityUtil.mergeTags(allTags, table.getDataModel().getTags());
+      for (Column column : listOrEmpty(table.getDataModel().getColumns())) {
+        EntityUtil.mergeTags(allTags, column.getTags());
+      }
+    }
+    return allTags;
   }
 
   private void getColumnTags(boolean setTags, List<Column> columns) {
