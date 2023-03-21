@@ -236,7 +236,7 @@ const TableQueryRightPanel = ({
         <Description
           className="p-x-md"
           description={query?.description || ''}
-          entityName={query?.displayName ?? query?.name}
+          header={t('label.edit-entity', { entity: t('label.description') })}
           isEdit={isEditDescription}
           onCancel={() => setIsEditDescription(false)}
           onDescriptionUpdate={onDescriptionUpdate}
