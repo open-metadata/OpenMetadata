@@ -303,16 +303,16 @@ const EditIngestionPage = () => {
               </div>
             </Space>
             <div className="m-t-xlg p-x-lg w-800" data-testid="right-panel">
-              {getServiceIngestionStepGuide({
-                step: activeIngestionStep,
-                isIngestion: true,
-                ingestionName: `${serviceData?.name || ''}_${ingestionType}`,
-                serviceName: '',
-                ingestionType: ingestionType as PipelineType,
-                showDeployTitle: isDeployed(),
-                isUpdated: true,
-                isAirflowSetup: isAirflowAvailable,
-              })}
+              {getServiceIngestionStepGuide(
+                activeIngestionStep,
+                true,
+                ingestionData?.name || '',
+                '',
+                ingestionType as PipelineType,
+                isDeployed(),
+                true,
+                isAirflowAvailable
+              )}
             </div>
           </PageLayoutV1>
         </div>
