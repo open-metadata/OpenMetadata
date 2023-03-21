@@ -20,6 +20,7 @@ import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useParams } from 'react-router-dom';
 import { getEntityId, getEntityName } from 'utils/EntityUtils';
+import SVGIcons, { Icons } from 'utils/SvgUtils';
 import AppState from '../../../AppState';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { ROUTES } from '../../../constants/constants';
@@ -147,6 +148,23 @@ const TableDataCardV2: React.FC<TableDataCardPropsV2> = ({
     ) : null;
   }, [source]);
 
+  const serviceIcon = useMemo(() => {
+    const entityType = get(source, 'entityType');
+    if (entityType === EntityType.GLOSSARY_TERM) {
+      return <SVGIcons alt="icon" className="m-r-xs" icon={Icons.FOLDER} />;
+    } else if (entityType === EntityType.TAG) {
+      return <SVGIcons alt="icon" className="m-r-xs" icon={Icons.TAG} />;
+    } else {
+      return (
+        <img
+          alt="service-icon"
+          className="inline h-5 p-r-xs"
+          src={serviceTypeLogo(source.serviceType || '')}
+        />
+      );
+    }
+  }, [source]);
+
   return (
     <div
       className={classNames(
@@ -163,12 +181,7 @@ const TableDataCardV2: React.FC<TableDataCardPropsV2> = ({
       <div>
         {headerLabel}
         <div className="tw-flex tw-items-center">
-          <img
-            alt="service-icon"
-            className="inline h-5 p-r-xs"
-            src={serviceTypeLogo(source.serviceType || '')}
-          />
-
+          {serviceIcon}
           <TableDataCardTitle
             handleLinkClick={handleLinkClick}
             id={id}
