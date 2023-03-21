@@ -279,10 +279,6 @@ const ExplorePage: FunctionComponent = () => {
     fetchFilterAggregationsWithoutFilters();
   }, [searchIndex]);
 
-  // useDeepCompareEffect(() => {
-  //   fetchFilterAggregationsWithFacetFilters();
-  // }, [elasticsearchQueryFilter, showDeleted]);
-
   useDeepCompareEffect(() => {
     const updatedQuickFilters = getAdvancedSearchQuickFilters();
 

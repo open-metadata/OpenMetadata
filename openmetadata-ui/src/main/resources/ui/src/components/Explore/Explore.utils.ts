@@ -45,8 +45,8 @@ export const getParseValueFromLocation = (
       acc[dataCategory.label] = [];
     }
     acc[dataCategory?.label].push({
-      key: value as string,
-      label: value as string,
+      key: value,
+      label: value,
     });
 
     return acc;
