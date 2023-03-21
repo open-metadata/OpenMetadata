@@ -15,6 +15,7 @@ package org.openmetadata.service.security.policyevaluator;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -45,18 +46,24 @@ import org.openmetadata.service.security.policyevaluator.SubjectContext.PolicyCo
 public class SubjectContextTest {
   private static List<Role> team1Roles;
   private static List<Policy> team1Policies;
-  private static Team team1;
 
   private static List<Role> team11Roles;
   private static List<Policy> team11Policies;
-  private static Team team11;
 
   private static List<Role> team12Roles;
   private static List<Policy> team12Policies;
 
+  private static List<Role> team13Roles;
+  private static List<Policy> team13Policies;
+  private static Team team13;
+
   private static List<Role> team111Roles;
   private static List<Policy> team111Policies;
   private static Team team111;
+
+  private static List<Role> team131Roles;
+  private static List<Policy> team131Policies;
+  private static Team team131;
 
   private static List<Role> userRoles;
   private static User user;
@@ -73,32 +80,40 @@ public class SubjectContextTest {
     SubjectCache.initialize();
 
     // Create team hierarchy:
-    // team1, has  team11, team12, team13 as children
-    // team11 has team111 as children
-    // team111 has user as children
-    // Each with 3 roles and 3 policies
-    team1Roles = getRoles("team1", 3);
-    team1Policies = getPolicies("team1", 3);
-    team1 = createTeam("team1", team1Roles, team1Policies, null);
+    //                           team1
+    //                      /      |      \
+    //                   team11  team12  team13
+    //                    /         /      \
+    //               team111       /       team131
+    //                    \      /
+    //                      user
+    // Each team has 3 roles and 3 policies
+    team1Roles = getRoles("team1");
+    team1Policies = getPolicies("team1");
+    Team team1 = createTeam("team1", team1Roles, team1Policies, null);
 
-    team11Roles = getRoles("team11", 3);
-    team11Policies = getPolicies("team11", 3);
-    team11 = createTeam("team11", team11Roles, team11Policies, List.of(team1));
+    team11Roles = getRoles("team11");
+    team11Policies = getPolicies("team11");
+    Team team11 = createTeam("team11", team11Roles, team11Policies, List.of(team1));
 
-    team12Roles = getRoles("team12", 3);
-    team12Policies = getPolicies("team12", 3);
+    team12Roles = getRoles("team12");
+    team12Policies = getPolicies("team12");
     Team team12 = createTeam("team12", team12Roles, team12Policies, List.of(team1));
 
-    List<Role> team13Roles = getRoles("team13", 3);
-    List<Policy> team13Policies = getPolicies("team13", 3);
-    createTeam("team13", team13Roles, team13Policies, List.of(team1));
+    team13Roles = getRoles("team13");
+    team13Policies = getPolicies("team13");
+    team13 = createTeam("team13", team13Roles, team13Policies, List.of(team1));
 
-    team111Roles = getRoles("team111", 3);
-    team111Policies = getPolicies("team111", 3);
+    team111Roles = getRoles("team111");
+    team111Policies = getPolicies("team111");
     team111 = createTeam("team111", team111Roles, team111Policies, List.of(team11, team12));
 
+    team131Roles = getRoles("team131");
+    team131Policies = getPolicies("team131");
+    team131 = createTeam("team131", team131Roles, team131Policies, List.of(team13));
+
     // Add user to team111
-    userRoles = getRoles("user", 3);
+    userRoles = getRoles("user");
     List<EntityReference> userRolesRef = toEntityReferences(userRoles);
     user = new User().withName("user").withRoles(userRolesRef).withTeams(List.of(team111.getEntityReference()));
     SubjectCache.USER_CACHE.put("user", new SubjectContext(user));
@@ -113,12 +128,36 @@ public class SubjectContextTest {
 
   @Test
   void testPolicyIterator() {
-    //
-    // Check iteration order of the policies
-    //
+    // Check iteration order of the policies without resourceOwner
     SubjectContext subjectContext = SubjectCache.getInstance().getSubjectContext(user.getName());
-    Iterator<PolicyContext> policyContextIterator = subjectContext.getPolicies();
-    assertUserPolicyIterator(policyContextIterator);
+    Iterator<PolicyContext> policyContextIterator = subjectContext.getPolicies(null);
+    List<String> expectedUserPolicyOrder = new ArrayList<>();
+    expectedUserPolicyOrder.addAll(getPolicyListFromRoles(userRoles)); // First polices associated with user roles
+    expectedUserPolicyOrder.addAll(getAllTeamPolicies(team111Roles, team111Policies)); // Next parent team111 policies
+    expectedUserPolicyOrder.addAll(
+        getAllTeamPolicies(team11Roles, team11Policies)); // Next team111 parent team11 policies
+    expectedUserPolicyOrder.addAll(getAllTeamPolicies(team1Roles, team1Policies)); // Next team11 parent team1 policies
+    expectedUserPolicyOrder.addAll(
+        getAllTeamPolicies(team12Roles, team12Policies)); // Next team111 parent team12 policies
+    assertPolicyIterator(expectedUserPolicyOrder, policyContextIterator);
+
+    // Check iteration order of policies with team13 as the resource owner
+    subjectContext = SubjectCache.getInstance().getSubjectContext(user.getName());
+    policyContextIterator = subjectContext.getPolicies(team13.getEntityReference());
+    List<String> expectedUserAndTeam13PolicyOrder = new ArrayList<>();
+    expectedUserAndTeam13PolicyOrder.addAll(expectedUserPolicyOrder);
+    expectedUserAndTeam13PolicyOrder.addAll(getAllTeamPolicies(null, team13Policies));
+    assertPolicyIterator(expectedUserAndTeam13PolicyOrder, policyContextIterator);
+
+    // Check iteration order of policies with team131 as the resource owner
+    subjectContext = SubjectCache.getInstance().getSubjectContext(user.getName());
+    policyContextIterator = subjectContext.getPolicies(team131.getEntityReference());
+    // Roles & policies are inherited from resource owner team131
+    List<String> expectedUserAndTeam131PolicyOrder = new ArrayList<>();
+    expectedUserAndTeam131PolicyOrder.addAll(expectedUserPolicyOrder);
+    expectedUserAndTeam131PolicyOrder.addAll(getAllTeamPolicies(null, team131Policies));
+    expectedUserAndTeam131PolicyOrder.addAll(getAllTeamPolicies(null, team13Policies));
+    assertPolicyIterator(expectedUserAndTeam131PolicyOrder, policyContextIterator);
   }
 
   @Test
@@ -160,44 +199,12 @@ public class SubjectContextTest {
   }
 
   @Test
-  void testResourcePolicyIterator() {
-    // A resource with user as owner and make sure all policies from user's hierarchy is in the iterator
-    EntityReference userOwner = user.getEntityReference();
-    SubjectContext subjectContext = SubjectCache.getInstance().getSubjectContext(user.getName());
-    Iterator<PolicyContext> actualPolicyIterator = subjectContext.getResourcePolicies(userOwner);
-    assertUserPolicyIterator(actualPolicyIterator);
-
-    // A resource with team1 as owner and make sure all policies from user's hierarchy is in the iterator
-    EntityReference team1Owner = team1.getEntityReference();
-    actualPolicyIterator = subjectContext.getResourcePolicies(team1Owner);
-    // add policies from team1
-    List<String> expectedPolicyOrder = new ArrayList<>(getAllTeamPolicies(team1Roles, team1Policies));
-    assertPolicyIterator(expectedPolicyOrder, actualPolicyIterator);
-
-    // A resource with team11 as owner and make sure all policies from user's hierarchy is in the iterator
-    EntityReference team11Owner = team11.getEntityReference();
-    actualPolicyIterator = subjectContext.getResourcePolicies(team11Owner);
-    List<String> list = new ArrayList<>(getAllTeamPolicies(team11Roles, team11Policies)); // add policies from team11
-    list.addAll(expectedPolicyOrder); // Add all policies from parent team1 previously setup
-    expectedPolicyOrder = list;
-    assertPolicyIterator(expectedPolicyOrder, actualPolicyIterator);
-
-    // A resource with team11 as owner and make sure all policies from user's hierarchy is in the iterator
-    EntityReference team111Owner = team111.getEntityReference();
-    actualPolicyIterator = subjectContext.getResourcePolicies(team111Owner);
-    list = new ArrayList<>(getAllTeamPolicies(team111Roles, team111Policies)); // add policies from team111
-    list.addAll(expectedPolicyOrder); // Add all policies form team11 and team1 previously setup
-    list.addAll(getPolicyListFromRoles(team12Roles)); // add policies from team12 roles
-    list.addAll(getPolicyList(team12Policies)); // add team12 policies
-    assertPolicyIterator(list, actualPolicyIterator);
-  }
-
-  private static List<Role> getRoles(String prefix, int count) {
+  private static List<Role> getRoles(String prefix) {
     // Create roles with 3 policies each and each policy with 3 rules
-    List<Role> roles = new ArrayList<>(count);
-    for (int i = 1; i <= count; i++) {
+    List<Role> roles = new ArrayList<>(3);
+    for (int i = 1; i <= 3; i++) {
       String name = prefix + "_role_" + i;
-      List<EntityReference> policies = toEntityReferences(getPolicies(name, 3));
+      List<EntityReference> policies = toEntityReferences(getPolicies(name));
       Role role = new Role().withName(name).withId(UUID.randomUUID()).withPolicies(policies);
       RoleCache.ROLE_CACHE.put(role.getId(), role);
       roles.add(role);
@@ -205,21 +212,21 @@ public class SubjectContextTest {
     return roles;
   }
 
-  private static List<Policy> getPolicies(String prefix, int count) {
-    List<Policy> policies = new ArrayList<>(count);
-    for (int i = 1; i <= count; i++) {
+  private static List<Policy> getPolicies(String prefix) {
+    List<Policy> policies = new ArrayList<>(3);
+    for (int i = 1; i <= 3; i++) {
       String name = prefix + "_policy_" + i;
-      Policy policy = new Policy().withName(name).withId(UUID.randomUUID()).withRules(getRules(name, 3));
+      Policy policy = new Policy().withName(name).withId(UUID.randomUUID()).withRules(getRules(name));
       policies.add(policy);
       PolicyCache.POLICY_CACHE.put(policy.getId(), PolicyCache.getInstance().getRules(policy));
     }
     return policies;
   }
 
-  private static List<Rule> getRules(String prefix, int count) {
-    List<Rule> rules = new ArrayList<>(count);
-    for (int i = 1; i <= count; i++) {
-      rules.add(new Rule().withName(prefix + "rule" + count));
+  private static List<Rule> getRules(String prefix) {
+    List<Rule> rules = new ArrayList<>(3);
+    for (int i = 1; i <= 3; i++) {
+      rules.add(new Rule().withName(prefix + "rule" + 3));
     }
     return rules;
   }
@@ -234,14 +241,14 @@ public class SubjectContextTest {
 
   private static List<String> getAllTeamPolicies(List<Role> roles, List<Policy> policies) {
     List<String> list = new ArrayList<>();
-    list.addAll(getPolicyListFromRoles(roles));
-    list.addAll(getPolicyList(policies));
+    listOrEmpty(list).addAll(getPolicyListFromRoles(roles));
+    listOrEmpty(list).addAll(getPolicyList(policies));
     return list;
   }
 
   private static List<String> getPolicyListFromRoles(List<Role> roles) {
     List<String> list = new ArrayList<>();
-    roles.forEach(r -> list.addAll(getPolicyRefList(r.getPolicies())));
+    listOrEmpty(roles).forEach(r -> list.addAll(getPolicyRefList(r.getPolicies())));
     return list;
   }
 
@@ -268,19 +275,6 @@ public class SubjectContextTest {
             .withParents(parentList);
     SubjectCache.TEAM_CACHE.put(team.getId(), team);
     return team;
-  }
-
-  void assertUserPolicyIterator(Iterator<PolicyContext> actualPolicyIterator) {
-    //
-    // Check iteration order of the policies
-    //
-    List<String> expectedPolicyOrder = new ArrayList<>();
-    expectedPolicyOrder.addAll(getPolicyListFromRoles(userRoles)); // First polices associated with user roles
-    expectedPolicyOrder.addAll(getAllTeamPolicies(team111Roles, team111Policies)); // Next parent team111 policies
-    expectedPolicyOrder.addAll(getAllTeamPolicies(team11Roles, team11Policies)); // Next team111 parent team11 policies
-    expectedPolicyOrder.addAll(getAllTeamPolicies(team1Roles, team1Policies)); // Next team11 parent team1 policies
-    expectedPolicyOrder.addAll(getAllTeamPolicies(team12Roles, team12Policies)); // Next team111 parent team12 policies
-    assertPolicyIterator(expectedPolicyOrder, actualPolicyIterator);
   }
 
   void assertPolicyIterator(List<String> expectedPolicyOrder, Iterator<PolicyContext> actualPolicyIterator) {

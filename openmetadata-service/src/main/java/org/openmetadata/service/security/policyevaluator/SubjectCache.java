@@ -96,6 +96,14 @@ public class SubjectCache {
     }
   }
 
+  public User getUser(String userName) throws EntityNotFoundException {
+    try {
+      return USER_CACHE.get(userName).getUser();
+    } catch (ExecutionException | UncheckedExecutionException ex) {
+      return null;
+    }
+  }
+
   public Team getTeam(UUID teamId) throws EntityNotFoundException {
     try {
       return TEAM_CACHE.get(teamId);
@@ -105,17 +113,39 @@ public class SubjectCache {
   }
 
   /** Return true if given list of teams is part of the hierarchy of parentTeam */
-  public boolean isInTeam(String parentTeam, List<EntityReference> teams) {
+  public boolean isInTeam(String parentTeam, EntityReference team) {
     Stack<EntityReference> stack = new Stack<>();
-    listOrEmpty(teams).forEach(stack::push);
+    stack.push(team); // Start with team and see if the parent matches
     while (!stack.empty()) {
       Team parent = getTeam(stack.pop().getId());
       if (parent.getName().equals(parentTeam)) {
         return true;
       }
-      listOrEmpty(parent.getParents()).forEach(stack::push);
+      listOrEmpty(parent.getParents()).forEach(stack::push); // Continue to go up the chain of parents
     }
     return false;
+  }
+
+  /** Return true if the given user has any roles the list of roles */
+  public boolean hasRole(User user, String role) {
+    Stack<EntityReference> stack = new Stack<>();
+    // If user has one of the roles directly assigned then return true
+    if (hasRole(user.getRoles(), role)) {
+      return true;
+    }
+    listOrEmpty(user.getTeams()).forEach(stack::push); // Continue to go up the chain of parents
+    while (!stack.empty()) {
+      Team parent = getTeam(stack.pop().getId());
+      if (hasRole(parent.getDefaultRoles(), role)) {
+        return true;
+      }
+      listOrEmpty(parent.getParents()).forEach(stack::push); // Continue to go up the chain of parents
+    }
+    return false;
+  }
+
+  private static boolean hasRole(List<EntityReference> userRoles, String expectedRole) {
+    return listOrEmpty(userRoles).stream().anyMatch(userRole -> userRole.getName().equals(expectedRole));
   }
 
   public static void cleanUp() {

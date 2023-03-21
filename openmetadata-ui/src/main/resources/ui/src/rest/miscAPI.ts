@@ -302,3 +302,24 @@ export const getAllEntityCount = async () => {
 
   return response.data;
 };
+
+export const fetchMarkdownFile = async (filePath: string) => {
+  let baseURL = '/';
+
+  try {
+    const url = new URL(filePath);
+    baseURL = `${url.origin}/`;
+  } catch (error) {
+    baseURL = '/';
+  }
+
+  const response = await APIClient.get<string>(filePath, {
+    baseURL,
+    headers: {
+      'Content-Type': 'text/markdown',
+      Accept: 'text/markdown',
+    },
+  });
+
+  return response.data;
+};
