@@ -27,9 +27,6 @@ logger = ingestion_logger()
 class OpenmetadataSource(MetadataSource):
     """Metadata source Class"""
 
-    config: WorkflowSource
-    report: SourceStatus
-
     @classmethod
     def create(cls, config_dict, metadata_config: OpenMetadataConnection):
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)

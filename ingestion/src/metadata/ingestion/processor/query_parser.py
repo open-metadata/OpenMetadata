@@ -80,7 +80,6 @@ class QueryParserProcessor(Processor):
     """
 
     config: ConfigModel
-    status: ProcessorStatus
 
     def __init__(
         self,
@@ -88,10 +87,9 @@ class QueryParserProcessor(Processor):
         metadata_config: OpenMetadataConnection,
         connection_type: str,
     ):
-
+        super().__init__()
         self.config = config
         self.metadata_config = metadata_config
-        self.status = ProcessorStatus()
         self.connection_type = connection_type
 
     @classmethod
@@ -124,6 +122,3 @@ class QueryParserProcessor(Processor):
 
     def close(self):
         pass
-
-    def get_status(self) -> ProcessorStatus:
-        return self.status

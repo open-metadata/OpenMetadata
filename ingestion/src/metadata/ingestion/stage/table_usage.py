@@ -48,17 +48,16 @@ class TableUsageStage(Stage[QueryParserData]):
     """
 
     config: TableStageConfig
-    status: StageStatus
 
     def __init__(
         self,
         config: TableStageConfig,
         metadata_config: OpenMetadataConnection,
     ):
+        super().__init__()
         self.config = config
         self.metadata_config = metadata_config
         self.metadata = OpenMetadata(self.metadata_config)
-        self.status = StageStatus()
         self.table_usage = {}
         self.table_queries = {}
         isdir = os.path.isdir(self.config.filename)
@@ -153,9 +152,6 @@ class TableUsageStage(Stage[QueryParserData]):
                 self.table_usage[(table, parsed_data.date)] = table_usage_count
                 logger.info(f"Successfully record staged for {table}")
         self.dump_data_to_file()
-
-    def get_status(self):
-        return self.status
 
     def dump_data_to_file(self):
         for key, value in self.table_usage.items():

@@ -37,6 +37,12 @@ class BulkSinkStatus(Status):
 
 @dataclass  # type: ignore[misc]
 class BulkSink(Closeable, metaclass=ABCMeta):
+
+    status: BulkSinkStatus
+
+    def __init__(self):
+        self.status = BulkSinkStatus()
+
     @classmethod
     @abstractmethod
     def create(cls, config_dict: dict, metadata_config: dict) -> "BulkSink":
@@ -46,9 +52,8 @@ class BulkSink(Closeable, metaclass=ABCMeta):
     def write_records(self) -> None:
         pass
 
-    @abstractmethod
     def get_status(self) -> BulkSinkStatus:
-        pass
+        return self.status
 
     @abstractmethod
     def close(self) -> None:

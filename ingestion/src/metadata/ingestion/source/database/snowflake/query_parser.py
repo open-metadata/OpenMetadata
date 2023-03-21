@@ -43,12 +43,6 @@ class SnowflakeQueryParserSource(QueryParserSource, ABC):
     Snowflake base for Usage and Lineage
     """
 
-    def __init__(self, config: WorkflowSource, metadata_config: OpenMetadataConnection):
-        super().__init__(config, metadata_config)
-
-        duration = self.source_config.queryLogDuration
-        self.start, self.end = get_start_and_end(duration)
-
     @classmethod
     def create(cls, config_dict, metadata_config: OpenMetadataConnection):
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)

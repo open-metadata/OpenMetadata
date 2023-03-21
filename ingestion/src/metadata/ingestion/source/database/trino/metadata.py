@@ -11,9 +11,7 @@
 """
 Trino source implementation.
 """
-import logging
 import re
-import sys
 import traceback
 from copy import deepcopy
 from typing import Any, Dict, Iterable, List, Optional, Tuple
@@ -176,26 +174,6 @@ class TrinoSource(CommonDbSourceService):
     """
     Trino does not support querying by table type: Getting views is not supported.
     """
-
-    def __init__(self, config, metadata_config):
-        self.trino_connection: TrinoConnection = (
-            config.serviceConnection.__root__.config
-        )
-        try:
-            from trino import (  # pylint: disable=import-outside-toplevel,unused-import
-                dbapi,
-            )
-        except ModuleNotFoundError:
-            log_ansi_encoded_string(
-                color=ANSI.BRIGHT_RED,
-                bold=False,
-                message="Trino source dependencies are missing. Please run\n"
-                "$ pip install --upgrade 'openmetadata-ingestion[trino]'",
-            )
-            if logger.isEnabledFor(logging.DEBUG):
-                raise
-            sys.exit(1)
-        super().__init__(config, metadata_config)
 
     @classmethod
     def create(cls, config_dict, metadata_config: OpenMetadataConnection):
