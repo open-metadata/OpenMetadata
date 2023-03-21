@@ -32,16 +32,16 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     LogLevels,
     OpenMetadataWorkflowConfig,
     Processor,
-    Sink,
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.generated.schema.metadataIngestion.workflow import WorkflowConfig
-from metadata.generated.schema.type.basic import ComponentConfig
+from metadata.generated.schema.metadataIngestion.workflow import (
+    SourceConfig,
+    WorkflowConfig,
+)
 from metadata.ingestion.models.encoders import show_secrets_encoder
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.utils.constants import ES_SOURCE_TO_ES_OBJ_ARGS
 
 
 def data_insight_workflow(workflow_config: OpenMetadataWorkflowConfig):
@@ -95,7 +95,7 @@ def build_data_insight_workflow_config(
         source=WorkflowSource(
             type="dataInsight",
             serviceName=ingestion_pipeline.service.name,
-            sourceConfig=ingestion_pipeline.sourceConfig,
+            sourceConfig=SourceConfig(),  # Source Config not needed here. Configs are passed to ES Sink.
         ),
         sink=sink,
         processor=Processor(
