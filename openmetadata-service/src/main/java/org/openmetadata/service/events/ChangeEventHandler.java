@@ -38,7 +38,7 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EventType;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
-import org.openmetadata.service.alerts.AlertUtil;
+import org.openmetadata.service.events.subscription.AlertUtil;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.FeedRepository;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
