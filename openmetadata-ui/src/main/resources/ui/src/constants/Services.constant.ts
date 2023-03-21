@@ -255,7 +255,7 @@ export const COMMON_UI_SCHEMA = {
   },
 };
 
-export const OPENMETADATA = 'OpenMetadata';
+export const OPEN_METADATA = 'OpenMetadata';
 export const JWT_CONFIG = 'openMetadataJWTClientConfig';
 
 export const SERVICE_CATEGORY_OPTIONS = map(ServiceCategory, (value) => ({

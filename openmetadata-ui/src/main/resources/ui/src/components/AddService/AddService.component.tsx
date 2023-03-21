@@ -21,7 +21,7 @@ import { useAirflowStatus } from 'hooks/useAirflowStatus';
 import { t } from 'i18next';
 import { capitalize, cloneDeep, isUndefined } from 'lodash';
 import { LoadingState } from 'Models';
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useHistory } from 'react-router-dom';
 import { getServiceDetailsPath } from '../../constants/constants';
 import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
@@ -43,7 +43,7 @@ import TitleBreadcrumb from '../common/title-breadcrumb/title-breadcrumb.compone
 import IngestionStepper from '../IngestionStepper/IngestionStepper.component';
 import ConnectionConfigForm from '../ServiceConfig/ConnectionConfigForm';
 import { AddServiceProps } from './AddService.interface';
-import RightPanel from './RightPanel/RightPanel';
+import ServiceRightPanel from './RightPanel/RightPanel';
 import ConfigureService from './Steps/ConfigureService';
 import SelectServiceType from './Steps/SelectServiceType';
 import ServiceRequirements from './Steps/ServiceRequirements';
@@ -64,7 +64,7 @@ const AddService = ({
   handleAddIngestion,
 }: AddServiceProps) => {
   const history = useHistory();
-  const { fetchAirflowStatus, isAirflowAvailable } = useAirflowStatus();
+  const { fetchAirflowStatus } = useAirflowStatus();
 
   const [showErrorMessage, setShowErrorMessage] = useState(
     SERVICE_DEFAULT_ERROR_MAP
@@ -201,7 +201,10 @@ const AddService = ({
   const handleFieldFocus = (fieldName: string) => setActiveField(fieldName);
 
   // Flag to check if pipeline is deployed or not
-  const isDeployed = activeIngestionStep >= 3 && !showDeployButton;
+  const isDeployed = useMemo(
+    () => activeIngestionStep >= 3 && !showDeployButton,
+    [activeIngestionStep, showDeployButton]
+  );
 
   // rendering
 
@@ -289,11 +292,10 @@ const AddService = ({
       header={<TitleBreadcrumb titleLinks={slashedBreadcrumb} />}
       pageTitle={t('label.add-entity', { entity: t('label.service') })}
       rightPanel={
-        <RightPanel
+        <ServiceRightPanel
           activeField={activeField}
           activeStep={addIngestion ? activeIngestionStep : activeServiceStep}
           ingestionName={`${serviceName}_${PipelineType.Metadata}`}
-          isAirflowRunning={isAirflowAvailable}
           isIngestion={addIngestion}
           isUpdating={false}
           pipelineType={PipelineType.Metadata}

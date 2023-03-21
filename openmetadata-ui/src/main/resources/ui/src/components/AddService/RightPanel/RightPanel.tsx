@@ -23,6 +23,7 @@ import {
 } from 'constants/service-guide.constant';
 import { ServiceCategory } from 'enums/service.enum';
 import { PipelineType } from 'generated/entity/services/ingestionPipelines/ingestionPipeline';
+import { useAirflowStatus } from 'hooks/useAirflowStatus';
 import { startCase } from 'lodash';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -39,14 +40,13 @@ export type ExcludedPipelineType = Exclude<
 interface RightPanelProps {
   activeStep: number;
   isIngestion: boolean;
-  ingestionName: string;
   serviceName: string;
-  pipelineType: ExcludedPipelineType;
   isUpdating: boolean;
-  isAirflowRunning: boolean;
   selectedService: string;
   selectedServiceCategory: ServiceCategory;
-  showDeployedTitle: boolean;
+  showDeployedTitle?: boolean;
+  pipelineType?: ExcludedPipelineType;
+  ingestionName?: string;
   activeField?: string;
 }
 
@@ -62,34 +62,34 @@ const RightPanel: FC<RightPanelProps> = ({
   isIngestion,
   pipelineType,
   activeStep,
-  isAirflowRunning,
-  showDeployedTitle,
   isUpdating,
   ingestionName,
   serviceName,
   activeField,
   selectedServiceCategory,
   selectedService,
+  showDeployedTitle = false,
 }) => {
+  const { isAirflowAvailable } = useAirflowStatus();
   const { t, i18n } = useTranslation();
   const [activeFieldDocument, setActiveFieldDocument] = useState<string>('');
 
   const activeStepGuide = useMemo(() => {
     let guideTemp;
 
-    if (isIngestion) {
+    if (isIngestion && pipelineType) {
       guideTemp = ingestionGuideMap[pipelineType]?.find(
         (item) => item.step === activeStep
       );
     } else {
       guideTemp =
-        !isAirflowRunning && activeStep === 4
+        !isAirflowAvailable && activeStep === 4
           ? addServiceGuideWOAirflow
           : addServiceGuide.find((item) => item.step === activeStep);
     }
 
     return guideTemp;
-  }, [isIngestion, pipelineType, activeField, isAirflowRunning]);
+  }, [isIngestion, pipelineType, isAirflowAvailable, activeStep]);
 
   const activeFieldName = useMemo(() => {
     /**
@@ -117,7 +117,7 @@ const RightPanel: FC<RightPanelProps> = ({
       ? `<${t('label.ingestion-pipeline-name')}>`
       : `<${t('label.service-name')}>`;
 
-    const replacement = isIngestion ? ingestionName : serviceName;
+    const replacement = isIngestion ? ingestionName || '' : serviceName;
 
     return getFormattedGuideText(description, replaceText, replacement);
   };
