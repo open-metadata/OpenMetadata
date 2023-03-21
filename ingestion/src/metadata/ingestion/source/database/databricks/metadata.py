@@ -133,7 +133,7 @@ def get_columns(self, connection, table_name, schema=None, **kw):
             "nullable": True,
             "default": None,
             "comment": _comment,
-            "raw_data_type": raw_col_type,
+            "system_data_type": raw_col_type,
         }
         if col_type in {"array", "struct", "map"}:
             if db_name and schema:
@@ -151,7 +151,7 @@ def get_columns(self, connection, table_name, schema=None, **kw):
                     ).fetchall()
                 )
 
-            col_info["raw_data_type"] = rows["data_type"]
+            col_info["system_data_type"] = rows["data_type"]
             col_info["is_complex"] = True
         result.append(col_info)
     return result

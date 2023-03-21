@@ -213,7 +213,7 @@ def get_columns(self, connection, table_name, schema=None, **kw):
             "default": default,
             "autoincrement": "auto",
             "comment": row.comments,
-            "raw_data_type": raw_coltype,
+            "system_data_type": raw_coltype,
         }
         if row.column_name.lower() == row.column_name:
             cdict["quote"] = True

@@ -583,7 +583,7 @@ class DatalakeSource(DatabaseServiceSource):  # pylint: disable=too-many-public-
 
                     parsed_string = {
                         "dataTypeDisplay": data_type,
-                        "raw_data_type": data_type,
+                        "system_data_type": data_type,
                         "dataType": data_type,
                         "name": column[:64],
                     }

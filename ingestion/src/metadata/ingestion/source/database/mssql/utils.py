@@ -191,7 +191,7 @@ def get_columns(
         cdict = {
             "name": name,
             "type": coltype,
-            "raw_data_type": raw_data_type,
+            "system_data_type": raw_data_type,
             "nullable": nullable,
             "default": default,
             "autoincrement": is_identity is not None,

@@ -81,11 +81,13 @@ class SqlColumnHandlerMixin:
         data_type_display = None
         arr_data_type = None
         parsed_string = None
-        if column.get("raw_data_type") and column.get("is_complex"):
-            column["raw_data_type"] = self.clean_raw_data_type(column["raw_data_type"])
-            if not column["raw_data_type"].startswith(schema):
+        if column.get("system_data_type") and column.get("is_complex"):
+            column["system_data_type"] = self.clean_raw_data_type(
+                column["system_data_type"]
+            )
+            if not column["system_data_type"].startswith(schema):
                 parsed_string = ColumnTypeParser._parse_datatype_string(  # pylint: disable=protected-access
-                    column["raw_data_type"]
+                    column["system_data_type"]
                 )
                 parsed_string["name"] = column["name"]
         else:
@@ -173,7 +175,7 @@ class SqlColumnHandlerMixin:
             parsed_string["dataType"], column["type"]
         )
         parsed_string["description"] = column.get("comment")
-        if column["raw_data_type"] == "array":
+        if column["system_data_type"] == "array":
             array_data_type_display = (
                 repr(column["type"])
                 .replace("(", "<")
@@ -273,7 +275,9 @@ class SqlColumnHandlerMixin:
                         if column["name"] else " ",
                         description=column.get("comment"),
                         dataType=col_type,
-                        dataTypeDisplay=column.get("raw_data_type", data_type_display),
+                        dataTypeDisplay=column.get(
+                            "system_data_type", data_type_display
+                        ),
                         dataLength=col_data_length,
                         constraint=col_constraint,
                         children=children,

@@ -164,7 +164,7 @@ def get_schema_columns(self, connection, schema, **kw):
                 "nullable": is_nullable == "YES",
                 "default": column_default,
                 "autoincrement": is_identity == "YES",
-                "raw_data_type": get_display_datatype(
+                "system_data_type": get_display_datatype(
                     coltype,
                     char_len=character_maximum_length,
                     precision=numeric_precision,

@@ -214,7 +214,7 @@ def _get_column_info(
         "nullable": format_type.startswith("Nullable("),
         "default": col_default,
         "comment": comment or None,
-        "raw_data_type": raw_type,
+        "system_data_type": raw_type,
     }
 
     if col_type in [Map, Array, Tuple, Enum]:

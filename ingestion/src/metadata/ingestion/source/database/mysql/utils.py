@@ -147,7 +147,7 @@ def parse_column(self, line, state):
         "type": type_instance,
         "default": default,
         "comment": comment,
-        "raw_data_type": raw_type,
+        "system_data_type": raw_type,
     }
     col_d.update(col_kw)
     state.columns.append(col_d)

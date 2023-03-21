@@ -111,7 +111,7 @@ def get_columns(self, connection, table_name, schema=None, **kw):
         )
         column_info["distkey"] = col.distkey
         column_info["sortkey"] = col.sortkey
-        column_info["raw_data_type"] = col.format_type
+        column_info["system_data_type"] = col.format_type
         columns.append(column_info)
     return columns
 

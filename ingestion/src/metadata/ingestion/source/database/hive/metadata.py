@@ -89,7 +89,7 @@ def get_columns(
                 "comment": comment,
                 "nullable": True,
                 "default": None,
-                "raw_data_type": col_raw_type,
+                "system_data_type": col_raw_type,
                 "is_complex": col_type in complex_data_types,
             }
         )

@@ -194,7 +194,7 @@ def get_columns(  # pylint: disable=too-many-locals
             generated,
             identity,
         )
-        column_info["raw_data_type"] = format_type
+        column_info["system_data_type"] = format_type
         columns.append(column_info)
     return columns
 

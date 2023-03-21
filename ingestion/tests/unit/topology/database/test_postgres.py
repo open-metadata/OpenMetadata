@@ -99,7 +99,7 @@ MOCK_COLUMN_VALUE = [
         "nullable": True,
         "default": None,
         "autoincrement": False,
-        "raw_data_type": "varchar(50)",
+        "system_data_type": "varchar(50)",
         "comment": None,
     },
     {
@@ -108,7 +108,7 @@ MOCK_COLUMN_VALUE = [
         "nullable": True,
         "default": None,
         "autoincrement": False,
-        "raw_data_type": "geometry",
+        "system_data_type": "geometry",
         "comment": None,
     },
     {
@@ -117,7 +117,7 @@ MOCK_COLUMN_VALUE = [
         "nullable": True,
         "default": None,
         "autoincrement": False,
-        "raw_data_type": "point",
+        "system_data_type": "point",
         "comment": None,
     },
     {
@@ -127,7 +127,7 @@ MOCK_COLUMN_VALUE = [
         "default": None,
         "autoincrement": False,
         "comment": None,
-        "raw_data_type": "polygon",
+        "system_data_type": "polygon",
     },
 ]
 

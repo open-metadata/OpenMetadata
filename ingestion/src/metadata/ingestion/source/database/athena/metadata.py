@@ -121,7 +121,7 @@ def get_columns(self, connection, table_name, schema=None, **kw):
             "default": None,
             "autoincrement": False,
             "comment": c.comment,
-            "raw_data_type": c.type,
+            "system_data_type": c.type,
             "is_complex": is_complex_type(c.type),
             "dialect_options": {"awsathena_partition": None},
         }
@@ -135,7 +135,7 @@ def get_columns(self, connection, table_name, schema=None, **kw):
             "default": None,
             "autoincrement": False,
             "comment": c.comment,
-            "raw_data_type": c.type,
+            "system_data_type": c.type,
             "is_complex": is_complex_type(c.type),
             "dialect_options": {"awsathena_partition": True},
         }

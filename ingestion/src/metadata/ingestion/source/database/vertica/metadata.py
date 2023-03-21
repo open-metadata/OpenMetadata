@@ -205,7 +205,7 @@ def _get_column_info(  # pylint: disable=too-many-locals,too-many-branches,too-m
         "name": name,
         "type": coltype,
         "nullable": nullable,
-        "raw_data_type": format_type,
+        "system_data_type": format_type,
         "default": default,
         "autoincrement": autoincrement,
         "comment": comment,
