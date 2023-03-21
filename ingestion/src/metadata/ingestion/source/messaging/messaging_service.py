@@ -34,7 +34,10 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.ingestion.api.source import Source, SourceStatus
 from metadata.ingestion.api.topology_runner import TopologyRunnerMixin
-from metadata.ingestion.models.delete_entity import DeleteEntity
+from metadata.ingestion.models.delete_entity import (
+    DeleteEntity,
+    delete_entity_from_source,
+)
 from metadata.ingestion.models.topology import (
     NodeStage,
     ServiceTopology,
@@ -156,7 +159,7 @@ class MessagingServiceSource(TopologyRunnerMixin, Source, ABC):
 
     topology = MessagingServiceTopology()
     context = create_source_context(topology)
-    topics_source_state: Set = set()
+    topic_source_state: Set = set()
 
     def __init__(
         self,
@@ -207,27 +210,20 @@ class MessagingServiceSource(TopologyRunnerMixin, Source, ABC):
         test_connection_fn = get_test_connection_fn(self.service_connection)
         test_connection_fn(self.connection, self.service_connection)
 
-    def mark_topics_as_deleted(self):
+    def mark_topics_as_deleted(self) -> Iterable[DeleteEntity]:
         """
         Method to mark the topics as deleted
         """
         if self.source_config.markDeletedTopics:
-            topic_state = self.metadata.list_all_entities(
-                entity=Topic,
+            yield from delete_entity_from_source(
+                metadata=self.metadata,
+                entity_type=Topic,
+                entity_source_state=self.topic_source_state,
+                mark_deleted_entity=self.source_config.markDeletedTopics,
                 params={
                     "service": self.context.messaging_service.fullyQualifiedName.__root__
                 },
             )
-            logger.info(f"Mark Deleted Topcis set to True")
-            for topic in topic_state:
-                if (
-                    str(topic.fullyQualifiedName.__root__)
-                    not in self.topic_source_state
-                ):
-                    yield DeleteEntity(
-                        entity=topic,
-                        mark_deleted_entities=self.source_config.markDeletedTopics,
-                    )
 
     def register_record(self, topic_request: CreateTopicRequest) -> None:
         """

@@ -32,7 +32,10 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.ingestion.api.source import Source, SourceStatus
 from metadata.ingestion.api.topology_runner import TopologyRunnerMixin
-from metadata.ingestion.models.delete_entity import DeleteEntity
+from metadata.ingestion.models.delete_entity import (
+    DeleteEntity,
+    delete_entity_from_source,
+)
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
 from metadata.ingestion.models.topology import (
@@ -256,27 +259,20 @@ class PipelineServiceSource(TopologyRunnerMixin, Source, ABC):
         self.pipeline_source_state.add(pipeline_fqn)
         self.status.scanned(pipeline_fqn)
 
-    def mark_pipelines_as_deleted(self):
+    def mark_pipelines_as_deleted(self) -> Iterable[DeleteEntity]:
         """
         Method to mark the pipelines as deleted
         """
         if self.source_config.markDeletedPipelines:
-            pipeline_state = self.metadata.list_all_entities(
-                entity=Pipeline,
+            yield from delete_entity_from_source(
+                metadata=self.metadata,
+                entity_type=Pipeline,
+                entity_source_state=self.pipeline_source_state,
+                mark_deleted_entity=self.source_config.markDeletedPipelines,
                 params={
                     "service": self.context.pipeline_service.fullyQualifiedName.__root__
                 },
             )
-            logger.info(f"Mark Deleted Pipelines set to True")
-            for pipeline in pipeline_state:
-                if (
-                    str(pipeline.fullyQualifiedName.__root__)
-                    not in self.pipeline_source_state
-                ):
-                    yield DeleteEntity(
-                        entity=pipeline,
-                        mark_deleted_entities=self.source_config.markDeletedPipelines,
-                    )
 
     def prepare(self):
         """

@@ -36,7 +36,10 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.ingestion.api.source import Source, SourceStatus
 from metadata.ingestion.api.topology_runner import TopologyRunnerMixin
-from metadata.ingestion.models.delete_entity import DeleteEntity
+from metadata.ingestion.models.delete_entity import (
+    DeleteEntity,
+    delete_entity_from_source,
+)
 from metadata.ingestion.models.topology import (
     NodeStage,
     ServiceTopology,
@@ -209,27 +212,20 @@ class MlModelServiceSource(TopologyRunnerMixin, Source, ABC):
         test_connection_fn = get_test_connection_fn(self.service_connection)
         test_connection_fn(self.connection, self.service_connection)
 
-    def mark_mlmodels_as_deleted(self):
+    def mark_mlmodels_as_deleted(self) -> Iterable[DeleteEntity]:
         """
         Method to mark the mlmodels as deleted
         """
         if self.source_config.markDeletedMlModels:
-            mlmodel_state = self.metadata.list_all_entities(
-                entity=MlModel,
+            yield from delete_entity_from_source(
+                metadata=self.metadata,
+                entity_type=MlModel,
+                entity_source_state=self.mlmodel_source_state,
+                mark_deleted_entity=self.source_config.markDeletedMlModels,
                 params={
                     "service": self.context.mlmodel_service.fullyQualifiedName.__root__
                 },
             )
-            logger.info(f"Mark Deleted MlModels set to True")
-            for mlmodel in mlmodel_state:
-                if (
-                    str(mlmodel.fullyQualifiedName.__root__)
-                    not in self.mlmodel_source_state
-                ):
-                    yield DeleteEntity(
-                        entity=mlmodel,
-                        mark_deleted_entities=self.source_config.markDeletedMlModels,
-                    )
 
     def register_record(self, mlmodel_request: CreateMlModelRequest) -> None:
         """

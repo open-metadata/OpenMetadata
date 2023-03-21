@@ -42,7 +42,10 @@ from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.usageRequest import UsageRequest
 from metadata.ingestion.api.source import Source, SourceStatus
 from metadata.ingestion.api.topology_runner import TopologyRunnerMixin
-from metadata.ingestion.models.delete_entity import DeleteEntity
+from metadata.ingestion.models.delete_entity import (
+    DeleteEntity,
+    delete_entity_from_source,
+)
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.models.topology import (
     NodeStage,
@@ -278,27 +281,21 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
             entity=DashboardService, config=config
         )
 
-    def mark_dashboards_as_deleted(self):
+    def mark_dashboards_as_deleted(self) -> Iterable[DeleteEntity]:
         """
         Method to mark the dashboards as deleted
         """
         if self.source_config.markDeletedDashboards:
-            dashboard_state = self.metadata.list_all_entities(
-                entity=Dashboard,
+            logger.info("Mark Deleted Dashboards set to True")
+            yield from delete_entity_from_source(
+                metadata=self.metadata,
+                entity_type=Dashboard,
+                entity_source_state=self.dashboard_source_state,
+                mark_deleted_entity=self.source_config.markDeletedDashboards,
                 params={
                     "service": self.context.dashboard_service.fullyQualifiedName.__root__
                 },
             )
-            logger.info(f"Mark Deleted Dashboards set to True")
-            for dashboard in dashboard_state:
-                if (
-                    str(dashboard.fullyQualifiedName.__root__)
-                    not in self.dashboard_source_state
-                ):
-                    yield DeleteEntity(
-                        entity=dashboard,
-                        mark_deleted_entities=self.source_config.markDeletedDashboards,
-                    )
 
     def process_owner(self, dashboard_details):
         try:
