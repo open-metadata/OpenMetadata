@@ -77,6 +77,14 @@ pip3 install "openmetadata-ingestion[bigquery-usage]"
 </Table>
 
 
+<Tile
+icon="manage_accounts"
+title="Create Custom GCP Role"
+text="Checkout this documentation on how to create a custom role and assign it to the service account."
+link="/connectors/database/bigquery/roles"
+/>
+
+
 ## Metadata Ingestion
 
 All connectors are defined as JSON Schemas.

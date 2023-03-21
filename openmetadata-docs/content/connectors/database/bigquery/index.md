@@ -90,6 +90,14 @@ custom Airflow plugins to handle the workflow deployment.
 
 </Table>
 
+
+<Tile
+icon="manage_accounts"
+title="Create Custom GCP Role"
+text="Checkout this documentation on how to create a custom role and assign it to the service account."
+link="/connectors/database/bigquery/roles"
+/>
+
 ## Metadata Ingestion
 
 ### 1. Visit the Services Page
