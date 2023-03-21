@@ -10,24 +10,30 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-@import url('../variables.less');
+@import url('../../../styles/variables.less');
 
-.table-query-editor > .CodeMirror {
-  height: auto !important;
-}
-
-.CodeMirror-wrap pre.CodeMirror-line {
-  padding-right: 40px;
-}
-
-.custom-code-mirror-theme {
-  .CodeMirror {
-    background: #f4f7f9;
+.query-card-extra-option {
+  .button-size {
+    height: 26px;
   }
-  .CodeMirror-gutters {
-    background-color: @white;
+  .vote-button {
+    .button-size;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    line-height: 16px;
+    padding: 0 8px;
   }
-  .CodeMirror-linenumber {
-    color: @text-color;
+  .query-lines {
+    .button-size;
+    margin-right: 0;
+    border-radius: 12px;
+    color: @text-grey-muted;
+    border: @global-border;
+    background-color: #eeeeee;
+    display: flex;
+    align-items: center;
+    padding: 0 8px;
   }
 }

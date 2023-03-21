@@ -209,16 +209,14 @@ const QueryCard: FC<QueryCardProp> = ({
               <Popover
                 content={
                   <Space direction="vertical">
-                    {remainingTable.map((table, index) => (
-                      <Text key={table.name}>
-                        <Link
-                          to={getTableDetailsPath(
-                            table.fullyQualifiedName || ''
-                          )}>
-                          {getEntityName(table)}
-                        </Link>
-                        {remainingTable.length - 1 !== index && ','}
-                      </Text>
+                    {remainingTable.map((table) => (
+                      <Link
+                        key={table.name}
+                        to={getTableDetailsPath(
+                          table.fullyQualifiedName || ''
+                        )}>
+                        {getEntityName(table)}
+                      </Link>
                     ))}
                   </Space>
                 }

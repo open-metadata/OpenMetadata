@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Col, Row, Space, Typography } from 'antd';
+import { Col, Row } from 'antd';
 import { AxiosError } from 'axios';
 import NextPrevious from 'components/common/next-previous/NextPrevious';
 import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
@@ -248,22 +248,17 @@ const TableQueries: FC<TableQueriesProp> = ({
               data-testid="queries-container"
               gutter={[8, 16]}>
               <Col span={24}>
-                <Space size={16}>
-                  <Typography.Paragraph className="m-b-0">
-                    {`${t('label.filter')}:`}
-                  </Typography.Paragraph>
-                  <SearchDropdown
-                    label={t('label.owner')}
-                    options={userFilerOptions}
-                    searchKey="owner"
-                    selectedKeys={selectedFilter}
-                    onChange={onOwnerFilterChange}
-                    onGetInitialOptions={() =>
-                      setUserFilerOptions(initialUsersFilter)
-                    }
-                    onSearch={debounceOnSearch}
-                  />
-                </Space>
+                <SearchDropdown
+                  label={t('label.owner')}
+                  options={userFilerOptions}
+                  searchKey="owner"
+                  selectedKeys={selectedFilter}
+                  onChange={onOwnerFilterChange}
+                  onGetInitialOptions={() =>
+                    setUserFilerOptions(initialUsersFilter)
+                  }
+                  onSearch={debounceOnSearch}
+                />
               </Col>
 
               {tableQueries.data.map((query) => (

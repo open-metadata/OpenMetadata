@@ -25,6 +25,8 @@ import { ReactComponent as CopyIcon } from '/assets/svg/icon-copy.svg';
 import { ReactComponent as ThumbsUpFilled } from '/assets/svg/thumbs-up-filled.svg';
 import { ReactComponent as ThumbsUpOutline } from '/assets/svg/thumbs-up-outline.svg';
 
+import './query-card-extra-option.style.less';
+
 const QueryCardExtraOption = ({
   permission,
   query,
@@ -100,17 +102,21 @@ const QueryCardExtraOption = ({
   };
 
   return (
-    <Space size={8}>
-      <Tag className="m-r-0 rounded-12 text-grey-muted border" color="#EEEEEE">
+    <Space
+      className="query-card-extra-option"
+      data-testid="extra-option-container"
+      size={8}>
+      <Tag className="query-lines" data-testid="query-line">
         {queryLine}
       </Tag>
       <Button
-        className="flex items-center gap-2"
+        className="vote-button"
+        data-testid="up-vote-btn"
         icon={
           voteStatus === QueryVoteType.votedUp ? (
-            <ThumbsUpFilled color="#008376" height={16} width={16} />
+            <ThumbsUpFilled color="#008376" height={15} width={15} />
           ) : (
-            <ThumbsUpOutline height={16} width={16} />
+            <ThumbsUpOutline height={15} width={15} />
           )
         }
         size="small"
@@ -118,20 +124,21 @@ const QueryCardExtraOption = ({
         {query.votes?.upVotes || 0}
       </Button>
       <Button
-        className="flex items-center gap-2"
+        className="vote-button"
+        data-testid="down-vote-btn"
         icon={
           voteStatus === QueryVoteType.votedDown ? (
             <ThumbsUpFilled
               className="rotate-inverse"
               color="#E7B85D"
-              height={16}
-              width={16}
+              height={15}
+              width={15}
             />
           ) : (
             <ThumbsUpOutline
               className="rotate-inverse"
-              height={16}
-              width={16}
+              height={15}
+              width={15}
             />
           )
         }
@@ -142,11 +149,17 @@ const QueryCardExtraOption = ({
       <Dropdown
         destroyPopupOnHide
         arrow={{ pointAtCenter: true }}
-        menu={{ items: dropdownItems }}
-        placement="bottom"
+        menu={{
+          items: dropdownItems,
+          style: {
+            minWidth: '120px',
+          },
+        }}
+        placement="bottomRight"
         trigger={['click']}>
         <Button
-          className="flex-center"
+          className="flex-center button-size"
+          data-testid="more-option-btn"
           icon={<IconDropdown />}
           size="small"
           type="text"
