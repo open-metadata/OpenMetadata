@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Bucket } from 'interface/search.interface';
+import { Aggregations, Bucket } from 'interface/search.interface';
 import { isEmpty, isEqual, isUndefined, uniqWith } from 'lodash';
 import {
   QueryFieldInterface,
@@ -74,21 +74,45 @@ export const getCombinedQueryFilterObject = (
   };
 };
 
+export const getUpdatedAggregateFieldValue = (
+  withFilterAggregations: Aggregations,
+  withoutFilterAggregations: Aggregations,
+  filterKey: string
+): { buckets: Bucket[] } | undefined => {
+  const withoutFilterAggField = withoutFilterAggregations[filterKey];
+  const withFilterAggField = withFilterAggregations[filterKey];
+
+  if (!isEmpty(withoutFilterAggField) && !isEmpty(withFilterAggField)) {
+    return {
+      ...withoutFilterAggField,
+      // Fetching buckets with updated entities count for applied filters
+      buckets: getBucketsWithUpdatedCounts(
+        withoutFilterAggField.buckets,
+        withFilterAggField.buckets
+      ),
+    };
+  } else {
+    return undefined;
+  }
+};
+
 // Function to get buckets with updated counts for facet filters
-export const getBucketWithUpdatedCounts = (
+export const getBucketsWithUpdatedCounts = (
   currentBucket: Bucket[],
   withFilterBucket: Bucket[]
 ): Bucket[] =>
-  currentBucket.map((currentBucketItem) => {
-    const item = withFilterBucket.find(
-      (withFilterBucketItem) =>
-        withFilterBucketItem.key === currentBucketItem.key
-    );
-    // Take updated count for filter if present else show 0 count
-    const docCount = item ? item.doc_count : 0;
+  currentBucket
+    .map((currentBucketItem) => {
+      const item = withFilterBucket.find(
+        (withFilterBucketItem) =>
+          withFilterBucketItem.key === currentBucketItem.key
+      );
+      // Take updated count for filter if present else show 0 count
+      const docCount = item ? item.doc_count : 0;
 
-    return {
-      ...currentBucketItem,
-      doc_count: docCount,
-    };
-  });
+      return {
+        ...currentBucketItem,
+        doc_count: docCount,
+      };
+    })
+    .sort((a, b) => b.doc_count - a.doc_count); // Sorting buckets according to the entity counts

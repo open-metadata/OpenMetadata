@@ -30,15 +30,14 @@ import React, {
   useCallback,
   useEffect,
   useMemo,
-  useRef,
   useState,
 } from 'react';
 import { useHistory, useLocation, useParams } from 'react-router-dom';
 import { searchQuery } from 'rest/searchAPI';
 import useDeepCompareEffect from 'use-deep-compare-effect';
 import {
-  getBucketWithUpdatedCounts,
   getCombinedQueryFilterObject,
+  getUpdatedAggregateFieldValue,
 } from 'utils/ExplorePage/ExplorePageUtils';
 import AppState from '../../AppState';
 import { getExplorePath, PAGE_SIZE } from '../../constants/constants';
@@ -62,7 +61,6 @@ import {
 const ExplorePage: FunctionComponent = () => {
   const location = useLocation();
   const history = useHistory();
-  const isMounting = useRef(true);
 
   const { tab } = useParams<UrlParams>();
 
@@ -70,6 +68,9 @@ const ExplorePage: FunctionComponent = () => {
     useState<SearchResponse<ExploreSearchIndex>>();
 
   const [withoutFilterAggregations, setWithoutFilterAggregations] =
+    useState<Aggregations>();
+
+  const [withFilterAggregations, setWithFilterAggregations] =
     useState<Aggregations>();
 
   const [updatedAggregations, setUpdatedAggregations] =
@@ -255,76 +256,6 @@ const ExplorePage: FunctionComponent = () => {
     }
   };
 
-  // Separate function for fetching the aggregations with the applied facet filters
-  const fetchFilterAggregationsWithFacetFilters = useCallback(async () => {
-    try {
-      // When the function is running while the page is loading with applied facet filters in url,
-      // updatedAggregations are not present, hence added below logic to
-      // fetch aggregations without filters applied
-      let initialAggregations: Aggregations | undefined;
-      if (isMounting.current) {
-        initialAggregations = await fetchFilterAggregationsWithoutFilters();
-      }
-      const currentAggregations = initialAggregations ?? updatedAggregations;
-
-      // Fetching the aggregations with the applied facet filters here separately
-      // as relying on the calls from "useDeepCompareEffect" will not be correct because
-      // filters passed in those calls are combined filters which contain other applied filters
-      // than "facet filters"
-      const res = await searchQuery({
-        searchIndex,
-        pageNumber: 0,
-        pageSize: 0,
-        queryFilter: elasticsearchQueryFilter,
-        includeDeleted: showDeleted,
-      });
-
-      const withFilterAggregations = res.aggregations;
-
-      // Logic for updating the aggregations
-      if (!isEmpty(currentAggregations) && !isEmpty(withFilterAggregations)) {
-        const appliedFilterKeys = Object.keys(facetFilters ?? []);
-
-        const newAggregates: Aggregations = {};
-
-        if (isEmpty(appliedFilterKeys) && !showDeleted) {
-          setUpdatedAggregations(
-            withoutFilterAggregations ?? initialAggregations
-          );
-        } else {
-          if (
-            !isUndefined(currentAggregations) &&
-            !isUndefined(withFilterAggregations)
-          ) {
-            Object.keys(currentAggregations).forEach((filterKey) => {
-              if (appliedFilterKeys.includes(filterKey)) {
-                newAggregates[filterKey] = {
-                  ...currentAggregations[filterKey],
-                  // Fetching buckets with updated entities count for applied filters
-                  buckets: getBucketWithUpdatedCounts(
-                    currentAggregations[filterKey].buckets,
-                    withFilterAggregations[filterKey].buckets
-                  ),
-                };
-              } else {
-                newAggregates[filterKey] = withFilterAggregations[filterKey];
-              }
-            });
-          }
-          setUpdatedAggregations(newAggregates);
-        }
-      }
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    }
-  }, [
-    elasticsearchQueryFilter,
-    facetFilters,
-    withoutFilterAggregations,
-    updatedAggregations,
-    showDeleted,
-  ]);
-
   const getAdvancedSearchQuickFilters = useCallback(() => {
     if (!isString(parsedSearch.quickFilter)) {
       setAdvancedSearchQuickFilters(undefined);
@@ -345,14 +276,12 @@ const ExplorePage: FunctionComponent = () => {
   }, [parsedSearch]);
 
   useEffect(() => {
-    if (!isMounting.current) {
-      fetchFilterAggregationsWithoutFilters();
-    }
+    fetchFilterAggregationsWithoutFilters();
   }, [searchIndex]);
 
-  useDeepCompareEffect(() => {
-    fetchFilterAggregationsWithFacetFilters();
-  }, [elasticsearchQueryFilter, showDeleted]);
+  // useDeepCompareEffect(() => {
+  //   fetchFilterAggregationsWithFacetFilters();
+  // }, [elasticsearchQueryFilter, showDeleted]);
 
   useDeepCompareEffect(() => {
     const updatedQuickFilters = getAdvancedSearchQuickFilters();
@@ -378,6 +307,7 @@ const ExplorePage: FunctionComponent = () => {
         .then((res) => res)
         .then((res) => {
           setSearchResults(res);
+          setWithFilterAggregations(res.aggregations);
         }),
       Promise.all(
         [
@@ -424,7 +354,8 @@ const ExplorePage: FunctionComponent = () => {
       })
       .finally(() => setIsLoading(false));
   }, [
-    location.search,
+    parsedSearch.quickFilter,
+    queryFilter,
     searchQueryParam,
     sortValue,
     sortOrder,
@@ -447,10 +378,33 @@ const ExplorePage: FunctionComponent = () => {
     AppState.updateExplorePageTab(tab);
   }, [tab]);
 
-  // always Keep this useEffect at the end
   useEffect(() => {
-    isMounting.current = false;
-  }, []);
+    try {
+      const newAggregates: Aggregations = {};
+
+      if (
+        !isEmpty(withFilterAggregations) &&
+        !isEmpty(withoutFilterAggregations) &&
+        !isUndefined(withoutFilterAggregations) &&
+        !isUndefined(withFilterAggregations)
+      ) {
+        Object.keys(withoutFilterAggregations).forEach((filterKey) => {
+          const aggregateFieldValue = getUpdatedAggregateFieldValue(
+            withFilterAggregations,
+            withoutFilterAggregations,
+            filterKey
+          );
+
+          if (aggregateFieldValue) {
+            newAggregates[filterKey] = aggregateFieldValue;
+          }
+        });
+        setUpdatedAggregations(newAggregates);
+      }
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  }, [withoutFilterAggregations, withFilterAggregations]);
 
   return (
     <PageContainerV1>
