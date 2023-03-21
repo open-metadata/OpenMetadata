@@ -217,7 +217,7 @@ class MessagingServiceSource(TopologyRunnerMixin, Source, ABC):
         )
 
         self.topic_source_state.add(topic_fqn)
-        self.status.topic_scanned(topic_request.name.__root__)
+        self.status.scanned(topic_request.name.__root__)
 
     def close(self):
         pass

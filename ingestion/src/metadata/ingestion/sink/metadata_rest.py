@@ -33,7 +33,7 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 from metadata.generated.schema.entity.teams.role import Role
 from metadata.generated.schema.entity.teams.team import Team
 from metadata.ingestion.api.common import Entity
-from metadata.ingestion.api.sink import Sink, SinkStatus
+from metadata.ingestion.api.sink import Sink
 from metadata.ingestion.models.delete_entity import DeleteEntity
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.models.ometa_topic_data import OMetaTopicSampleData

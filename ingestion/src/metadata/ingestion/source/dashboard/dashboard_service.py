@@ -159,6 +159,7 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
 
     topology = DashboardServiceTopology()
     context = create_source_context(topology)
+    dashboard_source_state: Set = set()
 
     def __init__(
         self,

@@ -125,6 +125,7 @@ class PipelineServiceSource(TopologyRunnerMixin, Source, ABC):
 
     topology = PipelineServiceTopology()
     context = create_source_context(topology)
+    pipeline_source_state: Set = set()
 
     def __init__(
         self,
