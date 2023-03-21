@@ -57,7 +57,7 @@ Security requirements for your **production** environment:
 
 <Note>
 
-Note: You need to add the `openid`, `email` & `profile` scopes for your scope.
+Note: Scopes `openid`, `email` & `profile` are required to fetch the user details so you will have to add these scopes in your client.
 
 </Note>
 
