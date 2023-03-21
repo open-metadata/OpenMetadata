@@ -16,6 +16,7 @@ import { SearchIndex } from 'enums/search.enum';
 import { t } from 'i18next';
 import { isUndefined } from 'lodash';
 import Qs from 'qs';
+import { getPartialNameFromFQN } from 'utils/CommonUtils';
 import { getSettingPath } from '../utils/RouterUtils';
 import { getEncodedFqn } from '../utils/StringsUtils';
 import { FQN_SEPARATOR_CHAR } from './char.constants';
@@ -292,7 +293,8 @@ export const getTableDetailsPath = (tableFQN: string, columnName?: string) => {
 
 export const getTagsDetailsPath = (entityFQN: string, columnName?: string) => {
   let path = ROUTES.TAG_DETAILS;
-  path = path.replace(PLACEHOLDER_TAG_NAME, entityFQN);
+  const classification = getPartialNameFromFQN(entityFQN, ['service']);
+  path = path.replace(PLACEHOLDER_TAG_NAME, classification);
 
   return `${path}${columnName ? `.${columnName}` : ''}`;
 };
@@ -555,6 +557,8 @@ export const ENTITY_PATH: Record<string, string> = {
   pipelines: 'pipeline',
   mlmodels: 'mlmodel',
   containers: 'container',
+  tag: 'tag',
+  glossary: 'glossary',
 };
 
 export const VALIDATE_MESSAGES = {

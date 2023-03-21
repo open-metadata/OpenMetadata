@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { ContainerSearchSource } from 'interface/search.interface';
 import { BaseSelectRef } from 'rc-select';
 
 export interface GlobalSearchSuggestionsProp {
@@ -74,6 +75,7 @@ export interface Option {
     TopicSource &
     PipelineSource &
     MlModelSource &
+    ContainerSearchSource &
     GlossarySource &
     TagSource;
 }

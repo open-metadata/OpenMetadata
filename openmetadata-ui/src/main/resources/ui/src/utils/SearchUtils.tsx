@@ -105,7 +105,12 @@ export const getGroupLabel = (index: string, wrapInSelectOption = false) => {
       break;
     case SearchIndex.TAG:
       label = i18next.t('label.tag-plural');
-      icon = Icons.TABLE_GREY;
+      icon = Icons.TAG_GREY;
+
+      break;
+    case SearchIndex.CONTAINER:
+      label = i18next.t('label.container-plural');
+      icon = Icons.CONTAINER;
 
       break;
 

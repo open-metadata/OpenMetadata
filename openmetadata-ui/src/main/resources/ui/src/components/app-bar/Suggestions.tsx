@@ -12,6 +12,7 @@
  */
 
 import { AxiosError } from 'axios';
+import { ContainerSearchSource } from 'interface/search.interface';
 import React, { useEffect, useRef, useState } from 'react';
 import { getSuggestions } from 'rest/miscAPI';
 import { getGroupLabel, getSuggestionElement } from 'utils/SearchUtils';
@@ -55,6 +56,9 @@ const Suggestions = ({
   const [mlModelSuggestions, setMlModelSuggestions] = useState<MlModelSource[]>(
     []
   );
+  const [containerSuggestions, setContainerSuggestions] = useState<
+    ContainerSearchSource[]
+  >([]);
   const [glossarySuggestions, setGlossarySuggestions] = useState<
     GlossarySource[]
   >([]);
@@ -87,6 +91,11 @@ const Suggestions = ({
         .filter((option) => option._index === SearchIndex.MLMODEL)
         .map((option) => option._source)
     );
+    setContainerSuggestions(
+      options
+        .filter((option) => option._index === SearchIndex.CONTAINER)
+        .map((option) => option._source)
+    );
     setGlossarySuggestions(
       options
         .filter((option) => option._index === SearchIndex.GLOSSARY)
@@ -107,7 +116,8 @@ const Suggestions = ({
       | TagSource[]
       | GlossarySource[]
       | DashboardSource[]
-      | MlModelSource[],
+      | MlModelSource[]
+      | ContainerSearchSource[],
     searchIndex: SearchIndex
   ) => {
     if (suggestions.length === 0) {
@@ -127,8 +137,13 @@ const Suggestions = ({
               | GlossarySource
               | DashboardSource
               | MlModelSource
+              | ContainerSearchSource
           ) => {
-            const { fullyQualifiedName, name, serviceType } = suggestion;
+            const {
+              fullyQualifiedName = '',
+              name,
+              serviceType = '',
+            } = suggestion;
 
             return getSuggestionElement(
               fullyQualifiedName,
@@ -160,6 +175,10 @@ const Suggestions = ({
           },
           { suggestions: mlModelSuggestions, searchIndex: SearchIndex.MLMODEL },
           {
+            suggestions: containerSuggestions,
+            searchIndex: SearchIndex.CONTAINER,
+          },
+          {
             suggestions: glossarySuggestions,
             searchIndex: SearchIndex.GLOSSARY,
           },
@@ -172,7 +191,7 @@ const Suggestions = ({
   };
 
   useEffect(() => {
-    if (!isMounting.current) {
+    if (!isMounting.current && searchText) {
       getSuggestions(searchText, searchCriteria ?? undefined)
         .then((res) => {
           if (res.data) {
@@ -195,7 +214,7 @@ const Suggestions = ({
           );
         });
     }
-  }, [searchText]);
+  }, [searchText, searchCriteria]);
 
   // always Keep this useEffect at the end...
   useEffect(() => {

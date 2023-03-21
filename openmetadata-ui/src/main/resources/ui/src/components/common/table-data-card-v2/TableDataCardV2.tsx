@@ -14,7 +14,7 @@
 import { ExclamationCircleOutlined } from '@ant-design/icons';
 import classNames from 'classnames';
 import { EntityUnion } from 'components/Explore/explore.interface';
-import { isString, startCase, uniqueId } from 'lodash';
+import { get, isString, startCase, uniqueId } from 'lodash';
 import { ExtraInfo } from 'Models';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -31,6 +31,7 @@ import { EntityReference } from '../../../generated/entity/type';
 import {
   getEntityPlaceHolder,
   getOwnerValue,
+  getPartialNameFromFQN,
 } from '../../../utils/CommonUtils';
 import { serviceTypeLogo } from '../../../utils/ServiceUtils';
 import { getUsagePercentile } from '../../../utils/TableUtils';
@@ -122,6 +123,30 @@ const TableDataCardV2: React.FC<TableDataCardPropsV2> = ({
     }
   };
 
+  const headerLabel = useMemo(() => {
+    const entityType = get(source, 'entityType');
+
+    let headingText = '';
+    if ('databaseSchema' in source && 'database' in source) {
+      headingText = `${source.database?.name}${FQN_SEPARATOR_CHAR}${source.databaseSchema?.name}`;
+    } else if (
+      entityType === EntityType.GLOSSARY_TERM ||
+      entityType === EntityType.TAG
+    ) {
+      headingText = getPartialNameFromFQN(source.fullyQualifiedName || '', [
+        'service',
+      ]);
+    }
+
+    return headingText ? (
+      <span
+        className="tw-text-grey-muted tw-text-xs tw-mb-0.5"
+        data-testid="database-schema">
+        {headingText}
+      </span>
+    ) : null;
+  }, [source]);
+
   return (
     <div
       className={classNames(
@@ -136,11 +161,7 @@ const TableDataCardV2: React.FC<TableDataCardPropsV2> = ({
           handleSummaryPanelDisplay(source as EntityUnion, tab);
       }}>
       <div>
-        {'databaseSchema' in source && 'database' in source && (
-          <span
-            className="tw-text-grey-muted tw-text-xs tw-mb-0.5"
-            data-testid="database-schema">{`${source.database?.name}${FQN_SEPARATOR_CHAR}${source.databaseSchema?.name}`}</span>
-        )}
+        {headerLabel}
         <div className="tw-flex tw-items-center">
           <img
             alt="service-icon"

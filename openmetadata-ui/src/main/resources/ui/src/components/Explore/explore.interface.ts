@@ -16,6 +16,7 @@ import { SORT_ORDER } from 'enums/common.enum';
 import { Container } from 'generated/entity/data/container';
 import { Database } from 'generated/entity/data/database';
 import { DatabaseSchema } from 'generated/entity/data/databaseSchema';
+import { Glossary } from 'generated/entity/data/glossary';
 import { SearchIndex } from '../../enums/search.enum';
 import { Dashboard } from '../../generated/entity/data/dashboard';
 import { Mlmodel } from '../../generated/entity/data/mlmodel';
@@ -37,7 +38,9 @@ export type ExploreSearchIndex =
   | SearchIndex.DASHBOARD
   | SearchIndex.MLMODEL
   | SearchIndex.TOPIC
-  | SearchIndex.CONTAINER;
+  | SearchIndex.CONTAINER
+  | SearchIndex.GLOSSARY
+  | SearchIndex.TAG;
 
 export type ExploreSearchIndexKey =
   | 'TABLE'
@@ -109,7 +112,8 @@ export type EntityUnion =
   | Mlmodel
   | Container
   | DatabaseSchema
-  | Database;
+  | Database
+  | Glossary;
 
 export interface EntityDetailsObjectInterface {
   details: EntityUnion;

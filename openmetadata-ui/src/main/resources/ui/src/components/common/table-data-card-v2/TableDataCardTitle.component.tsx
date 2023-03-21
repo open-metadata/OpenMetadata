@@ -21,6 +21,7 @@ import { EntityType, FqnPart } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import {
   getNameFromFQN,
+  getPartialNameFromFQN,
   getPartialNameFromTableFQN,
 } from '../../../utils/CommonUtils';
 import { stringToHTML } from '../../../utils/StringsUtils';
@@ -31,7 +32,12 @@ interface TableDataCardTitleProps {
   dataTestId?: string;
   id?: string;
   searchIndex: SearchIndex | EntityType;
-  source: { fullyQualifiedName?: string; displayName?: string };
+  source: {
+    fullyQualifiedName?: string;
+    displayName?: string;
+    name?: string;
+    type?: string;
+  };
   isPanel?: boolean;
   handleLinkClick?: (e: React.MouseEvent) => void;
 }
@@ -46,6 +52,23 @@ const TableDataCardTitle = ({
 }: TableDataCardTitleProps) => {
   const isTourRoute = location.pathname.includes(ROUTES.TOUR);
 
+  const getDisplayName = (source: {
+    fullyQualifiedName?: string;
+    displayName?: string;
+    name?: string;
+    type?: string;
+  }) => {
+    if (source.type === 'tag') {
+      const tagName = getPartialNameFromFQN(source.fullyQualifiedName || '', [
+        'database',
+      ]);
+
+      return toString(tagName);
+    } else {
+      return toString(source.displayName);
+    }
+  };
+
   const { testId, displayName } = useMemo(
     () => ({
       testId: dataTestId
@@ -53,10 +76,11 @@ const TableDataCardTitle = ({
         : `${getPartialNameFromTableFQN(source.fullyQualifiedName ?? '', [
             FqnPart.Service,
           ])}-${getNameFromFQN(source.fullyQualifiedName ?? '')}`,
-      displayName: toString(source.displayName),
+      displayName: getDisplayName(source),
     }),
-    [dataTestId, source]
+    [dataTestId, source, getDisplayName]
   );
+
   const title = (
     <Button
       data-testid={testId}

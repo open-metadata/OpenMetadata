@@ -116,6 +116,7 @@ export const getSuggestions = <T extends SearchIndex>(
       SearchIndex.TOPIC,
       SearchIndex.PIPELINE,
       SearchIndex.MLMODEL,
+      SearchIndex.CONTAINER,
       SearchIndex.GLOSSARY,
       SearchIndex.TAG,
     ],

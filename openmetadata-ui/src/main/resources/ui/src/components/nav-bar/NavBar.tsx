@@ -114,6 +114,7 @@ const NavBar = ({
 
   const updateSearchCriteria = (criteria: SearchIndex | null) => {
     setSearchCriteria(criteria);
+    handleSearchChange(searchValue);
   };
 
   const entitiesSelect = useMemo(
