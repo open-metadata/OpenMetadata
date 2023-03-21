@@ -35,11 +35,11 @@ describe('Snowflake Ingestion', () => {
   it('add and ingest data', { defaultCommandTimeout: 8000 }, () => {
     goToAddNewServicePage(SERVICE_TYPE.Database);
     const connectionInput = () => {
-      cy.get('#username').type(Cypress.env('snowflakeUsername'));
-      cy.get('#password').type(Cypress.env('snowflakePassword'));
-      cy.get('#account').type(Cypress.env('snowflakeAccount'));
-      cy.get('#database').type(Cypress.env('snowflakeDatabase'));
-      cy.get('#warehouse').type(Cypress.env('snowflakeWarehouse'));
+      cy.get('#root_username').type(Cypress.env('snowflakeUsername'));
+      cy.get('#root_password').type(Cypress.env('snowflakePassword'));
+      cy.get('#root_account').type(Cypress.env('snowflakeAccount'));
+      cy.get('#root_database').type(Cypress.env('snowflakeDatabase'));
+      cy.get('#root_warehouse').type(Cypress.env('snowflakeWarehouse'));
     };
 
     const addIngestionInput = () => {

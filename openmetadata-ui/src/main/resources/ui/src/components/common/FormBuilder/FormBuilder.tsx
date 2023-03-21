@@ -161,8 +161,6 @@ const FormBuilder: FunctionComponent<Props> = ({
         'no-header': !showFormHeader,
       })}
       formData={localFormData}
-      idPrefix=""
-      idSeparator=""
       ref={formRef}
       schema={schema}
       showErrorList={false}

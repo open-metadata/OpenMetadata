@@ -39,12 +39,14 @@ describe('RedShift Ingestion', () => {
   it('add and ingest data', () => {
     goToAddNewServicePage(SERVICE_TYPE.Database);
     const connectionInput = () => {
-      cy.get('#username').type(Cypress.env('redshiftUsername'));
-      cy.get('#password')
+      cy.get('#root_username').type(Cypress.env('redshiftUsername'));
+      cy.get('#root_password')
         .scrollIntoView()
         .type(Cypress.env('redshiftPassword'));
-      cy.get('#hostPort').scrollIntoView().type(Cypress.env('redshiftHost'));
-      cy.get('#database')
+      cy.get('#root_hostPort')
+        .scrollIntoView()
+        .type(Cypress.env('redshiftHost'));
+      cy.get('#root_database')
         .scrollIntoView()
         .type(Cypress.env('redshiftDatabase'));
     };

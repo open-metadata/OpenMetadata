@@ -48,16 +48,16 @@ describe('Postgres Ingestion', () => {
   it('add and ingest data', () => {
     goToAddNewServicePage(SERVICE_TYPE.Database);
     const connectionInput = () => {
-      cy.get('[id="username"]')
+      cy.get('[id="root_username"]')
         .scrollIntoView()
         .type(Cypress.env('postgresUsername'));
-      cy.get('[name="password"]')
+      cy.get('[name="root_password"]')
         .scrollIntoView()
         .type(Cypress.env('postgresPassword'));
-      cy.get('[id="hostPort"]')
+      cy.get('[id="root_hostPort"]')
         .scrollIntoView()
         .type(Cypress.env('postgresHostPort'));
-      cy.get('#database')
+      cy.get('#root_database')
         .scrollIntoView()
         .type(Cypress.env('postgresDatabase'));
     };
