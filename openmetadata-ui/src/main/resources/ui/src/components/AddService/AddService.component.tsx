@@ -14,6 +14,7 @@
 import { Card } from 'antd';
 import PageLayoutV1 from 'components/containers/PageLayoutV1';
 import { STEPS_FOR_ADD_SERVICE } from 'constants/Services.constant';
+import { useAirflowStatus } from 'hooks/useAirflowStatus';
 import { t } from 'i18next';
 import { capitalize, isUndefined } from 'lodash';
 import { LoadingState } from 'Models';
@@ -58,9 +59,9 @@ const AddService = ({
   slashedBreadcrumb,
   addIngestion,
   handleAddIngestion,
-  onAirflowStatusCheck,
 }: AddServiceProps) => {
   const history = useHistory();
+  const { fetchAirflowStatus, isAirflowAvailable } = useAirflowStatus();
   const [showErrorMessage, setShowErrorMessage] = useState({
     serviceType: false,
     name: false,
@@ -79,7 +80,6 @@ const AddService = ({
   const [description, setDescription] = useState('');
   const [saveServiceState, setSaveServiceState] =
     useState<LoadingState>('initial');
-  const [isAirflowRunning, setIsAirflowRunning] = useState(true);
 
   const [activeField, setActiveField] = useState<string>('');
 
@@ -117,16 +117,10 @@ const AddService = ({
     }
   };
 
-  const handleConfigureServiceBackClick = () => {
-    setActiveServiceStep(2);
-  };
+  const handleConfigureServiceBackClick = () => setActiveServiceStep(2);
 
-  const handleServiceRequirementsBackClick = () => {
-    setActiveServiceStep(1);
-  };
-  const handleServiceRequirementsNextClick = () => {
-    setActiveServiceStep(3);
-  };
+  const handleServiceRequirementsBackClick = () => setActiveServiceStep(1);
+  const handleServiceRequirementsNextClick = () => setActiveServiceStep(3);
 
   const handleConfigureServiceNextClick = (descriptionValue: string) => {
     setDescription(descriptionValue);
@@ -162,20 +156,7 @@ const AddService = ({
     }
   };
 
-  const handleAirflowStatusCheck = () => {
-    return new Promise<void>((resolve) => {
-      onAirflowStatusCheck()
-        .then(() => {
-          setIsAirflowRunning(true);
-        })
-        .catch(() => {
-          setIsAirflowRunning(false);
-        })
-        .finally(() => resolve());
-    });
-  };
-
-  const handleConfigUpdate = (oData: ConfigData) => {
+  const handleConfigUpdate = async (newConfigData: ConfigData) => {
     const data = {
       name: serviceName,
       serviceType: selectServiceType,
@@ -188,24 +169,21 @@ const AddService = ({
     const configData = {
       ...data,
       connection: {
-        config: oData,
+        config: newConfigData,
       },
     };
+    setSaveServiceState('waiting');
+    try {
+      await onAddServiceSave(configData);
 
-    return new Promise<void>((resolve, reject) => {
-      setSaveServiceState('waiting');
-      onAddServiceSave(configData)
-        .then(() => {
-          handleAirflowStatusCheck().finally(() => {
-            setActiveServiceStep(5);
-            resolve();
-          });
-        })
-        .catch((err) => {
-          reject(err);
-        })
-        .finally(() => setSaveServiceState('initial'));
-    });
+      setActiveServiceStep(5);
+
+      await fetchAirflowStatus();
+    } catch (error) {
+      return error;
+    } finally {
+      setSaveServiceState('initial');
+    }
   };
 
   const handleConnectionDetailsBackClick = () => {
@@ -329,7 +307,7 @@ const AddService = ({
             activeField={activeField}
             activeStep={addIngestion ? activeIngestionStep : activeServiceStep}
             ingestionName={`${serviceName}_${PipelineType.Metadata}`}
-            isAirflowRunning={isAirflowRunning}
+            isAirflowRunning={isAirflowAvailable}
             isIngestion={addIngestion}
             isUpdating={false}
             pipelineType={PipelineType.Metadata}
