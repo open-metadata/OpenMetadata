@@ -17,7 +17,7 @@ import { ServiceCategory } from '../../enums/service.enum';
 import AddService from './AddService.component';
 
 jest.mock(
-  '../containers/PageLayout',
+  'components/containers/PageLayoutV1',
   () =>
     ({
       children,
@@ -52,6 +52,14 @@ jest.mock('../ServiceConfig/ConnectionConfigForm', () => () => (
 
 jest.mock('../IngestionStepper/IngestionStepper.component', () => {
   return jest.fn().mockImplementation(() => <div>IngestionStepper</div>);
+});
+
+jest.mock('./Steps/ServiceRequirements', () => {
+  return jest.fn().mockReturnValue(<div>Service Requirements</div>);
+});
+
+jest.mock('./RightPanel/RightPanel', () => {
+  return jest.fn().mockReturnValue(<div>Right Panel</div>);
 });
 
 describe('Test AddService component', () => {
