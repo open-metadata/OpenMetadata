@@ -159,7 +159,7 @@ const QueryCard: FC<QueryCardProp> = ({
               mode={{ name: CSMode.SQL }}
               options={{
                 styleActiveLine: isEditMode,
-                readOnly: !isEditMode,
+                readOnly: !isEditMode ? 'nocursor' : isEditMode,
               }}
               value={query.query ?? ''}
               onChange={handleQueryChange}
