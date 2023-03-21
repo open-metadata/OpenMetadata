@@ -137,7 +137,6 @@
     "conversation-lowercase": "conversation",
     "conversation-plural": "Conversations",
     "count": "计数",
-    "count-of-total-entity": "{{count}} of {{total}} {{entity}}",
     "create": "创建",
     "create-entity": "创建 {{entity}}",
     "create-new-test-suite": "Create new test suite",

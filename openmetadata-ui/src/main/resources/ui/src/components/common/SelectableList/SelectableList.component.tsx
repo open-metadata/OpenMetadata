@@ -10,7 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Checkbox, List, Space, Tooltip } from 'antd';
+import Icon from '@ant-design/icons';
+import { Button, Checkbox, List, Tooltip } from 'antd';
+import { ReactComponent as IconRemove } from 'assets/svg/Remove.svg';
 import Loader from 'components/Loader/Loader';
 import { ADD_USER_CONTAINER_HEIGHT, pagingObject } from 'constants/constants';
 import { EntityReference } from 'generated/entity/data/table';
@@ -19,7 +21,6 @@ import { cloneDeep, isEmpty, sortBy } from 'lodash';
 import VirtualList from 'rc-virtual-list';
 import React, { UIEventHandler, useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import SVGIcons, { Icons } from 'utils/SvgUtils';
 import Searchbar from '../searchbar/Searchbar';
 import '../UserSelectableList/user-select-dropdown.less';
 import { UserTag } from '../UserTag/UserTag.component';
@@ -152,34 +153,25 @@ export const SelectableList = ({
       />
       <List
         footer={
-          <Space className=" m-r-md" direction="vertical">
-            <p className="text-xs font-medium">
-              {t('label.count-of-total-entity', {
-                count: uniqueOptions.length,
-                total: pagingInfo.total,
-                entity: t('label.user-plural'),
-              })}
-            </p>
-            {multiSelect && (
-              <div className="text-right">
-                <Button
-                  className="m-l-auto"
-                  color="primary"
-                  size="small"
-                  type="text"
-                  onClick={onCancel}>
-                  {t('label.cancel')}
-                </Button>
-                <Button
-                  className="update-btn m-l-auto"
-                  size="small"
-                  type="default"
-                  onClick={handleUpdateClick}>
-                  {t('label.update')}
-                </Button>
-              </div>
-            )}
-          </Space>
+          multiSelect && (
+            <div className="text-right">
+              <Button
+                className="m-l-auto"
+                color="primary"
+                size="small"
+                type="text"
+                onClick={onCancel}>
+                {t('label.cancel')}
+              </Button>
+              <Button
+                className="update-btn m-l-auto"
+                size="small"
+                type="default"
+                onClick={handleUpdateClick}>
+                {t('label.update')}
+              </Button>
+            </div>
+          )
         }
         itemLayout="vertical"
         loading={{ spinning: fetching, indicator: <Loader /> }}
@@ -233,15 +225,15 @@ const RemoveIcon = ({ removeOwner }: { removeOwner?: () => void }) => {
           e.stopPropagation();
           removeOwner && removeOwner();
         }}>
-        <SVGIcons
+        <Icon
           alt={t('label.remove-entity', {
             entity: t('label.owner-lowercase'),
           })}
-          icon={Icons.ICON_REMOVE}
+          component={IconRemove}
+          size={16}
           title={t('label.remove-entity', {
             entity: t('label.owner-lowercase'),
           })}
-          width="16px"
         />
       </button>
     </Tooltip>
