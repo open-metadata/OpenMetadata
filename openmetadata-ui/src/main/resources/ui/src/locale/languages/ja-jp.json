@@ -1198,6 +1198,7 @@
     "email-not-found": "このメールアドレスのユーザーは存在しません!",
     "email-verification-error": "確認のためのメールを送信できませんでした。管理者までご連絡ください。",
     "entity-creation-error": "{{entity}}の作成中にエラーが発生しました",
+    "entity-deleted-successfully": "{{entity}} deleted successfully!",
     "entity-details-fetch-error": "{{entityType}} {{entityName}}から詳細を取得中にエラーが発生しました",
     "entity-fetch-error": "{{entity}}の取得中にエラーが発生しました",
     "entity-fetch-version-error": "{{entity}} バージョン {{version}}の取得中にエラーが発生しました",

@@ -5,7 +5,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.regex.Pattern;
 import org.openmetadata.schema.entity.data.Table;
-import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.util.JsonUtils;
 
@@ -31,7 +30,6 @@ public class TableIndex implements ColumnIndex {
     List<ElasticSearchSuggest> schemaSuggest = new ArrayList<>();
     List<ElasticSearchSuggest> databaseSuggest = new ArrayList<>();
     List<ElasticSearchSuggest> serviceSuggest = new ArrayList<>();
-    List<TagLabel> tags = new ArrayList<>();
     ElasticSearchIndexUtils.removeNonIndexableFields(doc, excludeFields);
 
     if (table.getColumns() != null) {
@@ -39,18 +37,14 @@ public class TableIndex implements ColumnIndex {
       parseColumns(table.getColumns(), cols, null);
 
       for (FlattenColumn col : cols) {
-        if (col.getTags() != null) {
-          tags.addAll(col.getTags());
-        }
         columnSuggest.add(ElasticSearchSuggest.builder().input(col.getName()).weight(5).build());
       }
     }
-    tags.addAll(ElasticSearchIndexUtils.parseTags(table.getTags()));
     parseTableSuggest(suggest);
     serviceSuggest.add(ElasticSearchSuggest.builder().input(table.getService().getName()).weight(5).build());
     databaseSuggest.add(ElasticSearchSuggest.builder().input(table.getDatabase().getName()).weight(5).build());
     schemaSuggest.add(ElasticSearchSuggest.builder().input(table.getDatabaseSchema().getName()).weight(5).build());
-    ParseTags parseTags = new ParseTags(tags);
+    ParseTags parseTags = new ParseTags(Entity.getEntityTags(Entity.TABLE, table));
 
     doc.put("displayName", table.getDisplayName() != null ? table.getDisplayName() : table.getName());
     doc.put("tags", parseTags.tags);

@@ -33,6 +33,7 @@ import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.EntityDAO;
@@ -93,7 +94,7 @@ public final class Entity {
   public static final String MLMODEL = "mlmodel";
   public static final String CONTAINER = "container";
   public static final String BOT = "bot";
-  public static final String ALERT = "alert";
+  public static final String EVENT_SUBSCRIPTION = "eventsubscription";
   public static final String THREAD = "THREAD";
   public static final String LOCATION = "location";
 
@@ -305,6 +306,11 @@ public final class Entity {
       throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityTypeNotFound(serviceType.value()));
     }
     return entityRepository;
+  }
+
+  public static <T extends EntityInterface> List<TagLabel> getEntityTags(String entityType, EntityInterface entity) {
+    EntityRepository<T> entityRepository = (EntityRepository<T>) getEntityRepository(entityType);
+    return listOrEmpty(entityRepository.getAllTags(entity));
   }
 
   public static void deleteEntity(
