@@ -38,14 +38,11 @@ from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.ingestion.api.source import InvalidSourceException, SourceStatus
+from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.connections import get_connection, get_test_connection_fn
-from metadata.ingestion.source.database.database_service import (
-    DatabaseServiceSource,
-    SQLSourceStatus,
-)
+from metadata.ingestion.source.database.database_service import DatabaseServiceSource
 from metadata.utils import fqn
 from metadata.utils.constants import DEFAULT_DATABASE
 from metadata.utils.filters import filter_by_table
@@ -61,6 +58,7 @@ class SalesforceSource(DatabaseServiceSource):
     """
 
     def __init__(self, config, metadata_config: OpenMetadataConnection):
+        super().__init__()
         self.config = config
         self.source_config: DatabaseServiceMetadataPipeline = (
             self.config.sourceConfig.config
@@ -68,13 +66,11 @@ class SalesforceSource(DatabaseServiceSource):
         self.metadata_config = metadata_config
         self.metadata = OpenMetadata(metadata_config)
         self.service_connection = self.config.serviceConnection.__root__.config
-        self.status = SQLSourceStatus()
         self.client = get_connection(self.service_connection)
         self.table_constraints = None
         self.data_models = {}
         self.dbt_tests = {}
         self.database_source_state = set()
-        super().__init__()
 
     @classmethod
     def create(cls, config_dict, metadata_config: OpenMetadataConnection):
@@ -254,9 +250,6 @@ class SalesforceSource(DatabaseServiceSource):
 
     def prepare(self):
         pass
-
-    def get_status(self) -> SourceStatus:
-        return self.status
 
     def close(self):
         pass
