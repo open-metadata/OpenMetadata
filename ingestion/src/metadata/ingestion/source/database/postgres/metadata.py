@@ -84,12 +84,15 @@ RELKIND_MAP = {
     "f": TableType.Foreign,
 }
 
+GEOMETRY = create_sqlalchemy_type("GEOMETRY")
+POINT = create_sqlalchemy_type("POINT")
+POLYGON = create_sqlalchemy_type("POLYGON")
 
 ischema_names.update(
     {
-        "geometry": create_sqlalchemy_type("GEOMETRY"),
-        "point": create_sqlalchemy_type("POINT"),
-        "polygon": create_sqlalchemy_type("POLYGON"),
+        "geometry": GEOMETRY,
+        "point": POINT,
+        "polygon": POLYGON,
         "box": create_sqlalchemy_type("BOX"),
         "circle": create_sqlalchemy_type("CIRCLE"),
         "line": create_sqlalchemy_type("LINE"),

@@ -16,6 +16,7 @@ from typing import Iterable
 from pyathena.sqlalchemy_athena import AthenaDialect
 from sqlalchemy import types
 from sqlalchemy.engine import reflection
+from sqlalchemy.sql import text
 
 from metadata.generated.schema.entity.data.table import TableType
 from metadata.generated.schema.entity.services.connections.database.athenaConnection import (
@@ -144,8 +145,21 @@ def get_columns(self, connection, table_name, schema=None, **kw):
     return columns
 
 
+@reflection.cache
+def get_view_definition(self, connection, view_name, schema=None, **kw):
+    """
+    Gets the view definition
+    """
+    full_view_name = view_name if not schema else f"{schema}.{view_name}"
+    res = connection.execute(f"SHOW CREATE VIEW {full_view_name}").fetchall()
+    if res:
+        return "\n".join(i[0] for i in res)
+    return None
+
+
 AthenaDialect._get_column_type = _get_column_type  # pylint: disable=protected-access
 AthenaDialect.get_columns = get_columns
+AthenaDialect.get_view_definition = get_view_definition
 
 
 class AthenaSource(CommonDbSourceService):

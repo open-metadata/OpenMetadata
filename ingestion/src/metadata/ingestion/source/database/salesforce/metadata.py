@@ -229,6 +229,7 @@ class SalesforceSource(DatabaseServiceSource):
                     name=column["name"],
                     description=column["label"],
                     dataType=self.column_type(column["type"].upper()),
+                    dataTypeDisplay=column["type"],
                     constraint=col_constraint,
                     ordinalPosition=row_order,
                     dataLength=column["length"],
@@ -247,6 +248,7 @@ class SalesforceSource(DatabaseServiceSource):
             "URL",
             "TEXTAREA",
             "ADDRESS",
+            "REFERENCE",
         }:
             return DataType.VARCHAR.value
         return DataType.UNKNOWN.value
