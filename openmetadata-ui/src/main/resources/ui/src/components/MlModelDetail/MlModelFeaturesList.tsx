@@ -192,7 +192,7 @@ const MlModelFeaturesList: FC<MlModelFeaturesListProp> = ({
             <Col key={feature.fullyQualifiedName} span={24}>
               <Card
                 className="m-b-lg shadow-none"
-                data-testid="feature-card"
+                data-testid={`feature-card-${feature.name ?? ''}`}
                 key={feature.fullyQualifiedName}>
                 <Row>
                   <Col className="m-b-xs" span={24}>

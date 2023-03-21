@@ -153,12 +153,12 @@ describe('Tags page should work', () => {
 
   it('Use newly created tag to any entity should work', () => {
     const entity = SEARCH_ENTITY_TABLE.table_1;
-    addNewTagToEntity(entity, `${NEW_TAG_CATEGORY.name}.${NEW_TAG.name}`);
+    addNewTagToEntity(entity, `${NEW_TAG.name}`);
   });
 
   it('Add tag at DatabaseSchema level should work', () => {
     const entity = SEARCH_ENTITY_TABLE.table_2;
-    const term = `${NEW_TAG_CATEGORY.name}.${NEW_TAG.name}`;
+    const term = `${NEW_TAG.name}`;
     const term2 = 'PersonalData.Personal';
     const assignee = 'admin';
 
@@ -182,9 +182,10 @@ describe('Tags page should work', () => {
       .contains(term)
       .should('be.visible')
       .click();
-    cy.get(
-      '[data-testid="tags-wrapper"] > [data-testid="tag-container"]'
-    ).contains(term);
+
+    cy.get('[data-testid="tag-selector"] > .ant-select-selector').contains(
+      term
+    );
     interceptURL('PATCH', '/api/v1/databaseSchemas/*', 'addTags');
     cy.get('[data-testid="saveAssociatedTag"]').should('be.visible').click();
     verifyResponseStatusCode('@addTags', 200);
@@ -197,9 +198,7 @@ describe('Tags page should work', () => {
 
     // Create task to add tags
     interceptURL('POST', '/api/v1/feed', 'taskCreated');
-    cy.get('[data-testid="request-entity-tags"] > [data-testid="image"]')
-      .should('exist')
-      .click();
+    cy.get('[data-testid="request-entity-tags"]').should('exist').click();
 
     // set assignees for task
     cy.get(

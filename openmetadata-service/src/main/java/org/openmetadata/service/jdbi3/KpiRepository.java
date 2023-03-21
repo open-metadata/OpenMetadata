@@ -82,16 +82,11 @@ public class KpiRepository extends EntityRepository<Kpi> {
 
   @Override
   public void storeEntity(Kpi kpi, boolean update) throws IOException {
-    EntityReference owner = kpi.getOwner();
     EntityReference dataInsightChart = kpi.getDataInsightChart();
     KpiResult kpiResults = kpi.getKpiResult();
-
-    // Don't store owner, database, href and tags as JSON. Build it on the fly based on relationships
-    kpi.withOwner(null).withHref(null).withDataInsightChart(null).withKpiResult(null);
+    kpi.withDataInsightChart(null).withKpiResult(null);
     store(kpi, update);
-
-    // Restore the relationships
-    kpi.withOwner(owner).withDataInsightChart(dataInsightChart).withKpiResult(kpiResults);
+    kpi.withDataInsightChart(dataInsightChart).withKpiResult(kpiResults);
   }
 
   @Override

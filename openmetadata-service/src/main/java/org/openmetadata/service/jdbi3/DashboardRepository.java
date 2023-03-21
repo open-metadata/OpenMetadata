@@ -26,7 +26,6 @@ import org.openmetadata.schema.entity.services.DashboardService;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
-import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.service.resources.dashboards.DashboardResource;
@@ -99,20 +98,14 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
 
   @Override
   public void storeEntity(Dashboard dashboard, boolean update) throws JsonProcessingException {
-    // Relationships and fields such as href are derived and not stored as part of json
-    EntityReference owner = dashboard.getOwner();
-    List<TagLabel> tags = dashboard.getTags();
+    // Relationships and fields such as service are not stored as part of json
     EntityReference service = dashboard.getService();
     List<EntityReference> charts = dashboard.getCharts();
     List<EntityReference> dataModels = dashboard.getDataModels();
-
-    // Don't store owner, charts, dataModels, href and tags as JSON. Build it on the fly based on relationships
-    dashboard.withOwner(null).withHref(null).withTags(null).withService(null).withCharts(null).withDataModels(null);
-
+   
+    dashboard.withService(null).withCharts(null).withDataModels(null);
     store(dashboard, update);
-
-    // Restore the relationships
-    dashboard.withOwner(owner).withTags(tags).withService(service).withCharts(charts).withDataModels(dataModels);
+    dashboard.withService(service).withCharts(charts).withDataModels(dataModels);
   }
 
   @Override

@@ -117,6 +117,13 @@ UPDATE metadata_service_entity
 SET json = JSON_REMOVE(json, '$.connection.config.securityConfig.audience')
 WHERE name = 'OpenMetadata' AND JSON_EXTRACT(json, '$.connection.config.authProvider') != 'google';
 
+ALTER TABLE user_tokens MODIFY COLUMN expiryDate BIGINT UNSIGNED GENERATED ALWAYS AS (json ->> '$.expiryDate');
+
+DELETE FROM alert_entity;
+drop table alert_action_def;
+
+ALTER TABLE alert_entity RENAME TO event_subscription_entity;
+
 -- create data model table
 CREATE TABLE IF NOT EXISTS data_model_entity (
     id VARCHAR(36) GENERATED ALWAYS AS (json ->> '$.id') STORED NOT NULL,

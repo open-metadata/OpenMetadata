@@ -536,16 +536,7 @@
     ]
   },
   {
-    "name" : "alert",
-    "operations" : [
-      "Create",
-      "Delete",
-      "ViewAll",
-      "EditDescription"
-    ]
-  },
-  {
-    "name" : "alertAction",
+    "name" : "eventsubscription",
     "operations" : [
       "Create",
       "Delete",

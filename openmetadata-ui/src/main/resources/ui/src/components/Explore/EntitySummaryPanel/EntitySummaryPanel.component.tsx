@@ -15,6 +15,7 @@ import { CloseOutlined } from '@ant-design/icons';
 import { Col, Drawer, Row } from 'antd';
 import TableDataCardTitle from 'components/common/table-data-card-v2/TableDataCardTitle.component';
 import { EntityType } from 'enums/entity.enum';
+import { Container } from 'generated/entity/data/container';
 import React, { useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { ExplorePageTabs } from '../../../enums/Explore.enum';
@@ -23,6 +24,7 @@ import { Mlmodel } from '../../../generated/entity/data/mlmodel';
 import { Pipeline } from '../../../generated/entity/data/pipeline';
 import { Table } from '../../../generated/entity/data/table';
 import { Topic } from '../../../generated/entity/data/topic';
+import ContainerSummary from './ContainerSummary/ContainerSummary.component';
 import DashboardSummary from './DashboardSummary/DashboardSummary.component';
 import { EntitySummaryPanelProps } from './EntitySummaryPanel.interface';
 import './EntitySummaryPanel.style.less';
@@ -71,6 +73,15 @@ export default function EntitySummaryPanel({
 
         return (
           <MlModelSummary entityDetails={entityDetails.details as Mlmodel} />
+        );
+
+      case ExplorePageTabs.CONTAINERS:
+        setCurrentSearchIndex(EntityType.CONTAINER);
+
+        return (
+          <ContainerSummary
+            entityDetails={entityDetails.details as Container}
+          />
         );
 
       default:

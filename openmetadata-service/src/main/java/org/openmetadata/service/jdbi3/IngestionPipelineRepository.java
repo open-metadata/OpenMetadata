@@ -82,8 +82,7 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
 
   @Override
   public void storeEntity(IngestionPipeline ingestionPipeline, boolean update) throws IOException {
-    // Relationships and fields such as href are derived and not stored as part of json
-    EntityReference owner = ingestionPipeline.getOwner();
+    // Relationships and fields such as service are derived and not stored as part of json
     EntityReference service = ingestionPipeline.getService();
     OpenMetadataConnection openmetadataConnection = ingestionPipeline.getOpenMetadataServerConnection();
 
@@ -96,14 +95,9 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
           secretsManager.encryptOrDecryptOpenMetadataConnection(openmetadataConnection, true, true);
     }
 
-    // Don't store owner. Build it on the fly based on relationships
-    // We don't want to store the OM connection.
-    ingestionPipeline.withOwner(null).withService(null).withHref(null).withOpenMetadataServerConnection(null);
-
+    ingestionPipeline.withService(null).withOpenMetadataServerConnection(null);
     store(ingestionPipeline, update);
-
-    // Restore the relationships
-    ingestionPipeline.withOwner(owner).withService(service).withOpenMetadataServerConnection(openmetadataConnection);
+    ingestionPipeline.withService(service).withOpenMetadataServerConnection(openmetadataConnection);
   }
 
   @Override

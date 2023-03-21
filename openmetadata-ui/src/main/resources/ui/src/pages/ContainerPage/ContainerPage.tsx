@@ -88,8 +88,8 @@ const ContainerPage = () => {
   const history = useHistory();
   const { t } = useTranslation();
   const { getEntityPermissionByFqn } = usePermissionProvider();
-  const { containerName, tab = CONTAINER_DETAILS_TABS.SCHEME } =
-    useParams<{ containerName: string; tab: CONTAINER_DETAILS_TABS }>();
+  const { entityFQN: containerName, tab = CONTAINER_DETAILS_TABS.SCHEME } =
+    useParams<{ entityFQN: string; tab: CONTAINER_DETAILS_TABS }>();
 
   // Local states
   const [isLoading, setIsLoading] = useState<boolean>(false);
