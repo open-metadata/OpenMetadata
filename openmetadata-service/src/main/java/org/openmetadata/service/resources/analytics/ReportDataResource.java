@@ -97,10 +97,10 @@ public class ReportDataResource {
           @QueryParam("endTs")
           Long endTs)
       throws IOException {
-        OperationContext operationContext = new OperationContext(Entity.DATA_INSIGHT_CHART, MetadataOperation.VIEW_ALL);
-        ResourceContextInterface resourceContext = ReportDataContext.builder().build();
-        authorizer.authorize(securityContext, operationContext, resourceContext);
-        return dao.getReportData(reportDataType, startTs, endTs);
+    OperationContext operationContext = new OperationContext(Entity.DATA_INSIGHT_CHART, MetadataOperation.VIEW_ALL);
+    ResourceContextInterface resourceContext = ReportDataContext.builder().build();
+    authorizer.authorize(securityContext, operationContext, resourceContext);
+    return dao.getReportData(reportDataType, startTs, endTs);
   }
 
   @POST
@@ -118,9 +118,9 @@ public class ReportDataResource {
   public Response addReportData(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid ReportData reportData)
       throws IOException {
-      OperationContext operationContext = new OperationContext(Entity.DATA_INSIGHT_CHART, MetadataOperation.CREATE);
-      ResourceContextInterface resourceContext = ReportDataContext.builder().build();
-      authorizer.authorize(securityContext, operationContext, resourceContext);
-      return dao.addReportData(reportData);
+    OperationContext operationContext = new OperationContext(Entity.DATA_INSIGHT_CHART, MetadataOperation.CREATE);
+    ResourceContextInterface resourceContext = ReportDataContext.builder().build();
+    authorizer.authorize(securityContext, operationContext, resourceContext);
+    return dao.addReportData(reportData);
   }
 }
