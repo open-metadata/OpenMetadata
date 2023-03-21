@@ -63,7 +63,7 @@ T = TypeVar("T", bound=BaseModel)
 
 
 class MetadataRestSinkConfig(ConfigModel):
-    api_endpoint: str = None
+    api_endpoint: Optional[str] = None
 
 
 class MetadataRestSink(Sink[Entity]):
@@ -73,20 +73,16 @@ class MetadataRestSink(Sink[Entity]):
     """
 
     config: MetadataRestSinkConfig
-    status: SinkStatus
 
     # We want to catch any errors that might happen during the sink
     # pylint: disable=broad-except
 
     def __init__(
-        self,
-        config: MetadataRestSinkConfig,
-        metadata_config: OpenMetadataConnection,
+        self, config: MetadataRestSinkConfig, metadata_config: OpenMetadataConnection
     ):
-
+        super().__init__()
         self.config = config
         self.metadata_config = metadata_config
-        self.status = SinkStatus()
         self.wrote_something = False
         self.charts_dict = {}
         self.metadata = OpenMetadata(self.metadata_config)
@@ -480,9 +476,6 @@ class MetadataRestSink(Sink[Entity]):
             logger.error(
                 f"Unexpected error while ingesting table constraints for table id [{record.table_id}]: {exc}"
             )
-
-    def get_status(self):
-        return self.status
 
     def close(self):
         pass

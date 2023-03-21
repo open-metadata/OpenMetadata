@@ -34,7 +34,7 @@ from metadata.generated.schema.metadataIngestion.mlmodelServiceMetadataPipeline 
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.ingestion.api.source import Source, SourceStatus
+from metadata.ingestion.api.source import Source
 from metadata.ingestion.api.topology_runner import TopologyRunnerMixin
 from metadata.ingestion.models.delete_entity import (
     DeleteEntity,
@@ -90,44 +90,12 @@ class MlModelServiceTopology(ServiceTopology):
     )
 
 
-class MlModelSourceStatus(SourceStatus):
-    """
-    ML Model specific Status
-    """
-
-    success: List[str] = []
-    failures: List[str] = []
-    warnings: List[str] = []
-
-    def scanned(self, record: str) -> None:
-        """
-        Log successful ML Model scans
-        """
-        self.success.append(record)
-        logger.debug("ML Model scanned: %s", record)
-
-    def failed(self, model_name: str, reason: str) -> None:
-        """
-        Log failed ML Model scans
-        """
-        self.failures.append(model_name)
-        logger.error("ML Model failed: %s - %s", model_name, reason)
-
-    def warned(self, model_name: str, reason: str) -> None:
-        """
-        Log Ml Model with warnings
-        """
-        self.warnings.append(model_name)
-        logger.warning("ML Model warning: %s - %s", model_name, reason)
-
-
 class MlModelServiceSource(TopologyRunnerMixin, Source, ABC):
     """
     Base class for MlModel services.
     It implements the topology and context
     """
 
-    status: MlModelSourceStatus
     source_config: MlModelServiceMetadataPipeline
     config: WorkflowSource
     metadata: OpenMetadata
@@ -153,7 +121,6 @@ class MlModelServiceSource(TopologyRunnerMixin, Source, ABC):
         )
         self.connection = get_connection(self.service_connection)
         self.test_connection()
-        self.status = MlModelSourceStatus()
 
         self.client = self.connection
 
@@ -201,9 +168,6 @@ class MlModelServiceSource(TopologyRunnerMixin, Source, ABC):
         """
         Return the algorithm for a given model
         """
-
-    def get_status(self) -> SourceStatus:
-        return self.status
 
     def close(self):
         pass

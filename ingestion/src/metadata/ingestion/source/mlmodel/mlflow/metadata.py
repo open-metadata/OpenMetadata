@@ -87,7 +87,7 @@ class MlflowSource(MlModelServiceSource):
                 None,
             )
             if not latest_version:
-                self.status.failed(model.name, reason="Invalid version")
+                self.status.failure(model.name, reason="Invalid version")
                 continue
 
             yield model, latest_version
@@ -187,7 +187,7 @@ class MlflowSource(MlModelServiceSource):
                 if not latest_props:
                     reason = f"Cannot find the run ID properties for {run_id}"
                     logger.warning(reason)
-                    self.status.warned(model_name, reason)
+                    self.status.warning(model_name, reason)
                     return None
 
                 if latest_props.get("signature") and latest_props["signature"].get(
@@ -210,6 +210,6 @@ class MlflowSource(MlModelServiceSource):
                 logger.debug(traceback.format_exc())
                 reason = f"Cannot extract properties from RunData: {exc}"
                 logger.warning(reason)
-                self.status.warned(model_name, reason)
+                self.status.warning(model_name, reason)
 
         return None

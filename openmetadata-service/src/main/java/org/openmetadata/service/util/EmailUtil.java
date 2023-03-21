@@ -33,7 +33,7 @@ import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.tests.type.TestCaseResult;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
-import org.openmetadata.service.alerts.emailAlert.EmailMessage;
+import org.openmetadata.service.events.subscription.emailAlert.EmailMessage;
 import org.simplejavamail.api.email.Email;
 import org.simplejavamail.api.email.EmailPopulatingBuilder;
 import org.simplejavamail.api.mailer.Mailer;

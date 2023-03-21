@@ -43,7 +43,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.tagLabel import TagLabel
-from metadata.ingestion.api.source import InvalidSourceException, SourceStatus
+from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
 from metadata.ingestion.source.dashboard.tableau import (
@@ -91,7 +91,19 @@ class TableauChart(TableauBaseModel):
     workbook_id: str
     sheet_type: str
     view_url_name: str
+    content_url: str
     tags: List[str]
+
+
+class ChartUrl:
+    workbook_name: str
+    sheets: str
+    chart_url_name: str
+
+    def __init__(self, context_url: str) -> None:
+        self.workbook_name, self.sheets, self.chart_url_name = (
+            context_url.split("/") if "/" in context_url else ["", "", ""]
+        )
 
 
 class TableauDashboard(TableauBaseModel):
@@ -113,7 +125,6 @@ class TableauSource(DashboardServiceSource):
 
     config: WorkflowSource
     metadata_config: OpenMetadataConnection
-    status: SourceStatus
 
     def __init__(
         self,
@@ -166,6 +177,7 @@ class TableauSource(DashboardServiceSource):
                 sheet_type=chart["sheetType"],
                 view_url_name=chart["viewUrlName"],
                 tags=[tag["label"] for tag in chart.get("tags", {}).get("tag") or []],
+                content_url=chart.get("contentUrl", ""),
             )
             for chart in extract_pages(
                 self.client.query_views_for_site,
@@ -377,15 +389,19 @@ class TableauSource(DashboardServiceSource):
                 if filter_by_chart(self.source_config.chartFilterPattern, chart.name):
                     self.status.filter(chart.name, "Chart Pattern not allowed")
                     continue
-                workbook_name = dashboard_details.name.replace(" ", "")
                 site_url = (
                     f"site/{self.service_connection.siteUrl}/"
                     if self.service_connection.siteUrl
                     else ""
                 )
+                workbook_chart_name = ChartUrl(chart.content_url)
+
                 chart_url = (
-                    f"#/{site_url}" f"views/{workbook_name}/" f"{chart.view_url_name}"
+                    f"#{site_url}"
+                    f"views/{workbook_chart_name.workbook_name}/"
+                    f"{workbook_chart_name.chart_url_name}"
                 )
+
                 yield CreateChartRequest(
                     name=chart.id,
                     displayName=chart.name,

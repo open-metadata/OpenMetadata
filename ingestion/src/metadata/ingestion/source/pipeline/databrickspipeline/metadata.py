@@ -37,7 +37,6 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
-from metadata.ingestion.source.database.databricks.client import DatabricksClient
 from metadata.ingestion.source.pipeline.pipeline_service import PipelineServiceSource
 from metadata.utils.logger import ingestion_logger
 
@@ -62,11 +61,6 @@ class DatabrickspipelineSource(PipelineServiceSource):
     Implements the necessary methods ot extract
     Pipeline metadata from Databricks Jobs API
     """
-
-    def __init__(self, config: WorkflowSource, metadata_config: OpenMetadataConnection):
-        super().__init__(config, metadata_config)
-        self.connection = self.config.serviceConnection.__root__.config
-        self.client = DatabricksClient(self.connection)
 
     @classmethod
     def create(cls, config_dict, metadata_config: OpenMetadataConnection):

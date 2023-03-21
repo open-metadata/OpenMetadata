@@ -425,8 +425,8 @@ class RedshiftSource(CommonDbSourceService):
     """
 
     def __init__(self, config, metadata_config):
-        self.partition_details = {}
         super().__init__(config, metadata_config)
+        self.partition_details = {}
 
     @classmethod
     def create(cls, config_dict, metadata_config: OpenMetadataConnection):
