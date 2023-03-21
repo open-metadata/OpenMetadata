@@ -613,21 +613,17 @@ export const shouldTestConnection = (serviceType: string) => {
 };
 
 export const getServiceType = (serviceCat: ServiceCategory) => {
-  switch (serviceCat) {
-    case ServiceCategory.MESSAGING_SERVICES:
-      return ServiceType.Messaging;
-    case ServiceCategory.DASHBOARD_SERVICES:
-      return ServiceType.Dashboard;
-    case ServiceCategory.PIPELINE_SERVICES:
-      return ServiceType.Pipeline;
-    case ServiceCategory.OBJECT_STORE_SERVICES:
-      return ServiceType.ObjectStore;
-    case ServiceCategory.ML_MODEL_SERVICES:
-      return ServiceType.MlModel;
-    case ServiceCategory.DATABASE_SERVICES:
-    default:
-      return ServiceType.Database;
-  }
+  const serviceTypeMap = {
+    [ServiceCategory.DASHBOARD_SERVICES]: ServiceType.Dashboard,
+    [ServiceCategory.DATABASE_SERVICES]: ServiceType.Database,
+    [ServiceCategory.MESSAGING_SERVICES]: ServiceType.Messaging,
+    [ServiceCategory.ML_MODEL_SERVICES]: ServiceType.MlModel,
+    [ServiceCategory.METADATA_SERVICES]: ServiceType.Metadata,
+    [ServiceCategory.OBJECT_STORE_SERVICES]: ServiceType.ObjectStore,
+    [ServiceCategory.PIPELINE_SERVICES]: ServiceType.Pipeline,
+  };
+
+  return serviceTypeMap[serviceCat] ?? ServiceType.Database;
 };
 
 export const getServiceCreatedLabel = (serviceCategory: ServiceCategory) => {

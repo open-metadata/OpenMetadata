@@ -129,6 +129,7 @@ const RightPanel: FC<RightPanelProps> = ({
     <>
       <h6 className="tw-heading tw-text-base">{startCase(activeField)}</h6>
       <RichTextEditorPreviewer
+        enableSeeMoreVariant={false}
         markdown={activeFieldDocument}
         maxLength={activeFieldDocument.length}
       />
@@ -150,13 +151,20 @@ const RightPanel: FC<RightPanelProps> = ({
   };
 
   useEffect(() => {
-    fetchFieldDocument();
+    // only fetch file when required fields are present
+    if (selectedService && selectedServiceCategory && activeField) {
+      fetchFieldDocument();
+    }
   }, [selectedService, selectedServiceCategory, activeField]);
+
+  const showActiveFieldDocument = activeField && activeFieldDocument;
 
   return (
     <Affix offsetTop={0}>
       <Card>
-        {activeField ? activeFieldDocumentElement : activeStepGuideElement}
+        {showActiveFieldDocument
+          ? activeFieldDocumentElement
+          : activeStepGuideElement}
       </Card>
     </Affix>
   );
