@@ -238,8 +238,6 @@ class ColumnTypeParser:
 
     _FIXED_DECIMAL = re.compile(r"(decimal|numeric)(\(\s*(\d+)\s*,\s*(\d+)\s*\))?")
 
-    _FIXED_STRING = re.compile(r"(var)?char\(\s*(\d+)\s*\)")
-
     try:
         # pylint: disable=import-outside-toplevel
         from sqlalchemy.dialects.mssql import BIT
@@ -357,8 +355,6 @@ class ColumnTypeParser:
                 "dataType": ColumnTypeParser._SOURCE_TYPE_TO_OM_TYPE[dtype.upper()],
                 "dataTypeDisplay": dtype,
             }
-        if ColumnTypeParser._FIXED_STRING.match(dtype):
-            return {"dataType": "STRING", "dataTypeDisplay": dtype}
         if ColumnTypeParser._FIXED_DECIMAL.match(dtype):
             match = ColumnTypeParser._FIXED_DECIMAL.match(dtype)
             if match.group(2) is not None:  # type: ignore

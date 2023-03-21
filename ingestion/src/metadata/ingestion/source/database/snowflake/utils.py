@@ -9,6 +9,10 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
+"""
+Module to define overriden dialect methods
+"""
+
 import sqlalchemy.types as sqltypes
 from sqlalchemy import exc as sa_exc
 from sqlalchemy import util as sa_util
@@ -91,6 +95,7 @@ def normalize_names(self, name):  # pylint: disable=unused-argument
     return name
 
 
+# pylint: disable=too-many-locals,protected-access
 @reflection.cache
 def get_schema_columns(self, connection, schema, **kw):
     """Get all columns in the schema, if we hit 'Information schema query returned too much data' problem return
@@ -106,8 +111,8 @@ def get_schema_columns(self, connection, schema, **kw):
             text(SNOWFLAKE_GET_SCHEMA_COLUMNS),
             {"table_schema": self.denormalize_name(schema)},
         )
-    except sa_exc.ProgrammingError as pe:
-        if pe.orig.errno == 90030:
+    except sa_exc.ProgrammingError as p_err:
+        if p_err.orig.errno == 90030:
             # This means that there are too many tables in the schema, we need to go more granular
             return None  # None triggers _get_table_columns while staying cacheable
         raise
@@ -128,7 +133,7 @@ def get_schema_columns(self, connection, schema, **kw):
         table_name = self.normalize_name(table_name)
         column_name = self.normalize_name(column_name)
         if table_name not in ans:
-            ans[table_name] = list()
+            ans[table_name] = []
         if column_name.startswith("sys_clustering_column"):
             continue  # ignoring clustering column
         col_type = self.ischema_names.get(coltype, None)

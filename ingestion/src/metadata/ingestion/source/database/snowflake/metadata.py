@@ -78,7 +78,9 @@ SnowflakeDialect.normalize_name = normalize_names
 SnowflakeDialect.get_table_comment = get_table_comment
 SnowflakeDialect.get_view_definition = get_view_definition
 SnowflakeDialect.get_unique_constraints = get_unique_constraints
-SnowflakeDialect._get_schema_columns = get_schema_columns
+SnowflakeDialect._get_schema_columns = (  # pylint: disable=protected-access
+    get_schema_columns
+)
 
 
 class SnowflakeSource(CommonDbSourceService):

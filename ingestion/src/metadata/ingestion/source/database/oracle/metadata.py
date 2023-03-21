@@ -99,7 +99,9 @@ def get_view_definition(
     )
 
 
-def _get_col_type(self, coltype, precision, scale, length, colname):
+def _get_col_type(
+    self, coltype, precision, scale, length, colname
+):  # pylint: disable=too-many-branches
     raw_type = coltype
     if coltype == "NUMBER":
         if precision is None and scale == 0:
