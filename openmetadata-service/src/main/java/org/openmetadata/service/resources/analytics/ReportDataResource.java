@@ -25,20 +25,25 @@ import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.analytics.ReportData;
 import org.openmetadata.schema.analytics.ReportData.ReportDataType;
+import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.ReportDataRepository;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.policyevaluator.OperationContext;
+import org.openmetadata.service.security.policyevaluator.ReportDataContext;
+import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
 import org.openmetadata.service.util.ResultList;
 
 @Slf4j
-@Path("/v1/analytic/reportData")
+@Path("/v1/analytics/reportData")
 @Api(value = "ReportData collection", tags = "ReportData collection")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "reportData")
 public class ReportDataResource {
-  public static final String COLLECTION_PATH = "v1/analytic/reportData";
+  public static final String COLLECTION_PATH = "v1/analytics/reportData";
   @Getter protected final ReportDataRepository dao;
   protected final Authorizer authorizer;
 
@@ -92,7 +97,10 @@ public class ReportDataResource {
           @QueryParam("endTs")
           Long endTs)
       throws IOException {
-    return dao.getReportData(reportDataType, startTs, endTs);
+        OperationContext operationContext = new OperationContext(Entity.DATA_INSIGHT_CHART, MetadataOperation.VIEW_ALL);
+        ResourceContextInterface resourceContext = ReportDataContext.builder().build();
+        authorizer.authorize(securityContext, operationContext, resourceContext);
+        return dao.getReportData(reportDataType, startTs, endTs);
   }
 
   @POST
@@ -110,6 +118,9 @@ public class ReportDataResource {
   public Response addReportData(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid ReportData reportData)
       throws IOException {
-    return dao.addReportData(reportData);
+      OperationContext operationContext = new OperationContext(Entity.DATA_INSIGHT_CHART, MetadataOperation.CREATE);
+      ResourceContextInterface resourceContext = ReportDataContext.builder().build();
+      authorizer.authorize(securityContext, operationContext, resourceContext);
+      return dao.addReportData(reportData);
   }
 }

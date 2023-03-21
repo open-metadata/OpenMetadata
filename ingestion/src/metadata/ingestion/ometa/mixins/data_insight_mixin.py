@@ -44,7 +44,7 @@ class DataInsightMixin:
             record (ReportData): report data
         """
 
-        resp = self.client.post("/analytic/reportData", record.json())
+        resp = self.client.post("/analytics/reportData", record.json())
 
         return resp
 
@@ -85,7 +85,7 @@ class DataInsightMixin:
         """
 
         resp = self.client.get(
-            "/analytic/reportData",
+            "/analytics/reportData",
             {"startTs": start_ts, "endTs": end_ts, "reportDataType": report_data_type},
         )
 
