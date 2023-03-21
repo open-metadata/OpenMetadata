@@ -91,8 +91,6 @@ class AirflowSource(PipelineServiceSource):
     Pipeline metadata from Airflow's metadata db
     """
 
-    config: WorkflowSource
-
     def __init__(
         self,
         config: WorkflowSource,
