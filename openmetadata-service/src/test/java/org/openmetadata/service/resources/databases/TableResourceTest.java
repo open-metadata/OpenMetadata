@@ -1968,10 +1968,10 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     return TestUtils.get(target, TableResource.ColumnProfileList.class, authHeaders);
   }
 
-  public Query putTableQueriesData(UUID queryId, List<EntityReference> data, Map<String, String> authHeaders)
+  public ChangeEvent putTableQueriesData(UUID queryId, List<EntityReference> data, Map<String, String> authHeaders)
       throws HttpResponseException {
     WebTarget target = getResource(String.format("queries/%s/usage", queryId));
-    return TestUtils.put(target, data, Query.class, OK, authHeaders);
+    return TestUtils.put(target, data, ChangeEvent.class, CREATED, authHeaders);
   }
 
   public List<Query> getTableQueriesData(UUID entityId, Map<String, String> authHeaders) throws HttpResponseException {
