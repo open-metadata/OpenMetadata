@@ -287,3 +287,14 @@ export const STEPS_FOR_ADD_SERVICE: Array<StepperStepType> = [
     step: 4,
   },
 ];
+
+export const SERVICE_DEFAULT_ERROR_MAP = {
+  serviceType: false,
+  name: false,
+  duplicateName: false,
+  nameWithSpace: false,
+  delimit: false,
+  specialChar: false,
+  nameLength: false,
+  allowChar: false,
+};

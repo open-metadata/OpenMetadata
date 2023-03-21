@@ -13,10 +13,13 @@
 
 import { Card } from 'antd';
 import PageLayoutV1 from 'components/containers/PageLayoutV1';
-import { STEPS_FOR_ADD_SERVICE } from 'constants/Services.constant';
+import {
+  SERVICE_DEFAULT_ERROR_MAP,
+  STEPS_FOR_ADD_SERVICE,
+} from 'constants/Services.constant';
 import { useAirflowStatus } from 'hooks/useAirflowStatus';
 import { t } from 'i18next';
-import { capitalize, isUndefined } from 'lodash';
+import { capitalize, cloneDeep, isUndefined } from 'lodash';
 import { LoadingState } from 'Models';
 import React, { useState } from 'react';
 import { useHistory } from 'react-router-dom';
@@ -62,17 +65,10 @@ const AddService = ({
 }: AddServiceProps) => {
   const history = useHistory();
   const { fetchAirflowStatus, isAirflowAvailable } = useAirflowStatus();
-  const [showErrorMessage, setShowErrorMessage] = useState({
-    serviceType: false,
-    name: false,
-    duplicateName: false,
-    nameWithSpace: false,
-    delimit: false,
-    specialChar: false,
-    nameLength: false,
-    allowChar: false,
-    isError: false,
-  });
+
+  const [showErrorMessage, setShowErrorMessage] = useState(
+    SERVICE_DEFAULT_ERROR_MAP
+  );
   const [activeServiceStep, setActiveServiceStep] = useState(1);
   const [activeIngestionStep, setActiveIngestionStep] = useState(1);
   const [selectServiceType, setSelectServiceType] = useState('');
@@ -80,26 +76,22 @@ const AddService = ({
   const [description, setDescription] = useState('');
   const [saveServiceState, setSaveServiceState] =
     useState<LoadingState>('initial');
-
   const [activeField, setActiveField] = useState<string>('');
-
-  const resetServiceData = () => {
-    setServiceName('');
-    setDescription('');
-  };
 
   const handleServiceTypeClick = (type: string) => {
     setShowErrorMessage({ ...showErrorMessage, serviceType: false });
-    resetServiceData();
+    setServiceName('');
+    setDescription('');
     setSelectServiceType(type);
   };
 
-  const serviceCategoryHandler = (category: ServiceCategory) => {
+  const handleServiceCategoryChange = (category: ServiceCategory) => {
     setShowErrorMessage({ ...showErrorMessage, serviceType: false });
     setSelectServiceType('');
     history.push(getAddServicePath(category));
   };
 
+  // Select service
   const handleSelectServiceCancel = () => {
     history.push(
       getSettingPath(
@@ -117,45 +109,40 @@ const AddService = ({
     }
   };
 
-  const handleConfigureServiceBackClick = () => setActiveServiceStep(2);
-
+  // Service requirements
   const handleServiceRequirementsBackClick = () => setActiveServiceStep(1);
   const handleServiceRequirementsNextClick = () => setActiveServiceStep(3);
 
+  // Configure service name
+  const handleConfigureServiceBackClick = () => setActiveServiceStep(2);
   const handleConfigureServiceNextClick = (descriptionValue: string) => {
-    setDescription(descriptionValue);
+    setDescription(descriptionValue.trim());
 
-    if (!serviceName.trim()) {
-      setShowErrorMessage({ ...showErrorMessage, name: true, isError: true });
-    } else if (nameWithSpace.test(serviceName)) {
-      setShowErrorMessage({
-        ...showErrorMessage,
-        nameWithSpace: true,
-        isError: true,
-      });
-    } else if (delimiterRegex.test(serviceName)) {
-      setShowErrorMessage({
-        ...showErrorMessage,
-        delimit: true,
-        isError: true,
-      });
-    } else if (!isUrlFriendlyName(serviceName.trim())) {
-      setShowErrorMessage({
-        ...showErrorMessage,
-        specialChar: true,
-        isError: true,
-      });
-    } else if (serviceName.length < 1 || serviceName.length > 128) {
-      setShowErrorMessage({
-        ...showErrorMessage,
-        nameLength: true,
-        isError: true,
-      });
-    } else if (!showErrorMessage.isError) {
+    const trimmedServiceName = serviceName.trim();
+
+    let errorObj = cloneDeep(showErrorMessage);
+
+    if (!trimmedServiceName) {
+      errorObj = { ...errorObj, name: true };
+    } else if (nameWithSpace.test(trimmedServiceName)) {
+      errorObj = { ...errorObj, nameWithSpace: true };
+    } else if (delimiterRegex.test(trimmedServiceName)) {
+      errorObj = { ...errorObj, delimit: true };
+    } else if (!isUrlFriendlyName(trimmedServiceName)) {
+      errorObj = { ...errorObj, specialChar: true };
+    } else if (
+      trimmedServiceName.length < 1 ||
+      trimmedServiceName.length > 128
+    ) {
+      errorObj = { ...errorObj, nameLength: true };
+    } else {
       setActiveServiceStep(4);
     }
+    setShowErrorMessage(errorObj);
   };
 
+  // Service connection
+  const handleConnectionDetailsBackClick = () => setActiveServiceStep(3);
   const handleConfigUpdate = async (newConfigData: ConfigData) => {
     const data = {
       name: serviceName,
@@ -186,17 +173,15 @@ const AddService = ({
     }
   };
 
-  const handleConnectionDetailsBackClick = () => {
-    setActiveServiceStep(3);
-  };
-
+  // View new service
   const handleViewServiceClick = () => {
     if (!isUndefined(newServiceData)) {
       history.push(getServiceDetailsPath(newServiceData.name, serviceCategory));
     }
   };
 
-  const handleValidation = (
+  // Service name validation
+  const handleServiceNameValidation = (
     event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
   ) => {
     const value = event.target.value;
@@ -205,7 +190,6 @@ const AddService = ({
       setShowErrorMessage({
         ...showErrorMessage,
         name: false,
-        isError: false,
         delimit: false,
         specialChar: false,
         nameLength: false,
@@ -213,9 +197,13 @@ const AddService = ({
     }
   };
 
+  // Service focused field
   const handleFieldFocus = (fieldName: string) => setActiveField(fieldName);
 
+  // Flag to check if pipeline is deployed or not
   const isDeployed = activeIngestionStep >= 3 && !showDeployButton;
+
+  // rendering
 
   const addNewServiceElement = (
     <div data-testid="add-new-service-container">
@@ -232,7 +220,7 @@ const AddService = ({
             handleServiceTypeClick={handleServiceTypeClick}
             selectServiceType={selectServiceType}
             serviceCategory={serviceCategory}
-            serviceCategoryHandler={serviceCategoryHandler}
+            serviceCategoryHandler={handleServiceCategoryChange}
             showError={showErrorMessage.serviceType}
             onCancel={handleSelectServiceCancel}
             onNext={handleSelectServiceNextClick}
@@ -251,7 +239,7 @@ const AddService = ({
         {activeServiceStep === 3 && (
           <ConfigureService
             description={description}
-            handleValidation={handleValidation}
+            handleValidation={handleServiceNameValidation}
             serviceName={serviceName}
             showError={{
               name: showErrorMessage.name,
@@ -296,55 +284,52 @@ const AddService = ({
   );
 
   return (
-    <div className="tw-self-center">
-      {' '}
-      <PageLayoutV1
-        className="tw-max-w-full-hd tw-h-full tw-pt-4"
-        header={<TitleBreadcrumb titleLinks={slashedBreadcrumb} />}
-        pageTitle={t('label.add-entity', { entity: t('label.service') })}
-        rightPanel={
-          <RightPanel
-            activeField={activeField}
-            activeStep={addIngestion ? activeIngestionStep : activeServiceStep}
-            ingestionName={`${serviceName}_${PipelineType.Metadata}`}
-            isAirflowRunning={isAirflowAvailable}
-            isIngestion={addIngestion}
-            isUpdating={false}
+    <PageLayoutV1
+      className="tw-max-w-full-hd tw-h-full tw-pt-4"
+      header={<TitleBreadcrumb titleLinks={slashedBreadcrumb} />}
+      pageTitle={t('label.add-entity', { entity: t('label.service') })}
+      rightPanel={
+        <RightPanel
+          activeField={activeField}
+          activeStep={addIngestion ? activeIngestionStep : activeServiceStep}
+          ingestionName={`${serviceName}_${PipelineType.Metadata}`}
+          isAirflowRunning={isAirflowAvailable}
+          isIngestion={addIngestion}
+          isUpdating={false}
+          pipelineType={PipelineType.Metadata}
+          selectedService={selectServiceType}
+          selectedServiceCategory={serviceCategory}
+          serviceName={serviceName}
+          showDeployedTitle={isDeployed}
+        />
+      }>
+      <Card className="p-lg">
+        {addIngestion ? (
+          <AddIngestion
+            activeIngestionStep={activeIngestionStep}
+            handleCancelClick={() => handleAddIngestion(false)}
+            handleViewServiceClick={handleViewServiceClick}
+            heading={`${t('label.add-workflow-ingestion', {
+              workflow: capitalize(PipelineType.Metadata),
+            })}`}
+            ingestionAction={ingestionAction}
+            ingestionProgress={ingestionProgress}
+            isIngestionCreated={isIngestionCreated}
+            isIngestionDeployed={isIngestionDeployed}
             pipelineType={PipelineType.Metadata}
-            selectedService={selectServiceType}
-            selectedServiceCategory={serviceCategory}
-            serviceName={serviceName}
-            showDeployedTitle={isDeployed}
+            serviceCategory={serviceCategory}
+            serviceData={newServiceData as DataObj}
+            setActiveIngestionStep={(step) => setActiveIngestionStep(step)}
+            showDeployButton={showDeployButton}
+            status={FormSubmitType.ADD}
+            onAddIngestionSave={onAddIngestionSave}
+            onIngestionDeploy={onIngestionDeploy}
           />
-        }>
-        <Card className="p-lg">
-          {addIngestion ? (
-            <AddIngestion
-              activeIngestionStep={activeIngestionStep}
-              handleCancelClick={() => handleAddIngestion(false)}
-              handleViewServiceClick={handleViewServiceClick}
-              heading={`${t('label.add-workflow-ingestion', {
-                workflow: capitalize(PipelineType.Metadata),
-              })}`}
-              ingestionAction={ingestionAction}
-              ingestionProgress={ingestionProgress}
-              isIngestionCreated={isIngestionCreated}
-              isIngestionDeployed={isIngestionDeployed}
-              pipelineType={PipelineType.Metadata}
-              serviceCategory={serviceCategory}
-              serviceData={newServiceData as DataObj}
-              setActiveIngestionStep={(step) => setActiveIngestionStep(step)}
-              showDeployButton={showDeployButton}
-              status={FormSubmitType.ADD}
-              onAddIngestionSave={onAddIngestionSave}
-              onIngestionDeploy={onIngestionDeploy}
-            />
-          ) : (
-            addNewServiceElement
-          )}
-        </Card>
-      </PageLayoutV1>
-    </div>
+        ) : (
+          addNewServiceElement
+        )}
+      </Card>
+    </PageLayoutV1>
   );
 };
 
