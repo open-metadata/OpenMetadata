@@ -493,13 +493,14 @@ public final class EntityUtil {
    * required to set relationship as id, type are the only required fields in entity reference, whereas we need to send
    * fully populated object such that ElasticSearch index has all the details.
    */
-  public static List<EntityReference> getNonDeletedEntityReferences(List<EntityReference> entities) throws IOException {
+  public static List<EntityReference> getEntityReferences(List<EntityReference> entities, Include include)
+      throws IOException {
     if (nullOrEmpty(entities)) {
       return Collections.emptyList();
     }
     List<EntityReference> refs = new ArrayList<>();
     for (EntityReference entityReference : entities) {
-      EntityReference chartRef = Entity.getEntityReference(entityReference, Include.NON_DELETED);
+      EntityReference chartRef = Entity.getEntityReference(entityReference, include);
       refs.add(chartRef);
     }
     return refs.isEmpty() ? null : refs;

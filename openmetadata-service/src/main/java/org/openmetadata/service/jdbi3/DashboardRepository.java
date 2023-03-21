@@ -92,8 +92,8 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
   @Override
   public void prepare(Dashboard dashboard) throws IOException {
     populateService(dashboard);
-    dashboard.setCharts(EntityUtil.getNonDeletedEntityReferences(dashboard.getCharts()));
-    dashboard.setDataModels(EntityUtil.getNonDeletedEntityReferences(dashboard.getDataModels()));
+    dashboard.setCharts(EntityUtil.getEntityReferences(dashboard.getCharts(), Include.NON_DELETED));
+    dashboard.setDataModels(EntityUtil.getEntityReferences(dashboard.getDataModels(), Include.NON_DELETED));
   }
 
   @Override
