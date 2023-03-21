@@ -740,7 +740,7 @@ class SampleDataSource(
                 logger.debug(traceback.format_exc())
                 logger.warning(f"Unexpected exception ingesting chart [{chart}]: {err}")
 
-    def ingest_data_models(self) -> Iterable[CreateChartRequest]:
+    def ingest_data_models(self) -> Iterable[CreateDataModelRequest]:
         for data_model in self.data_models["datamodels"]:
             try:
                 data_model_ev = CreateDataModelRequest(
@@ -753,7 +753,9 @@ class SampleDataSource(
                     serviceType=data_model["serviceType"],
                     service=self.dashboard_service.fullyQualifiedName,
                 )
-                self.status.scanned("data_model", data_model_ev.name.__root__)
+                self.status.scanned(
+                    f"Data Model Scanned: {data_model_ev.name.__root__}"
+                )
                 yield data_model_ev
             except ValidationError as err:
                 logger.debug(traceback.format_exc())
