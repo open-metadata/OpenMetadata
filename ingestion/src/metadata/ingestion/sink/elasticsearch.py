@@ -47,7 +47,7 @@ from metadata.generated.schema.entity.teams.team import Team
 from metadata.generated.schema.entity.teams.user import User
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.common import Entity
-from metadata.ingestion.api.sink import Sink, SinkStatus
+from metadata.ingestion.api.sink import Sink
 from metadata.ingestion.models.es_documents import (
     DashboardESDocument,
     ESEntityReference,
@@ -183,10 +183,9 @@ class ElasticsearchSink(Sink[Entity]):
         config: ElasticSearchConfig,
         metadata_config: OpenMetadataConnection,
     ) -> None:
+        super().__init__()
         self.config = config
         self.metadata_config = metadata_config
-
-        self.status = SinkStatus()
         self.metadata = OpenMetadata(self.metadata_config)
         self.elasticsearch_doc_type = "_doc"
         http_auth = None
@@ -890,9 +889,6 @@ class ElasticsearchSink(Sink[Entity]):
                     column_descriptions,
                     tags,
                 )
-
-    def get_status(self):
-        return self.status
 
     def close(self):
         self.elasticsearch_client.close()
