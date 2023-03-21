@@ -90,7 +90,7 @@
       "additionalProperties": false
     },
     "filteringRules": {
-      "description": "Filtering Rules for Event Subscription",
+      "description": "Filtering Rules for Event Subscription.",
       "type": "object",
       "javaType": "org.openmetadata.schema.entity.events.FilteringRules",
       "properties": {
