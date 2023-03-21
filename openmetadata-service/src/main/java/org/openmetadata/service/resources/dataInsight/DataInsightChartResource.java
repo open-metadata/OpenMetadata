@@ -53,6 +53,7 @@ import org.openmetadata.schema.dataInsight.DataInsightChartResult;
 import org.openmetadata.schema.type.DataReportIndex;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.dataInsight.DataInsightAggregatorFactory;
@@ -63,6 +64,7 @@ import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.util.ElasticSearchClientUtils;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
@@ -490,6 +492,9 @@ public class DataInsightChartResource extends EntityResource<DataInsightChart, D
           @QueryParam("endTs")
           Long endTs)
       throws IOException, ParseException {
+
+    OperationContext operationContext = new OperationContext(Entity.DATA_INSIGHT_CHART, MetadataOperation.VIEW_ALL);
+    authorizer.authorize(securityContext, operationContext, getResourceContext());
 
     SearchSourceBuilder searchSourceBuilder =
         dao.buildQueryFilter(startTs, endTs, tier, team, dataInsightChartName.value());
