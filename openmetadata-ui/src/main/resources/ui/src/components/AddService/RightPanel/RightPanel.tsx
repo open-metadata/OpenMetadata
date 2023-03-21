@@ -137,9 +137,14 @@ const RightPanel: FC<RightPanelProps> = ({
   ) : null;
 
   const fetchFieldDocument = async () => {
+    /**
+     * active field id like #root_fieldName
+     * so we need to split and get the fieldName
+     */
+    const fieldName = activeField?.split('_')[1];
     const filePath = `${i18n.language}/${getServiceType(
       selectedServiceCategory
-    )}/${selectedService}/connections/fields/${activeField}.md`;
+    )}/${selectedService}/connections/fields/${fieldName}.md`;
 
     try {
       const response = await fetchMarkdownFile(filePath);
