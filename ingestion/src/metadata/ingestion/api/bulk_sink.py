@@ -37,6 +37,9 @@ class BulkSinkStatus(Status):
 
 @dataclass  # type: ignore[misc]
 class BulkSink(Closeable, metaclass=ABCMeta):
+    """
+    BulkSink class
+    """
 
     status: BulkSinkStatus
 

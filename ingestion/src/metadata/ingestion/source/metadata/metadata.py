@@ -162,6 +162,14 @@ class MetadataSource(Source[Entity]):
             )
 
     def fetch_entities(self, entity_class, fields):
+        """
+        Args:
+            entity_class: class of the entities to be fetched
+            fields: fields that must be additionally fetched
+
+        Returns:
+            A list of entities with the requested fields
+        """
         try:
             after = None
             while True:

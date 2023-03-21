@@ -56,6 +56,9 @@ class ProfilerProcessorStatus(ProcessorStatus):
 
 @dataclass
 class Processor(Closeable, Generic[Entity], metaclass=ABCMeta):
+    """
+    Processor class
+    """
 
     status: ProcessorStatus
 

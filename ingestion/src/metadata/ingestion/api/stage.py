@@ -45,6 +45,9 @@ class StageStatus(Status):
 
 @dataclass  # type: ignore[misc]
 class Stage(Closeable, Generic[Entity], metaclass=ABCMeta):
+    """
+    Stage class
+    """
 
     status: StageStatus
 
