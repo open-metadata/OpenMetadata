@@ -57,7 +57,7 @@ public class DefaultAuthorizer implements Authorizer {
 
   @Override
   public ResourcePermission getPermission(
-      SecurityContext securityContext, String user, ResourceContextInterface resourceContext) {
+      SecurityContext securityContext, String user, ResourceContextInterface resourceContext) throws IOException {
     SubjectContext subjectContext = getSubjectContext(securityContext);
     subjectContext = changeSubjectContext(user, subjectContext);
     return subjectContext.isAdmin()
