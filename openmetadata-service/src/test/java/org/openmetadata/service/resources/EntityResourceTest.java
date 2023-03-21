@@ -153,8 +153,8 @@ import org.openmetadata.service.resources.databases.TableResourceTest;
 import org.openmetadata.service.resources.dqtests.TestCaseResourceTest;
 import org.openmetadata.service.resources.dqtests.TestDefinitionResourceTest;
 import org.openmetadata.service.resources.dqtests.TestSuiteResourceTest;
-import org.openmetadata.service.resources.events.AlertResourceTest;
-import org.openmetadata.service.resources.events.EventResource.ChangeEventList;
+import org.openmetadata.service.resources.events.EventResource.EventList;
+import org.openmetadata.service.resources.events.EventSubscriptionResourceTest;
 import org.openmetadata.service.resources.glossary.GlossaryResourceTest;
 import org.openmetadata.service.resources.kpi.KpiResourceTest;
 import org.openmetadata.service.resources.metadata.TypeResourceTest;
@@ -384,7 +384,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     runWebhookTests = new Random().nextBoolean();
     if (runWebhookTests) {
       webhookCallbackResource.clearEvents();
-      AlertResourceTest alertResourceTest = new AlertResourceTest();
+      EventSubscriptionResourceTest alertResourceTest = new EventSubscriptionResourceTest();
       alertResourceTest.startWebhookSubscription(true);
       alertResourceTest.startWebhookEntitySubscriptions(entityType);
     }
@@ -393,7 +393,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   @AfterAll
   public void afterAllTests() throws Exception {
     if (runWebhookTests) {
-      AlertResourceTest alertResourceTest = new AlertResourceTest();
+      EventSubscriptionResourceTest alertResourceTest = new EventSubscriptionResourceTest();
       alertResourceTest.validateWebhookEvents();
       alertResourceTest.validateWebhookEntityEvents(entityType);
     }
@@ -927,7 +927,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   @Execution(ExecutionMode.CONCURRENT)
   protected void post_delete_entity_as_bot(TestInfo test) throws IOException {
     // Ingestion bot can create and delete all the entities except websocket and bot
-    if (List.of(Entity.ALERT, Entity.ALERT_ACTION, Entity.BOT).contains(entityType)) {
+    if (List.of(Entity.EVENT_SUBSCRIPTION, Entity.BOT).contains(entityType)) {
       return;
     }
     // Delete by ID
@@ -2171,7 +2171,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     target = entityUpdated == null ? target : target.queryParam("entityUpdated", entityUpdated);
     target = entityDeleted == null ? target : target.queryParam("entityDeleted", entityDeleted);
     target = target.queryParam("timestamp", timestamp);
-    return TestUtils.get(target, ChangeEventList.class, authHeaders);
+    return TestUtils.get(target, EventList.class, authHeaders);
   }
 
   protected T getVersion(UUID id, Double version, Map<String, String> authHeaders) throws HttpResponseException {

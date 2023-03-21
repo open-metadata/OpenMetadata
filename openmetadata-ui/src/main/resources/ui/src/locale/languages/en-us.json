@@ -1196,6 +1196,7 @@
     "email-not-found": "User with the given email address does not exist!",
     "email-verification-error": "An email could not be sent for verification. Please contact your Administrator.",
     "entity-creation-error": "Error while creating {{entity}}",
+    "entity-deleted-successfully": "{{entity}} deleted successfully!",
     "entity-details-fetch-error": "Error while fetching details for {{entityType}} {{entityName}}",
     "entity-fetch-error": "Error while fetching {{entity}}",
     "entity-fetch-version-error": "Error while fetching {{entity}} versions {{version}}",
