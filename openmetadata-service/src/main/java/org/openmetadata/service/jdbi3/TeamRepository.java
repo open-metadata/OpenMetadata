@@ -13,7 +13,6 @@
 
 package org.openmetadata.service.jdbi3;
 
-import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.csv.CsvUtil.addEntityReferences;
@@ -601,7 +600,7 @@ public class TeamRepository extends EntityRepository<Team> {
           continue; // Parent is being created by CSV import
         }
         // Else the parent should already exist
-        if (!SubjectCache.getInstance().isInTeam(team.getName(), listOf(parentRef))) {
+        if (!SubjectCache.getInstance().isInTeam(team.getName(), parentRef)) {
           importFailure(printer, invalidTeam(4, team.getName(), importedTeam.getName(), parentRef.getName()), record);
           processRecord = false;
         }

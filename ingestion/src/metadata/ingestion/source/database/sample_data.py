@@ -92,7 +92,7 @@ from metadata.generated.schema.type.entityLineage import EntitiesEdge, LineageDe
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.schema import Topic
 from metadata.ingestion.api.common import Entity
-from metadata.ingestion.api.source import InvalidSourceException, Source, SourceStatus
+from metadata.ingestion.api.source import InvalidSourceException, Source
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
 from metadata.ingestion.models.profile_data import OMetaTableProfileSampleData
 from metadata.ingestion.models.tests_data import (
@@ -176,22 +176,6 @@ def get_table_key(row: Dict[str, Any]) -> Union[TableKey, None]:
     return TableKey(schema=row["schema"], table_name=row["table_name"])
 
 
-class SampleDataSourceStatus(SourceStatus):
-    success: List[str] = []
-    failures: List[str] = []
-    warnings: List[str] = []
-
-    def scanned(  # pylint: disable=arguments-differ
-        self, entity_type: str, entity_name: str
-    ) -> None:
-        self.success.append(entity_name)
-        logger.info(f"{entity_type} Scanned: {entity_name}")
-
-    def filtered(self, entity_type: str, entity_name: str, err: str) -> None:
-        self.warnings.append(entity_name)
-        logger.warning(f"Dropped {entity_type} {entity_type} due to {err}")
-
-
 class SampleDataSource(
     Source[Entity]
 ):  # pylint: disable=too-many-instance-attributes,too-many-public-methods,disable=too-many-lines,
@@ -203,7 +187,6 @@ class SampleDataSource(
     def __init__(self, config: WorkflowSource, metadata_config: OpenMetadataConnection):
         # pylint: disable=too-many-statements
         super().__init__()
-        self.status = SampleDataSourceStatus()
         self.config = config
         self.service_connection = config.serviceConnection.__root__.config
         self.metadata_config = metadata_config
@@ -613,8 +596,7 @@ class SampleDataSource(
                 tableConstraints=table.get("tableConstraints"),
                 tableType=table["tableType"],
             )
-
-            self.status.scanned("table", table_request.name.__root__)
+            self.status.scanned(f"Table Scanned: {table_request.name.__root__}")
             yield table_request
 
             location = CreateLocationRequest(
@@ -623,7 +605,7 @@ class SampleDataSource(
                     id=self.glue_storage_service.id, type="storageService"
                 ),
             )
-            self.status.scanned("location", location.name)
+            self.status.scanned(f"Location Scanned: {location.name}")
             yield location
 
             table_fqn = fqn.build(
@@ -701,7 +683,7 @@ class SampleDataSource(
                 tags=table["tags"],
             )
 
-            self.status.scanned("table", table_and_db.name)
+            self.status.scanned(f"Table Scanned: {table_and_db.name}")
             yield table_and_db
 
     def ingest_topics(self) -> Iterable[CreateTopicRequest]:
@@ -738,7 +720,7 @@ class SampleDataSource(
                     schemaFields=schema_fields,
                 )
 
-            self.status.scanned("topic", create_topic.name.__root__)
+            self.status.scanned(f"Topic Scanned: {create_topic.name.__root__}")
             yield create_topic
 
     def ingest_charts(self) -> Iterable[CreateChartRequest]:
@@ -752,7 +734,7 @@ class SampleDataSource(
                     chartUrl=chart["chartUrl"],
                     service=self.dashboard_service.fullyQualifiedName,
                 )
-                self.status.scanned("chart", chart_ev.name.__root__)
+                self.status.scanned(f"Chart Scanned: {chart_ev.name.__root__}")
                 yield chart_ev
             except ValidationError as err:
                 logger.debug(traceback.format_exc())
@@ -790,7 +772,7 @@ class SampleDataSource(
                 dataModels=dashboard.get("dataModels", None),
                 service=self.dashboard_service.fullyQualifiedName,
             )
-            self.status.scanned("dashboard", dashboard_ev.name.__root__)
+            self.status.scanned(f"Dashboard Scanned: {dashboard_ev.name.__root__}")
             yield dashboard_ev
 
     def ingest_pipelines(self) -> Iterable[Pipeline]:
@@ -1092,9 +1074,6 @@ class SampleDataSource(
 
     def close(self):
         pass
-
-    def get_status(self):
-        return self.status
 
     def test_connection(self) -> None:
         pass

@@ -49,11 +49,11 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.ingestion.api.parser import parse_workflow_config_gracefully
 from metadata.ingestion.api.processor import ProcessorStatus
 from metadata.ingestion.api.sink import Sink
+from metadata.ingestion.api.source import SourceStatus
 from metadata.ingestion.models.custom_types import ServiceWithConnectionType
 from metadata.ingestion.ometa.client_utils import create_ometa_client
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.connections import get_connection, get_test_connection_fn
-from metadata.ingestion.source.database.common_db_source import SQLSourceStatus
 from metadata.profiler.api.models import (
     ProfilerProcessorConfig,
     ProfilerResponse,
@@ -115,7 +115,7 @@ class ProfilerWorkflow(WorkflowStatusMixin):
         self.source_config: DatabaseServiceProfilerPipeline = cast(
             DatabaseServiceProfilerPipeline, self.config.source.sourceConfig.config
         )  # Used to satisfy type checked
-        self.source_status = SQLSourceStatus()
+        self.source_status = SourceStatus()
         self.status = ProcessorStatus()
         self._profiler_interface_args = None
         if self.config.sink:

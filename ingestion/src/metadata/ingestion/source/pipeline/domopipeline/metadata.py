@@ -54,8 +54,6 @@ class DomopipelineSource(PipelineServiceSource):
     Pipeline metadata from Domo's metadata db
     """
 
-    config: WorkflowSource
-
     @classmethod
     def create(cls, config_dict, metadata_config: OpenMetadataConnection):
         config = WorkflowSource.parse_obj(config_dict)
