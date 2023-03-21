@@ -12,7 +12,6 @@
 Data Insights DAG function builder
 """
 import json
-from typing import cast
 
 from airflow import DAG
 from openmetadata_managed_apis.utils.logger import set_operator_logger
