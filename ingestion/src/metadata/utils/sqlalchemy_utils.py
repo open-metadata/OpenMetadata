@@ -84,8 +84,8 @@ def get_display_datatype(
     scale: Optional[int],
 ):
     if char_len or (precision is not None and scale is None):
-        l = char_len or scale
-        return f"{col_type}({str(l)})"
+        length = char_len or scale
+        return f"{col_type}({str(length)})"
     if scale is not None and precision is not None:
         return f"{col_type}({str(precision)},{str(scale)})"
     return col_type
