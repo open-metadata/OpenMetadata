@@ -13,9 +13,17 @@ Status output utilities
 """
 import json
 import pprint
+from typing import Any, List
+
+from pydantic import BaseModel, Extra, Field
 
 
-class Status:
+class Status(BaseModel):
+
+    records: List[Any] = Field(default_factory=list)
+    warnings: List[Any] = Field(default_factory=list)
+    failures: List[Any] = Field(default_factory=list)
+
     def as_obj(self) -> dict:
         return self.__dict__
 

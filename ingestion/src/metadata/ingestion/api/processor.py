@@ -12,8 +12,10 @@
 Abstract Processor definition to build a Workflow
 """
 from abc import ABCMeta, abstractmethod
-from dataclasses import dataclass, field
-from typing import Any, Generic, List
+from dataclasses import dataclass
+from typing import Any, Generic, List, Optional
+
+from pydantic import Field
 
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
@@ -26,12 +28,9 @@ from metadata.utils.logger import ingestion_logger
 logger = ingestion_logger()
 
 
-# pylint: disable=duplicate-code
-@dataclass
 class ProcessorStatus(Status):
-    records: List[str] = field(default_factory=list)
-    warnings: List[Any] = field(default_factory=list)
-    failures: List[Any] = field(default_factory=list)
+
+    records: List[str] = Field(default_factory=list)
 
     def processed(self, record: Any):
         self.records.append(record)
@@ -43,14 +42,11 @@ class ProcessorStatus(Status):
         self.failures.append(info)
 
 
-@dataclass
-class ProfilerProcessorStatus(ProcessorStatus):
-    entity: str = None
+class ProfilerProcessorStatus(Status):
 
-    # Disabling linting here until we find a better way to handling workflow statuses
-    def failure(  # pylint: disable=arguments-differ
-        self, column: str, metric: str, reason: str
-    ) -> None:
+    entity: Optional[str] = None
+
+    def failure(self, column: str, metric: str, reason: str) -> None:
         self.failures.append({self.entity: {column: {metric: {reason}}}})
 
 
