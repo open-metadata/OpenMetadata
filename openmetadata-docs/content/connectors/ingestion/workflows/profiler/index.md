@@ -150,3 +150,24 @@ This is a good option if you which to execute your workflow via the Airflow SDK 
           - customers
   [...]
 ```
+
+## Profiler Best Practices
+When setting a profiler workflow it is important to keep in mind that queries will be ran against you database. Depending on your database engine you may incure cost (e.g. Google BigQuery, Snowflake). Execution time will also vary depending on you database engine computing power, the size of the table and the number of columns. Given these elements there are few best practices we recommend you follow.
+
+### 1. Profile what you Need
+Profiling all the tables in your data platform might not be the most optimized approach. Profiled tables give indication about the structure of the table and is most useful for tables where this information is valuable (e.g. tables used by analysts or data scientists, etc.).
+
+When setting up a profiler workflow you have the possibility to filter out/in certain database, schema, or tables. Using this feature will greatly help you narrow down which table you want to profile.
+
+### 2. Sampling and Partitionning your Tables
+On a table asset you have the possibility to add a sample percentage/rows and a partitionning logic. Doing so will significantly reduce the amount of data scanned and the computing power required to perform the different operations. 
+
+For sampling, you can set a sampling percentage at the workflow level.
+
+### 3. Excluding/Including Specific Columns/Metrics
+By default, the profiler will compute all the metrics against all the columns. This behavior can be fine-tuned to only include or exclude specific columns and specific metrics.
+
+For example, excluding `id` columns will reduce the number of columns against which the metrics are computed.
+
+### 4. Set Up Multiple Workflow
+If you have a large number of tables you would like to profile, setting up multiple workflow will help distribute the load. It is important though to monitor your instance CPU and memory as having a large amount of workflow running simultaneously will require an adapted amount of resources.
