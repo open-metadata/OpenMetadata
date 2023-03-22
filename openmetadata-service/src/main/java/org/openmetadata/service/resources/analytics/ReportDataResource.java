@@ -37,13 +37,13 @@ import org.openmetadata.service.security.policyevaluator.ResourceContextInterfac
 import org.openmetadata.service.util.ResultList;
 
 @Slf4j
-@Path("/v1/analytics/reportData")
+@Path("/v1/analytics/reports")
 @Api(value = "ReportData collection", tags = "ReportData collection")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "reportData")
 public class ReportDataResource {
-  public static final String COLLECTION_PATH = "v1/analytics/reportData";
+  public static final String COLLECTION_PATH = "v1/analytics/reports";
   @Getter protected final ReportDataRepository dao;
   protected final Authorizer authorizer;
 

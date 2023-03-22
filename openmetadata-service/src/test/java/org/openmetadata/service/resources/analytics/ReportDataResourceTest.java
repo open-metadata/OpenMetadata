@@ -24,7 +24,7 @@ import org.openmetadata.service.util.TestUtils;
 
 public class ReportDataResourceTest extends OpenMetadataApplicationTest {
 
-  private final String collectionName = "analytics/reportData";
+  private final String collectionName = "analytics/reports";
 
   @Test
   @Execution(ExecutionMode.CONCURRENT)
