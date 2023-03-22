@@ -494,7 +494,8 @@ class Profiler(Generic[TMetric]):
             return None
 
     def process_pii_sensitive(self, sample_data: TableData) -> None:
-        """_summary_
+        """Read sample data to find pii sensitive columns and tag them
+        as PII sensitive data
 
         Args:
             sample_data (TableData): sample data
