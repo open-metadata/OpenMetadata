@@ -89,7 +89,6 @@ class TestConnectionAutomationTest(TestCase):
         automation_workflow: Workflow = self.metadata.create_or_update(
             data=new_workflow_request
         )
-
         engine: Engine = get_connection(SERVICE_CONNECTION)
 
         test_connection_fn = get_test_connection_fn(SERVICE_CONNECTION)

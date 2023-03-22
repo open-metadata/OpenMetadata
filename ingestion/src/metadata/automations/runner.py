@@ -45,8 +45,8 @@ def _(request: TestServiceConnectionRequest, automation_workflow: AutomationWork
     """
     Run the test connection
     """
-    connection = get_connection(request.connection.config)
     metadata = OpenMetadata(config=automation_workflow.openMetadataServerConnection)
+    connection = get_connection(request.connection.config)
 
     # Find the test_connection function in each <source>/connection.py file
     test_connection_fn = get_test_connection_fn(request.connection.config)
