@@ -157,7 +157,7 @@ When setting a profiler workflow it is important to keep in mind that queries wi
 ### 1. Profile what you Need
 Profiling all the tables in your data platform might not be the most optimized approach. Profiled tables give an indication of the structure of the table, which is most useful for tables where this information is valuable (e.g., tables used by analysts or data scientists, etc.).
 
-When setting up a profiler workflow you have the possibility to filter out/in certain database, schema, or tables. Using this feature will greatly help you narrow down which table you want to profile.
+When setting up a profiler workflow, you have the possibility to filter out/in certain databases, schemas, or tables. Using this feature will greatly help you narrow down which table you want to profile.
 
 ### 2. Sampling and Partitionning your Tables
 On a table asset you have the possibility to add a sample percentage/rows and a partitionning logic. Doing so will significantly reduce the amount of data scanned and the computing power required to perform the different operations. 
