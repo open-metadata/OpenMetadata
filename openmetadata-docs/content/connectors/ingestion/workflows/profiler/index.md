@@ -165,7 +165,7 @@ On a table asset, you have the possibility to add a sample percentage/rows and a
 For sampling, you can set a sampling percentage at the workflow level.
 
 ### 3. Excluding/Including Specific Columns/Metrics
-By default, the profiler will compute all the metrics against all the columns. This behavior can be fine-tuned to only include or exclude specific columns and specific metrics.
+By default, the profiler will compute all the metrics against all the columns. This behavior can be fine-tuned only to include or exclude specific columns and specific metrics.
 
 For example, excluding `id` columns will reduce the number of columns against which the metrics are computed.
 
