@@ -12,27 +12,24 @@
  */
 
 import { DownOutlined, RightOutlined } from '@ant-design/icons';
-import { Button, Card, Col, Popover, Row, Space, Typography } from 'antd';
+import { Button, Card, Col, Row, Space, Typography } from 'antd';
 import classNames from 'classnames';
-import { getTableDetailsPath } from 'constants/constants';
 import {
   QUERY_DATE_FORMAT,
   QUERY_LINE_HEIGHT,
-  QUERY_USED_BY_TABLE_VIEW_CAP,
 } from 'constants/entity.constants';
-import { slice, split } from 'lodash';
+import { split } from 'lodash';
 import React, { FC, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
-import { getEntityName } from 'utils/EntityUtils';
 import { getFormattedDateFromSeconds } from 'utils/TimeUtils';
 import { CSMode } from '../../enums/codemirror.enum';
 import SchemaEditor from '../schema-editor/SchemaEditor';
 import QueryCardExtraOption from './QueryCardExtraOption/QueryCardExtraOption.component';
+import QueryUsedByOtherTable from './QueryUsedByOtherTable/QueryUsedByOtherTable.component';
 import './table-queries.style.less';
-import { QueryCardProp, QueryUsedByTable } from './TableQueries.interface';
+import { QueryCardProp } from './TableQueries.interface';
 
-const { Text, Paragraph } = Typography;
+const { Text } = Typography;
 
 const QueryCard: FC<QueryCardProp> = ({
   className,
@@ -61,27 +58,6 @@ const QueryCard: FC<QueryCardProp> = ({
     );
 
     return { isAllowExpand: queryArr.length > QUERY_LINE_HEIGHT, queryDate };
-  }, [query]);
-
-  const { topThreeTable, remainingTable } = useMemo(() => {
-    const { queryUsedIn } = query;
-    const filterTable =
-      queryUsedIn?.filter((table) => table.id !== tableId) || [];
-    const data: QueryUsedByTable = {
-      topThreeTable: [],
-      remainingTable: [],
-    };
-
-    if (filterTable.length) {
-      // Slice 3 table to display upfront in UI
-      data.topThreeTable = slice(filterTable, 0, QUERY_USED_BY_TABLE_VIEW_CAP);
-      if (filterTable.length > QUERY_USED_BY_TABLE_VIEW_CAP) {
-        // Slice remaining tables to show in "view more"
-        data.remainingTable = slice(filterTable, QUERY_USED_BY_TABLE_VIEW_CAP);
-      }
-    }
-
-    return data;
   }, [query]);
 
   const updateSqlQuery = async () => {
@@ -132,7 +108,8 @@ const QueryCard: FC<QueryCardProp> = ({
           title={
             <Space className="font-normal p-y-xs" size={8}>
               <Text>{queryDate}</Text>
-              <Text>{`• ${t('label.by-lowercase')} ${query.updatedBy}`}</Text>
+              <Text>{t('label.single-dots-symbol')}</Text>
+              <Text>{`${t('label.by-lowercase')} ${query.updatedBy}`}</Text>
             </Space>
           }
           onClick={handleCardClick}>
@@ -165,70 +142,36 @@ const QueryCard: FC<QueryCardProp> = ({
               onChange={handleQueryChange}
             />
           </div>
-          {isEditMode && (
-            <Space
-              align="end"
-              className="w-full justify-end p-y-xs p-r-md"
-              size={16}>
-              <Button
-                data-testid="cancel-query-btn"
-                key="cancel"
-                onClick={() => setIsEditMode(false)}>
-                {t('label.cancel')}
-              </Button>
+          <Row align="middle" className="p-y-xs">
+            <Col className="p-y-xs" span={16}>
+              <QueryUsedByOtherTable query={query} tableId={tableId} />
+            </Col>
+            <Col span={8}>
+              {isEditMode && (
+                <Space
+                  align="end"
+                  className="w-full justify-end p-r-md"
+                  size={16}>
+                  <Button
+                    data-testid="cancel-query-btn"
+                    key="cancel"
+                    onClick={() => setIsEditMode(false)}>
+                    {t('label.cancel')}
+                  </Button>
 
-              <Button
-                data-testid="save-query-btn"
-                key="save"
-                loading={sqlQuery.isLoading}
-                type="primary"
-                onClick={updateSqlQuery}>
-                {t('label.save')}
-              </Button>
-            </Space>
-          )}
+                  <Button
+                    data-testid="save-query-btn"
+                    key="save"
+                    loading={sqlQuery.isLoading}
+                    type="primary"
+                    onClick={updateSqlQuery}>
+                    {t('label.save')}
+                  </Button>
+                </Space>
+              )}
+            </Col>
+          </Row>
         </Card>
-      </Col>
-      <Col span={24}>
-        <Paragraph className="m-l-md m-b-0">
-          <Text>{`${t('message.query-used-by-other-tables')}: `} </Text>
-          {topThreeTable.length
-            ? topThreeTable.map((table, index) => (
-                <Text className="m-r-xss" key={table.name}>
-                  <Link
-                    to={getTableDetailsPath(table.fullyQualifiedName || '')}>
-                    {getEntityName(table)}
-                  </Link>
-                  {topThreeTable.length - 1 !== index && ','}
-                </Text>
-              ))
-            : '--'}
-          {remainingTable.length ? (
-            <>
-              <Text className="m-r-xss">{t('label.and-lowercase')}</Text>
-              <Popover
-                content={
-                  <Space direction="vertical">
-                    {remainingTable.map((table) => (
-                      <Link
-                        key={table.name}
-                        to={getTableDetailsPath(
-                          table.fullyQualifiedName || ''
-                        )}>
-                        {getEntityName(table)}
-                      </Link>
-                    ))}
-                  </Space>
-                }
-                placement="bottom"
-                trigger="click">
-                <Text className="show-more">
-                  {`${remainingTable.length} ${t('label.more-lowercase')}`}
-                </Text>
-              </Popover>
-            </>
-          ) : null}
-        </Paragraph>
       </Col>
     </Row>
   );

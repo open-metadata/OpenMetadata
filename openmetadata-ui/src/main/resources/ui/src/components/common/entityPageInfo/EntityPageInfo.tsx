@@ -13,6 +13,7 @@
 
 import { ExclamationCircleOutlined, StarFilled } from '@ant-design/icons';
 import { Button, Popover, Space, Tooltip } from 'antd';
+import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import Tags from 'components/Tag/Tags/tags';
@@ -90,6 +91,7 @@ interface Props {
   onRestoreEntity?: () => void;
   allowSoftDelete?: boolean;
   isRecursiveDelete?: boolean;
+  extraDropdownContent?: ItemType[];
 }
 
 const EntityPageInfo = ({
@@ -123,6 +125,7 @@ const EntityPageInfo = ({
   onRestoreEntity,
   isRecursiveDelete = false,
   allowSoftDelete,
+  extraDropdownContent,
 }: Props) => {
   const history = useHistory();
   const tagThread = entityFieldThreads?.[0];
@@ -466,6 +469,7 @@ const EntityPageInfo = ({
               entityId={entityId}
               entityName={entityName}
               entityType={entityType}
+              extraDropdownContent={extraDropdownContent}
               isRecursiveDelete={isRecursiveDelete}
               onAnnouncementClick={() => setIsAnnouncementDrawer(true)}
               onRestoreEntity={onRestoreEntity}

@@ -45,3 +45,8 @@ export type QueryUsedByTable = {
   topThreeTable: EntityReference[];
   remainingTable: EntityReference[];
 };
+
+export interface QueryUsedByOtherTableProps {
+  query: Query;
+  tableId: string;
+}
