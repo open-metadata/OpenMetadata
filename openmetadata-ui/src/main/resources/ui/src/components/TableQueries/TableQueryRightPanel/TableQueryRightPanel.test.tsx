@@ -11,12 +11,14 @@
  *  limitations under the License.
  */
 
-import { render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { Query } from 'generated/entity/data/query';
 import { MOCK_QUERIES } from 'mocks/Queries.mock';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
+import { fetchGlossaryTerms } from 'utils/GlossaryUtils';
 import { DEFAULT_ENTITY_PERMISSION } from 'utils/PermissionsUtils';
+import { getClassifications } from 'utils/TagsUtils';
 import TableQueryRightPanel from './TableQueryRightPanel.component';
 import { TableQueryRightPanelProps } from './TableQueryRightPanel.interface';
 
@@ -41,10 +43,15 @@ jest.mock('components/common/OwnerWidget/OwnerWidgetWrapper.component', () => {
 jest.mock('components/common/description/Description', () => {
   return jest.fn().mockImplementation(() => <div>Description.component</div>);
 });
+jest.mock('components/Loader/Loader', () => {
+  return jest.fn().mockImplementation(() => <div>Loader</div>);
+});
 jest.mock('utils/TagsUtils', () => ({
   getClassifications: jest
     .fn()
     .mockImplementation(() => Promise.resolve({ data: [] })),
+}));
+jest.mock('utils/GlossaryUtils', () => ({
   fetchGlossaryTerms: jest
     .fn()
     .mockImplementation(() => Promise.resolve({ data: [] })),
@@ -55,7 +62,121 @@ describe('TableQueryRightPanel component test', () => {
     render(<TableQueryRightPanel {...mockProps} />, {
       wrapper: MemoryRouter,
     });
+    const owner = await screen.findByTestId('owner-name');
 
     expect(await screen.findByTestId('edit-owner-btn')).toBeInTheDocument();
+    expect(
+      await screen.findByTestId('owner-name-container')
+    ).toBeInTheDocument();
+    expect(owner).toBeInTheDocument();
+    expect(owner.textContent).toEqual(MOCK_QUERIES[0].owner?.displayName);
+    expect(
+      await screen.findByTestId('edit-description-btn')
+    ).toBeInTheDocument();
+    expect(
+      await screen.findByText('Description.component')
+    ).toBeInTheDocument();
+    expect(await screen.findByTestId('tag-container')).toBeInTheDocument();
+    expect(await screen.findByText('TagsViewer.component')).toBeInTheDocument();
+  });
+
+  it('If no permission is granted, editing of the Owner, Description, and tags should be disabled.', async () => {
+    render(<TableQueryRightPanel {...mockProps} />, {
+      wrapper: MemoryRouter,
+    });
+
+    const editOwnerBtn = await screen.findByTestId('edit-owner-btn');
+    const editDescriptionBtn = await screen.findByTestId(
+      'edit-description-btn'
+    );
+    const tagEditor = screen.queryByText('TagsContainer.component');
+
+    expect(editOwnerBtn).toBeDisabled();
+    expect(editDescriptionBtn).toBeDisabled();
+    expect(tagEditor).not.toBeInTheDocument();
+  });
+
+  it('If Edit All permission is granted, editing of the Owner, Description, and tags should not be disabled.', async () => {
+    render(
+      <TableQueryRightPanel
+        {...mockProps}
+        permission={{ ...DEFAULT_ENTITY_PERMISSION, EditAll: true }}
+      />,
+      {
+        wrapper: MemoryRouter,
+      }
+    );
+
+    const editOwnerBtn = await screen.findByTestId('edit-owner-btn');
+    const editDescriptionBtn = await screen.findByTestId(
+      'edit-description-btn'
+    );
+    const tagEditor = await screen.findByText('TagsContainer.component');
+
+    expect(editOwnerBtn).not.toBeDisabled();
+    expect(editDescriptionBtn).not.toBeDisabled();
+    expect(tagEditor).toBeInTheDocument();
+  });
+
+  it('onClick of edit owner, OwnerWidgetWrapper should open', async () => {
+    render(
+      <TableQueryRightPanel
+        {...mockProps}
+        permission={{ ...DEFAULT_ENTITY_PERMISSION, EditOwner: true }}
+      />,
+      {
+        wrapper: MemoryRouter,
+      }
+    );
+
+    const editOwnerBtn = await screen.findByTestId('edit-owner-btn');
+    const editDescriptionBtn = await screen.findByTestId(
+      'edit-description-btn'
+    );
+    const tagEditor = screen.queryByText('TagsContainer.component');
+
+    expect(editOwnerBtn).not.toBeDisabled();
+    expect(editDescriptionBtn).toBeDisabled();
+    expect(tagEditor).not.toBeInTheDocument();
+
+    await act(async () => {
+      fireEvent.click(editOwnerBtn);
+    });
+
+    expect(
+      await screen.findByText('OwnerWidgetWrapper.component')
+    ).toBeInTheDocument();
+  });
+
+  it('Loader should visible', async () => {
+    render(<TableQueryRightPanel {...mockProps} isLoading />, {
+      wrapper: MemoryRouter,
+    });
+
+    expect(await screen.findByText('Loader')).toBeInTheDocument();
+  });
+
+  it('onClick of tag container it should fetch call tag and glossaryTerm API', async () => {
+    const mockGetClassifications = getClassifications as jest.Mock;
+    const mockFetchGlossaryTerms = fetchGlossaryTerms as jest.Mock;
+    render(
+      <TableQueryRightPanel
+        {...mockProps}
+        permission={{ ...DEFAULT_ENTITY_PERMISSION, EditTags: true }}
+      />,
+      {
+        wrapper: MemoryRouter,
+      }
+    );
+    const tagsContainer = await screen.findByTestId('tags-wrapper');
+
+    expect(tagsContainer).toBeInTheDocument();
+
+    await act(async () => {
+      fireEvent.click(tagsContainer);
+    });
+
+    expect(mockGetClassifications.mock.calls).toHaveLength(1);
+    expect(mockFetchGlossaryTerms.mock.calls).toHaveLength(1);
   });
 });
