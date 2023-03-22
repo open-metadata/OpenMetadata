@@ -125,7 +125,9 @@ class Sampler:
 
         # Add new RandomNumFn column
         rnd = self.get_sample_query()
-        sqa_columns = [col for col in inspect(rnd).c if col.name != RANDOM_LABEL]
+        sqa_columns = [
+            Column(col.name) for col in inspect(rnd).c if col.name != RANDOM_LABEL
+        ]
 
         sqa_sample = (
             self.session.query(*sqa_columns)
