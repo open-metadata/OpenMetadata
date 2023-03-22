@@ -1,34 +1,58 @@
-### Describe your changes :
-<!-- Explain what you have done & tag your assigned issue !-->
-I worked on the ..... because ...
+<!--
+Thank you for your contribution!
+Unless your change is trivial, please create an issue to discuss the change before creating a PR.
+-->
+
+### Describe your changes:
+
+Fixes <issue-number>
+
+<!--
+Short blurb explaining:
+- What changes did you make?
+- Why did you make them?
+- How did you test your changes?
+-->
+
+I worked on ... because ...
+
+<!-- For frontend related change, please add screenshots and/or videos of your changes preview! -->
 
 #
-### Type of change :
+### Type of change:
 <!-- You should choose 1 option and delete options that aren't relevant -->
-- [x] Bug fix
-- [x] Improvement
-- [x] New feature
+- [ ] Bug fix
+- [ ] Improvement
+- [ ] New feature
 - [ ] Breaking change (fix or feature that would cause existing functionality to not work as expected)
 - [ ] Documentation
-
-#
-### Frontend Preview (Screenshots) :
-<p align="center">For frontend related change, please link screenshots of your changes preview! Optional for backend related changes.
-</p>
 
 #
 ### Checklist:
 <!-- add an x in [] if done, don't mark items that you didn't do !-->
 - [x] I have read the [**CONTRIBUTING**](https://docs.open-metadata.org/developers/contribute) document.
-- [ ] I have commented on my code, particularly in hard-to-understand areas.
-- [ ] I have added tests that prove my fix is effective or that my feature works.
-- [x] All new and existing tests passed.
+- [ ] My PR title is `Fixes <issue-number>: <short explanation>`
+- [ ] I have commented on my code, particularly in hard-to-understand areas. 
+- [ ] For JSON Schema changes: either update the migration scripts or explain why it is not needed.
 
-#
-### Reviewers
-<!-- Please see the contributing guidelines and then add your reviewer(s) !-->
-<!--- OpenMetadata community thanks you for explaining your changes in detail !-->
-<!--- If you are unsure of people to review your work, you can add anyone of these developers :) !-->
-<!--- Frontend: @open-metadata/ui -->
-<!--- Backend: @open-metadata/backend -->
-<!--- Ingestion: @open-metadata/ingestion -->
+<!-- Based on the type(s) of your change, uncomment the required checklist 👇 -->
+
+<!-- Bug fix
+- [ ] I have added a test that covers the exact scenario we are fixing. For complex issues, comment the issue number in the test for future reference.
+-->
+
+<!-- Improvement
+- [ ] I have added tests around the new logic.
+- [ ] For connector/ingestion changes: I updated the documentation.
+-->
+
+<!-- New feature
+- [ ] The issue properly describes why the new feature is needed, what's the goal, and how we are building it. Any discussion
+    or decision-making process is reflected in the issue.
+- [ ] I have updated the documentation.
+- [ ] I have added tests around the new logic.
+-->
+
+<!-- Breaking change
+- [ ] I have added the tag `Backward-Incompatible-Change`.
+-->
