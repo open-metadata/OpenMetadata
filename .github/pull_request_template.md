@@ -33,7 +33,7 @@ I worked on ... because ...
 - [x] I have read the [**CONTRIBUTING**](https://docs.open-metadata.org/developers/contribute) document.
 - [ ] My PR title is `Fixes <issue-number>: <short explanation>`
 - [ ] I have commented on my code, particularly in hard-to-understand areas. 
-- [ ] For JSON Schema changes: either update the migration scripts or explain why it is not needed.
+- [ ] For JSON Schema changes: I updated the migration scripts or explained why it is not needed.
 
 <!-- Based on the type(s) of your change, uncomment the required checklist 👇 -->
 
