@@ -17,7 +17,6 @@ from urllib.parse import quote_plus
 
 from pydantic import SecretStr
 from sqlalchemy.engine import Engine
-from sqlalchemy.inspection import inspect
 
 from metadata.generated.schema.entity.automations.workflow import (
     Workflow as AutomationWorkflow,

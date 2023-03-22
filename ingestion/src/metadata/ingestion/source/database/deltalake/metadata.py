@@ -99,6 +99,7 @@ class DeltalakeSource(DatabaseServiceSource):
         self.metadata = OpenMetadata(metadata_config)
         self.service_connection = self.config.serviceConnection.__root__.config
         self.spark = get_connection(self.service_connection)
+        self.connection_obj = self.spark
 
         self.status = SQLSourceStatus()
         logger.info("Establishing Sparks Session")
@@ -112,6 +113,7 @@ class DeltalakeSource(DatabaseServiceSource):
         self.table_constraints = None
         self.database_source_state = set()
         super().__init__()
+        self.test_connection()
 
     @classmethod
     def create(cls, config_dict, metadata_config: OpenMetadataConnection):
@@ -394,7 +396,4 @@ class DeltalakeSource(DatabaseServiceSource):
         pass
 
     def close(self):
-        pass
-
-    def test_connection(self) -> None:
         pass

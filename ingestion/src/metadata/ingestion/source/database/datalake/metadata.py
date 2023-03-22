@@ -123,12 +123,14 @@ class DatalakeSource(DatabaseServiceSource):  # pylint: disable=too-many-public-
         self.metadata = OpenMetadata(metadata_config)
         self.service_connection = self.config.serviceConnection.__root__.config
         self.connection = get_connection(self.service_connection)
+        self.connection_obj = self.connection
         self.client = self.connection.client
         self.table_constraints = None
         self.data_models = {}
         self.dbt_tests = {}
         self.database_source_state = set()
         super().__init__()
+        self.test_connection()
 
     @classmethod
     def create(cls, config_dict, metadata_config: OpenMetadataConnection):
@@ -618,8 +620,3 @@ class DatalakeSource(DatabaseServiceSource):  # pylint: disable=too-many-public-
 
     def get_status(self) -> SourceStatus:
         return self.status
-
-    def test_connection(self) -> None:
-
-        test_connection_fn = get_test_connection_fn(self.service_connection)
-        test_connection_fn(self.connection, self.service_connection)
