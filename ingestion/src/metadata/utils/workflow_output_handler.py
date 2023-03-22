@@ -18,6 +18,8 @@ from enum import Enum
 from pathlib import Path
 from typing import Optional, Type, Union
 
+from pydantic import BaseModel
+
 from metadata.config.common import ConfigurationError
 from metadata.generated.schema.metadataIngestion.workflow import LogLevels
 from metadata.ingestion.api.parser import (
@@ -32,6 +34,24 @@ from metadata.utils.logger import ANSI, log_ansi_encoded_string
 WORKFLOW_FAILURE_MESSAGE = "Workflow finished with failures"
 WORKFLOW_WARNING_MESSAGE = "Workflow finished with warnings"
 WORKFLOW_SUCCESS_MESSAGE = "Workflow finished successfully"
+
+
+class Summary(BaseModel):
+    """
+    Auxiliary class to calculate the summary of all statuses
+    """
+
+    records = 0
+    warnings = 0
+    errors = 0
+    filtered = 0
+
+    def __add__(self, other):
+        self.records += other.records
+        self.warnings += other.warnings
+        self.errors += other.errors
+        self.filtered += other.filtered
+        return self
 
 
 class WorkflowType(Enum):
@@ -319,45 +339,41 @@ def print_workflow_summary(
             source_status,
             processor_status,
         )
-    summary = (0, 0, 0, 0)
+    summary = Summary()
     errors = []
     if source_status and source:
-        summary = tuple(map(sum, zip(summary, get_summary(source_status))))
+        summary += get_summary(source_status)
         errors += get_errors("Source", source_status)
     if hasattr(workflow, "stage") and stage:
-        summary = tuple(
-            map(sum, zip(summary, get_summary(workflow.stage.get_status())))
-        )
+        summary += get_summary(workflow.stage.get_status())
         errors += get_errors("Stage", workflow.stage.get_status())
     if hasattr(workflow, "sink") and sink:
-        summary = tuple(map(sum, zip(summary, get_summary(workflow.sink.get_status()))))
+        summary += get_summary(workflow.sink.get_status())
         errors += get_errors("Sink", workflow.sink.get_status())
     if hasattr(workflow, "bulk_sink") and bulk_sink:
-        summary = tuple(
-            map(sum, zip(summary, get_summary(workflow.bulk_sink.get_status())))
-        )
+        summary += get_summary(workflow.bulk_sink.get_status())
         errors += get_errors("Bulk Sink", workflow.bulk_sink.get_status())
     if processor_status and processor:
-        summary = tuple(map(sum, zip(summary, get_summary(processor_status))))
+        summary += get_summary(processor_status)
         errors += get_errors("Processor", processor_status)
 
     log_ansi_encoded_string(bold=True, message="Workflow Summary:")
-    log_ansi_encoded_string(message=f"Total processed records: {summary[0]}")
-    log_ansi_encoded_string(message=f"Total warnings: {summary[1]}")
-    log_ansi_encoded_string(message=f"Total filtered: {summary[3]}")
-    log_ansi_encoded_string(message=f"Total errors: {summary[2]}")
+    log_ansi_encoded_string(message=f"Total processed records: {summary.records}")
+    log_ansi_encoded_string(message=f"Total warnings: {summary.warnings}")
+    log_ansi_encoded_string(message=f"Total filtered: {summary.filtered}")
+    log_ansi_encoded_string(message=f"Total errors: {summary.errors}")
 
     if errors:
         errors_output = "List of errors:\n"
         for error in errors:
             errors_output += f"\t- {error}\n"
         log_ansi_encoded_string(message=errors_output)
-    total_success = max(summary[0], 1)
+    total_success = max(summary.records, 1)
     log_ansi_encoded_string(
         color=ANSI.BRIGHT_CYAN,
         bold=True,
         message=f"Success %: "
-        f"{round(total_success * 100 / (total_success + summary[2]), 2)}",
+        f"{round(total_success * 100 / (total_success + summary.errors), 2)}",
     )
 
 
@@ -396,7 +412,7 @@ def get_summary(status: Status):
     filtered = 0
     if hasattr(status, "filtered"):
         filtered = len(status.filtered)
-    return records, warnings, errors, filtered
+    return Summary(records=records, warnings=warnings, errors=errors, filtered=filtered)
 
 
 def get_errors(prefix: str, status: Status):
