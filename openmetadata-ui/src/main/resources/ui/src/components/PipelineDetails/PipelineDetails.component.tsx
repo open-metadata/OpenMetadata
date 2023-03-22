@@ -14,6 +14,7 @@
 import { Card, Col, Radio, Row, Space, Table, Tabs, Tooltip } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
+import { ActivityFilters } from 'components/ActivityFeed/ActivityFeedList/ActivityFeedList.interface';
 import { compare, Operation } from 'fast-json-patch';
 import { isEmpty, isUndefined } from 'lodash';
 import { EntityTags, ExtraInfo, TagOption } from 'Models';
@@ -175,6 +176,8 @@ const PipelineDetails = ({
   );
 
   const [activeTab, setActiveTab] = useState(PIPELINE_TASK_TABS.LIST_VIEW);
+
+  const [activityFilter, setActivityFilter] = useState<ActivityFilters>();
 
   // local state ends
 
@@ -441,8 +444,17 @@ const PipelineDetails = ({
     pagingObj: Paging,
     isLoading: boolean
   ) => {
-    if (isElementInView && pagingObj?.after && !isLoading) {
-      getFeedData(pagingObj.after);
+    if (
+      isElementInView &&
+      pagingObj?.after &&
+      !isLoading &&
+      tab === PIPELINE_DETAILS_TABS.ActivityFeedsAndTasks
+    ) {
+      getFeedData(
+        pagingObj.after,
+        activityFilter?.feedFilter,
+        activityFilter?.threadType
+      );
     }
   };
 
@@ -458,12 +470,13 @@ const PipelineDetails = ({
     );
   }, [entityThreadPaging, entityThreadLoading, isInView]);
 
-  const handleFeedFilterChange = useCallback(
-    (feedFilter, threadType) => {
-      getFeedData(entityThreadPaging.after, feedFilter, threadType);
-    },
-    [entityThreadPaging]
-  );
+  const handleFeedFilterChange = useCallback((feedFilter, threadType) => {
+    setActivityFilter({
+      feedFilter,
+      threadType,
+    });
+    getFeedData(undefined, feedFilter, threadType);
+  }, []);
 
   const handleEditTaskTag = (task: Task, index: number): void => {
     setEditTaskTags({ task: { ...task, tags: [] }, index });

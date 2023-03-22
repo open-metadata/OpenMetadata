@@ -48,7 +48,7 @@ export interface DashboardDetailsProps {
   slashedDashboardName: TitleBreadcrumbProps['titleLinks'];
   entityThread: Thread[];
   deleted?: boolean;
-  isentityThreadLoading: boolean;
+  isEntityThreadLoading: boolean;
   feedCount: number;
   entityFieldThreadCount: EntityFieldThreadCount[];
   entityFieldTaskCount: EntityFieldThreadCount[];

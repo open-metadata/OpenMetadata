@@ -91,7 +91,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isSampleDataLoading, setIsSampleDataLoading] =
     useState<boolean>(false);
-  const [isentityThreadLoading, setIsentityThreadLoading] =
+  const [isEntityThreadLoading, setIsEntityThreadLoading] =
     useState<boolean>(false);
   const [isTableProfileLoading, setIsTableProfileLoading] =
     useState<boolean>(false);
@@ -171,7 +171,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
     feedType?: FeedFilter,
     threadType?: ThreadType
   ) => {
-    setIsentityThreadLoading(true);
+    setIsEntityThreadLoading(true);
     getAllFeeds(
       getEntityFeedLink(EntityType.TABLE, tableFQN),
       after,
@@ -197,7 +197,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
           jsonData['api-error-messages']['fetch-entity-feed-error']
         );
       })
-      .finally(() => setIsentityThreadLoading(false));
+      .finally(() => setIsEntityThreadLoading(false));
   };
 
   const handleFeedFetchFromFeedList = (
@@ -718,9 +718,9 @@ const DatasetDetailsPage: FunctionComponent = () => {
               followTableHandler={followTable}
               followers={followers}
               handleExtensionUpdate={handleExtentionUpdate}
+              isEntityThreadLoading={isEntityThreadLoading}
               isSampleDataLoading={isSampleDataLoading}
               isTableProfileLoading={isTableProfileLoading}
-              isentityThreadLoading={isentityThreadLoading}
               joins={joins}
               owner={owner as EntityReference}
               paging={paging}

@@ -14,6 +14,7 @@
 import { Card, Col, Row, Skeleton, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
+import { ActivityFilters } from 'components/ActivityFeed/ActivityFeedList/ActivityFeedList.interface';
 import { isEqual, isNil, isUndefined } from 'lodash';
 import { EntityTags, ExtraInfo } from 'Models';
 import React, {
@@ -80,7 +81,6 @@ import TableProfilerGraph from '../TableProfiler/TableProfilerGraph.component';
 import TableProfilerV1 from '../TableProfiler/TableProfilerV1';
 import TableQueries from '../TableQueries/TableQueries';
 import { DatasetDetailsProps } from './DatasetDetails.interface';
-// css
 import './datasetDetails.style.less';
 
 const DatasetDetails: React.FC<DatasetDetailsProps> = ({
@@ -111,7 +111,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
   deleted,
   tagUpdateHandler,
   entityThread,
-  isentityThreadLoading,
+  isEntityThreadLoading,
   postFeedHandler,
   feedCount,
   entityFieldThreadCount,
@@ -148,6 +148,8 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
   const [tablePermissions, setTablePermissions] = useState<OperationPermission>(
     DEFAULT_ENTITY_PERMISSION
   );
+
+  const [activityFilter, setActivityFilter] = useState<ActivityFilters>();
 
   const { getEntityPermission } = usePermissionProvider();
 
@@ -583,7 +585,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
   };
 
   const getLoader = () => {
-    return isentityThreadLoading ? <Loader /> : null;
+    return isEntityThreadLoading ? <Loader /> : null;
   };
 
   const fetchMoreThread = (
@@ -591,8 +593,12 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
     pagingObj: Paging,
     isLoading: boolean
   ) => {
-    if (isElementInView && pagingObj?.after && !isLoading) {
-      fetchFeedHandler(pagingObj.after);
+    if (isElementInView && pagingObj?.after && !isLoading && activeTab === 2) {
+      fetchFeedHandler(
+        pagingObj.after,
+        activityFilter?.feedFilter,
+        activityFilter?.threadType
+      );
     }
   };
 
@@ -608,15 +614,13 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
   }, [joins]);
 
   useEffect(() => {
-    fetchMoreThread(isInView as boolean, paging, isentityThreadLoading);
-  }, [paging, isentityThreadLoading, isInView]);
+    fetchMoreThread(isInView as boolean, paging, isEntityThreadLoading);
+  }, [paging, isEntityThreadLoading, isInView]);
 
-  const handleFeedFilterChange = useCallback(
-    (feedType, threadType) => {
-      fetchFeedHandler(paging.after, feedType, threadType);
-    },
-    [paging]
-  );
+  const handleFeedFilterChange = useCallback((feedType, threadType) => {
+    setActivityFilter({ feedFilter: feedType, threadType });
+    fetchFeedHandler(undefined, feedType, threadType);
+  }, []);
 
   return isLoading ? (
     <Loader />
@@ -768,7 +772,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
                     deletePostHandler={deletePostHandler}
                     entityName={entityName}
                     feedList={entityThread}
-                    isFeedLoading={isentityThreadLoading}
+                    isFeedLoading={isEntityThreadLoading}
                     postFeedHandler={postFeedHandler}
                     updateThreadHandler={updateThreadHandler}
                     onFeedFiltersUpdate={handleFeedFilterChange}

@@ -13,6 +13,7 @@
 
 import { Card } from 'antd';
 import { AxiosError } from 'axios';
+import { ActivityFilters } from 'components/ActivityFeed/ActivityFeedList/ActivityFeedList.interface';
 import { ENTITY_CARD_CLASS } from 'constants/entity.constants';
 import { EntityTags, ExtraInfo } from 'Models';
 import React, { RefObject, useCallback, useEffect, useState } from 'react';
@@ -87,7 +88,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
   versionHandler,
   deleted,
   entityThread,
-  isentityThreadLoading,
+  isEntityThreadLoading,
   postFeedHandler,
   feedCount,
   entityFieldThreadCount,
@@ -111,6 +112,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
   const [threadType, setThreadType] = useState<ThreadType>(
     ThreadType.Conversation
   );
+  const [activityFilter, setActivityFilter] = useState<ActivityFilters>();
 
   const [topicPermissions, setTopicPermissions] = useState<OperationPermission>(
     DEFAULT_ENTITY_PERMISSION
@@ -390,7 +392,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
   };
 
   const getLoader = () => {
-    return isentityThreadLoading ? <Loader /> : null;
+    return isEntityThreadLoading ? <Loader /> : null;
   };
 
   const fetchMoreThread = (
@@ -398,8 +400,12 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
     pagingObj: Paging,
     isLoading: boolean
   ) => {
-    if (isElementInView && pagingObj?.after && !isLoading) {
-      fetchFeedHandler(pagingObj.after);
+    if (isElementInView && pagingObj?.after && !isLoading && activeTab === 2) {
+      fetchFeedHandler(
+        pagingObj.after,
+        activityFilter?.feedFilter,
+        activityFilter?.threadType
+      );
     }
   };
 
@@ -421,15 +427,16 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
   }, [followers]);
 
   useEffect(() => {
-    fetchMoreThread(isInView as boolean, paging, isentityThreadLoading);
-  }, [paging, isentityThreadLoading, isInView]);
+    fetchMoreThread(isInView as boolean, paging, isEntityThreadLoading);
+  }, [paging, isEntityThreadLoading, isInView]);
 
-  const handleFeedFilterChange = useCallback(
-    (feedFilter, threadType) => {
-      fetchFeedHandler(paging.after, feedFilter, threadType);
-    },
-    [paging]
-  );
+  const handleFeedFilterChange = useCallback((feedFilter, threadType) => {
+    setActivityFilter({
+      feedFilter,
+      threadType,
+    });
+    fetchFeedHandler(undefined, feedFilter, threadType);
+  }, []);
 
   return (
     <PageContainerV1>
@@ -549,7 +556,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
                   deletePostHandler={deletePostHandler}
                   entityName={entityName}
                   feedList={entityThread}
-                  isFeedLoading={isentityThreadLoading}
+                  isFeedLoading={isEntityThreadLoading}
                   postFeedHandler={postFeedHandler}
                   updateThreadHandler={updateThreadHandler}
                   onFeedFiltersUpdate={handleFeedFilterChange}

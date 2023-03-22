@@ -64,3 +64,8 @@ export interface FeedListBodyProp
   onViewMore: () => void;
   onConfirmation?: (data: ConfirmState) => void;
 }
+
+export interface ActivityFilters {
+  feedFilter: FeedFilter;
+  threadType: ThreadType;
+}

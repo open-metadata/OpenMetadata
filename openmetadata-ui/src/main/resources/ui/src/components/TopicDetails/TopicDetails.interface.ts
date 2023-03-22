@@ -49,7 +49,7 @@ export interface TopicDetailsProps {
   slashedTopicName: TitleBreadcrumbProps['titleLinks'];
   deleted?: boolean;
   entityThread: Thread[];
-  isentityThreadLoading: boolean;
+  isEntityThreadLoading: boolean;
   feedCount: number;
   entityFieldThreadCount: EntityFieldThreadCount[];
   entityFieldTaskCount: EntityFieldThreadCount[];

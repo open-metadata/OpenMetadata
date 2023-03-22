@@ -56,7 +56,7 @@ export interface DatasetDetailsProps {
   deleted?: boolean;
   isTableProfileLoading?: boolean;
   isSampleDataLoading?: boolean;
-  isentityThreadLoading: boolean;
+  isEntityThreadLoading: boolean;
   feedCount: number;
   entityFieldThreadCount: EntityFieldThreadCount[];
   entityFieldTaskCount: EntityFieldThreadCount[];

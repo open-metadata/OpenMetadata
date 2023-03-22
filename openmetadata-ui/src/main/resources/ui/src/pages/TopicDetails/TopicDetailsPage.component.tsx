@@ -98,7 +98,7 @@ const TopicDetailsPage: FunctionComponent = () => {
   >([]);
   const [currentVersion, setCurrentVersion] = useState<string>();
   const [entityThread, setEntityThread] = useState<Thread[]>([]);
-  const [isentityThreadLoading, setIsentityThreadLoading] =
+  const [isEntityThreadLoading, setIsEntityThreadLoading] =
     useState<boolean>(false);
   const [feedCount, setFeedCount] = useState<number>(0);
   const [entityFieldThreadCount, setEntityFieldThreadCount] = useState<
@@ -145,7 +145,7 @@ const TopicDetailsPage: FunctionComponent = () => {
     feedType?: FeedFilter,
     threadType?: ThreadType
   ) => {
-    setIsentityThreadLoading(true);
+    setIsEntityThreadLoading(true);
     getAllFeeds(
       getEntityFeedLink(EntityType.TOPIC, topicFQN),
       after,
@@ -171,7 +171,7 @@ const TopicDetailsPage: FunctionComponent = () => {
           jsonData['api-error-messages']['fetch-entity-feed-error']
         );
       })
-      .finally(() => setIsentityThreadLoading(false));
+      .finally(() => setIsEntityThreadLoading(false));
   };
 
   const handleFeedFetchFromFeedList = (
@@ -595,8 +595,8 @@ const TopicDetailsPage: FunctionComponent = () => {
               fetchFeedHandler={handleFeedFetchFromFeedList}
               followTopicHandler={followTopic}
               followers={followers}
+              isEntityThreadLoading={isEntityThreadLoading}
               isSampleDataLoading={isSampleDataLoading}
-              isentityThreadLoading={isentityThreadLoading}
               maximumMessageSize={maximumMessageSize}
               owner={owner as EntityReference}
               paging={paging}

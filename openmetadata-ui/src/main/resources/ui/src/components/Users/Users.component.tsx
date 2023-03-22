@@ -801,6 +801,7 @@ const Users = ({
           ref={elementRef as RefObject<HTMLDivElement>}>
           {getLoader()}
         </div>
+        <div className="p-t-md" />
       </Fragment>
     );
   };

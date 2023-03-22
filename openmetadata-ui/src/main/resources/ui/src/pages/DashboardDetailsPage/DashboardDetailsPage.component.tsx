@@ -106,7 +106,7 @@ const DashboardDetailsPage = () => {
   const [isError, setIsError] = useState(false);
 
   const [entityThread, setEntityThread] = useState<Thread[]>([]);
-  const [isentityThreadLoading, setIsentityThreadLoading] =
+  const [isEntityThreadLoading, setIsEntityThreadLoading] =
     useState<boolean>(false);
   const [feedCount, setFeedCount] = useState<number>(0);
   const [entityFieldThreadCount, setEntityFieldThreadCount] = useState<
@@ -168,7 +168,7 @@ const DashboardDetailsPage = () => {
     feedFilter?: FeedFilter,
     threadType?: ThreadType
   ) => {
-    setIsentityThreadLoading(true);
+    setIsEntityThreadLoading(true);
     !after && setEntityThread([]);
     getAllFeeds(
       getEntityFeedLink(EntityType.DASHBOARD, dashboardFQN),
@@ -195,7 +195,7 @@ const DashboardDetailsPage = () => {
           jsonData['api-error-messages']['fetch-entity-feed-error']
         );
       })
-      .finally(() => setIsentityThreadLoading(false));
+      .finally(() => setIsEntityThreadLoading(false));
   };
 
   const saveUpdatedDashboardData = (updatedData: Dashboard) => {
@@ -657,7 +657,7 @@ const DashboardDetailsPage = () => {
               fetchFeedHandler={getFeedData}
               followDashboardHandler={followDashboard}
               followers={followers}
-              isentityThreadLoading={isentityThreadLoading}
+              isEntityThreadLoading={isEntityThreadLoading}
               owner={owner as EntityReference}
               paging={paging}
               postFeedHandler={postFeedHandler}

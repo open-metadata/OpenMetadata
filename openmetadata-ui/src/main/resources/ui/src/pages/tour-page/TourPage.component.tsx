@@ -186,7 +186,7 @@ const TourPage = () => {
             followTableHandler={handleCountChange}
             followers={mockDatasetData.followers}
             handleExtensionUpdate={handleCountChange}
-            isentityThreadLoading={false}
+            isEntityThreadLoading={false}
             joins={mockDatasetData.joins as unknown as TableJoins}
             owner={undefined as unknown as EntityReference}
             paging={{} as Paging}
