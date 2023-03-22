@@ -14,6 +14,7 @@
 import { Button, Col, Dropdown, Modal, Row, Tooltip, Typography } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import classNames from 'classnames';
+import { DROPDOWN_ICON_SIZE_PROPS } from 'constants/ManageButton.constants';
 import React, { FC, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconAnnouncementsBlack } from '../../../../assets/svg/announcements-black.svg';
@@ -89,7 +90,11 @@ const ManageButton: FC<Props> = ({
               }
             }}>
             <Col span={3}>
-              <IconDelete className="m-t-xss" name="Delete" width={20} />
+              <IconDelete
+                className="m-t-xss"
+                {...DROPDOWN_ICON_SIZE_PROPS}
+                name="Delete"
+              />
             </Col>
             <Col span={21}>
               <Row data-testid="delete-button">
@@ -134,7 +139,7 @@ const ManageButton: FC<Props> = ({
                     <IconRestore
                       className="m-t-xss"
                       name="Restore"
-                      width={20}
+                      {...DROPDOWN_ICON_SIZE_PROPS}
                     />
                   </Col>
                   <Col span={21}>
@@ -178,7 +183,7 @@ const ManageButton: FC<Props> = ({
                   <IconAnnouncementsBlack
                     className="m-t-xss"
                     name="announcement"
-                    width={20}
+                    {...DROPDOWN_ICON_SIZE_PROPS}
                   />
                 </Col>
                 <Col span={21}>
