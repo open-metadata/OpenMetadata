@@ -119,3 +119,13 @@ VERTICA_SQL_STATEMENT = textwrap.dedent(
     LIMIT {result_limit}
     """
 )
+
+VERTICA_SQL_STATEMENT_TEST = """
+SELECT 
+p.query AS query_text
+FROM query_profiles p
+    LEFT JOIN query_requests r
+      ON p.TRANSACTION_ID = r.TRANSACTION_ID
+     AND p.STATEMENT_ID = r.STATEMENT_ID
+LIMIT 1
+"""

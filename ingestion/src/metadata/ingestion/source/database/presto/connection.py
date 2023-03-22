@@ -13,11 +13,15 @@
 Source connection handler
 """
 from functools import partial
+from typing import Optional
 from urllib.parse import quote_plus
 
 from sqlalchemy.engine import Engine
 from sqlalchemy.inspection import inspect
 
+from metadata.generated.schema.entity.automations.workflow import (
+    Workflow as AutomationWorkflow,
+)
 from metadata.generated.schema.entity.services.connections.database.prestoConnection import (
     PrestoConnection,
 )
@@ -27,9 +31,12 @@ from metadata.ingestion.connections.builders import (
 )
 from metadata.ingestion.connections.test_connections import (
     TestConnectionResult,
-    TestConnectionStep,
-    test_connection_db_common,
+    test_connection_engine_step,
+    test_connection_steps,
+    test_query,
 )
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.source.database.presto.queries import PRESTO_SHOW_CATALOGS
 
 
 def get_connection_url(connection: PrestoConnection) -> str:
@@ -58,15 +65,16 @@ def get_connection(connection: PrestoConnection) -> Engine:
     )
 
 
-def test_connection(engine: Engine, _) -> TestConnectionResult:
+def test_connection(
+    metadata: OpenMetadata,
+    engine: Engine,
+    service_connection: PrestoConnection,
+    automation_workflow: Optional[AutomationWorkflow] = None,
+) -> TestConnectionResult:
     """
     Test connection
     """
     inspector = inspect(engine)
-
-    def custom_executor(engine, statement):
-        cursor = engine.execute(statement)
-        return list(cursor.all())
 
     def custom_executor_for_table():
         schema_name = inspector.get_schema_names()
@@ -76,22 +84,19 @@ def test_connection(engine: Engine, _) -> TestConnectionResult:
                 return table_name
         return None
 
-    steps = [
-        TestConnectionStep(
-            function=partial(
-                custom_executor,
-                statement="SHOW CATALOGS",
-                engine=engine,
-            ),
-            name="Get Databases",
+    test_fn = {
+        "CheckAccess": partial(test_connection_engine_step, engine),
+        "GetDatabases": partial(
+            test_query, engine=engine, statement=PRESTO_SHOW_CATALOGS
         ),
-        TestConnectionStep(
-            function=inspector.get_schema_names,
-            name="Get Schemas",
-        ),
-        TestConnectionStep(
-            function=partial(custom_executor_for_table),
-            name="Get Tables",
-        ),
-    ]
-    return test_connection_db_common(engine, steps)
+        "GetSchemas": inspector.get_schema_names,
+        "GetTables": custom_executor_for_table,
+        "GetViews": inspector.get_view_names,
+    }
+
+    test_connection_steps(
+        metadata=metadata,
+        test_fn=test_fn,
+        service_fqn=service_connection.type.value,
+        automation_workflow=automation_workflow,
+    )

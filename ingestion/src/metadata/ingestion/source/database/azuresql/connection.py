@@ -12,10 +12,15 @@
 """
 Source connection handler
 """
+from typing import Optional
 from urllib.parse import quote_plus
 
 from sqlalchemy.engine import Engine
+from sqlalchemy.inspection import inspect
 
+from metadata.generated.schema.entity.automations.workflow import (
+    Workflow as AutomationWorkflow,
+)
 from metadata.generated.schema.entity.services.connections.database.azureSQLConnection import (
     AzureSQLConnection,
 )
@@ -24,7 +29,11 @@ from metadata.ingestion.connections.builders import (
     get_connection_args_common,
     get_connection_options_dict,
 )
-from metadata.ingestion.connections.test_connections import test_connection_db_common
+from metadata.ingestion.connections.test_connections import (
+    TestConnectionResult,
+    test_connection_db_common,
+)
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 
 
 def get_connection_url(connection: AzureSQLConnection) -> str:
@@ -69,8 +78,18 @@ def get_connection(connection: AzureSQLConnection) -> Engine:
     )
 
 
-def test_connection(engine: Engine, _) -> None:
+def test_connection(
+    metadata: OpenMetadata,
+    engine: Engine,
+    service_connection: AzureSQLConnection,
+    automation_workflow: Optional[AutomationWorkflow] = None,
+) -> TestConnectionResult:
     """
     Test connection
     """
-    test_connection_db_common(engine)
+    test_connection_db_common(
+        metadata=metadata,
+        engine=engine,
+        service_connection=service_connection,
+        automation_workflow=automation_workflow,
+    )

@@ -46,6 +46,7 @@ from metadata.ingestion.source.database.snowflake.queries import (
     SNOWFLAKE_GET_CLUSTER_KEY,
     SNOWFLAKE_GET_COMMENTS,
     SNOWFLAKE_GET_DATABASE_COMMENTS,
+    SNOWFLAKE_GET_DATABASES,
     SNOWFLAKE_GET_SCHEMA_COMMENTS,
     SNOWFLAKE_GET_TABLE_NAMES,
     SNOWFLAKE_GET_VIEW_NAMES,
@@ -220,7 +221,7 @@ class SnowflakeSource(CommonDbSourceService):
             self.set_database_description_map()
             yield configured_db
         else:
-            results = self.connection.execute("SHOW DATABASES")
+            results = self.connection.execute(SNOWFLAKE_GET_DATABASES)
             for res in results:
                 row = list(res)
                 new_database = row[1]

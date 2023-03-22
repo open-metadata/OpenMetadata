@@ -87,3 +87,13 @@ FROM information_schema.schemata
 SNOWFLAKE_GET_DATABASE_COMMENTS = """
 select DATABASE_NAME,COMMENT from information_schema.databases
 """
+
+SNOWFLAKE_FETCH_TAG_TEST = """
+select TAG_NAME from snowflake.account_usage.tag_references limit 1
+"""
+
+SNOWFLAKE_SQL_STATEMENT_TEST = """
+SELECT query_text from snowflake.account_usage.query_history limit 1
+"""
+
+SNOWFLAKE_GET_DATABASES = "SHOW DATABASES"

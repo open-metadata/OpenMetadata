@@ -119,6 +119,7 @@ JOIN (SELECT pc.relname, pp.*
       FROM pg_policy AS pp
       JOIN pg_class AS pc ON pp.polrelid = pc.oid
       JOIN pg_namespace as pn ON pc.relnamespace = pn.oid) AS ppr ON it.table_name = ppr.relname
+      LIMIT 1
 """
 
 POSTGRES_SQL_STATEMENT_TEST = """
@@ -131,6 +132,7 @@ POSTGRES_SQL_STATEMENT_TEST = """
         pg_stat_statements s
         JOIN pg_catalog.pg_database d ON s.dbid = d.oid
         JOIN pg_catalog.pg_user u ON s.userid = u.usesysid
+        LIMIT 1
     """
 
 

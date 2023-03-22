@@ -12,11 +12,15 @@
 """
 Source connection handler
 """
-from functools import partial
+
+from typing import Optional
 
 from sqlalchemy.engine import Engine
 from sqlalchemy.inspection import inspect
 
+from metadata.generated.schema.entity.automations.workflow import (
+    Workflow as AutomationWorkflow,
+)
 from metadata.generated.schema.entity.services.connections.database.clickhouseConnection import (
     ClickhouseConnection,
 )
@@ -30,7 +34,9 @@ from metadata.ingestion.connections.test_connections import (
     TestConnectionResult,
     TestConnectionStep,
     test_connection_db_common,
+    test_connection_db_schema_sources,
 )
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.clickhouse.queries import (
     CLICKHOUSE_SQL_STATEMENT_TEST,
 )
@@ -55,50 +61,21 @@ def get_connection(connection: ClickhouseConnection) -> Engine:
     )
 
 
-def test_connection(engine: Engine, _) -> TestConnectionResult:
+def test_connection(
+    metadata: OpenMetadata,
+    engine: Engine,
+    service_connection: ClickhouseConnection,
+    automation_workflow: Optional[AutomationWorkflow] = None,
+) -> TestConnectionResult:
     """
     Test Clickhouse connection
     """
+    queries = {"GetQueries": CLICKHOUSE_SQL_STATEMENT_TEST}
 
-    def custom_executor(engine, statement):
-        cursor = engine.execute(statement)
-        return list(cursor.all())
-
-    inspector = inspect(engine)
-
-    def custom_executor_for_tables():
-        schema_name = inspector.get_schema_names()
-
-        if schema_name:
-            for schema in schema_name:
-                if schema not in ("INFORMATION_SCHEMA", "system"):
-                    table_name = inspector.get_table_names(schema)
-                    return table_name
-        return None
-
-    steps = [
-        TestConnectionStep(
-            function=inspector.get_schema_names,
-            name="Get Schemas",
-        ),
-        TestConnectionStep(
-            function=partial(custom_executor_for_tables),
-            name="Get Tables",
-        ),
-        TestConnectionStep(
-            function=inspector.get_view_names,
-            name="Get Views",
-            mandatory=False,
-        ),
-        TestConnectionStep(
-            function=partial(
-                custom_executor,
-                statement=CLICKHOUSE_SQL_STATEMENT_TEST,
-                engine=engine,
-            ),
-            name="Get Usage and Lineage",
-            mandatory=False,
-        ),
-    ]
-
-    return test_connection_db_common(engine, steps)
+    test_connection_db_common(
+        metadata=metadata,
+        engine=engine,
+        service_connection=service_connection,
+        automation_workflow=automation_workflow,
+        queries=queries,
+    )

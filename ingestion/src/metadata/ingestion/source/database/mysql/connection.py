@@ -12,20 +12,15 @@
 """
 Source connection handler
 """
-from functools import partial
-from typing import Callable, Optional
+from typing import Optional
 
 from sqlalchemy.engine import Engine
-from sqlalchemy.inspection import inspect
 
 from metadata.generated.schema.entity.automations.workflow import (
     Workflow as AutomationWorkflow,
 )
 from metadata.generated.schema.entity.services.connections.database.mysqlConnection import (
     MysqlConnection,
-)
-from metadata.generated.schema.entity.services.connections.testConnectionDefinition import (
-    TestConnectionDefinition,
 )
 from metadata.ingestion.connections.builders import (
     create_generic_db_connection,
@@ -34,10 +29,7 @@ from metadata.ingestion.connections.builders import (
     init_empty_connection_options,
 )
 from metadata.ingestion.connections.test_connections import (
-    TestConnectionResult,
-    TestConnectionStep,
-    test_connection_engine_step,
-    test_connection_steps,
+    test_connection_db_schema_sources,
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 
@@ -73,45 +65,9 @@ def test_connection(
     Test connection. This can be executed either as part
     of a metadata workflow or during an Automation Workflow
     """
-    inspector = inspect(engine)
-
-    def custom_executor(inspector_fn: Callable):
-        """
-        Check if we can list tables or views from a given schema
-        or a random one
-        """
-        if service_connection.databaseSchema:
-            inspector.get_table_names(service_connection.databaseSchema)
-        else:
-            schema_name = inspector.get_schema_names() or []
-            for schema in schema_name:
-                if schema not in ("information_schema", "performance_schema"):
-                    inspector_fn(schema)
-        return None
-
-    test_connection_definition: TestConnectionDefinition = metadata.get_by_name(
-        entity=TestConnectionDefinition, fqn=service_connection.type.value
-    )
-
-    test_fn = {
-        "CheckAccess": partial(test_connection_engine_step, engine),
-        "GetSchemas": inspector.get_schema_names,
-        "GetTables": partial(custom_executor, inspector.get_table_names),
-        "GetViews": partial(custom_executor, inspector.get_view_names),
-    }
-
-    steps = [
-        TestConnectionStep(
-            name=step.name,
-            description=step.description,
-            mandatory=step.mandatory,
-            function=test_fn[step.name],
-        )
-        for step in test_connection_definition.steps
-    ]
-
-    test_connection_steps(
+    test_connection_db_schema_sources(
         metadata=metadata,
-        steps=steps,
+        engine=engine,
+        service_connection=service_connection,
         automation_workflow=automation_workflow,
     )
