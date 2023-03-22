@@ -130,9 +130,10 @@ def test_connection(
     engine: Engine,
     service_connection: SnowflakeConnection,
     automation_workflow: Optional[AutomationWorkflow] = None,
-) -> TestConnectionResult:
+) -> None:
     """
-    Test connection
+    Test connection. This can be executed either as part
+    of a metadata workflow or during an Automation Workflow
     """
 
     queries = {

@@ -64,9 +64,10 @@ def test_connection(
     engine: Engine,
     service_connection: MssqlConnection,
     automation_workflow: Optional[AutomationWorkflow] = None,
-) -> TestConnectionResult:
+) -> None:
     """
-    Test connection
+    Test connection. This can be executed either as part
+    of a metadata workflow or during an Automation Workflow
     """
     queries = {
         "GetQueries": MSSQL_SQL_STATEMENT_TEST,

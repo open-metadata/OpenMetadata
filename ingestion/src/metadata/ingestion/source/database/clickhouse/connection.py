@@ -66,10 +66,12 @@ def test_connection(
     engine: Engine,
     service_connection: ClickhouseConnection,
     automation_workflow: Optional[AutomationWorkflow] = None,
-) -> TestConnectionResult:
+) -> None:
     """
-    Test Clickhouse connection
+    Test connection. This can be executed either as part
+    of a metadata workflow or during an Automation Workflow
     """
+
     queries = {"GetQueries": CLICKHOUSE_SQL_STATEMENT_TEST}
 
     test_connection_db_common(

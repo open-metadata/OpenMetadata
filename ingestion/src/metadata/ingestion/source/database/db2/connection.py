@@ -50,9 +50,10 @@ def test_connection(
     engine: Engine,
     service_connection: Db2Connection,
     automation_workflow: Optional[AutomationWorkflow] = None,
-) -> TestConnectionResult:
+) -> None:
     """
-    Test connection
+    Test connection. This can be executed either as part
+    of a metadata workflow or during an Automation Workflow
     """
     test_connection_db_common(
         metadata=metadata,
