@@ -22,7 +22,7 @@ import {
 import SearchDropdown from 'components/SearchDropdown/SearchDropdown';
 import { SearchDropdownOption } from 'components/SearchDropdown/SearchDropdown.interface';
 import { WILD_CARD_CHAR } from 'constants/char.constants';
-import { INITIAL_PAGING_VALUE, PAGE_SIZE } from 'constants/constants';
+import { PAGE_SIZE, pagingObject } from 'constants/constants';
 import { compare } from 'fast-json-patch';
 import { Query } from 'generated/entity/data/query';
 import { debounce, isEmpty, isNil, isString, isUndefined } from 'lodash';
@@ -53,7 +53,7 @@ const TableQueries: FC<TableQueriesProp> = ({
 
   const [tableQueries, setTableQueries] = useState<PagingResponse<Query[]>>({
     data: [],
-    paging: INITIAL_PAGING_VALUE,
+    paging: pagingObject,
   });
   const [isQueriesLoading, setIsQueriesLoading] = useState(true);
   const [isRightPanelLoading, setIsRightPanelLoading] = useState(true);
