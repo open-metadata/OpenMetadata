@@ -21,6 +21,7 @@ import { EntityUnion } from 'components/Explore/explore.interface';
 import { ResourceEntity } from 'components/PermissionProvider/PermissionProvider.interface';
 import { ExplorePageTabs } from 'enums/Explore.enum';
 import { Container } from 'generated/entity/data/container';
+import { GlossaryTerm } from 'generated/entity/data/glossaryTerm';
 import { Mlmodel } from 'generated/entity/data/mlmodel';
 import i18next from 'i18next';
 import { isEmpty, isNil, isUndefined, lowerCase, startCase } from 'lodash';
@@ -132,6 +133,7 @@ export const getEntityOverview = (
   value: string | number | React.ReactNode;
   isLink: boolean;
   isExternal?: boolean;
+  isIcon?: boolean;
   url?: string;
   visible?: Array<string>;
   dataTestId?: string;
@@ -451,6 +453,21 @@ export const getEntityOverview = (
           value:
             dataModel && dataModel.columns ? dataModel.columns.length : NO_DATA,
           isLink: false,
+          visible: [DRAWER_NAVIGATION_OPTIONS.explore],
+        },
+      ];
+
+      return overview;
+    }
+    case ExplorePageTabs.GLOSSARY: {
+      const { mutuallyExclusive } = entityDetail as GlossaryTerm;
+
+      const overview = [
+        {
+          name: i18next.t('label.mutually-exclusive'),
+          value: mutuallyExclusive,
+          isLink: false,
+          isIcon: true,
           visible: [DRAWER_NAVIGATION_OPTIONS.explore],
         },
       ];

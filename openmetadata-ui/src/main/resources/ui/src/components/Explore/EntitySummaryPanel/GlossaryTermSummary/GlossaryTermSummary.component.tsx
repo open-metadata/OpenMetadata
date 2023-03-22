@@ -13,32 +13,31 @@
 
 import { Col, Divider, Row, Typography } from 'antd';
 import classNames from 'classnames';
+import ProfilePicture from 'components/common/ProfilePicture/ProfilePicture';
 import SummaryPanelSkeleton from 'components/Skeleton/SummaryPanelSkeleton/SummaryPanelSkeleton.component';
 import { SummaryEntityType } from 'enums/EntitySummary.enum';
 import { ExplorePageTabs } from 'enums/Explore.enum';
-import { Container } from 'generated/entity/data/container';
+import { GlossaryTerm } from 'generated/entity/data/glossaryTerm';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
 import { getFormattedEntityData } from 'utils/EntitySummaryPanelUtils';
 import {
   DRAWER_NAVIGATION_OPTIONS,
   getEntityOverview,
 } from 'utils/EntityUtils';
-import SVGIcons from 'utils/SvgUtils';
+import SVGIcons, { Icons } from 'utils/SvgUtils';
 import { EntitySummaryComponentProps } from '../EntitySummaryPanel.interface';
 import SummaryList from '../SummaryList/SummaryList.component';
 import { BasicEntityInfo } from '../SummaryList/SummaryList.interface';
 
-function ContainerSummary({
+function GlossaryTermSummary({
   entityDetails,
   componentType = DRAWER_NAVIGATION_OPTIONS.explore,
   isLoading,
 }: EntitySummaryComponentProps) {
   const { t } = useTranslation();
-
   const entityInfo = useMemo(
-    () => getEntityOverview(ExplorePageTabs.CONTAINERS, entityDetails),
+    () => getEntityOverview(ExplorePageTabs.GLOSSARY, entityDetails),
     [entityDetails]
   );
 
@@ -46,8 +45,13 @@ function ContainerSummary({
     () =>
       getFormattedEntityData(
         SummaryEntityType.COLUMN,
-        (entityDetails as Container).dataModel?.columns
+        (entityDetails as GlossaryTerm).children
       ),
+    [entityDetails]
+  );
+
+  const reviewers = useMemo(
+    () => (entityDetails as GlossaryTerm).reviewers || [],
     [entityDetails]
   );
 
@@ -68,27 +72,22 @@ function ContainerSummary({
                       })}
                       gutter={[16, 32]}>
                       {!isOwner ? (
-                        <Col data-testid={`${info.name}-label`} span={8}>
+                        <Col data-testid={`${info.name}-label`} span={10}>
                           <Typography.Text className="text-grey-muted">
                             {info.name}
                           </Typography.Text>
                         </Col>
                       ) : null}
-                      <Col data-testid={`${info.name}-value`} span={16}>
-                        {info.isLink ? (
-                          <Link
-                            target={info.isExternal ? '_blank' : '_self'}
-                            to={{ pathname: info.url }}>
-                            {info.value}
-                            {info.isExternal ? (
-                              <SVGIcons
-                                alt="external-link"
-                                className="m-l-xs"
-                                icon="external-link"
-                                width="12px"
-                              />
-                            ) : null}
-                          </Link>
+                      <Col data-testid={`${info.name}-value`} span={14}>
+                        {info.isIcon ? (
+                          <SVGIcons
+                            alt="glossary-term-icon"
+                            className="h-4 w-4"
+                            icon={
+                              info.value ? Icons.CHECK_CIRCLE : Icons.FAIL_BADGE
+                            }
+                            width="12px"
+                          />
                         ) : (
                           <Typography.Text
                             className={classNames('text-grey-muted', {
@@ -106,13 +105,50 @@ function ContainerSummary({
           </Col>
         </Row>
         <Divider className="m-y-xs" />
+        <Row className="m-md" gutter={[0, 16]}>
+          <Col span={24}>
+            <Typography.Text
+              className="text-base text-grey-muted"
+              data-testid="reviewer-header">
+              {t('label.reviewer-plural')}
+            </Typography.Text>
+          </Col>
+          <Col span={24}>
+            {reviewers.length > 0 ? (
+              <div className="d-flex flex-wrap">
+                {reviewers.map((assignee) => (
+                  <>
+                    <span className="d-flex tw-m-1.5 tw-mt-0 tw-cursor-pointer">
+                      <ProfilePicture
+                        id=""
+                        name={assignee.name || ''}
+                        width="20"
+                      />
+                      <span className="tw-self-center tw-ml-2">
+                        {assignee?.displayName || assignee?.name}
+                      </span>
+                    </span>
+                  </>
+                ))}
+              </div>
+            ) : (
+              <Typography.Text
+                className="text-grey-body"
+                data-testid="no-reviewer-header">
+                {t('label.no-reviewer')}
+              </Typography.Text>
+            )}
+          </Col>
+        </Row>
+
+        <Divider className="m-y-xs" />
 
         <Row className="m-md" gutter={[0, 16]}>
           <Col span={24}>
             <Typography.Text
               className="text-base text-grey-muted"
-              data-testid="schema-header">
-              {t('label.schema')}
+              data-testid="children-header">
+              {t('label.children')}
             </Typography.Text>
           </Col>
           <Col span={24}>
@@ -127,4 +163,4 @@ function ContainerSummary({
   );
 }
 
-export default ContainerSummary;
+export default GlossaryTermSummary;

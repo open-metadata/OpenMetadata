@@ -11,9 +11,20 @@
  *  limitations under the License.
  */
 
-import { EntityDetailsObjectInterface } from '../explore.interface';
+import { TagLabel } from 'generated/type/tagLabel';
+import {
+  EntityDetailsObjectInterface,
+  EntityUnion,
+} from '../explore.interface';
 
 export interface EntitySummaryPanelProps {
   entityDetails: EntityDetailsObjectInterface;
   handleClosePanel: () => void;
+}
+
+export interface EntitySummaryComponentProps {
+  entityDetails: EntityUnion;
+  componentType?: string;
+  tags?: TagLabel[];
+  isLoading?: boolean;
 }

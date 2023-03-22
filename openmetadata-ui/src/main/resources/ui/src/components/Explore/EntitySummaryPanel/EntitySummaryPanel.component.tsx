@@ -16,6 +16,7 @@ import { Col, Drawer, Row } from 'antd';
 import TableDataCardTitle from 'components/common/table-data-card-v2/TableDataCardTitle.component';
 import { EntityType } from 'enums/entity.enum';
 import { Container } from 'generated/entity/data/container';
+import { GlossaryTerm } from 'generated/entity/data/glossaryTerm';
 import React, { useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { ExplorePageTabs } from '../../../enums/Explore.enum';
@@ -28,6 +29,7 @@ import ContainerSummary from './ContainerSummary/ContainerSummary.component';
 import DashboardSummary from './DashboardSummary/DashboardSummary.component';
 import { EntitySummaryPanelProps } from './EntitySummaryPanel.interface';
 import './EntitySummaryPanel.style.less';
+import GlossaryTermSummary from './GlossaryTermSummary/GlossaryTermSummary.component';
 import MlModelSummary from './MlModelSummary/MlModelSummary.component';
 import PipelineSummary from './PipelineSummary/PipelineSummary.component';
 import TableSummary from './TableSummary/TableSummary.component';
@@ -81,6 +83,14 @@ export default function EntitySummaryPanel({
         return (
           <ContainerSummary
             entityDetails={entityDetails.details as Container}
+          />
+        );
+      case ExplorePageTabs.GLOSSARY:
+        setCurrentSearchIndex(EntityType.GLOSSARY);
+
+        return (
+          <GlossaryTermSummary
+            entityDetails={entityDetails.details as GlossaryTerm}
           />
         );
 
