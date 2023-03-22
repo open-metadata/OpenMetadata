@@ -140,7 +140,7 @@ def pretty_print_time_duration(duration: Union[int, float]) -> str:
     return f"{seconds}s"
 
 
-def get_start_and_end(duration):
+def get_start_and_end(duration: int = 0):
     """
     Method to return start and end time based on duration
     """

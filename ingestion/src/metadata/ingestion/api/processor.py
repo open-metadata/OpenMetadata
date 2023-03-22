@@ -56,6 +56,15 @@ class ProfilerProcessorStatus(ProcessorStatus):
 
 @dataclass
 class Processor(Closeable, Generic[Entity], metaclass=ABCMeta):
+    """
+    Processor class
+    """
+
+    status: ProcessorStatus
+
+    def __init__(self):
+        self.status = ProcessorStatus()
+
     @classmethod
     @abstractmethod
     def create(
@@ -67,9 +76,8 @@ class Processor(Closeable, Generic[Entity], metaclass=ABCMeta):
     def process(self, *args, **kwargs) -> Entity:
         pass
 
-    @abstractmethod
     def get_status(self) -> ProcessorStatus:
-        pass
+        return self.status
 
     @abstractmethod
     def close(self) -> None:

@@ -71,7 +71,6 @@ class RedashSource(DashboardServiceSource):
         config: WorkflowSource,
         metadata_config: OpenMetadataConnection,
     ):
-
         super().__init__(config, metadata_config)
         self.dashboard_list = []  # We will populate this in `prepare`
         self.tags = []  # To create the tags before yielding final entities
