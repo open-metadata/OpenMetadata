@@ -40,7 +40,7 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 )
 from metadata.generated.schema.type.tableUsageCount import TableColumn, TableUsageCount
 from metadata.generated.schema.type.usageRequest import UsageRequest
-from metadata.ingestion.api.bulk_sink import BulkSink, BulkSinkStatus
+from metadata.ingestion.api.bulk_sink import BulkSink
 from metadata.ingestion.lineage.sql_lineage import (
     get_column_fqn,
     get_table_entities_from_query,
@@ -75,13 +75,12 @@ class MetadataUsageBulkSink(BulkSink):
         config: MetadataUsageSinkConfig,
         metadata_config: OpenMetadataConnection,
     ):
-
+        super().__init__()
         self.config = config
         self.metadata_config = metadata_config
         self.service_name = None
         self.wrote_something = False
         self.metadata = OpenMetadata(self.metadata_config)
-        self.status = BulkSinkStatus()
         self.table_join_dict = {}
         self.table_usage_map = {}
         self.today = datetime.today().strftime("%Y-%m-%d")
@@ -314,9 +313,6 @@ class MetadataUsageBulkSink(BulkSink):
 
         for table_entity in table_entities:
             return get_column_fqn(table_entity=table_entity, column=table_column.column)
-
-    def get_status(self):
-        return self.status
 
     def close(self):
         if Path(self.config.filename).exists():

@@ -24,10 +24,11 @@ export const MYDATA_SUMMARY_OPTIONS = {
   topics: 'topics',
   dashboards: 'dashboards',
   pipelines: 'pipelines',
-  service: 'service',
-  user: 'user',
-  terms: 'terms',
   mlmodels: 'mlmodels',
+  testSuite: 'test-suite',
+  containers: 'containers',
+  glossaries: 'glossaries',
+  glossaryTerms: 'glossary-terms',
 };
 
 export const SEARCH_INDEX = {
