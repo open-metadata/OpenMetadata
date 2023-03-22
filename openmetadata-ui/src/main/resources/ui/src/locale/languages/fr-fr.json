@@ -699,6 +699,7 @@
     "show-deleted-team": "Show Deleted Team",
     "show-or-hide-advanced-config": "{{showAdv}} Config Avancée",
     "sign-in-with-sso": "Sign in with {{sso}}",
+    "single-dots-symbol": "•",
     "skew": "Skew",
     "slack": "Slack",
     "soft-delete": "Suppression Logique (Soft delete)",
