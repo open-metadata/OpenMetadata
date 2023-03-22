@@ -540,7 +540,7 @@ const AddIngestion = ({
         })
         .finally(() => {
           setTimeout(() => setSaveState(LOADING_STATE.INITIAL), 500);
-          setTimeout(() => setShowDeployModal(false), 500);
+          setShowDeployModal(false);
         });
     }
   };

@@ -195,6 +195,11 @@ export const testServiceCreationAndIngestion = (
     '/api/v1/services/ingestionPipelines/status',
     'getIngestionPipelineStatus'
   );
+  interceptURL(
+    'POST',
+    '/api/v1/services/ingestionPipelines/deploy/*',
+    'deployPipeline'
+  );
   cy.get('[data-testid="submit-btn"]').should('exist').click();
   verifyResponseStatusCode('@getIngestionPipelineStatus', 200);
   // check success
@@ -224,6 +229,8 @@ export const testServiceCreationAndIngestion = (
   cy.get('[data-testid="next-button"]').should('exist').click();
 
   scheduleIngestion();
+
+  verifyResponseStatusCode('@deployPipeline', 200);
 
   cy.contains(`${serviceName}_metadata`).should('be.visible');
   // On the Right panel
