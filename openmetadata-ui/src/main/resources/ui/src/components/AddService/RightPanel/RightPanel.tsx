@@ -28,6 +28,7 @@ import { startCase } from 'lodash';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { fetchMarkdownFile } from 'rest/miscAPI';
+import { SupportedLocales } from 'utils/i18next/i18nextUtil';
 import { getFormattedGuideText, getServiceType } from 'utils/ServiceUtils';
 
 export type ExcludedPipelineType = Exclude<
@@ -147,12 +148,27 @@ const RightPanel: FC<RightPanelProps> = ({
   ) : null;
 
   const fetchFieldDocument = async () => {
+    const serviceType = getServiceType(selectedServiceCategory);
     try {
-      const filePath = `${i18n.language}/${getServiceType(
-        selectedServiceCategory
-      )}/${selectedService}/connections/fields/${activeFieldName}.md`;
+      let response = '';
+      const isEnglishLanguage = i18n.language === SupportedLocales.English;
+      const filePath = `${i18n.language}/${serviceType}/${selectedService}/connections/fields/${activeFieldName}.md`;
+      const fallbackFilePath = `${SupportedLocales.English}/${serviceType}/${selectedService}/connections/fields/${activeFieldName}.md`;
 
-      const response = await fetchMarkdownFile(filePath);
+      const [translation, fallbackTranslation] = await Promise.allSettled([
+        fetchMarkdownFile(filePath),
+        isEnglishLanguage
+          ? Promise.reject('')
+          : fetchMarkdownFile(fallbackFilePath),
+      ]);
+
+      if (translation.status === 'fulfilled') {
+        response = translation.value;
+      }
+
+      if (!isEnglishLanguage && fallbackTranslation.status === 'fulfilled') {
+        response = fallbackTranslation.value;
+      }
 
       setActiveFieldDocument(response);
     } catch (error) {

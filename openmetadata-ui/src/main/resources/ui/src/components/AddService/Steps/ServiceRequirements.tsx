@@ -16,6 +16,7 @@ import Loader from 'components/Loader/Loader';
 import React, { FC, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { fetchMarkdownFile } from 'rest/miscAPI';
+import { SupportedLocales } from 'utils/i18next/i18nextUtil';
 
 interface ServiceRequirementsProp {
   serviceName: string;
@@ -39,8 +40,25 @@ const ServiceRequirements: FC<ServiceRequirementsProp> = ({
   const fetchRequirement = async () => {
     setIsLoading(true);
     try {
+      let response = '';
+      const isEnglishLanguage = i18n.language === SupportedLocales.English;
       const filePath = `${i18n.language}/${serviceType}/${serviceName}/requirements.md`;
-      const response = await fetchMarkdownFile(filePath);
+      const fallbackFilePath = `${SupportedLocales.English}/${serviceType}/${serviceName}/requirements.md`;
+
+      const [translation, fallbackTranslation] = await Promise.allSettled([
+        fetchMarkdownFile(filePath),
+        isEnglishLanguage
+          ? Promise.reject('')
+          : fetchMarkdownFile(fallbackFilePath),
+      ]);
+
+      if (translation.status === 'fulfilled') {
+        response = translation.value;
+      }
+
+      if (!isEnglishLanguage && fallbackTranslation.status === 'fulfilled') {
+        response = fallbackTranslation.value;
+      }
 
       setMarkdownContent(response);
     } catch (error) {
