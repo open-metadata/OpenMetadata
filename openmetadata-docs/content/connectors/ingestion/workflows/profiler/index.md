@@ -152,7 +152,7 @@ This is a good option if you which to execute your workflow via the Airflow SDK 
 ```
 
 ## Profiler Best Practices
-When setting a profiler workflow it is important to keep in mind that queries will be ran against you database. Depending on your database engine you may incure cost (e.g. Google BigQuery, Snowflake). Execution time will also vary depending on you database engine computing power, the size of the table and the number of columns. Given these elements there are few best practices we recommend you follow.
+When setting a profiler workflow it is important to keep in mind that queries will be running against your database. Depending on your database engine, you may incur costs (e.g., Google BigQuery, Snowflake). Execution time will also vary depending on your database engine computing power, the size of the table, and the number of columns. Given these elements, there are a few best practices we recommend you follow.
 
 ### 1. Profile what you Need
 Profiling all the tables in your data platform might not be the most optimized approach. Profiled tables give indication about the structure of the table and is most useful for tables where this information is valuable (e.g. tables used by analysts or data scientists, etc.).
