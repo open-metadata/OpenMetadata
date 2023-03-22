@@ -78,6 +78,10 @@ class OMetaUserTest(TestCase):
             data=CreateUserRequest(name="Levy", email="user2.1234@getcollate.io"),
         )
 
+        cls.user_3: User = cls.metadata.create_or_update(
+            data=CreateUserRequest(name="Lima", email="random.lima@getcollate.io"),
+        )
+
         # Leave some time for indexes to get updated, otherwise this happens too fast
         cls.check_es_index()
 
@@ -110,6 +114,13 @@ class OMetaUserTest(TestCase):
         # Non existing email returns None
         self.assertIsNone(
             self.metadata.get_user_by_email(email="idonotexist@random.com")
+        )
+
+        # Non existing email returns, even if they have the same domain
+        # To get this fixed, we had to update the `email` field in the
+        # index as a `keyword` and search by `email.keyword` in ES.
+        self.assertIsNone(
+            self.metadata.get_user_by_email(email="idonotexist@getcollate.io")
         )
 
         # I can get User 1, who has the name equal to its email

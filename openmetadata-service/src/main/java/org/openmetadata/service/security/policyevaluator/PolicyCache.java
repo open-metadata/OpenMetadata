@@ -50,7 +50,7 @@ public class PolicyCache {
   public static void initialize() {
     if (!INITIALIZED) {
       POLICY_CACHE =
-          CacheBuilder.newBuilder().maximumSize(100).expireAfterWrite(3, TimeUnit.MINUTES).build(new PolicyLoader());
+          CacheBuilder.newBuilder().maximumSize(1000).expireAfterWrite(3, TimeUnit.MINUTES).build(new PolicyLoader());
       POLICY_REPOSITORY = (PolicyRepository) Entity.getEntityRepository(Entity.POLICY);
       FIELDS = POLICY_REPOSITORY.getFields("rules");
       INITIALIZED = true;
