@@ -170,4 +170,4 @@ By default, the profiler will compute all the metrics against all the columns. T
 For example, excluding `id` columns will reduce the number of columns against which the metrics are computed.
 
 ### 4. Set Up Multiple Workflow
-If you have a large number of tables you would like to profile, setting up multiple workflow will help distribute the load. It is important though to monitor your instance CPU and memory as having a large amount of workflow running simultaneously will require an adapted amount of resources.
+If you have a large number of tables you would like to profile, setting up multiple workflows will help distribute the load. It is important though to monitor your instance CPU, and memory as having a large amount of workflow running simultaneously will require an adapted amount of resources.
