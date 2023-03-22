@@ -12,8 +12,13 @@
 """
 Source connection handler
 """
+from typing import Optional
+
 from sqlalchemy.engine import Engine
 
+from metadata.generated.schema.entity.automations.workflow import (
+    Workflow as AutomationWorkflow,
+)
 from metadata.generated.schema.entity.services.connections.database.pinotDBConnection import (
     PinotDBConnection,
 )
@@ -22,7 +27,11 @@ from metadata.ingestion.connections.builders import (
     get_connection_args_common,
     get_connection_url_common,
 )
-from metadata.ingestion.connections.test_connections import test_connection_db_common
+from metadata.ingestion.connections.test_connections import (
+    TestConnectionResult,
+    test_connection_db_common,
+)
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 
 
 def get_connection_url(connection: PinotDBConnection) -> str:
@@ -42,8 +51,19 @@ def get_connection(connection: PinotDBConnection) -> Engine:
     )
 
 
-def test_connection(engine: Engine, _) -> None:
+def test_connection(
+    metadata: OpenMetadata,
+    engine: Engine,
+    service_connection: PinotDBConnection,
+    automation_workflow: Optional[AutomationWorkflow] = None,
+) -> None:
     """
-    Test connection
+    Test connection. This can be executed either as part
+    of a metadata workflow or during an Automation Workflow
     """
-    test_connection_db_common(engine)
+    test_connection_db_common(
+        metadata=metadata,
+        engine=engine,
+        service_connection=service_connection,
+        automation_workflow=automation_workflow,
+    )

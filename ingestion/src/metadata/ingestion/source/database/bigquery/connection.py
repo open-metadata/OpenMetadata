@@ -14,12 +14,16 @@ Source connection handler
 """
 import os
 from functools import partial
+from typing import Optional
 
 from google import auth
 from google.cloud.datacatalog_v1 import PolicyTagManagerClient
 from sqlalchemy.engine import Engine
 from sqlalchemy.inspection import inspect
 
+from metadata.generated.schema.entity.automations.workflow import (
+    Workflow as AutomationWorkflow,
+)
 from metadata.generated.schema.entity.services.connections.database.bigQueryConnection import (
     BigQueryConnection,
 )
@@ -34,9 +38,12 @@ from metadata.ingestion.connections.builders import (
 )
 from metadata.ingestion.connections.test_connections import (
     TestConnectionResult,
-    TestConnectionStep,
-    test_connection_db_common,
+    test_connection_engine_step,
+    test_connection_steps,
+    test_query,
 )
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.source.database.bigquery.queries import BIGQUERY_TEST_STATEMENT
 from metadata.utils.credentials import set_google_credentials
 
 
@@ -82,9 +89,15 @@ def get_connection(connection: BigQueryConnection) -> Engine:
     )
 
 
-def test_connection(engine: Engine, service_connection) -> TestConnectionResult:
+def test_connection(
+    metadata: OpenMetadata,
+    engine: Engine,
+    service_connection: BigQueryConnection,
+    automation_workflow: Optional[AutomationWorkflow] = None,
+) -> None:
     """
-    Test connection
+    Test connection. This can be executed either as part
+    of a metadata workflow or during an Automation Workflow
     """
 
     def get_tags(taxonomies):
@@ -96,7 +109,7 @@ def test_connection(engine: Engine, service_connection) -> TestConnectionResult:
 
     inspector = inspect(engine)
 
-    def custom_executor():
+    def test_tags():
         list_project_ids = auth.default()
         project_id = list_project_ids[1]
 
@@ -115,27 +128,24 @@ def test_connection(engine: Engine, service_connection) -> TestConnectionResult:
 
         return None
 
-    steps = [
-        TestConnectionStep(
-            function=inspector.get_schema_names,
-            name="Get Schemas",
-        ),
-        TestConnectionStep(
-            function=inspector.get_table_names,
-            name="Get Tables",
-        ),
-        TestConnectionStep(
-            function=inspector.get_view_names,
-            name="Get Views",
-            mandatory=False,
-        ),
-        TestConnectionStep(
-            function=partial(
-                custom_executor,
+    test_fn = {
+        "CheckAccess": partial(test_connection_engine_step, engine),
+        "GetSchemas": inspector.get_schema_names,
+        "GetTables": inspector.get_table_names,
+        "GetViews": inspector.get_view_names,
+        "GetTags": test_tags,
+        "GetQueries": partial(
+            test_query,
+            engine=engine,
+            statement=BIGQUERY_TEST_STATEMENT.format(
+                region=service_connection.usageLocation
             ),
-            name="Get Tags",
-            mandatory=False,
         ),
-    ]
+    }
 
-    return test_connection_db_common(engine, steps)
+    test_connection_steps(
+        metadata=metadata,
+        test_fn=test_fn,
+        service_fqn=service_connection.type.value,
+        automation_workflow=automation_workflow,
+    )

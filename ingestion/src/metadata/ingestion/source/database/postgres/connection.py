@@ -12,11 +12,14 @@
 """
 Source connection handler
 """
-from functools import partial
+
+from typing import Optional
 
 from sqlalchemy.engine import Engine
-from sqlalchemy.inspection import inspect
 
+from metadata.generated.schema.entity.automations.workflow import (
+    Workflow as AutomationWorkflow,
+)
 from metadata.generated.schema.entity.services.connections.database.postgresConnection import (
     PostgresConnection,
 )
@@ -28,9 +31,9 @@ from metadata.ingestion.connections.builders import (
 )
 from metadata.ingestion.connections.test_connections import (
     TestConnectionResult,
-    TestConnectionStep,
     test_connection_db_common,
 )
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.postgres.queries import (
     POSTGRES_GET_ALL_TABLE_PG_POLICY_TEST,
     POSTGRES_GET_DATABASE,
@@ -53,56 +56,25 @@ def get_connection(connection: PostgresConnection) -> Engine:
     )
 
 
-def test_connection(engine: Engine, _) -> TestConnectionResult:
+def test_connection(
+    metadata: OpenMetadata,
+    engine: Engine,
+    service_connection: PostgresConnection,
+    automation_workflow: Optional[AutomationWorkflow] = None,
+) -> None:
     """
-    Test connection
+    Test connection. This can be executed either as part
+    of a metadata workflow or during an Automation Workflow
     """
-
-    def custom_executor(engine, statement):
-        cursor = engine.execute(statement)
-        return list(cursor.all())
-
-    inspector = inspect(engine)
-    steps = [
-        TestConnectionStep(
-            function=partial(
-                custom_executor,
-                statement=POSTGRES_GET_DATABASE,
-                engine=engine,
-            ),
-            name="Get Databases",
-        ),
-        TestConnectionStep(
-            function=inspector.get_schema_names,
-            name="Get Schemas",
-        ),
-        TestConnectionStep(
-            function=inspector.get_table_names,
-            name="Get Tables",
-        ),
-        TestConnectionStep(
-            function=inspector.get_view_names,
-            name="Get Views",
-            mandatory=False,
-        ),
-        TestConnectionStep(
-            function=partial(
-                custom_executor,
-                statement=POSTGRES_GET_ALL_TABLE_PG_POLICY_TEST,
-                engine=engine,
-            ),
-            name="Get Tags",
-            mandatory=False,
-        ),
-        TestConnectionStep(
-            function=partial(
-                custom_executor,
-                statement=POSTGRES_SQL_STATEMENT_TEST,
-                engine=engine,
-            ),
-            name="Get Usage and Lineage",
-            mandatory=False,
-        ),
-    ]
-
-    return test_connection_db_common(engine, steps)
+    queries = {
+        "GetQueries": POSTGRES_SQL_STATEMENT_TEST,
+        "GetDatabases": POSTGRES_GET_DATABASE,
+        "GetTags": POSTGRES_GET_ALL_TABLE_PG_POLICY_TEST,
+    }
+    test_connection_db_common(
+        metadata=metadata,
+        engine=engine,
+        service_connection=service_connection,
+        automation_workflow=automation_workflow,
+        queries=queries,
+    )

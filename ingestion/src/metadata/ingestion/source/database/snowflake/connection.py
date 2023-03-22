@@ -12,6 +12,7 @@
 """
 Source connection handler
 """
+from typing import Optional
 from urllib.parse import quote_plus
 
 from cryptography.hazmat.backends import default_backend
@@ -19,6 +20,9 @@ from cryptography.hazmat.primitives import serialization
 from pydantic import SecretStr
 from sqlalchemy.engine import Engine
 
+from metadata.generated.schema.entity.automations.workflow import (
+    Workflow as AutomationWorkflow,
+)
 from metadata.generated.schema.entity.services.connections.database.snowflakeConnection import (
     SnowflakeConnection,
 )
@@ -28,7 +32,16 @@ from metadata.ingestion.connections.builders import (
     get_connection_options_dict,
     init_empty_connection_arguments,
 )
-from metadata.ingestion.connections.test_connections import test_connection_db_common
+from metadata.ingestion.connections.test_connections import (
+    TestConnectionResult,
+    test_connection_db_common,
+)
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.source.database.snowflake.queries import (
+    SNOWFLAKE_FETCH_TAG_TEST,
+    SNOWFLAKE_GET_DATABASES,
+    SNOWFLAKE_SQL_STATEMENT_TEST,
+)
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -112,8 +125,26 @@ def get_connection(connection: SnowflakeConnection) -> Engine:
     )
 
 
-def test_connection(engine: Engine, _) -> None:
+def test_connection(
+    metadata: OpenMetadata,
+    engine: Engine,
+    service_connection: SnowflakeConnection,
+    automation_workflow: Optional[AutomationWorkflow] = None,
+) -> None:
     """
-    Test connection
+    Test connection. This can be executed either as part
+    of a metadata workflow or during an Automation Workflow
     """
-    test_connection_db_common(engine)
+
+    queries = {
+        "GetQueries": SNOWFLAKE_SQL_STATEMENT_TEST,
+        "GetDatabases": SNOWFLAKE_GET_DATABASES,
+        "GetTags": SNOWFLAKE_FETCH_TAG_TEST,
+    }
+    test_connection_db_common(
+        metadata=metadata,
+        engine=engine,
+        service_connection=service_connection,
+        automation_workflow=automation_workflow,
+        queries=queries,
+    )

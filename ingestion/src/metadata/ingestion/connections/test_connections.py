@@ -14,10 +14,12 @@ creating a service
 """
 import traceback
 from datetime import datetime
+from functools import partial
 from typing import Callable, List, Optional
 
 from pydantic import BaseModel
 from sqlalchemy.engine import Engine
+from sqlalchemy.inspection import inspect
 
 from metadata.generated.schema.api.automations.createWorkflow import (
     CreateWorkflowRequest,
@@ -26,11 +28,15 @@ from metadata.generated.schema.entity.automations.workflow import (
     Workflow as AutomationWorkflow,
 )
 from metadata.generated.schema.entity.automations.workflow import WorkflowStatus
+from metadata.generated.schema.entity.services.connections.testConnectionDefinition import (
+    TestConnectionDefinition,
+)
 from metadata.generated.schema.entity.services.connections.testConnectionResult import (
     StatusType,
     TestConnectionResult,
     TestConnectionStepResult,
 )
+from metadata.generated.schema.entity.services.databaseService import DatabaseConnection
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.profiler.orm.functions.conn_test import ConnTestFn
 from metadata.utils.logger import cli_logger
@@ -214,7 +220,8 @@ def _test_connection_steps_during_ingestion(steps: List[TestConnectionStep]) -> 
 
 def test_connection_steps(
     metadata: OpenMetadata,
-    steps: List[TestConnectionStep],
+    service_fqn: str,
+    test_fn: dict,
     automation_workflow: Optional[AutomationWorkflow] = None,
     timeout_seconds: int = 3 * 60,
 ) -> None:
@@ -225,6 +232,22 @@ def test_connection_steps(
     and extract the metadata
     :return: None or raise an exception if we cannot connect
     """
+
+    test_connection_definition: TestConnectionDefinition = metadata.get_by_name(
+        entity=TestConnectionDefinition,
+        fqn=service_fqn,
+    )
+
+    steps = [
+        TestConnectionStep(
+            name=step.name,
+            description=step.description,
+            mandatory=step.mandatory,
+            function=test_fn[step.name],
+        )
+        for step in test_connection_definition.steps
+    ]
+
     return timeout(timeout_seconds)(_test_connection_steps)(
         metadata, steps, automation_workflow
     )
@@ -236,3 +259,85 @@ def test_connection_engine_step(connection: Engine) -> None:
     """
     with connection.connect() as conn:
         conn.execute(ConnTestFn())
+
+
+def test_connection_db_common(
+    metadata: OpenMetadata,
+    engine: Engine,
+    service_connection,
+    automation_workflow: Optional[AutomationWorkflow] = None,
+    queries: dict = {},
+    timeout_seconds: int = 3 * 60,
+) -> TestConnectionResult:
+
+    """
+    Test connection
+    """
+    inspector = inspect(engine)
+
+    test_fn = {
+        "CheckAccess": partial(test_connection_engine_step, engine),
+        "GetSchemas": inspector.get_schema_names,
+        "GetTables": inspector.get_table_names,
+        "GetViews": inspector.get_view_names,
+    }
+
+    for key, query in queries.items():
+        test_fn[key] = partial(test_query, statement=query, engine=engine)
+
+    test_connection_steps(
+        metadata=metadata,
+        test_fn=test_fn,
+        service_fqn=service_connection.type.value,
+        automation_workflow=automation_workflow,
+        timeout_seconds=timeout_seconds,
+    )
+
+
+def test_connection_db_schema_sources(
+    metadata: OpenMetadata,
+    engine: Engine,
+    service_connection,
+    automation_workflow: Optional[AutomationWorkflow] = None,
+    queries: dict = {},
+) -> None:
+    """
+    Test connection. This can be executed either as part
+    of a metadata workflow or during an Automation Workflow
+    """
+    inspector = inspect(engine)
+
+    def custom_executor(inspector_fn: Callable):
+        """
+        Check if we can list tables or views from a given schema
+        or a random one
+        """
+        if service_connection.databaseSchema:
+            inspector_fn(service_connection.databaseSchema)
+        else:
+            schema_name = inspector.get_schema_names() or []
+            for schema in schema_name:
+                if schema.lower() not in ("information_schema", "performance_schema"):
+                    inspector_fn(schema)
+                    break
+
+    test_fn = {
+        "CheckAccess": partial(test_connection_engine_step, engine),
+        "GetSchemas": inspector.get_schema_names,
+        "GetTables": partial(custom_executor, inspector.get_table_names),
+        "GetViews": partial(custom_executor, inspector.get_view_names),
+    }
+
+    for key, query in queries.items():
+        test_fn[key] = partial(test_query, statement=query, engine=engine)
+
+    test_connection_steps(
+        metadata=metadata,
+        test_fn=test_fn,
+        service_fqn=service_connection.type.value,
+        automation_workflow=automation_workflow,
+    )
+
+
+def test_query(engine, statement):
+    engine.execute(statement).fetchone()
