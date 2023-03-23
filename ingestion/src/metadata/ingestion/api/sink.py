@@ -44,6 +44,11 @@ class SinkStatus(BaseModel, Status):
 class Sink(Closeable, Generic[Entity], metaclass=ABCMeta):
     """All Sinks must inherit this base class."""
 
+    status: SinkStatus
+
+    def __init__(self):
+        self.status = SinkStatus()
+
     @classmethod
     @abstractmethod
     def create(
@@ -56,9 +61,8 @@ class Sink(Closeable, Generic[Entity], metaclass=ABCMeta):
         # must call callback when done.
         pass
 
-    @abstractmethod
     def get_status(self) -> SinkStatus:
-        pass
+        return self.status
 
     @abstractmethod
     def close(self) -> None:

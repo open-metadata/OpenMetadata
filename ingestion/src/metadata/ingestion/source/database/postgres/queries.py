@@ -137,3 +137,44 @@ POSTGRES_SQL_STATEMENT_TEST = """
 POSTGRES_GET_DB_NAMES = """
 select datname from pg_catalog.pg_database
 """
+
+POSTGRES_COL_IDENTITY = """\
+  (SELECT json_build_object(
+      'always', a.attidentity = 'a',
+      'start', s.seqstart,
+      'increment', s.seqincrement,
+      'minvalue', s.seqmin,
+      'maxvalue', s.seqmax,
+      'cache', s.seqcache,
+      'cycle', s.seqcycle)
+  FROM pg_catalog.pg_sequence s
+  JOIN pg_catalog.pg_class c on s.seqrelid = c."oid"
+  WHERE c.relkind = 'S'
+  AND a.attidentity != ''
+  AND s.seqrelid = pg_catalog.pg_get_serial_sequence(
+      a.attrelid::regclass::text, a.attname
+  )::regclass::oid
+  ) as identity_options\
+"""
+
+POSTGRES_SQL_COLUMNS = """
+        SELECT a.attname,
+            pg_catalog.format_type(a.atttypid, a.atttypmod),
+            (
+            SELECT pg_catalog.pg_get_expr(d.adbin, d.adrelid)
+            FROM pg_catalog.pg_attrdef d
+            WHERE d.adrelid = a.attrelid AND d.adnum = a.attnum
+            AND a.atthasdef
+            ) AS DEFAULT,
+            a.attnotnull,
+            a.attrelid as table_oid,
+            pgd.description as comment,
+            {generated},
+            {identity}
+        FROM pg_catalog.pg_attribute a
+        LEFT JOIN pg_catalog.pg_description pgd ON (
+            pgd.objoid = a.attrelid AND pgd.objsubid = a.attnum)
+        WHERE a.attrelid = :table_oid
+        AND a.attnum > 0 AND NOT a.attisdropped
+        ORDER BY a.attnum
+    """

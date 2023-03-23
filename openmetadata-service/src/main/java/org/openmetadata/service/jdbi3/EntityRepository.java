@@ -1764,8 +1764,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
 
     private void updateColumnDisplayName(Column origColumn, Column updatedColumn) throws JsonProcessingException {
-      if (operation.isPut() && !nullOrEmpty(origColumn.getDescription()) && updatedByBot()) {
-        // Revert the non-empty task description if being updated by a bot
+      if (operation.isPut() && !nullOrEmpty(origColumn.getDisplayName()) && updatedByBot()) {
+        // Revert the non-empty task display name if being updated by a bot
         updatedColumn.setDisplayName(origColumn.getDisplayName());
         return;
       }
