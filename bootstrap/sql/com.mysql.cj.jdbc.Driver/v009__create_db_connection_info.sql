@@ -119,6 +119,11 @@ WHERE name = 'OpenMetadata' AND JSON_EXTRACT(json, '$.connection.config.authProv
 
 ALTER TABLE user_tokens MODIFY COLUMN expiryDate BIGINT UNSIGNED GENERATED ALWAYS AS (json ->> '$.expiryDate');
 
+-- we are not using the secretsManagerCredentials
+UPDATE metadata_service_entity
+SET json = JSON_REMOVE(json, '$.openMetadataServerConnection.secretsManagerCredentials')
+where name = 'OpenMetadata';
+
 DELETE FROM alert_entity;
 drop table alert_action_def;
 

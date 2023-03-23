@@ -98,12 +98,18 @@ class AWSClient:
 
     @staticmethod
     def _get_session(
-        aws_access_key_id,
-        aws_secret_access_key,
-        aws_session_token,
-        aws_region,
+        aws_access_key_id: Optional[str],
+        aws_secret_access_key: Optional[CustomSecretStr],
+        aws_session_token: Optional[str],
+        aws_region: str,
         profile=None,
     ) -> Session:
+        """
+        The only requred param for boto3 is the region.
+
+        The rest of credentials will have fallback strategies based on
+        https://boto3.amazonaws.com/v1/documentation/api/latest/guide/credentials.html#configuring-credentials
+        """
         return Session(
             aws_access_key_id=aws_access_key_id,
             aws_secret_access_key=aws_secret_access_key.get_secret_value()

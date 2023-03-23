@@ -122,6 +122,11 @@ WHERE name = 'OpenMetadata'
 
 ALTER TABLE user_tokens ALTER COLUMN expiryDate DROP NOT NULL;
 
+-- we are not using the secretsManagerCredentials
+UPDATE metadata_service_entity
+SET json = json::jsonb #- '{openMetadataServerConnection.secretsManagerCredentials}'
+where name = 'OpenMetadata';
+
 DELETE FROM alert_entity;
 drop table alert_action_def;
 
