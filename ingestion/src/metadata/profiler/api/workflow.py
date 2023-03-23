@@ -255,13 +255,15 @@ class ProfilerWorkflow(WorkflowStatusMixin):
                     continue
 
                 yield table
-            except Exception as exc:  # pylint: disable=broad-except
-                logger.debug(traceback.format_exc())
-                logger.warning(
-                    "Unexpected error filtering entities for table "
-                    f"[{table.fullyQualifiedName.__root__}]: {exc}"  # type: ignore
+            except Exception as exc:
+                error = (
+                    f"Unexpected error filtering entities for table [{table}]: {exc}"
                 )
-                self.source_status.failure(table.fullyQualifiedName.__root__, f"{exc}")  # type: ignore
+                logger.debug(traceback.format_exc())
+                logger.warning(error)
+                self.source_status.failed(
+                    table.fullyQualifiedName.__root__, error, traceback.format_exc()
+                )
 
     def get_database_entities(self):
         """List all databases in service"""
@@ -364,24 +366,17 @@ class ProfilerWorkflow(WorkflowStatusMixin):
             profile: ProfilerResponse = self.profiler.process(
                 self.source_config.generateSampleData
             )
-        except Exception as exc:  # pylint: disable=broad-except
-
+        except Exception as exc:
+            name = entity.fullyQualifiedName.__root__
+            error = f"Unexpected exception processing entity [{name}]: {exc}"
             logger.debug(traceback.format_exc())
-            logger.error(
-                "Unexpected exception processing entity "
-                f"[{entity.fullyQualifiedName.__root__}]: {exc}"  # type: ignore
-            )
+            logger.error(error)
+            self.status.failed(name, error, traceback.format_exc())
             try:
-                # if we fail to instatiate a profiler_interface, we won't have a profiler_interface variable
-                self.status.failures.extend(
-                    profiler_interface.processor_status.failures  # type: ignore
-                )
+                # if we fail to instantiate a profiler_interface, we won't have a profiler_interface variable
+                self.status.fail_all(profiler_interface.processor_status.failures)
             except UnboundLocalError:
                 pass
-            self.source_status.failure(
-                entity.fullyQualifiedName.__root__, f"{exc}"  # type: ignore
-            )
-            profile = None  # type: ignore
         else:
             return profile, profiler_interface.processor_status.failures
 
@@ -409,7 +404,7 @@ class ProfilerWorkflow(WorkflowStatusMixin):
                     if hasattr(self, "sink") and profile:
                         self.sink.write_record(profile)
                     if failures:
-                        self.status.failures.extend(
+                        self.status.fail_all(
                             failures
                         )  # we can have column level failures we need to report on
                     self.status.processed(entity.fullyQualifiedName.__root__)  # type: ignore

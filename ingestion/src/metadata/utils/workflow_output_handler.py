@@ -185,7 +185,7 @@ def print_status(workflow) -> None:
     Print the workflow results
     """
 
-    print_workflow_summary(workflow, source=True, sink=True, stage=True, bulk_sink=True)
+    print_workflow_summary(workflow, source=True, stage=True, bulk_sink=True)
 
     if workflow.source.get_status().source_start_time:
         log_ansi_encoded_string(
@@ -220,7 +220,6 @@ def print_profiler_status(workflow) -> None:
     print_workflow_summary(
         workflow,
         source=True,
-        sink=True,
         processor=True,
         source_status=workflow.source_status,
         processor_status=workflow.status,
@@ -248,9 +247,7 @@ def print_test_suite_status(workflow) -> None:
     """
     Print the test suite workflow results
     """
-    print_workflow_summary(
-        workflow, sink=True, processor=True, processor_status=workflow.status
-    )
+    print_workflow_summary(workflow, processor=True, processor_status=workflow.status)
 
     if workflow.result_status() == 1:
         log_ansi_encoded_string(
@@ -270,7 +267,6 @@ def print_data_insight_status(workflow) -> None:
     """
     print_workflow_summary(
         workflow,
-        sink=True,
         processor=True,
         processor_status=workflow.data_processor.get_status(),
     )
@@ -320,21 +316,30 @@ def print_workflow_summary(
     workflow,
     source: bool = False,
     stage: bool = False,
-    sink: bool = False,
     bulk_sink: bool = False,
     processor: bool = False,
     source_status: Status = None,
     processor_status: Status = None,
 ):
+    """
+    Args:
+        workflow: the workflow status to be printed
+        source: if source status must be printed
+        bulk_sink: if bull_sink status must be printed
+        processor: if processor status must be printed
+        stage: if stage status must be printed
+        source_status: alternative source status to be printed in case is different to the default of the workflow
+        processor_status: alternative processor status to be printed in case is different to the default of the workflow
+
+    Returns:
+        Print Workflow status when the workflow logger level is DEBUG
+    """
     source_status = get_source_status(workflow, source_status)
     processor_status = get_processor_status(workflow, processor_status)
     if is_debug_enabled(workflow):
         print_workflow_status_debug(
             workflow,
             bulk_sink,
-            processor,
-            sink,
-            source,
             stage,
             source_status,
             processor_status,
@@ -347,7 +352,7 @@ def print_workflow_summary(
     if hasattr(workflow, "stage") and stage:
         summary += get_summary(workflow.stage.get_status())
         errors += get_errors("Stage", workflow.stage.get_status())
-    if hasattr(workflow, "sink") and sink:
+    if hasattr(workflow, "sink"):
         summary += get_summary(workflow.sink.get_status())
         errors += get_errors("Sink", workflow.sink.get_status())
     if hasattr(workflow, "bulk_sink") and bulk_sink:
@@ -365,8 +370,7 @@ def print_workflow_summary(
 
     if errors:
         errors_output = "List of errors:\n"
-        for error in errors:
-            errors_output += f"\t- {error}\n"
+        errors_output += "\n".join([f"\t- {error}" for error in errors])
         log_ansi_encoded_string(message=errors_output)
     total_success = max(summary.records, 1)
     log_ansi_encoded_string(
@@ -380,27 +384,35 @@ def print_workflow_summary(
 def print_workflow_status_debug(
     workflow,
     bulk_sink: bool = False,
-    processor: bool = False,
-    sink: bool = False,
-    source: bool = False,
     stage: bool = False,
     source_status: Status = None,
     processor_status: Status = None,
-):
+) -> None:
+    """
+    Args:
+        workflow: the workflow status to be printed
+        bulk_sink: if bull_sink status must be printed
+        stage: if stage status must be printed
+        source_status: source status to be printed
+        processor_status: processor status to be printed
+
+    Returns:
+        Print Workflow status when the workflow logger level is DEBUG
+    """
     log_ansi_encoded_string(bold=True, message="Statuses detailed info:")
-    if source_status and source:
+    if source_status:
         log_ansi_encoded_string(bold=True, message="Source Status:")
         log_ansi_encoded_string(message=source_status.as_string())
     if hasattr(workflow, "stage") and stage:
         log_ansi_encoded_string(bold=True, message="Stage Status:")
         log_ansi_encoded_string(message=workflow.stage.get_status().as_string())
-    if hasattr(workflow, "sink") and sink:
+    if hasattr(workflow, "sink"):
         log_ansi_encoded_string(bold=True, message="Sink Status:")
         log_ansi_encoded_string(message=workflow.sink.get_status().as_string())
     if hasattr(workflow, "bulk_sink") and bulk_sink:
         log_ansi_encoded_string(bold=True, message="Bulk Sink Status:")
         log_ansi_encoded_string(message=workflow.bulk_sink.get_status().as_string())
-    if processor_status and processor:
+    if processor_status:
         log_ansi_encoded_string(bold=True, message="Processor Status:")
         log_ansi_encoded_string(message=processor_status.as_string())
 
@@ -417,5 +429,8 @@ def get_summary(status: Status):
 
 def get_errors(prefix: str, status: Status):
     if len(status.failures) > 0:
-        return [f"[{prefix}]: {failure}" for failure in status.failures]
+        return [
+            f"[{prefix}]: {failure.name} [{failure.error}]"
+            for failure in status.failures
+        ]
     return []

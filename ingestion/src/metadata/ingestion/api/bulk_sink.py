@@ -26,9 +26,6 @@ class BulkSinkStatus(Status):
     def warning(self, info: Any) -> None:
         self.warnings.append(info)
 
-    def failure(self, info: Any) -> None:
-        self.failures.append(info)
-
 
 @dataclass  # type: ignore[misc]
 class BulkSink(Closeable, metaclass=ABCMeta):

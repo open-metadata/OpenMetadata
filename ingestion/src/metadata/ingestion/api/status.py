@@ -13,16 +13,22 @@ Status output utilities
 """
 import json
 import pprint
-from typing import Any, List
+from typing import Any, List, Optional
 
-from pydantic import BaseModel, Extra, Field
+from pydantic import BaseModel, Field
+
+
+class StackTraceError(BaseModel):
+    name: str
+    error: str
+    stack_trace: Optional[str]
 
 
 class Status(BaseModel):
 
     records: List[Any] = Field(default_factory=list)
     warnings: List[Any] = Field(default_factory=list)
-    failures: List[Any] = Field(default_factory=list)
+    failures: List[StackTraceError] = Field(default_factory=list)
 
     def as_obj(self) -> dict:
         return self.__dict__
@@ -32,3 +38,11 @@ class Status(BaseModel):
 
     def as_json(self) -> str:
         return json.dumps(self.as_obj())
+
+    def failed(self, name: str, error: str, stack_trace: Optional[str] = None) -> None:
+        self.failures.append(
+            StackTraceError(name=name, error=error, stack_trace=stack_trace)
+        )
+
+    def fail_all(self, failures: List[StackTraceError]) -> None:
+        self.failures.extend(failures)

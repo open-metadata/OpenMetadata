@@ -41,7 +41,6 @@ class SourceStatus(Status):
     source_start_time = time.time()
 
     success: List[Any] = []
-    failures: List[Dict[str, str]] = Field(default_factory=list)
     warnings: List[Dict[str, str]] = Field(default_factory=list)
     filtered: List[Dict[str, str]] = Field(default_factory=list)
 
@@ -50,9 +49,6 @@ class SourceStatus(Status):
 
     def warning(self, key: str, reason: str) -> None:
         self.warnings.append({key: reason})
-
-    def failure(self, key: str, reason: str) -> None:
-        self.failures.append({key: reason})
 
     def filter(self, key: str, reason: str) -> None:
         self.filtered.append({key: reason})

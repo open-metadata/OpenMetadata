@@ -38,16 +38,13 @@ class ProcessorStatus(Status):
     def warning(self, info: Any) -> None:
         self.warnings.append(info)
 
-    def failure(self, info: Any) -> None:
-        self.failures.append(info)
-
 
 class ProfilerProcessorStatus(Status):
 
     entity: Optional[str] = None
 
-    def failure(self, column: str, metric: str, reason: str) -> None:
-        self.failures.append({self.entity: {column: {metric: {reason}}}})
+    def failed_profiler(self, error: str, stack_trace: Optional[str] = None) -> None:
+        self.failed(self.entity if self.entity else "", error, stack_trace)
 
 
 @dataclass
