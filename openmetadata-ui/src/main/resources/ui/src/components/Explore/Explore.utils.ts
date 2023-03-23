@@ -12,8 +12,9 @@
  */
 
 import { SearchDropdownOption } from 'components/SearchDropdown/SearchDropdown.interface';
-import { has } from 'lodash';
+import { get } from 'lodash';
 import {
+  QueryFieldInterface,
   QueryFieldValueInterface,
   QueryFilterInterface,
 } from 'pages/explore/ExplorePage.interface';
@@ -65,14 +66,16 @@ export const getSelectedValuesFromQuickFilter = (
 ) => {
   const EMPTY_DATA: ExploreQuickFilterField['value'] = [];
 
-  if (
-    queryFilter &&
-    has(queryFilter, 'query.bool.must') &&
-    queryFilter.query.bool.must
-  ) {
+  if (queryFilter) {
     const filters: Array<QueryFieldValueInterface> = [];
 
-    queryFilter.query.bool.must.forEach((item) => {
+    const mustField: QueryFieldInterface[] = get(
+      queryFilter,
+      'query.bool.must',
+      []
+    );
+
+    mustField.forEach((item) => {
       const filterValues = item?.bool?.should;
 
       if (filterValues) {

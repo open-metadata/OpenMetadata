@@ -23,7 +23,7 @@ import {
 } from 'components/Explore/explore.interface';
 import { withAdvanceSearch } from 'components/router/withAdvanceSearch';
 import { SORT_ORDER } from 'enums/common.enum';
-import { has, isEmpty, isNil, isString, isUndefined } from 'lodash';
+import { get, isEmpty, isNil, isString, isUndefined } from 'lodash';
 import Qs from 'qs';
 import React, {
   FunctionComponent,
@@ -55,6 +55,7 @@ import {
 import { showErrorToast } from '../../utils/ToastUtils';
 import {
   QueryFieldInterface,
+  QueryFieldValueInterface,
   QueryFilterInterface,
 } from './ExplorePage.interface';
 
@@ -123,39 +124,39 @@ const ExplorePage: FunctionComponent = () => {
 
   // Filters that can be common for all the Entities Ex. Tables, Topics, etc.
   const commonQuickFilters = useMemo(() => {
-    const noAdvancedSearchQuickFilters =
-      isUndefined(advancesSearchQuickFilters) ||
-      isEmpty(advancesSearchQuickFilters);
+    const mustField: QueryFieldInterface[] = get(
+      advancesSearchQuickFilters,
+      'query.bool.must',
+      []
+    );
 
-    if (
-      noAdvancedSearchQuickFilters ||
-      !has(advancesSearchQuickFilters, 'query.bool.must') ||
-      isUndefined(advancesSearchQuickFilters?.query.bool.must)
-    ) {
-      return undefined;
-    } else {
-      // Getting the filters that can be common for all the Entities
-      const must = advancesSearchQuickFilters?.query.bool.must.filter(
-        (filterCategory: QueryFieldInterface) =>
-          !isEmpty(filterCategory.bool.should) &&
-          COMMON_FILTERS_FOR_DIFFERENT_TABS.find(
-            (value) =>
-              !isEmpty(filterCategory.bool.should) &&
-              !isUndefined(filterCategory.bool.should) &&
-              value === Object.keys(filterCategory.bool.should[0].term)[0]
-          )
+    // Getting the filters that can be common for all the Entities
+    const must = mustField.filter((filterCategory: QueryFieldInterface) => {
+      const shouldField: QueryFieldValueInterface[] = get(
+        filterCategory,
+        'bool.should',
+        []
       );
 
-      return isEmpty(must)
-        ? undefined
-        : {
-            query: {
-              bool: {
-                must,
-              },
+      // check if the filter category is present in the common filters array
+      const isCommonFieldPresent =
+        !isEmpty(shouldField) &&
+        COMMON_FILTERS_FOR_DIFFERENT_TABS.find(
+          (value) => value === Object.keys(shouldField[0].term)[0]
+        );
+
+      return isCommonFieldPresent;
+    });
+
+    return isEmpty(must)
+      ? undefined
+      : {
+          query: {
+            bool: {
+              must,
             },
-          };
-    }
+          },
+        };
   }, [advancesSearchQuickFilters]);
 
   const handleSearchIndexChange: (nSearchIndex: ExploreSearchIndex) => void =
