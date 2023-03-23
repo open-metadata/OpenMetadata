@@ -23,6 +23,7 @@ from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.table import (
     Column,
     Constraint,
+    DataType,
     Table,
     TableType,
 )
@@ -224,6 +225,7 @@ class SalesforceSource(DatabaseServiceSource):
                     name=column["name"],
                     description=column["label"],
                     dataType=self.column_type(column["type"].upper()),
+                    dataTypeDisplay=column["type"],
                     constraint=col_constraint,
                     ordinalPosition=row_order,
                     dataLength=column["length"],
@@ -233,9 +235,19 @@ class SalesforceSource(DatabaseServiceSource):
         return columns
 
     def column_type(self, column_type: str):
-        if column_type in {"ID", "PHONE", "CURRENCY"}:
-            return "INT"
-        return "VARCHAR"
+        if column_type in {
+            "ID",
+            "PHONE",
+            "EMAIL",
+            "ENCRYPTEDSTRING",
+            "COMBOBOX",
+            "URL",
+            "TEXTAREA",
+            "ADDRESS",
+            "REFERENCE",
+        }:
+            return DataType.VARCHAR.value
+        return DataType.UNKNOWN.value
 
     def yield_view_lineage(self) -> Optional[Iterable[AddLineageRequest]]:
         yield from []
