@@ -72,28 +72,26 @@ function TagsSummary({ entityDetails, isLoading }: TagsSummaryProps) {
 
   return (
     <SummaryPanelSkeleton loading={Boolean(isLoading)}>
-      <>
-        <Row className="m-md" gutter={[0, 16]}>
-          <Col span={24}>
+      <Row className="m-md" gutter={[0, 16]}>
+        <Col span={24}>
+          <Typography.Text
+            className="text-base text-grey-muted"
+            data-testid="usage-header">
+            {t('label.usage')}
+          </Typography.Text>
+        </Col>
+        <Col span={24}>
+          {selectedData.length > 0 ? (
+            <div className="">{usageItems}</div>
+          ) : (
             <Typography.Text
-              className="text-base text-grey-muted"
-              data-testid="usage-header">
-              {t('label.usage')}
+              className="text-grey-body"
+              data-testid="no-reference-available">
+              {t('message.no-reference-available')}
             </Typography.Text>
-          </Col>
-          <Col span={24}>
-            {selectedData.length > 0 ? (
-              <div className="">{usageItems}</div>
-            ) : (
-              <Typography.Text
-                className="text-grey-body"
-                data-testid="no-reference-available">
-                {t('message.no-reference-available')}
-              </Typography.Text>
-            )}
-          </Col>
-        </Row>
-      </>
+          )}
+        </Col>
+      </Row>
     </SummaryPanelSkeleton>
   );
 }
