@@ -40,9 +40,21 @@ class Status(BaseModel):
         return json.dumps(self.as_obj())
 
     def failed(self, name: str, error: str, stack_trace: Optional[str] = None) -> None:
+        """
+        Add a failure to the list of failures
+        Args:
+            name: the entity or record name
+            error: the error with the exception
+            stack_trace: the return of calling to traceback.format_exc()
+        """
         self.failures.append(
             StackTraceError(name=name, error=error, stack_trace=stack_trace)
         )
 
     def fail_all(self, failures: List[StackTraceError]) -> None:
+        """
+        Add a list of failures
+        Args:
+            failures: a list of stack tracer errors
+        """
         self.failures.extend(failures)
