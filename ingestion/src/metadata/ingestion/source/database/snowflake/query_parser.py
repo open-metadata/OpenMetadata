@@ -31,7 +31,6 @@ from metadata.ingestion.source.database.query_parser_source import QueryParserSo
 from metadata.ingestion.source.database.snowflake.queries import (
     SNOWFLAKE_SESSION_TAG_QUERY,
 )
-from metadata.utils.helpers import get_start_and_end
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -42,12 +41,6 @@ class SnowflakeQueryParserSource(QueryParserSource, ABC):
     """
     Snowflake base for Usage and Lineage
     """
-
-    def __init__(self, config: WorkflowSource, metadata_config: OpenMetadataConnection):
-        super().__init__(config, metadata_config)
-
-        duration = self.source_config.queryLogDuration
-        self.start, self.end = get_start_and_end(duration)
 
     @classmethod
     def create(cls, config_dict, metadata_config: OpenMetadataConnection):

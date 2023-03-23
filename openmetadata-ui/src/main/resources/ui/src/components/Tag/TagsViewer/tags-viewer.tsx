@@ -57,7 +57,7 @@ const TagsViewer: FunctionComponent<TagsViewerProps> = ({
   );
 
   return (
-    <Space wrap>
+    <Space wrap size={4}>
       {sizeCap > -1 ? (
         <>
           {sortedTagsBySource

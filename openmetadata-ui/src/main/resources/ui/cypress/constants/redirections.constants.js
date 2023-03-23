@@ -38,17 +38,17 @@ export const LEFT_PANEL_DETAILS = {
     testid: '[data-testid="test-suite"]',
     url: `${BASE_URL}/test-suites`,
   },
-  services: {
-    testid: '[data-testid="service"]',
-    url: `${BASE_URL}/settings/services/databases`,
+  containers: {
+    testid: '[data-testid="containers"]',
+    url: `${BASE_URL}/explore/containers`,
   },
-  users: {
-    testid: '[data-testid="user"]',
-    url: `${BASE_URL}/settings/members/users`,
+  glossaries: {
+    testid: '[data-testid="glossaries"]',
+    url: `${BASE_URL}/glossary`,
   },
-  teams: {
-    testid: '[data-testid="terms"]',
-    url: `${BASE_URL}/settings/members/teams`,
+  glossaryTerms: {
+    testid: '[data-testid="glossary-terms"]',
+    url: `${BASE_URL}/glossary`,
   },
 };
 

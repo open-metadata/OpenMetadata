@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import {
-  PLACEHOLDER_CONTAINER_NAME,
+  PLACEHOLDER_ROUTE_ENTITY_FQN,
   PLACEHOLDER_ROUTE_TAB,
   ROUTES,
 } from 'constants/constants';
@@ -22,7 +22,7 @@ import { EntityTags, TagOption } from 'Models';
 
 export const getContainerDetailPath = (containerFQN: string, tab?: string) => {
   let path = tab ? ROUTES.CONTAINER_DETAILS_WITH_TAB : ROUTES.CONTAINER_DETAILS;
-  path = path.replace(PLACEHOLDER_CONTAINER_NAME, containerFQN);
+  path = path.replace(PLACEHOLDER_ROUTE_ENTITY_FQN, containerFQN);
 
   if (tab) {
     path = path.replace(PLACEHOLDER_ROUTE_TAB, tab);

@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { Container } from 'generated/entity/data/container';
 import { SearchIndex } from '../enums/search.enum';
 import { Tag } from '../generated/entity/classification/tag';
 import { Dashboard } from '../generated/entity/data/dashboard';
@@ -67,6 +68,8 @@ export interface UserSearchSource extends SearchSourceBase, User {} // extends E
 
 export interface TeamSearchSource extends SearchSourceBase, Team {} // extends EntityInterface
 
+export interface ContainerSearchSource extends SearchSourceBase, Container {} // extends EntityInterface
+
 export interface TagClassSearchSource extends SearchSourceBase, Tag {
   id: string; // Tag is generated with the `id` field as optional, which is should not
 } // extends EntityInterface
@@ -78,7 +81,8 @@ export type ExploreSearchSource =
   | DashboardSearchSource
   | MlmodelSearchSource
   | TopicSearchSource
-  | PipelineSearchSource;
+  | PipelineSearchSource
+  | ContainerSearchSource;
 
 export type SearchIndexSearchSourceMapping = {
   [SearchIndex.TABLE]: TableSearchSource;
@@ -90,6 +94,7 @@ export type SearchIndexSearchSourceMapping = {
   [SearchIndex.USER]: UserSearchSource;
   [SearchIndex.TOPIC]: TopicSearchSource;
   [SearchIndex.TAG]: TagClassSearchSource;
+  [SearchIndex.CONTAINER]: ContainerSearchSource;
 };
 
 export type SearchRequest<
