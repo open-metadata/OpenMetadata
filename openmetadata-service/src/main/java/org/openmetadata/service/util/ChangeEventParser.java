@@ -56,11 +56,11 @@ import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.alerts.emailAlert.EmailMessage;
-import org.openmetadata.service.alerts.gchat.GChatMessage;
-import org.openmetadata.service.alerts.msteams.TeamsMessage;
-import org.openmetadata.service.alerts.slack.SlackAttachment;
-import org.openmetadata.service.alerts.slack.SlackMessage;
+import org.openmetadata.service.events.subscription.emailAlert.EmailMessage;
+import org.openmetadata.service.events.subscription.gchat.GChatMessage;
+import org.openmetadata.service.events.subscription.msteams.TeamsMessage;
+import org.openmetadata.service.events.subscription.slack.SlackAttachment;
+import org.openmetadata.service.events.subscription.slack.SlackMessage;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 
 public final class ChangeEventParser {

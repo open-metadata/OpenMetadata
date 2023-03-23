@@ -13,7 +13,6 @@
 
 package org.openmetadata.service.jdbi3;
 
-import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.csv.CsvUtil.addEntityReferences;
@@ -401,7 +400,7 @@ public class UserRepository extends EntityRepository<User> {
           continue; // Team is same as the team to which CSV is being imported, then it is in the same hierarchy
         }
         // Else the parent should already exist
-        if (!SubjectCache.getInstance().isInTeam(team.getName(), listOf(teamRef))) {
+        if (!SubjectCache.getInstance().isInTeam(team.getName(), teamRef)) {
           importFailure(printer, invalidTeam(6, team.getName(), user, teamRef.getName()), record);
           processRecord = false;
         }

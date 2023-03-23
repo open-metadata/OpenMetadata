@@ -85,6 +85,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.TestMethodOrder;
+import org.openmetadata.schema.api.VoteRequest;
 import org.openmetadata.schema.api.data.CreateDatabase;
 import org.openmetadata.schema.api.data.CreateDatabaseSchema;
 import org.openmetadata.schema.api.data.CreateLocation;
@@ -1296,15 +1297,18 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     assertEquals(query1.getDuration(), createdQuery.getDuration());
 
     // Update bote
-    WebTarget target = getResource(String.format("queries/%s/vote/%s", createdQuery.getId().toString(), 2));
-    ChangeEvent changeEvent = TestUtils.put(target, query1, ChangeEvent.class, OK, ADMIN_AUTH_HEADERS);
+    VoteRequest request = new VoteRequest().withUpdatedVoteType(VoteRequest.VoteType.VOTED_UP);
+    WebTarget target = getResource(String.format("queries/%s/vote", createdQuery.getId().toString()));
+    ChangeEvent changeEvent = TestUtils.put(target, request, ChangeEvent.class, OK, ADMIN_AUTH_HEADERS);
     Query updatedEntity = JsonUtils.convertValue(changeEvent.getEntity(), Query.class);
-    assertEquals(2, updatedEntity.getVote());
+    assertEquals(1, updatedEntity.getVotes().getUpVotes());
+    assertEquals(0, updatedEntity.getVotes().getDownVotes());
 
     entityQueries = getTableQueriesData(table.getId(), ADMIN_AUTH_HEADERS);
     assertEquals(1, entityQueries.size());
     assertEquals(query1.getQuery(), entityQueries.get(0).getQuery());
-    assertEquals(2, entityQueries.get(0).getVote());
+    assertEquals(1, updatedEntity.getVotes().getUpVotes());
+    assertEquals(0, updatedEntity.getVotes().getDownVotes());
   }
 
   @Test
@@ -1971,7 +1975,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
   }
 
   public List<Query> getTableQueriesData(UUID entityId, Map<String, String> authHeaders) throws HttpResponseException {
-    WebTarget target = getResource(String.format("queries?entityId=%s", entityId));
+    WebTarget target = getResource(String.format("queries?entityId=%s&fields=votes", entityId));
     return TestUtils.get(target, QueryResource.QueryList.class, authHeaders).getData();
   }
 

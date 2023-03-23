@@ -66,6 +66,7 @@ import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import {
   getCurrentTopicTab,
+  getFormattedTopicDetails,
   topicDetailsTabs,
 } from '../../utils/TopicDetailsUtils';
 
@@ -407,7 +408,8 @@ const TopicDetailsPage: FunctionComponent = () => {
       saveUpdatedTopicData(updatedTopic)
         .then((res) => {
           if (res) {
-            setTopicDetails({ ...res, tags: res.tags ?? [] });
+            const formattedTopicDetails = getFormattedTopicDetails(res);
+            setTopicDetails(formattedTopicDetails);
             setCurrentVersion(res.version?.toString());
             setOwner(res.owner);
             setTier(getTierTags((res.tags ?? []) as EntityTags[]));

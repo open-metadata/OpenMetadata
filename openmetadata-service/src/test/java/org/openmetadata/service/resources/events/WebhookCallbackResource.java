@@ -30,7 +30,7 @@ import org.awaitility.Awaitility;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EventType;
-import org.openmetadata.service.resources.events.EventResource.ChangeEventList;
+import org.openmetadata.service.resources.events.EventResource.EventList;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.RestUtil;
 
@@ -54,7 +54,7 @@ public class WebhookCallbackResource {
       @HeaderParam(RestUtil.SIGNATURE_HEADER) String signature,
       @Parameter(description = "Name of the Webhook callback", schema = @Schema(type = "string")) @PathParam("name")
           String name,
-      ChangeEventList events)
+      EventList events)
       throws IOException {
     String payload = JsonUtils.pojoToJson(events);
     String computedSignature = "sha256=" + CommonUtil.calculateHMAC("webhookTest", payload);
@@ -67,7 +67,7 @@ public class WebhookCallbackResource {
   @POST
   @Path("/simulate/slowServer")
   public Response receiveEventWithDelay(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, ChangeEventList events) {
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, EventList events) {
     addEventDetails("simulate-slowServer", events);
     return Response.ok().build();
   }
@@ -76,7 +76,7 @@ public class WebhookCallbackResource {
   @POST
   @Path("/simulate/timeout")
   public Response receiveEventWithTimeout(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, ChangeEventList events) {
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, EventList events) {
     addEventDetails("simulate-timeout", events);
     Awaitility.await().pollDelay(Duration.ofSeconds(100L)).untilTrue(new AtomicBoolean(true));
     return Response.ok().build();
@@ -86,7 +86,7 @@ public class WebhookCallbackResource {
   @POST
   @Path("/simulate/300")
   public Response receiveEvent300(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, ChangeEventList events) {
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, EventList events) {
     addEventDetails("simulate-300", events);
     return Response.status(Response.Status.MOVED_PERMANENTLY).build();
   }
@@ -95,7 +95,7 @@ public class WebhookCallbackResource {
   @POST
   @Path("/simulate/400")
   public Response receiveEvent400(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, ChangeEventList events) {
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, EventList events) {
     addEventDetails("simulate-400", events);
     return Response.status(Response.Status.BAD_REQUEST).build();
   }
@@ -104,7 +104,7 @@ public class WebhookCallbackResource {
   @POST
   @Path("/simulate/500")
   public Response receiveEvent500(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, ChangeEventList events) {
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, EventList events) {
     addEventDetails("simulate-500", events);
     return Response.status(Response.Status.INTERNAL_SERVER_ERROR).build();
   }
@@ -121,11 +121,11 @@ public class WebhookCallbackResource {
           String eventType,
       @Parameter(description = "Type of entity", schema = @Schema(type = "string")) @PathParam("entityType")
           String entityType,
-      ChangeEventList events) {
+      EventList events) {
     String key = eventType + ":" + entityType;
     List<ChangeEvent> list = entityCallbackMap.get(key);
     if (list == null) {
-      list = new ArrayList<>();
+      list = new ArrayList<>(events.getData());
       entityCallbackMap.put(key, list);
     } else {
       list.addAll(events.getData());
@@ -142,7 +142,7 @@ public class WebhookCallbackResource {
     return eventMap.get(endpoint);
   }
 
-  private void addEventDetails(String endpoint, ChangeEventList events) {
+  private void addEventDetails(String endpoint, EventList events) {
     EventDetails details = eventMap.get(endpoint); // Default endpoint
     if (details == null) {
       details = new EventDetails();

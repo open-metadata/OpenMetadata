@@ -1,34 +1,26 @@
 package org.openmetadata.service.jdbi3;
 
-import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.Entity.FIELD_FOLLOWERS;
-import static org.openmetadata.service.util.EntityUtil.fieldUpdated;
+import static org.openmetadata.service.Entity.USER;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
-import javax.ws.rs.core.Response;
 import lombok.SneakyThrows;
-import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.entity.data.Query;
-import org.openmetadata.schema.type.ChangeDescription;
-import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
-import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.query.QueryResource;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.QueryUtil;
-import org.openmetadata.service.util.RestUtil;
 
 public class QueryRepository extends EntityRepository<Query> {
   private static final String QUERY_PATCH_FIELDS = "owner,tags,users,followers";
-  private static final String QUERY_UPDATE_FIELDS = "owner,tags,users,followers";
+  private static final String QUERY_UPDATE_FIELDS = "owner,tags,users,votes,followers";
 
   public QueryRepository(CollectionDAO dao) {
     super(
@@ -44,48 +36,30 @@ public class QueryRepository extends EntityRepository<Query> {
   @Override
   public Query setFields(Query entity, EntityUtil.Fields fields) throws IOException {
     entity.setFollowers(fields.contains(FIELD_FOLLOWERS) ? getFollowers(entity) : null);
+    entity.setVotes(fields.contains("votes") ? this.getVotes(entity) : null);
     entity.setQueryUsedIn(fields.contains("queryUsedIn") ? this.getQueryUsage(entity) : null);
     entity.setUsers(fields.contains("users") ? this.getQueryUsers(entity) : null);
     return entity;
   }
 
-  public List<EntityReference> getQueryUsage(Query queryEntity) {
+  public List<EntityReference> getQueryUsage(Query queryEntity) throws IOException {
     if (queryEntity == null) {
       return Collections.emptyList();
     }
-    List<EntityReference> queryUsage = new ArrayList<>();
     // null means it will find all the relationships to Query from any entity type
     List<CollectionDAO.EntityRelationshipRecord> records =
         findFrom(queryEntity.getId(), Entity.QUERY, Relationship.MENTIONED_IN, null);
-    for (CollectionDAO.EntityRelationshipRecord record : records) {
-      queryUsage.add(new EntityReference().withId(record.getId()).withType(record.getType()));
-    }
-    return queryUsage;
+
+    return EntityUtil.getEntityReferences(records);
   }
 
-  public List<EntityReference> getQueryUsers(Query queryEntity) {
+  public List<EntityReference> getQueryUsers(Query queryEntity) throws IOException {
     if (queryEntity == null) {
       return Collections.emptyList();
     }
-    List<EntityReference> queryUsers = new ArrayList<>();
     List<CollectionDAO.EntityRelationshipRecord> records =
-        findFrom(queryEntity.getId(), Entity.QUERY, Relationship.USES, Entity.USER);
-    for (CollectionDAO.EntityRelationshipRecord record : records) {
-      queryUsers.add(new EntityReference().withId(record.getId()).withType(record.getType()));
-    }
-    return queryUsers;
-  }
-
-  private List<EntityReference> getQueryUsers(List<EntityReference> users) throws IOException {
-    if (nullOrEmpty(users)) {
-      return Collections.emptyList();
-    }
-    List<EntityReference> userRefs = new ArrayList<>();
-    for (EntityReference user : users) {
-      EntityReference chartRef = Entity.getEntityReference(user, Include.NON_DELETED);
-      userRefs.add(chartRef);
-    }
-    return userRefs.isEmpty() ? null : userRefs;
+        findFrom(queryEntity.getId(), Entity.QUERY, Relationship.USES, USER);
+    return EntityUtil.populateEntityReferences(records, USER);
   }
 
   @Override
@@ -97,7 +71,7 @@ public class QueryRepository extends EntityRepository<Query> {
       entity.setName(checkSum);
     }
 
-    entity.setUsers(getQueryUsers(entity.getUsers()));
+    entity.setUsers(EntityUtil.populateEntityReferences(entity.getUsers()));
   }
 
   @Override
@@ -117,7 +91,7 @@ public class QueryRepository extends EntityRepository<Query> {
     // Store Query Users Relation
     if (queryEntity.getUsers() != null) {
       for (EntityReference entityRef : queryEntity.getUsers()) {
-        addRelationship(entityRef.getId(), queryEntity.getId(), Entity.USER, Entity.QUERY, Relationship.USES);
+        addRelationship(entityRef.getId(), queryEntity.getId(), USER, Entity.QUERY, Relationship.USES);
       }
     }
 
@@ -139,32 +113,6 @@ public class QueryRepository extends EntityRepository<Query> {
   @Override
   public EntityUpdater getUpdater(Query original, Query updated, Operation operation) {
     return new QueryUpdater(original, updated, operation);
-  }
-
-  @Transaction
-  public RestUtil.PutResponse<Query> updateVote(String updatedBy, UUID queryId, int updatedVote) throws IOException {
-    Query entity = daoCollection.queryDAO().findEntityById(queryId);
-    int oldVote = entity.getVote();
-    entity.setVote(updatedVote);
-    daoCollection.queryDAO().update(entity);
-
-    ChangeDescription change = new ChangeDescription().withPreviousVersion(entity.getVersion());
-    fieldUpdated(change, "vote", oldVote, updatedVote);
-
-    ChangeEvent changeEvent =
-        new ChangeEvent()
-            .withEntity(entity)
-            .withChangeDescription(change)
-            .withEventType(EventType.ENTITY_UPDATED)
-            .withEntityType(entityType)
-            .withEntityId(queryId)
-            .withEntityFullyQualifiedName(entity.getFullyQualifiedName())
-            .withUserName(updatedBy)
-            .withTimestamp(System.currentTimeMillis())
-            .withCurrentVersion(entity.getVersion())
-            .withPreviousVersion(change.getPreviousVersion());
-
-    return new RestUtil.PutResponse<>(Response.Status.OK, changeEvent, RestUtil.ENTITY_FIELDS_CHANGED);
   }
 
   public Query addQueryUsage(UUID queryId, List<EntityReference> entityIds) throws IOException {
@@ -193,13 +141,7 @@ public class QueryRepository extends EntityRepository<Query> {
     @Override
     public void entitySpecificUpdate() throws IOException {
       updateFromRelationships(
-          "users",
-          Entity.USER,
-          original.getUsers(),
-          updated.getUsers(),
-          Relationship.USES,
-          Entity.QUERY,
-          original.getId());
+          "users", USER, original.getUsers(), updated.getUsers(), Relationship.USES, Entity.QUERY, original.getId());
     }
   }
 }
