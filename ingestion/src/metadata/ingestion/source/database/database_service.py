@@ -295,6 +295,7 @@ class DatabaseServiceSource(
         by default no need to process table constraints
         specially for non SQA sources
         """
+        yield from []
 
     @abstractmethod
     def yield_table(

@@ -56,7 +56,13 @@ USER_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
         "type": "text"
       },
       "email": {
-        "type": "text"
+        "type": "text",
+        "fields": {
+          "keyword": {
+            "type": "keyword",
+            "ignore_above": 256
+          }
+        }
       },
       "isAdmin": {
         "type": "text"

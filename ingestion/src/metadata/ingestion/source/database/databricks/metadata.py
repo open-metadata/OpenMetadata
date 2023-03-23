@@ -34,6 +34,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.source.connections import get_connection
+from metadata.ingestion.source.database.column_type_parser import create_sqlalchemy_type
 from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
 from metadata.ingestion.source.database.databricks.queries import (
     DATABRICKS_GET_TABLE_COMMENTS,
@@ -73,7 +74,16 @@ class MAP(String):
 
 # overriding pyhive.sqlalchemy_hive._type_map
 # mapping struct, array & map to custom classed instead of sqltypes.String
-_type_map.update({"struct": STRUCT, "array": ARRAY, "map": MAP})
+_type_map.update(
+    {
+        "struct": STRUCT,
+        "array": ARRAY,
+        "map": MAP,
+        "void": create_sqlalchemy_type("VOID"),
+        "interval": create_sqlalchemy_type("INTERVAL"),
+        "binary": create_sqlalchemy_type("BINARY"),
+    }
+)
 
 
 def _get_column_rows(self, connection, table_name, schema):
@@ -109,6 +119,7 @@ def get_columns(self, connection, table_name, schema=None, **kw):
         # Take out the more detailed type information
         # e.g. 'map<ixnt,int>' -> 'map'
         #      'decimal(10,1)' -> decimal
+        raw_col_type = col_type
         col_type = re.search(r"^\w+", col_type).group(0)
         try:
             coltype = _type_map[col_type]
@@ -122,6 +133,7 @@ def get_columns(self, connection, table_name, schema=None, **kw):
             "nullable": True,
             "default": None,
             "comment": _comment,
+            "system_data_type": raw_col_type,
         }
         if col_type in {"array", "struct", "map"}:
             if db_name and schema:
@@ -139,7 +151,8 @@ def get_columns(self, connection, table_name, schema=None, **kw):
                     ).fetchall()
                 )
 
-            col_info["raw_data_type"] = rows["data_type"]
+            col_info["system_data_type"] = rows["data_type"]
+            col_info["is_complex"] = True
         result.append(col_info)
     return result
 
