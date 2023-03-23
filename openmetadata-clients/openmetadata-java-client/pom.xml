@@ -95,14 +95,10 @@
         </dependency>
         <!-- TEST -->
         <dependency>
-            <groupId>junit</groupId>
-            <artifactId>junit</artifactId>
-            <version>4.13.2</version>
-        </dependency>
-        <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter-api</artifactId>
             <version>5.9.2</version>
+            <scope>test</scope>
         </dependency>
 
         <!--avoid security issue https://security.snyk.io/vuln/SNYK-JAVA-ORGMOZILLA-1314295-->
