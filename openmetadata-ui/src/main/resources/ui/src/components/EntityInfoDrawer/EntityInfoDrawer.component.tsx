@@ -63,132 +63,73 @@ const EntityInfoDrawer = ({
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
   const fetchEntityDetail = async (selectedNode: SelectedNode) => {
-    switch (selectedNode.type) {
-      case EntityType.TABLE: {
-        setIsLoading(true);
-        try {
-          const response = await getTableDetailsByFQN(
-            getEncodedFqn(selectedNode.fqn),
-            ['tags', 'owner', 'columns', 'usageSummary', 'profile']
-          );
-          setEntityDetail(response);
-        } catch (error) {
-          showErrorToast(
-            t('server.error-selected-node-name-details', {
-              selectedNodeName: selectedNode.name,
-            })
-          );
-        } finally {
-          setIsLoading(false);
-        }
+    let response = {};
+    const encodedFqn = getEncodedFqn(selectedNode.fqn);
+    const commonFields = ['tags', 'owner'];
 
-        break;
-      }
-      case EntityType.PIPELINE: {
-        setIsLoading(true);
-
-        try {
-          const response = await getPipelineByFqn(
-            getEncodedFqn(selectedNode.fqn),
-            ['tags', 'owner', 'followers', 'tasks', 'tier']
-          );
-          setEntityDetail(response);
-        } catch (error) {
-          showErrorToast(
-            t('server.error-selected-node-name-details', {
-              selectedNodeName: selectedNode.name,
-            })
-          );
-        } finally {
-          setIsLoading(false);
-        }
-
-        break;
-      }
-
-      case EntityType.TOPIC: {
-        setIsLoading(true);
-        try {
-          const response = await getTopicByFqn(selectedNode.fqn ?? '', [
-            'tags',
-            'owner',
+    setIsLoading(true);
+    try {
+      switch (selectedNode.type) {
+        case EntityType.TABLE: {
+          response = await getTableDetailsByFQN(encodedFqn, [
+            ...commonFields,
+            'columns',
+            'usageSummary',
+            'profile',
           ]);
-          setEntityDetail(response);
-        } catch (error) {
-          showErrorToast(
-            t('server.error-selected-node-name-details', {
-              selectedNodeName: selectedNode.name,
-            })
-          );
-        } finally {
-          setIsLoading(false);
+
+          break;
         }
+        case EntityType.PIPELINE: {
+          response = await getPipelineByFqn(encodedFqn, [
+            ...commonFields,
+            'followers',
+            'tasks',
+          ]);
 
-        break;
-      }
-      case EntityType.DASHBOARD: {
-        setIsLoading(true);
-        try {
-          const response = await getDashboardByFqn(
-            getEncodedFqn(selectedNode.fqn),
-            ['tags', 'owner', 'charts']
-          );
-          setEntityDetail(response);
-        } catch (error) {
-          showErrorToast(
-            t('server.error-selected-node-name-details', {
-              selectedNodeName: selectedNode.name,
-            })
-          );
-        } finally {
-          setIsLoading(false);
+          break;
         }
+        case EntityType.TOPIC: {
+          response = await getTopicByFqn(encodedFqn ?? '', commonFields);
 
-        break;
-      }
-
-      case EntityType.MLMODEL: {
-        setIsLoading(true);
-        try {
-          const response = await getMlModelByFQN(
-            getEncodedFqn(selectedNode.fqn),
-            ['tags', 'owner', 'dashboard']
-          );
-          setEntityDetail(response);
-        } catch (error) {
-          showErrorToast(
-            t('server.error-selected-node-name-details', {
-              selectedNodeName: selectedNode.name,
-            })
-          );
-        } finally {
-          setIsLoading(false);
+          break;
         }
+        case EntityType.DASHBOARD: {
+          response = await getDashboardByFqn(encodedFqn, [
+            ...commonFields,
+            'charts',
+          ]);
 
-        break;
-      }
-      case EntityType.CONTAINER: {
-        setIsLoading(true);
-        try {
-          const response = await getContainerByName(
-            getEncodedFqn(selectedNode.fqn),
+          break;
+        }
+        case EntityType.MLMODEL: {
+          response = await getMlModelByFQN(encodedFqn, [
+            ...commonFields,
+            'dashboard',
+          ]);
+
+          break;
+        }
+        case EntityType.CONTAINER: {
+          response = await getContainerByName(
+            encodedFqn,
             'dataModel,owner,tags'
           );
-          setEntityDetail(response);
-        } catch (error) {
-          showErrorToast(
-            t('server.error-selected-node-name-details', {
-              selectedNodeName: selectedNode.name,
-            })
-          );
-        } finally {
-          setIsLoading(false);
-        }
 
-        break;
+          break;
+        }
+        default:
+          break;
       }
-      default:
-        break;
+      setEntityDetail(response);
+    } catch (error) {
+      showErrorToast(
+        t('server.error-selected-node-name-details', {
+          selectedNodeName: selectedNode.name,
+        })
+      );
+    } finally {
+      setIsLoading(false);
     }
   };
 
