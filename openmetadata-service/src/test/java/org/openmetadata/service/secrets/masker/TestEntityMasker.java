@@ -105,10 +105,6 @@ abstract class TestEntityMasker {
                 .getDbtSecurityConfig()),
         getMaskedPassword());
     assertEquals(
-        ((AWSCredentials) dbtPipeline.getOpenMetadataServerConnection().getSecretsManagerCredentials())
-            .getAwsSecretAccessKey(),
-        getMaskedPassword());
-    assertEquals(
         ((GoogleSSOClientConfig) dbtPipeline.getOpenMetadataServerConnection().getSecurityConfig()).getSecretKey(),
         getMaskedPassword());
     EntityMaskerFactory.createEntityMasker(config).unmaskIngestionPipeline(dbtPipeline, originalDbtPipeline);
@@ -116,10 +112,6 @@ abstract class TestEntityMasker {
         getPrivateKeyFromGcsConfig(
             ((DbtGCSConfig) ((DbtPipeline) dbtPipeline.getSourceConfig().getConfig()).getDbtConfigSource())
                 .getDbtSecurityConfig()),
-        PASSWORD);
-    assertEquals(
-        ((AWSCredentials) dbtPipeline.getOpenMetadataServerConnection().getSecretsManagerCredentials())
-            .getAwsSecretAccessKey(),
         PASSWORD);
     assertEquals(
         ((GoogleSSOClientConfig) dbtPipeline.getOpenMetadataServerConnection().getSecurityConfig()).getSecretKey(),
@@ -193,10 +185,6 @@ abstract class TestEntityMasker {
             .getPassword(),
         getMaskedPassword());
     assertEquals(
-        ((AWSCredentials) masked.getOpenMetadataServerConnection().getSecretsManagerCredentials())
-            .getAwsSecretAccessKey(),
-        getMaskedPassword());
-    assertEquals(
         ((GoogleSSOClientConfig) masked.getOpenMetadataServerConnection().getSecurityConfig()).getSecretKey(),
         getMaskedPassword());
     Workflow unmasked = EntityMaskerFactory.createEntityMasker(config).unmaskWorkflow(masked, workflow);
@@ -205,10 +193,6 @@ abstract class TestEntityMasker {
                 ((DatabaseConnection) ((TestServiceConnectionRequest) unmasked.getRequest()).getConnection())
                     .getConfig())
             .getPassword(),
-        PASSWORD);
-    assertEquals(
-        ((AWSCredentials) unmasked.getOpenMetadataServerConnection().getSecretsManagerCredentials())
-            .getAwsSecretAccessKey(),
         PASSWORD);
     assertEquals(
         ((GoogleSSOClientConfig) unmasked.getOpenMetadataServerConnection().getSecurityConfig()).getSecretKey(),
@@ -264,7 +248,6 @@ abstract class TestEntityMasker {
 
   private OpenMetadataConnection buildOpenMetadataConnection() {
     return new OpenMetadataConnection()
-        .withSecretsManagerCredentials(new AWSCredentials().withAwsSecretAccessKey(PASSWORD))
         .withSecurityConfig(buildGoogleSSOClientConfig());
   }
 

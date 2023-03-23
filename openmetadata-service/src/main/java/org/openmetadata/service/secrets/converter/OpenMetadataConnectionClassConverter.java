@@ -20,7 +20,6 @@ import org.openmetadata.schema.security.client.CustomOIDCSSOClientConfig;
 import org.openmetadata.schema.security.client.GoogleSSOClientConfig;
 import org.openmetadata.schema.security.client.OktaSSOClientConfig;
 import org.openmetadata.schema.security.client.OpenMetadataJWTClientConfig;
-import org.openmetadata.schema.security.credentials.AWSCredentials;
 import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
 import org.openmetadata.service.util.JsonUtils;
 
@@ -36,8 +35,6 @@ public class OpenMetadataConnectionClassConverter extends ClassConverter {
           AzureSSOClientConfig.class,
           CustomOIDCSSOClientConfig.class);
 
-  private static final List<Class<?>> SECRET_MANAGER_CREDENTIALS_CLASSES = List.of(AWSCredentials.class);
-
   public OpenMetadataConnectionClassConverter() {
     super(OpenMetadataConnection.class);
   }
@@ -49,8 +46,6 @@ public class OpenMetadataConnectionClassConverter extends ClassConverter {
 
     tryToConvertOrFail(openMetadataConnection.getSecurityConfig(), SECURITY_CONFIG_CLASSES)
         .ifPresent(openMetadataConnection::setSecurityConfig);
-    tryToConvertOrFail(openMetadataConnection.getSecretsManagerCredentials(), SECRET_MANAGER_CREDENTIALS_CLASSES)
-        .ifPresent(openMetadataConnection::setSecretsManagerCredentials);
 
     return openMetadataConnection;
   }

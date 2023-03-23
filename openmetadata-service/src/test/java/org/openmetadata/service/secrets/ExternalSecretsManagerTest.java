@@ -206,7 +206,6 @@ public abstract class ExternalSecretsManagerTest {
             .withName("my-workflow")
             .withOpenMetadataServerConnection(
                 new OpenMetadataConnection()
-                    .withSecretsManagerCredentials(new AWSCredentials().withAwsSecretAccessKey("aws-secret"))
                     .withSecurityConfig(new GoogleSSOClientConfig().withSecretKey("google-secret")))
             .withRequest(
                 new TestServiceConnectionRequest()
@@ -234,11 +233,6 @@ public abstract class ExternalSecretsManagerTest {
       GoogleSSOClientConfig googleSSOClientConfig =
           ((GoogleSSOClientConfig) (actualWorkflow.getOpenMetadataServerConnection()).getSecurityConfig());
       googleSSOClientConfig.setSecretKey(Fernet.getInstance().decrypt(googleSSOClientConfig.getSecretKey()));
-      ((AWSCredentials) (expectedWorkflow.getOpenMetadataServerConnection()).getSecretsManagerCredentials())
-          .setAwsSecretAccessKey("secret:/openmetadata/serverconnection/secretsmanagercredentials/awssecretaccesskey");
-      AWSCredentials awsCredentials =
-          ((AWSCredentials) (actualWorkflow.getOpenMetadataServerConnection()).getSecretsManagerCredentials());
-      awsCredentials.setAwsSecretAccessKey(Fernet.getInstance().decrypt(awsCredentials.getAwsSecretAccessKey()));
     }
 
     assertEquals(expectedWorkflow, actualWorkflow);
