@@ -119,3 +119,10 @@ SET json = json::jsonb #- '{connection,config,securityConfig,audience}'
 WHERE name = 'OpenMetadata'
     AND json#>'{connection,config,authProvider}' IS NOT NULL
     AND json -> 'connection' -> 'config' ->> 'authProvider' != 'google';
+
+ALTER TABLE user_tokens ALTER COLUMN expiryDate DROP NOT NULL;
+
+DELETE FROM alert_entity;
+drop table alert_action_def;
+
+ALTER TABLE alert_entity RENAME TO event_subscription_entity;

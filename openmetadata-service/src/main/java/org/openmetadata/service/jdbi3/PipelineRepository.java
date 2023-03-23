@@ -24,6 +24,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
+import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.data.Pipeline;
 import org.openmetadata.schema.entity.data.PipelineStatus;
 import org.openmetadata.schema.entity.services.PipelineService;
@@ -36,6 +37,7 @@ import org.openmetadata.schema.type.Task;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.resources.pipelines.PipelineResource;
+import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
@@ -176,21 +178,15 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
 
   @Override
   public void storeEntity(Pipeline pipeline, boolean update) throws IOException {
-    // Relationships and fields such as href are derived and not stored as part of json
-    EntityReference owner = pipeline.getOwner();
-    List<TagLabel> tags = pipeline.getTags();
+    // Relationships and fields such as service are derived and not stored as part of json
     EntityReference service = pipeline.getService();
-
-    // Don't store owner, database, href and tags as JSON. Build it on the fly based on relationships
-    pipeline.withOwner(null).withService(null).withHref(null).withTags(null);
+    pipeline.withService(null);
 
     // Don't store column tags as JSON but build it on the fly based on relationships
     List<Task> taskWithTags = pipeline.getTasks();
     pipeline.setTasks(cloneWithoutTags(taskWithTags));
     store(pipeline, update);
-
-    // Restore the relationships
-    pipeline.withOwner(owner).withService(service).withTags(tags).withTasks(taskWithTags);
+    pipeline.withService(service).withTasks(taskWithTags);
   }
 
   @Override
@@ -239,6 +235,17 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
   @Override
   public EntityUpdater getUpdater(Pipeline original, Pipeline updated, Operation operation) {
     return new PipelineUpdater(original, updated, operation);
+  }
+
+  @Override
+  public List<TagLabel> getAllTags(EntityInterface entity) {
+    List<TagLabel> allTags = new ArrayList<>();
+    Pipeline pipeline = (Pipeline) entity;
+    EntityUtil.mergeTags(allTags, pipeline.getTags());
+    for (Task task : listOrEmpty(pipeline.getTasks())) {
+      EntityUtil.mergeTags(allTags, task.getTags());
+    }
+    return allTags;
   }
 
   private void populateService(Pipeline pipeline) throws IOException {

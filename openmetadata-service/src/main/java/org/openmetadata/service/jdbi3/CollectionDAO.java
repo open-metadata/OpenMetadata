@@ -52,14 +52,13 @@ import org.openmetadata.schema.analytics.ReportData;
 import org.openmetadata.schema.analytics.WebAnalyticEvent;
 import org.openmetadata.schema.auth.EmailVerificationToken;
 import org.openmetadata.schema.auth.PasswordResetToken;
+import org.openmetadata.schema.auth.PersonalAccessToken;
 import org.openmetadata.schema.auth.RefreshToken;
 import org.openmetadata.schema.auth.TokenType;
 import org.openmetadata.schema.dataInsight.DataInsightChart;
 import org.openmetadata.schema.dataInsight.kpi.Kpi;
 import org.openmetadata.schema.entity.Bot;
 import org.openmetadata.schema.entity.Type;
-import org.openmetadata.schema.entity.alerts.Alert;
-import org.openmetadata.schema.entity.alerts.AlertAction;
 import org.openmetadata.schema.entity.automations.Workflow;
 import org.openmetadata.schema.entity.classification.Classification;
 import org.openmetadata.schema.entity.classification.Tag;
@@ -78,6 +77,7 @@ import org.openmetadata.schema.entity.data.Query;
 import org.openmetadata.schema.entity.data.Report;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.data.Topic;
+import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.policies.Policy;
 import org.openmetadata.schema.entity.services.DashboardService;
 import org.openmetadata.schema.entity.services.DatabaseService;
@@ -190,7 +190,7 @@ public interface CollectionDAO {
   BotDAO botDAO();
 
   @CreateSqlObject
-  AlertDAO alertDAO();
+  EventSubscriptionDAO eventSubscriptionDAO();
 
   @CreateSqlObject
   PolicyDAO policyDAO();
@@ -245,9 +245,6 @@ public interface CollectionDAO {
 
   @CreateSqlObject
   TestConnectionDefinitionDAO testConnectionDefinitionDAO();
-
-  @CreateSqlObject
-  AlertActionDAO alertActionDAO();
 
   @CreateSqlObject
   TestSuiteDAO testSuiteDAO();
@@ -1713,15 +1710,15 @@ public interface CollectionDAO {
     }
   }
 
-  interface AlertDAO extends EntityDAO<Alert> {
+  interface EventSubscriptionDAO extends EntityDAO<EventSubscription> {
     @Override
     default String getTableName() {
-      return "alert_entity";
+      return "event_subscription_entity";
     }
 
     @Override
-    default Class<Alert> getEntityClass() {
-      return Alert.class;
+    default Class<EventSubscription> getEntityClass() {
+      return EventSubscription.class;
     }
 
     @Override
@@ -1730,7 +1727,7 @@ public interface CollectionDAO {
     }
 
     @SqlQuery("SELECT json FROM <table>")
-    List<String> listAllAlerts(@Define("table") String table);
+    List<String> listAllEventsSubscriptions(@Define("table") String table);
   }
 
   interface ChartDAO extends EntityDAO<Chart> {
@@ -3119,23 +3116,6 @@ public interface CollectionDAO {
     }
   }
 
-  interface AlertActionDAO extends EntityDAO<AlertAction> {
-    @Override
-    default String getTableName() {
-      return "alert_action_def";
-    }
-
-    @Override
-    default Class<AlertAction> getEntityClass() {
-      return AlertAction.class;
-    }
-
-    @Override
-    default String getNameColumn() {
-      return "name";
-    }
-  }
-
   interface TestCaseDAO extends EntityDAO<TestCase> {
     @Override
     default String getTableName() {
@@ -3503,6 +3483,9 @@ public interface CollectionDAO {
         case REFRESH_TOKEN:
           resp = JsonUtils.readValue(json, RefreshToken.class);
           break;
+        case PERSONAL_ACCESS_TOKEN:
+          resp = JsonUtils.readValue(json, PersonalAccessToken.class);
+          break;
         default:
           throw new IllegalArgumentException("Invalid Token Type.");
       }
@@ -3536,6 +3519,9 @@ public interface CollectionDAO {
 
     @SqlUpdate(value = "DELETE from user_tokens WHERE token = :token")
     void delete(@Bind("token") String token);
+
+    @SqlUpdate(value = "DELETE from user_tokens WHERE token IN (<tokenIds>)")
+    void deleteAll(@BindList("tokenIds") List<String> tokens);
 
     @SqlUpdate(value = "DELETE from user_tokens WHERE userid = :userid AND tokenType = :tokenType")
     void deleteTokenByUserAndType(@Bind("userid") String userid, @Bind("tokenType") String tokenType);

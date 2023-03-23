@@ -31,9 +31,6 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.generated.schema.type.tableQuery import TableQueries, TableQuery
 from metadata.ingestion.api.source import InvalidSourceException
-from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.database.common_db_source import SQLSourceStatus
-from metadata.ingestion.source.database.sample_data import SampleDataSourceStatus
 from metadata.ingestion.source.database.usage_source import UsageSource
 
 
@@ -49,16 +46,8 @@ class SampleUsageSource(UsageSource):
 
     schema_field = ""  # filtering not required
 
-    def __init__(
-        self, config: WorkflowSource, metadata_config: OpenMetadataConnection
-    ):  # pylint: disable=super-init-not-called
-        self.status = SampleDataSourceStatus()
-        self.config = config
-        self.service_connection = config.serviceConnection.__root__.config
-        self.source_config = config.sourceConfig.config
-        self.metadata_config = metadata_config
-        self.report = SQLSourceStatus()
-        self.metadata = OpenMetadata(metadata_config)
+    def __init__(self, config: WorkflowSource, metadata_config: OpenMetadataConnection):
+        super().__init__(config, metadata_config, False)
         self.analysis_date = datetime.utcnow()
 
         sample_data_folder = self.service_connection.connectionOptions.__root__.get(
