@@ -80,6 +80,11 @@
       "type": "string",
       "format": "password"
     },
+    "skipTempTables": {
+      "description": "Optional configuration for ingestion of TRANSIENT and TEMPORARY tables, By default, it will skip the TRANSIENT and TEMPORARY tables.",
+      "type": "boolean",
+      "default": true
+    },
     "connectionOptions": {
       "title": "Connection Options",
       "$ref": "../connectionBasicType.json#/definitions/connectionOptions"
