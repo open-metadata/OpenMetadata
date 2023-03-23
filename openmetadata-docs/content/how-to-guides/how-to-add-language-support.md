@@ -22,6 +22,6 @@ touch fr-fr.json
 
 ```
 
-### Sync the Language File with the Primary Language
+## Sync the Language File with the Primary Language
 
 To ensure consistency with our primary language, which is `en-us`, it is necessary to synchronize any newly added language files. This can be done by copying the content from the `en-us.json` file and translating it accordingly.
