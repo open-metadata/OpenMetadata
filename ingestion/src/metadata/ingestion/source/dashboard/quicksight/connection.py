@@ -12,13 +12,23 @@
 """
 Source connection handler
 """
+from functools import partial
+from typing import Optional
+
 from botocore.client import ClientError
 
 from metadata.clients.aws_client import AWSClient
+from metadata.generated.schema.entity.automations.workflow import (
+    Workflow as AutomationWorkflow,
+)
 from metadata.generated.schema.entity.services.connections.dashboard.quickSightConnection import (
     QuickSightConnection,
 )
-from metadata.ingestion.connections.test_connections import SourceConnectionException
+from metadata.ingestion.connections.test_connections import (
+    SourceConnectionException,
+    test_connection_steps,
+)
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 
 
 def get_connection(connection: QuickSightConnection):
@@ -45,3 +55,28 @@ def test_connection(client, _) -> None:
     except Exception as exc:
         msg = f"Unknown error connecting with {client}: {exc}."
         raise SourceConnectionException(msg) from exc
+
+
+def test_connection(
+    metadata: OpenMetadata,
+    client: AWSClient,
+    service_connection: QuickSightConnection,
+    automation_workflow: Optional[AutomationWorkflow] = None,
+) -> None:
+    """
+    Test connection. This can be executed either as part
+    of a metadata workflow or during an Automation Workflow
+    """
+
+    test_fn = {
+        "GetDashboards": partial(
+            client.list_dashboards, AwsAccountId=client.awsAccountId
+        )
+    }
+
+    test_connection_steps(
+        metadata=metadata,
+        test_fn=test_fn,
+        service_fqn=service_connection.type.value,
+        automation_workflow=automation_workflow,
+    )
