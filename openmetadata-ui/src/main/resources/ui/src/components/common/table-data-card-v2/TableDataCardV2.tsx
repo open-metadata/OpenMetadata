@@ -13,6 +13,7 @@
 
 import { ExclamationCircleOutlined } from '@ant-design/icons';
 import classNames from 'classnames';
+import { EntityUnion } from 'components/Explore/explore.interface';
 import { isString, startCase, uniqueId } from 'lodash';
 import { ExtraInfo } from 'Models';
 import React, { useMemo } from 'react';
@@ -33,7 +34,6 @@ import {
 } from '../../../utils/CommonUtils';
 import { serviceTypeLogo } from '../../../utils/ServiceUtils';
 import { getUsagePercentile } from '../../../utils/TableUtils';
-import { EntityDetailsType } from '../../Explore/explore.interface';
 import { SearchedDataProps } from '../../searched-data/SearchedData.interface';
 import '../table-data-card/TableDataCard.style.css';
 import TableDataCardBody from '../table-data-card/TableDataCardBody';
@@ -50,7 +50,7 @@ export interface TableDataCardPropsV2 {
   }[];
   searchIndex: SearchIndex | EntityType;
   handleSummaryPanelDisplay?: (
-    details: EntityDetailsType,
+    details: EntityUnion,
     entityType: string
   ) => void;
 }
@@ -133,7 +133,7 @@ const TableDataCardV2: React.FC<TableDataCardPropsV2> = ({
       id={id}
       onClick={() => {
         handleSummaryPanelDisplay &&
-          handleSummaryPanelDisplay(source as EntityDetailsType, tab);
+          handleSummaryPanelDisplay(source as EntityUnion, tab);
       }}>
       <div>
         {'databaseSchema' in source && 'database' in source && (

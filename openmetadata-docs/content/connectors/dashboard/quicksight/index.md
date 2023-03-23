@@ -37,6 +37,20 @@ the following docs to connect using Airflow SDK or with the CLI.
 <InlineCallout color="violet-70" icon="description" bold="OpenMetadata 0.12 or later" href="/deployment">
 To deploy OpenMetadata, check the <a href="/deployment">Deployment</a> guides.
 </InlineCallout>
+AWS Quicksight Permissions
+To execute metadata extraction and usage workflow successfully the IAM User should have enough access to fetch required data. Following table describes the minimum required permissions
+
+| # | AWS Quicksight Permission |
+| :---------- | :---------- |
+| 1 | DescribeDashboard |
+| 2 | ListAnalyses |
+| 3 | ListDataSources |
+| 4 | ListDashboards |
+| 5 | DescribeAnalysis |
+| 6 | DescribeDataSet |
+| 7 | ListDataSets |
+| 8 | DescribeDataSource |
+
 
 To run the Ingestion via the UI you'll need to use the OpenMetadata Ingestion Container, which comes shipped with
 custom Airflow plugins to handle the workflow deployment.

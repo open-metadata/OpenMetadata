@@ -194,7 +194,7 @@ describe('Glossary page should work properly', () => {
     cy.get('[data-testid="tags-container"] .ant-select-selection-overflow')
       .scrollIntoView()
       .should('be.visible')
-      .type('PersonalData.Personal');
+      .type('Personal');
     verifyResponseStatusCode('@fetchTags', 200);
     cy.get('[title="PersonalData.Personal"]').should('be.visible').click();
     cy.get('#right-panel').click();
@@ -338,7 +338,7 @@ describe('Glossary page should work properly', () => {
   it('Verify and Remove Tags from Glossary', () => {
     // Verify Tags which is added at the time of creating glossary
     cy.get('[data-testid="glossary-details"]')
-      .contains('PersonalData.Personal')
+      .contains('Personal')
       .should('be.visible');
 
     // Remove Tag
@@ -429,14 +429,14 @@ describe('Glossary page should work properly', () => {
       .should('be.visible')
       .type('personal');
     cy.get('.ant-select-item-option-content')
-      .contains('PersonalData.Personal')
+      .contains('Personal')
       .should('be.visible')
       .click();
 
     cy.get('[data-testid="saveAssociatedTag"]').scrollIntoView().click();
     cy.get('[data-testid="glossary-details"]')
       .scrollIntoView()
-      .contains('PersonalData.Personal')
+      .contains('Personal')
       .should('be.visible');
 
     // updating description
@@ -592,7 +592,7 @@ describe('Glossary page should work properly', () => {
       .should('be.visible')
       .type('personal');
     cy.get('.ant-select-item-option-content')
-      .contains('PersonalData.Personal')
+      .contains('Personal')
       .should('be.visible')
       .click();
 
@@ -601,7 +601,7 @@ describe('Glossary page should work properly', () => {
     verifyResponseStatusCode('@saveData', 200);
     cy.get('[data-testid="glossary-term"]')
       .scrollIntoView()
-      .contains('PersonalData.Personal')
+      .contains('Personal')
       .should('be.visible');
 
     // updating description
@@ -927,6 +927,7 @@ describe('Glossary page should work properly', () => {
   });
 
   it('Remove Glossary term from entity should work properly', () => {
+    const glossaryName = NEW_GLOSSARY_1.name;
     const term = NEW_GLOSSARY_1_TERMS.term_1.name;
     const entity = SEARCH_ENTITY_TABLE.table_3;
 
@@ -972,7 +973,9 @@ describe('Glossary page should work properly', () => {
       .and('not.contain', 'Personal');
     // Remove the added column tag from entity
     interceptURL('PATCH', '/api/v1/tables/*', 'removeSchemaTags');
-    cy.get('[data-testid="remove"]').eq(0).should('be.visible').click();
+    cy.get(`[data-testid="remove-${glossaryName}.${term}-tag"]`)
+      .should('be.visible')
+      .click();
     verifyResponseStatusCode('@removeSchemaTags', 200);
 
     cy.get('[data-testid="tags"]')

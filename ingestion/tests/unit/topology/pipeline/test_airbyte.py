@@ -161,7 +161,7 @@ class AirbyteUnitTest(TestCase):
     @patch(
         "metadata.ingestion.source.pipeline.pipeline_service.PipelineServiceSource.test_connection"
     )
-    @patch("metadata.ingestion.source.pipeline.airbyte.metadata.AirbyteClient")
+    @patch("metadata.ingestion.source.pipeline.airbyte.connection.get_connection")
     def __init__(self, methodName, airbyte_client, test_connection) -> None:
         super().__init__(methodName)
         test_connection.return_value = False
