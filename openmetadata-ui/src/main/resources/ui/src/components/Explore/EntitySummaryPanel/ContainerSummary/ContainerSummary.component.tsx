@@ -26,15 +26,15 @@ import {
   getEntityOverview,
 } from 'utils/EntityUtils';
 import SVGIcons from 'utils/SvgUtils';
-import { EntitySummaryComponentProps } from '../EntitySummaryPanel.interface';
 import SummaryList from '../SummaryList/SummaryList.component';
 import { BasicEntityInfo } from '../SummaryList/SummaryList.interface';
+import { ContainerSummaryProps } from './ContainerSummary.interface';
 
 function ContainerSummary({
   entityDetails,
   componentType = DRAWER_NAVIGATION_OPTIONS.explore,
   isLoading,
-}: EntitySummaryComponentProps) {
+}: ContainerSummaryProps) {
   const { t } = useTranslation();
 
   const entityInfo = useMemo(

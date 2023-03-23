@@ -23,12 +23,9 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { searchData } from 'rest/miscAPI';
 import { showErrorToast } from 'utils/ToastUtils';
-import { EntitySummaryComponentProps } from '../EntitySummaryPanel.interface';
+import { TagsSummaryProps } from './TagsSummary.interface';
 
-function TagsSummary({
-  entityDetails,
-  isLoading,
-}: EntitySummaryComponentProps) {
+function TagsSummary({ entityDetails, isLoading }: TagsSummaryProps) {
   const { t } = useTranslation();
   const [selectedData, setSelectedData] = useState<EntityUnion[]>([]);
 

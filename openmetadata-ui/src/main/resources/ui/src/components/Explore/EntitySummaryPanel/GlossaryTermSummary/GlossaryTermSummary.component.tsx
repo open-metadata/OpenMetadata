@@ -22,14 +22,14 @@ import { useTranslation } from 'react-i18next';
 import { getGlossaryTermByFQN } from 'rest/glossaryAPI';
 import { getFormattedEntityData } from 'utils/EntitySummaryPanelUtils';
 import { showErrorToast } from 'utils/ToastUtils';
-import { EntitySummaryComponentProps } from '../EntitySummaryPanel.interface';
 import SummaryList from '../SummaryList/SummaryList.component';
 import { BasicEntityInfo } from '../SummaryList/SummaryList.interface';
+import { GlossaryTermSummaryProps } from './GlossaryTermSummary.interface';
 
 function GlossaryTermSummary({
   entityDetails,
   isLoading,
-}: EntitySummaryComponentProps) {
+}: GlossaryTermSummaryProps) {
   const { t } = useTranslation();
   const [selectedData, setSelectedData] = useState<GlossaryTerm>();
 

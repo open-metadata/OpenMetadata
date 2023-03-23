@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate.
+ *  Copyright 2023 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,10 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Container } from 'generated/entity/data/container';
+import { TagLabel } from 'generated/type/tagLabel';
 
-import { EntityDetailsObjectInterface } from '../explore.interface';
-
-export interface EntitySummaryPanelProps {
-  entityDetails: EntityDetailsObjectInterface;
-  handleClosePanel: () => void;
+export interface ContainerSummaryProps {
+  entityDetails: Container;
+  componentType?: string;
+  tags?: TagLabel[];
+  isLoading?: boolean;
 }
