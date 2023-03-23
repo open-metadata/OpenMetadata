@@ -41,6 +41,7 @@ import java.util.EnumSet;
 import java.util.Optional;
 import javax.naming.ConfigurationException;
 import javax.servlet.DispatcherType;
+import javax.servlet.FilterRegistration;
 import javax.servlet.ServletException;
 import javax.servlet.ServletRegistration;
 import javax.ws.rs.container.ContainerRequestFilter;
@@ -90,9 +91,10 @@ import org.openmetadata.service.security.auth.BasicAuthenticator;
 import org.openmetadata.service.security.auth.LdapAuthenticator;
 import org.openmetadata.service.security.auth.NoopAuthenticator;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
-import org.openmetadata.service.security.saml.SamlLogoutServlet;
-import org.openmetadata.service.security.saml.SamlRedirectServlet;
-import org.openmetadata.service.security.saml.SamlResponseServlet;
+import org.openmetadata.service.security.saml.OMMicrometerHttpFilter;
+import org.openmetadata.service.security.saml.SamlAssertionConsumerServlet;
+import org.openmetadata.service.security.saml.SamlLoginServlet;
+import org.openmetadata.service.security.saml.SamlMetadataServlet;
 import org.openmetadata.service.security.saml.SamlSettingsHolder;
 import org.openmetadata.service.socket.FeedServlet;
 import org.openmetadata.service.socket.OpenMetadataAssetServlet;
@@ -105,7 +107,6 @@ import org.openmetadata.service.util.MicrometerBundleSingleton;
 @Slf4j
 public class OpenMetadataApplication extends Application<OpenMetadataApplicationConfig> {
   private Authorizer authorizer;
-
   private AuthenticatorHandler authenticatorHandler;
 
   @Override
@@ -182,9 +183,9 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     // authenticationHandler Handles auth related activities
     authenticatorHandler.init(catalogConfig, jdbi);
 
-    //    FilterRegistration.Dynamic micrometerFilter =
-    //        environment.servlets().addFilter("MicrometerHttpFilter", new MicrometerHttpFilter());
-    //    micrometerFilter.addMappingForUrlPatterns(EnumSet.allOf(DispatcherType.class), true, "/*");
+    FilterRegistration.Dynamic micrometerFilter =
+        environment.servlets().addFilter("OMMicrometerHttpFilter", new OMMicrometerHttpFilter());
+    micrometerFilter.addMappingForUrlPatterns(EnumSet.allOf(DispatcherType.class), true, "/*");
 
     initializeWebsockets(catalogConfig, environment);
     registerSamlHandlers(catalogConfig, environment);
@@ -204,14 +205,14 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
             .equals(SSOAuthMechanism.SsoServiceType.SAML.toString())) {
       SamlSettingsHolder.getInstance().initDefaultSettings(catalogConfig);
       ServletRegistration.Dynamic samlRedirectServlet =
-          environment.servlets().addServlet("SAML Login", new SamlRedirectServlet());
+          environment.servlets().addServlet("saml_login", new SamlLoginServlet());
       samlRedirectServlet.addMapping("/api/v1/saml/login");
-      ServletRegistration.Dynamic samlRecieverServlet =
-          environment.servlets().addServlet("SAML ACS", new SamlResponseServlet());
-      samlRecieverServlet.addMapping("/api/v1/saml/acs");
-      ServletRegistration.Dynamic samlLogoutServlet =
-          environment.servlets().addServlet("SAML Logout", new SamlLogoutServlet());
-      samlLogoutServlet.addMapping("/api/v1/saml/logout");
+      ServletRegistration.Dynamic samlReceiverServlet =
+          environment.servlets().addServlet("saml_acs", new SamlAssertionConsumerServlet());
+      samlReceiverServlet.addMapping("/api/v1/saml/acs");
+      ServletRegistration.Dynamic samlMetadataServlet =
+          environment.servlets().addServlet("saml_metadata", new SamlMetadataServlet());
+      samlMetadataServlet.addMapping("/api/v1/saml/metadata");
     }
   }
 

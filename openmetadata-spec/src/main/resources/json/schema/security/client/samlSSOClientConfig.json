@@ -19,10 +19,6 @@
           "description": "SSO Login URL.",
           "type": "string"
         },
-        "ssoLogoutUrl": {
-          "description": "SSO Logout URL.",
-          "type": "string"
-        },
         "idpX509Certificate": {
           "description": "X509 Certificate ",
           "type": "string"
@@ -30,16 +26,6 @@
         "authorityUrl": {
           "description": "Authority URL to redirect the users on Sign In page",
           "type": "string"
-        },
-        "wantAuthRequestSigned": {
-          "description": "Want Auth Request Signed",
-          "type": "boolean",
-          "default": false
-        },
-        "wantAssertionEncrypted": {
-          "description": "Want Assertion Encrypted",
-          "type": "boolean",
-          "default": false
         },
         "nameId": {
           "description": "Authority URL to redirect the users on Sign In page",
@@ -56,29 +42,78 @@
       "type": "object",
       "properties": {
         "entityId": {
-          "description": "Service Provider Entity ID usually same as the SSO login URL.",
+          "description": "Service Provider Entity ID.",
           "type": "string"
         },
         "acs": {
           "description": "Assertion Consumer URL.",
           "type": "string"
         },
-        "logoutUrl": {
-          "description": "SSO Logout URL.",
-          "type": "string"
-        },
         "spX509Certificate": {
           "description": "X509 Certificate ",
+          "type": "string"
+        },
+        "spPrivateKey": {
+          "description": "Sp Private Key for Signing and Encryption Only",
           "type": "string"
         },
         "callback": {
           "description": "Service Provider Entity ID usually same as the SSO login URL.",
           "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": ["entityId", "acs", "callback"]
+    },
+    "security": {
+      "javaType": "org.openmetadata.catalog.type.SamlSecurityConfig",
+      "description": "This schema defines defines the security config for SAML.",
+      "type": "object",
+      "properties": {
+        "strictMode": {
+          "description": "Only accept valid signed and encrypted assertions if the relevant flags are set",
+          "type": "boolean",
+          "default": false
         },
         "tokenValidity": {
           "description": "Validity for the JWT Token created from SAML Response",
           "type": "integer",
           "default": "3600"
+        },
+        "sendEncryptedNameId": {
+          "description": "Encrypt Name Id while sending requests from SP.",
+          "type": "boolean",
+          "default": false
+        },
+        "sendSignedAuthRequest": {
+          "description": "Sign the Authn Request while sending.",
+          "type": "boolean",
+          "default": false
+        },
+        "signSpMetadata": {
+          "description": "Want the Metadata of this SP to be signed.",
+          "type": "boolean",
+          "default": false
+        },
+        "wantMessagesSigned": {
+          "description": "SP requires the messages received to be signed.",
+          "type": "boolean",
+          "default": false
+        },
+        "wantAssertionsSigned": {
+          "description": "SP requires the assertions received to be signed.",
+          "type": "boolean",
+          "default": false
+        },
+        "wantAssertionEncrypted": {
+          "description": "SP requires the assertion received to be encrypted.",
+          "type": "boolean",
+          "default": false
+        },
+        "wantNameIdEncrypted": {
+          "description": "SP requires the Name Id received to be encrypted.",
+          "type": "boolean",
+          "default": false
         },
         "keyStoreFilePath": {
           "description": "KeyStore File Path",
@@ -93,8 +128,7 @@
           "type": "string"
         }
       },
-      "additionalProperties": false,
-      "required": ["entityId", "acs"]
+      "additionalProperties": false
     }
   },
   "properties": {
@@ -103,6 +137,14 @@
     },
     "sp": {
       "$ref": "#/definitions/sp"
+    },
+    "security": {
+      "$ref": "#/definitions/security"
+    },
+    "debugMode": {
+      "description": "Get logs from the Library in debug mode",
+      "type": "boolean",
+      "default": false
     }
   },
   "additionalProperties": false,
