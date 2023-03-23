@@ -21,17 +21,15 @@ import TagsContainer from 'components/Tag/TagsContainer/tags-container';
 import TagsViewer from 'components/Tag/TagsViewer/tags-viewer';
 import { getUserPath } from 'constants/constants';
 import { NO_PERMISSION_FOR_ACTION } from 'constants/HelperTextUtil';
-import { SettledStatus } from 'enums/axios.enum';
 import { Query } from 'generated/entity/data/query';
-import { LabelType, State, TagLabel, TagSource } from 'generated/type/tagLabel';
+import { LabelType, State, TagLabel } from 'generated/type/tagLabel';
 import { isEmpty, isUndefined } from 'lodash';
-import { EntityTags, TagOption } from 'Models';
+import { EntityTags } from 'Models';
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { getEntityName } from 'utils/EntityUtils';
-import { fetchGlossaryTerms, getGlossaryTermlist } from 'utils/GlossaryUtils';
-import { getClassifications, getTaglist } from 'utils/TagsUtils';
+import { fetchTagsAndGlossaryTerms } from 'utils/TagsUtils';
 import {
   TableQueryRightPanelProps,
   TagDetails,
@@ -55,53 +53,17 @@ const TableQueryRightPanel = ({
     isError: false,
   });
 
-  const fetchTagsAndGlossaryTerms = () => {
+  const fetchTags = async () => {
     setTagDetails((pre) => ({ ...pre, isLoading: true }));
-    Promise.allSettled([getClassifications(), fetchGlossaryTerms()])
-      .then(async (values) => {
-        let tagsAndTerms: TagOption[] = [];
-        if (
-          values[0].status === SettledStatus.FULFILLED &&
-          values[0].value.data
-        ) {
-          const tagList = await getTaglist(values[0].value.data);
 
-          tagsAndTerms = isEmpty(tagList)
-            ? []
-            : tagList.map((tag) => {
-                return {
-                  fqn: tag,
-                  source: TagSource.Classification,
-                };
-              });
-        }
-        if (
-          values[1].status === SettledStatus.FULFILLED &&
-          values[1].value &&
-          values[1].value.length > 0
-        ) {
-          const glossaryTerms: TagOption[] = getGlossaryTermlist(
-            values[1].value
-          ).map((tag) => {
-            return { fqn: tag, source: TagSource.Glossary };
-          });
-          tagsAndTerms = [...tagsAndTerms, ...glossaryTerms];
-        }
-        setTagDetails((pre) => ({ ...pre, options: tagsAndTerms }));
-
-        if (
-          values[0].status !== SettledStatus.FULFILLED &&
-          values[1].status !== SettledStatus.FULFILLED
-        ) {
-          setTagDetails((pre) => ({ ...pre, isError: true }));
-        }
-      })
-      .catch(() => {
-        setTagDetails((pre) => ({ ...pre, isError: true, options: [] }));
-      })
-      .finally(() => {
-        setTagDetails((pre) => ({ ...pre, isLoading: false }));
-      });
+    try {
+      const response = await fetchTagsAndGlossaryTerms();
+      setTagDetails((pre) => ({ ...pre, options: response }));
+    } catch (_error) {
+      setTagDetails((pre) => ({ ...pre, isError: true, options: [] }));
+    } finally {
+      setTagDetails((pre) => ({ ...pre, isLoading: false }));
+    }
   };
 
   const handleRemoveOwner = async () => {
@@ -265,7 +227,7 @@ const TableQueryRightPanel = ({
                 // Fetch tags and terms only once
                 setIsEditTags(true);
                 if (isEmpty(tagDetails.options) || tagDetails.isError) {
-                  fetchTagsAndGlossaryTerms();
+                  fetchTags();
                 }
               }}>
               <TagsContainer

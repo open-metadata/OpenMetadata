@@ -13,10 +13,6 @@
 
 import { Button, Card, Col, Row, Space, Typography } from 'antd';
 import classNames from 'classnames';
-import {
-  QUERY_DATE_FORMAT,
-  QUERY_LINE_HEIGHT,
-} from 'constants/entity.constants';
 import { split } from 'lodash';
 import React, { FC, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -30,6 +26,8 @@ import { ReactComponent as ExitFullScreen } from '/assets/svg/exit-full-screen.s
 import { ReactComponent as FullScreen } from '/assets/svg/full-screen.svg';
 
 // css import
+import { SINGLE_DOT } from 'constants/constants';
+import { QUERY_DATE_FORMAT, QUERY_LINE_HEIGHT } from 'constants/Query.constant';
 import './table-queries.style.less';
 
 const { Text } = Typography;
@@ -93,7 +91,6 @@ const QueryCard: FC<QueryCardProp> = ({
     <Row gutter={[0, 8]}>
       <Col span={24}>
         <Card
-          bodyStyle={{ padding: 0, paddingTop: 1 }}
           bordered={false}
           className={classNames(
             'query-card-container',
@@ -111,15 +108,15 @@ const QueryCard: FC<QueryCardProp> = ({
           title={
             <Space className="font-normal p-y-xs" size={8}>
               <Text>{queryDate}</Text>
-              <Text>{t('label.single-dots-symbol')}</Text>
+              <Text>{SINGLE_DOT}</Text>
               <Text>{`${t('label.by-lowercase')} ${query.updatedBy}`}</Text>
             </Space>
           }
           onClick={handleCardClick}>
           {isAllowExpand && (
             <Button
-              className="expand-collapse-icon bg-white"
-              data-testid="expand-collapse-button"
+              className="query-entity-expand-button bg-white"
+              data-testid="query-entity-expand-button"
               icon={
                 expanded ? (
                   <ExitFullScreen height={16} width={16} />

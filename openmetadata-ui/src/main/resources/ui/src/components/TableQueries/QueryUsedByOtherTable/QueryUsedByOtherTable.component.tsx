@@ -12,7 +12,7 @@
  */
 import { Popover, Space, Typography } from 'antd';
 import { getTableDetailsPath } from 'constants/constants';
-import { QUERY_USED_BY_TABLE_VIEW_CAP } from 'constants/entity.constants';
+import { QUERY_USED_BY_TABLE_VIEW_CAP } from 'constants/Query.constant';
 import { slice } from 'lodash';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';

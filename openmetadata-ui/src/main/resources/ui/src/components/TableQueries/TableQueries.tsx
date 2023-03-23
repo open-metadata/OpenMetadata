@@ -164,7 +164,6 @@ const TableQueries: FC<TableQueriesProp> = ({
   };
 
   const pagingHandler = (cursorType: string | number, activePage?: number) => {
-    console.log({ cursorType, activePage });
     if (isString(cursorType)) {
       const { paging } = tableQueries;
       fetchTableQuery({ [cursorType]: paging[cursorType] });
