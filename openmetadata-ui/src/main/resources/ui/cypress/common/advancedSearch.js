@@ -353,8 +353,8 @@ export const addTag = (tag) => {
   cy.get('.ant-select-item-option-content')
     .contains(tag)
     .should('be.visible')
-    .click();  
-    
+    .click();
+
   cy.get('[data-testid="tag-selector"] > .ant-select-selector').contains(tag);
 
   cy.get('[data-testid="saveAssociatedTag"]').should('be.visible').click();
