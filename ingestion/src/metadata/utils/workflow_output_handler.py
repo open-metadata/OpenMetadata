@@ -457,14 +457,17 @@ def print_failures_if_apply(failures: List[Failure]) -> None:
     # take only the ones that contain failures
     failures = [f for f in failures if f.failures]
     if failures:
+        # create a list of dictionaries' list
         all_data = [get_failures(failure) for failure in failures]
+        # create a single of dictionaries
         data = [f for fs in all_data for f in fs]
+        # creat a dictionary with a key and a list of values from the list
         error_table = {k: [dic[k] for dic in data] for k in data[0]}
-
         if len(list(error_table.items())[0][1]) > 100:
             log_ansi_encoded_string(
                 bold=True, message="Showing only the first 100 failures:"
             )
+            # truncate list if number of values are over 100
             error_table = {k: v[:100] for k, v in error_table.items()}
         else:
             log_ansi_encoded_string(bold=True, message="List of failures:")
