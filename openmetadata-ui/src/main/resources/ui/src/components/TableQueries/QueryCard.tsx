@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { DownOutlined, RightOutlined } from '@ant-design/icons';
 import { Button, Card, Col, Row, Space, Typography } from 'antd';
 import classNames from 'classnames';
 import {
@@ -26,8 +25,12 @@ import { CSMode } from '../../enums/codemirror.enum';
 import SchemaEditor from '../schema-editor/SchemaEditor';
 import QueryCardExtraOption from './QueryCardExtraOption/QueryCardExtraOption.component';
 import QueryUsedByOtherTable from './QueryUsedByOtherTable/QueryUsedByOtherTable.component';
-import './table-queries.style.less';
 import { QueryCardProp } from './TableQueries.interface';
+import { ReactComponent as ExitFullScreen } from '/assets/svg/exit-full-screen.svg';
+import { ReactComponent as FullScreen } from '/assets/svg/full-screen.svg';
+
+// css import
+import './table-queries.style.less';
 
 const { Text } = Typography;
 
@@ -115,11 +118,16 @@ const QueryCard: FC<QueryCardProp> = ({
           onClick={handleCardClick}>
           {isAllowExpand && (
             <Button
-              className="expand-collapse-icon"
+              className="expand-collapse-icon bg-white"
               data-testid="expand-collapse-button"
-              icon={expanded ? <DownOutlined /> : <RightOutlined />}
+              icon={
+                expanded ? (
+                  <ExitFullScreen height={16} width={16} />
+                ) : (
+                  <FullScreen height={16} width={16} />
+                )
+              }
               size="small"
-              type="text"
               onClick={handleExpandClick}
             />
           )}
@@ -127,11 +135,12 @@ const QueryCard: FC<QueryCardProp> = ({
           <div
             className={classNames('sql-editor-container', {
               'h-max-24': !isAllowExpand,
-              'h-24': !expanded,
+              'h-24': !expanded && !isEditMode,
+              'h-max-56': isEditMode && !expanded && isAllowExpand,
             })}>
             <SchemaEditor
               editorClass={classNames('custom-code-mirror-theme', {
-                'table-query-editor': isAllowExpand,
+                'table-query-editor': expanded,
               })}
               mode={{ name: CSMode.SQL }}
               options={{
