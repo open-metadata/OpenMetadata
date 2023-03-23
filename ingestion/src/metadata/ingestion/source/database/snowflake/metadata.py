@@ -318,12 +318,12 @@ class SnowflakeSource(CommonDbSourceService):
         logic on how to handle table types, e.g., external, foreign,...
         """
 
-        if self.config.serviceConnection.__root__.config.skipTempTables:
+        if self.config.serviceConnection.__root__.config.includeTempTables:
 
             return [
                 TableNameAndType(name=table_name)
                 for table_name in self.inspector.get_table_names(
-                    schema=schema_name, skip_temp_tables="True"
+                    schema=schema_name, include_temp_tables="True"
                 )
                 or []
             ]

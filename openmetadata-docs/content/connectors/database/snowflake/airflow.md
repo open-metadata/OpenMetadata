@@ -133,7 +133,7 @@ source:
       warehouse: <warehouse>
       account: <account>
       # database: <database>
-      skipTempTables: true
+      includeTempTables: false
       # hostPort: account.region.service.snowflakecomputing.com
       # privateKey: <privateKey>
       # snowflakePrivatekeyPassphrase: <passphrase>
@@ -185,7 +185,7 @@ workflowConfig:
 - **warehouse**: Warehouse name.
 - **database**: The database of the data source is an optional parameter, if you would like to restrict the metadata reading to a single database. If left blank, OpenMetadata ingestion attempts to scan all the databases.
 - **privateKey**: Connection to Snowflake instance via Private Key.
-- `skipTempTables`: Optional configuration for ingestion of TRANSIENT and TEMPORARY tables, By default, it will skip the TRANSIENT and TEMPORARY tables.
+- **includeTempTables**: Optional configuration for ingestion of TRANSIENT and TEMPORARY tables, By default, it will skip the TRANSIENT and TEMPORARY tables.
 - **snowflakePrivatekeyPassphrase**: Snowflake Passphrase Key used with Private Key.
 - **Connection Options (Optional)**: Enter the details for any additional connection options that can be sent to Snowflake during the connection. These details must be added as Key-Value pairs.
 - **Connection Arguments (Optional)**: Enter the details for any additional connection arguments such as security or protocol configs that can be sent to Snowflake during the connection. These details must be added as Key-Value pairs.
