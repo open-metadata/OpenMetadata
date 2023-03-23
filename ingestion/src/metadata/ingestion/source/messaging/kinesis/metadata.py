@@ -191,7 +191,7 @@ class KinesisSource(MessagingServiceSource):
 
     def yield_topic_sample_data(
         self, topic_details: BrokerTopicDetails
-    ) -> TopicSampleData:
+    ) -> Iterable[OMetaTopicSampleData]:
         """
         Method to Get Sample Data of Messaging Entity
         """
