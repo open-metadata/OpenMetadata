@@ -36,7 +36,12 @@ from metadata.generated.schema.entity.services.connections.pipeline.dagsterConne
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.generated.schema.type.tagLabel import TagLabel
+from metadata.generated.schema.type.tagLabel import (
+    LabelType,
+    State,
+    TagLabel,
+    TagSource,
+)
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
@@ -46,7 +51,7 @@ from metadata.ingestion.source.pipeline.dagster.queries import (
     GRAPHQL_RUNS_QUERY,
 )
 from metadata.ingestion.source.pipeline.pipeline_service import PipelineServiceSource
-from metadata.utils import fqn
+from metadata.utils import fqn, tag_utils
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -56,6 +61,8 @@ STATUS_MAP = {
     "failure": StatusType.Failed.value,
     "queued": StatusType.Pending.value,
 }
+
+DAGSTER_TAG_CATEGORY = "DagsterTags"
 
 
 class DagsterSource(PipelineServiceSource):
@@ -87,20 +94,28 @@ class DagsterSource(PipelineServiceSource):
     def get_tag_labels(
         self, tags: OMetaTagAndClassification
     ) -> Optional[List[TagLabel]]:
-
-        return [
-            TagLabel(
-                tagFQN=fqn.build(
-                    self.metadata,
-                    Tag,
-                    classification_name="DagsterTags",
-                    tag_name=tags,
-                ),
-                labelType="Automated",
-                state="Suggested",
-                source="Classification",
-            )
-        ]
+        """
+        Mehthod to create tag labels from the collected tags
+        """
+        if tags and self.source_config.includeTags:
+            try:
+                return [
+                    TagLabel(
+                        tagFQN=fqn.build(
+                            self.metadata,
+                            Tag,
+                            classification_name=DAGSTER_TAG_CATEGORY,
+                            tag_name=tags,
+                        ),
+                        labelType=LabelType.Automated.value,
+                        state=State.Suggested.value,
+                        source=TagSource.Classification.value,
+                    )
+                ]
+            except Exception as err:
+                logger.debug(traceback.format_exc())
+                logger.error(f"Error processing tag labels: {err}")
+        return None
 
     def get_jobs(self, pipeline_name) -> Iterable[dict]:
         try:
@@ -149,25 +164,37 @@ class DagsterSource(PipelineServiceSource):
             description=pipeline_details.get("description", ""),
             tasks=task_list,
             service=self.context.pipeline_service.fullyQualifiedName.__root__,
-            tags=self.get_tag_labels(self.context.repository_name),
+            tags=tag_utils.get_tag_labels(
+                metadata=self.metadata,
+                tags=self.context.repository_name,
+                classification_name=DAGSTER_TAG_CATEGORY,
+                include_tags=self.source_config.includeTags,
+            ),
         )
         yield pipeline_request
         self.register_record(pipeline_request=pipeline_request)
 
     def yield_tag(self, *_, **__) -> OMetaTagAndClassification:
-        classification = OMetaTagAndClassification(
-            classification_request=CreateClassificationRequest(
-                name="DagsterTags",
-                description="Tags associated with dagster",
-            ),
-            tag_request=CreateTagRequest(
-                classification="DagsterTags",
-                name=self.context.repository_name,
-                description="Dagster Tag",
-            ),
-        )
+        if self.source_config.includeTags:
+            try:
+                classification = OMetaTagAndClassification(
+                    classification_request=CreateClassificationRequest(
+                        name=DAGSTER_TAG_CATEGORY,
+                        description="Tags associated with dagster",
+                    ),
+                    tag_request=CreateTagRequest(
+                        classification=DAGSTER_TAG_CATEGORY,
+                        name=self.context.repository_name,
+                        description="Dagster Tag",
+                    ),
+                )
 
-        yield classification
+                yield classification
+            except Exception as err:
+                logger.debug(traceback.format_exc())
+                logger.error(
+                    f"Error ingesting tag [{self.context.repository_name}]: {err}"
+                )
 
     def get_task_runs(self, job_id, pipeline_name):
         """

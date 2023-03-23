@@ -44,6 +44,11 @@
       "type": "boolean",
       "default": false
     },
+    "includeTags": {
+      "description": "Optional configuration to turn off fetching metadata for tags.",
+      "type": "boolean",
+      "default": true
+    },
     "dbtClassificationName": {
       "title": "dbt Classification Name",
       "description": "Custom OpenMetadata Classification name for dbt tags.",

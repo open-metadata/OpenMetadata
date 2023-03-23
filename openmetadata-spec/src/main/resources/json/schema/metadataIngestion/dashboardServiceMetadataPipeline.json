@@ -40,6 +40,11 @@
       "description": "Optional configuration to soft delete dashboards in OpenMetadata if the source dashboards are deleted. Also, if the dashboard is deleted, all the associated entities like lineage, etc., with that dashboard will be deleted",
       "type": "boolean",
       "default": true
+    },
+    "includeTags": {
+      "description": "Optional configuration to turn off fetching metadata for tags.",
+      "type": "boolean",
+      "default": true
     }
   },
   "additionalProperties": false
