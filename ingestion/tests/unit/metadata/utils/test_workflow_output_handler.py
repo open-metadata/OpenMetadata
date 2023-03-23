@@ -11,7 +11,9 @@
 """
 workflow_output_handler utils tests
 """
+import random
 import re
+import string
 from typing import Tuple
 from unittest import TestCase
 from unittest.mock import Mock
@@ -22,7 +24,7 @@ from metadata.ingestion.api.processor import ProcessorStatus
 from metadata.ingestion.api.sink import SinkStatus
 from metadata.ingestion.api.source import SourceStatus
 from metadata.ingestion.api.stage import StageStatus
-from metadata.ingestion.api.status import Status
+from metadata.ingestion.api.status import StackTraceError, Status
 from metadata.utils.logger import Loggers
 from metadata.utils.workflow_output_handler import (
     print_data_insight_status,
@@ -51,7 +53,9 @@ def create_mock(status: Status) -> Tuple[Mock, Status]:
     mock = Mock()
     status.warnings = ["warning"]
     status.records = ["record"]
-    status.failures = ["failure"]
+    status.failures = [
+        StackTraceError(name="name", error="error", stack_trace="stack_trace")
+    ]
     if hasattr(status, "filtered"):
         status.filtered = ["filtered"]
     mock.status = status
@@ -82,17 +86,24 @@ class WorkflowOutputHandlerTests(TestCase):
     workflow.bulk_sink = bulk_sink
 
     def test_output_when_debug_is_disabled(self):
-        expected_summary = """Workflow Summary:
+        expected_summary = """List of failures:
+
++-----------+---------------+-----------+---------------+
+| From      | Entity Name   | Message   | Stack Trace   |
++===========+===============+===========+===============+
+| Source    | name          | error     | stack_trace   |
++-----------+---------------+-----------+---------------+
+| Stage     | name          | error     | stack_trace   |
++-----------+---------------+-----------+---------------+
+| Sink      | name          | error     | stack_trace   |
++-----------+---------------+-----------+---------------+
+| Bulk Sink | name          | error     | stack_trace   |
++-----------+---------------+-----------+---------------+
+Workflow Summary:
 Total processed records: 4
 Total warnings: 4
 Total filtered: 1
 Total errors: 4
-List of errors:
-\t- [Source]: failure
-\t- [Stage]: failure
-\t- [Sink]: failure
-\t- [Bulk Sink]: failure
-
 Success %: 50.0"""
         self.workflow.config.workflowConfig.loggerLevel = LogLevels.INFO
         with self.assertLogs(Loggers.UTILS.value, level="INFO") as logger:
@@ -108,29 +119,39 @@ Success %: 50.0"""
     def test_output_when_debug_is_enabled(self):
         expected_summary = """Statuses detailed info:
 Source Status:
-{'failures': ['failure'],
+{'failures': [StackTraceError(name='name', error='error', stack_trace='stack_trace')],
  'filtered': ['filtered'],
  'records': ['record'],
  'success': [],
  'warnings': ['warning']}
 Stage Status:
-{'failures': ['failure'], 'records': ['record'], 'warnings': ['warning']}
+{'failures': [StackTraceError(name='name', error='error', stack_trace='stack_trace')], 'records': ['record'], 'warnings': ['warning']}
 Sink Status:
-{'failures': ['failure'], 'records': ['record'], 'warnings': ['warning']}
+{'failures': [StackTraceError(name='name', error='error', stack_trace='stack_trace')], 'records': ['record'], 'warnings': ['warning']}
 Bulk Sink Status:
-{'failures': ['failure'], 'records': ['record'], 'warnings': ['warning']}
+{'failures': [StackTraceError(name='name', error='error', stack_trace='stack_trace')], 'records': ['record'], 'warnings': ['warning']}
+Processor Status:
+{'failures': [StackTraceError(name='name', error='error', stack_trace='stack_trace')], 'records': ['record'], 'warnings': ['warning']}
+List of failures:
+
++-----------+---------------+-----------+---------------+
+| From      | Entity Name   | Message   | Stack Trace   |
++===========+===============+===========+===============+
+| Source    | name          | error     | stack_trace   |
++-----------+---------------+-----------+---------------+
+| Stage     | name          | error     | stack_trace   |
++-----------+---------------+-----------+---------------+
+| Sink      | name          | error     | stack_trace   |
++-----------+---------------+-----------+---------------+
+| Bulk Sink | name          | error     | stack_trace   |
++-----------+---------------+-----------+---------------+
 Workflow Summary:
 Total processed records: 4
 Total warnings: 4
 Total filtered: 1
 Total errors: 4
-List of errors:
-\t- [Source]: failure
-\t- [Stage]: failure
-\t- [Sink]: failure
-\t- [Bulk Sink]: failure
-
-Success %: 50.0"""
+Success %: 50.0
+"""
         self.workflow.config.workflowConfig.loggerLevel = LogLevels.DEBUG
         with self.assertLogs(Loggers.UTILS.value, level="INFO") as logger:
             print_status(self.workflow)
@@ -144,15 +165,20 @@ Success %: 50.0"""
             self.assertIn(expected_summary, output)
 
     def test_output_when_debug_is_disabled_data_insight(self):
-        expected_summary = """Workflow Summary:
+        expected_summary = """List of failures:
+
++-----------+---------------+-----------+---------------+
+| From      | Entity Name   | Message   | Stack Trace   |
++===========+===============+===========+===============+
+| Sink      | name          | error     | stack_trace   |
++-----------+---------------+-----------+---------------+
+| Processor | name          | error     | stack_trace   |
++-----------+---------------+-----------+---------------+
+Workflow Summary:
 Total processed records: 2
 Total warnings: 2
 Total filtered: 1
 Total errors: 2
-List of errors:
-\t- [Sink]: failure
-\t- [Processor]: failure
-
 Success %: 50.0"""
         self.workflow.config.workflowConfig.loggerLevel = LogLevels.INFO
         with self.assertLogs(Loggers.UTILS.value, level="INFO") as logger:
@@ -166,15 +192,20 @@ Success %: 50.0"""
             self.assertIn(expected_summary, output)
 
     def test_output_when_debug_is_disabled_test_suite(self):
-        expected_summary = """Workflow Summary:
+        expected_summary = """List of failures:
+
++-----------+---------------+-----------+---------------+
+| From      | Entity Name   | Message   | Stack Trace   |
++===========+===============+===========+===============+
+| Sink      | name          | error     | stack_trace   |
++-----------+---------------+-----------+---------------+
+| Processor | name          | error     | stack_trace   |
++-----------+---------------+-----------+---------------+
+Workflow Summary:
 Total processed records: 2
 Total warnings: 2
 Total filtered: 1
 Total errors: 2
-List of errors:
-\t- [Sink]: failure
-\t- [Processor]: failure
-
 Success %: 50.0
 Workflow finished successfully"""
         self.workflow.config.workflowConfig.loggerLevel = LogLevels.INFO
@@ -187,3 +218,25 @@ Workflow finished successfully"""
                 ]
             )
             self.assertIn(expected_summary, output)
+
+    def test_long_output_message(self):
+        workflow = TestWorkflow()
+        workflow.config.workflowConfig.loggerLevel = LogLevels.INFO
+        source, source_status = create_mock(SourceStatus())
+        source_status.failures = []
+        long_line = "".join(
+            random.choice(string.ascii_uppercase + string.digits) for _ in range(500)
+        )
+        long_stack_trace = "\n".join([long_line for _ in range(50)])
+        for i in range(102):
+            source_status.failures.append(
+                StackTraceError(
+                    name=f"name {i}", error=long_line, stack_trace=long_stack_trace
+                )
+            )
+        workflow.status = source_status
+        with self.assertLogs(Loggers.UTILS.value, level="INFO") as logger:
+            print_test_suite_status(workflow)
+            output = "\n".join([strip_ansi_codes(line) for line in logger.output])
+            self.assertIn("Showing only the first 100 failures:", output)
+            self.assertEqual(output.count(long_line), 5100)

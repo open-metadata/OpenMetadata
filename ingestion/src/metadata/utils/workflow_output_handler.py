@@ -16,9 +16,10 @@ Module handles the output messages from different workflows
 import time
 from enum import Enum
 from pathlib import Path
-from typing import Optional, Type, Union
+from typing import Dict, List, Optional, Type, Union
 
 from pydantic import BaseModel
+from tabulate import tabulate
 
 from metadata.config.common import ConfigurationError
 from metadata.generated.schema.metadataIngestion.workflow import LogLevels
@@ -26,7 +27,7 @@ from metadata.ingestion.api.parser import (
     InvalidWorkflowException,
     ParsingConfigurationError,
 )
-from metadata.ingestion.api.status import Status
+from metadata.ingestion.api.status import StackTraceError, Status
 from metadata.utils.constants import UTF_8
 from metadata.utils.helpers import pretty_print_time_duration
 from metadata.utils.logger import ANSI, log_ansi_encoded_string
@@ -34,6 +35,15 @@ from metadata.utils.logger import ANSI, log_ansi_encoded_string
 WORKFLOW_FAILURE_MESSAGE = "Workflow finished with failures"
 WORKFLOW_WARNING_MESSAGE = "Workflow finished with warnings"
 WORKFLOW_SUCCESS_MESSAGE = "Workflow finished successfully"
+
+
+class Failure(BaseModel):
+    """
+    Auxiliary class to print the error per status
+    """
+
+    name: str
+    failures: List[StackTraceError]
 
 
 class Summary(BaseModel):
@@ -345,22 +355,30 @@ def print_workflow_summary(
             processor_status,
         )
     summary = Summary()
-    errors = []
+    failures = []
     if source_status and source:
         summary += get_summary(source_status)
-        errors += get_errors("Source", source_status)
+        failures.append(Failure(name="Source", failures=source_status.failures))
     if hasattr(workflow, "stage") and stage:
         summary += get_summary(workflow.stage.get_status())
-        errors += get_errors("Stage", workflow.stage.get_status())
+        failures.append(
+            Failure(name="Stage", failures=workflow.stage.get_status().failures)
+        )
     if hasattr(workflow, "sink"):
         summary += get_summary(workflow.sink.get_status())
-        errors += get_errors("Sink", workflow.sink.get_status())
+        failures.append(
+            Failure(name="Sink", failures=workflow.sink.get_status().failures)
+        )
     if hasattr(workflow, "bulk_sink") and bulk_sink:
         summary += get_summary(workflow.bulk_sink.get_status())
-        errors += get_errors("Bulk Sink", workflow.bulk_sink.get_status())
+        failures.append(
+            Failure(name="Bulk Sink", failures=workflow.bulk_sink.get_status().failures)
+        )
     if processor_status and processor:
         summary += get_summary(processor_status)
-        errors += get_errors("Processor", processor_status)
+        failures.append(Failure(name="Processor", failures=processor_status.failures))
+
+    print_failures_if_apply(failures)
 
     log_ansi_encoded_string(bold=True, message="Workflow Summary:")
     log_ansi_encoded_string(message=f"Total processed records: {summary.records}")
@@ -368,10 +386,6 @@ def print_workflow_summary(
     log_ansi_encoded_string(message=f"Total filtered: {summary.filtered}")
     log_ansi_encoded_string(message=f"Total errors: {summary.errors}")
 
-    if errors:
-        errors_output = "List of errors:\n"
-        errors_output += "\n".join([f"\t- {error}" for error in errors])
-        log_ansi_encoded_string(message=errors_output)
     total_success = max(summary.records, 1)
     log_ansi_encoded_string(
         color=ANSI.BRIGHT_CYAN,
@@ -417,7 +431,7 @@ def print_workflow_status_debug(
         log_ansi_encoded_string(message=processor_status.as_string())
 
 
-def get_summary(status: Status):
+def get_summary(status: Status) -> Summary:
     records = len(status.records)
     warnings = len(status.warnings)
     errors = len(status.failures)
@@ -427,10 +441,34 @@ def get_summary(status: Status):
     return Summary(records=records, warnings=warnings, errors=errors, filtered=filtered)
 
 
-def get_errors(prefix: str, status: Status):
-    if len(status.failures) > 0:
-        return [
-            f"[{prefix}]: {failure.name} [{failure.error}]"
-            for failure in status.failures
-        ]
-    return []
+def get_failures(failure: Failure) -> List[Dict[str, str]]:
+    return [
+        {
+            "From": failure.name,
+            "Entity Name": f.name,
+            "Message": f.error,
+            "Stack Trace": f.stack_trace,
+        }
+        for f in failure.failures
+    ]
+
+
+def print_failures_if_apply(failures: List[Failure]) -> None:
+    # take only the ones that contain failures
+    failures = [f for f in failures if f.failures]
+    if failures:
+        all_data = [get_failures(failure) for failure in failures]
+        data = [f for fs in all_data for f in fs]
+        error_table = {k: [dic[k] for dic in data] for k in data[0]}
+
+        if len(list(error_table.items())[0][1]) > 100:
+            log_ansi_encoded_string(
+                bold=True, message="Showing only the first 100 failures:"
+            )
+            error_table = {k: v[:100] for k, v in error_table.items()}
+        else:
+            log_ansi_encoded_string(bold=True, message="List of failures:")
+
+        log_ansi_encoded_string(
+            message=f"\n{tabulate(error_table, headers='keys', tablefmt='grid')}"
+        )
