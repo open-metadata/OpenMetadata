@@ -104,7 +104,7 @@ export const getGroupLabel = (index: string, wrapInSelectOption = false) => {
       break;
     case SearchIndex.GLOSSARY:
       label = i18next.t('label.glossary-term-plural');
-      icon = Icons.TABLE_GREY;
+      icon = Icons.FLAT_FOLDER;
 
       break;
     case SearchIndex.TAG:
