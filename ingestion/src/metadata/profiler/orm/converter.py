@@ -30,7 +30,7 @@ from metadata.profiler.orm.registry import CustomTypes
 Base = declarative_base()
 
 _TYPE_MAP = {
-    DataType.NUMBER: sqlalchemy.INTEGER,
+    DataType.NUMBER: sqlalchemy.NUMERIC,
     DataType.TINYINT: sqlalchemy.SMALLINT,
     DataType.SMALLINT: sqlalchemy.SMALLINT,
     DataType.INT: sqlalchemy.INT,
