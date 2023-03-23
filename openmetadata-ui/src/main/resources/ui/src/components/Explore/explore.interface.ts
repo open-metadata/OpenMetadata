@@ -13,6 +13,7 @@
 
 import { DefaultOptionType } from 'antd/lib/select';
 import { SORT_ORDER } from 'enums/common.enum';
+import { Tag } from 'generated/entity/classification/tag';
 import { Container } from 'generated/entity/data/container';
 import { Database } from 'generated/entity/data/database';
 import { DatabaseSchema } from 'generated/entity/data/databaseSchema';
@@ -113,7 +114,8 @@ export type EntityUnion =
   | Container
   | DatabaseSchema
   | Database
-  | Glossary;
+  | Glossary
+  | Tag;
 
 export interface EntityDetailsObjectInterface {
   details: EntityUnion;

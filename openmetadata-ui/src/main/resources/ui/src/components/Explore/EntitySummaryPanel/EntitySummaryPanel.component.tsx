@@ -15,6 +15,7 @@ import { CloseOutlined } from '@ant-design/icons';
 import { Col, Drawer, Row } from 'antd';
 import TableDataCardTitle from 'components/common/table-data-card-v2/TableDataCardTitle.component';
 import { EntityType } from 'enums/entity.enum';
+import { Tag } from 'generated/entity/classification/tag';
 import { Container } from 'generated/entity/data/container';
 import { GlossaryTerm } from 'generated/entity/data/glossaryTerm';
 import React, { useMemo, useState } from 'react';
@@ -33,6 +34,7 @@ import GlossaryTermSummary from './GlossaryTermSummary/GlossaryTermSummary.compo
 import MlModelSummary from './MlModelSummary/MlModelSummary.component';
 import PipelineSummary from './PipelineSummary/PipelineSummary.component';
 import TableSummary from './TableSummary/TableSummary.component';
+import TagsSummary from './TagsSummary/TagsSummary.component';
 import TopicSummary from './TopicSummary/TopicSummary.component';
 
 export default function EntitySummaryPanel({
@@ -93,6 +95,10 @@ export default function EntitySummaryPanel({
             entityDetails={entityDetails.details as GlossaryTerm}
           />
         );
+      case ExplorePageTabs.TAG:
+        setCurrentSearchIndex(EntityType.TAG);
+
+        return <TagsSummary entityDetails={entityDetails.details as Tag} />;
 
       default:
         return null;

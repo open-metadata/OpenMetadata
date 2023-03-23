@@ -11,100 +11,68 @@
  *  limitations under the License.
  */
 
-import { Col, Divider, Row, Typography } from 'antd';
-import classNames from 'classnames';
+import { Col, Divider, Row, Tag, Typography } from 'antd';
+import { AxiosError } from 'axios';
 import ProfilePicture from 'components/common/ProfilePicture/ProfilePicture';
 import SummaryPanelSkeleton from 'components/Skeleton/SummaryPanelSkeleton/SummaryPanelSkeleton.component';
 import { SummaryEntityType } from 'enums/EntitySummary.enum';
-import { ExplorePageTabs } from 'enums/Explore.enum';
 import { GlossaryTerm } from 'generated/entity/data/glossaryTerm';
-import React, { useMemo } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { getGlossaryTermByFQN } from 'rest/glossaryAPI';
 import { getFormattedEntityData } from 'utils/EntitySummaryPanelUtils';
-import {
-  DRAWER_NAVIGATION_OPTIONS,
-  getEntityOverview,
-} from 'utils/EntityUtils';
-import SVGIcons, { Icons } from 'utils/SvgUtils';
+import { showErrorToast } from 'utils/ToastUtils';
 import { EntitySummaryComponentProps } from '../EntitySummaryPanel.interface';
 import SummaryList from '../SummaryList/SummaryList.component';
 import { BasicEntityInfo } from '../SummaryList/SummaryList.interface';
 
 function GlossaryTermSummary({
   entityDetails,
-  componentType = DRAWER_NAVIGATION_OPTIONS.explore,
   isLoading,
 }: EntitySummaryComponentProps) {
   const { t } = useTranslation();
-  const entityInfo = useMemo(
-    () => getEntityOverview(ExplorePageTabs.GLOSSARY, entityDetails),
-    [entityDetails]
-  );
+  const [selectedData, setSelectedData] = useState<GlossaryTerm>();
 
-  const formattedColumnsData: BasicEntityInfo[] = useMemo(
-    () =>
-      getFormattedEntityData(
+  const formattedColumnsData: BasicEntityInfo[] = useMemo(() => {
+    if (selectedData?.children) {
+      return getFormattedEntityData(
         SummaryEntityType.COLUMN,
-        (entityDetails as GlossaryTerm).children
-      ),
-    [entityDetails]
-  );
+        (selectedData as GlossaryTerm).children
+      );
+    } else {
+      return [];
+    }
+  }, [selectedData]);
 
   const reviewers = useMemo(
     () => (entityDetails as GlossaryTerm).reviewers || [],
-    [entityDetails]
+    [selectedData]
   );
+
+  const synonyms = useMemo(
+    () => (entityDetails as GlossaryTerm).synonyms || [],
+    [selectedData]
+  );
+
+  const fetchGlossaryTermDetails = useCallback(async () => {
+    try {
+      const response = await getGlossaryTermByFQN(
+        entityDetails.fullyQualifiedName,
+        'relatedTerms,reviewers,tags,owner,children'
+      );
+      setSelectedData(response);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  }, [entityDetails.fullyQualifiedName, setSelectedData]);
+
+  useEffect(() => {
+    fetchGlossaryTermDetails();
+  }, [entityDetails]);
 
   return (
     <SummaryPanelSkeleton loading={Boolean(isLoading)}>
       <>
-        <Row className="m-md" gutter={[0, 4]}>
-          <Col span={24}>
-            <Row>
-              {entityInfo.map((info) => {
-                const isOwner = info.name === t('label.owner');
-
-                return info.visible?.includes(componentType) ? (
-                  <Col key={info.name} span={24}>
-                    <Row
-                      className={classNames('', {
-                        'p-b-md': isOwner,
-                      })}
-                      gutter={[16, 32]}>
-                      {!isOwner ? (
-                        <Col data-testid={`${info.name}-label`} span={10}>
-                          <Typography.Text className="text-grey-muted">
-                            {info.name}
-                          </Typography.Text>
-                        </Col>
-                      ) : null}
-                      <Col data-testid={`${info.name}-value`} span={14}>
-                        {info.isIcon ? (
-                          <SVGIcons
-                            alt="glossary-term-icon"
-                            className="h-4 w-4"
-                            icon={
-                              info.value ? Icons.CHECK_CIRCLE : Icons.FAIL_BADGE
-                            }
-                            width="12px"
-                          />
-                        ) : (
-                          <Typography.Text
-                            className={classNames('text-grey-muted', {
-                              'text-grey-body': !isOwner,
-                            })}>
-                            {info.value}
-                          </Typography.Text>
-                        )}
-                      </Col>
-                    </Row>
-                  </Col>
-                ) : null;
-              })}
-            </Row>
-          </Col>
-        </Row>
-        <Divider className="m-y-xs" />
         <Row className="m-md" gutter={[0, 16]}>
           <Col span={24}>
             <Typography.Text
@@ -118,7 +86,9 @@ function GlossaryTermSummary({
               <div className="d-flex flex-wrap">
                 {reviewers.map((assignee) => (
                   <>
-                    <span className="d-flex tw-m-1.5 tw-mt-0 tw-cursor-pointer">
+                    <span
+                      className="d-flex tw-m-1.5 tw-mt-0 tw-cursor-pointer"
+                      key={assignee.fullyQualifiedName}>
                       <ProfilePicture
                         id=""
                         name={assignee.name || ''}
@@ -136,6 +106,35 @@ function GlossaryTermSummary({
                 className="text-grey-body"
                 data-testid="no-reviewer-header">
                 {t('label.no-reviewer')}
+              </Typography.Text>
+            )}
+          </Col>
+        </Row>
+
+        <Divider className="m-y-xs" />
+
+        <Row className="m-md" gutter={[0, 16]}>
+          <Col span={24}>
+            <Typography.Text
+              className="text-base text-grey-muted"
+              data-testid="synonyms-header">
+              {t('label.synonym-plural')}
+            </Typography.Text>
+          </Col>
+          <Col span={24}>
+            {synonyms.length > 0 ? (
+              <div className="d-flex flex-wrap">
+                {synonyms.map((synonym) => (
+                  <>
+                    <Tag className="text-grey-body">{synonym}</Tag>
+                  </>
+                ))}
+              </div>
+            ) : (
+              <Typography.Text
+                className="text-grey-body"
+                data-testid="no-synonyms-available-header">
+                {t('message.no-synonyms-available')}
               </Typography.Text>
             )}
           </Col>

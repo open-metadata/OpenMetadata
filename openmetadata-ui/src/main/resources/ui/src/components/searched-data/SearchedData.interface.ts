@@ -54,6 +54,7 @@ export type SourceType = (
   id: string;
   tier?: string | Pick<TagLabel, 'tagFQN'>;
   tags?: string[] | TagLabel[];
+  entityType?: string;
   owner?: Partial<
     Pick<
       EntityReference,
