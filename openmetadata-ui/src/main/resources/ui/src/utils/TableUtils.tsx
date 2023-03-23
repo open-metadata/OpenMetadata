@@ -14,6 +14,7 @@
 import Icon from '@ant-design/icons';
 import { Tooltip } from 'antd';
 import { ExpandableConfig } from 'antd/lib/table/interface';
+import { ReactComponent as ContainerIcon } from 'assets/svg/ic-object-store.svg';
 import classNames from 'classnames';
 import { t } from 'i18next';
 import { upperCase } from 'lodash';
@@ -274,6 +275,10 @@ export const getEntityIcon = (indexType: string) => {
     case SearchIndex.PIPELINE:
     case EntityType.PIPELINE:
       return <PipelineIcon />;
+
+    case SearchIndex.CONTAINER:
+    case EntityType.CONTAINER:
+      return <ContainerIcon />;
 
     case SearchIndex.TABLE:
     case EntityType.TABLE:
