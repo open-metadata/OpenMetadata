@@ -31,8 +31,15 @@
       "description": "Regex to only fetch databases that matches the pattern.",
       "$ref": "../type/filterPattern.json#/definitions/filterPattern"
     },
-    "autoTagging": {
-      "$ref": "../type/processor.json#definitions/processor"
+    "processPiiSensitive": {
+      "description": "Optional configuration to automatically tag columns that might contain sensitive information",
+      "type": "boolean",
+      "default": false
+    },
+    "confidence": {
+        "description": "Set the Confidence value for which you want the column to be marked",
+        "type": "number",
+        "default": 80
     },
     "generateSampleData": {
       "description": "Option to turn on/off generating sample data.",

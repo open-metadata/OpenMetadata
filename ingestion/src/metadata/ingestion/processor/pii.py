@@ -142,11 +142,11 @@ class NERScanner:
         return label_score or (None, None)
 
     def column_name_scan(self, column_name: str):
-        for _, pii_type_pattern in ColumnNameScanner.sensitive_regex.items():
+        for pii_type_pattern in ColumnNameScanner.sensitive_regex.values():
             if pii_type_pattern.match(column_name) is not None:
                 return TagType.SENSITIVE.value, 1
 
-        for _, pii_type_pattern in ColumnNameScanner.non_sensitive_regex.items():
+        for pii_type_pattern in ColumnNameScanner.non_sensitive_regex.values():
             if pii_type_pattern.match(column_name) is not None:
                 return TagType.NONSENSITIVE.value, 1
 
