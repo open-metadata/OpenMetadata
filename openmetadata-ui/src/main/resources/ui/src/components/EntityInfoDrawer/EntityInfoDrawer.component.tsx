@@ -14,17 +14,21 @@
 import { CloseOutlined } from '@ant-design/icons';
 import { Col, Drawer, Row, Typography } from 'antd';
 import classNames from 'classnames';
+import ContainerSummary from 'components/Explore/EntitySummaryPanel/ContainerSummary/ContainerSummary.component';
 import DashboardSummary from 'components/Explore/EntitySummaryPanel/DashboardSummary/DashboardSummary.component';
 import MlModelSummary from 'components/Explore/EntitySummaryPanel/MlModelSummary/MlModelSummary.component';
 import PipelineSummary from 'components/Explore/EntitySummaryPanel/PipelineSummary/PipelineSummary.component';
 import TableSummary from 'components/Explore/EntitySummaryPanel/TableSummary/TableSummary.component';
 import TopicSummary from 'components/Explore/EntitySummaryPanel/TopicSummary/TopicSummary.component';
 import { FQN_SEPARATOR_CHAR } from 'constants/char.constants';
+import { Container } from 'generated/entity/data/container';
 import { Mlmodel } from 'generated/entity/data/mlmodel';
+import { EntityDetailUnion } from 'Models';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getDashboardByFqn } from 'rest/dashboardAPI';
 import { getMlModelByFQN } from 'rest/mlModelAPI';
+import { getContainerByName } from 'rest/objectStoreAPI';
 import { getPipelineByFqn } from 'rest/pipelineAPI';
 import { getTableDetailsByFQN } from 'rest/tableAPI';
 import { getTopicByFqn } from 'rest/topicsAPI';
@@ -45,8 +49,6 @@ import { SelectedNode } from '../EntityLineage/EntityLineage.interface';
 import { LineageDrawerProps } from './EntityInfoDrawer.interface';
 import './EntityInfoDrawer.style.less';
 
-type EntityData = Table | Pipeline | Dashboard | Topic | Mlmodel;
-
 const EntityInfoDrawer = ({
   show,
   onCancel,
@@ -54,131 +56,134 @@ const EntityInfoDrawer = ({
   isMainNode = false,
 }: LineageDrawerProps) => {
   const { t } = useTranslation();
-  const [entityDetail, setEntityDetail] = useState<EntityData>(
-    {} as EntityData
+  const [entityDetail, setEntityDetail] = useState<EntityDetailUnion>(
+    {} as EntityDetailUnion
   );
 
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
-  const fetchEntityDetail = (selectedNode: SelectedNode) => {
+  const fetchEntityDetail = async (selectedNode: SelectedNode) => {
     switch (selectedNode.type) {
       case EntityType.TABLE: {
         setIsLoading(true);
-        getTableDetailsByFQN(getEncodedFqn(selectedNode.fqn), [
-          'tags',
-          'owner',
-          'columns',
-          'usageSummary',
-          'profile',
-        ])
-          .then((res) => {
-            setEntityDetail(res);
-          })
-          .catch(() => {
-            showErrorToast(
-              t('server.error-selected-node-name-details', {
-                selectedNodeName: selectedNode.name,
-              })
-            );
-          })
-          .finally(() => {
-            setIsLoading(false);
-          });
+        try {
+          const response = await getTableDetailsByFQN(
+            getEncodedFqn(selectedNode.fqn),
+            ['tags', 'owner', 'columns', 'usageSummary', 'profile']
+          );
+          setEntityDetail(response);
+        } catch (error) {
+          showErrorToast(
+            t('server.error-selected-node-name-details', {
+              selectedNodeName: selectedNode.name,
+            })
+          );
+        } finally {
+          setIsLoading(false);
+        }
 
         break;
       }
       case EntityType.PIPELINE: {
         setIsLoading(true);
-        getPipelineByFqn(getEncodedFqn(selectedNode.fqn), [
-          'tags',
-          'owner',
-          'followers',
-          'tasks',
-          'tier',
-        ])
-          .then((res) => {
-            setEntityDetail(res);
-            setIsLoading(false);
-          })
-          .catch(() => {
-            showErrorToast(
-              t('server.error-selected-node-name-details', {
-                selectedNodeName: selectedNode.name,
-              })
-            );
-          })
-          .finally(() => {
-            setIsLoading(false);
-          });
+
+        try {
+          const response = await getPipelineByFqn(
+            getEncodedFqn(selectedNode.fqn),
+            ['tags', 'owner', 'followers', 'tasks', 'tier']
+          );
+          setEntityDetail(response);
+        } catch (error) {
+          showErrorToast(
+            t('server.error-selected-node-name-details', {
+              selectedNodeName: selectedNode.name,
+            })
+          );
+        } finally {
+          setIsLoading(false);
+        }
 
         break;
       }
 
       case EntityType.TOPIC: {
         setIsLoading(true);
-        getTopicByFqn(selectedNode.fqn ?? '', ['tags', 'owner'])
-          .then((res) => {
-            setEntityDetail(res);
-          })
-          .catch(() => {
-            showErrorToast(
-              t('server.error-selected-node-name-details', {
-                selectedNodeName: selectedNode.name,
-              })
-            );
-          })
-          .finally(() => {
-            setIsLoading(false);
-          });
+        try {
+          const response = await getTopicByFqn(selectedNode.fqn ?? '', [
+            'tags',
+            'owner',
+          ]);
+          setEntityDetail(response);
+        } catch (error) {
+          showErrorToast(
+            t('server.error-selected-node-name-details', {
+              selectedNodeName: selectedNode.name,
+            })
+          );
+        } finally {
+          setIsLoading(false);
+        }
 
         break;
       }
       case EntityType.DASHBOARD: {
         setIsLoading(true);
-        getDashboardByFqn(getEncodedFqn(selectedNode.fqn), [
-          'tags',
-          'owner',
-          'charts',
-        ])
-          .then((res) => {
-            setEntityDetail(res);
-            setIsLoading(false);
-          })
-          .catch(() => {
-            showErrorToast(
-              t('server.error-selected-node-name-details', {
-                selectedNodeName: selectedNode.name,
-              })
-            );
-          })
-          .finally(() => {
-            setIsLoading(false);
-          });
+        try {
+          const response = await getDashboardByFqn(
+            getEncodedFqn(selectedNode.fqn),
+            ['tags', 'owner', 'charts']
+          );
+          setEntityDetail(response);
+        } catch (error) {
+          showErrorToast(
+            t('server.error-selected-node-name-details', {
+              selectedNodeName: selectedNode.name,
+            })
+          );
+        } finally {
+          setIsLoading(false);
+        }
 
         break;
       }
 
       case EntityType.MLMODEL: {
         setIsLoading(true);
-        getMlModelByFQN(getEncodedFqn(selectedNode.fqn), [
-          'tags',
-          'owner',
-          'dashboard',
-        ])
-          .then((res) => {
-            setEntityDetail(res);
-            setIsLoading(false);
-          })
-          .catch(() => {
-            showErrorToast(
-              t('server.error-selected-node-name-details', {
-                selectedNodeName: selectedNode.name,
-              })
-            );
-          })
-          .finally(() => {
-            setIsLoading(false);
-          });
+        try {
+          const response = await getMlModelByFQN(
+            getEncodedFqn(selectedNode.fqn),
+            ['tags', 'owner', 'dashboard']
+          );
+          setEntityDetail(response);
+        } catch (error) {
+          showErrorToast(
+            t('server.error-selected-node-name-details', {
+              selectedNodeName: selectedNode.name,
+            })
+          );
+        } finally {
+          setIsLoading(false);
+        }
+
+        break;
+      }
+      case EntityType.CONTAINER: {
+        setIsLoading(true);
+        try {
+          const response = await getContainerByName(
+            getEncodedFqn(selectedNode.fqn),
+            'dataModel,owner,tags'
+          );
+          setEntityDetail(response);
+        } catch (error) {
+          showErrorToast(
+            t('server.error-selected-node-name-details', {
+              selectedNodeName: selectedNode.name,
+            })
+          );
+        } finally {
+          setIsLoading(false);
+        }
 
         break;
       }
@@ -239,6 +244,15 @@ const EntityInfoDrawer = ({
           <MlModelSummary
             componentType={DRAWER_NAVIGATION_OPTIONS.lineage}
             entityDetails={entityDetail as Mlmodel}
+            isLoading={isLoading}
+            tags={tags}
+          />
+        );
+      case EntityType.CONTAINER:
+        return (
+          <ContainerSummary
+            componentType={DRAWER_NAVIGATION_OPTIONS.lineage}
+            entityDetails={entityDetail as Container}
             isLoading={isLoading}
             tags={tags}
           />
