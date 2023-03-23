@@ -20,6 +20,8 @@ from google.cloud.bigquery.client import Client
 from google.cloud.datacatalog_v1 import PolicyTagManagerClient
 from sqlalchemy import inspect
 from sqlalchemy.engine.reflection import Inspector
+from sqlalchemy.sql.sqltypes import Interval
+from sqlalchemy.types import String
 from sqlalchemy_bigquery import BigQueryDialect, _types
 from sqlalchemy_bigquery._types import _get_sqla_column_type
 
@@ -68,10 +70,25 @@ from metadata.ingestion.source.database.common_db_source import CommonDbSourceSe
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_database
 from metadata.utils.logger import ingestion_logger
+from metadata.utils.sqlalchemy_utils import is_complex_type
+
+
+class BQJSON(String):
+    """The SQL JSON type."""
+
+    def get_col_spec(self, **kw):  # pylint: disable=unused-argument
+        return "JSON"
+
 
 logger = ingestion_logger()
-GEOGRAPHY = create_sqlalchemy_type("GEOGRAPHY")
-_types._type_map["GEOGRAPHY"] = GEOGRAPHY  # pylint: disable=protected-access
+# pylint: disable=protected-access
+_types._type_map.update(
+    {
+        "GEOGRAPHY": create_sqlalchemy_type("GEOGRAPHY"),
+        "JSON": BQJSON,
+        "INTERVAL": Interval,
+    }
+)
 
 
 def get_columns(bq_schema):
@@ -80,16 +97,18 @@ def get_columns(bq_schema):
     """
     col_list = []
     for field in bq_schema:
+        col_type = _get_sqla_column_type(field)
         col_obj = {
             "name": field.name,
-            "type": _get_sqla_column_type(field),
+            "type": col_type,
             "nullable": field.mode in ("NULLABLE", "REPEATED"),
             "comment": field.description,
             "default": None,
             "precision": field.precision,
             "scale": field.scale,
             "max_length": field.max_length,
-            "raw_data_type": str(_get_sqla_column_type(field)),
+            "system_data_type": str(col_type),
+            "is_complex": is_complex_type(str(col_type)),
             "policy_tags": None,
         }
         try:
@@ -390,7 +409,7 @@ class BigquerySource(CommonDbSourceService):
             return True, table_partition
         return False, None
 
-    def parse_raw_data_type(self, raw_data_type):
+    def clean_raw_data_type(self, raw_data_type):
         return raw_data_type.replace(", ", ",").replace(" ", ":").lower()
 
     def close(self):
