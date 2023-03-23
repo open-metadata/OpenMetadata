@@ -93,7 +93,7 @@ const QueryCard: FC<QueryCardProp> = ({
     <Row gutter={[0, 8]}>
       <Col span={24}>
         <Card
-          bodyStyle={{ padding: 0, paddingLeft: 12, paddingTop: 1 }}
+          bodyStyle={{ padding: 0, paddingTop: 1 }}
           bordered={false}
           className={classNames(
             'query-card-container',
@@ -151,8 +151,8 @@ const QueryCard: FC<QueryCardProp> = ({
               onChange={handleQueryChange}
             />
           </div>
-          <Row align="middle" className="p-y-xs">
-            <Col className="p-y-xs" span={16}>
+          <Row align="middle" className="p-y-xs border-t-1">
+            <Col className="p-y-xs p-l-md" span={16}>
               <QueryUsedByOtherTable query={query} tableId={tableId} />
             </Col>
             <Col span={8}>
