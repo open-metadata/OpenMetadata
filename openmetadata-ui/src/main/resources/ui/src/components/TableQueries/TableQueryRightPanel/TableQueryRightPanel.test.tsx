@@ -16,9 +16,8 @@ import { Query } from 'generated/entity/data/query';
 import { MOCK_QUERIES } from 'mocks/Queries.mock';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
-import { fetchGlossaryTerms } from 'utils/GlossaryUtils';
 import { DEFAULT_ENTITY_PERMISSION } from 'utils/PermissionsUtils';
-import { getClassifications } from 'utils/TagsUtils';
+import { fetchTagsAndGlossaryTerms } from 'utils/TagsUtils';
 import TableQueryRightPanel from './TableQueryRightPanel.component';
 import { TableQueryRightPanelProps } from './TableQueryRightPanel.interface';
 
@@ -47,12 +46,7 @@ jest.mock('components/Loader/Loader', () => {
   return jest.fn().mockImplementation(() => <div>Loader</div>);
 });
 jest.mock('utils/TagsUtils', () => ({
-  getClassifications: jest
-    .fn()
-    .mockImplementation(() => Promise.resolve({ data: [] })),
-}));
-jest.mock('utils/GlossaryUtils', () => ({
-  fetchGlossaryTerms: jest
+  fetchTagsAndGlossaryTerms: jest
     .fn()
     .mockImplementation(() => Promise.resolve({ data: [] })),
 }));
@@ -157,8 +151,9 @@ describe('TableQueryRightPanel component test', () => {
   });
 
   it('onClick of tag container it should fetch call tag and glossaryTerm API', async () => {
-    const mockGetClassifications = getClassifications as jest.Mock;
-    const mockFetchGlossaryTerms = fetchGlossaryTerms as jest.Mock;
+    const mockFetchTagsAndGlossaryTerms =
+      fetchTagsAndGlossaryTerms as jest.Mock;
+
     render(
       <TableQueryRightPanel
         {...mockProps}
@@ -176,7 +171,6 @@ describe('TableQueryRightPanel component test', () => {
       fireEvent.click(tagsContainer);
     });
 
-    expect(mockGetClassifications.mock.calls).toHaveLength(1);
-    expect(mockFetchGlossaryTerms.mock.calls).toHaveLength(1);
+    expect(mockFetchTagsAndGlossaryTerms.mock.calls).toHaveLength(1);
   });
 });
