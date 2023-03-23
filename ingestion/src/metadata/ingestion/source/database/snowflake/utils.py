@@ -25,11 +25,13 @@ from metadata.ingestion.source.database.snowflake.queries import (
     SNOWFLAKE_GET_SCHEMA_COLUMNS,
     SNOWFLAKE_GET_TABLE_NAMES,
     SNOWFLAKE_GET_VIEW_NAMES,
+    SNOWFLAKE_GET_WITHOUT_TRANSIENT_TABLE_NAMES,
 )
 from metadata.utils.sqlalchemy_utils import (
     get_display_datatype,
     get_table_comment_wrapper,
 )
+
 
 def get_table_names_reflection(self, schema=None, **kw):
     """Return all table names in referred to within a particular schema.

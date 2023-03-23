@@ -54,6 +54,7 @@ from metadata.ingestion.source.database.snowflake.utils import (
     get_schema_columns,
     get_table_comment,
     get_table_names,
+    get_table_names_reflection,
     get_unique_constraints,
     get_view_definition,
     get_view_names,
@@ -84,6 +85,7 @@ SnowflakeDialect.get_unique_constraints = get_unique_constraints
 SnowflakeDialect._get_schema_columns = (  # pylint: disable=protected-access
     get_schema_columns
 )
+Inspector.get_table_names = get_table_names_reflection
 
 
 class SnowflakeSource(CommonDbSourceService):
