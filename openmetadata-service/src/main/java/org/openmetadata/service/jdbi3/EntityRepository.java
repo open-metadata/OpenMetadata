@@ -1347,7 +1347,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
    *
    * @see TableRepository.TableUpdater#entitySpecificUpdate() for example.
    */
-  public class EntityUpdater {
+  public class  EntityUpdater {
     protected final T original;
     protected final T updated;
     protected final Operation operation;
