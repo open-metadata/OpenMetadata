@@ -142,6 +142,10 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
 
   return (
     <Space
+      /**
+       * to avoid the overflow
+       */
+      wrap
       align="center"
       className={classNames('w-full', containerClass)}
       data-testid="tag-container"

@@ -426,7 +426,7 @@ const ContainerPage = () => {
         const { tags: newTags, version } = await handleUpdateContainerData({
           ...(containerData as Container),
           tags: [
-            ...(containerData?.tags ?? []),
+            ...getTagsWithoutTier(containerData?.tags ?? []),
             {
               tagFQN: updatedTier,
               labelType: LabelType.Manual,
