@@ -20,7 +20,6 @@ import org.openmetadata.schema.metadataIngestion.SourceConfig;
 import org.openmetadata.schema.metadataIngestion.dbtconfig.DbtGCSConfig;
 import org.openmetadata.schema.security.SecurityConfiguration;
 import org.openmetadata.schema.security.client.GoogleSSOClientConfig;
-import org.openmetadata.schema.security.credentials.AWSCredentials;
 import org.openmetadata.schema.security.credentials.GCSCredentials;
 import org.openmetadata.schema.security.credentials.GCSValues;
 import org.openmetadata.schema.services.connections.dashboard.SupersetConnection;
@@ -247,8 +246,7 @@ abstract class TestEntityMasker {
   }
 
   private OpenMetadataConnection buildOpenMetadataConnection() {
-    return new OpenMetadataConnection()
-        .withSecurityConfig(buildGoogleSSOClientConfig());
+    return new OpenMetadataConnection().withSecurityConfig(buildGoogleSSOClientConfig());
   }
 
   private GoogleSSOClientConfig buildGoogleSSOClientConfig() {
