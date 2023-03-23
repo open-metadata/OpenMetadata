@@ -67,6 +67,7 @@ class DomodatabaseSource(DatabaseServiceSource):
         self.service_connection = self.config.serviceConnection.__root__.config
         self.status = SQLSourceStatus()
         self.domo_client = get_connection(self.service_connection)
+        self.connection_obj = self.domo_client
         self.client = DomoClient(self.service_connection)
         super().__init__()
         self.test_connection()
@@ -177,10 +178,6 @@ class DomodatabaseSource(DatabaseServiceSource):
             )
             row_order += 1
         return columns
-
-    def test_connection(self) -> None:
-        test_connection_fn = get_test_connection_fn(self.service_connection)
-        test_connection_fn(self.domo_client, self.service_connection)
 
     def yield_tag(self, schema_name: str) -> Iterable[OMetaTagAndClassification]:
         pass

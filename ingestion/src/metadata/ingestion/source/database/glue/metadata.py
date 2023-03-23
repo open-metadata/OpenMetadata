@@ -71,6 +71,7 @@ class GlueSource(DatabaseServiceSource):
         self.service_connection = self.config.serviceConnection.__root__.config
         self.status = SQLSourceStatus()
         self.glue = get_connection(self.service_connection)
+        self.connection_obj = self.glue
         super().__init__()
         self.test_connection()
 
@@ -379,7 +380,3 @@ class GlueSource(DatabaseServiceSource):
 
     def get_status(self) -> SourceStatus:
         return self.status
-
-    def test_connection(self) -> None:
-        test_connection_fn = get_test_connection_fn(self.service_connection)
-        test_connection_fn(self.glue, self.service_connection)
