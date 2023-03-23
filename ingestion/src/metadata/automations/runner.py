@@ -45,6 +45,7 @@ def _(request: TestServiceConnectionRequest, automation_workflow: AutomationWork
     """
     Run the test connection
     """
+    # This will already instantiate the Secrets Manager
     metadata = OpenMetadata(config=automation_workflow.openMetadataServerConnection)
     connection = get_connection(request.connection.config)
 

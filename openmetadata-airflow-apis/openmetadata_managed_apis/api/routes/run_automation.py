@@ -60,13 +60,7 @@ def get_fn(blueprint: Blueprint) -> Callable:
             automation_workflow: AutomationWorkflow = AutomationWorkflow.parse_obj(
                 json_request
             )
-            # we need to instantiate the secret manager in case secrets are passed
-            SecretsManagerFactory(
-                automation_workflow.openMetadataServerConnection.secretsManagerProvider,
-                build_secrets_manager_credentials(
-                    automation_workflow.openMetadataServerConnection.secretsManagerProvider
-                ),
-            )
+
             execute(automation_workflow)
 
             return ApiResponse.success(
