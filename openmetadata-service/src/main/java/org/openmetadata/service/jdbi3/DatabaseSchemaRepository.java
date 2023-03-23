@@ -120,6 +120,8 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
         .withServiceType(database.getServiceType());
 
     // Carry forward ownership from database, if necessary
-    schema.withOwner(schema.getOwner() == null ? database.getOwner() : schema.getOwner());
+    if (database.getOwner() != null && schema.getOwner() == null) {
+      schema.withOwner(database.getOwner().withDescription("inherited"));
+    }
   }
 }
