@@ -19,12 +19,19 @@ from pydantic import BaseModel, Field
 
 
 class StackTraceError(BaseModel):
+    """
+    Class that represents a failure status
+    """
+
     name: str
     error: str
     stack_trace: Optional[str]
 
 
 class Status(BaseModel):
+    """
+    Class to handle status
+    """
 
     records: List[Any] = Field(default_factory=list)
     warnings: List[Any] = Field(default_factory=list)
