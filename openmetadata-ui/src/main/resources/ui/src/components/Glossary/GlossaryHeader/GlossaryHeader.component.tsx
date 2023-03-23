@@ -12,7 +12,7 @@
  */
 import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
 import { Button, Col, Input, Row, Space, Tooltip, Typography } from 'antd';
-import Description from 'components/common/description/Description';
+import DescriptionV1 from 'components/common/description/DescriptionV1';
 import OwnerWidgetWrapper from 'components/common/OwnerWidget/OwnerWidgetWrapper.component';
 import ProfilePicture from 'components/common/ProfilePicture/ProfilePicture';
 import ReviewerModal from 'components/Modals/ReviewerModal/ReviewerModal.component';
@@ -86,18 +86,18 @@ const GlossaryHeader = ({
     }
   };
 
-  const handleRemoveReviewer = (id: string) => {
-    let updatedGlossary = cloneDeep(selectedData);
-    const reviewer = updatedGlossary.reviewers?.filter(
-      (glossary) => glossary.id !== id
-    );
-    updatedGlossary = {
-      ...updatedGlossary,
-      reviewers: reviewer,
-    };
+  // const handleRemoveReviewer = (id: string) => {
+  //   let updatedGlossary = cloneDeep(selectedData);
+  //   const reviewer = updatedGlossary.reviewers?.filter(
+  //     (glossary) => glossary.id !== id
+  //   );
+  //   updatedGlossary = {
+  //     ...updatedGlossary,
+  //     reviewers: reviewer,
+  //   };
 
-    onUpdate(updatedGlossary);
-  };
+  //   onUpdate(updatedGlossary);
+  // };
 
   const handleUpdatedOwner = (newOwner: Glossary['owner']) => {
     if (newOwner) {
@@ -254,86 +254,10 @@ const GlossaryHeader = ({
             </div>
           </div>
           <span className="tw-mr-1 tw-inline-block tw-text-gray-400">|</span>
-
-          <div
-            className="flex items-center tw-flex-wrap"
-            data-testid="reviewer-card-container">
-            <Typography.Text className="text-grey-muted m-r-xs">
-              {`${t('label.reviewer')}:`}
-            </Typography.Text>{' '}
-            {selectedData.reviewers && selectedData.reviewers.length ? (
-              <>
-                {selectedData.reviewers.map((reviewer) => (
-                  <Space
-                    className="m-r-xss"
-                    data-testid={`reviewer-${reviewer.displayName}`}
-                    key={reviewer.name}
-                    size={4}>
-                    <ProfilePicture
-                      displayName={getEntityName(reviewer)}
-                      id={reviewer.id || ''}
-                      name={reviewer?.name || ''}
-                      textClass="text-xs"
-                      width="20"
-                    />
-                    <Space size={2}>
-                      <Link to={getUserPath(reviewer.name ?? '')}>
-                        {getEntityName(reviewer)}
-                      </Link>
-                      <Tooltip
-                        title={
-                          permissions.EditAll
-                            ? 'Remove Reviewer'
-                            : NO_PERMISSION_FOR_ACTION
-                        }>
-                        <Button
-                          className="p-0 flex-center"
-                          data-testid="remove"
-                          disabled={!permissions.EditAll}
-                          icon={<CloseOutlined />}
-                          size="small"
-                          type="text"
-                          onClick={() => handleRemoveReviewer(reviewer.id)}
-                        />
-                      </Tooltip>
-                    </Space>
-                  </Space>
-                ))}
-              </>
-            ) : (
-              <span className="text-grey-muted">
-                {t('label.no-entity', {
-                  entity: t('label.reviewer-plural'),
-                })}
-              </span>
-            )}
-            <Tooltip
-              placement="topRight"
-              title={
-                permissions.EditAll ? 'Add Reviewer' : NO_PERMISSION_FOR_ACTION
-              }>
-              <Button
-                className="p-0 flex-center"
-                data-testid="add-new-reviewer"
-                disabled={!permissions.EditAll}
-                icon={
-                  <SVGIcons
-                    alt="edit"
-                    icon={Icons.EDIT}
-                    title="Edit"
-                    width="16px"
-                  />
-                }
-                size="small"
-                type="text"
-                onClick={() => setShowReviewerModal(true)}
-              />
-            </Tooltip>
-          </div>
         </Space>
       </Col>
       <Col data-testid="updated-by-container" span={24}>
-        <Description
+        <DescriptionV1
           description={selectedData?.description || ''}
           entityName={selectedData?.displayName ?? selectedData?.name}
           hasEditAccess={permissions.EditDescription || permissions.EditAll}

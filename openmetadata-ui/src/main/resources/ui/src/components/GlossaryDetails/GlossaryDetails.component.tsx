@@ -11,10 +11,9 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Row, Space } from 'antd';
+import { Col, Row } from 'antd';
 import GlossaryHeader from 'components/Glossary/GlossaryHeader/GlossaryHeader.component';
 import GlossaryTermTab from 'components/Glossary/GlossaryTermTab/GlossaryTermTab.component';
-import Tags from 'components/Tag/Tags/tags';
 import { t } from 'i18next';
 import { cloneDeep, includes, isEqual } from 'lodash';
 import { EntityTags } from 'Models';
@@ -22,15 +21,9 @@ import React, { useEffect, useState } from 'react';
 import { Glossary } from '../../generated/entity/data/glossary';
 import { EntityReference } from '../../generated/type/entityReference';
 import { LabelType, State, TagSource } from '../../generated/type/tagLabel';
-import SVGIcons from '../../utils/SvgUtils';
-import {
-  getAllTagsForOptions,
-  getTagOptionsFromFQN,
-} from '../../utils/TagsUtils';
+import { getAllTagsForOptions } from '../../utils/TagsUtils';
 import ReviewerModal from '../Modals/ReviewerModal/ReviewerModal.component';
 import { OperationPermission } from '../PermissionProvider/PermissionProvider.interface';
-import TagsContainer from '../Tag/TagsContainer/tags-container';
-import TagsViewer from '../Tag/TagsViewer/tags-viewer';
 import './GlossaryDetails.style.less';
 
 type props = {
@@ -136,7 +129,7 @@ const GlossaryDetails = ({ permissions, glossary, updateGlossary }: props) => {
           selectedData={glossary}
           onUpdate={updateGlossary}
         />
-        {!isTagEditable && glossary?.tags && glossary.tags.length > 0 && (
+        {/* {!isTagEditable && glossary?.tags && glossary.tags.length > 0 && (
           <>
             <SVGIcons
               alt="icon-tag"
@@ -200,7 +193,7 @@ const GlossaryDetails = ({ permissions, glossary, updateGlossary }: props) => {
               </Button>
             )}
           </TagsContainer>
-        </Space>
+        </Space> */}
       </Col>
 
       <Col span={24}>
