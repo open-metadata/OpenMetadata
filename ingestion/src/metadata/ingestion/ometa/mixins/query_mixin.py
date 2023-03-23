@@ -44,15 +44,7 @@ class OMetaQueryMixin:
         for create_query in queries:
             query = self.client.put(self.get_suffix(Query), data=create_query.json())
             if query and query.get("id"):
-                table_ref = EntityReference(
-                    id=entity.id.__root__,
-                    type="table",
-                    fullyQualifiedName=entity.fullyQualifiedName.__root__,
-                    displayName=entity.displayName,
-                    description=entity.description.__root__,
-                    deleted=entity.deleted,
-                    href=entity.href.__root__,
-                )
+                table_ref = EntityReference(id=entity.id.__root__, type="table")
                 # convert object to json array string
                 table_ref_json = "[" + table_ref.json() + "]"
                 self.client.put(

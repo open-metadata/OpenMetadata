@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate.
+ *  Copyright 2023 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,14 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-.cm-string {
-  color: #a55100 !important;
-}
-.cm-string.cm-property {
-  color: #450de2 !important;
-}
 
-.cm-h-full .react-codemirror2,
-.cm-h-full .react-codemirror2 > .CodeMirror {
-  height: 100%;
-}
+export const QUERY_USED_BY_TABLE_VIEW_CAP = 3;
+export const QUERY_LINE_HEIGHT = 4;
+export const QUERY_DATE_FORMAT = "'On' MMMM do 'at' h:mma 'UTC'ZZ"; // eg: On March 6th at 6:20pm UTC+1

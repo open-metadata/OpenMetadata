@@ -93,7 +93,7 @@ describe('Test QueryCard Component', () => {
 
     const expandButton = await findByTestId(
       container,
-      'expand-collapse-button'
+      'query-entity-expand-button'
     );
 
     expect(queryUsedByOtherTable).toBeInTheDocument();
