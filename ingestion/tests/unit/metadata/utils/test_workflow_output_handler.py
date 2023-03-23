@@ -240,3 +240,18 @@ Workflow finished successfully"""
             output = "\n".join([strip_ansi_codes(line) for line in logger.output])
             self.assertIn("Showing only the first 100 failures:", output)
             self.assertEqual(output.count(long_line), 5100)
+
+    def test_empty_workflow_display_nothing(self):
+        expected_summary = """INFO:metadata.Utils:Workflow Summary:
+INFO:metadata.Utils:Total processed records: 0
+INFO:metadata.Utils:Total warnings: 0
+INFO:metadata.Utils:Total filtered: 0
+INFO:metadata.Utils:Total errors: 0
+INFO:metadata.Utils:Success %: 100.0
+INFO:metadata.Utils:Workflow finished successfully"""
+        workflow = TestWorkflow()
+        workflow.status = SourceStatus()
+        with self.assertLogs(Loggers.UTILS.value, level="INFO") as logger:
+            print_test_suite_status(workflow)
+            output = "\n".join([strip_ansi_codes(line) for line in logger.output])
+            self.assertEqual(expected_summary, output)
