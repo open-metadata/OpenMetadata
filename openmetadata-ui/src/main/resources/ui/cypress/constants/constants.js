@@ -68,6 +68,7 @@ export const SEARCH_ENTITY_TABLE = {
     displayName: 'raw_product_catalog',
     entity: MYDATA_SUMMARY_OPTIONS.tables,
     serviceName: 'sample_data',
+    schemaName: 'shopify',
   },
   table_4: {
     term: 'dim_address',
