@@ -72,39 +72,4 @@ touch fr-fr.json
 
 ### Sync the Language File with the Primary Language
 
-Since we use `en-us` as our primary language, if you have added a new language file, you need to sync the newly added language file with the primary language. You can use the `i18n` script to achieve this.
-
-```shell
-yarn run i18n
-```
-
-### Update the `i18nextUtil.ts`
-
-Now add the newly added language in `i18nextUtil.ts` , so that `i18next` can have the translation resource available.
-
-```diff
-import { InitOptions } from 'i18next';
-import { map } from 'lodash';
-import enUS from '../../locale/languages/en-us.json';
-+ import frFR from '../../locale/languages/fr-fr.json';
-
-export const getInitOptions = (): InitOptions => {
-  return {
-+   supportedLngs: ['en-US', 'fr-FR'],
-    resources: {
-      'en-US': { translation: enUS },
-+     'fr-FR': { translation: frFR },
-    },
-    fallbackLng: ['en-US'],
-```
-
-### Test the language translation
-
-To check the language translation functionality, please follow the steps outlined below:
-
-1. Click on the language selection dropdown, and a list of available languages will appear.
-2. Choose the language you wish to test, and the translation will be applied.
-
-Please refer to the image below for assistance:
-
-<img width="1440" alt="image" src="https://user-images.githubusercontent.com/59080942/222646947-7ec6422e-4669-4db1-92c1-c6aec596dfdd.png">
+To ensure consistency with our primary language, which is `en-us`, it is necessary to synchronize any newly added language files. This can be done by copying the content from the `en-us.json` file and translating it accordingly.
