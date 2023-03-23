@@ -23,7 +23,6 @@ import static org.openmetadata.schema.auth.SSOAuthMechanism.SsoServiceType.OKTA;
 import static org.openmetadata.schema.entity.teams.AuthenticationMechanism.AuthType.JWT;
 import static org.openmetadata.schema.entity.teams.AuthenticationMechanism.AuthType.SSO;
 import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
-import static org.openmetadata.service.resources.teams.UserResource.USER_PROTECTED_FIELDS;
 
 import at.favre.lib.crypto.bcrypt.BCrypt;
 import java.io.IOException;
@@ -76,17 +75,13 @@ public final class UserUtil {
 
   public static void addUserForBasicAuth(String username, String pwd, String domain) throws IOException {
     UserRepository userRepository = (UserRepository) Entity.getEntityRepository(Entity.USER);
-    boolean exist = userRepository.checkEmailAlreadyExists(String.format("%s@%s", username, domain));
-    if (exist) {
-      List<String> fields = userRepository.getAllowedFieldsCopy();
-      fields.removeIf(s -> s.equals("owns") || s.equals("follows"));
-      fields.add(USER_PROTECTED_FIELDS);
-      User originalUser =
-          userRepository.getByName(null, username, new EntityUtil.Fields(fields, String.join(",", fields)));
+    try {
+      List<String> fields = List.of("profile", "roles", "teams", "authenticationMechanism", "isEmailVerified");
+      User originalUser = userRepository.getByName(null, username, new EntityUtil.Fields(fields));
       if (originalUser.getAuthenticationMechanism() == null) {
         updateBasicAuthUser(originalUser, pwd);
       }
-    } else {
+    } catch (EntityNotFoundException e) {
       User user = user(username, domain, username).withIsAdmin(true).withIsEmailVerified(true);
       updateBasicAuthUser(user, pwd);
     }
