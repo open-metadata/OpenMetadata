@@ -24,7 +24,7 @@ describe('SelectableList Component Test', () => {
       </UserTeamSelectableList>
     );
 
-    const children = screen.getByText('Children');
+    const children = screen.getByText('CustomRenderer');
 
     expect(children).toBeInTheDocument();
   });

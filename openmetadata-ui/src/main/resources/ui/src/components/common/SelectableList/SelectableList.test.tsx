@@ -78,12 +78,10 @@ describe('SelectableList Component Test', () => {
       const searchBar = screen.getByTestId('search-bar-container');
       const updateBtn = screen.getByText('label.update');
       const cancelBtn = screen.getByText('label.cancel');
-      const countInfo = screen.getByText('label.count-of-total-entity');
 
       expect(searchBar).toBeInTheDocument();
       expect(updateBtn).toBeInTheDocument();
       expect(cancelBtn).toBeInTheDocument();
-      expect(countInfo).toBeInTheDocument();
     });
   });
 

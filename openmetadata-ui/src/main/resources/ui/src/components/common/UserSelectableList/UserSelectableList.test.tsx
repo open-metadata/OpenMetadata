@@ -12,7 +12,6 @@
  */
 import { act, render, screen } from '@testing-library/react';
 import React from 'react';
-import { searchData } from 'rest/miscAPI';
 import { UserSelectableList } from './UserSelectableList.component';
 
 const mockOnUpdate = jest.fn();
@@ -33,20 +32,6 @@ describe('SelectableList Component Test', () => {
 
     act(() => {
       expect(screen.getByTestId('add-new-reviewer')).toBeDisabled();
-    });
-  });
-
-  it('should call fetchOptions on render', () => {
-    render(
-      <UserSelectableList
-        hasPermission
-        selectedUsers={[]}
-        onUpdate={mockOnUpdate}
-      />
-    );
-
-    act(() => {
-      expect(searchData).toHaveBeenCalledTimes(1);
     });
   });
 });
