@@ -397,12 +397,15 @@ class TestSuiteWorkflow(WorkflowStatusMixin):
                     )
                 )
             except Exception as exc:
-                logger.warning(
+                error = (
                     f"Couldn't create test case name {test_case_name_to_create}: {exc}"
                 )
+                logger.warning(error)
                 logger.debug(traceback.format_exc())
-                self.status.failure(
-                    test_case_to_create.entityLink.__root__.split("::")[2]
+                self.status.failed(
+                    test_case_to_create.entityLink.__root__.split("::")[2],
+                    error,
+                    traceback.format_exc(),
                 )
 
         return created_test_case
@@ -453,15 +456,19 @@ class TestSuiteWorkflow(WorkflowStatusMixin):
                         )
                         self.status.processed(test_case.fullyQualifiedName.__root__)
                     except Exception as exc:
-                        logger.debug(traceback.format_exc())
-                        logger.warning(
-                            f"Could not run test case {test_case.name}: {exc}"
+                        error = (
+                            f"Could not run test case {test_case.name.__root__}: {exc}"
                         )
-                        self.status.failure(entity_fqn)
+                        logger.debug(traceback.format_exc())
+                        logger.warning(error)
+                        self.status.failed(
+                            test_case.name.__root__, error, traceback.format_exc()
+                        )
             except TypeError as exc:
+                error = f"Could not run test case for table {entity_fqn}: {exc}"
                 logger.debug(traceback.format_exc())
-                logger.warning(f"Could not run test case for table {entity_fqn}: {exc}")
-                self.status.failure(entity_fqn)
+                logger.warning(error)
+                self.status.failed(entity_fqn, error, traceback.format_exc())
 
     def execute(self):
         """Execute test suite workflow"""
