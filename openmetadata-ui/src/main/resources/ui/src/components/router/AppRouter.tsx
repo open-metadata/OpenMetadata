@@ -17,6 +17,7 @@ import { Redirect, Route, Switch, useLocation } from 'react-router-dom';
 import { useAnalytics } from 'use-analytics';
 import { ROUTES } from '../../constants/constants';
 import { AuthTypes } from '../../enums/signin.enum';
+import SamlCallback from '../../pages/SamlCallback';
 import { isProtectedRoute } from '../../utils/AuthProvider.util';
 import { useAuthContext } from '../authentication/auth-provider/AuthProvider';
 import Loader from '../Loader/Loader';
@@ -104,7 +105,7 @@ const AppRouter = () => {
         {callbackComponent ? (
           <Route component={callbackComponent} path={ROUTES.CALLBACK} />
         ) : null}
-
+        <Route component={SamlCallback} path={ROUTES.SAML_CALLBACK} />
         <Route exact path={ROUTES.HOME}>
           {!isAuthenticated && !isSigningIn ? (
             <>
