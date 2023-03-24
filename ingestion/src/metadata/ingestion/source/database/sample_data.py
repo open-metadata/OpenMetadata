@@ -23,11 +23,13 @@ from pydantic import ValidationError
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createContainer import CreateContainerRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
+from metadata.generated.schema.api.data.createDashboardDataModel import (
+    CreateDashboardDataModelRequest,
+)
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
 from metadata.generated.schema.api.data.createDatabaseSchema import (
     CreateDatabaseSchemaRequest,
 )
-from metadata.generated.schema.api.data.createDataModel import CreateDataModelRequest
 from metadata.generated.schema.api.data.createLocation import CreateLocationRequest
 from metadata.generated.schema.api.data.createMlModel import CreateMlModelRequest
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
@@ -740,10 +742,10 @@ class SampleDataSource(
                 logger.debug(traceback.format_exc())
                 logger.warning(f"Unexpected exception ingesting chart [{chart}]: {err}")
 
-    def ingest_data_models(self) -> Iterable[CreateDataModelRequest]:
+    def ingest_data_models(self) -> Iterable[CreateDashboardDataModelRequest]:
         for data_model in self.data_models["datamodels"]:
             try:
-                data_model_ev = CreateDataModelRequest(
+                data_model_ev = CreateDashboardDataModelRequest(
                     name=data_model["name"],
                     displayName=data_model["displayName"],
                     description=data_model["description"],

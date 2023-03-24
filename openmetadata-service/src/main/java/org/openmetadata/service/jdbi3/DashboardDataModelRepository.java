@@ -23,7 +23,7 @@ import java.util.Collections;
 import java.util.List;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
-import org.openmetadata.schema.entity.data.DataModel;
+import org.openmetadata.schema.entity.data.DashboardDataModel;
 import org.openmetadata.schema.entity.services.DashboardService;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.EntityReference;
@@ -32,24 +32,24 @@ import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.databases.DatabaseUtil;
-import org.openmetadata.service.resources.datamodels.DataModelResource;
+import org.openmetadata.service.resources.datamodels.DashboardDataModelResource;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 @Slf4j
-public class DataModelRepository extends EntityRepository<DataModel> {
+public class DashboardDataModelRepository extends EntityRepository<DashboardDataModel> {
 
   private static final String DATA_MODELS_FIELD = "dataModels";
 
   private static final String DATA_MODEL_UPDATE_FIELDS = "owner,tags,followers";
   private static final String DATA_MODEL_PATCH_FIELDS = "owner,tags,followers";
 
-  public DataModelRepository(CollectionDAO dao) {
+  public DashboardDataModelRepository(CollectionDAO dao) {
     super(
-        DataModelResource.COLLECTION_PATH,
+        DashboardDataModelResource.COLLECTION_PATH,
         Entity.DATA_MODEL,
-        DataModel.class,
+        DashboardDataModel.class,
         dao.dataModelDAO(),
         dao,
         DATA_MODEL_PATCH_FIELDS,
@@ -57,57 +57,58 @@ public class DataModelRepository extends EntityRepository<DataModel> {
   }
 
   @Override
-  public void setFullyQualifiedName(DataModel dataModel) {
-    dataModel.setFullyQualifiedName(
-        FullyQualifiedName.add(dataModel.getService().getName() + ".model", dataModel.getName()));
-    ColumnUtil.setColumnFQN(dataModel.getFullyQualifiedName(), dataModel.getColumns());
+  public void setFullyQualifiedName(DashboardDataModel dashboardDataModel) {
+    dashboardDataModel.setFullyQualifiedName(
+        FullyQualifiedName.add(dashboardDataModel.getService().getName() + ".model", dashboardDataModel.getName()));
+    ColumnUtil.setColumnFQN(dashboardDataModel.getFullyQualifiedName(), dashboardDataModel.getColumns());
   }
 
   @Override
-  public void prepare(DataModel dataModel) throws IOException {
-    DashboardService dashboardService = Entity.getEntity(dataModel.getService(), "", Include.ALL);
-    dataModel.setService(dashboardService.getEntityReference());
-    dataModel.setServiceType(dashboardService.getServiceType());
+  public void prepare(DashboardDataModel dashboardDataModel) throws IOException {
+    DashboardService dashboardService = Entity.getEntity(dashboardDataModel.getService(), "", Include.ALL);
+    dashboardDataModel.setService(dashboardService.getEntityReference());
+    dashboardDataModel.setServiceType(dashboardService.getServiceType());
   }
 
   @Override
-  public void storeEntity(DataModel dataModel, boolean update) throws JsonProcessingException {
+  public void storeEntity(DashboardDataModel dashboardDataModel, boolean update) throws JsonProcessingException {
     // Relationships and fields such as href are derived and not stored as part of json
-    EntityReference owner = dataModel.getOwner();
-    List<TagLabel> tags = dataModel.getTags();
-    List<EntityReference> dataModels = dataModel.getDataModels();
-    EntityReference service = dataModel.getService();
+    EntityReference owner = dashboardDataModel.getOwner();
+    List<TagLabel> tags = dashboardDataModel.getTags();
+    List<EntityReference> dataModels = dashboardDataModel.getDataModels();
+    EntityReference service = dashboardDataModel.getService();
 
     // Don't store owner, database, href and tags as JSON. Build it on the fly based on relationships
-    dataModel.withOwner(null).withService(null).withHref(null).withTags(null).withDataModels(null);
+    dashboardDataModel.withOwner(null).withService(null).withHref(null).withTags(null).withDataModels(null);
 
-    store(dataModel, update);
+    store(dashboardDataModel, update);
 
     // Restore the relationships
-    dataModel.withOwner(owner).withService(service).withTags(tags).withDataModels(dataModels);
+    dashboardDataModel.withOwner(owner).withService(service).withTags(tags).withDataModels(dataModels);
   }
 
   @Override
   @SneakyThrows
-  public void storeRelationships(DataModel dataModel) {
-    EntityReference service = dataModel.getService();
-    addRelationship(service.getId(), dataModel.getId(), service.getType(), Entity.DATA_MODEL, Relationship.CONTAINS);
-    storeOwner(dataModel, dataModel.getOwner());
-    applyTags(dataModel);
+  public void storeRelationships(DashboardDataModel dashboardDataModel) {
+    EntityReference service = dashboardDataModel.getService();
+    addRelationship(
+        service.getId(), dashboardDataModel.getId(), service.getType(), Entity.DATA_MODEL, Relationship.CONTAINS);
+    storeOwner(dashboardDataModel, dashboardDataModel.getOwner());
+    applyTags(dashboardDataModel);
   }
 
   @Override
-  public DataModel setFields(DataModel dataModel, Fields fields) throws IOException {
-    getColumnTags(fields.contains(FIELD_TAGS), dataModel.getColumns());
-    return dataModel
-        .withService(getContainer(dataModel.getId()))
-        .withFollowers(fields.contains(FIELD_FOLLOWERS) ? getFollowers(dataModel) : null)
-        .withTags(fields.contains(FIELD_TAGS) ? getTags(dataModel.getFullyQualifiedName()) : null)
-        .withDataModels(fields.contains(DATA_MODELS_FIELD) ? getDataModels(dataModel) : null);
+  public DashboardDataModel setFields(DashboardDataModel dashboardDataModel, Fields fields) throws IOException {
+    getColumnTags(fields.contains(FIELD_TAGS), dashboardDataModel.getColumns());
+    return dashboardDataModel
+        .withService(getContainer(dashboardDataModel.getId()))
+        .withFollowers(fields.contains(FIELD_FOLLOWERS) ? getFollowers(dashboardDataModel) : null)
+        .withTags(fields.contains(FIELD_TAGS) ? getTags(dashboardDataModel.getFullyQualifiedName()) : null)
+        .withDataModels(fields.contains(DATA_MODELS_FIELD) ? getDataModels(dashboardDataModel) : null);
   }
 
   @Override
-  public void restorePatchAttributes(DataModel original, DataModel updated) {
+  public void restorePatchAttributes(DashboardDataModel original, DashboardDataModel updated) {
     // Patch can't make changes to following fields. Ignore the changes
     updated
         .withFullyQualifiedName(original.getFullyQualifiedName())
@@ -116,12 +117,12 @@ public class DataModelRepository extends EntityRepository<DataModel> {
         .withId(original.getId());
   }
 
-  protected List<EntityReference> getDataModels(DataModel dataModel) throws IOException {
-    if (dataModel == null) {
+  protected List<EntityReference> getDataModels(DashboardDataModel dashboardDataModel) throws IOException {
+    if (dashboardDataModel == null) {
       return Collections.emptyList();
     }
     List<CollectionDAO.EntityRelationshipRecord> tableIds =
-        findTo(dataModel.getId(), entityType, Relationship.USES, Entity.DATA_MODEL);
+        findTo(dashboardDataModel.getId(), entityType, Relationship.USES, Entity.DATA_MODEL);
     return EntityUtil.populateEntityReferences(tableIds, Entity.TABLE);
   }
 
@@ -143,20 +144,20 @@ public class DataModelRepository extends EntityRepository<DataModel> {
   }
 
   @Override
-  public void applyTags(DataModel dataModel) {
+  public void applyTags(DashboardDataModel dashboardDataModel) {
     // Add table level tags by adding tag to table relationship
-    super.applyTags(dataModel);
-    applyTags(dataModel.getColumns());
+    super.applyTags(dashboardDataModel);
+    applyTags(dashboardDataModel.getColumns());
   }
 
   @Override
-  public EntityUpdater getUpdater(DataModel original, DataModel updated, Operation operation) {
+  public EntityUpdater getUpdater(DashboardDataModel original, DashboardDataModel updated, Operation operation) {
     return new DataModelUpdater(original, updated, operation);
   }
 
   public class DataModelUpdater extends ColumnEntityUpdater {
 
-    public DataModelUpdater(DataModel original, DataModel updated, Operation operation) {
+    public DataModelUpdater(DashboardDataModel original, DashboardDataModel updated, Operation operation) {
       super(original, updated, operation);
     }
 

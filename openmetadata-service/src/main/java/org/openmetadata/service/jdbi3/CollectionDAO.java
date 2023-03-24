@@ -65,7 +65,7 @@ import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.entity.data.Chart;
 import org.openmetadata.schema.entity.data.Container;
 import org.openmetadata.schema.entity.data.Dashboard;
-import org.openmetadata.schema.entity.data.DataModel;
+import org.openmetadata.schema.entity.data.DashboardDataModel;
 import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Glossary;
@@ -3671,15 +3671,15 @@ public interface CollectionDAO {
         @Define("sqlCondition") String sqlCondition);
   }
 
-  interface DataModelDAO extends EntityDAO<DataModel> {
+  interface DataModelDAO extends EntityDAO<DashboardDataModel> {
     @Override
     default String getTableName() {
       return "data_model_entity";
     }
 
     @Override
-    default Class<DataModel> getEntityClass() {
-      return DataModel.class;
+    default Class<DashboardDataModel> getEntityClass() {
+      return DashboardDataModel.class;
     }
 
     @Override

@@ -31,8 +31,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
-import org.openmetadata.schema.api.data.CreateDataModel;
-import org.openmetadata.schema.entity.data.DataModel;
+import org.openmetadata.schema.api.data.CreateDashboardDataModel;
+import org.openmetadata.schema.entity.data.DashboardDataModel;
 import org.openmetadata.schema.type.DataModelType;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
@@ -40,15 +40,15 @@ import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.util.ResultList;
 
 @Slf4j
-public class DataModelResourceTest extends EntityResourceTest<DataModel, CreateDataModel> {
+public class DashboardDataModelResourceTest extends EntityResourceTest<DashboardDataModel, CreateDashboardDataModel> {
 
-  public DataModelResourceTest() {
+  public DashboardDataModelResourceTest() {
     super(
         Entity.DATA_MODEL,
-        DataModel.class,
-        DataModelResource.DataModelList.class,
+        DashboardDataModel.class,
+        DashboardDataModelResource.DashboardDataModelList.class,
         "datamodels",
-        DataModelResource.FIELDS);
+        DashboardDataModelResource.FIELDS);
   }
 
   @Test
@@ -73,41 +73,42 @@ public class DataModelResourceTest extends EntityResourceTest<DataModel, CreateD
       // List dataModels by filtering on service name and ensure right dataModels in the response
       Map<String, String> queryParams = new HashMap<>();
       queryParams.put("service", service);
-      ResultList<DataModel> list = listEntities(queryParams, ADMIN_AUTH_HEADERS);
-      for (DataModel dataModel : list.getData()) {
-        assertEquals(service, dataModel.getService().getName());
+      ResultList<DashboardDataModel> list = listEntities(queryParams, ADMIN_AUTH_HEADERS);
+      for (DashboardDataModel dashboardDataModel : list.getData()) {
+        assertEquals(service, dashboardDataModel.getService().getName());
       }
     }
   }
 
   @Override
   @Execution(ExecutionMode.CONCURRENT)
-  public DataModel validateGetWithDifferentFields(DataModel dataModel, boolean byName) throws HttpResponseException {
+  public DashboardDataModel validateGetWithDifferentFields(DashboardDataModel dashboardDataModel, boolean byName)
+      throws HttpResponseException {
     String fields = "";
-    dataModel =
+    dashboardDataModel =
         byName
-            ? getEntityByName(dataModel.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
-            : getEntity(dataModel.getId(), fields, ADMIN_AUTH_HEADERS);
-    assertListNotNull(dataModel.getService(), dataModel.getServiceType());
-    assertListNull(dataModel.getOwner(), dataModel.getFollowers(), dataModel.getTags());
+            ? getEntityByName(dashboardDataModel.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
+            : getEntity(dashboardDataModel.getId(), fields, ADMIN_AUTH_HEADERS);
+    assertListNotNull(dashboardDataModel.getService(), dashboardDataModel.getServiceType());
+    assertListNull(dashboardDataModel.getOwner(), dashboardDataModel.getFollowers(), dashboardDataModel.getTags());
 
     // .../datamodels?fields=owner
     fields = "owner,followers,tags";
-    dataModel =
+    dashboardDataModel =
         byName
-            ? getEntityByName(dataModel.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
-            : getEntity(dataModel.getId(), fields, ADMIN_AUTH_HEADERS);
-    assertListNotNull(dataModel.getService(), dataModel.getServiceType());
+            ? getEntityByName(dashboardDataModel.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
+            : getEntity(dashboardDataModel.getId(), fields, ADMIN_AUTH_HEADERS);
+    assertListNotNull(dashboardDataModel.getService(), dashboardDataModel.getServiceType());
     // Checks for other owner, tags, and followers is done in the base class
-    return dataModel;
+    return dashboardDataModel;
   }
 
   @Override
-  public CreateDataModel createRequest(String name) {
-    return new CreateDataModel()
+  public CreateDashboardDataModel createRequest(String name) {
+    return new CreateDashboardDataModel()
         .withName(name)
         .withService(getContainer().getName())
-        .withServiceType(CreateDataModel.DashboardServiceType.Metabase)
+        .withServiceType(CreateDashboardDataModel.DashboardServiceType.Metabase)
         .withSql("SELECT * FROM tab1;")
         .withDataModelType(DataModelType.MetabaseDataModel)
         .withColumns(COLUMNS);
@@ -119,22 +120,23 @@ public class DataModelResourceTest extends EntityResourceTest<DataModel, CreateD
   }
 
   @Override
-  public EntityReference getContainer(DataModel entity) {
+  public EntityReference getContainer(DashboardDataModel entity) {
     return entity.getService();
   }
 
   @Override
   public void validateCreatedEntity(
-      DataModel dataModel, CreateDataModel createRequest, Map<String, String> authHeaders) {
-    assertNotNull(dataModel.getServiceType());
-    assertReference(createRequest.getService(), dataModel.getService());
-    assertEquals(createRequest.getSql(), dataModel.getSql());
-    assertEquals(createRequest.getDataModelType(), dataModel.getDataModelType());
-    assertListNotEmpty(dataModel.getColumns());
+      DashboardDataModel dashboardDataModel, CreateDashboardDataModel createRequest, Map<String, String> authHeaders) {
+    assertNotNull(dashboardDataModel.getServiceType());
+    assertReference(createRequest.getService(), dashboardDataModel.getService());
+    assertEquals(createRequest.getSql(), dashboardDataModel.getSql());
+    assertEquals(createRequest.getDataModelType(), dashboardDataModel.getDataModelType());
+    assertListNotEmpty(dashboardDataModel.getColumns());
   }
 
   @Override
-  public void compareEntities(DataModel expected, DataModel patched, Map<String, String> authHeaders) {
+  public void compareEntities(
+      DashboardDataModel expected, DashboardDataModel patched, Map<String, String> authHeaders) {
     assertReference(expected.getService(), patched.getService());
   }
 

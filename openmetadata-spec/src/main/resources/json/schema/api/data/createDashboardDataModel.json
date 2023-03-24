@@ -1,10 +1,10 @@
 {
-  "$id": "https://open-metadata.org/schema/api/data/createDataModel.json",
+  "$id": "https://open-metadata.org/schema/api/data/createDashboardDataModel.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "CreateDataModelRequest",
-  "description": "Create Data Model entity request.",
+  "title": "CreateDashboardDataModelRequest",
+  "description": "Create Dashboard Data Model entity request.",
   "type": "object",
-  "javaType": "org.openmetadata.schema.api.data.CreateDataModel",
+  "javaType": "org.openmetadata.schema.api.data.CreateDashboardDataModel",
   "javaInterfaces": ["org.openmetadata.schema.CreateEntity"],
   "properties": {
     "name": {
@@ -40,7 +40,7 @@
       "$ref": "../../entity/services/dashboardService.json#/definitions/dashboardServiceType"
     },
     "dataModelType": {
-      "$ref": "../../entity/data/dataModel.json#/definitions/dataModelType"
+      "$ref": "../../entity/data/dashboardDataModel.json#/definitions/dataModelType"
     },
     "sql": {
       "description": "In case the Data Model is based on a SQL query.",

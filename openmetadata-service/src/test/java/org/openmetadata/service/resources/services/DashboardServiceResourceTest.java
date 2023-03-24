@@ -39,7 +39,7 @@ import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.openmetadata.schema.api.data.CreateChart;
-import org.openmetadata.schema.api.data.CreateDataModel.DashboardServiceType;
+import org.openmetadata.schema.api.data.CreateDashboardDataModel.DashboardServiceType;
 import org.openmetadata.schema.api.services.CreateDashboardService;
 import org.openmetadata.schema.entity.data.Chart;
 import org.openmetadata.schema.entity.services.DashboardService;

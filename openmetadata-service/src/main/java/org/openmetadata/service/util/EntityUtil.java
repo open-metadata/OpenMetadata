@@ -500,9 +500,9 @@ public final class EntityUtil {
     }
     List<EntityReference> refs = new ArrayList<>();
     for (EntityReference entityReference : entities) {
-      EntityReference chartRef = Entity.getEntityReference(entityReference, include);
-      refs.add(chartRef);
+      EntityReference entityRef = Entity.getEntityReference(entityReference, include);
+      refs.add(entityRef);
     }
-    return refs.isEmpty() ? null : refs;
+    return refs;
   }
 }

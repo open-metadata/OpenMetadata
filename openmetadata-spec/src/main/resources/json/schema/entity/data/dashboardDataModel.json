@@ -1,11 +1,11 @@
 {
-  "$id": "https://open-metadata.org/schema/entity/data/dataModel.json",
+  "$id": "https://open-metadata.org/schema/entity/data/dashboardDataModel.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "DataModel",
   "$comment": "@om-entity-type",
-  "description": "Data Model entity definition. Data models are the schemas used to build dashboards, charts, or other data models.",
+  "description": "Dashboard Data Model entity definition. Data models are the schemas used to build dashboards, charts, or other data models.",
   "type": "object",
-  "javaType": "org.openmetadata.schema.entity.data.DataModel",
+  "javaType": "org.openmetadata.schema.entity.data.DashboardDataModel",
   "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
   "definitions": {
     "dataModelType": {
@@ -124,6 +124,7 @@
     }
   },
   "required": [
+    "name",
     "modelType"
   ],
   "additionalProperties": false

@@ -250,7 +250,7 @@ class OpenMetadata(
         if issubclass(
             entity, get_args(Union[DataModel, self.get_create_entity_type(DataModel)])
         ):
-            return "/datamodels"
+            return "/dashboard/datamodels"
 
         if issubclass(
             entity, get_args(Union[Dashboard, self.get_create_entity_type(Dashboard)])
