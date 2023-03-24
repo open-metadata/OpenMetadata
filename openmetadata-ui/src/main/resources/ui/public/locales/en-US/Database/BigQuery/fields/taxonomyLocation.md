@@ -1,0 +1,1 @@
+Taxonomy location used to fetch policy tags

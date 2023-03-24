@@ -1,0 +1,1 @@
+Google Cloud service account type.
