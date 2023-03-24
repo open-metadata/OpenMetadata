@@ -25,3 +25,14 @@ touch fr-fr.json
 ## Sync the Language File with the Primary Language
 
 To ensure consistency with our primary language, which is `en-us`, it is necessary to synchronize any newly added language files. This can be done by copying the content from the `en-us.json` file and translating it accordingly.
+
+To copy the contents of en-us.json and add it to your translation JSON file, follow these steps:
+
+- Go to [en-us.json](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/src/locale/languages/en-us.json)
+- Copy the content of file
+- Open your translation JSON file.
+- Paste the copied text into your translation JSON file.
+
+You can refer to the image below for a visual guide:
+
+<Image alt="copy-en-us" src="/images/how-to-guides/language-support.png"/>
