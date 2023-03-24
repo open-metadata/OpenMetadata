@@ -33,7 +33,7 @@ VERSIONS = {
     "boto3": "boto3>=1.20,<2.0",  # No need to add botocore separately. It's a dep from boto3
     "geoalchemy2": "GeoAlchemy2~=0.12",
     "google-cloud-storage": "google-cloud-storage==1.43.0",
-    "great-expectations": "great-expectations~=0.15.0",
+    "great-expectations": "great-expectations~=0.16.0",
     "grpc-tools": "grpcio-tools==1.47.2",
     "msal": "msal~=1.2",
     "neo4j": "neo4j~=5.3.0",
