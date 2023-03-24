@@ -11,8 +11,19 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Divider, Form, Input, Row, Typography } from 'antd';
+import {
+  Button,
+  Col,
+  Divider,
+  Form,
+  Image,
+  Input,
+  Row,
+  Typography,
+} from 'antd';
+import Logo from 'assets/svg/logo.svg';
 import classNames from 'classnames';
+import { useApplicationConfigProvider } from 'components/ApplicationConfigProvider/ApplicationConfigProvider';
 import { useAuthContext } from 'components/authentication/auth-provider/AuthProvider';
 import { useBasicAuth } from 'components/authentication/auth-provider/basic-auth.provider';
 import Loader from 'components/Loader/Loader';
@@ -32,6 +43,7 @@ import './login.style.less';
 import LoginCarousel from './LoginCarousel';
 
 const SigninPage = () => {
+  const { logoConfig } = useApplicationConfigProvider();
   const [loading, setLoading] = useState(false);
   const [form] = Form.useForm();
 
@@ -65,6 +77,10 @@ const SigninPage = () => {
   const isAlreadyLoggedIn = useMemo(() => {
     return isAuthDisabled || isAuthenticated;
   }, [isAuthDisabled, isAuthenticated]);
+
+  const brandLogoUrl = useMemo(() => {
+    return logoConfig?.customLogoUrlPath ?? Logo;
+  }, [logoConfig]);
 
   const isTokenExpired = () => {
     const token = localState.getOidcToken();
@@ -194,7 +210,14 @@ const SigninPage = () => {
             className={classNames('mt-24 text-center flex-center flex-col', {
               'sso-container': !isAuthProviderBasic,
             })}>
-            <SVGIcons alt="OpenMetadata Logo" icon={Icons.LOGO} width="152" />
+            <Image
+              alt="OpenMetadata Logo"
+              data-testid="brand-logo-image"
+              fallback={Logo}
+              preview={false}
+              src={brandLogoUrl}
+              width={152}
+            />
             <Typography.Text className="mt-8 w-80 text-xl font-medium text-grey-muted">
               {t('message.om-description')}{' '}
             </Typography.Text>
@@ -248,7 +271,7 @@ const SigninPage = () => {
                   <div
                     className="d-flex flex-col m-y-md"
                     data-testid="login-error-container">
-                    <div className="flex border-1 border-main rounded-4 p-sm error-alert ">
+                    <div className="flex global-border rounded-4 p-sm error-alert ">
                       <div className="m-r-xs">
                         <SVGIcons
                           alt="failed"

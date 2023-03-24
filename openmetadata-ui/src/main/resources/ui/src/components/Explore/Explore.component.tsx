@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate.
+ *  Copyright 2023 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -15,9 +15,10 @@ import {
   SortAscendingOutlined,
   SortDescendingOutlined,
 } from '@ant-design/icons';
-import { Card, Col, Row, Tabs } from 'antd';
+import { Button, Card, Col, Row, Space, Tabs } from 'antd';
 import FacetFilter from 'components/common/facetfilter/FacetFilter';
 import SearchedData from 'components/searched-data/SearchedData';
+import { SORT_ORDER } from 'enums/common.enum';
 import unique from 'fork-ts-checker-webpack-plugin/lib/utils/array/unique';
 import {
   isEmpty,
@@ -30,39 +31,44 @@ import {
   toUpper,
 } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router-dom';
 import { ENTITY_PATH } from '../../constants/constants';
 import { tabsInfo } from '../../constants/explore.constants';
 import { SearchIndex } from '../../enums/search.enum';
+import {
+  QueryFieldInterface,
+  QueryFieldValueInterface,
+} from '../../pages/explore/ExplorePage.interface';
 import { getDropDownItems } from '../../utils/AdvancedSearchUtils';
 import { getCountBadge } from '../../utils/CommonUtils';
 import { FacetFilterProps } from '../common/facetfilter/facetFilter.interface';
 import PageLayoutV1 from '../containers/PageLayoutV1';
 import Loader from '../Loader/Loader';
 import ExploreSkeleton from '../Skeleton/Explore/ExploreLeftPanelSkeleton.component';
-import { AdvancedSearchModal } from './AdvanceSearchModal.component';
+import { useAdvanceSearch } from './AdvanceSearchProvider/AdvanceSearchProvider.component';
 import AppliedFilterText from './AppliedFilterText/AppliedFilterText';
 import EntitySummaryPanel from './EntitySummaryPanel/EntitySummaryPanel.component';
 import {
   EntityDetailsObjectInterface,
-  EntityDetailsType,
+  EntityUnion,
   ExploreProps,
   ExploreQuickFilterField,
   ExploreSearchIndex,
   ExploreSearchIndexKey,
 } from './explore.interface';
 import './Explore.style.less';
+import { getSelectedValuesFromQuickFilter } from './Explore.utils';
 import ExploreQuickFilters from './ExploreQuickFilters';
 import SortingDropDown from './SortingDropDown';
 
 const Explore: React.FC<ExploreProps> = ({
+  aggregations,
   searchResults,
   tabCounts,
-  advancedSearchJsonTree,
-  onChangeAdvancedSearchJsonTree,
-  onChangeAdvancedSearchQueryFilter,
-  postFilter,
-  onChangePostFilter,
+  onChangeAdvancedSearchQuickFilters,
+  facetFilters,
+  onChangeFacetFilters,
   searchIndex,
   onChangeSearchIndex,
   sortOrder,
@@ -74,26 +80,35 @@ const Explore: React.FC<ExploreProps> = ({
   page = 1,
   onChangePage = noop,
   loading,
+  quickFilters,
 }) => {
+  const { t } = useTranslation();
   const { tab } = useParams<{ tab: string }>();
-  const [showAdvanceSearchModal, setShowAdvanceSearchModal] = useState(false);
 
   const [selectedQuickFilters, setSelectedQuickFilters] = useState<
     ExploreQuickFilterField[]
   >([] as ExploreQuickFilterField[]);
   const [showSummaryPanel, setShowSummaryPanel] = useState(false);
   const [entityDetails, setEntityDetails] =
-    useState<{ details: EntityDetailsType; entityType: string }>();
+    useState<{ details: EntityUnion; entityType: string }>();
 
-  const [appliedFilterSQLFormat, setAppliedFilterSQLFormat] =
-    useState<string>('');
-
-  const handleAppliedFilterChange = (value: string) =>
-    setAppliedFilterSQLFormat(value);
+  const { toggleModal, sqlQuery } = useAdvanceSearch();
 
   const handleClosePanel = () => {
     setShowSummaryPanel(false);
   };
+
+  const isAscSortOrder = useMemo(
+    () => sortOrder === SORT_ORDER.ASC,
+    [sortOrder]
+  );
+  const sortProps = useMemo(
+    () => ({
+      className: 'text-base text-primary',
+      'data-testid': 'last-updated',
+    }),
+    []
+  );
 
   const tabItems = useMemo(
     () =>
@@ -130,56 +145,67 @@ const Explore: React.FC<ExploreProps> = ({
     key
   ) => {
     const currKeyFilters =
-      isNil(postFilter) || !(key in postFilter)
+      isNil(facetFilters) || !(key in facetFilters)
         ? ([] as string[])
-        : postFilter[key];
+        : facetFilters[key];
     if (checked) {
-      onChangePostFilter({
-        ...postFilter,
+      onChangeFacetFilters({
+        ...facetFilters,
         [key]: unique([...currKeyFilters, value]),
       });
     } else {
       const filteredKeyFilters = currKeyFilters.filter((v) => v !== value);
       if (filteredKeyFilters.length) {
-        onChangePostFilter({
-          ...postFilter,
+        onChangeFacetFilters({
+          ...facetFilters,
           [key]: filteredKeyFilters,
         });
       } else {
-        onChangePostFilter(omit(postFilter, key));
+        onChangeFacetFilters(omit(facetFilters, key));
       }
     }
   };
 
   const handleSummaryPanelDisplay = useCallback(
-    (details: EntityDetailsType, entityType: string) => {
+    (details: EntityUnion, entityType: string) => {
       setShowSummaryPanel(true);
       setEntityDetails({ details, entityType });
     },
     []
   );
 
-  const handleAdvanceSearchFilter = (data: ExploreQuickFilterField[]) => {
-    const terms = [] as Array<Record<string, unknown>>;
+  const handleQuickFiltersChange = (data: ExploreQuickFilterField[]) => {
+    const must = [] as Array<QueryFieldInterface>;
 
+    // Mapping the selected advanced search quick filter dropdown values
+    // to form a queryFilter to pass as a search parameter
     data.forEach((filter) => {
-      filter.value?.map((val) => {
-        if (filter.key) {
-          terms.push({ term: { [filter.key]: val.key } });
+      if (!isEmpty(filter.value)) {
+        const should = [] as Array<QueryFieldValueInterface>;
+        if (filter.value) {
+          filter.value.forEach((filterValue) => {
+            const term = {} as QueryFieldValueInterface['term'];
+
+            term[filter.key] = filterValue.key;
+
+            should.push({ term });
+          });
         }
-      });
+
+        must.push({ bool: { should } });
+      }
     });
 
-    onChangeAdvancedSearchQueryFilter(
-      isEmpty(terms)
+    onChangeAdvancedSearchQuickFilters(
+      isEmpty(must)
         ? undefined
         : {
-            query: { bool: { should: terms } },
+            query: { bool: { must } },
           }
     );
   };
 
-  const handleAdvanceFieldValueSelect = (field: ExploreQuickFilterField) => {
+  const handleQuickFiltersValueSelect = (field: ExploreQuickFilterField) => {
     setSelectedQuickFilters((pre) => {
       const data = pre.map((preField) => {
         if (preField.key === field.key) {
@@ -189,7 +215,7 @@ const Explore: React.FC<ExploreProps> = ({
         }
       });
 
-      handleAdvanceSearchFilter(data);
+      handleQuickFiltersChange(data);
 
       return data;
     });
@@ -212,9 +238,16 @@ const Explore: React.FC<ExploreProps> = ({
     const dropdownItems = getDropDownItems(searchIndex);
 
     setSelectedQuickFilters(
-      dropdownItems.map((item) => ({ ...item, value: [] }))
+      dropdownItems.map((item) => ({
+        ...item,
+        value: getSelectedValuesFromQuickFilter(
+          item,
+          dropdownItems,
+          quickFilters
+        ),
+      }))
     );
-  }, [searchIndex]);
+  }, [searchIndex, quickFilters]);
 
   useEffect(() => {
     if (
@@ -223,7 +256,7 @@ const Explore: React.FC<ExploreProps> = ({
       searchResults?.hits?.hits[0]._index === searchIndex
     ) {
       handleSummaryPanelDisplay(
-        searchResults?.hits?.hits[0]._source as EntityDetailsType,
+        searchResults?.hits?.hits[0]._source as EntityUnion,
         tab
       );
     } else {
@@ -231,11 +264,6 @@ const Explore: React.FC<ExploreProps> = ({
       setEntityDetails(undefined);
     }
   }, [tab, searchResults]);
-
-  useEffect(() => {
-    // reset Applied Filter SQL Format on tab change
-    setAppliedFilterSQLFormat('');
-  }, [tab]);
 
   return (
     <PageLayoutV1
@@ -246,46 +274,45 @@ const Explore: React.FC<ExploreProps> = ({
           data-testid="data-summary-container">
           <ExploreSkeleton loading={Boolean(loading)}>
             <FacetFilter
-              aggregations={omit(searchResults?.aggregations, 'entityType')}
-              filters={postFilter}
+              aggregations={omit(aggregations, 'entityType')}
+              filters={facetFilters}
               showDeleted={showDeleted}
               onChangeShowDeleted={onChangeShowDeleted}
-              onClearFilter={onChangePostFilter}
+              onClearFilter={onChangeFacetFilters}
               onSelectHandler={handleFacetFilterChange}
             />
           </ExploreSkeleton>
         </Card>
-      }>
+      }
+      pageTitle={t('label.explore')}>
       <Tabs
+        activeKey={searchIndex}
         defaultActiveKey={defaultActiveTab}
         items={tabItems}
         size="small"
         tabBarExtraContent={
-          <div className="tw-flex">
+          <Space align="center" size={4}>
             <SortingDropDown
               fieldList={tabsInfo[searchIndex].sortingFields}
               handleFieldDropDown={onChangeSortValue}
               sortField={sortValue}
             />
-
-            <div className="tw-flex">
-              {sortOrder === 'asc' ? (
-                <button onClick={() => onChangeSortOder('desc')}>
-                  <SortAscendingOutlined
-                    className="tw-text-base tw-text-primary"
-                    data-testid="last-updated"
-                  />
-                </button>
+            <Button
+              className="p-0"
+              size="small"
+              type="text"
+              onClick={() =>
+                onChangeSortOder(
+                  isAscSortOrder ? SORT_ORDER.DESC : SORT_ORDER.ASC
+                )
+              }>
+              {isAscSortOrder ? (
+                <SortAscendingOutlined {...sortProps} />
               ) : (
-                <button onClick={() => onChangeSortOder('asc')}>
-                  <SortDescendingOutlined
-                    className="tw-text-base tw-text-primary"
-                    data-testid="last-updated"
-                  />
-                </button>
+                <SortDescendingOutlined {...sortProps} />
               )}
-            </div>
-          </div>
+            </Button>
+          </Space>
         }
         onChange={(tab) => {
           tab && onChangeSearchIndex(tab as ExploreSearchIndex);
@@ -300,15 +327,15 @@ const Explore: React.FC<ExploreProps> = ({
               <ExploreQuickFilters
                 fields={selectedQuickFilters}
                 index={searchIndex}
-                onAdvanceSearch={() => setShowAdvanceSearchModal(true)}
-                onFieldValueSelect={handleAdvanceFieldValueSelect}
+                onAdvanceSearch={() => toggleModal(true)}
+                onFieldValueSelect={handleQuickFiltersValueSelect}
               />
             </Col>
-            {appliedFilterSQLFormat && (
+            {sqlQuery && (
               <Col span={24}>
                 <AppliedFilterText
-                  filterText={appliedFilterSQLFormat}
-                  onEdit={() => setShowAdvanceSearchModal(true)}
+                  filterText={sqlQuery}
+                  onEdit={() => toggleModal(true)}
                 />
               </Col>
             )}
@@ -349,15 +376,6 @@ const Explore: React.FC<ExploreProps> = ({
           </Col>
         )}
       </Row>
-      <AdvancedSearchModal
-        jsonTree={advancedSearchJsonTree}
-        searchIndex={searchIndex}
-        visible={showAdvanceSearchModal}
-        onAppliedFilterChange={handleAppliedFilterChange}
-        onCancel={() => setShowAdvanceSearchModal(false)}
-        onChangeJsonTree={onChangeAdvancedSearchJsonTree}
-        onSubmit={onChangeAdvancedSearchQueryFilter}
-      />
     </PageLayoutV1>
   );
 };

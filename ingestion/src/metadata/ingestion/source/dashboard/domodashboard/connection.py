@@ -12,12 +12,19 @@
 """
 Source connection handler
 """
+from functools import partial
+
 from pydomo import Domo
 
 from metadata.generated.schema.entity.services.connections.dashboard.domoDashboardConnection import (
     DomoDashboardConnection,
 )
-from metadata.ingestion.connections.test_connections import SourceConnectionException
+from metadata.ingestion.connections.test_connections import (
+    SourceConnectionException,
+    TestConnectionResult,
+    TestConnectionStep,
+    test_connection_steps,
+)
 
 
 def get_connection(connection: DomoDashboardConnection) -> Domo:
@@ -36,12 +43,20 @@ def get_connection(connection: DomoDashboardConnection) -> Domo:
         raise SourceConnectionException(msg)
 
 
-def test_connection(domo: Domo) -> None:
+def test_connection(domo: Domo, _) -> TestConnectionResult:
     """
     Test connection
     """
-    try:
-        domo.page_list()
-    except Exception as exc:
-        msg = f"Unknown error connecting with {domo}: {exc}."
-        raise SourceConnectionException(msg)
+
+    def custom_executor():
+        result = domo.page_list()
+        return list(result)
+
+    steps = [
+        TestConnectionStep(
+            function=partial(custom_executor),
+            name="Get Dashboard",
+        ),
+    ]
+
+    return test_connection_steps(steps)

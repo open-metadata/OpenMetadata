@@ -74,7 +74,7 @@ const GlossaryTermReferences = ({
           key="references"
           setShow={() => setIsViewMode(false)}
           showIcon={isViewMode}
-          title="References">
+          title={t('label.reference-plural')}>
           <div className="flex">
             {references.length > 0 ? (
               references.map((ref, i) => (
@@ -126,7 +126,7 @@ const GlossaryTermReferences = ({
                 key="references"
                 setShow={() => setIsViewMode(false)}
                 showIcon={isViewMode}
-                title="References"
+                title={t('label.reference-plural')}
                 onAddClick={() => add()}
                 onSave={handleReferencesSave}>
                 <>
@@ -137,7 +137,7 @@ const GlossaryTermReferences = ({
                           className="w-full"
                           {...restField}
                           name={[name, 'name']}>
-                          <Input placeholder="Name" />
+                          <Input placeholder={t('label.name')} />
                         </Form.Item>
                       </Col>
                       <Col span={11}>
@@ -148,10 +148,10 @@ const GlossaryTermReferences = ({
                           rules={[
                             {
                               type: 'url',
-                              message: 'Endpoint should be valid URL.',
+                              message: t('message.endpoint-should-be-valid'),
                             },
                           ]}>
-                          <Input placeholder="End point" />
+                          <Input placeholder={t('label.endpoint')} />
                         </Form.Item>
                       </Col>
                       <Col span={1}>

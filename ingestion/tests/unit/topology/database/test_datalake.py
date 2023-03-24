@@ -125,70 +125,87 @@ EXAMPLE_JSON_TEST_2 = """
 """
 
 EXPECTED_AVRO_COL_1 = [
-    Column(name="uid", dataType="INT", dataTypeDisplay="int"),
-    Column(name="somefield", dataType="STRING", dataTypeDisplay="string"),
     Column(
-        name="options",
-        dataType="ARRAY",
-        dataTypeDisplay="array<record>",
-        arrayDataType="RECORD",
+        name="level",
+        dataType="RECORD",
         children=[
+            Column(name="uid", dataType="INT", dataTypeDisplay="int"),
+            Column(name="somefield", dataType="STRING", dataTypeDisplay="string"),
             Column(
-                name="lvl2_record",
-                dataTypeDisplay="record",
-                dataType="RECORD",
+                name="options",
+                dataType="ARRAY",
+                dataTypeDisplay="array<record>",
+                arrayDataType="RECORD",
                 children=[
                     Column(
-                        name="item1_lvl2", dataType="STRING", dataTypeDisplay="string"
-                    ),
-                    Column(
-                        name="item2_lvl2",
-                        dataType="ARRAY",
-                        arrayDataType="RECORD",
-                        dataTypeDisplay="array<record>",
+                        name="lvl2_record",
+                        dataTypeDisplay="record",
+                        dataType="RECORD",
                         children=[
                             Column(
-                                name="lvl3_record",
-                                dataType="RECORD",
-                                dataTypeDisplay="record",
+                                name="item1_lvl2",
+                                dataType="STRING",
+                                dataTypeDisplay="string",
+                            ),
+                            Column(
+                                name="item2_lvl2",
+                                dataType="ARRAY",
+                                arrayDataType="RECORD",
+                                dataTypeDisplay="array<record>",
                                 children=[
                                     Column(
-                                        name="item1_lvl3",
-                                        dataType="STRING",
-                                        dataTypeDisplay="string",
-                                    ),
-                                    Column(
-                                        name="item2_lvl3",
-                                        dataType="STRING",
-                                        dataTypeDisplay="string",
+                                        name="lvl3_record",
+                                        dataType="RECORD",
+                                        dataTypeDisplay="record",
+                                        children=[
+                                            Column(
+                                                name="item1_lvl3",
+                                                dataType="STRING",
+                                                dataTypeDisplay="string",
+                                            ),
+                                            Column(
+                                                name="item2_lvl3",
+                                                dataType="STRING",
+                                                dataTypeDisplay="string",
+                                            ),
+                                        ],
                                     ),
                                 ],
                             ),
                         ],
-                    ),
+                    )
                 ],
-            )
+            ),
         ],
-    ),
+    )
 ]
 
 
 EXPECTED_AVRO_COL_2 = [
     Column(
-        name="username",
-        dataType="STRING",
-        dataTypeDisplay="string",
-    ),
-    Column(
-        name="tweet",
-        dataType="STRING",
-        dataTypeDisplay="string",
-    ),
-    Column(
-        name="timestamp",
-        dataType="LONG",
-        dataTypeDisplay="long",
-    ),
+        name="twitter_schema",
+        dataType="RECORD",
+        children=[
+            Column(
+                name="username",
+                dataType="STRING",
+                description="Name of the user account on Twitter.com",
+                dataTypeDisplay="string",
+            ),
+            Column(
+                name="tweet",
+                dataType="STRING",
+                dataTypeDisplay="string",
+                description="The content of the user's Twitter message",
+            ),
+            Column(
+                name="timestamp",
+                dataType="LONG",
+                dataTypeDisplay="long",
+                description="Unix epoch time in seconds",
+            ),
+        ],
+    )
 ]
 
 AVRO_SCHEMA_FILE = b"""{
@@ -258,6 +275,7 @@ def _get_str_value(data):
 def custom_column_compare(self, other):
     return (
         self.name == other.name
+        and self.description == other.description
         and self.dataTypeDisplay == other.dataTypeDisplay
         and self.children == other.children
         and _get_str_value(self.arrayDataType) == _get_str_value(other.arrayDataType)
@@ -314,7 +332,7 @@ class DatalakeUnitTest(TestCase):
         assert actual_df_1.compare(exp_df_list).empty
         assert actual_df_2.compare(exp_df_obj).empty
 
-    def x_test_avro_file_parse(self):  # disabling this test as failing with CI
+    def test_avro_file_parse(self):  # disabling this test as failing with CI
         columns = read_from_avro(AVRO_SCHEMA_FILE)
         Column.__eq__ = custom_column_compare
 

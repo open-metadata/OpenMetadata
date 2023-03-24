@@ -40,12 +40,12 @@ import org.openmetadata.schema.auth.BasicAuthMechanism;
 import org.openmetadata.schema.auth.ChangePasswordRequest;
 import org.openmetadata.schema.auth.EmailVerificationToken;
 import org.openmetadata.schema.auth.JWTAuthMechanism;
-import org.openmetadata.schema.auth.JWTTokenExpiry;
 import org.openmetadata.schema.auth.LoginRequest;
 import org.openmetadata.schema.auth.PasswordResetRequest;
 import org.openmetadata.schema.auth.PasswordResetToken;
 import org.openmetadata.schema.auth.RefreshToken;
 import org.openmetadata.schema.auth.RegistrationRequest;
+import org.openmetadata.schema.auth.ServiceTokenType;
 import org.openmetadata.schema.auth.TokenRefreshRequest;
 import org.openmetadata.schema.email.SmtpSettings;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
@@ -87,7 +87,7 @@ public class BasicAuthenticator implements AuthenticatorHandler {
     SmtpSettings smtpSettings = config.getSmtpSettings();
     this.isEmailServiceEnabled = smtpSettings != null && smtpSettings.getEnableSmtpServer();
     this.isSelfSignUpAvailable = config.getAuthenticationConfiguration().getEnableSelfSignup();
-    this.loginConfiguration = config.getLoginSettings();
+    this.loginConfiguration = config.getApplicationConfiguration().getLoginConfig();
   }
 
   @Override
@@ -336,7 +336,12 @@ public class BasicAuthenticator implements AuthenticatorHandler {
     RefreshToken refreshToken = validateAndReturnNewRefresh(storedUser.getId(), request);
     JWTAuthMechanism jwtAuthMechanism =
         JWTTokenGenerator.getInstance()
-            .generateJWTToken(storedUser.getName(), storedUser.getEmail(), JWTTokenExpiry.OneHour, false);
+            .generateJWTToken(
+                storedUser.getName(),
+                storedUser.getEmail(),
+                loginConfiguration.getJwtTokenExpiryTime(),
+                false,
+                ServiceTokenType.OM_USER);
     JwtResponse response = new JwtResponse();
     response.setTokenType("Bearer");
     response.setAccessToken(jwtAuthMechanism.getJWTToken());
@@ -413,7 +418,7 @@ public class BasicAuthenticator implements AuthenticatorHandler {
     checkIfLoginBlocked(userName);
     User storedUser = lookUserInProvider(userName);
     validatePassword(storedUser, loginRequest.getPassword());
-    return getJwtResponse(storedUser);
+    return getJwtResponse(storedUser, loginConfiguration.getJwtTokenExpiryTime());
   }
 
   @Override

@@ -14,13 +14,12 @@ Vertica source implementation.
 import re
 import traceback
 from textwrap import dedent
-from typing import Iterable
+from typing import Iterable, Optional
 
 from sqlalchemy import sql, util
 from sqlalchemy.engine import reflection
 from sqlalchemy.sql import sqltypes
-from sqlalchemy.sql.sqltypes import String
-from sqlalchemy_vertica.base import VerticaDialect
+from sqlalchemy_vertica.base import VerticaDialect, ischema_names
 
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.services.connections.database.verticaConnection import (
@@ -33,11 +32,13 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.ingestion.api.source import InvalidSourceException
+from metadata.ingestion.source.database.column_type_parser import create_sqlalchemy_type
 from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
 from metadata.ingestion.source.database.vertica.queries import (
     VERTICA_GET_COLUMNS,
     VERTICA_GET_PRIMARY_KEYS,
     VERTICA_LIST_DATABASES,
+    VERTICA_SCHEMA_COMMENTS,
     VERTICA_TABLE_COMMENTS,
     VERTICA_VIEW_DEFINITION,
 )
@@ -46,17 +47,18 @@ from metadata.utils.filters import filter_by_database
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.sqlalchemy_utils import (
     get_all_table_comments,
+    get_schema_descriptions,
     get_table_comment_wrapper,
 )
 
 logger = ingestion_logger()
 
-
-class UUID(String):
-
-    """The SQL UUID type."""
-
-    __visit_name__ = "UUID"
+ischema_names.update(
+    {
+        "UUID": create_sqlalchemy_type("UUID"),
+        "GEOGRAPHY": create_sqlalchemy_type("GEOGRAPHY"),
+    }
+)
 
 
 @reflection.cache
@@ -140,7 +142,7 @@ def _get_column_info(  # pylint: disable=too-many-locals,too-many-branches,too-m
             args = (int(prec), int(scale))
         else:
             args = ()
-    elif attype == "integer":
+    elif attype == "integer" or attype.startswith("geography"):
         args = ()
     elif attype in ("timestamptz", "timetz"):
         kwargs["timezone"] = True
@@ -165,14 +167,13 @@ def _get_column_info(  # pylint: disable=too-many-locals,too-many-branches,too-m
         args = ()
     elif charlen:
         args = (int(charlen),)
-    self.ischema_names["UUID"] = UUID
     if attype.upper() in self.ischema_names:
         coltype = self.ischema_names[attype.upper()]
     else:
         coltype = None
 
     if coltype:
-        coltype = coltype(*args, **kwargs)
+        coltype = coltype(*args, **kwargs) if callable(coltype) else coltype
     else:
         util.warn(f"Did not recognize type '{attype}' of column '{name}'")
         coltype = sqltypes.NULLTYPE
@@ -204,6 +205,7 @@ def _get_column_info(  # pylint: disable=too-many-locals,too-many-branches,too-m
         "name": name,
         "type": coltype,
         "nullable": nullable,
+        "system_data_type": format_type,
         "default": default,
         "autoincrement": autoincrement,
         "comment": comment,
@@ -272,6 +274,10 @@ class VerticaSource(CommonDbSourceService):
     Database metadata from Vertica Source
     """
 
+    def __init__(self, config: WorkflowSource, metadata_config: OpenMetadataConnection):
+        super().__init__(config, metadata_config)
+        self.schema_desc_map = {}
+
     @classmethod
     def create(cls, config_dict, metadata_config: OpenMetadataConnection):
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
@@ -282,10 +288,22 @@ class VerticaSource(CommonDbSourceService):
             )
         return cls(config, metadata_config)
 
+    def get_schema_description(self, schema_name: str) -> Optional[str]:
+        """
+        Method to fetch the schema description
+        """
+        return self.schema_desc_map.get(schema_name)
+
+    def set_schema_description_map(self) -> None:
+        self.schema_desc_map = get_schema_descriptions(
+            self.engine, VERTICA_SCHEMA_COMMENTS
+        )
+
     def get_database_names(self) -> Iterable[str]:
         configured_db = self.config.serviceConnection.__root__.config.database
         if configured_db:
             self.set_inspector(database_name=configured_db)
+            self.set_schema_description_map()
             yield configured_db
         else:
             results = self.connection.execute(VERTICA_LIST_DATABASES)
@@ -310,6 +328,7 @@ class VerticaSource(CommonDbSourceService):
 
                 try:
                     self.set_inspector(database_name=new_database)
+                    self.set_schema_description_map()
                     yield new_database
                 except Exception as exc:
                     logger.debug(traceback.format_exc())

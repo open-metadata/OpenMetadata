@@ -18,6 +18,7 @@ import { isEmpty, isUndefined } from 'lodash';
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
+import { getEntityName } from 'utils/EntityUtils';
 import { ReactComponent as IconDelete } from '../../../assets/svg/ic-delete.svg';
 import { ReactComponent as IconEdit } from '../../../assets/svg/ic-edit.svg';
 
@@ -25,7 +26,7 @@ import { getTableTabPath } from '../../../constants/constants';
 import { NO_PERMISSION_FOR_ACTION } from '../../../constants/HelperTextUtil';
 import { TestCase, TestCaseResult } from '../../../generated/tests/testCase';
 import { useAuth } from '../../../hooks/authHooks';
-import { getEntityName, getNameFromFQN } from '../../../utils/CommonUtils';
+import { getNameFromFQN } from '../../../utils/CommonUtils';
 import { getTestSuitePath } from '../../../utils/RouterUtils';
 import { getDecodedFqn } from '../../../utils/StringsUtils';
 import {
@@ -71,7 +72,9 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
                 style={{ fontSize: '16px' }}
               />
             )}
-            <Typography.Text>{result?.testCaseStatus || '--'}</Typography.Text>
+            <Typography.Text data-testid="test-case-status">
+              {result?.testCaseStatus || '--'}
+            </Typography.Text>
           </Space>
         ),
       },
@@ -90,9 +93,9 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
         dataIndex: 'name',
         key: 'name',
         width: 320,
-        render: (name: string) => (
+        render: (name: string, record) => (
           <Typography.Text className="break-word" data-testid={name}>
-            {name}
+            {getEntityName(record)}
           </Typography.Text>
         ),
       },
@@ -110,6 +113,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
         render: (value) => {
           return (
             <Link
+              data-testid="test-suite-link"
               to={getTestSuitePath(value?.fullyQualifiedName || '')}
               onClick={(e) => e.stopPropagation()}>
               {getEntityName(value)}
@@ -127,6 +131,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
 
           return (
             <Link
+              data-testid="table-link"
               to={getTableTabPath(tableFqn, 'profiler')}
               onClick={(e) => e.stopPropagation()}>
               {name}
@@ -167,7 +172,9 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
               {!deletedTable && (
                 <Tooltip
                   placement="bottomRight"
-                  title={hasAccess ? 'Edit' : NO_PERMISSION_FOR_ACTION}>
+                  title={
+                    hasAccess ? t('label.edit') : NO_PERMISSION_FOR_ACTION
+                  }>
                   <Button
                     className="flex-center"
                     data-testid={`edit-${record.name}`}
@@ -214,6 +221,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
         bordered
         className="table-shadow"
         columns={columns}
+        data-testid="data-quality-table"
         dataSource={testCases.map((test) => ({ ...test, key: test.name }))}
         expandable={{
           ...getTableExpandableConfig<TestCase>(),

@@ -12,62 +12,38 @@
  */
 
 import { Button, Modal, Space, Typography } from 'antd';
-import { delay } from 'lodash';
-import React, { FunctionComponent, useState } from 'react';
-import { JsonTree } from 'react-awesome-query-builder';
+import React, { FunctionComponent } from 'react';
+import { Builder, Query } from 'react-awesome-query-builder';
 import { useTranslation } from 'react-i18next';
-import { SearchIndex } from '../../enums/search.enum';
-import AdvancedSearch from '../AdvancedSearch/AdvancedSearch.component';
+import { useAdvanceSearch } from './AdvanceSearchProvider/AdvanceSearchProvider.component';
 
 interface Props {
   visible: boolean;
-  onSubmit: (filter?: Record<string, unknown>) => void;
+  onSubmit: () => void;
   onCancel: () => void;
-  searchIndex: SearchIndex;
-  onChangeJsonTree: (tree?: JsonTree) => void;
-  jsonTree?: JsonTree;
-  onAppliedFilterChange: (value: string) => void;
 }
 
 export const AdvancedSearchModal: FunctionComponent<Props> = ({
   visible,
   onSubmit,
   onCancel,
-  searchIndex,
-  onChangeJsonTree,
-  jsonTree,
-  onAppliedFilterChange,
 }: Props) => {
-  const [queryFilter, setQueryFilter] = useState<
-    Record<string, unknown> | undefined
-  >();
-
   const { t } = useTranslation();
-
-  const handleAdvanceSearchReset = () => {
-    delay(onChangeJsonTree, 100);
-  };
+  const { config, treeInternal, onTreeUpdate, onReset } = useAdvanceSearch();
 
   return (
     <Modal
+      closable
       destroyOnClose
-      closable={false}
+      closeIcon={null}
       footer={
         <Space className="justify-between w-full">
-          <Button
-            className="float-right"
-            size="small"
-            onClick={handleAdvanceSearchReset}>
+          <Button className="float-right" size="small" onClick={onReset}>
             {t('label.reset')}
           </Button>
           <div>
             <Button onClick={onCancel}>{t('label.cancel')}</Button>
-            <Button
-              type="primary"
-              onClick={() => {
-                onSubmit(queryFilter);
-                onCancel();
-              }}>
+            <Button type="primary" onClick={onSubmit}>
               {t('label.apply')}
             </Button>
           </div>
@@ -78,16 +54,20 @@ export const AdvancedSearchModal: FunctionComponent<Props> = ({
       title={t('label.advanced-entity', {
         entity: t('label.search'),
       })}
-      width={950}>
+      width={950}
+      onCancel={onCancel}>
       <Typography.Text data-testid="advanced-search-message">
         {t('message.advanced-search-message')}
       </Typography.Text>
-      <AdvancedSearch
-        jsonTree={jsonTree}
-        searchIndex={searchIndex}
-        onAppliedFilterChange={onAppliedFilterChange}
-        onChangeJsonTree={(nTree) => onChangeJsonTree(nTree)}
-        onChangeQueryFilter={setQueryFilter}
+      <Query
+        {...config}
+        renderBuilder={(props) => (
+          <div className="query-builder-container query-builder qb-lite">
+            <Builder {...props} />
+          </div>
+        )}
+        value={treeInternal}
+        onChange={onTreeUpdate}
       />
     </Modal>
   );

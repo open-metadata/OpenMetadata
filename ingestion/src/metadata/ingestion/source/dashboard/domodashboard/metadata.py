@@ -37,7 +37,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.ingestion.api.source import InvalidSourceException, SourceStatus
+from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_chart
@@ -55,7 +55,6 @@ class DomodashboardSource(DashboardServiceSource):
 
     config: WorkflowSource
     metadata_config: OpenMetadataConnection
-    status: SourceStatus
 
     def __init__(self, config: WorkflowSource, metadata_config: OpenMetadataConnection):
         super().__init__(config, metadata_config)
@@ -94,15 +93,17 @@ class DomodashboardSource(DashboardServiceSource):
     def get_dashboard_details(self, dashboard: DomoDashboardDetails) -> dict:
         return dashboard
 
-    def get_owner_details(self, owners: List[DomoOwner]) -> Optional[EntityReference]:
-        for owner in owners:
+    def get_owner_details(
+        self, dashboard_details: DomoDashboardDetails
+    ) -> Optional[EntityReference]:
+        for owner in dashboard_details.owners:
             try:
                 owner_details = self.client.users_get(owner.id)
                 if owner_details.get("email"):
                     user = self.metadata.get_user_by_email(owner_details["email"])
                     if user:
-                        return EntityReference(id=user["id"], type="user")
-                    logger.debug(
+                        return EntityReference(id=user.id.__root__, type="user")
+                    logger.warning(
                         f"No user for found for email {owner_details['email']} in OMD"
                     )
             except Exception as exc:
@@ -134,7 +135,6 @@ class DomodashboardSource(DashboardServiceSource):
                     for chart in self.context.charts
                 ],
                 service=self.context.dashboard_service.fullyQualifiedName.__root__,
-                owner=self.get_owner_details(dashboard_details.owners),
             )
         except KeyError as err:
             logger.warning(

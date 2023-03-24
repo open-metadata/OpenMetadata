@@ -117,8 +117,8 @@ const SuccessScreen = ({
               </div>
               <h6 className="tw-text-base tw-font-medium tw-mb-0.5">
                 {isAirflowAvailable
-                  ? 'OpenMetadata - Managed Airflow APIs'
-                  : 'Failed to find OpenMetadata - Managed Airflow APIs'}
+                  ? t('message.manage-airflow-api')
+                  : t('message.manage-airflow-api-failed')}
               </h6>
             </div>
             {!isUndefined(fetchAirflowStatus) && (

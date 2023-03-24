@@ -21,7 +21,7 @@ from openmetadata_managed_apis.workflows.ingestion.credentials_builder import (
     build_secrets_manager_credentials,
 )
 
-from metadata.generated.schema.api.services.ingestionPipelines.testServiceConnection import (
+from metadata.generated.schema.entity.automations.testServiceConnection import (
     TestServiceConnectionRequest,
 )
 from metadata.ingestion.connections.test_connections import SourceConnectionException
@@ -52,7 +52,19 @@ def test_source_connection(
         test_connection_fn = get_test_connection_fn(
             test_service_connection.connection.config
         )
-        test_connection_fn(connection)
+        test_connection_fn(connection, test_service_connection.connection.config)
+
+        if test_connection_fn(connection, test_service_connection.connection.config):
+            msg = test_connection_fn(
+                connection, test_service_connection.connection.config
+            )
+            if msg.failed:
+                return ApiResponse.error(
+                    status=ApiResponse.STATUS_SERVER_ERROR,
+                    error=msg.json(),
+                )
+            elif msg.success:
+                return ApiResponse.success({"message": msg.json()})
 
     except SourceConnectionException as exc:
         msg = f"Connection error from [{connection}]: {exc}"

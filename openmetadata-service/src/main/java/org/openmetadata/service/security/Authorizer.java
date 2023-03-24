@@ -35,7 +35,7 @@ public interface Authorizer {
 
   /** Returns a list of operations that the authenticated user (subject) can perform on a given resource */
   ResourcePermission getPermission(
-      SecurityContext securityContext, String user, ResourceContextInterface resourceContext);
+      SecurityContext securityContext, String user, ResourceContextInterface resourceContext) throws IOException;
 
   void authorize(
       SecurityContext securityContext, OperationContext operationContext, ResourceContextInterface resourceContext)
@@ -44,4 +44,6 @@ public interface Authorizer {
   void authorizeAdmin(SecurityContext securityContext);
 
   boolean decryptSecret(SecurityContext securityContext);
+
+  boolean shouldMaskPasswords(SecurityContext securityContext);
 }

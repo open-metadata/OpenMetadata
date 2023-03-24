@@ -12,13 +12,20 @@
 """
 Source connection handler
 """
+from functools import partial
+
 from pydomo import Domo
 
 from metadata.clients.domo_client import DomoClient
 from metadata.generated.schema.entity.services.connections.pipeline.domoPipelineConnection import (
     DomoPipelineConnection,
 )
-from metadata.ingestion.connections.test_connections import SourceConnectionException
+from metadata.ingestion.connections.test_connections import (
+    SourceConnectionException,
+    TestConnectionResult,
+    TestConnectionStep,
+    test_connection_steps,
+)
 
 
 def get_connection(connection: DomoPipelineConnection) -> Domo:
@@ -32,12 +39,20 @@ def get_connection(connection: DomoPipelineConnection) -> Domo:
         raise SourceConnectionException(msg)
 
 
-def test_connection(connection: Domo) -> None:
+def test_connection(connection: Domo, _) -> TestConnectionResult:
     """
     Test connection
     """
-    try:
-        connection.get_pipelines()
-    except Exception as exc:
-        msg = f"Unknown error while extracting pipeline from domo: {exc}."
-        raise SourceConnectionException(msg)
+
+    def custom_executor():
+        result = connection.get_pipelines()
+        return list(result)
+
+    steps = [
+        TestConnectionStep(
+            function=partial(custom_executor),
+            name="Get Pipeline",
+        ),
+    ]
+
+    return test_connection_steps(steps)

@@ -22,10 +22,7 @@ import com.unboundid.ldap.sdk.SearchRequest;
 import com.unboundid.ldap.sdk.SearchResult;
 import com.unboundid.ldap.sdk.SearchResultEntry;
 import com.unboundid.ldap.sdk.SearchScope;
-import com.unboundid.util.ssl.HostNameSSLSocketVerifier;
-import com.unboundid.util.ssl.SSLSocketVerifier;
 import com.unboundid.util.ssl.SSLUtil;
-import com.unboundid.util.ssl.TrustAllSSLSocketVerifier;
 import freemarker.template.TemplateException;
 import java.io.IOException;
 import java.security.GeneralSecurityException;
@@ -72,11 +69,7 @@ public class LdapAuthenticator implements AuthenticatorHandler {
     this.tokenRepository = new TokenRepository(jdbi.onDemand(CollectionDAO.class));
     this.ldapConfiguration = config.getAuthenticationConfiguration().getLdapConfiguration();
     this.loginAttemptCache = new LoginAttemptCache(config);
-    this.loginConfiguration = config.getLoginSettings();
-  }
-
-  private SSLSocketVerifier hostNameVerifier(boolean verifyHostName) {
-    return verifyHostName ? new HostNameSSLSocketVerifier(true) : TrustAllSSLSocketVerifier.getInstance();
+    this.loginConfiguration = config.getApplicationConfiguration().getLoginConfig();
   }
 
   private LDAPConnectionPool getLdapConnectionPool(LdapConfiguration ldapConfiguration) {
@@ -91,7 +84,9 @@ public class LdapAuthenticator implements AuthenticatorHandler {
                 sslUtil.createSSLSocketFactory(),
                 connectionOptions,
                 ldapConfiguration.getHost(),
-                ldapConfiguration.getPort())) {
+                ldapConfiguration.getPort(),
+                ldapConfiguration.getDnAdminPrincipal(),
+                ldapConfiguration.getDnAdminPassword())) {
           // Use the connection here.
           return new LDAPConnectionPool(connection, ldapConfiguration.getMaxPoolSize());
         } catch (GeneralSecurityException e) {
@@ -122,7 +117,7 @@ public class LdapAuthenticator implements AuthenticatorHandler {
     User storedUser = lookUserInProvider(loginRequest.getEmail());
     validatePassword(storedUser, loginRequest.getPassword());
     User omUser = checkAndCreateUser(loginRequest.getEmail());
-    return getJwtResponse(omUser);
+    return getJwtResponse(omUser, loginConfiguration.getJwtTokenExpiryTime());
   }
 
   private User checkAndCreateUser(String email) throws IOException {

@@ -47,7 +47,6 @@ class PostgresQueryParserSource(QueryParserSource, ABC):
 
     def __init__(self, config: WorkflowSource, metadata_config: OpenMetadataConnection):
         super().__init__(config, metadata_config)
-
         # Postgres does not allow retrieval of data older than 7 days
         # Update start and end based on this
         duration = min(self.source_config.queryLogDuration, 6)
@@ -70,7 +69,7 @@ class PostgresQueryParserSource(QueryParserSource, ABC):
         """
         return self.sql_stmt.format(
             result_limit=self.config.sourceConfig.config.resultLimit,
-            filters=self.filters,  # pylint: disable=no-member
+            filters=self.filters,
         )
 
     def get_table_query(self) -> Iterable[TableQuery]:

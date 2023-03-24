@@ -151,6 +151,31 @@ authenticationConfiguration:
   callbackUrl: ${AUTHENTICATION_CALLBACK_URL:-""}
   jwtPrincipalClaims: ${AUTHENTICATION_JWT_PRINCIPAL_CLAIMS:-[email,preferred_username,sub]}
   enableSelfSignup : ${AUTHENTICATION_ENABLE_SELF_SIGNUP:-true}
+  ldapConfiguration:
+    host: ${AUTHENTICATION_LDAP_HOST:-}
+    port: ${AUTHENTICATION_LDAP_PORT:-}
+    dnAdminPrincipal: ${AUTHENTICATION_LOOKUP_ADMIN_DN:-""}
+    dnAdminPassword: ${AUTHENTICATION_LOOKUP_ADMIN_PWD:-""}
+    userBaseDN: ${AUTHENTICATION_USER_LOOKUP_BASEDN:-""}
+    mailAttributeName: ${AUTHENTICATION_USER_MAIL_ATTR:-}
+    #optional
+    maxPoolSize: ${AUTHENTICATION_LDAP_POOL_SIZE:-3}
+    sslEnabled: ${AUTHENTICATION_LDAP_SSL_ENABLED:-}
+    truststoreConfigType: ${AUTHENTICATION_LDAP_TRUSTSTORE_TYPE:-TrustAll}
+    trustStoreConfig:
+      customTrustManagerConfig:
+        trustStoreFilePath: ${AUTHENTICATION_LDAP_TRUSTSTORE_PATH:-}
+        trustStoreFilePassword: ${AUTHENTICATION_LDAP_KEYSTORE_PASSWORD:-}
+        trustStoreFileFormat: ${AUTHENTICATION_LDAP_SSL_KEY_FORMAT:-}
+        verifyHostname: ${AUTHENTICATION_LDAP_SSL_VERIFY_CERT_HOST:-}
+        examineValidityDates: ${AUTHENTICATION_LDAP_EXAMINE_VALIDITY_DATES:-}
+      hostNameConfig:
+        allowWildCards: ${AUTHENTICATION_LDAP_ALLOW_WILDCARDS:-}
+        acceptableHostNames: ${AUTHENTICATION_LDAP_ALLOWED_HOSTNAMES:-[]}
+      jvmDefaultConfig:
+        verifyHostname: ${AUTHENTICATION_LDAP_SSL_VERIFY_CERT_HOST:-}
+      trustAllConfig:
+        examineValidityDates: ${AUTHENTICATION_LDAP_EXAMINE_VALIDITY_DATES:-true}
 
 jwtTokenConfiguration:
   rsapublicKeyFilePath: ${RSA_PUBLIC_KEY_FILE_PATH:-"./conf/public_key.der"}
@@ -216,6 +241,10 @@ secretsManagerConfiguration:
     accessKeyId: ${OM_SM_ACCESS_KEY_ID:-""}
     secretAccessKey: ${OM_SM_ACCESS_KEY:-""}
 
+security:
+# it will mask all the password fields in the responses sent from the API except for the bots
+  maskPasswordsAPI: ${MASK_PASSWORDS_API:-false}
+
 health:
   delayedShutdownHandlerEnabled: true
   shutdownWaitPeriod: 1s
@@ -240,10 +269,12 @@ email:
   password: ${SMTP_SERVER_PWD:-""}
   transportationStrategy: ${SMTP_SERVER_STRATEGY:-"SMTP_TLS"}
 
-sandboxModeEnabled: ${SANDBOX_MODE_ENABLED:-false}
-slackChat:
-  slackUrl: ${SLACK_CHAT_SLACK_URL:-"https://slack.open-metadata.org/"}
+applicationConfig:
+  logoConfig:
+    customLogoUrlPath: ${OM_CUSTOM_LOGO_URL_PATH:-""} #login page logo
+    customMonogramUrlPath: ${OM_CUSTOM_MONOGRAM_URL_PATH:-""} #nav bar logo
+  loginConfig:
+    maxLoginFailAttempts: ${OM_MAX_FAILED_LOGIN_ATTEMPTS:-3}
+    accessBlockTime: ${OM_LOGIN_ACCESS_BLOCK_TIME:-600}
+    jwtTokenExpiryTime: ${OM_JWT_EXPIRY_TIME:-3600}
 
-login:
-  maxLoginFailAttempts: ${OM_MAX_FAILED_LOGIN_ATTEMPTS:-3}
-  accessBlockTime: ${OM_LOGIN_ACCESS_BLOCKTIME:-600}

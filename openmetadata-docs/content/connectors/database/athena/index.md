@@ -9,7 +9,7 @@ slug: /connectors/database/athena
 
 | Stage | Metadata |Query Usage | Data Profiler | Data Quality | Lineage | DBT | Supported Versions |
 |:------:|:------:|:-----------:|:-------------:|:------------:|:-------:|:---:|:------------------:|
-|  PROD  |   ✅   |      ❌      |       ✅       |       ✅      |    Partially via Views    |  ✅  |  --  |
+|  PROD  |   ✅   |      ❌      |       ✅       |       ✅      |    1.0 ( upcoming release )    |  ✅  |  --  |
 
 </Table>
 
@@ -17,7 +17,7 @@ slug: /connectors/database/athena
 
 | Lineage | Table-level | Column-level |
 |:------:|:-----------:|:-------------:|
-| Partially via Views | ✅ | ✅ |
+| 1.0 ( upcoming release ) | TBD | TBD |
 
 </Table>
 
@@ -188,6 +188,7 @@ caption="Configure Metadata Ingestion Page"
 - **Enable Debug Log (toggle)**: Set the Enable Debug Log toggle to set the default log level to debug, these logs can be viewed later in Airflow.
 - **Mark Deleted Tables (toggle)**: Set the Mark Deleted Tables toggle to flag tables as soft-deleted if they are not present anymore in the source system.
 - **Mark Deleted Tables from Filter Only (toggle)**: Set the Mark Deleted Tables from Filter Only toggle to flag tables as soft-deleted if they are not present anymore within the filtered schema or database only. This flag is useful when you have more than one ingestion pipelines. For example if you have a schema
+- **Auto Tag PII(toggle)**: Auto PII tagging checks for column name to mark PII Sensitive/NonSensitive tag
 
 ### 7. Schedule the Ingestion and Deploy
 

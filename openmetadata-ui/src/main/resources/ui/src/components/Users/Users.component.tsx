@@ -37,6 +37,7 @@ import { useHistory, useLocation } from 'react-router-dom';
 import { changePassword } from 'rest/auth-API';
 import { getRoles } from 'rest/rolesAPIV1';
 import { getTeams } from 'rest/teamsAPI';
+import { getEntityName } from 'utils/EntityUtils';
 import {
   getUserPath,
   PAGE_SIZE,
@@ -63,7 +64,6 @@ import { Paging } from '../../generated/type/paging';
 import { useInfiniteScroll } from '../../hooks/useInfiniteScroll';
 import jsonData from '../../jsons/en';
 import {
-  getEntityName,
   getNonDeletedTeams,
   getTierFromEntityInfo,
 } from '../../utils/CommonUtils';
@@ -87,7 +87,6 @@ import NextPrevious from '../common/next-previous/NextPrevious';
 import ProfilePicture from '../common/ProfilePicture/ProfilePicture';
 import TableDataCard from '../common/table-data-card/TableDataCard';
 import TabsPane from '../common/TabsPane/TabsPane';
-import { leftPanelAntCardStyle } from '../containers/PageLayout';
 import PageLayoutV1 from '../containers/PageLayoutV1';
 import DropDownList from '../dropdown/DropDownList';
 import Loader from '../Loader/Loader';
@@ -171,12 +170,12 @@ const Users = ({
       if (response.data) {
         setTeams(response.data);
       } else {
-        throw jsonData['api-error-messages']['unexpected-server-response'];
+        throw t('server.unexpected-response');
       }
     } catch (error) {
       showErrorToast(
         error as AxiosError,
-        jsonData['api-error-messages']['fetch-teams-error']
+        t('server.entity-fetch-error', { entity: t('label.team') })
       );
     } finally {
       setIsTeamsLoading(false);
@@ -268,7 +267,7 @@ const Users = ({
       await changePassword(sendData);
       setIsChangePassword(false);
       showSuccessToast(
-        jsonData['api-success-messages']['update-password-success']
+        t('server.update-entity-success', { entity: t('label.password') })
       );
     } catch (err) {
       showErrorToast(err as AxiosError);
@@ -292,7 +291,7 @@ const Users = ({
                 data-testid="displayName"
                 id="displayName"
                 name="displayName"
-                placeholder="displayName"
+                placeholder={t('label.display-name')}
                 type="text"
                 value={displayName}
                 onChange={onDisplayNameChange}
@@ -321,7 +320,8 @@ const Users = ({
           ) : (
             <Fragment>
               <span className="tw-text-base tw-font-medium tw-mr-2 tw-overflow-auto">
-                {userData.displayName || 'Add display name'}
+                {userData.displayName ||
+                  t('label.add-entity', { entity: t('label.display-name') })}
               </span>
               <button
                 className="tw-ml-2 focus:tw-outline-none"
@@ -386,7 +386,7 @@ const Users = ({
         <Typography.Text
           className="text-primary text-xs cursor-pointer"
           onClick={() => setIsChangePassword(true)}>
-          {t('label.change-password')}
+          {t('label.change-entity', { entity: t('label.password-lowercase') })}
         </Typography.Text>
 
         <ChangePasswordForm
@@ -427,10 +427,9 @@ const Users = ({
     if (!isAdminUser && !isAuthDisabled) {
       return (
         <Card
-          className="ant-card-feed tw-relative"
+          className="ant-card-feed tw-relative panel-shadow-color"
           key="teams-card"
           style={{
-            ...leftPanelAntCardStyle,
             marginTop: '20px',
           }}
           title={
@@ -444,10 +443,9 @@ const Users = ({
     } else {
       return (
         <Card
-          className="ant-card-feed tw-relative"
+          className="ant-card-feed tw-relative panel-shadow-color"
           key="teams-card"
           style={{
-            ...leftPanelAntCardStyle,
             marginTop: '20px',
           }}
           title={
@@ -475,7 +473,9 @@ const Users = ({
                 <Select
                   allowClear
                   showSearch
-                  aria-label={t('label.select-team-plural')}
+                  aria-label={t('label.select-field', {
+                    field: t('label.team-plural-lowercase'),
+                  })}
                   className="w-full"
                   loading={isTeamsLoading}
                   mode="multiple"
@@ -483,8 +483,8 @@ const Users = ({
                     label: getEntityName(team as unknown as EntityReference),
                     value: team.id,
                   }))}
-                  placeholder={`${t('label.team-plural')}...`}
-                  value={selectedTeams}
+                  placeholder={t('label.team-plural')}
+                  value={!isTeamsLoading ? selectedTeams : []}
                   onChange={handleOnTeamsChange}
                 />
                 <div className="tw-flex tw-justify-end" data-testid="buttons">
@@ -559,9 +559,8 @@ const Users = ({
       return (
         <Card
           className="ant-card-feed tw-relative"
-          key="roles-card"
+          key="roles-card panel-shadow-color"
           style={{
-            ...leftPanelAntCardStyle,
             marginTop: '20px',
           }}
           title={
@@ -575,10 +574,9 @@ const Users = ({
     } else {
       return (
         <Card
-          className="ant-card-feed tw-relative"
+          className="ant-card-feed tw-relative panel-shadow-color"
           key="roles-card"
           style={{
-            ...leftPanelAntCardStyle,
             marginTop: '20px',
           }}
           title={
@@ -612,8 +610,8 @@ const Users = ({
                   loading={isRolesLoading}
                   mode="multiple"
                   options={userRolesOption}
-                  placeholder={`${t('label.team-plural')}...`}
-                  value={selectedRoles}
+                  placeholder={t('label.role-plural')}
+                  value={!isRolesLoading ? selectedRoles : []}
                   onChange={handleOnRolesChange}
                 />
 
@@ -650,10 +648,9 @@ const Users = ({
   const getInheritedRolesComponent = () => {
     return (
       <Card
-        className="ant-card-feed tw-relative"
+        className="ant-card-feed tw-relative panel-shadow-color"
         key="inherited-roles-card-component"
         style={{
-          ...leftPanelAntCardStyle,
           marginTop: '20px',
         }}
         title={
@@ -705,11 +702,8 @@ const Users = ({
     return (
       <div className="user-profile-antd-card" data-testid="left-panel">
         <Card
-          className="ant-card-feed tw-relative"
-          key="left-panel-card"
-          style={{
-            ...leftPanelAntCardStyle,
-          }}>
+          className="ant-card-feed tw-relative panel-shadow-color"
+          key="left-panel-card">
           {isImgUrlValid ? (
             <Image
               alt="profile"
@@ -950,7 +944,10 @@ const Users = ({
   );
 
   return (
-    <PageLayoutV1 className="tw-h-full" leftPanel={fetchLeftPanel()}>
+    <PageLayoutV1
+      className="tw-h-full"
+      leftPanel={fetchLeftPanel()}
+      pageTitle={t('label.user')}>
       <div className="m-b-md">
         <TabsPane
           activeTab={activeTab}

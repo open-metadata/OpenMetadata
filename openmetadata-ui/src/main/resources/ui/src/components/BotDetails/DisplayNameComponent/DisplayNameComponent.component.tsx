@@ -72,7 +72,7 @@ const DisplayNameComponent = ({
           ) : (
             <Typography.Text className="add-display-name">
               {t('label.add-entity', {
-                entity: t('label.display-name-lowercase'),
+                entity: t('label.display-name'),
               })}
             </Typography.Text>
           )}

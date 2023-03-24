@@ -52,9 +52,11 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.TestMethodOrder;
 import org.openmetadata.csv.EntityCsv;
+import org.openmetadata.schema.api.classification.CreateClassification;
 import org.openmetadata.schema.api.data.CreateGlossary;
 import org.openmetadata.schema.api.data.CreateGlossaryTerm;
 import org.openmetadata.schema.api.data.CreateTable;
+import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.Table;
@@ -64,12 +66,15 @@ import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.TagLabel;
+import org.openmetadata.schema.type.TagLabel.TagSource;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.jdbi3.GlossaryRepository.GlossaryCsv;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.databases.TableResourceTest;
+import org.openmetadata.service.resources.tags.ClassificationResourceTest;
+import org.openmetadata.service.resources.tags.TagResourceTest;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.TestUtils;
@@ -179,9 +184,17 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
     GlossaryTerm t21 = createGlossaryTerm(glossaryTermResourceTest, glossary, t2, "t21");
     GlossaryTerm t22 = createGlossaryTerm(glossaryTermResourceTest, glossary, t2, "t22");
 
+    // Create a Classification with the same name as glossary and assign it to a table
+    ClassificationResourceTest classificationResourceTest = new ClassificationResourceTest();
+    TagResourceTest tagResourceTest = new TagResourceTest();
+    CreateClassification createClassification = classificationResourceTest.createRequest("renameGlossary");
+    classificationResourceTest.createEntity(createClassification, ADMIN_AUTH_HEADERS);
+    Tag tag = tagResourceTest.createTag("t1", "renameGlossary", null);
+
     // Create a table with all the terms as tag labels
     TableResourceTest tableResourceTest = new TableResourceTest();
     List<TagLabel> tagLabels = toTagLabels(t1, t11, t12, t2, t21, t22);
+    tagLabels.add(EntityUtil.toTagLabel(tag)); // Add classification tag with the same name
     Column column = new Column().withName(C1).withDataType(ColumnDataType.INT).withTags(tagLabels);
     CreateTable createTable =
         tableResourceTest
@@ -198,6 +211,9 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
     table = tableResourceTest.getEntity(table.getId(), "columns,tags", ADMIN_AUTH_HEADERS);
     assertTagPrefixAbsent(table.getTags(), "renameGlossary.t2");
     assertTagPrefixAbsent(table.getColumns().get(0).getTags(), "renameGlossary.t2");
+
+    // Ensure classification tag with the same name is not changed after renaming glossary
+    assertTrue(table.getTags().stream().anyMatch(t -> EntityUtil.tagLabelMatch.test(t, EntityUtil.toTagLabel(tag))));
 
     //
     // Change the glossary renameGlossary to newRenameGlossary and ensure the children FQNs are changed
@@ -286,14 +302,14 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
           newParent = newParentTerm.getEntityReference();
         }
         LOG.info(
-            "Scenario iteration [{}, {}] move {} from glossary{} parent {} to glossary {} and parent {}",
+            "Scenario iteration [{}, {}] move {} from glossary {} parent {} to glossary {} and parent {}",
             i,
             j,
             getFqn(termToMove),
             getFqn(termToMove.getGlossary()),
             getFqn(termToMove.getParent()),
-            getFqn(newParent),
-            getFqn(newGlossary));
+            getFqn(newGlossary),
+            getFqn(newParent));
         updatedTerm = moveGlossaryTermAndBack(newGlossary, newParent, termToMove, table);
         copyGlossaryTerm(updatedTerm, termToMove);
       }
@@ -478,7 +494,9 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
 
   private void assertTagPrefixAbsent(List<TagLabel> labels, String prefix) {
     for (TagLabel tag : labels) {
-      assertFalse(tag.getTagFQN().startsWith(prefix), tag.getTagFQN());
+      if (tag.getSource() == TagSource.GLOSSARY) {
+        assertFalse(tag.getTagFQN().startsWith(prefix), tag.getTagFQN());
+      }
     }
   }
 

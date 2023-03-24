@@ -32,7 +32,7 @@ import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
-  private static final String DATABASE_SCHEMA_UPDATE_FIELDS = "owner";
+  private static final String DATABASE_SCHEMA_UPDATE_FIELDS = "owner,tags";
   private static final String DATABASE_SCHEMA_PATCH_FIELDS = DATABASE_SCHEMA_UPDATE_FIELDS;
 
   public DatabaseSchemaRepository(CollectionDAO dao) {
@@ -59,16 +59,13 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
 
   @Override
   public void storeEntity(DatabaseSchema schema, boolean update) throws IOException {
-    // Relationships and fields such as href are derived and not stored as part of json
-    EntityReference owner = schema.getOwner();
+    // Relationships and fields such as service are derived and not stored as part of json
     EntityReference service = schema.getService();
-
-    // Don't store owner, database, href and tags as JSON. Build it on the fly based on relationships
-    schema.withOwner(null).withService(null).withHref(null);
+    schema.withService(null);
 
     store(schema, update);
     // Restore the relationships
-    schema.withOwner(owner).withService(service);
+    schema.withService(service);
   }
 
   @Override
@@ -77,6 +74,8 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
     addRelationship(
         database.getId(), schema.getId(), database.getType(), Entity.DATABASE_SCHEMA, Relationship.CONTAINS);
     storeOwner(schema, schema.getOwner());
+    // Add tag to databaseSchema relationship
+    applyTags(schema);
   }
 
   private List<EntityReference> getTables(DatabaseSchema schema) throws IOException {
@@ -120,6 +119,8 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
         .withServiceType(database.getServiceType());
 
     // Carry forward ownership from database, if necessary
-    schema.withOwner(schema.getOwner() == null ? database.getOwner() : schema.getOwner());
+    if (database.getOwner() != null && schema.getOwner() == null) {
+      schema.withOwner(database.getOwner().withDescription("inherited"));
+    }
   }
 }

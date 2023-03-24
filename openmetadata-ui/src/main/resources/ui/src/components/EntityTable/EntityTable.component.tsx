@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Popover, Space, Table, Typography } from 'antd';
+import { Button, Popover, Space, Table, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import classNames from 'classnames';
 import { cloneDeep, isEmpty, isUndefined, lowerCase, toLower } from 'lodash';
@@ -25,6 +25,8 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
+import { ReactComponent as IconEdit } from '../../assets/svg/ic-edit.svg';
+import { ReactComponent as IconRequest } from '../../assets/svg/request-icon.svg';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { EntityField } from '../../constants/Feeds.constants';
 import { SettledStatus } from '../../enums/axios.enum';
@@ -36,6 +38,7 @@ import { EntityFieldThreads } from '../../interface/feed.interface';
 import { getPartialNameFromTableFQN } from '../../utils/CommonUtils';
 import {
   ENTITY_LINK_SEPARATOR,
+  getEntityName,
   getFrequentlyJoinedColumns,
 } from '../../utils/EntityUtils';
 import { getFieldThreadElement } from '../../utils/FeedElementUtils';
@@ -43,7 +46,6 @@ import {
   fetchGlossaryTerms,
   getGlossaryTermlist,
 } from '../../utils/GlossaryUtils';
-import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import {
   getDataTypeString,
   getTableExpandableConfig,
@@ -118,7 +120,7 @@ const EntityTable = ({
               ? tagList.map((tag) => {
                   return {
                     fqn: tag,
-                    source: 'Tag',
+                    source: 'Classification',
                   };
                 })
               : [];
@@ -168,16 +170,16 @@ const EntityTable = ({
 
   const updateColumnDescription = (
     tableCols: Column[],
-    changedColName: string,
+    changedColFQN: string,
     description: string
   ) => {
     tableCols?.forEach((col) => {
-      if (col.name === changedColName) {
+      if (col.fullyQualifiedName === changedColFQN) {
         col.description = description;
       } else {
         updateColumnDescription(
           col?.children as Column[],
-          changedColName,
+          changedColFQN,
           description
         );
       }
@@ -186,7 +188,7 @@ const EntityTable = ({
 
   const updateColumnTags = (
     tableCols: Column[],
-    changedColName: string,
+    changedColFQN: string,
     newColumnTags: Array<TagOption>
   ) => {
     const getUpdatedTags = (column: Column) => {
@@ -210,12 +212,12 @@ const EntityTable = ({
     };
 
     tableCols?.forEach((col) => {
-      if (col.name === changedColName) {
+      if (col.fullyQualifiedName === changedColFQN) {
         col.tags = getUpdatedTags(col);
       } else {
         updateColumnTags(
           col?.children as Column[],
-          changedColName,
+          changedColFQN,
           newColumnTags
         );
       }
@@ -223,11 +225,11 @@ const EntityTable = ({
   };
 
   const handleEditColumnChange = async (columnDescription: string) => {
-    if (editColumn) {
+    if (editColumn && editColumn.column.fullyQualifiedName) {
       const tableCols = cloneDeep(tableColumns);
       updateColumnDescription(
         tableCols,
-        editColumn.column.name,
+        editColumn.column.fullyQualifiedName,
         columnDescription
       );
       await onUpdate?.(tableCols);
@@ -239,18 +241,18 @@ const EntityTable = ({
 
   const handleTagSelection = (
     selectedTags?: Array<EntityTags>,
-    columnName = ''
+    columnFQN = ''
   ) => {
     const newSelectedTags: TagOption[] | undefined = selectedTags?.map(
       (tag) => {
         return { fqn: tag.tagFQN, source: tag.source };
       }
     );
-    if (newSelectedTags && (editColumnTag || columnName)) {
+    if (newSelectedTags && (editColumnTag || columnFQN)) {
       const tableCols = cloneDeep(tableColumns);
       updateColumnTags(
         tableCols,
-        editColumnTag?.column.name || columnName,
+        editColumnTag?.column.fullyQualifiedName || columnFQN,
         newSelectedTags
       );
       onUpdate?.(tableCols);
@@ -346,9 +348,10 @@ const EntityTable = ({
     const hasDescription = Boolean(cell?.description ?? '');
 
     return (
-      <button
-        className="tw-w-7 tw-h-7 tw-flex-none link-text focus:tw-outline-none hover-cell-icon"
+      <Button
+        className="p-0 w-7 h-7 tw-flex-none flex-center link-text focus:tw-outline-none hover-cell-icon m-r-xss"
         data-testid="request-description"
+        type="text"
         onClick={() =>
           hasDescription
             ? onUpdateDescriptionHandler(cell)
@@ -364,13 +367,13 @@ const EntityTable = ({
           overlayClassName="ant-popover-request-description"
           trigger="hover"
           zIndex={9999}>
-          <SVGIcons
-            alt={t('message.request-description')}
-            icon={Icons.REQUEST}
-            width="16px"
+          <IconRequest
+            height={16}
+            name={t('message.request-description')}
+            width={16}
           />
         </Popover>
-      </button>
+      </Button>
     );
   };
 
@@ -381,9 +384,10 @@ const EntityTable = ({
       : t('label.request-tag-plural');
 
     return (
-      <button
-        className="tw-w-7 tw-h-7 tw-flex-none link-text focus:tw-outline-none tw-align-top hover-cell-icon"
+      <Button
+        className="p-0 w-7 h-7 tw-flex-none link-text focus:tw-outline-none tw-align-top hover-cell-icon"
         data-testid="request-tags"
+        type="text"
         onClick={() =>
           hasTags ? onUpdateTagsHandler(cell) : onRequestTagsHandler(cell)
         }>
@@ -393,13 +397,13 @@ const EntityTable = ({
           overlayClassName="ant-popover-request-description"
           trigger="hover"
           zIndex={9999}>
-          <SVGIcons
-            alt={t('label.request-tag-plural')}
-            icon={Icons.REQUEST}
-            width="16px"
+          <IconRequest
+            height={16}
+            name={t('label.request-tag-plural')}
+            width={16}
           />
         </Popover>
-      </button>
+      </Button>
     );
   };
 
@@ -441,10 +445,11 @@ const EntityTable = ({
     return (
       <div className="hover-icon-group">
         <div className="d-inline-block">
-          <div
-            className="d-flex"
+          <Space
+            align="end"
             data-testid="description"
-            id={`column-description-${index}`}>
+            id={`column-description-${index}`}
+            size={4}>
             <div>
               {description ? (
                 <RichTextEditorPreviewer markdown={description} />
@@ -461,16 +466,16 @@ const EntityTable = ({
                 <Fragment>
                   {hasDescriptionEditAccess && (
                     <>
-                      <button
-                        className="tw-self-start tw-w-7 tw-h-7 focus:tw-outline-none tw-flex-none hover-cell-icon"
+                      <Button
+                        className="p-0 tw-self-start flex-center w-7 h-7 focus:tw-outline-none tw-flex-none hover-cell-icon"
+                        type="text"
                         onClick={() => handleUpdate(record, index)}>
-                        <SVGIcons
-                          alt={t('label.edit')}
-                          icon="icon-edit"
-                          title={t('label.edit')}
-                          width="16px"
+                        <IconEdit
+                          height={16}
+                          name={t('label.edit')}
+                          width={16}
                         />
-                      </button>
+                      </Button>
                     </>
                   )}
                   {getRequestDescriptionElement(record)}
@@ -502,7 +507,7 @@ const EntityTable = ({
                 </Fragment>
               ) : null}
             </div>
-          </div>
+          </Space>
         </div>
         {getFrequentlyJoinedColumns(
           record?.name,
@@ -518,9 +523,7 @@ const EntityTable = ({
       return (
         <div className="hover-icon-group">
           {isReadOnly ? (
-            <div className="tw-flex tw-flex-wrap">
-              <TagsViewer sizeCap={-1} tags={tags || []} />
-            </div>
+            <TagsViewer sizeCap={-1} tags={tags || []} />
           ) : (
             <div
               className={classNames(
@@ -540,6 +543,7 @@ const EntityTable = ({
                 }
               }}>
               <TagsContainer
+                className="w-68"
                 editable={editColumnTag?.index === index}
                 isLoading={isTagLoading && editColumnTag?.index === index}
                 selectedTags={tags || []}
@@ -551,7 +555,7 @@ const EntityTable = ({
                   handleTagSelection();
                 }}
                 onSelectionChange={(selectedTags) => {
-                  handleTagSelection(selectedTags, record?.name);
+                  handleTagSelection(selectedTags, record?.fullyQualifiedName);
                 }}
               />
 
@@ -609,14 +613,14 @@ const EntityTable = ({
         dataIndex: 'name',
         key: 'name',
         accessor: 'name',
-        width: 300,
+        width: 220,
         render: (name: Column['name'], record: Column) => (
           <Space
             align="start"
             className="w-max-90 vertical-align-inherit"
             size={2}>
             {prepareConstraintIcon(name, record.constraint, tableConstraints)}
-            <span className="break-word">{name}</span>
+            <span className="break-word">{getEntityName(record)}</span>
           </Space>
         ),
       },
@@ -628,6 +632,30 @@ const EntityTable = ({
         ellipsis: true,
         width: 220,
         render: renderDataTypeDisplay,
+      },
+      {
+        title: t('label.scale'),
+        dataIndex: 'scale',
+        key: 'scale',
+        accessor: 'scale',
+        width: 80,
+        render: (scale: number) => scale || '--',
+      },
+      {
+        title: t('label.precision'),
+        dataIndex: 'precision',
+        key: 'precision',
+        accessor: 'precision',
+        width: 80,
+        render: (precision: number) => precision || '--',
+      },
+      {
+        title: t('label.ordinal-position'),
+        dataIndex: 'ordinalPosition',
+        key: 'ordinalPosition',
+        accessor: 'ordinalPosition',
+        width: 80,
+        render: (ordinalPosition: number) => ordinalPosition || '--',
       },
       {
         title: t('label.description'),

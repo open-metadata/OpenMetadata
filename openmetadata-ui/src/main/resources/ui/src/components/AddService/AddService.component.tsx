@@ -268,7 +268,7 @@ const AddService = ({
 
           {activeServiceStep === 3 && (
             <ConnectionConfigForm
-              cancelText="Back"
+              cancelText={t('label.back')}
               serviceCategory={serviceCategory}
               serviceType={selectServiceType}
               status={saveServiceState}
@@ -320,6 +320,7 @@ const AddService = ({
         classes="tw-max-w-full-hd tw-h-full tw-pt-4"
         header={<TitleBreadcrumb titleLinks={slashedBreadcrumb} />}
         layout={PageLayoutType['2ColRTL']}
+        pageTitle={t('label.add-entity', { entity: t('label.service') })}
         rightPanel={fetchRightPanel()}>
         <div className="tw-form-container">
           {addIngestion ? (
@@ -327,7 +328,9 @@ const AddService = ({
               activeIngestionStep={activeIngestionStep}
               handleCancelClick={() => handleAddIngestion(false)}
               handleViewServiceClick={handleViewServiceClick}
-              heading={`Add ${capitalize(PipelineType.Metadata)} Ingestion`}
+              heading={`${t('label.add-workflow-ingestion', {
+                workflow: capitalize(PipelineType.Metadata),
+              })}`}
               ingestionAction={ingestionAction}
               ingestionProgress={ingestionProgress}
               isIngestionCreated={isIngestionCreated}

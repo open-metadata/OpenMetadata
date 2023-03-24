@@ -518,7 +518,7 @@ except ModuleNotFoundError:
 
 from airflow.utils.dates import days_ago
 
-from metadata.orm_profiler.api.workflow import ProfilerWorkflow
+from metadata.profiler.api.workflow import ProfilerWorkflow
 
 
 default_args = {

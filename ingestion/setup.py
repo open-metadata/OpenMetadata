@@ -29,12 +29,12 @@ def get_long_description():
 # Add here versions required for multiple plugins
 VERSIONS = {
     "airflow": "apache-airflow==2.3.3",
-    "avro-python3": "avro-python3~=1.10",
+    "avro": "avro~=1.11",
     "boto3": "boto3>=1.20,<2.0",  # No need to add botocore separately. It's a dep from boto3
     "geoalchemy2": "GeoAlchemy2~=0.12",
     "google-cloud-storage": "google-cloud-storage==1.43.0",
     "great-expectations": "great-expectations~=0.16.0",
-    "grpc-tools": "grpcio-tools==1.47.2",
+    "grpc-tools": "grpcio-tools>=1.47.2",
     "msal": "msal~=1.2",
     "neo4j": "neo4j~=5.3.0",
     "pandas": "pandas==1.3.5",
@@ -52,12 +52,11 @@ COMMONS = {
         "pyhive~=0.6",
     },
     "kafka": {
-        "avro~=1.11",
-        VERSIONS["avro-python3"],
+        VERSIONS["avro"],
         "confluent_kafka==1.8.2",
         "fastavro>=1.2.0",
         # Due to https://github.com/grpc/grpc/issues/30843#issuecomment-1303816925
-        # we use v1.47.2 https://github.com/grpc/grpc/blob/v1.47.2/tools/distrib/python/grpcio_tools/grpc_version.py#L17
+        # use >= v1.47.2 https://github.com/grpc/grpc/blob/v1.47.2/tools/distrib/python/grpcio_tools/grpc_version.py#L17
         VERSIONS[
             "grpc-tools"
         ],  # grpcio-tools already depends on grpcio. No need to add separately
@@ -65,10 +64,20 @@ COMMONS = {
     },
 }
 
+# required library for pii tagging
+pii_requirements = {
+    "spacy==3.5.0",
+    (
+        "en-core-web-md @ https://github.com/explosion/spacy-models/releases/download/"
+        "en_core_web_md-3.5.0/en_core_web_md-3.5.0-py3-none-any.whl"
+    ),
+    VERSIONS["pandas"],
+    "presidio-analyzer==2.2.32",
+}
 
 base_requirements = {
     "antlr4-python3-runtime==4.9.2",
-    VERSIONS["avro-python3"],  # Used in sample data
+    VERSIONS["avro"],  # Used in sample data
     VERSIONS["boto3"],  # Required in base for the secrets manager
     "cached-property==1.5.2",
     "chardet==4.0.0",
@@ -84,7 +93,6 @@ base_requirements = {
     "Jinja2>=2.11.3",
     "jsonschema",
     "mypy_extensions>=0.4.3",
-    VERSIONS["pandas"],  # to be removed from base
     "pydantic~=1.10",
     VERSIONS["pymysql"],
     "python-dateutil>=2.8.1",
@@ -94,7 +102,7 @@ base_requirements = {
     "requests-aws4auth~=1.1",  # Only depends on requests as external package. Leaving as base.
     "setuptools~=65.6.3",
     "sqlalchemy>=1.4.0,<2",
-    "openmetadata-sqllineage==1.0.1",
+    "openmetadata-sqllineage==1.0.2",
     "typing-compat~=0.1.0",  # compatibility requirements for 3.7
     "typing-inspect",
     "wheel~=0.38.4",
@@ -165,6 +173,7 @@ plugins: Dict[str, Set[str]] = {
         "thrift>=0.13,<1",
         "sasl~=0.3",
         "thrift-sasl~=0.4",
+        "impyla~=0.18.0",
     },
     "kafka": {*COMMONS["kafka"]},
     "kinesis": {VERSIONS["boto3"]},
@@ -183,7 +192,7 @@ plugins: Dict[str, Set[str]] = {
     "presto": {*COMMONS["hive"]},
     "pymssql": {"pymssql==2.2.5"},
     "quicksight": {VERSIONS["boto3"]},
-    "redash": {"redash-toolbelt~=0.1"},
+    "redash": {"packaging==21.3"},
     "redpanda": {*COMMONS["kafka"]},
     "redshift": {
         "sqlalchemy-redshift~=0.8",
@@ -199,6 +208,7 @@ plugins: Dict[str, Set[str]] = {
     "tableau": {"tableau-api-lib~=0.1"},
     "trino": {"trino[sqlalchemy]"},
     "vertica": {"sqlalchemy-vertica[vertica-python]>=0.0.5"},
+    "pii-processor": pii_requirements,
 }
 
 dev = {
@@ -222,6 +232,8 @@ test = {
     "pytest==7.0.0",
     "pytest-cov",
     "pytest-order",
+    # install dbt dependency
+    "dbt-artifacts-parser",
 }
 
 build_options = {"includes": ["_cffi_backend"]}

@@ -40,7 +40,6 @@ from metadata.generated.schema.type.tagLabel import TagLabel
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
-from metadata.ingestion.source.connections import get_connection
 from metadata.ingestion.source.pipeline.dagster.queries import (
     DAGSTER_PIPELINE_DETAILS_GRAPHQL,
     GRAPHQL_QUERY_FOR_JOBS,
@@ -64,18 +63,6 @@ class DagsterSource(PipelineServiceSource):
     Implements the necessary methods ot extract
     Pipeline metadata from Dagster's metadata db
     """
-
-    config: WorkflowSource
-
-    def __init__(
-        self,
-        config: WorkflowSource,
-        metadata_config: OpenMetadataConnection,
-    ):
-        self.service_connection = config.serviceConnection.__root__.config
-        self.client = get_connection(self.service_connection)
-        super().__init__(config, metadata_config)
-        # Create the connection to the database
 
     @classmethod
     def create(cls, config_dict, metadata_config: OpenMetadataConnection):
@@ -111,7 +98,7 @@ class DagsterSource(PipelineServiceSource):
                 ),
                 labelType="Automated",
                 state="Suggested",
-                source="Tag",
+                source="Classification",
             )
         ]
 

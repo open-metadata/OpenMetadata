@@ -148,7 +148,7 @@ const ImportGlossary: FC<Props> = ({ glossaryName }) => {
       </Col>
       <Col span={24}>
         <Typography.Title data-testid="title" level={5}>
-          {t('label.import-glossary-terms')}
+          {t('label.import-glossary-term-plural')}
         </Typography.Title>
       </Col>
       <Col span={24}>
@@ -180,7 +180,7 @@ const ImportGlossary: FC<Props> = ({ glossaryName }) => {
                   size={16}>
                   <ImportIcon height={58} width={58} />
                   <Typography.Text>
-                    {t('label.drag-and-drop-files-here')}
+                    {t('message.drag-and-drop-files-here')}
                   </Typography.Text>
                 </Space>
                 <Divider plain>

@@ -43,7 +43,6 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.Relationship;
-import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TagLabel.TagSource;
 import org.openmetadata.schema.type.csv.CsvDocumentation;
 import org.openmetadata.schema.type.csv.CsvHeader;
@@ -86,18 +85,11 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
 
   @Override
   public void storeEntity(Glossary glossary, boolean update) throws IOException {
-    // Relationships and fields such as href are derived and not stored as part of json
-    EntityReference owner = glossary.getOwner();
-    List<TagLabel> tags = glossary.getTags();
+    // Relationships and fields such as reviewers are derived and not stored as part of json
     List<EntityReference> reviewers = glossary.getReviewers();
-
-    // Don't store owner, href and tags as JSON. Build it on the fly based on relationships
-    glossary.withOwner(null).withHref(null).withTags(null);
-
+    glossary.withReviewers(null);
     store(glossary, update);
-
-    // Restore the relationships
-    glossary.withOwner(owner).withTags(tags).withReviewers(reviewers);
+    glossary.withReviewers(reviewers);
   }
 
   @Override
@@ -267,10 +259,12 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
           throw new IllegalArgumentException(
               CatalogExceptionMessage.systemEntityRenameNotAllowed(original.getName(), entityType));
         }
-        // Category name changed - update tag names starting from category and all the children tags
+        // Glossary name changed - update tag names starting from glossary and all the children tags
         LOG.info("Glossary name changed from {} to {}", original.getName(), updated.getName());
         daoCollection.glossaryTermDAO().updateFqn(original.getName(), updated.getName());
-        daoCollection.tagUsageDAO().updateTagPrefix(original.getName(), updated.getName());
+        daoCollection
+            .tagUsageDAO()
+            .updateTagPrefix(TagSource.GLOSSARY.ordinal(), original.getName(), updated.getName());
         recordChange("name", original.getName(), updated.getName());
       }
     }

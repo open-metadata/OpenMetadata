@@ -12,6 +12,7 @@
  */
 
 import { Button, Typography } from 'antd';
+import classNames from 'classnames';
 import { toString } from 'lodash';
 import React, { useMemo } from 'react';
 import { Link } from 'react-router-dom';
@@ -24,14 +25,19 @@ import {
 } from '../../../utils/CommonUtils';
 import { stringToHTML } from '../../../utils/StringsUtils';
 import { getEntityLink } from '../../../utils/TableUtils';
-import { SourceType } from '../../searched-data/SearchedData.interface';
 import './TableDataCardTitle.less';
 
 interface TableDataCardTitleProps {
   dataTestId?: string;
   id?: string;
   searchIndex: SearchIndex | EntityType;
-  source: SourceType;
+  source: {
+    fullyQualifiedName?: string;
+    displayName?: string;
+    name?: string;
+    type?: string;
+  };
+  isPanel?: boolean;
   handleLinkClick?: (e: React.MouseEvent) => void;
 }
 
@@ -41,6 +47,7 @@ const TableDataCardTitle = ({
   searchIndex,
   source,
   handleLinkClick,
+  isPanel = false,
 }: TableDataCardTitleProps) => {
   const isTourRoute = location.pathname.includes(ROUTES.TOUR);
 
@@ -51,10 +58,14 @@ const TableDataCardTitle = ({
         : `${getPartialNameFromTableFQN(source.fullyQualifiedName ?? '', [
             FqnPart.Service,
           ])}-${getNameFromFQN(source.fullyQualifiedName ?? '')}`,
-      displayName: toString(source.displayName),
+      displayName:
+        source.type === 'tag'
+          ? toString(getNameFromFQN(source.fullyQualifiedName ?? ''))
+          : toString(source.displayName),
     }),
     [dataTestId, source]
   );
+
   const title = (
     <Button
       data-testid={testId}
@@ -76,7 +87,12 @@ const TableDataCardTitle = ({
       level={5}
       title={displayName}>
       <Link
-        className="table-data-card-title-container w-fit-content w-max-90"
+        className={classNames(
+          'table-data-card-title-container w-fit-content w-max-90',
+          {
+            'button-hover': isPanel,
+          }
+        )}
         to={getEntityLink(searchIndex, source.fullyQualifiedName ?? '')}>
         {title}
       </Link>

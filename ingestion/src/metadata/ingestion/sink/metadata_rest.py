@@ -33,12 +33,12 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 from metadata.generated.schema.entity.teams.role import Role
 from metadata.generated.schema.entity.teams.team import Team
 from metadata.ingestion.api.common import Entity
-from metadata.ingestion.api.sink import Sink, SinkStatus
+from metadata.ingestion.api.sink import Sink
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.models.ometa_topic_data import OMetaTopicSampleData
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
 from metadata.ingestion.models.profile_data import OMetaTableProfileSampleData
-from metadata.ingestion.models.table_metadata import DeleteTable
+from metadata.ingestion.models.table_metadata import DeleteTable, OMetaTableConstraints
 from metadata.ingestion.models.tests_data import (
     OMetaTestCaseResultsSample,
     OMetaTestCaseSample,
@@ -62,7 +62,7 @@ T = TypeVar("T", bound=BaseModel)
 
 
 class MetadataRestSinkConfig(ConfigModel):
-    api_endpoint: str = None
+    api_endpoint: Optional[str] = None
 
 
 class MetadataRestSink(Sink[Entity]):
@@ -72,20 +72,16 @@ class MetadataRestSink(Sink[Entity]):
     """
 
     config: MetadataRestSinkConfig
-    status: SinkStatus
 
     # We want to catch any errors that might happen during the sink
     # pylint: disable=broad-except
 
     def __init__(
-        self,
-        config: MetadataRestSinkConfig,
-        metadata_config: OpenMetadataConnection,
+        self, config: MetadataRestSinkConfig, metadata_config: OpenMetadataConnection
     ):
-
+        super().__init__()
         self.config = config
         self.metadata_config = metadata_config
-        self.status = SinkStatus()
         self.wrote_something = False
         self.charts_dict = {}
         self.metadata = OpenMetadata(self.metadata_config)
@@ -102,6 +98,7 @@ class MetadataRestSink(Sink[Entity]):
         self.write_record.register(DataModelLink, self.write_datamodel)
         self.write_record.register(TableLocationLink, self.write_table_location_link)
         self.write_record.register(DashboardUsage, self.write_dashboard_usage)
+        self.write_record.register(OMetaTableConstraints, self.write_table_constraints)
         self.write_record.register(
             OMetaTableProfileSampleData, self.write_profile_sample_data
         )
@@ -159,7 +156,7 @@ class MetadataRestSink(Sink[Entity]):
         :param datamodel_link: Table ID + Data Model
         """
 
-        table: Table = self.metadata.get_by_name(entity=Table, fqn=datamodel_link.fqn)
+        table: Table = datamodel_link.table_entity
 
         if table:
             self.metadata.ingest_table_data_model(
@@ -169,10 +166,7 @@ class MetadataRestSink(Sink[Entity]):
                 f"Successfully ingested DataModel for {table.fullyQualifiedName.__root__}"
             )
         else:
-            logger.warning(
-                f"The table [{datamodel_link.fqn.__root__}] from the manifest file is not found in OM. "
-                f"Please, check if the table has been ingested previously."
-            )
+            logger.warning("Unable to ingest datamodel")
 
     def write_table_location_link(self, table_location_link: TableLocationLink) -> None:
         """
@@ -342,7 +336,12 @@ class MetadataRestSink(Sink[Entity]):
 
     def delete_table(self, record: DeleteTable):
         try:
-            self.metadata.delete(entity=Table, entity_id=record.table.id)
+
+            self.metadata.delete(
+                entity=Table,
+                entity_id=record.table.id,
+                recursive=record.mark_deleted_tables,
+            )
             logger.debug(
                 f"{record.table.name} doesn't exist in source state, marking it as deleted"
             )
@@ -459,8 +458,23 @@ class MetadataRestSink(Sink[Entity]):
                 f"Unexpected error while ingesting sample data for topic [{record.topic.name.__root__}]: {exc}"
             )
 
-    def get_status(self):
-        return self.status
+    def write_table_constraints(self, record: OMetaTableConstraints):
+        """
+        Patch table constraints
+        """
+        try:
+            self.metadata.patch_table_constraints(
+                record.table_id,
+                record.constraints,
+            )
+            logger.debug(
+                f"Successfully ingested table constraints for table id {record.table_id}"
+            )
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.error(
+                f"Unexpected error while ingesting table constraints for table id [{record.table_id}]: {exc}"
+            )
 
     def close(self):
         pass

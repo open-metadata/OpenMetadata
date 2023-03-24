@@ -114,7 +114,7 @@ const GlossaryTermsV1 = ({
         .map((tag) => ({
           labelType: LabelType.Manual,
           state: State.Confirmed,
-          source: TagSource.Tag,
+          source: TagSource.Classification,
           tagFQN: tag,
         }));
       const updatedTags = [...prevTags, ...newTags];
@@ -286,6 +286,7 @@ const GlossaryTermsV1 = ({
           onClick={handleTagContainerClick}>
           <TagsContainer
             buttonContainerClass="tw--mt-0"
+            className="w-min-20"
             containerClass="flex items-center tw-gap-2 m-t-xs"
             dropDownHorzPosRight={false}
             editable={isTagEditable}

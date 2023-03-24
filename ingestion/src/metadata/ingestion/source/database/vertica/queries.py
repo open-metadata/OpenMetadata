@@ -83,6 +83,17 @@ VERTICA_TABLE_COMMENTS = textwrap.dedent(
     """
 )
 
+VERTICA_SCHEMA_COMMENTS = textwrap.dedent(
+    """
+    SELECT
+      object_name as schema_name,
+      comment
+    FROM v_catalog.comments
+    WHERE object_type = 'SCHEMA';
+    """
+)
+
+
 VERTICA_SQL_STATEMENT = textwrap.dedent(
     """
     SELECT

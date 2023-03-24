@@ -81,7 +81,7 @@ const GlossaryDetails = ({ permissions, glossary, updateGlossary }: props) => {
         .map((tag) => ({
           labelType: LabelType.Manual,
           state: State.Confirmed,
-          source: TagSource.Tag,
+          source: TagSource.Classification,
           tagFQN: tag,
         }));
       const updatedTags = [...prevTags, ...newTags];
@@ -152,6 +152,7 @@ const GlossaryDetails = ({ permissions, glossary, updateGlossary }: props) => {
           onClick={handleTagContainerClick}>
           <TagsContainer
             buttonContainerClass="m-t-0"
+            className="w-min-20"
             containerClass="flex items-center gap-2 m-t-xs"
             dropDownHorzPosRight={false}
             editable={isTagEditable}

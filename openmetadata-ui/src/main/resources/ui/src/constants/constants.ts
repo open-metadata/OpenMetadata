@@ -12,7 +12,11 @@
  */
 
 import { COOKIE_VERSION } from 'components/Modals/WhatsNewModal/whatsNewData';
+import { SearchIndex } from 'enums/search.enum';
 import { t } from 'i18next';
+import { isUndefined } from 'lodash';
+import Qs from 'qs';
+import { getPartialNameFromFQN } from 'utils/CommonUtils';
 import { getSettingPath } from '../utils/RouterUtils';
 import { getEncodedFqn } from '../utils/StringsUtils';
 import { FQN_SEPARATOR_CHAR } from './char.constants';
@@ -76,6 +80,7 @@ export const imageTypes = {
 };
 export const NO_DATA_PLACEHOLDER = '---';
 export const ELLIPSES = '...';
+export const SINGLE_DOT = '•';
 
 export const TOUR_SEARCH_TERM = 'dim_a';
 export const ERROR404 = t('label.no-data-found');
@@ -91,7 +96,6 @@ export const PLACEHOLDER_ROUTE_SERVICE_FQN = ':serviceFQN';
 export const PLACEHOLDER_ROUTE_INGESTION_TYPE = ':ingestionType';
 export const PLACEHOLDER_ROUTE_INGESTION_FQN = ':ingestionFQN';
 export const PLACEHOLDER_ROUTE_SERVICE_CAT = ':serviceCategory';
-export const PLACEHOLDER_ROUTE_SEARCHQUERY = ':searchQuery';
 export const PLACEHOLDER_ROUTE_TAB = ':tab';
 export const PLACEHOLDER_ROUTE_FQN = ':fqn';
 export const PLACEHOLDER_ROUTE_TEAM_AND_USER = ':teamAndUser';
@@ -134,6 +138,17 @@ export const tiers = [
   { key: `Tier${FQN_SEPARATOR_CHAR}Tier5`, doc_count: 0 },
 ];
 
+export const globalSearchOptions = [
+  { value: undefined, label: t('label.all') },
+  { value: SearchIndex.TABLE, label: t('label.table') },
+  { value: SearchIndex.TOPIC, label: t('label.topic') },
+  { value: SearchIndex.DASHBOARD, label: t('label.dashboard') },
+  { value: SearchIndex.PIPELINE, label: t('label.pipeline') },
+  { value: SearchIndex.MLMODEL, label: t('label.ml-model') },
+  { value: SearchIndex.GLOSSARY, label: t('label.glossary') },
+  { value: SearchIndex.TAG, label: t('label.tag') },
+];
+
 export const versionTypes = [
   { name: t('label.all'), value: 'all' },
   { name: t('label.major'), value: 'major' },
@@ -160,7 +175,6 @@ export const ROUTES = {
   TOUR: '/tour',
   REPORTS: '/reports',
   EXPLORE: '/explore',
-  EXPLORE_WITH_SEARCH: `/explore/${PLACEHOLDER_ROUTE_TAB}/${PLACEHOLDER_ROUTE_SEARCHQUERY}`,
   EXPLORE_WITH_TAB: `/explore/${PLACEHOLDER_ROUTE_TAB}`,
   WORKFLOWS: '/workflows',
   SQL_BUILDER: '/sql-builder',
@@ -255,6 +269,9 @@ export const ROUTES = {
   KPI_LIST: `/data-insights/kpi`,
   ADD_KPI: `/data-insights/kpi/add-kpi`,
   EDIT_KPI: `/data-insights/kpi/edit-kpi/${KPI_NAME}`,
+
+  CONTAINER_DETAILS: `/container/${PLACEHOLDER_ROUTE_ENTITY_FQN}`,
+  CONTAINER_DETAILS_WITH_TAB: `/container/${PLACEHOLDER_ROUTE_ENTITY_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
 };
 
 export const SOCKET_EVENTS = {
@@ -271,6 +288,14 @@ export const IN_PAGE_SEARCH_ROUTES: Record<string, Array<string>> = {
 export const getTableDetailsPath = (tableFQN: string, columnName?: string) => {
   let path = ROUTES.TABLE_DETAILS;
   path = path.replace(PLACEHOLDER_ROUTE_TABLE_FQN, tableFQN);
+
+  return `${path}${columnName ? `.${columnName}` : ''}`;
+};
+
+export const getTagsDetailsPath = (entityFQN: string, columnName?: string) => {
+  let path = ROUTES.TAG_DETAILS;
+  const classification = getPartialNameFromFQN(entityFQN, ['service']);
+  path = path.replace(PLACEHOLDER_TAG_NAME, classification);
 
   return `${path}${columnName ? `.${columnName}` : ''}`;
 };
@@ -315,13 +340,51 @@ export const getServiceDetailsPath = (
   return path;
 };
 
-export const getExplorePathWithSearch = (searchQuery = '', tab = 'tables') => {
-  let path = ROUTES.EXPLORE_WITH_SEARCH;
-  path = path
-    .replace(PLACEHOLDER_ROUTE_SEARCHQUERY, searchQuery)
-    .replace(PLACEHOLDER_ROUTE_TAB, tab);
+export const getExplorePath: (args: {
+  tab?: string;
+  search?: string;
+  extraParameters?: Record<string, unknown>;
+  isPersistFilters?: boolean;
+}) => string = ({ tab, search, extraParameters, isPersistFilters = true }) => {
+  const pathname = ROUTES.EXPLORE_WITH_TAB.replace(
+    PLACEHOLDER_ROUTE_TAB,
+    tab ?? ''
+  );
+  let paramsObject: Record<string, unknown> = Qs.parse(
+    location.search.startsWith('?')
+      ? location.search.substr(1)
+      : location.search
+  );
 
-  return path;
+  const { search: paramSearch } = paramsObject;
+
+  /**
+   * persist the filters if isPersistFilters is true
+   * otherwise only persist the search and passed extra params
+   * */
+  if (isPersistFilters) {
+    if (!isUndefined(search)) {
+      paramsObject = {
+        ...paramsObject,
+        search,
+      };
+    }
+    if (!isUndefined(extraParameters)) {
+      paramsObject = {
+        ...paramsObject,
+        ...extraParameters,
+      };
+    }
+  } else {
+    paramsObject = {
+      search: isUndefined(search) ? paramSearch : search,
+      ...(!isUndefined(extraParameters) ? extraParameters : {}),
+    };
+  }
+
+  const query = Qs.stringify(paramsObject);
+
+  return `${pathname}?${query}`;
 };
 
 export const getDatabaseDetailsPath = (databaseFQN: string, tab?: string) => {
@@ -494,4 +557,13 @@ export const ENTITY_PATH: Record<string, string> = {
   dashboards: 'dashboard',
   pipelines: 'pipeline',
   mlmodels: 'mlmodel',
+  containers: 'container',
+  tag: 'tag',
+  glossary: 'glossary',
+};
+
+export const VALIDATE_MESSAGES = {
+  required: t('message.field-text-is-required', {
+    fieldText: '${label}',
+  }),
 };

@@ -1,3 +1,16 @@
+/*
+ *  Copyright 2021 Collate
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
 package org.openmetadata.service.util;
 
 import static org.openmetadata.common.utils.CommonUtil.listOf;
@@ -10,7 +23,6 @@ import static org.openmetadata.schema.auth.SSOAuthMechanism.SsoServiceType.OKTA;
 import static org.openmetadata.schema.entity.teams.AuthenticationMechanism.AuthType.JWT;
 import static org.openmetadata.schema.entity.teams.AuthenticationMechanism.AuthType.SSO;
 import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
-import static org.openmetadata.service.resources.teams.UserResource.USER_PROTECTED_FIELDS;
 
 import at.favre.lib.crypto.bcrypt.BCrypt;
 import java.io.IOException;
@@ -63,22 +75,22 @@ public final class UserUtil {
 
   public static void addUserForBasicAuth(String username, String pwd, String domain) throws IOException {
     UserRepository userRepository = (UserRepository) Entity.getEntityRepository(Entity.USER);
-    User originalUser;
     try {
-      List<String> fields = userRepository.getAllowedFieldsCopy();
-      fields.add(USER_PROTECTED_FIELDS);
-      originalUser = userRepository.getByName(null, username, new EntityUtil.Fields(fields, String.join(",", fields)));
+      List<String> fields = List.of("profile", "roles", "teams", "authenticationMechanism", "isEmailVerified");
+      User originalUser = userRepository.getByName(null, username, new EntityUtil.Fields(fields));
       if (originalUser.getAuthenticationMechanism() == null) {
-        updateUserWithHashedPwd(originalUser, pwd);
+        updateBasicAuthUser(originalUser, pwd);
       }
-      addOrUpdateUser(originalUser);
     } catch (EntityNotFoundException e) {
-      // TODO: Not the best way ! :(
       User user = user(username, domain, username).withIsAdmin(true).withIsEmailVerified(true);
-      updateUserWithHashedPwd(user, pwd);
-      addOrUpdateUser(user);
-      EmailUtil.sendInviteMailToAdmin(user, pwd);
+      updateBasicAuthUser(user, pwd);
     }
+  }
+
+  private static void updateBasicAuthUser(User user, String pwd) {
+    updateUserWithHashedPwd(user, pwd);
+    addOrUpdateUser(user);
+    EmailUtil.sendInviteMailToAdmin(user, pwd);
   }
 
   public static void updateUserWithHashedPwd(User user, String pwd) {

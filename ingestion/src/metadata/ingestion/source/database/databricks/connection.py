@@ -26,6 +26,7 @@ from metadata.ingestion.connections.builders import (
     init_empty_connection_arguments,
 )
 from metadata.ingestion.connections.test_connections import (
+    TestConnectionResult,
     TestConnectionStep,
     test_connection_db_common,
 )
@@ -52,12 +53,13 @@ def get_connection(connection: DatabricksConnection) -> Engine:
     )
 
 
-def test_connection(engine: Engine) -> None:
+def test_connection(engine: Engine, service_connection) -> TestConnectionResult:
     """
     Test connection
     """
 
     def custom_executor(engine, statement):
+
         cursor = engine.execute(statement)
         return [item[0] for item in list(cursor.all())]
 
@@ -90,4 +92,5 @@ def test_connection(engine: Engine) -> None:
         ),
     ]
 
-    test_connection_db_common(engine, steps)
+    timeout_seconds = service_connection.connectionTimeout
+    return test_connection_db_common(engine, steps, timeout_seconds)

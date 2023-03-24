@@ -281,7 +281,7 @@ EXPTECTED_TABLE = Table(
         TagLabel(
             tagFQN="AtlasMetadata.atlas_table",
             description="test tag",
-            source="Tag",
+            source="Classification",
             labelType="Automated",
             state="Confirmed",
             href=None,
@@ -293,7 +293,6 @@ EXPTECTED_TABLE = Table(
     sampleData=None,
     tableProfilerConfig=None,
     profile=None,
-    tableQueries=None,
     dataModel=None,
     changeDescription=None,
     deleted=False,

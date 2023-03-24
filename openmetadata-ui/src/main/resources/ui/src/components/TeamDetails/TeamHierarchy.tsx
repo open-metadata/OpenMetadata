@@ -15,16 +15,18 @@ import { Modal, Table, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { ExpandableConfig } from 'antd/lib/table/interface';
 import { AxiosError } from 'axios';
-import { isArray, isEmpty } from 'lodash';
+import { TeamType } from 'generated/api/teams/createTeam';
+import { isEmpty } from 'lodash';
 import React, { FC, useCallback, useMemo, useState } from 'react';
 import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { getTeamByName, updateTeam } from 'rest/teamsAPI';
+import { getEntityName } from 'utils/EntityUtils';
 import { TABLE_CONSTANTS } from '../../constants/Teams.constants';
 import { Team } from '../../generated/entity/teams/team';
-import { getEntityName } from '../../utils/CommonUtils';
+import { Transi18next } from '../../utils/CommonUtils';
 import { getTeamsWithFqnPath } from '../../utils/RouterUtils';
 import { getTableExpandableConfig } from '../../utils/TableUtils';
 import { getMovedTeamData } from '../../utils/TeamUtils';
@@ -88,8 +90,18 @@ const TeamHierarchy: FC<TeamHierarchyProps> = ({
       {
         title: t('label.description'),
         dataIndex: 'description',
+        width: 450,
         key: 'description',
-        render: (description: string) => description || '--',
+        render: (description: string) => (
+          <Typography.Paragraph
+            className="m-b-0"
+            ellipsis={{
+              rows: 2,
+            }}
+            title={description}>
+            {isEmpty(description) ? '--' : description}
+          </Typography.Paragraph>
+        ),
       },
     ];
   }, [data, onTeamExpand]);
@@ -99,14 +111,15 @@ const TeamHierarchy: FC<TeamHierarchyProps> = ({
       if (dragRecord.id === dropRecord.id) {
         return;
       }
-      let dropTeam: Team = dropRecord;
-      if (!isArray(dropTeam.children)) {
-        const res = await getTeamByName(dropTeam.name, ['parents'], 'all');
-        dropTeam = (res.parents?.[0] as Team) || currentTeam;
+
+      if (dropRecord.teamType === TeamType.Group) {
+        showErrorToast(t('message.error-team-transfer-message'));
+
+        return;
       }
       setMovedTeam({
         from: dragRecord,
-        to: dropTeam,
+        to: dropRecord,
       });
       setIsModalOpen(true);
     },
@@ -177,18 +190,22 @@ const TeamHierarchy: FC<TeamHierarchyProps> = ({
         centered
         destroyOnClose
         closable={false}
+        confirmLoading={isTableLoading}
         data-testid="confirmation-modal"
         okText={t('label.confirm')}
         open={isModalOpen}
-        title={t('label.move-the-team')}
+        title={t('label.move-the-entity', { entity: t('label.team') })}
         onCancel={() => setIsModalOpen(false)}
         onOk={handleChangeTeam}>
-        <Typography.Text>
-          {t('message.team-transfer-message', {
+        <Transi18next
+          i18nKey="message.entity-transfer-message"
+          renderElement={<strong />}
+          values={{
             from: movedTeam?.from?.name,
             to: movedTeam?.to?.name,
-          })}
-        </Typography.Text>
+            entity: t('label.team-lowercase'),
+          }}
+        />
       </Modal>
     </>
   );

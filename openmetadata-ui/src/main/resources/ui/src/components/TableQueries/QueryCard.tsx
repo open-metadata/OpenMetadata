@@ -11,88 +11,175 @@
  *  limitations under the License.
  */
 
+import { Button, Card, Col, Row, Space, Typography } from 'antd';
 import classNames from 'classnames';
-// import { isUndefined } from 'lodash';
-import React, { FC, HTMLAttributes, useState } from 'react';
-// import { Link } from 'react-router-dom';
-// import { getUserPath } from '../../constants/constants';
+import { split } from 'lodash';
+import React, { FC, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { getFormattedDateFromSeconds } from 'utils/TimeUtils';
 import { CSMode } from '../../enums/codemirror.enum';
-import { SQLQuery } from '../../generated/entity/data/table';
-import SVGIcons, { Icons } from '../../utils/SvgUtils';
-import CopyToClipboardButton from '../buttons/CopyToClipboardButton/CopyToClipboardButton';
 import SchemaEditor from '../schema-editor/SchemaEditor';
-interface QueryCardProp extends HTMLAttributes<HTMLDivElement> {
-  query: SQLQuery;
-}
-const QueryCard: FC<QueryCardProp> = ({ className, query }) => {
-  const [expanded, setExpanded] = useState<boolean>(false);
+import QueryCardExtraOption from './QueryCardExtraOption/QueryCardExtraOption.component';
+import QueryUsedByOtherTable from './QueryUsedByOtherTable/QueryUsedByOtherTable.component';
+import { QueryCardProp } from './TableQueries.interface';
+import { ReactComponent as ExitFullScreen } from '/assets/svg/exit-full-screen.svg';
+import { ReactComponent as FullScreen } from '/assets/svg/full-screen.svg';
+
+// css import
+import { SINGLE_DOT } from 'constants/constants';
+import { QUERY_DATE_FORMAT, QUERY_LINE_HEIGHT } from 'constants/Query.constant';
+import './table-queries.style.less';
+
+const { Text } = Typography;
+
+const QueryCard: FC<QueryCardProp> = ({
+  className,
+  query,
+  selectedId,
+  tableId,
+  onQuerySelection,
+  onQueryUpdate,
+  permission,
+  onUpdateVote,
+}: QueryCardProp) => {
+  const { t } = useTranslation();
+
+  const [expanded, setExpanded] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [sqlQuery, setSqlQuery] = useState({
+    query: query.query,
+    isLoading: false,
+  });
+
+  const { isAllowExpand, queryDate } = useMemo(() => {
+    const queryArr = split(query.query, '\n');
+    const queryDate = getFormattedDateFromSeconds(
+      query.queryDate || 0,
+      QUERY_DATE_FORMAT
+    );
+
+    return { isAllowExpand: queryArr.length > QUERY_LINE_HEIGHT, queryDate };
+  }, [query]);
+
+  const updateSqlQuery = async () => {
+    setSqlQuery((pre) => ({ ...pre, isLoading: true }));
+    if (query.query !== sqlQuery.query) {
+      const updatedData = {
+        ...query,
+        query: sqlQuery.query,
+      };
+      await onQueryUpdate(updatedData, 'query');
+    }
+    setSqlQuery((pre) => ({ ...pre, isLoading: false }));
+    setIsEditMode(false);
+  };
+
+  const handleQueryChange = (value: string) => {
+    setSqlQuery((pre) => ({ ...pre, query: value }));
+  };
+
+  const handleExpandClick = () => {
+    setExpanded((pre) => !pre);
+    onQuerySelection(query);
+  };
+
+  const handleCardClick = () => {
+    onQuerySelection(query);
+  };
 
   return (
-    <div
-      className={classNames(
-        'tw-bg-white tw-py-3 tw-mb-3 tw-cursor-pointer',
-        className
-      )}
-      onClick={() => setExpanded((pre) => !pre)}>
-      {/* {!isUndefined(query.user) && !isUndefined(query.duration) ? (
-        <div data-testid="query-header">
-          <p>
-            Last run by{' '}
-            <Link
-              className="button-comp"
-              to={getUserPath(query.user?.name as string)}>
-              <button className="tw-font-medium tw-text-grey-body ">
-                {query.user?.displayName ?? query.user?.name}
-              </button>{' '}
-            </Link>
-            and took{' '}
-            <span className="tw-font-medium">{query.duration} seconds</span>
-          </p>
-        </div>
-      ) : null} */}
-      <div className="tw-border tw-border-main tw-rounded-md tw-p-px">
-        <div
-          className={classNames('tw-overflow-hidden tw-relative', {
-            'tw-max-h-10': !expanded,
-          })}>
-          <span className="tw-absolute tw-right-4 tw-z-9999 tw--mt-0.5 tw-flex">
-            <button data-testid="expand-collapse-button">
-              {expanded ? (
-                <SVGIcons
-                  alt="arrow-up"
-                  className="tw-mr-2"
-                  icon={Icons.ICON_UP}
-                  width="16px"
-                />
-              ) : (
-                <SVGIcons
-                  alt="arrow-down"
-                  className="tw-mr-2"
-                  icon={Icons.ICON_DOWN}
-                  width="16px"
-                />
-              )}
-            </button>
-            <span
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-              }}>
-              <CopyToClipboardButton copyText={query.query ?? ''} />
-            </span>
-          </span>
+    <Row gutter={[0, 8]}>
+      <Col span={24}>
+        <Card
+          bordered={false}
+          className={classNames(
+            'query-card-container',
+            { selected: selectedId === query?.id },
+            className
+          )}
+          extra={
+            <QueryCardExtraOption
+              permission={permission}
+              query={query}
+              onEditClick={setIsEditMode}
+              onUpdateVote={onUpdateVote}
+            />
+          }
+          title={
+            <Space className="font-normal p-y-xs" size={8}>
+              <Text>{queryDate}</Text>
+              <Text>{SINGLE_DOT}</Text>
+              <Text>{`${t('label.by-lowercase')} ${query.updatedBy}`}</Text>
+            </Space>
+          }
+          onClick={handleCardClick}>
+          {isAllowExpand && (
+            <Button
+              className="query-entity-expand-button bg-white"
+              data-testid="query-entity-expand-button"
+              icon={
+                expanded ? (
+                  <ExitFullScreen height={16} width={16} />
+                ) : (
+                  <FullScreen height={16} width={16} />
+                )
+              }
+              size="small"
+              onClick={handleExpandClick}
+            />
+          )}
 
-          <SchemaEditor
-            editorClass={classNames('table-query-editor')}
-            mode={{ name: CSMode.SQL }}
-            options={{
-              styleActiveLine: false,
-            }}
-            value={query.query ?? ''}
-          />
-        </div>
-      </div>
-    </div>
+          <div
+            className={classNames('sql-editor-container', {
+              'h-max-24': !isAllowExpand,
+              'h-24': !expanded && !isEditMode,
+              'h-max-56': isEditMode && !expanded && isAllowExpand,
+            })}>
+            <SchemaEditor
+              editorClass={classNames('custom-code-mirror-theme', {
+                'table-query-editor': expanded,
+              })}
+              mode={{ name: CSMode.SQL }}
+              options={{
+                styleActiveLine: isEditMode,
+                readOnly: isEditMode ? false : 'nocursor',
+              }}
+              value={query.query ?? ''}
+              onChange={handleQueryChange}
+            />
+          </div>
+          <Row align="middle" className="p-y-xs border-t-1">
+            <Col className="p-y-xs p-l-md" span={16}>
+              <QueryUsedByOtherTable query={query} tableId={tableId} />
+            </Col>
+            <Col span={8}>
+              {isEditMode && (
+                <Space
+                  align="end"
+                  className="w-full justify-end p-r-md"
+                  size={16}>
+                  <Button
+                    data-testid="cancel-query-btn"
+                    key="cancel"
+                    onClick={() => setIsEditMode(false)}>
+                    {t('label.cancel')}
+                  </Button>
+
+                  <Button
+                    data-testid="save-query-btn"
+                    key="save"
+                    loading={sqlQuery.isLoading}
+                    type="primary"
+                    onClick={updateSqlQuery}>
+                    {t('label.save')}
+                  </Button>
+                </Space>
+              )}
+            </Col>
+          </Row>
+        </Card>
+      </Col>
+    </Row>
   );
 };
 

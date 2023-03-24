@@ -43,6 +43,7 @@ export type MetricChartType = {
 };
 
 export interface ProfilerDetailsCardProps {
+  showYAxisCategory?: boolean;
   chartCollection: MetricChartType;
   name: string;
   tickFormatter?: string;
@@ -87,7 +88,6 @@ export interface ProfilerSummaryCardProps {
 export interface DataQualityTabProps {
   testCases: TestCase[];
   onTestUpdate?: () => void;
-  hasAccess: boolean;
   isLoading?: boolean;
   deletedTable?: boolean;
 }

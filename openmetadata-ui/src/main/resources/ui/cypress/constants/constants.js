@@ -24,10 +24,13 @@ export const MYDATA_SUMMARY_OPTIONS = {
   topics: 'topics',
   dashboards: 'dashboards',
   pipelines: 'pipelines',
+  mlmodels: 'mlmodels',
   service: 'service',
   user: 'user',
-  terms: 'terms',
-  mlmodels: 'mlmodels',
+  teams: 'teams',
+  testSuite: 'test-suite',
+  containers: 'containers',
+  glossaryTerms: 'glossary-terms',
 };
 
 export const SEARCH_INDEX = {
@@ -57,11 +60,21 @@ export const SEARCH_ENTITY_TABLE = {
   },
   table_2: {
     term: 'fact_session',
+    displayName: 'fact_session',
     entity: MYDATA_SUMMARY_OPTIONS.tables,
     serviceName: 'sample_data',
+    schemaName: 'shopify',
   },
   table_3: {
     term: 'raw_product_catalog',
+    displayName: 'raw_product_catalog',
+    entity: MYDATA_SUMMARY_OPTIONS.tables,
+    serviceName: 'sample_data',
+    schemaName: 'shopify',
+  },
+  table_4: {
+    term: 'dim_address',
+    displayName: 'dim_address',
     entity: MYDATA_SUMMARY_OPTIONS.tables,
     serviceName: 'sample_data',
   },
@@ -234,6 +247,15 @@ export const NEW_GLOSSARY_TERMS = {
     description: 'This is the Sales',
     synonyms: 'give,disposal,deal',
   },
+};
+export const GLOSSARY_TERM_WITH_DETAILS = {
+  name: 'Accounts',
+  description: 'This is the Accounts',
+  tag: 'PersonalData.Personal',
+  synonyms: 'book,ledger,results',
+  relatedTerms: 'Sales',
+  reviewer: 'Aaron Singh',
+  inheritedReviewer: 'Aaron Johnson',
 };
 
 export const NEW_GLOSSARY_1_TERMS = {

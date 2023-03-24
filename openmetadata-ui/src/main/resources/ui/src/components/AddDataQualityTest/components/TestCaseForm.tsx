@@ -115,9 +115,9 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
           <Form.Item
             data-testid="sql-editor-container"
             key={name}
-            label="SQL Query"
+            label={t('label.sql-uppercase-query')}
             name={name}
-            tooltip="Queries returning 1 or more rows will result in the test failing.">
+            tooltip={t('message.queries-result-test')}>
             <SchemaEditor
               className="profiler-setting-sql-editor"
               mode={{ name: CSMode.SQL }}
@@ -131,7 +131,7 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
         );
       }
 
-      return <ParameterForm definition={selectedDefinition} />;
+      return <ParameterForm definition={selectedDefinition} table={table} />;
     }
 
     return;
@@ -242,45 +242,56 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
       onFinish={handleFormSubmit}
       onValuesChange={handleValueChange}>
       <Form.Item
-        label="Name:"
+        label={`${t('label.name')}:`}
         name="testName"
         rules={[
           {
             required: true,
-            message: 'Name is required!',
+            message: `${t('label.field-required', { field: t('label.name') })}`,
           },
           {
             pattern: /^[A-Za-z0-9_]*$/g,
-            message: 'Spacial character is not allowed!',
+            message: t('message.special-character-not-allowed'),
           },
           {
             validator: (_, value) => {
               if (testCases.some((test) => test.name === value)) {
-                return Promise.reject('Name already exist!');
+                return Promise.reject(
+                  t('message.entity-already-exists', {
+                    entity: t('label.name'),
+                  })
+                );
               }
 
               return Promise.resolve();
             },
           },
         ]}>
-        <Input placeholder="Enter test case name" />
+        <Input placeholder={t('message.enter-test-case-name')} />
       </Form.Item>
       <Form.Item
-        label="Test Type:"
+        label={`${t('label.test-type')}`}
         name="testTypeId"
-        rules={[{ required: true, message: 'Test type is required' }]}>
+        rules={[
+          {
+            required: true,
+            message: `${t('label.field-required', {
+              field: t('label.test-type'),
+            })}`,
+          },
+        ]}>
         <Select
           options={testDefinitions.map((suite) => ({
             label: suite.name,
             value: suite.fullyQualifiedName,
           }))}
-          placeholder="Select test type"
+          placeholder={t('label.select-field', { field: t('label.test-type') })}
         />
       </Form.Item>
 
       {GenerateParamsField()}
 
-      <Form.Item label="Description:" name="description">
+      <Form.Item label={`${t('label.description')}`} name="description">
         <RichTextEditor
           initialValue={initialValue?.description || ''}
           ref={markdownRef}

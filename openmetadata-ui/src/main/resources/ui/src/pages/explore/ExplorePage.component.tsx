@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate.
+ *  Copyright 2023 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,7 +11,9 @@
  *  limitations under the License.
  */
 
+import { AxiosError } from 'axios';
 import PageContainerV1 from 'components/containers/PageContainerV1';
+import { useAdvanceSearch } from 'components/Explore/AdvanceSearchProvider/AdvanceSearchProvider.component';
 import Explore from 'components/Explore/Explore.component';
 import {
   ExploreProps,
@@ -19,49 +21,74 @@ import {
   SearchHitCounts,
   UrlParams,
 } from 'components/Explore/explore.interface';
-import { isNil, isString } from 'lodash';
+import { withAdvanceSearch } from 'components/router/withAdvanceSearch';
+import { SORT_ORDER } from 'enums/common.enum';
+import { get, isEmpty, isNil, isString, isUndefined } from 'lodash';
 import Qs from 'qs';
-import React, { FunctionComponent, useEffect, useMemo, useState } from 'react';
-import { JsonTree, Utils as QbUtils } from 'react-awesome-query-builder';
+import React, {
+  FunctionComponent,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 import { useHistory, useLocation, useParams } from 'react-router-dom';
 import { searchQuery } from 'rest/searchAPI';
 import useDeepCompareEffect from 'use-deep-compare-effect';
-import AppState from '../../AppState';
-import { PAGE_SIZE } from '../../constants/constants';
 import {
+  getCombinedQueryFilterObject,
+  getUpdatedAggregateFieldValue,
+} from 'utils/ExplorePage/ExplorePageUtils';
+import AppState from '../../AppState';
+import { getExplorePath, PAGE_SIZE } from '../../constants/constants';
+import {
+  COMMON_FILTERS_FOR_DIFFERENT_TABS,
   INITIAL_SORT_FIELD,
-  INITIAL_SORT_ORDER,
   tabsInfo,
 } from '../../constants/explore.constants';
 import { SearchIndex } from '../../enums/search.enum';
-import { SearchResponse } from '../../interface/search.interface';
-import { getCombinedQueryFilterObject } from '../../utils/ExplorePage/ExplorePageUtils';
+import { Aggregations, SearchResponse } from '../../interface/search.interface';
 import {
   filterObjectToElasticsearchQuery,
   isFilterObject,
 } from '../../utils/FilterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
-import { QueryFilterInterface } from './ExplorePage.interface';
+import {
+  QueryFieldInterface,
+  QueryFieldValueInterface,
+  QueryFilterInterface,
+} from './ExplorePage.interface';
 
 const ExplorePage: FunctionComponent = () => {
   const location = useLocation();
   const history = useHistory();
 
-  const { searchQuery: searchQueryParam = '', tab } = useParams<UrlParams>();
+  const { tab } = useParams<UrlParams>();
 
   const [searchResults, setSearchResults] =
     useState<SearchResponse<ExploreSearchIndex>>();
 
-  const [advancesSearchQueryFilter, setAdvancedSearchQueryFilter] =
-    useState<Record<string, unknown>>();
+  const [withoutFilterAggregations, setWithoutFilterAggregations] =
+    useState<Aggregations>();
+
+  const [withFilterAggregations, setWithFilterAggregations] =
+    useState<Aggregations>();
+
+  const [updatedAggregations, setUpdatedAggregations] =
+    useState<Aggregations>();
+
+  const [advancesSearchQuickFilters, setAdvancedSearchQuickFilters] =
+    useState<QueryFilterInterface>();
 
   const [sortValue, setSortValue] = useState<string>(INITIAL_SORT_FIELD);
 
-  const [sortOrder, setSortOrder] = useState<string>(INITIAL_SORT_ORDER);
+  const [sortOrder, setSortOrder] = useState<SORT_ORDER>(SORT_ORDER.DESC);
 
   const [searchHitCounts, setSearchHitCounts] = useState<SearchHitCounts>();
 
   const [isLoading, setIsLoading] = useState(true);
+
+  const { queryFilter } = useAdvanceSearch();
 
   const parsedSearch = useMemo(
     () =>
@@ -73,51 +100,102 @@ const ExplorePage: FunctionComponent = () => {
     [location.search]
   );
 
-  const postFilter = useMemo(
-    () =>
-      isFilterObject(parsedSearch.postFilter)
-        ? parsedSearch.postFilter
-        : undefined,
+  const searchQueryParam = useMemo(
+    () => (isString(parsedSearch.search) ? parsedSearch.search : ''),
     [location.search]
   );
 
+  const facetFilters = useMemo(
+    () =>
+      isFilterObject(parsedSearch.facetFilter)
+        ? parsedSearch.facetFilter
+        : undefined,
+    [parsedSearch.facetFilter]
+  );
+
   const elasticsearchQueryFilter = useMemo(
-    () => filterObjectToElasticsearchQuery(postFilter),
-    [postFilter]
+    () => filterObjectToElasticsearchQuery(facetFilters),
+    [facetFilters]
   );
 
   const handlePageChange: ExploreProps['onChangePage'] = (page) => {
     history.push({ search: Qs.stringify({ ...parsedSearch, page }) });
   };
 
-  const handleSearchIndexChange: (nSearchIndex: ExploreSearchIndex) => void = (
-    nSearchIndex
-  ) => {
-    history.push({
-      pathname: `/explore/${tabsInfo[nSearchIndex].path}/${searchQueryParam}`,
-      search: Qs.stringify({ page: 1 }),
-    });
-    setAdvancedSearchQueryFilter(undefined);
-  };
+  // Filters that can be common for all the Entities Ex. Tables, Topics, etc.
+  const commonQuickFilters = useMemo(() => {
+    const mustField: QueryFieldInterface[] = get(
+      advancesSearchQuickFilters,
+      'query.bool.must',
+      []
+    );
 
-  const handleQueryFilterChange: ExploreProps['onChangeAdvancedSearchJsonTree'] =
-    (queryFilter) => {
+    // Getting the filters that can be common for all the Entities
+    const must = mustField.filter((filterCategory: QueryFieldInterface) => {
+      const shouldField: QueryFieldValueInterface[] = get(
+        filterCategory,
+        'bool.should',
+        []
+      );
+
+      // check if the filter category is present in the common filters array
+      const isCommonFieldPresent =
+        !isEmpty(shouldField) &&
+        COMMON_FILTERS_FOR_DIFFERENT_TABS.find(
+          (value) => value === Object.keys(shouldField[0].term)[0]
+        );
+
+      return isCommonFieldPresent;
+    });
+
+    return isEmpty(must)
+      ? undefined
+      : {
+          query: {
+            bool: {
+              must,
+            },
+          },
+        };
+  }, [advancesSearchQuickFilters]);
+
+  const handleSearchIndexChange: (nSearchIndex: ExploreSearchIndex) => void =
+    useCallback(
+      (nSearchIndex) => {
+        history.push(
+          getExplorePath({
+            tab: tabsInfo[nSearchIndex].path,
+            extraParameters: {
+              page: '1',
+              quickFilter: commonQuickFilters
+                ? JSON.stringify(commonQuickFilters)
+                : undefined,
+            },
+            isPersistFilters: false,
+          })
+        );
+      },
+      [commonQuickFilters]
+    );
+
+  const handleQuickFilterChange = useCallback(
+    (quickFilter) => {
       history.push({
-        pathname: history.location.pathname,
         search: Qs.stringify({
           ...parsedSearch,
-          queryFilter: queryFilter ? JSON.stringify(queryFilter) : undefined,
+          quickFilter: quickFilter ? JSON.stringify(quickFilter) : undefined,
           page: 1,
         }),
       });
-    };
+    },
+    [history, parsedSearch]
+  );
 
-  const handlePostFilterChange: ExploreProps['onChangePostFilter'] = (
-    postFilter
+  const handleFacetFilterChange: ExploreProps['onChangeFacetFilters'] = (
+    facetFilter
   ) => {
     history.push({
-      pathname: history.location.pathname,
-      search: Qs.stringify({ ...parsedSearch, postFilter, page: 1 }),
+      search: Qs.stringify({ ...parsedSearch, facetFilter, page: 1 }),
     });
   };
 
@@ -125,32 +203,9 @@ const ExplorePage: FunctionComponent = () => {
     showDeleted
   ) => {
     history.push({
-      pathname: history.location.pathname,
       search: Qs.stringify({ ...parsedSearch, showDeleted, page: 1 }),
     });
   };
-
-  const queryFilter = useMemo(() => {
-    if (!isString(parsedSearch.queryFilter)) {
-      return undefined;
-    }
-
-    try {
-      const queryFilter = JSON.parse(parsedSearch.queryFilter);
-      const immutableTree = QbUtils.loadTree(queryFilter as JsonTree);
-      if (QbUtils.isValidTree(immutableTree)) {
-        return queryFilter as JsonTree;
-      }
-    } catch {
-      return undefined;
-    }
-
-    return undefined;
-  }, [location.search]);
-
-  useEffect(() => {
-    handleQueryFilterChange(queryFilter);
-  }, [queryFilter]);
 
   const searchIndex = useMemo(() => {
     const tabInfo = Object.entries(tabsInfo).find(
@@ -162,10 +217,6 @@ const ExplorePage: FunctionComponent = () => {
 
     return tabInfo[0] as ExploreSearchIndex;
   }, [tab]);
-
-  useEffect(() => {
-    handleSearchIndexChange(searchIndex);
-  }, [searchIndex, searchQueryParam]);
 
   const page = useMemo(() => {
     const pageParam = parsedSearch.page;
@@ -186,19 +237,58 @@ const ExplorePage: FunctionComponent = () => {
     return showDeletedParam === 'true';
   }, [parsedSearch.showDeleted]);
 
-  const combinedQueryFilter = useMemo(
-    () =>
-      // Both query filter objects have type as Record<string, unknown>
-      // Here unknown will not allow us to directly access the properties
-      // That is why I first did typecast it into QueryFilterInterface type to access the properties.
-      getCombinedQueryFilterObject(
-        elasticsearchQueryFilter as unknown as QueryFilterInterface,
-        advancesSearchQueryFilter as unknown as QueryFilterInterface
-      ),
-    [elasticsearchQueryFilter, advancesSearchQueryFilter]
-  );
+  // Function to fetch aggregations without any filters
+  const fetchFilterAggregationsWithoutFilters = async () => {
+    try {
+      const res = await searchQuery({
+        searchIndex,
+        pageNumber: 0,
+        pageSize: 0,
+        includeDeleted: showDeleted,
+      });
+      setUpdatedAggregations(res.aggregations);
+      setWithoutFilterAggregations(res.aggregations);
+
+      return res.aggregations;
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+
+      return undefined;
+    }
+  };
+
+  const getAdvancedSearchQuickFilters = useCallback(() => {
+    if (!isString(parsedSearch.quickFilter)) {
+      setAdvancedSearchQuickFilters(undefined);
+
+      return undefined;
+    } else {
+      try {
+        const parsedQueryFilter = JSON.parse(parsedSearch.quickFilter);
+        setAdvancedSearchQuickFilters(parsedQueryFilter);
+
+        return parsedQueryFilter;
+      } catch {
+        setAdvancedSearchQuickFilters(undefined);
+
+        return undefined;
+      }
+    }
+  }, [parsedSearch]);
+
+  useEffect(() => {
+    fetchFilterAggregationsWithoutFilters();
+  }, [searchIndex]);
 
   useDeepCompareEffect(() => {
+    const updatedQuickFilters = getAdvancedSearchQuickFilters();
+
+    const combinedQueryFilter = getCombinedQueryFilterObject(
+      elasticsearchQueryFilter as unknown as QueryFilterInterface,
+      updatedQuickFilters as QueryFilterInterface,
+      queryFilter as unknown as QueryFilterInterface
+    );
+
     setIsLoading(true);
     Promise.all([
       searchQuery({
@@ -212,7 +302,10 @@ const ExplorePage: FunctionComponent = () => {
         includeDeleted: showDeleted,
       })
         .then((res) => res)
-        .then((res) => setSearchResults(res)),
+        .then((res) => {
+          setSearchResults(res);
+          setWithFilterAggregations(res.aggregations);
+        }),
       Promise.all(
         [
           SearchIndex.TABLE,
@@ -220,6 +313,9 @@ const ExplorePage: FunctionComponent = () => {
           SearchIndex.DASHBOARD,
           SearchIndex.PIPELINE,
           SearchIndex.MLMODEL,
+          SearchIndex.CONTAINER,
+          SearchIndex.GLOSSARY,
+          SearchIndex.TAG,
         ].map((index) =>
           searchQuery({
             query: searchQueryParam,
@@ -239,6 +335,9 @@ const ExplorePage: FunctionComponent = () => {
           dashboardResponse,
           pipelineResponse,
           mlmodelResponse,
+          containerResponse,
+          glossaryResponse,
+          tagsResponse,
         ]) => {
           setSearchHitCounts({
             [SearchIndex.TABLE]: tableResponse.hits.total.value,
@@ -246,51 +345,89 @@ const ExplorePage: FunctionComponent = () => {
             [SearchIndex.DASHBOARD]: dashboardResponse.hits.total.value,
             [SearchIndex.PIPELINE]: pipelineResponse.hits.total.value,
             [SearchIndex.MLMODEL]: mlmodelResponse.hits.total.value,
+            [SearchIndex.CONTAINER]: containerResponse.hits.total.value,
+            [SearchIndex.GLOSSARY]: glossaryResponse.hits.total.value,
+            [SearchIndex.TAG]: tagsResponse.hits.total.value,
           });
         }
       ),
     ])
-      .catch((err) => showErrorToast(err))
+      .catch((err) => {
+        showErrorToast(err);
+      })
       .finally(() => setIsLoading(false));
   }, [
-    searchIndex,
+    parsedSearch.quickFilter,
+    queryFilter,
     searchQueryParam,
     sortValue,
     sortOrder,
     showDeleted,
-    advancesSearchQueryFilter,
     elasticsearchQueryFilter,
+    searchIndex,
     page,
   ]);
 
-  const handleAdvanceSearchQueryFilterChange = (
-    filter?: Record<string, unknown>
-  ) => {
-    handlePageChange(1);
-    setAdvancedSearchQueryFilter(filter);
-  };
+  const handleAdvanceSearchQuickFiltersChange = useCallback(
+    (filter?: QueryFilterInterface) => {
+      handlePageChange(1);
+      setAdvancedSearchQuickFilters(filter);
+      handleQuickFilterChange(filter);
+    },
+    [setAdvancedSearchQuickFilters, history, parsedSearch]
+  );
 
   useEffect(() => {
     AppState.updateExplorePageTab(tab);
   }, [tab]);
 
+  useEffect(() => {
+    try {
+      const newAggregates: Aggregations = {};
+
+      if (
+        !isEmpty(withFilterAggregations) &&
+        !isEmpty(withoutFilterAggregations) &&
+        !isUndefined(withoutFilterAggregations) &&
+        !isUndefined(withFilterAggregations)
+      ) {
+        Object.keys(withoutFilterAggregations).forEach((filterKey) => {
+          const aggregateFieldValue = getUpdatedAggregateFieldValue(
+            withFilterAggregations,
+            withoutFilterAggregations,
+            filterKey
+          );
+
+          if (aggregateFieldValue) {
+            newAggregates[filterKey] = aggregateFieldValue;
+          }
+        });
+        setUpdatedAggregations(newAggregates);
+      }
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  }, [withoutFilterAggregations, withFilterAggregations]);
+
   return (
     <PageContainerV1>
       <Explore
-        advancedSearchJsonTree={queryFilter}
+        aggregations={updatedAggregations}
+        facetFilters={facetFilters}
         loading={isLoading}
         page={page}
-        postFilter={postFilter}
+        quickFilters={advancesSearchQuickFilters}
         searchIndex={searchIndex}
         searchResults={searchResults}
         showDeleted={showDeleted}
         sortOrder={sortOrder}
         sortValue={sortValue}
         tabCounts={searchHitCounts}
-        onChangeAdvancedSearchJsonTree={handleQueryFilterChange}
-        onChangeAdvancedSearchQueryFilter={handleAdvanceSearchQueryFilterChange}
+        onChangeAdvancedSearchQuickFilters={
+          handleAdvanceSearchQuickFiltersChange
+        }
+        onChangeFacetFilters={handleFacetFilterChange}
         onChangePage={handlePageChange}
-        onChangePostFilter={handlePostFilterChange}
         onChangeSearchIndex={handleSearchIndexChange}
         onChangeShowDeleted={handleShowDeletedChange}
         onChangeSortOder={(sort) => {
@@ -306,4 +443,4 @@ const ExplorePage: FunctionComponent = () => {
   );
 };
 
-export default ExplorePage;
+export default withAdvanceSearch(ExplorePage);

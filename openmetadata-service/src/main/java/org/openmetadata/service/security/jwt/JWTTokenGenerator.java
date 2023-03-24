@@ -22,6 +22,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.security.jwt.JWTTokenConfiguration;
 import org.openmetadata.schema.auth.JWTAuthMechanism;
 import org.openmetadata.schema.auth.JWTTokenExpiry;
+import org.openmetadata.schema.auth.ServiceTokenType;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.service.security.AuthenticationException;
 
@@ -30,6 +31,7 @@ public class JWTTokenGenerator {
   private static final String SUBJECT_CLAIM = "sub";
   private static final String EMAIL_CLAIM = "email";
   private static final String IS_BOT_CLAIM = "isBot";
+  public static final String TOKEN_TYPE = "tokenType";
   private static final JWTTokenGenerator INSTANCE = new JWTTokenGenerator();
   private RSAPrivateKey privateKey;
   @Getter private RSAPublicKey publicKey;
@@ -66,33 +68,20 @@ public class JWTTokenGenerator {
   }
 
   public JWTAuthMechanism generateJWTToken(User user, JWTTokenExpiry expiry) {
-    try {
-      JWTAuthMechanism jwtAuthMechanism = new JWTAuthMechanism().withJWTTokenExpiry(expiry);
-      Algorithm algorithm = Algorithm.RSA256(null, privateKey);
-      Date expires = getExpiryDate(expiry);
-      String token =
-          JWT.create()
-              .withIssuer(issuer)
-              .withKeyId(kid)
-              .withClaim(SUBJECT_CLAIM, user.getName())
-              .withClaim(EMAIL_CLAIM, user.getEmail())
-              .withClaim(IS_BOT_CLAIM, true)
-              .withIssuedAt(new Date(System.currentTimeMillis()))
-              .withExpiresAt(expires)
-              .sign(algorithm);
-      jwtAuthMechanism.setJWTToken(token);
-      jwtAuthMechanism.setJWTTokenExpiresAt(expires != null ? expires.getTime() : null);
-      return jwtAuthMechanism;
-    } catch (Exception e) {
-      throw new JWTCreationException("Failed to generate JWT Token. Please check your OpenMetadata Configuration.", e);
-    }
+    return getJwtAuthMechanism(
+        user.getName(), user.getEmail(), true, ServiceTokenType.BOT, getExpiryDate(expiry), expiry);
   }
 
-  public JWTAuthMechanism generateJWTToken(String userName, String email, JWTTokenExpiry expiry, boolean isBot) {
+  public JWTAuthMechanism generateJWTToken(
+      String userName, String email, long expiryInSeconds, boolean isBot, ServiceTokenType tokenType) {
+    return getJwtAuthMechanism(userName, email, isBot, tokenType, getCustomExpiryDate(expiryInSeconds), null);
+  }
+
+  public JWTAuthMechanism getJwtAuthMechanism(
+      String userName, String email, boolean isBot, ServiceTokenType tokenType, Date expires, JWTTokenExpiry expiry) {
     try {
       JWTAuthMechanism jwtAuthMechanism = new JWTAuthMechanism().withJWTTokenExpiry(expiry);
       Algorithm algorithm = Algorithm.RSA256(null, privateKey);
-      Date expires = getExpiryDate(expiry);
       String token =
           JWT.create()
               .withIssuer(issuer)
@@ -100,6 +89,7 @@ public class JWTTokenGenerator {
               .withClaim(SUBJECT_CLAIM, userName)
               .withClaim(EMAIL_CLAIM, email)
               .withClaim(IS_BOT_CLAIM, isBot)
+              .withClaim(TOKEN_TYPE, tokenType.value())
               .withIssuedAt(new Date(System.currentTimeMillis()))
               .withExpiresAt(expires)
               .sign(algorithm);
@@ -111,7 +101,7 @@ public class JWTTokenGenerator {
     }
   }
 
-  public Date getExpiryDate(JWTTokenExpiry jwtTokenExpiry) {
+  public static Date getExpiryDate(JWTTokenExpiry jwtTokenExpiry) {
     LocalDateTime expiryDate;
     switch (jwtTokenExpiry) {
       case OneHour:
@@ -137,6 +127,11 @@ public class JWTTokenGenerator {
         expiryDate = null;
     }
     return expiryDate != null ? Date.from(expiryDate.atZone(ZoneId.systemDefault()).toInstant()) : null;
+  }
+
+  public Date getCustomExpiryDate(long seconds) {
+    LocalDateTime expiryDate = LocalDateTime.now().plusSeconds(seconds);
+    return Date.from(expiryDate.atZone(ZoneId.systemDefault()).toInstant());
   }
 
   public JWKSResponse getJWKSResponse() {

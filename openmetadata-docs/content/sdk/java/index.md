@@ -33,11 +33,11 @@ inputs will be needed for the same.
 * Security Config: Provide the config for the selected auth provider.
 
 ```java
-    OpenMetadataServerConnection server = new OpenMetadataServerConnection();
-    server.setHostPort("http://localhost:{port}}/api");
-    server.setApiVersion("v1");
-    server.setAuthProvider(OpenMetadataServerConnection.AuthProvider.{auth_provider});
-    server.setSecurityConfig({security_client_config});
+        OpenMetadataConnection server = new OpenMetadataConnection();
+        server.setHostPort("http://localhost:{port}}/api");
+        server.setApiVersion("v1");
+        server.setAuthProvider(OpenMetadataConnection.AuthProvider.{auth_provider});
+        server.setSecurityConfig({security_client_config});
 ```
 
 ## Create OpenMetadata Gateway
@@ -191,13 +191,13 @@ Using OpenMetadata Gateway, you will need to build the client by providing the `
 Below are some examples:
 ```java
     // Dashboards API
-    DashboardsApi botsApi = openMetadataGateway.buildClient(DashboardsApi.class);
+    DashboardsApi dashboardApi = openMetadataGateway.buildClient(DashboardsApi.class);
 
     // Tables API
     TablesApi tablesApiClient = openMetadataGateway.buildClient(TablesApi.class);
 
     // Users API
-    UsersApi client = openMetadataGateway.buildClient(UsersApi.class);
+    UsersApi usersApi = openMetadataGateway.buildClient(UsersApi.class);
 
     // Locations API
     LocationsApi locationsApi = openMetadataGateway.buildClient(LocationsApi.class);
@@ -215,3 +215,15 @@ Please refer to the examples to access an API:
     CreateLocation createLocation = new CreateLocation();
     Location location = locationsApi.createLocation(createLocation);
 ```
+
+* Elastic Search API
+```java
+    ElasticSearchApi esApi = openMetadataGateway.buildClient(ElasticSearchApi.class);
+    Response response = esApi.searchEntitiesWithQuery("", "pipeline_search_index", false, 0, 0, null, null, true, "{\"query\":{\"bool\":{}}}", null, false, null  );
+    String data = IOUtils.toString(response.body().asInputStream(), Charsets.UTF_8);
+```
+
+## More examples
+
+If you want more examples of using different Java SDK methods, you will find them in our demo repository 
+[here](https://github.com/open-metadata/openmetadata-demo/tree/main/java-sdk-examples).

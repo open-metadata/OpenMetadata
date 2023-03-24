@@ -177,6 +177,15 @@ pre {
 .search-grey::placeholder {
   color: #6b7280;
 }
+.global-search-select {
+  width: 140px;
+}
+.appbar-search .rc-virtual-list-holder {
+  max-height: max-content;
+}
+.suggestions-menu {
+  margin-left: 140px;
+}
 
 /* Breadcrumb */
 .breadcrumb {
@@ -900,13 +909,6 @@ body .profiler-graph .recharts-active-dot circle {
     rgba(255, 255, 255, 0) 42%
   );
   pointer-events: none; /* so the text is still selectable */
-}
-.table-query-editor > .CodeMirror {
-  height: auto !important;
-}
-
-.CodeMirror-wrap pre.CodeMirror-line {
-  padding-right: 40px;
 }
 
 .entity-feed-list {

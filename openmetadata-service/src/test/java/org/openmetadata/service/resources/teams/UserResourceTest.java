@@ -15,6 +15,7 @@ package org.openmetadata.service.resources.teams;
 
 import static java.util.List.of;
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
+import static javax.ws.rs.core.Response.Status.CONFLICT;
 import static javax.ws.rs.core.Response.Status.CREATED;
 import static javax.ws.rs.core.Response.Status.FORBIDDEN;
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
@@ -35,6 +36,7 @@ import static org.openmetadata.csv.EntityCsvTest.assertRows;
 import static org.openmetadata.csv.EntityCsvTest.assertSummary;
 import static org.openmetadata.csv.EntityCsvTest.createCsv;
 import static org.openmetadata.csv.EntityCsvTest.getFailedRecord;
+import static org.openmetadata.service.Entity.USER;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.PASSWORD_INVALID_FORMAT;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.entityNotFound;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.notAdmin;
@@ -88,11 +90,14 @@ import org.openmetadata.csv.EntityCsv;
 import org.openmetadata.csv.EntityCsvTest;
 import org.openmetadata.schema.api.CreateBot;
 import org.openmetadata.schema.api.teams.CreateUser;
+import org.openmetadata.schema.auth.CreatePersonalToken;
 import org.openmetadata.schema.auth.GenerateTokenRequest;
 import org.openmetadata.schema.auth.JWTAuthMechanism;
 import org.openmetadata.schema.auth.JWTTokenExpiry;
 import org.openmetadata.schema.auth.LoginRequest;
+import org.openmetadata.schema.auth.PersonalAccessToken;
 import org.openmetadata.schema.auth.RegistrationRequest;
+import org.openmetadata.schema.auth.RevokePersonalTokenRequest;
 import org.openmetadata.schema.auth.RevokeTokenRequest;
 import org.openmetadata.schema.auth.SSOAuthMechanism;
 import org.openmetadata.schema.entity.data.Table;
@@ -132,7 +137,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
   final Profile PROFILE = new Profile().withImages(new ImageList().withImage(URI.create("http://image.com")));
 
   public UserResourceTest() {
-    super(Entity.USER, User.class, UserList.class, "users", UserResource.FIELDS);
+    super(USER, User.class, UserList.class, "users", UserResource.FIELDS);
     supportedNameCharacters = "_-.";
   }
 
@@ -222,6 +227,17 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     create = createRequest(test, 6).withDisplayName("displayName").withProfile(PROFILE).withIsAdmin(true);
     createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
     assertNotNull(create);
+  }
+
+  @Test
+  void test_userEmailUnique(TestInfo test) throws IOException {
+    // Create user with different optional fields
+    CreateUser create = createRequest(test, 1).withName("userEmailTest").withEmail("user@domainx.com");
+    createEntity(create, ADMIN_AUTH_HEADERS);
+
+    // Creating another user with the same email address must fail
+    create.withName("userEmailTest1");
+    assertResponse(() -> createEntity(create, ADMIN_AUTH_HEADERS), CONFLICT, "Entity already exists");
   }
 
   @Test
@@ -895,6 +911,34 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
   }
 
   @Test
+  void post_createGetRevokePersonalAccessToken() throws HttpResponseException {
+    // Create a Personal Access Token Request
+    CreatePersonalToken request =
+        new CreatePersonalToken().withTokenName("Token1").withJWTTokenExpiry(JWTTokenExpiry.Seven);
+
+    // Create
+    WebTarget createTokenTarget = getResource("users/security/token");
+    PersonalAccessToken tokens =
+        TestUtils.put(createTokenTarget, request, PersonalAccessToken.class, OK, ADMIN_AUTH_HEADERS);
+
+    // Get
+    WebTarget getTokenTarget = getResource("users/security/token");
+    UserResource.PersonalAccessTokenList getToken =
+        TestUtils.get(getTokenTarget, UserResource.PersonalAccessTokenList.class, ADMIN_AUTH_HEADERS);
+
+    // Revoke
+    RevokePersonalTokenRequest revokeRequest =
+        new RevokePersonalTokenRequest().withTokenIds(List.of(tokens.getToken()));
+    WebTarget revokeTokenTarget = getResource("users/security/token/revoke");
+    UserResource.PersonalAccessTokenList getTokenAfterRevoke =
+        TestUtils.put(
+            revokeTokenTarget, revokeRequest, UserResource.PersonalAccessTokenList.class, OK, ADMIN_AUTH_HEADERS);
+
+    assertEquals(tokens, getToken.getData().get(0));
+    assertEquals(0, getTokenAfterRevoke.getData().size());
+  }
+
+  @Test
   void testCsvDocumentation() throws HttpResponseException {
     assertEquals(UserCsv.DOCUMENTATION, getCsvDocumentation());
   }
@@ -950,7 +994,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
 
     // Add new users
     String user2 = "userImportExport2,displayName2,,userImportExport2@domain.com,,,teamImportExport1,";
-    String user21 = "userImportExport21,displayName21,,userImportExport11@domain.com,,,teamImportExport11,";
+    String user21 = "userImportExport21,displayName21,,userImportExport21@domain.com,,,teamImportExport11,";
     List<String> newRecords = listOf(user2, user21);
     testImportExport("teamImportExport", UserCsv.HEADERS, createRecords, updateRecords, newRecords);
 

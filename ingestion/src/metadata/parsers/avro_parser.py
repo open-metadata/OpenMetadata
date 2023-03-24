@@ -38,11 +38,13 @@ def parse_array_fields(
         name=field_items.name,
         dataType=str(field_items.type).upper(),
         children=get_avro_fields(field.type.items, cls),
+        description=field_items.doc,
     )
 
     obj = cls(
         name=field.name,
         dataType=str(field.type.type).upper(),
+        description=field.doc,
     )
 
     if cls == Column:
@@ -69,8 +71,7 @@ def parse_single_field(
     Parse primitive field for avro schema
     """
     obj = cls(
-        name=field.name,
-        dataType=str(field.type.type).upper(),
+        name=field.name, dataType=str(field.type.type).upper(), description=field.doc
     )
     if cls == Column:
         obj.dataTypeDisplay = str(field.type.type)
@@ -85,7 +86,15 @@ def parse_avro_schema(
     """
     try:
         parsed_schema = avroschema.parse(schema)
-        return get_avro_fields(parsed_schema, cls)
+        models = [
+            cls(
+                name=parsed_schema.name,
+                dataType=str(parsed_schema.type).upper(),
+                children=get_avro_fields(parsed_schema, cls),
+                description=parsed_schema.doc,
+            )
+        ]
+        return models
     except Exception as exc:  # pylint: disable=broad-except
         logger.debug(traceback.format_exc())
         logger.warning(f"Unable to parse the avro schema: {exc}")

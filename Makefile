@@ -41,7 +41,7 @@ precommit_install:  ## Install the project's precommit hooks from .pre-commit-co
 
 .PHONY: lint
 lint: ## Run pylint on the Python sources to analyze the codebase
-	PYTHONPATH="${PYTHONPATH}:./ingestion/plugins" find $(PY_SOURCE) -path $(PY_SOURCE)/metadata/generated -prune -false -o -type f -name "*.py" | xargs pylint --ignore-paths=$(PY_SOURCE)/metadata_server/
+	PYTHONPATH="${PYTHONPATH}:./ingestion/plugins" find $(PY_SOURCE) -path $(PY_SOURCE)/metadata/generated -prune -false -o -type f -name "*.py" | xargs pylint
 
 .PHONY: py_format
 py_format:  ## Run black and isort to format the Python codebase
@@ -226,8 +226,8 @@ snyk-airflow-apis-report:  ## Uses Snyk CLI to validate the airflow apis code. D
 .PHONY: snyk-catalog-report
 snyk-server-report:  ## Uses Snyk CLI to validate the catalog code and container. Don't stop the execution
 	@echo "Validating catalog container... Make sure the code is built and available under openmetadata-dist"
-	docker build -t openmetadata-server:scan -f docker/local-metadata/Dockerfile .
-	snyk container test openmetadata-server:scan --file=docker/local-metadata/Dockerfile $(SNYK_ARGS) --json > security-report/server-docker-scan.json | true;
+	docker build -t openmetadata-server:scan -f docker/development/Dockerfile .
+	snyk container test openmetadata-server:scan --file=docker/development/Dockerfile $(SNYK_ARGS) --json > security-report/server-docker-scan.json | true;
 	snyk test --all-projects $(SNYK_ARGS) --json > security-report/server-dep-scan.json | true;
 	snyk code test --all-projects --severity-threshold=high --json > security-report/server-code-scan.json | true;
 

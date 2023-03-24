@@ -21,10 +21,10 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import { getPolicyByName, patchPolicy } from 'rest/rolesAPIV1';
+import { getEntityName } from 'utils/EntityUtils';
 import { GlobalSettingOptions } from '../../../constants/GlobalSettings.constants';
 import { Effect, Rule } from '../../../generated/api/policies/createPolicy';
 import { Policy } from '../../../generated/entity/policies/policy';
-import { getEntityName } from '../../../utils/CommonUtils';
 import {
   getPath,
   getPolicyWithFqnPath,
@@ -53,11 +53,11 @@ const AddRulePage = () => {
   const breadcrumb = useMemo(
     () => [
       {
-        name: 'Settings',
+        name: t('label.setting-plural'),
         url: getSettingPath(),
       },
       {
-        name: 'Policies',
+        name: t('label.policy-plural'),
         url: policiesPath,
       },
       {
@@ -66,7 +66,9 @@ const AddRulePage = () => {
       },
 
       {
-        name: 'Add New Rule',
+        name: t('label.add-new-entity', {
+          entity: t('label.rule'),
+        }),
         url: '',
       },
     ],

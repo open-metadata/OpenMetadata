@@ -38,7 +38,7 @@ export const mockEntityDataWithoutNesting: Column[] = [
         tagFQN: 'PersonalData.SpecialCategory',
         description:
           'GDPR special category data is personal information of data subjects that is especially sensitive.',
-        source: TagSource.Tag,
+        source: TagSource.Classification,
         labelType: LabelType.Manual,
         state: State.Confirmed,
       },
@@ -71,7 +71,7 @@ export const mockEntityDataWithoutNestingResponse = [
         tagFQN: 'PersonalData.SpecialCategory',
         description:
           'GDPR special category data is personal information of data subjects that is especially sensitive.',
-        source: 'Tag',
+        source: 'Classification',
         labelType: 'Manual',
         state: 'Confirmed',
       },

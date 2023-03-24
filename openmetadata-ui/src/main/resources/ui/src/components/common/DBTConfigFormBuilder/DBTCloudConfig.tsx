@@ -34,14 +34,18 @@ interface Props extends DBTFormCommonProps, DbtConfigCloud {
   handleCloudAuthTokenChange: (value: string) => void;
   handleUpdateDescriptions: (value: boolean) => void;
   handleDbtCloudProjectId: (value: string) => void;
+  handleDbtCloudJobId: (value: string) => void;
   handleUpdateDBTClassification: (value: string) => void;
   handleDbtCloudUrl: (value: string) => void;
+  enableDebugLog: boolean;
+  handleEnableDebugLogCheck: (value: boolean) => void;
 }
 
 export const DBTCloudConfig: FunctionComponent<Props> = ({
   dbtCloudAccountId = '',
   dbtCloudAuthToken = '',
   dbtCloudProjectId,
+  dbtCloudJobId,
   dbtUpdateDescriptions = false,
   dbtCloudUrl = 'https://cloud.getdbt.com/',
   okText,
@@ -52,9 +56,12 @@ export const DBTCloudConfig: FunctionComponent<Props> = ({
   handleCloudAuthTokenChange,
   handleUpdateDescriptions,
   handleDbtCloudProjectId,
+  handleDbtCloudJobId,
   dbtClassificationName,
   handleDbtCloudUrl,
   handleUpdateDBTClassification,
+  enableDebugLog,
+  handleEnableDebugLogCheck,
 }: Props) => {
   const [errors, setErrors] = useState<ErrorDbtCloud>();
 
@@ -73,6 +80,7 @@ export const DBTCloudConfig: FunctionComponent<Props> = ({
       dbtCloudProjectId,
       dbtClassificationName,
       dbtCloudUrl,
+      dbtCloudJobId,
     };
     if (validate(submitData)) {
       onSubmit(submitData);
@@ -85,7 +93,7 @@ export const DBTCloudConfig: FunctionComponent<Props> = ({
         <label
           className="tw-block tw-form-label tw-mb-1"
           htmlFor="cloud-account-id">
-          {requiredField('dbt Cloud Account Id')}
+          {requiredField(t('label.dbt-cloud-account-id'))}
         </label>
         <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-xs">
           {t('label.dbt-cloud-account-id')}
@@ -105,7 +113,7 @@ export const DBTCloudConfig: FunctionComponent<Props> = ({
         <label
           className="tw-block tw-form-label tw-mb-1"
           htmlFor="cloud-auth-token">
-          {requiredField('dbt Cloud Authentication Token')}
+          {requiredField(t('label.dbt-cloud-account-auth-token'))}
         </label>
         <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-xs">
           {t('label.dbt-cloud-account-auth-token')}
@@ -128,7 +136,7 @@ export const DBTCloudConfig: FunctionComponent<Props> = ({
           {t('label.dbt-cloud-project-id')}
         </label>
         <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-xs">
-          {t('message.dbt-cloud-project')}
+          {t('message.dbt-cloud-type', { type: t('label.project-lowercase') })}
         </p>
         <input
           className="tw-form-inputs tw-form-inputs-padding"
@@ -140,10 +148,27 @@ export const DBTCloudConfig: FunctionComponent<Props> = ({
           onChange={(e) => handleDbtCloudProjectId(e.target.value)}
         />
       </Field>
+      <Field>
+        <label className="block tw-mb-1 tw-form-label" htmlFor="dbtCloudJobId">
+          {t('label.dbt-cloud-job-id')}
+        </label>
+        <p className="text-grey-muted m-t-xss m-b-xs text-xs">
+          {t('message.dbt-cloud-type', { type: t('label.job-lowercase') })}
+        </p>
+        <Input
+          className="tw-form-inputs tw-form-inputs-padding"
+          data-testid="dbtCloudJobId"
+          id="dbtCloudJobId"
+          name="dbtCloudJobId"
+          type="text"
+          value={dbtCloudJobId}
+          onChange={(e) => handleDbtCloudJobId(e.target.value)}
+        />
+      </Field>
 
       <Field>
         <label className="tw-block tw-form-label tw-mb-1" htmlFor="dbtCloudUrl">
-          {requiredField('dbt Cloud URL')}
+          {requiredField(t('label.dbt-cloud-url'))}
         </label>
         <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-xs">
           {t('message.unable-to-connect-to-your-dbt-cloud-instance')}
@@ -164,6 +189,8 @@ export const DBTCloudConfig: FunctionComponent<Props> = ({
         dbtClassificationName={dbtClassificationName}
         dbtUpdateDescriptions={dbtUpdateDescriptions}
         descriptionId="cloud-update-description"
+        enableDebugLog={enableDebugLog}
+        handleEnableDebugLogCheck={handleEnableDebugLogCheck}
         handleUpdateDBTClassification={handleUpdateDBTClassification}
         handleUpdateDescriptions={handleUpdateDescriptions}
       />

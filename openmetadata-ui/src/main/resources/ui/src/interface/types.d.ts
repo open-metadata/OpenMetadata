@@ -139,7 +139,8 @@ declare module 'Models' {
     | 'dashboardServices'
     | 'pipelineServices'
     | 'mlmodelServices'
-    | 'metadataServices';
+    | 'metadataServices'
+    | 'objectstoreServices';
 
   export type SearchDataFunctionType = {
     queryString: string;
@@ -244,4 +245,6 @@ declare module 'Models' {
     id: string;
     state: string;
   }
+
+  export type PagingWithoutTotal = Omit<Paging, 'total'>;
 }

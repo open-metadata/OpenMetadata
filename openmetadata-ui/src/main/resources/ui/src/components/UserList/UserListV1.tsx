@@ -14,11 +14,13 @@
 import { Button, Col, Modal, Row, Space, Switch, Table, Tooltip } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
+import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { isEmpty, isUndefined } from 'lodash';
 import React, { FC, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import { updateUser } from 'rest/userAPI';
+import { getEntityName } from 'utils/EntityUtils';
 import { PAGE_SIZE_MEDIUM, ROUTES } from '../../constants/constants';
 import { ADMIN_ONLY_ACTION } from '../../constants/HelperTextUtil';
 import { PAGE_HEADERS } from '../../constants/PageHeaders.constant';
@@ -26,8 +28,6 @@ import { CreateUser } from '../../generated/api/teams/createUser';
 import { User } from '../../generated/entity/teams/user';
 import { Paging } from '../../generated/type/paging';
 import { useAuth } from '../../hooks/authHooks';
-import jsonData from '../../jsons/en';
-import { getEntityName } from '../../utils/CommonUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import DeleteWidgetModal from '../common/DeleteWidget/DeleteWidgetModal';
@@ -100,16 +100,16 @@ const UserListV1: FC<UserListV1Props> = ({
       if (data) {
         afterDeleteAction();
         showSuccessToast(
-          jsonData['api-success-messages']['user-restored-success']
+          t('message.entity-restored-success', { entity: t('label.user') })
         );
         setShowReactiveModal(false);
       } else {
-        throw jsonData['api-error-messages']['update-user-error'];
+        throw t('server.entity-updating-error', { entity: t('label.user') });
       }
     } catch (error) {
       showErrorToast(
         error as AxiosError,
-        jsonData['api-error-messages']['update-user-error']
+        t('server.entity-updating-error', { entity: t('label.user') })
       );
     } finally {
       setIsLoading(false);
@@ -180,8 +180,8 @@ const UserListV1: FC<UserListV1Props> = ({
   }, [showRestore]);
 
   const fetchErrorPlaceHolder = useMemo(
-    () => (type: string) => {
-      return (
+    () => () =>
+      (
         <Row>
           <Col className="w-full tw-flex tw-justify-end">
             <span>
@@ -190,7 +190,11 @@ const UserListV1: FC<UserListV1Props> = ({
                 size="small"
                 onClick={onShowDeletedUserChange}
               />
-              <span className="tw-ml-2">{t('label.deleted-user-plural')}</span>
+              <span className="tw-ml-2">
+                {t('label.deleted-entity', {
+                  entity: t('label.user-plural'),
+                })}
+              </span>
             </span>
           </Col>
           <Col span={24}>
@@ -206,21 +210,23 @@ const UserListV1: FC<UserListV1Props> = ({
                 </Button>
               }
               heading="User"
-              type={type}
+              type={ERROR_PLACEHOLDER_TYPE.ADD}
             />
           </Col>
         </Row>
-      );
-    },
+      ),
     []
   );
 
   if (isEmpty(data) && !showDeletedUser && !isDataLoading && !searchTerm) {
-    return fetchErrorPlaceHolder('ADD_DATA');
+    return fetchErrorPlaceHolder();
   }
 
   return (
-    <Row className="user-listing" gutter={[16, 16]}>
+    <Row
+      className="user-listing"
+      data-testid="user-list-v1-component"
+      gutter={[16, 16]}>
       <Col span={12}>
         <PageHeader
           data={isAdminPage ? PAGE_HEADERS.ADMIN : PAGE_HEADERS.USERS}
@@ -233,7 +239,11 @@ const UserListV1: FC<UserListV1Props> = ({
               checked={showDeletedUser}
               onClick={onShowDeletedUserChange}
             />
-            <span className="tw-ml-2">{t('label.deleted-user-plural')}</span>
+            <span className="tw-ml-2">
+              {t('label.deleted-entity', {
+                entity: t('label.user-plural'),
+              })}
+            </span>
           </span>
           <Tooltip
             title={
@@ -254,7 +264,9 @@ const UserListV1: FC<UserListV1Props> = ({
       <Col span={8}>
         <Searchbar
           removeMargin
-          placeholder="Search for user..."
+          placeholder={`${t('label.search-for-type', {
+            type: t('label.user'),
+          })}...`}
           searchValue={searchTerm}
           typingInterval={500}
           onSearch={onSearch}
@@ -266,6 +278,7 @@ const UserListV1: FC<UserListV1Props> = ({
           bordered
           className="user-list-table"
           columns={columns}
+          data-testid="user-list-table"
           dataSource={data}
           loading={{
             spinning: isDataLoading,

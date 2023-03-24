@@ -61,6 +61,10 @@ site_menu:
     url: /deployment/security/basic-auth
   - category: Deployment / Enable Security / Ldap Authentication
     url: /deployment/security/ldap
+  - category: Deployment / Enable Security / Ldap Authentication / Docker
+    url: /deployment/security/ldap/docker
+  - category: Deployment / Enable Security / Ldap Authentication / Bare Metal
+    url: /deployment/security/ldap/bare-metal
   - category: Deployment / Enable Security / Auth0 SSO
     url: /deployment/security/auth0
   - category: Deployment / Enable Security / Auth0 SSO / Docker
@@ -165,7 +169,7 @@ site_menu:
     url: /deployment/upgrade/versions/011-to-012
   - category: Deployment / Upgrade OpenMetadata / Upgrade Version Instructions / 0.12 to 0.13
     url: /deployment/upgrade/versions/012-to-013
-  
+
   - category: Deployment / Backup & Restore Metadata
     url: /deployment/backup-restore-metadata
 
@@ -202,6 +206,8 @@ site_menu:
     url: /connectors/database/bigquery/airflow
   - category: Connectors / Database / BigQuery / CLI
     url: /connectors/database/bigquery/cli
+  - category: Connectors / Database / BigQuery / Roles
+    url: /connectors/database/bigquery/roles
   - category: Connectors / Database / Clickhouse
     url: /connectors/database/clickhouse
   - category: Connectors / Database / Clickhouse / Airflow
@@ -543,6 +549,8 @@ site_menu:
     url: /connectors/ingestion/lineage/edit-lineage-manually
   - category: Connectors / Ingestion / Versioning
     url: /connectors/ingestion/versioning
+  - category: Connectors / Ingestion / Auto Tagging
+    url: /connectors/ingestion/auto_tagging
   - category: Connectors / Ingestion / Versioning / Change Feeds
     url: /connectors/ingestion/versioning/change-feeds
   - category: Connectors / Ingestion / Versioning / Change Events
@@ -575,6 +583,10 @@ site_menu:
     url: /how-to-guides/teams-and-users/how-to-organise-teams-and-users
   - category: How to guides / How to add a custom property to an entity
     url: /how-to-guides/how-to-add-custom-property-to-an-entity
+  - category: How to guides / How to add Custom Logo
+    url: /how-to-guides/custom-logo/how-to-add-custom-logo
+  - category: How to guides / How to Add Language Support
+    url: /how-to-guides/how-to-add-language-support
 
   - category: Features
     url: /openmetadata
@@ -1121,6 +1133,8 @@ site_menu:
     url: /sdk/python/ingestion/dbt
   - category: SDK / Python SDK / Ingestion / Lineage
     url: /sdk/python/ingestion/lineage
+  - category: SDK / Python SDK / Ingestion / Tags
+    url: /sdk/python/ingestion/tags
   - category: SDK / Python SDK / Build a Connector
     url: /sdk/python/build-connector
   - category: SDK / Python SDK / Build a Connector / Source

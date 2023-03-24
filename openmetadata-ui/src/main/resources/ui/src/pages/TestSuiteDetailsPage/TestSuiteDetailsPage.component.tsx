@@ -30,13 +30,16 @@ import { compare } from 'fast-json-patch';
 import { camelCase, startCase } from 'lodash';
 import { ExtraInfo } from 'Models';
 import React, { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router-dom';
 import {
   getListTestCase,
   getTestSuiteByName,
   ListTestCaseParams,
+  restoreTestSuite,
   updateTestSuiteById,
 } from 'rest/testAPI';
+import { getEntityName } from 'utils/EntityUtils';
 import {
   getTeamAndUserDetailsPath,
   INITIAL_PAGING_VALUE,
@@ -52,17 +55,17 @@ import { TestSuite } from '../../generated/tests/testSuite';
 import { Include } from '../../generated/type/include';
 import { Paging } from '../../generated/type/paging';
 import jsonData from '../../jsons/en';
-import { getEntityName, getEntityPlaceHolder } from '../../utils/CommonUtils';
+import { getEntityPlaceHolder } from '../../utils/CommonUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
-import { showErrorToast } from '../../utils/ToastUtils';
+import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import './TestSuiteDetailsPage.styles.less';
 
 const TestSuiteDetailsPage = () => {
+  const { t } = useTranslation();
   const { getEntityPermissionByFqn } = usePermissionProvider();
   const { testSuiteFQN } = useParams<Record<string, string>>();
   const [testSuite, setTestSuite] = useState<TestSuite>();
   const [isDescriptionEditable, setIsDescriptionEditable] = useState(false);
-  const [isDeleteWidgetVisible, setIsDeleteWidgetVisible] = useState(false);
   const [isTestCaseLoading, setIsTestCaseLoading] = useState(false);
   const [testCaseResult, setTestCaseResult] = useState<Array<TestCase>>([]);
   const [currentPage, setCurrentPage] = useState(INITIAL_PAGING_VALUE);
@@ -79,12 +82,12 @@ const TestSuiteDetailsPage = () => {
 
   const tabs = [
     {
-      name: 'Test Cases',
+      name: t('label.test-case-plural'),
       isProtected: false,
       position: 1,
     },
     {
-      name: 'Pipeline',
+      name: t('label.pipeline'),
       isProtected: false,
       position: 2,
     },
@@ -155,10 +158,11 @@ const TestSuiteDetailsPage = () => {
     try {
       const response = await getTestSuiteByName(testSuiteFQN, {
         fields: 'owner',
+        include: Include.All,
       });
       setSlashedBreadCrumb([
         {
-          name: 'Test Suites',
+          name: t('label.test-suite-plural'),
           url: ROUTES.TEST_SUITES,
         },
         {
@@ -249,12 +253,28 @@ const TestSuiteDetailsPage = () => {
     }
   };
 
-  const onSetActiveValue = (tabValue: number) => {
-    setActiveTab(tabValue);
+  const onRestoreTestSuite = async () => {
+    try {
+      const res = await restoreTestSuite(testSuite?.id || '');
+      setTestSuite(res);
+
+      showSuccessToast(
+        t('message.entity-restored-success', {
+          entity: t('label.test-suite'),
+        })
+      );
+    } catch (error) {
+      showErrorToast(
+        error as AxiosError,
+        t('message.entity-restored-error', {
+          entity: t('label.test-suite'),
+        })
+      );
+    }
   };
 
-  const handleDeleteWidgetVisible = (isVisible: boolean) => {
-    setIsDeleteWidgetVisible(isVisible);
+  const onSetActiveValue = (tabValue: number) => {
+    setActiveTab(tabValue);
   };
 
   const handleTestCasePaging = (
@@ -270,7 +290,7 @@ const TestSuiteDetailsPage = () => {
   const extraInfo: Array<ExtraInfo> = useMemo(
     () => [
       {
-        key: 'Owner',
+        key: t('label.owner'),
         value:
           testOwner?.type === 'team'
             ? getTeamAndUserDetailsPath(testOwner?.name || '')
@@ -312,11 +332,10 @@ const TestSuiteDetailsPage = () => {
               <TestSuiteDetails
                 descriptionHandler={descriptionHandler}
                 extraInfo={extraInfo}
-                handleDeleteWidgetVisible={handleDeleteWidgetVisible}
                 handleDescriptionUpdate={onDescriptionUpdate}
                 handleRemoveOwner={onRemoveOwner}
+                handleRestoreTestSuite={onRestoreTestSuite}
                 handleUpdateOwner={onUpdateOwner}
-                isDeleteWidgetVisible={isDeleteWidgetVisible}
                 isDescriptionEditable={isDescriptionEditable}
                 permissions={testSuitePermissions}
                 slashedBreadCrumb={slashedBreadCrumb}

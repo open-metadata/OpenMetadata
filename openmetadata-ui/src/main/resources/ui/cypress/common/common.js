@@ -123,7 +123,8 @@ export const handleIngestionRetry = (
 export const scheduleIngestion = () => {
   // Schedule & Deploy
   cy.contains('Schedule for Ingestion').should('be.visible');
-  cy.get('[data-testid="cron-type"]').should('be.visible').select('hour');
+  cy.get('[data-testid="cron-type"]').should('be.visible').click();
+  cy.get('.ant-select-item-option-content').contains('Hour').click();
   cy.get('[data-testid="deploy-button"]').should('be.visible').click();
 
   // check success
@@ -157,7 +158,7 @@ export const testServiceCreationAndIngestion = (
     'api/v1/services/ingestionPipelines/*',
     'getIngestionPipelineStatus'
   );
-  cy.get('[data-testid="next-button"]').click();
+  cy.get('[data-testid="next-button"]').should('exist').click();
   verifyResponseStatusCode('@getIngestionPipelineStatus', 200);
   // Connection Details in step 3
   cy.get('[data-testid="add-new-service-container"]')
@@ -497,10 +498,11 @@ export const addNewTagToEntity = (entityObj, term) => {
 
   cy.get('[data-testid="tag-selector"] input').should('be.visible').type(term);
 
-  cy.get(`[title="${term}"]`).should('be.visible').click();
-  cy.get(
-    '[data-testid="tags-wrapper"] > [data-testid="tag-container"]'
-  ).contains(term);
+  cy.get('.ant-select-item-option-content')
+    .contains(term)
+    .should('be.visible')
+    .click();
+  cy.get('[data-testid="tag-selector"] > .ant-select-selector').contains(term);
   cy.get('[data-testid="saveAssociatedTag"]').should('be.visible').click();
   cy.get('[data-testid="entity-tags"]')
     .scrollIntoView()
@@ -517,7 +519,10 @@ export const addNewTagToEntity = (entityObj, term) => {
     .should('be.visible')
     .type(term);
   cy.wait(500);
-  cy.get(`[title="${term}"]`).should('be.visible').click();
+  cy.get('.ant-select-item-option-content')
+    .contains(term)
+    .should('be.visible')
+    .click();
   cy.get('[data-testid="saveAssociatedTag"]')
     .scrollIntoView()
     .should('be.visible')
@@ -622,7 +627,7 @@ export const restoreUser = (username) => {
     .should('be.visible')
     .click();
   verifyResponseStatusCode('@restoreUser', 200);
-  toastNotification('User restored successfully!');
+  toastNotification('User restored successfully');
 
   // Verifying the restored user
   cy.get('.ant-switch').should('exist').should('be.visible').click();

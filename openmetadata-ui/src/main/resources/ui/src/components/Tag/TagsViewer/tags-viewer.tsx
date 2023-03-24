@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Popover } from 'antd';
+import { Popover, Space } from 'antd';
 import classNames from 'classnames';
 import Tags from 'components/Tag/Tags/tags';
 import { sortBy, uniqBy } from 'lodash';
@@ -30,7 +30,8 @@ const TagsViewer: FunctionComponent<TagsViewerProps> = ({
   const getTagsElement = useCallback(
     (tag: EntityTags, index: number) => {
       // only show hasTag is tagSource is type of "Tag" and showStartWith is true
-      const showHasTag = tag.source === TagSource.Tag && showStartWith;
+      const showHasTag =
+        tag.source === TagSource.Classification && showStartWith;
 
       return (
         <Tags
@@ -55,33 +56,39 @@ const TagsViewer: FunctionComponent<TagsViewerProps> = ({
     [tags]
   );
 
-  return sizeCap > -1 ? (
-    <>
-      {sortedTagsBySource
-        .slice(0, sizeCap)
-        .map((tag, index) => getTagsElement(tag, index))}
+  return (
+    <Space wrap size={4}>
+      {sizeCap > -1 ? (
+        <>
+          {sortedTagsBySource
+            .slice(0, sizeCap)
+            .map((tag, index) => getTagsElement(tag, index))}
 
-      {sortedTagsBySource.slice(sizeCap).length > 0 && (
-        <Popover
-          content={
-            <>
-              {sortedTagsBySource.slice(sizeCap).map((tag, index) => (
-                <p className="text-left" key={index}>
-                  {getTagsElement(tag, index)}
-                </p>
-              ))}
-            </>
-          }
-          placement="bottom"
-          trigger="click">
-          <span className="cursor-pointer text-xs link-text v-align-sub">
-            {ELLIPSES}
-          </span>
-        </Popover>
+          {sortedTagsBySource.slice(sizeCap).length > 0 && (
+            <Popover
+              content={
+                <>
+                  {sortedTagsBySource.slice(sizeCap).map((tag, index) => (
+                    <p className="text-left" key={index}>
+                      {getTagsElement(tag, index)}
+                    </p>
+                  ))}
+                </>
+              }
+              placement="bottom"
+              trigger="click">
+              <span className="cursor-pointer text-xs link-text v-align-sub">
+                {ELLIPSES}
+              </span>
+            </Popover>
+          )}
+        </>
+      ) : (
+        <>
+          {sortedTagsBySource.map((tag, index) => getTagsElement(tag, index))}
+        </>
       )}
-    </>
-  ) : (
-    <>{sortedTagsBySource.map((tag, index) => getTagsElement(tag, index))}</>
+    </Space>
   );
 };
 

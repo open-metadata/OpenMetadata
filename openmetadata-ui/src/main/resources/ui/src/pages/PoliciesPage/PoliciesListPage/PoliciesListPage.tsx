@@ -19,6 +19,7 @@ import PageHeader from 'components/header/PageHeader.component';
 import Loader from 'components/Loader/Loader';
 import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from 'components/PermissionProvider/PermissionProvider.interface';
+import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { isEmpty } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -102,11 +103,11 @@ const PoliciesListPage = () => {
             </Button>
           }
           heading="Policy"
-          type="ADD_DATA"
+          type={ERROR_PLACEHOLDER_TYPE.ADD}
         />
       );
     },
-    []
+    [addPolicyPermission]
   );
 
   return isLoading ? (
@@ -124,7 +125,11 @@ const PoliciesListPage = () => {
           <Tooltip
             placement="left"
             title={
-              addPolicyPermission ? 'Add Policy' : NO_PERMISSION_FOR_ACTION
+              addPolicyPermission
+                ? t('label.add-entity', {
+                    entity: t('label.policy'),
+                  })
+                : NO_PERMISSION_FOR_ACTION
             }>
             <Button
               data-testid="add-policy"

@@ -26,7 +26,6 @@ import {
   FIELDS,
   OPERATOR,
 } from '../../common/advancedSearch';
-
 import {
   deleteCreatedService,
   interceptURL,
@@ -34,7 +33,6 @@ import {
   testServiceCreationAndIngestion,
   verifyResponseStatusCode,
 } from '../../common/common';
-
 import { API_SERVICE } from '../../constants/constants';
 import { MYSQL } from '../../constants/service.constants';
 
@@ -48,7 +46,7 @@ describe('pre-requests for test case', () => {
   it('Pre-requisite for advance search', () => {
     addOwner(FIELDS.Owner.searchTerm1, FIELDS.Owner.searchCriteriaFirstGroup);
     addTier(FIELDS.Tiers.searchCriteriaFirstGroup);
-    addTag(FIELDS.Tags.searchCriteriaFirstGroup);
+    addTag(FIELDS.Tags.createTagName);
   });
 
   it('Mysql ingestion', () => {
@@ -111,7 +109,7 @@ describe('Single filed search', () => {
           field.responseValueFirstGroup
         );
       });
-      cy.wait(1000);
+
       Object.values(CONDITIONS_MUST_NOT).forEach((condition) => {
         checkmust_notPaths(
           condition.name,

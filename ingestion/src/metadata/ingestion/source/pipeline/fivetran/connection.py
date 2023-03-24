@@ -26,7 +26,7 @@ def get_connection(connection: FivetranConnection) -> FivetranClient:
     return FivetranClient(connection)
 
 
-def test_connection(client: FivetranClient) -> None:
+def test_connection(client: FivetranClient, _) -> None:
     """
     Test connection
     """

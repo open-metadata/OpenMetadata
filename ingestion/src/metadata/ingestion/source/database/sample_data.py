@@ -21,6 +21,7 @@ from typing import Any, Dict, Iterable, List, Union
 from pydantic import ValidationError
 
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
+from metadata.generated.schema.api.data.createContainer import CreateContainerRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
 from metadata.generated.schema.api.data.createDatabaseSchema import (
@@ -43,6 +44,7 @@ from metadata.generated.schema.api.teams.createTeam import CreateTeamRequest
 from metadata.generated.schema.api.teams.createUser import CreateUserRequest
 from metadata.generated.schema.api.tests.createTestCase import CreateTestCaseRequest
 from metadata.generated.schema.api.tests.createTestSuite import CreateTestSuiteRequest
+from metadata.generated.schema.entity.data.container import Container
 from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
@@ -71,6 +73,9 @@ from metadata.generated.schema.entity.services.dashboardService import Dashboard
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.entity.services.messagingService import MessagingService
 from metadata.generated.schema.entity.services.mlmodelService import MlModelService
+from metadata.generated.schema.entity.services.objectstoreService import (
+    ObjectStoreService,
+)
 from metadata.generated.schema.entity.services.pipelineService import PipelineService
 from metadata.generated.schema.entity.services.storageService import StorageService
 from metadata.generated.schema.entity.teams.team import Team
@@ -85,7 +90,7 @@ from metadata.generated.schema.type.entityLineage import EntitiesEdge, LineageDe
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.schema import Topic
 from metadata.ingestion.api.common import Entity
-from metadata.ingestion.api.source import InvalidSourceException, Source, SourceStatus
+from metadata.ingestion.api.source import InvalidSourceException, Source
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
 from metadata.ingestion.models.profile_data import OMetaTableProfileSampleData
 from metadata.ingestion.models.tests_data import (
@@ -165,33 +170,17 @@ def get_table_key(row: Dict[str, Any]) -> Union[TableKey, None]:
     return TableKey(schema=row["schema"], table_name=row["table_name"])
 
 
-class SampleDataSourceStatus(SourceStatus):
-    success: List[str] = []
-    failures: List[str] = []
-    warnings: List[str] = []
-
-    def scanned(  # pylint: disable=arguments-differ
-        self, entity_type: str, entity_name: str
-    ) -> None:
-        self.success.append(entity_name)
-        logger.info(f"{entity_type} Scanned: {entity_name}")
-
-    def filtered(self, entity_type: str, entity_name: str, err: str) -> None:
-        self.warnings.append(entity_name)
-        logger.warning(f"Dropped {entity_type} {entity_type} due to {err}")
-
-
 class SampleDataSource(
     Source[Entity]
-):  # pylint: disable=too-many-instance-attributes,too-many-public-methods
+):  # pylint: disable=too-many-instance-attributes,too-many-public-methods,disable=too-many-lines,
     """
     Loads JSON data and prepares the required
     python objects to be sent to the Sink.
     """
 
     def __init__(self, config: WorkflowSource, metadata_config: OpenMetadataConnection):
+        # pylint: disable=too-many-statements
         super().__init__()
-        self.status = SampleDataSourceStatus()
         self.config = config
         self.service_connection = config.serviceConnection.__root__.config
         self.metadata_config = metadata_config
@@ -400,6 +389,20 @@ class SampleDataSource(
             entity=MlModelService,
             config=WorkflowSource(**self.model_service_json),
         )
+
+        self.object_service_json = json.load(
+            open(  # pylint: disable=consider-using-with
+                sample_data_folder + "/objectcontainers/service.json",
+                "r",
+                encoding="utf-8",
+            )
+        )
+
+        self.object_store_service = self.metadata.get_service_or_create(
+            entity=ObjectStoreService,
+            config=WorkflowSource(**self.object_service_json),
+        )
+
         self.models = json.load(
             open(  # pylint: disable=consider-using-with
                 sample_data_folder + "/models/models.json",
@@ -407,6 +410,15 @@ class SampleDataSource(
                 encoding="utf-8",
             )
         )
+
+        self.containers = json.load(
+            open(  # pylint: disable=consider-using-with
+                sample_data_folder + "/objectcontainers/containers.json",
+                "r",
+                encoding="utf-8",
+            )
+        )
+
         self.user_entity = {}
         self.table_tests = json.load(
             open(  # pylint: disable=consider-using-with
@@ -471,6 +483,7 @@ class SampleDataSource(
         yield from self.ingest_lineage()
         yield from self.ingest_pipeline_status()
         yield from self.ingest_mlmodels()
+        yield from self.ingest_containers()
         yield from self.ingest_profiles()
         yield from self.ingest_test_suite()
         yield from self.ingest_test_case()
@@ -569,8 +582,7 @@ class SampleDataSource(
                 tableConstraints=table.get("tableConstraints"),
                 tableType=table["tableType"],
             )
-
-            self.status.scanned("table", table_request.name.__root__)
+            self.status.scanned(f"Table Scanned: {table_request.name.__root__}")
             yield table_request
 
             location = CreateLocationRequest(
@@ -579,7 +591,7 @@ class SampleDataSource(
                     id=self.glue_storage_service.id, type="storageService"
                 ),
             )
-            self.status.scanned("location", location.name)
+            self.status.scanned(f"Location Scanned: {location.name}")
             yield location
 
             table_fqn = fqn.build(
@@ -657,7 +669,7 @@ class SampleDataSource(
                 tags=table["tags"],
             )
 
-            self.status.scanned("table", table_and_db.name)
+            self.status.scanned(f"Table Scanned: {table_and_db.name}")
             yield table_and_db
 
     def ingest_topics(self) -> Iterable[CreateTopicRequest]:
@@ -694,7 +706,7 @@ class SampleDataSource(
                     schemaFields=schema_fields,
                 )
 
-            self.status.scanned("topic", create_topic.name.__root__)
+            self.status.scanned(f"Topic Scanned: {create_topic.name.__root__}")
             yield create_topic
 
     def ingest_charts(self) -> Iterable[CreateChartRequest]:
@@ -708,7 +720,7 @@ class SampleDataSource(
                     chartUrl=chart["chartUrl"],
                     service=self.dashboard_service.fullyQualifiedName,
                 )
-                self.status.scanned("chart", chart_ev.name)
+                self.status.scanned(f"Chart Scanned: {chart_ev.name.__root__}")
                 yield chart_ev
             except ValidationError as err:
                 logger.debug(traceback.format_exc())
@@ -724,7 +736,7 @@ class SampleDataSource(
                 charts=dashboard["charts"],
                 service=self.dashboard_service.fullyQualifiedName,
             )
-            self.status.scanned("dashboard", dashboard_ev.name.__root__)
+            self.status.scanned(f"Dashboard Scanned: {dashboard_ev.name.__root__}")
             yield dashboard_ev
 
     def ingest_pipelines(self) -> Iterable[Pipeline]:
@@ -842,6 +854,45 @@ class SampleDataSource(
             except Exception as exc:
                 logger.debug(traceback.format_exc())
                 logger.warning(f"Error ingesting MlModel [{model}]: {exc}")
+
+    def ingest_containers(self) -> Iterable[CreateContainerRequest]:
+        """
+        Convert sample containers data into a Container Entity
+        to feed the metastore
+        """
+
+        for container in self.containers:
+            try:
+                # Fetch linked dashboard ID from name
+                parent_container_fqn = container.get("parent")
+                parent_container = None
+                if parent_container_fqn:
+                    parent_container = self.metadata.get_by_name(
+                        entity=Container, fqn=parent_container_fqn
+                    )
+                    if not parent_container:
+                        raise InvalidSampleDataException(
+                            f"Cannot find {parent_container_fqn} in Sample Containers"
+                        )
+
+                container_request = CreateContainerRequest(
+                    name=container["name"],
+                    displayName=container["displayName"],
+                    description=container["description"],
+                    parent=EntityReference(id=parent_container.id, type="container")
+                    if parent_container_fqn
+                    else None,
+                    prefix=container["prefix"],
+                    dataModel=container.get("dataModel"),
+                    numberOfObjects=container.get("numberOfObjects"),
+                    size=container.get("size"),
+                    fileFormats=container.get("fileFormats"),
+                    service=self.object_store_service.fullyQualifiedName,
+                )
+                yield container_request
+            except Exception as exc:
+                logger.debug(traceback.format_exc())
+                logger.warning(f"Error ingesting Container [{container}]: {exc}")
 
     def ingest_users(self) -> Iterable[OMetaUserProfile]:
         """
@@ -985,9 +1036,6 @@ class SampleDataSource(
 
     def close(self):
         pass
-
-    def get_status(self):
-        return self.status
 
     def test_connection(self) -> None:
         pass

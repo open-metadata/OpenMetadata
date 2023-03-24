@@ -24,6 +24,7 @@ import {
   ResourceEntity,
 } from 'components/PermissionProvider/PermissionProvider.interface';
 import SchemaEditor from 'components/schema-editor/SchemaEditor';
+import { ERROR_PLACEHOLDER_TYPE, LOADING_STATE } from 'enums/common.enum';
 import { compare } from 'fast-json-patch';
 import { isEmpty, isUndefined } from 'lodash';
 import { default as React, useEffect, useMemo, useState } from 'react';
@@ -56,6 +57,8 @@ const CustomEntityDetailV1 = () => {
   const [isError, setIsError] = useState<boolean>(false);
   const [selectedEntityTypeDetail, setSelectedEntityTypeDetail] =
     useState<Type>({} as Type);
+
+  const [loadingState, setLoadingState] = useState(LOADING_STATE.INITIAL);
 
   const tabAttributePath = ENTITY_PATH[tab.toLowerCase()];
 
@@ -126,6 +129,7 @@ const CustomEntityDetailV1 = () => {
   }, [selectedEntityTypeDetail]);
 
   const updateEntityType = async (properties: Type['customProperties']) => {
+    setLoadingState(LOADING_STATE.WAITING);
     const patch = compare(selectedEntityTypeDetail, {
       ...selectedEntityTypeDetail,
       customProperties: properties,
@@ -139,6 +143,8 @@ const CustomEntityDetailV1 = () => {
       }));
     } catch (error) {
       showErrorToast(error as AxiosError);
+    } finally {
+      setLoadingState(LOADING_STATE.INITIAL);
     }
   };
 
@@ -158,6 +164,9 @@ const CustomEntityDetailV1 = () => {
 
       case ENTITY_PATH.mlmodels:
         return PAGE_HEADERS.ML_MODELS_CUSTOM_ATTRIBUTES;
+
+      case ENTITY_PATH.containers:
+        return PAGE_HEADERS.CONTAINER_CUSTOM_ATTRIBUTES;
       default:
         return PAGE_HEADERS.TABLES_CUSTOM_ATTRIBUTES;
     }
@@ -239,10 +248,11 @@ const CustomEntityDetailV1 = () => {
                     </Button>
                   </Tooltip>
                 }
+                classes="mt-24"
                 dataTestId="custom-properties-no-data"
                 doc={CUSTOM_PROPERTIES_DOCS}
                 heading="Property"
-                type="ADD_DATA"
+                type={ERROR_PLACEHOLDER_TYPE.ADD}
               />
             </div>
           ) : (
@@ -275,6 +285,7 @@ const CustomEntityDetailV1 = () => {
                   selectedEntityTypeDetail.customProperties || []
                 }
                 hasAccess={editPermission}
+                loadingState={loadingState}
                 updateEntityType={updateEntityType}
               />
             </div>

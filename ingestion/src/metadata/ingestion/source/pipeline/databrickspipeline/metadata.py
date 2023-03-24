@@ -37,7 +37,6 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
-from metadata.ingestion.source.database.databricks.client import DatabricksClient
 from metadata.ingestion.source.pipeline.pipeline_service import PipelineServiceSource
 from metadata.utils.logger import ingestion_logger
 
@@ -63,11 +62,6 @@ class DatabrickspipelineSource(PipelineServiceSource):
     Pipeline metadata from Databricks Jobs API
     """
 
-    def __init__(self, config: WorkflowSource, metadata_config: OpenMetadataConnection):
-        super().__init__(config, metadata_config)
-        self.connection = self.config.serviceConnection.__root__.config
-        self.client = DatabricksClient(self.connection)
-
     @classmethod
     def create(cls, config_dict, metadata_config: OpenMetadataConnection):
         """Create class instance"""
@@ -92,7 +86,7 @@ class DatabrickspipelineSource(PipelineServiceSource):
         """
         Get Pipeline Name
         """
-        return pipeline_details["settings"]["name"]
+        return pipeline_details["settings"].get("name")
 
     def yield_pipeline(self, pipeline_details: Any) -> Iterable[CreatePipelineRequest]:
         """
@@ -102,9 +96,10 @@ class DatabrickspipelineSource(PipelineServiceSource):
         try:
             yield CreatePipelineRequest(
                 name=pipeline_details["job_id"],
-                displayName=pipeline_details["settings"]["name"],
-                description=pipeline_details["settings"]["name"],
+                displayName=pipeline_details["settings"].get("name"),
+                description=pipeline_details["settings"].get("name"),
                 tasks=self.get_tasks(pipeline_details),
+                pipelineUrl="",
                 service=self.context.pipeline_service.fullyQualifiedName.__root__,
             )
 
@@ -128,9 +123,9 @@ class DatabrickspipelineSource(PipelineServiceSource):
         self.append_context(key="job_id_list", value=pipeline_details["job_id"])
 
         downstream_tasks = self.get_downstream_tasks(
-            pipeline_details["settings"]["tasks"]
+            pipeline_details["settings"].get("tasks")
         )
-        for task in pipeline_details["settings"]["tasks"]:
+        for task in pipeline_details["settings"].get("tasks"):
             task_list.append(
                 Task(
                     name=task["task_key"],

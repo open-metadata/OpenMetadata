@@ -76,6 +76,7 @@ source:
       token: <databricks token>
       hostPort: <databricks connection host & port>
       httpPath: <http path of databricks cluster>
+      connectionTimeout: 120
   sourceConfig:
     config:
       type: DatabaseMetadata
@@ -120,6 +121,7 @@ workflowConfig:
 - **hostPort**: Enter the fully qualified hostname and port number for your Databricks deployment in the Host and Port field.
 - **token**: Generated Token to connect to Databricks.
 - **httpPath**: Databricks compute resources URL.
+- **connectionTimeout**: The maximum amount of time (in seconds) to wait for a successful connection to the data source. If the connection attempt takes longer than this timeout period, an error will be returned.
 - **catalog**: Catalog of the data source(Example: hive_metastore). This is optional parameter, if you would like to restrict the metadata reading to a single catalog. When left blank, OpenMetadata Ingestion attempts to scan all the catalog.
 - **databaseSchema**: DatabaseSchema of the data source. This is optional parameter, if you would like to restrict the metadata reading to a single databaseSchema. When left blank, OpenMetadata Ingestion attempts to scan all the databaseSchema.
 - **Connection Options (Optional)**: Enter the details for any additional connection options that can be sent to Databricks during the connection. These details must be added as Key-Value pairs.
@@ -572,7 +574,7 @@ except ModuleNotFoundError:
 
 from airflow.utils.dates import days_ago
 
-from metadata.orm_profiler.api.workflow import ProfilerWorkflow
+from metadata.profiler.api.workflow import ProfilerWorkflow
 
 
 default_args = {

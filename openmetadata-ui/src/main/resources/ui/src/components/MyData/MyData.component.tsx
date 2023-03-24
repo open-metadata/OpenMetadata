@@ -12,6 +12,7 @@
  */
 
 import { Card } from 'antd';
+import { ELASTICSEARCH_ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { observer } from 'mobx-react';
 import React, {
   RefObject,
@@ -33,7 +34,6 @@ import { useInfiniteScroll } from '../../hooks/useInfiniteScroll';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import ActivityFeedList from '../ActivityFeed/ActivityFeedList/ActivityFeedList';
 import ErrorPlaceHolderES from '../common/error-with-placeholder/ErrorPlaceHolderES';
-import { leftPanelAntCardStyle } from '../containers/PageLayout';
 import PageLayoutV1 from '../containers/PageLayoutV1';
 import { EntityListWithAntd } from '../EntityList/EntityList';
 import Loader from '../Loader/Loader';
@@ -90,6 +90,7 @@ const MyData: React.FC<MyDataProps> = ({
           <div className="tw-mb-5" data-testid="my-tasks-container ">
             <Card
               bodyStyle={{ padding: 0 }}
+              className="panel-shadow-color"
               extra={
                 <>
                   <Link
@@ -104,7 +105,6 @@ const MyData: React.FC<MyDataProps> = ({
                   </Link>
                 </>
               }
-              style={leftPanelAntCardStyle}
               title={
                 <div className="tw-flex tw-item-center ">
                   <SVGIcons
@@ -231,9 +231,15 @@ const MyData: React.FC<MyDataProps> = ({
   );
 
   return (
-    <PageLayoutV1 leftPanel={getLeftPanel()} rightPanel={getRightPanel()}>
+    <PageLayoutV1
+      leftPanel={getLeftPanel()}
+      pageTitle={t('label.my-data')}
+      rightPanel={getRightPanel()}>
       {error ? (
-        <ErrorPlaceHolderES errorMessage={error} type="error" />
+        <ErrorPlaceHolderES
+          errorMessage={error}
+          type={ELASTICSEARCH_ERROR_PLACEHOLDER_TYPE.ERROR}
+        />
       ) : (
         <>
           {showActivityFeedList ? (

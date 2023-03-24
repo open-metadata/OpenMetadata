@@ -116,14 +116,30 @@
         "UUID",
         "VARIANT",
         "GEOMETRY",
-        "POINT",
-        "POLYGON",
         "BYTEA",
         "AGGREGATEFUNCTION",
         "ERROR",
         "FIXED",
         "RECORD",
-        "NULL"
+        "NULL",
+        "SUPER",
+        "HLLSKETCH",
+        "PG_LSN",
+        "PG_SNAPSHOT",
+        "TSQUERY",
+        "TXID_SNAPSHOT",
+        "XML",
+        "MACADDR",
+        "TSVECTOR",
+        "UNKNOWN",
+        "CIDR",
+        "INET",
+        "CLOB",
+        "ROWID",
+        "LOWCARDINALITY",
+        "YEAR",
+        "POINT",
+        "POLYGON"
       ]
     },
     "constraint": {
@@ -150,7 +166,9 @@
           "enum": [
             "UNIQUE",
             "PRIMARY_KEY",
-            "FOREIGN_KEY"
+            "FOREIGN_KEY",
+            "SORT_KEY",
+            "DIST_KEY"
           ]
         },
         "columns": {
@@ -159,6 +177,14 @@
           "items": {
             "type": "string"
           }
+        },
+        "referredColumns": {
+          "description": "List of referred columns for the constraint.",
+          "type": "array",
+          "items": {
+            "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+          },
+          "default": null
         }
       },
       "additionalProperties": false
@@ -189,7 +215,8 @@
             "TIME-UNIT",
             "INTEGER-RANGE",
             "INGESTION-TIME",
-            "COLUMN-VALUE"
+            "COLUMN-VALUE",
+            "OTHER"
           ]
         },
         "interval": {
@@ -522,6 +549,22 @@
           "description": "Median of a column.",
           "type": "number"
         },
+        "firstQuartile": {
+          "description": "First quartile of a column.",
+          "type": "number"
+        },
+        "thirdQuartile": {
+          "description": "First quartile of a column.",
+          "type": "number"
+        },
+        "interQuartileRange": {
+          "description": "Inter quartile range of a column.",
+          "type": "number"
+        },
+        "nonParametricSkew": {
+          "description": "Non parametric skew of a column.",
+          "type": "number"
+        },
         "histogram": {
           "description": "Histogram of a column.",
           "properties": {
@@ -618,7 +661,9 @@
           "type": "string",
           "enum": [
             "TIME-UNIT",
-            "INGESTION-TIME"
+            "INTEGER-RANGE",
+            "INGESTION-TIME",
+            "COLUMN-VALUE"
           ]
         },
         "partitionInterval": {
@@ -638,6 +683,16 @@
         "partitionValues": {
           "description": "unit used for the partition interval",
           "type": "array"
+        },
+        "partitionIntegerRangeStart": {
+          "description": "start of the integer range for partitioning",
+          "type": "integer",
+          "default": null
+        },
+        "partitionIntegerRangeEnd": {
+          "description": "end of the integer range for partitioning",
+          "type": "integer",
+          "default": null
         }
       }
     },
@@ -710,43 +765,6 @@
       "required": [
         "timestamp"
       ],
-      "additionalProperties": false
-    },
-    "sqlQuery": {
-      "type": "object",
-      "javaType": "org.openmetadata.schema.type.SQLQuery",
-      "description": "This schema defines the type to capture the table's sql queries.",
-      "properties": {
-        "query": {
-          "description": "SQL Query text that matches the table name.",
-          "type": "string"
-        },
-        "duration": {
-          "description": "How long did the query took to run in seconds.",
-          "type": "number"
-        },
-        "users": {
-          "description": "List of users who ran this query.",
-          "type": "array",
-          "items": {
-            "$ref": "../../type/entityReference.json"
-          },
-          "default": null
-        },
-        "vote": {
-          "description": "Users can vote up to rank the popular queries.",
-          "type": "number",
-          "default": 1
-        },
-        "checksum": {
-          "description": "Checksum to avoid registering duplicate queries.",
-          "type": "string"
-        },
-        "queryDate": {
-          "description": "Date on which the query ran.",
-          "$ref": "../../type/basic.json#/definitions/date"
-        }
-      },
       "additionalProperties": false
     },
     "modelType": {
@@ -946,14 +964,6 @@
     "profile": {
       "description": "Latest Data profile for a table.",
       "$ref": "#/definitions/tableProfile",
-      "default": null
-    },
-    "tableQueries": {
-      "description": "List of queries that ran against a table.",
-      "type": "array",
-      "items": {
-        "$ref": "#/definitions/sqlQuery"
-      },
       "default": null
     },
     "dataModel": {

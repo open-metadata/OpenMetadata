@@ -34,10 +34,6 @@ export const LEFT_PANEL_DETAILS = {
     testid: '[data-testid="mlmodels"]',
     url: `${BASE_URL}/explore/mlmodels`,
   },
-  testSuites: {
-    testid: '[data-testid="test-suite"]',
-    url: `${BASE_URL}/test-suites`,
-  },
   services: {
     testid: '[data-testid="service"]',
     url: `${BASE_URL}/settings/services/databases`,
@@ -47,15 +43,27 @@ export const LEFT_PANEL_DETAILS = {
     url: `${BASE_URL}/settings/members/users`,
   },
   teams: {
-    testid: '[data-testid="terms"]',
+    testid: '[data-testid="teams"]',
     url: `${BASE_URL}/settings/members/teams`,
+  },
+  testSuites: {
+    testid: '[data-testid="test-suite"]',
+    url: `${BASE_URL}/test-suites`,
+  },
+  containers: {
+    testid: '[data-testid="containers"]',
+    url: `${BASE_URL}/explore/containers`,
+  },
+  glossaryTerms: {
+    testid: '[data-testid="glossary-terms"]',
+    url: `${BASE_URL}/glossary`,
   },
 };
 
 export const NAVBAR_DETAILS = {
   explore: {
     testid: '[data-testid="appbar-item-explore"]',
-    url: `${BASE_URL}/explore/tables/?page=1`,
+    url: `${BASE_URL}/explore/tables?page=1`,
   },
   quality: {
     testid: '[data-testid="appbar-item-data-quality"]',

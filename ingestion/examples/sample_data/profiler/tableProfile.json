@@ -21,7 +21,15 @@
                             "nullCount": 0.0,
                             "nullProportion": 0.0,
                             "distinctCount": 14509.0,
-                            "distinctProportion": 1.0
+                            "distinctProportion": 1.0,
+                            "firstQuartile": 7.4,
+                            "thirdQuartile": 8766.5,
+                            "interQuartileRange": 8002.1,
+                            "nonParametricSkew": -0.567,
+                            "histogram": {
+                                "boundaries": ["5.00 to 100.00", "100.00 to 200.00", "200.00 to 300.00", "300.00 and up"],
+                                "frequencies": [101, 235, 123, 98]
+                            }
                         },
                         {
                             "name": "address_id",
@@ -211,7 +219,15 @@
                             "nullCount": 0.0,
                             "nullProportion": 0.0,
                             "distinctCount": 13256.0,
-                            "distinctProportion": 1.0
+                            "distinctProportion": 1.0,
+                            "firstQuartile": 7.4,
+                            "thirdQuartile": 8439.5,
+                            "interQuartileRange": 8001.1,
+                            "nonParametricSkew": -0.567,
+                            "histogram": {
+                                "boundaries": ["5.00 to 100.00", "100.00 to 200.00", "200.00 to 300.00", "300.00 and up"],
+                                "frequencies": [78, 165, 176, 63]
+                            }
                         },
                         {
                             "name": "address_id",
@@ -401,7 +417,15 @@
                             "nullCount": 0.0,
                             "nullProportion": 0.0,
                             "distinctCount": 10256.0,
-                            "distinctProportion": 1.0
+                            "distinctProportion": 1.0,
+                            "firstQuartile": 7.4,
+                            "thirdQuartile": 8005.5,
+                            "interQuartileRange": 8069.1,
+                            "nonParametricSkew": -0.567,
+                            "histogram": {
+                                "boundaries": ["5.00 to 100.00", "100.00 to 200.00", "200.00 to 300.00", "300.00 and up"],
+                                "frequencies": [56, 62, 66, 99]
+                            }
                         },
                         {
                             "name": "address_id",
@@ -583,7 +607,15 @@
                             "nullCount": 0.0,
                             "nullProportion": 0.0,
                             "distinctCount": 8945.0,
-                            "distinctProportion": 1.0
+                            "distinctProportion": 1.0,
+                            "firstQuartile": 7.4,
+                            "thirdQuartile": 7998.5,
+                            "interQuartileRange": 8004.1,
+                            "nonParametricSkew": -0.567,
+                            "histogram": {
+                                "boundaries": ["5.00 to 100.00", "100.00 to 200.00", "200.00 to 300.00", "300.00 and up"],
+                                "frequencies": [99, 198, 113, 85]
+                            }
                         },
                         {
                             "name": "address_id",
@@ -761,7 +793,15 @@
                             "nullCount": 0.0,
                             "nullProportion": 0.0,
                             "distinctCount": 5461.0,
-                            "distinctProportion": 1.0
+                            "distinctProportion": 1.0,
+                            "firstQuartile": 7.4,
+                            "thirdQuartile": 8007.5,
+                            "interQuartileRange": 8001.1,
+                            "nonParametricSkew": -0.567,
+                            "histogram": {
+                                "boundaries": ["5.00 to 100.00", "100.00 to 200.00", "200.00 to 300.00", "300.00 and up"],
+                                "frequencies": [99, 89, 91, 99]
+                            }
                         },
                         {
                             "name": "address_id",

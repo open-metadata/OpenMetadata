@@ -210,10 +210,10 @@ const AddGlossaryTerm = ({
       .filter((ref) => !isEmpty(ref.endpoint) && !isEmpty(ref.name));
 
     const updatedTerms = relatedTerms.map(function (term) {
-      return term.fullyQualifiedName!;
+      return term.fullyQualifiedName || '';
     });
     const updatedReviewers = reviewer.map(function (r) {
-      return r.fullyQualifiedName!;
+      return r.fullyQualifiedName || '';
     });
 
     if (validateForm(updatedReference)) {
@@ -296,6 +296,7 @@ const AddGlossaryTerm = ({
       classes="tw-max-w-full-hd tw-h-full tw-pt-4"
       header={<TitleBreadcrumb titleLinks={slashedBreadcrumb} />}
       layout={PageLayoutType['2ColRTL']}
+      pageTitle={t('label.add-entity', { entity: t('label.glossary-term') })}
       rightPanel={fetchRightPanel()}>
       <div className="tw-form-container">
         <h6 className="tw-heading tw-text-base">
@@ -356,7 +357,10 @@ const AddGlossaryTerm = ({
           </Field>
 
           <Field>
-            <Space className="w-full" direction="vertical">
+            <Space
+              className="w-full"
+              data-testid="tags-container"
+              direction="vertical">
               <label htmlFor="tags">{`${t('label.tag-plural')}:`}</label>
               <AddTags
                 data-testid="tags"
@@ -367,7 +371,7 @@ const AddGlossaryTerm = ({
 
           <Field>
             <label className="tw-block tw-form-label" htmlFor="synonyms">
-              {`${t('label.synonyms')}:`}
+              {`${t('label.synonym-plural')}:`}
             </label>
 
             <input
@@ -375,7 +379,9 @@ const AddGlossaryTerm = ({
               data-testid="synonyms"
               id="synonyms"
               name="synonyms"
-              placeholder="Enter comma seprated keywords"
+              placeholder={t('message.enter-comma-separated-field', {
+                field: t('label.keyword-lowercase-plural'),
+              })}
               type="text"
               value={synonyms}
               onChange={handleValidation}
@@ -407,6 +413,7 @@ const AddGlossaryTerm = ({
                 </label>
                 <Button
                   className="tw-h-5 tw-px-2"
+                  data-testid="add-reference"
                   size="x-small"
                   theme="primary"
                   variant="contained"
@@ -457,7 +464,7 @@ const AddGlossaryTerm = ({
                     e.preventDefault();
                   }}>
                   <SVGIcons
-                    alt={t('label.valid-url-endpoint')}
+                    alt={t('message.valid-url-endpoint')}
                     icon="icon-delete"
                     title="Delete"
                     width="16px"
@@ -477,6 +484,7 @@ const AddGlossaryTerm = ({
               </p>
               <Button
                 className="tw-h-5 tw-px-2"
+                data-testid="add-related-terms"
                 size="x-small"
                 theme="primary"
                 variant="contained"

@@ -81,6 +81,11 @@ const DBTConfigFormBuilder: FunctionComponent<DBTConfigFormProps> = ({
     });
   };
 
+  const handleEnableDebugLogCheck = (value: boolean) =>
+    onChange({
+      enableDebugLog: value,
+    });
+
   const getCloudConfigFields = () => {
     return (
       <DBTCloudConfig
@@ -88,19 +93,25 @@ const DBTConfigFormBuilder: FunctionComponent<DBTConfigFormProps> = ({
         dbtClassificationName={dbtConfig?.dbtClassificationName}
         dbtCloudAccountId={dbtConfig?.dbtCloudAccountId}
         dbtCloudAuthToken={dbtConfig?.dbtCloudAuthToken}
+        dbtCloudJobId={dbtConfig?.dbtCloudJobId}
         dbtCloudProjectId={dbtConfig?.dbtCloudProjectId}
         dbtCloudUrl={dbtConfig.dbtCloudUrl}
         dbtUpdateDescriptions={dbtConfig?.dbtUpdateDescriptions}
+        enableDebugLog={data.enableDebugLog}
         handleCloudAccountIdChange={(val) => {
           updateDbtConfig('dbtCloudAccountId', val);
         }}
         handleCloudAuthTokenChange={(val) => {
           updateDbtConfig('dbtCloudAuthToken', val);
         }}
+        handleDbtCloudJobId={(val) => {
+          updateDbtConfig('dbtCloudJobId', val);
+        }}
         handleDbtCloudProjectId={(val) => {
           updateDbtConfig('dbtCloudProjectId', val);
         }}
         handleDbtCloudUrl={(val) => updateDbtConfig('dbtCloudUrl', val)}
+        handleEnableDebugLogCheck={handleEnableDebugLogCheck}
         handleUpdateDBTClassification={(val) => {
           updateDbtConfig('dbtClassificationName', val);
         }}
@@ -123,9 +134,11 @@ const DBTConfigFormBuilder: FunctionComponent<DBTConfigFormProps> = ({
         dbtManifestFilePath={dbtConfig?.dbtManifestFilePath}
         dbtRunResultsFilePath={dbtConfig?.dbtRunResultsFilePath}
         dbtUpdateDescriptions={dbtConfig?.dbtUpdateDescriptions}
+        enableDebugLog={data.enableDebugLog}
         handleCatalogFilePathChange={(val) => {
           updateDbtConfig('dbtCatalogFilePath', val);
         }}
+        handleEnableDebugLogCheck={handleEnableDebugLogCheck}
         handleManifestFilePathChange={(val) => {
           updateDbtConfig('dbtManifestFilePath', val);
         }}
@@ -154,9 +167,11 @@ const DBTConfigFormBuilder: FunctionComponent<DBTConfigFormProps> = ({
         dbtManifestHttpPath={dbtConfig?.dbtManifestHttpPath}
         dbtRunResultsHttpPath={dbtConfig?.dbtRunResultsHttpPath}
         dbtUpdateDescriptions={dbtConfig?.dbtUpdateDescriptions}
+        enableDebugLog={data.enableDebugLog}
         handleCatalogHttpPathChange={(val) => {
           updateDbtConfig('dbtCatalogHttpPath', val);
         }}
+        handleEnableDebugLogCheck={handleEnableDebugLogCheck}
         handleManifestHttpPathChange={(val) => {
           updateDbtConfig('dbtManifestHttpPath', val);
         }}
@@ -184,6 +199,8 @@ const DBTConfigFormBuilder: FunctionComponent<DBTConfigFormProps> = ({
         dbtPrefixConfig={dbtConfig?.dbtPrefixConfig}
         dbtSecurityConfig={dbtConfig?.dbtSecurityConfig}
         dbtUpdateDescriptions={dbtConfig?.dbtUpdateDescriptions}
+        enableDebugLog={data.enableDebugLog}
+        handleEnableDebugLogCheck={handleEnableDebugLogCheck}
         handlePrefixConfigChange={(val) => {
           updateDbtConfig('dbtPrefixConfig', val);
         }}
@@ -227,7 +244,9 @@ const DBTConfigFormBuilder: FunctionComponent<DBTConfigFormProps> = ({
         dbtPrefixConfig={dbtConfig?.dbtPrefixConfig}
         dbtSecurityConfig={dbtConfig?.dbtSecurityConfig}
         dbtUpdateDescriptions={dbtConfig?.dbtUpdateDescriptions}
+        enableDebugLog={data.enableDebugLog}
         gcsType={gcsConfigType}
+        handleEnableDebugLogCheck={handleEnableDebugLogCheck}
         handleGcsTypeChange={handleGcsTypeChange}
         handlePrefixConfigChange={(val) => {
           updateDbtConfig('dbtPrefixConfig', val);

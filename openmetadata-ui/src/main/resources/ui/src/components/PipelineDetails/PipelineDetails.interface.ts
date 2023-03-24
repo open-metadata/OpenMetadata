@@ -13,30 +13,17 @@
 
 import { Operation } from 'fast-json-patch';
 
-import { Pipeline, Task } from '../../generated/entity/data/pipeline';
-import { EntityLineage } from '../../generated/type/entityLineage';
+import { Pipeline } from '../../generated/entity/data/pipeline';
 import { EntityReference } from '../../generated/type/entityReference';
 import { Paging } from '../../generated/type/paging';
 import { TitleBreadcrumbProps } from '../common/title-breadcrumb/title-breadcrumb.interface';
-import {
-  Edge,
-  EdgeData,
-  LeafNodes,
-  LineagePos,
-  LoadingNodeState,
-} from '../EntityLineage/EntityLineage.interface';
 
 export interface PipeLineDetailsProp {
   pipelineFQN: string;
-  isNodeLoading: LoadingNodeState;
-  lineageLeafNodes: LeafNodes;
-  pipelineUrl: string;
   entityName: string;
   pipelineDetails: Pipeline;
   followers: Array<EntityReference>;
   slashedPipelineName: TitleBreadcrumbProps['titleLinks'];
-  entityLineage: EntityLineage;
-  tasks: Task[];
   paging: Paging;
   followPipelineHandler: () => void;
   unfollowPipelineHandler: () => void;
@@ -44,10 +31,6 @@ export interface PipeLineDetailsProp {
   descriptionUpdateHandler: (updatedPipeline: Pipeline) => Promise<void>;
   tagUpdateHandler: (updatedPipeline: Pipeline) => void;
   taskUpdateHandler: (patch: Array<Operation>) => Promise<void>;
-  loadNodeHandler: (node: EntityReference, pos: LineagePos) => void;
   versionHandler: () => void;
-  addLineageHandler: (edge: Edge) => Promise<void>;
-  removeLineageHandler: (data: EdgeData) => void;
-  entityLineageHandler: (lineage: EntityLineage) => void;
   onExtensionUpdate: (updatedPipeline: Pipeline) => Promise<void>;
 }

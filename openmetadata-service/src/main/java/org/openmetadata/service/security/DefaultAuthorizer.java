@@ -57,7 +57,7 @@ public class DefaultAuthorizer implements Authorizer {
 
   @Override
   public ResourcePermission getPermission(
-      SecurityContext securityContext, String user, ResourceContextInterface resourceContext) {
+      SecurityContext securityContext, String user, ResourceContextInterface resourceContext) throws IOException {
     SubjectContext subjectContext = getSubjectContext(securityContext);
     subjectContext = changeSubjectContext(user, subjectContext);
     return subjectContext.isAdmin()
@@ -89,6 +89,12 @@ public class DefaultAuthorizer implements Authorizer {
   public boolean decryptSecret(SecurityContext securityContext) {
     SubjectContext subjectContext = getSubjectContext(securityContext);
     return subjectContext.isAdmin() || subjectContext.isBot();
+  }
+
+  @Override
+  public boolean shouldMaskPasswords(SecurityContext securityContext) {
+    SubjectContext subjectContext = getSubjectContext(securityContext);
+    return !subjectContext.isBot();
   }
 
   public static SubjectContext getSubjectContext(SecurityContext securityContext) {

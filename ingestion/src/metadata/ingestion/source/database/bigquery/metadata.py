@@ -20,6 +20,8 @@ from google.cloud.bigquery.client import Client
 from google.cloud.datacatalog_v1 import PolicyTagManagerClient
 from sqlalchemy import inspect
 from sqlalchemy.engine.reflection import Inspector
+from sqlalchemy.sql.sqltypes import Interval
+from sqlalchemy.types import String
 from sqlalchemy_bigquery import BigQueryDialect, _types
 from sqlalchemy_bigquery._types import _get_sqla_column_type
 
@@ -27,6 +29,9 @@ from metadata.generated.schema.api.classification.createClassification import (
     CreateClassificationRequest,
 )
 from metadata.generated.schema.api.classification.createTag import CreateTagRequest
+from metadata.generated.schema.api.data.createDatabaseSchema import (
+    CreateDatabaseSchemaRequest,
+)
 from metadata.generated.schema.entity.classification.tag import Tag
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import (
@@ -45,11 +50,18 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.generated.schema.security.credentials.gcsCredentials import (
     GCSCredentialsPath,
-    GCSValues,
+)
+from metadata.generated.schema.security.credentials.gcsValues import (
+    GcsCredentialsValues,
     MultipleProjectId,
     SingleProjectId,
 )
-from metadata.generated.schema.type.tagLabel import TagLabel
+from metadata.generated.schema.type.tagLabel import (
+    LabelType,
+    State,
+    TagLabel,
+    TagSource,
+)
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.source.connections import get_connection
@@ -58,10 +70,25 @@ from metadata.ingestion.source.database.common_db_source import CommonDbSourceSe
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_database
 from metadata.utils.logger import ingestion_logger
+from metadata.utils.sqlalchemy_utils import is_complex_type
+
+
+class BQJSON(String):
+    """The SQL JSON type."""
+
+    def get_col_spec(self, **kw):  # pylint: disable=unused-argument
+        return "JSON"
+
 
 logger = ingestion_logger()
-GEOGRAPHY = create_sqlalchemy_type("GEOGRAPHY")
-_types._type_map["GEOGRAPHY"] = GEOGRAPHY  # pylint: disable=protected-access
+# pylint: disable=protected-access
+_types._type_map.update(
+    {
+        "GEOGRAPHY": create_sqlalchemy_type("GEOGRAPHY"),
+        "JSON": BQJSON,
+        "INTERVAL": Interval,
+    }
+)
 
 
 def get_columns(bq_schema):
@@ -70,23 +97,38 @@ def get_columns(bq_schema):
     """
     col_list = []
     for field in bq_schema:
+        col_type = _get_sqla_column_type(field)
         col_obj = {
             "name": field.name,
-            "type": _get_sqla_column_type(field),
+            "type": col_type,
             "nullable": field.mode in ("NULLABLE", "REPEATED"),
             "comment": field.description,
             "default": None,
             "precision": field.precision,
             "scale": field.scale,
             "max_length": field.max_length,
-            "raw_data_type": str(_get_sqla_column_type(field)),
+            "system_data_type": str(col_type),
+            "is_complex": is_complex_type(str(col_type)),
             "policy_tags": None,
         }
         try:
             if field.policy_tags:
+                policy_tag_name = field.policy_tags.names[0]
+                taxonomy_name = (
+                    policy_tag_name.split("/policyTags/")[0] if policy_tag_name else ""
+                )
+                if not taxonomy_name:
+                    raise NotImplementedError(
+                        f"Taxonomy Name not present for {field.name}"
+                    )
+                col_obj["taxonomy"] = (
+                    PolicyTagManagerClient()
+                    .get_taxonomy(name=taxonomy_name)
+                    .display_name
+                )
                 col_obj["policy_tags"] = (
                     PolicyTagManagerClient()
-                    .get_policy_tag(name=field.policy_tags.names[0])
+                    .get_policy_tag(name=policy_tag_name)
                     .display_name
                 )
         except Exception as exc:
@@ -140,13 +182,29 @@ class BigquerySource(CommonDbSourceService):
         _, project_ids = auth.default()
         return project_ids
 
-    def yield_tag(self, _: str) -> Iterable[OMetaTagAndClassification]:
+    def yield_tag(self, schema_name: str) -> Iterable[OMetaTagAndClassification]:
         """
         Build tag context
         :param _:
         :return:
         """
         try:
+            # Fetching labels on the databaseSchema ( dataset ) level
+            dataset_obj = self.client.get_dataset(schema_name)
+            if dataset_obj.labels:
+                for key, value in dataset_obj.labels.items():
+                    yield OMetaTagAndClassification(
+                        classification_request=CreateClassificationRequest(
+                            name=key,
+                            description="",
+                        ),
+                        tag_request=CreateTagRequest(
+                            classification=key,
+                            name=value,
+                            description="Bigquery Dataset Label",
+                        ),
+                    )
+            # Fetching policy tags on the column level
             list_project_ids = [self.context.database.name.__root__]
             if not self.service_connection.taxonomyProjectID:
                 self.service_connection.taxonomyProjectID = []
@@ -162,11 +220,11 @@ class BigquerySource(CommonDbSourceService):
                     for tag in policy_tags:
                         yield OMetaTagAndClassification(
                             classification_request=CreateClassificationRequest(
-                                name=self.service_connection.classificationName,
+                                name=taxonomy.display_name,
                                 description="",
                             ),
                             tag_request=CreateTagRequest(
-                                classification=self.service_connection.classificationName,
+                                classification=taxonomy.display_name,
                                 name=tag.display_name,
                                 description="Bigquery Policy Tag",
                             ),
@@ -174,6 +232,38 @@ class BigquerySource(CommonDbSourceService):
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning(f"Skipping Policy Tag: {exc}")
+
+    def yield_database_schema(
+        self, schema_name: str
+    ) -> Iterable[CreateDatabaseSchemaRequest]:
+        """
+        From topology.
+        Prepare a database schema request and pass it to the sink
+        """
+
+        database_schema_request_obj = CreateDatabaseSchemaRequest(
+            name=schema_name,
+            database=self.context.database.fullyQualifiedName,
+            description=self.get_schema_description(schema_name),
+        )
+
+        dataset_obj = self.client.get_dataset(schema_name)
+        if dataset_obj.labels:
+            for label_classification, label_tag_name in dataset_obj.labels.items():
+                database_schema_request_obj.tags = [
+                    TagLabel(
+                        tagFQN=fqn.build(
+                            self.metadata,
+                            entity_type=Tag,
+                            classification_name=label_classification,
+                            tag_name=label_tag_name,
+                        ),
+                        labelType=LabelType.Automated.value,
+                        state=State.Suggested.value,
+                        source=TagSource.Classification.value,
+                    )
+                ]
+        yield database_schema_request_obj
 
     def get_tag_labels(self, table_name: str) -> Optional[List[TagLabel]]:
         """
@@ -195,19 +285,21 @@ class BigquerySource(CommonDbSourceService):
                     tagFQN=fqn.build(
                         self.metadata,
                         entity_type=Tag,
-                        classification_name=self.service_connection.classificationName,
+                        classification_name=column["taxonomy"],
                         tag_name=column["policy_tags"],
                     ),
-                    labelType="Automated",
-                    state="Suggested",
-                    source="Tag",
+                    labelType=LabelType.Automated.value,
+                    state=State.Suggested.value,
+                    source=TagSource.Classification.value,
                 )
             ]
         return None
 
     def set_inspector(self, database_name: str):
         self.client = Client(project=database_name)
-        if isinstance(self.service_connection.credentials.gcsConfig, GCSValues):
+        if isinstance(
+            self.service_connection.credentials.gcsConfig, GcsCredentialsValues
+        ):
             self.service_connection.credentials.gcsConfig.projectId = SingleProjectId(
                 __root__=database_name
             )
@@ -317,7 +409,7 @@ class BigquerySource(CommonDbSourceService):
             return True, table_partition
         return False, None
 
-    def parse_raw_data_type(self, raw_data_type):
+    def clean_raw_data_type(self, raw_data_type):
         return raw_data_type.replace(", ", ",").replace(" ", ":").lower()
 
     def close(self):

@@ -28,11 +28,17 @@ from metadata.generated.schema.entity.data.table import (
     Table,
     TableType,
 )
-from metadata.generated.schema.entity.services.connections.database.datalakeConnection import (
+from metadata.generated.schema.entity.services.connections.database.datalake.azureConfig import (
     AzureConfig,
-    DatalakeConnection,
+)
+from metadata.generated.schema.entity.services.connections.database.datalake.gcsConfig import (
     GCSConfig,
+)
+from metadata.generated.schema.entity.services.connections.database.datalake.s3Config import (
     S3Config,
+)
+from metadata.generated.schema.entity.services.connections.database.datalakeConnection import (
+    DatalakeConnection,
 )
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
@@ -43,14 +49,11 @@ from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.ingestion.api.source import InvalidSourceException, SourceStatus
+from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.connections import get_connection, get_test_connection_fn
-from metadata.ingestion.source.database.database_service import (
-    DatabaseServiceSource,
-    SQLSourceStatus,
-)
+from metadata.ingestion.source.database.database_service import DatabaseServiceSource
 from metadata.ingestion.source.database.datalake.models import DatalakeColumnWrapper
 from metadata.utils import fqn
 from metadata.utils.constants import DEFAULT_DATABASE
@@ -108,7 +111,7 @@ class DatalakeSource(DatabaseServiceSource):  # pylint: disable=too-many-public-
     """
 
     def __init__(self, config: WorkflowSource, metadata_config: OpenMetadataConnection):
-        self.status = SQLSourceStatus()
+        super().__init__()
         self.config = config
         self.source_config: DatabaseServiceMetadataPipeline = (
             self.config.sourceConfig.config
@@ -122,7 +125,6 @@ class DatalakeSource(DatabaseServiceSource):  # pylint: disable=too-many-public-
         self.data_models = {}
         self.dbt_tests = {}
         self.database_source_state = set()
-        super().__init__()
 
     @classmethod
     def create(cls, config_dict, metadata_config: OpenMetadataConnection):
@@ -440,9 +442,6 @@ class DatalakeSource(DatabaseServiceSource):  # pylint: disable=too-many-public-
                     tableConstraints=table_constraints if table_constraints else None,
                     databaseSchema=self.context.database_schema.fullyQualifiedName,
                 )
-                self.process_pii_sensitive_column(
-                    metadata_config=self.metadata, table_request=table_request
-                )
                 yield table_request
                 self.register_record(table_request=table_request)
         except Exception as exc:
@@ -613,10 +612,7 @@ class DatalakeSource(DatabaseServiceSource):  # pylint: disable=too-many-public-
         if isinstance(self.service_connection.configSource, AzureConfig):
             self.client.close()
 
-    def get_status(self) -> SourceStatus:
-        return self.status
-
     def test_connection(self) -> None:
 
         test_connection_fn = get_test_connection_fn(self.service_connection)
-        test_connection_fn(self.connection)
+        test_connection_fn(self.connection, self.service_connection)

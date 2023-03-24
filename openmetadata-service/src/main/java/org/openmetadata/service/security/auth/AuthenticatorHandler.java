@@ -12,11 +12,11 @@ import org.jdbi.v3.core.Jdbi;
 import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.auth.ChangePasswordRequest;
 import org.openmetadata.schema.auth.JWTAuthMechanism;
-import org.openmetadata.schema.auth.JWTTokenExpiry;
 import org.openmetadata.schema.auth.LoginRequest;
 import org.openmetadata.schema.auth.PasswordResetRequest;
 import org.openmetadata.schema.auth.RefreshToken;
 import org.openmetadata.schema.auth.RegistrationRequest;
+import org.openmetadata.schema.auth.ServiceTokenType;
 import org.openmetadata.schema.auth.TokenRefreshRequest;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
@@ -80,11 +80,12 @@ public interface AuthenticatorHandler {
     throw new CustomExceptionMessage(Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_METHOD);
   }
 
-  default JwtResponse getJwtResponse(User storedUser) throws JsonProcessingException {
+  default JwtResponse getJwtResponse(User storedUser, long expireInSeconds) throws JsonProcessingException {
     RefreshToken refreshToken = createRefreshTokenForLogin(storedUser.getId());
     JWTAuthMechanism jwtAuthMechanism =
         JWTTokenGenerator.getInstance()
-            .generateJWTToken(storedUser.getName(), storedUser.getEmail(), JWTTokenExpiry.OneHour, false);
+            .generateJWTToken(
+                storedUser.getName(), storedUser.getEmail(), expireInSeconds, false, ServiceTokenType.OM_USER);
 
     JwtResponse response = new JwtResponse();
     response.setTokenType("Bearer");

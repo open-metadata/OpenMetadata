@@ -146,7 +146,7 @@ const mockData: SearchResponse<ExploreSearchIndex> = {
               labelType: LabelType.Manual,
               description:
                 'PII which if lost, compromised, or disclosed without authorization, could result in substantial harm, embarrassment, inconvenience, or unfairness to an individual.',
-              source: TagSource.Tag,
+              source: TagSource.Classification,
               state: State.Confirmed,
             },
           ],

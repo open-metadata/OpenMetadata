@@ -26,11 +26,12 @@ import java.util.Map;
 import javax.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
 import org.json.JSONObject;
+import org.openmetadata.schema.ServiceEntityInterface;
 import org.openmetadata.schema.api.configuration.pipelineServiceClient.PipelineServiceClientConfiguration;
-import org.openmetadata.schema.api.services.ingestionPipelines.TestServiceConnection;
+import org.openmetadata.schema.entity.automations.TestServiceConnectionRequest;
+import org.openmetadata.schema.entity.automations.Workflow;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
-import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType;
 import org.openmetadata.sdk.PipelineServiceClient;
 import org.openmetadata.sdk.exception.PipelineServiceClientException;
 import org.openmetadata.service.exception.IngestionPipelineDeploymentException;
@@ -49,25 +50,6 @@ public class AirflowRESTClient extends PipelineServiceClient {
   protected final URL serviceURL;
   private static final String API_ENDPOINT = "api/v1/openmetadata";
   private static final String DAG_ID = "dag_id";
-
-  private static final Map<String, String> TYPE_TO_TASK =
-      Map.of(
-          PipelineType.METADATA.toString(),
-          "ingestion_task",
-          PipelineType.PROFILER.toString(),
-          "profiler_task",
-          PipelineType.LINEAGE.toString(),
-          "lineage_task",
-          PipelineType.DBT.toString(),
-          "dbt_task",
-          PipelineType.USAGE.toString(),
-          "usage_task",
-          PipelineType.TEST_SUITE.toString(),
-          "test_suite_task",
-          PipelineType.DATA_INSIGHT.toString(),
-          "data_insight_task",
-          PipelineType.ELASTIC_SEARCH_REINDEX.toString(),
-          "elasticsearch_reindex_task");
 
   public AirflowRESTClient(PipelineServiceClientConfiguration config) {
 
@@ -101,7 +83,7 @@ public class AirflowRESTClient extends PipelineServiceClient {
   }
 
   @Override
-  public String deployPipeline(IngestionPipeline ingestionPipeline) {
+  public String deployPipeline(IngestionPipeline ingestionPipeline, ServiceEntityInterface service) {
     HttpResponse<String> response;
     try {
       String deployEndpoint = "%s/%s/deploy";
@@ -137,7 +119,7 @@ public class AirflowRESTClient extends PipelineServiceClient {
   }
 
   @Override
-  public String runPipeline(IngestionPipeline ingestionPipeline) {
+  public String runPipeline(IngestionPipeline ingestionPipeline, ServiceEntityInterface service) {
     String pipelineName = ingestionPipeline.getName();
     HttpResponse<String> response;
     try {
@@ -249,7 +231,7 @@ public class AirflowRESTClient extends PipelineServiceClient {
   }
 
   @Override
-  public HttpResponse<String> testConnection(TestServiceConnection testServiceConnection) {
+  public Response testConnection(TestServiceConnectionRequest testServiceConnection) {
     HttpResponse<String> response;
     try {
       String statusEndPoint = "%s/%s/test_connection";
@@ -257,7 +239,7 @@ public class AirflowRESTClient extends PipelineServiceClient {
       String connectionPayload = JsonUtils.pojoToJson(testServiceConnection);
       response = post(statusUrl, connectionPayload);
       if (response.statusCode() == 200) {
-        return response;
+        return Response.status(response.statusCode()).entity(response.body()).build();
       }
     } catch (Exception e) {
       throw PipelineServiceClientException.byMessage("Failed to test connection.", e.getMessage());
@@ -266,7 +248,12 @@ public class AirflowRESTClient extends PipelineServiceClient {
   }
 
   @Override
-  public HttpResponse<String> killIngestion(IngestionPipeline ingestionPipeline) {
+  public Response runAutomationsWorkflow(Workflow workflow) {
+    return null;
+  }
+
+  @Override
+  public Response killIngestion(IngestionPipeline ingestionPipeline) {
     HttpResponse<String> response;
     try {
       String killEndPoint = "%s/%s/kill";
@@ -275,7 +262,7 @@ public class AirflowRESTClient extends PipelineServiceClient {
       requestPayload.put(DAG_ID, ingestionPipeline.getName());
       response = post(killUrl, requestPayload.toString());
       if (response.statusCode() == 200) {
-        return response;
+        return Response.status(200, response.body()).build();
       }
     } catch (Exception e) {
       throw PipelineServiceClientException.byMessage("Failed to kill running workflows", e.getMessage());

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Col, Row, Skeleton, Space, Typography } from 'antd';
+import { Card, Col, Row, Skeleton, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEqual, isNil, isUndefined } from 'lodash';
@@ -24,8 +24,8 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
 import { restoreTable } from 'rest/tableAPI';
+import { getEntityId, getEntityName } from 'utils/EntityUtils';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { ROUTES } from '../../constants/constants';
 import { EntityField } from '../../constants/Feeds.constants';
@@ -47,8 +47,6 @@ import { LabelType, State } from '../../generated/type/tagLabel';
 import { useInfiniteScroll } from '../../hooks/useInfiniteScroll';
 import {
   getCurrentUserId,
-  getEntityId,
-  getEntityName,
   getEntityPlaceHolder,
   getOwnerValue,
   getPartialNameFromTableFQN,
@@ -57,7 +55,6 @@ import {
 } from '../../utils/CommonUtils';
 import { getEntityFieldThreadCounts } from '../../utils/FeedUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
-import { getLineageViewPath } from '../../utils/RouterUtils';
 import { getTagsWithoutTier, getUsagePercentile } from '../../utils/TableUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import ActivityFeedList from '../ActivityFeed/ActivityFeedList/ActivityFeedList';
@@ -96,7 +93,6 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
   tableProfile,
   columns,
   tier,
-  entityLineage,
   followTableHandler,
   unfollowTableHandler,
   followers,
@@ -111,16 +107,9 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
   tableType,
   version,
   versionHandler,
-  loadNodeHandler,
-  lineageLeafNodes,
-  isNodeLoading,
   dataModel,
   deleted,
   tagUpdateHandler,
-  addLineageHandler,
-  removeLineageHandler,
-  entityLineageHandler,
-  isLineageLoading,
   entityThread,
   isentityThreadLoading,
   postFeedHandler,
@@ -136,7 +125,6 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
   isTableProfileLoading,
 }: DatasetDetailsProps) => {
   const { t } = useTranslation();
-  const history = useHistory();
   const [isEdit, setIsEdit] = useState(false);
   const [followersCount, setFollowersCount] = useState(0);
   const [isFollowing, setIsFollowing] = useState(false);
@@ -296,7 +284,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
         position: 7,
       },
       {
-        name: t('label.dbt-uppercase'),
+        name: t('label.dbt-lowercase'),
         icon: {
           alt: 'dbt-model',
           name: 'dbtmodel-light-grey',
@@ -533,7 +521,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
     if (tableDetails) {
       const updatedTableDetails = {
         ...tableDetails,
-        tags: undefined,
+        tags: getTagsWithoutTier(tableDetails.tags ?? []),
       };
       settingsUpdateHandler(updatedTableDetails);
     }
@@ -592,10 +580,6 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
 
   const onThreadPanelClose = () => {
     setThreadLink('');
-  };
-
-  const handleFullScreenClick = () => {
-    history.push(getLineageViewPath(EntityType.TABLE, datasetFQN));
   };
 
   const getLoader = () => {
@@ -698,9 +682,9 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
             setActiveTab={setActiveTabHandler}
             tabs={tabs}
           />
-          <div className="tw-flex-grow tw-flex tw-flex-col tw-py-4">
+          <div className="h-full">
             {activeTab === 1 && (
-              <div className="tab-details-container">
+              <Card className="m-y-md h-full">
                 <Row id="schemaDetails">
                   <Col span={17}>
                     <Description
@@ -730,9 +714,9 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
                     />
                   </Col>
                   <Col offset={1} span={6}>
-                    <div className="border-1 border-main rounded-6">
+                    <div className="global-border rounded-4">
                       <FrequentlyJoinedTables
-                        header="Frequently Joined Tables"
+                        header={t('label.frequently-joined-table-plural')}
                         tableList={getFrequentlyJoinedWithTables()}
                       />
                     </div>
@@ -769,10 +753,10 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
                     />
                   </Col>
                 </Row>
-              </div>
+              </Card>
             )}
             {activeTab === 2 && (
-              <div className="tab-details-container">
+              <Card className="m-y-md h-full">
                 <div
                   className="tw-py-4 tw-px-7 tw-grid tw-grid-cols-3 entity-feed-list tw--mx-7 tw--my-4"
                   id="activityfeed">
@@ -797,23 +781,21 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
                   ref={elementRef as RefObject<HTMLDivElement>}>
                   {getLoader()}
                 </div>
-              </div>
+              </Card>
             )}
             {activeTab === 3 && (
-              <div className="tab-details-container" id="sampleDataDetails">
+              <Card className="m-y-md h-full" id="sampleDataDetails">
                 <SampleDataTable
                   isTableDeleted={tableDetails.deleted}
                   tableId={tableDetails.id}
                 />
-              </div>
+              </Card>
             )}
             {activeTab === 4 && (
-              <div className="tab-details-container">
-                <TableQueries
-                  isTableDeleted={tableDetails.deleted}
-                  tableId={tableDetails.id}
-                />
-              </div>
+              <TableQueries
+                isTableDeleted={tableDetails.deleted}
+                tableId={tableDetails.id}
+              />
             )}
             {activeTab === 5 && (
               <TableProfilerV1
@@ -824,43 +806,32 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
             )}
 
             {activeTab === 7 && (
-              <div
+              <Card
                 className={classNames(
-                  'tab-details-container',
-                  location.pathname.includes(ROUTES.TOUR)
-                    ? 'tw-h-70vh'
-                    : 'tw-h-full'
+                  'card-body-full m-y-md',
+                  location.pathname.includes(ROUTES.TOUR) ? 'h-70vh' : 'h-full'
                 )}
                 id="lineageDetails">
                 <EntityLineageComponent
-                  addLineageHandler={addLineageHandler}
                   deleted={deleted}
-                  entityLineage={entityLineage}
-                  entityLineageHandler={entityLineageHandler}
                   entityType={EntityType.TABLE}
                   hasEditAccess={
                     tablePermissions.EditAll || tablePermissions.EditLineage
                   }
-                  isLoading={isLineageLoading}
-                  isNodeLoading={isNodeLoading}
-                  lineageLeafNodes={lineageLeafNodes}
-                  loadNodeHandler={loadNodeHandler}
-                  removeLineageHandler={removeLineageHandler}
-                  onFullScreenClick={handleFullScreenClick}
                 />
-              </div>
+              </Card>
             )}
             {activeTab === 8 && Boolean(dataModel?.sql) && (
-              <div className="tab-details-container tw-border tw-border-main tw-rounded-md tw-py-4 tw-h-full cm-h-full">
+              <Card className="m-y-md h-full">
                 <SchemaEditor
                   className="tw-h-full"
                   mode={{ name: CSMode.SQL }}
                   value={dataModel?.sql || ''}
                 />
-              </div>
+              </Card>
             )}
             {activeTab === 9 && (
-              <div className="tab-details-container">
+              <Card className="m-y-md h-full">
                 <CustomPropertyTable
                   entityDetails={
                     tableDetails as CustomPropertyProps['entityDetails']
@@ -872,7 +843,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
                     tablePermissions.EditCustomFields
                   }
                 />
-              </div>
+              </Card>
             )}
           </div>
           {threadLink ? (

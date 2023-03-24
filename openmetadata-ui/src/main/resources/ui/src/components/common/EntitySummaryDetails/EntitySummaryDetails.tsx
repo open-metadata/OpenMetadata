@@ -348,7 +348,9 @@ const EntitySummaryDetails = ({
                   title={
                     isGroupType
                       ? t('message.group-team-type-change-message')
-                      : t('label.edit-team-type')
+                      : t('label.edit-entity', {
+                          entity: t('label.team-type'),
+                        })
                   }>
                   <AntdButton
                     className={isGroupType ? 'tw-opacity-50' : ''}
@@ -367,6 +369,7 @@ const EntitySummaryDetails = ({
       )}
       <OwnerWidgetWrapper
         allowTeamOwner={allowTeamOwner}
+        className="edit-owner-dropdown"
         currentUser={currentOwner}
         hideWidget={() => setShow(false)}
         removeOwner={removeOwner}

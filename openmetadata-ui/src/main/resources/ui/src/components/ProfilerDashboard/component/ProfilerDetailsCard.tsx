@@ -36,6 +36,7 @@ import { ProfilerDetailsCardProps } from '../profilerDashboard.interface';
 import ProfilerLatestValue from './ProfilerLatestValue';
 
 const ProfilerDetailsCard: React.FC<ProfilerDetailsCardProps> = ({
+  showYAxisCategory = false,
   chartCollection,
   tickFormatter,
   name,
@@ -51,7 +52,7 @@ const ProfilerDetailsCard: React.FC<ProfilerDetailsCardProps> = ({
   };
 
   return (
-    <Card className="tw-rounded-md tw-border">
+    <Card className="shadow-none" data-testid="profiler-details-card-container">
       <Row gutter={[16, 16]}>
         <Col span={4}>
           <ProfilerLatestValue
@@ -68,7 +69,7 @@ const ProfilerDetailsCard: React.FC<ProfilerDetailsCardProps> = ({
               <LineChart
                 className="tw-w-full"
                 data={data}
-                margin={{ left: 16 }}>
+                margin={{ left: 24 }}>
                 <CartesianGrid stroke={GRAPH_BACKGROUND_COLOR} />
                 <XAxis
                   dataKey="name"
@@ -83,9 +84,10 @@ const ProfilerDetailsCard: React.FC<ProfilerDetailsCardProps> = ({
                   tickFormatter={(props) =>
                     axisTickFormatter(props, tickFormatter)
                   }
+                  type={showYAxisCategory ? 'category' : 'number'}
                 />
                 <Tooltip
-                  formatter={(value: number) =>
+                  formatter={(value: number | string) =>
                     tooltipFormatter(value, tickFormatter)
                   }
                 />

@@ -66,6 +66,10 @@ Set the sample to be use by the profiler for the specific table.
 **Thread Count (Optional)**
 Number of thread to use when computing metrics for the profiler. For Snowflake users we recommend setting it to 1. There is a known issue with one of the dependency (`snowflake-connector-python`) affecting projects with certain environments. 
 
+**Auto PII Tag**
+Here, the sample data will be analysed to determine appropriate PII tags for each column.
+For more information click [here](/connectors/ingestion/auto_tagging)
+
 **Timeout in Seconds (Optional)**
 This will set the duration a profiling job against a table should wait before interrupting its execution and moving on to profiling the next table. It is important to note that the profiler will wait for the hanging query to terminiate before killing the execution. If there is a risk for your profiling job to hang, it is important to also set a query/connection timeout on your database engine. The default value for the profiler timeout is 12-hours.
 
@@ -146,3 +150,24 @@ This is a good option if you which to execute your workflow via the Airflow SDK 
           - customers
   [...]
 ```
+
+## Profiler Best Practices
+When setting a profiler workflow it is important to keep in mind that queries will be running against your database. Depending on your database engine, you may incur costs (e.g., Google BigQuery, Snowflake). Execution time will also vary depending on your database engine computing power, the size of the table, and the number of columns. Given these elements, there are a few best practices we recommend you follow.
+
+### 1. Profile what you Need
+Profiling all the tables in your data platform might not be the most optimized approach. Profiled tables give an indication of the structure of the table, which is most useful for tables where this information is valuable (e.g., tables used by analysts or data scientists, etc.).
+
+When setting up a profiler workflow, you have the possibility to filter out/in certain databases, schemas, or tables. Using this feature will greatly help you narrow down which table you want to profile.
+
+### 2. Sampling and Partitionning your Tables
+On a table asset, you have the possibility to add a sample percentage/rows and a partitioning logic. Doing so will significantly reduce the amount of data scanned and the computing power required to perform the different operations. 
+
+For sampling, you can set a sampling percentage at the workflow level.
+
+### 3. Excluding/Including Specific Columns/Metrics
+By default, the profiler will compute all the metrics against all the columns. This behavior can be fine-tuned only to include or exclude specific columns and specific metrics.
+
+For example, excluding `id` columns will reduce the number of columns against which the metrics are computed.
+
+### 4. Set Up Multiple Workflow
+If you have a large number of tables you would like to profile, setting up multiple workflows will help distribute the load. It is important though to monitor your instance CPU, and memory as having a large amount of workflow running simultaneously will require an adapted amount of resources.

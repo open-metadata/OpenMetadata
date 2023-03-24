@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Col, Row, Skeleton, Space, Table } from 'antd';
+import { Card, Col, Row, Skeleton, Space, Table } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import ActivityFeedList from 'components/ActivityFeed/ActivityFeedList/ActivityFeedList';
@@ -63,6 +63,7 @@ import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import {
   getDatabaseDetailsPath,
   getDatabaseSchemaDetailsPath,
+  getExplorePath,
   getServiceDetailsPath,
   getTeamAndUserDetailsPath,
   PAGE_SIZE,
@@ -84,22 +85,18 @@ import { Paging } from '../../generated/type/paging';
 import { useInfiniteScroll } from '../../hooks/useInfiniteScroll';
 import { EntityFieldThreadCount } from '../../interface/feed.interface';
 import jsonData from '../../jsons/en';
-import { getEntityName } from '../../utils/CommonUtils';
 import {
   databaseDetailsTabs,
   getCurrentDatabaseDetailsTab,
 } from '../../utils/DatabaseDetailsUtils';
-import { getEntityFeedLink } from '../../utils/EntityUtils';
+import { getEntityFeedLink, getEntityName } from '../../utils/EntityUtils';
 import {
   deletePost,
   getEntityFieldThreadCounts,
   updateThreadData,
 } from '../../utils/FeedUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
-import {
-  getExplorePathWithInitFilters,
-  getSettingPath,
-} from '../../utils/RouterUtils';
+import { getSettingPath } from '../../utils/RouterUtils';
 import {
   getServiceRouteFromServiceType,
   serviceTypeLogo,
@@ -176,7 +173,7 @@ const DatabaseDetails: FunctionComponent = () => {
 
   const tabs = [
     {
-      name: 'Schemas',
+      name: t('label.schema-plural'),
       icon: {
         alt: 'schemas',
         name: 'schema-grey',
@@ -188,7 +185,7 @@ const DatabaseDetails: FunctionComponent = () => {
       position: 1,
     },
     {
-      name: 'Activity Feeds',
+      name: t('label.activity-feed-plural'),
       icon: {
         alt: 'activity_feed',
         name: 'activity_feed',
@@ -577,11 +574,15 @@ const DatabaseDetails: FunctionComponent = () => {
   useEffect(() => {
     if (!isMounting.current && appState.inPageSearchText) {
       history.push(
-        getExplorePathWithInitFilters(
-          appState.inPageSearchText,
-          undefined,
-          `postFilter[serviceType][0]=${serviceType}&postFilter[database.name.keyword][0]=${databaseName}`
-        )
+        getExplorePath({
+          search: appState.inPageSearchText,
+          extraParameters: {
+            facetFilter: {
+              serviceType: [serviceType],
+              'database.name.keyword': [databaseName],
+            },
+          },
+        })
       );
     }
   }, [appState.inPageSearchText]);
@@ -626,14 +627,14 @@ const DatabaseDetails: FunctionComponent = () => {
         title: t('label.schema-name'),
         dataIndex: 'name',
         key: 'name',
-        render: (text: string, record: DatabaseSchema) => (
+        render: (_, record: DatabaseSchema) => (
           <Link
             to={
               record.fullyQualifiedName
                 ? getDatabaseSchemaDetailsPath(record.fullyQualifiedName)
                 : ''
             }>
-            {text}
+            {getEntityName(record)}
           </Link>
         ),
       },
@@ -789,24 +790,24 @@ const DatabaseDetails: FunctionComponent = () => {
                         </Fragment>
                       )}
                       {activeTab === 2 && (
-                        <Row
-                          className="p-t-xss p-b-md entity-feed-list bg-white border-1 rounded-4 shadow-base h-full"
-                          id="activityfeed">
-                          <Col offset={4} span={16}>
-                            <ActivityFeedList
-                              hideFeedFilter
-                              hideThreadFilter
-                              isEntityFeed
-                              withSidePanel
-                              className=""
-                              deletePostHandler={deletePostHandler}
-                              entityName={databaseName}
-                              feedList={entityThread}
-                              postFeedHandler={postFeedHandler}
-                              updateThreadHandler={updateThreadHandler}
-                            />
-                          </Col>
-                        </Row>
+                        <Card className="p-t-xss p-b-md">
+                          <Row className="entity-feed-list" id="activityfeed">
+                            <Col offset={4} span={16}>
+                              <ActivityFeedList
+                                hideFeedFilter
+                                hideThreadFilter
+                                isEntityFeed
+                                withSidePanel
+                                className=""
+                                deletePostHandler={deletePostHandler}
+                                entityName={databaseName}
+                                feedList={entityThread}
+                                postFeedHandler={postFeedHandler}
+                                updateThreadHandler={updateThreadHandler}
+                              />
+                            </Col>
+                          </Row>
+                        </Card>
                       )}
                       <Col
                         data-testid="observer-element"

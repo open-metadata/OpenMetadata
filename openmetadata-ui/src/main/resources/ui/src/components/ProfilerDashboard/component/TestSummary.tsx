@@ -66,6 +66,7 @@ const TestSummary: React.FC<TestSummaryProps> = ({ data }) => {
   const [selectedTimeRange, setSelectedTimeRange] =
     useState<keyof typeof PROFILER_FILTER_RANGE>('last3days');
   const [isLoading, setIsLoading] = useState(true);
+  const [isGraphLoading, setIsGraphLoading] = useState(true);
 
   const timeRangeOption = useMemo(() => {
     return Object.entries(PROFILER_FILTER_RANGE).map(([key, value]) => ({
@@ -135,7 +136,7 @@ const TestSummary: React.FC<TestSummaryProps> = ({ data }) => {
     if (isEmpty(data)) {
       return;
     }
-
+    setIsGraphLoading(true);
     try {
       const startTs = getPastDatesTimeStampFromCurrentDate(
         PROFILER_FILTER_RANGE[selectedTimeRange].days
@@ -156,6 +157,7 @@ const TestSummary: React.FC<TestSummaryProps> = ({ data }) => {
       showErrorToast(error as AxiosError);
     } finally {
       setIsLoading(false);
+      setIsGraphLoading(false);
     }
   };
 
@@ -223,7 +225,9 @@ const TestSummary: React.FC<TestSummaryProps> = ({ data }) => {
               />
             </Space>
 
-            {results.length ? (
+            {isGraphLoading ? (
+              <Loader />
+            ) : results.length ? (
               <ResponsiveContainer
                 className="tw-bg-white"
                 id={`${data.name}_graph`}

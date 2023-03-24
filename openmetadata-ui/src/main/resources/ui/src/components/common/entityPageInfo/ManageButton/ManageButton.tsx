@@ -11,16 +11,20 @@
  *  limitations under the License.
  */
 
-import { EllipsisOutlined } from '@ant-design/icons';
 import { Button, Col, Dropdown, Modal, Row, Tooltip, Typography } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import classNames from 'classnames';
+import { DROPDOWN_ICON_SIZE_PROPS } from 'constants/ManageButton.constants';
 import React, { FC, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ReactComponent as IconAnnouncementsBlack } from '../../../../assets/svg/announcements-black.svg';
+import { ReactComponent as IconDelete } from '../../../../assets/svg/ic-delete.svg';
+import { ReactComponent as IconRestore } from '../../../../assets/svg/ic-restore.svg';
+import { ReactComponent as IconDropdown } from '../../../../assets/svg/menu.svg';
+
 import { NO_PERMISSION_FOR_ACTION } from '../../../../constants/HelperTextUtil';
 import { EntityType } from '../../../../enums/entity.enum';
 import { ANNOUNCEMENT_ENTITIES } from '../../../../utils/AnnouncementsUtils';
-import SVGIcons, { Icons } from '../../../../utils/SvgUtils';
 import DeleteWidgetModal from '../../DeleteWidget/DeleteWidgetModal';
 import './ManageButton.less';
 
@@ -65,13 +69,18 @@ const ManageButton: FC<Props> = ({
   const [isDelete, setIsDelete] = useState<boolean>(false);
   const [showReactiveModal, setShowReactiveModal] = useState(false);
 
+  const handleRestore = async () => {
+    onRestoreEntity && (await onRestoreEntity());
+    setShowReactiveModal(false);
+  };
+
   const items = [
     {
       label: (
         <Tooltip title={canDelete ? '' : NO_PERMISSION_FOR_ACTION}>
           <Row
-            className={classNames('tw-cursor-pointer manage-button', {
-              'tw-cursor-not-allowed tw-opacity-50': !canDelete,
+            className={classNames('cursor-pointer manage-button', {
+              'cursor-not-allowed opacity-50': !canDelete,
             })}
             onClick={(e) => {
               if (canDelete) {
@@ -81,7 +90,11 @@ const ManageButton: FC<Props> = ({
               }
             }}>
             <Col span={3}>
-              <SVGIcons alt="Delete" icon={Icons.DELETE} width="20px" />
+              <IconDelete
+                className="m-t-xss"
+                {...DROPDOWN_ICON_SIZE_PROPS}
+                name="Delete"
+              />
             </Col>
             <Col span={21}>
               <Row data-testid="delete-button">
@@ -112,8 +125,8 @@ const ManageButton: FC<Props> = ({
             label: (
               <Tooltip title={canDelete ? '' : NO_PERMISSION_FOR_ACTION}>
                 <Row
-                  className={classNames('tw-cursor-pointer manage-button', {
-                    'tw-cursor-not-allowed tw-opacity-50': !canDelete,
+                  className={classNames('cursor-pointer manage-button', {
+                    'cursor-not-allowed opacity-50': !canDelete,
                   })}
                   onClick={(e) => {
                     if (canDelete) {
@@ -123,8 +136,11 @@ const ManageButton: FC<Props> = ({
                     }
                   }}>
                   <Col span={3}>
-                    {' '}
-                    <SVGIcons alt="Restore" icon={Icons.RESTORE} width="20px" />
+                    <IconRestore
+                      className="m-t-xss"
+                      name="Restore"
+                      {...DROPDOWN_ICON_SIZE_PROPS}
+                    />
                   </Col>
                   <Col span={21}>
                     <Row data-testid="restore-button">
@@ -157,17 +173,17 @@ const ManageButton: FC<Props> = ({
           {
             label: (
               <Row
-                className="tw-cursor-pointer manage-button"
+                className="cursor-pointer manage-button"
                 onClick={(e) => {
                   e.stopPropagation();
                   setShowActions(false);
                   onAnnouncementClick && onAnnouncementClick();
                 }}>
                 <Col span={3}>
-                  <SVGIcons
-                    alt="announcement"
-                    icon={Icons.ANNOUNCEMENT_BLACK}
-                    width="20px"
+                  <IconAnnouncementsBlack
+                    className="m-t-xss"
+                    name="announcement"
+                    {...DROPDOWN_ICON_SIZE_PROPS}
                   />
                 </Col>
                 <Col span={21}>
@@ -213,10 +229,7 @@ const ManageButton: FC<Props> = ({
           title="Manage"
           type="default"
           onClick={() => setShowActions(true)}>
-          <EllipsisOutlined
-            className="tw-text-primary tw-self-center manage-dropdown-icon"
-            rotate={90}
-          />
+          <IconDropdown className="text-primary self-center manage-dropdown-icon" />
         </Button>
       </Dropdown>
       {isDelete && (
@@ -250,7 +263,7 @@ const ManageButton: FC<Props> = ({
         onCancel={() => {
           setShowReactiveModal(false);
         }}
-        onOk={onRestoreEntity}>
+        onOk={handleRestore}>
         <Typography.Text data-testid="restore-modal-body">
           {t('message.are-you-want-to-restore', {
             entity: entityName,

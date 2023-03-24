@@ -22,19 +22,19 @@ import javax.validation.Valid;
 import javax.validation.constraints.NotNull;
 import lombok.Getter;
 import lombok.Setter;
-import org.openmetadata.schema.api.configuration.LoginConfiguration;
+import org.openmetadata.api.configuration.ApplicationConfiguration;
 import org.openmetadata.schema.api.configuration.events.EventHandlerConfiguration;
 import org.openmetadata.schema.api.configuration.pipelineServiceClient.PipelineServiceClientConfiguration;
 import org.openmetadata.schema.api.fernet.FernetConfiguration;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.api.security.jwt.JWTTokenConfiguration;
-import org.openmetadata.schema.api.slackChat.SlackChatConfiguration;
 import org.openmetadata.schema.email.SmtpSettings;
+import org.openmetadata.schema.security.SecurityConfiguration;
+import org.openmetadata.schema.security.secrets.SecretsManagerConfiguration;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.service.migration.MigrationConfiguration;
 import org.openmetadata.service.monitoring.EventMonitorConfiguration;
-import org.openmetadata.service.secrets.SecretsManagerConfiguration;
 
 @Getter
 @Setter
@@ -77,14 +77,14 @@ public class OpenMetadataApplicationConfig extends Configuration {
   @Valid
   private HealthConfiguration healthConfiguration = new HealthConfiguration();
 
-  @JsonProperty("sandboxModeEnabled")
-  private boolean sandboxModeEnabled;
-
-  @JsonProperty("slackChat")
-  private SlackChatConfiguration slackChatConfiguration = new SlackChatConfiguration();
+  @JsonProperty("applicationConfig")
+  private ApplicationConfiguration applicationConfiguration = new ApplicationConfiguration();
 
   @JsonProperty("secretsManagerConfiguration")
   private SecretsManagerConfiguration secretsManagerConfiguration;
+
+  @JsonProperty("security")
+  private SecurityConfiguration securityConfiguration;
 
   @JsonProperty("eventMonitoringConfiguration")
   private EventMonitorConfiguration eventMonitorConfiguration;
@@ -94,9 +94,6 @@ public class OpenMetadataApplicationConfig extends Configuration {
 
   @JsonProperty("email")
   private SmtpSettings smtpSettings;
-
-  @JsonProperty("login")
-  private LoginConfiguration loginSettings;
 
   @Override
   public String toString() {

@@ -27,12 +27,13 @@ from metadata.generated.schema.entity.services.connections.database.sqliteConnec
     SQLiteConnection,
     SQLiteScheme,
 )
-from metadata.interfaces.profiler_protocol import ProfilerInterfaceArgs
-from metadata.interfaces.sqalchemy.sqa_profiler_interface import SQAProfilerInterface
-from metadata.orm_profiler.metrics.core import add_props
-from metadata.orm_profiler.metrics.registry import Metrics
-from metadata.orm_profiler.orm.functions.sum import SumFn
-from metadata.orm_profiler.profiler.core import Profiler
+from metadata.profiler.metrics.core import add_props
+from metadata.profiler.metrics.registry import Metrics
+from metadata.profiler.orm.functions.sum import SumFn
+from metadata.profiler.profiler.core import Profiler
+from metadata.profiler.profiler.interface.sqlalchemy.sqa_profiler_interface import (
+    SQAProfilerInterface,
+)
 
 Base = declarative_base()
 
@@ -84,12 +85,14 @@ class MetricsTest(TestCase):
             SQAProfilerInterface, "_convert_table_to_orm_object", return_value=User
         ):
             cls.sqa_profiler_interface = SQAProfilerInterface(
-                profiler_interface_args=ProfilerInterfaceArgs(
-                    service_connection_config=cls.sqlite_conn,
-                    table_entity=cls.table_entity,
-                    ometa_client=None,
-                    thread_count=1,
-                )
+                cls.sqlite_conn,
+                None,
+                cls.table_entity,
+                None,
+                None,
+                None,
+                None,
+                thread_count=1,
             )
         cls.engine = cls.sqa_profiler_interface.session.get_bind()
 
@@ -332,21 +335,36 @@ class MetricsTest(TestCase):
         Check histogram computation
         """
 
-        hist = add_props(bins=5)(Metrics.HISTOGRAM.value)
+        hist = Metrics.HISTOGRAM.value
+        count = Metrics.COUNT.value
+        min = Metrics.MIN.value
+        max = Metrics.MAX.value
+        first_quartile = Metrics.FIRST_QUARTILE.value
+        third_quartile = Metrics.THIRD_QUARTILE.value
+        iqr = Metrics.IQR.value
+
         res = (
             Profiler(
                 hist,
+                count,
+                min,
+                max,
+                first_quartile,
+                third_quartile,
+                iqr,
                 profiler_interface=self.sqa_profiler_interface,
             )
             .compute_metrics()
             ._column_results
         )
 
-        assert res.get(User.age.name)[Metrics.HISTOGRAM.name]
-        assert (
-            len(res.get(User.age.name)[Metrics.HISTOGRAM.name]["frequencies"])
-            == 3  # Too little values. Counts nulls
-        )
+        age_histogram = res.get(User.age.name)[Metrics.HISTOGRAM.name]
+        id_histogram = res.get(User.id.name)[Metrics.HISTOGRAM.name]
+
+        assert age_histogram
+        assert len(age_histogram["frequencies"]) == 1
+        assert id_histogram
+        assert len(id_histogram["frequencies"]) == 2
 
     def test_like_count(self):
         """
@@ -704,14 +722,16 @@ class MetricsTest(TestCase):
             SQAProfilerInterface, "_convert_table_to_orm_object", return_value=EmptyUser
         ):
             sqa_profiler_interface = SQAProfilerInterface(
-                profiler_interface_args=ProfilerInterfaceArgs(
-                    service_connection_config=self.sqlite_conn,
-                    table_entity=self.table_entity,
-                    ometa_client=None,
-                )
+                self.sqlite_conn,
+                None,
+                self.table_entity,
+                None,
+                None,
+                None,
+                None,
             )
 
-        hist = add_props(bins=5)(Metrics.HISTOGRAM.value)
+        hist = Metrics.HISTOGRAM.value
         res = (
             Profiler(
                 hist,
@@ -769,6 +789,58 @@ class MetricsTest(TestCase):
         )
 
         assert res.get(User.age.name)[Metrics.MEDIAN.name] == 30
+
+    def test_first_quartile(self):
+        """
+        Check first quartile
+        """
+
+        first_quartile = Metrics.FIRST_QUARTILE.value
+        res = (
+            Profiler(
+                first_quartile,
+                profiler_interface=self.sqa_profiler_interface,
+            )
+            .compute_metrics()
+            ._column_results
+        )
+
+        assert res.get(User.age.name)[Metrics.FIRST_QUARTILE.name] == 30
+
+    def test_third_quartile(self):
+        """
+        Check third quartile
+        """
+
+        third_quartile = Metrics.THIRD_QUARTILE.value
+        res = (
+            Profiler(
+                third_quartile,
+                profiler_interface=self.sqa_profiler_interface,
+            )
+            .compute_metrics()
+            ._column_results
+        )
+
+        assert res.get(User.age.name)[Metrics.THIRD_QUARTILE.name] == 31
+
+    def test_iqr(self):
+        """Check IQR metric"""
+        iqr = Metrics.IQR.value
+        first_quartile = Metrics.FIRST_QUARTILE.value
+        third_quartile = Metrics.THIRD_QUARTILE.value
+        res = (
+            Profiler(
+                first_quartile,
+                third_quartile,
+                iqr,
+                profiler_interface=self.sqa_profiler_interface,
+            )
+            .compute_metrics()
+            ._column_results
+        )
+
+        assert res.get(User.age.name)[Metrics.IQR.name] == 1
 
     def test_sum_function(self):
         """Check overwritten sum function"""

@@ -35,6 +35,8 @@ interface Props extends DBTFormCommonProps, DbtConfigLocal {
   handleRunResultsFilePathChange: (value: string) => void;
   handleUpdateDescriptions: (value: boolean) => void;
   handleUpdateDBTClassification: (value: string) => void;
+  enableDebugLog: boolean;
+  handleEnableDebugLogCheck: (value: boolean) => void;
 }
 
 export const DBTLocalConfig: FunctionComponent<Props> = ({
@@ -52,6 +54,8 @@ export const DBTLocalConfig: FunctionComponent<Props> = ({
   handleUpdateDescriptions,
   dbtClassificationName,
   handleUpdateDBTClassification,
+  enableDebugLog,
+  handleEnableDebugLogCheck,
 }: Props) => {
   const [errors, setErrors] = useState<ErrorDbtLocal>();
 
@@ -101,7 +105,7 @@ export const DBTLocalConfig: FunctionComponent<Props> = ({
         <label
           className="tw-block tw-form-label tw-mb-1"
           htmlFor="manifest-file">
-          {requiredField('dbt Manifest File Path')}
+          {requiredField(t('message.dbt-manifest-file-path'))}
         </label>
         <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-xs">
           {t('message.dbt-manifest-file-path')}
@@ -144,6 +148,8 @@ export const DBTLocalConfig: FunctionComponent<Props> = ({
         dbtClassificationName={dbtClassificationName}
         dbtUpdateDescriptions={dbtUpdateDescriptions}
         descriptionId="local-update-description"
+        enableDebugLog={enableDebugLog}
+        handleEnableDebugLogCheck={handleEnableDebugLogCheck}
         handleUpdateDBTClassification={handleUpdateDBTClassification}
         handleUpdateDescriptions={handleUpdateDescriptions}
       />

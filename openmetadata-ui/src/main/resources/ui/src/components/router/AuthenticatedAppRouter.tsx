@@ -216,6 +216,10 @@ const AddTestSuitePage = withSuspenseFallback(
   React.lazy(() => import('pages/TestSuitePage/TestSuiteStepper'))
 );
 
+const ContainerPage = withSuspenseFallback(
+  React.lazy(() => import('pages/ContainerPage/ContainerPage'))
+);
+
 const AuthenticatedAppRouter: FunctionComponent = () => {
   const { permissions } = usePermissionProvider();
 
@@ -257,7 +261,6 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
       <Route exact component={MyDataPage} path={ROUTES.MY_DATA} />
       <Route exact component={TourPageComponent} path={ROUTES.TOUR} />
       <Route exact component={ExplorePage} path={ROUTES.EXPLORE} />
-      <Route component={ExplorePage} path={ROUTES.EXPLORE_WITH_SEARCH} />
       <Route component={ExplorePage} path={ROUTES.EXPLORE_WITH_TAB} />
       <Route
         exact
@@ -346,6 +349,12 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         exact
         component={PipelineDetailsPage}
         path={ROUTES.PIPELINE_DETAILS}
+      />
+      <Route exact component={ContainerPage} path={ROUTES.CONTAINER_DETAILS} />
+      <Route
+        exact
+        component={ContainerPage}
+        path={ROUTES.CONTAINER_DETAILS_WITH_TAB}
       />
       <Route
         exact

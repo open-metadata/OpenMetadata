@@ -20,6 +20,7 @@ import { isUndefined } from 'lodash';
 import { ExtraInfo } from 'Models';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { getEntityName } from 'utils/EntityUtils';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { EntityField } from '../../constants/Feeds.constants';
 import { OwnerType } from '../../enums/user.enum';
@@ -62,7 +63,7 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
   );
   const tabs = [
     {
-      name: 'Details',
+      name: t('label.detail-plural'),
       icon: {
         alt: 'schema',
         name: 'icon-schema',
@@ -133,7 +134,7 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
 
     const extraInfo: Array<ExtraInfo> = [
       {
-        key: 'Owner',
+        key: t('label.owner'),
         value:
           !isUndefined(ownerDiff.added) ||
           !isUndefined(ownerDiff.deleted) ||
@@ -149,7 +150,7 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
           newOwner?.type === OwnerType.USER ? newOwner?.name : undefined,
       },
       {
-        key: 'Tier',
+        key: t('label.tier'),
         value:
           !isUndefined(newTier) || !isUndefined(oldTier)
             ? getDiffValue(
@@ -218,13 +219,15 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
   const tableColumn: ColumnsType<Task> = useMemo(
     () => [
       {
-        title: 'Task Name',
+        title: t('label.task-entity', {
+          entity: t('label.column-plural'),
+        }),
         dataIndex: 'displayName',
         key: 'displayName',
-        render: (text, record) => (
+        render: (_, record) => (
           <Link target="_blank" to={{ pathname: record.taskUrl }}>
             <Space>
-              <span>{text}</span>
+              <span>{getEntityName(record)}</span>
               <SVGIcons
                 alt="external-link"
                 className="tw-align-middle"
@@ -236,7 +239,7 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
         ),
       },
       {
-        title: 'Description',
+        title: t('label.description'),
         dataIndex: 'description',
         key: 'description',
         render: (text) =>
@@ -249,7 +252,7 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
           ),
       },
       {
-        title: 'Task Type',
+        title: t('label.task-entity', { entity: t('label.type-lowercase') }),
         dataIndex: 'taskType',
         key: 'taskType',
       },

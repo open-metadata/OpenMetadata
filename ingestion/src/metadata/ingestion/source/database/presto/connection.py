@@ -12,9 +12,11 @@
 """
 Source connection handler
 """
+from functools import partial
 from urllib.parse import quote_plus
 
 from sqlalchemy.engine import Engine
+from sqlalchemy.inspection import inspect
 
 from metadata.generated.schema.entity.services.connections.database.prestoConnection import (
     PrestoConnection,
@@ -23,7 +25,11 @@ from metadata.ingestion.connections.builders import (
     create_generic_db_connection,
     get_connection_args_common,
 )
-from metadata.ingestion.connections.test_connections import test_connection_db_common
+from metadata.ingestion.connections.test_connections import (
+    TestConnectionResult,
+    TestConnectionStep,
+    test_connection_db_common,
+)
 
 
 def get_connection_url(connection: PrestoConnection) -> str:
@@ -52,8 +58,40 @@ def get_connection(connection: PrestoConnection) -> Engine:
     )
 
 
-def test_connection(engine: Engine) -> None:
+def test_connection(engine: Engine, _) -> TestConnectionResult:
     """
     Test connection
     """
-    test_connection_db_common(engine)
+    inspector = inspect(engine)
+
+    def custom_executor(engine, statement):
+        cursor = engine.execute(statement)
+        return list(cursor.all())
+
+    def custom_executor_for_table():
+        schema_name = inspector.get_schema_names()
+        if schema_name:
+            for schema in schema_name:
+                table_name = inspector.get_table_names(schema)
+                return table_name
+        return None
+
+    steps = [
+        TestConnectionStep(
+            function=partial(
+                custom_executor,
+                statement="SHOW CATALOGS",
+                engine=engine,
+            ),
+            name="Get Databases",
+        ),
+        TestConnectionStep(
+            function=inspector.get_schema_names,
+            name="Get Schemas",
+        ),
+        TestConnectionStep(
+            function=partial(custom_executor_for_table),
+            name="Get Tables",
+        ),
+    ]
+    return test_connection_db_common(engine, steps)

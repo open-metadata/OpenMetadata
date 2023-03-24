@@ -26,6 +26,7 @@ from sqlalchemy.engine import reflection
 from sqlalchemy.engine.reflection import Inspector
 from sqlalchemy.sql import sqltypes
 from sqlalchemy_redshift.dialect import (
+    REDSHIFT_ISCHEMA_NAMES,
     RedshiftDialect,
     RedshiftDialectMixin,
     RelationKey,
@@ -33,7 +34,9 @@ from sqlalchemy_redshift.dialect import (
 
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import (
+    ConstraintType,
     IntervalType,
+    TableConstraint,
     TablePartition,
     TableType,
 )
@@ -47,6 +50,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.ingestion.api.source import InvalidSourceException
+from metadata.ingestion.source.database.column_type_parser import create_sqlalchemy_type
 from metadata.ingestion.source.database.common_db_source import (
     CommonDbSourceService,
     TableNameAndType,
@@ -71,7 +75,45 @@ sa_version = Version(sa.__version__)
 logger = ingestion_logger()
 
 ischema_names = pg_ischema_names
+GEOGRAPHY = create_sqlalchemy_type("GEOGRAPHY")
+ischema_names["geography"] = GEOGRAPHY
 ischema_names.update({"binary varying": sqltypes.VARBINARY})
+ischema_names.update(REDSHIFT_ISCHEMA_NAMES)
+
+# pylint: disable=protected-access
+@reflection.cache
+def get_columns(self, connection, table_name, schema=None, **kw):
+    """
+    Return information about columns in `table_name`.
+
+    Overrides interface
+    :meth:`~sqlalchemy.engine.interfaces.Dialect.get_columns`.
+
+    overriding the default dialect method to include the
+    distkey and sortkey info
+    """
+    cols = self._get_redshift_columns(connection, table_name, schema, **kw)
+    if not self._domains:
+        self._domains = self._load_domains(connection)
+    domains = self._domains
+    columns = []
+    for col in cols:
+        column_info = self._get_column_info(
+            name=col.name,
+            format_type=col.format_type,
+            default=col.default,
+            notnull=col.notnull,
+            domains=domains,
+            enums=[],
+            schema=col.schema,
+            encode=col.encode,
+            comment=col.comment,
+        )
+        column_info["distkey"] = col.distkey
+        column_info["sortkey"] = col.sortkey
+        column_info["system_data_type"] = col.format_type
+        columns.append(column_info)
+    return columns
 
 
 def _get_column_info(self, *args, **kwargs):
@@ -96,7 +138,7 @@ def _get_column_info(self, *args, **kwargs):
     )._get_column_info(*args, **kwdrs)
 
     # raw_data_type is not included in column_info as
-    # redhift doesn't suport compex data types directly
+    # redhift doesn't support complex data types directly
     # https://docs.aws.amazon.com/redshift/latest/dg/c_Supported_data_types.html
 
     if "info" not in column_info:
@@ -118,6 +160,9 @@ def _get_schema_column_info(
         schema:
         **kw:
     Returns:
+
+    This method is responsible for fetching all the column details like
+    name, type, constraints, distkey and sortkey etc.
     """
     schema_clause = f"AND schema = '{schema if schema else ''}'"
     all_columns = defaultdict(list)
@@ -137,6 +182,7 @@ RedshiftDialectMixin._get_column_info = (  # pylint: disable=protected-access
 RedshiftDialectMixin._get_schema_column_info = (  # pylint: disable=protected-access
     _get_schema_column_info
 )
+RedshiftDialectMixin.get_columns = get_columns
 
 
 def _handle_array_type(attype):
@@ -385,8 +431,8 @@ class RedshiftSource(CommonDbSourceService):
     """
 
     def __init__(self, config, metadata_config):
-        self.partition_details = {}
         super().__init__(config, metadata_config)
+        self.partition_details = {}
 
     @classmethod
     def create(cls, config_dict, metadata_config: OpenMetadataConnection):
@@ -483,3 +529,26 @@ class RedshiftSource(CommonDbSourceService):
             )
             return True, partition_details
         return False, None
+
+    def process_additional_table_constraints(
+        self, column: dict, table_constraints: List[TableConstraint]
+    ) -> None:
+        """
+        Process DIST_KEY & SORT_KEY column properties
+        """
+
+        if column.get("distkey"):
+            table_constraints.append(
+                TableConstraint(
+                    constraintType=ConstraintType.DIST_KEY,
+                    columns=[column.get("name")],
+                )
+            )
+
+        if column.get("sortkey"):
+            table_constraints.append(
+                TableConstraint(
+                    constraintType=ConstraintType.SORT_KEY,
+                    columns=[column.get("name")],
+                )
+            )

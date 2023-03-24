@@ -117,7 +117,7 @@ describe('MyData page should work', () => {
   });
 
   it('My data, following & feed section should work properly for table entity', () => {
-    followAndOwnTheEntity(SEARCH_ENTITY_TABLE.table_1);
+    followAndOwnTheEntity(SEARCH_ENTITY_TABLE.table_4);
   });
 
   it('My data, following & feed section should work properly for topic entity', () => {

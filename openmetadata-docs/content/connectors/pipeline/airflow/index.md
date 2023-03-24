@@ -43,6 +43,12 @@ To deploy OpenMetadata, check the <a href="/deployment">Deployment</a> guides.
 To run the Ingestion via the UI you'll need to use the OpenMetadata Ingestion Container, which comes shipped with
 custom Airflow plugins to handle the workflow deployment.
 
+<Note>
+
+Note that we only support officially supported Airflow versions. You can check the version list [here](https://airflow.apache.org/docs/apache-airflow/stable/installation/supported-versions.html).
+
+</Note>
+
 ## Metadata Ingestion
 
 ### 1. Visit the Services Page
@@ -72,7 +78,7 @@ caption="Add a new Service from the Services page"
 
 ### 3. Select the Service Type
 
-Select Airbyte as the service type and click Next.
+Select Airflow as the service type and click Next.
 
 <div className="w-100 flex justify-center">
 <Image

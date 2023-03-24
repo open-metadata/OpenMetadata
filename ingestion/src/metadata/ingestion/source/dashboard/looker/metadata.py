@@ -159,7 +159,6 @@ class LookerSource(DashboardServiceSource):
         Returns:
             Optional[EntityReference]
         """
-
         try:
             if (
                 dashboard_details.user_id is not None
@@ -205,7 +204,6 @@ class LookerSource(DashboardServiceSource):
             ],
             dashboardUrl=f"/dashboards/{dashboard_details.id}",
             service=self.context.dashboard_service.fullyQualifiedName.__root__,
-            owner=self.get_owner_details(dashboard_details),
         )
 
     @staticmethod

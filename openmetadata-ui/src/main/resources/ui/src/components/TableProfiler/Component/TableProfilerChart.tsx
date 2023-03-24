@@ -117,9 +117,7 @@ const TableProfilerChart = ({ selectedTimeRange }: TableProfilerChartProps) => {
         />
       </Col>
       <Col span={24}>
-        <Card
-          className="rounded-6 border-1"
-          data-testid="operation-date-metrics">
+        <Card className="shadow-none" data-testid="operation-date-metrics">
           <Row gutter={[16, 16]}>
             <Col span={4}>
               <ProfilerLatestValue
@@ -137,7 +135,7 @@ const TableProfilerChart = ({ selectedTimeRange }: TableProfilerChartProps) => {
         </Card>
       </Col>
       <Col span={24}>
-        <Card className="rounded-6 border-1" data-testid="operation-metrics">
+        <Card className="shadow-none" data-testid="operation-metrics">
           <Row gutter={[16, 16]}>
             <Col span={4}>
               <ProfilerLatestValue information={operationMetrics.information} />

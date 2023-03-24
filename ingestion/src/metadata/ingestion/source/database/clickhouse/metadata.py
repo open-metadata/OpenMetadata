@@ -9,14 +9,13 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 """Clickhouse source module"""
-import enum
 
 from clickhouse_sqlalchemy.drivers.base import ClickHouseDialect, ischema_names
 from clickhouse_sqlalchemy.drivers.http.transport import RequestsTransport, _get_type
 from clickhouse_sqlalchemy.drivers.http.utils import parse_tsv
+from clickhouse_sqlalchemy.types import Date
 from sqlalchemy import types as sqltypes
 from sqlalchemy.engine import reflection
-from sqlalchemy.sql.sqltypes import String
 from sqlalchemy.util import warn
 
 from metadata.generated.schema.entity.services.connections.database.clickhouseConnection import (
@@ -33,6 +32,7 @@ from metadata.ingestion.source.database.clickhouse.queries import (
     CLICKHOUSE_TABLE_COMMENTS,
     CLICKHOUSE_VIEW_DEFINITIONS,
 )
+from metadata.ingestion.source.database.column_type_parser import create_sqlalchemy_type
 from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.sqlalchemy_utils import (
@@ -44,22 +44,43 @@ from metadata.utils.sqlalchemy_utils import (
 
 logger = ingestion_logger()
 
+Map = create_sqlalchemy_type("Map")
+Array = create_sqlalchemy_type("Array")
+Enum = create_sqlalchemy_type("Enum")
+Tuple = create_sqlalchemy_type("Tuple")
 
-class AggregateFunction(String):
-
-    __visit_name__ = "AggregateFunction"
+ischema_names.update(
+    {
+        "AggregateFunction": create_sqlalchemy_type("AggregateFunction"),
+        "Map": Map,
+        "Array": Array,
+        "Tuple": Tuple,
+        "Enum": Enum,
+        "Date32": Date,
+        "SimpleAggregateFunction": create_sqlalchemy_type("SimpleAggregateFunction"),
+        "Int256": create_sqlalchemy_type("BIGINT"),
+        "Int128": create_sqlalchemy_type("BIGINT"),
+        "Int64": create_sqlalchemy_type("BIGINT"),
+        "Int32": create_sqlalchemy_type("INTEGER"),
+        "Int16": create_sqlalchemy_type("SMALLINT"),
+        "Int8": create_sqlalchemy_type("SMALLINT"),
+        "UInt256": create_sqlalchemy_type("BIGINT"),
+        "UInt128": create_sqlalchemy_type("BIGINT"),
+        "UInt64": create_sqlalchemy_type("BIGINT"),
+        "UInt32": create_sqlalchemy_type("INTEGER"),
+        "UInt16": create_sqlalchemy_type("SMALLINT"),
+        "UInt8": create_sqlalchemy_type("SMALLINT"),
+    }
+)
 
 
 @reflection.cache
 def _get_column_type(
     self, name, spec
 ):  # pylint: disable=protected-access,too-many-branches,too-many-return-statements
-    ischema_names.update({"AggregateFunction": AggregateFunction})
-    ClickHouseDialect.ischema_names = ischema_names
+
     if spec.startswith("Array"):
-        inner = spec[6:-1]
-        coltype = self.ischema_names["_array"]
-        return coltype(self._get_column_type(name, inner))
+        return self.ischema_names["Array"]
 
     if spec.startswith("FixedString"):
         return self.ischema_names["FixedString"]
@@ -75,29 +96,13 @@ def _get_column_type(
         return coltype(self._get_column_type(name, inner))
 
     if spec.startswith("Tuple"):
-        inner = spec[6:-1]
-        coltype = self.ischema_names["_tuple"]
-        inner_types = [self._get_column_type(name, t.strip()) for t in inner.split(",")]
-        return coltype(*inner_types)
+        return self.ischema_names["Tuple"]
 
     if spec.startswith("Map"):
-        inner = spec[4:-1]
-        coltype = self.ischema_names["_map"]
-        inner_types = [self._get_column_type(name, t.strip()) for t in inner.split(",")]
-        return coltype(*inner_types)
+        return self.ischema_names["Map"]
 
     if spec.startswith("Enum"):
-        pos = spec.find("(")
-        coltype = self.ischema_names[spec[:pos]]
-
-        options = {}
-        if pos >= 0:
-            options = self._parse_options(spec[pos + 1 : spec.rfind(")")])
-        if not options:
-            return sqltypes.NullType
-
-        type_enum = enum.Enum(f"{name}_enum", options)
-        return lambda: coltype(type_enum)
+        return self.ischema_names["Enum"]
 
     if spec.startswith("DateTime64"):
         return self.ischema_names["DateTime64"]
@@ -114,6 +119,9 @@ def _get_column_type(
 
     if spec.lower().startswith("aggregatefunction"):
         return self.ischema_names["AggregateFunction"]
+
+    if spec.lower().startswith("simpleaggregatefunction"):
+        return self.ischema_names["SimpleAggregateFunction"]
     try:
         return self.ischema_names[spec]
     except KeyError:
@@ -189,6 +197,34 @@ def get_table_comment(
     )
 
 
+def _get_column_info(
+    self, name, format_type, default_type, default_expression, comment
+):
+    col_type = self._get_column_type(  # pylint: disable=protected-access
+        name, format_type
+    )
+    col_default = self._get_column_default(  # pylint: disable=protected-access
+        default_type, default_expression
+    )
+
+    raw_type = format_type.lower().replace("(", "<").replace(")", ">")
+    result = {
+        "name": name,
+        "type": col_type,
+        "nullable": format_type.startswith("Nullable("),
+        "default": col_default,
+        "comment": comment or None,
+        "system_data_type": raw_type,
+    }
+
+    if col_type in [Map, Array, Tuple, Enum]:
+        result["display_type"] = raw_type
+
+    if col_type == Array:
+        result["is_complex"] = True
+    return result
+
+
 ClickHouseDialect.get_unique_constraints = get_unique_constraints
 ClickHouseDialect.get_pk_constraint = get_pk_constraint
 ClickHouseDialect._get_column_type = (  # pylint: disable=protected-access
@@ -199,6 +235,9 @@ ClickHouseDialect.get_view_definition = get_view_definition
 ClickHouseDialect.get_table_comment = get_table_comment
 ClickHouseDialect.get_all_view_definitions = get_all_view_definitions
 ClickHouseDialect.get_all_table_comments = get_all_table_comments
+ClickHouseDialect._get_column_info = (  # pylint: disable=protected-access
+    _get_column_info
+)
 
 
 class ClickhouseSource(CommonDbSourceService):

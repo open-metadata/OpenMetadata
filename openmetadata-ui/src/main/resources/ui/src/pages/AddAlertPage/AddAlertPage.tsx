@@ -24,51 +24,42 @@ import {
   Row,
   Select,
   Space,
+  TreeSelect,
   Typography,
 } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
 import { DefaultOptionType } from 'antd/lib/select';
 import { AsyncSelect } from 'components/AsyncSelect/AsyncSelect';
-import { get, intersection, isEmpty, map, pick, startCase, trim } from 'lodash';
+import { SubscriptionType } from 'generated/events/api/createEventSubscription';
+import {
+  Effect,
+  EventFilterRule,
+  EventSubscription,
+  ProviderType,
+} from 'generated/events/eventSubscription';
+import { SubscriptionResourceDescriptor } from 'generated/events/subscriptionResourceDescriptor';
+import { intersection, isEmpty, map, startCase, trim } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
-import { createAlertAction, updateAlertAction } from 'rest/alertActionAPI';
 import {
   createAlert,
-  getAlertActionForAlerts,
   getAlertsFromId,
-  getDefaultTriggerConfigs,
-  getEntityFilterFunctions,
   getFilterFunctions,
+  getResourceFunctions,
   updateAlert,
 } from 'rest/alertsAPI';
 import { getSuggestions } from 'rest/miscAPI';
-import { getEntityName } from 'utils/CommonUtils';
+import { getEntityName } from 'utils/EntityUtils';
 import { searchFormattedUsersAndTeams } from 'utils/UserDataUtils';
 import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
 } from '../../constants/GlobalSettings.constants';
-import { PROMISE_STATE } from '../../enums/common.enum';
-import { AlertAction } from '../../generated/alerts/alertAction';
-import {
-  AlertFilterRule,
-  Alerts,
-  AlertTriggerType,
-  Effect,
-  EntityReference,
-  ProviderType,
-  TriggerConfig,
-} from '../../generated/alerts/alerts';
-import { AlertActionType } from '../../generated/alerts/api/createAlertAction';
-import { EntitySpelFilters } from '../../generated/alerts/entitySpelFilters';
 import { Function } from '../../generated/type/function';
 import {
   getAlertActionTypeDisplayName,
   getAlertsActionTypeIcon,
-  getDisplayNameForEntities,
-  getDisplayNameForTriggerType,
   getFunctionDisplayName,
   listLengthValidator,
   StyledCard,
@@ -80,29 +71,26 @@ import './add-alerts-page.styles.less';
 
 const AddAlertPage = () => {
   const { t } = useTranslation();
-  const [form] = useForm<Alerts>();
+  const [form] = useForm<EventSubscription>();
   const history = useHistory();
   const { fqn } = useParams<{ fqn: string }>();
   // To block certain action based on provider of the Alert e.g. System / User
   const [provider, setProvider] = useState<ProviderType>(ProviderType.User);
 
   const [filterFunctions, setFilterFunctions] = useState<Function[]>();
-  const [defaultTriggers, setDefaultTriggers] = useState<Array<TriggerConfig>>(
-    []
-  );
   const [loadingCount, setLoadingCount] = useState(0);
-  const [entityFunctions, setEntityFunctions] =
-    useState<Record<string, EntitySpelFilters>>();
+  const [entityFunctions, setEntityFunctions] = useState<
+    SubscriptionResourceDescriptor[]
+  >([]);
 
   const fetchAlert = async () => {
     try {
       setLoadingCount((count) => count + 1);
 
-      const response: Alerts = await getAlertsFromId(fqn);
-      const alertActions = await getAlertActionForAlerts(response.id);
+      const response: EventSubscription = await getAlertsFromId(fqn);
 
       const requestFilteringRules =
-        response.filteringRules?.map(
+        response.filteringRules.rules?.map(
           (curr) =>
             ({
               ...curr,
@@ -112,15 +100,17 @@ const AddAlertPage = () => {
                 .replace(new RegExp(`\\)`), '')
                 .split(',')
                 .map(trim),
-            } as unknown as AlertFilterRule)
+            } as unknown as EventFilterRule)
         ) ?? [];
 
       setProvider(response.provider ?? ProviderType.User);
 
       form.setFieldsValue({
         ...response,
-        filteringRules: requestFilteringRules,
-        alertActions: alertActions as unknown as EntityReference[],
+        filteringRules: {
+          ...response.filteringRules,
+          rules: requestFilteringRules,
+        },
       });
     } catch {
       showErrorToast(
@@ -142,89 +132,46 @@ const AddAlertPage = () => {
     try {
       setLoadingCount((count) => count + 1);
       const functions = await getFilterFunctions();
-      const entityFunctions = await getEntityFilterFunctions();
+      const entityFunctions = await getResourceFunctions();
 
       setFilterFunctions(functions);
-      setEntityFunctions(entityFunctions);
+      setEntityFunctions(entityFunctions.data);
     } finally {
       setLoadingCount((count) => count - 1);
     }
   };
 
-  const fetchDefaultTriggerConfig = async () => {
-    setLoadingCount((count) => count + 1);
-    const triggers = await getDefaultTriggerConfigs();
-
-    setDefaultTriggers(
-      triggers.map((trigger) => ({
-        ...trigger,
-        entities: trigger.entities?.sort(),
-      }))
-    );
-    setLoadingCount((count) => count - 1);
-  };
-
   useEffect(() => {
     fetchFunctions();
-    fetchDefaultTriggerConfig();
   }, []);
 
   const isEditMode = useMemo(() => !isEmpty(fqn), [fqn]);
+  const resourcesOptions = useMemo(() => {
+    const resources = entityFunctions.filter(
+      (resource) => resource.name !== 'all'
+    );
+    const option = [
+      {
+        title: 'All',
+        value: 'all',
+        key: 'all',
+        children: resources.map((resource) => ({
+          title: startCase(resource.name),
+          value: resource.name,
+          key: resource.name,
+        })),
+      },
+    ];
 
-  const updateCreateAlertActions = async (alertActions: AlertAction[]) => {
-    if (isEditMode) {
-      if (!form.isFieldTouched(['alertActions'])) {
-        // If destination is not changed return given alertAction as it is
-        return Promise.resolve(
-          alertActions.map((action) => ({
-            id: action.id ?? '',
-            type: 'alertAction',
-          }))
-        );
-      }
-    }
+    return option;
+  }, [entityFunctions]);
 
-    // Else Create AlertActions and return new IDs
-    const promises =
-      alertActions?.map((action) => {
-        const api = action.id ? updateAlertAction : createAlertAction;
-        const alertAction = pick(action, [
-          'alertActionConfig',
-          'alertActionType',
-          'name',
-          'displayName',
-          'timeout',
-          'batchSize',
-        ]) as AlertAction;
-
-        return api(alertAction);
-      }) ?? [];
-
-    const responses = await Promise.allSettled(promises);
-
-    const requestAlertActions: EntityReference[] = responses.map((res) => {
-      if (res.status === PROMISE_STATE.REJECTED) {
-        throw res.reason;
-      }
-
-      return {
-        id: res.status === PROMISE_STATE.FULFILLED ? res.value.id ?? '' : '',
-        type: 'alertAction',
-      };
-    });
-
-    return Promise.resolve(requestAlertActions);
-  };
-
-  const handleSave = async (data: Alerts) => {
-    const { filteringRules, alertActions } = data;
-    if (!alertActions?.length) {
-      return;
-    }
+  const handleSave = async (data: EventSubscription) => {
+    const { filteringRules } = data;
 
     const api = isEditMode ? updateAlert : createAlert;
 
-    const requestFilteringRules = filteringRules?.map((curr) => ({
+    const requestFilteringRules = filteringRules.rules?.map((curr) => ({
       ...curr,
       condition: `${curr.name}(${map(
         curr.condition,
@@ -233,47 +180,31 @@ const AddAlertPage = () => {
     }));
 
     try {
-      const requestAlertActions = await updateCreateAlertActions(
-        alertActions as unknown as AlertAction[]
+      await api({
+        ...data,
+        filteringRules: { ...filteringRules, rules: requestFilteringRules },
+      });
+
+      showSuccessToast(
+        t(`server.${isEditMode ? 'update' : 'create'}-entity-success`, {
+          entity: t('label.alert-plural'),
+        })
       );
-
-      try {
-        await api({
-          ...data,
-          filteringRules: requestFilteringRules,
-          alertActions: requestAlertActions,
-        });
-
-        showSuccessToast(
-          t(`server.${isEditMode ? 'update' : 'create'}-entity-success`, {
-            entity: t('label.alert-plural'),
-          })
-        );
-        history.push(
-          getSettingPath(
-            GlobalSettingsMenuCategory.NOTIFICATIONS,
-            GlobalSettingOptions.ALERTS
-          )
-        );
-      } catch (error) {
-        showErrorToast(
-          t(
-            `server.${
-              isEditMode ? 'entity-updating-error' : 'entity-creation-error'
-            }`,
-            {
-              entity: t('label.alert-plural'),
-            }
-          )
-        );
-      }
+      history.push(
+        getSettingPath(
+          GlobalSettingsMenuCategory.NOTIFICATIONS,
+          GlobalSettingOptions.ALERTS
+        )
+      );
     } catch (error) {
       showErrorToast(
         t(
           `server.${
             isEditMode ? 'entity-updating-error' : 'entity-creation-error'
           }`,
-          { entity: t('label.alert-plural') }
+          {
+            entity: t('label.alert-plural'),
+          }
         )
       );
     }
@@ -378,26 +309,21 @@ const AddAlertPage = () => {
   };
 
   // Watchers
-  const filters = Form.useWatch(['filteringRules'], form);
-  const entitySelected = Form.useWatch(['triggerConfig', 'entities'], form);
-  const trigger = Form.useWatch(['triggerConfig', 'type'], form);
-  const alertActions = Form.useWatch(['alertActions'], form);
+  const filters = Form.useWatch(['filteringRules', 'rules'], form);
+  const entitySelected = Form.useWatch(['filteringRules', 'resources'], form);
+  const subscriptionType = Form.useWatch(['subscriptionType'], form);
 
   // Run time values needed for conditional rendering
   const functions = useMemo(() => {
     if (entityFunctions) {
       const exitingFunctions = filters?.map((f) => f.name) ?? [];
-      let supportedFunctions: string[][] = [];
 
-      if (!trigger || trigger === AlertTriggerType.AllDataAssets) {
-        supportedFunctions = [entityFunctions['all'].supportedFunctions];
-      } else {
-        supportedFunctions =
-          entitySelected?.map(
-            (entity) =>
-              entityFunctions[entity as unknown as string].supportedFunctions
-          ) ?? [];
-      }
+      const supportedFunctions: string[][] =
+        entitySelected?.map((entity: string) => {
+          const resource = entityFunctions.find((data) => data.name === entity);
+
+          return resource?.supportedFilters || [];
+        }) ?? [];
 
       const functions = intersection(...supportedFunctions)
         .sort()
@@ -413,121 +339,108 @@ const AddAlertPage = () => {
     return [];
   }, [entitySelected, entityFunctions, filters]);
 
-  const selectedTrigger = useMemo(
-    () => defaultTriggers.find(({ type }) => trigger === type),
-    [defaultTriggers, trigger]
-  );
-
-  const handleChange = (changedValues: Partial<Alerts>) => {
-    const { triggerConfig } = changedValues;
-    if (triggerConfig?.entities || triggerConfig?.type) {
-      form.resetFields(['filteringRules', 'condition']);
+  const handleChange = (changedValues: Partial<EventSubscription>) => {
+    const { filteringRules } = changedValues;
+    if (filteringRules?.resources) {
+      form.resetFields([['filteringRules', 'rules'], 'condition']);
     }
   };
 
-  const getDestinationConfigFields = useCallback(
-    (name: number) => {
-      const alertActionType = get(alertActions, [name, 'alertActionType']);
-      if (alertActions && alertActions[name]) {
-        switch (alertActionType) {
-          case AlertActionType.Email:
-            return (
-              <>
+  const getDestinationConfigFields = useCallback(() => {
+    if (subscriptionType) {
+      switch (subscriptionType) {
+        case SubscriptionType.Email:
+          return (
+            <>
+              <Form.Item
+                label={t('label.send-to')}
+                labelCol={{ span: 24 }}
+                name={['subscriptionConfig', 'receivers']}>
+                <Select
+                  showSearch
+                  mode="tags"
+                  open={false}
+                  placeholder={t('label.enter-entity', {
+                    entity: t('label.email-plural'),
+                  })}
+                />
+              </Form.Item>
+              <Space align="baseline">
+                <label>{t('label.send-to')}:</label>
                 <Form.Item
-                  label={t('label.send-to')}
-                  labelCol={{ span: 24 }}
-                  name={[name, 'alertActionConfig', 'receivers']}>
-                  <Select
-                    showSearch
-                    mode="tags"
-                    open={false}
-                    placeholder={t('label.enter-entity', {
-                      entity: t('label.email-plural'),
-                    })}
-                  />
+                  name={['subscriptionConfig', 'sendToAdmins']}
+                  valuePropName="checked">
+                  <Checkbox>{t('label.admin-plural')}</Checkbox>
                 </Form.Item>
-                <Space align="baseline">
-                  <label>{t('label.send-to')}:</label>
-                  <Form.Item
-                    name={[name, 'alertActionConfig', 'sendToAdmins']}
-                    valuePropName="checked">
-                    <Checkbox>{t('label.admin-plural')}</Checkbox>
-                  </Form.Item>
-                  <Form.Item
-                    name={[name, 'alertActionConfig', 'sendToOwners']}
-                    valuePropName="checked">
-                    <Checkbox>{t('label.owner-plural')}</Checkbox>
-                  </Form.Item>
-                  <Form.Item
-                    name={[name, 'alertActionConfig', 'sendToFollowers']}
-                    valuePropName="checked">
-                    <Checkbox>{t('label.follower-plural')}</Checkbox>
-                  </Form.Item>
-                </Space>
-              </>
-            );
-          case AlertActionType.GenericWebhook:
-          case AlertActionType.SlackWebhook:
-          case AlertActionType.MSTeamsWebhook:
-          case AlertActionType.GChatWebhook:
-            return (
-              <>
                 <Form.Item
-                  required
-                  name={[name, 'alertActionConfig', 'endpoint']}>
-                  <Input
-                    disabled={provider === ProviderType.System}
-                    placeholder={
-                      t('label.endpoint-url') +
-                      ': ' +
-                      'http(s)://www.example.com'
-                    }
-                  />
+                  name={['subscriptionConfig', 'sendToOwners']}
+                  valuePropName="checked">
+                  <Checkbox>{t('label.owner-plural')}</Checkbox>
                 </Form.Item>
+                <Form.Item
+                  name={['subscriptionConfig', 'sendToFollowers']}
+                  valuePropName="checked">
+                  <Checkbox>{t('label.follower-plural')}</Checkbox>
+                </Form.Item>
+              </Space>
+            </>
+          );
+        case SubscriptionType.GenericWebhook:
+        case SubscriptionType.SlackWebhook:
+        case SubscriptionType.MSTeamsWebhook:
+        case SubscriptionType.GChatWebhook:
+          return (
+            <>
+              <Form.Item required name={['subscriptionConfig', 'endpoint']}>
+                <Input
+                  disabled={provider === ProviderType.System}
+                  placeholder={
+                    t('label.endpoint-url') + ': ' + 'http(s)://www.example.com'
+                  }
+                />
+              </Form.Item>
 
-                <Collapse ghost>
-                  <Collapse.Panel
-                    header={`${t('label.advanced-entity', {
-                      entity: t('label.config'),
-                    })}:`}
-                    key="1">
-                    <Space>
-                      <Form.Item
-                        initialValue={10}
-                        label="Batch Size"
-                        labelCol={{ span: 24 }}
-                        name={[name, 'batchSize']}>
-                        <Input disabled={provider === ProviderType.System} />
-                      </Form.Item>
-                      <Form.Item
-                        colon
-                        initialValue={10}
-                        label={`${t('label.connection-timeout-plural')}`}
-                        labelCol={{ span: 24 }}
-                        name={[name, 'timeout']}>
-                        <Input disabled={provider === ProviderType.System} />
-                      </Form.Item>
-                    </Space>
+              <Collapse ghost>
+                <Collapse.Panel
+                  header={`${t('label.advanced-entity', {
+                    entity: t('label.config'),
+                  })}:`}
+                  key="1">
+                  <Space>
                     <Form.Item
-                      label={t('label.secret-key')}
+                      initialValue={10}
+                      label="Batch Size"
                       labelCol={{ span: 24 }}
-                      name={[name, 'alertActionConfig', 'secretKey']}>
-                      <Input
-                        disabled={provider === ProviderType.System}
-                        placeholder={t('label.secret-key')}
-                      />
+                      name={['batchSize']}>
+                      <Input disabled={provider === ProviderType.System} />
                     </Form.Item>
-                  </Collapse.Panel>
-                </Collapse>
-              </>
-            );
-        }
+                    <Form.Item
+                      colon
+                      initialValue={10}
+                      label={`${t('label.connection-timeout-plural')}`}
+                      labelCol={{ span: 24 }}
+                      name={['timeout']}>
+                      <Input disabled={provider === ProviderType.System} />
+                    </Form.Item>
+                  </Space>
+                  <Form.Item
+                    label={t('label.secret-key')}
+                    labelCol={{ span: 24 }}
+                    name={['subscriptionConfig', 'secretKey']}>
+                    <Input
+                      disabled={provider === ProviderType.System}
+                      placeholder={t('label.secret-key')}
+                    />
+                  </Form.Item>
+                </Collapse.Panel>
+              </Collapse>
+            </>
+          );
       }
+    }
 
-      return <></>;
-    },
-    [alertActions]
-  );
+    return <></>;
+  }, [subscriptionType]);
 
   return (
     <>
@@ -541,7 +454,7 @@ const AddAlertPage = () => {
           <Typography.Text>{t('message.alerts-description')}</Typography.Text>
         </Col>
         <Col span={24}>
-          <Form<Alerts>
+          <Form<EventSubscription>
             className="alerts-notification-form"
             form={form}
             onFinish={handleSave}
@@ -557,8 +470,7 @@ const AddAlertPage = () => {
               <Form.Item
                 label={t('label.description')}
                 labelCol={{ span: 24 }}
-                name="description"
-                rules={[{ required: true }]}>
+                name="description">
                 <Input.TextArea />
               </Form.Item>
               <Form.Item>
@@ -571,40 +483,23 @@ const AddAlertPage = () => {
                       />
                       <div>
                         <Form.Item
-                          initialValue={AlertTriggerType.AllDataAssets}
-                          name={['triggerConfig', 'type']}>
-                          <Select
+                          required
+                          initialValue={['all']}
+                          messageVariables={{
+                            fieldName: t('label.data-asset-plural'),
+                          }}
+                          name={['filteringRules', 'resources']}>
+                          <TreeSelect
+                            treeCheckable
+                            className="w-full"
                             data-testid="triggerConfig-type"
-                            options={defaultTriggers.map((trigger) => ({
-                              label: getDisplayNameForTriggerType(trigger.type),
-                              value: trigger.type,
-                            }))}
+                            placeholder={t('label.select-field', {
+                              field: t('label.data-asset-plural'),
+                            })}
+                            showCheckedStrategy={TreeSelect.SHOW_PARENT}
+                            treeData={resourcesOptions}
                           />
                         </Form.Item>
-                        {selectedTrigger?.type ===
-                          AlertTriggerType.SpecificDataAsset && (
-                          <Form.Item
-                            required
-                            messageVariables={{
-                              fieldName: t('label.data-asset-plural'),
-                            }}
-                            name={['triggerConfig', 'entities']}>
-                            <Select
-                              showArrow
-                              className="w-full"
-                              mode="multiple"
-                              options={
-                                selectedTrigger.entities?.map((entity) => ({
-                                  value: entity,
-                                  label: getDisplayNameForEntities(entity),
-                                })) ?? []
-                              }
-                              placeholder={t('label.select-field', {
-                                field: t('label.data-asset-plural'),
-                              })}
-                            />
-                          </Form.Item>
-                        )}
                       </div>
                     </Space>
                   </Col>
@@ -616,7 +511,7 @@ const AddAlertPage = () => {
                       />
 
                       <Form.List
-                        name="filteringRules"
+                        name={['filteringRules', 'rules']}
                         rules={[
                           {
                             validator: listLengthValidator(
@@ -707,93 +602,42 @@ const AddAlertPage = () => {
                         heading={t('label.destination')}
                         subHeading={t('message.alerts-destination-description')}
                       />
-
-                      <Form.List
-                        name="alertActions"
-                        rules={[
-                          {
-                            validator: listLengthValidator(
-                              t('label.destination')
-                            ),
-                          },
-                        ]}>
-                        {(fields, { add, remove }, { errors }) => (
-                          <>
-                            <Form.Item>
-                              <Button
-                                block
-                                data-testid="add=destination"
-                                disabled={provider === ProviderType.System}
-                                icon={<PlusOutlined />}
-                                type="default"
-                                onClick={() => add({}, 0)}>
-                                {t('label.add-entity', {
-                                  entity: t('label.destination'),
-                                })}
-                              </Button>
-                            </Form.Item>
-                            {fields.map(({ key, name }) => (
-                              <div key={`alertActions-${key}`}>
-                                {name > 0 && (
-                                  <Divider
-                                    style={{ margin: 0, marginBottom: '16px' }}
-                                  />
-                                )}
-                                <div className="d-flex" style={{ gap: '10px' }}>
-                                  <div className="flex-1">
-                                    <Form.Item
-                                      required
-                                      key={key}
-                                      name={[name, 'alertActionType']}>
-                                      <Select
-                                        data-testid="alert-action-type"
-                                        disabled={
-                                          provider === ProviderType.System
-                                        }
-                                        placeholder={t('label.select-field', {
-                                          field: t('label.source'),
-                                        })}
-                                        showSearch={false}>
-                                        {map(AlertActionType, (value) => {
-                                          return value ===
-                                            AlertActionType.ActivityFeed ? null : (
-                                            <Select.Option
-                                              key={value}
-                                              value={value}>
-                                              <Space size={16}>
-                                                {getAlertsActionTypeIcon(
-                                                  value as AlertActionType
-                                                )}
-                                                {getAlertActionTypeDisplayName(
-                                                  value
-                                                )}
-                                              </Space>
-                                            </Select.Option>
-                                          );
-                                        })}
-                                      </Select>
-                                    </Form.Item>
-                                    {getDestinationConfigFields(name)}
-                                  </div>
-                                  <Button
-                                    data-testid={`remove-filter-rule-${name}`}
-                                    icon={
-                                      <SVGIcons
-                                        alt={t('label.delete')}
-                                        className="w-4"
-                                        icon={Icons.DELETE}
-                                      />
-                                    }
-                                    type="text"
-                                    onClick={() => remove(name)}
-                                  />
-                                </div>
-                              </div>
-                            ))}
-                            <Form.ErrorList errors={errors} />
-                          </>
-                        )}
-                      </Form.List>
+                      <Form.Item>
+                        <Form.Item
+                          required
+                          name="subscriptionType"
+                          rules={[
+                            {
+                              required: true,
+                              message: t('label.field-required', {
+                                field: t('label.destination'),
+                              }),
+                            },
+                          ]}>
+                          <Select
+                            data-testid="alert-action-type"
+                            disabled={provider === ProviderType.System}
+                            placeholder={t('label.select-field', {
+                              field: t('label.source'),
+                            })}
+                            showSearch={false}>
+                            {map(SubscriptionType, (value) => {
+                              return value ===
+                                SubscriptionType.ActivityFeed ? null : (
+                                <Select.Option key={value} value={value}>
+                                  <Space size={16}>
+                                    {getAlertsActionTypeIcon(
+                                      value as SubscriptionType
+                                    )}
+                                    {getAlertActionTypeDisplayName(value)}
+                                  </Space>
+                                </Select.Option>
+                              );
+                            })}
+                          </Select>
+                        </Form.Item>
+                        {getDestinationConfigFields()}
+                      </Form.Item>
                     </Space>
                   </Col>
                   <Col className="footer" span={24}>

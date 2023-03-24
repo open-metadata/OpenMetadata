@@ -20,9 +20,9 @@ import { TitleBreadcrumbProps } from 'components/common/title-breadcrumb/title-b
 import PageContainerV1 from 'components/containers/PageContainerV1';
 import PageLayout from 'components/containers/PageLayout';
 import Loader from 'components/Loader/Loader';
-import { t } from 'i18next';
 import { isUndefined, startCase } from 'lodash';
 import React, { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import { getIngestionPipelineByFqn } from 'rest/ingestionPipelineAPI';
 import { getTestSuiteByName } from 'rest/testAPI';
@@ -30,12 +30,12 @@ import { ROUTES } from '../../constants/constants';
 import { PageLayoutType } from '../../enums/layout.enum';
 import { IngestionPipeline } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { TestSuite } from '../../generated/tests/testSuite';
-import jsonData from '../../jsons/en';
 import { getTestSuitePath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
 const TestSuiteIngestionPage = () => {
   const { testSuiteFQN, ingestionFQN } = useParams<Record<string, string>>();
+  const { t } = useTranslation();
 
   const history = useHistory();
   const [isLoading, setIsLoading] = useState(true);
@@ -55,7 +55,9 @@ const TestSuiteIngestionPage = () => {
     } catch (error) {
       showErrorToast(
         error as AxiosError,
-        jsonData['api-error-messages']['fetch-ingestion-error']
+        t('server.entity-fetch-error', {
+          entity: t('label.ingestion-workflow-lowercase'),
+        })
       );
     } finally {
       setIsLoading(false);
@@ -93,7 +95,9 @@ const TestSuiteIngestionPage = () => {
       setTestSuite(undefined);
       showErrorToast(
         error as AxiosError,
-        jsonData['api-error-messages']['fetch-test-suite-error']
+        t('server.entity-fetch-error', {
+          entity: t('label.test-suite'),
+        })
       );
     } finally {
       setIsLoading(false);
@@ -127,6 +131,7 @@ const TestSuiteIngestionPage = () => {
           classes="tw-max-w-full-hd tw-h-full tw-pt-4"
           header={<TitleBreadcrumb titleLinks={slashedBreadCrumb} />}
           layout={PageLayoutType['2ColRTL']}
+          pageTitle={t('label.test-suite-ingestion')}
           rightPanel={<RightPanel data={INGESTION_DATA} />}>
           <TestSuiteIngestion
             ingestionPipeline={ingestionPipeline}

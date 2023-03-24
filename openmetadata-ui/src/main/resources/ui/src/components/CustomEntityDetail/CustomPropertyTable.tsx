@@ -10,37 +10,38 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Table, Tooltip } from 'antd';
+import { Button, Space, Table, Tooltip } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
-import { t } from 'i18next';
+import { LOADING_STATE, OPERATION } from 'enums/common.enum';
 import { isEmpty } from 'lodash';
-import React, { FC, Fragment, useMemo, useState } from 'react';
+import React, { FC, Fragment, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { getEntityName } from 'utils/EntityUtils';
+import { ReactComponent as IconDelete } from '../../assets/svg/ic-delete.svg';
+import { ReactComponent as IconEdit } from '../../assets/svg/ic-edit.svg';
 import { NO_PERMISSION_FOR_ACTION } from '../../constants/HelperTextUtil';
 import { CustomProperty } from '../../generated/entity/type';
-import { getEntityName } from '../../utils/CommonUtils';
-import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import RichTextEditorPreviewer from '../common/rich-text-editor/RichTextEditorPreviewer';
 import ConfirmationModal from '../Modals/ConfirmationModal/ConfirmationModal';
 import { ModalWithMarkdownEditor } from '../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
-import {
-  CustomPropertyTableProp,
-  Operation,
-} from './CustomPropertyTable.interface';
+import { CustomPropertyTableProp } from './CustomPropertyTable.interface';
 
 export const CustomPropertyTable: FC<CustomPropertyTableProp> = ({
   customProperties,
   updateEntityType,
   hasAccess,
+  loadingState,
 }) => {
+  const { t } = useTranslation();
   const [selectedProperty, setSelectedProperty] = useState<CustomProperty>(
     {} as CustomProperty
   );
 
-  const [operation, setOperation] = useState<Operation>('no-operation');
+  const [operation, setOperation] = useState<OPERATION>(OPERATION.NO_OPERATION);
 
   const resetSelectedProperty = () => {
     setSelectedProperty({} as CustomProperty);
-    setOperation('no-operation' as Operation);
+    setOperation(OPERATION.NO_OPERATION);
   };
 
   const handlePropertyDelete = () => {
@@ -48,8 +49,13 @@ export const CustomPropertyTable: FC<CustomPropertyTableProp> = ({
       (property) => property.name !== selectedProperty.name
     );
     updateEntityType(updatedProperties);
-    resetSelectedProperty();
   };
+
+  useEffect(() => {
+    if (loadingState === LOADING_STATE.INITIAL) {
+      resetSelectedProperty();
+    }
+  }, [loadingState]);
 
   const handlePropertyUpdate = async (updatedDescription: string) => {
     const updatedProperties = customProperties.map((property) => {
@@ -63,24 +69,31 @@ export const CustomPropertyTable: FC<CustomPropertyTableProp> = ({
     resetSelectedProperty();
   };
 
-  const deleteCheck = !isEmpty(selectedProperty) && operation === 'delete';
-  const updateCheck = !isEmpty(selectedProperty) && operation === 'update';
+  const deleteCheck = useMemo(
+    () => !isEmpty(selectedProperty) && operation === OPERATION.DELETE,
+    [selectedProperty, operation]
+  );
+  const updateCheck = useMemo(
+    () => !isEmpty(selectedProperty) && operation === OPERATION.UPDATE,
+    [selectedProperty, operation]
+  );
 
   const tableColumn: ColumnsType<CustomProperty> = useMemo(
     () => [
       {
-        title: 'Name',
+        title: t('label.name'),
         dataIndex: 'name',
         key: 'name',
+        render: (_, record) => getEntityName(record),
       },
       {
-        title: 'Type',
+        title: t('label.type'),
         dataIndex: 'propertyType',
         key: 'propertyType',
         render: (text) => getEntityName(text),
       },
       {
-        title: 'Description',
+        title: t('label.description'),
         dataIndex: 'description',
         key: 'description',
         render: (text) =>
@@ -95,46 +108,40 @@ export const CustomPropertyTable: FC<CustomPropertyTableProp> = ({
           ),
       },
       {
-        title: 'Actions',
+        title: t('label.action-plural'),
         dataIndex: 'actions',
         key: 'actions',
         render: (_, record) => (
-          <div className="tw-flex">
-            <Tooltip title={hasAccess ? 'Edit' : NO_PERMISSION_FOR_ACTION}>
-              <button
-                className="tw-cursor-pointer"
+          <Space align="center" size={14}>
+            <Tooltip title={!hasAccess && NO_PERMISSION_FOR_ACTION}>
+              <Button
+                className="cursor-pointer p-0"
                 data-testid="edit-button"
                 disabled={!hasAccess}
+                size="small"
+                type="text"
                 onClick={() => {
                   setSelectedProperty(record);
-                  setOperation('update');
+                  setOperation(OPERATION.UPDATE);
                 }}>
-                <SVGIcons
-                  alt="edit"
-                  icon={Icons.EDIT}
-                  title="Edit"
-                  width="16px"
-                />
-              </button>
+                <IconEdit name={t('label.edit')} width={16} />
+              </Button>
             </Tooltip>
-            <Tooltip title={hasAccess ? 'Delete' : NO_PERMISSION_FOR_ACTION}>
-              <button
-                className="tw-cursor-pointer tw-ml-4"
+            <Tooltip title={!hasAccess && NO_PERMISSION_FOR_ACTION}>
+              <Button
+                className="cursor-pointer p-0"
                 data-testid="delete-button"
                 disabled={!hasAccess}
+                size="small"
+                type="text"
                 onClick={() => {
                   setSelectedProperty(record);
-                  setOperation('delete');
+                  setOperation(OPERATION.DELETE);
                 }}>
-                <SVGIcons
-                  alt="delete"
-                  icon={Icons.DELETE}
-                  title="Delete"
-                  width="16px"
-                />
-              </button>
+                <IconDelete name={t('label.delete')} width={16} />
+              </Button>
             </Tooltip>
-          </div>
+          </Space>
         ),
       },
     ],
@@ -161,6 +168,7 @@ export const CustomPropertyTable: FC<CustomPropertyTableProp> = ({
         header={t('label.delete-property-name', {
           propertyName: selectedProperty.name,
         })}
+        loadingState={loadingState}
         visible={deleteCheck}
         onCancel={resetSelectedProperty}
         onConfirm={handlePropertyDelete}
@@ -170,7 +178,9 @@ export const CustomPropertyTable: FC<CustomPropertyTableProp> = ({
           entityType: t('label.property'),
           entityName: selectedProperty.name,
         })}
-        placeholder={t('label.enter-property-description')}
+        placeholder={t('label.enter-field-description', {
+          field: t('label.property'),
+        })}
         value={selectedProperty.description || ''}
         visible={updateCheck}
         onCancel={resetSelectedProperty}

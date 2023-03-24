@@ -12,6 +12,7 @@
  */
 
 import { AxiosResponse } from 'axios';
+import { configOptions } from 'constants/constants';
 import { isNil } from 'lodash';
 import { ServiceData, ServicesData, ServicesUpdateRequest } from 'Models';
 import {
@@ -96,6 +97,19 @@ export const updateService = async (
   return response.data;
 };
 
+export const updateOwnerService = async (
+  serviceCat: string,
+  id: string,
+  options: ServicesUpdateRequest
+) => {
+  const response = await APIClient.patch<
+    ServicesUpdateRequest,
+    AxiosResponse<ServicesType>
+  >(`/services/${serviceCat}/${id}`, options, configOptions);
+
+  return response.data;
+};
+
 export const deleteService = (
   serviceCat: string,
   id: string
@@ -105,11 +119,15 @@ export const deleteService = (
 
 export const TestConnection = (
   data: ConfigData,
-  type: string
+  serviceType: string,
+  connectionType?: string,
+  serviceName?: string
 ): Promise<AxiosResponse> => {
   const payload = {
     connection: { config: data },
-    connectionType: type,
+    serviceType: serviceType,
+    connectionType: connectionType,
+    serviceName: serviceName,
   };
 
   return APIClient.post(`/services/ingestionPipelines/testConnection`, payload);

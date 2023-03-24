@@ -28,7 +28,7 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.ingestion.api.source import InvalidSourceException, SourceStatus
+from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_chart, filter_by_dashboard
@@ -46,14 +46,12 @@ class PowerbiSource(DashboardServiceSource):
 
     config: WorkflowSource
     metadata_config: OpenMetadataConnection
-    status: SourceStatus
 
     def __init__(
         self,
         config: WorkflowSource,
         metadata_config: OpenMetadataConnection,
     ):
-
         super().__init__(config, metadata_config)
         self.pagination_entity_per_page = min(
             100, self.service_connection.pagination_entity_per_page
@@ -91,7 +89,13 @@ class PowerbiSource(DashboardServiceSource):
                     response = self.client.fetch_workspace_scan_result(
                         scan_id=workspace_scan_id
                     )
-                    self.workspace_data.extend(response.get("workspaces"))
+                    self.workspace_data.extend(
+                        [
+                            active_workspace
+                            for active_workspace in response.get("workspaces")
+                            if active_workspace.get("state") == "Active"
+                        ]
+                    )
                 else:
                     logger.error("Error in fetching dashboards and charts")
                 count += 1
@@ -141,7 +145,7 @@ class PowerbiSource(DashboardServiceSource):
         """
         Get List of all dashboards
         """
-        return self.context.workspace.get("dashboards")
+        return self.context.workspace.get("dashboards", [])
 
     def get_dashboard_name(self, dashboard: dict) -> str:
         """

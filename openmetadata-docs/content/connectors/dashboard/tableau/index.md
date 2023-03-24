@@ -42,6 +42,9 @@ To deploy OpenMetadata, check the <a href="/deployment">Deployment</a> guides.
 To run the Ingestion via the UI you'll need to use the OpenMetadata Ingestion Container, which comes shipped with
 custom Airflow plugins to handle the workflow deployment.
 
+To create lineage between tableau dashboard and any database service via the queries provided from Tableau Metadata API, please enable the Tableau Metadata API for your tableau server.
+For more information on enabling the Tableau Metadata APIs follow the link [here](https://help.tableau.com/current/api/metadata_api/en-us/docs/meta_api_start.html)
+
 ## Metadata Ingestion
 
 ### 1. Visit the Services Page
@@ -186,6 +189,8 @@ caption="Configure Metadata Ingestion Page"
     - **Exclude**: Explicitly exclude charts by adding a list of comma-separated regular expressions to the Exclude field. OpenMetadata will exclude all charts with names matching one or more of the supplied regular expressions. All other charts will be included.
 - **Database Service Name (Optional)**: Enter the name of Database Service which is already ingested in OpenMetadata to create lineage between dashboards and database tables.
 - **Enable Debug Log (toggle)**: Set the Enable Debug Log toggle to set the default log level to debug, these logs can be viewed later in Airflow.
+- **Override Current Owner(toggle)**: Set the Override Current Owner toggle to override current owner with new owner, if that is fetched during metadata ingestion
+For first time of metadata ingestion, kindly make sure to keep it enabled to get the owner.
 
 ### 7. Schedule the Ingestion and Deploy
 
