@@ -366,7 +366,7 @@ class DeltalakeSource(DatabaseServiceSource):
                 f"Unexpected exception getting columns for [{table_name}]: {exc}"
             )
             return []
-        parsed_columns: [Column] = []
+        parsed_columns: List[Column] = []
         partition_cols = False
         for row in raw_columns:
             col_name = row["col_name"]

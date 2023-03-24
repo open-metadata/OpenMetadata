@@ -33,6 +33,7 @@ import { OperationPermission } from 'components/PermissionProvider/PermissionPro
 import ServiceConnectionDetails from 'components/ServiceConnectionDetails/ServiceConnectionDetails.component';
 import TagsViewer from 'components/Tag/TagsViewer/tags-viewer';
 import { EntityType } from 'enums/entity.enum';
+import { compare } from 'fast-json-patch';
 import { Container } from 'generated/entity/data/container';
 import { isEmpty, isNil, isUndefined, startCase, toLower } from 'lodash';
 import {
@@ -60,6 +61,7 @@ import { getPipelines } from 'rest/pipelineAPI';
 import {
   getServiceByFQN,
   TestConnection,
+  updateOwnerService,
   updateService,
 } from 'rest/serviceAPI';
 import { getTopics } from 'rest/topicsAPI';
@@ -821,40 +823,28 @@ const ServicePage: FunctionComponent = () => {
     });
   };
 
-  const handleRemoveOwner = () => {
+  const handleRemoveOwner = async () => {
     const updatedData = {
       ...serviceDetails,
       owner: undefined,
     } as ServicesUpdateRequest;
 
-    return new Promise<void>((resolve, reject) => {
-      updateService(serviceName, serviceDetails?.id ?? '', updatedData)
-        .then((res) => {
-          if (res) {
-            setServiceDetails(res);
-
-            resolve();
-          } else {
-            showErrorToast(
-              t('server.entity-updating-error', {
-                entity: t('label.owner-lowercase'),
-              })
-            );
-          }
-
-          reject();
+    const jsonPatch = compare(serviceDetails || {}, updatedData);
+    try {
+      const res = await updateOwnerService(
+        serviceName,
+        serviceDetails?.id ?? '',
+        jsonPatch
+      );
+      setServiceDetails(res);
+    } catch (error) {
+      showErrorToast(
+        error as AxiosError,
+        t('server.entity-updating-error', {
+          entity: t('label.owner-lowercase'),
         })
-        .catch((error: AxiosError) => {
-          showErrorToast(
-            error,
-            t('server.entity-updating-error', {
-              entity: t('label.owner-lowercase'),
-            })
-          );
-
-          reject();
-        });
-    });
+      );
+    }
   };
 
   const onDescriptionEdit = (): void => {

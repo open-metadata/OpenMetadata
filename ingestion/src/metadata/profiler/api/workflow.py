@@ -364,7 +364,8 @@ class ProfilerWorkflow(WorkflowStatusMixin):
             self.create_profiler(entity, profiler_interface)
             self.profiler = cast(Profiler, self.profiler)  # satisfy type checker
             profile: ProfilerResponse = self.profiler.process(
-                self.source_config.generateSampleData
+                self.source_config.generateSampleData,
+                self.source_config.processPiiSensitive,
             )
         except Exception as exc:
             name = entity.fullyQualifiedName.__root__

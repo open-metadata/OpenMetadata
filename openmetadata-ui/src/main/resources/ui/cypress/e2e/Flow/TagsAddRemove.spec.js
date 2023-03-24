@@ -68,7 +68,7 @@ describe('Check if tags addition and removal flow working properly from tables',
       );
 
       cy.get(
-        '[data-testid="entity-tags"] [data-testid="tags-wrapper"] > [data-testid="tag-container"] [data-testid="tags"] > [data-testid="add-tag"] > span'
+        '[data-testid="entity-tags"] [data-testid="tags-wrapper"] [data-testid="tag-container"] [data-testid="tags"]  [data-testid="add-tag"] span'
       )
         .should('be.visible')
         .click();
@@ -87,13 +87,13 @@ describe('Check if tags addition and removal flow working properly from tables',
 
       if (entityDetails.entity === 'mlmodels') {
         cy.get(
-          `[data-testid="feature-card-${entityDetails.fieldName}"]  [data-testid="tag-container"]  [data-testid="tags"] > [data-testid="add-tag"] > span`
+          `[data-testid="feature-card-${entityDetails.fieldName}"] [data-testid="tag-container"]  [data-testid="tags"] > [data-testid="add-tag"] span`
         )
           .should('be.visible')
           .click();
       } else {
         cy.get(
-          `.ant-table-tbody [data-testid="tag-container"] [data-testid="add-tag"]>span`
+          `.ant-table-tbody [data-testid="tag-container"] [data-testid="add-tag"] span`
         )
           .eq(0)
           .should('be.visible')

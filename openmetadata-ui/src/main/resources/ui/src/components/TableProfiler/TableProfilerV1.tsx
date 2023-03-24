@@ -345,7 +345,7 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
 
   return (
     <Row
-      className="table-profiler-container h-full flex-grow"
+      className="table-profiler-container h-full flex-grow m-y-md"
       data-testid="table-profiler-container"
       gutter={[16, 16]}
       id="profilerDetails">
