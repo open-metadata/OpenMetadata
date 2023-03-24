@@ -343,6 +343,7 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
     Workflow workflow = dao.get(uriInfo, id, fields);
     workflow.setOpenMetadataServerConnection(new OpenMetadataConnectionBuilder(openMetadataApplicationConfig).build());
     workflow = decryptOrNullify(securityContext, workflow);
+    workflow = unmask(workflow);
     return pipelineServiceClient.runAutomationsWorkflow(workflow);
   }
 
