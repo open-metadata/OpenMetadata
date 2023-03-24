@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Col, Row, Space, Typography } from 'antd';
+import { Col, Row } from 'antd';
 import { AxiosError } from 'axios';
 import NextPrevious from 'components/common/next-previous/NextPrevious';
 import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
@@ -19,9 +19,7 @@ import {
   OperationPermission,
   ResourceEntity,
 } from 'components/PermissionProvider/PermissionProvider.interface';
-import SearchDropdown from 'components/SearchDropdown/SearchDropdown';
 import { SearchDropdownOption } from 'components/SearchDropdown/SearchDropdown.interface';
-import { WILD_CARD_CHAR } from 'constants/char.constants';
 import {
   INITIAL_PAGING_VALUE,
   PAGE_SIZE,
@@ -29,23 +27,16 @@ import {
 } from 'constants/constants';
 import {
   QUERY_PAGE_ERROR_STATE,
-  QUERY_PAGE_FILTER,
   QUERY_PAGE_LOADING_STATE,
 } from 'constants/Query.constant';
-import { ERROR_PLACEHOLDER_TYPE, PROMISE_STATE } from 'enums/common.enum';
+import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { SearchIndex } from 'enums/search.enum';
 import { compare } from 'fast-json-patch';
 import { Query } from 'generated/entity/data/query';
-import { debounce, flatMap, isEmpty, isString, isUndefined } from 'lodash';
+import { isString, isUndefined } from 'lodash';
 import { PagingResponse } from 'Models';
 import React, { FC, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import {
-  getSearchedTeams,
-  getSearchedUsers,
-  getSuggestedTeams,
-  getSuggestedUsers,
-} from 'rest/miscAPI';
 import {
   getQueriesList,
   getQueryById,
@@ -59,11 +50,8 @@ import { showErrorToast } from '../../utils/ToastUtils';
 import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder';
 import Loader from '../Loader/Loader';
 import QueryCard from './QueryCard';
-import {
-  QueryFilters,
-  QueryVote,
-  TableQueriesProp,
-} from './TableQueries.interface';
+import QueryFilters from './QueryFilters/QueryFilters.component';
+import { QueryVote, TableQueriesProp } from './TableQueries.interface';
 import TableQueryRightPanel from './TableQueryRightPanel/TableQueryRightPanel.component';
 
 const TableQueries: FC<TableQueriesProp> = ({
@@ -83,12 +71,9 @@ const TableQueries: FC<TableQueriesProp> = ({
     DEFAULT_ENTITY_PERMISSION
   );
   const [currentPage, setCurrentPage] = useState(INITIAL_PAGING_VALUE);
-  const [initialOwnerFilter, setInitialOwnerFilter] =
-    useState<QueryFilters>(QUERY_PAGE_FILTER);
-  const [ownerFilerOptions, setOwnerFilerOptions] =
-    useState<QueryFilters>(QUERY_PAGE_FILTER);
-  const [selectedFilter, setSelectedFilter] =
-    useState<QueryFilters>(QUERY_PAGE_FILTER);
+  const [appliedFilter, setAppliedFilter] = useState<SearchDropdownOption[]>(
+    []
+  );
 
   const { getEntityPermission } = usePermissionProvider();
 
@@ -235,9 +220,8 @@ const TableQueries: FC<TableQueriesProp> = ({
       fetchTableQuery({ [cursorType]: paging[cursorType] });
       activePage && setCurrentPage(activePage);
     } else {
-      const allFilter = flatMap(selectedFilter);
       setCurrentPage(cursorType);
-      fetchFilterData(allFilter, cursorType);
+      fetchFilterData(appliedFilter, cursorType);
     }
   };
 
@@ -259,104 +243,15 @@ const TableQueries: FC<TableQueriesProp> = ({
     }
   }, [tableId]);
 
-  const onOwnerFilterChange = (
-    value: SearchDropdownOption[],
-    searchKey: string
-  ) => {
+  const onOwnerFilterChange = (value: SearchDropdownOption[]) => {
     setIsError((pre) => ({ ...pre, search: false }));
-    setSelectedFilter((pre) => {
-      const updatedFilter = { ...pre, [searchKey]: value };
-      const allFilter = flatMap(updatedFilter);
-      if (allFilter.length) {
-        fetchFilterData(allFilter);
-      } else {
-        fetchTableQuery();
-      }
-
-      return updatedFilter;
-    });
-  };
-
-  const onUserSearch = async (searchText: string) => {
-    if (isEmpty(searchText)) {
-      setOwnerFilerOptions((pre) => ({
-        ...pre,
-        user: initialOwnerFilter.user,
-      }));
-
-      return;
-    }
-
-    try {
-      const users = await getSuggestedUsers(searchText);
-      const userList = users.data.suggest['metadata-suggest'][0].options;
-      const options = userList.map((user) => ({
-        key: user._source.id,
-        label: user._source.displayName || user._source.name,
-      }));
-      setOwnerFilerOptions((pre) => ({ ...pre, user: options }));
-    } catch (error) {
-      setOwnerFilerOptions((pre) => ({ ...pre, user: [] }));
+    setAppliedFilter(value);
+    if (value.length) {
+      fetchFilterData(value);
+    } else {
+      fetchTableQuery();
     }
   };
-  const onTeamSearch = async (searchText: string) => {
-    if (isEmpty(searchText)) {
-      setOwnerFilerOptions((pre) => ({
-        ...pre,
-        team: initialOwnerFilter.team,
-      }));
-
-      return;
-    }
-
-    try {
-      const teams = await getSuggestedTeams(searchText);
-      const teamList = teams.data.suggest['metadata-suggest'][0].options;
-      const options = teamList.map((team) => ({
-        key: team._source.id,
-        label: team._source.displayName || team._source.name,
-      }));
-      setOwnerFilerOptions((pre) => ({ ...pre, team: options }));
-    } catch (error) {
-      setOwnerFilerOptions((pre) => ({ ...pre, team: [] }));
-    }
-  };
-
-  const debounceOnUserSearch = debounce(onUserSearch, 400);
-  const debounceOnTeamSearch = debounce(onTeamSearch, 400);
-
-  const getInitialUserAndTeam = () => {
-    const promise = [
-      getSearchedUsers(WILD_CARD_CHAR, 1),
-      getSearchedTeams(WILD_CARD_CHAR, 1),
-    ];
-    Promise.allSettled(promise)
-      .then((res) => {
-        const [user, team] = res.map((value) => {
-          if (value.status === PROMISE_STATE.FULFILLED) {
-            const userList = value.value.data.hits.hits;
-            const options = userList.map((user) => ({
-              key: user._source.id,
-              label: user._source.displayName || user._source.name,
-            }));
-
-            return options;
-          }
-
-          return [];
-        });
-        setInitialOwnerFilter((pre) => ({ ...pre, team, user }));
-        setOwnerFilerOptions((pre) => ({ ...pre, team, user }));
-      })
-      .catch(() => {
-        setInitialOwnerFilter((pre) => ({ ...pre, team: [], user: [] }));
-        setOwnerFilerOptions((pre) => ({ ...pre, team: [], user: [] }));
-      });
-  };
-
-  useEffect(() => {
-    getInitialUserAndTeam();
-  }, []);
 
   if (isLoading.page) {
     return <Loader />;
@@ -377,37 +272,7 @@ const TableQueries: FC<TableQueriesProp> = ({
           data-testid="queries-container"
           gutter={[8, 16]}>
           <Col span={24}>
-            <Space size={8}>
-              <Typography.Text>{t('label.owner')}</Typography.Text>
-              <SearchDropdown
-                label={t('label.user')}
-                options={ownerFilerOptions.user}
-                searchKey="user"
-                selectedKeys={selectedFilter.user}
-                onChange={onOwnerFilterChange}
-                onGetInitialOptions={() =>
-                  setOwnerFilerOptions((pre) => ({
-                    ...pre,
-                    user: initialOwnerFilter.user,
-                  }))
-                }
-                onSearch={debounceOnUserSearch}
-              />
-              <SearchDropdown
-                label={t('label.team')}
-                options={ownerFilerOptions.team}
-                searchKey="team"
-                selectedKeys={selectedFilter.team}
-                onChange={onOwnerFilterChange}
-                onGetInitialOptions={() =>
-                  setOwnerFilerOptions((pre) => ({
-                    ...pre,
-                    user: initialOwnerFilter.team,
-                  }))
-                }
-                onSearch={debounceOnTeamSearch}
-              />
-            </Space>
+            <QueryFilters onFilterChange={onOwnerFilterChange} />
           </Col>
 
           {isLoading.query ? (
@@ -441,9 +306,7 @@ const TableQueries: FC<TableQueriesProp> = ({
             {tableQueries.paging.total > PAGE_SIZE && (
               <NextPrevious
                 currentPage={currentPage}
-                isNumberBased={Boolean(
-                  selectedFilter.user.length || selectedFilter.team.length
-                )}
+                isNumberBased={Boolean(appliedFilter.length)}
                 pageSize={PAGE_SIZE}
                 paging={tableQueries.paging}
                 pagingHandler={pagingHandler}

@@ -52,7 +52,11 @@ export interface QueryUsedByOtherTableProps {
   tableId: string;
 }
 
-export type QueryFilters = {
+export type QueryFiltersType = {
   user: SearchDropdownOption[];
   team: SearchDropdownOption[];
 };
+
+export interface QueryFiltersProps {
+  onFilterChange: (value: SearchDropdownOption[]) => void;
+}
