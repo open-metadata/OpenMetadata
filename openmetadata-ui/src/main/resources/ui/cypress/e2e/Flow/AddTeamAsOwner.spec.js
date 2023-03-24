@@ -74,7 +74,7 @@ describe('Create a team and add that team as a owner of the entity', () => {
       'waitForTeams'
     );
 
-    cy.get('[data-testid="edit-Owner-icon"]').should('be.visible').click();
+    cy.get('[data-testid="edit-owner"]').should('be.visible').click();
 
     verifyResponseStatusCode('@waitForTeams', 200);
 

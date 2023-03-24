@@ -15,7 +15,7 @@ import Loader from 'components/Loader/Loader';
 import { ADD_USER_CONTAINER_HEIGHT, pagingObject } from 'constants/constants';
 import { EntityReference } from 'generated/entity/data/table';
 import { Paging } from 'generated/type/paging';
-import { cloneDeep, isEmpty, sortBy } from 'lodash';
+import { cloneDeep } from 'lodash';
 import VirtualList from 'rc-virtual-list';
 import React, { UIEventHandler, useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -63,16 +63,17 @@ export const SelectableList = ({
   }, [setSelectedItemInternal, selectedItems]);
 
   const sortUniqueListFromSelectedList = (
-    items: string[],
+    items: Map<string, EntityReference>,
     listOptions: EntityReference[]
   ) => {
-    if (isEmpty(items)) {
+    if (!items.size) {
       return listOptions;
     }
 
-    return sortBy(listOptions, (a) => {
-      return items.indexOf(a.id) > -1 ? -1 : 0;
-    });
+    return [
+      ...items.values(),
+      ...listOptions.filter((option) => !items.has(option.id)),
+    ];
   };
 
   const fetchListOptions = useCallback(async () => {
@@ -81,7 +82,7 @@ export const SelectableList = ({
       const { data, paging } = await fetchOptions('');
 
       setUniqueOptions(
-        sortUniqueListFromSelectedList([...selectedItemsInternal.keys()], data)
+        sortUniqueListFromSelectedList(selectedItemsInternal, data)
       );
       setPagingInfo(paging);
       fetchOptionFailed && setFetchOptionFailed(false);
@@ -129,7 +130,7 @@ export const SelectableList = ({
         }
 
         setUniqueOptions((options) =>
-          sortUniqueListFromSelectedList([...newItemsMap.keys()], options)
+          sortUniqueListFromSelectedList(newItemsMap, options)
         );
 
         return newItemsMap;
@@ -141,6 +142,10 @@ export const SelectableList = ({
 
   const handleUpdateClick = () => {
     onUpdate([...selectedItemsInternal.values()]);
+  };
+
+  const handleRemoveClick = () => {
+    onUpdate([]);
   };
 
   return (
@@ -188,7 +193,9 @@ export const SelectableList = ({
                 multiSelect ? (
                   <Checkbox checked={selectedItemsInternal.has(item.id)} />
                 ) : (
-                  selectedItemsInternal.has(item.id) && <RemoveIcon />
+                  selectedItemsInternal.has(item.id) && (
+                    <RemoveIcon removeOwner={handleRemoveClick} />
+                  )
                 )
               }
               key={item.id}

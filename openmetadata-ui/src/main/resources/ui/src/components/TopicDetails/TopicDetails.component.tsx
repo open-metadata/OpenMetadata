@@ -281,8 +281,8 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
       setIsEdit(false);
     }
   };
-  const onOwnerUpdate = (newOwner?: Topic['owner']) => {
-    if (newOwner) {
+  const onOwnerUpdate = useCallback(
+    (newOwner?: Topic['owner']) => {
       const updatedTopicDetails = {
         ...topicDetails,
         owner: newOwner
@@ -290,21 +290,12 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
               ...topicDetails.owner,
               ...newOwner,
             }
-          : topicDetails.owner,
+          : undefined,
       };
       settingsUpdateHandler(updatedTopicDetails);
-    }
-  };
-
-  const onOwnerRemove = () => {
-    if (topicDetails) {
-      const updatedTopicDetails = {
-        ...topicDetails,
-        owner: undefined,
-      };
-      settingsUpdateHandler(updatedTopicDetails);
-    }
-  };
+    },
+    [topicDetails, topicDetails.owner]
+  );
 
   const onTierRemove = () => {
     if (topicDetails) {
@@ -456,11 +447,6 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
           followersList={followers}
           isFollowing={isFollowing}
           isTagEditable={topicPermissions.EditAll || topicPermissions.EditTags}
-          removeOwner={
-            topicPermissions.EditAll || topicPermissions.EditOwner
-              ? onOwnerRemove
-              : undefined
-          }
           removeTier={
             topicPermissions.EditAll || topicPermissions.EditTier
               ? onTierRemove

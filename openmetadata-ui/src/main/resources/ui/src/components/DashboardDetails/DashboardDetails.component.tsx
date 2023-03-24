@@ -260,27 +260,18 @@ const DashboardDetails = ({
     }
   };
 
-  const onOwnerUpdate = (newOwner?: Dashboard['owner']) => {
-    if (newOwner) {
+  const onOwnerUpdate = useCallback(
+    (newOwner?: Dashboard['owner']) => {
       const updatedDashboardDetails = {
         ...dashboardDetails,
         owner: newOwner
           ? { ...dashboardDetails.owner, ...newOwner }
-          : dashboardDetails.owner,
+          : undefined,
       };
       settingsUpdateHandler(updatedDashboardDetails);
-    }
-  };
-
-  const onOwnerRemove = () => {
-    if (dashboardDetails) {
-      const updatedDashboardDetails = {
-        ...dashboardDetails,
-        owner: undefined,
-      };
-      settingsUpdateHandler(updatedDashboardDetails);
-    }
-  };
+    },
+    [dashboardDetails, dashboardDetails.owner]
+  );
 
   const onTierUpdate = (newTier?: string) => {
     if (newTier) {
@@ -668,11 +659,6 @@ const DashboardDetails = ({
           isFollowing={isFollowing}
           isTagEditable={
             dashboardPermissions.EditAll || dashboardPermissions.EditTags
-          }
-          removeOwner={
-            dashboardPermissions.EditAll || dashboardPermissions.EditOwner
-              ? onOwnerRemove
-              : undefined
           }
           removeTier={
             dashboardPermissions.EditAll || dashboardPermissions.EditTier

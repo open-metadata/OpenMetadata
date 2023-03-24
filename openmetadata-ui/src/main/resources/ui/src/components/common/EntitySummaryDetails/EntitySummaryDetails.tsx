@@ -35,7 +35,6 @@ import './EntitySummaryDetails.style.less';
 export interface GetInfoElementsProps {
   data: ExtraInfo;
   updateOwner?: (value: Table['owner']) => void;
-  removeOwner?: () => void;
   tier?: TagLabel;
   currentTier?: string;
   teamType?: TeamType;
@@ -81,7 +80,7 @@ const EntitySummaryDetails = ({
   removeTier,
   currentOwner,
   deleted = false,
-  allowTeamOwner,
+  allowTeamOwner = true,
 }: GetInfoElementsProps) => {
   let retVal = <></>;
   const { t } = useTranslation();

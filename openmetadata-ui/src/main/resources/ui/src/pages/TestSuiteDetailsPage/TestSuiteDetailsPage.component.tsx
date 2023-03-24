@@ -29,7 +29,7 @@ import TestSuitePipelineTab from 'components/TestSuitePipelineTab/TestSuitePipel
 import { compare } from 'fast-json-patch';
 import { camelCase, startCase } from 'lodash';
 import { ExtraInfo } from 'Models';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router-dom';
 import {
@@ -206,30 +206,24 @@ const TestSuiteDetailsPage = () => {
       });
   };
 
-  const onUpdateOwner = (updatedOwner: TestSuite['owner']) => {
-    if (updatedOwner) {
-      const updatedTestSuite = {
-        ...testSuite,
-        owner: {
-          ...testSuite?.owner,
-          ...updatedOwner,
-        },
-      } as TestSuite;
+  const onUpdateOwner = useCallback(
+    (updatedOwner: TestSuite['owner']) => {
+      if (updatedOwner) {
+        const updatedTestSuite = {
+          ...testSuite,
+          owner: updatedOwner
+            ? {
+                ...testSuite?.owner,
+                ...updatedOwner,
+              }
+            : undefined,
+        } as TestSuite;
 
-      updateTestSuiteData(updatedTestSuite, ACTION_TYPE.UPDATE);
-    }
-  };
-
-  const onRemoveOwner = () => {
-    if (testSuite) {
-      const updatedTestSuite = {
-        ...testSuite,
-        owner: undefined,
-      } as TestSuite;
-
-      updateTestSuiteData(updatedTestSuite, ACTION_TYPE.REMOVE);
-    }
-  };
+        updateTestSuiteData(updatedTestSuite, ACTION_TYPE.UPDATE);
+      }
+    },
+    [testSuite, testSuite?.owner]
+  );
 
   const onDescriptionUpdate = async (updatedHTML: string) => {
     if (testSuite?.description !== updatedHTML) {
@@ -333,7 +327,6 @@ const TestSuiteDetailsPage = () => {
                 descriptionHandler={descriptionHandler}
                 extraInfo={extraInfo}
                 handleDescriptionUpdate={onDescriptionUpdate}
-                handleRemoveOwner={onRemoveOwner}
                 handleRestoreTestSuite={onRestoreTestSuite}
                 handleUpdateOwner={onUpdateOwner}
                 isDescriptionEditable={isDescriptionEditable}

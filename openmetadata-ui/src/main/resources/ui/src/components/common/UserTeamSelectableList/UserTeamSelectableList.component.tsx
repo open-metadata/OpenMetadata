@@ -17,7 +17,7 @@ import { EntityType } from 'enums/entity.enum';
 import { SearchIndex } from 'enums/search.enum';
 import { EntityReference } from 'generated/entity/data/table';
 import { Paging } from 'generated/type/paging';
-import { isEqual, noop } from 'lodash';
+import { isEmpty, isEqual, noop } from 'lodash';
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { searchData } from 'rest/miscAPI';
@@ -143,10 +143,14 @@ export const UserTeamSelectableList = ({
   };
 
   const handleUpdate = (updateItems: EntityReference[]) => {
-    onUpdate({
-      id: updateItems[0].id,
-      type: activeTab === 'teams' ? EntityType.TEAM : EntityType.USER,
-    });
+    onUpdate(
+      isEmpty(updateItems)
+        ? undefined
+        : {
+            id: updateItems[0].id,
+            type: activeTab === 'teams' ? EntityType.TEAM : EntityType.USER,
+          }
+    );
     setPopupVisible(false);
   };
 
@@ -233,7 +237,7 @@ export const UserTeamSelectableList = ({
           title={hasPermission ? 'Update Owner' : NO_PERMISSION_FOR_ACTION}>
           <Button
             className="flex-center p-0"
-            data-testid="owner-dropdown"
+            data-testid="edit-owner"
             disabled={!hasPermission}
             icon={
               <SVGIcons

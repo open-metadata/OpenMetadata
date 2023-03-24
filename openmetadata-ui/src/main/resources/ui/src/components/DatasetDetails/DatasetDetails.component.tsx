@@ -470,29 +470,22 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
     }
   };
 
-  const onOwnerUpdate = (newOwner?: Table['owner']) => {
-    if (newOwner) {
+  const onOwnerUpdate = useCallback(
+    (newOwner?: Table['owner']) => {
       const existingOwner = tableDetails.owner;
       const updatedTableDetails = {
         ...tableDetails,
-        owner: {
-          ...existingOwner,
-          ...newOwner,
-        },
+        owner: newOwner
+          ? {
+              ...existingOwner,
+              ...newOwner,
+            }
+          : undefined,
       };
       settingsUpdateHandler(updatedTableDetails);
-    }
-  };
-
-  const onOwnerRemove = () => {
-    if (tableDetails) {
-      const updatedTableDetails = {
-        ...tableDetails,
-        owner: undefined,
-      };
-      settingsUpdateHandler(updatedTableDetails);
-    }
-  };
+    },
+    [tableDetails, tableDetails.owner]
+  );
 
   const onTierUpdate = (newTier?: string) => {
     if (newTier) {
@@ -645,11 +638,6 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
           followersList={followers}
           isFollowing={isFollowing}
           isTagEditable={tablePermissions.EditAll || tablePermissions.EditTags}
-          removeOwner={
-            tablePermissions.EditAll || tablePermissions.EditOwner
-              ? onOwnerRemove
-              : undefined
-          }
           removeTier={
             tablePermissions.EditAll || tablePermissions.EditTier
               ? onRemoveTier

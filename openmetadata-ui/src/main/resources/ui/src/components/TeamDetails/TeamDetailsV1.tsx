@@ -34,7 +34,13 @@ import { compare } from 'fast-json-patch';
 import { cloneDeep, isEmpty, isUndefined, orderBy, uniqueId } from 'lodash';
 import { ExtraInfo } from 'Models';
 import AddAttributeModal from 'pages/RolesPage/AddAttributeModal/AddAttributeModal';
-import React, { Fragment, useEffect, useMemo, useState } from 'react';
+import React, {
+  Fragment,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { restoreTeam } from 'rest/teamsAPI';
@@ -425,29 +431,21 @@ const TeamDetailsV1 = ({
     }
   };
 
-  const updateOwner = (owner?: EntityReference) => {
-    if (currentTeam) {
-      const updatedData: Team = {
-        ...currentTeam,
-        owner: !isUndefined(owner) ? owner : currentTeam.owner,
-      };
+  const updateOwner = useCallback(
+    (owner?: EntityReference) => {
+      if (currentTeam) {
+        const updatedData: Team = {
+          ...currentTeam,
+          owner,
+        };
 
-      return updateTeamHandler(updatedData);
-    }
+        return updateTeamHandler(updatedData);
+      }
 
-    return Promise.reject();
-  };
-
-  const removeOwner = () => {
-    if (currentTeam) {
-      const updatedData: Team = {
-        ...currentTeam,
-        owner: undefined,
-      };
-
-      updateTeamHandler(updatedData);
-    }
-  };
+      return Promise.reject();
+    },
+    [currentTeam]
+  );
 
   const updateTeamType = (type: TeamType) => {
     if (currentTeam) {
@@ -1086,11 +1084,6 @@ const TeamDetailsV1 = ({
                   currentOwner={currentTeam.owner}
                   data={info}
                   isGroupType={isGroupType}
-                  removeOwner={
-                    entityPermissions.EditAll || entityPermissions.EditOwner
-                      ? removeOwner
-                      : undefined
-                  }
                   showGroupOption={!childTeams.length}
                   teamType={currentTeam.teamType}
                   updateOwner={

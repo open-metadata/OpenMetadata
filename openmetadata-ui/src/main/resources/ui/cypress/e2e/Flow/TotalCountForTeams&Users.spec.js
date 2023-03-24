@@ -45,7 +45,7 @@ describe('Test if the total count of users and teams is correctly displayed in t
       headers: { Authorization: `Bearer ${token}` },
     }).as('TeamCount');
 
-    cy.get('[data-testid="edit-Owner-icon"]').should('be.visible').click();
+    cy.get('[data-testid="edit-owner"]').should('be.visible').click();
 
     // check for teams count
     cy.get('@TeamCount').then((response) => {

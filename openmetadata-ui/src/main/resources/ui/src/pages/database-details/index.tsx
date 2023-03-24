@@ -40,6 +40,7 @@ import React, {
   Fragment,
   FunctionComponent,
   RefObject,
+  useCallback,
   useEffect,
   useMemo,
   useRef,
@@ -409,61 +410,38 @@ const DatabaseDetails: FunctionComponent = () => {
     setCurrentPage(activePage ?? 1);
   };
 
-  const handleUpdateOwner = (owner: Database['owner']) => {
-    const updatedData = {
-      ...database,
-      owner: { ...database?.owner, ...owner },
-    };
+  const handleUpdateOwner = useCallback(
+    (owner: Database['owner']) => {
+      const updatedData = {
+        ...database,
+        owner: owner ? { ...database?.owner, ...owner } : undefined,
+      };
 
-    return new Promise<void>((_, reject) => {
-      saveUpdatedDatabaseData(updatedData as Database)
-        .then((res) => {
-          if (res) {
-            setDatabase(res);
+      return new Promise<void>((_, reject) => {
+        saveUpdatedDatabaseData(updatedData as Database)
+          .then((res) => {
+            if (res) {
+              setDatabase(res);
+              reject();
+            } else {
+              reject();
+
+              throw jsonData['api-error-messages'][
+                'unexpected-server-response'
+              ];
+            }
+          })
+          .catch((err: AxiosError) => {
+            showErrorToast(
+              err,
+              jsonData['api-error-messages']['update-database-error']
+            );
             reject();
-          } else {
-            reject();
-
-            throw jsonData['api-error-messages']['unexpected-server-response'];
-          }
-        })
-        .catch((err: AxiosError) => {
-          showErrorToast(
-            err,
-            jsonData['api-error-messages']['update-database-error']
-          );
-          reject();
-        });
-    });
-  };
-
-  const handleRemoveOwner = () => {
-    const updatedData = {
-      ...database,
-      owner: undefined,
-    };
-
-    return new Promise<void>((resolve, reject) => {
-      saveUpdatedDatabaseData(updatedData as Database)
-        .then((res) => {
-          if (res) {
-            setDatabase(res);
-            resolve();
-          } else {
-            reject();
-
-            throw jsonData['api-error-messages']['unexpected-server-response'];
-          }
-        })
-        .catch((err: AxiosError) => {
-          showErrorToast(
-            err,
-            jsonData['api-error-messages']['update-database-error']
-          );
-          reject();
-        });
-    });
-  };
+          });
+      });
+    },
+    [database, database?.owner]
+  );
 
   const fetchActivityFeed = (after?: string) => {
     setIsentityThreadLoading(true);
@@ -714,7 +692,6 @@ const DatabaseDetails: FunctionComponent = () => {
                           <EntitySummaryDetails
                             currentOwner={database?.owner}
                             data={info}
-                            removeOwner={handleRemoveOwner}
                             updateOwner={
                               databasePermission.EditOwner ||
                               databasePermission.EditAll

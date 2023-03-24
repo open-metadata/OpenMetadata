@@ -359,7 +359,7 @@ export const editOwnerforCreatedService = (
   );
 
   // Click on edit owner button
-  cy.get('[data-testid="edit-Owner-icon"]')
+  cy.get('[data-testid="edit-owner"]')
     .should('exist')
     .should('be.visible')
     .trigger('mouseover')
@@ -827,7 +827,7 @@ export const updateOwner = (isAddingOwnerToTeam = false) => {
         'getTeams'
       );
       // Clicking on edit owner button
-      cy.get('[data-testid="edit-Owner-icon"]').should('be.visible').click();
+      cy.get('[data-testid="edit-owner"]').should('be.visible').click();
 
       verifyResponseStatusCode('@getTeams', 200);
 
@@ -1044,7 +1044,7 @@ export const followAndOwnTheEntity = (termObj) => {
     '/api/v1/search/query?q=*%20AND%20teamType:Group&from=0&size=10&index=team_search_index',
     'getTeams'
   );
-  cy.get('[data-testid="edit-Owner-icon"]').should('be.visible').click();
+  cy.get('[data-testid="edit-owner"]').should('be.visible').click();
 
   verifyResponseStatusCode('@getTeams', 200);
   // Clicking on users tab

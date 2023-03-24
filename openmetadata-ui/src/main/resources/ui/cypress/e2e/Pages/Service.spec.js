@@ -71,7 +71,7 @@ describe('Services page should work properly', () => {
       '/api/v1//search/query?q=*&from=0&size=10&index=*',
       'editOwner'
     );
-    cy.get('[data-testid="edit-Owner-icon"]')
+    cy.get('[data-testid="edit-owner"]')
       .should('exist')
       .should('be.visible')
       .click();
@@ -113,7 +113,7 @@ describe('Services page should work properly', () => {
       '/api/v1//search/query?q=*&from=0&size=10&index=*',
       'editOwner'
     );
-    cy.get('[data-testid="edit-Owner-icon"]')
+    cy.get('[data-testid="edit-owner"]')
       .should('exist')
       .should('be.visible')
       .click();

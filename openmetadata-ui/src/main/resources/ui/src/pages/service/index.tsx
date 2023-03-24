@@ -33,7 +33,6 @@ import { OperationPermission } from 'components/PermissionProvider/PermissionPro
 import ServiceConnectionDetails from 'components/ServiceConnectionDetails/ServiceConnectionDetails.component';
 import TagsViewer from 'components/Tag/TagsViewer/tags-viewer';
 import { EntityType } from 'enums/entity.enum';
-import { compare } from 'fast-json-patch';
 import { Container } from 'generated/entity/data/container';
 import { isEmpty, isNil, isUndefined, startCase, toLower } from 'lodash';
 import {
@@ -61,7 +60,6 @@ import { getPipelines } from 'rest/pipelineAPI';
 import {
   getServiceByFQN,
   TestConnection,
-  updateOwnerService,
   updateService,
 } from 'rest/serviceAPI';
 import { getTopics } from 'rest/topicsAPI';
@@ -823,30 +821,6 @@ const ServicePage: FunctionComponent = () => {
     });
   };
 
-  const handleRemoveOwner = async () => {
-    const updatedData = {
-      ...serviceDetails,
-      owner: undefined,
-    } as ServicesUpdateRequest;
-
-    const jsonPatch = compare(serviceDetails || {}, updatedData);
-    try {
-      const res = await updateOwnerService(
-        serviceName,
-        serviceDetails?.id ?? '',
-        jsonPatch
-      );
-      setServiceDetails(res);
-    } catch (error) {
-      showErrorToast(
-        error as AxiosError,
-        t('server.entity-updating-error', {
-          entity: t('label.owner-lowercase'),
-        })
-      );
-    }
-  };
-
   const onDescriptionEdit = (): void => {
     setIsEdit(true);
   };
@@ -1076,12 +1050,6 @@ const ServicePage: FunctionComponent = () => {
                       <EntitySummaryDetails
                         currentOwner={serviceDetails?.owner}
                         data={info}
-                        removeOwner={
-                          servicePermission.EditAll ||
-                          servicePermission.EditOwner
-                            ? handleRemoveOwner
-                            : undefined
-                        }
                         updateOwner={
                           servicePermission.EditAll ||
                           servicePermission.EditOwner

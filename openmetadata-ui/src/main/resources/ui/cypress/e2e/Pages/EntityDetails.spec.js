@@ -116,7 +116,7 @@ describe('Entity Details Page', () => {
       'waitForTeams'
     );
 
-    cy.get('[data-testid="edit-Owner-icon"]').should('be.visible').click();
+    cy.get('[data-testid="edit-owner"]').should('be.visible').click();
 
     verifyResponseStatusCode('@waitForTeams', 200);
     // Clicking on users tab
@@ -225,7 +225,7 @@ describe('Entity Details Page', () => {
       'waitForTeams'
     );
 
-    cy.get('[data-testid="edit-Owner-icon"]').should('be.visible').click();
+    cy.get('[data-testid="edit-owner"]').should('be.visible').click();
 
     verifyResponseStatusCode('@waitForTeams', 200);
     // Clicking on users tab

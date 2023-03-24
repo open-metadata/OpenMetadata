@@ -15,11 +15,14 @@ import { CheckOutlined, PlusOutlined } from '@ant-design/icons';
 import { Space, Switch } from 'antd';
 import classNames from 'classnames';
 import { UserSelectableList } from 'components/common/UserSelectableList/UserSelectableList.component';
+import { UserTag } from 'components/common/UserTag/UserTag.component';
+import { UserTagSize } from 'components/common/UserTag/UserTag.interface';
 import Tags from 'components/Tag/Tags/tags';
 import { t } from 'i18next';
 import { cloneDeep, isEmpty, isUndefined } from 'lodash';
 import { EntityTags } from 'Models';
 import React, { useEffect, useRef, useState } from 'react';
+import { getEntityName } from 'utils/EntityUtils';
 import { allowedNameRegEx } from '../../constants/regex.constants';
 import { PageLayoutType } from '../../enums/layout.enum';
 import { CreateGlossaryTerm } from '../../generated/api/data/createGlossaryTerm';
@@ -102,10 +105,7 @@ const AddGlossaryTerm = ({
     setReviewer(reviewer);
   };
 
-  const handleReviewerRemove = (
-    _event: React.MouseEvent<HTMLElement, MouseEvent>,
-    removedTag: string
-  ) => {
+  const handleReviewerRemove = (removedTag: string) => {
     setReviewer((pre) => pre.filter((option) => option.name !== removedTag));
   };
 
@@ -524,22 +524,22 @@ const AddGlossaryTerm = ({
                 </Button>
               </UserSelectableList>
             </div>
-            <div className="tw-my-4">
+            <Space wrap className="tw-my-4" size={[8, 8]}>
               {Boolean(reviewer.length) &&
                 reviewer.map((d, index) => {
                   return (
-                    <Tags
-                      editable
-                      isRemovable
-                      className="tw-bg-gray-200"
+                    <UserTag
+                      bordered
+                      closable
+                      id={d.id}
                       key={index}
-                      removeTag={handleReviewerRemove}
-                      tag={d.name ?? ''}
-                      type="contained"
+                      name={getEntityName(d)}
+                      size={UserTagSize.small}
+                      onClose={() => d.name && handleReviewerRemove(d.name)}
                     />
                   );
                 })}
-            </div>
+            </Space>
           </Field>
 
           <Field className="tw-flex tw-justify-end">

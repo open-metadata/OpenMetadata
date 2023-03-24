@@ -267,7 +267,7 @@ export const addOwner = (searchTerm, ownerName) => {
     'waitForTeams'
   );
 
-  cy.get('[data-testid="edit-Owner-icon"]').should('be.visible').click();
+  cy.get('[data-testid="edit-owner"]').should('be.visible').click();
 
   verifyResponseStatusCode('@waitForTeams', 200);
   // Clicking on users tab
