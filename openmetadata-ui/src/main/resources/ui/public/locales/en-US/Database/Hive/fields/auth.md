@@ -1,0 +1,1 @@
+Authentication mode to connect to hive, E.g, LDAP, CUSTOM etc

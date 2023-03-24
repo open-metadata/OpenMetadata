@@ -9,13 +9,21 @@
     "hiveType": {
       "description": "Service type.",
       "type": "string",
-      "enum": ["Hive"],
+      "enum": [
+        "Hive"
+      ],
       "default": "Hive"
     },
     "hiveScheme": {
       "description": "SQLAlchemy driver scheme options.",
       "type": "string",
-      "enum": ["hive", "hive+http", "hive+https", "impala", "impala4"],
+      "enum": [
+        "hive",
+        "hive+http",
+        "hive+https",
+        "impala",
+        "impala4"
+      ],
       "default": "hive"
     }
   },
@@ -28,49 +36,40 @@
     },
     "scheme": {
       "title": "Connection Scheme",
-      "description": "SQLAlchemy driver scheme options.",
       "$ref": "#/definitions/hiveScheme",
       "default": "hive"
     },
     "username": {
       "title": "Username",
-      "description": "Username to connect to Hive. This user should have privileges to read all the metadata in Hive.",
       "type": "string"
     },
     "password": {
       "title": "Password",
-      "description": "Password to connect to Hive.",
       "type": "string",
       "format": "password"
     },
     "hostPort": {
       "title": "Host and Port",
-      "description": "Host and port of the Hive service.",
       "type": "string"
     },
     "auth": {
       "title": "Authentication Mode",
-      "description": "Authentication mode to connect to hive, E.g, LDAP, CUSTOM etc",
       "type": "string"
     },
     "kerberosServiceName": {
       "title": "Kerberos Service Name",
-      "description": "If authenticating with Kerberos specify the Kerberos service name",
       "type": "string"
     },
     "databaseSchema": {
       "title": "databaseSchema",
-      "description": "databaseSchema of the data source. This is optional parameter, if you would like to restrict the metadata reading to a single databaseSchema. When left blank, OpenMetadata Ingestion attempts to scan all the databaseSchema.",
       "type": "string"
     },
     "databaseName": {
       "title": "Database Name",
-      "description": "Optional name to give to the database in OpenMetadata. If left blank, we will use default as the database name.",
       "type": "string"
     },
     "authOptions": {
       "title": "URL Authentication Options",
-      "description": "Authentication options to pass to Hive connector. These options are based on SQLAlchemy.",
       "type": "string"
     },
     "connectionOptions": {
@@ -94,5 +93,7 @@
     }
   },
   "additionalProperties": false,
-  "required": ["hostPort"]
+  "required": [
+    "hostPort"
+  ]
 }
