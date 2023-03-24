@@ -27,6 +27,7 @@ import { Col, Row } from 'antd/lib/grid';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import 'codemirror/addon/fold/foldgutter.css';
+import { PartitionIntervalType } from 'generated/api/data/createTable';
 import { isEmpty, isEqual, isUndefined, omit, startCase } from 'lodash';
 import React, {
   Reducer,
@@ -46,7 +47,7 @@ import {
   INTERVAL_UNIT_OPTIONS,
   PROFILER_METRIC,
   PROFILE_SAMPLE_OPTIONS,
-  SUPPORTED_PARTITION_TYPE,
+  SUPPORTED_COLUMN_DATA_TYPE_FOR_INTERVAL,
 } from '../../../constants/profiler.constant';
 import {
   ProfileSampleType,
@@ -121,9 +122,15 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
     return metricsOptions;
   }, [columns]);
 
-  const { partitionColumnOptions, isPartitionDisabled } = useMemo(() => {
+  const partitionIntervalType = Form.useWatch(['partitionIntervalType'], form);
+
+  const partitionColumnOptions = useMemo(() => {
     const partitionColumnOptions = columns.reduce((result, column) => {
-      if (SUPPORTED_PARTITION_TYPE.includes(column.dataType)) {
+      const filter =
+        SUPPORTED_COLUMN_DATA_TYPE_FOR_INTERVAL?.[
+          partitionIntervalType as keyof typeof SUPPORTED_COLUMN_DATA_TYPE_FOR_INTERVAL
+        ] || [];
+      if (filter.includes(column.dataType)) {
         return [
           ...result,
           {
@@ -135,13 +142,9 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
 
       return result;
     }, [] as { value: string; label: string }[]);
-    const isPartitionDisabled = partitionColumnOptions.length === 0;
 
-    return {
-      partitionColumnOptions,
-      isPartitionDisabled,
-    };
-  }, [columns]);
+    return partitionColumnOptions;
+  }, [columns, partitionIntervalType]);
 
   const updateInitialConfig = (tableProfilerConfig: TableProfilerConfig) => {
     const {
@@ -552,12 +555,42 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                 <Switch
                   checked={state?.enablePartition}
                   data-testid="enable-partition-switch"
-                  disabled={isPartitionDisabled}
                   onChange={handleEnablePartition}
                 />
               </Space>
             </Form.Item>
             <Row gutter={[16, 16]}>
+              <Col span={12}>
+                <Form.Item
+                  className="m-b-0"
+                  label={
+                    <span className="text-xs">{t('label.interval-type')}</span>
+                  }
+                  labelCol={{
+                    style: {
+                      paddingBottom: 8,
+                    },
+                  }}
+                  name="partitionIntervalType"
+                  rules={[
+                    {
+                      required: state?.enablePartition,
+                      message: t('message.field-text-is-required', {
+                        fieldText: t('label.interval-type'),
+                      }),
+                    },
+                  ]}>
+                  <Select
+                    allowClear
+                    className="w-full"
+                    data-testid="interval-type"
+                    disabled={!state?.enablePartition}
+                    options={INTERVAL_TYPE_OPTIONS}
+                    placeholder={t('message.select-interval-type')}
+                    size="middle"
+                  />
+                </Form.Item>
+              </Col>
               <Col span={12}>
                 <Form.Item
                   className="m-b-0"
@@ -595,95 +628,75 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                   />
                 </Form.Item>
               </Col>
-              <Col span={12}>
-                <Form.Item
-                  className="m-b-0"
-                  label={
-                    <span className="text-xs">{t('label.interval-type')}</span>
-                  }
-                  labelCol={{
-                    style: {
-                      paddingBottom: 8,
-                    },
-                  }}
-                  name="partitionIntervalType"
-                  rules={[
-                    {
-                      required: state?.enablePartition,
-                      message: t('message.field-text-is-required', {
-                        fieldText: t('label.interval-type'),
-                      }),
-                    },
-                  ]}>
-                  <Select
-                    allowClear
-                    className="w-full"
-                    data-testid="interval-type"
-                    disabled={!state?.enablePartition}
-                    options={INTERVAL_TYPE_OPTIONS}
-                    placeholder={t('message.select-interval-type')}
-                    size="middle"
-                  />
-                </Form.Item>
-              </Col>
-              <Col span={12}>
-                <Form.Item
-                  className="m-b-0"
-                  label={<span className="text-xs">{t('label.interval')}</span>}
-                  labelCol={{
-                    style: {
-                      paddingBottom: 8,
-                    },
-                  }}
-                  name="partitionInterval"
-                  rules={[
-                    {
-                      required: state?.enablePartition,
-                      message: t('message.field-text-is-required', {
-                        fieldText: t('label.interval'),
-                      }),
-                    },
-                  ]}>
-                  <InputNumber
-                    className="w-full"
-                    data-testid="interval-required"
-                    disabled={!state?.enablePartition}
-                    placeholder={t('message.enter-interval')}
-                    size="middle"
-                  />
-                </Form.Item>
-              </Col>
-              <Col span={12}>
-                <Form.Item
-                  className="m-b-0"
-                  label={
-                    <span className="text-xs">{t('label.interval-unit')}</span>
-                  }
-                  labelCol={{
-                    style: {
-                      paddingBottom: 8,
-                    },
-                  }}
-                  name="partitionIntervalUnit"
-                  rules={[
-                    {
-                      required: state?.enablePartition,
-                      message: t('message.field-text-is-required', {
-                        fieldText: t('label.interval-unit'),
-                      }),
-                    },
-                  ]}>
-                  <Select
-                    allowClear
-                    className="w-full"
-                    data-testid="select-interval-unit"
-                    disabled={!state?.enablePartition}
-                    options={INTERVAL_UNIT_OPTIONS}
-                    placeholder={t('message.select-interval-unit')}
-                    size="middle"
-                  />
-                </Form.Item>
-              </Col>
+              {[
+                PartitionIntervalType.IngestionTime,
+                PartitionIntervalType.TimeUnit,
+              ].includes(partitionIntervalType) ? (
+                <>
+                  <Col span={12}>
+                    <Form.Item
+                      className="m-b-0"
+                      label={
+                        <span className="text-xs">{t('label.interval')}</span>
+                      }
+                      labelCol={{
+                        style: {
+                          paddingBottom: 8,
+                        },
+                      }}
+                      name="partitionInterval"
+                      rules={[
+                        {
+                          required: state?.enablePartition,
+                          message: t('message.field-text-is-required', {
+                            fieldText: t('label.interval'),
+                          }),
+                        },
+                      ]}>
+                      <InputNumber
+                        className="w-full"
+                        data-testid="interval-required"
+                        disabled={!state?.enablePartition}
+                        placeholder={t('message.enter-interval')}
+                        size="middle"
+                      />
+                    </Form.Item>
+                  </Col>
+                  <Col span={12}>
+                    <Form.Item
+                      className="m-b-0"
+                      label={
+                        <span className="text-xs">
+                          {t('label.interval-unit')}
+                        </span>
+                      }
+                      labelCol={{
+                        style: {
+                          paddingBottom: 8,
+                        },
+                      }}
+                      name="partitionIntervalUnit"
+                      rules={[
+                        {
+                          required: state?.enablePartition,
+                          message: t('message.field-text-is-required', {
+                            fieldText: t('label.interval-unit'),
+                          }),
+                        },
+                      ]}>
+                      <Select
+                        allowClear
+                        className="w-full"
+                        data-testid="select-interval-unit"
+                        disabled={!state?.enablePartition}
+                        options={INTERVAL_UNIT_OPTIONS}
+                        placeholder={t('message.select-interval-unit')}
+                        size="middle"
+                      />
+                    </Form.Item>
+                  </Col>
+                </>
+              ) : null}
             </Row>
           </Form>
         </Col>
