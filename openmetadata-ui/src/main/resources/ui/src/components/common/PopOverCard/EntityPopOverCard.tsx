@@ -14,7 +14,7 @@
 import { Button, Divider, Popover, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { EntityUnion } from 'components/Explore/explore.interface';
-import { uniqueId } from 'lodash';
+import { get, uniqueId } from 'lodash';
 import { EntityTags } from 'Models';
 import React, { FC, HTMLAttributes, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -145,6 +145,10 @@ const EntityPopOverCard: FC<Props> = ({ children, entityType, entityFQN }) => {
     }
   };
 
+  const ownerName = useMemo(() => {
+    return get(entityData, 'owner');
+  }, [entityData]);
+
   const PopoverContent = () => {
     useEffect(() => {
       onMouseOver();
@@ -154,16 +158,16 @@ const EntityPopOverCard: FC<Props> = ({ children, entityType, entityFQN }) => {
       <div className="w-500">
         <Space align="center" size="small">
           <div data-testid="owner">
-            {entityData.owner ? (
+            {ownerName ? (
               <Space align="center" size="small">
                 <ProfilePicture
-                  displayName={getEntityName(entityData.owner)}
+                  displayName={getEntityName(ownerName)}
                   id={entityData.name}
-                  name={getEntityName(entityData.owner)}
+                  name={getEntityName(ownerName)}
                   width="20"
                 />
                 <Typography.Text className="text-xs">
-                  {getEntityName(entityData.owner)}
+                  {getEntityName(ownerName)}
                 </Typography.Text>
               </Space>
             ) : (

@@ -82,7 +82,9 @@ export type ExploreSearchSource =
   | MlmodelSearchSource
   | TopicSearchSource
   | PipelineSearchSource
-  | ContainerSearchSource;
+  | ContainerSearchSource
+  | GlossarySearchSource
+  | TagClassSearchSource;
 
 export type SearchIndexSearchSourceMapping = {
   [SearchIndex.TABLE]: TableSearchSource;

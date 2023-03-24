@@ -12,9 +12,11 @@
  */
 
 import { COOKIE_VERSION } from 'components/Modals/WhatsNewModal/whatsNewData';
+import { SearchIndex } from 'enums/search.enum';
 import { t } from 'i18next';
 import { isUndefined } from 'lodash';
 import Qs from 'qs';
+import { getPartialNameFromFQN } from 'utils/CommonUtils';
 import { getSettingPath } from '../utils/RouterUtils';
 import { getEncodedFqn } from '../utils/StringsUtils';
 import { FQN_SEPARATOR_CHAR } from './char.constants';
@@ -78,6 +80,7 @@ export const imageTypes = {
 };
 export const NO_DATA_PLACEHOLDER = '---';
 export const ELLIPSES = '...';
+export const SINGLE_DOT = '•';
 
 export const TOUR_SEARCH_TERM = 'dim_a';
 export const ERROR404 = t('label.no-data-found');
@@ -133,6 +136,17 @@ export const tiers = [
   { key: `Tier${FQN_SEPARATOR_CHAR}Tier3`, doc_count: 0 },
   { key: `Tier${FQN_SEPARATOR_CHAR}Tier4`, doc_count: 0 },
   { key: `Tier${FQN_SEPARATOR_CHAR}Tier5`, doc_count: 0 },
+];
+
+export const globalSearchOptions = [
+  { value: undefined, label: t('label.all') },
+  { value: SearchIndex.TABLE, label: t('label.table') },
+  { value: SearchIndex.TOPIC, label: t('label.topic') },
+  { value: SearchIndex.DASHBOARD, label: t('label.dashboard') },
+  { value: SearchIndex.PIPELINE, label: t('label.pipeline') },
+  { value: SearchIndex.MLMODEL, label: t('label.ml-model') },
+  { value: SearchIndex.GLOSSARY, label: t('label.glossary') },
+  { value: SearchIndex.TAG, label: t('label.tag') },
 ];
 
 export const versionTypes = [
@@ -275,6 +289,14 @@ export const IN_PAGE_SEARCH_ROUTES: Record<string, Array<string>> = {
 export const getTableDetailsPath = (tableFQN: string, columnName?: string) => {
   let path = ROUTES.TABLE_DETAILS;
   path = path.replace(PLACEHOLDER_ROUTE_TABLE_FQN, tableFQN);
+
+  return `${path}${columnName ? `.${columnName}` : ''}`;
+};
+
+export const getTagsDetailsPath = (entityFQN: string, columnName?: string) => {
+  let path = ROUTES.TAG_DETAILS;
+  const classification = getPartialNameFromFQN(entityFQN, ['service']);
+  path = path.replace(PLACEHOLDER_TAG_NAME, classification);
 
   return `${path}${columnName ? `.${columnName}` : ''}`;
 };
@@ -537,6 +559,8 @@ export const ENTITY_PATH: Record<string, string> = {
   pipelines: 'pipeline',
   mlmodels: 'mlmodel',
   containers: 'container',
+  tag: 'tag',
+  glossary: 'glossary',
 };
 
 export const VALIDATE_MESSAGES = {

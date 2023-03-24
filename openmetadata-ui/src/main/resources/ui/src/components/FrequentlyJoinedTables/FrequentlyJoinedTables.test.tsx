@@ -68,7 +68,7 @@ describe('Test QueryDetails Component', () => {
       'shopify/fact_order150',
       'shopify/fact_sale55',
       'shopify/dim_address1',
-      '+ 1 more',
+      '+ 1 label.more-lowercase',
     ]);
   });
 });
