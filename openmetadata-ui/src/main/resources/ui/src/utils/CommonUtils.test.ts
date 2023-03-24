@@ -101,6 +101,10 @@ describe('Tests for CommonUtils', () => {
         { value: 10200, result: '10.2K' },
         { value: 1000000, result: '1M' },
         { value: 100000000, result: '100M' },
+        { value: 1000000000, result: '1B' },
+        { value: 1500000000, result: '1.5B' },
+        { value: 1000000000000, result: '1T' },
+        { value: 1100000000000, result: '1.1T' },
       ];
 
       values.map(({ value, result }) => {
