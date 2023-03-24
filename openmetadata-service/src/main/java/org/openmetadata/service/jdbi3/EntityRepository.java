@@ -474,17 +474,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return entity;
   }
 
-  @Transaction
-  public final PutResponse<T> createOrUpdate(UriInfo uriInfo, T original, T updated) throws IOException {
-    prepareInternal(updated);
-    // Check if there is any original, deleted or not
-    original = JsonUtils.readValue(dao.findJsonByFqn(original.getFullyQualifiedName(), ALL), entityClass);
-    if (original == null) {
-      return new PutResponse<>(Status.CREATED, withHref(uriInfo, createNewEntity(updated)), RestUtil.ENTITY_CREATED);
-    }
-    return update(uriInfo, original, updated);
-  }
-
   public final PutResponse<T> createOrUpdate(UriInfo uriInfo, T updated) throws IOException {
     PutResponse<T> response = createOrUpdateInternal(uriInfo, updated);
     if (response.getStatus() == Status.CREATED) {
@@ -497,9 +486,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   @Transaction
   public final PutResponse<T> createOrUpdateInternal(UriInfo uriInfo, T updated) throws IOException {
-    // Check if there is any original, deleted or not
     T original = JsonUtils.readValue(dao.findJsonByFqn(updated.getFullyQualifiedName(), ALL), entityClass);
-    if (original == null) {
+    if (original == null) { // If an original entity does not exist then create it, else update
       return new PutResponse<>(Status.CREATED, withHref(uriInfo, createNewEntity(updated)), RestUtil.ENTITY_CREATED);
     }
     return update(uriInfo, original, updated);
@@ -521,6 +509,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
   public PutResponse<T> update(UriInfo uriInfo, T original, T updated) throws IOException {
     // Get all the fields in the original entity that can be updated during PUT operation
     setFieldsInternal(original, putFields);
+
+    EntityReference updatedOwner = updated.getOwner();
+    if (updatedOwner != null && updatedOwner.getDescription().equals("inherited")) {
+      // Don't let inherited ownership overwrite existing ownership
+      updated.setOwner(original.getOwner() != null ? original.getOwner() : updatedOwner);
+    }
 
     // If the entity state is soft-deleted, recursively undelete the entity and it's children
     if (Boolean.TRUE.equals(original.getDeleted())) {
