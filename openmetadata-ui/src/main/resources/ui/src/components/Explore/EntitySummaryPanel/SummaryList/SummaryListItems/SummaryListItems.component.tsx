@@ -103,7 +103,7 @@ function SummaryListItem({
             )}
           </Row>
         </Col>
-        <Col className="m-t-md" span={24}>
+        <Col span={24}>
           <Paragraph className="text-grey-body">
             {entityDetails.description ? (
               <RichTextEditorPreviewer

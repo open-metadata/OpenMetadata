@@ -41,6 +41,7 @@ export enum EntityType {
   KPI = 'kpi',
   ALERT = 'alert',
   CONTAINER = 'container',
+  TAG = 'tag',
 }
 
 export enum AssetsType {

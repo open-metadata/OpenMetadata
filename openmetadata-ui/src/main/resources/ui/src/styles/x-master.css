@@ -177,6 +177,15 @@ pre {
 .search-grey::placeholder {
   color: #6b7280;
 }
+.global-search-select {
+  width: 140px;
+}
+.appbar-search .rc-virtual-list-holder {
+  max-height: max-content;
+}
+.suggestions-menu {
+  margin-left: 140px;
+}
 
 /* Breadcrumb */
 .breadcrumb {
