@@ -55,7 +55,6 @@ const UserListPageV1 = () => {
     setIsAdminPage(tab === GlobalSettingOptions.ADMINS || undefined);
     setIsPageLoading(true);
     setIsDataLoading(true);
-    setShowDeletedUser(false);
     setSearchValue('');
     setCurrentPage(INITIAL_PAGING_VALUE);
   };
@@ -219,7 +218,7 @@ const UserListPageV1 = () => {
 
   return (
     <UserListV1
-      afterDeleteAction={handleFetch}
+      afterDeleteAction={() => handleSearch('')}
       currentPage={currentPage}
       data={userList}
       isAdminPage={isAdminPage}
