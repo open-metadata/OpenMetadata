@@ -96,4 +96,53 @@ describe('Services page should work properly', () => {
 
     cy.get('[data-testid="viewer-container"]').contains(service.newDescription);
   });
+
+  it('Remove owner from service', () => {
+    interceptURL(
+      'GET',
+      '/api/v1/system/config/pipeline-service-client',
+      'getService'
+    );
+    cy.get(`[data-testid="service-name-${service.name}"]`)
+      .should('be.visible')
+      .click();
+
+    verifyResponseStatusCode('@getService', 200);
+    interceptURL(
+      'GET',
+      '/api/v1//search/query?q=*&from=0&size=10&index=*',
+      'editOwner'
+    );
+    cy.get('[data-testid="edit-Owner-icon"]')
+      .should('exist')
+      .should('be.visible')
+      .click();
+    verifyResponseStatusCode('@editOwner', 200);
+
+    cy.get('[data-testid="dropdown-list"]')
+      .contains('Users')
+      .should('exist')
+      .should('be.visible')
+      .click();
+
+    interceptURL('PATCH', '/api/v1/services/databaseServices/*', 'removeOwner');
+    cy.get('[data-testid="list-item"]')
+      .eq(0)
+      .contains(service.Owner)
+      .should('be.visible')
+      .click();
+
+    cy.get('[data-testid="remove-owner"]')
+      .should('exist')
+      .should('be.visible')
+      .click();
+
+    verifyResponseStatusCode('@removeOwner', 200);
+
+    // Check if Owner exist
+    cy.get('[data-testid="entity-summary-details"]')
+      .scrollIntoView()
+      .should('exist')
+      .contains('No Owner');
+  });
 });

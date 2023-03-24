@@ -12,6 +12,8 @@
  */
 
 import { AxiosResponse } from 'axios';
+import { QueryVote } from 'components/TableQueries/TableQueries.interface';
+import { Operation } from 'fast-json-patch';
 import { CreateQuery } from 'generated/api/data/createQuery';
 import { Query } from 'generated/entity/data/query';
 import { Include } from 'generated/type/include';
@@ -30,6 +32,8 @@ export type ListQueriesParams = Params & {
   entityId?: string;
 };
 
+export type QueryByIdParams = Pick<Params, 'fields' | 'include'>;
+
 const BASE_URL = '/queries';
 
 export const getQueriesList = async (params?: ListQueriesParams) => {
@@ -39,10 +43,38 @@ export const getQueriesList = async (params?: ListQueriesParams) => {
 
   return response.data;
 };
+export const getQueryById = async (id: string, params?: QueryByIdParams) => {
+  const response = await APIClient.get<Query>(`${BASE_URL}/${id}`, {
+    params,
+  });
+
+  return response.data;
+};
 export const postQuery = async (query: CreateQuery) => {
   const response = await APIClient.post<CreateQuery, AxiosResponse<Query>>(
     BASE_URL,
     query
+  );
+
+  return response.data;
+};
+export const patchQueries = async (id: string, patch: Operation[]) => {
+  const configOptions = {
+    headers: { 'Content-type': 'application/json-patch+json' },
+  };
+
+  const response = await APIClient.patch<Operation[], AxiosResponse<Query>>(
+    `${BASE_URL}/${id}`,
+    patch,
+    configOptions
+  );
+
+  return response.data;
+};
+export const updateQueryVote = async (id: string, data: QueryVote) => {
+  const response = await APIClient.put<QueryVote, AxiosResponse<Query>>(
+    `${BASE_URL}/${id}/vote`,
+    data
   );
 
   return response.data;

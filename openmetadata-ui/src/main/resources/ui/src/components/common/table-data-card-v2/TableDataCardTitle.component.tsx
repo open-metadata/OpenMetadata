@@ -31,7 +31,12 @@ interface TableDataCardTitleProps {
   dataTestId?: string;
   id?: string;
   searchIndex: SearchIndex | EntityType;
-  source: { fullyQualifiedName?: string; displayName?: string };
+  source: {
+    fullyQualifiedName?: string;
+    displayName?: string;
+    name?: string;
+    type?: string;
+  };
   isPanel?: boolean;
   handleLinkClick?: (e: React.MouseEvent) => void;
 }
@@ -53,10 +58,14 @@ const TableDataCardTitle = ({
         : `${getPartialNameFromTableFQN(source.fullyQualifiedName ?? '', [
             FqnPart.Service,
           ])}-${getNameFromFQN(source.fullyQualifiedName ?? '')}`,
-      displayName: toString(source.displayName),
+      displayName:
+        source.type === 'tag'
+          ? toString(getNameFromFQN(source.fullyQualifiedName ?? ''))
+          : toString(source.displayName),
     }),
     [dataTestId, source]
   );
+
   const title = (
     <Button
       data-testid={testId}
