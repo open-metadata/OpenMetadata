@@ -1,7 +1,5 @@
 # Requirements
 
-# TODO CREATE THE MD FOR THE FIELDS
-
 The Athena connector ingests metadata through JDBC connections.
 
 According to AWS's official [documentation](https://docs.aws.amazon.com/athena/latest/ug/policy-actions.html): 
