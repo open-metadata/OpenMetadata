@@ -13,19 +13,26 @@
 Source connection handler
 """
 from dataclasses import dataclass
-from typing import Union
+from typing import Optional, Union
 
 from confluent_kafka.admin import AdminClient
 from confluent_kafka.avro import AvroConsumer
 from confluent_kafka.schema_registry.schema_registry_client import SchemaRegistryClient
 
+from metadata.generated.schema.entity.automations.workflow import (
+    Workflow as AutomationWorkflow,
+)
 from metadata.generated.schema.entity.services.connections.messaging.kafkaConnection import (
     KafkaConnection,
 )
 from metadata.generated.schema.entity.services.connections.messaging.redpandaConnection import (
     RedpandaConnection,
 )
-from metadata.ingestion.connections.test_connections import SourceConnectionException
+from metadata.ingestion.connections.test_connections import (
+    SourceConnectionException,
+    test_connection_steps,
+)
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -104,3 +111,27 @@ def test_connection(client: KafkaClient, _) -> None:
     except Exception as exc:
         msg = f"Unknown error connecting with {client}: {exc}."
         raise SourceConnectionException(msg) from exc
+
+
+def test_connection(
+    metadata: OpenMetadata,
+    client: KafkaClient,
+    service_connection: Union[KafkaConnection, RedpandaConnection],
+    automation_workflow: Optional[AutomationWorkflow] = None,
+) -> None:
+    """
+    Test connection. This can be executed either as part
+    of a metadata workflow or during an Automation Workflow
+    """
+
+    def custom_executor():
+        _ = client.admin_client.list_topics().topics
+
+    test_fn = {"GetTopics": custom_executor}
+
+    test_connection_steps(
+        metadata=metadata,
+        test_fn=test_fn,
+        service_fqn=service_connection.type.value,
+        automation_workflow=automation_workflow,
+    )
