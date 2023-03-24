@@ -332,7 +332,6 @@ class GlueSource(DatabaseServiceSource):
                 parsed_string["dataTypeDisplay"] = str(column["Type"])
                 parsed_string["dataType"] = "UNION"
             parsed_string["name"] = column["Name"][:64]
-            parsed_string["dataTypeDisplay"] = column["Type"]
             parsed_string["dataLength"] = parsed_string.get("dataLength", 1)
             parsed_string["description"] = column.get("Comment")
             yield Column(**parsed_string)

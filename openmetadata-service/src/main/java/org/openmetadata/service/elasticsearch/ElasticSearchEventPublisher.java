@@ -68,6 +68,7 @@ import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.MlModel;
 import org.openmetadata.schema.entity.data.Pipeline;
+import org.openmetadata.schema.entity.data.Query;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.data.Topic;
 import org.openmetadata.schema.entity.services.DashboardService;
@@ -183,6 +184,9 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
             break;
           case Entity.CONTAINER:
             updateContainer(event);
+            break;
+          case Entity.QUERY:
+            updateQuery(event);
             break;
           case Entity.TAG:
             updateTag(event);
@@ -586,6 +590,39 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
       case ENTITY_DELETED:
         DeleteRequest deleteRequest =
             new DeleteRequest(ElasticSearchIndexType.CONTAINER_SEARCH_INDEX.indexName, event.getEntityId().toString());
+        deleteEntityFromElasticSearch(deleteRequest);
+        break;
+    }
+  }
+
+  private void updateQuery(ChangeEvent event) throws IOException {
+    UpdateRequest updateRequest =
+        new UpdateRequest(ElasticSearchIndexType.QUERY_SEARCH_INDEX.indexName, event.getEntityId().toString());
+    QueryIndex queryIndex;
+
+    switch (event.getEventType()) {
+      case ENTITY_CREATED:
+        queryIndex = new QueryIndex((Query) event.getEntity());
+        updateRequest.doc(JsonUtils.pojoToJson(queryIndex.buildESDoc()), XContentType.JSON);
+        updateRequest.docAsUpsert(true);
+        updateElasticSearch(updateRequest);
+        break;
+      case ENTITY_UPDATED:
+        if (Objects.equals(event.getCurrentVersion(), event.getPreviousVersion())) {
+          updateRequest = applyChangeEvent(event);
+        } else {
+          queryIndex = new QueryIndex((Query) event.getEntity());
+          scriptedUpsert(queryIndex.buildESDoc(), updateRequest);
+        }
+        updateElasticSearch(updateRequest);
+        break;
+      case ENTITY_SOFT_DELETED:
+        softDeleteEntity(updateRequest);
+        updateElasticSearch(updateRequest);
+        break;
+      case ENTITY_DELETED:
+        DeleteRequest deleteRequest =
+            new DeleteRequest(ElasticSearchIndexType.QUERY_SEARCH_INDEX.indexName, event.getEntityId().toString());
         deleteEntityFromElasticSearch(deleteRequest);
         break;
     }

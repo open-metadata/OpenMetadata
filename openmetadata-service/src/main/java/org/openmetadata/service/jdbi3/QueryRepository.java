@@ -7,16 +7,22 @@ import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
+import javax.ws.rs.core.Response;
 import lombok.SneakyThrows;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.entity.data.Query;
+import org.openmetadata.schema.type.ChangeDescription;
+import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.EventType;
+import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.query.QueryResource;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.QueryUtil;
+import org.openmetadata.service.util.RestUtil;
 
 public class QueryRepository extends EntityRepository<Query> {
   private static final String QUERY_PATCH_FIELDS = "owner,tags,users,followers";
@@ -115,22 +121,52 @@ public class QueryRepository extends EntityRepository<Query> {
     return new QueryUpdater(original, updated, operation);
   }
 
-  public Query addQueryUsage(UUID queryId, List<EntityReference> entityIds) throws IOException {
+  public RestUtil.PutResponse<?> addQueryUsage(String updatedBy, UUID queryId, List<EntityReference> entityIds)
+      throws IOException {
     Query query = Entity.getEntity(Entity.QUERY, queryId, "queryUsedIn", Include.NON_DELETED);
+    List<EntityReference> oldValue = query.getQueryUsedIn();
+    // Create Relationships
     entityIds.forEach(
         (entityRef) ->
             addRelationship(entityRef.getId(), queryId, entityRef.getType(), Entity.QUERY, Relationship.MENTIONED_IN));
-    query.getQueryUsedIn().addAll(entityIds);
-    return query;
+
+    // Populate Fields
+    setFieldsInternal(query, new EntityUtil.Fields(allowedFields, "queryUsedIn"));
+    ChangeEvent changeEvent = getQueryChangeEvent(updatedBy, "queryUsedIn", oldValue, query.getQueryUsedIn(), query);
+    return new RestUtil.PutResponse<>(Response.Status.CREATED, changeEvent, RestUtil.ENTITY_FIELDS_CHANGED);
   }
 
-  public Query removeQueryUsedIn(UUID queryId, List<EntityReference> entityIds) throws IOException {
+  public RestUtil.PutResponse<?> removeQueryUsedIn(String updatedBy, UUID queryId, List<EntityReference> entityIds)
+      throws IOException {
     Query query = Entity.getEntity(Entity.QUERY, queryId, "queryUsedIn", Include.NON_DELETED);
+    List<EntityReference> oldValue = query.getQueryUsedIn();
+
     for (EntityReference ref : entityIds) {
-      deleteTo(queryId, Entity.QUERY, Relationship.MENTIONED_IN, ref.getType());
+      deleteRelationship(ref.getId(), ref.getType(), queryId, Entity.QUERY, Relationship.MENTIONED_IN);
     }
-    // TODO:
-    return query;
+
+    // Populate Fields
+    setFieldsInternal(query, new EntityUtil.Fields(allowedFields, "queryUsedIn"));
+    ChangeEvent changeEvent = getQueryChangeEvent(updatedBy, "queryUsedIn", oldValue, query.getQueryUsedIn(), query);
+    return new RestUtil.PutResponse<>(Response.Status.CREATED, changeEvent, RestUtil.ENTITY_FIELDS_CHANGED);
+  }
+
+  private ChangeEvent getQueryChangeEvent(
+      String updatedBy, String fieldUpdated, Object oldValue, Object newValue, Query updatedQuery) {
+    FieldChange fieldChange = new FieldChange().withName(fieldUpdated).withNewValue(newValue).withOldValue(oldValue);
+    ChangeDescription change = new ChangeDescription().withPreviousVersion(updatedQuery.getVersion());
+    change.getFieldsUpdated().add(fieldChange);
+    return new ChangeEvent()
+        .withEntity(updatedQuery)
+        .withChangeDescription(change)
+        .withEventType(EventType.ENTITY_UPDATED)
+        .withEntityType(entityType)
+        .withEntityId(updatedQuery.getId())
+        .withEntityFullyQualifiedName(updatedQuery.getFullyQualifiedName())
+        .withUserName(updatedBy)
+        .withTimestamp(System.currentTimeMillis())
+        .withCurrentVersion(updatedQuery.getVersion())
+        .withPreviousVersion(updatedQuery.getVersion());
   }
 
   public class QueryUpdater extends EntityUpdater {
