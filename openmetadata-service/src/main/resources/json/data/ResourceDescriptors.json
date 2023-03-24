@@ -12,19 +12,21 @@
       "ViewDataProfile",
       "ViewSampleData",
       "EditAll",
-      "EditDescription",
-      "EditDisplayName",
-      "EditTags",
-      "EditOwner",
-      "EditTier",
       "EditCustomFields",
-      "EditLineage",
-      "EditStatus",
-      "EditReviewers",
-      "EditTests",
-      "EditQueries",
+      "EditDescription",
       "EditDataProfile",
+      "EditDisplayName",
+      "EditLineage",
+      "EditPolicy",
+      "EditOwner",
+      "EditQueries",
+      "EditReviewers",
+      "EditRole",
       "EditSampleData",
+      "EditStatus",
+      "EditTags",
+      "EditTier",
+      "EditTests",
       "EditUsers"
     ]
   },
@@ -349,9 +351,11 @@
       "Delete",
       "ViewAll",
       "EditAll",
+      "EditCustomFields",
       "EditDescription",
       "EditDisplayName",
-      "EditCustomFields",
+      "EditRole",
+      "EditPolicy",
       "EditUsers"
     ]
   },
@@ -374,9 +378,10 @@
       "Delete",
       "ViewAll",
       "EditAll",
+      "EditCustomFields",
       "EditDescription",
       "EditDisplayName",
-      "EditCustomFields"
+      "EditRole"
     ]
   },
   {

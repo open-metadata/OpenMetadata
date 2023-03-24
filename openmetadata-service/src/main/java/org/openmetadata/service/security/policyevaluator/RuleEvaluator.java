@@ -31,6 +31,7 @@ public class RuleEvaluator {
       input = "none",
       description = "Returns true if the entity being accessed has no owner",
       examples = {"noOwner()", "!noOwner", "noOwner() || isOwner()"})
+  @SuppressWarnings("unused") // Used in SpelExpressions
   public boolean noOwner() throws IOException {
     return resourceContext != null && resourceContext.getOwner() == null;
   }
@@ -56,7 +57,7 @@ public class RuleEvaluator {
       return false;
     }
     List<TagLabel> tags = resourceContext.getTags();
-    LOG.debug("matchAllTags {} resourceTags {}", Arrays.toString(tagFQNs), tags.toString());
+    LOG.debug("matchAllTags {} resourceTags {}", Arrays.toString(tagFQNs), Arrays.toString(tags.toArray()));
     for (String tagFQN : tagFQNs) {
       TagLabel found = tags.stream().filter(t -> t.getTagFQN().equals(tagFQN)).findAny().orElse(null);
       if (found == null) {
@@ -72,12 +73,13 @@ public class RuleEvaluator {
       description = "Returns true if the entity being accessed has at least one of the tags given as input",
       examples = {"matchAnyTag('PersonalData.Personal', 'Tier.Tier1', 'Business Glossary.Clothing')"},
       resourceBased = true)
+  @SuppressWarnings("unused") // Used in SpelExpressions
   public boolean matchAnyTag(String... tagFQNs) throws IOException {
     if (resourceContext == null) {
       return false;
     }
     List<TagLabel> tags = resourceContext.getTags();
-    LOG.debug("matchAnyTag {} resourceTags {}", Arrays.toString(tagFQNs), tags.toString());
+    LOG.debug("matchAnyTag {} resourceTags {}", Arrays.toString(tagFQNs), Arrays.toString(tags.toArray()));
     for (String tagFQN : tagFQNs) {
       TagLabel found = tags.stream().filter(t -> t.getTagFQN().equals(tagFQN)).findAny().orElse(null);
       if (found != null) {
@@ -95,6 +97,7 @@ public class RuleEvaluator {
               + "attached. This allows restricting permissions to a resource to the members of the team hierarchy.",
       examples = {"matchTeam()"},
       resourceBased = true)
+  @SuppressWarnings("unused") // Used in SpelExpressions
   public boolean matchTeam() throws IOException {
     if (resourceContext == null || resourceContext.getOwner() == null) {
       return true; // No ownership information

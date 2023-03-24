@@ -106,6 +106,12 @@
             <artifactId>rhino</artifactId>
             <version>1.7.14</version>
         </dependency>
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter-api</artifactId>
+            <version>5.9.1</version>
+            <scope>compile</scope>
+        </dependency>
     </dependencies>
 
     <profiles>
