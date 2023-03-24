@@ -157,7 +157,7 @@ authenticationConfiguration:
       entityId: ${SAML_IDP_ENTITY_ID:-""}
       ssoLoginUrl: ${SAML_IDP_SSO_LOGIN_URL:-""}
       idpX509Certificate: ${SAML_IDP_CERTIFICATE:-""}
-      authorityUrl: ${SAML_AUTHORITY_URL:-""}
+      authorityUrl: ${SAML_AUTHORITY_URL:-"http://localhost:8585/api/v1/saml/login"}
       nameId: ${SAML_IDP_NAME_ID:-"urn:oasis:names:tc:SAML:2.0:nameid-format:emailAddress"}
     sp:
       entityId: ${SAML_SP_ENTITY_ID:-"http://localhost:8585/api/v1/saml/metadata"}

@@ -24,6 +24,11 @@ import org.openmetadata.schema.auth.JWTAuthMechanism;
 import org.openmetadata.schema.auth.ServiceTokenType;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 
+/**
+ * This Servlet also known as Assertion Consumer Service URL handles the SamlResponse the IDP send in response to the
+ * SamlRequest. After a successful processing it redirects user to the relayState which is the callback setup in the
+ * config.
+ */
 @WebServlet("/api/v1/saml/acs")
 @Slf4j
 public class SamlAssertionConsumerServlet extends HttpServlet {
@@ -41,7 +46,7 @@ public class SamlAssertionConsumerServlet extends HttpServlet {
     auth.processResponse();
     if (!auth.isAuthenticated()) {
       LOG.error("[SAML ACS] Not Authenticated");
-      resp.sendError(403, "Unauthorized");
+      resp.sendError(403, "UnAuthenticated");
     }
 
     List<String> errors = auth.getErrors();
@@ -55,15 +60,19 @@ public class SamlAssertionConsumerServlet extends HttpServlet {
     } else {
       String username;
       String nameId = auth.getNameId();
+      String email = nameId;
       if (nameId.contains("@")) {
         username = nameId.split("@")[0];
-      } else username = nameId;
+      } else {
+        username = nameId;
+        email = String.format("%s@%s", username, SamlSettingsHolder.getInstance().getDomain());
+      }
 
       JWTAuthMechanism jwtAuthMechanism =
           JWTTokenGenerator.getInstance()
               .generateJWTToken(
                   username,
-                  nameId,
+                  email,
                   SamlSettingsHolder.getInstance().getTokenValidity(),
                   false,
                   ServiceTokenType.OM_USER);

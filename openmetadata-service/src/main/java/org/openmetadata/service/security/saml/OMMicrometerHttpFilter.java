@@ -10,7 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
- 
+/**
+ * This is OMMicrometerHttpFilter is similar to MicrometerHttpFilter with support to handle OM Servlets, and provide
+ * metric information for them.
+ */
 package org.openmetadata.service.security.saml;
 
 import io.github.maksymdolgykh.dropwizard.micrometer.MicrometerBundle;

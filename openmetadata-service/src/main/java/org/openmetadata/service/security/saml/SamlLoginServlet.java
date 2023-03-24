@@ -14,25 +14,29 @@
 package org.openmetadata.service.security.saml;
 
 import com.onelogin.saml2.Auth;
+import java.io.IOException;
 import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
 
+/**
+ * This Servlet initiates a login and sends a login request to the IDP. After a successful processing it redirects user
+ * to the relayState which is the callback setup in the config.
+ */
 @WebServlet("/api/v1/saml/login")
 @Slf4j
 public class SamlLoginServlet extends HttpServlet {
-  public static final String PATH = "/api/v1/saml/login";
-
   @Override
-  protected void doGet(final HttpServletRequest req, final HttpServletResponse resp) {
+  protected void doGet(final HttpServletRequest req, final HttpServletResponse resp) throws IOException {
     Auth auth;
     try {
       auth = new Auth(SamlSettingsHolder.getInstance().getSaml2Settings(), req, resp);
       auth.login(SamlSettingsHolder.getInstance().getRelayState());
     } catch (Exception e) {
       LOG.error(e.getMessage());
+      resp.getOutputStream().println(e.getMessage());
     }
   }
 }

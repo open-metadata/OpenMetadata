@@ -23,6 +23,7 @@ import javax.servlet.http.HttpServletResponse;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 
+/** This Servlet outputs a login metadata config of the SP that is Openmetadata */
 @WebServlet("/api/v1/saml/metadata")
 @Slf4j
 public class SamlMetadataServlet extends HttpServlet {
