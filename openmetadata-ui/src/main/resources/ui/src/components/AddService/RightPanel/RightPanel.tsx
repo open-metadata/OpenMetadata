@@ -24,7 +24,7 @@ import {
 import { ServiceCategory } from 'enums/service.enum';
 import { PipelineType } from 'generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { useAirflowStatus } from 'hooks/useAirflowStatus';
-import { startCase } from 'lodash';
+import { last, startCase } from 'lodash';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { fetchMarkdownFile } from 'rest/miscAPI';
@@ -97,7 +97,7 @@ const RightPanel: FC<RightPanelProps> = ({
      * active field is like root_fieldName
      * so we need to split and get the fieldName
      */
-    return activeField?.split('_')[1];
+    return last(activeField?.split('_'));
   }, [activeField]);
 
   const getActiveStepTitle = (title: string) => {
@@ -152,8 +152,8 @@ const RightPanel: FC<RightPanelProps> = ({
     try {
       let response = '';
       const isEnglishLanguage = i18n.language === SupportedLocales.English;
-      const filePath = `${i18n.language}/${serviceType}/${selectedService}/connections/fields/${activeFieldName}.md`;
-      const fallbackFilePath = `${SupportedLocales.English}/${serviceType}/${selectedService}/connections/fields/${activeFieldName}.md`;
+      const filePath = `${i18n.language}/${serviceType}/${selectedService}/fields/${activeFieldName}.md`;
+      const fallbackFilePath = `${SupportedLocales.English}/${serviceType}/${selectedService}/fields/${activeFieldName}.md`;
 
       const [translation, fallbackTranslation] = await Promise.allSettled([
         fetchMarkdownFile(filePath),

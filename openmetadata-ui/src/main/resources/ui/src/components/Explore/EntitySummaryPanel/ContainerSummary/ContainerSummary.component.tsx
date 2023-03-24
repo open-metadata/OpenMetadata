@@ -16,6 +16,7 @@ import classNames from 'classnames';
 import SummaryPanelSkeleton from 'components/Skeleton/SummaryPanelSkeleton/SummaryPanelSkeleton.component';
 import { SummaryEntityType } from 'enums/EntitySummary.enum';
 import { ExplorePageTabs } from 'enums/Explore.enum';
+import { Container } from 'generated/entity/data/container';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
@@ -36,8 +37,6 @@ function ContainerSummary({
 }: ContainerSummaryProps) {
   const { t } = useTranslation();
 
-  console.log(entityDetails);
-
   const entityInfo = useMemo(
     () => getEntityOverview(ExplorePageTabs.CONTAINERS, entityDetails),
     [entityDetails]
@@ -47,7 +46,7 @@ function ContainerSummary({
     () =>
       getFormattedEntityData(
         SummaryEntityType.COLUMN,
-        entityDetails.dataModel?.columns
+        (entityDetails as Container).dataModel?.columns
       ),
     [entityDetails]
   );

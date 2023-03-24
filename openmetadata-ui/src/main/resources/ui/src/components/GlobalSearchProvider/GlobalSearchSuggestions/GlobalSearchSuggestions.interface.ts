@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { ContainerSearchSource } from 'interface/search.interface';
 import { BaseSelectRef } from 'rc-select';
 
 export interface GlobalSearchSuggestionsProp {
@@ -56,6 +57,16 @@ export interface MlModelSource extends CommonSource {
   mlmodel_name: string;
 }
 
+export interface GlossarySource extends CommonSource {
+  glossary_id: string;
+  glossary_name: string;
+}
+
+export interface TagSource extends CommonSource {
+  tag_id: string;
+  tag_name: string;
+}
+
 export interface Option {
   _index: string;
   _id: string;
@@ -63,5 +74,18 @@ export interface Option {
     DashboardSource &
     TopicSource &
     PipelineSource &
-    MlModelSource;
+    MlModelSource &
+    ContainerSearchSource &
+    GlossarySource &
+    TagSource;
 }
+
+export type SearchSuggestions =
+  | TableSource[]
+  | TopicSource[]
+  | PipelineSource[]
+  | TagSource[]
+  | GlossarySource[]
+  | ContainerSearchSource[]
+  | DashboardSource[]
+  | MlModelSource[];
