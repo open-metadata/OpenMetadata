@@ -12,11 +12,13 @@
 Helper module to handle data sampling
 for the profiler
 """
+# pylint: disable=consider-using-f-string,disable=inconsistent-return-statements, disable=protected-access
 from typing import Dict, Optional, Union, cast
 
-from sqlalchemy import Column, inspect, text
+from sqlalchemy import Column, inspect, text, util
 from sqlalchemy.orm import DeclarativeMeta, Query, Session, aliased
 from sqlalchemy.orm.util import AliasedClass
+from sqlalchemy.sql.sqltypes import Enum
 
 from metadata.generated.schema.entity.data.table import (
     PartitionIntervalType,
@@ -38,6 +40,27 @@ from metadata.utils.sqa_utils import (
 )
 
 RANDOM_LABEL = "random"
+
+
+def _object_value_for_elem(self, elem):
+    try:
+        return self._object_lookup.get(elem, elem)
+    except KeyError as err:
+        util.raise_(
+            LookupError(
+                "'%s' is not among the defined enum values. "
+                "Enum name: %s. Possible values: %s"
+                % (
+                    elem,
+                    self.name,
+                    util.langhelpers.repr_tuple_names(self.enums),
+                )
+            ),
+            replace_context=err,
+        )
+
+
+Enum._object_value_for_elem = _object_value_for_elem
 
 
 class Sampler:
