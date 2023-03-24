@@ -248,7 +248,12 @@ class OpenMetadata(
             return "/charts"
 
         if issubclass(
-            entity, get_args(Union[DataModel, self.get_create_entity_type(DataModel)])
+            entity,
+            get_args(
+                Union[
+                    DashboardDataModel, self.get_create_entity_type(DashboardDataModel)
+                ]
+            ),
         ):
             return "/dashboard/datamodels"
 
