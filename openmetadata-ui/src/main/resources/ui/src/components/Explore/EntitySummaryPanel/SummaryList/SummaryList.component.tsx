@@ -31,7 +31,7 @@ export default function SummaryList({
   return (
     <Row>
       {isEmpty(formattedEntityData) ? (
-        <div className="m-y-md">
+        <div>
           <Text className="text-grey-body">
             {t('message.no-data-available')}
           </Text>

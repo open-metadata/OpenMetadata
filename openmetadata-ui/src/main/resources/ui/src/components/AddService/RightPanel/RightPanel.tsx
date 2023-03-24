@@ -152,8 +152,8 @@ const RightPanel: FC<RightPanelProps> = ({
     try {
       let response = '';
       const isEnglishLanguage = i18n.language === SupportedLocales.English;
-      const filePath = `${i18n.language}/${serviceType}/${selectedService}/connections/fields/${activeFieldName}.md`;
-      const fallbackFilePath = `${SupportedLocales.English}/${serviceType}/${selectedService}/connections/fields/${activeFieldName}.md`;
+      const filePath = `${i18n.language}/${serviceType}/${selectedService}/fields/${activeFieldName}.md`;
+      const fallbackFilePath = `${SupportedLocales.English}/${serviceType}/${selectedService}/fields/${activeFieldName}.md`;
 
       const [translation, fallbackTranslation] = await Promise.allSettled([
         fetchMarkdownFile(filePath),

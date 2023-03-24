@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate.
+ *  Copyright 2023 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,16 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Tag } from 'generated/entity/classification/tag';
+import { TagLabel } from 'generated/type/tagLabel';
 
-export enum SearchIndex {
-  TABLE = 'table_search_index',
-  TOPIC = 'topic_search_index',
-  DASHBOARD = 'dashboard_search_index',
-  PIPELINE = 'pipeline_search_index',
-  USER = 'user_search_index',
-  TEAM = 'team_search_index',
-  GLOSSARY = 'glossary_search_index',
-  MLMODEL = 'mlmodel_search_index',
-  TAG = 'tag_search_index',
-  CONTAINER = 'container_search_index',
+export interface TagsSummaryProps {
+  entityDetails: Tag;
+  componentType?: string;
+  tags?: TagLabel[];
+  isLoading?: boolean;
 }
