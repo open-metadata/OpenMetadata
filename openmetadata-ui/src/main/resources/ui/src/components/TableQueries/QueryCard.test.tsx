@@ -75,6 +75,15 @@ const mockProps: QueryCardProp = {
   onUpdateVote: jest.fn(),
 };
 
+const mockProps: QueryCardProp = {
+  query: mockQueryData,
+  tableId: 'id',
+  permission: DEFAULT_ENTITY_PERMISSION,
+  onQuerySelection: jest.fn(),
+  onQueryUpdate: jest.fn(),
+  onUpdateVote: jest.fn(),
+};
+
 describe('Test QueryCard Component', () => {
   it('Check if QueryCard has all child elements', async () => {
     const { container } = render(<QueryCard {...mockProps} />, {

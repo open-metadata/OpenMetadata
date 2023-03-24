@@ -34,6 +34,18 @@ export const LEFT_PANEL_DETAILS = {
     testid: '[data-testid="mlmodels"]',
     url: `${BASE_URL}/explore/mlmodels`,
   },
+  services: {
+    testid: '[data-testid="service"]',
+    url: `${BASE_URL}/settings/services/databases`,
+  },
+  users: {
+    testid: '[data-testid="user"]',
+    url: `${BASE_URL}/settings/members/users`,
+  },
+  teams: {
+    testid: '[data-testid="teams"]',
+    url: `${BASE_URL}/settings/members/teams`,
+  },
   testSuites: {
     testid: '[data-testid="test-suite"]',
     url: `${BASE_URL}/test-suites`,
@@ -41,10 +53,6 @@ export const LEFT_PANEL_DETAILS = {
   containers: {
     testid: '[data-testid="containers"]',
     url: `${BASE_URL}/explore/containers`,
-  },
-  glossaries: {
-    testid: '[data-testid="glossaries"]',
-    url: `${BASE_URL}/glossary`,
   },
   glossaryTerms: {
     testid: '[data-testid="glossary-terms"]',
