@@ -73,7 +73,7 @@ class SqlColumnHandlerMixin:
         )
         if col_type == "ARRAY":
             if arr_data_type is None:
-                arr_data_type = DataType.VARCHAR.value
+                arr_data_type = DataType.UNKNOWN.value
             data_type_display = f"array<{arr_data_type}>"
         return data_type_display
 
@@ -81,11 +81,13 @@ class SqlColumnHandlerMixin:
         data_type_display = None
         arr_data_type = None
         parsed_string = None
-        if "raw_data_type" in column and column["raw_data_type"] is not None:
-            column["raw_data_type"] = self.parse_raw_data_type(column["raw_data_type"])
-            if not column["raw_data_type"].startswith(schema):
+        if column.get("system_data_type") and column.get("is_complex"):
+            column["system_data_type"] = self.clean_raw_data_type(
+                column["system_data_type"]
+            )
+            if not column["system_data_type"].startswith(schema):
                 parsed_string = ColumnTypeParser._parse_datatype_string(  # pylint: disable=protected-access
-                    column["raw_data_type"]
+                    column["system_data_type"]
                 )
                 parsed_string["name"] = column["name"]
         else:
@@ -100,7 +102,7 @@ class SqlColumnHandlerMixin:
                     arr_data_type = ColumnTypeParser.get_column_type(arr_data_type[0])
                 data_type_display = column["type"]
             if col_type == DataType.ARRAY.value and not arr_data_type:
-                arr_data_type = DataType.VARCHAR.value
+                arr_data_type = DataType.UNKNOWN.value
             data_type_display = data_type_display or column.get("display_type")
         return data_type_display, arr_data_type, parsed_string
 
@@ -173,7 +175,7 @@ class SqlColumnHandlerMixin:
             parsed_string["dataType"], column["type"]
         )
         parsed_string["description"] = column.get("comment")
-        if column["raw_data_type"] == "array":
+        if column["system_data_type"] == "array":
             array_data_type_display = (
                 repr(column["type"])
                 .replace("(", "<")
@@ -253,10 +255,10 @@ class SqlColumnHandlerMixin:
                         col_type, column["type"]
                     )
                     if col_type is None:
-                        col_type = DataType.VARCHAR.name
+                        col_type = DataType.UNKNOWN.name
                         data_type_display = col_type.lower()
                         logger.warning(
-                            f"Unknown type {repr(column['type'])} mapped to VARCHAR: {column['name']}"
+                            f"Unknown type {repr(column['type'])}: {column['name']}"
                         )
                     data_type_display = self._get_display_datatype(
                         data_type_display,
@@ -271,9 +273,11 @@ class SqlColumnHandlerMixin:
                         # Passing whitespace if column name is an empty string
                         # since pydantic doesn't accept empty string
                         if column["name"] else " ",
-                        description=column.get("comment", None),
+                        description=column.get("comment"),
                         dataType=col_type,
-                        dataTypeDisplay=data_type_display,
+                        dataTypeDisplay=column.get(
+                            "system_data_type", data_type_display
+                        ),
                         dataLength=col_data_length,
                         constraint=col_constraint,
                         children=children,
@@ -331,5 +335,5 @@ class SqlColumnHandlerMixin:
             constraint = Constraint.UNIQUE
         return constraint
 
-    def parse_raw_data_type(self, raw_data_type):
+    def clean_raw_data_type(self, raw_data_type):
         return raw_data_type

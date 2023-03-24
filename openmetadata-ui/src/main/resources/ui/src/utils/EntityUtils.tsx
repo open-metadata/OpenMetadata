@@ -132,6 +132,7 @@ export const getEntityOverview = (
   value: string | number | React.ReactNode;
   isLink: boolean;
   isExternal?: boolean;
+  isIcon?: boolean;
   url?: string;
   visible?: Array<string>;
   dataTestId?: string;

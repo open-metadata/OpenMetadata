@@ -37,18 +37,25 @@ const SummaryTagsDescription = ({
           </Typography.Text>
         </Col>
         <Col span={24}>
-          <div className="flex flex-wrap items-center">
-            {tags.length > 0 ? (
-              <>
-                <TagIcon className="m-r-xs" data-testid="tag-grey-icon" />
+          {tags.length > 0 ? (
+            <Row>
+              <Col span={1}>
+                <TagIcon
+                  className="m-t-xs"
+                  data-testid="tag-grey-icon"
+                  height={14}
+                  width={14}
+                />
+              </Col>
+              <Col span={23}>
                 <TagsViewer sizeCap={-1} tags={tags} />
-              </>
-            ) : (
-              <Typography.Text className="text-grey-body">
-                {t('label.no-tags-added')}
-              </Typography.Text>
-            )}
-          </div>
+              </Col>
+            </Row>
+          ) : (
+            <Typography.Text className="text-grey-body">
+              {t('label.no-tags-added')}
+            </Typography.Text>
+          )}
         </Col>
       </Row>
 
