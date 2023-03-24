@@ -15,28 +15,30 @@ import { CheckOutlined } from '@ant-design/icons';
 import Form from '@rjsf/antd';
 import CoreForm, { AjvError, FormProps, IChangeEvent } from '@rjsf/core';
 import classNames from 'classnames';
+import { ServiceCategory } from 'enums/service.enum';
+import { useAirflowStatus } from 'hooks/useAirflowStatus';
 import { t } from 'i18next';
-import { isEmpty, startCase } from 'lodash';
+import { isEmpty, isUndefined, startCase } from 'lodash';
 import { LoadingState } from 'Models';
 import React, { FunctionComponent, useEffect, useRef, useState } from 'react';
 import { getPipelineServiceHostIp } from 'rest/ingestionPipelineAPI';
 import { ConfigData } from '../../../interface/service.interface';
 import { formatFormDataForRender } from '../../../utils/JSONSchemaFormUtils';
-import SVGIcons, { Icons } from '../../../utils/SvgUtils';
 import { Button } from '../../buttons/Button/Button';
 import { ArrayFieldTemplate } from '../../JSONSchemaTemplate/ArrayFieldTemplate';
 import { ObjectFieldTemplate } from '../../JSONSchemaTemplate/ObjectFieldTemplate';
 import Loader from '../../Loader/Loader';
+import TestConnection from '../TestConnection/TestConnection';
 
 interface Props extends FormProps<ConfigData> {
   okText: string;
   cancelText: string;
-  isAirflowAvailable: boolean;
+  disableTestConnection: boolean;
+  serviceType: string;
+  serviceCategory: ServiceCategory;
   showFormHeader?: boolean;
   status?: LoadingState;
   onCancel?: () => void;
-  onTestConnection?: (formData: ConfigData) => Promise<void>;
-  disableTestConnection: boolean;
 }
 
 const FormBuilder: FunctionComponent<Props> = ({
@@ -48,19 +50,18 @@ const FormBuilder: FunctionComponent<Props> = ({
   status = 'initial',
   onCancel,
   onSubmit,
-  onTestConnection,
   uiSchema,
-  isAirflowAvailable,
   disableTestConnection,
+  serviceCategory,
+  serviceType,
   ...props
 }: Props) => {
+  const { isAirflowAvailable } = useAirflowStatus();
+
   const formRef = useRef<CoreForm<ConfigData>>();
   const [localFormData, setLocalFormData] = useState<ConfigData | undefined>(
     formatFormDataForRender(formData ?? {})
   );
-  const [connectionTesting, setConnectionTesting] = useState<boolean>(false);
-  const [connectionTestingState, setConnectionTestingState] =
-    useState<LoadingState>('initial');
 
   const [hostIp, setHostIp] = useState<string>('[fetching]');
 
@@ -92,54 +93,8 @@ const FormBuilder: FunctionComponent<Props> = ({
     }
   };
 
-  const handleTestConnection = () => {
-    if (localFormData && onTestConnection) {
-      setConnectionTesting(true);
-      setConnectionTestingState('waiting');
-      onTestConnection(localFormData)
-        .then(() => {
-          setConnectionTestingState('success');
-        })
-        .catch(() => {
-          setConnectionTestingState('initial');
-        })
-        .finally(() => {
-          setConnectionTesting(false);
-        });
-    }
-  };
-
   const handleChange = (updatedData: ConfigData) => {
     setLocalFormData(updatedData);
-  };
-
-  const getConnectionTestingMessage = () => {
-    switch (connectionTestingState) {
-      case 'waiting':
-        return (
-          <div className="tw-flex">
-            <Loader size="small" type="default" />{' '}
-            <span className="tw-ml-2">{t('label.testing-connection')}</span>
-          </div>
-        );
-      case 'success':
-        return (
-          <div className="tw-flex">
-            <SVGIcons
-              alt="success-badge"
-              icon={Icons.SUCCESS_BADGE}
-              width={24}
-            />
-            <span className="tw-ml-2">
-              {t('message.connection-test-successful')}
-            </span>
-          </div>
-        );
-
-      case 'initial':
-      default:
-        return t('message.test-your-connection-before-creating-service');
-    }
   };
 
   const transformErrors = (errors: AjvError[]) =>
@@ -184,22 +139,13 @@ const FormBuilder: FunctionComponent<Props> = ({
           </div>
         </div>
       )}
-      {!isEmpty(schema) && onTestConnection && (
-        <div className="tw-flex tw-justify-between tw-bg-white tw-border tw-border-main tw-shadow tw-rounded tw-p-3 tw-mt-4">
-          <div className="tw-self-center">{getConnectionTestingMessage()}</div>
-          <Button
-            className={classNames('tw-self-center tw-py-1 tw-px-1.5', {
-              'tw-opacity-40': connectionTesting,
-            })}
-            data-testid="test-connection-btn"
-            disabled={connectionTesting || disableTestConnection}
-            size="small"
-            theme="primary"
-            variant="outlined"
-            onClick={handleTestConnection}>
-            {t('label.test-entity', { entity: t('label.connection') })}
-          </Button>
-        </div>
+      {!isEmpty(schema) && !isUndefined(localFormData) && (
+        <TestConnection
+          connectionType={serviceType}
+          formData={localFormData}
+          isTestingDisabled={disableTestConnection}
+          serviceCategory={serviceCategory}
+        />
       )}
       <div className="tw-mt-6 tw-flex tw-justify-between">
         <div />
