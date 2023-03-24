@@ -294,7 +294,9 @@ const TeamDetailsV1 = ({
               <Button
                 data-testid="remove-user-btn"
                 disabled={!entityPermissions.EditAll}
-                icon={<IconRemove name={t('label.remove')} />}
+                icon={
+                  <IconRemove height={16} name={t('label.remove')} width={16} />
+                }
                 type="text"
                 onClick={() => deleteUserHandler(record.id)}
               />

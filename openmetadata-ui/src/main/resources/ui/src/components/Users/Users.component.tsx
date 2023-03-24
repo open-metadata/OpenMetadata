@@ -408,7 +408,7 @@ const Users = ({
             className="tw-mb-2 tw-flex tw-items-center tw-gap-2"
             data-testid={team.name}
             key={i}>
-            <SVGIcons alt="icon" className="tw-w-4" icon={Icons.TEAMS_GREY} />
+            <SVGIcons alt="icon" icon={Icons.TEAMS_GREY} />
             <Typography.Text
               className="ant-typography-ellipsis-custom w-48"
               ellipsis={{ tooltip: true }}>

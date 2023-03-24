@@ -133,7 +133,6 @@ import IconStore from '../assets/svg/ic-store.svg';
 import IconSync from '../assets/svg/ic-sync.svg';
 import IconTaskPrimary from '../assets/svg/ic-task-primary.svg';
 import IconTask from '../assets/svg/ic-task.svg';
-import IconTeams from '../assets/svg/ic-teams.svg';
 import IconThumbsUp from '../assets/svg/ic-thumbs-up.svg';
 import IconTimesCircle from '../assets/svg/ic-times-circle.svg';
 import IconTrends from '../assets/svg/ic-trends.svg';
@@ -238,7 +237,6 @@ export const Icons = {
   SETTINGS_PRIMERY: 'icon-settings-primery',
   SETTINGS_GRAY: 'icon-settings-gray',
   SQL_BUILDER: 'icon-sql-builder',
-  TEAMS: 'icon-teams',
   TEAMS_GREY: 'icon-teams-grey',
   TEST_SUITE: 'icon-test-suite',
   WORKFLOWS: 'icon-workflows',
@@ -451,10 +449,7 @@ const SVGIcons: FunctionComponent<Props> = ({ icon, ...props }: Props) => {
       IconComponent = IconSQLBuilder;
 
       break;
-    case Icons.TEAMS:
-      IconComponent = IconTeams;
 
-      break;
     case Icons.RESTORE:
       IconComponent = IconRestore;
 
