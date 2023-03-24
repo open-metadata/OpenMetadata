@@ -682,9 +682,9 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
             setActiveTab={setActiveTabHandler}
             tabs={tabs}
           />
-          <div className="m-y-md h-full">
+          <div className="h-full">
             {activeTab === 1 && (
-              <Card className="h-full">
+              <Card className="m-y-md h-full">
                 <Row id="schemaDetails">
                   <Col span={17}>
                     <Description
@@ -756,7 +756,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
               </Card>
             )}
             {activeTab === 2 && (
-              <Card className="h-full">
+              <Card className="m-y-md h-full">
                 <div
                   className="tw-py-4 tw-px-7 tw-grid tw-grid-cols-3 entity-feed-list tw--mx-7 tw--my-4"
                   id="activityfeed">
@@ -784,7 +784,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
               </Card>
             )}
             {activeTab === 3 && (
-              <Card className="h-full" id="sampleDataDetails">
+              <Card className="m-y-md h-full" id="sampleDataDetails">
                 <SampleDataTable
                   isTableDeleted={tableDetails.deleted}
                   tableId={tableDetails.id}
@@ -792,12 +792,10 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
               </Card>
             )}
             {activeTab === 4 && (
-              <Card className="h-full">
-                <TableQueries
-                  isTableDeleted={tableDetails.deleted}
-                  tableId={tableDetails.id}
-                />
-              </Card>
+              <TableQueries
+                isTableDeleted={tableDetails.deleted}
+                tableId={tableDetails.id}
+              />
             )}
             {activeTab === 5 && (
               <TableProfilerV1
@@ -810,7 +808,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
             {activeTab === 7 && (
               <Card
                 className={classNames(
-                  'card-body-full',
+                  'card-body-full m-y-md',
                   location.pathname.includes(ROUTES.TOUR) ? 'h-70vh' : 'h-full'
                 )}
                 id="lineageDetails">
@@ -824,7 +822,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
               </Card>
             )}
             {activeTab === 8 && Boolean(dataModel?.sql) && (
-              <Card className="h-full">
+              <Card className="m-y-md h-full">
                 <SchemaEditor
                   className="tw-h-full"
                   mode={{ name: CSMode.SQL }}
@@ -833,7 +831,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
               </Card>
             )}
             {activeTab === 9 && (
-              <Card className="h-full">
+              <Card className="m-y-md h-full">
                 <CustomPropertyTable
                   entityDetails={
                     tableDetails as CustomPropertyProps['entityDetails']

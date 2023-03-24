@@ -25,9 +25,11 @@ export const MYDATA_SUMMARY_OPTIONS = {
   dashboards: 'dashboards',
   pipelines: 'pipelines',
   mlmodels: 'mlmodels',
+  service: 'service',
+  user: 'user',
+  teams: 'teams',
   testSuite: 'test-suite',
   containers: 'containers',
-  glossaries: 'glossaries',
   glossaryTerms: 'glossary-terms',
 };
 

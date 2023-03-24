@@ -123,19 +123,19 @@ EXPECTED_DATA_MODELS = [
         columns=[
             Column(
                 name="customer_id",
-                dataType="VARCHAR",
+                dataType="UNKNOWN",
                 dataLength=1,
                 description="This is a unique identifier for a customer",
             ),
             Column(
                 name="first_name",
-                dataType="VARCHAR",
+                dataType="UNKNOWN",
                 dataLength=1,
                 description="Customer's first name. PII.",
             ),
             Column(
                 name="last_name",
-                dataType="VARCHAR",
+                dataType="UNKNOWN",
                 dataLength=1,
                 description="Customer's last name. PII.",
             ),
@@ -174,7 +174,7 @@ EXPECTED_DATA_MODEL_NULL_DB = [
             Column(
                 name="customer_id",
                 displayName=None,
-                dataType="VARCHAR",
+                dataType="UNKNOWN",
                 dataLength=1,
                 description="This is a unique identifier for an customer",
             )

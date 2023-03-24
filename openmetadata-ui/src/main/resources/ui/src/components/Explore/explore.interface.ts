@@ -13,9 +13,11 @@
 
 import { DefaultOptionType } from 'antd/lib/select';
 import { SORT_ORDER } from 'enums/common.enum';
+import { Tag } from 'generated/entity/classification/tag';
 import { Container } from 'generated/entity/data/container';
 import { Database } from 'generated/entity/data/database';
 import { DatabaseSchema } from 'generated/entity/data/databaseSchema';
+import { Glossary } from 'generated/entity/data/glossary';
 import { QueryFilterInterface } from 'pages/explore/ExplorePage.interface';
 import { SearchIndex } from '../../enums/search.enum';
 import { Dashboard } from '../../generated/entity/data/dashboard';
@@ -38,7 +40,9 @@ export type ExploreSearchIndex =
   | SearchIndex.DASHBOARD
   | SearchIndex.MLMODEL
   | SearchIndex.TOPIC
-  | SearchIndex.CONTAINER;
+  | SearchIndex.CONTAINER
+  | SearchIndex.GLOSSARY
+  | SearchIndex.TAG;
 
 export type ExploreSearchIndexKey =
   | 'TABLE'
@@ -115,7 +119,9 @@ export type EntityUnion =
   | Mlmodel
   | Container
   | DatabaseSchema
-  | Database;
+  | Database
+  | Glossary
+  | Tag;
 
 export interface EntityDetailsObjectInterface {
   details: EntityUnion;

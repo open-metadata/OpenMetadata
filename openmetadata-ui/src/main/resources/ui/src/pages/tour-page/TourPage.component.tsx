@@ -53,6 +53,8 @@ const exploreCount = {
   [SearchIndex.PIPELINE]: 0,
   [SearchIndex.MLMODEL]: 0,
   [SearchIndex.CONTAINER]: 0,
+  [SearchIndex.GLOSSARY]: 0,
+  [SearchIndex.TAG]: 0,
 };
 
 const TourPage = () => {

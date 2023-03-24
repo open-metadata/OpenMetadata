@@ -15,18 +15,11 @@ import { Modal } from 'antd';
 import { debounce } from 'lodash';
 import Qs from 'qs';
 import { BaseSelectRef } from 'rc-select';
-import React, {
-  FC,
-  ReactNode,
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-} from 'react';
+import React, { FC, ReactNode, useCallback, useRef, useState } from 'react';
 import { useHistory } from 'react-router-dom';
 import { getExplorePath, ROUTES } from '../../constants/constants';
 import { addToRecentSearched } from '../../utils/CommonUtils';
-import { isCommandKeyPress, Keys } from '../../utils/KeyboardUtil';
+import { Keys } from '../../utils/KeyboardUtil';
 import GlobalSearchSuggestions from './GlobalSearchSuggestions/GlobalSearchSuggestions';
 
 export const GlobalSearchContext = React.createContext(null);
@@ -49,16 +42,6 @@ const GlobalSearchProvider: FC<Props> = ({ children }: Props) => {
     setSuggestionSearch('');
     setVisible(false);
   };
-
-  const handleKeyPress = useCallback((event) => {
-    if (isCommandKeyPress(event) && event.key === Keys.K) {
-      setVisible(true);
-      selectRef.current?.focus();
-      event.preventDefault();
-    } else if (event.key === Keys.ESC) {
-      handleCancel();
-    }
-  }, []);
 
   const debouncedOnChange = useCallback(
     (text: string): void => {
@@ -102,13 +85,6 @@ const GlobalSearchProvider: FC<Props> = ({ children }: Props) => {
       handleCancel();
     }
   };
-
-  useEffect(() => {
-    const targetNode = document.body;
-    targetNode.addEventListener('keydown', handleKeyPress);
-
-    return () => targetNode.removeEventListener('keydown', handleKeyPress);
-  }, [handleKeyPress]);
 
   return (
     <GlobalSearchContext.Provider value={null}>
