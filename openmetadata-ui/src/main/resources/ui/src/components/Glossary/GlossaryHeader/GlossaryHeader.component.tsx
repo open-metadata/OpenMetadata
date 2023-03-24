@@ -244,6 +244,7 @@ const GlossaryHeader = ({
               </Tooltip>
               {isEditOwner && (
                 <OwnerWidgetWrapper
+                  className="edit-owner-dropdown"
                   currentUser={selectedData.owner}
                   hideWidget={() => setIsEditOwner(false)}
                   removeOwner={handleRemoveOwner}
