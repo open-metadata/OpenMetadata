@@ -162,7 +162,7 @@ def get_lineage_entity_ref(edge, metadata_config) -> EntityReference:
         dashboard = metadata.get_by_name(entity=Dashboard, fqn=edge_fqn)
         if dashboard:
             return EntityReference(id=dashboard.id, type="dashboard")
-    if edge["type"] == "dataModel":
+    if edge["type"] == "dashboardDataModel":
         data_model = metadata.get_by_name(entity=DashboardDataModel, fqn=edge_fqn)
         if data_model:
             return EntityReference(id=data_model.id, type="dashboardDataModel")
@@ -338,7 +338,7 @@ class SampleDataSource(
         )
         self.data_models = json.load(
             open(  # pylint: disable=consider-using-with
-                sample_data_folder + "/dashboards/dataModels.json",
+                sample_data_folder + "/dashboards/dashboardDataModels.json",
                 "r",
                 encoding="utf-8",
             )

@@ -531,7 +531,7 @@ class OpenMetadata(
         file_name = (
             class_name.lower()
             .replace("glossaryterm", "glossaryTerm")
-            .replace("datamodel", "dataModel")
+            .replace("dashboarddatamodel", "dashboardDataModel")
             .replace("testsuite", "testSuite")
             .replace("testdefinition", "testDefinition")
             .replace("testcase", "testCase")

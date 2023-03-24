@@ -62,7 +62,7 @@
   {
     "from": {
       "fqn": "sample_superset.model.103",
-      "type": "dataModel"
+      "type": "dashboardDataModel"
     },
     "to": {
       "fqn": "sample_superset.9",
@@ -73,7 +73,7 @@
   {
     "from": {
       "fqn": "sample_superset.model.73",
-      "type": "dataModel"
+      "type": "dashboardDataModel"
     },
     "to": {
       "fqn": "sample_superset.9",
