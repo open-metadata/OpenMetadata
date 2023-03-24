@@ -39,16 +39,19 @@
     },
     "bucketName": {
       "title": "Bucket Name",
+      "description": "Bucket Name of the data source.",
       "type": "string",
       "default": ""
     },
     "prefix": {
       "title": "Prefix",
+      "description": "Prefix of the data source.",
       "type": "string",
       "default": ""
     },
     "databaseName": {
       "title": "Database Name",
+      "description": "Optional name to give to the database in OpenMetadata. If left blank, we will use default as the database name.",
       "type": "string"
     },
     "connectionOptions": {
