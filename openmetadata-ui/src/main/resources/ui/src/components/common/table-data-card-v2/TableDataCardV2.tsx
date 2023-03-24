@@ -13,6 +13,7 @@
 
 import { ExclamationCircleOutlined } from '@ant-design/icons';
 import classNames from 'classnames';
+import { EntityUnion } from 'components/Explore/explore.interface';
 import { isString, startCase, uniqueId } from 'lodash';
 import { ExtraInfo } from 'Models';
 import React, { useMemo } from 'react';
@@ -31,9 +32,11 @@ import {
   getEntityPlaceHolder,
   getOwnerValue,
 } from '../../../utils/CommonUtils';
-import { serviceTypeLogo } from '../../../utils/ServiceUtils';
-import { getUsagePercentile } from '../../../utils/TableUtils';
-import { EntityDetailsType } from '../../Explore/explore.interface';
+import {
+  getEntityHeaderLabel,
+  getServiceIcon,
+  getUsagePercentile,
+} from '../../../utils/TableUtils';
 import { SearchedDataProps } from '../../searched-data/SearchedData.interface';
 import '../table-data-card/TableDataCard.style.css';
 import TableDataCardBody from '../table-data-card/TableDataCardBody';
@@ -50,7 +53,7 @@ export interface TableDataCardPropsV2 {
   }[];
   searchIndex: SearchIndex | EntityType;
   handleSummaryPanelDisplay?: (
-    details: EntityDetailsType,
+    details: EntityUnion,
     entityType: string
   ) => void;
 }
@@ -85,15 +88,21 @@ const TableDataCardV2: React.FC<TableDataCardPropsV2> = ({
             ? source.owner?.name
             : undefined,
       },
-      {
+    ];
+
+    if (
+      source.entityType !== EntityType.GLOSSARY_TERM &&
+      source.entityType !== EntityType.TAG
+    ) {
+      _otherDetails.push({
         key: 'Tier',
         value: source.tier
           ? isString(source.tier)
             ? source.tier
             : source.tier?.tagFQN.split(FQN_SEPARATOR_CHAR)[1]
           : '',
-      },
-    ];
+      });
+    }
 
     if ('usageSummary' in source) {
       _otherDetails.push({
@@ -122,6 +131,14 @@ const TableDataCardV2: React.FC<TableDataCardPropsV2> = ({
     }
   };
 
+  const headerLabel = useMemo(() => {
+    return getEntityHeaderLabel(source);
+  }, [source]);
+
+  const serviceIcon = useMemo(() => {
+    return getServiceIcon(source);
+  }, [source]);
+
   return (
     <div
       className={classNames(
@@ -133,21 +150,12 @@ const TableDataCardV2: React.FC<TableDataCardPropsV2> = ({
       id={id}
       onClick={() => {
         handleSummaryPanelDisplay &&
-          handleSummaryPanelDisplay(source as EntityDetailsType, tab);
+          handleSummaryPanelDisplay(source as EntityUnion, tab);
       }}>
       <div>
-        {'databaseSchema' in source && 'database' in source && (
-          <span
-            className="tw-text-grey-muted tw-text-xs tw-mb-0.5"
-            data-testid="database-schema">{`${source.database?.name}${FQN_SEPARATOR_CHAR}${source.databaseSchema?.name}`}</span>
-        )}
+        {headerLabel}
         <div className="tw-flex tw-items-center">
-          <img
-            alt="service-icon"
-            className="inline h-5 p-r-xs"
-            src={serviceTypeLogo(source.serviceType || '')}
-          />
-
+          {serviceIcon}
           <TableDataCardTitle
             handleLinkClick={handleLinkClick}
             id={id}

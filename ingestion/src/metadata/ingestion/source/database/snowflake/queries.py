@@ -97,3 +97,22 @@ SELECT query_text from snowflake.account_usage.query_history limit 1
 """
 
 SNOWFLAKE_GET_DATABASES = "SHOW DATABASES"
+
+SNOWFLAKE_GET_SCHEMA_COLUMNS = """
+SELECT /* sqlalchemy:_get_schema_columns */
+        ic.table_name,
+        ic.column_name,
+        ic.data_type,
+        ic.character_maximum_length,
+        ic.numeric_precision,
+        ic.numeric_scale,
+        ic.is_nullable,
+        ic.column_default,
+        ic.is_identity,
+        ic.comment,
+        ic.identity_start,
+        ic.identity_increment
+    FROM information_schema.columns ic
+    WHERE ic.table_schema=:table_schema
+    ORDER BY ic.ordinal_position
+"""

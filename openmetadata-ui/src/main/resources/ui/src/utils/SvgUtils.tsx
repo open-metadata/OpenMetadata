@@ -11,6 +11,8 @@
  *  limitations under the License.
  */
 
+import IconFlatFolder from 'assets/svg/folder.svg';
+import IconFlatDoc from 'assets/svg/ic-flat-doc.svg';
 import { omit } from 'lodash';
 import React, { FunctionComponent } from 'react';
 import IconAuth0 from '../assets/img/icon-auth0.png';
@@ -41,6 +43,8 @@ import IconBotProfile from '../assets/svg/bot-profile.svg';
 import IconSuccess from '../assets/svg/check.svg';
 import IconCheckboxPrimary from '../assets/svg/checkbox-primary.svg';
 import IconCircleCheckbox from '../assets/svg/circle-checkbox.svg';
+import IconCloseCircleOutlinedColor from '../assets/svg/close-circle-outlined-color.svg';
+import IconCloseCircleOutlined from '../assets/svg/close-circle-outlined.svg';
 import IconClosedLock from '../assets/svg/closed-lock.svg';
 import IconComments from '../assets/svg/comment.svg';
 import IconTaskClose from '../assets/svg/complete.svg';
@@ -403,6 +407,10 @@ export const Icons = {
   ARROW_DOWN_LIGHT: 'arrow-down-light',
   DRAG: 'drag',
   CONTAINER: 'container',
+  FLAT_FOLDER: 'flat-folder',
+  FLAT_DOC: 'flat-doc',
+  CLOSE_CIRCLE_OUTLINED: 'close-circle-outlined',
+  CLOSE_CIRCLE_OUTLINED_COLOR: 'close-circle-outlined-color',
 };
 
 /**
@@ -670,6 +678,15 @@ const SVGIcons: FunctionComponent<Props> = ({ icon, ...props }: Props) => {
       IconComponent = IconUser;
 
       break;
+    case Icons.CLOSE_CIRCLE_OUTLINED:
+      IconComponent = IconCloseCircleOutlined;
+
+      break;
+    case Icons.CLOSE_CIRCLE_OUTLINED_COLOR:
+      IconComponent = IconCloseCircleOutlinedColor;
+
+      break;
+
     case Icons.TERMS:
       IconComponent = IconTerns;
 
@@ -1188,6 +1205,14 @@ const SVGIcons: FunctionComponent<Props> = ({ icon, ...props }: Props) => {
       break;
     case Icons.CONTAINER:
       IconComponent = IconContainer;
+
+      break;
+    case Icons.FLAT_FOLDER:
+      IconComponent = IconFlatFolder;
+
+      break;
+    case Icons.FLAT_DOC:
+      IconComponent = IconFlatDoc;
 
       break;
 

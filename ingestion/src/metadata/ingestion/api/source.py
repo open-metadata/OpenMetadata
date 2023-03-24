@@ -61,11 +61,11 @@ class SourceStatus(BaseModel, Status):
         self.filtered.append({key: reason})
 
     def calculate_success(self) -> float:
-        source_sucess = max(
+        source_success = max(
             len(self.success), 1
         )  # To avoid ZeroDivisionError using minimum value as 1
         source_failed = len(self.failures)
-        return round(source_sucess * 100 / (source_sucess + source_failed), 2)
+        return round(source_success * 100 / (source_success + source_failed), 2)
 
 
 class Source(Closeable, Generic[Entity], metaclass=ABCMeta):
@@ -77,6 +77,10 @@ class Source(Closeable, Generic[Entity], metaclass=ABCMeta):
     metadata: OpenMetadata
     connection_obj: Any
     service_connection: Any
+    status: SourceStatus
+
+    def __init__(self):
+        self.status = SourceStatus()
 
     @classmethod
     @abstractmethod
@@ -93,6 +97,9 @@ class Source(Closeable, Generic[Entity], metaclass=ABCMeta):
     def next_record(self) -> Iterable[Entity]:
         pass
 
-    @abstractmethod
     def get_status(self) -> SourceStatus:
+        return self.status
+
+    @abstractmethod
+    def test_connection(self) -> None:
         pass

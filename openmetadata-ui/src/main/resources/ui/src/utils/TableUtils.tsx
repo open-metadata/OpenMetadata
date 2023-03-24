@@ -31,6 +31,7 @@ import { ReactComponent as IconUnique } from '../assets/svg/icon-unique.svg';
 import { ReactComponent as IconPendingBadge } from '../assets/svg/pending-badge.svg';
 import { ReactComponent as IconSuccessBadge } from '../assets/svg/success-badge.svg';
 
+import { SourceType } from 'components/searched-data/SearchedData.interface';
 import { ReactComponent as MlModelIcon } from '../assets/svg/mlmodal.svg';
 import { ReactComponent as PipelineIcon } from '../assets/svg/pipeline-grey.svg';
 import { ReactComponent as TableIcon } from '../assets/svg/table-grey.svg';
@@ -45,6 +46,7 @@ import {
   getPipelineDetailsPath,
   getServiceDetailsPath,
   getTableDetailsPath,
+  getTagsDetailsPath,
   getTopicDetailsPath,
 } from '../constants/constants';
 import { GlobalSettingsMenuCategory } from '../constants/GlobalSettings.constants';
@@ -59,13 +61,16 @@ import {
 import { TestCaseStatus } from '../generated/tests/testCase';
 import { TagLabel } from '../generated/type/tagLabel';
 import {
+  getPartialNameFromFQN,
   getPartialNameFromTableFQN,
   getTableFQNFromColumnFQN,
   sortTagsCaseInsensitive,
 } from './CommonUtils';
 import { getContainerDetailPath } from './ContainerDetailUtils';
 import { getGlossaryPath, getSettingPath } from './RouterUtils';
+import { serviceTypeLogo } from './ServiceUtils';
 import { ordinalize } from './StringsUtils';
+import SVGIcons, { Icons } from './SvgUtils';
 
 export const getBadgeName = (tableType?: string) => {
   switch (tableType) {
@@ -225,6 +230,7 @@ export const getEntityLink = (
 
     case EntityType.GLOSSARY:
     case EntityType.GLOSSARY_TERM:
+    case SearchIndex.GLOSSARY:
       return getGlossaryPath(fullyQualifiedName);
 
     case EntityType.DATABASE_SERVICE:
@@ -247,13 +253,54 @@ export const getEntityLink = (
       return getMlModelPath(fullyQualifiedName);
 
     case EntityType.CONTAINER:
+    case SearchIndex.CONTAINER:
       return getContainerDetailPath(fullyQualifiedName);
+    case SearchIndex.TAG:
+      return getTagsDetailsPath(fullyQualifiedName);
 
     case SearchIndex.TABLE:
     case EntityType.TABLE:
     default:
       return getTableDetailsPath(fullyQualifiedName);
   }
+};
+
+export const getServiceIcon = (source: SourceType) => {
+  if (source.entityType === EntityType.GLOSSARY_TERM) {
+    return <SVGIcons alt="icon" className="m-r-xs" icon={Icons.FLAT_FOLDER} />;
+  } else if (source.entityType === EntityType.TAG) {
+    return <SVGIcons alt="icon" className="m-r-xs" icon={Icons.TAG} />;
+  } else {
+    return (
+      <img
+        alt="service-icon"
+        className="inline h-5 p-r-xs"
+        src={serviceTypeLogo(source.serviceType || '')}
+      />
+    );
+  }
+};
+
+export const getEntityHeaderLabel = (source: SourceType) => {
+  let headingText = '';
+  if ('databaseSchema' in source && 'database' in source) {
+    headingText = `${source.database?.name}${FQN_SEPARATOR_CHAR}${source.databaseSchema?.name}`;
+  } else if (
+    source.entityType === EntityType.GLOSSARY_TERM ||
+    source.entityType === EntityType.TAG
+  ) {
+    headingText = getPartialNameFromFQN(source.fullyQualifiedName || '', [
+      'service',
+    ]);
+  }
+
+  return headingText ? (
+    <span
+      className="tw-text-grey-muted tw-text-xs tw-mb-0.5"
+      data-testid="database-schema">
+      {headingText}
+    </span>
+  ) : null;
 };
 
 export const getEntityIcon = (indexType: string) => {

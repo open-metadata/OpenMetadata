@@ -13,6 +13,11 @@
 
 import { DefaultOptionType } from 'antd/lib/select';
 import { SORT_ORDER } from 'enums/common.enum';
+import { Tag } from 'generated/entity/classification/tag';
+import { Container } from 'generated/entity/data/container';
+import { Database } from 'generated/entity/data/database';
+import { DatabaseSchema } from 'generated/entity/data/databaseSchema';
+import { Glossary } from 'generated/entity/data/glossary';
 import { SearchIndex } from '../../enums/search.enum';
 import { Dashboard } from '../../generated/entity/data/dashboard';
 import { Mlmodel } from '../../generated/entity/data/mlmodel';
@@ -33,7 +38,10 @@ export type ExploreSearchIndex =
   | SearchIndex.PIPELINE
   | SearchIndex.DASHBOARD
   | SearchIndex.MLMODEL
-  | SearchIndex.TOPIC;
+  | SearchIndex.TOPIC
+  | SearchIndex.CONTAINER
+  | SearchIndex.GLOSSARY
+  | SearchIndex.TAG;
 
 export type ExploreSearchIndexKey =
   | 'TABLE'
@@ -96,9 +104,20 @@ export interface SearchInputProps {
   handleClear: () => void;
 }
 
-export type EntityDetailsType = Table | Topic | Dashboard | Pipeline | Mlmodel;
+// Type for all the explore tab entities
+export type EntityUnion =
+  | Table
+  | Topic
+  | Dashboard
+  | Pipeline
+  | Mlmodel
+  | Container
+  | DatabaseSchema
+  | Database
+  | Glossary
+  | Tag;
 
 export interface EntityDetailsObjectInterface {
-  details: EntityDetailsType;
+  details: EntityUnion;
   entityType: string;
 }

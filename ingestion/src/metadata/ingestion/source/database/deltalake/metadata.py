@@ -43,10 +43,7 @@ from metadata.ingestion.models.ometa_classification import OMetaTagAndClassifica
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.connections import get_connection
 from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
-from metadata.ingestion.source.database.database_service import (
-    DatabaseServiceSource,
-    SQLSourceStatus,
-)
+from metadata.ingestion.source.database.database_service import DatabaseServiceSource
 from metadata.utils import fqn
 from metadata.utils.constants import DEFAULT_DATABASE
 from metadata.utils.filters import filter_by_schema, filter_by_table
@@ -90,7 +87,7 @@ class DeltalakeSource(DatabaseServiceSource):
         config: WorkflowSource,
         metadata_config: OpenMetadataConnection,
     ):
-
+        super().__init__()
         self.config = config
         self.source_config: DatabaseServiceMetadataPipeline = (
             self.config.sourceConfig.config
@@ -100,8 +97,6 @@ class DeltalakeSource(DatabaseServiceSource):
         self.service_connection = self.config.serviceConnection.__root__.config
         self.spark = get_connection(self.service_connection)
         self.connection_obj = self.spark
-
-        self.status = SQLSourceStatus()
         logger.info("Establishing Sparks Session")
         self.table_type_map = {
             TableType.External.value.lower(): TableType.External.value,
@@ -112,7 +107,6 @@ class DeltalakeSource(DatabaseServiceSource):
         self.array_datatype_replace_map = {"(": "<", ")": ">", "=": ":", "<>": ""}
         self.table_constraints = None
         self.database_source_state = set()
-        super().__init__()
         self.test_connection()
 
     @classmethod
@@ -275,9 +269,6 @@ class DeltalakeSource(DatabaseServiceSource):
             logger.warning(f"Unexpected exception to yield table [{table_name}]: {exc}")
             self.status.failures.append(f"{self.config.serviceName}.{table_name}")
 
-    def get_status(self):
-        return self.status
-
     def prepare(self):
         pass
 
@@ -376,7 +367,7 @@ class DeltalakeSource(DatabaseServiceSource):
                 f"Unexpected exception getting columns for [{table_name}]: {exc}"
             )
             return []
-        parsed_columns: [Column] = []
+        parsed_columns: List[Column] = []
         partition_cols = False
         for row in raw_columns:
             col_name = row["col_name"]

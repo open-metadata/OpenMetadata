@@ -30,7 +30,7 @@ from metadata.generated.schema.metadataIngestion.pipelineServiceMetadataPipeline
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.ingestion.api.source import Source, SourceStatus
+from metadata.ingestion.api.source import Source
 from metadata.ingestion.api.topology_runner import TopologyRunnerMixin
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
@@ -105,26 +105,40 @@ class PipelineServiceTopology(ServiceTopology):
     )
 
 
-class PipelineSourceStatus(SourceStatus):
-    """
-    Reports the source status after ingestion
-    """
-
-    pipelines_scanned: List[str] = []
-    filtered: List[str] = []
-
-    def pipeline_scanned(self, topic: str) -> None:
-        self.pipelines_scanned.append(topic)
-
-    def dropped(self, topic: str) -> None:
-        self.filtered.append(topic)
-
-
 class PipelineServiceSource(TopologyRunnerMixin, Source, ABC):
     """
     Base class for Pipeline Services.
     It implements the topology and context.
     """
+
+    source_config: PipelineServiceMetadataPipeline
+    config: WorkflowSource
+    metadata: OpenMetadata
+    # Big union of types we want to fetch dynamically
+    service_connection: PipelineConnection.__fields__["config"].type_
+
+    topology = PipelineServiceTopology()
+    context = create_source_context(topology)
+
+    def __init__(
+        self,
+        config: WorkflowSource,
+        metadata_config: OpenMetadataConnection,
+    ):
+        super().__init__()
+        self.config = config
+        self.metadata_config = metadata_config
+        self.metadata = OpenMetadata(metadata_config)
+        self.service_connection = self.config.serviceConnection.__root__.config
+        self.source_config: PipelineServiceMetadataPipeline = (
+            self.config.sourceConfig.config
+        )
+
+        self.connection = get_connection(self.service_connection)
+        # Flag the connection for the test connection
+        self.connection_obj = self.connection
+        self.client = self.connection
+        self.test_connection()
 
     @abstractmethod
     def yield_pipeline(self, pipeline_details: Any) -> Iterable[CreatePipelineRequest]:
@@ -176,39 +190,6 @@ class PipelineServiceSource(TopologyRunnerMixin, Source, ABC):
         Method to fetch pipeline tags
         """
         return  # Pipeline does not support fetching tags except Dagster
-
-    status: PipelineSourceStatus
-    source_config: PipelineServiceMetadataPipeline
-    config: WorkflowSource
-    metadata: OpenMetadata
-    # Big union of types we want to fetch dynamically
-    service_connection: PipelineConnection.__fields__["config"].type_
-
-    topology = PipelineServiceTopology()
-    context = create_source_context(topology)
-
-    def __init__(
-        self,
-        config: WorkflowSource,
-        metadata_config: OpenMetadataConnection,
-    ):
-        super().__init__()
-        self.config = config
-        self.metadata_config = metadata_config
-        self.metadata = OpenMetadata(metadata_config)
-        self.service_connection = self.config.serviceConnection.__root__.config
-        self.source_config: PipelineServiceMetadataPipeline = (
-            self.config.sourceConfig.config
-        )
-        self.connection = get_connection(self.service_connection)
-
-        # Flag the connection for the test connection
-        self.connection_obj = self.connection
-        self.test_connection()
-        self.status = PipelineSourceStatus()
-
-    def get_status(self) -> SourceStatus:
-        return self.status
 
     def close(self):
         """

@@ -27,19 +27,19 @@ export const MAX_RESULT_HITS = 10000;
 // as it is used only in unit tests it's not needed for translation
 export const tableSortingFields: SortingField[] = [
   {
-    name: 'Last Updated',
+    name: t('label.last-updated'),
     value: 'updatedAt',
   },
-  { name: 'Weekly Usage', value: 'usageSummary.weeklyStats.count' },
-  { name: 'Relevance', value: '_score' },
+  { name: t('label.weekly-usage'), value: 'usageSummary.weeklyStats.count' },
+  { name: t('label.relevance'), value: '_score' },
 ];
 
 export const entitySortingFields = [
   {
-    name: 'Last Updated',
+    name: t('label.last-updated'),
     value: 'updatedAt',
   },
-  { name: 'Relevance', value: '_score' },
+  { name: t('label.relevance'), value: '_score' },
 ];
 
 export interface ExploreTabInfo {
@@ -89,5 +89,23 @@ export const tabsInfo: { [K in ExploreSearchIndex]: ExploreTabInfo } = {
     sortingFields: entitySortingFields,
     sortField: INITIAL_SORT_FIELD,
     path: 'mlmodels',
+  },
+  [SearchIndex.CONTAINER]: {
+    label: t('label.container-plural'),
+    sortingFields: entitySortingFields,
+    sortField: INITIAL_SORT_FIELD,
+    path: 'containers',
+  },
+  [SearchIndex.GLOSSARY]: {
+    label: t('label.glossary-term-plural'),
+    sortingFields: entitySortingFields,
+    sortField: INITIAL_SORT_FIELD,
+    path: 'glossary',
+  },
+  [SearchIndex.TAG]: {
+    label: t('label.tag-plural'),
+    sortingFields: entitySortingFields,
+    sortField: INITIAL_SORT_FIELD,
+    path: 'tag',
   },
 };

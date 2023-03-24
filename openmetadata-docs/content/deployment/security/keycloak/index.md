@@ -55,6 +55,12 @@ Security requirements for your **production** environment:
 
 - Click on `Save` button.
 
+<Note>
+
+Note: Scopes `openid`, `email` & `profile` are required to fetch the user details so you will have to add these scopes in your client.
+
+</Note>
+
 
 <Note>
 

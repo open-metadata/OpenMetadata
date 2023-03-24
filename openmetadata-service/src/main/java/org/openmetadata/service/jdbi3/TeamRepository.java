@@ -13,7 +13,6 @@
 
 package org.openmetadata.service.jdbi3;
 
-import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.csv.CsvUtil.addEntityReferences;
@@ -123,7 +122,6 @@ public class TeamRepository extends EntityRepository<Team> {
   @Override
   public void storeEntity(Team team, boolean update) throws IOException {
     // Relationships and fields such as href are derived and not stored as part of json
-    EntityReference owner = team.getOwner();
     List<EntityReference> users = team.getUsers();
     List<EntityReference> defaultRoles = team.getDefaultRoles();
     List<EntityReference> parents = team.getParents();
@@ -131,14 +129,13 @@ public class TeamRepository extends EntityRepository<Team> {
     List<EntityReference> policies = team.getPolicies();
 
     // Don't store users, defaultRoles, href as JSON. Build it on the fly based on relationships
-    team.withUsers(null).withDefaultRoles(null).withHref(null).withOwner(null).withInheritedRoles(null);
+    team.withUsers(null).withDefaultRoles(null).withInheritedRoles(null);
 
     store(team, update);
 
     // Restore the relationships
     team.withUsers(users)
         .withDefaultRoles(defaultRoles)
-        .withOwner(owner)
         .withParents(parents)
         .withChildren(children)
         .withPolicies(policies);
@@ -603,7 +600,7 @@ public class TeamRepository extends EntityRepository<Team> {
           continue; // Parent is being created by CSV import
         }
         // Else the parent should already exist
-        if (!SubjectCache.getInstance().isInTeam(team.getName(), listOf(parentRef))) {
+        if (!SubjectCache.getInstance().isInTeam(team.getName(), parentRef)) {
           importFailure(printer, invalidTeam(4, team.getName(), importedTeam.getName(), parentRef.getName()), record);
           processRecord = false;
         }

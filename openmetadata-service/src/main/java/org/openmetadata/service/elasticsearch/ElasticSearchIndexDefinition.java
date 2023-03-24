@@ -82,6 +82,7 @@ public class ElasticSearchIndexDefinition {
     MLMODEL_SEARCH_INDEX(Entity.MLMODEL, "mlmodel_search_index", "/elasticsearch/%s/mlmodel_index_mapping.json"),
     CONTAINER_SEARCH_INDEX(
         Entity.CONTAINER, "container_search_index", "/elasticsearch/%s/container_index_mapping.json"),
+    QUERY_SEARCH_INDEX(Entity.QUERY, "query_search_index", "/elasticsearch/%s/query_index_mapping.json"),
     TAG_SEARCH_INDEX(Entity.TAG, "tag_search_index", "/elasticsearch/%s/tag_index_mapping.json"),
     ENTITY_REPORT_DATA_INDEX(
         ENTITY_REPORT_DATA, "entity_report_data_index", "/elasticsearch/entity_report_data_index.json"),
@@ -237,6 +238,8 @@ public class ElasticSearchIndexDefinition {
       return ElasticSearchIndexType.WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA_INDEX;
     } else if (type.equalsIgnoreCase(Entity.CONTAINER)) {
       return ElasticSearchIndexType.CONTAINER_SEARCH_INDEX;
+    } else if (type.equalsIgnoreCase(Entity.QUERY)) {
+      return ElasticSearchIndexType.QUERY_SEARCH_INDEX;
     }
     throw new RuntimeException("Failed to find index doc for type " + type);
   }

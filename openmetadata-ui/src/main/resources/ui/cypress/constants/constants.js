@@ -24,10 +24,13 @@ export const MYDATA_SUMMARY_OPTIONS = {
   topics: 'topics',
   dashboards: 'dashboards',
   pipelines: 'pipelines',
+  mlmodels: 'mlmodels',
   service: 'service',
   user: 'user',
-  terms: 'terms',
-  mlmodels: 'mlmodels',
+  teams: 'teams',
+  testSuite: 'test-suite',
+  containers: 'containers',
+  glossaryTerms: 'glossary-terms',
 };
 
 export const SEARCH_INDEX = {
@@ -67,6 +70,7 @@ export const SEARCH_ENTITY_TABLE = {
     displayName: 'raw_product_catalog',
     entity: MYDATA_SUMMARY_OPTIONS.tables,
     serviceName: 'sample_data',
+    schemaName: 'shopify',
   },
   table_4: {
     term: 'dim_address',

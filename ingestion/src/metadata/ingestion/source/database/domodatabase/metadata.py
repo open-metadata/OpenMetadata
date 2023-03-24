@@ -40,10 +40,7 @@ from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.connections import get_connection, get_test_connection_fn
-from metadata.ingestion.source.database.database_service import (
-    DatabaseServiceSource,
-    SQLSourceStatus,
-)
+from metadata.ingestion.source.database.database_service import DatabaseServiceSource
 from metadata.utils import fqn
 from metadata.utils.constants import DEFAULT_DATABASE
 from metadata.utils.filters import filter_by_table
@@ -59,17 +56,16 @@ class DomodatabaseSource(DatabaseServiceSource):
     """
 
     def __init__(self, config: WorkflowSource, metadata_config: OpenMetadataConnection):
+        super().__init__()
         self.config = config
         self.source_config: DatabaseServiceMetadataPipeline = (
             self.config.sourceConfig.config
         )
         self.metadata = OpenMetadata(metadata_config)
         self.service_connection = self.config.serviceConnection.__root__.config
-        self.status = SQLSourceStatus()
         self.domo_client = get_connection(self.service_connection)
         self.connection_obj = self.domo_client
         self.client = DomoClient(self.service_connection)
-        super().__init__()
         self.test_connection()
 
     @classmethod

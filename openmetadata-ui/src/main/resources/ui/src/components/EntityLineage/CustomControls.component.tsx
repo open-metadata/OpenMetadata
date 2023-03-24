@@ -14,6 +14,7 @@
 import { SettingOutlined } from '@ant-design/icons';
 import { Button, Col, Row, Select, Space } from 'antd';
 import classNames from 'classnames';
+import { PRIMERY_COLOR } from 'constants/constants';
 import React, {
   ButtonHTMLAttributes,
   FC,
@@ -38,6 +39,8 @@ import { getLoadingStatusValue } from '../../utils/EntityLineageUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { ControlProps, LineageConfig } from './EntityLineage.interface';
 import LineageConfigModal from './LineageConfigModal';
+import { ReactComponent as ExitFullScreen } from '/assets/svg/exit-full-screen.svg';
+import { ReactComponent as FullScreen } from '/assets/svg/full-screen.svg';
 
 export const ControlButton: FC<ButtonHTMLAttributes<HTMLButtonElement>> = ({
   children,
@@ -239,11 +242,7 @@ const CustomControls: FC<ControlProps> = ({
                 className="custom-control-basic-button custom-control-fit-screen-button"
                 title={t('label.full-screen')}
                 onClick={handleFullScreenViewClick}>
-                <SVGIcons
-                  alt="fullScreenViewicon"
-                  icon={Icons.FULL_SCREEN}
-                  width="16"
-                />
+                <FullScreen color={PRIMERY_COLOR} height={16} width={16} />
               </ControlButton>
             )}
             {onExitFullScreenViewClick && (
@@ -251,11 +250,7 @@ const CustomControls: FC<ControlProps> = ({
                 className="custom-control-basic-button custom-control-fit-screen-button"
                 title={t('label.exit-fit-to-screen')}
                 onClick={onExitFullScreenViewClick}>
-                <SVGIcons
-                  alt="exitFullScreenViewIcon"
-                  icon={Icons.EXIT_FULL_SCREEN}
-                  width="16"
-                />
+                <ExitFullScreen color={PRIMERY_COLOR} height={16} width={16} />
               </ControlButton>
             )}
 

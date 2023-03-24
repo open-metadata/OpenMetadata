@@ -116,6 +116,9 @@ export const getSuggestions = <T extends SearchIndex>(
       SearchIndex.TOPIC,
       SearchIndex.PIPELINE,
       SearchIndex.MLMODEL,
+      SearchIndex.CONTAINER,
+      SearchIndex.GLOSSARY,
+      SearchIndex.TAG,
     ],
   };
 
@@ -299,6 +302,27 @@ export const getEntityCount = async (
 
 export const getAllEntityCount = async () => {
   const response = await APIClient.get<EntitiesCount>('/system/entities/count');
+
+  return response.data;
+};
+
+export const fetchMarkdownFile = async (filePath: string) => {
+  let baseURL = '/';
+
+  try {
+    const url = new URL(filePath);
+    baseURL = `${url.origin}/`;
+  } catch (error) {
+    baseURL = '/';
+  }
+
+  const response = await APIClient.get<string>(filePath, {
+    baseURL,
+    headers: {
+      'Content-Type': 'text/markdown',
+      Accept: 'text/markdown',
+    },
+  });
 
   return response.data;
 };

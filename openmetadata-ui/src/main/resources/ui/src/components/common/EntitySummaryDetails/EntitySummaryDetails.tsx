@@ -369,6 +369,7 @@ const EntitySummaryDetails = ({
       )}
       <OwnerWidgetWrapper
         allowTeamOwner={allowTeamOwner}
+        className="edit-owner-dropdown"
         currentUser={currentOwner}
         hideWidget={() => setShow(false)}
         removeOwner={removeOwner}
