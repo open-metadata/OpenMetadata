@@ -30,9 +30,12 @@ interface OwnerWidgetWrapperProps {
   allowTeamOwner?: boolean;
   hideWidget: () => void;
   removeOwner?: () => void;
+  horzPosRight?: boolean;
+  className?: string;
 }
 
 const OwnerWidgetWrapper = ({
+  className,
   visible = false,
   currentOwner,
   updateUser,
@@ -40,6 +43,7 @@ const OwnerWidgetWrapper = ({
   currentUser,
   hideWidget,
   removeOwner,
+  horzPosRight = false,
 }: OwnerWidgetWrapperProps) => {
   const [statusOwner, setStatusOwner] = useState<LoadingState>('initial');
 
@@ -169,11 +173,12 @@ const OwnerWidgetWrapper = ({
     <DropDownList
       showEmptyList
       showSearchBar
-      className="edit-owner-dropdown"
+      className={className}
       controlledSearchStr={searchText}
       dropDownList={ownersList}
       getTotalCountForGroup={handleTotalCountForGroup}
       groupType={ownerGroupList.length > 1 ? 'tab' : 'label'}
+      horzPosRight={horzPosRight}
       isLoading={isUserLoading}
       listGroups={ownerGroupList}
       removeOwner={handleRemoveOwner}
