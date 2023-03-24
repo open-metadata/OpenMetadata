@@ -44,7 +44,7 @@ public class DashboardDataModelResourceTest extends EntityResourceTest<Dashboard
 
   public DashboardDataModelResourceTest() {
     super(
-        Entity.DATA_MODEL,
+        Entity.DASHBOARD_DATA_MODEL,
         DashboardDataModel.class,
         DashboardDataModelResource.DashboardDataModelList.class,
         "datamodels",

@@ -1,7 +1,7 @@
 {
   "$id": "https://open-metadata.org/schema/entity/data/dashboardDataModel.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "DataModel",
+  "title": "DashboardDataModel",
   "$comment": "@om-entity-type",
   "description": "Dashboard Data Model entity definition. Data models are the schemas used to build dashboards, charts, or other data models.",
   "type": "object",

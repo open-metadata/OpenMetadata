@@ -48,7 +48,7 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
   public DashboardDataModelRepository(CollectionDAO dao) {
     super(
         DashboardDataModelResource.COLLECTION_PATH,
-        Entity.DATA_MODEL,
+        Entity.DASHBOARD_DATA_MODEL,
         DashboardDataModel.class,
         dao.dataModelDAO(),
         dao,
@@ -92,7 +92,11 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
   public void storeRelationships(DashboardDataModel dashboardDataModel) {
     EntityReference service = dashboardDataModel.getService();
     addRelationship(
-        service.getId(), dashboardDataModel.getId(), service.getType(), Entity.DATA_MODEL, Relationship.CONTAINS);
+        service.getId(),
+        dashboardDataModel.getId(),
+        service.getType(),
+        Entity.DASHBOARD_DATA_MODEL,
+        Relationship.CONTAINS);
     storeOwner(dashboardDataModel, dashboardDataModel.getOwner());
     applyTags(dashboardDataModel);
   }
@@ -122,7 +126,7 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
       return Collections.emptyList();
     }
     List<CollectionDAO.EntityRelationshipRecord> tableIds =
-        findTo(dashboardDataModel.getId(), entityType, Relationship.USES, Entity.DATA_MODEL);
+        findTo(dashboardDataModel.getId(), entityType, Relationship.USES, Entity.DASHBOARD_DATA_MODEL);
     return EntityUtil.populateEntityReferences(tableIds, Entity.TABLE);
   }
 

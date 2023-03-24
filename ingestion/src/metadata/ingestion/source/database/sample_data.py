@@ -49,9 +49,9 @@ from metadata.generated.schema.api.tests.createTestCase import CreateTestCaseReq
 from metadata.generated.schema.api.tests.createTestSuite import CreateTestSuiteRequest
 from metadata.generated.schema.entity.data.container import Container
 from metadata.generated.schema.entity.data.dashboard import Dashboard
+from metadata.generated.schema.entity.data.dashboardDataModel import DashboardDataModel
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
-from metadata.generated.schema.entity.data.dataModel import DataModel
 from metadata.generated.schema.entity.data.location import Location
 from metadata.generated.schema.entity.data.mlmodel import (
     FeatureSource,
@@ -163,9 +163,9 @@ def get_lineage_entity_ref(edge, metadata_config) -> EntityReference:
         if dashboard:
             return EntityReference(id=dashboard.id, type="dashboard")
     if edge["type"] == "dataModel":
-        data_model = metadata.get_by_name(entity=DataModel, fqn=edge_fqn)
+        data_model = metadata.get_by_name(entity=DashboardDataModel, fqn=edge_fqn)
         if data_model:
-            return EntityReference(id=data_model.id, type="dataModel")
+            return EntityReference(id=data_model.id, type="dashboardDataModel")
     return None
 
 

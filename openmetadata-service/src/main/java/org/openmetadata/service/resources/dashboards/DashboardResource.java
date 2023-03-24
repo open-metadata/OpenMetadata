@@ -434,7 +434,7 @@ public class DashboardResource extends EntityResource<Dashboard, DashboardReposi
     return copy(new Dashboard(), create, user)
         .withService(getEntityReference(Entity.DASHBOARD_SERVICE, create.getService()))
         .withCharts(getEntityReferences(Entity.CHART, create.getCharts()))
-        .withDataModels(getEntityReferences(Entity.DATA_MODEL, create.getDataModels()))
+        .withDataModels(getEntityReferences(Entity.DASHBOARD_DATA_MODEL, create.getDataModels()))
         .withDashboardUrl(create.getDashboardUrl())
         .withTags(create.getTags());
   }

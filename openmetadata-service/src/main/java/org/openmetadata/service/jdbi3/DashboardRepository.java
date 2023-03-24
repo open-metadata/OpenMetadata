@@ -58,7 +58,8 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
     dashboard.setService(getContainer(dashboard.getId()));
     dashboard.setFollowers(fields.contains(FIELD_FOLLOWERS) ? getFollowers(dashboard) : null);
     dashboard.setCharts(fields.contains("charts") ? getRelatedEntities(dashboard, Entity.CHART) : null);
-    dashboard.setDataModels(fields.contains("dataModels") ? getRelatedEntities(dashboard, Entity.DATA_MODEL) : null);
+    dashboard.setDataModels(
+        fields.contains("dataModels") ? getRelatedEntities(dashboard, Entity.DASHBOARD_DATA_MODEL) : null);
     return dashboard.withUsageSummary(
         fields.contains("usageSummary")
             ? EntityUtil.getLatestUsage(daoCollection.usageDAO(), dashboard.getId())
@@ -122,7 +123,8 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
     // Add relationship from dashboard to data models
     if (dashboard.getDataModels() != null) {
       for (EntityReference dataModel : dashboard.getDataModels()) {
-        addRelationship(dashboard.getId(), dataModel.getId(), Entity.DASHBOARD, Entity.DATA_MODEL, Relationship.HAS);
+        addRelationship(
+            dashboard.getId(), dataModel.getId(), Entity.DASHBOARD, Entity.DASHBOARD_DATA_MODEL, Relationship.HAS);
       }
     }
 
@@ -156,7 +158,10 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
     public void entitySpecificUpdate() throws IOException {
       update(Entity.CHART, "charts", listOrEmpty(updated.getCharts()), listOrEmpty(original.getCharts()));
       update(
-          Entity.DATA_MODEL, "dataModels", listOrEmpty(updated.getDataModels()), listOrEmpty(original.getDataModels()));
+          Entity.DASHBOARD_DATA_MODEL,
+          "dataModels",
+          listOrEmpty(updated.getDataModels()),
+          listOrEmpty(original.getDataModels()));
     }
 
     private void update(

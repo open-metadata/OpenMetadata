@@ -3674,7 +3674,7 @@ public interface CollectionDAO {
   interface DataModelDAO extends EntityDAO<DashboardDataModel> {
     @Override
     default String getTableName() {
-      return "data_model_entity";
+      return "dashboard_data_model_entity";
     }
 
     @Override
