@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate.
+ *  Copyright 2023 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,14 +10,20 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-.cm-string {
-  color: #a55100 !important;
-}
-.cm-string.cm-property {
-  color: #450de2 !important;
+
+import { OperationPermission } from 'components/PermissionProvider/PermissionProvider.interface';
+import { Query } from 'generated/entity/data/query';
+import { TagOption } from 'Models';
+
+export interface TableQueryRightPanelProps {
+  query: Query;
+  isLoading: boolean;
+  permission: OperationPermission;
+  onQueryUpdate: (updatedQuery: Query, key: keyof Query) => Promise<void>;
 }
 
-.cm-h-full .react-codemirror2,
-.cm-h-full .react-codemirror2 > .CodeMirror {
-  height: 100%;
-}
+export type TagDetails = {
+  isLoading: boolean;
+  options: TagOption[];
+  isError: boolean;
+};
