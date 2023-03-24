@@ -158,19 +158,31 @@ authenticationConfiguration:
     - "sub"
   enableSelfSignup : true
   samlConfiguration:
+    debugMode: false
     idp:
       entityId: ""
       ssoLoginUrl: ""
-      ssoLogoutUrl: ""
       idpX509Certificate: ""
+      authorityUrl: ""
+      nameId: ""
     sp:
       entityId: ""
       acs: ""
-      logoutUrl: ""
       spX509Certificate: ""
       callback: ""
-      tokenValidity: "7"
-
+    security:
+      strictMode: false
+      tokenValidity: 3600
+      sendEncryptedNameId: false
+      sendSignedAuthRequest: false
+      signSpMetadata: false
+      wantMessagesSigned: false
+      wantAssertionsSigned: false
+      wantAssertionEncrypted: false
+      wantNameIdEncrypted: false
+      keyStoreFilePath: ""
+      keyStoreAlias: ""
+      keyStorePassword: ""
 
 jwtTokenConfiguration:
   rsapublicKeyFilePath: "src/test/resources/public_key.der"
