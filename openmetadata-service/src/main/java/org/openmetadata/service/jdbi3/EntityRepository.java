@@ -511,7 +511,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
     setFieldsInternal(original, putFields);
 
     EntityReference updatedOwner = updated.getOwner();
-    if (updatedOwner != null && updatedOwner.getDescription().equals("inherited")) {
+    if (updatedOwner != null
+        && updatedOwner.getDescription() != null
+        && updatedOwner.getDescription().equals("inherited")) {
       // Don't let inherited ownership overwrite existing ownership
       updated.setOwner(original.getOwner() != null ? original.getOwner() : updatedOwner);
     }
