@@ -13,19 +13,20 @@
 
 import { Select, Typography } from 'antd';
 import { AxiosError } from 'axios';
+import { ContainerSearchSource } from 'interface/search.interface';
 import { isEmpty } from 'lodash';
 import React, { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useHistory } from 'react-router-dom';
+import { useHistory } from 'react-router-dom';
 import { getSuggestions } from 'rest/miscAPI';
-import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
-import { FqnPart } from '../../../enums/entity.enum';
+import {
+  filterOptionsByIndex,
+  getGroupLabel,
+  getSuggestionElement,
+} from 'utils/SearchUtils';
 import { SearchIndex } from '../../../enums/search.enum';
 import jsonData from '../../../jsons/en';
-import { getPartialNameFromTableFQN } from '../../../utils/CommonUtils';
-import { serviceTypeLogo } from '../../../utils/ServiceUtils';
 import SVGIcons, { Icons } from '../../../utils/SvgUtils';
-import { getEntityLink } from '../../../utils/TableUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import CmdKIcon from '../../common/CmdKIcon/CmdKIcon.component';
 import ErrorPlaceHolder from '../../common/error-with-placeholder/ErrorPlaceHolder';
@@ -33,10 +34,13 @@ import Loader from '../../Loader/Loader';
 import {
   DashboardSource,
   GlobalSearchSuggestionsProp,
+  GlossarySource,
   MlModelSource,
   Option,
   PipelineSource,
+  SearchSuggestions,
   TableSource,
+  TagSource,
   TopicSource,
 } from './GlobalSearchSuggestions.interface';
 import './GlobalSearchSuggestions.less';
@@ -63,202 +67,79 @@ const GlobalSearchSuggestions = ({
   const [pipelineSuggestions, setPipelineSuggestions] = useState<
     PipelineSource[]
   >([]);
+  const [containerSuggestions, setContainerSuggestions] = useState<
+    ContainerSearchSource[]
+  >([]);
   const [mlModelSuggestions, setMlModelSuggestions] = useState<MlModelSource[]>(
     []
   );
+  const [glossarySuggestions, setGlossarySuggestions] = useState<
+    GlossarySource[]
+  >([]);
+  const [tagSuggestions, setTagSuggestions] = useState<TagSource[]>([]);
   const isMounting = useRef(true);
 
   const setSuggestions = (options: Array<Option>) => {
-    setTableSuggestions(
-      options
-        .filter((option) => option._index === SearchIndex.TABLE)
-        .map((option) => option._source)
-    );
-    setTopicSuggestions(
-      options
-        .filter((option) => option._index === SearchIndex.TOPIC)
-        .map((option) => option._source)
-    );
+    setTableSuggestions(filterOptionsByIndex(options, SearchIndex.TABLE));
+    setTopicSuggestions(filterOptionsByIndex(options, SearchIndex.TOPIC));
     setDashboardSuggestions(
-      options
-        .filter((option) => option._index === SearchIndex.DASHBOARD)
-        .map((option) => option._source)
+      filterOptionsByIndex(options, SearchIndex.DASHBOARD)
     );
-    setPipelineSuggestions(
-      options
-        .filter((option) => option._index === SearchIndex.PIPELINE)
-        .map((option) => option._source)
+    setPipelineSuggestions(filterOptionsByIndex(options, SearchIndex.PIPELINE));
+    setMlModelSuggestions(filterOptionsByIndex(options, SearchIndex.MLMODEL));
+    setContainerSuggestions(
+      filterOptionsByIndex(options, SearchIndex.CONTAINER)
     );
-    setMlModelSuggestions(
-      options
-        .filter((option) => option._index === SearchIndex.MLMODEL)
-        .map((option) => option._source)
-    );
+    setGlossarySuggestions(filterOptionsByIndex(options, SearchIndex.GLOSSARY));
+    setTagSuggestions(filterOptionsByIndex(options, SearchIndex.TAG));
   };
 
-  const getGroupLabel = (index: string) => {
-    let label = '';
-    let icon = '';
-    switch (index) {
-      case SearchIndex.TOPIC:
-        label = t('label.topic-plural');
-        icon = Icons.TOPIC_GREY;
-
-        break;
-      case SearchIndex.DASHBOARD:
-        label = t('label.dashboard-plural');
-        icon = Icons.DASHBOARD_GREY;
-
-        break;
-      case SearchIndex.PIPELINE:
-        label = t('label.pipeline-plural');
-        icon = Icons.PIPELINE_GREY;
-
-        break;
-      case SearchIndex.MLMODEL:
-        label = t('label.ml-model-plural');
-        icon = Icons.MLMODAL;
-
-        break;
-      case SearchIndex.TABLE:
-      default:
-        label = t('label.table-plural');
-        icon = Icons.TABLE_GREY;
-
-        break;
-    }
-
-    return (
-      <Select.Option disabled>
-        <div className="tw-flex tw-items-center">
-          <SVGIcons alt="icon" className="tw-h-3 tw-w-4" icon={icon} />
-          <p className="tw-px-2 tw-text-grey-muted tw-text-xs tw-h-4 tw-mb-0">
-            {label}
-          </p>
-        </div>
-      </Select.Option>
-    );
-  };
-
-  const getSuggestionElement = (
-    fqdn: string,
-    serviceType: string,
-    name: string,
-    index: string
+  const getSuggestionsForIndex = (
+    suggestions: SearchSuggestions,
+    searchIndex: SearchIndex
   ) => {
-    let database;
-    let schema;
-    if (index === SearchIndex.TABLE) {
-      database = getPartialNameFromTableFQN(fqdn, [FqnPart.Database]);
-      schema = getPartialNameFromTableFQN(fqdn, [FqnPart.Schema]);
+    if (suggestions.length === 0) {
+      return null;
     }
-    const entitiyLink = getEntityLink(index, fqdn);
 
     return (
-      <Select.Option key={entitiyLink} value={entitiyLink}>
-        <div className="tw-flex tw-items-center" key={fqdn}>
-          <img
-            alt={serviceType}
-            className="tw-inline tw-h-4"
-            src={serviceTypeLogo(serviceType)}
-          />
-          <Link
-            className="tw-px-2 tw-text-sm"
-            data-testid="data-name"
-            id={fqdn.replace(/\./g, '')}
-            to={entitiyLink}
-            onClick={() => onOptionSelection()}>
-            {database && schema
-              ? `${database}${FQN_SEPARATOR_CHAR}${schema}${FQN_SEPARATOR_CHAR}${name}`
-              : name}
-          </Link>
-        </div>
-      </Select.Option>
+      <>
+        {getGroupLabel(searchIndex, true)}
+        {suggestions.map((suggestion: SearchSuggestions[number]) => {
+          return getSuggestionElement(suggestion, searchIndex, true, () =>
+            onOptionSelection()
+          );
+        })}
+      </>
     );
   };
 
   const getEntitiesSuggestions = () => {
     return (
       <>
-        {tableSuggestions.length > 0 && (
-          <>
-            {getGroupLabel(SearchIndex.TABLE)}
-
-            {tableSuggestions.map((suggestion: TableSource) => {
-              const { fullyQualifiedName, name, serviceType } = suggestion;
-
-              return getSuggestionElement(
-                fullyQualifiedName,
-                serviceType,
-                name,
-                SearchIndex.TABLE
-              );
-            })}
-          </>
-        )}
-        {topicSuggestions.length > 0 && (
-          <>
-            {getGroupLabel(SearchIndex.TOPIC)}
-
-            {topicSuggestions.map((suggestion: TopicSource) => {
-              const { fullyQualifiedName, name, serviceType } = suggestion;
-
-              return getSuggestionElement(
-                fullyQualifiedName,
-                serviceType,
-                name,
-                SearchIndex.TOPIC
-              );
-            })}
-          </>
-        )}
-        {dashboardSuggestions.length > 0 && (
-          <>
-            {getGroupLabel(SearchIndex.DASHBOARD)}
-
-            {dashboardSuggestions.map((suggestion: DashboardSource) => {
-              const { fullyQualifiedName, name, serviceType } = suggestion;
-
-              return getSuggestionElement(
-                fullyQualifiedName,
-                serviceType,
-                name,
-                SearchIndex.DASHBOARD
-              );
-            })}
-          </>
-        )}
-        {pipelineSuggestions.length > 0 && (
-          <>
-            {getGroupLabel(SearchIndex.PIPELINE)}
-
-            {pipelineSuggestions.map((suggestion: PipelineSource) => {
-              const { fullyQualifiedName, name, serviceType } = suggestion;
-
-              return getSuggestionElement(
-                fullyQualifiedName,
-                serviceType,
-                name,
-                SearchIndex.PIPELINE
-              );
-            })}
-          </>
-        )}
-        {mlModelSuggestions.length > 0 && (
-          <>
-            {getGroupLabel(SearchIndex.MLMODEL)}
-
-            {mlModelSuggestions.map((suggestion: MlModelSource) => {
-              const { fullyQualifiedName, name, serviceType } = suggestion;
-
-              return getSuggestionElement(
-                fullyQualifiedName,
-                serviceType,
-                name,
-                SearchIndex.MLMODEL
-              );
-            })}
-          </>
+        {[
+          { suggestions: tableSuggestions, searchIndex: SearchIndex.TABLE },
+          { suggestions: topicSuggestions, searchIndex: SearchIndex.TOPIC },
+          {
+            suggestions: dashboardSuggestions,
+            searchIndex: SearchIndex.DASHBOARD,
+          },
+          {
+            suggestions: pipelineSuggestions,
+            searchIndex: SearchIndex.PIPELINE,
+          },
+          { suggestions: mlModelSuggestions, searchIndex: SearchIndex.MLMODEL },
+          {
+            suggestions: containerSuggestions,
+            searchIndex: SearchIndex.CONTAINER,
+          },
+          {
+            suggestions: glossarySuggestions,
+            searchIndex: SearchIndex.GLOSSARY,
+          },
+          { suggestions: tagSuggestions, searchIndex: SearchIndex.TAG },
+        ].map(({ suggestions, searchIndex }) =>
+          getSuggestionsForIndex(suggestions, searchIndex)
         )}
       </>
     );
