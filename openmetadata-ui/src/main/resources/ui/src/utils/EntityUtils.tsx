@@ -23,7 +23,7 @@ import { ExplorePageTabs } from 'enums/Explore.enum';
 import { Container } from 'generated/entity/data/container';
 import { Mlmodel } from 'generated/entity/data/mlmodel';
 import i18next from 'i18next';
-import { isEmpty, isNil, isUndefined, lowerCase, startCase } from 'lodash';
+import { get, isEmpty, isNil, isUndefined, lowerCase, startCase } from 'lodash';
 import { Bucket } from 'Models';
 import React, { Fragment } from 'react';
 import { Link } from 'react-router-dom';
@@ -774,3 +774,46 @@ export const getFrequentlyJoinedColumns = (
 
 export const getSortedTierBucketList = (buckets: Bucket[]): Bucket[] =>
   buckets.sort((a, b) => Number(a.key.slice(-1)) - Number(b.key.slice(-1)));
+
+/**
+ * Convert entity to EntityReference
+ * @param entities -- T extends EntityReference
+ * @param type -- EntityType
+ * @returns EntityReference
+ */
+export const getEntityReferenceFromEntity = <
+  T extends Omit<EntityReference, 'type'>
+>(
+  entity: T,
+  type: EntityType
+): EntityReference => {
+  return {
+    id: get(entity, 'id', ''),
+    type,
+    deleted: get(entity, 'deleted', false),
+    description: get(entity, 'description', ''),
+    displayName: get(entity, 'displayName', ''),
+    fullyQualifiedName: get(entity, 'fullyQualifiedName', ''),
+    href: get(entity, 'href', ''),
+    name: get(entity, 'name', ''),
+  };
+};
+
+/**
+ * Convert all the entity list to EntityReferenceList
+ * @param entities -- T extends EntityReference
+ * @param type -- EntityType
+ * @returns EntityReference[]
+ */
+export const getEntityReferenceListFromEntities = <
+  T extends Omit<EntityReference, 'type'>
+>(
+  entities: T[],
+  type: EntityType
+) => {
+  if (isEmpty(entities)) {
+    return [] as EntityReference[];
+  }
+
+  return entities.map((entity) => getEntityReferenceFromEntity(entity, type));
+};

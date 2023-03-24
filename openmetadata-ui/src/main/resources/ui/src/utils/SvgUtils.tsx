@@ -114,6 +114,8 @@ import IconMenu from '../assets/svg/ic-menu.svg';
 import IconMyData from '../assets/svg/ic-mydata.svg';
 import IconContainer from '../assets/svg/ic-object-store.svg';
 import IconQuality from '../assets/svg/ic-quality.svg';
+import IconRemoveColored from '../assets/svg/ic-remove-colored.svg';
+import IconRemove from '../assets/svg/ic-remove.svg';
 import IconReply from '../assets/svg/ic-reply.svg';
 import IconReports from '../assets/svg/ic-reports.svg';
 import IconRestore from '../assets/svg/ic-restore.svg';
@@ -174,7 +176,6 @@ import IconProfilerColor from '../assets/svg/profiler-color.svg';
 import IconProfiler from '../assets/svg/profiler.svg';
 import IconHelpCircle from '../assets/svg/question-circle.svg';
 import IconReaction from '../assets/svg/Reaction.svg';
-import IconRemove from '../assets/svg/Remove.svg';
 import IconReplyFeed from '../assets/svg/Reply.svg';
 import IconRequest from '../assets/svg/request-icon.svg';
 import IconSampleDataColor from '../assets/svg/sample-data-colored.svg';
@@ -389,6 +390,7 @@ export const Icons = {
   POLICIES: 'policies',
   INFO_SECONDARY: 'info-secondary',
   ICON_REMOVE: 'icon-remove',
+  ICON_REMOVE_COLORED: 'icon-remove-colored',
   DELETE_COLORED: 'icon-delete-colored',
   IC_EDIT_PRIMARY: 'ic-edit-primary',
   MSTEAMS: 'msteams',
@@ -1109,6 +1111,10 @@ const SVGIcons: FunctionComponent<Props> = ({ icon, ...props }: Props) => {
       break;
     case Icons.ICON_REMOVE:
       IconComponent = IconRemove;
+
+      break;
+    case Icons.ICON_REMOVE_COLORED:
+      IconComponent = IconRemoveColored;
 
       break;
     case Icons.IC_EDIT_PRIMARY:

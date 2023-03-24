@@ -510,11 +510,19 @@ const AddGlossaryTerm = ({
                 {t('label.reviewer-plural')}
               </p>
               <UserSelectableList
-                // TODO: Update below with actual permission
                 hasPermission
+                popoverProps={{ placement: 'topLeft' }}
                 selectedUsers={reviewer ?? []}
-                onUpdate={handleReviewerSave}
-              />
+                onUpdate={handleReviewerSave}>
+                <Button
+                  className="tw-h-5 tw-px-2"
+                  data-testid="add-reviewers"
+                  size="x-small"
+                  theme="primary"
+                  variant="contained">
+                  <PlusOutlined />
+                </Button>
+              </UserSelectableList>
             </div>
             <div className="tw-my-4">
               {Boolean(reviewer.length) &&

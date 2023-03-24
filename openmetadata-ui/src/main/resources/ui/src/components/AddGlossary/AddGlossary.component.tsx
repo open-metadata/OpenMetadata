@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { PlusOutlined } from '@ant-design/icons';
 import { Button, Space, Switch, Typography } from 'antd';
 import { UserSelectableList } from 'components/common/UserSelectableList/UserSelectableList.component';
 import Tags from 'components/Tag/Tags/tags';
@@ -230,11 +231,13 @@ const AddGlossary = ({
                 {`${t('label.reviewer-plural')}:`}
               </span>
               <UserSelectableList
-                // TODO: Update below with actual permission
                 hasPermission
                 selectedUsers={reviewer ?? []}
-                onUpdate={handleReviewerSave}
-              />
+                onUpdate={handleReviewerSave}>
+                <Button data-testid="add-reviewers" size="small" type="primary">
+                  <PlusOutlined style={{ color: 'white' }} />
+                </Button>
+              </UserSelectableList>
             </div>
             <div className="tw-my-4" data-testid="reviewers-container">
               {Boolean(reviewer.length) &&

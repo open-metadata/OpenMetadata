@@ -10,12 +10,22 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { EntityReference } from 'generated/entity/teams/user';
-import { ReactNode } from 'react';
+import { render, screen } from '@testing-library/react';
+import React from 'react';
+import { UserTeamSelectableList } from './UserTeamSelectableList.component';
 
-export interface UserSelectDropdownProps {
-  hasPermission: boolean;
-  owner?: EntityReference;
-  onUpdate: (updatedUser?: EntityReference) => void;
-  children?: ReactNode;
-}
+const mockOnUpdate = jest.fn();
+
+describe('SelectableList Component Test', () => {
+  it('should render children if provided', () => {
+    render(
+      <UserTeamSelectableList hasPermission onUpdate={mockOnUpdate}>
+        <p>CustomRenderer</p>
+      </UserTeamSelectableList>
+    );
+
+    const children = screen.getByText('Children');
+
+    expect(children).toBeInTheDocument();
+  });
+});

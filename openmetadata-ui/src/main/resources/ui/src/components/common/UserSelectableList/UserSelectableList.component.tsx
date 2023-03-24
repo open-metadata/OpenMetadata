@@ -13,41 +13,30 @@
 import { Button, Popover, Tooltip } from 'antd';
 import { PAGE_SIZE_MEDIUM } from 'constants/constants';
 import { NO_PERMISSION_FOR_ACTION } from 'constants/HelperTextUtil';
+import { EntityType } from 'enums/entity.enum';
 import { SearchIndex } from 'enums/search.enum';
-import { OwnerType } from 'enums/user.enum';
 import { EntityReference } from 'generated/entity/data/table';
-import { User } from 'generated/entity/teams/user';
-import { SearchResponse } from 'interface/search.interface';
 import { noop } from 'lodash';
 import React, { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { searchData } from 'rest/miscAPI';
 import { getUsers } from 'rest/userAPI';
 import { formatUsersResponse } from 'utils/APIUtils';
-import { getEntityName } from 'utils/EntityUtils';
+import { getEntityReferenceListFromEntities } from 'utils/EntityUtils';
 import SVGIcons, { Icons } from 'utils/SvgUtils';
 import { SelectableList } from '../SelectableList/SelectableList.component';
 import './user-select-dropdown.less';
-import { UserSelectDropdownProps } from './UserSelectableList.interface';
+import { UserSelectableListProps } from './UserSelectableList.interface';
 
 export const UserSelectableList = ({
   hasPermission,
   selectedUsers = [],
   onUpdate = noop,
-}: UserSelectDropdownProps) => {
+  children,
+  popoverProps,
+}: UserSelectableListProps) => {
   const [popupVisible, setPopupVisible] = useState(false);
   const { t } = useTranslation();
-  const getFilterUserData = (data: Array<User>) => {
-    return data.map((user) => {
-      return {
-        displayName: getEntityName(user),
-        fqn: user.fullyQualifiedName || '',
-        id: user.id,
-        type: OwnerType.USER,
-        name: user.name,
-      };
-    });
-  };
 
   const fetchOptions = async (searchText: string, after?: string) => {
     if (searchText) {
@@ -62,10 +51,9 @@ export const UserSelectableList = ({
           SearchIndex.USER
         );
 
-        const data = getFilterUserData(
-          formatUsersResponse(
-            (res.data as SearchResponse<SearchIndex.USER>).hits.hits
-          )
+        const data = getEntityReferenceListFromEntities(
+          formatUsersResponse(res.data.hits.hits),
+          EntityType.USER
         );
 
         return { data, paging: { total: res.data.hits.total.value } };
@@ -83,7 +71,10 @@ export const UserSelectableList = ({
               }
             : undefined
         );
-        const filterData = getFilterUserData(data);
+        const filterData = getEntityReferenceListFromEntities(
+          data,
+          EntityType.USER
+        );
 
         return { data: filterData, paging };
       } catch (error) {
@@ -118,25 +109,34 @@ export const UserSelectableList = ({
       }
       open={popupVisible}
       overlayClassName="user-team-select-popover card-shadow"
-      overlayStyle={{ padding: 0 }}
-      placement="bottomLeft"
+      placement="bottomRight"
       showArrow={false}
       trigger="click"
-      onOpenChange={setPopupVisible}>
-      <Tooltip
-        placement="topRight"
-        title={hasPermission ? 'Add Reviewer' : NO_PERMISSION_FOR_ACTION}>
-        <Button
-          className="p-0 flex-center"
-          data-testid="add-new-reviewer"
-          disabled={!hasPermission}
-          icon={
-            <SVGIcons alt="edit" icon={Icons.EDIT} title="Edit" width="16px" />
-          }
-          size="small"
-          type="text"
-        />
-      </Tooltip>
+      onOpenChange={setPopupVisible}
+      {...popoverProps}>
+      {children ? (
+        children
+      ) : (
+        <Tooltip
+          placement="topRight"
+          title={hasPermission ? '' : NO_PERMISSION_FOR_ACTION}>
+          <Button
+            className="p-0 flex-center"
+            data-testid="add-new-reviewer"
+            disabled={!hasPermission}
+            icon={
+              <SVGIcons
+                alt="edit"
+                icon={Icons.EDIT}
+                title="Edit"
+                width="16px"
+              />
+            }
+            size="small"
+            type="text"
+          />
+        </Tooltip>
+      )}
     </Popover>
   );
 };

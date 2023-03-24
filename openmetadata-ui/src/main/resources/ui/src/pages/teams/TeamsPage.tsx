@@ -610,7 +610,6 @@ const TeamsPage = () => {
 
       {isAddingUsers && (
         <UserSelectableList
-          // ToDo: update permission with actual
           hasPermission
           selectedUsers={selectedTeam.users ?? []}
           onUpdate={(data) => addUsersToTeam(data)}

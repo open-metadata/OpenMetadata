@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Icon from '@ant-design/icons';
 import { Button, Checkbox, List, Tooltip } from 'antd';
-import { ReactComponent as IconRemove } from 'assets/svg/Remove.svg';
 import Loader from 'components/Loader/Loader';
 import { ADD_USER_CONTAINER_HEIGHT, pagingObject } from 'constants/constants';
 import { EntityReference } from 'generated/entity/data/table';
@@ -21,6 +19,7 @@ import { cloneDeep, isEmpty, sortBy } from 'lodash';
 import VirtualList from 'rc-virtual-list';
 import React, { UIEventHandler, useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import SVGIcons, { Icons } from 'utils/SvgUtils';
 import Searchbar from '../searchbar/Searchbar';
 import '../UserSelectableList/user-select-dropdown.less';
 import { UserTag } from '../UserTag/UserTag.component';
@@ -45,7 +44,7 @@ export const SelectableList = ({
   >(() => {
     const selectedItemMap = new Map();
 
-    selectedItems.map((item) => selectedItemMap.set(item.id, item));
+    selectedItems.forEach((item) => selectedItemMap.set(item.id, item));
 
     return selectedItemMap;
   });
@@ -57,7 +56,7 @@ export const SelectableList = ({
     setSelectedItemInternal(() => {
       const selectedItemMap = new Map();
 
-      selectedItems.map((item) => selectedItemMap.set(item.id, item));
+      selectedItems.forEach((item) => selectedItemMap.set(item.id, item));
 
       return selectedItemMap;
     });
@@ -119,23 +118,25 @@ export const SelectableList = ({
   };
 
   const selectionHandler = (item: EntityReference) => {
-    multiSelect
-      ? setSelectedItemInternal((itemsMap) => {
-          const id = item.id;
-          const newItemsMap = cloneDeep(itemsMap);
-          if (newItemsMap.has(id)) {
-            newItemsMap?.delete(id);
-          } else {
-            newItemsMap?.set(id, item);
-          }
+    if (multiSelect) {
+      setSelectedItemInternal((itemsMap) => {
+        const id = item.id;
+        const newItemsMap = cloneDeep(itemsMap);
+        if (newItemsMap.has(id)) {
+          newItemsMap?.delete(id);
+        } else {
+          newItemsMap?.set(id, item);
+        }
 
-          setUniqueOptions((options) =>
-            sortUniqueListFromSelectedList([...newItemsMap.keys()], options)
-          );
+        setUniqueOptions((options) =>
+          sortUniqueListFromSelectedList([...newItemsMap.keys()], options)
+        );
 
-          return newItemsMap;
-        })
-      : onUpdate(selectedItemsInternal.has(item.id) ? [] : [item]);
+        return newItemsMap;
+      });
+    } else {
+      onUpdate(selectedItemsInternal.has(item.id) ? [] : [item]);
+    }
   };
 
   const handleUpdateClick = () => {
@@ -156,17 +157,16 @@ export const SelectableList = ({
           multiSelect && (
             <div className="text-right">
               <Button
-                className="m-l-auto"
+                className="m-r-sm"
                 color="primary"
                 size="small"
-                type="text"
                 onClick={onCancel}>
                 {t('label.cancel')}
               </Button>
               <Button
-                className="update-btn m-l-auto"
+                className="m-r-sm"
                 size="small"
-                type="default"
+                type="primary"
                 onClick={handleUpdateClick}>
                 {t('label.update')}
               </Button>
@@ -177,7 +177,6 @@ export const SelectableList = ({
         loading={{ spinning: fetching, indicator: <Loader /> }}
         size="small">
         <VirtualList
-          className="w-40"
           data={uniqueOptions}
           height={ADD_USER_CONTAINER_HEIGHT}
           itemKey="id"
@@ -197,10 +196,7 @@ export const SelectableList = ({
               {customTagRenderer ? (
                 customTagRenderer(item)
               ) : (
-                <UserTag
-                  id={item.fullyQualifiedName ?? ''}
-                  name={item.displayName ?? ''}
-                />
+                <UserTag id={item.id} name={item.displayName ?? ''} />
               )}
             </List.Item>
           )}
@@ -218,24 +214,15 @@ const RemoveIcon = ({ removeOwner }: { removeOwner?: () => void }) => {
       title={t('label.remove-entity', {
         entity: t('label.owner-lowercase'),
       })}>
-      <button
-        className="cursor-pointer"
+      <SVGIcons
+        color="#E41E0B"
         data-testid="remove-owner"
+        icon={Icons.ICON_REMOVE_COLORED}
         onClick={(e) => {
           e.stopPropagation();
           removeOwner && removeOwner();
-        }}>
-        <Icon
-          alt={t('label.remove-entity', {
-            entity: t('label.owner-lowercase'),
-          })}
-          component={IconRemove}
-          size={16}
-          title={t('label.remove-entity', {
-            entity: t('label.owner-lowercase'),
-          })}
-        />
-      </button>
+        }}
+      />
     </Tooltip>
   );
 };

@@ -28,6 +28,7 @@ import { Button } from '../../buttons/Button/Button';
 import ProfilePicture from '../ProfilePicture/ProfilePicture';
 import TeamTypeSelect from '../TeamTypeSelect/TeamTypeSelect.component';
 import TierCard from '../TierCard/TierCard';
+import { UserSelectableList } from '../UserSelectableList/UserSelectableList.component';
 import { UserTeamSelectableList } from '../UserTeamSelectableList/UserTeamSelectableList.component';
 import './EntitySummaryDetails.style.less';
 
@@ -80,6 +81,7 @@ const EntitySummaryDetails = ({
   removeTier,
   currentOwner,
   deleted = false,
+  allowTeamOwner,
 }: GetInfoElementsProps) => {
   let retVal = <></>;
   const { t } = useTranslation();
@@ -139,11 +141,19 @@ const EntitySummaryDetails = ({
           ) : (
             <>
               {t('label.no-entity', { entity: t('label.owner') })}
-              <UserTeamSelectableList
-                hasPermission={Boolean(updateOwner)}
-                owner={currentOwner}
-                onUpdate={updateOwner ?? noop}
-              />
+              {allowTeamOwner ? (
+                <UserTeamSelectableList
+                  hasPermission={Boolean(updateOwner)}
+                  owner={currentOwner}
+                  onUpdate={updateOwner ?? noop}
+                />
+              ) : (
+                <UserSelectableList
+                  hasPermission={Boolean(updateOwner)}
+                  selectedUsers={currentOwner ? [currentOwner] : []}
+                  onUpdate={updateOwner ?? noop}
+                />
+              )}
             </>
           );
       }
