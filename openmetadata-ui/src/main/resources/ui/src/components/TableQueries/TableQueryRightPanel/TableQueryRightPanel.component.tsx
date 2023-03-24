@@ -14,8 +14,8 @@
 import { Button, Col, Divider, Row, Space, Tooltip, Typography } from 'antd';
 import classNames from 'classnames';
 import Description from 'components/common/description/Description';
-import OwnerWidgetWrapper from 'components/common/OwnerWidget/OwnerWidgetWrapper.component';
 import ProfilePicture from 'components/common/ProfilePicture/ProfilePicture';
+import { UserTeamSelectableList } from 'components/common/UserTeamSelectableList/UserTeamSelectableList.component';
 import Loader from 'components/Loader/Loader';
 import TagsContainer from 'components/Tag/TagsContainer/tags-container';
 import TagsViewer from 'components/Tag/TagsViewer/tags-viewer';
@@ -66,14 +66,6 @@ const TableQueryRightPanel = ({
     }
   };
 
-  const handleRemoveOwner = async () => {
-    const updatedData = {
-      ...query,
-      owner: undefined,
-    };
-    await onQueryUpdate(updatedData, 'owner');
-    setIsEditOwner(false);
-  };
   const handleUpdateOwner = async (owner: Query['owner']) => {
     if (!isUndefined(owner)) {
       const updatedData = {
@@ -135,14 +127,10 @@ const TableQueryRightPanel = ({
             />
           </Tooltip>
           {isEditOwner && (
-            <OwnerWidgetWrapper
-              horzPosRight
-              className="top-6"
-              currentUser={query.owner}
-              hideWidget={() => setIsEditOwner(false)}
-              removeOwner={handleRemoveOwner}
-              updateUser={handleUpdateOwner}
-              visible={isEditOwner}
+            <UserTeamSelectableList
+              hasPermission
+              owner={query.owner}
+              onUpdate={handleUpdateOwner}
             />
           )}
         </div>
