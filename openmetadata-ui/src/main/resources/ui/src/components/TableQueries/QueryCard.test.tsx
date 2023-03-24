@@ -20,10 +20,34 @@ import {
 import { Query } from 'generated/entity/data/query';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
+import { DEFAULT_ENTITY_PERMISSION } from 'utils/PermissionsUtils';
 import QueryCard from './QueryCard';
+import { QueryCardProp } from './TableQueries.interface';
 
 const mockQueryData = {
-  query: 'select products from raw_product_catalog',
+  query: `SELECT
+order_month,
+order_day,
+COUNT(DISTINCT order_id) AS num_orders,
+COUNT(book_id) AS num_books,
+SUM(price) AS total_price,
+SUM(COUNT(book_id)) OVER (
+  PARTITION BY order_month
+  ORDER BY order_day
+) AS running_total_num_books,
+LAG(COUNT(book_id), 7) OVER (ORDER BY order_day) AS prev_books
+FROM (
+  SELECT
+  DATE_FORMAT(co.order_date, '%Y-%m') AS order_month,
+  DATE_FORMAT(co.order_date, '%Y-%m-%d') AS order_day,
+  co.order_id,
+  ol.book_id,
+  ol.price
+  FROM cust_order co
+  INNER JOIN order_line ol ON co.order_id = ol.order_id
+) sub
+GROUP BY order_month, order_day
+ORDER BY order_day ASC;`,
   duration: 0.309,
   users: [
     {
@@ -40,53 +64,55 @@ const mockQueryData = {
 jest.mock('../schema-editor/SchemaEditor', () => {
   return jest.fn().mockReturnValue(<p>SchemaEditor</p>);
 });
-
-jest.mock('../buttons/CopyToClipboardButton/CopyToClipboardButton', () => {
-  return jest.fn().mockReturnValue(<>CopyToClipboardButton</>);
+jest.mock('./QueryCardExtraOption/QueryCardExtraOption.component', () => {
+  return jest.fn().mockReturnValue(<>QueryCardExtraOption</>);
 });
+
+const mockProps: QueryCardProp = {
+  query: mockQueryData,
+  tableId: 'id',
+  permission: DEFAULT_ENTITY_PERMISSION,
+  onQuerySelection: jest.fn(),
+  onQueryUpdate: jest.fn(),
+  onUpdateVote: jest.fn(),
+};
 
 describe('Test QueryCard Component', () => {
   it('Check if QueryCard has all child elements', async () => {
-    const { container } = render(<QueryCard query={mockQueryData} />, {
+    const { container } = render(<QueryCard {...mockProps} />, {
       wrapper: MemoryRouter,
     });
-    // const queryHeader = getByTestId(container, 'query-header');
+
     const query = await findByText(container, /SchemaEditor/i);
-    const copyQueryButton = await findByText(
+    const queryCardExtraOption = await findByText(
       container,
-      /CopyToClipboardButton/i
+      'QueryCardExtraOption'
     );
 
     const expandButton = await findByTestId(
       container,
-      'expand-collapse-button'
+      'query-entity-expand-button'
     );
 
     // expect(queryHeader).toBeInTheDocument();
     expect(query).toBeInTheDocument();
-    expect(copyQueryButton).toBeInTheDocument();
+    expect(queryCardExtraOption).toBeInTheDocument();
     expect(expandButton).toBeInTheDocument();
   });
 
   it('Should not render header if user is undefined', async () => {
-    const { container } = render(
-      <QueryCard query={{ ...mockQueryData, users: undefined }} />,
-      {
-        wrapper: MemoryRouter,
-      }
-    );
+    const { container } = render(<QueryCard {...mockProps} />, {
+      wrapper: MemoryRouter,
+    });
     const queryHeader = queryByTestId(container, 'query-header');
 
     expect(queryHeader).not.toBeInTheDocument();
   });
 
   it('Should not render header if duration is undefined', async () => {
-    const { container } = render(
-      <QueryCard query={{ ...mockQueryData, duration: undefined }} />,
-      {
-        wrapper: MemoryRouter,
-      }
-    );
+    const { container } = render(<QueryCard {...mockProps} />, {
+      wrapper: MemoryRouter,
+    });
     const queryHeader = queryByTestId(container, 'query-header');
 
     expect(queryHeader).not.toBeInTheDocument();

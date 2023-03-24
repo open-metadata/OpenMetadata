@@ -599,7 +599,9 @@ public class TableRepository extends EntityRepository<Table> {
         .withServiceType(schema.getServiceType());
 
     // Carry forward ownership from database schema
-    table.setOwner(table.getOwner() == null ? schema.getOwner() : table.getOwner());
+    if (table.getOwner() == null && schema.getOwner() != null) {
+      table.setOwner(schema.getOwner().withDescription("inherited"));
+    }
 
     // Validate column tags
     addDerivedColumnTags(table.getColumns());
