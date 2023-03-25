@@ -75,8 +75,7 @@ class PandasProfilerInterface(ProfilerProtocol, PandasInterfaceMixin):
             self.table_entity.fullyQualifiedName.__root__
             if self.table_entity.fullyQualifiedName
             else None
-        )  # type: ignore
-
+        )
         self.profile_sample_config = profile_sample_config
         self.profile_query = sample_query
         self.table_partition_config = table_partition_config
@@ -259,12 +258,10 @@ class PandasProfilerInterface(ProfilerProtocol, PandasInterfaceMixin):
                 column=column,
             )
         except Exception as exc:
-            logger.error(exc)
-            self.processor_status.failure(
-                f"{column if column is not None else table}",
-                "metric_type.value",
-                f"{exc}",
-            )
+            name = f"{column if column is not None else table}"
+            error = f"{name} metric_type.value: {exc}"
+            logger.error(error)
+            self.processor_status.failed_profiler(error, traceback.format_exc())
             row = None
         if column:
             column = column.name
