@@ -360,3 +360,9 @@ export const DEFAULT_HISTOGRAM_DATA = {
   boundaries: [],
   frequencies: [],
 };
+
+export const PROFILER_MODAL_LABEL_STYLE = {
+  style: {
+    paddingBottom: 8,
+  },
+};
