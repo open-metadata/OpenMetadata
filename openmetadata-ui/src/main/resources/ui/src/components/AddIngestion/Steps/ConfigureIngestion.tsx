@@ -63,6 +63,10 @@ const ConfigureIngestion = ({
     ingestSampleData,
     markAllDeletedTables,
     markDeletedTables,
+    markDeletedDashboards,
+    markDeletedTopics,
+    markDeletedMlModels,
+    markDeletedPipelines,
     mlModelFilterPattern,
     pipelineFilterPattern,
     profileSample,
@@ -124,6 +128,10 @@ const ConfigureIngestion = ({
       useFqnFilter: data.useFqnFilter,
       processPii: data.processPii,
       overrideOwner: data.overrideOwner,
+      markDeletedDashboards: data.markDeletedDashboards,
+      markDeletedTopics: data.markDeletedTopics,
+      markDeletedMlModels: data.markDeletedMlModels,
+      markDeletedPipelines: data.markDeletedPipelines,
     }),
     [data]
   );
@@ -181,6 +189,15 @@ const ConfigureIngestion = ({
   const handleMarkAllDeletedTables = () => toggleField('markAllDeletedTables');
 
   const handleMarkDeletedTables = () => toggleField('markDeletedTables');
+
+  const handleMarkDeletedDashboards = () =>
+    toggleField('markDeletedDashboards');
+
+  const handleMarkDeletedTopics = () => toggleField('markDeletedTopics');
+
+  const handleMarkDeletedMlModels = () => toggleField('markDeletedMlModels');
+
+  const handleMarkDeletedPipelines = () => toggleField('markDeletedPipelines');
 
   const handleFqnFilter = () => toggleField('useFqnFilter');
 
@@ -249,6 +266,29 @@ const ConfigureIngestion = ({
         </div>
         <p className="tw-text-grey-muted tw-mt-3">
           {t('message.enable-override-owner')}
+        </p>
+        {getSeparator('')}
+      </Field>
+    );
+  };
+
+  const getIncludesTagToggle = () => {
+    return (
+      <Field>
+        <div className="tw-flex tw-gap-1">
+          <label>
+            {t('label.include-entity', { entity: t('label.tag-plural') })}
+          </label>
+          <ToggleSwitchV1
+            checked={includeTags}
+            handleCheck={handleIncludeTags}
+            testId="include-tags"
+          />
+        </div>
+        <p className="tw-text-grey-muted tw-mt-3">
+          {t('message.include-assets-message', {
+            assets: t('label.tag-plural'),
+          })}
         </p>
         {getSeparator('')}
       </Field>
@@ -357,6 +397,34 @@ const ConfigureIngestion = ({
     );
   };
 
+  const getMarkDeletedEntitiesToggle = (
+    entityLabel: string,
+    entity: string,
+    handleMarkDeletedEntities: () => void,
+    markDeletedEntities?: boolean
+  ) => {
+    return (
+      !isNil(markDeletedEntities) && (
+        <Field>
+          <div className="tw-flex tw-gap-1">
+            <label>
+              {t('label.mark-deleted-entity-plural', { entity: entityLabel })}
+            </label>
+            <ToggleSwitchV1
+              checked={markDeletedEntities}
+              handleCheck={handleMarkDeletedEntities}
+              testId="mark-deleted"
+            />
+          </div>
+          <p className="tw-text-grey-muted tw-mt-3">
+            {t('message.mark-deleted-entity-message', { entity })}
+          </p>
+          {getSeparator('')}
+        </Field>
+      )
+    );
+  };
+
   const getDatabaseFieldToggles = () => {
     return (
       <>
@@ -379,40 +447,13 @@ const ConfigureIngestion = ({
             </p>
             {getSeparator('')}
           </Field>
-          <Field>
-            <div className="tw-flex tw-gap-1">
-              <label>
-                {t('label.include-entity', { entity: t('label.tag-plural') })}
-              </label>
-              <ToggleSwitchV1
-                checked={includeTags}
-                handleCheck={handleIncludeTags}
-                testId="include-tags"
-              />
-            </div>
-            <p className="tw-text-grey-muted tw-mt-3">
-              {t('message.include-assets-message', {
-                assets: t('label.tag-plural'),
-              })}
-            </p>
-            {getSeparator('')}
-          </Field>
+          {getIncludesTagToggle()}
           {getDebugLogToggle()}
-          {!isNil(markDeletedTables) && (
-            <Field>
-              <div className="tw-flex tw-gap-1">
-                <label>{t('label.mark-deleted-table-plural')}</label>
-                <ToggleSwitchV1
-                  checked={markDeletedTables}
-                  handleCheck={handleMarkDeletedTables}
-                  testId="mark-deleted"
-                />
-              </div>
-              <p className="tw-text-grey-muted tw-mt-3">
-                {t('message.mark-deleted-table-message')}
-              </p>
-              {getSeparator('')}
-            </Field>
+          {getMarkDeletedEntitiesToggle(
+            t('label.table'),
+            t('label.table-lowercase'),
+            handleMarkDeletedTables,
+            markDeletedTables
           )}
           {!isNil(markAllDeletedTables) && (
             <Field>
@@ -606,6 +647,13 @@ const ConfigureIngestion = ({
             {getDashboardDBServiceName()}
             {getDebugLogToggle()}
             {getOverrideOwnerToggle()}
+            {getIncludesTagToggle()}
+            {getMarkDeletedEntitiesToggle(
+              t('label.dashboard'),
+              t('label.dashboard-lowercase'),
+              handleMarkDeletedDashboards,
+              markDeletedDashboards
+            )}
           </Fragment>
         );
 
@@ -632,6 +680,12 @@ const ConfigureIngestion = ({
               })
             )}
             {getDebugLogToggle()}
+            {getMarkDeletedEntitiesToggle(
+              t('label.topic'),
+              t('label.topic-lowercase'),
+              handleMarkDeletedTopics,
+              markDeletedTopics
+            )}
           </Fragment>
         );
       case ServiceCategory.PIPELINE_SERVICES:
@@ -651,6 +705,13 @@ const ConfigureIngestion = ({
             />
             {getSeparator('')}
             {getPipelineFieldToggles()}
+            {getIncludesTagToggle()}
+            {getMarkDeletedEntitiesToggle(
+              t('label.pipeline'),
+              t('label.pipeline-lowercase'),
+              handleMarkDeletedPipelines,
+              markDeletedPipelines
+            )}
           </Fragment>
         );
 
@@ -670,6 +731,12 @@ const ConfigureIngestion = ({
               type={FilterPatternEnum.MLMODEL}
             />
             {getSeparator('')}
+            {getMarkDeletedEntitiesToggle(
+              t('label.ml-model'),
+              t('label.ml-model-lowercase'),
+              handleMarkDeletedMlModels,
+              markDeletedMlModels
+            )}
           </Fragment>
         );
       default:

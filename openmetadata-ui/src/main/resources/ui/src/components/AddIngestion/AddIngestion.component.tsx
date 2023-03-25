@@ -169,8 +169,12 @@ const AddIngestion = ({
       markAllDeletedTables: isDatabaseService
         ? Boolean(sourceConfig?.markAllDeletedTables ?? false)
         : undefined,
+      markDeletedDashboards: sourceConfig?.markDeletedDashboards ?? true,
+      markDeletedTopics: sourceConfig?.markDeletedDashboards ?? true,
+      markDeletedMlModels: sourceConfig?.markDeletedDashboards ?? true,
+      markDeletedPipelines: sourceConfig?.markDeletedDashboards ?? true,
       includeView: Boolean(sourceConfig?.includeViews),
-      includeTags: Boolean(sourceConfig?.includeTags),
+      includeTags: sourceConfig?.includeTags ?? true,
       overrideOwner: Boolean(sourceConfig?.overrideOwner),
       includeLineage: Boolean(sourceConfig?.includeLineage ?? true),
       enableDebugLog: data?.loggerLevel === LogLevels.Debug,
@@ -316,6 +320,10 @@ const AddIngestion = ({
       ingestSampleData,
       markAllDeletedTables,
       markDeletedTables,
+      markDeletedDashboards,
+      markDeletedTopics,
+      markDeletedMlModels,
+      markDeletedPipelines,
       mlModelFilterPattern,
       pipelineFilterPattern,
       schemaFilterPattern,
@@ -364,6 +372,7 @@ const AddIngestion = ({
           ),
           generateSampleData: ingestSampleData,
           type: ConfigType.MessagingMetadata,
+          markDeletedTopics,
         };
       }
       case ServiceCategory.DASHBOARD_SERVICES: {
@@ -379,6 +388,8 @@ const AddIngestion = ({
           dbServiceNames: databaseServiceNames,
           overrideOwner,
           type: ConfigType.DashboardMetadata,
+          markDeletedDashboards,
+          includeTags,
         };
       }
       case ServiceCategory.PIPELINE_SERVICES: {
@@ -389,6 +400,8 @@ const AddIngestion = ({
             showPipelineFilter
           ),
           type: ConfigType.PipelineMetadata,
+          markDeletedPipelines,
+          includeTags,
         };
       }
       case ServiceCategory.ML_MODEL_SERVICES: {
@@ -398,6 +411,7 @@ const AddIngestion = ({
             showMlModelFilter
           ),
           type: ConfigType.MlModelMetadata,
+          markDeletedMlModels,
         };
       }
       default: {
@@ -477,6 +491,7 @@ const AddIngestion = ({
           } as ConfigClass),
           type: ConfigType.Dbt,
           dbtUpdateDescriptions: dbtConfigSource?.dbtUpdateDescriptions,
+          includeTags: dbtConfigSource?.includeTags,
           dbtClassificationName: dbtConfigSource?.dbtClassificationName,
         };
       }

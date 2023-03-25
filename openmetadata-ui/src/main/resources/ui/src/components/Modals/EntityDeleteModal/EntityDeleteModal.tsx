@@ -13,7 +13,7 @@
 
 import { Button, Input, Modal, Typography } from 'antd';
 import { t } from 'i18next';
-import React, { ChangeEvent, useMemo, useState } from 'react';
+import React, { ChangeEvent, useEffect, useMemo, useState } from 'react';
 import { Trans } from 'react-i18next';
 import { LOADING_STATE } from '../../../enums/common.enum';
 import { getTitleCase } from '../../../utils/EntityUtils';
@@ -42,6 +42,11 @@ const EntityDeleteModal = ({
     () => loadingState === LOADING_STATE.WAITING,
     [loadingState]
   );
+
+  // To remove the entered text in the modal input after modal closed
+  useEffect(() => {
+    setName('');
+  }, [visible]);
 
   return (
     <Modal
