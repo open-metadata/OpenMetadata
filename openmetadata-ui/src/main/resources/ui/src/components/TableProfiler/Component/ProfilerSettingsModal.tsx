@@ -31,7 +31,7 @@ import 'codemirror/addon/fold/foldgutter.css';
 import SchemaEditor from 'components/schema-editor/SchemaEditor';
 import { CSMode } from 'enums/codemirror.enum';
 import { PartitionIntervalType } from 'generated/api/data/createTable';
-import { isEmpty, isEqual, isUndefined, pick, startCase } from 'lodash';
+import { isEmpty, isEqual, isNil, isUndefined, pick, startCase } from 'lodash';
 import React, {
   Reducer,
   useCallback,
@@ -339,8 +339,8 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
   }, []);
 
   const handleIncludeColumnsProfiler = useCallback((changedValues, data) => {
-    const { partitionIntervalType } = changedValues;
-    if (partitionIntervalType) {
+    const { partitionIntervalType, enablePartitioning } = changedValues;
+    if (partitionIntervalType || !isNil(enablePartitioning)) {
       form.setFieldsValue({
         partitionColumnName: undefined,
         partitionIntegerRangeStart: undefined,
@@ -348,6 +348,11 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
         partitionIntervalUnit: undefined,
         partitionInterval: undefined,
         partitionValues: [''],
+      });
+    }
+    if (!isNil(enablePartitioning)) {
+      form.setFieldsValue({
+        partitionIntervalType: undefined,
       });
     }
 
@@ -579,17 +584,19 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                 </>
               )}
             </List>
-            <Form.Item className="m-b-xs">
-              <Space size={12}>
-                <p>{t('label.enable-partition')}</p>
-                <Switch
-                  checked={state?.enablePartition}
-                  data-testid="enable-partition-switch"
-                  onChange={handleEnablePartition}
-                />
-              </Space>
-            </Form.Item>
             <Row gutter={[16, 16]}>
+              <Col span={24}>
+                <Space align="center" size={12}>
+                  <p>{t('label.enable-partition')}</p>
+                  <Form.Item className="m-b-0" name="enablePartitioning">
+                    <Switch
+                      checked={state?.enablePartition}
+                      data-testid="enable-partition-switch"
+                      onChange={handleEnablePartition}
+                    />
+                  </Form.Item>
+                </Space>
+              </Col>
               <Col span={12}>
                 <Form.Item
                   className="m-b-0"
