@@ -25,7 +25,11 @@ import {
 } from './CommonUtils.mock';
 
 import { cloneDeep } from 'lodash';
-import { getNameFromFQN, sortTagsCaseInsensitive } from './CommonUtils';
+import {
+  digitFormatter,
+  getNameFromFQN,
+  sortTagsCaseInsensitive,
+} from './CommonUtils';
 import { mockFQN, mockTags, sortedMockTags } from './CommonUtils.mock';
 
 describe('Tests for CommonUtils', () => {
@@ -87,6 +91,25 @@ describe('Tests for CommonUtils', () => {
       const containsDoubleQuotes = result.search('"');
 
       expect(containsDoubleQuotes > 0).toBe(false);
+    });
+
+    // digitFormatter test
+    it('digitFormatter formatter should format number 1000 to 1k', () => {
+      const values = [
+        { value: 1000, result: '1K' },
+        { value: 10000, result: '10K' },
+        { value: 10200, result: '10.2K' },
+        { value: 1000000, result: '1M' },
+        { value: 100000000, result: '100M' },
+        { value: 1000000000, result: '1B' },
+        { value: 1500000000, result: '1.5B' },
+        { value: 1000000000000, result: '1T' },
+        { value: 1100000000000, result: '1.1T' },
+      ];
+
+      values.map(({ value, result }) => {
+        expect(digitFormatter(value)).toEqual(result);
+      });
     });
   });
 });
