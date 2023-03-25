@@ -146,7 +146,7 @@ const GlossaryHeader = ({
               icon={<CloseOutlined />}
               size="small"
               type="primary"
-              onMouseDown={() => setIsNameEditing(false)}
+              onClick={() => setIsNameEditing(false)}
             />
 
             <Button
@@ -154,7 +154,7 @@ const GlossaryHeader = ({
               icon={<CheckOutlined />}
               size="small"
               type="primary"
-              onMouseDown={onDisplayNameSave}
+              onClick={onDisplayNameSave}
             />
           </Space>
         ) : (
@@ -169,6 +169,7 @@ const GlossaryHeader = ({
                   : NO_PERMISSION_FOR_ACTION
               }>
               <Button
+                data-testid="edit-name"
                 disabled={!editDisplayNamePermission}
                 icon={<SVGIcons alt="icon-tag" icon={Icons.EDIT} width="16" />}
                 type="text"

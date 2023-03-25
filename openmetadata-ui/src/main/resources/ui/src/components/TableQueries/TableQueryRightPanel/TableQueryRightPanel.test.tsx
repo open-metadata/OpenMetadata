@@ -34,11 +34,14 @@ jest.mock('components/Tag/TagsViewer/tags-viewer', () => {
 jest.mock('components/Tag/TagsContainer/tags-container', () => {
   return jest.fn().mockImplementation(() => <div>TagsContainer.component</div>);
 });
-jest.mock('components/common/OwnerWidget/OwnerWidgetWrapper.component', () => {
-  return jest
-    .fn()
-    .mockImplementation(() => <div>OwnerWidgetWrapper.component</div>);
-});
+jest.mock(
+  'components/common/UserTeamSelectableList/UserTeamSelectableList.component',
+  () => ({
+    UserTeamSelectableList: jest
+      .fn()
+      .mockImplementation(() => <div>UserTeamSelectableList</div>),
+  })
+);
 jest.mock('components/common/description/Description', () => {
   return jest.fn().mockImplementation(() => <div>Description.component</div>);
 });
@@ -58,7 +61,6 @@ describe('TableQueryRightPanel component test', () => {
     });
     const owner = await screen.findByTestId('owner-name');
 
-    expect(await screen.findByTestId('edit-owner-btn')).toBeInTheDocument();
     expect(
       await screen.findByTestId('owner-name-container')
     ).toBeInTheDocument();
@@ -79,13 +81,11 @@ describe('TableQueryRightPanel component test', () => {
       wrapper: MemoryRouter,
     });
 
-    const editOwnerBtn = await screen.findByTestId('edit-owner-btn');
     const editDescriptionBtn = await screen.findByTestId(
       'edit-description-btn'
     );
     const tagEditor = screen.queryByText('TagsContainer.component');
 
-    expect(editOwnerBtn).toBeDisabled();
     expect(editDescriptionBtn).toBeDisabled();
     expect(tagEditor).not.toBeInTheDocument();
   });
@@ -101,45 +101,13 @@ describe('TableQueryRightPanel component test', () => {
       }
     );
 
-    const editOwnerBtn = await screen.findByTestId('edit-owner-btn');
     const editDescriptionBtn = await screen.findByTestId(
       'edit-description-btn'
     );
     const tagEditor = await screen.findByText('TagsContainer.component');
 
-    expect(editOwnerBtn).not.toBeDisabled();
     expect(editDescriptionBtn).not.toBeDisabled();
     expect(tagEditor).toBeInTheDocument();
-  });
-
-  it('onClick of edit owner, OwnerWidgetWrapper should open', async () => {
-    render(
-      <TableQueryRightPanel
-        {...mockProps}
-        permission={{ ...DEFAULT_ENTITY_PERMISSION, EditOwner: true }}
-      />,
-      {
-        wrapper: MemoryRouter,
-      }
-    );
-
-    const editOwnerBtn = await screen.findByTestId('edit-owner-btn');
-    const editDescriptionBtn = await screen.findByTestId(
-      'edit-description-btn'
-    );
-    const tagEditor = screen.queryByText('TagsContainer.component');
-
-    expect(editOwnerBtn).not.toBeDisabled();
-    expect(editDescriptionBtn).toBeDisabled();
-    expect(tagEditor).not.toBeInTheDocument();
-
-    await act(async () => {
-      fireEvent.click(editOwnerBtn);
-    });
-
-    expect(
-      await screen.findByText('OwnerWidgetWrapper.component')
-    ).toBeInTheDocument();
   });
 
   it('Loader should visible', async () => {

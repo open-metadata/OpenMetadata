@@ -126,10 +126,10 @@ const EntitySummaryDetails = ({
                     <span className="tw-text-gray-400">
                       {t('label.pipe-symbol')}
                     </span>
+                    {/* Teams Icon -- Label will be added below */}
+                    <IconTeamsGrey height={18} width={18} />
                   </>
                 )}
-                {/* Teams Icon -- Label will be added below */}
-                <IconTeamsGrey height={18} width={18} />
               </>
             ) : (
               <></>
@@ -286,23 +286,30 @@ const EntitySummaryDetails = ({
               )}
             </>
           ) : isOwner ? (
-            <span
-              className={classNames(
-                'tw-inline-block tw-truncate tw-align-middle',
-                {
-                  'tw-w-52': (displayVal as string).length > 32,
-                }
-              )}
-              data-testid="owner-name"
-              title={displayVal as string}>
-              <Button
-                data-testid="owner-dropdown"
-                size="custom"
-                theme="primary"
-                variant="text">
-                {displayVal}
-              </Button>
-            </span>
+            <>
+              <span
+                className={classNames(
+                  'tw-inline-block tw-truncate tw-align-middle',
+                  {
+                    'tw-w-52': (displayVal as string).length > 32,
+                  }
+                )}
+                data-testid="owner-name"
+                title={displayVal as string}>
+                <Button
+                  data-testid="owner-dropdown"
+                  size="custom"
+                  theme="primary"
+                  variant="text">
+                  {displayVal}
+                </Button>
+              </span>
+              <UserTeamSelectableList
+                hasPermission={Boolean(updateOwner)}
+                owner={currentOwner}
+                onUpdate={updateOwner ?? noop}
+              />
+            </>
           ) : isTier ? (
             <Space
               className={classNames('tw-mr-1  tw-truncate tw-align-middle', {
