@@ -271,15 +271,15 @@ const TestConnection: FC<TestConnectionProps> = ({
   return (
     <>
       <div className="flex justify-between bg-white border border-main shadow-base rounded-4 p-sm mt-4">
-        <Space size={8}>
+        <Space data-testid="message-container" size={8}>
           {isTestingConnection && <Loader size="small" />}
           {testStatus === StatusType.Successful && (
-            <SuccessIcon height={24} width={24} />
+            <SuccessIcon data-testid="success-badge" height={24} width={24} />
           )}
           {testStatus === StatusType.Failed && (
-            <FailIcon height={24} width={24} />
+            <FailIcon data-testid="fail-badge" height={24} width={24} />
           )}
-          <Space size={2}>
+          <Space data-testid="messag-text" size={2}>
             {message}{' '}
             {testStatus && (
               <Transi18next

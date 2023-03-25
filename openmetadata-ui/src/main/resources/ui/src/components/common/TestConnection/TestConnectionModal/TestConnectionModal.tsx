@@ -65,11 +65,15 @@ const TestConnectionModal: FC<TestConnectionModalProps> = ({
             <Space align="start" className="px-4" size={16}>
               <span>
                 {hasPassed ? (
-                  <SuccessIcon height={24} width={24} />
+                  <SuccessIcon
+                    data-testid="success-badge"
+                    height={24}
+                    width={24}
+                  />
                 ) : isTestingConnection ? (
                   <Loader size="small" />
                 ) : (
-                  <FailIcon height={24} width={24} />
+                  <FailIcon data-testid="fail-badge" height={24} width={24} />
                 )}
               </span>
               <Space direction="vertical" size={0}>
