@@ -822,6 +822,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                                 ]}>
                                 <Input
                                   className="w-full"
+                                  data-testid="partition-value"
                                   placeholder={t('message.enter-a-field', {
                                     field: t('label.value'),
                                   })}
