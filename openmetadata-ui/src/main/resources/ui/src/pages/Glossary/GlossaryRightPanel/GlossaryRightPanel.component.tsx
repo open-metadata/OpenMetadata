@@ -12,26 +12,89 @@
  */
 
 import { Card, Col, Divider, Row, Space, Typography } from 'antd';
+import { AxiosError } from 'axios';
 import ProfilePicture from 'components/common/ProfilePicture/ProfilePicture';
-import TagsViewer from 'components/Tag/TagsViewer/tags-viewer';
+import GlossaryTermReferences from 'components/GlossaryTerms/tabs/GlossaryTermReferences';
+import GlossaryTermSynonyms from 'components/GlossaryTerms/tabs/GlossaryTermSynonyms';
+import RelatedTerms from 'components/GlossaryTerms/tabs/RelatedTerms';
+import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
+import {
+  OperationPermission,
+  ResourceEntity,
+} from 'components/PermissionProvider/PermissionProvider.interface';
+import TagsInput from 'components/TagsInput/TagsInput.component';
 import { getUserPath } from 'constants/constants';
 import { Glossary } from 'generated/entity/data/glossary';
-import React from 'react';
+import { GlossaryTerm } from 'generated/entity/data/glossaryTerm';
+import { TagLabel } from 'generated/type/tagLabel';
+import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { getEntityName } from 'utils/EntityUtils';
-import SVGIcons from 'utils/SvgUtils';
+import { DEFAULT_ENTITY_PERMISSION } from 'utils/PermissionsUtils';
+import { showErrorToast } from 'utils/ToastUtils';
 
 interface GlossaryRightPanelProps {
-  glossary: Glossary;
+  entityDetails: Glossary | GlossaryTerm;
+  isGlossary: boolean;
+  onGlossaryTermUpdate: (value: GlossaryTerm) => Promise<void>;
 }
 
-const GlossaryRightPanel = ({ glossary }: GlossaryRightPanelProps) => {
+const GlossaryRightPanel = ({
+  entityDetails,
+  isGlossary,
+  onGlossaryTermUpdate,
+}: GlossaryRightPanelProps) => {
   const { t } = useTranslation();
-  console.log(glossary);
-  if (!glossary) {
-    return null;
-  }
+  const { getEntityPermission } = usePermissionProvider();
+
+  const [glossaryPermission, setGlossaryPermission] =
+    useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
+
+  const [glossaryTermPermission, setGlossaryTermPermission] =
+    useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
+
+  const fetchGlossaryPermission = async () => {
+    try {
+      const response = await getEntityPermission(
+        ResourceEntity.GLOSSARY,
+        entityDetails?.id as string
+      );
+      setGlossaryPermission(response);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  };
+
+  const fetchGlossaryTermPermission = async () => {
+    try {
+      const response = await getEntityPermission(
+        ResourceEntity.GLOSSARY_TERM,
+        entityDetails?.id as string
+      );
+      setGlossaryTermPermission(response);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  };
+
+  useEffect(() => {
+    if (isGlossary) {
+      fetchGlossaryPermission();
+    } else {
+      fetchGlossaryTermPermission();
+    }
+  }, [entityDetails]);
+
+  const handleTagsUpdate = async (updatedTags: TagLabel[]) => {
+    if (updatedTags) {
+      const updatedData = {
+        ...entityDetails,
+        tags: updatedTags,
+      };
+      await onGlossaryTermUpdate(updatedData as GlossaryTerm);
+    }
+  };
 
   return (
     <Card
@@ -40,32 +103,6 @@ const GlossaryRightPanel = ({ glossary }: GlossaryRightPanelProps) => {
       <Typography.Title className="m-0" level={5}>
         {t('label.summary')}
       </Typography.Title>
-
-      {/* <Row className="m-md" gutter={[0, 16]}>
-        <Col span={24}>
-          <Typography.Text
-            className="text-base text-grey-muted"
-            data-testid="profiler-header">
-             {t('label.glossary-name')}
-          </Typography.Text>
-        </Col>
-        <Col span={24}></Col>
-      </Row>
-
-      <Divider className="m-y-xs" /> */}
-
-      <Row className="m-y-md">
-        <Col span={24}>
-          <Typography.Text
-            className="text-grey-muted"
-            data-testid="profiler-header">
-            {t('label.glossary-name')}
-          </Typography.Text>
-        </Col>
-        <Col span={24}>{glossary.displayName}</Col>
-      </Row>
-
-      <Divider className="m-y-xs" />
 
       <Row className="m-y-md" gutter={[0, 8]}>
         <Col span={24}>
@@ -76,9 +113,9 @@ const GlossaryRightPanel = ({ glossary }: GlossaryRightPanelProps) => {
           </Typography.Text>
         </Col>
         <Col span={24}>
-          {glossary.reviewers && glossary.reviewers.length ? (
+          {entityDetails.reviewers && entityDetails.reviewers.length ? (
             <>
-              {glossary.reviewers.map((reviewer) => (
+              {entityDetails.reviewers.map((reviewer) => (
                 <Space
                   className="m-r-xs"
                   data-testid={`reviewer-${reviewer.displayName}`}
@@ -95,39 +132,25 @@ const GlossaryRightPanel = ({ glossary }: GlossaryRightPanelProps) => {
                     <Link to={getUserPath(reviewer.name ?? '')}>
                       {getEntityName(reviewer)}
                     </Link>
-                    {/* <Tooltip
-                      title={
-                        permissions.EditAll
-                          ? 'Remove Reviewer'
-                          : NO_PERMISSION_FOR_ACTION
-                      }>
-                      <Button
-                        className="p-0 flex-center"
-                        data-testid="remove"
-                        disabled={!permissions.EditAll}
-                        icon={<CloseOutlined />}
-                        size="small"
-                        type="text"
-                        onClick={() => handleRemoveReviewer(reviewer.id)}
-                      />
-                    </Tooltip> */}
                   </Space>
                 </Space>
               ))}
             </>
           ) : (
-            <span className="text-grey-muted">
+            <Typography.Text
+              className="text-grey-body"
+              data-testid="no-related-terms-available-header">
               {t('label.no-entity', {
                 entity: t('label.reviewer-plural'),
               })}
-            </span>
+            </Typography.Text>
           )}
         </Col>
       </Row>
 
       <Divider className="m-y-xs" />
 
-      <Row className="m-y-md" gutter={[0, 16]}>
+      <Row className="m-y-md" gutter={[0, 8]}>
         <Col span={24}>
           <Typography.Text
             className="text-grey-muted"
@@ -136,60 +159,69 @@ const GlossaryRightPanel = ({ glossary }: GlossaryRightPanelProps) => {
           </Typography.Text>
         </Col>
         <Col span={24}>
-          {glossary?.tags && glossary.tags.length > 0 && (
-            <>
-              <SVGIcons
-                alt="icon-tag"
-                className="tw-mx-1"
-                icon="icon-tag-grey"
-                width="16"
+          <TagsInput
+            editable
+            tags={entityDetails.tags}
+            onTagsUpdate={handleTagsUpdate}
+          />
+        </Col>
+      </Row>
+
+      <Divider className="m-y-xs" />
+
+      {!isGlossary && (
+        <>
+          <Row className="m-y-md" gutter={[0, 8]}>
+            <Col span={24}>
+              <Typography.Text
+                className="text-grey-muted"
+                data-testid="profiler-header">
+                {t('label.synonym-plural')}
+              </Typography.Text>
+            </Col>
+            <Col span={24}>
+              <GlossaryTermSynonyms
+                glossaryTerm={entityDetails as GlossaryTerm}
+                permissions={glossaryTermPermission}
+                onGlossaryTermUpdate={onGlossaryTermUpdate}
               />
-              <TagsViewer tags={glossary.tags} />
-            </>
-          )}
-        </Col>
-      </Row>
+            </Col>
+          </Row>
 
-      <Divider className="m-y-xs" />
+          <Divider className="m-y-xs" />
 
-      <Row className="m-y-md" gutter={[0, 16]}>
-        <Col span={24}>
-          <Typography.Text
-            className="text-grey-muted"
-            data-testid="profiler-header">
-            {t('label.synonym-plural')}
-          </Typography.Text>
-        </Col>
-        <Col span={24} />
-      </Row>
+          <Row className="m-y-md" gutter={[0, 8]}>
+            <Col span={24}>
+              <Typography.Text
+                className="text-grey-muted"
+                data-testid="profiler-header">
+                {t('label.related-term-plural')}
+              </Typography.Text>
+            </Col>
+            <Col span={24}>
+              <RelatedTerms
+                glossaryTerm={entityDetails as GlossaryTerm}
+                permissions={glossaryTermPermission}
+                onGlossaryTermUpdate={onGlossaryTermUpdate}
+              />
+            </Col>
+          </Row>
 
-      <Divider className="m-y-xs" />
+          <Divider className="m-y-xs" />
 
-      <Row className="m-y-md" gutter={[0, 16]}>
-        <Col span={24}>
-          <Typography.Text
-            className="text-grey-muted"
-            data-testid="profiler-header">
-            {t('label.related-term-plural')}
-          </Typography.Text>
-        </Col>
-        <Col span={24} />
-      </Row>
+          <Row className="m-y-md" gutter={[0, 8]}>
+            <Col span={24}>
+              <GlossaryTermReferences
+                glossaryTerm={entityDetails as GlossaryTerm}
+                permissions={glossaryTermPermission}
+                onGlossaryTermUpdate={onGlossaryTermUpdate}
+              />
+            </Col>
+          </Row>
 
-      <Divider className="m-y-xs" />
-
-      <Row className="m-y-md" gutter={[0, 16]}>
-        <Col span={24}>
-          <Typography.Text
-            className="text-grey-muted"
-            data-testid="profiler-header">
-            {t('label.reference-plural')}
-          </Typography.Text>
-        </Col>
-        <Col span={24} />
-      </Row>
-
-      <Divider className="m-y-xs" />
+          <Divider className="m-y-xs" />
+        </>
+      )}
     </Card>
   );
 };

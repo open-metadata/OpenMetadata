@@ -16,12 +16,9 @@ import GlossaryHeader from 'components/Glossary/GlossaryHeader/GlossaryHeader.co
 import GlossaryTermTab from 'components/Glossary/GlossaryTermTab/GlossaryTermTab.component';
 import { t } from 'i18next';
 import { cloneDeep, includes, isEqual } from 'lodash';
-import { EntityTags } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { Glossary } from '../../generated/entity/data/glossary';
 import { EntityReference } from '../../generated/type/entityReference';
-import { LabelType, State, TagSource } from '../../generated/type/tagLabel';
-import { getAllTagsForOptions } from '../../utils/TagsUtils';
 import ReviewerModal from '../Modals/ReviewerModal/ReviewerModal.component';
 import { OperationPermission } from '../PermissionProvider/PermissionProvider.interface';
 import './GlossaryDetails.style.less';
@@ -33,10 +30,6 @@ type props = {
 };
 
 const GlossaryDetails = ({ permissions, glossary, updateGlossary }: props) => {
-  const [isTagEditable, setIsTagEditable] = useState<boolean>(false);
-  const [tagList, setTagList] = useState<Array<string>>([]);
-  const [isTagLoading, setIsTagLoading] = useState<boolean>(false);
-
   const [showRevieweModal, setShowRevieweModal] = useState(false);
   const [reviewer, setReviewer] = useState<Array<EntityReference>>([]);
 
@@ -61,53 +54,6 @@ const GlossaryDetails = ({ permissions, glossary, updateGlossary }: props) => {
     onReviewerModalCancel();
   };
 
-  const onTagUpdate = (selectedTags?: Array<string>) => {
-    if (selectedTags) {
-      const prevTags =
-        glossary?.tags?.filter((tag) =>
-          selectedTags.includes(tag?.tagFQN as string)
-        ) || [];
-      const newTags = selectedTags
-        .filter((tag) => {
-          return !prevTags?.map((prevTag) => prevTag.tagFQN).includes(tag);
-        })
-        .map((tag) => ({
-          labelType: LabelType.Manual,
-          state: State.Confirmed,
-          source: TagSource.Classification,
-          tagFQN: tag,
-        }));
-      const updatedTags = [...prevTags, ...newTags];
-      const updatedGlossary = { ...glossary, tags: updatedTags };
-      updateGlossary(updatedGlossary);
-    }
-  };
-  const handleTagSelection = (selectedTags?: Array<EntityTags>) => {
-    onTagUpdate?.(selectedTags?.map((tag) => tag.tagFQN));
-    setIsTagEditable(false);
-  };
-
-  const getSelectedTags = () => {
-    return (glossary.tags || []).map((tag) => ({
-      tagFQN: tag.tagFQN,
-      isRemovable: true,
-    }));
-  };
-
-  const fetchTags = async () => {
-    setIsTagLoading(true);
-    const tags = await getAllTagsForOptions();
-    setTagList(tags.map((t) => t.fullyQualifiedName ?? t.name));
-    setIsTagLoading(false);
-  };
-
-  const handleTagContainerClick = () => {
-    if (!isTagEditable) {
-      fetchTags();
-      setIsTagEditable(true);
-    }
-  };
-
   useEffect(() => {
     if (glossary.reviewers && glossary.reviewers.length) {
       setReviewer(
@@ -129,71 +75,6 @@ const GlossaryDetails = ({ permissions, glossary, updateGlossary }: props) => {
           selectedData={glossary}
           onUpdate={updateGlossary}
         />
-        {/* {!isTagEditable && glossary?.tags && glossary.tags.length > 0 && (
-          <>
-            <SVGIcons
-              alt="icon-tag"
-              className="m-x-xss"
-              icon="icon-tag-grey"
-              width="16"
-            />
-            <TagsViewer tags={glossary.tags} />
-          </>
-        )}
-        <Space
-          className="items-center flex-wrap"
-          onClick={handleTagContainerClick}>
-          <TagsContainer
-            buttonContainerClass="m-t-0"
-            className="w-min-20"
-            containerClass="flex items-center gap-2 m-t-xs"
-            dropDownHorzPosRight={false}
-            editable={isTagEditable}
-            isLoading={isTagLoading}
-            selectedTags={getSelectedTags()}
-            showTags={false}
-            size="small"
-            tagList={getTagOptionsFromFQN(tagList)}
-            type="label"
-            onCancel={() => {
-              handleTagSelection();
-            }}
-            onSelectionChange={(tags) => {
-              handleTagSelection(tags);
-            }}>
-            {glossary?.tags && glossary?.tags.length ? (
-              <Button
-                className="p-0 flex-center"
-                data-testid="edit-tag-icon"
-                disabled={!(permissions.EditTags || permissions.EditAll)}
-                icon={
-                  <SVGIcons
-                    alt="edit"
-                    icon="icon-edit"
-                    title="Edit"
-                    width="16px"
-                  />
-                }
-                size="small"
-                type="text"
-              />
-            ) : (
-              <Button
-                className="p-0"
-                disabled={!(permissions.EditTags || permissions.EditAll)}
-                type="text">
-                <Tags
-                  className="tw-text-primary"
-                  startWith="+ "
-                  tag={t('label.add-entity', {
-                    entity: t('label.tag-lowercase'),
-                  })}
-                  type="label"
-                />
-              </Button>
-            )}
-          </TagsContainer>
-        </Space> */}
       </Col>
 
       <Col span={24}>

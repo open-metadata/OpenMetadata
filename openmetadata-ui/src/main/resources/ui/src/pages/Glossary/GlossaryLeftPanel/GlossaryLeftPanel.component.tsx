@@ -16,7 +16,6 @@ import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { ReactComponent as IconFolder } from 'assets/svg/folder.svg';
 import { ReactComponent as PlusIcon } from 'assets/svg/plus-primary.svg';
 import LeftPanelCard from 'components/common/LeftPanelCard/LeftPanelCard';
-import Searchbar from 'components/common/searchbar/Searchbar';
 import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from 'components/PermissionProvider/PermissionProvider.interface';
 import GlossaryV1Skeleton from 'components/Skeleton/GlossaryV1/GlossaryV1LeftPanelSkeleton.component';
@@ -93,7 +92,7 @@ const GlossaryLeftPanel = ({ glossaries }: GlossaryLeftPanelProps) => {
               {t('label.glossary')}
             </Typography.Text>
           </Col>
-          <Col className="p-x-sm" span={24}>
+          {/* <Col className="p-x-sm" span={24}>
             <Searchbar
               removeMargin
               showLoadingStatus
@@ -104,7 +103,7 @@ const GlossaryLeftPanel = ({ glossaries }: GlossaryLeftPanelProps) => {
               typingInterval={500}
               onSearch={handleSearch}
             />
-          </Col>
+          </Col> */}
           <Col className="p-x-sm" span={24}>
             <Tooltip
               title={

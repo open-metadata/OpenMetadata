@@ -266,17 +266,23 @@ const GlossaryPage = () => {
             <Col flex="auto">
               <GlossaryV1
                 deleteStatus={deleteStatus}
-                handleGlossaryTermUpdate={handleGlossaryTermUpdate}
                 isGlossaryActive={isGlossaryActive}
                 selectedData={selectedData as Glossary}
                 updateGlossary={updateGlossary}
                 onGlossaryDelete={handleGlossaryDelete}
                 onGlossaryTermDelete={handleGlossaryTermDelete}
+                onGlossaryTermUpdate={handleGlossaryTermUpdate}
               />
             </Col>
-            <Col flex="400px">
-              <GlossaryRightPanel glossary={selectedData as Glossary} />
-            </Col>
+            {selectedData && (
+              <Col flex="400px">
+                <GlossaryRightPanel
+                  entityDetails={selectedData as Glossary}
+                  isGlossary={isGlossaryActive}
+                  onGlossaryTermUpdate={handleGlossaryTermUpdate}
+                />
+              </Col>
+            )}
           </Row>
         )}
       </PageLayoutV1>

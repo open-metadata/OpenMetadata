@@ -11,13 +11,16 @@
  *  limitations under the License.
  */
 
-import { Select, Spin, Typography } from 'antd';
+import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
+import { Button, Select, Space, Spin } from 'antd';
+import TagButton from 'components/TagButton/TagButton.component';
 import { t } from 'i18next';
-import { cloneDeep, debounce, includes } from 'lodash';
-import React, { Fragment, useCallback, useEffect, useState } from 'react';
+import { cloneDeep, debounce, includes, toString } from 'lodash';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useHistory } from 'react-router-dom';
 import { searchData } from 'rest/miscAPI';
 import { getGlossaryPath } from 'utils/RouterUtils';
+import { ReactComponent as PlusIcon } from '../../../assets/svg/plus-primary.svg';
 import { PAGE_SIZE } from '../../../constants/constants';
 import { SearchIndex } from '../../../enums/search.enum';
 import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
@@ -25,7 +28,6 @@ import { EntityReference } from '../../../generated/type/entityReference';
 import { formatSearchGlossaryTermResponse } from '../../../utils/APIUtils';
 import { getEntityReferenceFromGlossary } from '../../../utils/GlossaryUtils';
 import { OperationPermission } from '../../PermissionProvider/PermissionProvider.interface';
-import SummaryDetail from '../SummaryDetail';
 
 interface RelatedTermsProps {
   permissions: OperationPermission;
@@ -59,12 +61,12 @@ const RelatedTerms = ({
     history.push(getGlossaryPath(fqn));
   };
 
-  const handleRelatedTermsSave = () => {
+  const handleRelatedTermsSave = (newOptions: EntityReference[]) => {
     let updatedGlossaryTerm = cloneDeep(glossaryTerm);
-    const oldTerms = selectedOption.filter((d) =>
+    const oldTerms = newOptions.filter((d) =>
       includes(glossaryTerm.relatedTerms, d)
     );
-    const newTerms = selectedOption
+    const newTerms = newOptions
       .filter((d) => !includes(glossaryTerm.relatedTerms, d))
       .map((d) => ({
         id: d.id,
@@ -113,6 +115,19 @@ const RelatedTerms = ({
     }));
   };
 
+  const removeTerms = (removedTag: string) => {
+    const newOptions = selectedOption.filter(
+      (option) => option.displayName !== removedTag
+    );
+    setSelectedOption(newOptions);
+    handleRelatedTermsSave(newOptions);
+  };
+
+  const handleCancel = () => {
+    setSelectedOption(formatOptions(glossaryTerm.relatedTerms || []));
+    setIsIconVisible(true);
+  };
+
   useEffect(() => {
     if (glossaryTerm.relatedTerms?.length) {
       setOptions(glossaryTerm.relatedTerms);
@@ -121,42 +136,36 @@ const RelatedTerms = ({
   }, [glossaryTerm]);
 
   return (
-    <SummaryDetail
-      hasAccess={permissions.EditAll}
-      key="related_term"
-      setShow={() => setIsIconVisible(false)}
-      showIcon={isIconVisible}
-      title={t('label.related-term-plural')}
-      onSave={handleRelatedTermsSave}>
-      <div className="flex" data-testid="related-term-container">
-        {isIconVisible ? (
-          selectedOption.length ? (
-            selectedOption.map((term, i) => (
-              <Fragment key={i}>
-                {i > 0 && <span className="m-r-xs">,</span>}
-                <span
-                  className="flex"
-                  data-testid={`related-term-${term?.name}`}
-                  onClick={() => {
-                    handleRelatedTermClick(term.fullyQualifiedName || '');
-                  }}>
-                  <Typography.Text
-                    className="link-text-info"
-                    ellipsis={{ tooltip: term?.name }}
-                    style={{ maxWidth: 200 }}>
-                    {term?.name}
-                  </Typography.Text>
-                </span>
-              </Fragment>
-            ))
-          ) : (
-            <Typography.Text type="secondary">
-              {t('message.no-related-terms-available')}
-            </Typography.Text>
-          )
-        ) : (
+    <div className="flex" data-testid="related-term-container">
+      {isIconVisible ? (
+        <div className="d-flex flex-wrap">
+          <TagButton
+            className="tw-text-primary"
+            icon={<PlusIcon height={16} name="plus" width={16} />}
+            label={t('label.term')}
+            onClick={() => {
+              setIsIconVisible(false);
+            }}
+          />
+          {selectedOption.map((entity: EntityReference) => (
+            <TagButton
+              isRemovable
+              className="tw-text-primary"
+              key={entity.fullyQualifiedName}
+              label={toString(entity.displayName)}
+              removeTag={(_e, removedTag: string) => {
+                removeTerms(removedTag);
+              }}
+              onClick={() => {
+                handleRelatedTermClick(entity.fullyQualifiedName || '');
+              }}
+            />
+          ))}
+        </div>
+      ) : (
+        <Space align="center" className="w-full" size={8}>
           <Select
-            allowClear
+            className="w-min-15"
             filterOption={false}
             mode="multiple"
             notFoundContent={isLoading ? <Spin size="small" /> : null}
@@ -172,9 +181,26 @@ const RelatedTerms = ({
             onFocus={() => suggestionSearch()}
             onSearch={debounceOnSearch}
           />
-        )}
-      </div>
-    </SummaryDetail>
+          <>
+            <Button
+              className="w-6 p-x-05"
+              data-testid="cancelAssociatedTag"
+              icon={<CloseOutlined size={12} />}
+              size="small"
+              onClick={() => handleCancel()}
+            />
+            <Button
+              className="w-6 p-x-05"
+              data-testid="saveAssociatedTag"
+              icon={<CheckOutlined size={12} />}
+              size="small"
+              type="primary"
+              onClick={() => handleRelatedTermsSave(selectedOption)}
+            />
+          </>
+        </Space>
+      )}
+    </div>
   );
 };
 

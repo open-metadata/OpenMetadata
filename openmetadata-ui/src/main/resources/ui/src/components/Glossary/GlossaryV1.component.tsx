@@ -11,11 +11,13 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Dropdown, Row, Tooltip, Typography } from 'antd';
+import { DownOutlined } from '@ant-design/icons';
+import { Button, Col, Dropdown, Row, Space, Tooltip, Typography } from 'antd';
 import { ReactComponent as ExportIcon } from 'assets/svg/ic-export.svg';
 import { ReactComponent as ImportIcon } from 'assets/svg/ic-import.svg';
 import { AxiosError } from 'axios';
-import { isEmpty } from 'lodash';
+import VersionButton from 'components/VersionButton/VersionButton.component';
+import { isEmpty, toString } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
@@ -53,7 +55,7 @@ const GlossaryV1 = ({
   isGlossaryActive,
   deleteStatus = 'initial',
   selectedData,
-  handleGlossaryTermUpdate,
+  onGlossaryTermUpdate,
   updateGlossary,
   onGlossaryDelete,
   onGlossaryTermDelete,
@@ -183,6 +185,17 @@ const GlossaryV1 = ({
       document.getElementById('manage-button')?.offsetWidth || 0
     );
   });
+
+  const addButtonContent = [
+    {
+      label: t('label.term-plural'),
+      key: '1',
+    },
+    {
+      label: t('label.asset-plural'),
+      key: '2',
+    },
+  ];
 
   const manageButtonContent = [
     ...(isGlossaryActive
@@ -314,6 +327,27 @@ const GlossaryV1 = ({
           className="tw-relative tw-flex tw-justify-between tw-items-center"
           id="add-term-button">
           <Dropdown
+            className="m-r-xs"
+            menu={{ items: addButtonContent }}
+            placement="bottomRight"
+            trigger={['click']}>
+            <Button size="small" type="primary">
+              <Space>
+                {t('label.add')}
+                <DownOutlined />
+              </Space>
+            </Button>
+          </Dropdown>
+          {selectedData && selectedData.version && (
+            <VersionButton
+              className="m-r-xs"
+              selected={false}
+              size="small"
+              version={toString(selectedData.version)}
+            />
+          )}
+
+          <Dropdown
             align={{ targetOffset: [-12, 0] }}
             disabled={
               isGlossaryActive
@@ -360,7 +394,7 @@ const GlossaryV1 = ({
         ) : (
           <GlossaryTermsV1
             glossaryTerm={selectedData as GlossaryTerm}
-            handleGlossaryTermUpdate={handleGlossaryTermUpdate}
+            handleGlossaryTermUpdate={onGlossaryTermUpdate}
             permissions={glossaryTermPermission}
           />
         ))}
