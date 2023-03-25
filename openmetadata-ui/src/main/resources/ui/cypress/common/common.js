@@ -821,15 +821,11 @@ export const updateOwner = (isAddingOwnerToTeam = false) => {
     .invoke('text')
     .then((text) => {
       cy.get('[data-testid="hiden-layer"]').should('exist').click();
-      interceptURL(
-        'GET',
-        '/api/v1/search/query?q=*%20AND%20teamType:Group&from=0&size=10&index=team_search_index',
-        'getTeams'
-      );
+      interceptURL('GET', '/api/v1/users?limit=15', 'getUsers');
       // Clicking on edit owner button
-      cy.get('[data-testid="edit-owner"]').should('be.visible').click();
+      cy.get('[data-testid="add-user"]').should('be.visible').click();
 
-      verifyResponseStatusCode('@getTeams', 200);
+      verifyResponseStatusCode('@getUsers', 200);
 
       if (!isAddingOwnerToTeam) {
         // Clicking on users tab
@@ -840,7 +836,7 @@ export const updateOwner = (isAddingOwnerToTeam = false) => {
           .click();
       }
 
-      cy.get('[data-testid="list-item"]')
+      cy.get('[data-testid="selectable-list"]')
         .first()
         .should('contain', text.trim())
         .click();
@@ -1041,7 +1037,7 @@ export const followAndOwnTheEntity = (termObj) => {
   // go to manage tab and search for logged in user and set the owner
   interceptURL(
     'GET',
-    '/api/v1/search/query?q=*%20AND%20teamType:Group&from=0&size=10&index=team_search_index',
+    '/api/v1/search/query?q=*%20AND%20teamType:Group&from=0&size=15&index=team_search_index',
     'getTeams'
   );
   cy.get('[data-testid="edit-owner"]').should('be.visible').click();

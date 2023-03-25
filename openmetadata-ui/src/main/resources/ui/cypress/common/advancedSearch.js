@@ -282,7 +282,7 @@ export const addOwner = (searchTerm, ownerName) => {
     `api/v1/search/query?q=*${encodeURI(searchTerm)}*&from=0&size=*&index=*`,
     'searchOwner'
   );
-  cy.get('[data-testid="searchInputText"]')
+  cy.get('.user-team-select-popover > [data-testid="searchbar"]')
     .scrollIntoView()
     .should('be.visible')
     .and('exist')

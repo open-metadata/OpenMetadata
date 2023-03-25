@@ -33,6 +33,7 @@ import { OperationPermission } from 'components/PermissionProvider/PermissionPro
 import ServiceConnectionDetails from 'components/ServiceConnectionDetails/ServiceConnectionDetails.component';
 import TagsViewer from 'components/Tag/TagsViewer/tags-viewer';
 import { EntityType } from 'enums/entity.enum';
+import { compare } from 'fast-json-patch';
 import { Container } from 'generated/entity/data/container';
 import { isEmpty, isNil, isUndefined, startCase, toLower } from 'lodash';
 import {
@@ -60,6 +61,7 @@ import { getPipelines } from 'rest/pipelineAPI';
 import {
   getServiceByFQN,
   TestConnection,
+  updateOwnerService,
   updateService,
 } from 'rest/serviceAPI';
 import { getTopics } from 'rest/topicsAPI';
@@ -783,6 +785,11 @@ const ServicePage: FunctionComponent = () => {
   };
 
   const handleUpdateOwner = (owner: ServicesType['owner']) => {
+    if (isUndefined(owner)) {
+      handleRemoveOwner();
+
+      return;
+    }
     const updatedData = {
       connection: serviceDetails?.connection,
       name: serviceDetails?.name,
@@ -819,6 +826,30 @@ const ServicePage: FunctionComponent = () => {
           return reject();
         });
     });
+  };
+
+  const handleRemoveOwner = async () => {
+    const updatedData = {
+      ...serviceDetails,
+      owner: undefined,
+    } as ServicesUpdateRequest;
+
+    const jsonPatch = compare(serviceDetails || {}, updatedData);
+    try {
+      const res = await updateOwnerService(
+        serviceName,
+        serviceDetails?.id ?? '',
+        jsonPatch
+      );
+      setServiceDetails(res);
+    } catch (error) {
+      showErrorToast(
+        error as AxiosError,
+        t('server.entity-updating-error', {
+          entity: t('label.owner-lowercase'),
+        })
+      );
+    }
   };
 
   const onDescriptionEdit = (): void => {

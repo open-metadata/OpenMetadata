@@ -11,17 +11,17 @@
  *  limitations under the License.
  */
 import { Button, Popover, Space, Tabs, Tooltip, Typography } from 'antd';
+import { WILD_CARD_CHAR } from 'constants/char.constants';
 import { PAGE_SIZE_MEDIUM, pagingObject } from 'constants/constants';
 import { NO_PERMISSION_FOR_ACTION } from 'constants/HelperTextUtil';
 import { EntityType } from 'enums/entity.enum';
 import { SearchIndex } from 'enums/search.enum';
 import { EntityReference } from 'generated/entity/data/table';
 import { Paging } from 'generated/type/paging';
-import { isEmpty, isEqual, noop } from 'lodash';
+import { isEmpty, isEqual, isNumber, noop, toString } from 'lodash';
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { searchData } from 'rest/miscAPI';
-import { getTeams } from 'rest/teamsAPI';
 import { getUsers } from 'rest/userAPI';
 import { formatTeamsResponse, formatUsersResponse } from 'utils/APIUtils';
 import { getCountBadge } from 'utils/CommonUtils';
@@ -45,6 +45,7 @@ export const UserTeamSelectableList = ({
   const [userPaging, setUserPaging] = useState<Paging>(pagingObject);
   const [teamPaging, setTeamPaging] = useState<Paging>(pagingObject);
   const [activeTab, setActiveTab] = useState<'teams' | 'users'>('teams');
+  const [currentTeamPage, setCurrentTeamPage] = useState('1');
 
   const fetchUserOptions = async (searchText: string, after?: string) => {
     if (searchText) {
@@ -95,14 +96,14 @@ export const UserTeamSelectableList = ({
     }
   };
 
-  const fetchTeamOptions = async (searchText: string, after?: string) => {
+  const fetchTeamOptions = async (searchText: string, after?: number) => {
     if (searchText) {
       try {
         const res = await searchData(
           searchText,
           1,
           PAGE_SIZE_MEDIUM,
-          '',
+          'teamType:Group',
           '',
           '',
           SearchIndex.TEAM
@@ -121,19 +122,31 @@ export const UserTeamSelectableList = ({
       }
     } else {
       try {
-        const { data, paging } = await getTeams('', {
-          after,
-          limit: PAGE_SIZE_MEDIUM,
-        });
+        const { data } = await searchData(
+          WILD_CARD_CHAR,
+          isNumber(after) ? after : 1,
+          PAGE_SIZE_MEDIUM,
+          'teamType:Group',
+          '',
+          '',
+          SearchIndex.TEAM
+        );
 
         const filterData = getEntityReferenceListFromEntities(
-          data,
+          formatTeamsResponse(data.hits.hits),
           EntityType.TEAM
         );
 
-        setTeamPaging(paging);
+        setTeamPaging({ total: data.hits.total.value });
+        setCurrentTeamPage((prevCount) => prevCount + 1);
 
-        return { data: filterData, paging };
+        return {
+          data: filterData,
+          paging: {
+            total: data.hits.total.value,
+            after: toString(currentTeamPage + 1),
+          },
+        };
       } catch (error) {
         console.error(error);
 

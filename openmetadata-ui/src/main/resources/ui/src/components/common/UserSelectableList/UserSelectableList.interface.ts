@@ -14,10 +14,19 @@ import { PopoverProps } from 'antd';
 import { EntityReference } from 'generated/entity/teams/user';
 import { ReactNode } from 'react';
 
-export type UserSelectableListProps = {
-  hasPermission: boolean;
-  selectedUsers: EntityReference[];
-  onUpdate: (updatedUsers: EntityReference[]) => void;
-  children?: ReactNode;
-  popoverProps?: PopoverProps;
-};
+export type UserSelectableListProps =
+  | {
+      hasPermission: boolean;
+      selectedUsers: EntityReference[];
+      children?: ReactNode;
+      popoverProps?: PopoverProps;
+    } & (
+      | {
+          multiSelect?: true;
+          onUpdate: (updatedUsers: EntityReference[]) => void;
+        }
+      | {
+          multiSelect: false;
+          onUpdate: (updatedUsers: EntityReference) => void;
+        }
+    );

@@ -34,6 +34,7 @@ export const UserSelectableList = ({
   onUpdate = noop,
   children,
   popoverProps,
+  multiSelect = true,
 }: UserSelectableListProps) => {
   const [popupVisible, setPopupVisible] = useState(false);
   const { t } = useTranslation();
@@ -87,7 +88,11 @@ export const UserSelectableList = ({
 
   const handleUpdate = useCallback(
     (users: EntityReference[]) => {
-      onUpdate(users);
+      if (multiSelect) {
+        (onUpdate as (users: EntityReference[]) => void)(users);
+      } else {
+        (onUpdate as (users: EntityReference) => void)(users[0]);
+      }
       setPopupVisible(false);
     },
     [onUpdate]
@@ -97,8 +102,8 @@ export const UserSelectableList = ({
     <Popover
       content={
         <SelectableList
-          multiSelect
           fetchOptions={fetchOptions}
+          multiSelect={multiSelect}
           searchPlaceholder={t('label.search-for-type', {
             type: t('label.user'),
           })}
@@ -122,7 +127,7 @@ export const UserSelectableList = ({
           title={hasPermission ? '' : NO_PERMISSION_FOR_ACTION}>
           <Button
             className="p-0 flex-center"
-            data-testid="add-new-reviewer"
+            data-testid="add-user"
             disabled={!hasPermission}
             icon={
               <SVGIcons

@@ -19,6 +19,7 @@ import { cloneDeep } from 'lodash';
 import VirtualList from 'rc-virtual-list';
 import React, { UIEventHandler, useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { getEntityName } from 'utils/EntityUtils';
 import SVGIcons, { Icons } from 'utils/SvgUtils';
 import Searchbar from '../searchbar/Searchbar';
 import '../UserSelectableList/user-select-dropdown.less';
@@ -150,6 +151,7 @@ export const SelectableList = ({
 
   return (
     <List
+      data-testid="selectable-list"
       footer={
         multiSelect && (
           <div className="d-flex justify-between">
@@ -201,11 +203,12 @@ export const SelectableList = ({
               )
             }
             key={item.id}
+            title={getEntityName(item)}
             onClick={() => selectionHandler(item)}>
             {customTagRenderer ? (
               customTagRenderer(item)
             ) : (
-              <UserTag id={item.id} name={item.displayName ?? ''} />
+              <UserTag id={item.id} name={getEntityName(item)} />
             )}
           </List.Item>
         )}

@@ -94,6 +94,21 @@ const EntitySummaryDetails = ({
     setShowTypeSelector(value);
   }, []);
 
+  const ownerDropdown = allowTeamOwner ? (
+    <UserTeamSelectableList
+      hasPermission={Boolean(updateOwner)}
+      owner={currentOwner}
+      onUpdate={updateOwner ?? noop}
+    />
+  ) : (
+    <UserSelectableList
+      hasPermission={Boolean(updateOwner)}
+      multiSelect={false}
+      selectedUsers={currentOwner ? [currentOwner] : []}
+      onUpdate={updateOwner ?? noop}
+    />
+  );
+
   const { isEntityDetails, userDetails, isTier, isOwner, isTeamType } =
     useMemo(() => {
       const userDetails = getTeamsUser(data);
@@ -137,19 +152,7 @@ const EntitySummaryDetails = ({
           ) : (
             <>
               {t('label.no-entity', { entity: t('label.owner') })}
-              {allowTeamOwner ? (
-                <UserTeamSelectableList
-                  hasPermission={Boolean(updateOwner)}
-                  owner={currentOwner}
-                  onUpdate={updateOwner ?? noop}
-                />
-              ) : (
-                <UserSelectableList
-                  hasPermission={Boolean(updateOwner)}
-                  selectedUsers={currentOwner ? [currentOwner] : []}
-                  onUpdate={updateOwner ?? noop}
-                />
-              )}
+              {ownerDropdown}
             </>
           );
       }
@@ -276,14 +279,8 @@ const EntitySummaryDetails = ({
                   }
                 />
               ) : null}
-
-              {(isOwner || isTier) && (
-                <UserTeamSelectableList
-                  hasPermission={Boolean(updateOwner)}
-                  owner={currentOwner}
-                  onUpdate={updateOwner ?? noop}
-                />
-              )}
+              {/* Edit icon with dropdown */}
+              {(isOwner || isTier) && ownerDropdown}
             </>
           ) : isOwner ? (
             <>
@@ -304,11 +301,8 @@ const EntitySummaryDetails = ({
                   {displayVal}
                 </Button>
               </span>
-              <UserTeamSelectableList
-                hasPermission={Boolean(updateOwner)}
-                owner={currentOwner}
-                onUpdate={updateOwner ?? noop}
-              />
+              {/* Edit icon with dropdown */}
+              {ownerDropdown}
             </>
           ) : isTier ? (
             <Space
