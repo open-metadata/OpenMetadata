@@ -400,6 +400,7 @@ const ConfigureIngestion = ({
   const getMarkDeletedEntitiesToggle = (
     entityLabel: string,
     entity: string,
+    entityPlural: string,
     handleMarkDeletedEntities: () => void,
     markDeletedEntities?: boolean
   ) => {
@@ -408,7 +409,7 @@ const ConfigureIngestion = ({
         <Field>
           <div className="tw-flex tw-gap-1">
             <label>
-              {t('label.mark-deleted-entity-plural', { entity: entityLabel })}
+              {t('label.mark-deleted-entity', { entity: entityLabel })}
             </label>
             <ToggleSwitchV1
               checked={markDeletedEntities}
@@ -417,7 +418,7 @@ const ConfigureIngestion = ({
             />
           </div>
           <p className="tw-text-grey-muted tw-mt-3">
-            {t('message.mark-deleted-entity-message', { entity })}
+            {t('message.mark-deleted-entity-message', { entity, entityPlural })}
           </p>
           {getSeparator('')}
         </Field>
@@ -450,8 +451,9 @@ const ConfigureIngestion = ({
           {getIncludesTagToggle()}
           {getDebugLogToggle()}
           {getMarkDeletedEntitiesToggle(
-            t('label.table'),
+            t('label.table-plural'),
             t('label.table-lowercase'),
+            t('label.table-lowercase-plural'),
             handleMarkDeletedTables,
             markDeletedTables
           )}
@@ -649,8 +651,9 @@ const ConfigureIngestion = ({
             {getOverrideOwnerToggle()}
             {getIncludesTagToggle()}
             {getMarkDeletedEntitiesToggle(
-              t('label.dashboard'),
+              t('label.dashboard-plural'),
               t('label.dashboard-lowercase'),
+              t('label.dashboard-lowercase-plural'),
               handleMarkDeletedDashboards,
               markDeletedDashboards
             )}
@@ -681,8 +684,9 @@ const ConfigureIngestion = ({
             )}
             {getDebugLogToggle()}
             {getMarkDeletedEntitiesToggle(
-              t('label.topic'),
+              t('label.topic-plural'),
               t('label.topic-lowercase'),
+              t('label.topic-lowercase-plural'),
               handleMarkDeletedTopics,
               markDeletedTopics
             )}
@@ -707,8 +711,9 @@ const ConfigureIngestion = ({
             {getPipelineFieldToggles()}
             {getIncludesTagToggle()}
             {getMarkDeletedEntitiesToggle(
-              t('label.pipeline'),
+              t('label.pipeline-plural'),
               t('label.pipeline-lowercase'),
+              t('label.pipeline-lowercase-plural'),
               handleMarkDeletedPipelines,
               markDeletedPipelines
             )}
@@ -732,8 +737,9 @@ const ConfigureIngestion = ({
             />
             {getSeparator('')}
             {getMarkDeletedEntitiesToggle(
-              t('label.ml-model'),
+              t('label.ml-model-plural'),
               t('label.ml-model-lowercase'),
+              t('label.ml-model-lowercase-plural'),
               handleMarkDeletedMlModels,
               markDeletedMlModels
             )}
