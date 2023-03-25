@@ -555,7 +555,7 @@ const DatabaseDetails: FunctionComponent = () => {
         getExplorePath({
           search: appState.inPageSearchText,
           extraParameters: {
-            postFilter: {
+            facetFilter: {
               serviceType: [serviceType],
               'database.name.keyword': [databaseName],
             },

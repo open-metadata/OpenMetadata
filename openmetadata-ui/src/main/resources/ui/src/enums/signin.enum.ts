@@ -22,4 +22,5 @@ export enum AuthTypes {
   BASIC = 'basic',
   LDAP = 'ldap',
   NO_AUTH = 'no-auth',
+  SAML = 'saml',
 }

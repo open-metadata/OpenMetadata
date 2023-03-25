@@ -1105,6 +1105,7 @@
     "query-log-duration-message": "Configuration to tune how far we want to look back in query logs to process usage data.",
     "query-used-by-other-tables": "Query used by other tables",
     "reacted-with-emoji": "reacted with {{type}} emoji",
+    "redirect-message": "Please wait while you are being redirected.",
     "redirecting-to-home-page": "Redirecting to the home page",
     "remove-edge-between-source-and-target": "Are you sure you want to remove the edge between \"{{sourceDisplayName}} and {{targetDisplayName}}\"?.",
     "remove-lineage-edge": "Remove lineage edge",

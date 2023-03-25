@@ -247,4 +247,12 @@ declare module 'Models' {
   }
 
   export type PagingWithoutTotal = Omit<Paging, 'total'>;
+
+  type EntityDetailUnion =
+    | Table
+    | Pipeline
+    | Dashboard
+    | Topic
+    | Mlmodel
+    | Container;
 }
