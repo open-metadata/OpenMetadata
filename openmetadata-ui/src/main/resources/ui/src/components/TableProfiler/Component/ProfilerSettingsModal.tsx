@@ -28,6 +28,8 @@ import { Col, Row } from 'antd/lib/grid';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import 'codemirror/addon/fold/foldgutter.css';
+import SchemaEditor from 'components/schema-editor/SchemaEditor';
+import { CSMode } from 'enums/codemirror.enum';
 import { PartitionIntervalType } from 'generated/api/data/createTable';
 import { isEmpty, isEqual, isUndefined, pick, startCase } from 'lodash';
 import React, {
@@ -38,11 +40,9 @@ import React, {
   useReducer,
   useState,
 } from 'react';
-import { Controlled as CodeMirror } from 'react-codemirror2';
 import { useTranslation } from 'react-i18next';
 import { getTableProfilerConfig, putTableProfileConfig } from 'rest/tableAPI';
 import {
-  codeMirrorOption,
   DEFAULT_INCLUDE_PROFILE,
   INTERVAL_TYPE_OPTIONS,
   INTERVAL_UNIT_OPTIONS,
@@ -332,14 +332,11 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
     []
   );
 
-  const handleCodeMirrorChange = useCallback(
-    (_Editor, _EditorChange, value) => {
-      handleStateChange({
-        sqlQuery: value,
-      });
-    },
-    []
-  );
+  const handleCodeMirrorChange = useCallback((value) => {
+    handleStateChange({
+      sqlQuery: value,
+    });
+  }, []);
 
   const handleIncludeColumnsProfiler = useCallback((changedValues, data) => {
     const { partitionIntervalType } = changedValues;
@@ -470,12 +467,15 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
               type: t('label.query'),
             })}{' '}
           </p>
-          <CodeMirror
+
+          <SchemaEditor
             className="profiler-setting-sql-editor"
             data-testid="profiler-setting-sql-editor"
-            options={codeMirrorOption}
-            value={state?.sqlQuery}
-            onBeforeChange={handleCodeMirrorChange}
+            mode={{ name: CSMode.SQL }}
+            options={{
+              readOnly: false,
+            }}
+            value={state?.sqlQuery || ''}
             onChange={handleCodeMirrorChange}
           />
         </Col>
