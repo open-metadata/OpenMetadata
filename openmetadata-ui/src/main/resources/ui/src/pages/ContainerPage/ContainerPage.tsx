@@ -37,7 +37,6 @@ import {
 } from 'components/PermissionProvider/PermissionProvider.interface';
 import { FQN_SEPARATOR_CHAR } from 'constants/char.constants';
 import { getServiceDetailsPath } from 'constants/constants';
-import { ENTITY_CARD_CLASS } from 'constants/entity.constants';
 import { NO_PERMISSION_TO_VIEW } from 'constants/HelperTextUtil';
 import { EntityInfo, EntityType } from 'enums/entity.enum';
 import { ServiceCategory } from 'enums/service.enum';
@@ -88,8 +87,8 @@ const ContainerPage = () => {
   const history = useHistory();
   const { t } = useTranslation();
   const { getEntityPermissionByFqn } = usePermissionProvider();
-  const { containerName, tab = CONTAINER_DETAILS_TABS.SCHEME } =
-    useParams<{ containerName: string; tab: CONTAINER_DETAILS_TABS }>();
+  const { entityFQN: containerName, tab = CONTAINER_DETAILS_TABS.SCHEME } =
+    useParams<{ entityFQN: string; tab: CONTAINER_DETAILS_TABS }>();
 
   // Local states
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -426,7 +425,7 @@ const ContainerPage = () => {
         const { tags: newTags, version } = await handleUpdateContainerData({
           ...(containerData as Container),
           tags: [
-            ...(containerData?.tags ?? []),
+            ...getTagsWithoutTier(containerData?.tags ?? []),
             {
               tagFQN: updatedTier,
               labelType: LabelType.Manual,
@@ -705,7 +704,7 @@ const ContainerPage = () => {
               </span>
             }>
             <Card
-              className={`${ENTITY_CARD_CLASS} card-body-full`}
+              className="h-full card-body-full"
               data-testid="lineage-details">
               <EntityLineageComponent
                 addLineageHandler={handleAddLineage}
@@ -732,7 +731,7 @@ const ContainerPage = () => {
                 {t('label.custom-property-plural')}
               </span>
             }>
-            <Card className={ENTITY_CARD_CLASS}>
+            <Card className="h-full">
               <CustomPropertyTable
                 entityDetails={
                   containerData as CustomPropertyProps['entityDetails']

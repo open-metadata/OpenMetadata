@@ -1288,7 +1288,8 @@ export const flattenObj = (
         item.id,
         nodes,
         edges,
-        pagination_data
+        pagination_data,
+        maxLineageLength
       );
       nodes.push(item);
     }

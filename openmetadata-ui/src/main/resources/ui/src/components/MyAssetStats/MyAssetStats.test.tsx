@@ -25,10 +25,12 @@ const mockProp = {
       dashboardCount: 10,
       pipelineCount: 3,
       mlmodelCount: 2,
+      testSuiteCount: 1,
+      storageContainerCount: 1,
+      glossaryTermCount: 1,
       servicesCount: 193,
       userCount: 100,
       teamCount: 7,
-      testSuiteCount: 1,
     } as EntitiesCount,
     entityCountLoading: false,
   },
@@ -45,14 +47,14 @@ describe('Test MyDataHeader Component', () => {
     expect(myDataHeader).toBeInTheDocument();
   });
 
-  it('Should have 9 data summary details', () => {
+  it('Should have 11 data summary details', () => {
     const { container } = render(<MyAssetStats {...mockProp} />, {
       wrapper: MemoryRouter,
     });
 
     const dataSummary = getAllByTestId(container, /-summary$/);
 
-    expect(dataSummary).toHaveLength(10);
+    expect(dataSummary).toHaveLength(11);
   });
 
   it('OnClick it should redirect to respective page', () => {
@@ -65,9 +67,10 @@ describe('Test MyDataHeader Component', () => {
     const pipelines = getByTestId(container, 'pipelines');
     const mlmodel = getByTestId(container, 'mlmodels');
     const containers = getByTestId(container, 'containers');
+    const glossaryTerms = getByTestId(container, 'glossary-terms');
     const service = getByTestId(container, 'service');
     const user = getByTestId(container, 'user');
-    const terms = getByTestId(container, 'terms');
+    const teams = getByTestId(container, 'teams');
 
     expect(tables).toHaveAttribute('href', '/explore/tables');
     expect(topics).toHaveAttribute('href', '/explore/topics');
@@ -75,11 +78,41 @@ describe('Test MyDataHeader Component', () => {
     expect(pipelines).toHaveAttribute('href', '/explore/pipelines');
     expect(mlmodel).toHaveAttribute('href', '/explore/mlmodels');
     expect(containers).toHaveAttribute('href', '/explore/containers');
+    expect(glossaryTerms).toHaveAttribute('href', '/glossary');
     expect(service).toHaveAttribute('href', '/settings/services/databases');
     expect(user).toHaveAttribute('href', '/settings/members/users');
-    expect(terms).toHaveAttribute(
+    expect(teams).toHaveAttribute(
       'href',
       '/settings/members/teams/Organization'
     );
+  });
+
+  it('Should have correct count', () => {
+    const { container } = render(<MyAssetStats {...mockProp} />, {
+      wrapper: MemoryRouter,
+    });
+    const tables = getByTestId(container, 'tables-summary');
+    const topics = getByTestId(container, 'topics-summary');
+    const dashboards = getByTestId(container, 'dashboards-summary');
+    const pipelines = getByTestId(container, 'pipelines-summary');
+    const mlmodel = getByTestId(container, 'mlmodels-summary');
+    const containers = getByTestId(container, 'containers-summary');
+    const glossaryTerms = getByTestId(container, 'glossary-terms-summary');
+    const testSuite = getByTestId(container, 'test-suite-summary');
+    const service = getByTestId(container, 'service-summary');
+    const user = getByTestId(container, 'user-summary');
+    const teams = getByTestId(container, 'teams-summary');
+
+    expect(getByTestId(tables, 'filter-count')).toHaveTextContent('40');
+    expect(getByTestId(topics, 'filter-count')).toHaveTextContent('13');
+    expect(getByTestId(dashboards, 'filter-count')).toHaveTextContent('10');
+    expect(getByTestId(pipelines, 'filter-count')).toHaveTextContent('3');
+    expect(getByTestId(mlmodel, 'filter-count')).toHaveTextContent('2');
+    expect(getByTestId(containers, 'filter-count')).toHaveTextContent('1');
+    expect(getByTestId(glossaryTerms, 'filter-count')).toHaveTextContent('1');
+    expect(getByTestId(testSuite, 'filter-count')).toHaveTextContent('1');
+    expect(getByTestId(service, 'filter-count')).toHaveTextContent('193');
+    expect(getByTestId(user, 'filter-count')).toHaveTextContent('100');
+    expect(getByTestId(teams, 'filter-count')).toHaveTextContent('7');
   });
 });

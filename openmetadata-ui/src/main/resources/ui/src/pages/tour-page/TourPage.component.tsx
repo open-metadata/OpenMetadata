@@ -52,6 +52,9 @@ const exploreCount = {
   [SearchIndex.DASHBOARD]: 0,
   [SearchIndex.PIPELINE]: 0,
   [SearchIndex.MLMODEL]: 0,
+  [SearchIndex.CONTAINER]: 0,
+  [SearchIndex.GLOSSARY]: 0,
+  [SearchIndex.TAG]: 0,
 };
 
 const TourPage = () => {
@@ -156,8 +159,8 @@ const TourPage = () => {
             sortOrder={INITIAL_SORT_ORDER}
             sortValue={INITIAL_SORT_FIELD}
             tabCounts={explorePageCounts}
-            onChangeAdvancedSearchQueryFilter={noop}
-            onChangePostFilter={noop}
+            onChangeAdvancedSearchQuickFilters={noop}
+            onChangeFacetFilters={noop}
             onChangeSearchIndex={noop}
             onChangeShowDeleted={noop}
             onChangeSortOder={noop}

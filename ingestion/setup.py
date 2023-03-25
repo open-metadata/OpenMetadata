@@ -103,6 +103,7 @@ base_requirements = {
     "setuptools~=65.6.3",
     "sqlalchemy>=1.4.0,<2",
     "openmetadata-sqllineage==1.0.2",
+    "tabulate==0.9.0",
     "typing-compat~=0.1.0",  # compatibility requirements for 3.7
     "typing-inspect",
     "wheel~=0.38.4",

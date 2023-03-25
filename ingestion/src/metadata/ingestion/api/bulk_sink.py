@@ -12,31 +12,32 @@
 Abstract BulkSink definition to build a Workflow
 """
 from abc import ABCMeta, abstractmethod
-from dataclasses import dataclass, field
-from typing import Any, List
+from dataclasses import dataclass
+from typing import Any
 
 from .closeable import Closeable
 from .status import Status
 
 
-@dataclass
 class BulkSinkStatus(Status):
-    records: List[Any] = field(default_factory=list)
-    warnings: List[Any] = field(default_factory=list)
-    failures: List[Any] = field(default_factory=list)
-
     def records_written(self, record: Any) -> None:
         self.records.append(record)
 
     def warning(self, info: Any) -> None:
         self.warnings.append(info)
 
-    def failure(self, info: Any) -> None:
-        self.failures.append(info)
-
 
 @dataclass  # type: ignore[misc]
 class BulkSink(Closeable, metaclass=ABCMeta):
+    """
+    BulkSink class
+    """
+
+    status: BulkSinkStatus
+
+    def __init__(self):
+        self.status = BulkSinkStatus()
+
     @classmethod
     @abstractmethod
     def create(cls, config_dict: dict, metadata_config: dict) -> "BulkSink":
@@ -46,9 +47,8 @@ class BulkSink(Closeable, metaclass=ABCMeta):
     def write_records(self) -> None:
         pass
 
-    @abstractmethod
     def get_status(self) -> BulkSinkStatus:
-        pass
+        return self.status
 
     @abstractmethod
     def close(self) -> None:

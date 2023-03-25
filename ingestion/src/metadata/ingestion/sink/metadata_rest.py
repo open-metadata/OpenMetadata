@@ -33,7 +33,7 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 from metadata.generated.schema.entity.teams.role import Role
 from metadata.generated.schema.entity.teams.team import Team
 from metadata.ingestion.api.common import Entity
-from metadata.ingestion.api.sink import Sink, SinkStatus
+from metadata.ingestion.api.sink import Sink
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.models.ometa_topic_data import OMetaTopicSampleData
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
@@ -62,7 +62,7 @@ T = TypeVar("T", bound=BaseModel)
 
 
 class MetadataRestSinkConfig(ConfigModel):
-    api_endpoint: str = None
+    api_endpoint: Optional[str] = None
 
 
 class MetadataRestSink(Sink[Entity]):
@@ -72,20 +72,16 @@ class MetadataRestSink(Sink[Entity]):
     """
 
     config: MetadataRestSinkConfig
-    status: SinkStatus
 
     # We want to catch any errors that might happen during the sink
     # pylint: disable=broad-except
 
     def __init__(
-        self,
-        config: MetadataRestSinkConfig,
-        metadata_config: OpenMetadataConnection,
+        self, config: MetadataRestSinkConfig, metadata_config: OpenMetadataConnection
     ):
-
+        super().__init__()
         self.config = config
         self.metadata_config = metadata_config
-        self.status = SinkStatus()
         self.wrote_something = False
         self.charts_dict = {}
         self.metadata = OpenMetadata(self.metadata_config)
@@ -141,18 +137,19 @@ class MetadataRestSink(Sink[Entity]):
                 )
                 logger.debug(f"Successfully ingested {log}")
             else:
-                self.status.failure(log)
-                logger.error(f"Failed to ingest {log}")
-
+                error = f"Failed to ingest {log}"
+                logger.error(error)
+                self.status.failed(log, error, None)
         except (APIError, HTTPError) as err:
+            error = f"Failed to ingest {log} due to api request failure: {err}"
             logger.debug(traceback.format_exc())
-            logger.warning(f"Failed to ingest {log} due to api request failure: {err}")
-            self.status.failure(log)
-
+            logger.warning(error)
+            self.status.failed(log, error, traceback.format_exc())
         except Exception as exc:
+            error = f"Failed to ingest {log}: {exc}"
             logger.debug(traceback.format_exc())
-            logger.warning(f"Failed to ingest {log}: {exc}")
-            self.status.failure(log)
+            logger.warning(error)
+            self.status.failed(log, error, traceback.format_exc())
 
     def write_datamodel(self, datamodel_link: DataModelLink) -> None:
         """
@@ -186,13 +183,13 @@ class MetadataRestSink(Sink[Entity]):
             )
             self.metadata.add_location(table=table, location=location)
         except Exception as exc:
-            logger.debug(traceback.format_exc())
-            logger.warning(
+            name = f"{table_location_link.table_fqn} <-> {table_location_link.location_fqn}"
+            error = (
                 f"Failed to write table location link [{table_location_link}]: {exc}"
             )
-            self.status.failure(
-                f"{table_location_link.table_fqn} <-> {table_location_link.location_fqn}"
-            )
+            logger.debug(traceback.format_exc())
+            logger.warning(error)
+            self.status.failed(name, error, traceback.format_exc())
 
     def write_dashboard_usage(self, dashboard_usage: DashboardUsage) -> None:
         """
@@ -241,18 +238,22 @@ class MetadataRestSink(Sink[Entity]):
         try:
             created_lineage = self.metadata.add_lineage(add_lineage)
             created_lineage_info = created_lineage["entity"]["fullyQualifiedName"]
-
             logger.debug(f"Successfully added Lineage from {created_lineage_info}")
             self.status.records_written(f"Lineage from: {created_lineage_info}")
         except (APIError, ValidationError) as err:
+            error = f"Failed to ingest lineage [{add_lineage}]: {err}"
             logger.debug(traceback.format_exc())
-            logger.error(
-                f"Failed to ingest lineage [{get_add_lineage_log_str(add_lineage)}]: {err}"
+            logger.error(error)
+            self.status.failed(
+                get_add_lineage_log_str(add_lineage), error, traceback.format_exc()
             )
-            self.status.failure(f"Lineage: {get_add_lineage_log_str(add_lineage)}")
         except (KeyError, ValueError) as err:
+            error = f"Failed to extract lineage information for [{add_lineage}] after sink: {err}"
             logger.debug(traceback.format_exc())
-            logger.warning(f"Failed to extract lineage information after sink - {err}")
+            logger.warning(error)
+            self.status.failed(
+                get_add_lineage_log_str(add_lineage), error, traceback.format_exc()
+            )
 
     def _create_role(self, create_role: CreateRoleRequest) -> Optional[Role]:
         try:
@@ -479,9 +480,6 @@ class MetadataRestSink(Sink[Entity]):
             logger.error(
                 f"Unexpected error while ingesting table constraints for table id [{record.table_id}]: {exc}"
             )
-
-    def get_status(self):
-        return self.status
 
     def close(self):
         pass

@@ -46,6 +46,7 @@ import org.apache.commons.lang3.tuple.Pair;
 import org.apache.commons.lang3.tuple.Triple;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.common.utils.CommonUtil;
+import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.data.CreateTableProfile;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Table;
@@ -65,6 +66,7 @@ import org.openmetadata.schema.type.TableData;
 import org.openmetadata.schema.type.TableJoins;
 import org.openmetadata.schema.type.TableProfile;
 import org.openmetadata.schema.type.TableProfilerConfig;
+import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
@@ -609,7 +611,9 @@ public class TableRepository extends EntityRepository<Table> {
         .withServiceType(schema.getServiceType());
 
     // Carry forward ownership from database schema
-    table.setOwner(table.getOwner() == null ? schema.getOwner() : table.getOwner());
+    if (table.getOwner() == null && schema.getOwner() != null) {
+      table.setOwner(schema.getOwner().withDescription("inherited"));
+    }
 
     // Validate column tags
     addDerivedColumnTags(table.getColumns());
@@ -669,6 +673,21 @@ public class TableRepository extends EntityRepository<Table> {
     // Add table level tags by adding tag to table relationship
     super.applyTags(table);
     applyTags(table.getColumns());
+  }
+
+  @Override
+  public List<TagLabel> getAllTags(EntityInterface entity) {
+    List<TagLabel> allTags = new ArrayList<>();
+    Table table = (Table) entity;
+    EntityUtil.mergeTags(allTags, table.getTags());
+    table.getColumns().forEach(column -> EntityUtil.mergeTags(allTags, column.getTags()));
+    if (table.getDataModel() != null) {
+      EntityUtil.mergeTags(allTags, table.getDataModel().getTags());
+      for (Column column : listOrEmpty(table.getDataModel().getColumns())) {
+        EntityUtil.mergeTags(allTags, column.getTags());
+      }
+    }
+    return allTags;
   }
 
   private void getColumnTags(boolean setTags, List<Column> columns) {
