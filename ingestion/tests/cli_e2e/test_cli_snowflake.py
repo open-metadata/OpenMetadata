@@ -64,7 +64,7 @@ class SnowflakeCliTest(CliCommonDB.TestSuite):
         self.assertTrue(len(source_status.failures) == 0)
         self.assertTrue(len(source_status.warnings) == 0)
         self.assertTrue(len(source_status.filtered) == 1)
-        self.assertTrue(len(source_status.success) >= self.expected_tables())
+        self.assertTrue(len(source_status.records) >= self.expected_tables())
         self.assertTrue(len(sink_status.failures) == 0)
         self.assertTrue(len(sink_status.warnings) == 0)
         self.assertTrue(len(sink_status.records) > self.expected_tables())
