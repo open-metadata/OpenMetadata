@@ -81,6 +81,14 @@ describe('Test Connection Component', () => {
     expect(screen.getByTestId('test-connection-btn')).toBeInTheDocument();
   });
 
+  it('Should render the button only is displayButtonOnly is true', async () => {
+    await act(async () => {
+      render(<TestConnection {...mockProps} displayButtonOnly />);
+    });
+
+    expect(screen.getByTestId('test-connection-button')).toBeInTheDocument();
+  });
+
   it('Test connection button should be disabled on test connection click', async () => {
     await act(async () => {
       render(<TestConnection {...mockProps} />);

@@ -65,6 +65,7 @@ const TestConnection: FC<TestConnectionProps> = ({
   formData,
   serviceCategory,
   connectionType,
+  displayButtonOnly = false,
 }) => {
   const { t } = useTranslation();
 
@@ -270,45 +271,58 @@ const TestConnection: FC<TestConnectionProps> = ({
 
   return (
     <>
-      <div className="flex justify-between bg-white border border-main shadow-base rounded-4 p-sm mt-4">
-        <Space data-testid="message-container" size={8}>
-          {isTestingConnection && <Loader size="small" />}
-          {testStatus === StatusType.Successful && (
-            <SuccessIcon data-testid="success-badge" height={24} width={24} />
-          )}
-          {testStatus === StatusType.Failed && (
-            <FailIcon data-testid="fail-badge" height={24} width={24} />
-          )}
-          <Space data-testid="messag-text" size={2}>
-            {message}{' '}
-            {testStatus && (
-              <Transi18next
-                i18nKey="message.click-text-to-view-details"
-                renderElement={
-                  <Button
-                    className="p-0 test-connection-message-btn"
-                    type="link"
-                    onClick={() => setDialogOpen(true)}
-                  />
-                }
-                values={{
-                  text: t('label.here-lowercase'),
-                }}
-              />
-            )}
-          </Space>
-        </Space>
+      {displayButtonOnly ? (
         <Button
-          className="text-primary"
-          data-testid="test-connection-btn"
+          data-testid="test-connection-button"
           disabled={isTestConnectionDisabled}
           loading={isTestingConnection}
-          size="middle"
-          type="default"
+          type="primary"
           onClick={handleTestConnection}>
-          {t('label.test-entity', { entity: t('label.connection') })}
+          {t('label.test-entity', {
+            entity: t('label.connection'),
+          })}
         </Button>
-      </div>
+      ) : (
+        <div className="flex justify-between bg-white border border-main shadow-base rounded-4 p-sm mt-4">
+          <Space data-testid="message-container" size={8}>
+            {isTestingConnection && <Loader size="small" />}
+            {testStatus === StatusType.Successful && (
+              <SuccessIcon data-testid="success-badge" height={24} width={24} />
+            )}
+            {testStatus === StatusType.Failed && (
+              <FailIcon data-testid="fail-badge" height={24} width={24} />
+            )}
+            <Space data-testid="messag-text" size={2}>
+              {message}{' '}
+              {testStatus && (
+                <Transi18next
+                  i18nKey="message.click-text-to-view-details"
+                  renderElement={
+                    <Button
+                      className="p-0 test-connection-message-btn"
+                      type="link"
+                      onClick={() => setDialogOpen(true)}
+                    />
+                  }
+                  values={{
+                    text: t('label.here-lowercase'),
+                  }}
+                />
+              )}
+            </Space>
+          </Space>
+          <Button
+            className="text-primary"
+            data-testid="test-connection-btn"
+            disabled={isTestConnectionDisabled}
+            loading={isTestingConnection}
+            size="middle"
+            type="default"
+            onClick={handleTestConnection}>
+            {t('label.test-entity', { entity: t('label.connection') })}
+          </Button>
+        </div>
+      )}
       <TestConnectionModal
         isOpen={dialogOpen}
         isTestingConnection={isTestingConnection}
