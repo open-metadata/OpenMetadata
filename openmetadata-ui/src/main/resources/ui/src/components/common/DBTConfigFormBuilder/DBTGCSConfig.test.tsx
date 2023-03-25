@@ -27,6 +27,7 @@ const mockSecurityConfigChange = jest.fn();
 const mockUpdateDescriptions = jest.fn();
 const mockUpdateDBTClassification = jest.fn();
 const mockHandleEnableDebugLogCheck = jest.fn();
+const mockIncludeTagsClick = jest.fn();
 
 const gsConfig = {
   authProviderX509CertUrl: 'url',
@@ -60,6 +61,7 @@ const mockProps = {
   handlePrefixConfigChange: mockPrefixConfigChange,
   handleSecurityConfigChange: mockSecurityConfigChange,
   handleUpdateDescriptions: mockUpdateDescriptions,
+  handleIncludeTagsClick: mockIncludeTagsClick,
   handleUpdateDBTClassification: mockUpdateDBTClassification,
   enableDebugLog: false,
   handleEnableDebugLogCheck: mockHandleEnableDebugLogCheck,
