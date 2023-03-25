@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Checkbox, List, Tooltip } from 'antd';
+import { Button, Checkbox, List, Space, Tooltip } from 'antd';
 import Loader from 'components/Loader/Loader';
 import { ADD_USER_CONTAINER_HEIGHT, pagingObject } from 'constants/constants';
 import { EntityReference } from 'generated/entity/data/table';
@@ -149,67 +149,68 @@ export const SelectableList = ({
   };
 
   return (
-    <>
-      <Searchbar
-        removeMargin
-        placeholder={searchPlaceholder ?? t('label.search')}
-        searchValue={searchText}
-        typingInterval={500}
-        onSearch={handleSearch}
-      />
-      <List
-        footer={
-          multiSelect && (
-            <div className="text-right">
-              <Button
-                className="m-r-sm"
-                color="primary"
-                size="small"
-                onClick={onCancel}>
+    <List
+      footer={
+        multiSelect && (
+          <div className="d-flex justify-between">
+            <Button
+              color="primary"
+              size="small"
+              type="text"
+              onClick={handleRemoveClick}>
+              {t('label.clear-entity', { entity: t('label.all-lowercase') })}
+            </Button>
+            <Space className="m-l-auto text-right">
+              <Button color="primary" size="small" onClick={onCancel}>
                 {t('label.cancel')}
               </Button>
-              <Button
-                className="m-r-sm"
-                size="small"
-                type="primary"
-                onClick={handleUpdateClick}>
+              <Button size="small" type="primary" onClick={handleUpdateClick}>
                 {t('label.update')}
               </Button>
-            </div>
-          )
-        }
-        itemLayout="vertical"
-        loading={{ spinning: fetching, indicator: <Loader /> }}
-        size="small">
-        <VirtualList
-          data={uniqueOptions}
-          height={ADD_USER_CONTAINER_HEIGHT}
-          itemKey="id"
-          onScroll={onScroll}>
-          {(item) => (
-            <List.Item
-              className="cursor-pointer"
-              extra={
-                multiSelect ? (
-                  <Checkbox checked={selectedItemsInternal.has(item.id)} />
-                ) : (
-                  selectedItemsInternal.has(item.id) && (
-                    <RemoveIcon removeOwner={handleRemoveClick} />
-                  )
-                )
-              }
-              key={item.id}
-              onClick={() => selectionHandler(item)}>
-              {customTagRenderer ? (
-                customTagRenderer(item)
+            </Space>
+          </div>
+        )
+      }
+      header={
+        <Searchbar
+          removeMargin
+          placeholder={searchPlaceholder ?? t('label.search')}
+          searchValue={searchText}
+          typingInterval={500}
+          onSearch={handleSearch}
+        />
+      }
+      itemLayout="vertical"
+      loading={{ spinning: fetching, indicator: <Loader /> }}
+      size="small">
+      <VirtualList
+        data={uniqueOptions}
+        height={ADD_USER_CONTAINER_HEIGHT}
+        itemKey="id"
+        onScroll={onScroll}>
+        {(item) => (
+          <List.Item
+            className="cursor-pointer"
+            extra={
+              multiSelect ? (
+                <Checkbox checked={selectedItemsInternal.has(item.id)} />
               ) : (
-                <UserTag id={item.id} name={item.displayName ?? ''} />
-              )}
-            </List.Item>
-          )}
-        </VirtualList>
-      </List>
-    </>
+                selectedItemsInternal.has(item.id) && (
+                  <RemoveIcon removeOwner={handleRemoveClick} />
+                )
+              )
+            }
+            key={item.id}
+            onClick={() => selectionHandler(item)}>
+            {customTagRenderer ? (
+              customTagRenderer(item)
+            ) : (
+              <UserTag id={item.id} name={item.displayName ?? ''} />
+            )}
+          </List.Item>
+        )}
+      </VirtualList>
+    </List>
   );
 };
 

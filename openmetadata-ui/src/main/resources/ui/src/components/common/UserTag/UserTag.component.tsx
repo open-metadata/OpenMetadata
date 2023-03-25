@@ -27,6 +27,7 @@ export const UserTag = ({
   closable = false,
   bordered,
   size = UserTagSize.default,
+  className,
 }: UserTags) => {
   if (isUndefined(id) && isUndefined(name)) {
     return null;
@@ -52,7 +53,8 @@ export const UserTag = ({
           bordered: bordered,
         },
         'user-tag',
-        UserTagSize[size]
+        UserTagSize[size],
+        className
       )}
       data-testid="user-tag"
       size={4}>

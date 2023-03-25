@@ -13,6 +13,7 @@
 
 import { Button as AntdButton, Dropdown, Space } from 'antd';
 import Tooltip, { RenderFunction } from 'antd/lib/tooltip';
+import { ReactComponent as IconTeamsGrey } from 'assets/svg/teams-grey.svg';
 import classNames from 'classnames';
 import { isString, isUndefined, noop, toLower } from 'lodash';
 import { ExtraInfo } from 'Models';
@@ -25,10 +26,11 @@ import { TagLabel } from '../../../generated/type/tagLabel';
 import { getTeamsUser } from '../../../utils/CommonUtils';
 import SVGIcons, { Icons } from '../../../utils/SvgUtils';
 import { Button } from '../../buttons/Button/Button';
-import ProfilePicture from '../ProfilePicture/ProfilePicture';
 import TeamTypeSelect from '../TeamTypeSelect/TeamTypeSelect.component';
 import TierCard from '../TierCard/TierCard';
 import { UserSelectableList } from '../UserSelectableList/UserSelectableList.component';
+import { UserTag } from '../UserTag/UserTag.component';
+import { UserTagSize } from '../UserTag/UserTag.interface';
 import { UserTeamSelectableList } from '../UserTeamSelectableList/UserTeamSelectableList.component';
 import './EntitySummaryDetails.style.less';
 
@@ -63,7 +65,7 @@ const InfoIcon = ({
 }: {
   content: React.ReactNode | RenderFunction;
 }): JSX.Element => (
-  <Tooltip className="tw-ml-2" title={content}>
+  <Tooltip title={content}>
     <SVGIcons alt="info-secondary" icon="info-secondary" width="12px" />
   </Tooltip>
 );
@@ -115,24 +117,19 @@ const EntitySummaryDetails = ({
               <>
                 {!isUndefined(userDetails) && isEntityDetails && (
                   <>
-                    <ProfilePicture
-                      displayName={userDetails.ownerName}
-                      id={userDetails.id as string}
+                    <UserTag
+                      id={userDetails.id || ''}
                       name={userDetails.ownerName || ''}
-                      width="20"
+                      size={UserTagSize.small}
                     />
-                    <span>{userDetails.ownerName}</span>
-                    <span className="tw-mr-1 tw-inline-block tw-text-gray-400">
+
+                    <span className="tw-text-gray-400">
                       {t('label.pipe-symbol')}
                     </span>
                   </>
                 )}
-                <ProfilePicture
-                  displayName={displayVal}
-                  id=""
-                  name={data.profileName || ''}
-                  width={data.avatarWidth || '20'}
-                />
+                {/* Teams Icon -- Label will be added below */}
+                <IconTeamsGrey height={18} width={18} />
               </>
             ) : (
               <></>

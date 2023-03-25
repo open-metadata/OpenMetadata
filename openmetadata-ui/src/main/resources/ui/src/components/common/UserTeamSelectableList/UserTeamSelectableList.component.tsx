@@ -192,7 +192,7 @@ export const UserTeamSelectableList = ({
                   searchPlaceholder={t('label.search-for-type', {
                     type: t('label.team'),
                   })}
-                  selectedItems={owner ? [owner] : []}
+                  selectedItems={owner?.type === EntityType.TEAM ? [owner] : []}
                   onCancel={() => setPopupVisible(false)}
                   onUpdate={handleUpdate}
                 />
@@ -212,7 +212,7 @@ export const UserTeamSelectableList = ({
                   searchPlaceholder={t('label.search-for-type', {
                     type: t('label.user'),
                   })}
-                  selectedItems={owner ? [owner] : []}
+                  selectedItems={owner?.type === EntityType.USER ? [owner] : []}
                   onCancel={() => setPopupVisible(false)}
                   onUpdate={handleUpdate}
                 />

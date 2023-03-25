@@ -17,6 +17,7 @@ export interface UserTags {
   onClose?: () => void;
   bordered?: boolean;
   size?: UserTagSize;
+  className?: string;
 }
 
 export enum UserTagSize {
