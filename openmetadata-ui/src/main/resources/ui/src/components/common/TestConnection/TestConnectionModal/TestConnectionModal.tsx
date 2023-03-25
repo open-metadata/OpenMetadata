@@ -63,7 +63,7 @@ const TestConnectionModal: FC<TestConnectionModalProps> = ({
         return (
           <Fragment key={step.name}>
             <Space align="start" className="px-4" size={16}>
-              <span className="self-start">
+              <span>
                 {hasPassed ? (
                   <SuccessIcon height={24} width={24} />
                 ) : isTestingConnection ? (

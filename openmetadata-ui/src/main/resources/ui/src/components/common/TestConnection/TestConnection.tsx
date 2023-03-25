@@ -38,7 +38,11 @@ import {
   getTestConnectionType,
   shouldTestConnection,
 } from 'utils/ServiceUtils';
-import { showErrorToast } from 'utils/ToastUtils';
+import {
+  showErrorToast,
+  showInfoToast,
+  showSuccessToast,
+} from 'utils/ToastUtils';
 
 import { ReactComponent as FailIcon } from 'assets/svg/fail-badge.svg';
 import { ReactComponent as SuccessIcon } from 'assets/svg/success-badge.svg';
@@ -194,12 +198,22 @@ const TestConnection: FC<TestConnectionProps> = ({
               (testConnectionResponse?.status as StatusType) ===
               StatusType.Successful;
 
+            const isTestConnectionFailed =
+              (testConnectionResponse?.status as StatusType) ===
+              StatusType.Failed;
+
             if (isWorkflowCompleted) {
               setMessage(
                 isTestConnectionSuccess
                   ? t('message.connection-test-successful')
                   : t('message.connection-test-failed')
               );
+
+              isTestConnectionSuccess &&
+                showSuccessToast(t('message.connection-test-successful'));
+
+              isTestConnectionFailed &&
+                showErrorToast(t('message.connection-test-failed'));
 
               // clear the current interval
               intervalId && clearInterval(intervalId);
@@ -231,7 +245,9 @@ const TestConnection: FC<TestConnectionProps> = ({
           );
 
           if (!isWorkflowCompleted) {
-            setMessage(t('message.test-connection-taking-too-long'));
+            const infoMessage = t('message.test-connection-taking-too-long');
+            setMessage(infoMessage);
+            showInfoToast(infoMessage);
           }
 
           setIsTestingConnection(false);
