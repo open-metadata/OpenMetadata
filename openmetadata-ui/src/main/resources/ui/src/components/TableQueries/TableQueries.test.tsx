@@ -14,13 +14,14 @@
 import {
   findAllByText,
   findByTestId,
-  queryAllByText,
   render,
+  screen,
 } from '@testing-library/react';
-import { INITIAL_PAGING_VALUE } from 'constants/constants';
+import { pagingObject } from 'constants/constants';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
-import { MOCK_TABLE_QUERY } from '../../mocks/TableData.mock';
+import { getQueriesList } from 'rest/queryAPI';
+import { MOCK_QUERIES } from '../../mocks/Queries.mock';
 import TableQueries from './TableQueries';
 import { TableQueriesProp } from './TableQueries.interface';
 
@@ -31,26 +32,55 @@ const mockTableQueriesProp: TableQueriesProp = {
 jest.mock('./QueryCard', () => {
   return jest.fn().mockReturnValue(<p>QueryCard</p>);
 });
+jest.mock('components/common/next-previous/NextPrevious', () => {
+  return jest.fn().mockImplementation(() => <div>NextPrevious.component</div>);
+});
+jest.mock('components/SearchDropdown/SearchDropdown', () => {
+  return jest
+    .fn()
+    .mockImplementation(() => <div>SearchDropdown.component</div>);
+});
+jest.mock('./TableQueryRightPanel/TableQueryRightPanel.component', () => {
+  return jest
+    .fn()
+    .mockImplementation(() => <div>TableQueryRightPanel.component</div>);
+});
 jest.mock('rest/queryAPI', () => ({
   getQueriesList: jest
     .fn()
     .mockImplementation(() =>
-      Promise.resolve({ data: MOCK_TABLE_QUERY, paging: INITIAL_PAGING_VALUE })
+      Promise.resolve({ data: MOCK_QUERIES, paging: pagingObject })
     ),
+}));
+jest.mock('components/PermissionProvider/PermissionProvider', () => ({
+  usePermissionProvider: jest
+    .fn()
+    .mockImplementation(() => ({ getEntityPermission: jest.fn() })),
+}));
+jest.mock('rest/miscAPI', () => ({
+  getSearchedUsers: jest
+    .fn()
+    .mockImplementation(() => Promise.resolve({ data: [] })),
 }));
 
 describe('Test TableQueries Component', () => {
   it('Check if TableQueries component has all child elements', async () => {
-    const { container } = render(<TableQueries {...mockTableQueriesProp} />, {
+    render(<TableQueries {...mockTableQueriesProp} />, {
       wrapper: MemoryRouter,
     });
-    const queriesContainer = await findByTestId(container, 'queries-container');
+    const queriesContainer = await screen.findByTestId('queries-container');
+    const searchDropdown = await screen.findByText('SearchDropdown.component');
+    const rightPanel = await screen.findByText(
+      'TableQueryRightPanel.component'
+    );
 
     expect(queriesContainer).toBeInTheDocument();
+    expect(searchDropdown).toBeInTheDocument();
+    expect(rightPanel).toBeInTheDocument();
   });
 
-  it('Check if TableQueries component has n query card', async () => {
-    const queriesLength = MOCK_TABLE_QUERY?.length || 0;
+  it('All the query should render', async () => {
+    const queriesLength = MOCK_QUERIES?.length || 0;
     const { container } = render(<TableQueries {...mockTableQueriesProp} />, {
       wrapper: MemoryRouter,
     });
@@ -61,21 +91,32 @@ describe('Test TableQueries Component', () => {
     expect(queryCards).toHaveLength(queriesLength);
   });
 
-  it('Check if TableQueries component has queries as undefined', async () => {
-    const { container } = render(<TableQueries {...mockTableQueriesProp} />, {
+  it('Error placeholder should display if there is no data', async () => {
+    (getQueriesList as jest.Mock).mockImplementationOnce(() =>
+      Promise.resolve({ data: [] })
+    );
+    render(<TableQueries {...mockTableQueriesProp} />, {
       wrapper: MemoryRouter,
     });
-    const queryCards = queryAllByText(container, /QueryCard/i);
+    const queryCards = screen.queryAllByText('QueryCard');
+    const noDataPlaceholder = await screen.findByTestId('no-queries');
 
     expect(queryCards).toHaveLength(0);
+    expect(noDataPlaceholder).toBeInTheDocument();
   });
 
-  it('Check if TableQueries component has queries as empty list', async () => {
-    const { container } = render(<TableQueries {...mockTableQueriesProp} />, {
+  it('If paging count is more than 10 and next/previous key is present, pagination should be visible', async () => {
+    (getQueriesList as jest.Mock).mockImplementationOnce(() =>
+      Promise.resolve({
+        data: MOCK_QUERIES,
+        paging: { total: 11, after: 'next-paging-key' },
+      })
+    );
+    render(<TableQueries {...mockTableQueriesProp} />, {
       wrapper: MemoryRouter,
     });
-    const queryCards = queryAllByText(container, /QueryCard/i);
+    const pagingComponent = await screen.findByText('NextPrevious.component');
 
-    expect(queryCards).toHaveLength(0);
+    expect(pagingComponent).toBeInTheDocument();
   });
 });
