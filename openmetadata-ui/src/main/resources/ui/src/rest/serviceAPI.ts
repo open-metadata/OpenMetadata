@@ -12,6 +12,7 @@
  */
 
 import { AxiosResponse } from 'axios';
+import { configOptions } from 'constants/constants';
 import { isNil } from 'lodash';
 import { ServiceData, ServicesData, ServicesUpdateRequest } from 'Models';
 import {
@@ -92,6 +93,19 @@ export const updateService = async (
     ServicesUpdateRequest,
     AxiosResponse<ServicesType>
   >(`/services/${serviceCat}`, options);
+
+  return response.data;
+};
+
+export const updateOwnerService = async (
+  serviceCat: string,
+  id: string,
+  options: ServicesUpdateRequest
+) => {
+  const response = await APIClient.patch<
+    ServicesUpdateRequest,
+    AxiosResponse<ServicesType>
+  >(`/services/${serviceCat}/${id}`, options, configOptions);
 
   return response.data;
 };

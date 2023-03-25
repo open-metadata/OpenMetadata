@@ -160,7 +160,10 @@ const SuccessScreen = ({
           theme="primary"
           variant="outlined"
           onClick={handleViewServiceClick}>
-          <span>{viewServiceText ?? 'View Service'}</span>
+          <span>
+            {viewServiceText ??
+              t('label.view-entity', { entity: t('label.service') })}
+          </span>
         </Button>
 
         {showIngestionButton && (
