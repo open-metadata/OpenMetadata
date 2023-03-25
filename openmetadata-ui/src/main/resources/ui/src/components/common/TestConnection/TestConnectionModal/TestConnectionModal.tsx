@@ -72,7 +72,7 @@ const TestConnectionModal: FC<TestConnectionModalProps> = ({
                   <FailIcon height={24} width={24} />
                 )}
               </span>
-              <Space direction="vertical" size={4}>
+              <Space direction="vertical" size={0}>
                 <Typography.Text className="text-body">
                   {step.name}
                 </Typography.Text>

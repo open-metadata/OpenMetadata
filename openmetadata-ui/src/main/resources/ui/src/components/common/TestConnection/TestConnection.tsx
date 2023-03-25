@@ -24,8 +24,8 @@ import {
   WorkflowType,
 } from 'generated/entity/automations/workflow';
 import { TestConnectionStep } from 'generated/entity/services/connections/testConnectionDefinition';
-import { lowerCase, toNumber } from 'lodash';
-import React, { FC, useMemo, useState } from 'react';
+import { toLower, toNumber } from 'lodash';
+import React, { FC, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   addWorkflow,
@@ -84,6 +84,11 @@ const TestConnection: FC<TestConnectionProps> = ({
   const [currentWorkflow, setCurrentWorkflow] = useState<Workflow>();
   const [testStatus, setTestStatus] = useState<TestStatus>();
 
+  /**
+   * Current workflow reference
+   */
+  const currentWorkflowRef = useRef(currentWorkflow);
+
   // derived variables
   const updatedFormData = useMemo(() => {
     return formatFormDataForSubmit(formData);
@@ -105,7 +110,7 @@ const TestConnection: FC<TestConnectionProps> = ({
   const fetchConnectionDefinition = async () => {
     try {
       const response = await getTestConnectionDefinitionByName(
-        lowerCase(connectionType)
+        toLower(connectionType)
       );
 
       setTestConnectionStep(response.steps);
@@ -217,8 +222,12 @@ const TestConnection: FC<TestConnectionProps> = ({
           // clear the current interval
           intervalId && clearInterval(intervalId);
 
+          // using reference to ensure call back should have latest value
+          const currentWorkflowStatus = currentWorkflowRef.current
+            ?.status as WorkflowStatus;
+
           const isWorkflowCompleted = WORKFLOW_COMPLETE_STATUS.includes(
-            currentWorkflow?.status as WorkflowStatus
+            currentWorkflowStatus
           );
 
           if (!isWorkflowCompleted) {
@@ -236,6 +245,10 @@ const TestConnection: FC<TestConnectionProps> = ({
       setTestStatus(StatusType.Failed);
     }
   };
+
+  useEffect(() => {
+    currentWorkflowRef.current = currentWorkflow; // update ref with latest value of currentWorkflow state variable
+  }, [currentWorkflow]);
 
   // rendering
 
