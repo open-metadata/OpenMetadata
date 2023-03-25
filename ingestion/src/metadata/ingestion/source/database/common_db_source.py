@@ -355,7 +355,6 @@ class CommonDbSourceService(
         """
         table_name, table_type = table_name_and_type
         schema_name = self.context.database_schema.name.__root__
-        db_name = self.context.database.name.__root__
         try:
 
             (
@@ -365,7 +364,7 @@ class CommonDbSourceService(
             ) = self.get_columns_and_constraints(
                 schema_name=schema_name,
                 table_name=table_name,
-                db_name=db_name,
+                db_name=self.context.database.name.__root__,
                 inspector=self.inspector,
             )
 
@@ -404,7 +403,7 @@ class CommonDbSourceService(
                     {
                         "table_name": table_name,
                         "schema_name": schema_name,
-                        "db_name": db_name,
+                        "db_name": self.context.database.name.__root__,
                         "view_definition": view_definition,
                     }
                 )
@@ -423,9 +422,10 @@ class CommonDbSourceService(
                 )
 
         except Exception as exc:
+            error = f"Unexpected exception to yield table [{table_name}]: {exc}"
             logger.debug(traceback.format_exc())
-            logger.warning(f"Unexpected exception to yield table [{table_name}]: {exc}")
-            self.status.failures.append(f"{self.config.serviceName}.{table_name}")
+            logger.warning(error)
+            self.status.failed(table_name, error, traceback.format_exc())
 
     def yield_view_lineage(self) -> Optional[Iterable[AddLineageRequest]]:
         logger.info("Processing Lineage for Views")

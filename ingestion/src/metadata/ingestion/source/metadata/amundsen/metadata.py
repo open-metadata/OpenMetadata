@@ -407,9 +407,10 @@ class AmundsenSource(Source[Entity]):
 
             self.status.scanned(table["name"])
         except Exception as exc:
+            error = f"Failed to create table entity [{table}]: {exc}"
             logger.debug(traceback.format_exc())
-            logger.warning(f"Failed to create table entity [{table}]: {exc}")
-            self.status.failure(table["name"], str(exc))
+            logger.warning(error)
+            self.status.failed(table.get("name"), error, traceback.format_exc())
 
     def create_dashboard_service(self, dashboard: dict):
         service_name = dashboard["cluster"]
@@ -443,9 +444,10 @@ class AmundsenSource(Source[Entity]):
                 service=self.dashboard_service.fullyQualifiedName,
             )
         except Exception as exc:
+            error = f"Failed to create dashboard entity [{dashboard}]: {exc}"
             logger.debug(traceback.format_exc())
-            logger.warning(f"Failed to create dashboard entity [{dashboard}]: {exc}")
-            self.status.failure(dashboard["name"], str(exc))
+            logger.warning(error)
+            self.status.failed(dashboard["name"], error, traceback.format_exc())
 
     def create_chart_entity(self, dashboard):
         for (name, chart_id, chart_type, url) in zip(

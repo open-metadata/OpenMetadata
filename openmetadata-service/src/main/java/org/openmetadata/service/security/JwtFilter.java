@@ -120,7 +120,8 @@ public class JwtFilter implements ContainerRequestFilter {
     LOG.debug("Token from header:{}", tokenFromHeader);
 
     // the case where OMD generated the Token for the Client
-    if (SSOAuthMechanism.SsoServiceType.BASIC.toString().equals(providerType)) {
+    if (SSOAuthMechanism.SsoServiceType.BASIC.toString().equals(providerType)
+        || SSOAuthMechanism.SsoServiceType.SAML.toString().equals(providerType)) {
       validateTokenIsNotUsedAfterLogout(tokenFromHeader);
     }
 

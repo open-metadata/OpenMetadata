@@ -130,11 +130,10 @@ class DomodatabaseSource(DatabaseServiceSource):
                     continue
                 yield table_id, TableType.Regular
         except Exception as exc:
+            error = f"Unexpected exception for schema name [{schema_name}]: {exc}"
             logger.debug(traceback.format_exc())
-            logger.warning(
-                f"Unexpected exception for schema name [{schema_name}]: {exc}"
-            )
-            self.status.failures.append(f"{self.config.serviceName}.{table_id}")
+            logger.warning(error)
+            self.status.failed(schema_name, error, traceback.format_exc())
 
     def yield_table(
         self, table_name_and_type: Tuple[str, str]
@@ -156,9 +155,10 @@ class DomodatabaseSource(DatabaseServiceSource):
             yield table_request
             self.register_record(table_request=table_request)
         except Exception as exc:
+            error = f"Unexpected exception for table [{table_id}]: {exc}"
             logger.debug(traceback.format_exc())
-            logger.warning(f"Unexpected exception for table [{table_id}]: {exc}")
-            self.status.failures.append(f"{self.config.serviceName}.{table_id}")
+            logger.warning(error)
+            self.status.failed(table_id, error, traceback.format_exc())
 
     def get_columns(self, table_object):
         row_order = 1

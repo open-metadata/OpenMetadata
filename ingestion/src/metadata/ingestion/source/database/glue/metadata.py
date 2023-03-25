@@ -132,12 +132,13 @@ class GlueSource(DatabaseServiceSource):
                         continue
                     database_names.append(schema["CatalogId"])
                 except Exception as exc:
-                    logger.debug(traceback.format_exc())
-                    logger.warning(
+                    error = (
                         f"Unexpected exception to get database name [{schema}]: {exc}"
                     )
-                    self.status.failures.append(
-                        f"{self.config.serviceName}.{schema['CatalogId']}"
+                    logger.debug(traceback.format_exc())
+                    logger.warning(error)
+                    self.status.failed(
+                        schema.get("CatalogId"), error, traceback.format_exc()
                     )
         yield from database_names
 
@@ -175,12 +176,13 @@ class GlueSource(DatabaseServiceSource):
                         continue
                     yield schema["Name"]
                 except Exception as exc:
-                    logger.debug(traceback.format_exc())
-                    logger.warning(
+                    error = (
                         f"Unexpected exception to get database schema [{schema}]: {exc}"
                     )
-                    self.status.failures.append(
-                        f"{self.config.serviceName}.{schema['Name']}"
+                    logger.debug(traceback.format_exc())
+                    logger.warning(error)
+                    self.status.failed(
+                        schema.get("Name"), error, traceback.format_exc()
                     )
 
     def yield_database_schema(
@@ -254,11 +256,10 @@ class GlueSource(DatabaseServiceSource):
                 self.context.table_data = table
                 yield table_name, table_type
             except Exception as exc:
+                error = f"Unexpected exception to get table [{table}]: {exc}"
                 logger.debug(traceback.format_exc())
-                logger.warning(f"Unexpected exception to get table [{table}]: {exc}")
-                self.status.failures.append(
-                    f"{self.config.serviceName}.{table.get('Name')}"
-                )
+                logger.warning(error)
+                self.status.failed(table.get("Name"), error, traceback.format_exc())
 
     def yield_table(
         self, table_name_and_type: Tuple[str, str]
@@ -284,9 +285,10 @@ class GlueSource(DatabaseServiceSource):
             yield table_request
             self.register_record(table_request=table_request)
         except Exception as exc:
+            error = f"Unexpected exception to yield table [{table_name}]: {exc}"
             logger.debug(traceback.format_exc())
-            logger.warning(f"Unexpected exception to yield table [{table_name}]: {exc}")
-            self.status.failures.append(f"{self.config.serviceName}.{table_name}")
+            logger.warning(error)
+            self.status.failed(table_name, error, traceback.format_exc())
 
     def yield_location(
         self, table_name_and_type: Tuple[str, str]
@@ -312,11 +314,10 @@ class GlueSource(DatabaseServiceSource):
             )
             yield location_request
         except Exception as exc:
+            error = f"Unexpected exception to yield location for table [{table_name}]: {exc}"
             logger.debug(traceback.format_exc())
-            logger.warning(
-                f"Unexpected exception to yield location for table [{table_name}]: {exc}"
-            )
-            self.status.failures.append(f"{self.config.serviceName}.{table_name}")
+            logger.warning(error)
+            self.status.failed(table_name, error, traceback.format_exc())
 
     def prepare(self):
         pass
