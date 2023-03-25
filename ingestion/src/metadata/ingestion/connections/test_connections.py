@@ -36,7 +36,6 @@ from metadata.generated.schema.entity.services.connections.testConnectionResult 
     TestConnectionResult,
     TestConnectionStepResult,
 )
-from metadata.generated.schema.entity.services.databaseService import DatabaseConnection
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.profiler.orm.functions.conn_test import ConnTestFn
 from metadata.utils.logger import cli_logger
@@ -152,7 +151,7 @@ def _test_connection_steps_automation_workflow(
 
         test_connection_result.status = (
             StatusType.Failed
-            if any([step for step in test_connection_result.steps if not step.passed])
+            if any(step for step in test_connection_result.steps if not step.passed)
             else StatusType.Successful
         )
 
@@ -266,7 +265,7 @@ def test_connection_db_common(
     engine: Engine,
     service_connection,
     automation_workflow: Optional[AutomationWorkflow] = None,
-    queries: dict = {},
+    queries: dict = None,
     timeout_seconds: int = 3 * 60,
 ) -> TestConnectionResult:
 
@@ -274,6 +273,8 @@ def test_connection_db_common(
     Test connection
     """
     inspector = inspect(engine)
+
+    queries = queries or {}
 
     test_fn = {
         "CheckAccess": partial(test_connection_engine_step, engine),
@@ -299,13 +300,15 @@ def test_connection_db_schema_sources(
     engine: Engine,
     service_connection,
     automation_workflow: Optional[AutomationWorkflow] = None,
-    queries: dict = {},
+    queries: dict = None,
 ) -> None:
     """
     Test connection. This can be executed either as part
     of a metadata workflow or during an Automation Workflow
     """
     inspector = inspect(engine)
+
+    queries = queries or {}
 
     def custom_executor(inspector_fn: Callable):
         """
