@@ -17,6 +17,7 @@ import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
 import { CreateWorkflow } from 'generated/api/automations/createWorkflow';
 import { ConfigClass } from 'generated/entity/automations/testServiceConnection';
 import {
+  StatusType,
   TestConnectionStepResult,
   Workflow,
   WorkflowStatus,
@@ -175,14 +176,22 @@ const TestConnection: FC<TestConnectionProps> = ({
         intervalId = toNumber(
           setInterval(async () => {
             const workflowResponse = await getWorkflowData(response.id);
-            const isFailed = workflowResponse.status === WorkflowStatus.Failed;
-            const isSuccess =
+            const { response: testConnectionResponse } = workflowResponse;
+
+            const isWorkflowFailed =
+              workflowResponse.status === WorkflowStatus.Failed;
+            const isWorkflowSuccess =
               workflowResponse.status === WorkflowStatus.Successful;
-            const isWorkflowCompleted = isFailed || isSuccess;
+
+            const isWorkflowCompleted = isWorkflowFailed || isWorkflowSuccess;
+
+            const isTestConnectionSuccess =
+              (testConnectionResponse?.status as StatusType) ===
+              StatusType.Successful;
 
             if (isWorkflowCompleted) {
               setMessage(
-                isSuccess
+                isTestConnectionSuccess
                   ? t('message.connection-test-successful')
                   : t('message.connection-test-failed')
               );
@@ -195,7 +204,9 @@ const TestConnection: FC<TestConnectionProps> = ({
 
               // set the test connection status
               setTestStatus(
-                isSuccess ? WorkflowStatus.Successful : WorkflowStatus.Failed
+                isTestConnectionSuccess
+                  ? StatusType.Successful
+                  : StatusType.Failed
               );
             }
           }, FETCH_INTERVAL)
@@ -222,7 +233,7 @@ const TestConnection: FC<TestConnectionProps> = ({
       showErrorToast(error as AxiosError);
       setIsTestingConnection(false);
       setMessage(t('message.connection-test-failed'));
-      setTestStatus(WorkflowStatus.Failed);
+      setTestStatus(StatusType.Failed);
     }
   };
 
@@ -233,10 +244,10 @@ const TestConnection: FC<TestConnectionProps> = ({
       <div className="flex justify-between bg-white border border-main shadow-base rounded-4 p-sm mt-4">
         <Space size={8}>
           {isTestingConnection && <Loader size="small" />}
-          {testStatus === WorkflowStatus.Successful && (
+          {testStatus === StatusType.Successful && (
             <SuccessIcon height={24} width={24} />
           )}
-          {testStatus === WorkflowStatus.Failed && (
+          {testStatus === StatusType.Failed && (
             <FailIcon height={24} width={24} />
           )}
           <Space size={2}>

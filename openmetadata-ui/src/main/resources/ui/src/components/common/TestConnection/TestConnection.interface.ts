@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { ServiceCategory } from 'enums/service.enum';
-import { WorkflowStatus } from 'generated/entity/automations/workflow';
+import { StatusType } from 'generated/entity/automations/workflow';
 import { ConfigData } from 'interface/service.interface';
 
 export interface TestConnectionProps {
@@ -21,6 +21,4 @@ export interface TestConnectionProps {
   formData: ConfigData;
 }
 
-export type TestStatus =
-  | Exclude<WorkflowStatus, 'Pending' | 'Running'>
-  | undefined;
+export type TestStatus = Exclude<StatusType, 'Running'> | undefined;
