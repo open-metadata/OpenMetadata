@@ -814,7 +814,7 @@ export const deleteCreatedProperty = (propertyName) => {
     .should('be.visible');
 };
 
-export const updateOwner = (isAddingOwnerToTeam = false) => {
+export const updateOwner = () => {
   cy.get('[data-testid="avatar"]').should('be.visible').click();
   cy.get('[data-testid="user-name"]')
     .should('exist')
@@ -827,18 +827,8 @@ export const updateOwner = (isAddingOwnerToTeam = false) => {
 
       verifyResponseStatusCode('@getUsers', 200);
 
-      if (!isAddingOwnerToTeam) {
-        // Clicking on users tab
-        cy.get('button[data-testid="dropdown-tab"]')
-          .should('exist')
-          .should('be.visible')
-          .contains('Users')
-          .click();
-      }
-
       cy.get('[data-testid="selectable-list"]')
-        .first()
-        .should('contain', text.trim())
+        .find(`[title="${text.trim()}"]`)
         .click();
 
       // Asserting the added name

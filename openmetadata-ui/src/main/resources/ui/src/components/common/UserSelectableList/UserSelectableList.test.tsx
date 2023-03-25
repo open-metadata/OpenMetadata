@@ -31,7 +31,7 @@ describe('SelectableList Component Test', () => {
     );
 
     act(() => {
-      expect(screen.getByTestId('add-new-reviewer')).toBeDisabled();
+      expect(screen.getByTestId('add-user')).toBeDisabled();
     });
   });
 });

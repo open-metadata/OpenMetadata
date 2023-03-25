@@ -96,7 +96,7 @@ export const UserTeamSelectableList = ({
     }
   };
 
-  const fetchTeamOptions = async (searchText: string, after?: number) => {
+  const fetchTeamOptions = async (searchText: string, after?: string) => {
     if (searchText) {
       try {
         const res = await searchData(

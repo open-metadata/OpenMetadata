@@ -166,7 +166,11 @@ export const SelectableList = ({
               <Button color="primary" size="small" onClick={onCancel}>
                 {t('label.cancel')}
               </Button>
-              <Button size="small" type="primary" onClick={handleUpdateClick}>
+              <Button
+                data-testid="selectable-list-update-btn"
+                size="small"
+                type="primary"
+                onClick={handleUpdateClick}>
                 {t('label.update')}
               </Button>
             </Space>

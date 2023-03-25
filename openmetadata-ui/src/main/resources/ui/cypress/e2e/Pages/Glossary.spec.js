@@ -98,7 +98,7 @@ const createGlossaryTerm = (term, glossary, isMutually = false) => {
 
 const deleteGlossaryTerm = ({ name }) => {
   visitGlossaryTermPage(name);
-  cy.wait(500);
+
   cy.get('[data-testid="inactive-link"]').contains(name).should('be.visible');
 
   cy.get('[data-testid="manage-button"]').should('be.visible').click();
@@ -134,7 +134,7 @@ const deleteGlossaryTerm = ({ name }) => {
 
 const goToAssetsTab = (term) => {
   visitGlossaryTermPage(term);
-  cy.wait(500);
+
   cy.get('[data-testid="inactive-link"]').contains(term).should('be.visible');
   cy.get('[data-testid="assets"]').should('be.visible').click();
   cy.get('.ant-tabs-tab-active').contains('Assets').should('be.visible');
@@ -191,6 +191,14 @@ describe('Glossary page should work properly', () => {
       .should('be.visible')
       .click();
     interceptURL('GET', '/api/v1/tags?limit=1000', 'fetchTags');
+
+    interceptURL(
+      'GET',
+      `/api/v1/search/query?q=*${encodeURI(
+        NEW_GLOSSARY.reviewer
+      )}*&from=0&size=15&index=user_search_index`,
+      'getReviewer'
+    );
     cy.get('[data-testid="tags-container"] .ant-select-selection-overflow')
       .scrollIntoView()
       .should('be.visible')
@@ -204,32 +212,16 @@ describe('Glossary page should work properly', () => {
       .should('be.visible')
       .click();
 
-    cy.get('[data-testid="confirmation-modal"]')
-      .should('exist')
-      .within(() => {
-        cy.get('[role="dialog"]').should('be.visible');
-      });
-
-    interceptURL(
-      'GET',
-      '/api/v1/search/suggest?q=*&index=user_search_index',
-      'getReviewer'
-    );
     cy.get('[data-testid="searchbar"]')
       .should('be.visible')
       .type(NEW_GLOSSARY.reviewer);
     verifyResponseStatusCode('@getReviewer', 200);
-    cy.get('[data-testid="user-card-container"]')
-      .first()
+    cy.get(`[title="${NEW_GLOSSARY.reviewer}"]`)
+      .scrollIntoView()
       .should('be.visible')
-      .as('reviewer');
+      .click();
 
-    cy.get('@reviewer')
-      .find('[data-testid="checkboxAddUser"]')
-      .should('be.visible')
-      .check();
-
-    cy.get('[data-testid="save-button"]')
+    cy.get('[data-testid="selectable-list-update-btn"]')
       .should('exist')
       .and('be.visible')
       .click();
@@ -369,7 +361,7 @@ describe('Glossary page should work properly', () => {
       });
     cy.get('[data-testid="reviewer-card-container"]').should('be.visible');
 
-    cy.get(`[data-testid="reviewer-${NEW_GLOSSARY.reviewer}"]`)
+    cy.get(`[data-testid="user-tag"]`)
       .invoke('text')
       .then((text) => {
         expect(text).to.contain(NEW_GLOSSARY.reviewer);
