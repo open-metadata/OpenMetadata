@@ -707,14 +707,6 @@ const TagsPage = () => {
                     {getEntityName(category as unknown as EntityReference)}
                   </Typography.Paragraph>
 
-                  {category.provider === ProviderType.System ? (
-                    <AppBadge
-                      className="m-l-xs"
-                      label={capitalize(category.provider)}
-                      status="processing"
-                    />
-                  ) : null}
-
                   {getCountBadge(
                     category.termCount,
                     'self-center m-l-auto',
@@ -876,7 +868,7 @@ const TagsPage = () => {
                         data-testid="classification-name">
                         {getEntityName(currentClassification)}
                       </Typography.Text>
-                      {currentClassification.provider === ProviderType.User && (
+                      {currentClassification.provider === ProviderType.User ? (
                         <Tooltip
                           title={
                             classificationPermissions.EditAll
@@ -900,6 +892,12 @@ const TagsPage = () => {
                             />
                           </Button>
                         </Tooltip>
+                      ) : (
+                        <AppBadge
+                          className="m--t-xss"
+                          label={capitalize(currentClassification.provider)}
+                          status="processing"
+                        />
                       )}
                     </Space>
                   )}
