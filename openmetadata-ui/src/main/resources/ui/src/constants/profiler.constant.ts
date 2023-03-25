@@ -366,3 +366,8 @@ export const PROFILER_MODAL_LABEL_STYLE = {
     paddingBottom: 8,
   },
 };
+
+export const TIME_BASED_PARTITION = [
+  PartitionIntervalType.IngestionTime,
+  PartitionIntervalType.TimeUnit,
+];

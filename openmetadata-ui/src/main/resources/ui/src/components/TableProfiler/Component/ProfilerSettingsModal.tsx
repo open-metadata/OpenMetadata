@@ -50,6 +50,7 @@ import {
   PROFILER_MODAL_LABEL_STYLE,
   PROFILE_SAMPLE_OPTIONS,
   SUPPORTED_COLUMN_DATA_TYPE_FOR_INTERVAL,
+  TIME_BASED_PARTITION,
 } from '../../../constants/profiler.constant';
 import {
   ProfileSampleType,
@@ -657,10 +658,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                   />
                 </Form.Item>
               </Col>
-              {[
-                PartitionIntervalType.IngestionTime,
-                PartitionIntervalType.TimeUnit,
-              ].includes(partitionIntervalType) ? (
+              {TIME_BASED_PARTITION.includes(partitionIntervalType) ? (
                 <>
                   <Col span={12}>
                     <Form.Item
