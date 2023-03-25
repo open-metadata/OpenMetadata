@@ -115,8 +115,12 @@ const TableQueries: FC<TableQueriesProp> = ({
         entityId: tableId,
         fields: 'owner,votes,tags,queryUsedIn',
       });
-      setTableQueries(queries);
-      setSelectedQuery(queries.data[0]);
+      if (queries.data.length) {
+        setTableQueries(queries);
+        setSelectedQuery(queries.data[0]);
+      } else {
+        setIsError((pre) => ({ ...pre, page: true }));
+      }
     } catch (error) {
       showErrorToast(error as AxiosError);
       setIsError((pre) => ({ ...pre, page: true }));
