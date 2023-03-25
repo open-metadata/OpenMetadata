@@ -16,7 +16,6 @@ Source connection handler
 from typing import Optional
 
 from sqlalchemy.engine import Engine
-from sqlalchemy.inspection import inspect
 
 from metadata.generated.schema.entity.automations.workflow import (
     Workflow as AutomationWorkflow,
@@ -30,12 +29,7 @@ from metadata.ingestion.connections.builders import (
     get_connection_url_common,
     init_empty_connection_arguments,
 )
-from metadata.ingestion.connections.test_connections import (
-    TestConnectionResult,
-    TestConnectionStep,
-    test_connection_db_common,
-    test_connection_db_schema_sources,
-)
+from metadata.ingestion.connections.test_connections import test_connection_db_common
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.clickhouse.queries import (
     CLICKHOUSE_SQL_STATEMENT_TEST,

@@ -125,9 +125,11 @@ class AmundsenSource(Source[Entity]):
         self.metadata = OpenMetadata(self.metadata_config)
         self.service_connection = self.config.serviceConnection.__root__.config
         self.client = get_connection(self.service_connection)
+        self.connection_obj = self.client
         self.database_service_map = {
             service.value.lower(): service.value for service in DatabaseServiceType
         }
+        self.test_connection()
 
     @classmethod
     def create(cls, config_dict, metadata_config: OpenMetadataConnection):

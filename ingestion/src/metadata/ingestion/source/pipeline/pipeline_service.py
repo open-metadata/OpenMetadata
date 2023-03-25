@@ -113,7 +113,6 @@ class PipelineServiceSource(TopologyRunnerMixin, Source, ABC):
 
     source_config: PipelineServiceMetadataPipeline
     config: WorkflowSource
-    metadata: OpenMetadata
     # Big union of types we want to fetch dynamically
     service_connection: PipelineConnection.__fields__["config"].type_
 

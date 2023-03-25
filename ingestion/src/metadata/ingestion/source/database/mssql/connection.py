@@ -15,7 +15,6 @@ Source connection handler
 from typing import Optional
 
 from sqlalchemy.engine import Engine
-from sqlalchemy.inspection import inspect
 
 from metadata.generated.schema.entity.automations.workflow import (
     Workflow as AutomationWorkflow,
@@ -28,17 +27,11 @@ from metadata.ingestion.connections.builders import (
     get_connection_args_common,
     get_connection_url_common,
 )
-from metadata.ingestion.connections.test_connections import (
-    TestConnectionResult,
-    test_connection_db_common,
-    test_connection_engine_step,
-    test_connection_steps,
-    test_query,
-)
+from metadata.ingestion.connections.test_connections import test_connection_db_common
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.mssql.queries import (
     MSSQL_GET_DATABASE,
-    MSSQL_SQL_STATEMENT_TEST,
+    MSSQL_TEST_GET_QUERIES,
 )
 
 
@@ -70,7 +63,7 @@ def test_connection(
     of a metadata workflow or during an Automation Workflow
     """
     queries = {
-        "GetQueries": MSSQL_SQL_STATEMENT_TEST,
+        "GetQueries": MSSQL_TEST_GET_QUERIES,
         "GetDatabases": MSSQL_GET_DATABASE,
     }
     test_connection_db_common(

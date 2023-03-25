@@ -32,15 +32,12 @@ from metadata.ingestion.connections.builders import (
     get_connection_options_dict,
     init_empty_connection_arguments,
 )
-from metadata.ingestion.connections.test_connections import (
-    TestConnectionResult,
-    test_connection_db_common,
-)
+from metadata.ingestion.connections.test_connections import test_connection_db_common
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.snowflake.queries import (
-    SNOWFLAKE_FETCH_TAG_TEST,
     SNOWFLAKE_GET_DATABASES,
-    SNOWFLAKE_SQL_STATEMENT_TEST,
+    SNOWFLAKE_TEST_FETCH_TAG,
+    SNOWFLAKE_TEST_GET_QUERIES,
 )
 from metadata.utils.logger import ingestion_logger
 
@@ -137,9 +134,9 @@ def test_connection(
     """
 
     queries = {
-        "GetQueries": SNOWFLAKE_SQL_STATEMENT_TEST,
+        "GetQueries": SNOWFLAKE_TEST_GET_QUERIES,
         "GetDatabases": SNOWFLAKE_GET_DATABASES,
-        "GetTags": SNOWFLAKE_FETCH_TAG_TEST,
+        "GetTags": SNOWFLAKE_TEST_FETCH_TAG,
     }
     test_connection_db_common(
         metadata=metadata,

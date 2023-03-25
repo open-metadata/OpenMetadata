@@ -29,15 +29,12 @@ from metadata.ingestion.connections.builders import (
     get_connection_url_common,
     init_empty_connection_arguments,
 )
-from metadata.ingestion.connections.test_connections import (
-    TestConnectionResult,
-    test_connection_db_common,
-)
+from metadata.ingestion.connections.test_connections import test_connection_db_common
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.postgres.queries import (
-    POSTGRES_GET_ALL_TABLE_PG_POLICY_TEST,
     POSTGRES_GET_DATABASE,
-    POSTGRES_SQL_STATEMENT_TEST,
+    POSTGRES_TEST_GET_QUERIES,
+    POSTGRES_TEST_GET_TAGS,
 )
 
 
@@ -67,9 +64,9 @@ def test_connection(
     of a metadata workflow or during an Automation Workflow
     """
     queries = {
-        "GetQueries": POSTGRES_SQL_STATEMENT_TEST,
+        "GetQueries": POSTGRES_TEST_GET_QUERIES,
         "GetDatabases": POSTGRES_GET_DATABASE,
-        "GetTags": POSTGRES_GET_ALL_TABLE_PG_POLICY_TEST,
+        "GetTags": POSTGRES_TEST_GET_TAGS,
     }
     test_connection_db_common(
         metadata=metadata,

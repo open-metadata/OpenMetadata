@@ -43,7 +43,7 @@ def get_connection(connection: RedpandaConnection) -> KafkaClient:
 def test_connection(
     metadata: OpenMetadata,
     client: KafkaClient,
-    service_connection: KafkaClient,
+    service_connection: RedpandaConnection,
     automation_workflow: Optional[AutomationWorkflow] = None,
 ) -> None:
     """
@@ -54,6 +54,6 @@ def test_connection(
     test_kafka_connection(
         metadata=metadata,
         client=client,
-        service_fqn=service_connection,
+        service_connection=service_connection,
         automation_workflow=automation_workflow,
     )

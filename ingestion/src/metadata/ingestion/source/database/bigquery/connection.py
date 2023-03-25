@@ -37,7 +37,6 @@ from metadata.ingestion.connections.builders import (
     get_connection_args_common,
 )
 from metadata.ingestion.connections.test_connections import (
-    TestConnectionResult,
     test_connection_engine_step,
     test_connection_steps,
     test_query,

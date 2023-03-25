@@ -219,7 +219,7 @@ REDSHIFT_GET_DATABASE_NAMES = """
 SELECT datname FROM pg_database
 """
 
-REDSHIFT_TEST_QUERY = """
+REDSHIFT_TEST_GET_QUERIES = """
 (select 1 from pg_catalog.svv_table_info limit 1)
 UNION
 (select 1 from pg_catalog.stl_querytext limit 1)
@@ -228,4 +228,4 @@ UNION
 """
 
 
-REDSHIFT_PARTITION_DETAILS_TEST = "select * from SVV_TABLE_INFO limit 1"
+REDSHIFT_TEST_PARTITION_DETAILS = "select * from SVV_TABLE_INFO limit 1"

@@ -58,7 +58,7 @@ def test_connection(
     """
 
     def custom_executor_for_pipeline():
-        client._execute(TEST_QUERY_GRAPHQL)
+        client._execute(TEST_QUERY_GRAPHQL)  # pylint: disable=protected-access
 
     test_fn = {"GetPipelines": custom_executor_for_pipeline}
 

@@ -66,7 +66,6 @@ from metadata.ingestion.models.topology import (
     TopologyNode,
     create_source_context,
 )
-from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.connections import get_test_connection_fn
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_schema
@@ -191,7 +190,6 @@ class DatabaseServiceSource(
 
     source_config: DatabaseServiceMetadataPipeline
     config: WorkflowSource
-    metadata: OpenMetadata
     database_source_state: Set = set()
     # Big union of types we want to fetch dynamically
     service_connection: DatabaseConnection.__fields__["config"].type_

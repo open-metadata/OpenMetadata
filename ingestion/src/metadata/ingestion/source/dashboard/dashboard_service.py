@@ -147,7 +147,6 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
 
     source_config: DashboardServiceMetadataPipeline
     config: WorkflowSource
-    metadata: OpenMetadata
     # Big union of types we want to fetch dynamically
     service_connection: DashboardConnection.__fields__["config"].type_
 

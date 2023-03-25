@@ -28,10 +28,7 @@ from metadata.generated.schema.entity.services.connections.messaging.kafkaConnec
 from metadata.generated.schema.entity.services.connections.messaging.redpandaConnection import (
     RedpandaConnection,
 )
-from metadata.ingestion.connections.test_connections import (
-    SourceConnectionException,
-    test_connection_steps,
-)
+from metadata.ingestion.connections.test_connections import test_connection_steps
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.logger import ingestion_logger
 
@@ -98,19 +95,6 @@ def get_connection(
         schema_registry_client=schema_registry_client,
         consumer_client=consumer_client,
     )
-
-
-def test_connection(client: KafkaClient, _) -> None:
-    """
-    Test connection
-    """
-    try:
-        _ = client.admin_client.list_topics().topics
-        if client.schema_registry_client:
-            _ = client.schema_registry_client.get_subjects()
-    except Exception as exc:
-        msg = f"Unknown error connecting with {client}: {exc}."
-        raise SourceConnectionException(msg) from exc
 
 
 def test_connection(

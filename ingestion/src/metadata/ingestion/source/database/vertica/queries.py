@@ -120,7 +120,7 @@ VERTICA_SQL_STATEMENT = textwrap.dedent(
     """
 )
 
-VERTICA_SQL_STATEMENT_TEST = """
+VERTICA_TEST_GET_QUERIES = """
 SELECT 
 p.query AS query_text
 FROM query_profiles p
