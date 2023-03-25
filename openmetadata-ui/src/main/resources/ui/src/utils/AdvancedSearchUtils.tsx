@@ -22,9 +22,11 @@ import { RenderSettings } from 'react-awesome-query-builder';
 import {
   ALL_DROPDOWN_ITEMS,
   COMMON_DROPDOWN_ITEMS,
+  CONTAINER_DROPDOWN_ITEMS,
   DASHBOARD_DROPDOWN_ITEMS,
   PIPELINE_DROPDOWN_ITEMS,
   TABLE_DROPDOWN_ITEMS,
+  TOPIC_DROPDOWN_ITEMS,
 } from '../constants/AdvancedSearch.constants';
 
 import { AdvancedFields, EntityFields } from '../enums/AdvancedSearch.enum';
@@ -39,7 +41,7 @@ export const getDropDownItems = (index: string) => {
       return [...TABLE_DROPDOWN_ITEMS, ...COMMON_DROPDOWN_ITEMS];
 
     case SearchIndex.TOPIC:
-      return [...COMMON_DROPDOWN_ITEMS];
+      return [...TOPIC_DROPDOWN_ITEMS, ...COMMON_DROPDOWN_ITEMS];
 
     case SearchIndex.DASHBOARD:
       return [...DASHBOARD_DROPDOWN_ITEMS, ...COMMON_DROPDOWN_ITEMS];
@@ -51,6 +53,8 @@ export const getDropDownItems = (index: string) => {
       return [
         ...COMMON_DROPDOWN_ITEMS.filter((item) => item.key !== 'service_type'),
       ];
+    case SearchIndex.CONTAINER:
+      return [...CONTAINER_DROPDOWN_ITEMS, ...COMMON_DROPDOWN_ITEMS];
 
     default:
       return [];

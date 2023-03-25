@@ -67,10 +67,24 @@ export const DASHBOARD_DROPDOWN_ITEMS = [
   },
 ];
 
+export const CONTAINER_DROPDOWN_ITEMS = [
+  {
+    label: t('label.column'),
+    key: 'dataModel.columns.name',
+  },
+];
+
 export const PIPELINE_DROPDOWN_ITEMS = [
   {
     label: t('label.task'),
     key: 'tasks.name',
+  },
+];
+
+export const TOPIC_DROPDOWN_ITEMS = [
+  {
+    label: t('label.schema'),
+    key: 'messageSchema.schemaFields.name',
   },
 ];
 
@@ -79,6 +93,8 @@ export const ALL_DROPDOWN_ITEMS = [
   ...TABLE_DROPDOWN_ITEMS,
   ...DASHBOARD_DROPDOWN_ITEMS,
   ...PIPELINE_DROPDOWN_ITEMS,
+  ...TOPIC_DROPDOWN_ITEMS,
+  ...CONTAINER_DROPDOWN_ITEMS,
 ];
 
 /**

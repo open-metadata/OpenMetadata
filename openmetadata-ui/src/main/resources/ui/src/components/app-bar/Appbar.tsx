@@ -305,7 +305,7 @@ const Appbar: React.FC = (): JSX.Element => {
       });
     } else {
       // Outside Explore page
-      history.push(getExplorePath({ search: value }));
+      history.push(getExplorePath({ tab: 'tables', search: value }));
     }
   };
 
