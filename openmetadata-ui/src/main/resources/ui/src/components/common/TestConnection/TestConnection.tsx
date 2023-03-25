@@ -10,11 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Divider, Modal, Space, Typography } from 'antd';
+import { Button, Space } from 'antd';
 import { AxiosError } from 'axios';
 import Loader from 'components/Loader/Loader';
 import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
-import { ServiceCategory } from 'enums/service.enum';
 import { CreateWorkflow } from 'generated/api/automations/createWorkflow';
 import { ConfigClass } from 'generated/entity/automations/testServiceConnection';
 import {
@@ -24,7 +23,6 @@ import {
   WorkflowType,
 } from 'generated/entity/automations/workflow';
 import { TestConnectionStep } from 'generated/entity/services/connections/testConnectionDefinition';
-import { ConfigData } from 'interface/service.interface';
 import { lowerCase, toNumber } from 'lodash';
 import React, { FC, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -43,20 +41,15 @@ import { showErrorToast } from 'utils/ToastUtils';
 
 import { ReactComponent as FailIcon } from 'assets/svg/fail-badge.svg';
 import { ReactComponent as SuccessIcon } from 'assets/svg/success-badge.svg';
+import { Transi18next } from 'utils/CommonUtils';
+import { TestConnectionProps, TestStatus } from './TestConnection.interface';
+import TestConnectionModal from './TestConnectionModal/TestConnectionModal';
 
-interface TestConnectionProps {
-  isTestingDisabled: boolean;
-  connectionType: string;
-  serviceCategory: ServiceCategory;
-  formData: ConfigData;
-}
-
-type TestStatus = Exclude<WorkflowStatus, 'Pending' | 'Running'> | undefined;
+import './test-connection.style.less';
 
 // 2 minutes
 const FETCHING_EXPIRY_TIME = 2 * 60 * 1000;
 const FETCH_INTERVAL = 2000;
-
 const WORKFLOW_COMPLETE_STATUS = [
   WorkflowStatus.Failed,
   WorkflowStatus.Successful,
@@ -70,8 +63,10 @@ const TestConnection: FC<TestConnectionProps> = ({
 }) => {
   const { t } = useTranslation();
 
+  // local state
   const [isTestingConnection, setIsTestingConnection] =
     useState<boolean>(false);
+  const [dialogOpen, setDialogOpen] = useState<boolean>(false);
 
   const [message, setMessage] = useState<string>(
     t('message.test-your-connection-before-creating-service')
@@ -86,11 +81,9 @@ const TestConnection: FC<TestConnectionProps> = ({
   >([]);
 
   const [currentWorkflow, setCurrentWorkflow] = useState<Workflow>();
-
-  const [dialogOpen, setDialogOpen] = useState<boolean>(false);
-
   const [testStatus, setTestStatus] = useState<TestStatus>();
 
+  // derived variables
   const updatedFormData = useMemo(() => {
     return formatFormDataForSubmit(formData);
   }, [formData]);
@@ -105,6 +98,8 @@ const TestConnection: FC<TestConnectionProps> = ({
 
   const isTestConnectionDisabled =
     isTestingConnection || isTestingDisabled || !allowTestConn;
+
+  // data fetch handlers
 
   const fetchConnectionDefinition = async () => {
     try {
@@ -121,9 +116,9 @@ const TestConnection: FC<TestConnectionProps> = ({
   const getWorkflowData = async (workflowId: string) => {
     try {
       const response = await getWorkflowById(workflowId);
-      const stepsResponse = response.response?.steps ?? [];
+      const testConnectionStepResult = response.response?.steps ?? [];
 
-      setTestConnectionStepResult(stepsResponse);
+      setTestConnectionStepResult(testConnectionStepResult);
 
       setCurrentWorkflow(response);
 
@@ -133,9 +128,10 @@ const TestConnection: FC<TestConnectionProps> = ({
     }
   };
 
+  // handlers
   const handleTestConnection = async () => {
     setIsTestingConnection(true);
-    setMessage(t('label.testing-connection'));
+    setMessage(t('message.testing-your-connection-may-take-two-minutes'));
 
     // reset states for workflow ans steps result
     setCurrentWorkflow(undefined);
@@ -185,13 +181,19 @@ const TestConnection: FC<TestConnectionProps> = ({
             const isWorkflowCompleted = isFailed || isSuccess;
 
             if (isWorkflowCompleted) {
-              setMessage(`Test connection ${isFailed ? 'Failed' : 'Success'}`);
+              setMessage(
+                isSuccess
+                  ? t('message.connection-test-successful')
+                  : t('message.connection-test-failed')
+              );
 
               // clear the current interval
               intervalId && clearInterval(intervalId);
 
+              // set testing connection to false
               setIsTestingConnection(false);
 
+              // set the test connection status
               setTestStatus(
                 isSuccess ? WorkflowStatus.Successful : WorkflowStatus.Failed
               );
@@ -209,7 +211,7 @@ const TestConnection: FC<TestConnectionProps> = ({
           );
 
           if (!isWorkflowCompleted) {
-            setMessage('Test connection is taking too long try again');
+            setMessage(t('message.test-connection-taking-too-long'));
           }
 
           setIsTestingConnection(false);
@@ -218,19 +220,18 @@ const TestConnection: FC<TestConnectionProps> = ({
     } catch (error) {
       intervalId && clearInterval(intervalId);
       showErrorToast(error as AxiosError);
+      setIsTestingConnection(false);
+      setMessage(t('message.connection-test-failed'));
+      setTestStatus(WorkflowStatus.Failed);
     }
   };
 
-  const getStepResult = (step: TestConnectionStep) => {
-    return testConnectionStepResult.find(
-      (resultStep) => resultStep.name === step.name
-    );
-  };
+  // rendering
 
   return (
     <>
-      <div className="flex justify-between tw-bg-white border tw-border-main tw-shadow tw-rounded tw-p-3 tw-mt-4">
-        <Space size={16}>
+      <div className="flex justify-between bg-white border border-main shadow-base rounded-4 p-sm mt-4">
+        <Space size={8}>
           {isTestingConnection && <Loader size="small" />}
           {testStatus === WorkflowStatus.Successful && (
             <SuccessIcon height={24} width={24} />
@@ -238,9 +239,23 @@ const TestConnection: FC<TestConnectionProps> = ({
           {testStatus === WorkflowStatus.Failed && (
             <FailIcon height={24} width={24} />
           )}
-          <Space>
-            {message}
-            {/* TODO: add click here to view details text */}
+          <Space size={2}>
+            {message}{' '}
+            {testStatus && (
+              <Transi18next
+                i18nKey="message.click-text-to-view-details"
+                renderElement={
+                  <Button
+                    className="p-0 test-connection-message-btn"
+                    type="link"
+                    onClick={() => setDialogOpen(true)}
+                  />
+                }
+                values={{
+                  text: t('label.here-lowercase'),
+                }}
+              />
+            )}
           </Space>
         </Space>
         <Button
@@ -254,47 +269,14 @@ const TestConnection: FC<TestConnectionProps> = ({
           {t('label.test-entity', { entity: t('label.connection') })}
         </Button>
       </div>
-      <Modal
-        centered
-        bodyStyle={{ padding: '16px 0px 16px 0px' }}
-        closable={false}
-        maskClosable={false}
-        open={dialogOpen}
-        title="Connection Status"
-        width={748}
+      <TestConnectionModal
+        isOpen={dialogOpen}
+        isTestingConnection={isTestingConnection}
+        testConnectionStep={testConnectionStep}
+        testConnectionStepResult={testConnectionStepResult}
         onCancel={() => setDialogOpen(false)}
-        onOk={() => setDialogOpen(false)}>
-        {testConnectionStep.map((step, index) => {
-          const showDivider = testConnectionStep.length - 1 !== index;
-          const currentStepResult = getStepResult(step);
-          const hasPassed = currentStepResult?.passed;
-
-          return (
-            <>
-              <Space align="start" className="px-4" key={step.name} size={16}>
-                <span className="self-start">
-                  {hasPassed ? (
-                    <SuccessIcon height={24} width={24} />
-                  ) : isTestingConnection ? (
-                    <Loader size="small" />
-                  ) : (
-                    <FailIcon height={24} width={24} />
-                  )}
-                </span>
-                <Space direction="vertical">
-                  <Typography.Text className="text-body">
-                    {step.name}
-                  </Typography.Text>
-                  <Typography.Text className="text-grey-muted">
-                    {currentStepResult?.message ?? step.description}
-                  </Typography.Text>
-                </Space>
-              </Space>
-              {showDivider && <Divider />}
-            </>
-          );
-        })}
-      </Modal>
+        onConfirm={() => setDialogOpen(false)}
+      />
     </>
   );
 };
