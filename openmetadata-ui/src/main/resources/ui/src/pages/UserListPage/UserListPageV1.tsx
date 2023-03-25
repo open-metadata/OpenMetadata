@@ -55,6 +55,7 @@ const UserListPageV1 = () => {
     setIsAdminPage(tab === GlobalSettingOptions.ADMINS || undefined);
     setIsPageLoading(true);
     setIsDataLoading(true);
+    setShowDeletedUser(false);
     setSearchValue('');
     setCurrentPage(INITIAL_PAGING_VALUE);
   };
