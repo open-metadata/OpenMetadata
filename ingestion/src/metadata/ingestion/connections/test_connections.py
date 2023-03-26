@@ -200,12 +200,14 @@ def _test_connection_steps_during_ingestion(steps: List[TestConnectionStep]) -> 
             logger.warning(f"{step.name}-{exc}")
             if step.mandatory:
                 test_connection_result.failed.append(
-                    f"'{step.name}': This is a mandatory step and we won't be able to extract necessary metadata. Failed due to: {exc}"
+                    f"'{step.name}': This is a mandatory step and we won't be able to extract"
+                    f"necessary metadata. Failed due to: {exc}"
                 )
 
             else:
                 test_connection_result.warning.append(
-                    f"'{step.name}': This is a optional and the ingestion will continue to work as expected. Failed due to: {exc}"
+                    f"'{step.name}': This is a optional and the ingestion will continue to work as expected."
+                    f"Failed due to: {exc}"
                 )
 
     logger.info("Test connection results:")
