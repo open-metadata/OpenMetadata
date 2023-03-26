@@ -46,6 +46,7 @@ const mockConfigureIngestion: ConfigureIngestionProps = {
   serviceCategory: ServiceCategory.DATABASE_SERVICES,
   onChange: jest.fn(),
   data: {
+    showDatabaseFilterField: true,
     ingestionName: '',
     databaseFilterPattern: {
       includes: [],
@@ -133,5 +134,23 @@ describe('Test ConfigureIngestion component', () => {
     expect(nextButton).toBeInTheDocument();
     expect(filterPatternComponents).toHaveLength(3);
     expect(toggleSwitchs).toHaveLength(5);
+  });
+
+  it('Database filer patten checkbox should not visible if showDatabaseFilterField is false', async () => {
+    const { container } = render(
+      <ConfigureIngestion
+        {...mockConfigureIngestion}
+        data={{
+          ...mockConfigureIngestion.data,
+          showDatabaseFilterField: false,
+        }}
+      />
+    );
+    const filterPatternComponents = await findAllByText(
+      container,
+      'FilterPattern.component'
+    );
+
+    expect(filterPatternComponents).toHaveLength(2);
   });
 });

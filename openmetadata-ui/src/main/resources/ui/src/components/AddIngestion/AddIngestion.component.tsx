@@ -148,6 +148,8 @@ const AddIngestion = ({
         getIngestionFrequency(pipelineType),
       showDashboardFilter: !isUndefined(sourceConfig?.dashboardFilterPattern),
       showDatabaseFilter: !isUndefined(sourceConfig?.databaseFilterPattern),
+      showDatabaseFilterField:
+        isUndefined(serviceData?.connection?.config?.database) ?? true,
       showSchemaFilter: !isUndefined(sourceConfig?.schemaFilterPattern),
       showTableFilter: !isUndefined(sourceConfig?.tableFilterPattern),
       showTopicFilter: !isUndefined(sourceConfig?.topicFilterPattern),

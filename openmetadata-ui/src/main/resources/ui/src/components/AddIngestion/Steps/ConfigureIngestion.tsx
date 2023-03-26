@@ -527,17 +527,19 @@ const ConfigureIngestion = ({
   const getFilterPatterns = () => {
     return (
       <div>
-        <FilterPattern
-          checked={showDatabaseFilter}
-          excludePattern={databaseFilterPattern?.excludes ?? []}
-          getExcludeValue={getExcludeValue}
-          getIncludeValue={getIncludeValue}
-          handleChecked={(value) =>
-            handleShowFilter(value, ShowFilter.showDatabaseFilter)
-          }
-          includePattern={databaseFilterPattern?.includes ?? []}
-          type={FilterPatternEnum.DATABASE}
-        />
+        {data.showDatabaseFilterField && (
+          <FilterPattern
+            checked={showDatabaseFilter}
+            excludePattern={databaseFilterPattern?.excludes ?? []}
+            getExcludeValue={getExcludeValue}
+            getIncludeValue={getIncludeValue}
+            handleChecked={(value) =>
+              handleShowFilter(value, ShowFilter.showDatabaseFilter)
+            }
+            includePattern={databaseFilterPattern?.includes ?? []}
+            type={FilterPatternEnum.DATABASE}
+          />
+        )}
         <FilterPattern
           checked={showSchemaFilter}
           excludePattern={schemaFilterPattern?.excludes ?? []}
