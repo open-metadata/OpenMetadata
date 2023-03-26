@@ -50,6 +50,9 @@ class DatabricksClient:
         }
         self.client = requests
 
+    def test_query_api_access(self) -> None:
+        _ = self.client.get(self.base_query_url).json()
+
     def list_query_history(self, start_date=None, end_date=None) -> List[dict]:
         """
         Method returns List the history of queries through SQL warehouses
