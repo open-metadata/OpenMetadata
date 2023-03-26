@@ -30,6 +30,12 @@ import {
 } from '../../constants/constants';
 
 const visitGlossaryTermPage = (termName) => {
+  interceptURL(
+    'GET',
+    '/api/v1/glossaryTerms/name/**${termName}?fields=relatedTerms,reviewers,tags,owner',
+    'fetchGlossaryTerm'
+  );
+
   cy.get(`[data-row-key="${termName}"]`)
     .scrollIntoView()
     .should('be.visible')
@@ -37,6 +43,7 @@ const visitGlossaryTermPage = (termName) => {
     .should('be.visible')
     .click();
   cy.get('.ant-tabs [id*=tab-summary]').should('be.visible').click();
+  verifyResponseStatusCode('@fetchGlossaryTerm', 200);
 };
 
 const fillGlossaryTermDetails = (term, glossary, isMutually = false) => {
@@ -899,12 +906,12 @@ describe('Glossary page should work properly', () => {
       .as('glossaryTermDetailsPanel');
     cy.get('@glossaryTermDetailsPanel').contains('admin').should('be.visible');
     cy.get('@glossaryTermDetailsPanel')
-      .find(`[data-testid="reviewer-${GLOSSARY_TERM_WITH_DETAILS.reviewer}"]`)
+      .find(`data-testid="user-tag"`)
+      .contain(GLOSSARY_TERM_WITH_DETAILS.reviewer)
       .should('be.visible');
     cy.get('@glossaryTermDetailsPanel')
-      .find(
-        `[data-testid="reviewer-${GLOSSARY_TERM_WITH_DETAILS.inheritedReviewer}"]`
-      )
+      .find(`data-testid="user-tag"`)
+      .contain(GLOSSARY_TERM_WITH_DETAILS.inheritedReviewer)
       .should('be.visible');
     cy.get('[data-testid="add-tag"]')
       .contains(GLOSSARY_TERM_WITH_DETAILS.tag)

@@ -50,13 +50,17 @@ describe('Test if the total count of users and teams is correctly displayed in t
     // check for teams count
     cy.get('@TeamCount').then((response) => {
       const teamCount = response.body.hits.total.value;
-      cy.get('[data-testid="filter-count"]').eq(0).contains(`${teamCount}`);
+      cy.get('.user-team-select-popover [data-testid="filter-count"]')
+        .eq(0)
+        .contains(`${teamCount}`);
     });
 
     // check for user count
     cy.get('@UserCount').then((response) => {
       const userCount = response.body.hits.total.value;
-      cy.get('[data-testid="filter-count"]').eq(1).contains(`${userCount}`);
+      cy.get('.user-team-select-popover [data-testid="filter-count"]')
+        .eq(1)
+        .contains(`${userCount}`);
     });
   });
 });

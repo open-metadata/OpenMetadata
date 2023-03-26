@@ -112,7 +112,7 @@ describe('Entity Details Page', () => {
 
     interceptURL(
       'GET',
-      '/api/v1/search/query?q=*%20AND%20teamType:Group&from=0&size=10&index=team_search_index',
+      '/api/v1/search/query?q=*%20AND%20teamType:Group&from=0&size=15&index=team_search_index',
       'waitForTeams'
     );
 
@@ -120,7 +120,7 @@ describe('Entity Details Page', () => {
 
     verifyResponseStatusCode('@waitForTeams', 200);
     // Clicking on users tab
-    cy.get('[data-testid="dropdown-tab"]')
+    cy.get('.user-team-select-popover')
       .contains('Users')
       .should('exist')
       .should('be.visible')
@@ -128,9 +128,11 @@ describe('Entity Details Page', () => {
 
     interceptURL('PATCH', '/api/v1/tables/*', 'validateOwner');
     // Selecting the user
-    cy.get('[data-testid="list-item"]')
-      .first()
+    cy.get('[data-testid="selectable-list"]')
+      .eq(1)
       .should('exist')
+      .should('be.visible')
+      .find('[title="admin"]')
       .should('be.visible')
       .click();
 
@@ -221,15 +223,15 @@ describe('Entity Details Page', () => {
 
     interceptURL(
       'GET',
-      '/api/v1/search/query?q=*%20AND%20teamType:Group&from=0&size=10&index=team_search_index',
+      '/api/v1/search/query?q=*%20AND%20teamType:Group&from=0&size=15&index=team_search_index',
       'waitForTeams'
     );
 
     cy.get('[data-testid="edit-owner"]').should('be.visible').click();
 
     verifyResponseStatusCode('@waitForTeams', 200);
-    // Clicking on users tab
-    cy.get('[data-testid="dropdown-tab"]')
+
+    cy.get('.user-team-select-popover')
       .contains('Users')
       .should('exist')
       .should('be.visible')

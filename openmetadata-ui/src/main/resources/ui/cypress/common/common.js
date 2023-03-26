@@ -1040,20 +1040,21 @@ export const followAndOwnTheEntity = (termObj) => {
 
   verifyResponseStatusCode('@getTeams', 200);
   // Clicking on users tab
-  cy.get('[data-testid="dropdown-tab"]')
+  cy.get('.user-team-select-popover')
     .contains('Users')
     .should('exist')
     .should('be.visible')
     .click();
 
-  // Selecting the user
-  cy.get('[data-testid="list-item"]')
-    .first()
+  cy.get('[data-testid="selectable-list"]')
+    .eq(1)
     .should('exist')
+    .should('be.visible')
+    .find('[title="admin"]')
     .should('be.visible')
     .click();
 
-  cy.get(':nth-child(2) > [data-testid="owner-link"]')
+  cy.get('[data-testid="owner-link"]')
     .scrollIntoView()
     .invoke('text')
     .then((text) => {
