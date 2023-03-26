@@ -62,6 +62,7 @@ import SVGIcons, { Icons } from '../../../utils/SvgUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import SliderWithInput from '../../SliderWithInput/SliderWithInput';
 import {
+  ProfilerForm,
   ProfilerSettingModalState,
   ProfilerSettingsModalProps,
 } from '../TableProfiler.interface';
@@ -74,7 +75,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
   onVisibilityChange,
 }) => {
   const { t } = useTranslation();
-  const [form] = Form.useForm();
+  const [form] = Form.useForm<ProfilerForm>();
 
   const [isLoading, setIsLoading] = useState(false);
 
@@ -129,10 +130,9 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
 
   const partitionColumnOptions = useMemo(() => {
     const partitionColumnOptions = columns.reduce((result, column) => {
-      const filter =
-        SUPPORTED_COLUMN_DATA_TYPE_FOR_INTERVAL?.[
-          partitionIntervalType as keyof typeof SUPPORTED_COLUMN_DATA_TYPE_FOR_INTERVAL
-        ] || [];
+      const filter = partitionIntervalType
+        ? SUPPORTED_COLUMN_DATA_TYPE_FOR_INTERVAL[partitionIntervalType]
+        : [];
       if (filter.includes(column.dataType)) {
         return [
           ...result,
@@ -658,7 +658,8 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                   />
                 </Form.Item>
               </Col>
-              {TIME_BASED_PARTITION.includes(partitionIntervalType) ? (
+              {partitionIntervalType &&
+              TIME_BASED_PARTITION.includes(partitionIntervalType) ? (
                 <>
                   <Col span={12}>
                     <Form.Item
