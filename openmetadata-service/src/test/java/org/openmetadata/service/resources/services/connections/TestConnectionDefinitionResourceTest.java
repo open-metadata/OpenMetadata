@@ -38,8 +38,8 @@ public class TestConnectionDefinitionResourceTest extends OpenMetadataApplicatio
   public void test_list_test_connection_definition() throws HttpResponseException {
     WebTarget target = listResource();
     ResultList mysqlTest = TestUtils.get(target, ResultList.class, ADMIN_AUTH_HEADERS);
-    // Update this number after adding new TestConnectionDefinition to the server
-    assertEquals(mysqlTest.getData().size(), 3);
+    // we get 10 as it's the default paging size
+    assertEquals(mysqlTest.getData().size(), 10);
   }
 
   protected final WebTarget getResourceByName(String name) {
