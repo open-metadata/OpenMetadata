@@ -14,7 +14,9 @@
 // The spec is related to advance search feature
 
 import {
+  addOwner,
   addTag,
+  addTier,
   checkAddGroupWithOperator,
   checkAddRuleWithOperator,
   checkmustPaths,
@@ -42,8 +44,8 @@ describe('pre-requests for test case', () => {
   });
 
   it('Pre-requisite for advance search', () => {
-    // addOwner(FIELDS.Owner.searchTerm1, FIELDS.Owner.searchCriteriaFirstGroup);
-    // addTier(FIELDS.Tiers.searchCriteriaFirstGroup);
+    addOwner(FIELDS.Owner.searchTerm1, FIELDS.Owner.searchCriteriaFirstGroup);
+    addTier(FIELDS.Tiers.searchCriteriaFirstGroup);
     addTag(FIELDS.Tags.createTagName);
   });
 

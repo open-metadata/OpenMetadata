@@ -354,7 +354,7 @@ export const editOwnerforCreatedService = (
   verifyResponseStatusCode('@airflow', 200);
   interceptURL(
     'GET',
-    '/api/v1/search/query?q=*%20AND%20teamType:Group&from=0&size=10&index=team_search_index',
+    '/api/v1/search/query?q=*%20AND%20teamType:Group&from=0&size=15&index=team_search_index',
     'waitForTeams'
   );
 
@@ -367,21 +367,27 @@ export const editOwnerforCreatedService = (
 
   verifyResponseStatusCode('@waitForTeams', 200);
 
-  // Clicking on users tab
-  cy.get('[data-testid="dropdown-tab"]')
+  cy.get('.user-team-select-popover')
     .contains('Users')
     .should('exist')
     .should('be.visible')
     .click();
 
-  // Selecting the user
-  cy.get('[data-testid="list-item"]')
-    .first()
-    .should('exist')
+  interceptURL(
+    'GET',
+    `api/v1/search/query?q=*${encodeURI('admin')}*&from=0&size=*&index=*`,
+    'searchOwner'
+  );
+  cy.get('.user-team-select-popover [data-testid="searchbar"]')
+    .eq(1)
     .should('be.visible')
-    .click();
+    .and('exist')
+    .trigger('click')
+    .type('admin');
 
-  cy.get('[data-testid="owner-dropdown"]')
+  verifyResponseStatusCode('@searchOwner', 200);
+
+  cy.get('[data-testid="owner-name"]')
     .invoke('text')
     .then((text) => {
       expect(text).equal(ADMIN);
