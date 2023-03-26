@@ -113,7 +113,7 @@ export const UserSelectableList = ({
         />
       }
       open={popupVisible}
-      overlayClassName="user-team-select-popover card-shadow"
+      overlayClassName="user-select-popover card-shadow"
       placement="bottomRight"
       showArrow={false}
       trigger="click"

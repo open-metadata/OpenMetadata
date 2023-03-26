@@ -766,11 +766,7 @@ describe('Glossary page should work properly', () => {
       '/api/v1/search/query?q=*&from=0&size=10&index=glossary_search_index',
       'searchGlossaryTerm'
     );
-    interceptURL(
-      'GET',
-      '/api/v1/search/suggest?q=*&index=user_search_index',
-      'searchReviewer'
-    );
+
     interceptURL('GET', '/api/v1/users/*?fields=profile', 'getProfile');
     fillGlossaryTermDetails(GLOSSARY_TERM_WITH_DETAILS, NEW_GLOSSARY);
     // Add Tags
@@ -799,11 +795,24 @@ describe('Glossary page should work properly', () => {
       GLOSSARY_TERM_WITH_DETAILS.relatedTerms
     );
     verifyResponseStatusCode('@searchGlossaryTerm', 200);
-    cy.wait(500); // adding manual wait for getting updated UI
-    cy.get('[data-testid="user-card-container"]').should('be.visible');
-    cy.get('[data-testid="checkboxAddUser"]').should('be.visible').click();
+
+    cy.get('[data-testid="user-card-container"]')
+      .contains(GLOSSARY_TERM_WITH_DETAILS.relatedTerms)
+      .parents('[data-testid="user-card-container"]')
+      .find('[data-testid="checkboxAddUser"]')
+      .should('be.visible')
+      .click();
+    // cy.get('').should('be.visible').click();
     cy.get('[data-testid="saveButton"]').should('be.visible').click();
     cy.get('.ant-modal-body').should('not.exist');
+
+    interceptURL(
+      'GET',
+      `/api/v1/search/query?q=*${encodeURI(
+        GLOSSARY_TERM_WITH_DETAILS.reviewer
+      )}*&from=0&size=15&index=user_search_index`,
+      'searchReviewer'
+    );
 
     // Add reviewer
     cy.get('[data-testid="add-reviewers"]')
@@ -811,17 +820,21 @@ describe('Glossary page should work properly', () => {
       .should('be.visible')
       .click();
 
-    cy.get('.ant-modal-body').should('be.visible');
+    // cy.get('.ant-modal-body').should('be.visible');
     cy.get('[data-testid="searchbar"]')
       .should('be.visible')
       .type(GLOSSARY_TERM_WITH_DETAILS.reviewer);
 
-    verifyResponseStatusCode('@searchGlossaryTerm', 200);
-    cy.wait(500); // adding manual wait for getting updated UI
-    cy.get('[data-testid="user-card-container"]').should('be.visible');
-    cy.get('[data-testid="checkboxAddUser"]').should('be.visible').click();
-    cy.get('[data-testid="save-button"]').should('be.visible').click();
-    cy.get('.ant-modal-body').should('not.exist');
+    verifyResponseStatusCode('@searchReviewer', 200);
+
+    cy.get(`[title="${GLOSSARY_TERM_WITH_DETAILS.reviewer}"]`)
+      .scrollIntoView()
+      .should('be.visible')
+      .click();
+
+    cy.get('[data-testid="selectable-list-update-btn"]')
+      .should('be.visible')
+      .click();
 
     interceptURL('POST', '/api/v1/glossaryTerms', 'createGlossaryTerms');
     cy.get('[data-testid="save-glossary-term"]')

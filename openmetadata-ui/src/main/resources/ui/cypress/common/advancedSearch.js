@@ -263,7 +263,7 @@ export const addOwner = (searchTerm, ownerName) => {
 
   interceptURL(
     'GET',
-    '/api/v1/search/query?q=*%20AND%20teamType:Group&from=0&size=10&index=team_search_index',
+    '/api/v1/search/query?q=*%20AND%20teamType:Group&from=0&size=15&index=team_search_index',
     'waitForTeams'
   );
 
@@ -271,7 +271,7 @@ export const addOwner = (searchTerm, ownerName) => {
 
   verifyResponseStatusCode('@waitForTeams', 200);
   // Clicking on users tab
-  cy.get('[data-testid="dropdown-tab"]')
+  cy.get('.user-team-select-popover')
     .contains('Users')
     .should('exist')
     .should('be.visible')
@@ -282,8 +282,8 @@ export const addOwner = (searchTerm, ownerName) => {
     `api/v1/search/query?q=*${encodeURI(searchTerm)}*&from=0&size=*&index=*`,
     'searchOwner'
   );
-  cy.get('.user-team-select-popover > [data-testid="searchbar"]')
-    .scrollIntoView()
+  cy.get('.user-team-select-popover [data-testid="searchbar"]')
+    .eq(1)
     .should('be.visible')
     .and('exist')
     .trigger('click')
