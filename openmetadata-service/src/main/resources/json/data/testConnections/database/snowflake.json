@@ -10,6 +10,11 @@
         "mandatory": true
       },
       {
+        "name": "GetDatabases",
+        "description": "List all the databases available to the user.",
+        "mandatory": true
+      },
+      {
         "name": "GetSchemas",
         "description": "List all the schemas available to the user.",
         "mandatory": true

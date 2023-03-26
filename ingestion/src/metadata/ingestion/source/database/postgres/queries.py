@@ -112,7 +112,7 @@ POSTGRES_GET_DATABASE = """
 select datname from pg_catalog.pg_database
 """
 
-POSTGRES_GET_ALL_TABLE_PG_POLICY_TEST = """
+POSTGRES_TEST_GET_TAGS = """
 SELECT oid, polname, table_catalog , table_schema ,table_name  
 FROM information_schema.tables AS it
 JOIN (SELECT pc.relname, pp.*
@@ -122,7 +122,7 @@ JOIN (SELECT pc.relname, pp.*
       LIMIT 1
 """
 
-POSTGRES_SQL_STATEMENT_TEST = """
+POSTGRES_TEST_GET_QUERIES = """
       SELECT
         u.usename,
         d.datname database_name,

@@ -28,15 +28,12 @@ from metadata.ingestion.connections.builders import (
     get_connection_url_common,
     init_empty_connection_arguments,
 )
-from metadata.ingestion.connections.test_connections import (
-    TestConnectionResult,
-    test_connection_db_common,
-)
+from metadata.ingestion.connections.test_connections import test_connection_db_common
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.redshift.queries import (
     REDSHIFT_GET_DATABASE_NAMES,
-    REDSHIFT_PARTITION_DETAILS_TEST,
-    REDSHIFT_TEST_QUERY,
+    REDSHIFT_TEST_GET_QUERIES,
+    REDSHIFT_TEST_PARTITION_DETAILS,
 )
 
 
@@ -66,9 +63,9 @@ def test_connection(
     of a metadata workflow or during an Automation Workflow
     """
     queries = {
-        "GetQueries": REDSHIFT_TEST_QUERY,
+        "GetQueries": REDSHIFT_TEST_GET_QUERIES,
         "GetDatabases": REDSHIFT_GET_DATABASE_NAMES,
-        "GetPartitionTableDetails": REDSHIFT_PARTITION_DETAILS_TEST,
+        "GetPartitionTableDetails": REDSHIFT_TEST_PARTITION_DETAILS,
     }
     test_connection_db_common(
         metadata=metadata,

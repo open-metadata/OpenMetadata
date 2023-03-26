@@ -91,7 +91,7 @@ MSSQL_GET_DATABASE = """
 SELECT name FROM master.sys.databases order by name
 """
 
-MSSQL_SQL_STATEMENT_TEST = textwrap.dedent(
+MSSQL_TEST_GET_QUERIES = textwrap.dedent(
     """
       SELECT TOP 1
         t.text query_text

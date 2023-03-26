@@ -36,7 +36,6 @@ from metadata.generated.schema.entity.services.connections.testConnectionResult 
     TestConnectionResult,
     TestConnectionStepResult,
 )
-from metadata.generated.schema.entity.services.databaseService import DatabaseConnection
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.profiler.orm.functions.conn_test import ConnTestFn
 from metadata.utils.logger import cli_logger
@@ -152,7 +151,7 @@ def _test_connection_steps_automation_workflow(
 
         test_connection_result.status = (
             StatusType.Failed
-            if any([step for step in test_connection_result.steps if not step.passed])
+            if any(step for step in test_connection_result.steps if not step.passed)
             else StatusType.Successful
         )
 
@@ -201,12 +200,14 @@ def _test_connection_steps_during_ingestion(steps: List[TestConnectionStep]) -> 
             logger.warning(f"{step.name}-{exc}")
             if step.mandatory:
                 test_connection_result.failed.append(
-                    f"'{step.name}': This is a mandatory step and we won't be able to extract necessary metadata"
+                    f"'{step.name}': This is a mandatory step and we won't be able to extract"
+                    f"necessary metadata. Failed due to: {exc}"
                 )
 
             else:
                 test_connection_result.warning.append(
-                    f"'{step.name}': This is a optional and the ingestion will continue to work as expected"
+                    f"'{step.name}': This is a optional and the ingestion will continue to work as expected."
+                    f"Failed due to: {exc}"
                 )
 
     logger.info("Test connection results:")
@@ -238,6 +239,11 @@ def test_connection_steps(
         fqn=service_fqn,
     )
 
+    if not test_connection_definition:
+        raise SourceConnectionException(
+            f"Test connection definition for {service_fqn} not found please validate the token."
+        )
+
     steps = [
         TestConnectionStep(
             name=step.name,
@@ -266,7 +272,7 @@ def test_connection_db_common(
     engine: Engine,
     service_connection,
     automation_workflow: Optional[AutomationWorkflow] = None,
-    queries: dict = {},
+    queries: dict = None,
     timeout_seconds: int = 3 * 60,
 ) -> TestConnectionResult:
 
@@ -274,6 +280,8 @@ def test_connection_db_common(
     Test connection
     """
     inspector = inspect(engine)
+
+    queries = queries or {}
 
     test_fn = {
         "CheckAccess": partial(test_connection_engine_step, engine),
@@ -299,13 +307,15 @@ def test_connection_db_schema_sources(
     engine: Engine,
     service_connection,
     automation_workflow: Optional[AutomationWorkflow] = None,
-    queries: dict = {},
+    queries: dict = None,
 ) -> None:
     """
     Test connection. This can be executed either as part
     of a metadata workflow or during an Automation Workflow
     """
     inspector = inspect(engine)
+
+    queries = queries or {}
 
     def custom_executor(inspector_fn: Callable):
         """

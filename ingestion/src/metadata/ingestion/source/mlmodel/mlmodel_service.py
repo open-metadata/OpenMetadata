@@ -92,7 +92,6 @@ class MlModelServiceSource(TopologyRunnerMixin, Source, ABC):
 
     source_config: MlModelServiceMetadataPipeline
     config: WorkflowSource
-    metadata: OpenMetadata
     # Big union of types we want to fetch dynamically
     service_connection: MlModelConnection.__fields__["config"].type_
 

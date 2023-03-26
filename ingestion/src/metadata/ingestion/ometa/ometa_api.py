@@ -17,10 +17,6 @@ working with OpenMetadata entities.
 import traceback
 from typing import Dict, Generic, Iterable, List, Optional, Type, TypeVar, Union
 
-from metadata.generated.schema.entity.services.connections.testConnectionDefinition import (
-    TestConnectionDefinition,
-)
-
 try:
     from typing import get_args
 except ImportError:
@@ -58,6 +54,9 @@ from metadata.generated.schema.entity.data.topic import Topic
 from metadata.generated.schema.entity.policies.policy import Policy
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
+)
+from metadata.generated.schema.entity.services.connections.testConnectionDefinition import (
+    TestConnectionDefinition,
 )
 from metadata.generated.schema.entity.services.dashboardService import DashboardService
 from metadata.generated.schema.entity.services.databaseService import DatabaseService

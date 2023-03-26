@@ -113,7 +113,6 @@ class PipelineServiceSource(TopologyRunnerMixin, Source, ABC):
 
     source_config: PipelineServiceMetadataPipeline
     config: WorkflowSource
-    metadata: OpenMetadata
     # Big union of types we want to fetch dynamically
     service_connection: PipelineConnection.__fields__["config"].type_
 
@@ -133,7 +132,10 @@ class PipelineServiceSource(TopologyRunnerMixin, Source, ABC):
         self.source_config: PipelineServiceMetadataPipeline = (
             self.config.sourceConfig.config
         )
+
         self.connection = get_connection(self.service_connection)
+        # Flag the connection for the test connection
+        self.connection_obj = self.connection
         self.client = self.connection
 
         # Flag the connection for the test connection

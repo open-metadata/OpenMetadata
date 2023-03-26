@@ -16,7 +16,6 @@ from typing import Optional
 from urllib.parse import quote_plus
 
 from sqlalchemy.engine import Engine
-from sqlalchemy.inspection import inspect
 
 from metadata.generated.schema.entity.automations.workflow import (
     Workflow as AutomationWorkflow,
@@ -29,10 +28,7 @@ from metadata.ingestion.connections.builders import (
     get_connection_args_common,
     get_connection_options_dict,
 )
-from metadata.ingestion.connections.test_connections import (
-    TestConnectionResult,
-    test_connection_db_common,
-)
+from metadata.ingestion.connections.test_connections import test_connection_db_common
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 
 

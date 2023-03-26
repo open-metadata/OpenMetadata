@@ -68,6 +68,9 @@ class Source(Closeable, Generic[Entity], metaclass=ABCMeta):
     its next_record and pass them to the next step.
     """
 
+    metadata: OpenMetadata
+    connection_obj: Any
+    service_connection: Any
     status: SourceStatus
 
     def __init__(self):
@@ -90,3 +93,7 @@ class Source(Closeable, Generic[Entity], metaclass=ABCMeta):
 
     def get_status(self) -> SourceStatus:
         return self.status
+
+    @abstractmethod
+    def test_connection(self) -> None:
+        pass

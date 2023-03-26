@@ -21,7 +21,6 @@ import oracledb
 from oracledb.exceptions import DatabaseError
 from pydantic import SecretStr
 from sqlalchemy.engine import Engine
-from sqlalchemy.inspection import inspect
 
 from metadata.generated.schema.entity.automations.workflow import (
     Workflow as AutomationWorkflow,
@@ -36,12 +35,7 @@ from metadata.ingestion.connections.builders import (
     get_connection_args_common,
     get_connection_options_dict,
 )
-from metadata.ingestion.connections.test_connections import (
-    TestConnectionResult,
-    TestConnectionStep,
-    test_connection_db_common,
-    test_connection_db_schema_sources,
-)
+from metadata.ingestion.connections.test_connections import test_connection_db_common
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.logger import ingestion_logger
 

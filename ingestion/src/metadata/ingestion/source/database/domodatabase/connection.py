@@ -25,8 +25,6 @@ from metadata.generated.schema.entity.services.connections.database.domoDatabase
 )
 from metadata.ingestion.connections.test_connections import (
     SourceConnectionException,
-    TestConnectionResult,
-    TestConnectionStep,
     test_connection_steps,
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata

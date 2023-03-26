@@ -14,8 +14,6 @@ Source connection handler
 """
 from typing import Optional
 
-from botocore.client import ClientError
-
 from metadata.clients.aws_client import AWSClient
 from metadata.generated.schema.entity.automations.workflow import (
     Workflow as AutomationWorkflow,
