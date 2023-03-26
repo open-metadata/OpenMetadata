@@ -12,18 +12,19 @@
  */
 
 import { Popover } from 'antd';
-import { EntityData } from 'components/common/PopOverCard/EntityPopOverCard';
 import ProfilePicture from 'components/common/ProfilePicture/ProfilePicture';
 import {
   LeafNodes,
   LineagePos,
 } from 'components/EntityLineage/EntityLineage.interface';
+import { EntityUnion } from 'components/Explore/explore.interface';
 import { ResourceEntity } from 'components/PermissionProvider/PermissionProvider.interface';
 import { ExplorePageTabs } from 'enums/Explore.enum';
+import { Container } from 'generated/entity/data/container';
 import { Mlmodel } from 'generated/entity/data/mlmodel';
 import i18next from 'i18next';
 import { isEmpty, isNil, isUndefined, lowerCase, startCase } from 'lodash';
-import { Bucket } from 'Models';
+import { Bucket, EntityDetailUnion } from 'Models';
 import React, { Fragment } from 'react';
 import { Link } from 'react-router-dom';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
@@ -47,7 +48,6 @@ import {
   Table,
   TableType,
 } from '../generated/entity/data/table';
-import { Topic } from '../generated/entity/data/topic';
 import { Edge, EntityLineage } from '../generated/type/entityLineage';
 import { EntityReference } from '../generated/type/entityUsage';
 import { TagLabel } from '../generated/type/tagLabel';
@@ -84,7 +84,7 @@ export const getEntityId = (entity?: { id?: string }) => entity?.id || '';
 
 export const getEntityTags = (
   type: string,
-  entityDetail: Table | Pipeline | Dashboard | Topic | Mlmodel
+  entityDetail: EntityDetailUnion
 ): Array<TagLabel> => {
   switch (type) {
     case EntityType.TABLE: {
@@ -125,12 +125,13 @@ export const getOwnerNameWithProfilePic = (
 
 export const getEntityOverview = (
   type: string,
-  entityDetail: EntityData
+  entityDetail: EntityUnion
 ): Array<{
   name: string;
   value: string | number | React.ReactNode;
   isLink: boolean;
   isExternal?: boolean;
+  isIcon?: boolean;
   url?: string;
   visible?: Array<string>;
   dataTestId?: string;
@@ -428,6 +429,40 @@ export const getEntityOverview = (
 
       return overview;
     }
+    case ExplorePageTabs.CONTAINERS: {
+      const { numberOfObjects, serviceType, dataModel } =
+        entityDetail as Container;
+
+      const visible = [
+        DRAWER_NAVIGATION_OPTIONS.lineage,
+        DRAWER_NAVIGATION_OPTIONS.explore,
+      ];
+
+      const overview = [
+        {
+          name: i18next.t('label.number-of-object'),
+          value: numberOfObjects,
+          isLink: false,
+          visible,
+        },
+        {
+          name: i18next.t('label.service-type'),
+          value: serviceType,
+          isLink: false,
+          visible,
+        },
+        {
+          name: i18next.t('label.column-plural'),
+          value:
+            dataModel && dataModel.columns ? dataModel.columns.length : NO_DATA,
+          isLink: false,
+          visible,
+        },
+      ];
+
+      return overview;
+    }
+
     default:
       return [];
   }

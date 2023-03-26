@@ -15,6 +15,9 @@ import { CloseOutlined } from '@ant-design/icons';
 import { Col, Drawer, Row } from 'antd';
 import TableDataCardTitle from 'components/common/table-data-card-v2/TableDataCardTitle.component';
 import { EntityType } from 'enums/entity.enum';
+import { Tag } from 'generated/entity/classification/tag';
+import { Container } from 'generated/entity/data/container';
+import { GlossaryTerm } from 'generated/entity/data/glossaryTerm';
 import React, { useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { ExplorePageTabs } from '../../../enums/Explore.enum';
@@ -23,12 +26,15 @@ import { Mlmodel } from '../../../generated/entity/data/mlmodel';
 import { Pipeline } from '../../../generated/entity/data/pipeline';
 import { Table } from '../../../generated/entity/data/table';
 import { Topic } from '../../../generated/entity/data/topic';
+import ContainerSummary from './ContainerSummary/ContainerSummary.component';
 import DashboardSummary from './DashboardSummary/DashboardSummary.component';
 import { EntitySummaryPanelProps } from './EntitySummaryPanel.interface';
 import './EntitySummaryPanel.style.less';
+import GlossaryTermSummary from './GlossaryTermSummary/GlossaryTermSummary.component';
 import MlModelSummary from './MlModelSummary/MlModelSummary.component';
 import PipelineSummary from './PipelineSummary/PipelineSummary.component';
 import TableSummary from './TableSummary/TableSummary.component';
+import TagsSummary from './TagsSummary/TagsSummary.component';
 import TopicSummary from './TopicSummary/TopicSummary.component';
 
 export default function EntitySummaryPanel({
@@ -72,6 +78,27 @@ export default function EntitySummaryPanel({
         return (
           <MlModelSummary entityDetails={entityDetails.details as Mlmodel} />
         );
+
+      case ExplorePageTabs.CONTAINERS:
+        setCurrentSearchIndex(EntityType.CONTAINER);
+
+        return (
+          <ContainerSummary
+            entityDetails={entityDetails.details as Container}
+          />
+        );
+      case ExplorePageTabs.GLOSSARY:
+        setCurrentSearchIndex(EntityType.GLOSSARY);
+
+        return (
+          <GlossaryTermSummary
+            entityDetails={entityDetails.details as GlossaryTerm}
+          />
+        );
+      case ExplorePageTabs.TAG:
+        setCurrentSearchIndex(EntityType.TAG);
+
+        return <TagsSummary entityDetails={entityDetails.details as Tag} />;
 
       default:
         return null;

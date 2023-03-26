@@ -32,7 +32,7 @@ from metadata.generated.schema.metadataIngestion.messagingServiceMetadataPipelin
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.ingestion.api.source import Source, SourceStatus
+from metadata.ingestion.api.source import Source
 from metadata.ingestion.api.topology_runner import TopologyRunnerMixin
 from metadata.ingestion.models.topology import (
     NodeStage,
@@ -97,51 +97,12 @@ class MessagingServiceTopology(ServiceTopology):
     )
 
 
-class MessagingSourceStatus(SourceStatus):
-    """
-    Reports the source status after ingestion
-    """
-
-    topics_scanned: List[str] = []
-    filtered: List[str] = []
-
-    def topic_scanned(self, topic: str) -> None:
-        self.topics_scanned.append(topic)
-
-    def dropped(self, topic: str) -> None:
-        self.filtered.append(topic)
-
-
 class MessagingServiceSource(TopologyRunnerMixin, Source, ABC):
     """
     Base class for Messaging Services.
     It implements the topology and context.
     """
 
-    @abstractmethod
-    def yield_topic(self, topic_details: Any) -> Iterable[CreateTopicRequest]:
-        """
-        Method to Get Messaging Entity
-        """
-
-    def yield_topic_sample_data(self, topic_details: Any) -> Iterable[TopicSampleData]:
-        """
-        Method to Get Sample Data of Messaging Entity
-        """
-
-    @abstractmethod
-    def get_topic_list(self) -> Optional[List[Any]]:
-        """
-        Get List of all topics
-        """
-
-    @abstractmethod
-    def get_topic_name(self, topic_details: Any) -> str:
-        """
-        Get Topic Name
-        """
-
-    status: MessagingSourceStatus
     source_config: MessagingServiceMetadataPipeline
     config: WorkflowSource
     metadata: OpenMetadata
@@ -169,7 +130,29 @@ class MessagingServiceSource(TopologyRunnerMixin, Source, ABC):
         # Flag the connection for the test connection
         self.connection_obj = self.connection
         self.test_connection()
-        self.status = MessagingSourceStatus()
+
+    @abstractmethod
+    def yield_topic(self, topic_details: Any) -> Iterable[CreateTopicRequest]:
+        """
+        Method to Get Messaging Entity
+        """
+
+    def yield_topic_sample_data(self, topic_details: Any) -> Iterable[TopicSampleData]:
+        """
+        Method to Get Sample Data of Messaging Entity
+        """
+
+    @abstractmethod
+    def get_topic_list(self) -> Optional[List[Any]]:
+        """
+        Get List of all topics
+        """
+
+    @abstractmethod
+    def get_topic_name(self, topic_details: Any) -> str:
+        """
+        Get Topic Name
+        """
 
     def get_topic(self) -> Any:
         for topic_details in self.get_topic_list():
@@ -195,9 +178,6 @@ class MessagingServiceSource(TopologyRunnerMixin, Source, ABC):
 
     def prepare(self):
         pass
-
-    def get_status(self):
-        return self.status
 
     def test_connection(self) -> None:
         test_connection_fn = get_test_connection_fn(self.service_connection)

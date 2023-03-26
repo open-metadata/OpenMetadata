@@ -63,6 +63,7 @@ import static org.openmetadata.service.util.TestUtils.assertResponse;
 import static org.openmetadata.service.util.TestUtils.assertResponseContains;
 import static org.openmetadata.service.util.TestUtils.validateEntityReference;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
 import java.text.ParseException;
 import java.util.ArrayList;
@@ -85,6 +86,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.TestMethodOrder;
+import org.openmetadata.schema.api.VoteRequest;
 import org.openmetadata.schema.api.data.CreateDatabase;
 import org.openmetadata.schema.api.data.CreateDatabaseSchema;
 import org.openmetadata.schema.api.data.CreateLocation;
@@ -1296,15 +1298,18 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     assertEquals(query1.getDuration(), createdQuery.getDuration());
 
     // Update bote
-    WebTarget target = getResource(String.format("queries/%s/vote/%s", createdQuery.getId().toString(), 2));
-    ChangeEvent changeEvent = TestUtils.put(target, query1, ChangeEvent.class, OK, ADMIN_AUTH_HEADERS);
+    VoteRequest request = new VoteRequest().withUpdatedVoteType(VoteRequest.VoteType.VOTED_UP);
+    WebTarget target = getResource(String.format("queries/%s/vote", createdQuery.getId().toString()));
+    ChangeEvent changeEvent = TestUtils.put(target, request, ChangeEvent.class, OK, ADMIN_AUTH_HEADERS);
     Query updatedEntity = JsonUtils.convertValue(changeEvent.getEntity(), Query.class);
-    assertEquals(2, updatedEntity.getVote());
+    assertEquals(1, updatedEntity.getVotes().getUpVotes());
+    assertEquals(0, updatedEntity.getVotes().getDownVotes());
 
     entityQueries = getTableQueriesData(table.getId(), ADMIN_AUTH_HEADERS);
     assertEquals(1, entityQueries.size());
     assertEquals(query1.getQuery(), entityQueries.get(0).getQuery());
-    assertEquals(2, entityQueries.get(0).getVote());
+    assertEquals(1, updatedEntity.getVotes().getUpVotes());
+    assertEquals(0, updatedEntity.getVotes().getDownVotes());
   }
 
   @Test
@@ -1731,22 +1736,39 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
   }
 
   @Test
-  void test_ownershipInheritance(TestInfo test) throws HttpResponseException {
+  void test_ownershipInheritance(TestInfo test) throws HttpResponseException, JsonProcessingException {
     // When a databaseSchema has no owner set, it inherits the ownership from database
     // When a table has no owner set, it inherits the ownership from databaseSchema
     DatabaseResourceTest dbTest = new DatabaseResourceTest();
     Database db = dbTest.createEntity(dbTest.createRequest(test).withOwner(USER1_REF), ADMIN_AUTH_HEADERS);
 
+    // Ensure databaseSchema owner is inherited from database
     DatabaseSchemaResourceTest schemaTest = new DatabaseSchemaResourceTest();
     CreateDatabaseSchema createSchema =
         schemaTest.createRequest(test).withDatabase(db.getFullyQualifiedName()).withOwner(null);
     DatabaseSchema schema = schemaTest.createEntity(createSchema, ADMIN_AUTH_HEADERS);
-    assertEquals(USER1_REF, schema.getOwner()); // Ensure databaseSchema owner is inherited from database
+    assertReference(USER1_REF, schema.getOwner());
 
-    Table table =
-        createEntity(
-            createRequest(test).withOwner(null).withDatabaseSchema(schema.getFullyQualifiedName()), ADMIN_AUTH_HEADERS);
-    assertEquals(USER1_REF, table.getOwner()); // Ensure table owner is inherited from databaseSchema
+    // Ensure table owner is inherited from databaseSchema
+    CreateTable createTable = createRequest(test).withOwner(null).withDatabaseSchema(schema.getFullyQualifiedName());
+    Table table = createEntity(createTable, ADMIN_AUTH_HEADERS);
+    assertReference(USER1_REF, table.getOwner());
+
+    // Change the ownership of table and ensure further ingestion updates don't overwrite the ownership
+    String json = JsonUtils.pojoToJson(table);
+    table.setOwner(USER2_REF);
+    table = patchEntity(table.getId(), json, table, ADMIN_AUTH_HEADERS);
+    assertReference(USER2_REF, table.getOwner());
+    table = updateEntity(createTable.withOwner(null), OK, ADMIN_AUTH_HEADERS); // Simulate ingestion update
+    assertReference(USER2_REF, table.getOwner()); // Owner remains the same
+
+    // Change the ownership of schema and ensure further ingestion updates don't overwrite the ownership
+    json = JsonUtils.pojoToJson(schema);
+    schema.setOwner(USER2_REF);
+    schema = schemaTest.patchEntity(schema.getId(), json, schema, ADMIN_AUTH_HEADERS);
+    assertReference(USER2_REF, schema.getOwner());
+    schema = schemaTest.updateEntity(createSchema.withOwner(null), OK, ADMIN_AUTH_HEADERS); // Simulate ingestion update
+    assertReference(USER2_REF, schema.getOwner()); // Owner remains the same
   }
 
   private void deleteAndCheckLocation(Table table) throws HttpResponseException {
@@ -1964,14 +1986,14 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     return TestUtils.get(target, TableResource.ColumnProfileList.class, authHeaders);
   }
 
-  public Query putTableQueriesData(UUID queryId, List<EntityReference> data, Map<String, String> authHeaders)
+  public ChangeEvent putTableQueriesData(UUID queryId, List<EntityReference> data, Map<String, String> authHeaders)
       throws HttpResponseException {
     WebTarget target = getResource(String.format("queries/%s/usage", queryId));
-    return TestUtils.put(target, data, Query.class, OK, authHeaders);
+    return TestUtils.put(target, data, ChangeEvent.class, CREATED, authHeaders);
   }
 
   public List<Query> getTableQueriesData(UUID entityId, Map<String, String> authHeaders) throws HttpResponseException {
-    WebTarget target = getResource(String.format("queries?entityId=%s", entityId));
+    WebTarget target = getResource(String.format("queries?entityId=%s&fields=votes", entityId));
     return TestUtils.get(target, QueryResource.QueryList.class, authHeaders).getData();
   }
 

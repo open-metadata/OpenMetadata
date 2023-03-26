@@ -37,7 +37,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.ingestion.api.source import InvalidSourceException, SourceStatus
+from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_chart
@@ -55,7 +55,6 @@ class DomodashboardSource(DashboardServiceSource):
 
     config: WorkflowSource
     metadata_config: OpenMetadataConnection
-    status: SourceStatus
 
     def __init__(self, config: WorkflowSource, metadata_config: OpenMetadataConnection):
         super().__init__(config, metadata_config)
@@ -195,10 +194,9 @@ class DomodashboardSource(DashboardServiceSource):
         chart_id_from_collection = self.get_chart_ids(dashboard_details.collectionIds)
         chart_ids.extend(chart_id_from_collection)
         for chart_id in chart_ids:
+            chart: Optional[DomoChartDetails] = None
             try:
-                chart: DomoChartDetails = self.domo_client.get_chart_details(
-                    page_id=chart_id
-                )
+                chart = self.domo_client.get_chart_details(page_id=chart_id)
                 chart_url = (
                     f"{self.service_connection.sandboxDomain}/page/"
                     f"{dashboard_details.id}/kpis/details/{chart_id}"
@@ -218,9 +216,11 @@ class DomodashboardSource(DashboardServiceSource):
                     )
                     self.status.scanned(chart.name)
             except Exception as exc:
-                logger.warning(f"Error creating chart [{chart}]: {exc}")
-                self.status.failures.append(f"{dashboard_details.name}.{chart_id}")
+                name = chart.name if chart else ""
+                error = f"Error creating chart [{name}]: {exc}"
+                logger.warning(error)
                 logger.debug(traceback.format_exc())
+                self.status.failed(name, error, traceback.format_exc())
                 continue
 
     def yield_dashboard_lineage_details(

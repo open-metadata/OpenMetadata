@@ -175,8 +175,8 @@ const TagsPage = () => {
       const tagsResponse = await getTags({
         arrQueryFields: 'usageCount',
         parent: currentClassificationName,
-        after: paging?.after,
-        before: paging?.before,
+        after: paging && paging.after,
+        before: paging && paging.before,
         limit: PAGE_SIZE,
       });
       setTags(tagsResponse.data);
@@ -581,7 +581,7 @@ const TagsPage = () => {
 
     return getExplorePath({
       extraParameters: {
-        postFilter: {
+        facetFilter: {
           [`${type}.tagFQN`]: [tagFQN],
         },
       },
@@ -637,12 +637,20 @@ const TagsPage = () => {
     history.push(getTagPath(category.name));
   };
 
-  const handlePageChange = (after: string | number, activePage?: number) => {
-    if (after) {
-      setCurrentPage(activePage ?? INITIAL_PAGING_VALUE);
-      fetchClassificationChildren(currentClassificationName, paging);
-    }
-  };
+  const handlePageChange = useCallback(
+    (cursorType: string | number, activePage?: number) => {
+      if (cursorType) {
+        const pagination = {
+          [cursorType]: paging[cursorType as keyof Paging] as string,
+          total: paging.total,
+        } as Paging;
+
+        setCurrentPage(activePage ?? INITIAL_PAGING_VALUE);
+        fetchClassificationChildren(currentClassificationName, pagination);
+      }
+    },
+    [fetchClassificationChildren, paging, currentClassificationName]
+  );
 
   // Use the component in the render method
 

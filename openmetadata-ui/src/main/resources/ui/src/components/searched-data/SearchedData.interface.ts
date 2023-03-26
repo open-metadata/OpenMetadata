@@ -17,14 +17,13 @@ import { TagLabel } from '../../generated/type/tagLabel';
 import {
   DashboardSearchSource,
   ExploreSearchSource,
+  GlossarySearchSource,
   MlmodelSearchSource,
   SearchHitBody,
   TableSearchSource,
+  TagClassSearchSource,
 } from '../../interface/search.interface';
-import {
-  EntityDetailsType,
-  ExploreSearchIndex,
-} from '../Explore/explore.interface';
+import { EntityUnion, ExploreSearchIndex } from '../Explore/explore.interface';
 
 type Fields =
   | 'name'
@@ -43,7 +42,11 @@ export type SourceType = (
   | Pick<
       Exclude<
         ExploreSearchSource,
-        TableSearchSource | DashboardSearchSource | MlmodelSearchSource
+        | TableSearchSource
+        | DashboardSearchSource
+        | MlmodelSearchSource
+        | GlossarySearchSource
+        | TagClassSearchSource
       >,
       Fields
     >
@@ -51,6 +54,7 @@ export type SourceType = (
   id: string;
   tier?: string | Pick<TagLabel, 'tagFQN'>;
   tags?: string[] | TagLabel[];
+  entityType?: string;
   owner?: Partial<
     Pick<
       EntityReference,
@@ -75,7 +79,7 @@ export interface SearchedDataProps {
   showOnlyChildren?: boolean;
   isFilterSelected: boolean;
   handleSummaryPanelDisplay?: (
-    details: EntityDetailsType,
+    details: EntityUnion,
     entityType: string
   ) => void;
 }
