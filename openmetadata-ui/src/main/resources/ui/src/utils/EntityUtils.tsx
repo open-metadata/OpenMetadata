@@ -24,7 +24,7 @@ import { Container } from 'generated/entity/data/container';
 import { Mlmodel } from 'generated/entity/data/mlmodel';
 import i18next from 'i18next';
 import { isEmpty, isNil, isUndefined, lowerCase, startCase } from 'lodash';
-import { Bucket } from 'Models';
+import { Bucket, EntityDetailUnion } from 'Models';
 import React, { Fragment } from 'react';
 import { Link } from 'react-router-dom';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
@@ -48,7 +48,6 @@ import {
   Table,
   TableType,
 } from '../generated/entity/data/table';
-import { Topic } from '../generated/entity/data/topic';
 import { Edge, EntityLineage } from '../generated/type/entityLineage';
 import { EntityReference } from '../generated/type/entityUsage';
 import { TagLabel } from '../generated/type/tagLabel';
@@ -85,7 +84,7 @@ export const getEntityId = (entity?: { id?: string }) => entity?.id || '';
 
 export const getEntityTags = (
   type: string,
-  entityDetail: Table | Pipeline | Dashboard | Topic | Mlmodel
+  entityDetail: EntityDetailUnion
 ): Array<TagLabel> => {
   switch (type) {
     case EntityType.TABLE: {
@@ -434,25 +433,30 @@ export const getEntityOverview = (
       const { numberOfObjects, serviceType, dataModel } =
         entityDetail as Container;
 
+      const visible = [
+        DRAWER_NAVIGATION_OPTIONS.lineage,
+        DRAWER_NAVIGATION_OPTIONS.explore,
+      ];
+
       const overview = [
         {
           name: i18next.t('label.number-of-object'),
           value: numberOfObjects,
           isLink: false,
-          visible: [DRAWER_NAVIGATION_OPTIONS.explore],
+          visible,
         },
         {
           name: i18next.t('label.service-type'),
           value: serviceType,
           isLink: false,
-          visible: [DRAWER_NAVIGATION_OPTIONS.explore],
+          visible,
         },
         {
           name: i18next.t('label.column-plural'),
           value:
             dataModel && dataModel.columns ? dataModel.columns.length : NO_DATA,
           isLink: false,
-          visible: [DRAWER_NAVIGATION_OPTIONS.explore],
+          visible,
         },
       ];
 

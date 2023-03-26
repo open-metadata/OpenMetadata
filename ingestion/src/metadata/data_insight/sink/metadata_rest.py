@@ -80,15 +80,13 @@ class MetadataRestSink(Sink[Entity]):
 
         except APIError as err:
             if isinstance(record, ReportData):
+                name = record.data.__class__.__name__ if record.data else "Unknown"
+                error = f"Failed to sink data insight data for {name} - {err}"
                 logger.debug(traceback.format_exc())
-                logger.error(
-                    "Failed to sink data insight data for "
-                    f"{record.data.__class__.__name__ if record.data else 'Unknown'} - {err}"
-                )
-                self.status.failure(
-                    f"Data Insight: {record.data.__class__.__name__ if record.data else 'Unknown'}"
-                )
+                logger.error(error)
+                self.status.failed(name, error, traceback.format_exc())
             if isinstance(record, KpiResult):
+                error = f"Failed to sink KPI results for {record.kpiFqn} - {err}"
                 logger.debug(traceback.format_exc())
-                logger.error(f"Failed to sink KPI reasults for {record.kpiFqn} - {err}")
-                self.status.failure(f"KPI Result: {record.kpiFqn}")
+                logger.error(error)
+                self.status.failed(str(record.kpiFqn), error, traceback.format_exc())
