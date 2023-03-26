@@ -74,10 +74,14 @@ describe('Tags page should work', () => {
       .should('be.visible');
     cy.get('.ant-table-thead > tr > .ant-table-cell')
       .eq(1)
-      .contains('Description')
+      .contains('Display Name')
       .should('be.visible');
     cy.get('.ant-table-thead > tr > .ant-table-cell')
       .eq(2)
+      .contains('Description')
+      .should('be.visible');
+    cy.get('.ant-table-thead > tr > .ant-table-cell')
+      .eq(3)
       .contains('Actions')
       .should('be.visible');
 
@@ -105,6 +109,9 @@ describe('Tags page should work', () => {
     cy.get('[data-testid="name"]')
       .should('be.visible')
       .type(NEW_TAG_CATEGORY.name);
+    cy.get('[data-testid="displayName"]')
+      .should('be.visible')
+      .type(NEW_TAG_CATEGORY.displayName);
     cy.get(descriptionBox)
       .should('be.visible')
       .type(NEW_TAG_CATEGORY.description);
@@ -113,7 +120,7 @@ describe('Tags page should work', () => {
       .should('be.visible')
       .click();
 
-    cy.get('[data-testid="saveButton"]')
+    cy.get('.ant-modal-footer > .ant-btn-primary')
       .scrollIntoView()
       .should('be.visible')
       .click();
@@ -121,12 +128,12 @@ describe('Tags page should work', () => {
     cy.get('[data-testid="modal-container"]').should('not.exist');
     cy.get('[data-testid="data-summary-container"]')
       .should('be.visible')
-      .and('contain', NEW_TAG_CATEGORY.name);
+      .and('contain', NEW_TAG_CATEGORY.displayName);
   });
 
   it('Add new tag flow should work properly', () => {
     cy.get('[data-testid="data-summary-container"]')
-      .contains(NEW_TAG_CATEGORY.name)
+      .contains(NEW_TAG_CATEGORY.displayName)
       .should('be.visible')
       .as('newCategory');
 
@@ -141,14 +148,52 @@ describe('Tags page should work', () => {
         cy.get('[role="dialog"]').should('be.visible');
       });
     cy.get('[data-testid="name"]').should('be.visible').type(NEW_TAG.name);
+    cy.get('[data-testid="displayName"]')
+      .should('be.visible')
+      .type(NEW_TAG.displayName);
     cy.get(descriptionBox).should('be.visible').type(NEW_TAG.description);
 
     interceptURL('POST', '/api/v1/tags', 'createTag');
-    cy.get('[data-testid="saveButton"]').should('be.visible').click();
+    cy.get('.ant-modal-footer > .ant-btn-primary').should('be.visible').click();
 
     verifyResponseStatusCode('@createTag', 201);
 
     cy.get('[data-testid="table"]').should('contain', NEW_TAG.name);
+  });
+
+  it('Rename new tag  created flow should work properly', () => {
+    cy.get('[data-testid="data-summary-container"]')
+      .contains(NEW_TAG_CATEGORY.displayName)
+      .should('be.visible')
+      .as('newCategory');
+
+    cy.get('@newCategory')
+      .click()
+      .parent()
+      .should('have.class', 'activeCategory');
+    cy.get('[data-testid="rename-test-tag-button"]')
+      .should('be.visible')
+      .click();
+    cy.get('[data-testid="modal-container"]')
+      .should('exist')
+      .then(() => {
+        cy.get('[role="dialog"]').should('be.visible');
+      });
+    cy.get('[data-testid="rename-header"] > strong')
+      .should('be.visible')
+      .contains('Rename Tags');
+
+    interceptURL('PATCH', '/api/v1/tags/*', 'renameTag');
+    cy.get('[data-testid="rename-input"]')
+      .should('be.visible')
+      .clear()
+      .type(NEW_TAG.renameTag);
+
+    cy.get('.ant-modal-footer > .ant-btn-primary').should('be.visible').click();
+
+    verifyResponseStatusCode('@renameTag', 200);
+
+    cy.get('[data-testid="table"]').should('contain', NEW_TAG.renameTag);
   });
 
   it('Use newly created tag to any entity should work', () => {
@@ -158,7 +203,7 @@ describe('Tags page should work', () => {
 
   it('Add tag at DatabaseSchema level should work', () => {
     const entity = SEARCH_ENTITY_TABLE.table_2;
-    const term = `${NEW_TAG.name}`;
+    const term = `${NEW_TAG.renameTag}`;
     const term2 = 'PersonalData.Personal';
     const assignee = 'admin';
 
@@ -208,6 +253,9 @@ describe('Tags page should work', () => {
       .click()
       .type(assignee);
     cy.get('.ant-select-item-option-content').contains(assignee).click();
+
+    // click outside the select box
+    cy.get('[data-testid="entity-details"]').should('exist').click();
 
     cy.get(
       '[data-testid="select-tags"] > .ant-select-selector > .ant-select-selection-overflow'
@@ -265,7 +313,7 @@ describe('Tags page should work', () => {
       'getTagList'
     );
     cy.get('[data-testid="data-summary-container"]')
-      .contains(NEW_TAG_CATEGORY.name)
+      .contains(NEW_TAG_CATEGORY.displayName)
       .should('be.visible')
       .as('newCategory');
     cy.get('@newCategory')
@@ -292,7 +340,7 @@ describe('Tags page should work', () => {
 
     cy.get('[data-testid="table-data-card"]')
       .first()
-      .contains(`#${NEW_TAG_CATEGORY.name}.${NEW_TAG.name}`)
+      .contains(`#${NEW_TAG_CATEGORY.name}.${NEW_TAG.renameTag}`)
       .should('be.visible');
 
     cy.get('[data-testid="filter-container-TestCategory.test"]')
@@ -314,7 +362,7 @@ describe('Tags page should work', () => {
       'getTagList'
     );
     cy.get('[data-testid="data-summary-container"]')
-      .contains(NEW_TAG_CATEGORY.name)
+      .contains(NEW_TAG_CATEGORY.displayName)
       .should('be.visible')
       .as('newCategory');
 
@@ -326,7 +374,7 @@ describe('Tags page should work', () => {
     verifyResponseStatusCode('@getTagList', 200);
     cy.get('[data-testid="table"]')
       .should('be.visible')
-      .should('contain', NEW_TAG.name);
+      .should('contain', NEW_TAG.renameTag);
 
     cy.get('[data-testid="table"]')
       .find('[data-testid="delete-tag"]')
@@ -335,12 +383,12 @@ describe('Tags page should work', () => {
       .click();
 
     cy.wait(5000); // adding manual wait to open modal, as it depends on click not an api.
-    permanentDeleteModal(NEW_TAG.name);
+    permanentDeleteModal(NEW_TAG.renameTag);
 
     verifyResponseStatusCode('@deleteTag', 200);
     cy.wait(5000); // adding manual wait to open modal, as it depends on click not an api.
     cy.get('[data-testid="data-summary-container"]')
-      .contains(NEW_TAG.name)
+      .contains(NEW_TAG.renameTag)
       .should('not.be.exist');
   });
 
@@ -352,7 +400,7 @@ describe('Tags page should work', () => {
     );
 
     cy.get('[data-testid="data-summary-container"]')
-      .contains(NEW_TAG_CATEGORY.name)
+      .contains(NEW_TAG_CATEGORY.displayName)
       .should('be.visible')
       .as('newCategory');
 
@@ -366,7 +414,7 @@ describe('Tags page should work', () => {
       .click();
 
     cy.wait(5000); // adding manual wait to open modal, as it depends on click not an api.
-    permanentDeleteModal(NEW_TAG_CATEGORY.name);
+    permanentDeleteModal(NEW_TAG_CATEGORY.displayName);
 
     verifyResponseStatusCode('@deletTagClassification', 200);
     cy.get('[data-testid="data-summary-container"]')

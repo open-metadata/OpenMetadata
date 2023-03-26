@@ -216,10 +216,13 @@ export const NEW_ADMIN = {
 
 export const NEW_TAG_CATEGORY = {
   name: 'TestCategory',
+  displayName: 'Category',
   description: 'This is the TestCategory',
 };
 export const NEW_TAG = {
   name: 'test',
+  renameTag: 'testing',
+  displayName: 'test-1',
   description: 'This is the Test tag',
 };
 
