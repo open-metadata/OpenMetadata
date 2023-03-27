@@ -408,7 +408,7 @@ public class QueryResource extends EntityResource<Query, QueryRepository> {
             description = "OK",
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = Query.class)))
       })
-  public Query addQueryUsage(
+  public Response addQueryUsage(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "Id of the query", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
@@ -416,7 +416,7 @@ public class QueryResource extends EntityResource<Query, QueryRepository> {
       throws IOException {
     OperationContext operationContext = new OperationContext(entityType, MetadataOperation.EDIT_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
-    return dao.addQueryUsage(id, entityIds);
+    return dao.addQueryUsage(securityContext.getUserPrincipal().getName(), id, entityIds).toResponse();
   }
 
   @DELETE
@@ -432,7 +432,7 @@ public class QueryResource extends EntityResource<Query, QueryRepository> {
             description = "OK",
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = Query.class)))
       })
-  public Query removeQueryUsedIn(
+  public Response removeQueryUsedIn(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "Id of the query", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
@@ -440,7 +440,7 @@ public class QueryResource extends EntityResource<Query, QueryRepository> {
       throws IOException {
     OperationContext operationContext = new OperationContext(entityType, MetadataOperation.EDIT_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
-    return dao.removeQueryUsedIn(id, entityIds);
+    return dao.removeQueryUsedIn(securityContext.getUserPrincipal().getName(), id, entityIds).toResponse();
   }
 
   @PUT
