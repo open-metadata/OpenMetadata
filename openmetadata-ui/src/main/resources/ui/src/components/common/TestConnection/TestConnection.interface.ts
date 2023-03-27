@@ -20,6 +20,7 @@ export interface TestConnectionProps {
   serviceCategory: ServiceCategory;
   formData: ConfigData;
   displayButtonOnly?: boolean;
+  serviceName?: string;
 }
 
 export type TestStatus = Exclude<StatusType, 'Running'> | undefined;

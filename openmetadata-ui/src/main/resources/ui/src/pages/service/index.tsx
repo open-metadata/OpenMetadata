@@ -1180,6 +1180,7 @@ const ServicePage: FunctionComponent = () => {
                               serviceCategory={
                                 serviceCategory as ServiceCategory
                               }
+                              serviceName={serviceDetails?.name}
                             />
                           </Tooltip>
                         )}

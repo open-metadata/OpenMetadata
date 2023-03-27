@@ -65,6 +65,7 @@ const TestConnection: FC<TestConnectionProps> = ({
   formData,
   serviceCategory,
   connectionType,
+  serviceName,
   displayButtonOnly = false,
 }) => {
   const { t } = useTranslation();
@@ -163,6 +164,7 @@ const TestConnection: FC<TestConnectionProps> = ({
           connection: { config: updatedFormData as ConfigClass },
           serviceType: serviceType,
           connectionType: connectionType,
+          serviceName,
         },
       };
 

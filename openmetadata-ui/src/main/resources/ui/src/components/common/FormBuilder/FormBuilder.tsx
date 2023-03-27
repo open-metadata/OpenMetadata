@@ -36,6 +36,7 @@ interface Props extends FormProps<ConfigData> {
   disableTestConnection: boolean;
   serviceType: string;
   serviceCategory: ServiceCategory;
+  serviceName?: string;
   showFormHeader?: boolean;
   status?: LoadingState;
   onCancel?: () => void;
@@ -54,6 +55,7 @@ const FormBuilder: FunctionComponent<Props> = ({
   disableTestConnection,
   serviceCategory,
   serviceType,
+  serviceName,
   ...props
 }: Props) => {
   const { isAirflowAvailable } = useAirflowStatus();
@@ -145,6 +147,7 @@ const FormBuilder: FunctionComponent<Props> = ({
           formData={localFormData}
           isTestingDisabled={disableTestConnection}
           serviceCategory={serviceCategory}
+          serviceName={serviceName}
         />
       )}
       <div className="tw-mt-6 tw-flex tw-justify-between">

@@ -126,6 +126,7 @@ const ConnectionConfigForm: FunctionComponent<Props> = ({
         okText={okText}
         schema={connSch.schema}
         serviceCategory={serviceCategory}
+        serviceName={data?.name}
         serviceType={serviceType}
         status={status}
         uiSchema={connSch.uiSchema}
