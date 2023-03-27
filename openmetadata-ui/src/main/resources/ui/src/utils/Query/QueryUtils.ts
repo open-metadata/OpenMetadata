@@ -12,7 +12,11 @@
  */
 
 import { SearchDropdownOption } from 'components/SearchDropdown/SearchDropdown.interface';
-import { QuerySearchFilterType } from 'components/TableQueries/TableQueries.interface';
+import {
+  QuerySearchFilterType,
+  QuerySearchParams,
+} from 'components/TableQueries/TableQueries.interface';
+import Qs from 'qs';
 
 export const createQueryFilter = (
   allFilter: SearchDropdownOption[],
@@ -36,4 +40,11 @@ export const createQueryFilter = (
   };
 
   return filter;
+};
+
+export const parseSearchParams = (param: string) => {
+  return Qs.parse(
+    param.startsWith('?') ? param.substring(1) : param
+    // need to typecast into QuerySearchParams as Qs.parse returns as "Qs.ParsedQs" Type object
+  ) as unknown as QuerySearchParams;
 };

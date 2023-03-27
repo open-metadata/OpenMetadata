@@ -14,6 +14,7 @@
 import { Button, Card, Col, Row, Space, Typography } from 'antd';
 import classNames from 'classnames';
 import { split } from 'lodash';
+import Qs from 'qs';
 import React, { FC, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getFormattedDateFromSeconds } from 'utils/TimeUtils';
@@ -28,6 +29,9 @@ import { ReactComponent as FullScreen } from '/assets/svg/full-screen.svg';
 // css import
 import { SINGLE_DOT } from 'constants/constants';
 import { QUERY_DATE_FORMAT, QUERY_LINE_HEIGHT } from 'constants/Query.constant';
+import { useHistory, useLocation, useParams } from 'react-router-dom';
+import { parseSearchParams } from 'utils/Query/QueryUtils';
+import { getQueryPath } from 'utils/RouterUtils';
 import './table-queries.style.less';
 
 const { Text } = Typography;
@@ -43,6 +47,13 @@ const QueryCard: FC<QueryCardProp> = ({
   onUpdateVote,
 }: QueryCardProp) => {
   const { t } = useTranslation();
+  const { datasetFQN } = useParams<{ datasetFQN: string }>();
+  const location = useLocation();
+  const history = useHistory();
+  const searchFilter = useMemo(
+    () => parseSearchParams(location.search),
+    [location.search]
+  );
 
   const [expanded, setExpanded] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
@@ -80,7 +91,10 @@ const QueryCard: FC<QueryCardProp> = ({
 
   const handleExpandClick = () => {
     setExpanded((pre) => !pre);
-    onQuerySelection(query);
+    history.push({
+      search: Qs.stringify({ ...searchFilter, query: query.id }),
+      pathname: getQueryPath(datasetFQN, query.fullyQualifiedName || ''),
+    });
   };
 
   const handleCardClick = () => {

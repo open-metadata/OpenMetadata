@@ -41,7 +41,7 @@ import { useHistory, useLocation } from 'react-router-dom';
 import { getQueryById, patchQueries, updateQueryVote } from 'rest/queryAPI';
 import { searchQuery } from 'rest/searchAPI';
 import { DEFAULT_ENTITY_PERMISSION } from 'utils/PermissionsUtils';
-import { createQueryFilter } from 'utils/Query/QueryUtils';
+import { createQueryFilter, parseSearchParams } from 'utils/Query/QueryUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder';
 import Loader from '../Loader/Loader';
@@ -49,7 +49,6 @@ import QueryCard from './QueryCard';
 import QueryFilters from './QueryFilters/QueryFilters.component';
 import {
   QueryFiltersType,
-  QuerySearchParams,
   QueryVote,
   TableQueriesProp,
 } from './TableQueries.interface';
@@ -64,12 +63,7 @@ const TableQueries: FC<TableQueriesProp> = ({
   const history = useHistory();
 
   const { searchParams, selectedFilters } = useMemo(() => {
-    const searchData = Qs.parse(
-      location.search.startsWith('?')
-        ? location.search.substring(1)
-        : location.search
-      // need to typecast into QuerySearchParams as Qs.parse returns as "Qs.ParsedQs" Type object
-    ) as unknown as QuerySearchParams;
+    const searchData = parseSearchParams(location.search);
 
     const selectedFilters = {
       user: searchData.user || [],

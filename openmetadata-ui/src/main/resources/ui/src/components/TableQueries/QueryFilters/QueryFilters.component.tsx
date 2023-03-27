@@ -18,7 +18,6 @@ import { WILD_CARD_CHAR } from 'constants/char.constants';
 import { QUERY_PAGE_FILTER } from 'constants/Query.constant';
 import { PROMISE_STATE } from 'enums/common.enum';
 import { debounce, isEmpty } from 'lodash';
-import Qs from 'qs';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation } from 'react-router-dom';
@@ -28,22 +27,15 @@ import {
   getSuggestedTeams,
   getSuggestedUsers,
 } from 'rest/miscAPI';
-import {
-  QueryFiltersProps,
-  QueryFiltersType,
-  QuerySearchParams,
-} from '../TableQueries.interface';
+import { parseSearchParams } from 'utils/Query/QueryUtils';
+import { QueryFiltersProps, QueryFiltersType } from '../TableQueries.interface';
 
 const QueryFilters = ({ onFilterChange }: QueryFiltersProps) => {
   const { t } = useTranslation();
   const location = useLocation();
 
   const selectedFilters = useMemo(() => {
-    const searchData = Qs.parse(
-      location.search.startsWith('?')
-        ? location.search.substring(1)
-        : location.search
-    ) as unknown as QuerySearchParams;
+    const searchData = parseSearchParams(location.search);
 
     const filters = {
       user: searchData.user || [],
