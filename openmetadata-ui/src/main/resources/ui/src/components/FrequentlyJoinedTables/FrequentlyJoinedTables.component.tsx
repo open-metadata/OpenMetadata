@@ -12,8 +12,8 @@
  */
 
 import { Popover } from 'antd';
-import { t } from 'i18next';
 import React, { FunctionComponent, useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Link, useHistory } from 'react-router-dom';
 import { getTableDetailsPath } from '../../constants/constants';
 import { JoinedWith } from '../../generated/entity/data/table';
@@ -52,6 +52,7 @@ const FrequentlyJoinedTables: FunctionComponent<Props> = ({
   header,
   tableList,
 }: Props) => {
+  const { t } = useTranslation();
   const history = useHistory();
   const [joinedTables, setJoinedTables] = useState<Props['tableList']>([]);
 
@@ -124,7 +125,9 @@ const FrequentlyJoinedTables: FunctionComponent<Props> = ({
               placement="bottom"
               trigger="click">
               <span className="show-more">
-                {`+ ${joinedTables.length - viewCap} more`}
+                {`+ ${joinedTables.length - viewCap} ${t(
+                  'label.more-lowercase'
+                )}`}
               </span>
             </Popover>
           </div>

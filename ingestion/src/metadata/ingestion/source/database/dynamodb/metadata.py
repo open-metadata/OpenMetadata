@@ -170,6 +170,7 @@ class DynamodbSource(DatabaseServiceSource):
                     parsed_string["dataType"] = "UNION"
                 parsed_string["name"] = column["AttributeName"][:64]
                 parsed_string["dataLength"] = parsed_string.get("dataLength", 1)
+                parsed_string["displayDataType"] = str(column["AttributeType"])
                 yield Column(**parsed_string)
             except Exception as exc:
                 logger.debug(traceback.format_exc())
@@ -199,9 +200,10 @@ class DynamodbSource(DatabaseServiceSource):
             self.register_record(table_request=table_request)
 
         except Exception as exc:
+            error = f"Unexpected exception to yield table [{table_name}]: {exc}"
             logger.debug(traceback.format_exc())
-            logger.warning(f"Unexpected exception to yield table [{table_name}]: {exc}")
-            self.status.failures.append(f"{self.config.serviceName}.{table_name}")
+            logger.warning(error)
+            self.status.failed(table_name, error, traceback.format_exc())
 
     def yield_view_lineage(self) -> Optional[Iterable[AddLineageRequest]]:
         yield from []

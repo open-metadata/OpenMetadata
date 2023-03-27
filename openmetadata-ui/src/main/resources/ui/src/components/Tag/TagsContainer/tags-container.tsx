@@ -147,7 +147,7 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
       data-testid="tag-container"
       size={8}>
       {showTags && !editable && (
-        <>
+        <Space wrap>
           {showAddTagButton && (
             <span className="tw-text-primary">
               <Tags
@@ -159,7 +159,7 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
             </span>
           )}
           {tags.map(getTagsElement)}
-        </>
+        </Space>
       )}
       {editable ? (
         <>

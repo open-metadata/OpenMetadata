@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { isArray, isObject, transform } from 'lodash';
+import { get, isArray, isObject, transform } from 'lodash';
 import { FormattedTableData } from 'Models';
 import { SearchIndex } from '../enums/search.enum';
 import { GlossaryTerm } from '../generated/entity/data/glossaryTerm';
@@ -26,6 +26,8 @@ export type SearchEntityHits = SearchResponse<
   | SearchIndex.MLMODEL
   | SearchIndex.TOPIC
   | SearchIndex.CONTAINER
+  | SearchIndex.GLOSSARY
+  | SearchIndex.TAG
 >['hits']['hits'];
 
 // if more value is added, also update its interface file at -> interface/types.d.ts
@@ -41,11 +43,11 @@ export const formatDataResponse = (
     newData.displayName = hit._source.displayName ?? '';
     newData.description = hit._source.description ?? '';
     newData.fullyQualifiedName = hit._source.fullyQualifiedName ?? '';
-    newData.tags = hit._source.tags ?? [];
-    newData.service = hit._source.service?.name;
-    newData.serviceType = hit._source.serviceType;
+    newData.tags = get(hit, '_source.tags', []);
+    newData.service = get(hit, '_source.service.name');
+    newData.serviceType = get(hit, '_source.serviceType');
     newData.tier = hit._source.tier;
-    newData.owner = hit._source.owner;
+    newData.owner = get(hit, '_source.owner');
     newData.highlight = hit.highlight;
     newData.entityType = hit._source.entityType;
     newData.deleted = hit._source.deleted;

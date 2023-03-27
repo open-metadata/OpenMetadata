@@ -30,6 +30,7 @@ from metadata.generated.schema.entity.data.table import (
     ColumnProfile,
     ColumnProfilerConfig,
     SystemProfile,
+    TableData,
     TableProfile,
 )
 from metadata.ingestion.processor.pii import NERScanner
@@ -442,7 +443,11 @@ class Profiler(Generic[TMetric]):
 
         return self
 
-    def process(self, generate_sample_data: Optional[bool]) -> ProfilerResponse:
+    def process(
+        self,
+        generate_sample_data: Optional[bool],
+        process_pii_sensitive: Optional[bool],
+    ) -> ProfilerResponse:
         """
         Given a table, we will prepare the profiler for
         all its columns and return all the run profilers
@@ -454,39 +459,12 @@ class Profiler(Generic[TMetric]):
 
         self.compute_metrics()
         if generate_sample_data:
-            try:
-                logger.info(
-                    f"Fetching sample data for {self.profiler_interface.table_entity.fullyQualifiedName.__root__}..."
-                )
-                sample_data = self.profiler_interface.fetch_sample_data(self.table)
-
-                if self.profiler_interface.source_config.processPiiSensitive:
-                    try:
-                        entity_scanner = NERScanner(
-                            metadata=self.profiler_interface.ometa_client
-                        )
-                        entity_scanner.process(
-                            sample_data,
-                            self.profiler_interface.table_entity,
-                            self.profiler_interface.ometa_client,
-                        )
-                    except Exception as exc:
-                        logger.warning(
-                            f"Unexpected error while processing sample data for auto pii tagging - {exc}"
-                        )
-                        logger.debug(traceback.format_exc())
-
-                logger.info(
-                    "Successfully fetched sample data for "
-                    f"{self.profiler_interface.table_entity.fullyQualifiedName.__root__}..."
-                )
-            except Exception as err:
-                logger.debug(traceback.format_exc())
-                logger.warning(f"Error fetching sample data: {err}")
-                sample_data = None
-
+            sample_data = self.generate_sample_data()
         else:
             sample_data = None
+
+        if process_pii_sensitive and sample_data:
+            self.process_pii_sensitive(sample_data)
 
         profile = self._check_profile_and_handle(self.get_profile())
 
@@ -497,6 +475,45 @@ class Profiler(Generic[TMetric]):
         )
 
         return table_profile
+
+    def generate_sample_data(self) -> TableData:
+        """Fetch and ingest sample data
+
+        Returns:
+            TableData: sample data
+        """
+        try:
+            logger.info(
+                "Fetching sample data for "
+                f"{self.profiler_interface.table_entity.fullyQualifiedName.__root__}..."  # type: ignore
+            )
+            return self.profiler_interface.fetch_sample_data(self.table)
+        except Exception as err:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Error fetching sample data: {err}")
+            return None
+
+    def process_pii_sensitive(self, sample_data: TableData) -> None:
+        """Read sample data to find pii sensitive columns and tag them
+        as PII sensitive data
+
+        Args:
+            sample_data (TableData): sample data
+        """
+        try:
+            entity_scanner = NERScanner(
+                metadata=self.profiler_interface.ometa_client  # type: ignore
+            )
+            entity_scanner.process(
+                sample_data,
+                self.profiler_interface.table_entity,  # type: ignore
+                self.profiler_interface.ometa_client,  # type: ignore
+            )
+        except Exception as exc:
+            logger.warning(
+                f"Unexpected error while processing sample data for auto pii tagging - {exc}"
+            )
+            logger.debug(traceback.format_exc())
 
     def get_profile(self) -> CreateTableProfileRequest:
         """

@@ -23,12 +23,3 @@ export enum SearchIndex {
   TAG = 'tag_search_index',
   CONTAINER = 'container_search_index',
 }
-
-export const GENERAL_SEARCH_INDEX = [
-  SearchIndex.DASHBOARD,
-  SearchIndex.TABLE,
-  SearchIndex.TOPIC,
-  SearchIndex.PIPELINE,
-  SearchIndex.MLMODEL,
-  SearchIndex.CONTAINER,
-];

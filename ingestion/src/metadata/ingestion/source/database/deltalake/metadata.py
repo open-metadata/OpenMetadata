@@ -263,9 +263,10 @@ class DeltalakeSource(DatabaseServiceSource):
             self.register_record(table_request=table_request)
 
         except Exception as exc:
+            error = f"Unexpected exception to yield table [{table_name}]: {exc}"
             logger.debug(traceback.format_exc())
-            logger.warning(f"Unexpected exception to yield table [{table_name}]: {exc}")
-            self.status.failures.append(f"{self.config.serviceName}.{table_name}")
+            logger.warning(error)
+            self.status.failed(table_name, error, traceback.format_exc())
 
     def prepare(self):
         pass
@@ -365,7 +366,7 @@ class DeltalakeSource(DatabaseServiceSource):
                 f"Unexpected exception getting columns for [{table_name}]: {exc}"
             )
             return []
-        parsed_columns: [Column] = []
+        parsed_columns: List[Column] = []
         partition_cols = False
         for row in raw_columns:
             col_name = row["col_name"]

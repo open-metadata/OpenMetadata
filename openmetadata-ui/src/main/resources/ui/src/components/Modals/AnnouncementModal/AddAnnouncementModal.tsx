@@ -96,6 +96,7 @@ const AddAnnouncementModal: FC<Props> = ({
       closable={false}
       confirmLoading={isLoading}
       data-testid="add-announcement"
+      maskClosable={false}
       okButtonProps={{
         id: 'announcement-submit',
         form: 'announcement-form',
