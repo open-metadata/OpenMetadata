@@ -18,6 +18,7 @@ import Loader from 'components/Loader/Loader';
 import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
 import { OPENMETADATA } from 'constants/Services.constant';
 import { ServiceCategory } from 'enums/service.enum';
+import { PipelineType } from 'generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { DatabaseService } from 'generated/entity/services/databaseService';
 import { IngestionPipeline } from 'generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { Paging } from 'generated/type/paging';
@@ -38,7 +39,12 @@ import { getServiceByFQN } from 'rest/serviceAPI';
 import { showErrorToast } from 'utils/ToastUtils';
 import { SettingsIngestionProps } from './SettingsIngestion.interface';
 
-function SettingsIngestion({ pipelineType }: SettingsIngestionProps) {
+function SettingsIngestion({
+  pipelineType,
+  handleIngestionDataChange,
+  handleIngestionPipelinesChange,
+  handleServiceDetailsChange,
+}: SettingsIngestionProps) {
   const { t } = useTranslation();
   const { permissions } = usePermissionProvider();
   const { isAirflowAvailable } = useAirflowStatus();
@@ -82,9 +88,12 @@ function SettingsIngestion({ pipelineType }: SettingsIngestionProps) {
       );
 
       if (res.data) {
-        setIngestionPipelines(
-          res.data.filter((pipeline) => pipeline.pipelineType === pipelineType)
+        const pipelinesList = res.data.filter(
+          (pipeline) => pipeline.pipelineType === pipelineType
         );
+        setIngestionPipelines(pipelinesList);
+        handleIngestionPipelinesChange &&
+          handleIngestionPipelinesChange(pipelinesList);
         setIngestionPaging(res.paging);
       } else {
         setIngestionPaging({} as Paging);
@@ -128,6 +137,8 @@ function SettingsIngestion({ pipelineType }: SettingsIngestionProps) {
       : [...ingestionPipelines];
 
     setIngestionPipelines(updatedData);
+    handleIngestionPipelinesChange &&
+      handleIngestionPipelinesChange(updatedData);
   };
 
   const deployIngestion = async (id: string) => {
@@ -159,9 +170,12 @@ function SettingsIngestion({ pipelineType }: SettingsIngestionProps) {
     try {
       await deleteIngestionPipelineById(id);
 
-      setIngestionPipelines((ingestionPipeline) =>
-        ingestionPipeline.filter((pipeline) => pipeline.id !== id)
-      );
+      setIngestionPipelines((ingestionPipeline) => {
+        const data = ingestionPipeline.filter((pipeline) => pipeline.id !== id);
+        handleIngestionPipelinesChange && handleIngestionPipelinesChange(data);
+
+        return data;
+      });
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -223,6 +237,7 @@ function SettingsIngestion({ pipelineType }: SettingsIngestionProps) {
       const res = await getServiceByFQN(serviceCategory, serviceFQN);
       if (res) {
         setServiceDetails(res);
+        handleServiceDetailsChange && handleServiceDetailsChange(res);
       } else {
         showErrorToast(
           t('server.entity-fetch-error', {
@@ -261,7 +276,11 @@ function SettingsIngestion({ pipelineType }: SettingsIngestionProps) {
       currentPage={ingestionCurrentPage}
       deleteIngestion={deleteIngestionById}
       deployIngestion={deployIngestion}
+      displayAddIngestionButton={
+        pipelineType === PipelineType.ElasticSearchReindex
+      }
       handleEnableDisableIngestion={handleEnableDisableIngestion}
+      handleIngestionDataChange={handleIngestionDataChange}
       ingestionList={ingestionPipelines}
       paging={ingestionPaging}
       pagingHandler={ingestionPagingHandler}

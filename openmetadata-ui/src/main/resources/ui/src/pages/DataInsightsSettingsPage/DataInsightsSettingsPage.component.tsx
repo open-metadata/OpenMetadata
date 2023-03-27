@@ -13,27 +13,77 @@
 
 import { Col, Row } from 'antd';
 import PageHeader from 'components/header/PageHeader.component';
+import AddIngestionButton from 'components/Ingestion/AddIngestionButton.component';
+import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
 import SettingsIngestion from 'components/SettingsIngestion/SettingsIngestion.component';
+import { OPENMETADATA } from 'constants/Services.constant';
+import { ServiceCategory } from 'enums/service.enum';
 import { PipelineType } from 'generated/api/services/ingestionPipelines/createIngestionPipeline';
-import React from 'react';
+import { IngestionPipeline } from 'generated/entity/services/ingestionPipelines/ingestionPipeline';
+import { ServicesType } from 'interface/service.interface';
+import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 function DataInsightsSettingsPage() {
   const { t } = useTranslation();
+  const { permissions } = usePermissionProvider();
+  const [serviceDetails, setServiceDetails] = useState<ServicesType>();
+  const [ingestionPipelines, setIngestionPipelines] = useState<
+    Array<IngestionPipeline>
+  >([]);
+  const [ingestionData, setIngestionData] =
+    useState<Array<IngestionPipeline>>(ingestionPipelines);
+
+  const serviceCategory = ServiceCategory.METADATA_SERVICES;
+  const serviceFQN = OPENMETADATA;
+
+  const handleServiceDetailsChange = (details: ServicesType) => {
+    setServiceDetails(details);
+  };
+
+  const handleIngestionPipelinesChange = (
+    pipelines: Array<IngestionPipeline>
+  ) => {
+    setIngestionPipelines(pipelines);
+  };
+
+  const handleIngestionDataChange = (data: Array<IngestionPipeline>) => {
+    setIngestionData(data);
+  };
 
   return (
     <Row align="middle">
       <Col span={24}>
-        <PageHeader
-          data={{
-            header: t('label.data-insight'),
-            subHeader: t('message.data-insight-message'),
-          }}
-        />
+        <Row justify="space-between">
+          <Col>
+            <PageHeader
+              data={{
+                header: t('label.data-insight'),
+                subHeader: t('message.data-insight-message'),
+              }}
+            />
+          </Col>
+          <Col>
+            <AddIngestionButton
+              ingestionData={ingestionData}
+              ingestionList={ingestionPipelines}
+              permissions={permissions.metadataService}
+              pipelineType={PipelineType.DataInsight}
+              serviceCategory={serviceCategory}
+              serviceDetails={serviceDetails as ServicesType}
+              serviceName={serviceFQN}
+            />
+          </Col>
+        </Row>
       </Col>
 
       <Col data-testid="ingestion-table-container" span={24}>
-        <SettingsIngestion pipelineType={PipelineType.DataInsight} />
+        <SettingsIngestion
+          handleIngestionDataChange={handleIngestionDataChange}
+          handleIngestionPipelinesChange={handleIngestionPipelinesChange}
+          handleServiceDetailsChange={handleServiceDetailsChange}
+          pipelineType={PipelineType.DataInsight}
+        />
       </Col>
     </Row>
   );
