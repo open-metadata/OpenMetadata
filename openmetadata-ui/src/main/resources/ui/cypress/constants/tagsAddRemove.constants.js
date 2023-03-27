@@ -45,12 +45,12 @@ export const TAGS_ADD_REMOVE_ENTITIES = [
     fieldName: 'dim_address_task',
     tags: ['PersonalData.Personal', 'PII.Sensitive'],
   },
-  {
-    term: 'eta_predictions',
-    displayName: 'ETA Predictions',
-    entity: 'mlmodels',
-    serviceName: 'mlflow_svc',
-    fieldName: 'sales',
-    tags: ['PersonalData.Personal', 'PII.Sensitive'],
-  },
+  // {
+  //   term: 'eta_predictions',
+  //   displayName: 'ETA Predictions',
+  //   entity: 'mlmodels',
+  //   serviceName: 'mlflow_svc',
+  //   fieldName: 'sales',
+  //   tags: ['PersonalData.Personal', 'PII.Sensitive'],
+  // },
 ];
