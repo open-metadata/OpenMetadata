@@ -83,7 +83,7 @@ export const ELASTIC_SEARCH_INITIAL_VALUES = {
   ],
   batchSize: 100,
   flushIntervalInSec: 30,
-  recreateIndex: false,
+  recreateIndex: true,
   searchIndexMappingLanguage: SearchIndexMappingLanguage.En,
 };
 
@@ -99,18 +99,10 @@ export const RECREATE_INDEX_OPTIONS = [
 ];
 
 export const ENTITY_TREE_OPTIONS = [
-  {
-    title: 'All',
-    value: 'all',
-    key: 'all',
-    children: [
-      ...ELASTIC_SEARCH_INDEX_ENTITIES.map(({ value, label }) => ({
-        title: label,
-        value: value,
-        key: value,
-      })),
-    ],
-  },
+  ...ELASTIC_SEARCH_INDEX_ENTITIES.map(({ value, label }) => ({
+    label: label,
+    value: value,
+  })),
 ];
 
 export const RE_INDEX_LANG_OPTIONS = map(
