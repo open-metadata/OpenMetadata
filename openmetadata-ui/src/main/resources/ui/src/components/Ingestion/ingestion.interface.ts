@@ -45,6 +45,7 @@ export interface IngestionProps {
   serviceList: Array<DatabaseService>;
   currentPage: number;
   permissions: OperationPermission;
+  pipelineNameColWidth?: number;
   pipelineType?: PipelineType;
   displayAddIngestionButton?: boolean;
   pagingHandler: (value: string | number, activePage?: number) => void;
@@ -70,6 +71,7 @@ export interface IngestionListTableProps {
   isRequiredDetailsAvailable: boolean;
   paging: Paging;
   permissions: OperationPermission;
+  pipelineNameColWidth?: number;
   serviceCategory: ServiceCategory;
   serviceName: string;
   servicePermission?: IngestionServicePermission;

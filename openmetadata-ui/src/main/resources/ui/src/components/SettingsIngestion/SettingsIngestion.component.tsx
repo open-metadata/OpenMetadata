@@ -285,6 +285,7 @@ function SettingsIngestion({
       paging={ingestionPaging}
       pagingHandler={ingestionPagingHandler}
       permissions={permissions.metadataService}
+      pipelineNameColWidth={300}
       pipelineType={pipelineType}
       serviceCategory={serviceCategory}
       serviceDetails={serviceDetails as ServicesType}

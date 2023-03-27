@@ -21,7 +21,7 @@ import { ServiceCategory } from 'enums/service.enum';
 import { PipelineType } from 'generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { IngestionPipeline } from 'generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { ServicesType } from 'interface/service.interface';
-import React, { useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 function DataInsightsSettingsPage() {
@@ -37,19 +37,26 @@ function DataInsightsSettingsPage() {
   const serviceCategory = ServiceCategory.METADATA_SERVICES;
   const serviceFQN = OPENMETADATA;
 
-  const handleServiceDetailsChange = (details: ServicesType) => {
-    setServiceDetails(details);
-  };
+  const handleServiceDetailsChange = useCallback(
+    (details: ServicesType) => {
+      setServiceDetails(details);
+    },
+    [setServiceDetails]
+  );
 
-  const handleIngestionPipelinesChange = (
-    pipelines: Array<IngestionPipeline>
-  ) => {
-    setIngestionPipelines(pipelines);
-  };
+  const handleIngestionPipelinesChange = useCallback(
+    (pipelines: Array<IngestionPipeline>) => {
+      setIngestionPipelines(pipelines);
+    },
+    [setIngestionPipelines]
+  );
 
-  const handleIngestionDataChange = (data: Array<IngestionPipeline>) => {
-    setIngestionData(data);
-  };
+  const handleIngestionDataChange = useCallback(
+    (data: Array<IngestionPipeline>) => {
+      setIngestionData(data);
+    },
+    [setIngestionData]
+  );
 
   return (
     <Row align="middle">

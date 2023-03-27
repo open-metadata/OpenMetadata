@@ -48,6 +48,7 @@ const Ingestion: React.FC<IngestionProps> = ({
   pipelineType,
   displayAddIngestionButton = true,
   handleIngestionDataChange,
+  pipelineNameColWidth,
 }: IngestionProps) => {
   const { t } = useTranslation();
   const { getEntityPermissionByFqn } = usePermissionProvider();
@@ -205,6 +206,7 @@ const Ingestion: React.FC<IngestionProps> = ({
           paging={paging}
           pagingHandler={pagingHandler}
           permissions={permissions}
+          pipelineNameColWidth={pipelineNameColWidth}
           serviceCategory={serviceCategory}
           serviceName={serviceName}
           servicePermission={servicePermission}

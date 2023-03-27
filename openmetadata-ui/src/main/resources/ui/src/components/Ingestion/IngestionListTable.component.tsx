@@ -28,7 +28,6 @@ import {
   getEditIngestionPath,
   getLogsViewerPath,
 } from '../../utils/RouterUtils';
-import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { showSuccessToast } from '../../utils/ToastUtils';
 import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder';
 import NextPrevious from '../common/next-previous/NextPrevious';
@@ -55,6 +54,7 @@ function IngestionListTable({
   ingestionData,
   deleteSelection,
   permissions,
+  pipelineNameColWidth,
 }: IngestionListTableProps) {
   const history = useHistory();
   const { t } = useTranslation();
@@ -159,6 +159,7 @@ function IngestionListTable({
         title: t('label.name'),
         dataIndex: 'name',
         key: 'name',
+        width: pipelineNameColWidth ?? 500,
         render: (text, record) =>
           airflowEndpoint ? (
             <Tooltip
@@ -169,22 +170,15 @@ function IngestionListTable({
                     })
                   : t('message.no-permission-to-view')
               }>
-              <Button
-                className="tw-mr-2"
+              <Typography.Link
+                className="tw-mr-2 overflow-wrap-anywhere"
                 data-testid="airflow-tree-view"
                 disabled={!(permissions.ViewAll || permissions.ViewBasic)}
                 href={`${airflowEndpoint}/tree?dag_id=${text}`}
                 rel="noopener noreferrer"
-                target="_blank"
-                type="link">
+                target="_blank">
                 {getEntityName(record)}
-                <SVGIcons
-                  alt="external-link"
-                  className="tw-align-middle tw-ml-1"
-                  icon={Icons.EXTERNAL_LINK}
-                  width="16px"
-                />
-              </Button>
+              </Typography.Link>
             </Tooltip>
           ) : (
             getEntityName(record)
