@@ -14,7 +14,7 @@ export interface UserTags {
   id: string;
   name: string;
   closable?: boolean;
-  onClose?: () => void;
+  onRemove?: () => void;
   bordered?: boolean;
   size?: UserTagSize;
   className?: string;

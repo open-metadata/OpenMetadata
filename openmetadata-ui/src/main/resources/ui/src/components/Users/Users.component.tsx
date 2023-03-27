@@ -21,6 +21,7 @@ import {
   Switch,
   Typography,
 } from 'antd';
+import { ReactComponent as IconTeamsGrey } from 'assets/svg/teams-grey.svg';
 import { AxiosError } from 'axios';
 import { capitalize, isEmpty, isEqual, toLower } from 'lodash';
 import { observer } from 'mobx-react';
@@ -408,7 +409,7 @@ const Users = ({
             className="tw-mb-2 tw-flex tw-items-center tw-gap-2"
             data-testid={team.name}
             key={i}>
-            <SVGIcons alt="icon" icon={Icons.TEAMS_GREY} />
+            <IconTeamsGrey height={16} width={16} />
             <Typography.Text
               className="ant-typography-ellipsis-custom w-48"
               ellipsis={{ tooltip: true }}>

@@ -229,7 +229,7 @@ const GlossaryHeader = ({
                   key={reviewer.name}
                   name={getEntityName(reviewer)}
                   size={UserTagSize.small}
-                  onClose={() => handleRemoveReviewer(reviewer.id)}
+                  onRemove={() => handleRemoveReviewer(reviewer.id)}
                 />
               ))
             ) : (

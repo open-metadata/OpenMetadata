@@ -900,11 +900,11 @@ describe('Glossary page should work properly', () => {
       .as('glossaryTermDetailsPanel');
     cy.get('@glossaryTermDetailsPanel').contains('admin').should('be.visible');
     cy.get('[data-testid="user-tag"]')
-      .contain(GLOSSARY_TERM_WITH_DETAILS.reviewer)
+      .contains(GLOSSARY_TERM_WITH_DETAILS.reviewer)
       .should('be.visible');
     cy.get('@glossaryTermDetailsPanel')
       .find(`[data-testid="user-tag"]`)
-      .contain(GLOSSARY_TERM_WITH_DETAILS.inheritedReviewer)
+      .contains(GLOSSARY_TERM_WITH_DETAILS.inheritedReviewer)
       .should('be.visible');
     cy.get('[data-testid="add-tag"]')
       .contains(GLOSSARY_TERM_WITH_DETAILS.tag)

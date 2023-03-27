@@ -65,7 +65,7 @@ const AddGlossary = ({
     return markdownRef.current?.getEditorContent() || '';
   };
 
-  const handleReviewerSave = (reviewer: Array<EntityReference>) => {
+  const handleReviewerSave = (reviewer: EntityReference[]) => {
     setReviewer(reviewer);
   };
 

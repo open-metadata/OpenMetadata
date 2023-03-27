@@ -23,7 +23,7 @@ import { UserTags, UserTagSize } from './UserTag.interface';
 export const UserTag = ({
   id,
   name,
-  onClose,
+  onRemove,
   closable = false,
   bordered,
   size = UserTagSize.default,
@@ -60,7 +60,7 @@ export const UserTag = ({
       size={4}>
       <ProfilePicture id={id} name={name} width={toString(width[size])} />
       <Typography.Text className={fontSizes[size]}>{name}</Typography.Text>
-      {closable && <CloseOutlined size={width[size]} onClick={onClose} />}
+      {closable && <CloseOutlined size={width[size]} onClick={onRemove} />}
     </Space>
   );
 };

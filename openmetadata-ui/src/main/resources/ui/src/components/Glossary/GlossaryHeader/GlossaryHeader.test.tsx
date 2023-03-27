@@ -174,12 +174,16 @@ describe('GlossaryHeader component', () => {
 
     expect(screen.getByTestId('edit-name')).toBeInTheDocument();
 
-    fireEvent.click(screen.getByTestId('edit-name'));
+    act(() => {
+      fireEvent.click(screen.getByTestId('edit-name'));
+    });
 
     expect(screen.getByTestId('displayName')).toBeInTheDocument();
 
-    fireEvent.change(screen.getByTestId('displayName'), {
-      target: { value: 'updated glossary' },
+    act(() => {
+      fireEvent.change(screen.getByTestId('displayName'), {
+        target: { value: 'updated glossary' },
+      });
     });
 
     expect(screen.getByTestId('displayName')).toHaveValue('updated glossary');
@@ -262,7 +266,9 @@ describe('GlossaryHeader component', () => {
 
     expect(screen.getByTestId('update')).toBeInTheDocument();
 
-    fireEvent.click(screen.getByTestId('update'));
+    act(() => {
+      fireEvent.click(screen.getByTestId('update'));
+    });
 
     expect(mockOnUpdate).toHaveBeenCalled();
   });

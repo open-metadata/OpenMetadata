@@ -535,7 +535,7 @@ const AddGlossaryTerm = ({
                       key={index}
                       name={getEntityName(d)}
                       size={UserTagSize.small}
-                      onClose={() => d.name && handleReviewerRemove(d.name)}
+                      onRemove={() => d.name && handleReviewerRemove(d.name)}
                     />
                   );
                 })}
