@@ -64,6 +64,14 @@ export const ELASTIC_SEARCH_INDEX_ENTITIES = [
     value: 'webAnalyticUserActivityReportData',
     label: t('label.user-analytics-report'),
   },
+  {
+    value: 'container',
+    label: t('label.container'),
+  },
+  {
+    value: 'query',
+    label: t('label.query'),
+  },
 ];
 
 export const ELASTIC_SEARCH_INITIAL_VALUES = {
@@ -80,6 +88,8 @@ export const ELASTIC_SEARCH_INITIAL_VALUES = {
     'entityReportData',
     'webAnalyticEntityViewReportData',
     'webAnalyticUserActivityReportData',
+    'container',
+    'query',
   ],
   batchSize: 100,
   flushIntervalInSec: 30,
