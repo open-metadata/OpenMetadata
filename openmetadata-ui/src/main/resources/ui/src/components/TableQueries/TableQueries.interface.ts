@@ -58,5 +58,32 @@ export type QueryFiltersType = {
 };
 
 export interface QueryFiltersProps {
-  onFilterChange: (value: SearchDropdownOption[]) => void;
+  onFilterChange: (value: QueryFiltersType) => void;
 }
+
+export type QuerySearchParams = QueryFiltersType & {
+  page: string;
+  tableId: string;
+  query: string;
+};
+
+export type QuerySearchShouldFilterType = {
+  term: {
+    'owner.id': string;
+  };
+};
+export type QuerySearchMustFilterType = {
+  term?: {
+    'queryUsedIn.id': string;
+  };
+  bool?: {
+    should: QuerySearchShouldFilterType[];
+  };
+};
+export type QuerySearchFilterType = {
+  query: {
+    bool: {
+      must: QuerySearchMustFilterType[];
+    };
+  };
+};

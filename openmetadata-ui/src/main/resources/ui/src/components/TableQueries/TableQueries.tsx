@@ -19,7 +19,6 @@ import {
   OperationPermission,
   ResourceEntity,
 } from 'components/PermissionProvider/PermissionProvider.interface';
-import { SearchDropdownOption } from 'components/SearchDropdown/SearchDropdown.interface';
 import {
   INITIAL_PAGING_VALUE,
   PAGE_SIZE,
@@ -29,29 +28,31 @@ import {
   QUERY_PAGE_ERROR_STATE,
   QUERY_PAGE_LOADING_STATE,
 } from 'constants/Query.constant';
-import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
+import { ERROR_PLACEHOLDER_TYPE, SORT_ORDER } from 'enums/common.enum';
 import { SearchIndex } from 'enums/search.enum';
 import { compare } from 'fast-json-patch';
 import { Query } from 'generated/entity/data/query';
-import { isString, isUndefined } from 'lodash';
+import { flatMap, isNumber, isUndefined } from 'lodash';
 import { PagingResponse } from 'Models';
-import React, { FC, useEffect, useState } from 'react';
+import Qs from 'qs';
+import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import {
-  getQueriesList,
-  getQueryById,
-  ListQueriesParams,
-  patchQueries,
-  updateQueryVote,
-} from 'rest/queryAPI';
+import { useHistory, useLocation } from 'react-router-dom';
+import { getQueryById, patchQueries, updateQueryVote } from 'rest/queryAPI';
 import { searchQuery } from 'rest/searchAPI';
 import { DEFAULT_ENTITY_PERMISSION } from 'utils/PermissionsUtils';
+import { createQueryFilter } from 'utils/Query/QueryUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder';
 import Loader from '../Loader/Loader';
 import QueryCard from './QueryCard';
 import QueryFilters from './QueryFilters/QueryFilters.component';
-import { QueryVote, TableQueriesProp } from './TableQueries.interface';
+import {
+  QueryFiltersType,
+  QuerySearchParams,
+  QueryVote,
+  TableQueriesProp,
+} from './TableQueries.interface';
 import TableQueryRightPanel from './TableQueryRightPanel/TableQueryRightPanel.component';
 
 const TableQueries: FC<TableQueriesProp> = ({
@@ -59,6 +60,27 @@ const TableQueries: FC<TableQueriesProp> = ({
   tableId,
 }: TableQueriesProp) => {
   const { t } = useTranslation();
+  const location = useLocation();
+  const history = useHistory();
+
+  const { searchParams, selectedFilters } = useMemo(() => {
+    const searchData = Qs.parse(
+      location.search.startsWith('?')
+        ? location.search.substring(1)
+        : location.search
+      // need to typecast into QuerySearchParams as Qs.parse returns as "Qs.ParsedQs" Type object
+    ) as unknown as QuerySearchParams;
+
+    const selectedFilters = {
+      user: searchData.user || [],
+      team: searchData.team || [],
+    };
+
+    return {
+      searchParams: searchData,
+      selectedFilters,
+    };
+  }, [location]);
 
   const [tableQueries, setTableQueries] = useState<PagingResponse<Query[]>>({
     data: [],
@@ -70,10 +92,11 @@ const TableQueries: FC<TableQueriesProp> = ({
   const [queryPermissions, setQueryPermissions] = useState<OperationPermission>(
     DEFAULT_ENTITY_PERMISSION
   );
-  const [currentPage, setCurrentPage] = useState(INITIAL_PAGING_VALUE);
-  const [appliedFilter, setAppliedFilter] = useState<SearchDropdownOption[]>(
-    []
+  const [currentPage, setCurrentPage] = useState(
+    Number(searchParams.page) || INITIAL_PAGING_VALUE
   );
+  const [appliedFilter, setAppliedFilter] =
+    useState<QueryFiltersType>(selectedFilters);
 
   const { getEntityPermission } = usePermissionProvider();
 
@@ -105,29 +128,6 @@ const TableQueries: FC<TableQueriesProp> = ({
       fetchResourcePermission();
     }
   }, [selectedQuery]);
-
-  const fetchTableQuery = async (params?: ListQueriesParams) => {
-    setIsLoading((pre) => ({ ...pre, query: true }));
-    try {
-      const queries = await getQueriesList({
-        ...params,
-        limit: PAGE_SIZE,
-        entityId: tableId,
-        fields: 'owner,votes,tags,queryUsedIn',
-      });
-      if (queries.data.length) {
-        setTableQueries(queries);
-        setSelectedQuery(queries.data[0]);
-      } else {
-        setIsError((pre) => ({ ...pre, page: true }));
-      }
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-      setIsError((pre) => ({ ...pre, page: true }));
-    } finally {
-      setIsLoading((pre) => ({ ...pre, query: false }));
-    }
-  };
 
   const handleQueryUpdate = async (updatedQuery: Query, key: keyof Query) => {
     if (isUndefined(selectedQuery)) {
@@ -171,31 +171,21 @@ const TableQueries: FC<TableQueriesProp> = ({
       showErrorToast(error as AxiosError);
     }
   };
-  const fetchFilterData = async (
-    value: SearchDropdownOption[],
-    page?: number
-  ) => {
+  const fetchFilterData = async (value?: QueryFiltersType, page?: number) => {
     setIsLoading((pre) => ({ ...pre, query: true }));
+    const allFilter = flatMap(value);
+
+    const queryFilter = createQueryFilter(allFilter, tableId);
+
+    const pageNumber = page || currentPage;
+
     try {
       const res = await searchQuery({
         searchIndex: SearchIndex.QUERY,
-        queryFilter: {
-          query: {
-            bool: {
-              must: [
-                { term: { 'queryUsedIn.id': tableId } },
-                {
-                  bool: {
-                    should: value.map((data) => ({
-                      term: { 'owner.id': data.key },
-                    })),
-                  },
-                },
-              ],
-            },
-          },
-        },
-        pageNumber: page || currentPage,
+        queryFilter,
+        sortField: 'name.keyword',
+        sortOrder: SORT_ORDER.ASC,
+        pageNumber,
         pageSize: PAGE_SIZE,
         includeDeleted: false,
       });
@@ -207,7 +197,20 @@ const TableQueries: FC<TableQueriesProp> = ({
           total: res.hits.total.value,
         },
       });
-      setSelectedQuery(queries[0]);
+      const selectedQueryData = searchParams.query
+        ? queries.find((query) => query.id === searchParams.query) || queries[0]
+        : queries[0];
+
+      setSelectedQuery(selectedQueryData);
+      history.push({
+        search: Qs.stringify({
+          ...searchParams,
+          ...value,
+          page: pageNumber,
+          tableId,
+          query: selectedQueryData.id,
+        }),
+      });
       if (queries.length === 0) {
         setIsError((pre) => ({ ...pre, search: true }));
       }
@@ -218,12 +221,8 @@ const TableQueries: FC<TableQueriesProp> = ({
     }
   };
 
-  const pagingHandler = (cursorType: string | number, activePage?: number) => {
-    if (isString(cursorType)) {
-      const { paging } = tableQueries;
-      fetchTableQuery({ [cursorType]: paging[cursorType] });
-      activePage && setCurrentPage(activePage);
-    } else {
+  const pagingHandler = (cursorType: string | number) => {
+    if (isNumber(cursorType)) {
       setCurrentPage(cursorType);
       fetchFilterData(appliedFilter, cursorType);
     }
@@ -233,28 +232,32 @@ const TableQueries: FC<TableQueriesProp> = ({
     if (query.id !== selectedQuery?.id) {
       setIsLoading((pre) => ({ ...pre, rightPanel: true }));
       setSelectedQuery(query);
+      history.push({
+        search: Qs.stringify({
+          ...searchParams,
+          query: query.id,
+        }),
+      });
     }
   };
 
   useEffect(() => {
     setIsLoading((pre) => ({ ...pre, page: true }));
     if (tableId && !isTableDeleted) {
-      fetchTableQuery().finally(() => {
-        setIsLoading((pre) => ({ ...pre, page: false }));
-      });
+      fetchFilterData(selectedFilters, Number(searchParams.page)).finally(
+        () => {
+          setIsLoading((pre) => ({ ...pre, page: false }));
+        }
+      );
     } else {
       setIsLoading((pre) => ({ ...pre, page: false }));
     }
   }, [tableId]);
 
-  const onOwnerFilterChange = (value: SearchDropdownOption[]) => {
+  const onOwnerFilterChange = (value: QueryFiltersType) => {
     setIsError((pre) => ({ ...pre, search: false }));
     setAppliedFilter(value);
-    if (value.length) {
-      fetchFilterData(value);
-    } else {
-      fetchTableQuery();
-    }
+    fetchFilterData(value, INITIAL_PAGING_VALUE);
   };
 
   if (isLoading.page) {
@@ -263,7 +266,7 @@ const TableQueries: FC<TableQueriesProp> = ({
   if (isError.page) {
     return (
       <div className="flex-center font-medium" data-testid="no-queries">
-        <ErrorPlaceHolder heading="queries" />
+        <ErrorPlaceHolder heading={t('label.query-lowercase-plural')} />
       </div>
     );
   }
@@ -287,7 +290,7 @@ const TableQueries: FC<TableQueriesProp> = ({
               data-testid="no-queries"
               span={24}>
               <ErrorPlaceHolder
-                heading="queries"
+                heading={t('label.query-lowercase-plural')}
                 type={ERROR_PLACEHOLDER_TYPE.VIEW}
               />
             </Col>
@@ -309,8 +312,8 @@ const TableQueries: FC<TableQueriesProp> = ({
           <Col span={24}>
             {tableQueries.paging.total > PAGE_SIZE && (
               <NextPrevious
+                isNumberBased
                 currentPage={currentPage}
-                isNumberBased={Boolean(appliedFilter.length)}
                 pageSize={PAGE_SIZE}
                 paging={tableQueries.paging}
                 pagingHandler={pagingHandler}
