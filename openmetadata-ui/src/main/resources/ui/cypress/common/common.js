@@ -575,7 +575,7 @@ export const addUser = (username, email) => {
   cy.get('[data-testid="save-user"]').scrollIntoView().click();
 };
 
-export const softDeleteUser = (username) => {
+export const softDeleteUser = (username, isAdmin) => {
   // Search the created user
   interceptURL(
     'GET',
@@ -614,10 +614,20 @@ export const softDeleteUser = (username) => {
 
   toastNotification('User deleted successfully!');
 
+  if (!isAdmin) {
+    cy.get('[data-testid="previous"]')
+      .scrollIntoView()
+      .should('exist')
+      .should('be.disabled');
+
+    cy.get('[data-testid="page-indicator"]').contains('1/7 Page');
+  }
+
   interceptURL('GET', '/api/v1/search/query*', 'searchUser');
 
   // Verifying the deleted user
   cy.get('[data-testid="searchbar"]')
+    .scrollIntoView()
     .should('exist')
     .should('be.visible')
     .clear()

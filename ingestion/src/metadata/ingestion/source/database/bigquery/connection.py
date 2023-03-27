@@ -19,7 +19,6 @@ from typing import Optional
 from google import auth
 from google.cloud.datacatalog_v1 import PolicyTagManagerClient
 from sqlalchemy.engine import Engine
-from sqlalchemy.inspection import inspect
 
 from metadata.generated.schema.entity.automations.workflow import (
     Workflow as AutomationWorkflow,
