@@ -101,7 +101,7 @@ def _(elements, compiler, **kwargs):  # pylint: disable=unused-argument
 
 
 # ------------------
-# Datetime functions
+# Datetime Functions
 # ------------------
 class DatetimeAddFn(FunctionElement):
     inherit_cache = CACHE
