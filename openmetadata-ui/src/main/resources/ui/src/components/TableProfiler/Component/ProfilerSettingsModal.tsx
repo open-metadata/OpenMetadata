@@ -201,7 +201,6 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
 
       form.setFieldsValue({
         ...partitioning,
-        partitionValues: partitioning.partitionValues || [''],
       });
     }
   };
@@ -508,6 +507,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
             id="profiler-setting-form"
             initialValues={{
               includeColumns: state?.includeCol,
+              partitionData: [''],
               ...state?.data?.partitioning,
             }}
             layout="vertical"
