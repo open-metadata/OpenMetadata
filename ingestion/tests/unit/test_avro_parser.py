@@ -69,6 +69,23 @@ class AvroParserTests(TestCase):
                                         {
                                             "name": "item2_lvl3",
                                             "type": "string"
+                                        },
+
+                                        {
+                                            "name": "item3_lvl3",
+                                            "type": [
+                                            "null",
+                                            {
+                                                "name": "Leaf",
+                                                "type": "record",
+                                                "fields": [
+                                                {
+                                                    "name": "value",
+                                                    "type": "long"
+                                                }
+                                                ]
+                                            }
+                                            ]
                                         }
                                     ]
                                 }
@@ -139,3 +156,21 @@ class AvroParserTests(TestCase):
             for field in children
         }
         self.assertEqual(field_descriptions, {None, "level 2 array"})
+
+    def test_fourth_level(self):
+        level4_record = self.parsed_schema[0].children[2].children[0]
+
+        children = level4_record.children[1].children[0].children
+
+        field_names = {str(field.name.__root__) for field in children}
+
+        self.assertEqual(level4_record.dataType.name, "RECORD")
+
+        self.assertEqual(
+            field_names,
+            {"item1_lvl3", "item2_lvl3", "item3_lvl3"},
+        )
+
+        field_types = {str(field.dataType.name) for field in children}
+
+        self.assertEqual(field_types, {"STRING", "UNION"})
