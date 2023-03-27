@@ -121,14 +121,14 @@ const GlossaryTermTab = ({
         key: 'new-term',
         render: (_, record) => (
           <Button
-            className="text-primary"
+            className="text-primary d-flex items-center add-new-term-btn"
             data-testid="add-classification"
             icon={<PlusIcon className="anticon" />}
             size="small"
             onClick={() => {
               handleAddGlossaryTermClick(record.fullyQualifiedName || '');
             }}>
-            {t('label.new-term')}
+            <div className="tw-ml-1">{t('label.new-term')}</div>
           </Button>
         ),
       },

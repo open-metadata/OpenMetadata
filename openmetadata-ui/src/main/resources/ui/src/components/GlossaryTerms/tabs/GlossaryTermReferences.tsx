@@ -17,6 +17,7 @@ import { t } from 'i18next';
 import { cloneDeep, isEqual } from 'lodash';
 import React, { useEffect, useState } from 'react';
 import SVGIcons, { Icons } from 'utils/SvgUtils';
+import { ReactComponent as IconLink } from '../../../assets/svg/link.svg';
 import {
   GlossaryTerm,
   TermReference,
@@ -76,7 +77,13 @@ const GlossaryTermReferences = ({
           className="w-full justify-between"
           data-testid={`section-${t('label.reference-plural')}`}>
           <div className="flex-center">
-            <Typography.Text className="text-grey-muted">
+            <IconLink
+              className="tw-align-middle"
+              height={16}
+              name="link"
+              width={16}
+            />
+            <Typography.Text className="text-grey-muted tw-ml-2">
               {t('label.reference-plural')}
             </Typography.Text>
           </div>
@@ -88,13 +95,7 @@ const GlossaryTermReferences = ({
               className="cursor-pointer m--t-xss"
               data-testid="edit-button"
               disabled={!permissions.EditAll}
-              icon={
-                <SVGIcons
-                  alt="edit"
-                  icon={Icons.IC_EDIT_PRIMARY}
-                  width="16px"
-                />
-              }
+              icon={<SVGIcons alt="edit" icon={Icons.EDIT} width="16px" />}
               size="small"
               type="text"
               onClick={() => setIsViewMode(false)}

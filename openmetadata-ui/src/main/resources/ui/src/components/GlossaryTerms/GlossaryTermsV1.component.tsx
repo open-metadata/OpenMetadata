@@ -159,7 +159,7 @@ const GlossaryTermsV1 = ({
   }, [glossaryFqn]);
 
   return (
-    <Row data-testid="glossary-term">
+    <Row data-testid="glossary-term" gutter={[0, 16]}>
       <Col span={24}>
         <GlossaryHeader
           permissions={permissions}

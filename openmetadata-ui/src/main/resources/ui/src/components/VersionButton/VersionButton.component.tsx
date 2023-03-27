@@ -21,6 +21,7 @@ interface VersionButtonProps {
   selected: boolean;
   version: string;
   className?: string;
+  onClick?: () => void;
 }
 
 const VersionButton: React.FC<VersionButtonProps> = ({
@@ -28,6 +29,7 @@ const VersionButton: React.FC<VersionButtonProps> = ({
   size,
   version,
   className,
+  onClick,
 }) => {
   const { t } = useTranslation();
   const buttonClassNames = classNames(
@@ -41,7 +43,8 @@ const VersionButton: React.FC<VersionButtonProps> = ({
       className={buttonClassNames}
       data-testid="version-button"
       size={size}
-      type={selected ? 'primary' : 'default'}>
+      type={selected ? 'primary' : 'default'}
+      onClick={onClick}>
       <Space>
         <span>
           <SVGIcons

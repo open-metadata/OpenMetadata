@@ -33,6 +33,7 @@ import { Link } from 'react-router-dom';
 import { getEntityName } from 'utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from 'utils/PermissionsUtils';
 import { showErrorToast } from 'utils/ToastUtils';
+import { ReactComponent as IconLink } from '../../../assets/svg/link.svg';
 
 interface GlossaryRightPanelProps {
   entityDetails: Glossary | GlossaryTerm;
@@ -192,11 +193,19 @@ const GlossaryRightPanel = ({
 
           <Row className="m-y-md" gutter={[0, 8]}>
             <Col span={24}>
-              <Typography.Text
-                className="text-grey-muted"
-                data-testid="profiler-header">
-                {t('label.related-term-plural')}
-              </Typography.Text>
+              <div className="d-flex items-center">
+                <IconLink
+                  className="tw-align-middle"
+                  height={16}
+                  name="link"
+                  width={16}
+                />
+                <Typography.Text
+                  className="text-grey-muted tw-ml-2"
+                  data-testid="profiler-header">
+                  {t('label.related-term-plural')}
+                </Typography.Text>
+              </div>
             </Col>
             <Col span={24}>
               <RelatedTerms
