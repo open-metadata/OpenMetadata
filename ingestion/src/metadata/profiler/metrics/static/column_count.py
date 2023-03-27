@@ -25,18 +25,18 @@ from metadata.profiler.metrics.core import CACHE, StaticMetric, _label
 from metadata.profiler.orm.registry import Dialects
 
 
-class ColunCountFn(FunctionElement):
+class ColumnCountFn(FunctionElement):
     name = __qualname__
     inherit_cache = CACHE
 
 
-@compiles(ColunCountFn)
+@compiles(ColumnCountFn)
 def _(element, compiler, **kw):
     return compiler.process(element.clauses, **kw)
 
 
-@compiles(ColunCountFn, Dialects.IbmDbSa)
-@compiles(ColunCountFn, Dialects.Db2)
+@compiles(ColumnCountFn, Dialects.IbmDbSa)
+@compiles(ColumnCountFn, Dialects.Db2)
 def _(element, compiler, **kw):
     """Returns column count for db2 database and handles casting variables.
     If casting is not provided for variables, db2 throws error.
@@ -80,7 +80,7 @@ class ColumnCount(StaticMetric):
             raise AttributeError(
                 "Column Count requires a table to be set: add_props(table=...)(Metrics.COLUMN_COUNT)"
             )
-        return ColunCountFn(literal(len(inspect(self.table).c)))
+        return ColumnCountFn(literal(len(inspect(self.table).c)))
 
     def df_fn(self, dfs=None):
         """dataframe function"""

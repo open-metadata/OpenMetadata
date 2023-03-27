@@ -76,7 +76,7 @@ class PandasProfilerInterface(ProfilerProtocol, PandasInterfaceMixin):
         self.ometa_client = ometa_client
         self.source_config = source_config
         self.service_connection_config = service_connection_config
-        self.client = get_connection(self.service_connection_config).client
+        self.client = self.get_connection_client()
         self.processor_status = ProfilerProcessorStatus()
         self.processor_status.entity = (
             self.table_entity.fullyQualifiedName.__root__
@@ -87,11 +87,7 @@ class PandasProfilerInterface(ProfilerProtocol, PandasInterfaceMixin):
         self.profile_query = sample_query
         self.table_partition_config = table_partition_config
         self._table = entity
-        self.dfs = ometa_to_dataframe(
-            config_source=self.service_connection_config.configSource,
-            client=self.client,
-            table=self.table,
-        )
+        self.dfs = self.return_ometa_dataframes()
 
         # shuffling sample data for profiling
         random.shuffle(self.dfs)
@@ -407,6 +403,16 @@ class PandasProfilerInterface(ProfilerProtocol, PandasInterfaceMixin):
                 for column_name in df.columns
             ]
         return []
+
+    def get_connection_client(self):
+        return get_connection(self.service_connection_config).client
+
+    def return_ometa_dataframes(self):
+        return ometa_to_dataframe(
+            config_source=self.service_connection_config.configSource,
+            client=self.client,
+            table=self.table,
+        )
 
     def close(self):
         """Nothing to close with pandas"""

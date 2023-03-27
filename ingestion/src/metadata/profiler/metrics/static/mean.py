@@ -87,22 +87,16 @@ class Mean(StaticMetric):
     def df_fn(self, dfs=None):
         """dataframe function"""
         from numpy import vectorize
-        from pandas import notnull
 
         length_vectorize_func = vectorize(len)
-
         if is_quantifiable(self.col.type):
-            return statistics.fmean([df[self.col.name].mean() for df in dfs])
+            return statistics.fmean([df[self.col.name].dropna().mean() for df in dfs])
 
         if is_concatenable(self.col.type):
-
             return statistics.fmean(
                 [
                     length_vectorize_func(
-                        df.astype(object).where(
-                            notnull(df),
-                            "",
-                        )[self.col.name]
+                        df[self.col.name].dropna()
                     ).mean()
                     for df in dfs
                 ]

@@ -47,7 +47,7 @@ class DistinctCount(StaticMetric):
         try:
 
             return statistics.fmean(
-                [len(df[self.col.name].drop_duplicates()) for df in dfs]
+                [len(df[self.col.name].dropna().drop_duplicates()) for df in dfs]
             )
         except Exception as err:
             logger.debug(

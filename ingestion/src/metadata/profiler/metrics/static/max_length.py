@@ -79,4 +79,4 @@ class MaxLength(StaticMetric):
         logger.debug(
             f"Don't know how to process type {self.col.type} when computing MAX_LENGTH"
         )
-        return 0
+        return None

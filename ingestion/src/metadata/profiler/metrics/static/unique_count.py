@@ -70,7 +70,7 @@ class UniqueCount(QueryMetric):
         Build the Unique Count metric
         """
         try:
-            return sum(map(lambda df: len(df[self.col.name].unique()), dfs))
+            return sum(len(df[self.col.name].dropna().drop_duplicates(keep=False).unique()) for df in dfs)
         except Exception as err:
             logger.debug(
                 f"Don't know how to process type {self.col.type}"

@@ -93,8 +93,9 @@ class StdDev(StaticMetric):
 
     def df_fn(self, dfs=None):
         """pandas function"""
+        import pandas as pd
         if is_quantifiable(self.col.type):
-            return statistics.fmean([df[self.col.name].std() for df in dfs])
+            return pd.concat((df[self.col.name] for df in dfs)).dropna().std()
 
         logger.debug(
             f"{self.col.name} has type {self.col.type}, which is not listed as quantifiable."

@@ -66,17 +66,9 @@ class MinLength(StaticMetric):
 
         if self._is_concatenable():
             return min(
-                map(
-                    lambda df: length_vectorize_func(
-                        df.astype(object).where(
-                            notnull(df),
-                            "",
-                        )[self.col.name]
-                    ).min(),
-                    dfs,
-                )
+                (length_vectorize_func(df[self.col.name].dropna()).min() for df in dfs)
             )
         logger.debug(
             f"Don't know how to process type {self.col.type} when computing MIN_LENGTH"
         )
-        return 0
+        return None
