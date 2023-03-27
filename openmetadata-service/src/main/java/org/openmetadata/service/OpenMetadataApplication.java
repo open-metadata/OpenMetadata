@@ -186,7 +186,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     FilterRegistration.Dynamic micrometerFilter =
 
         environment.servlets().addFilter("OMMicrometerHttpFilter", new OMMicrometerHttpFilter());
-    micrometerFilter.addMappingForUrlPatterns(EnumSet.allOf(DispatcherType.class), true, "/*");
+    micrometerFilter.addMappingForUrlPatterns(EnumSet.allOf(DispatcherType.class), true, catalogConfig.getEventMonitorConfiguration().getPathPattern());
 
     initializeWebsockets(catalogConfig, environment);
     registerSamlHandlers(catalogConfig, environment);
