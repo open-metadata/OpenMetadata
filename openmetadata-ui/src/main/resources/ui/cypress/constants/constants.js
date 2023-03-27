@@ -221,7 +221,7 @@ export const NEW_TAG_CATEGORY = {
 };
 export const NEW_TAG = {
   name: 'test',
-  renameTag: 'testing',
+  renameTag: 'cat-1',
   displayName: 'test-1',
   description: 'This is the Test tag',
 };
