@@ -286,9 +286,7 @@ const ConfigureIngestion = ({
           />
         </div>
         <p className="tw-text-grey-muted tw-mt-3">
-          {t('message.include-assets-message', {
-            assets: t('label.tag-plural'),
-          })}
+          {t('message.include-assets-message')}
         </p>
         {getSeparator('')}
       </Field>
@@ -398,9 +396,8 @@ const ConfigureIngestion = ({
   };
 
   const getMarkDeletedEntitiesToggle = (
-    entityLabel: string,
-    entity: string,
-    entityPlural: string,
+    label: string,
+    description: string,
     handleMarkDeletedEntities: () => void,
     markDeletedEntities?: boolean
   ) => {
@@ -408,18 +405,14 @@ const ConfigureIngestion = ({
       !isNil(markDeletedEntities) && (
         <Field>
           <div className="tw-flex tw-gap-1">
-            <label>
-              {t('label.mark-deleted-entity', { entity: entityLabel })}
-            </label>
+            <label>{label}</label>
             <ToggleSwitchV1
               checked={markDeletedEntities}
               handleCheck={handleMarkDeletedEntities}
               testId="mark-deleted"
             />
           </div>
-          <p className="tw-text-grey-muted tw-mt-3">
-            {t('message.mark-deleted-entity-message', { entity, entityPlural })}
-          </p>
+          <p className="tw-text-grey-muted tw-mt-3">{description}</p>
           {getSeparator('')}
         </Field>
       )
@@ -451,9 +444,8 @@ const ConfigureIngestion = ({
           {getIncludesTagToggle()}
           {getDebugLogToggle()}
           {getMarkDeletedEntitiesToggle(
-            t('label.table-plural'),
-            t('label.table-lowercase'),
-            t('label.table-lowercase-plural'),
+            t('label.mark-deleted-table-plural'),
+            t('message.mark-deleted-table-message'),
             handleMarkDeletedTables,
             markDeletedTables
           )}
@@ -651,9 +643,13 @@ const ConfigureIngestion = ({
             {getOverrideOwnerToggle()}
             {getIncludesTagToggle()}
             {getMarkDeletedEntitiesToggle(
-              t('label.dashboard-plural'),
-              t('label.dashboard-lowercase'),
-              t('label.dashboard-lowercase-plural'),
+              t('label.mark-deleted-entity', {
+                entity: t('label.dashboard-plural'),
+              }),
+              t('message.mark-deleted-entity-message', {
+                entity: t('label.dashboard-lowercase'),
+                entityPlural: t('label.dashboard-lowercase-plural'),
+              }),
               handleMarkDeletedDashboards,
               markDeletedDashboards
             )}
@@ -684,9 +680,13 @@ const ConfigureIngestion = ({
             )}
             {getDebugLogToggle()}
             {getMarkDeletedEntitiesToggle(
-              t('label.topic-plural'),
-              t('label.topic-lowercase'),
-              t('label.topic-lowercase-plural'),
+              t('label.mark-deleted-entity', {
+                entity: t('label.topic-plural'),
+              }),
+              t('message.mark-deleted-entity-message', {
+                entity: t('label.topic-lowercase'),
+                entityPlural: t('label.topic-lowercase-plural'),
+              }),
               handleMarkDeletedTopics,
               markDeletedTopics
             )}
@@ -711,9 +711,13 @@ const ConfigureIngestion = ({
             {getPipelineFieldToggles()}
             {getIncludesTagToggle()}
             {getMarkDeletedEntitiesToggle(
-              t('label.pipeline-plural'),
-              t('label.pipeline-lowercase'),
-              t('label.pipeline-lowercase-plural'),
+              t('label.mark-deleted-entity', {
+                entity: t('label.pipeline-plural'),
+              }),
+              t('message.mark-deleted-entity-message', {
+                entity: t('label.pipeline-lowercase'),
+                entityPlural: t('label.pipeline-lowercase-plural'),
+              }),
               handleMarkDeletedPipelines,
               markDeletedPipelines
             )}
@@ -737,9 +741,13 @@ const ConfigureIngestion = ({
             />
             {getSeparator('')}
             {getMarkDeletedEntitiesToggle(
-              t('label.ml-model-plural'),
-              t('label.ml-model-lowercase'),
-              t('label.ml-model-lowercase-plural'),
+              t('label.mark-deleted-entity', {
+                entity: t('label.ml-model-plural'),
+              }),
+              t('message.mark-deleted-entity-message', {
+                entity: t('label.ml-model-lowercase'),
+                entityPlural: t('label.ml-model-lowercase-plural'),
+              }),
               handleMarkDeletedMlModels,
               markDeletedMlModels
             )}
