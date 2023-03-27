@@ -32,13 +32,13 @@ jest.mock('rest/miscAPI', () => ({
     .mockImplementation(() => Promise.resolve('markdown text')),
 }));
 
-const mockOnCancel = jest.fn();
+const mockOnBack = jest.fn();
 const mockOnNext = jest.fn();
 
 const mockProps = {
   serviceName: 'Test Service',
   serviceType: 'Test Type',
-  onCancel: mockOnCancel,
+  onBack: mockOnBack,
   onNext: mockOnNext,
 };
 
@@ -67,7 +67,7 @@ describe('ServiceRequirements Component', () => {
 
     fireEvent.click(screen.getByTestId('previous-button'));
 
-    expect(mockProps.onCancel).toHaveBeenCalled();
+    expect(mockProps.onBack).toHaveBeenCalled();
     expect(mockProps.onNext).not.toHaveBeenCalled();
   });
 
@@ -78,7 +78,7 @@ describe('ServiceRequirements Component', () => {
 
     fireEvent.click(screen.getByTestId('next-button'));
 
-    expect(mockProps.onCancel).not.toHaveBeenCalled();
+    expect(mockProps.onBack).not.toHaveBeenCalled();
     expect(mockProps.onNext).toHaveBeenCalled();
   });
 });

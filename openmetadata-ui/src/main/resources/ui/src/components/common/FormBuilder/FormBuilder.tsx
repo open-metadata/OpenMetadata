@@ -14,6 +14,7 @@
 import { CheckOutlined } from '@ant-design/icons';
 import Form from '@rjsf/antd';
 import CoreForm, { AjvError, FormProps, IChangeEvent } from '@rjsf/core';
+import { Button as AntDButton } from 'antd';
 import classNames from 'classnames';
 import { t } from 'i18next';
 import { isEmpty, startCase } from 'lodash';
@@ -208,41 +209,31 @@ const FormBuilder: FunctionComponent<Props> = ({
       <div className="tw-mt-6 tw-flex tw-justify-between">
         <div />
         <div className="tw-text-right" data-testid="buttons">
-          <Button
-            size="regular"
-            theme="primary"
-            variant="text"
-            onClick={handleCancel}>
+          <AntDButton type="link" onClick={handleCancel}>
             {cancelText}
-          </Button>
+          </AntDButton>
           {status === 'waiting' ? (
-            <Button
+            <AntDButton
               disabled
-              className="tw-w-16 tw-h-10 disabled:tw-opacity-100"
-              size="regular"
-              theme="primary"
-              variant="contained">
+              className="p-x-md p-y-xxs h-auto rounded-6"
+              type="primary">
               <Loader size="small" type="white" />
-            </Button>
+            </AntDButton>
           ) : status === 'success' ? (
-            <Button
+            <AntDButton
               disabled
-              className="tw-w-16 tw-h-10 disabled:tw-opacity-100"
-              size="regular"
-              theme="primary"
-              variant="contained">
+              className="p-x-md p-y-xxs h-auto rounded-6"
+              type="primary">
               <CheckOutlined />
-            </Button>
+            </AntDButton>
           ) : (
-            <Button
-              className="tw-w-16 tw-h-10"
+            <AntDButton
+              className="font-medium p-x-md p-y-xxs h-auto rounded-6"
               data-testid="submit-btn"
-              size="regular"
-              theme="primary"
-              variant="contained"
+              type="primary"
               onClick={handleSubmit}>
               {okText}
-            </Button>
+            </AntDButton>
           )}
         </div>
       </div>

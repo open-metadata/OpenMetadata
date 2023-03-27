@@ -21,14 +21,14 @@ import { SupportedLocales } from 'utils/i18next/i18nextUtil';
 interface ServiceRequirementsProp {
   serviceName: string;
   serviceType: string;
-  onCancel: () => void;
+  onBack: () => void;
   onNext: () => void;
 }
 
 const ServiceRequirements: FC<ServiceRequirementsProp> = ({
   serviceType,
   serviceName,
-  onCancel,
+  onBack,
   onNext,
 }) => {
   const { t, i18n } = useTranslation();
@@ -90,8 +90,8 @@ const ServiceRequirements: FC<ServiceRequirementsProp> = ({
           className="m-r-xs"
           data-testid="previous-button"
           type="link"
-          onClick={onCancel}>
-          {t('label.cancel')}
+          onClick={onBack}>
+          {t('label.back')}
         </Button>
 
         <Button

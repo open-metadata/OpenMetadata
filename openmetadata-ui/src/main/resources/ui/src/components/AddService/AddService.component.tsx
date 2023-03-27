@@ -234,7 +234,7 @@ const AddService = ({
           <ServiceRequirements
             serviceName={selectServiceType}
             serviceType={getServiceType(serviceCategory)}
-            onCancel={handleServiceRequirementsBackClick}
+            onBack={handleServiceRequirementsBackClick}
             onNext={handleServiceRequirementsNextClick}
           />
         )}
