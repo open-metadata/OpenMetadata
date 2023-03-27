@@ -62,7 +62,6 @@ import {
   restoreContainer,
 } from 'rest/objectStoreAPI';
 import {
-  dataUnitConverter,
   getCurrentUserId,
   getEntityMissingError,
   getEntityPlaceHolder,
@@ -74,6 +73,7 @@ import { getEntityLineage, getEntityName } from 'utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from 'utils/PermissionsUtils';
 import { getLineageViewPath } from 'utils/RouterUtils';
 import { serviceTypeLogo } from 'utils/ServiceUtils';
+import { bytesToSize } from 'utils/StringsUtils';
 import { getTagsWithoutTier, getTierTags } from 'utils/TableUtils';
 import { showErrorToast, showSuccessToast } from 'utils/ToastUtils';
 
@@ -280,7 +280,7 @@ const ContainerPage = () => {
     },
     {
       key: EntityInfo.SIZE,
-      value: dataUnitConverter(size),
+      value: bytesToSize(size),
       showLabel: true,
     },
   ];

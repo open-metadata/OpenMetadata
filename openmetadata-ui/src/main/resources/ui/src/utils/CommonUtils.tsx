@@ -32,7 +32,6 @@ import {
   isString,
   isUndefined,
   toNumber,
-  toString,
 } from 'lodash';
 import {
   CurrentState,
@@ -51,7 +50,6 @@ import AppState from '../AppState';
 import { AddIngestionState } from '../components/AddIngestion/addIngestion.interface';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import {
-  DATA_UNITS,
   getTeamAndUserDetailsPath,
   getUserPath,
   imageTypes,
@@ -911,15 +909,3 @@ export const reducerWithoutAction = <S, A>(state: S, action: A) => {
  * @returns base64 encoded text
  */
 export const getBase64EncodedString = (text: string): string => btoa(text);
-
-export const dataUnitConverter = (bytes: number): string => {
-  for (let i = 0; i < DATA_UNITS.length; i++) {
-    if (bytes <= 1000) {
-      return `${bytes} ${DATA_UNITS[i]}`;
-    } else {
-      bytes = parseFloat((bytes / 1000).toFixed(2));
-    }
-  }
-
-  return toString(bytes);
-};
