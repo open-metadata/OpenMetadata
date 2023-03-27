@@ -165,7 +165,7 @@ export const SETTINGS_LEFT_PANEL = {
   },
   elasticsearch: {
     testid: '[data-menu-id*="elasticsearch"]',
-    url: `${BASE_URL}/settings/eventPublishers/elasticsearch`,
+    url: `${BASE_URL}/settings/openMetadata/elasticsearch`,
   },
   bots: {
     testid: '[data-menu-id*="bots"]',
