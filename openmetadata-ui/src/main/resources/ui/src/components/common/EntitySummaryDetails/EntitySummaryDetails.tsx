@@ -14,11 +14,10 @@
 import { Button as AntdButton, Dropdown, Space } from 'antd';
 import Tooltip, { RenderFunction } from 'antd/lib/tooltip';
 import classNames from 'classnames';
-import { isString, isUndefined } from 'lodash';
+import { isString, isUndefined, toLower } from 'lodash';
 import { ExtraInfo } from 'Models';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { getPropertyLabel } from 'utils/EntityUtils';
 import { Dashboard } from '../../../generated/entity/data/dashboard';
 import { Table } from '../../../generated/entity/data/table';
 import { TeamType } from '../../../generated/entity/teams/team';
@@ -201,10 +200,14 @@ const EntitySummaryDetails = ({
             {data.key
               ? displayVal
                 ? data.showLabel
-                  ? `${getPropertyLabel(data.key, data.localizationKey)} - `
+                  ? `${t(`label.${toLower(data.key)}`)} - `
                   : null
                 : `${t('label.no-entity', {
-                    entity: getPropertyLabel(data.key, data.localizationKey),
+                    entity: t(
+                      `label.${toLower(
+                        data.localizationKey ? data.localizationKey : data.key
+                      )}`
+                    ),
                   })}`
               : null}
           </>

@@ -275,7 +275,6 @@ const ContainerPage = () => {
     },
     {
       key: EntityInfo.NUMBER_OF_OBJECTS,
-      localizationKey: 'number-of-object-plural',
       value: numberOfObjects,
       showLabel: true,
     },
