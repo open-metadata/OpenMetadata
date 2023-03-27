@@ -19,12 +19,12 @@
       "default": "DatabaseMetadata"
     },
     "markDeletedTables": {
-      "description": "Optional configuration to soft delete tables in OpenMetadata if the source tables are deleted. Also, if the table is deleted, all the associated entities like testSuite, lineage, etc., with that table will be deleted",
+      "description": "This is an optional configuration for enabling soft deletion of tables. When this option is enabled, only tables that have been deleted from the source will be soft deleted, and this will apply solely to the schema that is currently being ingested via the pipeline. Any related entities such as test suites or lineage information that were associated with those tables will also be deleted.",
       "type": "boolean",
       "default": true
     },
     "markAllDeletedTables": {
-      "description": "Optional configuration to mark all deleted tables to the filtered schema",
+      "description": "This is an optional configuration for enabling soft deletion of tables. When this option is enabled, only tables that have been deleted from the source will be soft deleted, and this will apply to all the schemas available in the data source. Any related entities such as test suites or lineage information that were associated with those tables will also be deleted. Do not enable this option when you have multiple metadata ingestion pipelines. Also make sure to enable the markDeletedTables option for this to work.",
       "type": "boolean",
       "default": false
     },
