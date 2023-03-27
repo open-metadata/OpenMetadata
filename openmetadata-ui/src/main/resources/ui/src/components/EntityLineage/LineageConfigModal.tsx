@@ -53,6 +53,7 @@ const LineageConfigModal: React.FC<LineageConfigModalProps> = ({
 
   return (
     <Modal
+      maskClosable={false}
       title={t('label.lineage-config')}
       visible={visible}
       onCancel={onCancel}

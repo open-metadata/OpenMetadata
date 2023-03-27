@@ -70,6 +70,7 @@ const EntityDeleteModal = ({
           </Button>
         </div>
       }
+      maskClosable={false}
       open={visible}
       title={
         <Typography.Text data-testid="modal-header">
