@@ -12,10 +12,16 @@
  */
 
 import { Button, Card } from 'antd';
+import {
+  GlobalSettingOptions,
+  GlobalSettingsMenuCategory,
+} from 'constants/GlobalSettings.constants';
+import { TeamType } from 'generated/entity/teams/team';
 import { isNil } from 'lodash';
 import React, { FunctionComponent, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
+import { getSettingPath, getTeamsWithFqnPath } from 'utils/RouterUtils';
 import { getExplorePath, ROUTES } from '../../constants/constants';
 import { getCountBadge } from '../../utils/CommonUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
@@ -79,19 +85,40 @@ const MyAssetStats: FunctionComponent<MyAssetStatsProps> = ({
         link: ROUTES.TEST_SUITES,
         dataTestId: 'test-suite',
       },
-      glossaries: {
-        icon: Icons.FLAT_FOLDER,
-        data: t('label.glossary-plural'),
-        count: entityCounts.glossaryCount,
-        link: ROUTES.GLOSSARY,
-        dataTestId: 'glossaries',
-      },
       glossaryTerms: {
         icon: Icons.FLAT_DOC,
         data: t('label.glossary-term-plural'),
         count: entityCounts.glossaryTermCount,
         link: ROUTES.GLOSSARY,
         dataTestId: 'glossary-terms',
+      },
+      service: {
+        icon: Icons.SERVICE,
+        data: t('label.service-plural'),
+        count: entityCounts.servicesCount,
+        link: getSettingPath(
+          GlobalSettingsMenuCategory.SERVICES,
+          GlobalSettingOptions.DATABASES
+        ),
+        dataTestId: 'service',
+      },
+      user: {
+        icon: Icons.USERS,
+        data: t('label.user-plural'),
+        count: entityCounts.userCount,
+        link: getSettingPath(
+          GlobalSettingsMenuCategory.MEMBERS,
+          GlobalSettingOptions.USERS
+        ),
+        dataTestId: 'user',
+        adminOnly: true,
+      },
+      teams: {
+        icon: Icons.TEAMS_GREY,
+        data: t('label.team-plural'),
+        count: entityCounts.teamCount,
+        link: getTeamsWithFqnPath(TeamType.Organization),
+        dataTestId: 'teams',
       },
     }),
     [entityState]

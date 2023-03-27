@@ -138,14 +138,11 @@ class MetadataUsageBulkSink(BulkSink):
                     f"Cannot construct UsageRequest from {value_dict['table_entity']}: {err}"
                 )
             except Exception as exc:
+                name = value_dict["table_entity"].fullyQualifiedName.__root__
+                error = f"Failed to update usage for {name} :{exc}"
                 logger.debug(traceback.format_exc())
-                logger.warning(
-                    f"Failed to update usage for {value_dict['table_entity'].fullyQualifiedName.__root__} :{exc}"
-                )
-                self.status.failures.append(table_usage_request)
-                self.status.failures.append(
-                    f"Table: {value_dict['table_entity'].fullyQualifiedName.__root__}"
-                )
+                logger.warning(error)
+                self.status.failed(name, error, traceback.format_exc())
 
     def iterate_files(self):
         """
@@ -226,22 +223,24 @@ class MetadataUsageBulkSink(BulkSink):
                             entity=table_entity, queries=table_usage.sqlQueries
                         )
                 except APIError as err:
+                    error = f"Failed to update query join for {table_usage}: {err}"
                     logger.debug(traceback.format_exc())
-                    logger.warning(
-                        f"Failed to update query join for {table_usage.table}: {err}"
-                    )
-                    self.status.failures.append(table_join_request)
+                    logger.warning(error)
+                    self.status.failed(table_usage.table, error, traceback.format_exc())
                 except Exception as exc:
-                    logger.debug(traceback.format_exc())
-                    logger.warning(
-                        f"Error getting usage and join information for {table_entity.name.__root__}: {exc}"
+                    name = table_entity.name.__root__
+                    error = (
+                        f"Error getting usage and join information for {name}: {exc}"
                     )
+                    logger.debug(traceback.format_exc())
+                    logger.warning(error)
+                    self.status.failed(name, error, traceback.format_exc())
             else:
                 logger.warning(
                     "Could not fetch table"
                     f" {table_usage.databaseName}.{table_usage.databaseSchema}.{table_usage.table}"
                 )
-                self.status.warnings.append(f"Table: {table_usage.table}")
+                self.status.warning(f"Table: {table_usage.table}")
 
     def __get_table_joins(
         self, table_entity: Table, table_usage: TableUsageCount
