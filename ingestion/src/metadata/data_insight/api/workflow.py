@@ -216,13 +216,10 @@ class DataInsightWorkflow(WorkflowStatusMixin):
                         )
 
             except Exception as exc:
-                logger.error(
-                    f"Error while executing data insight workflow for report type {report_data_type} -- {exc}"
-                )
+                error = f"Error while executing data insight workflow for report type {report_data_type}: {exc}"
+                logger.error(error)
                 logger.debug(traceback.format_exc())
-                self.status.failure(
-                    f"Error while executing data insight workflow for report type {report_data_type} -- {exc}"
-                )
+                self.status.failed(str(report_data_type), error, traceback.format_exc())
 
     def _execute_kpi_runner(self):
         """KPI runner method to run KPI definiton against platform latest metric"""
