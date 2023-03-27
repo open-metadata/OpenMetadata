@@ -58,7 +58,7 @@ jest.mock('./Steps/ServiceRequirements', () => {
   return jest.fn().mockReturnValue(<div>Service Requirements</div>);
 });
 
-jest.mock('./RightPanel/RightPanel', () => {
+jest.mock('../common/ServiceRightPanel/ServiceRightPanel', () => {
   return jest.fn().mockReturnValue(<div>Right Panel</div>);
 });
 
