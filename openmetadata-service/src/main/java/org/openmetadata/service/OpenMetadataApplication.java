@@ -13,6 +13,8 @@
 
 package org.openmetadata.service;
 
+import static org.openmetadata.service.util.MicrometerBundleSingleton.webAnalyticEvents;
+
 import io.dropwizard.Application;
 import io.dropwizard.configuration.EnvironmentVariableSubstitutor;
 import io.dropwizard.configuration.SubstitutingSourceProvider;
@@ -76,6 +78,7 @@ import org.openmetadata.service.jdbi3.locator.ConnectionAwareAnnotationSqlLocato
 import org.openmetadata.service.migration.Migration;
 import org.openmetadata.service.migration.MigrationConfiguration;
 import org.openmetadata.service.monitoring.EventMonitor;
+import org.openmetadata.service.monitoring.EventMonitorConfiguration;
 import org.openmetadata.service.monitoring.EventMonitorFactory;
 import org.openmetadata.service.monitoring.EventMonitorPublisher;
 import org.openmetadata.service.resources.CollectionRegistry;
@@ -182,12 +185,20 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
 
     // authenticationHandler Handles auth related activities
     authenticatorHandler.init(catalogConfig, jdbi);
-
+    String[] pathPatterns;
+    if (catalogConfig.getEventMonitorConfiguration() == null) {
+      EventMonitorConfiguration eventMonitorConfiguration = new EventMonitorConfiguration();
+      eventMonitorConfiguration.setLatency(new double[] {});
+      eventMonitorConfiguration.setPathPattern(new String[] {"/*"});
+      webAnalyticEvents = MicrometerBundleSingleton.latencyTimer(eventMonitorConfiguration);
+      pathPatterns = eventMonitorConfiguration.getPathPattern();
+    } else {
+      webAnalyticEvents = MicrometerBundleSingleton.latencyTimer(catalogConfig.getEventMonitorConfiguration());
+      pathPatterns = catalogConfig.getEventMonitorConfiguration().getPathPattern();
+    }
     FilterRegistration.Dynamic micrometerFilter =
-
         environment.servlets().addFilter("OMMicrometerHttpFilter", new OMMicrometerHttpFilter());
-    micrometerFilter.addMappingForUrlPatterns(EnumSet.allOf(DispatcherType.class), true, catalogConfig.getEventMonitorConfiguration().getPathPattern());
-
+    micrometerFilter.addMappingForUrlPatterns(EnumSet.allOf(DispatcherType.class), true, pathPatterns);
     initializeWebsockets(catalogConfig, environment);
     registerSamlHandlers(catalogConfig, environment);
 

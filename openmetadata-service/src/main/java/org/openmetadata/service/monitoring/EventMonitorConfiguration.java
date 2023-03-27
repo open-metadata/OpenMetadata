@@ -29,4 +29,6 @@ public class EventMonitorConfiguration {
   private Map<String, String> parameters;
 
   private String[] pathPattern;
+
+  private double[] latency;
 }
