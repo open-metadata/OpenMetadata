@@ -236,7 +236,7 @@ def _(elements, compiler, **kwargs):
 
 
 # -----------------------------------
-# Shared timestamp/datetime functions
+# Shared timestamp/datetime Functions
 # -----------------------------------
 def generic_function(elements, compiler, **kwargs):
     """generic date and datetime function"""
