@@ -50,6 +50,7 @@ const TestConnectionModal: FC<TestConnectionModalProps> = ({
       centered
       bodyStyle={{ padding: '16px 0px 16px 0px' }}
       closable={false}
+      data-testid="test-connection-modal"
       maskClosable={false}
       open={isOpen}
       title={t('label.connection-status')}
