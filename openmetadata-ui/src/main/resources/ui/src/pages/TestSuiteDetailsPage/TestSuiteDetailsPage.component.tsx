@@ -208,21 +208,19 @@ const TestSuiteDetailsPage = () => {
 
   const onUpdateOwner = useCallback(
     (updatedOwner: TestSuite['owner']) => {
-      if (updatedOwner) {
-        const updatedTestSuite = {
-          ...testSuite,
-          owner: updatedOwner
-            ? {
-                ...testSuite?.owner,
-                ...updatedOwner,
-              }
-            : undefined,
-        } as TestSuite;
+      const updatedTestSuite = {
+        ...testSuite,
+        owner: updatedOwner
+          ? {
+              ...testOwner,
+              ...updatedOwner,
+            }
+          : undefined,
+      } as TestSuite;
 
-        updateTestSuiteData(updatedTestSuite, ACTION_TYPE.UPDATE);
-      }
+      updateTestSuiteData(updatedTestSuite, ACTION_TYPE.UPDATE);
     },
-    [testSuite, testSuite?.owner]
+    [testOwner, testSuite]
   );
 
   const onDescriptionUpdate = async (updatedHTML: string) => {

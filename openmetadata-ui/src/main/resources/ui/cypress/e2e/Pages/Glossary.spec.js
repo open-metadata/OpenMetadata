@@ -899,12 +899,11 @@ describe('Glossary page should work properly', () => {
       .scrollIntoView()
       .as('glossaryTermDetailsPanel');
     cy.get('@glossaryTermDetailsPanel').contains('admin').should('be.visible');
-    cy.get('@glossaryTermDetailsPanel')
-      .find(`data-testid="user-tag"`)
+    cy.get('[data-testid="user-tag"]')
       .contain(GLOSSARY_TERM_WITH_DETAILS.reviewer)
       .should('be.visible');
     cy.get('@glossaryTermDetailsPanel')
-      .find(`data-testid="user-tag"`)
+      .find(`[data-testid="user-tag"]`)
       .contain(GLOSSARY_TERM_WITH_DETAILS.inheritedReviewer)
       .should('be.visible');
     cy.get('[data-testid="add-tag"]')

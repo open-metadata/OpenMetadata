@@ -274,11 +274,11 @@ const PipelineDetails = ({
     (newOwner?: Pipeline['owner']) => {
       const updatedPipelineDetails = {
         ...pipelineDetails,
-        owner: newOwner ? { ...pipelineDetails.owner, ...newOwner } : undefined,
+        owner: newOwner ? { ...owner, ...newOwner } : undefined,
       };
       settingsUpdateHandler(updatedPipelineDetails);
     },
-    [pipelineDetails, pipelineDetails.owner]
+    [owner]
   );
 
   const onTierRemove = () => {

@@ -67,15 +67,14 @@ const TableQueryRightPanel = ({
   };
 
   const handleUpdateOwner = async (owner: Query['owner']) => {
-    if (!isUndefined(owner)) {
-      const updatedData = {
-        ...query,
-        owner,
-      };
-      await onQueryUpdate(updatedData, 'owner');
-      setIsEditOwner(false);
-    }
+    const updatedData = {
+      ...query,
+      owner,
+    };
+    await onQueryUpdate(updatedData, 'owner');
+    setIsEditOwner(false);
   };
+
   const onDescriptionUpdate = async (description: string) => {
     const updatedData = {
       ...query,

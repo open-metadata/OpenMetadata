@@ -472,19 +472,18 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
 
   const onOwnerUpdate = useCallback(
     (newOwner?: Table['owner']) => {
-      const existingOwner = tableDetails.owner;
       const updatedTableDetails = {
         ...tableDetails,
         owner: newOwner
           ? {
-              ...existingOwner,
+              ...owner,
               ...newOwner,
             }
           : undefined,
       };
       settingsUpdateHandler(updatedTableDetails);
     },
-    [tableDetails, tableDetails.owner]
+    [owner, tableDetails]
   );
 
   const onTierUpdate = (newTier?: string) => {

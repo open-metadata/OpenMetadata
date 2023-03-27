@@ -264,13 +264,11 @@ const DashboardDetails = ({
     (newOwner?: Dashboard['owner']) => {
       const updatedDashboardDetails = {
         ...dashboardDetails,
-        owner: newOwner
-          ? { ...dashboardDetails.owner, ...newOwner }
-          : undefined,
+        owner: newOwner ? { ...owner, ...newOwner } : undefined,
       };
       settingsUpdateHandler(updatedDashboardDetails);
     },
-    [dashboardDetails, dashboardDetails.owner]
+    [owner]
   );
 
   const onTierUpdate = (newTier?: string) => {

@@ -15,7 +15,7 @@ import { Button as AntdButton, Dropdown, Space } from 'antd';
 import Tooltip, { RenderFunction } from 'antd/lib/tooltip';
 import { ReactComponent as IconTeamsGrey } from 'assets/svg/teams-grey.svg';
 import classNames from 'classnames';
-import { isString, isUndefined, noop, toLower } from 'lodash';
+import { isString, isUndefined, lowerCase, noop, toLower } from 'lodash';
 import { ExtraInfo } from 'Models';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -26,11 +26,10 @@ import { TagLabel } from '../../../generated/type/tagLabel';
 import { getTeamsUser } from '../../../utils/CommonUtils';
 import SVGIcons, { Icons } from '../../../utils/SvgUtils';
 import { Button } from '../../buttons/Button/Button';
+import ProfilePicture from '../ProfilePicture/ProfilePicture';
 import TeamTypeSelect from '../TeamTypeSelect/TeamTypeSelect.component';
 import TierCard from '../TierCard/TierCard';
 import { UserSelectableList } from '../UserSelectableList/UserSelectableList.component';
-import { UserTag } from '../UserTag/UserTag.component';
-import { UserTagSize } from '../UserTag/UserTag.interface';
 import { UserTeamSelectableList } from '../UserTeamSelectableList/UserTeamSelectableList.component';
 import './EntitySummaryDetails.style.less';
 
@@ -109,19 +108,26 @@ const EntitySummaryDetails = ({
     />
   );
 
-  const { isEntityDetails, userDetails, isTier, isOwner, isTeamType } =
-    useMemo(() => {
-      const userDetails = getTeamsUser(data);
+  const {
+    isEntityDetails,
+    userDetails,
+    isTier,
+    isOwner,
+    isTeamType,
+    isTeamOwner,
+  } = useMemo(() => {
+    const userDetails = getTeamsUser(data);
 
-      return {
-        isEntityCard: data?.isEntityCard,
-        isEntityDetails: data?.isEntityDetails,
-        userDetails,
-        isTier: data.key === 'Tier',
-        isOwner: data.key === 'Owner',
-        isTeamType: data.key === 'TeamType',
-      };
-    }, [data]);
+    return {
+      isEntityCard: data?.isEntityCard,
+      isEntityDetails: data?.isEntityDetails,
+      userDetails,
+      isTier: data.key === 'Tier',
+      isOwner: data.key === 'Owner',
+      isTeamType: data.key === 'TeamType',
+      isTeamOwner: isString(data.value) ? data.value.includes('teams/') : false,
+    };
+  }, [data]);
 
   switch (data.key) {
     case 'Owner':
@@ -132,18 +138,27 @@ const EntitySummaryDetails = ({
               <>
                 {!isUndefined(userDetails) && isEntityDetails && (
                   <>
-                    <UserTag
-                      id={userDetails.id || ''}
+                    <ProfilePicture
+                      displayName={userDetails.ownerName}
+                      id={userDetails.id as string}
                       name={userDetails.ownerName || ''}
-                      size={UserTagSize.small}
+                      width="20"
                     />
-
-                    <span className="tw-text-gray-400">
+                    <span>{userDetails.ownerName}</span>
+                    <span className="tw-mr-1 tw-inline-block tw-text-gray-400">
                       {t('label.pipe-symbol')}
                     </span>
-                    {/* Teams Icon -- Label will be added below */}
-                    <IconTeamsGrey height={18} width={18} />
                   </>
+                )}
+                {isTeamOwner ? (
+                  <IconTeamsGrey height={18} width={18} />
+                ) : (
+                  <ProfilePicture
+                    displayName={displayVal}
+                    id=""
+                    name={data.profileName || ''}
+                    width={data.avatarWidth || '20'}
+                  />
                 )}
               </>
             ) : (
@@ -152,7 +167,7 @@ const EntitySummaryDetails = ({
           ) : (
             <>
               {t('label.no-entity', { entity: t('label.owner') })}
-              {ownerDropdown}
+              {updateOwner && !deleted ? ownerDropdown : null}
             </>
           );
       }
@@ -241,7 +256,7 @@ const EntitySummaryDetails = ({
                     'tw-w-52': (displayVal as string).length > 32,
                   }
                 )}
-                data-testid="owner-link"
+                data-testid={`${lowerCase(data.key)}-link`}
                 href={data.value as string}
                 rel="noopener noreferrer"
                 target={data.openInNewTab ? '_blank' : '_self'}
@@ -280,7 +295,7 @@ const EntitySummaryDetails = ({
                 />
               ) : null}
               {/* Edit icon with dropdown */}
-              {(isOwner || isTier) && ownerDropdown}
+              {(isOwner || isTier) && (updateOwner ? ownerDropdown : null)}
             </>
           ) : isOwner ? (
             <>
@@ -302,7 +317,7 @@ const EntitySummaryDetails = ({
                 </Button>
               </span>
               {/* Edit icon with dropdown */}
-              {ownerDropdown}
+              {updateOwner ? ownerDropdown : null}
             </>
           ) : isTier ? (
             <Space

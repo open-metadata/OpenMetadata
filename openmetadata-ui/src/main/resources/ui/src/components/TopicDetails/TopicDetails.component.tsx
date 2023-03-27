@@ -287,14 +287,14 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
         ...topicDetails,
         owner: newOwner
           ? {
-              ...topicDetails.owner,
+              ...owner,
               ...newOwner,
             }
           : undefined,
       };
       settingsUpdateHandler(updatedTopicDetails);
     },
-    [topicDetails, topicDetails.owner]
+    [owner]
   );
 
   const onTierRemove = () => {
