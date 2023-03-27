@@ -531,7 +531,10 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
   }
 
   private Workflow buildFromOriginalServiceConnection(Workflow workflow) {
-    Workflow originalWorkflow = (Workflow) ClassConverterFactory.getConverter(Workflow.class).convert(workflow);
+    Workflow originalWorkflow = dao.findByNameOrNull(workflow.getFullyQualifiedName(), null, Include.NON_DELETED);
+    if (originalWorkflow == null) {
+      originalWorkflow = (Workflow) ClassConverterFactory.getConverter(Workflow.class).convert(workflow);
+    }
     if (originalWorkflow.getRequest() instanceof TestServiceConnectionRequest) {
       TestServiceConnectionRequest testServiceConnection = (TestServiceConnectionRequest) originalWorkflow.getRequest();
       EntityRepository<? extends EntityInterface> serviceRepository =
@@ -541,8 +544,8 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
               serviceRepository.findByNameOrNull(testServiceConnection.getServiceName(), "", Include.NON_DELETED);
       if (originalService != null && originalService.getConnection() != null) {
         testServiceConnection.setConnection(originalService.getConnection());
+        originalWorkflow.setRequest(testServiceConnection);
       }
-      originalWorkflow.setRequest(testServiceConnection);
     }
     return originalWorkflow;
   }
