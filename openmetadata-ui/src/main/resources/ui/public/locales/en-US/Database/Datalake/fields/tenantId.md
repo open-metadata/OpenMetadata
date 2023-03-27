@@ -1,1 +1,1 @@
-Tenant ID of your Azure Subscription
+Tenant ID of your Azure App Subscription

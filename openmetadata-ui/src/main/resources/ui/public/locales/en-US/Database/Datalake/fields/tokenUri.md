@@ -1,1 +1,1 @@
-Token URI
+This is the URI for the token server. To fetch this key, look for the value associated with the "token_uri" key in the service account file.
