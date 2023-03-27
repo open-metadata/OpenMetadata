@@ -1,2 +1,1 @@
-Tableau Site Url.
-<!-- siteUrl to be updated -->
+If it is empty, the default Tableau site will be used.

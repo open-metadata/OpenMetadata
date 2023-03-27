@@ -1,2 +1,1 @@
-Client SSL configuration
-<!-- sslConfig to be updated -->
+Client SSL configuration in case we are connection to a host with SSL enabled.

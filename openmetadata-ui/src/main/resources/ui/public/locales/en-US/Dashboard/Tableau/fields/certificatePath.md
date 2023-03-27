@@ -1,2 +1,3 @@
-CA certificate path. E.g., /path/to/public.cert. Will be used if Verify SSL is set to `validate`.
-<!-- certificatePath to be updated -->
+CA certificate path in the instance where the ingestion run. E.g., `/path/to/public.cert`. 
+
+Will be used if Verify SSL is set to `validate`.

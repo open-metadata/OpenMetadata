@@ -1,2 +1,3 @@
-Personal Access Token Secret.
-<!-- personalAccessTokenSecret to be updated -->
+The personal access token value.
+
+For more information to get a Personal Access Token please visit this [link](https://help.tableau.com/current/server/en-us/security_personal_access_tokens.htm).
