@@ -34,15 +34,12 @@ from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.ingestion.api.source import InvalidSourceException, SourceStatus
+from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.connections import get_connection
 from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
-from metadata.ingestion.source.database.database_service import (
-    DatabaseServiceSource,
-    SQLSourceStatus,
-)
+from metadata.ingestion.source.database.database_service import DatabaseServiceSource
 from metadata.utils import fqn
 from metadata.utils.constants import DEFAULT_DATABASE
 from metadata.utils.filters import filter_by_table
@@ -58,7 +55,7 @@ class DynamodbSource(DatabaseServiceSource):
     """
 
     def __init__(self, config: WorkflowSource, metadata_config: OpenMetadataConnection):
-        self.status = SQLSourceStatus()
+        super().__init__()
         self.config = config
         self.source_config: DatabaseServiceMetadataPipeline = (
             self.config.sourceConfig.config
@@ -68,7 +65,6 @@ class DynamodbSource(DatabaseServiceSource):
         self.service_connection = self.config.serviceConnection.__root__.config
         self.dynamodb = get_connection(self.service_connection)
         self.database_source_state = set()
-        super().__init__()
 
     @classmethod
     def create(cls, config_dict, metadata_config: OpenMetadataConnection):
@@ -174,6 +170,7 @@ class DynamodbSource(DatabaseServiceSource):
                     parsed_string["dataType"] = "UNION"
                 parsed_string["name"] = column["AttributeName"][:64]
                 parsed_string["dataLength"] = parsed_string.get("dataLength", 1)
+                parsed_string["displayDataType"] = str(column["AttributeType"])
                 yield Column(**parsed_string)
             except Exception as exc:
                 logger.debug(traceback.format_exc())
@@ -203,9 +200,10 @@ class DynamodbSource(DatabaseServiceSource):
             self.register_record(table_request=table_request)
 
         except Exception as exc:
+            error = f"Unexpected exception to yield table [{table_name}]: {exc}"
             logger.debug(traceback.format_exc())
-            logger.warning(f"Unexpected exception to yield table [{table_name}]: {exc}")
-            self.status.failures.append(f"{self.config.serviceName}.{table_name}")
+            logger.warning(error)
+            self.status.failed(table_name, error, traceback.format_exc())
 
     def yield_view_lineage(self) -> Optional[Iterable[AddLineageRequest]]:
         yield from []
@@ -218,9 +216,6 @@ class DynamodbSource(DatabaseServiceSource):
 
     def close(self):
         pass
-
-    def get_status(self) -> SourceStatus:
-        return self.status
 
     def test_connection(self) -> None:
         pass

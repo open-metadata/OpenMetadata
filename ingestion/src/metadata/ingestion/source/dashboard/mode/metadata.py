@@ -205,10 +205,9 @@ class ModeSource(DashboardServiceSource):
                         service=self.context.dashboard_service.fullyQualifiedName.__root__,
                     )
                     self.status.scanned(chart_name)
-                except Exception as exc:  # pylint: disable=broad-except
+                except Exception as exc:
+                    name = chart_name if chart_name else ""
+                    error = f"Error to yield dashboard chart [{chart}]: {exc}"
                     logger.debug(traceback.format_exc())
-                    logger.warning(f"Error to yield dashboard chart [{chart}]: {exc}")
-                    self.status.failure(
-                        chart_name if chart_name else "",
-                        repr(exc),
-                    )
+                    logger.warning(error)
+                    self.status.failed(name, error, traceback.format_exc())

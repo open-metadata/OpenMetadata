@@ -34,7 +34,6 @@ from metadata.generated.schema.type.entityLineage import EntitiesEdge, LineageDe
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
-from metadata.ingestion.source.pipeline.fivetran.client import FivetranClient
 from metadata.ingestion.source.pipeline.pipeline_service import PipelineServiceSource
 from metadata.utils import fqn
 from metadata.utils.logger import ingestion_logger
@@ -65,14 +64,6 @@ class FivetranSource(PipelineServiceSource):
     Implements the necessary methods ot extract
     Pipeline metadata from Fivetran's REST API
     """
-
-    def __init__(
-        self,
-        config: WorkflowSource,
-        metadata_config: OpenMetadataConnection,
-    ):
-        super().__init__(config, metadata_config)
-        self.client = FivetranClient(self.service_connection)
 
     @classmethod
     def create(cls, config_dict, metadata_config: OpenMetadataConnection):

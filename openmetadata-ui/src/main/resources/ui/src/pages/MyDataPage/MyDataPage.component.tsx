@@ -120,6 +120,7 @@ const MyDataPage = () => {
           servicesCount: 0,
           userCount: 0,
           teamCount: 0,
+          glossaryTermCount: 0,
         },
       });
     } finally {

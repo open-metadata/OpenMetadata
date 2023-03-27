@@ -31,6 +31,7 @@ public class RuleEvaluator {
       input = "none",
       description = "Returns true if the entity being accessed has no owner",
       examples = {"noOwner()", "!noOwner", "noOwner() || isOwner()"})
+  @SuppressWarnings("unused") // Used in SpelExpressions
   public boolean noOwner() throws IOException {
     return resourceContext != null && resourceContext.getOwner() == null;
   }
@@ -39,8 +40,7 @@ public class RuleEvaluator {
       name = "isOwner",
       input = "none",
       description = "Returns true if the logged in user is the owner of the entity being accessed",
-      examples = {"isOwner()", "!isOwner", "noOwner() || isOwner()"},
-      resourceBased = true)
+      examples = {"isOwner()", "!isOwner", "noOwner() || isOwner()"})
   public boolean isOwner() throws IOException {
     return subjectContext != null && subjectContext.isOwner(resourceContext.getOwner());
   }
@@ -49,14 +49,13 @@ public class RuleEvaluator {
       name = "matchAllTags",
       input = "List of comma separated tag or glossary fully qualified names",
       description = "Returns true if the entity being accessed has all the tags given as input",
-      examples = {"matchAllTags('PersonalData.Personal', 'Tier.Tier1', 'Business Glossary.Clothing')"},
-      resourceBased = true)
+      examples = {"matchAllTags('PersonalData.Personal', 'Tier.Tier1', 'Business Glossary.Clothing')"})
   public boolean matchAllTags(String... tagFQNs) throws IOException {
     if (resourceContext == null) {
       return false;
     }
     List<TagLabel> tags = resourceContext.getTags();
-    LOG.debug("matchAllTags {} resourceTags {}", Arrays.toString(tagFQNs), tags.toString());
+    LOG.debug("matchAllTags {} resourceTags {}", Arrays.toString(tagFQNs), Arrays.toString(tags.toArray()));
     for (String tagFQN : tagFQNs) {
       TagLabel found = tags.stream().filter(t -> t.getTagFQN().equals(tagFQN)).findAny().orElse(null);
       if (found == null) {
@@ -70,14 +69,14 @@ public class RuleEvaluator {
       name = "matchAnyTag",
       input = "List of comma separated tag or glossary fully qualified names",
       description = "Returns true if the entity being accessed has at least one of the tags given as input",
-      examples = {"matchAnyTag('PersonalData.Personal', 'Tier.Tier1', 'Business Glossary.Clothing')"},
-      resourceBased = true)
+      examples = {"matchAnyTag('PersonalData.Personal', 'Tier.Tier1', 'Business Glossary.Clothing')"})
+  @SuppressWarnings("unused") // Used in SpelExpressions
   public boolean matchAnyTag(String... tagFQNs) throws IOException {
     if (resourceContext == null) {
       return false;
     }
     List<TagLabel> tags = resourceContext.getTags();
-    LOG.debug("matchAnyTag {} resourceTags {}", Arrays.toString(tagFQNs), tags.toString());
+    LOG.debug("matchAnyTag {} resourceTags {}", Arrays.toString(tagFQNs), Arrays.toString(tags.toArray()));
     for (String tagFQN : tagFQNs) {
       TagLabel found = tags.stream().filter(t -> t.getTagFQN().equals(tagFQN)).findAny().orElse(null);
       if (found != null) {
@@ -93,16 +92,51 @@ public class RuleEvaluator {
       description =
           "Returns true if the user and the resource belongs to the team hierarchy where this policy is"
               + "attached. This allows restricting permissions to a resource to the members of the team hierarchy.",
-      examples = {"matchTeam()"},
-      resourceBased = true)
+      examples = {"matchTeam()"})
+  @SuppressWarnings("unused") // Used in SpelExpressions
   public boolean matchTeam() throws IOException {
     if (resourceContext == null || resourceContext.getOwner() == null) {
-      return true; // No ownership information
+      return false; // No ownership information
     }
     if (policyContext == null || !policyContext.getEntityType().equals(Entity.TEAM)) {
-      return true; // Policy must be attached to a team for this function to work
+      return false; // Policy must be attached to a team for this function to work
     }
     return subjectContext.isTeamAsset(policyContext.getEntityName(), resourceContext.getOwner())
         && subjectContext.isUserUnderTeam(policyContext.getEntityName());
+  }
+
+  @Function(
+      name = "inAnyTeam",
+      input = "List of comma separated team names",
+      description = "Returns true if the user belongs under the hierarchy of any of the teams in the given team list.",
+      examples = {"inAnyTeam('marketing')"})
+  @SuppressWarnings("unused") // Used in SpelExpressions
+  public boolean inAnyTeam(String... teams) {
+    for (String team : teams) {
+      if (subjectContext.isUserUnderTeam(team)) {
+        LOG.debug("inAnyTeam - User {} is under the team {}", subjectContext.getUser().getName(), team);
+        return true;
+      }
+      LOG.debug("inAnyTeam - User {} is not under the team {}", subjectContext.getUser().getName(), team);
+    }
+    return false;
+  }
+
+  @Function(
+      name = "hasAnyRole",
+      input = "List of comma separated roles",
+      description =
+          "Returns true if the user (either direct or inherited from the parent teams) has one or more roles "
+              + "from the list.",
+      examples = {"hasAnyRole('DataSteward', 'DataEngineer')"})
+  @SuppressWarnings("unused") // Used in SpelExpressions
+  public boolean hasAnyRole(String... roles) {
+    for (String role : roles) {
+      if (subjectContext.hasAnyRole(role)) {
+        LOG.debug("hasAnyRole - User {} has the role {}", subjectContext.getUser().getName(), role);
+        return true;
+      }
+    }
+    return false;
   }
 }

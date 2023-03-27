@@ -208,3 +208,18 @@ def filter_by_mlmodel(
     :return: True for filtering, False otherwise
     """
     return _filter(mlmodel_filter_pattern, mlmodel_name)
+
+
+def filter_by_container(
+    container_filter_pattern: Optional[FilterPattern], container_name: str
+) -> bool:
+    """
+    Return True if the container needs to be filtered, False otherwise
+
+    Include takes precedence over exclude
+
+    :param container_filter_pattern: Container defining the container filtering logic
+    :param container_name: container name
+    :return: True for filtering, False otherwise
+    """
+    return _filter(container_filter_pattern, container_name)

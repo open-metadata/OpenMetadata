@@ -28,7 +28,7 @@ from metadata.generated.schema.entity.teams.user import User
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.queryParserData import QueryParserData
 from metadata.generated.schema.type.tableUsageCount import TableUsageCount
-from metadata.ingestion.api.stage import Stage, StageStatus
+from metadata.ingestion.api.stage import Stage
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.constants import UTF_8
 from metadata.utils.logger import ingestion_logger
@@ -49,17 +49,16 @@ class TableUsageStage(Stage[QueryParserData]):
     """
 
     config: TableStageConfig
-    status: StageStatus
 
     def __init__(
         self,
         config: TableStageConfig,
         metadata_config: OpenMetadataConnection,
     ):
+        super().__init__()
         self.config = config
         self.metadata_config = metadata_config
         self.metadata = OpenMetadata(self.metadata_config)
-        self.status = StageStatus()
         self.table_usage = {}
         self.table_queries = {}
 
@@ -162,9 +161,6 @@ class TableUsageStage(Stage[QueryParserData]):
                 self.table_usage[(table, parsed_data.date)] = table_usage_count
                 logger.info(f"Successfully record staged for {table}")
         self.dump_data_to_file()
-
-    def get_status(self):
-        return self.status
 
     def dump_data_to_file(self):
         for key, value in self.table_usage.items():
