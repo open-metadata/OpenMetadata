@@ -40,12 +40,12 @@
     },
     "numberOfObjects": {
       "description": "The number of objects/files this container has.",
-      "type": "integer",
+      "type": "number",
       "default": null
     },
     "size": {
       "description": "The total size in KB this container has.",
-      "type": "integer",
+      "type": "number",
       "default": null
     },
     "fileFormats": {
