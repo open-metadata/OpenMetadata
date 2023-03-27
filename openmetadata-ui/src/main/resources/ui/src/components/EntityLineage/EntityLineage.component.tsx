@@ -1692,6 +1692,7 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
       <EntityLineageSidebar newAddedNode={newAddedNode} show={isEditMode} />
       {showDeleteModal && (
         <Modal
+          maskClosable={false}
           okText={getLoadingStatusValue(
             t('label.confirm'),
             deletionState.loading,
