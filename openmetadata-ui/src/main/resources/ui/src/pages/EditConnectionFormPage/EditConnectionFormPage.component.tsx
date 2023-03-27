@@ -22,7 +22,7 @@ import Loader from 'components/Loader/Loader';
 import ServiceConfig from 'components/ServiceConfig/ServiceConfig';
 import { startCase } from 'lodash';
 import { ServicesData, ServicesUpdateRequest, ServiceTypes } from 'Models';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router-dom';
 import { getServiceByFQN, updateService } from 'rest/serviceAPI';
@@ -44,8 +44,14 @@ import { showErrorToast } from '../../utils/ToastUtils';
 function EditConnectionFormPage() {
   const { t } = useTranslation();
   const { serviceFQN, serviceCategory } = useParams() as Record<string, string>;
-  const [isLoading, setIsloading] = useState(true);
-  const [isError, setIsError] = useState(false);
+
+  const isOpenMetadataService = useMemo(
+    () => serviceFQN === OPENMETADATA,
+    [serviceFQN]
+  );
+
+  const [isLoading, setIsloading] = useState(!isOpenMetadataService);
+  const [isError, setIsError] = useState(isOpenMetadataService);
   const [serviceDetails, setServiceDetails] = useState<ServicesType>();
   const [slashedBreadcrumb, setSlashedBreadcrumb] = useState<
     TitleBreadcrumbProps['titleLinks']
@@ -102,47 +108,53 @@ function EditConnectionFormPage() {
   };
 
   useEffect(() => {
-    setIsloading(true);
-    getServiceByFQN(serviceCategory, serviceFQN, ['owner'])
-      .then((resService) => {
-        if (resService) {
-          setServiceDetails(resService);
-          setSlashedBreadcrumb([
-            {
-              name: startCase(serviceCategory),
-              url: getSettingPath(
-                GlobalSettingsMenuCategory.SERVICES,
-                getServiceRouteFromServiceType(serviceCategory as ServiceTypes)
-              ),
-            },
-            {
-              name: getEntityName(resService),
-              imgSrc: serviceTypeLogo(resService.serviceType),
-              url: getPathByServiceFQN(serviceCategory, serviceFQN),
-            },
-            {
-              name: t('label.edit-entity', { entity: t('label.connection') }),
-              url: '',
-              activeTitle: true,
-            },
-          ]);
-        } else {
-          showErrorToast(jsonData['api-error-messages']['fetch-service-error']);
-        }
-      })
-      .catch((error: AxiosError) => {
-        if (error.response?.status === 404) {
-          setIsError(true);
-        } else {
-          showErrorToast(
-            error,
-            jsonData['api-error-messages']['fetch-service-error']
-          );
-        }
-      })
-      .finally(() => {
-        setIsloading(false);
-      });
+    if (!isOpenMetadataService) {
+      setIsloading(true);
+      getServiceByFQN(serviceCategory, serviceFQN, ['owner'])
+        .then((resService) => {
+          if (resService) {
+            setServiceDetails(resService);
+            setSlashedBreadcrumb([
+              {
+                name: startCase(serviceCategory),
+                url: getSettingPath(
+                  GlobalSettingsMenuCategory.SERVICES,
+                  getServiceRouteFromServiceType(
+                    serviceCategory as ServiceTypes
+                  )
+                ),
+              },
+              {
+                name: getEntityName(resService),
+                imgSrc: serviceTypeLogo(resService.serviceType),
+                url: getPathByServiceFQN(serviceCategory, serviceFQN),
+              },
+              {
+                name: t('label.edit-entity', { entity: t('label.connection') }),
+                url: '',
+                activeTitle: true,
+              },
+            ]);
+          } else {
+            showErrorToast(
+              jsonData['api-error-messages']['fetch-service-error']
+            );
+          }
+        })
+        .catch((error: AxiosError) => {
+          if (error.response?.status === 404) {
+            setIsError(true);
+          } else {
+            showErrorToast(
+              error,
+              jsonData['api-error-messages']['fetch-service-error']
+            );
+          }
+        })
+        .finally(() => {
+          setIsloading(false);
+        });
+    }
   }, [serviceFQN, serviceCategory]);
 
   const renderPage = () => {

@@ -129,11 +129,18 @@ const ServicePage: FunctionComponent = () => {
   const { isAirflowAvailable } = useAirflowStatus();
   const { serviceFQN, serviceType, serviceCategory, tab } =
     useParams() as Record<string, string>;
-  const { getEntityPermissionByFqn } = usePermissionProvider();
-  const history = useHistory();
+
+  const isOpenMetadataService = useMemo(
+    () => serviceFQN === OPENMETADATA,
+    [serviceFQN]
+  );
+
   const [serviceName, setServiceName] = useState<ServiceTypes>(
     (serviceCategory as ServiceTypes) || getServiceCategoryFromType(serviceType)
   );
+
+  const { getEntityPermissionByFqn } = usePermissionProvider();
+  const history = useHistory();
   const [slashedTableName, setSlashedTableName] = useState<
     TitleBreadcrumbProps['titleLinks']
   >([]);
@@ -141,12 +148,12 @@ const ServicePage: FunctionComponent = () => {
   const [description, setDescription] = useState('');
   const [serviceDetails, setServiceDetails] = useState<ServicesType>();
   const [data, setData] = useState<Array<ServicePageData>>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(!isOpenMetadataService);
   const [paging, setPaging] = useState<Paging>(pagingObject);
   const [activeTab, setActiveTab] = useState(
     getCurrentServiceTab(tab, serviceName)
   );
-  const [isError, setIsError] = useState(false);
+  const [isError, setIsError] = useState(isOpenMetadataService);
   const [ingestions, setIngestions] = useState<IngestionPipeline[]>([]);
   const [serviceList] = useState<Array<DatabaseService>>([]);
   const [ingestionPaging, setIngestionPaging] = useState<Paging>({} as Paging);
@@ -922,7 +929,9 @@ const ServicePage: FunctionComponent = () => {
   };
 
   useEffect(() => {
-    fetchServicePermission();
+    if (!isOpenMetadataService) {
+      fetchServicePermission();
+    }
   }, [serviceFQN, serviceCategory]);
 
   const tableColumn: ColumnsType<ServicePageData> = useMemo(() => {
@@ -992,7 +1001,7 @@ const ServicePage: FunctionComponent = () => {
   }, [serviceName]);
 
   useEffect(() => {
-    if (isAirflowAvailable) {
+    if (isAirflowAvailable && !isOpenMetadataService) {
       getAllIngestionWorkflows();
     }
   }, [isAirflowAvailable]);
