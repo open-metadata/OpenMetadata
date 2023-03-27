@@ -1,4 +1,4 @@
-Add the following scopes to your Azure AD app
- - https://analysis.windows.net/powerbi/api/.default
+To let OM use the Power BI APIs using your Azure AD app, you'll need to add the following scopes:
+- https://analysis.windows.net/powerbi/api/.default
 
-Follow [here](https://analysis.windows.net/powerbi/api/.default) for instructions to add scopes
+Instructions for adding these scopes to your app can be found by following this link: https://analysis.windows.net/powerbi/api/.default.
