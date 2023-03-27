@@ -164,7 +164,7 @@ def _(elements, compiler, **kwargs):
 
 
 # -------------------
-# Timestamp functions
+# Timestamp Functions
 # -------------------
 class TimestampAddFn(FunctionElement):
     inherit_cache = CACHE
