@@ -23,7 +23,7 @@ import {
   WorkflowType,
 } from 'generated/entity/automations/workflow';
 import { TestConnectionStep } from 'generated/entity/services/connections/testConnectionDefinition';
-import { toLower, toNumber } from 'lodash';
+import { toNumber } from 'lodash';
 import React, { FC, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -67,14 +67,26 @@ const TestConnection: FC<TestConnectionProps> = ({
 }) => {
   const { t } = useTranslation();
 
+  const initialMessage = t(
+    'message.test-your-connection-before-creating-service'
+  );
+
+  const successMessage = t('message.connection-test-successful');
+
+  const failureMessage = t('message.connection-test-failed');
+
+  const testingMessage = t(
+    'message.testing-your-connection-may-take-two-minutes'
+  );
+
+  const infoMessage = t('message.test-connection-taking-too-long');
+
   // local state
   const [isTestingConnection, setIsTestingConnection] =
     useState<boolean>(false);
   const [dialogOpen, setDialogOpen] = useState<boolean>(false);
 
-  const [message, setMessage] = useState<string>(
-    t('message.test-your-connection-before-creating-service')
-  );
+  const [message, setMessage] = useState<string>(initialMessage);
 
   const [testConnectionStep, setTestConnectionStep] = useState<
     TestConnectionStep[]
@@ -112,9 +124,7 @@ const TestConnection: FC<TestConnectionProps> = ({
 
   const fetchConnectionDefinition = async () => {
     try {
-      const response = await getTestConnectionDefinitionByName(
-        toLower(connectionType)
-      );
+      const response = await getTestConnectionDefinitionByName(connectionType);
 
       setTestConnectionStep(response.steps);
     } catch (error) {
@@ -137,18 +147,21 @@ const TestConnection: FC<TestConnectionProps> = ({
     }
   };
 
-  // handlers
-  const handleTestConnection = async () => {
-    setIsTestingConnection(true);
-    setMessage(t('message.testing-your-connection-may-take-two-minutes'));
-
+  const handleResetState = () => {
     // reset states for workflow ans steps result
     setCurrentWorkflow(undefined);
     setTestConnectionStepResult([]);
     setTestStatus(undefined);
+  };
+
+  // handlers
+  const handleTestConnection = async () => {
+    setIsTestingConnection(true);
+    setMessage(testingMessage);
+    handleResetState();
 
     // current interval id
-    let intervalId: number | null = null;
+    let intervalId: number | undefined;
 
     try {
       const createWorkflowData: CreateWorkflow = {
@@ -156,8 +169,8 @@ const TestConnection: FC<TestConnectionProps> = ({
         workflowType: WorkflowType.TestConnection,
         request: {
           connection: { config: updatedFormData as ConfigClass },
-          serviceType: serviceType,
-          connectionType: connectionType,
+          serviceType,
+          connectionType,
           serviceName,
         },
       };
@@ -173,88 +186,79 @@ const TestConnection: FC<TestConnectionProps> = ({
       // trigger the workflow
       const status = await triggerWorkflowById(response.id);
 
-      // fetch the workflow response if workflow ran successfully
-      if (status === 200) {
-        /**
-         * fetch workflow repeatedly with 2s interval
-         * until status is either Failed or Successful
-         */
-        intervalId = toNumber(
-          setInterval(async () => {
-            const workflowResponse = await getWorkflowData(response.id);
-            const { response: testConnectionResponse } = workflowResponse;
+      if (status !== 200) {
+        setTestStatus(StatusType.Failed);
+        setMessage(failureMessage);
+        setIsTestingConnection(false);
+        showErrorToast(failureMessage);
 
-            const isWorkflowFailed =
-              workflowResponse.status === WorkflowStatus.Failed;
-            const isWorkflowSuccess =
-              workflowResponse.status === WorkflowStatus.Successful;
+        return;
+      }
 
-            const isWorkflowCompleted = isWorkflowFailed || isWorkflowSuccess;
-
-            const isTestConnectionSuccess =
-              (testConnectionResponse?.status as StatusType) ===
-              StatusType.Successful;
-
-            const isTestConnectionFailed =
-              (testConnectionResponse?.status as StatusType) ===
-              StatusType.Failed;
-
-            if (isWorkflowCompleted) {
-              setMessage(
-                isTestConnectionSuccess
-                  ? t('message.connection-test-successful')
-                  : t('message.connection-test-failed')
-              );
-
-              isTestConnectionSuccess &&
-                showSuccessToast(t('message.connection-test-successful'));
-
-              isTestConnectionFailed &&
-                showErrorToast(t('message.connection-test-failed'));
-
-              // clear the current interval
-              intervalId && clearInterval(intervalId);
-
-              // set testing connection to false
-              setIsTestingConnection(false);
-
-              // set the test connection status
-              setTestStatus(
-                isTestConnectionSuccess
-                  ? StatusType.Successful
-                  : StatusType.Failed
-              );
-            }
-          }, FETCH_INTERVAL)
-        );
-
-        // stop fetching the workflow after 2 minutes
-        setTimeout(() => {
-          // clear the current interval
-          intervalId && clearInterval(intervalId);
-
-          // using reference to ensure call back should have latest value
-          const currentWorkflowStatus = currentWorkflowRef.current
-            ?.status as WorkflowStatus;
+      /**
+       * fetch workflow repeatedly with 2s interval
+       * until status is either Failed or Successful
+       */
+      intervalId = toNumber(
+        setInterval(async () => {
+          const workflowResponse = await getWorkflowData(response.id);
+          const { response: testConnectionResponse } = workflowResponse;
+          const { status: testConnectionStatus } = testConnectionResponse || {};
 
           const isWorkflowCompleted = WORKFLOW_COMPLETE_STATUS.includes(
-            currentWorkflowStatus
+            workflowResponse.status as WorkflowStatus
           );
 
+          const isTestConnectionSuccess =
+            testConnectionStatus === StatusType.Successful;
+
           if (!isWorkflowCompleted) {
-            const infoMessage = t('message.test-connection-taking-too-long');
-            setMessage(infoMessage);
-            showInfoToast(infoMessage);
+            return;
           }
 
+          if (isTestConnectionSuccess) {
+            showSuccessToast(successMessage);
+            setTestStatus(StatusType.Successful);
+            setMessage(successMessage);
+          } else {
+            showErrorToast(failureMessage);
+            setTestStatus(StatusType.Failed);
+            setMessage(failureMessage);
+          }
+
+          // clear the current interval
+          clearInterval(intervalId);
+
+          // set testing connection to false
           setIsTestingConnection(false);
-        }, FETCHING_EXPIRY_TIME);
-      }
+        }, FETCH_INTERVAL)
+      );
+
+      // stop fetching the workflow after 2 minutes
+      setTimeout(() => {
+        // clear the current interval
+        clearInterval(intervalId);
+
+        // using reference to ensure call back should have latest value
+        const currentWorkflowStatus = currentWorkflowRef.current
+          ?.status as WorkflowStatus;
+
+        const isWorkflowCompleted = WORKFLOW_COMPLETE_STATUS.includes(
+          currentWorkflowStatus
+        );
+
+        if (!isWorkflowCompleted) {
+          setMessage(infoMessage);
+          showInfoToast(infoMessage);
+        }
+
+        setIsTestingConnection(false);
+      }, FETCHING_EXPIRY_TIME);
     } catch (error) {
-      intervalId && clearInterval(intervalId);
+      clearInterval(intervalId);
       showErrorToast(error as AxiosError);
       setIsTestingConnection(false);
-      setMessage(t('message.connection-test-failed'));
+      setMessage(failureMessage);
       setTestStatus(StatusType.Failed);
     }
   };
