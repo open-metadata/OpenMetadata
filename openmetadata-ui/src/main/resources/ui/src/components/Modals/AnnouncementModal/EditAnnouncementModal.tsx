@@ -76,6 +76,7 @@ const EditAnnouncementModal: FC<Props> = ({
       className="announcement-modal"
       closable={false}
       data-testid="edit-announcement"
+      maskClosable={false}
       okButtonProps={{
         form: 'announcement-form',
         type: 'primary',
