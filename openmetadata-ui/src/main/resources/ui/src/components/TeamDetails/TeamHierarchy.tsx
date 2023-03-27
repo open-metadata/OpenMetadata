@@ -192,6 +192,7 @@ const TeamHierarchy: FC<TeamHierarchyProps> = ({
         closable={false}
         confirmLoading={isTableLoading}
         data-testid="confirmation-modal"
+        maskClosable={false}
         okText={t('label.confirm')}
         open={isModalOpen}
         title={t('label.move-the-entity', { entity: t('label.team') })}

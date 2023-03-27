@@ -76,6 +76,7 @@ const ExportGlossaryModal: FC<Props> = ({
       cancelText={t('label.cancel')}
       closable={false}
       data-testid="export-glossary-modal"
+      maskClosable={false}
       okText={t('label.export')}
       open={isModalOpen}
       title={t('label.export-glossary-terms')}

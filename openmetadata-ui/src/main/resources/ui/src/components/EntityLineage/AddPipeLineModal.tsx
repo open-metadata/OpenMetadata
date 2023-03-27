@@ -66,6 +66,7 @@ const AddPipeLineModal = ({
           {t('label.save')}
         </Button>,
       ]}
+      maskClosable={false}
       title={isUndefined(selectedPipelineId) ? 'Add Pipeline' : 'Edit Pipeline'}
       visible={showAddPipelineModal}
       onCancel={onModalCancel}>
