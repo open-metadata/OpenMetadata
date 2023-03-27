@@ -14,6 +14,7 @@
 import { Col, Row } from 'antd';
 import GlossaryHeader from 'components/Glossary/GlossaryHeader/GlossaryHeader.component';
 import GlossaryTermTab from 'components/Glossary/GlossaryTermTab/GlossaryTermTab.component';
+import { GlossaryTerm } from 'generated/entity/data/glossaryTerm';
 import { t } from 'i18next';
 import { cloneDeep, includes, isEqual } from 'lodash';
 import React, { useEffect, useState } from 'react';
@@ -26,10 +27,16 @@ import './GlossaryDetails.style.less';
 type props = {
   permissions: OperationPermission;
   glossary: Glossary;
+  glossaryTerms: GlossaryTerm[];
   updateGlossary: (value: Glossary) => Promise<void>;
 };
 
-const GlossaryDetails = ({ permissions, glossary, updateGlossary }: props) => {
+const GlossaryDetails = ({
+  permissions,
+  glossary,
+  updateGlossary,
+  glossaryTerms,
+}: props) => {
   const [showRevieweModal, setShowRevieweModal] = useState(false);
   const [reviewer, setReviewer] = useState<Array<EntityReference>>([]);
 
@@ -79,6 +86,7 @@ const GlossaryDetails = ({ permissions, glossary, updateGlossary }: props) => {
 
       <Col span={24}>
         <GlossaryTermTab
+          childGlossaryTerms={glossaryTerms}
           glossaryId={glossary.id}
           selectedGlossaryFqn={glossary.fullyQualifiedName || glossary.name}
         />

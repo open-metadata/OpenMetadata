@@ -139,18 +139,21 @@ const RelatedTerms = ({
     <div className="flex" data-testid="related-term-container">
       {isIconVisible ? (
         <div className="d-flex flex-wrap">
-          <TagButton
-            className="tw-text-primary"
-            icon={<PlusIcon height={16} name="plus" width={16} />}
-            label={t('label.term')}
-            onClick={() => {
-              setIsIconVisible(false);
-            }}
-          />
+          {permissions.EditAll && (
+            <TagButton
+              className="tw-text-primary"
+              icon={<PlusIcon height={16} name="plus" width={16} />}
+              label={t('label.term')}
+              onClick={() => {
+                setIsIconVisible(false);
+              }}
+            />
+          )}
+
           {selectedOption.map((entity: EntityReference) => (
             <TagButton
-              isRemovable
               className="tw-text-primary"
+              isRemovable={permissions.EditAll}
               key={entity.fullyQualifiedName}
               label={toString(entity.displayName)}
               removeTag={(_e, removedTag: string) => {

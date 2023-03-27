@@ -46,13 +46,15 @@ const VersionButton: React.FC<VersionButtonProps> = ({
         <span>
           <SVGIcons
             alt="version icon"
+            height="12px"
             icon={selected ? 'icon-version-white' : 'icon-version'}
+            width="12px"
           />
-          <span>{t('label.version-plural')}</span>
+          <span className="tw-ml-1">{t('label.version-plural')}</span>
         </span>
         <span
           className={classNames(
-            'tw-border-l tw-font-medium tw-cursor-pointer hover:tw-underline tw-pl-1',
+            'tw-border-l tw-font-medium tw-cursor-pointer tw-pl-1',
             { 'tw-border-primary': !selected }
           )}
           data-testid="version-value">

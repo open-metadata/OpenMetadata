@@ -13,7 +13,6 @@
 
 import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
 import { Button, Select, Space } from 'antd';
-import Tags from 'components/Tag/Tags/tags';
 import TagButton from 'components/TagButton/TagButton.component';
 import { t } from 'i18next';
 import { cloneDeep, isEmpty, isEqual } from 'lodash';
@@ -44,24 +43,24 @@ const GlossaryTermSynonyms = ({
 
   const getSynonyms = () => (
     <div className="d-flex flex-wrap">
-      <TagButton
-        className="tw-text-primary"
-        icon={<PlusIcon height={16} name="plus" width={16} />}
-        label={t('label.synonym-plural')}
-        onClick={() => {
-          setIsViewMode(false);
-        }}
-      />
+      {permissions.EditAll && (
+        <TagButton
+          className="tw-text-primary"
+          icon={<PlusIcon height={16} name="plus" width={16} />}
+          label={t('label.synonym-plural')}
+          onClick={() => {
+            setIsViewMode(false);
+          }}
+        />
+      )}
       {synonyms.map((synonym, index) => (
-        <Tags
-          editable
-          isRemovable
+        <TagButton
+          isRemovable={permissions.EditAll}
           key={index}
+          label={synonym}
           removeTag={(_e, removedTag: string) => {
             removeSynonym(removedTag);
           }}
-          tag={synonym}
-          type="border"
         />
       ))}
     </div>

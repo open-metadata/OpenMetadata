@@ -17,10 +17,12 @@ import { ReactComponent as ExportIcon } from 'assets/svg/ic-export.svg';
 import { ReactComponent as ImportIcon } from 'assets/svg/ic-import.svg';
 import { AxiosError } from 'axios';
 import VersionButton from 'components/VersionButton/VersionButton.component';
+import { API_RES_MAX_SIZE } from 'constants/constants';
 import { isEmpty, toString } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
+import { getGlossaryTerms, ListGlossaryTermsParams } from 'rest/glossaryAPI';
 import { ReactComponent as IconDropdown } from '../../assets/svg/menu.svg';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { NO_PERMISSION_FOR_ACTION } from '../../constants/HelperTextUtil';
@@ -30,6 +32,7 @@ import { useAfterMount } from '../../hooks/useAfterMount';
 import { getEntityDeleteMessage } from '../../utils/CommonUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import {
+  getAddGlossaryTermsPath,
   getGlossaryPath,
   getGlossaryPathWithAction,
 } from '../../utils/RouterUtils';
@@ -87,6 +90,8 @@ const GlossaryV1 = ({
   const [glossaryTermPermission, setGlossaryTermPermission] =
     useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
 
+  const [glossaryTerms, setGlossaryTerms] = useState<GlossaryTerm[]>([]);
+
   const handleGlossaryExport = () =>
     history.push(
       getGlossaryPathWithAction(selectedData.name, GlossaryAction.EXPORT)
@@ -113,6 +118,31 @@ const GlossaryV1 = ({
     () => glossaryPermission.Delete || glossaryTermPermission.Delete,
     [glossaryPermission, glossaryTermPermission]
   );
+
+  const handleAddGlossaryTermClick = (glossaryFQN: string) => {
+    if (glossaryFQN) {
+      const activeTerm = glossaryFQN.split(FQN_SEPARATOR_CHAR);
+      const glossary = activeTerm[0];
+      if (activeTerm.length > 1) {
+        history.push(getAddGlossaryTermsPath(glossary, glossaryFQN));
+      } else {
+        history.push(getAddGlossaryTermsPath(glossary));
+      }
+    }
+  };
+
+  const fetchGlossaryTerm = async (params?: ListGlossaryTermsParams) => {
+    try {
+      const { data } = await getGlossaryTerms({
+        ...params,
+        limit: API_RES_MAX_SIZE,
+        fields: 'tags,children',
+      });
+      setGlossaryTerms(data);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  };
 
   const fetchGlossaryPermission = async () => {
     try {
@@ -190,6 +220,7 @@ const GlossaryV1 = ({
     {
       label: t('label.term-plural'),
       key: '1',
+      onClick: () => handleAddGlossaryTermClick(glossaryFqn),
     },
     {
       label: t('label.asset-plural'),
@@ -300,6 +331,11 @@ const GlossaryV1 = ({
 
   useEffect(() => {
     if (selectedData) {
+      fetchGlossaryTerm(
+        isGlossaryActive
+          ? { glossary: selectedData.id }
+          : { parent: selectedData.id }
+      );
       if (isGlossaryActive) {
         fetchGlossaryPermission();
       } else {
@@ -315,7 +351,9 @@ const GlossaryV1 = ({
       <div
         className="tw-flex tw-justify-between tw-items-center"
         data-testid="header">
-        <div className="tw-text-link tw-text-base" data-testid="category-name">
+        <div
+          className="tw-text-link tw-text-base glossary-breadcrumb"
+          data-testid="category-name">
           <TitleBreadcrumb
             titleLinks={breadcrumb}
             widthDeductions={
@@ -326,23 +364,36 @@ const GlossaryV1 = ({
         <div
           className="tw-relative tw-flex tw-justify-between tw-items-center"
           id="add-term-button">
-          <Dropdown
-            className="m-r-xs"
-            menu={{ items: addButtonContent }}
-            placement="bottomRight"
-            trigger={['click']}>
-            <Button size="small" type="primary">
-              <Space>
-                {t('label.add')}
-                <DownOutlined />
-              </Space>
+          {isGlossaryActive ? (
+            <Button
+              className="m-r-xs"
+              data-testid="add-new-tag-button"
+              size="middle"
+              type="primary"
+              onClick={() => handleAddGlossaryTermClick(glossaryFqn)}>
+              {t('label.add-entity', { entity: t('label.term-lowercase') })}
             </Button>
-          </Dropdown>
+          ) : (
+            <Dropdown
+              className="m-r-xs"
+              menu={{
+                items: addButtonContent,
+              }}
+              placement="bottomRight"
+              trigger={['click']}>
+              <Button type="primary">
+                <Space>
+                  {t('label.add')}
+                  <DownOutlined />
+                </Space>
+              </Button>
+            </Dropdown>
+          )}
+
           {selectedData && selectedData.version && (
             <VersionButton
-              className="m-r-xs"
+              className="m-r-xs tw-px-1.5"
               selected={false}
-              size="small"
               version={toString(selectedData.version)}
             />
           )}
@@ -354,7 +405,9 @@ const GlossaryV1 = ({
                 ? !glossaryPermission.Delete
                 : !glossaryTermPermission.Delete
             }
-            menu={{ items: manageButtonContent }}
+            menu={{
+              items: manageButtonContent,
+            }}
             open={showActions}
             overlayStyle={{ width: '350px' }}
             placement="bottomRight"
@@ -372,12 +425,11 @@ const GlossaryV1 = ({
                   : NO_PERMISSION_FOR_ACTION
               }>
               <Button
-                className="manage-dropdown-button"
+                className="glossary-manage-dropdown-button tw-px-1.5"
                 data-testid="manage-button"
                 disabled={!isGlossaryDeletePermission}
-                size="small"
                 onClick={() => setShowActions(true)}>
-                <IconDropdown className="anticon text-primary self-center manage-dropdown-icon" />
+                <IconDropdown className="anticon self-center manage-dropdown-icon" />
               </Button>
             </Tooltip>
           </Dropdown>
@@ -388,11 +440,13 @@ const GlossaryV1 = ({
         (isGlossaryActive ? (
           <GlossaryDetails
             glossary={selectedData as Glossary}
+            glossaryTerms={glossaryTerms}
             permissions={glossaryPermission}
             updateGlossary={updateGlossary}
           />
         ) : (
           <GlossaryTermsV1
+            childGlossaryTerms={glossaryTerms}
             glossaryTerm={selectedData as GlossaryTerm}
             handleGlossaryTermUpdate={onGlossaryTermUpdate}
             permissions={glossaryTermPermission}

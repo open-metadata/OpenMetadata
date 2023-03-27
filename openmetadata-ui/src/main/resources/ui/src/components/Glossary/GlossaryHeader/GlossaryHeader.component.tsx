@@ -142,7 +142,7 @@ const GlossaryHeader = ({
   }, [selectedData]);
 
   return (
-    <Row gutter={[0, 8]}>
+    <Row gutter={[0, 16]}>
       <Col span={24}>
         {isNameEditing ? (
           <Space direction="horizontal">
@@ -170,24 +170,56 @@ const GlossaryHeader = ({
             />
           </Space>
         ) : (
-          <Space direction="horizontal">
-            <Typography.Title className="m-b-0" level={5}>
-              {getEntityName(selectedData)}
-            </Typography.Title>
-            <Tooltip
-              title={
-                editDisplayNamePermission
-                  ? t('label.edit-entity', { entity: t('label.name') })
-                  : NO_PERMISSION_FOR_ACTION
-              }>
-              <Button
-                disabled={!editDisplayNamePermission}
-                icon={<SVGIcons alt="icon-tag" icon={Icons.EDIT} width="16" />}
-                type="text"
-                onClick={() => setIsNameEditing(true)}
-              />
-            </Tooltip>
-          </Space>
+          <>
+            <div>
+              <Space>
+                <Typography.Text className="text-grey-muted">
+                  {selectedData.name}
+                </Typography.Text>
+                <Tooltip
+                  title={
+                    editDisplayNamePermission
+                      ? t('label.edit-entity', { entity: t('label.name') })
+                      : NO_PERMISSION_FOR_ACTION
+                  }>
+                  <Button
+                    className="glossary-header-edit-btn"
+                    disabled={!editDisplayNamePermission}
+                    icon={
+                      <SVGIcons alt="icon-tag" icon={Icons.EDIT} width="16" />
+                    }
+                    size="small"
+                    type="text"
+                    onClick={() => setIsNameEditing(true)}
+                  />
+                </Tooltip>
+              </Space>
+            </div>
+            <div>
+              <Space direction="horizontal">
+                <Typography.Title className="m-b-0" level={5}>
+                  {getEntityName(selectedData)}
+                </Typography.Title>
+                <Tooltip
+                  title={
+                    editDisplayNamePermission
+                      ? t('label.edit-entity', { entity: t('label.name') })
+                      : NO_PERMISSION_FOR_ACTION
+                  }>
+                  <Button
+                    className="glossary-header-edit-btn"
+                    disabled={!editDisplayNamePermission}
+                    icon={
+                      <SVGIcons alt="icon-tag" icon={Icons.EDIT} width="16" />
+                    }
+                    size="small"
+                    type="text"
+                    onClick={() => setIsNameEditing(true)}
+                  />
+                </Tooltip>
+              </Space>
+            </div>
+          </>
         )}
       </Col>
       <Col span={24}>
@@ -254,7 +286,6 @@ const GlossaryHeader = ({
               )}
             </div>
           </div>
-          <span className="tw-mr-1 tw-inline-block tw-text-gray-400">|</span>
         </Space>
       </Col>
       <Col data-testid="updated-by-container" span={24}>

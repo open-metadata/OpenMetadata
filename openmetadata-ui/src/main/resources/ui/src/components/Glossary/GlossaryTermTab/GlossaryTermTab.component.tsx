@@ -19,7 +19,6 @@ import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichText
 import Loader from 'components/Loader/Loader';
 import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from 'components/PermissionProvider/PermissionProvider.interface';
-import TagButton from 'components/TagButton/TagButton.component';
 import { FQN_SEPARATOR_CHAR } from 'constants/char.constants';
 import { API_RES_MAX_SIZE } from 'constants/constants';
 import { NO_PERMISSION_FOR_ACTION } from 'constants/HelperTextUtil';
@@ -42,7 +41,6 @@ import { getEntityName } from 'utils/EntityUtils';
 import {
   createGlossaryTermTree,
   getRootLevelGlossaryTerm,
-  getSearchedDataFromGlossaryTree,
 } from 'utils/GlossaryUtils';
 import { checkPermission } from 'utils/PermissionsUtils';
 import { getAddGlossaryTermsPath, getGlossaryPath } from 'utils/RouterUtils';
@@ -60,6 +58,7 @@ const GlossaryTermTab = ({
   glossaryId,
   glossaryTermId,
   selectedGlossaryFqn,
+  childGlossaryTerms = [],
 }: GlossaryTermTabProps) => {
   const { t } = useTranslation();
   const { permissions } = usePermissionProvider();
@@ -67,11 +66,9 @@ const GlossaryTermTab = ({
 
   const { glossaryName } = useParams<{ glossaryName: string }>();
   const [isLoading, setIsLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
   const [glossaryTerms, setGlossaryTerms] = useState<ModifiedGlossaryTerm[]>(
     []
   );
-  const [filterData, setFilterData] = useState<ModifiedGlossaryTerm[]>([]);
   const [movedGlossaryTerm, setMovedGlossaryTerm] =
     useState<MoveGlossaryTermType>();
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
@@ -123,21 +120,22 @@ const GlossaryTermTab = ({
         title: t('label.action-plural'),
         key: 'new-term',
         render: (_, record) => (
-          <TagButton
-            className="tw-text-primary tw-py-0.5"
-            icon={<PlusIcon height={16} name="plus" width={16} />}
-            label={t('label.new-term')}
+          <Button
+            className="text-primary"
+            data-testid="add-classification"
+            icon={<PlusIcon className="anticon" />}
+            size="small"
             onClick={() => {
-              console.log('hello', record);
               handleAddGlossaryTermClick(record.fullyQualifiedName || '');
-            }}
-          />
+            }}>
+            {t('label.new-term')}
+          </Button>
         ),
       },
     ];
 
     return data;
-  }, [filterData]);
+  }, [glossaryTerms]);
 
   const handleAddGlossaryTermClick = (glossaryFQN: string) => {
     if (glossaryFQN) {
@@ -150,15 +148,6 @@ const GlossaryTermTab = ({
       }
     } else {
       history.push(getAddGlossaryTermsPath(selectedGlossaryFqn ?? ''));
-    }
-  };
-
-  const handleSearch = (value: string) => {
-    setSearchTerm(value);
-    if (value) {
-      setFilterData(getSearchedDataFromGlossaryTree(glossaryTerms, value));
-    } else {
-      setFilterData(glossaryTerms);
     }
   };
 
@@ -183,22 +172,9 @@ const GlossaryTermTab = ({
           updatedData,
           params?.parent
         );
-
-        // if search term is present, update table only for searched value
-        if (searchTerm) {
-          setFilterData((pre) =>
-            updatedGlossaryTermTree.filter((glossaryTerm) =>
-              pre.find((value) => value.id === glossaryTerm.id)
-            )
-          );
-        } else {
-          setFilterData(updatedGlossaryTermTree);
-        }
-
         setGlossaryTerms(updatedGlossaryTermTree);
       } else {
         setGlossaryTerms(updatedData as ModifiedGlossaryTerm[]);
-        setFilterData(updatedData as ModifiedGlossaryTerm[]);
       }
     } catch (error) {
       showErrorToast(error as AxiosError);
@@ -275,8 +251,15 @@ const GlossaryTermTab = ({
   };
 
   useEffect(() => {
-    fetchGlossaryTerm({ glossary: glossaryId, parent: glossaryTermId });
-  }, [glossaryName]);
+    if (childGlossaryTerms) {
+      const updatedData = getRootLevelGlossaryTerm(childGlossaryTerms, {
+        glossary: glossaryId,
+        parent: glossaryTermId,
+      });
+      setGlossaryTerms(updatedData as ModifiedGlossaryTerm[]);
+    }
+    setIsLoading(false);
+  }, [childGlossaryTerms]);
 
   if (isLoading) {
     return <Loader />;
@@ -310,44 +293,15 @@ const GlossaryTermTab = ({
 
   return (
     <Row gutter={[0, 16]}>
-      {/* <Col span={8}>
-        <Searchbar
-          removeMargin
-          showLoadingStatus
-          placeholder={`${t('label.search-for-type', {
-            type: t('label.glossary-term'),
-          })}...`}
-          searchValue={searchTerm}
-          typingInterval={500}
-          onSearch={handleSearch}
-        />
-      </Col>
-      <Col className="flex justify-end" span={16}>
-        <Tooltip
-          title={
-            createGlossaryTermPermission
-              ? t('label.add-entity', { entity: t('label.term-lowercase') })
-              : NO_PERMISSION_FOR_ACTION
-          }>
-          <Button
-            className="tw-h-8 tw-rounded tw-mr-2"
-            data-testid="add-new-tag-button"
-            disabled={!createGlossaryTermPermission}
-            type="primary"
-            onClick={handleAddGlossaryTermClick}>
-            {t('label.add-entity', { entity: t('label.term-lowercase') })}
-          </Button>
-        </Tooltip>
-      </Col> */}
       <Col span={24}>
-        {filterData.length > 0 ? (
+        {glossaryTerms.length > 0 ? (
           <DndProvider backend={HTML5Backend}>
             <Table
               bordered
               className="drop-over-background"
               columns={columns}
               components={TABLE_CONSTANTS}
-              dataSource={filterData}
+              dataSource={glossaryTerms}
               expandable={expandableConfig}
               loading={isTableLoading}
               pagination={false}
@@ -358,10 +312,7 @@ const GlossaryTermTab = ({
           </DndProvider>
         ) : (
           <ErrorPlaceHolder>
-            {t('message.no-entity-found-for-name', {
-              entity: t('label.glossary-term'),
-              name: searchTerm,
-            })}
+            {t('message.no-entity-found-for-name')}
           </ErrorPlaceHolder>
         )}
         <Modal

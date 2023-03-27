@@ -48,23 +48,23 @@ const GlossaryRightPanel = ({
   const { t } = useTranslation();
   const { getEntityPermission } = usePermissionProvider();
 
-  const [glossaryPermission, setGlossaryPermission] =
-    useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
+  // const [glossaryPermission, setGlossaryPermission] =
+  //   useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
 
   const [glossaryTermPermission, setGlossaryTermPermission] =
     useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
 
-  const fetchGlossaryPermission = async () => {
-    try {
-      const response = await getEntityPermission(
-        ResourceEntity.GLOSSARY,
-        entityDetails?.id as string
-      );
-      setGlossaryPermission(response);
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    }
-  };
+  // const fetchGlossaryPermission = async () => {
+  //   try {
+  //     const response = await getEntityPermission(
+  //       ResourceEntity.GLOSSARY,
+  //       entityDetails?.id as string
+  //     );
+  //     setGlossaryPermission(response);
+  //   } catch (error) {
+  //     showErrorToast(error as AxiosError);
+  //   }
+  // };
 
   const fetchGlossaryTermPermission = async () => {
     try {
@@ -80,7 +80,7 @@ const GlossaryRightPanel = ({
 
   useEffect(() => {
     if (isGlossary) {
-      fetchGlossaryPermission();
+      // fetchGlossaryPermission();
     } else {
       fetchGlossaryTermPermission();
     }

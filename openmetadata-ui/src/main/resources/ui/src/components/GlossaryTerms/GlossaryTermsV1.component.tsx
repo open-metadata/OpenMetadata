@@ -36,11 +36,13 @@ import AssetsTabs from './tabs/AssetsTabs.component';
 type Props = {
   permissions: OperationPermission;
   glossaryTerm: GlossaryTerm;
+  childGlossaryTerms: GlossaryTerm[];
   handleGlossaryTermUpdate: (data: GlossaryTerm) => Promise<void>;
 };
 
 const GlossaryTermsV1 = ({
   glossaryTerm,
+  childGlossaryTerms,
   handleGlossaryTermUpdate,
   permissions,
 }: Props) => {
@@ -176,12 +178,21 @@ const GlossaryTermsV1 = ({
                 <div data-testid="assets">
                   {t('label.glossary-term-plural')}
                   <span className="p-l-xs ">
-                    {getCountBadge(assetData.total, '', activeTab === 'assets')}
+                    {getCountBadge(
+                      childGlossaryTerms.length,
+                      '',
+                      activeTab === 'glossaryTerms'
+                    )}
                   </span>
                 </div>
               ),
               key: 'glossaryTerms',
-              children: <GlossaryTermTab glossaryTermId={glossaryTerm.id} />,
+              children: (
+                <GlossaryTermTab
+                  childGlossaryTerms={childGlossaryTerms}
+                  glossaryTermId={glossaryTerm.id}
+                />
+              ),
             },
             {
               label: (

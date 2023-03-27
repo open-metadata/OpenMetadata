@@ -130,7 +130,6 @@ const GlossaryTermReferences = ({
 
       <GlossaryTermReferencesModal
         isVisible={!isViewMode}
-        permissions={permissions}
         references={glossaryTerm.references || []}
         onClose={() => {
           setIsViewMode(true);

@@ -20,7 +20,7 @@ interface TagButtonProps {
   icon?: React.ReactNode;
   className?: string;
   isRemovable?: boolean;
-  onClick: () => void;
+  onClick?: () => void;
   removeTag?: (
     event: React.MouseEvent<HTMLElement, MouseEvent>,
     removedTag: string
@@ -36,7 +36,9 @@ const TagButton: React.FC<TagButtonProps> = ({
   removeTag,
 }) => {
   const buttonClassNames = classNames(
-    'tw-inline-flex text-xs font-medium rounded-4 whitespace-nowrap tw-bg-white tw-border tw-items-center tw-px-2 tw-mr-1 tw-mt-1 tw-font-semibold',
+    'tag-button-container tw-inline-flex text-xs font-medium rounded-4 whitespace-nowrap tw-bg-white tw-border tw-items-center tw-mr-1 tw-mt-1 tw-font-semibold',
+    { 'tw-pl-2': isRemovable },
+    { 'tw-px-2': !isRemovable },
     className
   );
 

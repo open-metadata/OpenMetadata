@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { Button, Col, Form, Input, Modal, Row } from 'antd';
-import { OperationPermission } from 'components/PermissionProvider/PermissionProvider.interface';
 import { TermReference } from 'generated/entity/data/glossaryTerm';
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -19,7 +18,6 @@ import SVGIcons, { Icons } from 'utils/SvgUtils';
 
 interface GlossaryTermReferencesModalProps {
   references: TermReference[];
-  permissions: OperationPermission;
   isVisible: boolean;
   onClose: () => void;
   onSave: (values: TermReference[]) => void;
@@ -27,7 +25,6 @@ interface GlossaryTermReferencesModalProps {
 
 const GlossaryTermReferencesModal = ({
   references,
-  permissions,
   isVisible,
   onClose,
   onSave,
