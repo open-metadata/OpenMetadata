@@ -45,7 +45,7 @@
       "default": false
     },
     "includeTags": {
-      "description": "Optional configuration to turn off fetching metadata for tags.",
+      "description": "Optional configuration to toggle the tags ingestion.",
       "type": "boolean",
       "default": true
     },
