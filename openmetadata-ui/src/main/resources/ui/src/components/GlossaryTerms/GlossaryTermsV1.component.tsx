@@ -38,12 +38,14 @@ type Props = {
   glossaryTerm: GlossaryTerm;
   childGlossaryTerms: GlossaryTerm[];
   handleGlossaryTermUpdate: (data: GlossaryTerm) => Promise<void>;
+  handleGlossaryTermDelete: (id: string) => void;
 };
 
 const GlossaryTermsV1 = ({
   glossaryTerm,
   childGlossaryTerms,
   handleGlossaryTermUpdate,
+  handleGlossaryTermDelete,
   permissions,
 }: Props) => {
   const { glossaryName: glossaryFqn } = useParams<{ glossaryName: string }>();
@@ -162,8 +164,10 @@ const GlossaryTermsV1 = ({
     <Row data-testid="glossary-term" gutter={[0, 16]}>
       <Col span={24}>
         <GlossaryHeader
+          isGlossary={false}
           permissions={permissions}
           selectedData={glossaryTerm}
+          onDelete={handleGlossaryTermDelete}
           onUpdate={(data) => handleGlossaryTermUpdate(data as GlossaryTerm)}
         />
       </Col>

@@ -50,6 +50,7 @@ const mockProps = {
     EditCustomFields: true,
   } as OperationPermission,
   updateGlossary: jest.fn(),
+  handleGlossaryDelete: jest.fn(),
 };
 
 describe('Test Glossary-details component', () => {

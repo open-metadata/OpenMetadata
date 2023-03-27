@@ -29,12 +29,14 @@ type props = {
   glossary: Glossary;
   glossaryTerms: GlossaryTerm[];
   updateGlossary: (value: Glossary) => Promise<void>;
+  handleGlossaryDelete: (id: string) => void;
 };
 
 const GlossaryDetails = ({
   permissions,
   glossary,
   updateGlossary,
+  handleGlossaryDelete,
   glossaryTerms,
 }: props) => {
   const [showRevieweModal, setShowRevieweModal] = useState(false);
@@ -78,8 +80,10 @@ const GlossaryDetails = ({
     <Row data-testid="glossary-details" gutter={[0, 16]}>
       <Col span={24}>
         <GlossaryHeader
+          isGlossary
           permissions={permissions}
           selectedData={glossary}
+          onDelete={handleGlossaryDelete}
           onUpdate={updateGlossary}
         />
       </Col>
