@@ -37,6 +37,7 @@ from metadata.ingestion.connections.builders import (
     get_connection_args_common,
 )
 from metadata.ingestion.connections.test_connections import (
+    execute_inspector_func,
     test_connection_engine_step,
     test_connection_steps,
     test_query,
@@ -106,8 +107,6 @@ def test_connection(
             )
             return policy_tags
 
-    inspector = inspect(engine)
-
     def test_tags():
         list_project_ids = auth.default()
         project_id = list_project_ids[1]
@@ -129,9 +128,9 @@ def test_connection(
 
     test_fn = {
         "CheckAccess": partial(test_connection_engine_step, engine),
-        "GetSchemas": inspector.get_schema_names,
-        "GetTables": inspector.get_table_names,
-        "GetViews": inspector.get_view_names,
+        "GetSchemas": partial(execute_inspector_func, engine, "get_schema_names"),
+        "GetTables": partial(execute_inspector_func, engine, "get_table_names"),
+        "GetViews": partial(execute_inspector_func, engine, "get_view_names"),
         "GetTags": test_tags,
         "GetQueries": partial(
             test_query,

@@ -30,6 +30,7 @@ from metadata.ingestion.connections.builders import (
     get_connection_args_common,
 )
 from metadata.ingestion.connections.test_connections import (
+    execute_inspector_func,
     test_connection_engine_step,
     test_connection_steps,
     test_query,
@@ -74,9 +75,9 @@ def test_connection(
     Test connection. This can be executed either as part
     of a metadata workflow or during an Automation Workflow
     """
-    inspector = inspect(engine)
 
     def custom_executor_for_table():
+        inspector = inspect(engine)
         schema_name = inspector.get_schema_names()
         if schema_name:
             for schema in schema_name:
@@ -89,9 +90,8 @@ def test_connection(
         "GetDatabases": partial(
             test_query, engine=engine, statement=PRESTO_SHOW_CATALOGS
         ),
-        "GetSchemas": inspector.get_schema_names,
+        "GetSchemas": partial(execute_inspector_func, engine, "get_schema_names"),
         "GetTables": custom_executor_for_table,
-        "GetViews": inspector.get_view_names,
     }
 
     test_connection_steps(

@@ -277,17 +277,31 @@ def test_connection_db_common(
 ) -> TestConnectionResult:
 
     """
-    Test connection
+    Test connection. This can be executed either as part
+    of a metadata workflow or during an Automation Workflow
+
+    Args:
+
+    metadata: Metadata Client to interact with the backend APIs
+    engine: SqlAlchemy Engine
+    service_connection: Service connection object of data source
+    automation_workflow: Automation Workflow object expected when
+                         test connection is hit via UI/Airflow
+    queries: expected when some queries has to be executed as part of
+             test connection
+    expected format for queries would be <TestConnectionStep>:<Query>
+    queries = {
+        "GetQueries": "select * from query_log",
+    }
     """
-    inspector = inspect(engine)
 
     queries = queries or {}
 
     test_fn = {
         "CheckAccess": partial(test_connection_engine_step, engine),
-        "GetSchemas": inspector.get_schema_names,
-        "GetTables": inspector.get_table_names,
-        "GetViews": inspector.get_view_names,
+        "GetSchemas": partial(execute_inspector_func, engine, "get_schema_names"),
+        "GetTables": partial(execute_inspector_func, engine, "get_table_names"),
+        "GetViews": partial(execute_inspector_func, engine, "get_view_names"),
     }
 
     for key, query in queries.items():
@@ -312,12 +326,27 @@ def test_connection_db_schema_sources(
     """
     Test connection. This can be executed either as part
     of a metadata workflow or during an Automation Workflow
-    """
-    inspector = inspect(engine)
 
+    Args:
+
+    metadata: Metadata Client to interact with the backend APIs
+    engine: SqlAlchemy Engine
+    service_connection: Service connection object of data source
+    automation_workflow: Automation Workflow object expected when
+                         test connection is hit via UI/Airflow
+    queries: expected when some queries has to be executed as part of
+             test connection
+    expected format for queries would be <TestConnectionStep>:<Query>
+    queries = {
+        "GetQueries": "select * from query_log",
+    }
+    """
     queries = queries or {}
 
-    def custom_executor(inspector_fn: Callable):
+    def custom_executor(engine, inspector_fn_str: str):
+        inspector = inspect(engine)
+        inspector_fn = getattr(inspector, inspector_fn_str)
+
         """
         Check if we can list tables or views from a given schema
         or a random one
@@ -333,9 +362,9 @@ def test_connection_db_schema_sources(
 
     test_fn = {
         "CheckAccess": partial(test_connection_engine_step, engine),
-        "GetSchemas": inspector.get_schema_names,
-        "GetTables": partial(custom_executor, inspector.get_table_names),
-        "GetViews": partial(custom_executor, inspector.get_view_names),
+        "GetSchemas": partial(execute_inspector_func, engine, "get_schema_names"),
+        "GetTables": partial(custom_executor, engine, "get_table_names"),
+        "GetViews": partial(custom_executor, engine, "get_view_names"),
     }
 
     for key, query in queries.items():
@@ -349,5 +378,22 @@ def test_connection_db_schema_sources(
     )
 
 
-def test_query(engine, statement):
+def test_query(engine: Engine, statement: str):
+    """
+    Method used to execute the given query and fetch a result
+    to test if user has access to the tables specified
+    in the sql statement
+    """
     engine.execute(statement).fetchone()
+
+
+def execute_inspector_func(engine: Engine, func_name: str):
+    """
+    Method to test connection via inspector functions,
+    this function creates the inspector object and fetches
+    the function with name `func_name` and executes it
+    """
+
+    inspector = inspect(engine)
+    inspector_fn = getattr(inspector, func_name)
+    inspector_fn()
