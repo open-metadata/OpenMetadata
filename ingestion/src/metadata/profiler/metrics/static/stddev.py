@@ -95,7 +95,7 @@ class StdDev(StaticMetric):
         """pandas function"""
         import pandas as pd
         if is_quantifiable(self.col.type):
-            return pd.concat((df[self.col.name] for df in dfs)).dropna().std()
+            return pd.concat((df[self.col.name] for df in dfs)).std()
 
         logger.debug(
             f"{self.col.name} has type {self.col.type}, which is not listed as quantifiable."
