@@ -17,12 +17,11 @@ import traceback
 from typing import List, Optional, Union
 
 import avro.schema as avroschema
-from avro.schema import ArraySchema
-from pydantic.main import ModelMetaclass
-
+from avro.schema import ArraySchema, PrimitiveSchema, UnionSchema
 from metadata.generated.schema.entity.data.table import Column, DataType
 from metadata.generated.schema.type.schema import FieldModel
 from metadata.utils.logger import ingestion_logger
+from pydantic.main import ModelMetaclass
 
 logger = ingestion_logger()
 
@@ -61,6 +60,44 @@ def parse_array_fields(
 
     obj.children = [child_obj]
 
+    return obj
+
+
+def parse_union_fields(
+    field, cls: ModelMetaclass = FieldModel
+) -> Optional[List[Union[FieldModel, Column]]]:
+    """
+    Parse array field for avro schema
+    """
+
+    field_type = field.type
+    child_obj = []
+    obj = cls(
+        name=field.name,
+        dataType=str(field.type.type).upper(),
+        description=field.doc,
+    )
+    for field in field_type.schemas:
+        if isinstance(field, PrimitiveSchema):
+            child_obj.append(
+                cls(
+                    name=field.fullname,
+                    dataType=str(field.type).upper(),
+                    description=field.fullname,
+                )
+            )
+
+        else:
+            child_obj.append(
+                cls(
+                    name=field.name,
+                    dataType=str(field.type).upper(),
+                    children=get_avro_fields(field, cls),
+                    description=field.doc,
+                )
+            )
+
+    obj.children = child_obj
     return obj
 
 
@@ -113,9 +150,13 @@ def get_avro_fields(
         try:
             if isinstance(field.type, ArraySchema):
                 field_models.append(parse_array_fields(field, cls=cls))
+
+            elif isinstance(field.type, UnionSchema):
+                field_models.append(parse_union_fields(field, cls=cls))
+
             else:
                 field_models.append(parse_single_field(field, cls=cls))
         except Exception as exc:  # pylint: disable=broad-except
-            logger.debug(traceback.format_exc())
+            logger.error(traceback.format_exc())
             logger.warning(f"Unable to parse the avro schema into models: {exc}")
     return field_models
