@@ -37,7 +37,9 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.ServiceConnectionEntityInterface;
+import org.openmetadata.schema.ServiceEntityInterface;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.entity.automations.CreateWorkflow;
 import org.openmetadata.schema.entity.automations.TestServiceConnectionRequest;
@@ -53,6 +55,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
 import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.WorkflowRepository;
 import org.openmetadata.service.resources.Collection;
@@ -314,7 +317,7 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateWorkflow create)
       throws IOException {
     Workflow workflow = getWorkflow(create, securityContext.getUserPrincipal().getName());
-    Response response = create(uriInfo, securityContext, workflow);
+    Response response = create(uriInfo, securityContext, unmask(workflow));
     return Response.fromResponse(response)
         .entity(decryptOrNullify(securityContext, (Workflow) response.getEntity()))
         .build();
@@ -490,7 +493,13 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
 
   private Workflow unmask(Workflow workflow) {
     dao.setFullyQualifiedName(workflow);
-    Workflow originalWorkflow = dao.findByNameOrNull(workflow.getFullyQualifiedName(), null, Include.NON_DELETED);
+    Workflow originalWorkflow;
+    if (WorkflowType.TEST_CONNECTION.equals(workflow.getWorkflowType())) {
+      // in case of test connection type, we get the original connection values from the service name
+      originalWorkflow = buildFromOriginalServiceConnection(workflow);
+    } else {
+      originalWorkflow = dao.findByNameOrNull(workflow.getFullyQualifiedName(), null, Include.NON_DELETED);
+    }
     return EntityMaskerFactory.getEntityMasker().unmaskWorkflow(workflow, originalWorkflow);
   }
 
@@ -519,5 +528,22 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
       workflowDecrypted = EntityMaskerFactory.getEntityMasker().maskWorkflow(workflowDecrypted);
     }
     return workflowDecrypted;
+  }
+
+  private Workflow buildFromOriginalServiceConnection(Workflow workflow) {
+    Workflow originalWorkflow = (Workflow) ClassConverterFactory.getConverter(Workflow.class).convert(workflow);
+    if (originalWorkflow.getRequest() instanceof TestServiceConnectionRequest) {
+      TestServiceConnectionRequest testServiceConnection = (TestServiceConnectionRequest) originalWorkflow.getRequest();
+      EntityRepository<? extends EntityInterface> serviceRepository =
+          Entity.getServiceEntityRepository(testServiceConnection.getServiceType());
+      ServiceEntityInterface originalService =
+          (ServiceEntityInterface)
+              serviceRepository.findByNameOrNull(testServiceConnection.getServiceName(), "", Include.NON_DELETED);
+      if (originalService != null && originalService.getConnection() != null) {
+        testServiceConnection.setConnection(originalService.getConnection());
+      }
+      originalWorkflow.setRequest(testServiceConnection);
+    }
+    return originalWorkflow;
   }
 }
