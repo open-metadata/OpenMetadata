@@ -57,7 +57,7 @@ describe('Postgres Ingestion', () => {
       cy.get('[id="root_hostPort"]')
         .scrollIntoView()
         .type(Cypress.env('postgresHostPort'));
-      cy.get('#root_database')
+      cy.get('#root/database')
         .scrollIntoView()
         .type(Cypress.env('postgresDatabase'));
     };

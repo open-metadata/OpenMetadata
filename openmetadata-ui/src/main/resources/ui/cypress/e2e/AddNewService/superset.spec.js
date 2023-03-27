@@ -41,11 +41,11 @@ describe('Superset Ingestion', () => {
       .click();
 
     const connectionInput = () => {
-      cy.get('#root_username').type(Cypress.env('supersetUsername'));
-      cy.get('#root_password')
+      cy.get('#root/username').type(Cypress.env('supersetUsername'));
+      cy.get('#root/password')
         .scrollIntoView()
         .type(Cypress.env('supersetPassword'));
-      cy.get('#root_hostPort')
+      cy.get('#root/hostPort')
         .scrollIntoView()
         .focus()
         .clear()

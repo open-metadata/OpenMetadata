@@ -874,10 +874,10 @@ export const updateOwner = (isAddingOwnerToTeam = false) => {
 };
 
 export const mySqlConnectionInput = () => {
-  cy.get('#root_username').type(Cypress.env('mysqlUsername'));
-  cy.get('#root_password').type(Cypress.env('mysqlPassword'));
-  cy.get('#root_hostPort').type(Cypress.env('mysqlHostPort'));
-  cy.get('#root_databaseSchema').type(Cypress.env('mysqlDatabaseSchema'));
+  cy.get('#root/username').type(Cypress.env('mysqlUsername'));
+  cy.get('#root/password').type(Cypress.env('mysqlPassword'));
+  cy.get('#root/hostPort').type(Cypress.env('mysqlHostPort'));
+  cy.get('#root/databaseSchema').type(Cypress.env('mysqlDatabaseSchema'));
 };
 
 export const login = (username, password) => {

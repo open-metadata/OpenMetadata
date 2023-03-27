@@ -12,6 +12,7 @@
  */
 import { Affix, Card } from 'antd';
 import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
+import { oneofOrEndsWithNumberRegex } from 'constants/regex.constants';
 import {
   addDBTIngestionGuide,
   addLineageIngestionGuide,
@@ -24,7 +25,7 @@ import {
 import { ServiceCategory } from 'enums/service.enum';
 import { PipelineType } from 'generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { useAirflowStatus } from 'hooks/useAirflowStatus';
-import { last, startCase } from 'lodash';
+import { first, last, startCase } from 'lodash';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { fetchMarkdownFile } from 'rest/miscAPI';
@@ -97,7 +98,16 @@ const RightPanel: FC<RightPanelProps> = ({
      * active field is like root_fieldName
      * so we need to split and get the fieldName
      */
-    return last(activeField?.split('_'));
+    const fieldNameArr = activeField?.split('/');
+
+    const fieldName = last(fieldNameArr);
+
+    // check if activeField is select or list field
+    if (oneofOrEndsWithNumberRegex.test(fieldName ?? '')) {
+      return first(fieldName?.split('_'));
+    } else {
+      return fieldName;
+    }
   }, [activeField]);
 
   const getActiveStepTitle = (title: string) => {
@@ -178,7 +188,9 @@ const RightPanel: FC<RightPanelProps> = ({
 
   useEffect(() => {
     // only fetch file when required fields are present
-    if (selectedService && selectedServiceCategory && activeFieldName) {
+    const shouldFetchFieldDoc =
+      selectedService && selectedServiceCategory && activeFieldName;
+    if (shouldFetchFieldDoc) {
       fetchFieldDocument();
     }
   }, [selectedService, selectedServiceCategory, activeFieldName]);

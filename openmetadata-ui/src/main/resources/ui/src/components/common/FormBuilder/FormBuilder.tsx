@@ -162,12 +162,12 @@ const FormBuilder: FunctionComponent<Props> = ({
         'no-header': !showFormHeader,
       })}
       formData={localFormData}
+      idSeparator="/"
       ref={formRef}
       schema={schema}
       showErrorList={false}
       transformErrors={transformErrors}
       uiSchema={uiSchema}
-      onBlur={() => onFocus('')}
       onChange={(e: IChangeEvent) => {
         handleChange(e.formData);
         props.onChange && props.onChange(e);
