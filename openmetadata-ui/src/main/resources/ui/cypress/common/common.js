@@ -176,13 +176,36 @@ export const testServiceCreationAndIngestion = (
 
   // Test the connection
   interceptURL(
-    'POST',
-    '/api/v1/services/ingestionPipelines/testConnection',
-    'testConnection'
+    'GET',
+    '/api/v1/services/testConnectionDefinition/name/*',
+    'testConnectionStepDefinition'
   );
+
+  interceptURL('POST', '/api/v1/automations/workflow', 'createWorkflow');
+
+  interceptURL(
+    'POST',
+    '/api/v1/automations/workflow/trigger/*',
+    'triggerWorkflow'
+  );
+
+  interceptURL('GET', '/api/v1/automations/workflow/*', 'getWorkflow');
+
   cy.get('[data-testid="test-connection-btn"]').should('exist');
   cy.get('[data-testid="test-connection-btn"]').click();
-  verifyResponseStatusCode('@testConnection', 200);
+
+  verifyResponseStatusCode('@testConnectionStepDefinition', 200);
+
+  cy.get('[data-testid="test-connection-modal"]').should('exist');
+  cy.get('.ant-modal-footer > .ant-btn-primary')
+    .should('exist')
+    .contains('OK')
+    .click();
+
+  verifyResponseStatusCode('@createWorkflow', 201);
+  verifyResponseStatusCode('@triggerWorkflow', 200);
+  verifyResponseStatusCode('@getWorkflow', 200);
+
   cy.contains('Connection test was successful').should('exist');
   interceptURL(
     'GET',
