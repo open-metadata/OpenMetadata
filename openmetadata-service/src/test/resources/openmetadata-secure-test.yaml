@@ -190,6 +190,12 @@ jwtTokenConfiguration:
   jwtissuer: "open-metadata.org"
   keyId: "Gb389a-9f76-gdjs-a92j-0242bk94356"
 
+eventMonitoringConfiguration:
+  eventMonitor: ${EVENT_MONITOR:-prometheus}  # Possible values are "prometheus", "cloudwatch"
+  batchSize: ${EVENT_MONITOR_BATCH_SIZE:-10}
+  pathPattern: ${EVENT_MONITOR_PATH_PATTERN:-["/*"]}
+  latency: ${EVENT_MONITOR_LATENCY:-[0.90]} # For value p99=0.99, p90=0.90, p50=0.50 etc.
+
 eventHandlerConfiguration:
   eventHandlerClassNames:
     - "org.openmetadata.service.events.AuditEventHandler"

@@ -16,9 +16,11 @@
  */
 package org.openmetadata.service.security.saml;
 
+import static org.openmetadata.service.util.MicrometerBundleSingleton.prometheusMeterRegistry;
 import static org.openmetadata.service.util.MicrometerBundleSingleton.webAnalyticEvents;
 
 import io.github.maksymdolgykh.dropwizard.micrometer.MicrometerBundle;
+import io.micrometer.core.instrument.Timer;
 import java.io.IOException;
 import javax.servlet.Filter;
 import javax.servlet.FilterChain;
@@ -41,23 +43,18 @@ public class OMMicrometerHttpFilter implements Filter {
 
   public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain)
       throws IOException, ServletException {
-    webAnalyticEvents.record(
-        () -> {
-          long startTime = System.nanoTime();
-          try {
-            chain.doFilter(request, response);
-          } catch (IOException | ServletException e) {
-            throw new RuntimeException(e);
-          }
-          double elapsed = (double) (System.nanoTime() - startTime) / 1.0E9;
-          String requestPath = ((HttpServletRequest) request).getPathInfo();
-          if (CommonUtil.nullOrEmpty(requestPath)) {
-            requestPath = ((HttpServletRequest) request).getServletPath();
-          }
-          String responseStatus = String.valueOf(((HttpServletResponse) response).getStatus());
-          String requestMethod = ((HttpServletRequest) request).getMethod();
-          MicrometerBundle.httpRequests.labels(requestMethod, responseStatus, requestPath).observe(elapsed);
-        });
+    Timer.Sample timer = Timer.start(prometheusMeterRegistry);
+    long startTime = System.nanoTime();
+    chain.doFilter(request, response);
+    double elapsed = (double) (System.nanoTime() - startTime) / 1.0E9;
+    String requestPath = ((HttpServletRequest) request).getPathInfo();
+    if (CommonUtil.nullOrEmpty(requestPath)) {
+      requestPath = ((HttpServletRequest) request).getServletPath();
+    }
+    String responseStatus = String.valueOf(((HttpServletResponse) response).getStatus());
+    String requestMethod = ((HttpServletRequest) request).getMethod();
+    MicrometerBundle.httpRequests.labels(requestMethod, responseStatus, requestPath).observe(elapsed);
+    timer.stop(webAnalyticEvents);
   }
 
   public void destroy() {}
