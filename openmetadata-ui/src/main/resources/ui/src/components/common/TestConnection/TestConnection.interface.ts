@@ -19,7 +19,7 @@ export interface TestConnectionProps {
   connectionType: string;
   serviceCategory: ServiceCategory;
   formData: ConfigData;
-  displayButtonOnly?: boolean;
+  showDetails?: boolean;
   serviceName?: string;
 }
 

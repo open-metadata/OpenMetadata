@@ -1173,7 +1173,6 @@ const ServicePage: FunctionComponent = () => {
                                 : t('message.no-permission-for-action')
                             }>
                             <TestConnection
-                              displayButtonOnly
                               connectionType={serviceDetails?.serviceType ?? ''}
                               formData={connectionDetails as ConfigData}
                               isTestingDisabled={isTestingDisabled}
@@ -1181,6 +1180,7 @@ const ServicePage: FunctionComponent = () => {
                                 serviceCategory as ServiceCategory
                               }
                               serviceName={serviceDetails?.name}
+                              showDetails={false}
                             />
                           </Tooltip>
                         )}

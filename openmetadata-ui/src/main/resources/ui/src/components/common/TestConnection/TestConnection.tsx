@@ -13,7 +13,6 @@
 import { Button, Space } from 'antd';
 import { AxiosError } from 'axios';
 import Loader from 'components/Loader/Loader';
-import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
 import { CreateWorkflow } from 'generated/api/automations/createWorkflow';
 import { ConfigClass } from 'generated/entity/automations/testServiceConnection';
 import {
@@ -35,6 +34,7 @@ import {
 } from 'rest/workflowAPI';
 import { formatFormDataForSubmit } from 'utils/JSONSchemaFormUtils';
 import {
+  getTestConnectionName,
   getTestConnectionType,
   shouldTestConnection,
 } from 'utils/ServiceUtils';
@@ -50,15 +50,12 @@ import { Transi18next } from 'utils/CommonUtils';
 import { TestConnectionProps, TestStatus } from './TestConnection.interface';
 import TestConnectionModal from './TestConnectionModal/TestConnectionModal';
 
+import {
+  FETCHING_EXPIRY_TIME,
+  FETCH_INTERVAL,
+  WORKFLOW_COMPLETE_STATUS,
+} from 'constants/Services.constant';
 import './test-connection.style.less';
-
-// 2 minutes
-const FETCHING_EXPIRY_TIME = 2 * 60 * 1000;
-const FETCH_INTERVAL = 2000;
-const WORKFLOW_COMPLETE_STATUS = [
-  WorkflowStatus.Failed,
-  WorkflowStatus.Successful,
-];
 
 const TestConnection: FC<TestConnectionProps> = ({
   isTestingDisabled,
@@ -66,7 +63,7 @@ const TestConnection: FC<TestConnectionProps> = ({
   serviceCategory,
   connectionType,
   serviceName,
-  displayButtonOnly = false,
+  showDetails = true,
 }) => {
   const { t } = useTranslation();
 
@@ -155,10 +152,7 @@ const TestConnection: FC<TestConnectionProps> = ({
 
     try {
       const createWorkflowData: CreateWorkflow = {
-        name: `test-connection-${connectionType}-${cryptoRandomString({
-          length: 8,
-          type: 'alphanumeric',
-        })}`,
+        name: getTestConnectionName(connectionType),
         workflowType: WorkflowType.TestConnection,
         request: {
           connection: { config: updatedFormData as ConfigClass },
@@ -273,18 +267,7 @@ const TestConnection: FC<TestConnectionProps> = ({
 
   return (
     <>
-      {displayButtonOnly ? (
-        <Button
-          data-testid="test-connection-button"
-          disabled={isTestConnectionDisabled}
-          loading={isTestingConnection}
-          type="primary"
-          onClick={handleTestConnection}>
-          {t('label.test-entity', {
-            entity: t('label.connection'),
-          })}
-        </Button>
-      ) : (
+      {showDetails ? (
         <div className="flex justify-between bg-white border border-main shadow-base rounded-4 p-sm mt-4">
           <Space data-testid="message-container" size={8}>
             {isTestingConnection && <Loader size="small" />}
@@ -324,6 +307,17 @@ const TestConnection: FC<TestConnectionProps> = ({
             {t('label.test-entity', { entity: t('label.connection') })}
           </Button>
         </div>
+      ) : (
+        <Button
+          data-testid="test-connection-button"
+          disabled={isTestConnectionDisabled}
+          loading={isTestingConnection}
+          type="primary"
+          onClick={handleTestConnection}>
+          {t('label.test-entity', {
+            entity: t('label.connection'),
+          })}
+        </Button>
       )}
       <TestConnectionModal
         isOpen={dialogOpen}

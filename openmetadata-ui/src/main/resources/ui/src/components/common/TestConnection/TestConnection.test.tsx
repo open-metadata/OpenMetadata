@@ -45,9 +45,10 @@ const mockProps = {
   formData: FORM_DATA as ConfigData,
 };
 
-jest.mock('crypto-random-string-with-promisify-polyfill', () =>
-  jest.fn().mockReturnValue('01')
-);
+jest.mock('utils/ServiceUtils', () => ({
+  ...jest.requireActual('utils/ServiceUtils'),
+  getTestConnectionName: jest.fn().mockReturnValue('test-connection-Mysql-01'),
+}));
 
 jest.mock('./TestConnectionModal/TestConnectionModal', () =>
   jest
@@ -81,9 +82,9 @@ describe('Test Connection Component', () => {
     expect(screen.getByTestId('test-connection-btn')).toBeInTheDocument();
   });
 
-  it('Should render the button only is displayButtonOnly is true', async () => {
+  it('Should render the button only is showDetails is false', async () => {
     await act(async () => {
-      render(<TestConnection {...mockProps} displayButtonOnly />);
+      render(<TestConnection {...mockProps} showDetails={false} />);
     });
 
     expect(screen.getByTestId('test-connection-button')).toBeInTheDocument();
