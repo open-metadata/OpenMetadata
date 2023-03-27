@@ -235,6 +235,8 @@ const ContainerPage = () => {
     entityId,
     followers,
     isUserFollowing,
+    size,
+    numberOfObjects,
   } = useMemo(() => {
     return {
       deleted: containerData?.deleted,
@@ -249,6 +251,8 @@ const ContainerPage = () => {
         ({ id }: { id: string }) => id === getCurrentUserId()
       ),
       followers: containerData?.followers ?? [],
+      size: containerData?.size || 0,
+      numberOfObjects: containerData?.numberOfObjects || 0,
     };
   }, [containerData]);
 
@@ -267,6 +271,16 @@ const ContainerPage = () => {
     {
       key: EntityInfo.TIER,
       value: tier?.tagFQN ? tier.tagFQN.split(FQN_SEPARATOR_CHAR)[1] : '',
+    },
+    {
+      key: EntityInfo.NUMBER_OF_OBJECTS,
+      value: numberOfObjects,
+      showLabel: true,
+    },
+    {
+      key: EntityInfo.SIZE,
+      value: size,
+      showLabel: true,
     },
   ];
 
