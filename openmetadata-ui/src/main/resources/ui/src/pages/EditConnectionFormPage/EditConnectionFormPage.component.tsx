@@ -13,8 +13,8 @@
 
 import { Card, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import ServiceRightPanel from 'components/AddService/RightPanel/RightPanel';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
+import ServiceRightPanel from 'components/common/ServiceRightPanel/ServiceRightPanel';
 import TitleBreadcrumb from 'components/common/title-breadcrumb/title-breadcrumb.component';
 import { TitleBreadcrumbProps } from 'components/common/title-breadcrumb/title-breadcrumb.interface';
 import PageContainerV1 from 'components/containers/PageContainerV1';
