@@ -585,6 +585,7 @@
     "query": "查询",
     "query-log-duration": "Query Log Duration",
     "query-lowercase": "查询",
+    "query-lowercase-plural": "queries",
     "query-plural": "查询",
     "re-deploy": "Re Deploy",
     "re-enter-new-password": "Re-enter New Password",

@@ -585,6 +585,7 @@
     "query": "クエリ",
     "query-log-duration": "クエリログの時間",
     "query-lowercase": "クエリ",
+    "query-lowercase-plural": "queries",
     "query-plural": "クエリ",
     "re-deploy": "再デプロイ",
     "re-enter-new-password": "新しいパスワードを再度入力してください",
