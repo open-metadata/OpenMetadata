@@ -62,6 +62,7 @@ import {
   restoreContainer,
 } from 'rest/objectStoreAPI';
 import {
+  dataUnitConverter,
   getCurrentUserId,
   getEntityMissingError,
   getEntityPlaceHolder,
@@ -279,7 +280,7 @@ const ContainerPage = () => {
     },
     {
       key: EntityInfo.SIZE,
-      value: size,
+      value: dataUnitConverter(size),
       showLabel: true,
     },
   ];

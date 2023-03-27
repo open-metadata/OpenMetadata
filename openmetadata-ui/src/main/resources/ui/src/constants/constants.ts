@@ -568,3 +568,5 @@ export const VALIDATE_MESSAGES = {
     fieldText: '${label}',
   }),
 };
+
+export const DATA_UNITS = ['BY', 'KB', 'MB', 'GB'];
