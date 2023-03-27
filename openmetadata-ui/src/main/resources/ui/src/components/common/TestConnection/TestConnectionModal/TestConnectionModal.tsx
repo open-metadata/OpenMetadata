@@ -18,6 +18,7 @@ import { TestConnectionStepResult } from 'generated/entity/automations/workflow'
 import { TestConnectionStep } from 'generated/entity/services/connections/testConnectionDefinition';
 import React, { FC, Fragment } from 'react';
 import { useTranslation } from 'react-i18next';
+import { requiredField } from 'utils/CommonUtils';
 
 interface TestConnectionModalProps {
   isOpen: boolean;
@@ -63,7 +64,7 @@ const TestConnectionModal: FC<TestConnectionModalProps> = ({
         return (
           <Fragment key={step.name}>
             <Space align="start" className="px-4" size={16}>
-              <span>
+              <div className="mt-2px">
                 {hasPassed ? (
                   <SuccessIcon
                     data-testid="success-badge"
@@ -75,11 +76,15 @@ const TestConnectionModal: FC<TestConnectionModalProps> = ({
                 ) : (
                   <FailIcon data-testid="fail-badge" height={24} width={24} />
                 )}
-              </span>
+              </div>
               <Space direction="vertical" size={0}>
-                <Typography.Text className="text-body">
-                  {step.name}
-                </Typography.Text>
+                <Space size={1}>
+                  <Typography.Text className="text-body">
+                    {step.mandatory
+                      ? requiredField(step.name, true)
+                      : step.name}
+                  </Typography.Text>
+                </Space>
                 <Typography.Text className="text-grey-muted">
                   {currentStepResult?.message ?? step.description}
                 </Typography.Text>
