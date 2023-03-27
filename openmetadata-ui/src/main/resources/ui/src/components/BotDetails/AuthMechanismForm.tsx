@@ -680,6 +680,7 @@ const AuthMechanismForm: FC<Props> = ({
           destroyOnClose
           closable={false}
           confirmLoading={isLoading}
+          maskClosable={false}
           okText={t('label.confirm')}
           title={t('message.are-you-sure')}
           visible={isConfirmationModalOpen}
