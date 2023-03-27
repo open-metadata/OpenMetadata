@@ -17,4 +17,4 @@ GRANT CREATE SESSION TO new_role;
 
 **Important:** To fetch metadata from Oracle database we use `python-oracledb`. This library only supports Oracle 12c, 18c, 19c and 21c versions!
 
-You can find more details in the [Oracle section](https://docs.open-metadata.org/connectors/database/oracle) of the documentation 
+You can find further information on the Oracle connector in the [docs](https://docs.open-metadata.org/connectors/database/oracle).
