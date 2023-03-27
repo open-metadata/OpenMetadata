@@ -234,7 +234,9 @@ const GlossaryHeader = ({
             ) : (
               <Space direction="vertical" size={0}>
                 <Space>
-                  <Typography.Text className="text-grey-muted">
+                  <Typography.Text
+                    className="text-grey-muted"
+                    data-testid="glossary-name">
                     {selectedData.name}
                   </Typography.Text>
                   <Tooltip
@@ -256,7 +258,10 @@ const GlossaryHeader = ({
                   </Tooltip>
                 </Space>
                 <Space direction="horizontal">
-                  <Typography.Title className="m-b-0" level={5}>
+                  <Typography.Title
+                    className="m-b-0"
+                    data-testid="glossary-display-name"
+                    level={5}>
                     {getEntityName(selectedData)}
                   </Typography.Title>
                   <Tooltip

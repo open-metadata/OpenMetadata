@@ -23,12 +23,16 @@ import { FQN_SEPARATOR_CHAR } from 'constants/char.constants';
 import { NO_PERMISSION_FOR_ACTION } from 'constants/HelperTextUtil';
 import { Glossary } from 'generated/entity/data/glossary';
 import { GlossaryTerm } from 'generated/entity/data/glossaryTerm';
+import { EntityHistory } from 'generated/type/entityHistory';
 import { toString } from 'lodash';
 import { LoadingState } from 'Models';
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
-import { getGlossaryVersions } from 'rest/glossaryAPI';
+import {
+  getGlossaryTermsVersions,
+  getGlossaryVersions,
+} from 'rest/glossaryAPI';
 import { getEntityDeleteMessage } from 'utils/CommonUtils';
 import {
   getAddGlossaryTermsPath,
@@ -61,6 +65,9 @@ const GlossaryHeaderButtons = ({
   const history = useHistory();
   const [showActions, setShowActions] = useState(false);
   const [isDelete, setIsDelete] = useState<boolean>(false);
+  const [versionList, setVersionList] = useState<EntityHistory>(
+    {} as EntityHistory
+  );
 
   const isExportAction = useMemo(
     () => action === GlossaryAction.EXPORT,
@@ -92,7 +99,10 @@ const GlossaryHeaderButtons = ({
   const handleVersionClick = async () => {
     const { id } = selectedData;
     try {
-      const res = await getGlossaryVersions(id);
+      const res = isGlossary
+        ? await getGlossaryVersions(id)
+        : await getGlossaryTermsVersions(id);
+      setVersionList(res);
       console.log(res);
     } catch (error) {
       showErrorToast(error as AxiosError);
@@ -110,7 +120,7 @@ const GlossaryHeaderButtons = ({
 
   const addButtonContent = [
     {
-      label: t('label.term-plural'),
+      label: t('label.glossary-term'),
       key: '1',
       onClick: () => handleAddGlossaryTermClick(glossaryFqn),
     },
@@ -119,8 +129,6 @@ const GlossaryHeaderButtons = ({
       key: '2',
     },
   ];
-
-  console.log(permission);
 
   const manageButtonContent = [
     ...(isGlossary
@@ -225,11 +233,11 @@ const GlossaryHeaderButtons = ({
 
   return (
     <>
-      <div id="add-term-button">
+      <div>
         {isGlossary ? (
           <Button
             className="m-r-xs"
-            data-testid="add-new-tag-button"
+            data-testid="add-new-tag-button-header"
             size="middle"
             type="primary"
             onClick={() => handleAddGlossaryTermClick(glossaryFqn)}>

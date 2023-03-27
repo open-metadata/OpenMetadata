@@ -27,7 +27,7 @@ import { getUserPath } from 'constants/constants';
 import { Glossary } from 'generated/entity/data/glossary';
 import { GlossaryTerm } from 'generated/entity/data/glossaryTerm';
 import { TagLabel } from 'generated/type/tagLabel';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { getEntityName } from 'utils/EntityUtils';
@@ -39,33 +39,35 @@ interface GlossaryRightPanelProps {
   entityDetails: Glossary | GlossaryTerm;
   isGlossary: boolean;
   onGlossaryTermUpdate: (value: GlossaryTerm) => Promise<void>;
+  onGlossaryUpdate: (value: Glossary) => Promise<void>;
 }
 
 const GlossaryRightPanel = ({
   entityDetails,
   isGlossary,
   onGlossaryTermUpdate,
+  onGlossaryUpdate,
 }: GlossaryRightPanelProps) => {
   const { t } = useTranslation();
   const { getEntityPermission } = usePermissionProvider();
 
-  // const [glossaryPermission, setGlossaryPermission] =
-  //   useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
+  const [glossaryPermission, setGlossaryPermission] =
+    useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
 
   const [glossaryTermPermission, setGlossaryTermPermission] =
     useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
 
-  // const fetchGlossaryPermission = async () => {
-  //   try {
-  //     const response = await getEntityPermission(
-  //       ResourceEntity.GLOSSARY,
-  //       entityDetails?.id as string
-  //     );
-  //     setGlossaryPermission(response);
-  //   } catch (error) {
-  //     showErrorToast(error as AxiosError);
-  //   }
-  // };
+  const fetchGlossaryPermission = async () => {
+    try {
+      const response = await getEntityPermission(
+        ResourceEntity.GLOSSARY,
+        entityDetails?.id as string
+      );
+      setGlossaryPermission(response);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  };
 
   const fetchGlossaryTermPermission = async () => {
     try {
@@ -81,11 +83,17 @@ const GlossaryRightPanel = ({
 
   useEffect(() => {
     if (isGlossary) {
-      // fetchGlossaryPermission();
+      fetchGlossaryPermission();
     } else {
       fetchGlossaryTermPermission();
     }
   }, [entityDetails]);
+
+  const hasEditTagsPermissions = useMemo(() => {
+    return isGlossary
+      ? glossaryPermission.EditAll || glossaryPermission.EditTags
+      : glossaryTermPermission.EditAll || glossaryTermPermission.EditTags;
+  }, [glossaryPermission, glossaryTermPermission]);
 
   const handleTagsUpdate = async (updatedTags: TagLabel[]) => {
     if (updatedTags) {
@@ -93,7 +101,12 @@ const GlossaryRightPanel = ({
         ...entityDetails,
         tags: updatedTags,
       };
-      await onGlossaryTermUpdate(updatedData as GlossaryTerm);
+
+      if (isGlossary) {
+        await onGlossaryUpdate(updatedData);
+      } else {
+        await onGlossaryTermUpdate(updatedData as GlossaryTerm);
+      }
     }
   };
 
@@ -105,7 +118,10 @@ const GlossaryRightPanel = ({
         {t('label.summary')}
       </Typography.Title>
 
-      <Row className="m-y-md" gutter={[0, 8]}>
+      <Row
+        className="m-y-md"
+        data-testid="reviewer-card-container"
+        gutter={[0, 8]}>
         <Col span={24}>
           <Typography.Text
             className="text-grey-muted"
@@ -151,7 +167,7 @@ const GlossaryRightPanel = ({
 
       <Divider className="m-y-xs" />
 
-      <Row className="m-y-md" gutter={[0, 8]}>
+      <Row className="m-y-md" data-testid="tags-card-container" gutter={[0, 8]}>
         <Col span={24}>
           <Typography.Text
             className="text-grey-muted"
@@ -161,7 +177,7 @@ const GlossaryRightPanel = ({
         </Col>
         <Col span={24}>
           <TagsInput
-            editable
+            editable={hasEditTagsPermissions}
             tags={entityDetails.tags}
             onTagsUpdate={handleTagsUpdate}
           />

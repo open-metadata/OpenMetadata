@@ -280,6 +280,7 @@ const GlossaryPage = () => {
                   entityDetails={selectedData as Glossary}
                   isGlossary={isGlossaryActive}
                   onGlossaryTermUpdate={handleGlossaryTermUpdate}
+                  onGlossaryUpdate={updateGlossary}
                 />
               </Col>
             )}
