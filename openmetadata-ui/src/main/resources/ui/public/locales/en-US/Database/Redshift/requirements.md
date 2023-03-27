@@ -1,3 +1,4 @@
+# Requirements
 Redshift user must grant `SELECT` privilege on `SVV_TABLE_INFO` to fetch the metadata of tables and views.
 
 ```sql

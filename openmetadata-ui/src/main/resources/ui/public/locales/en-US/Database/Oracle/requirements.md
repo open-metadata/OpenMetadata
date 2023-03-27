@@ -1,3 +1,4 @@
+# Requirements
 To ingest metadata from Oracle, a user must have `CREATE SESSION` privilege.
 
 ```sql

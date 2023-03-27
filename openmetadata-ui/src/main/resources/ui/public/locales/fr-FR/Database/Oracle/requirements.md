@@ -1,3 +1,4 @@
+# Exigences
 L'utilisateur doit avoir la permission d'exécuter des requêtes `CREATE SESSION` pour pouvoir aller chercher les métadonnées des tables et vues Oracle.
 
 ```sql

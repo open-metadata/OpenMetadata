@@ -1,3 +1,4 @@
+# Exigences
 L'utilisateur Redshift doit avoir la permission d'exécuter les requêtes `SELECT` sur la table `SVV_TABLE_INFO` pour permettre a OpenMetadata d'obtenir les metadonnées des tables et des vues.
 
 ```sql

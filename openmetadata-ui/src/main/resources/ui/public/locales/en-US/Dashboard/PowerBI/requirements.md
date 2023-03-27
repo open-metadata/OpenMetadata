@@ -1,5 +1,5 @@
-## Requirements
- - PowerBi Pro license is required to access the APIs
+# Requirements
+PowerBi Pro license is required to access the APIs
 
 ## PowerBI Account Setup and Permissions
 
