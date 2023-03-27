@@ -255,6 +255,7 @@ const ManageButton: FC<Props> = ({
         }}
         className="reactive-modal"
         closable={false}
+        maskClosable={false}
         okText={t('label.restore')}
         open={showReactiveModal}
         title={t('label.restore-entity', {
