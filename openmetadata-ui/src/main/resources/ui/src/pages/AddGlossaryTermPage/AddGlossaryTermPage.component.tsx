@@ -18,6 +18,7 @@ import PageContainerV1 from 'components/containers/PageContainerV1';
 import Loader from 'components/Loader/Loader';
 import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from 'components/PermissionProvider/PermissionProvider.interface';
+import { ERROR_MESSAGE } from 'constants/constants';
 import { cloneDeep, get, isUndefined } from 'lodash';
 import { LoadingState } from 'Models';
 import React, { useEffect, useMemo, useState } from 'react';
@@ -28,6 +29,7 @@ import {
   getGlossariesByName,
   getGlossaryTermByFQN,
 } from 'rest/glossaryAPI';
+import { getIsErrorMatch } from 'utils/CommonUtils';
 import { CreateGlossaryTerm } from '../../generated/api/data/createGlossaryTerm';
 import { Glossary } from '../../generated/entity/data/glossary';
 import { GlossaryTerm } from '../../generated/entity/data/glossaryTerm';
@@ -82,32 +84,27 @@ const AddGlossaryTermPage = () => {
     setStatus('initial');
   };
 
-  const onSave = (data: CreateGlossaryTerm) => {
+  const onSave = async (data: CreateGlossaryTerm) => {
     setStatus('waiting');
-    addGlossaryTerm(data)
-      .then((res) => {
-        if (res.data) {
-          setStatus('success');
-          setTimeout(() => {
-            setStatus('initial');
-            goToGlossary();
-          }, 500);
-        } else {
-          handleSaveFailure(
-            t('server.add-entity-error', {
-              entity: t('label.glossary-term'),
+
+    try {
+      await addGlossaryTerm(data);
+      setStatus('success');
+      setTimeout(() => {
+        setStatus('initial');
+        goToGlossary();
+      }, 500);
+    } catch (error) {
+      handleSaveFailure(
+        getIsErrorMatch(error as AxiosError, ERROR_MESSAGE.alreadyExist)
+          ? t('server.glossary-entity-already-exist', {
+              name: data.name,
+              entity: t('label.term'),
             })
-          );
-        }
-      })
-      .catch((err: AxiosError) => {
-        handleSaveFailure(
-          err,
-          t('server.add-entity-error', {
-            entity: t('label.glossary-term'),
-          })
-        );
-      });
+          : (error as AxiosError),
+        t('server.add-entity-error', { entity: t('label.glossary-term') })
+      );
+    }
   };
 
   const fetchGlossaryData = () => {

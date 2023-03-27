@@ -1215,6 +1215,7 @@
     "fetch-entity-permissions-error": "Unable to get permission for {{entity}}.",
     "fetch-updated-conversation-error": "Error while fetching updated conversation!",
     "forgot-password-email-error": "There is some issue in sending the mail. Please contact your Administrator.",
+    "glossary-entity-already-exist": "Glossary {{entity}} name {{name}} already exists. Duplicated Glossary {{entity}} are not allowed.",
     "ingestion-workflow-operation-error": "Error while {{operation}} ingestion workflow {{displayName}}",
     "invalid-username-or-password": "You have entered an invalid username or password.",
     "join-team-error": "Error while joining the team!",
@@ -1237,6 +1238,7 @@
     "unexpected-error": "An unexpected error occurred.",
     "unexpected-response": "Unexpected response from server.",
     "update-entity-success": "{{entity}} updated successfully.",
+    "user-already-exist": " A user with the name {{name}} already exists. Please choose another email.",
     "you-have-not-action-anything-yet": "You have not {{action}} anything yet."
   }
 }

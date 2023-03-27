@@ -17,6 +17,7 @@ import { TitleBreadcrumbProps } from 'components/common/title-breadcrumb/title-b
 import PageContainerV1 from 'components/containers/PageContainerV1';
 import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from 'components/PermissionProvider/PermissionProvider.interface';
+import { ERROR_MESSAGE } from 'constants/constants';
 import { LoadingState } from 'Models';
 import React, {
   FunctionComponent,
@@ -28,6 +29,7 @@ import React, {
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import { addGlossaries } from 'rest/glossaryAPI';
+import { getIsErrorMatch } from 'utils/CommonUtils';
 import { CreateGlossary } from '../../generated/api/data/createGlossary';
 import { Operation } from '../../generated/entity/policies/policy';
 import jsonData from '../../jsons/en';
@@ -69,28 +71,26 @@ const AddGlossaryPage: FunctionComponent = () => {
     setStatus('initial');
   };
 
-  const onSave = useCallback((data: CreateGlossary) => {
+  const onSave = useCallback(async (data: CreateGlossary) => {
     setStatus('waiting');
-    addGlossaries(data)
-      .then((res) => {
-        if (res) {
-          setStatus('success');
-          setTimeout(() => {
-            setStatus('initial');
-            goToGlossary(res.name);
-          }, 500);
-        } else {
-          handleSaveFailure(
-            jsonData['api-error-messages']['add-glossary-error']
-          );
-        }
-      })
-      .catch((err: AxiosError) => {
-        handleSaveFailure(
-          err,
-          jsonData['api-error-messages']['add-glossary-error']
-        );
-      });
+    try {
+      const res = await addGlossaries(data);
+      setStatus('success');
+      setTimeout(() => {
+        setStatus('initial');
+        goToGlossary(res.name);
+      }, 500);
+    } catch (error) {
+      handleSaveFailure(
+        getIsErrorMatch(error as AxiosError, ERROR_MESSAGE.alreadyExist)
+          ? t('server.glossary-entity-already-exist', {
+              entity: '',
+              name: data.name,
+            })
+          : (error as AxiosError),
+        jsonData['api-error-messages']['add-glossary-error']
+      );
+    }
   }, []);
 
   const fetchTags = () => {

@@ -24,7 +24,8 @@ import { useHistory, useParams } from 'react-router-dom';
 import { createBotWithPut } from 'rest/botsAPI';
 import { getRoles } from 'rest/rolesAPIV1';
 import { createUser, createUserWithPut, getBotByName } from 'rest/userAPI';
-import { PAGE_SIZE_LARGE } from '../../constants/constants';
+import { getIsErrorMatch } from 'utils/CommonUtils';
+import { ERROR_MESSAGE, PAGE_SIZE_LARGE } from '../../constants/constants';
 import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
@@ -151,7 +152,11 @@ const CreateUserPage = () => {
         }
       } catch (error) {
         handleSaveFailure(
-          error as AxiosError,
+          getIsErrorMatch(error as AxiosError, ERROR_MESSAGE.alreadyExist)
+            ? t('server.user-already-exist', {
+                name: userData.name,
+              })
+            : (error as AxiosError),
           t('server.create-entity-error', { entity: t('label.user') })
         );
       }
