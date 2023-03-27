@@ -1340,6 +1340,7 @@ const TeamDetailsV1 = ({
           centered
           closable={false}
           confirmLoading={isModalLoading}
+          maskClosable={false}
           okText={t('label.confirm')}
           open={!isUndefined(selectedEntity.record)}
           title={`${t('label.remove-entity', {

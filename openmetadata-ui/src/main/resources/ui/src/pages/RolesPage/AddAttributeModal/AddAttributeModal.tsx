@@ -130,6 +130,7 @@ const AddAttributeModal: FC<Props> = ({
       closable={false}
       confirmLoading={isModalLoading}
       data-testid="modal-container"
+      maskClosable={false}
       okText="Submit"
       open={isOpen}
       title={
