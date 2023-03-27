@@ -26,6 +26,8 @@ logger = utils_logger()
 
 
 class AWSServices(Enum):
+    S3 = "s3"
+    CLOUDWATCH = "cloudwatch"
     DYNAMO_DB = "dynamodb"
     GLUE = "glue"
     SAGEMAKER = "sagemaker"
@@ -156,6 +158,12 @@ class AWSClient:
                 service_name=service_name, endpoint_url=self.config.endPointURL
             )
         return session.resource(service_name=service_name)
+
+    def get_s3_client(self):
+        return self.get_client(AWSServices.S3.value)
+
+    def get_cloudwatch_client(self):
+        return self.get_client(AWSServices.CLOUDWATCH.value)
 
     def get_dynamo_client(self):
         return self.get_resource(AWSServices.DYNAMO_DB.value)

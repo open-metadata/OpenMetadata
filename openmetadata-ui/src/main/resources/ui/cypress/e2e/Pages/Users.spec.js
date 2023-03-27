@@ -142,7 +142,7 @@ describe('Admin flow should work properly', () => {
   });
 
   it('Soft delete admin', () => {
-    softDeleteUser(adminName);
+    softDeleteUser(adminName, true);
   });
 
   it('Restore soft deleted admin', () => {
@@ -150,7 +150,7 @@ describe('Admin flow should work properly', () => {
   });
 
   it('Permanently Delete Soft Deleted admin', () => {
-    softDeleteUser(adminName);
+    softDeleteUser(adminName, true);
     deleteSoftDeletedUser(adminName);
   });
 });

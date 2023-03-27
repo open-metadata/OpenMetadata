@@ -23,6 +23,8 @@ on:
       - "ingestion/**"
       - "openmetadata-service/**"
       - "openmetadata-spec/src/main/resources/json/schema/**"
+      - "pom.xml"
+      - "Makefile"
 
 permissions:
   contents: read

@@ -23,6 +23,9 @@ on:
       - "openmetadata-dist/**"
       - "openmetadata-clients/**"
       - "common/**"
+      - "pom.xml"
+      - "yarn.lock"
+      - "Makefile"
   pull_request_target:
     types: [labeled, opened, synchronize, reopened]
     paths:
@@ -32,6 +35,9 @@ on:
       - "openmetadata-dist/**"
       - "openmetadata-clients/**"
       - "common/**"
+      - "pom.xml"
+      - "yarn.lock"
+      - "Makefile"
 
 permissions:
   contents: read

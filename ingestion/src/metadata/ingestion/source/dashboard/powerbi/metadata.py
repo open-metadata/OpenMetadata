@@ -272,10 +272,12 @@ class PowerbiSource(DashboardServiceSource):
                     service=self.context.dashboard_service.fullyQualifiedName.__root__,
                 )
                 self.status.scanned(chart_display_name)
-            except Exception as exc:  # pylint: disable=broad-except
+            except Exception as exc:
+                name = chart.get("title")
+                error = f"Error creating chart [{name}]: {exc}"
                 logger.debug(traceback.format_exc())
-                logger.warning(f"Error creating chart [{chart}]: {exc}")
-                self.status.failure(chart.get("id"), repr(exc))
+                logger.warning(error)
+                self.status.failed(name, error, traceback.format_exc())
 
     def fetch_dataset_from_workspace(self, dataset_id: str) -> Optional[dict]:
         """
