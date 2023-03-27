@@ -16,7 +16,9 @@ import { Badge, Button, Card, Col, Divider, Row, Space } from 'antd';
 import { AxiosError } from 'axios';
 import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
 import PageHeader from 'components/header/PageHeader.component';
+import SettingsIngestion from 'components/SettingsIngestion/SettingsIngestion.component';
 import { useWebSocketConnector } from 'components/web-scoket/web-scoket.provider';
+import { PipelineType } from 'generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { isEmpty, startCase } from 'lodash';
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -135,7 +137,7 @@ const ElasticSearchIndexPage = () => {
       <Col span={24}>
         <PageHeader
           data={{
-            header: t('label.elasticsearch'),
+            header: t('label.search'),
             subHeader: t('message.elastic-search-message'),
           }}
         />
@@ -426,6 +428,9 @@ const ElasticSearchIndexPage = () => {
             onSave={performReIndexAll}
           />
         </div>
+      </Col>
+      <Col data-testid="ingestion-table-container" span={24}>
+        <SettingsIngestion pipelineType={PipelineType.ElasticSearchReindex} />
       </Col>
     </Row>
   );

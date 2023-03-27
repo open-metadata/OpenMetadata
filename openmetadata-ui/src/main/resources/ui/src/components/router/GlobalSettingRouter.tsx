@@ -93,6 +93,15 @@ const ElasticSearchIndexPage = withSuspenseFallback(
   )
 );
 
+const DataInsightsSettingsPage = withSuspenseFallback(
+  React.lazy(
+    () =>
+      import(
+        'pages/DataInsightsSettingsPage/DataInsightsSettingsPage.component'
+      )
+  )
+);
+
 const GlobalSettingRouter = () => {
   const { permissions } = usePermissionProvider();
 
@@ -195,8 +204,18 @@ const GlobalSettingRouter = () => {
         component={ElasticSearchIndexPage}
         hasPermission={false}
         path={getSettingPath(
-          GlobalSettingsMenuCategory.EVENT_PUBLISHERS,
-          GlobalSettingOptions.ELASTIC_SEARCH
+          GlobalSettingsMenuCategory.OPEN_METADATA,
+          GlobalSettingOptions.SEARCH
+        )}
+      />
+
+      <AdminProtectedRoute
+        exact
+        component={DataInsightsSettingsPage}
+        hasPermission={false}
+        path={getSettingPath(
+          GlobalSettingsMenuCategory.OPEN_METADATA,
+          GlobalSettingOptions.DATA_INSIGHT
         )}
       />
 

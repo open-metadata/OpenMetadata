@@ -20,9 +20,8 @@ import { TitleBreadcrumbProps } from 'components/common/title-breadcrumb/title-b
 import PageContainerV1 from 'components/containers/PageContainerV1';
 import PageLayoutV1 from 'components/containers/PageLayoutV1';
 import Loader from 'components/Loader/Loader';
-import { startCase } from 'lodash';
-import { ServicesUpdateRequest, ServiceTypes } from 'Models';
-import React, { useEffect, useState } from 'react';
+import { ServicesUpdateRequest } from 'Models';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import {
@@ -37,7 +36,6 @@ import {
   INGESTION_PROGRESS_END_VAL,
   INGESTION_PROGRESS_START_VAL,
 } from '../../constants/constants';
-import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
 import { INGESTION_ACTION_TYPE } from '../../constants/Ingestions.constant';
 import { FormSubmitType } from '../../enums/form.enum';
 import { IngestionActionMessage } from '../../enums/ingestion.enum';
@@ -51,13 +49,12 @@ import { useAirflowStatus } from '../../hooks/useAirflowStatus';
 import { DataObj } from '../../interface/service.interface';
 import jsonData from '../../jsons/en';
 import { getEntityMissingError } from '../../utils/CommonUtils';
-import { getIngestionHeadingName } from '../../utils/IngestionUtils';
-import { getSettingPath } from '../../utils/RouterUtils';
 import {
-  getServiceIngestionStepGuide,
-  getServiceRouteFromServiceType,
-  serviceTypeLogo,
-} from '../../utils/ServiceUtils';
+  getBreadCrumbsArray,
+  getIngestionHeadingName,
+  getSettingsPathFromPipelineType,
+} from '../../utils/IngestionUtils';
+import { getServiceIngestionStepGuide } from '../../utils/ServiceUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
 const EditIngestionPage = () => {
@@ -83,6 +80,13 @@ const EditIngestionPage = () => {
   const [slashedBreadcrumb, setSlashedBreadcrumb] = useState<
     TitleBreadcrumbProps['titleLinks']
   >([]);
+
+  const isSettingsPipeline = useMemo(
+    () =>
+      ingestionType === PipelineType.DataInsight ||
+      ingestionType === PipelineType.ElasticSearchReindex,
+    [ingestionType]
+  );
 
   const fetchServiceDetails = () => {
     return new Promise<void>((resolve, reject) => {
@@ -212,11 +216,17 @@ const EditIngestionPage = () => {
     });
   };
 
+  const goToSettingsPage = () => {
+    history.push(getSettingsPathFromPipelineType(ingestionType));
+  };
+
   const goToService = () => {
     history.push(
       getServiceDetailsPath(serviceFQN, serviceCategory, 'ingestions')
     );
   };
+
+  const handleCancelClick = isSettingsPipeline ? goToSettingsPage : goToService;
 
   const isDeployed = () => {
     const ingestion =
@@ -228,30 +238,16 @@ const EditIngestionPage = () => {
   };
 
   useEffect(() => {
-    setSlashedBreadcrumb([
-      {
-        name: startCase(serviceCategory),
-        url: getSettingPath(
-          GlobalSettingsMenuCategory.SERVICES,
-          getServiceRouteFromServiceType(serviceCategory as ServiceTypes)
-        ),
-      },
-      {
-        name: serviceData?.name || '',
-        url: getServiceDetailsPath(serviceFQN, serviceCategory, 'ingestions'),
-        imgSrc: serviceTypeLogo(serviceData?.serviceType || ''),
-        activeTitle: true,
-      },
-      {
-        name: getIngestionHeadingName(
-          ingestionType,
-          INGESTION_ACTION_TYPE.EDIT
-        ),
-        url: '',
-        activeTitle: true,
-      },
-    ]);
-  }, [serviceCategory, ingestionType, serviceData]);
+    const breadCrumbsArray = getBreadCrumbsArray(
+      isSettingsPipeline,
+      ingestionType,
+      serviceCategory,
+      serviceFQN,
+      INGESTION_ACTION_TYPE.ADD,
+      serviceData
+    );
+    setSlashedBreadcrumb(breadCrumbsArray);
+  }, [serviceCategory, ingestionType, serviceData, isSettingsPipeline]);
 
   useEffect(() => {
     if (ingestionType === PipelineType.Dbt) {
@@ -278,8 +274,8 @@ const EditIngestionPage = () => {
                 <AddIngestion
                   activeIngestionStep={activeIngestionStep}
                   data={ingestionData}
-                  handleCancelClick={goToService}
-                  handleViewServiceClick={goToService}
+                  handleCancelClick={handleCancelClick}
+                  handleViewServiceClick={handleCancelClick}
                   heading={getIngestionHeadingName(
                     ingestionType,
                     INGESTION_ACTION_TYPE.EDIT

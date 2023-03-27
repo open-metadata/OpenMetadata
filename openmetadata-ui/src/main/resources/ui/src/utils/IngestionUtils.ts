@@ -11,12 +11,26 @@
  *  limitations under the License.
  */
 
+import { getServiceDetailsPath } from 'constants/constants';
+import {
+  GlobalSettingOptions,
+  GlobalSettingsMenuCategory,
+} from 'constants/GlobalSettings.constants';
+import { PipelineType } from 'generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { t } from 'i18next';
+import { DataObj } from 'interface/service.interface';
+import { startCase } from 'lodash';
+import { ServiceTypes } from 'Models';
 
 import {
   INGESTION_ACTION_TYPE,
   PIPELINE_TYPE_LOCALIZATION,
 } from '../constants/Ingestions.constant';
+import { getSettingPath } from './RouterUtils';
+import {
+  getServiceRouteFromServiceType,
+  serviceTypeLogo,
+} from './ServiceUtils';
 
 export const getIngestionHeadingName = (
   ingestionType: string,
@@ -37,4 +51,67 @@ export const getIngestionHeadingName = (
     : t('label.edit-workflow-ingestion', {
         workflow: ingestionName,
       });
+};
+
+export const getSettingsPathFromPipelineType = (pipelineType: string) => {
+  switch (pipelineType) {
+    case PipelineType.DataInsight: {
+      return getSettingPath(
+        GlobalSettingsMenuCategory.OPEN_METADATA,
+        GlobalSettingOptions.DATA_INSIGHT
+      );
+    }
+    case PipelineType.ElasticSearchReindex:
+    default: {
+      return getSettingPath(
+        GlobalSettingsMenuCategory.OPEN_METADATA,
+        GlobalSettingOptions.SEARCH
+      );
+    }
+  }
+};
+
+export const getBreadCrumbsArray = (
+  isSettingsPipeline: boolean,
+  ingestionType: string,
+  serviceCategory: string,
+  serviceFQN: string,
+  type: string,
+  serviceData?: DataObj
+) => {
+  const breadCrumbsArray = [];
+
+  if (isSettingsPipeline) {
+    breadCrumbsArray.push({
+      name: startCase(ingestionType),
+      url: getSettingsPathFromPipelineType(ingestionType),
+      activeTitle: true,
+    });
+  } else {
+    breadCrumbsArray.push(
+      ...[
+        {
+          name: startCase(serviceCategory),
+          url: getSettingPath(
+            GlobalSettingsMenuCategory.SERVICES,
+            getServiceRouteFromServiceType(serviceCategory as ServiceTypes)
+          ),
+        },
+        {
+          name: serviceData?.name || '',
+          url: getServiceDetailsPath(serviceFQN, serviceCategory, 'ingestions'),
+          imgSrc: serviceTypeLogo(serviceData?.serviceType || ''),
+          activeTitle: true,
+        },
+      ]
+    );
+  }
+
+  breadCrumbsArray.push({
+    name: getIngestionHeadingName(ingestionType, type),
+    url: '',
+    activeTitle: true,
+  });
+
+  return breadCrumbsArray;
 };

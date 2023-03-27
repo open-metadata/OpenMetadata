@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { PipelineType } from 'generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { ServiceCategory } from '../../enums/service.enum';
 import { DatabaseService } from '../../generated/entity/services/databaseService';
 import { IngestionPipeline } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
@@ -41,6 +42,7 @@ export interface IngestionProps {
   serviceList: Array<DatabaseService>;
   currentPage: number;
   permissions: OperationPermission;
+  pipelineType?: PipelineType;
   pagingHandler: (value: string | number, activePage?: number) => void;
   deleteIngestion: (id: string, displayName: string) => Promise<void>;
   deployIngestion: (id: string) => Promise<void>;

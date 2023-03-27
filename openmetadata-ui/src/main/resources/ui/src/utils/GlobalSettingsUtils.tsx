@@ -238,10 +238,17 @@ export const getGlobalSettingsMenuWithPermission = (
       ],
     },
     {
-      category: i18next.t('label.event-publisher-plural'),
+      category: i18next.t('label.open-metadata'),
       items: [
         {
-          label: i18next.t('label.elasticsearch'),
+          label: i18next.t('label.search'),
+          isProtected: Boolean(isAdminUser),
+          icon: (
+            <ElasticSearchIcon className="tw-w-4 tw-mt-1.5 side-panel-icons" />
+          ),
+        },
+        {
+          label: i18next.t('label.data-insight'),
           isProtected: Boolean(isAdminUser),
           icon: (
             <ElasticSearchIcon className="tw-w-4 tw-mt-1.5 side-panel-icons" />

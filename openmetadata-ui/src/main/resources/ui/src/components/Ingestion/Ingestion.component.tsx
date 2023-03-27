@@ -17,7 +17,7 @@ import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import cronstrue from 'cronstrue';
-import { isEmpty, isNil, lowerCase, startCase } from 'lodash';
+import { isEmpty, isNil, isUndefined, lowerCase, startCase } from 'lodash';
 import React, { Fragment, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
@@ -72,6 +72,7 @@ const Ingestion: React.FC<IngestionProps> = ({
   currentPage,
   onIngestionWorkflowsUpdate,
   permissions,
+  pipelineType,
 }: IngestionProps) => {
   const history = useHistory();
   const { t } = useTranslation();
@@ -88,7 +89,7 @@ const Ingestion: React.FC<IngestionProps> = ({
     state: '',
   });
   const [isKillModalOpen, setIsKillModalOpen] = useState<boolean>(false);
-  const isOpenmetadataService = useMemo(
+  const isOpenMetadataService = useMemo(
     () =>
       serviceDetails.connection?.config?.type ===
       MetadataServiceType.OpenMetadata,
@@ -157,9 +158,12 @@ const Ingestion: React.FC<IngestionProps> = ({
   };
 
   const getIngestionPipelineTypeOption = (): PipelineType[] => {
-    const pipelineType = getSupportedPipelineTypes();
-    if (isOpenmetadataService || ingestionList.length > 0) {
-      return pipelineType.reduce((prev, curr) => {
+    const pipelineTypeArray = isUndefined(pipelineType)
+      ? getSupportedPipelineTypes()
+      : [pipelineType];
+
+    if (isOpenMetadataService || ingestionList.length > 0) {
+      return pipelineTypeArray.reduce((prev, curr) => {
         if (
           // Prevent adding multiple usage pipeline
           curr === PipelineType.Usage &&
@@ -334,15 +338,17 @@ const Ingestion: React.FC<IngestionProps> = ({
     );
 
     if (types.length) {
-      // if service has metedata then show all available option
-      if (isOpenmetadataService || hasMetadata) {
+      // if service has metadata then show all available option
+      if (hasMetadata) {
         element = getAddIngestionDropdown(types);
       } else {
         /**
          * If service does not have any metedata pipeline then
          * show only option for metadata ingestion
          */
-        element = getAddIngestionButton(PipelineType.Metadata);
+        element = getAddIngestionButton(
+          pipelineType ? pipelineType : PipelineType.Metadata
+        );
       }
     }
 
