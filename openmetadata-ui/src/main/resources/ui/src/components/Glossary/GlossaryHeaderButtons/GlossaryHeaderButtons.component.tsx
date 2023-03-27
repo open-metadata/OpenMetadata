@@ -103,7 +103,6 @@ const GlossaryHeaderButtons = ({
         ? await getGlossaryVersions(id)
         : await getGlossaryTermsVersions(id);
       setVersionList(res);
-      console.log(res);
     } catch (error) {
       showErrorToast(error as AxiosError);
     }

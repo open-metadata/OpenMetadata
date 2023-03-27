@@ -60,7 +60,6 @@ const GlossaryTermReferences = ({
   };
 
   const onReferenceModalSave = (values: TermReference[]) => {
-    console.log(values);
     handleReferencesSave(values);
   };
 
