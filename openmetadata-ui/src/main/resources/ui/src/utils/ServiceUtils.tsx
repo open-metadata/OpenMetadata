@@ -58,7 +58,6 @@ import {
   DRUID,
   DYNAMODB,
   FIVETRAN,
-  GCS,
   GLUE,
   HIVE,
   IBMDB2,
@@ -71,7 +70,6 @@ import {
   MLFLOW,
   MODE,
   MSSQL,
-  MS_AZURE,
   MYSQL,
   NIFI,
   ORACLE,
@@ -287,14 +285,8 @@ export const serviceTypeLogo = (type: string) => {
     case MetadataServiceType.OpenMetadata:
       return LOGO;
 
-    case ObjectStoreServiceType.Azure:
-      return MS_AZURE;
-
     case ObjectStoreServiceType.S3:
       return AMAZON_S3;
-
-    case ObjectStoreServiceType.Gcs:
-      return GCS;
 
     default: {
       let logo;
@@ -847,7 +839,7 @@ export const getServiceRouteFromServiceType = (type: ServiceTypes) => {
   if (type === 'metadataServices') {
     return GlobalSettingOptions.METADATA;
   }
-  if (type === 'objectstoreServices') {
+  if (type === 'objectStoreServices') {
     return GlobalSettingOptions.OBJECT_STORES;
   }
 

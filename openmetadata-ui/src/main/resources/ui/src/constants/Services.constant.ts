@@ -15,7 +15,7 @@ import amazonS3 from 'assets/img/service-icon-amazon-s3.svg';
 import gcs from 'assets/img/service-icon-gcs.png';
 import msAzure from 'assets/img/service-icon-ms-azure.png';
 import { WorkflowStatus } from 'generated/entity/automations/workflow';
-import { ObjectStoreServiceType } from 'generated/entity/services/objectstoreService';
+import { ObjectStoreServiceType } from 'generated/entity/data/container';
 import { map, startCase } from 'lodash';
 import { ServiceTypes } from 'Models';
 import i18n from 'utils/i18next/LocalUtil';
@@ -180,7 +180,7 @@ export const serviceTypes: Record<ServiceTypes, Array<string>> = {
   metadataServices: (Object.values(MetadataServiceType) as string[]).sort(
     customServiceComparator
   ),
-  objectstoreServices: (Object.values(ObjectStoreServiceType) as string[]).sort(
+  objectStoreServices: (Object.values(ObjectStoreServiceType) as string[]).sort(
     customServiceComparator
   ),
 };
@@ -191,7 +191,7 @@ export const arrServiceTypes: Array<ServiceTypes> = [
   'dashboardServices',
   'pipelineServices',
   'mlmodelServices',
-  'objectstoreServices',
+  'objectStoreServices',
 ];
 
 export const SERVICE_CATEGORY: { [key: string]: ServiceCategory } = {
