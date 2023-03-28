@@ -636,7 +636,7 @@ const AddIngestion = ({
 
     return (
       <span>
-        <span className="tw-mr-1 tw-font-semibold">
+        <span className="tw-mr-1 tw-font-semibold overflow-wrap-anywhere">
           {`"${state.ingestionName}"`}
         </span>
         <span>

@@ -94,7 +94,7 @@ const SuccessScreen = ({
         <p data-testid="success-line">
           {isUndefined(successMessage) ? (
             <span>
-              <span className="tw-mr-1 tw-font-semibold">
+              <span className="tw-mr-1 tw-font-semibold overflow-wrap-anywhere">
                 {`"${name || 'demo_mysql'}"`}
               </span>
               {suffix && <span className="tw-mr-1">{suffix}</span>}
