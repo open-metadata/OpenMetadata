@@ -95,7 +95,7 @@ class StdDev(StaticMetric):
         import pandas as pd  # pylint: disable=import-outside-toplevel
 
         if is_quantifiable(self.col.type):
-            return pd.concat((df[self.col.name] for df in dfs)).std()
+            return pd.concat(df[self.col.name] for df in dfs).std()
 
         logger.debug(
             f"{self.col.name} has type {self.col.type}, which is not listed as quantifiable."
