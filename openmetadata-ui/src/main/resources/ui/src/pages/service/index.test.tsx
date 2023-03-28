@@ -445,7 +445,7 @@ describe('Test ServicePage Component', () => {
     mockParams = {
       serviceFQN: 's3_object_store_sample',
       serviceType: 'S3',
-      serviceCategory: 'objectstoreServices',
+      serviceCategory: 'objectStoreServices',
       tab: 'containers',
     };
 
