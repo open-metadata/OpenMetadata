@@ -127,7 +127,7 @@ class S3Source(ObjectStoreServiceSource):
     def get_containers(self) -> Iterable[S3ContainerDetails]:
         bucket_results = self.fetch_buckets()
 
-        for i, bucket_response in enumerate(bucket_results):
+        for bucket_response in bucket_results:
             try:
                 metadata_config = self._load_metadata_file(
                     bucket_name=bucket_response.name
