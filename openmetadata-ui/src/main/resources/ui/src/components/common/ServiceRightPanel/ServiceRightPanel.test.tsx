@@ -14,7 +14,8 @@ import { act, render, screen } from '@testing-library/react';
 import { ServiceCategory } from 'enums/service.enum';
 import { PipelineType } from 'generated/api/services/ingestionPipelines/createIngestionPipeline';
 import React from 'react';
-import RightPanel, { ExcludedPipelineType } from './ServiceRightPanel';
+import RightPanel from './ServiceRightPanel';
+import { ExcludedPipelineType } from './ServiceRightPanel.interface';
 
 jest.mock('components/common/rich-text-editor/RichTextEditorPreviewer', () =>
   jest
