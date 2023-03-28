@@ -18,10 +18,11 @@ from typing import List, Optional, Union
 
 import avro.schema as avroschema
 from avro.schema import ArraySchema, PrimitiveSchema, UnionSchema
+from pydantic.main import ModelMetaclass
+
 from metadata.generated.schema.entity.data.table import Column, DataType
 from metadata.generated.schema.type.schema import FieldModel
 from metadata.utils.logger import ingestion_logger
-from pydantic.main import ModelMetaclass
 
 logger = ingestion_logger()
 
@@ -64,18 +65,18 @@ def parse_array_fields(
 
 
 def parse_union_fields(
-    field, cls: ModelMetaclass = FieldModel
+    union_field, cls: ModelMetaclass = FieldModel
 ) -> Optional[List[Union[FieldModel, Column]]]:
     """
     Parse array field for avro schema
     """
 
-    field_type = field.type
+    field_type = union_field.type
     child_obj = []
     obj = cls(
-        name=field.name,
-        dataType=str(field.type.type).upper(),
-        description=field.doc,
+        name=union_field.name,
+        dataType=str(union_field.type.type).upper(),
+        description=union_field.doc,
     )
     for field in field_type.schemas:
         if isinstance(field, PrimitiveSchema):
