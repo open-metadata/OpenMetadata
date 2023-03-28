@@ -216,6 +216,7 @@ const GlossaryHeader = ({
                     }>
                     <Button
                       className="glossary-header-edit-btn"
+                      data-testid="edit-name"
                       disabled={!editDisplayNamePermission}
                       icon={
                         <SVGIcons alt="icon-tag" icon={Icons.EDIT} width="16" />
