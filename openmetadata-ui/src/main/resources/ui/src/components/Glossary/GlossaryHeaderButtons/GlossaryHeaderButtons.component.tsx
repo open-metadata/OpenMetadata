@@ -16,6 +16,7 @@ import { ReactComponent as ExportIcon } from 'assets/svg/ic-export.svg';
 import { ReactComponent as ImportIcon } from 'assets/svg/ic-import.svg';
 import { ReactComponent as IconDropdown } from 'assets/svg/menu.svg';
 import { AxiosError } from 'axios';
+import { AssetSelectionModal } from 'components/Assets/AssetsSelectionModal/AssetSelectionModal';
 import EntityDeleteModal from 'components/Modals/EntityDeleteModal/EntityDeleteModal';
 import { OperationPermission } from 'components/PermissionProvider/PermissionProvider.interface';
 import VersionButton from 'components/VersionButton/VersionButton.component';
@@ -65,9 +66,8 @@ const GlossaryHeaderButtons = ({
   const history = useHistory();
   const [showActions, setShowActions] = useState(false);
   const [isDelete, setIsDelete] = useState<boolean>(false);
-  const [versionList, setVersionList] = useState<EntityHistory>(
-    {} as EntityHistory
-  );
+  const [, setVersionList] = useState<EntityHistory>({} as EntityHistory);
+  const [showAddAssets, setShowAddAssets] = useState(false);
 
   const isExportAction = useMemo(
     () => action === GlossaryAction.EXPORT,
@@ -117,6 +117,10 @@ const GlossaryHeaderButtons = ({
     setIsDelete(false);
   };
 
+  const handleAddAssetsClick = () => {
+    setShowAddAssets(true);
+  };
+
   const addButtonContent = [
     {
       label: t('label.glossary-term'),
@@ -126,6 +130,7 @@ const GlossaryHeaderButtons = ({
     {
       label: t('label.asset-plural'),
       key: '2',
+      onClick: () => handleAddAssetsClick(),
     },
   ];
 
@@ -317,6 +322,13 @@ const GlossaryHeaderButtons = ({
           isModalOpen={isExportAction}
           onCancel={handleCancelGlossaryExport}
           onOk={handleCancelGlossaryExport}
+        />
+      )}
+      {selectedData.fullyQualifiedName && !isGlossary && (
+        <AssetSelectionModal
+          glossaryFQN={selectedData.fullyQualifiedName}
+          open={showAddAssets}
+          onCancel={() => setShowAddAssets(false)}
         />
       )}
     </>
