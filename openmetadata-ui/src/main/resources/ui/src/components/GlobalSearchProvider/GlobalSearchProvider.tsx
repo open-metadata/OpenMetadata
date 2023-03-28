@@ -92,13 +92,13 @@ const GlobalSearchProvider: FC<Props> = ({ children }: Props) => {
       <Modal
         closable
         destroyOnClose
-        maskClosable
         bodyStyle={{
           padding: '20px',
           height: searchValue ? '314px' : '85px',
         }}
         closeIcon={<></>}
         footer={null}
+        maskClosable={false}
         open={visible}
         transitionName=""
         width={650}
