@@ -76,7 +76,6 @@ public class QueryRepository extends EntityRepository<Query> {
       entity.setChecksum(checkSum);
       entity.setName(checkSum);
     }
-
     entity.setUsers(EntityUtil.populateEntityReferences(entity.getUsers()));
   }
 

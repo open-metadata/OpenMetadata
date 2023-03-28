@@ -12,7 +12,7 @@
  */
 
 import { ISubmitEvent } from '@rjsf/core';
-import { ObjectStoreServiceType } from 'generated/entity/services/objectstoreService';
+import { ObjectStoreServiceType } from 'generated/entity/data/container';
 import { cloneDeep, isNil } from 'lodash';
 import { LoadingState } from 'Models';
 import React, { Fragment, FunctionComponent } from 'react';

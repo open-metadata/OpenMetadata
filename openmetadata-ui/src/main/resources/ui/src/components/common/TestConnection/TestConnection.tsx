@@ -38,11 +38,6 @@ import {
   getTestConnectionName,
   shouldTestConnection,
 } from 'utils/ServiceUtils';
-import {
-  showErrorToast,
-  showInfoToast,
-  showSuccessToast,
-} from 'utils/ToastUtils';
 
 import { ReactComponent as FailIcon } from 'assets/svg/fail-badge.svg';
 import { ReactComponent as SuccessIcon } from 'assets/svg/success-badge.svg';
@@ -190,7 +185,6 @@ const TestConnection: FC<TestConnectionProps> = ({
         setTestStatus(StatusType.Failed);
         setMessage(failureMessage);
         setIsTestingConnection(false);
-        showErrorToast(failureMessage);
 
         return;
       }
@@ -217,11 +211,9 @@ const TestConnection: FC<TestConnectionProps> = ({
           }
 
           if (isTestConnectionSuccess) {
-            showSuccessToast(successMessage);
             setTestStatus(StatusType.Successful);
             setMessage(successMessage);
           } else {
-            showErrorToast(failureMessage);
             setTestStatus(StatusType.Failed);
             setMessage(failureMessage);
           }
@@ -249,14 +241,12 @@ const TestConnection: FC<TestConnectionProps> = ({
 
         if (!isWorkflowCompleted) {
           setMessage(infoMessage);
-          showInfoToast(infoMessage);
         }
 
         setIsTestingConnection(false);
       }, FETCHING_EXPIRY_TIME);
     } catch (error) {
       clearInterval(intervalId);
-      showErrorToast(error as AxiosError);
       setIsTestingConnection(false);
       setMessage(failureMessage);
       setTestStatus(StatusType.Failed);

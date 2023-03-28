@@ -2,7 +2,7 @@
     "name": "Mlflow",
     "fullyQualifiedName": "Mlflow",
     "displayName": "Mlflow Test Connection",
-    "description": "This Test Connection validates the access against the server and basic metadata extraction of workbooks and views.",
+    "description": "This Test Connection validates the access against the server and basic metadata extraction of models.",
     "steps": [
         {
             "name": "GetModels",
