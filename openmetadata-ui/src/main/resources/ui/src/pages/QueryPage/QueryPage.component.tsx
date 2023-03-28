@@ -31,6 +31,7 @@ import {
   getServiceDetailsPath,
   getTableTabPath,
 } from 'constants/constants';
+import { NO_PERMISSION_TO_VIEW } from 'constants/HelperTextUtil';
 import { FqnPart } from 'enums/entity.enum';
 import { ServiceCategory } from 'enums/service.enum';
 import { compare } from 'fast-json-patch';
@@ -69,6 +70,14 @@ const QueryPage = () => {
 
   const { getEntityPermission } = usePermissionProvider();
 
+  const isViewAllowed = useMemo(
+    () =>
+      queryPermissions.ViewAll ||
+      queryPermissions.ViewBasic ||
+      queryPermissions.ViewQueries,
+    [queryPermissions]
+  );
+
   const fetchResourcePermission = async () => {
     setIsLoading((pre) => ({ ...pre, permission: true }));
 
@@ -92,6 +101,8 @@ const QueryPage = () => {
   useEffect(() => {
     if (queryId) {
       fetchResourcePermission();
+    } else {
+      setIsLoading((pre) => ({ ...pre, permission: false }));
     }
   }, [queryId]);
 
@@ -162,13 +173,10 @@ const QueryPage = () => {
   };
 
   useEffect(() => {
-    const isViewAllowed =
-      queryPermissions.ViewAll ||
-      queryPermissions.ViewBasic ||
-      queryPermissions.ViewQueries;
-
     if (queryId && isViewAllowed) {
       fetchQueryById();
+    } else {
+      setIsLoading((pre) => ({ ...pre, query: false }));
     }
   }, [queryId, queryPermissions]);
 
@@ -200,6 +208,9 @@ const QueryPage = () => {
 
   if (isLoading.permission || isLoading.query) {
     return <Loader />;
+  }
+  if (!isViewAllowed) {
+    return <ErrorPlaceHolder>{NO_PERMISSION_TO_VIEW}</ErrorPlaceHolder>;
   }
 
   if (isUndefined(query)) {
