@@ -20,6 +20,7 @@ from datetime import datetime, timedelta
 from functools import wraps
 from time import perf_counter
 from typing import Any, Dict, Iterable, List, Optional, Tuple, Union
+from math import floor, log
 
 from metadata.generated.schema.entity.data.chart import ChartType
 from metadata.generated.schema.entity.data.table import Column, Table
@@ -327,3 +328,16 @@ def get_entity_tier_from_tags(tags: list[TagLabel]) -> Optional[str]:
         ),
         None,
     )
+
+
+def format_large_string_numbers(number) -> str:
+    """Format large string number to a human readable format.
+    (e.g. 1,000,000 -> 1M, 1,000,000,000 -> 1B, etc)
+
+    Args:
+        number: number
+    """
+    units = ["", "K", "M", "B", "T"]
+    constant_k = 1000.0
+    magnitude = int(floor(log(abs(number), constant_k)))
+    return f"{number / constant_k**magnitude}.2f{units[magnitude]}"
