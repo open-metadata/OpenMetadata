@@ -86,6 +86,10 @@
           "keyword": {
             "type": "keyword",
             "ignore_above": 256
+          },
+          "ngram": {
+            "type": "text",
+            "analyzer": "om_ngram"
           }
         }
       },
@@ -104,11 +108,15 @@
             "type": "keyword"
           },
           "name": {
-            "type": "keyword",
+            "type": "text",
             "fields": {
               "keyword": {
                 "type": "keyword",
                 "ignore_above": 256
+              },
+              "ngram": {
+                "type": "text",
+                "analyzer": "om_ngram"
               }
             }
           },

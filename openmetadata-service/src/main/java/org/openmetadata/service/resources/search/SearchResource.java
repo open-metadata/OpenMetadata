@@ -705,12 +705,11 @@ public class SearchResource {
             .field(FIELD_DISPLAY_NAME, 10.0f)
             .field(FIELD_DISPLAY_NAME_NGRAM)
             .field("synonyms", 5.0f)
-            .field("synonyms.ngram", 3.0f)
+            .field("synonyms.ngram")
             .field(DESCRIPTION, 3.0f)
             .field("glossary.name",5.0f)
             .field("glossary.displayName", 5.0f)
             .field("glossary.displayName.ngram")
-
             .defaultOperator(Operator.AND)
             .fuzziness(Fuzziness.AUTO);
 
@@ -723,8 +722,12 @@ public class SearchResource {
     hb.field(highlightGlossaryName);
     hb.preTags("<span class=\"text-highlighter\">");
     hb.postTags("</span>");
-
-    return searchBuilder(queryBuilder, hb, from, size);
+    SearchSourceBuilder searchSourceBuilder =
+        new SearchSourceBuilder().query(queryBuilder).highlighter(hb).from(from).size(size);
+    searchSourceBuilder.aggregation(AggregationBuilders.terms("tags.tagFQN").field("tags.tagFQN")
+        .size(MAX_AGGREGATE_SIZE))
+        .aggregation(AggregationBuilders.terms("glossary.name").field("glossary.name.keyword"));
+    return searchSourceBuilder;
   }
 
   private SearchSourceBuilder buildTagSearchBuilder(String query, int from, int size) {
