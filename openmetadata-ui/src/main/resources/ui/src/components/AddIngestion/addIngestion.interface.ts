@@ -142,6 +142,7 @@ export interface AddIngestionState {
   useFqnFilter: boolean;
   processPii: boolean;
   overrideOwner: boolean;
+  confidence?: number;
 }
 
 export enum ShowFilter {
