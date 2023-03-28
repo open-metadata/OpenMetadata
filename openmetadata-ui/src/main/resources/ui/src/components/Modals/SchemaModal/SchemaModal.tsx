@@ -31,7 +31,6 @@ const SchemaModal: FC<SchemaModalProp> = ({
     <Modal
       centered
       destroyOnClose
-      maskClosable
       className={classNames('schema-modal', className)}
       closeIcon={
         <CloseIcon
@@ -41,6 +40,7 @@ const SchemaModal: FC<SchemaModalProp> = ({
       }
       data-testid="schema-modal"
       footer={null}
+      maskClosable={false}
       open={visible}
       title={
         <Typography.Text strong data-testid="schema-modal-header">
