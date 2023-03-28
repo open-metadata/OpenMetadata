@@ -562,5 +562,20 @@
       "EditOwner",
       "EditLineage"
     ]
+  },
+  {
+    "name": "dashboardDataModel",
+    "operations": [
+      "Create",
+      "Delete",
+      "ViewAll",
+      "ViewUsage",
+      "EditAll",
+      "EditDescription",
+      "EditDisplayName",
+      "EditTags",
+      "EditOwner",
+      "EditLineage"
+    ]
   }
 ]
