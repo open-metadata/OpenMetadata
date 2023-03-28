@@ -49,7 +49,7 @@ import { LabelType, State, TagSource } from 'generated/type/tagLabel';
 import { isUndefined, omitBy } from 'lodash';
 import { observer } from 'mobx-react';
 import { EntityTags, ExtraInfo } from 'Models';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import { getLineageByFQN } from 'rest/lineageAPI';
@@ -381,23 +381,6 @@ const ContainerPage = () => {
     }
   };
 
-  const handleRemoveOwner = async () => {
-    try {
-      const { owner: newOwner, version } = await handleUpdateContainerData({
-        ...(containerData as Container),
-        owner: undefined,
-      });
-
-      setContainerData((prev) => ({
-        ...(prev as Container),
-        owner: newOwner,
-        version,
-      }));
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    }
-  };
-
   const handleRemoveTier = async () => {
     try {
       const { tags: newTags, version } = await handleUpdateContainerData({
@@ -415,12 +398,12 @@ const ContainerPage = () => {
     }
   };
 
-  const handleUpdateOwner = async (updatedOwner?: Container['owner']) => {
-    try {
-      if (updatedOwner) {
+  const handleUpdateOwner = useCallback(
+    async (updatedOwner?: Container['owner']) => {
+      try {
         const { owner: newOwner, version } = await handleUpdateContainerData({
           ...(containerData as Container),
-          owner: updatedOwner ?? containerData?.owner,
+          owner: updatedOwner ? updatedOwner : undefined,
         });
 
         setContainerData((prev) => ({
@@ -428,11 +411,12 @@ const ContainerPage = () => {
           owner: newOwner,
           version,
         }));
+      } catch (error) {
+        showErrorToast(error as AxiosError);
       }
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    }
-  };
+    },
+    [containerData, containerData?.owner]
+  );
 
   const handleUpdateTier = async (updatedTier?: string) => {
     try {
@@ -644,7 +628,6 @@ const ContainerPage = () => {
           followersList={followers}
           isFollowing={isUserFollowing}
           isTagEditable={hasEditTagsPermission}
-          removeOwner={hasEditOwnerPermission ? handleRemoveOwner : undefined}
           removeTier={hasEditTierPermission ? handleRemoveTier : undefined}
           tags={tags}
           tagsHandler={handleUpdateTags}

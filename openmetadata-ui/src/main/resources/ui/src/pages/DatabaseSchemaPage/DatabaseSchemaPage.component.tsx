@@ -49,6 +49,7 @@ import React, {
   Fragment,
   FunctionComponent,
   RefObject,
+  useCallback,
   useEffect,
   useMemo,
   useRef,
@@ -437,61 +438,38 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     }
   };
 
-  const handleUpdateOwner = (owner: DatabaseSchema['owner']) => {
-    const updatedData = {
-      ...databaseSchema,
-      owner: { ...databaseSchema?.owner, ...owner },
-    };
+  const handleUpdateOwner = useCallback(
+    (owner: DatabaseSchema['owner']) => {
+      const updatedData = {
+        ...databaseSchema,
+        owner: owner ? { ...databaseSchema?.owner, ...owner } : undefined,
+      };
 
-    return new Promise<void>((_, reject) => {
-      saveUpdatedDatabaseSchemaData(updatedData as DatabaseSchema)
-        .then((res) => {
-          if (res) {
-            setDatabaseSchema(res);
+      return new Promise<void>((_, reject) => {
+        saveUpdatedDatabaseSchemaData(updatedData as DatabaseSchema)
+          .then((res) => {
+            if (res) {
+              setDatabaseSchema(res);
+              reject();
+            } else {
+              reject();
+
+              throw jsonData['api-error-messages'][
+                'unexpected-server-response'
+              ];
+            }
+          })
+          .catch((err: AxiosError) => {
+            showErrorToast(
+              err,
+              jsonData['api-error-messages']['update-databaseSchema-error']
+            );
             reject();
-          } else {
-            reject();
-
-            throw jsonData['api-error-messages']['unexpected-server-response'];
-          }
-        })
-        .catch((err: AxiosError) => {
-          showErrorToast(
-            err,
-            jsonData['api-error-messages']['update-databaseSchema-error']
-          );
-          reject();
-        });
-    });
-  };
-
-  const handleRemoveOwner = () => {
-    const updatedData = {
-      ...databaseSchema,
-      owner: undefined,
-    };
-
-    return new Promise<void>((resolve, reject) => {
-      saveUpdatedDatabaseSchemaData(updatedData as DatabaseSchema)
-        .then((res) => {
-          if (res) {
-            setDatabaseSchema(res);
-            resolve();
-          } else {
-            reject();
-
-            throw jsonData['api-error-messages']['unexpected-server-response'];
-          }
-        })
-        .catch((err: AxiosError) => {
-          showErrorToast(
-            err,
-            jsonData['api-error-messages']['update-databaseSchema-error']
-          );
-          reject();
-        });
-    });
-  };
+          });
+      });
+    },
+    [databaseSchema, databaseSchema?.owner]
+  );
 
   const onTagUpdate = async (selectedTags?: Array<EntityTags>) => {
     if (selectedTags) {
@@ -819,12 +797,6 @@ const DatabaseSchemaPage: FunctionComponent = () => {
                         isTagEditable={
                           databaseSchemaPermission.EditAll ||
                           databaseSchemaPermission.EditTags
-                        }
-                        removeOwner={
-                          databaseSchemaPermission.EditOwner ||
-                          databaseSchemaPermission.EditAll
-                            ? handleRemoveOwner
-                            : undefined
                         }
                         tags={tags}
                         tagsHandler={onTagUpdate}

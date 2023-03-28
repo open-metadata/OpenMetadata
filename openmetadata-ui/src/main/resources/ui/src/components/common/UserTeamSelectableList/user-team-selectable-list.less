@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate.
+ *  Copyright 2023 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,11 +11,36 @@
  *  limitations under the License.
  */
 
-@icon-color: #515151;
+.select-owner-tabs {
+  .ant-tabs-nav-list {
+    margin-top: 8px;
+  }
 
-.side-panel-icons {
-  color: @icon-color;
+  .page-search-bar {
+    padding-top: 0px;
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+}
 
-  height: 16px;
-  width: 16px;
+.user-team-select-popover {
+  background: #ffffff;
+  border: 1px solid #dde3ea;
+  box-shadow: 1px 1px 3px rgba(0, 0, 0, 0.12);
+  border-radius: 6px;
+  padding: 0;
+
+  .ant-popover-inner {
+    box-shadow: none;
+    background-color: transparent;
+    border-radius: 0;
+  }
+
+  .ant-list-header {
+    padding-top: 0;
+  }
+
+  .ant-popover-inner-content {
+    padding: 0;
+  }
 }
