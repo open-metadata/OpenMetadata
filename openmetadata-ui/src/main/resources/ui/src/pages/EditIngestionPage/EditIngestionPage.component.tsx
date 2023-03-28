@@ -243,7 +243,7 @@ const EditIngestionPage = () => {
       ingestionType,
       serviceCategory,
       serviceFQN,
-      INGESTION_ACTION_TYPE.ADD,
+      INGESTION_ACTION_TYPE.EDIT,
       serviceData
     );
     setSlashedBreadcrumb(breadCrumbsArray);
