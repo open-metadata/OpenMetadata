@@ -178,7 +178,7 @@ public class QueryRepository extends EntityRepository<Query> {
     public void entitySpecificUpdate() throws IOException {
       updateFromRelationships(
           "users", USER, original.getUsers(), updated.getUsers(), Relationship.USES, Entity.QUERY, original.getId());
-      if (operation.isPatch()) {
+      if (operation.isPatch() && !original.getQuery().equals(updated.getQuery())) {
         recordChange("query", original.getQuery(), updated.getQuery());
         String checkSum = QueryUtil.getCheckSum(updated.getQuery());
         recordChange("name", original.getName(), checkSum);
