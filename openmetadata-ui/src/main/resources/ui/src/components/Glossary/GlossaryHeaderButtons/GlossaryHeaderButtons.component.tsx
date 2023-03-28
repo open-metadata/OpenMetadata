@@ -65,9 +65,7 @@ const GlossaryHeaderButtons = ({
   const history = useHistory();
   const [showActions, setShowActions] = useState(false);
   const [isDelete, setIsDelete] = useState<boolean>(false);
-  const [versionList, setVersionList] = useState<EntityHistory>(
-    {} as EntityHistory
-  );
+  const [, setVersionList] = useState<EntityHistory>({} as EntityHistory);
 
   const isExportAction = useMemo(
     () => action === GlossaryAction.EXPORT,
