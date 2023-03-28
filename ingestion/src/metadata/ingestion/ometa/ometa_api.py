@@ -426,7 +426,7 @@ class OpenMetadata(
                 ]
             ),
         ):
-            return "/services/objectstoreServices"
+            return "/services/objectStoreServices"
 
         if issubclass(
             entity,
