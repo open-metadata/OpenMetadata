@@ -13,15 +13,17 @@
 
 import { Button } from 'antd';
 import classNames from 'classnames';
-import { isUndefined, startCase } from 'lodash';
+import { startCase } from 'lodash';
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
+import {
+  getIngestionTypes,
+  getSupportedPipelineTypes,
+} from 'utils/IngestionUtils';
 import { PIPELINE_TYPE_LOCALIZATION } from '../../constants/Ingestions.constant';
 import { MetadataServiceType } from '../../generated/api/services/createMetadataService';
-import { Connection } from '../../generated/entity/services/databaseService';
 import { PipelineType } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
-import { Connection as MetadataConnection } from '../../generated/entity/services/metadataService';
 import { getAddIngestionPath } from '../../utils/RouterUtils';
 import { dropdownIcon as DropdownIcon } from '../../utils/svgconstant';
 import DropDownList from '../dropdown/DropDownList';
@@ -47,33 +49,10 @@ function AddIngestionButton({
     [serviceDetails]
   );
 
-  const supportedPipelineTypes = useMemo((): PipelineType[] => {
-    let pipelineType = [];
-    const config = serviceDetails?.connection?.config as Connection;
-    if (config) {
-      config.supportsMetadataExtraction &&
-        pipelineType.push(PipelineType.Metadata);
-      config.supportsUsageExtraction && pipelineType.push(PipelineType.Usage);
-      config.supportsUsageExtraction && pipelineType.push(PipelineType.Lineage);
-      config.supportsProfiler && pipelineType.push(PipelineType.Profiler);
-      config.supportsDBTExtraction && pipelineType.push(PipelineType.Dbt);
-      (config as MetadataConnection).supportsDataInsightExtraction &&
-        pipelineType.push(PipelineType.DataInsight);
-      (config as MetadataConnection)
-        .supportsElasticSearchReindexingExtraction &&
-        pipelineType.push(PipelineType.ElasticSearchReindex);
-    } else {
-      pipelineType = [
-        PipelineType.Metadata,
-        PipelineType.Usage,
-        PipelineType.Lineage,
-        PipelineType.Profiler,
-        PipelineType.Dbt,
-      ];
-    }
-
-    return pipelineType;
-  }, [serviceDetails]);
+  const supportedPipelineTypes = useMemo(
+    (): PipelineType[] => getSupportedPipelineTypes(serviceDetails),
+    [serviceDetails]
+  );
 
   const handleAddIngestionClick = (type?: PipelineType) => {
     setShowActions(false);
@@ -90,33 +69,16 @@ function AddIngestionButton({
     [ingestionData]
   );
 
-  const types = useMemo((): PipelineType[] => {
-    const pipelineTypeArray = isUndefined(pipelineType)
-      ? supportedPipelineTypes
-      : [pipelineType];
-
-    if (isOpenMetadataService || ingestionList.length > 0) {
-      return pipelineTypeArray.reduce((prev, curr) => {
-        if (
-          // Prevent adding multiple usage pipeline
-          curr === PipelineType.Usage &&
-          ingestionList.find((d) => d.pipelineType === curr)
-        ) {
-          return prev;
-        } else {
-          return [...prev, curr];
-        }
-      }, [] as PipelineType[]);
-    }
-
-    return [
-      PipelineType.Metadata,
-      PipelineType.Usage,
-      PipelineType.Lineage,
-      PipelineType.Profiler,
-      PipelineType.Dbt,
-    ];
-  }, [pipelineType, serviceDetails]);
+  const types = useMemo(
+    (): PipelineType[] =>
+      getIngestionTypes(
+        supportedPipelineTypes,
+        isOpenMetadataService,
+        ingestionList,
+        pipelineType
+      ),
+    [pipelineType, supportedPipelineTypes, isOpenMetadataService, ingestionList]
+  );
 
   // Check if service has atleast one metadata pipeline available or not
   const hasMetadata = useMemo(
@@ -126,10 +88,13 @@ function AddIngestionButton({
       ),
     [ingestionList]
   );
+  if (types.length === 0) {
+    return null;
+  }
 
-  return types.length ? (
-    hasMetadata ? (
-      // if service has metadata then show all available option
+  // if service has metadata then show all available option
+  if (hasMetadata) {
+    return (
       <>
         <Button
           className={classNames('h-8 rounded-4 m-b-xs d-flex items-center')}
@@ -175,29 +140,31 @@ function AddIngestionButton({
           />
         )}
       </>
-    ) : (
-      /**
-       * If service does not have any metadata pipeline then
-       * show only option for metadata ingestion
-       */
-      <Button
-        className={classNames('h-8 rounded-4 m-b-xs')}
-        data-testid="add-new-ingestion-button"
-        size="small"
-        type="primary"
-        onClick={() =>
-          handleAddIngestionClick(
-            pipelineType ? pipelineType : PipelineType.Metadata
-          )
-        }>
-        {t('label.add-workflow-ingestion', {
-          workflow: startCase(
-            pipelineType ? pipelineType : PipelineType.Metadata
-          ),
-        })}
-      </Button>
-    )
-  ) : null;
+    );
+  }
+
+  /**
+   * If service does not have any metadata pipeline then
+   * show only option for metadata ingestion
+   */
+  return (
+    <Button
+      className={classNames('h-8 rounded-4 m-b-xs')}
+      data-testid="add-new-ingestion-button"
+      size="small"
+      type="primary"
+      onClick={() =>
+        handleAddIngestionClick(
+          pipelineType ? pipelineType : PipelineType.Metadata
+        )
+      }>
+      {t('label.add-workflow-ingestion', {
+        workflow: startCase(
+          pipelineType ? pipelineType : PipelineType.Metadata
+        ),
+      })}
+    </Button>
+  );
 }
 
 export default AddIngestionButton;

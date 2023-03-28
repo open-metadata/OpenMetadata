@@ -93,3 +93,18 @@ export interface AddIngestionButtonProps {
   ingestionData: Array<IngestionPipeline>;
   permissions: OperationPermission;
 }
+
+export interface PipelineActionsProps {
+  record: IngestionPipeline;
+  servicePermission?: IngestionServicePermission;
+  isRequiredDetailsAvailable: boolean;
+  serviceCategory: ServiceCategory;
+  serviceName: string;
+  deleteSelection: SelectedRowDetails;
+  deployIngestion: (id: string) => Promise<void>;
+  triggerIngestion: (id: string, displayName: string) => Promise<void>;
+  handleDeleteSelection: (row: SelectedRowDetails) => void;
+  handleEnableDisableIngestion: (id: string) => void;
+  handleIsConfirmationModalOpen: (value: boolean) => void;
+  onIngestionWorkflowsUpdate: () => void;
+}

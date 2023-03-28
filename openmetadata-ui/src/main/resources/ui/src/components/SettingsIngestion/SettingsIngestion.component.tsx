@@ -130,11 +130,15 @@ function SettingsIngestion({
       ? { ...ingestionPipelines[rowIndex], [updateKey]: data[updateKey] }
       : null;
 
-    const updatedData = isDeleted
-      ? ingestionPipelines.filter((_, index) => index !== rowIndex)
-      : updatedRow
-      ? Object.assign([...ingestionPipelines], { [rowIndex]: updatedRow })
-      : [...ingestionPipelines];
+    let updatedData: IngestionPipeline[];
+
+    if (isDeleted) {
+      updatedData = ingestionPipelines.filter((_, index) => index !== rowIndex);
+    } else {
+      updatedData = updatedRow
+        ? Object.assign([...ingestionPipelines], { [rowIndex]: updatedRow })
+        : [...ingestionPipelines];
+    }
 
     setIngestionPipelines(updatedData);
     handleIngestionPipelinesChange &&
@@ -267,9 +271,11 @@ function SettingsIngestion({
     }
   }, [isAirflowAvailable]);
 
-  return isLoading ? (
-    <Loader />
-  ) : isAirflowAvailable ? (
+  if (isLoading) {
+    return <Loader />;
+  }
+
+  return isAirflowAvailable ? (
     <Ingestion
       isRequiredDetailsAvailable
       airflowEndpoint={airflowEndpoint ?? ''}
