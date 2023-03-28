@@ -11,8 +11,9 @@
  *  limitations under the License.
  */
 import { Button, Col, Form, Input, Modal, Row } from 'antd';
+import { ReactComponent as PlusIcon } from 'assets/svg/plus-primary.svg';
 import { TermReference } from 'generated/entity/data/glossaryTerm';
-import React, { useState } from 'react';
+import React, { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import SVGIcons, { Icons } from 'utils/SvgUtils';
 
@@ -30,18 +31,20 @@ const GlossaryTermReferencesModal = ({
   onSave,
 }: GlossaryTermReferencesModalProps) => {
   const { t } = useTranslation();
-  const [form] = Form.useForm();
-  const [updatedReferences, setUpdatedReferences] =
-    useState<TermReference[]>(references);
+  const [form] = Form.useForm<{ references: TermReference[] }>();
 
-  const onSaveClick = async () => {
+  const handleSubmit = async (obj: { references: TermReference[] }) => {
     try {
       await form.validateFields();
-      onSave(updatedReferences);
+      onSave(obj.references);
     } catch (error) {
       console.log(error);
     }
   };
+
+  useEffect(() => {
+    isVisible ? form.setFieldValue('references', references) : null;
+  }, [isVisible]);
 
   return (
     <Modal
@@ -53,21 +56,18 @@ const GlossaryTermReferencesModal = ({
           data-testid="save-button"
           key="save-btn"
           type="primary"
-          onClick={onSaveClick}>
+          onClick={() => form.submit()}>
           {t('label.save')}
         </Button>,
       ]}
       title={t('label.reference-plural')}
       visible={isVisible}
       onCancel={onClose}>
-      <Form
-        className="reference-edit-form"
-        form={form}
-        onValuesChange={(_, values) => setUpdatedReferences(values.references)}>
-        <Form.List initialValue={updatedReferences} name="references">
+      <Form className="reference-edit-form" form={form} onFinish={handleSubmit}>
+        <Form.List name="references">
           {(fields, { add, remove }) => (
             <>
-              {fields.map(({ key, name, ...restField }, index) => (
+              {fields.map(({ key, name, ...restField }) => (
                 <Row gutter={8} key={key}>
                   <Col span={12}>
                     <Form.Item
@@ -105,27 +105,30 @@ const GlossaryTermReferencesModal = ({
                       <Input placeholder={t('label.endpoint')} />
                     </Form.Item>
                   </Col>
-                  {index === fields.length - 1 && (
-                    <Col span={1}>
-                      <Button
-                        icon={
-                          <SVGIcons
-                            alt="delete"
-                            icon={Icons.DELETE}
-                            width="16px"
-                          />
-                        }
-                        size="small"
-                        type="text"
-                        onClick={() => remove(name)}
-                      />
-                    </Col>
-                  )}
+
+                  <Col span={1}>
+                    <Button
+                      icon={
+                        <SVGIcons
+                          alt="delete"
+                          icon={Icons.DELETE}
+                          width="16px"
+                        />
+                      }
+                      size="small"
+                      type="text"
+                      onClick={() => remove(name)}
+                    />
+                  </Col>
                 </Row>
               ))}
               <Form.Item>
-                <Button size="small" type="primary" onClick={() => add()}>
-                  {t('label.add-new-entity', {
+                <Button
+                  className="text-primary d-flex items-center"
+                  icon={<PlusIcon className="anticon" />}
+                  size="small"
+                  onClick={() => add()}>
+                  {t('label.add-entity', {
                     entity: t('label.reference-plural'),
                   })}
                 </Button>

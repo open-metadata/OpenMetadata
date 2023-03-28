@@ -55,6 +55,7 @@ const GlossaryTermSynonyms = ({
       )}
       {synonyms.map((synonym, index) => (
         <TagButton
+          className="glossary-synonym-tag"
           isRemovable={permissions.EditAll}
           key={index}
           label={synonym}

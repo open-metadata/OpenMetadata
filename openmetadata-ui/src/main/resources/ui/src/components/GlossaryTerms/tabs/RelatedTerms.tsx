@@ -13,6 +13,7 @@
 
 import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
 import { Button, Select, Space, Spin } from 'antd';
+import { ReactComponent as IconFolder } from 'assets/svg/folder.svg';
 import TagButton from 'components/TagButton/TagButton.component';
 import { t } from 'i18next';
 import { cloneDeep, debounce, includes, toString } from 'lodash';
@@ -152,7 +153,7 @@ const RelatedTerms = ({
 
           {selectedOption.map((entity: EntityReference) => (
             <TagButton
-              className="tw-text-primary"
+              icon={<IconFolder height={16} name="folder" width={16} />}
               isRemovable={permissions.EditAll}
               key={entity.fullyQualifiedName}
               label={toString(entity.displayName)}

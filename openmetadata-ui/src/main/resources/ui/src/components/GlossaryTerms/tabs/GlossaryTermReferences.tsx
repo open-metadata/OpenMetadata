@@ -39,7 +39,10 @@ const GlossaryTermReferences = ({
   const [references, setReferences] = useState<TermReference[]>([]);
   const [isViewMode, setIsViewMode] = useState<boolean>(true);
 
-  const handleReferencesSave = async (newReferences: TermReference[]) => {
+  const handleReferencesSave = async (
+    newReferences: TermReference[],
+    updateState?: boolean
+  ) => {
     try {
       const updatedRef = newReferences.filter(
         (ref) => ref.endpoint && ref.name
@@ -52,6 +55,9 @@ const GlossaryTermReferences = ({
         };
 
         onGlossaryTermUpdate(updatedGlossaryTerm);
+        if (updateState) {
+          setReferences(updatedRef);
+        }
       }
       setIsViewMode(true);
     } catch (error) {
@@ -63,11 +69,14 @@ const GlossaryTermReferences = ({
     handleReferencesSave(values);
   };
 
+  const handleRemove = (index: number) => {
+    const newRefs = references.filter((_, i) => i !== index);
+    handleReferencesSave(newRefs, true);
+  };
+
   useEffect(() => {
-    if (glossaryTerm.references?.length) {
-      setReferences(glossaryTerm.references);
-    }
-  }, [glossaryTerm]);
+    setReferences(glossaryTerm.references ? glossaryTerm.references : []);
+  }, [glossaryTerm.references]);
 
   return (
     <div data-testid="references-container">
@@ -101,36 +110,41 @@ const GlossaryTermReferences = ({
             />
           </Tooltip>
         </Space>
-        <div className="flex">
+        <>
           {references.length > 0 ? (
-            references.map((ref, i) => (
-              <Tag className="term-reference-tag tw-bg-white" key={i}>
-                <a
-                  className="flex"
-                  data-testid="owner-link"
-                  href={ref?.endpoint}
-                  rel="noopener noreferrer"
-                  target="_blank">
-                  <Typography.Text
-                    className="tw-text-primary "
-                    ellipsis={{ tooltip: ref?.name }}
-                    style={{ maxWidth: 200 }}>
-                    {ref?.name}
-                  </Typography.Text>
-                </a>
-              </Tag>
-            ))
+            <div className="d-flex flex-wrap">
+              {references.map((ref, i) => (
+                <Tag
+                  closable
+                  className="term-reference-tag tw-bg-white"
+                  key={ref.name}
+                  onClose={() => handleRemove(i)}>
+                  <a
+                    className=""
+                    data-testid="owner-link"
+                    href={ref?.endpoint}
+                    rel="noopener noreferrer"
+                    target="_blank">
+                    <Typography.Text
+                      ellipsis={{ tooltip: ref?.name }}
+                      style={{ maxWidth: 200 }}>
+                      {ref?.name}
+                    </Typography.Text>
+                  </a>
+                </Tag>
+              ))}
+            </div>
           ) : (
             <Typography.Text type="secondary">
               {t('message.no-reference-available')}
             </Typography.Text>
           )}
-        </div>
+        </>
       </Space>
 
       <GlossaryTermReferencesModal
         isVisible={!isViewMode}
-        references={glossaryTerm.references || []}
+        references={references || []}
         onClose={() => {
           setIsViewMode(true);
         }}
