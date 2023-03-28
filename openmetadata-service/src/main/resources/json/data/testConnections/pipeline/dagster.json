@@ -1,0 +1,13 @@
+{
+    "name": "Dagster",
+    "fullyQualifiedName": "Dagster",
+    "displayName": "Dagster Test Connection",
+    "description": "This Test Connection validates the access against the server and basic metadata extraction of pipelines.",
+    "steps": [
+        {
+            "name": "GetPipelines",
+            "description":  "List all the pipelines available to the user by executing the graphql query.",
+            "mandatory": true
+        }
+    ]
+}

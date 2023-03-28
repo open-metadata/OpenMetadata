@@ -12,19 +12,19 @@
 """
 Source connection handler
 """
-from functools import partial
+from typing import Optional
 
 from sqlalchemy.engine import Engine
 
 from metadata.clients.aws_client import AWSClient
+from metadata.generated.schema.entity.automations.workflow import (
+    Workflow as AutomationWorkflow,
+)
 from metadata.generated.schema.entity.services.connections.database.glueConnection import (
     GlueConnection,
 )
-from metadata.ingestion.connections.test_connections import (
-    TestConnectionResult,
-    TestConnectionStep,
-    test_connection_steps,
-)
+from metadata.ingestion.connections.test_connections import test_connection_steps
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 
 
 def get_connection(connection: GlueConnection) -> Engine:
@@ -34,19 +34,24 @@ def get_connection(connection: GlueConnection) -> Engine:
     return AWSClient(connection.awsConfig).get_glue_client()
 
 
-def test_connection(client, _) -> TestConnectionResult:
+def test_connection(
+    metadata: OpenMetadata,
+    client: AWSClient,
+    service_connection: GlueConnection,
+    automation_workflow: Optional[AutomationWorkflow] = None,
+) -> None:
     """
-    Test connection
+    Test connection. This can be executed either as part
+    of a metadata workflow or during an Automation Workflow
     """
 
     def custom_executor_for_database():
         paginator = client.get_paginator("get_databases")
-        return list(paginator.paginate())
+        list(paginator.paginate())
 
     def custom_executor_for_table():
         paginator = client.get_paginator("get_databases")
-        paginator_response = paginator.paginate()
-        for page in paginator_response:
+        for page in paginator.paginate():
             for schema in page["DatabaseList"]:
                 database_name = schema["Name"]
                 paginator = client.get_paginator("get_tables")
@@ -54,15 +59,14 @@ def test_connection(client, _) -> TestConnectionResult:
                 return list(tables)
         return None
 
-    steps = [
-        TestConnectionStep(
-            function=partial(custom_executor_for_database),
-            name="Get Databases and Schemas",
-        ),
-        TestConnectionStep(
-            function=partial(custom_executor_for_table),
-            name="Get Tables",
-        ),
-    ]
+    test_fn = {
+        "GetDatabases": custom_executor_for_database,
+        "GetTables": custom_executor_for_table,
+    }
 
-    return test_connection_steps(steps)
+    test_connection_steps(
+        metadata=metadata,
+        test_fn=test_fn,
+        service_fqn=service_connection.type.value,
+        automation_workflow=automation_workflow,
+    )

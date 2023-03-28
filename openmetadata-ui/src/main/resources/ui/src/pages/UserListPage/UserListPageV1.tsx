@@ -219,7 +219,7 @@ const UserListPageV1 = () => {
 
   return (
     <UserListV1
-      afterDeleteAction={handleFetch}
+      afterDeleteAction={() => handleSearch('')}
       currentPage={currentPage}
       data={userList}
       isAdminPage={isAdminPage}

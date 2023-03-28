@@ -123,6 +123,7 @@ const RelatedTermsModal = ({
           </Button>
         </div>
       }
+      maskClosable={false}
       open={visible}
       title={
         <Typography.Text strong data-testid="header">

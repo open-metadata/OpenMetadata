@@ -1,0 +1,15 @@
+{
+    "name": "DomoDashboard",
+    "fullyQualifiedName": "DomoDashboard",
+    "displayName": "DomoDashboard Test Connection",
+    "description": "This Test Connection validates the access against the server and basic metadata extraction of dashboards and charts.",
+    "steps": [
+      {
+        "name": "GetDashboards",
+        "description": "List all the dashboards available to the user",
+        "mandatory": true
+      }
+    ]
+  }
+  
+  

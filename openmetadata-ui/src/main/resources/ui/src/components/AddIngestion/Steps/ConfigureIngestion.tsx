@@ -85,6 +85,7 @@ const ConfigureIngestion = ({
     topicFilterPattern,
     useFqnFilter,
     processPii,
+    confidence,
     overrideOwner,
   } = useMemo(
     () => ({
@@ -124,6 +125,7 @@ const ConfigureIngestion = ({
       useFqnFilter: data.useFqnFilter,
       processPii: data.processPii,
       overrideOwner: data.overrideOwner,
+      confidence: data.confidence,
     }),
     [data]
   );
@@ -148,6 +150,11 @@ const ConfigureIngestion = ({
   const handleProfileSample = (profileSample: number | undefined | null) =>
     onChange({
       profileSample: profileSample ?? undefined,
+    });
+
+  const handleConfidenceScore = (confidence: number | undefined | null) =>
+    onChange({
+      confidence: confidence ?? undefined,
     });
 
   const handleProfileSampleTypeChange = (value: ProfileSampleType) => {
@@ -481,20 +488,33 @@ const ConfigureIngestion = ({
 
   const getProcessPiiTogglesForProfiler = () => {
     return (
-      <Field>
-        <div className="tw-flex tw-gap-1">
-          <label>{t('label.auto-tag-pii-uppercase')}</label>
-          <ToggleSwitchV1
-            checked={processPii}
-            handleCheck={handleProcessPii}
-            testId="include-lineage"
-          />
-        </div>
-        <p className="tw-text-grey-muted tw-mt-3">
-          {t('message.process-pii-sensitive-column-message-profiler')}
-        </p>
-        {getSeparator('')}
-      </Field>
+      <Fragment>
+        <Field>
+          <div className="tw-flex tw-gap-1">
+            <label>{t('label.auto-tag-pii-uppercase')}</label>
+            <ToggleSwitchV1
+              checked={processPii}
+              handleCheck={handleProcessPii}
+              testId="include-lineage"
+            />
+          </div>
+          <p className="tw-text-grey-muted tw-mt-3">
+            {t('message.process-pii-sensitive-column-message-profiler')}
+          </p>
+          {processPii && (
+            <>
+              {getSeparator('')}
+              <Typography.Paragraph className="text-grey-muted m-t-0 m-b-xs text-sm">
+                {t('message.confidence-percentage-message')}
+              </Typography.Paragraph>
+              <SliderWithInput
+                value={confidence || 80}
+                onChange={handleConfidenceScore}
+              />
+            </>
+          )}
+        </Field>
+      </Fragment>
     );
   };
 

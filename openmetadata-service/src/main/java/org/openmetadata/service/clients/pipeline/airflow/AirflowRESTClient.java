@@ -28,7 +28,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.json.JSONObject;
 import org.openmetadata.schema.ServiceEntityInterface;
 import org.openmetadata.schema.api.configuration.pipelineServiceClient.PipelineServiceClientConfiguration;
-import org.openmetadata.schema.entity.automations.TestServiceConnectionRequest;
 import org.openmetadata.schema.entity.automations.Workflow;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
@@ -231,25 +230,23 @@ public class AirflowRESTClient extends PipelineServiceClient {
   }
 
   @Override
-  public Response testConnection(TestServiceConnectionRequest testServiceConnection) {
+  public Response runAutomationsWorkflow(Workflow workflow) {
     HttpResponse<String> response;
     try {
-      String statusEndPoint = "%s/%s/test_connection";
-      String statusUrl = String.format(statusEndPoint, serviceURL, API_ENDPOINT);
-      String connectionPayload = JsonUtils.pojoToJson(testServiceConnection);
-      response = post(statusUrl, connectionPayload);
+      String automationsEndpoint = "%s/%s/run_automation";
+      String automationsUrl = String.format(automationsEndpoint, serviceURL, API_ENDPOINT);
+      String workflowPayload = JsonUtils.pojoToJson(workflow);
+      response = post(automationsUrl, workflowPayload);
       if (response.statusCode() == 200) {
-        return Response.status(response.statusCode()).entity(response.body()).build();
+        return Response.status(200, response.body()).build();
       }
     } catch (Exception e) {
-      throw PipelineServiceClientException.byMessage("Failed to test connection.", e.getMessage());
+      throw IngestionPipelineDeploymentException.byMessage(workflow.getName(), e.getMessage());
     }
-    throw new PipelineServiceClientException(String.format("Failed to test connection due to %s", response.body()));
-  }
-
-  @Override
-  public Response runAutomationsWorkflow(Workflow workflow) {
-    return null;
+    throw new PipelineServiceClientException(
+        String.format(
+            "%s Failed to trigger workflow due to airflow API returned %s and response %s",
+            workflow.getName(), Response.Status.fromStatusCode(response.statusCode()), response.body()));
   }
 
   @Override

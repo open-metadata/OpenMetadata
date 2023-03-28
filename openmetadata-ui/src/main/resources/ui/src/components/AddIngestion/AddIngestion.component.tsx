@@ -207,6 +207,7 @@ const AddIngestion = ({
       resultLimit: sourceConfig?.resultLimit ?? 1000,
       metadataToESConfig: undefined,
       dbtUpdateDescriptions: sourceConfig?.dbtUpdateDescriptions ?? false,
+      confidence: sourceConfig?.confidence,
       dbtClassificationName:
         sourceConfig?.dbtClassificationName ?? DBT_CLASSIFICATION_DEFAULT_VALUE, // default value from Json Schema
     }),
@@ -438,6 +439,7 @@ const AddIngestion = ({
       threadCount,
       timeoutSeconds,
       processPii,
+      confidence,
     } = state;
     switch (type) {
       case PipelineType.Usage: {
@@ -473,6 +475,7 @@ const AddIngestion = ({
           type: profilerIngestionType,
           generateSampleData: ingestSampleData,
           profileSample: profileSample,
+          confidence: processPii ? confidence : undefined,
           profileSampleType: profileSampleType,
           threadCount: threadCount,
           timeoutSeconds: timeoutSeconds,
