@@ -14,6 +14,7 @@
 import amazonS3 from 'assets/img/service-icon-amazon-s3.svg';
 import gcs from 'assets/img/service-icon-gcs.png';
 import msAzure from 'assets/img/service-icon-ms-azure.png';
+import { PipelineType } from 'generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { WorkflowStatus } from 'generated/entity/automations/workflow';
 import { ObjectStoreServiceType } from 'generated/entity/services/objectstoreService';
 import { map, startCase } from 'lodash';
@@ -87,6 +88,13 @@ import { MetadataServiceType } from '../generated/entity/services/metadataServic
 import { MlModelServiceType } from '../generated/entity/services/mlmodelService';
 import { PipelineServiceType } from '../generated/entity/services/pipelineService';
 import { customServiceComparator } from '../utils/StringsUtils';
+import {
+  addDBTIngestionGuide,
+  addLineageIngestionGuide,
+  addMetadataIngestionGuide,
+  addProfilerIngestionGuide,
+  addUsageIngestionGuide,
+} from './service-guide.constant';
 
 export const NoDataFoundPlaceHolder = noDataFound;
 export const AddPlaceHolder = addPlaceHolder;
@@ -306,3 +314,11 @@ export const WORKFLOW_COMPLETE_STATUS = [
   WorkflowStatus.Failed,
   WorkflowStatus.Successful,
 ];
+
+export const INGESTION_GUIDE_MAP = {
+  [PipelineType.Usage]: addUsageIngestionGuide,
+  [PipelineType.Lineage]: addLineageIngestionGuide,
+  [PipelineType.Profiler]: addProfilerIngestionGuide,
+  [PipelineType.Dbt]: addDBTIngestionGuide,
+  [PipelineType.Metadata]: addMetadataIngestionGuide,
+};

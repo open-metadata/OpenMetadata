@@ -12,53 +12,21 @@
  */
 import { Affix, Card } from 'antd';
 import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
+import Loader from 'components/Loader/Loader';
 import { oneofOrEndsWithNumberRegex } from 'constants/regex.constants';
 import {
-  addDBTIngestionGuide,
-  addLineageIngestionGuide,
-  addMetadataIngestionGuide,
-  addProfilerIngestionGuide,
   addServiceGuide,
   addServiceGuideWOAirflow,
-  addUsageIngestionGuide,
 } from 'constants/service-guide.constant';
-import { ServiceCategory } from 'enums/service.enum';
-import { PipelineType } from 'generated/entity/services/ingestionPipelines/ingestionPipeline';
+import { INGESTION_GUIDE_MAP } from 'constants/Services.constant';
 import { useAirflowStatus } from 'hooks/useAirflowStatus';
 import { first, last, startCase } from 'lodash';
-import React, { FC, useEffect, useMemo, useState } from 'react';
+import React, { FC, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { fetchMarkdownFile } from 'rest/miscAPI';
 import { SupportedLocales } from 'utils/i18next/i18nextUtil';
 import { getFormattedGuideText, getServiceType } from 'utils/ServiceUtils';
-
-export type ExcludedPipelineType = Exclude<
-  PipelineType,
-  | PipelineType.DataInsight
-  | PipelineType.ElasticSearchReindex
-  | PipelineType.TestSuite
->;
-
-interface RightPanelProps {
-  activeStep: number;
-  isIngestion: boolean;
-  serviceName: string;
-  isUpdating: boolean;
-  selectedService: string;
-  selectedServiceCategory: ServiceCategory;
-  showDeployedTitle?: boolean;
-  pipelineType?: ExcludedPipelineType;
-  ingestionName?: string;
-  activeField?: string;
-}
-
-const ingestionGuideMap = {
-  [PipelineType.Usage]: addUsageIngestionGuide,
-  [PipelineType.Lineage]: addLineageIngestionGuide,
-  [PipelineType.Profiler]: addProfilerIngestionGuide,
-  [PipelineType.Dbt]: addDBTIngestionGuide,
-  [PipelineType.Metadata]: addMetadataIngestionGuide,
-};
+import { RightPanelProps } from './ServiceRightPanel.interface';
 
 const RightPanel: FC<RightPanelProps> = ({
   isIngestion,
@@ -72,15 +40,17 @@ const RightPanel: FC<RightPanelProps> = ({
   selectedService,
   showDeployedTitle = false,
 }) => {
+  const panelContainerRef = useRef<HTMLDivElement>(null);
   const { isAirflowAvailable } = useAirflowStatus();
   const { t, i18n } = useTranslation();
   const [activeFieldDocument, setActiveFieldDocument] = useState<string>('');
+  const [isLoading, setIsLoading] = useState<boolean>(false);
 
   const activeStepGuide = useMemo(() => {
     let guideTemp;
 
     if (isIngestion && pipelineType) {
-      guideTemp = ingestionGuideMap[pipelineType]?.find(
+      guideTemp = INGESTION_GUIDE_MAP[pipelineType]?.find(
         (item) => item.step === activeStep
       );
     } else {
@@ -159,6 +129,7 @@ const RightPanel: FC<RightPanelProps> = ({
 
   const fetchFieldDocument = async () => {
     const serviceType = getServiceType(selectedServiceCategory);
+    setIsLoading(true);
     try {
       let response = '';
       const isEnglishLanguage = i18n.language === SupportedLocales.English;
@@ -183,8 +154,12 @@ const RightPanel: FC<RightPanelProps> = ({
       setActiveFieldDocument(response);
     } catch (error) {
       setActiveFieldDocument('');
+    } finally {
+      setIsLoading(false);
     }
   };
+
+  const handleAffixTarget = () => document.getElementById('page-container-v1');
 
   useEffect(() => {
     // only fetch file when required fields are present
@@ -195,16 +170,35 @@ const RightPanel: FC<RightPanelProps> = ({
     }
   }, [selectedService, selectedServiceCategory, activeFieldName]);
 
+  useEffect(() => {
+    const handleDocumentClick = (event: MouseEvent) => {
+      if (
+        panelContainerRef.current &&
+        !panelContainerRef.current.contains(event.target as Node)
+      ) {
+        setActiveFieldDocument('');
+      }
+    };
+
+    document.addEventListener('mousedown', handleDocumentClick);
+
+    return () => {
+      document.removeEventListener('mousedown', handleDocumentClick);
+    };
+  }, []);
+
   const showActiveFieldDocument = activeFieldName && activeFieldDocument;
 
+  const renderElement = showActiveFieldDocument
+    ? activeFieldDocumentElement
+    : activeStepGuideElement;
+
   return (
-    <Affix offsetTop={0}>
-      <Card>
-        {showActiveFieldDocument
-          ? activeFieldDocumentElement
-          : activeStepGuideElement}
-      </Card>
-    </Affix>
+    <div id="service-right-panel" ref={panelContainerRef}>
+      <Affix offsetTop={5} target={handleAffixTarget}>
+        <Card>{isLoading ? <Loader /> : renderElement}</Card>
+      </Affix>
+    </div>
   );
 };
 
