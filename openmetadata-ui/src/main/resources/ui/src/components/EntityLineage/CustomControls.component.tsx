@@ -256,6 +256,7 @@ const CustomControls: FC<ControlProps> = ({
 
             <ControlButton
               className="custom-control-basic-button custom-control-fit-screen-button"
+              disabled={isEditMode}
               title={t('label.setting-plural')}
               onClick={() => setDialogVisible(true)}>
               <SettingOutlined style={{ fontSize: '16px', color: '#7147E8' }} />
