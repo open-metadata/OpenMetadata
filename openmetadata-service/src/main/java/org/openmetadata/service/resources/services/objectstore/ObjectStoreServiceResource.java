@@ -66,7 +66,7 @@ import org.openmetadata.service.util.ResultList;
 public class ObjectStoreServiceResource
     extends ServiceEntityResource<ObjectStoreService, ObjectStoreServiceRepository, ObjectStoreConnection> {
 
-  public static final String COLLECTION_PATH = "v1/services/objectstoreServices/";
+  public static final String COLLECTION_PATH = "v1/services/objectStoreServices/";
   static final String FIELDS = "pipelines,owner,tags";
 
   @Override
