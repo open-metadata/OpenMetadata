@@ -36,6 +36,7 @@ import {
   PLACEHOLDER_ROUTE_SERVICE_CAT,
   PLACEHOLDER_ROUTE_SERVICE_FQN,
   PLACEHOLDER_ROUTE_TAB,
+  PLACEHOLDER_ROUTE_TABLE_FQN,
   PLACEHOLDER_RULE_NAME,
   PLACEHOLDER_SETTING_CATEGORY,
   PLACEHOLDER_TAG_NAME,
@@ -455,7 +456,7 @@ export const getQueryPath = (entityFqn: string, queryFqn: string) => {
   let path = ROUTES.QUERY_FULL_SCREEN_VIEW;
 
   path = path
-    .replace(PLACEHOLDER_ROUTE_ENTITY_FQN, entityFqn)
+    .replace(PLACEHOLDER_ROUTE_TABLE_FQN, entityFqn)
     .replace(PLACEHOLDER_ROUTE_QUERY_FQN, queryFqn);
 
   return path;

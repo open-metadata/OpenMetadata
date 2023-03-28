@@ -292,6 +292,7 @@ const TableQueries: FC<TableQueriesProp> = ({
             tableQueries.data.map((query) => (
               <Col key={query.id} span={24}>
                 <QueryCard
+                  isExpanded={false}
                   permission={queryPermissions}
                   query={query}
                   selectedId={selectedQuery?.id}
