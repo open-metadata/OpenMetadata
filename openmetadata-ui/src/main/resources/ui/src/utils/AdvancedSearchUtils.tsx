@@ -13,6 +13,7 @@
 
 import Icon, { CloseCircleOutlined, PlusOutlined } from '@ant-design/icons';
 import { Button, Checkbox, MenuProps, Space, Typography } from 'antd';
+import ProfilePicture from 'components/common/ProfilePicture/ProfilePicture';
 import { FormattedSuggestResponseObject } from 'components/Explore/ExploreQuickFilters.interface';
 import { SearchDropdownOption } from 'components/SearchDropdown/SearchDropdown.interface';
 import i18next from 'i18next';
@@ -157,14 +158,28 @@ export const getSearchLabel = (itemLabel: string, searchKey: string) => {
 export const getSearchDropdownLabels = (
   optionsArray: SearchDropdownOption[],
   checked: boolean,
-  searchKey = ''
+  searchKey = '',
+  showProfilePicture = false
 ): MenuProps['items'] => {
   if (isArray(optionsArray)) {
     return optionsArray.map((option) => ({
       key: option.key,
       label: (
-        <Space className="m-x-sm" data-testid={option.key} size={6}>
+        <Space
+          align="center"
+          className="m-x-sm"
+          data-testid={option.key}
+          size={8}>
           <Checkbox checked={checked} data-testid={`${option.key}-checkbox`} />
+          {showProfilePicture && (
+            <ProfilePicture
+              displayName={option.label}
+              id={option.key || ''}
+              name={option.label || ''}
+              textClass="text-xs"
+              width="18"
+            />
+          )}
           <Typography.Text
             ellipsis
             className="dropdown-option-label"

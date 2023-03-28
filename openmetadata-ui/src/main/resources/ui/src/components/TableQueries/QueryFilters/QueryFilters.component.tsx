@@ -151,6 +151,7 @@ const QueryFilters = ({ onFilterChange }: QueryFiltersProps) => {
     <Space size={8}>
       <Typography.Text>{t('label.owner')}</Typography.Text>
       <SearchDropdown
+        showProfilePicture
         label={t('label.user')}
         options={ownerFilerOptions.user}
         searchKey="user"
