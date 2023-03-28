@@ -1,1 +1,1 @@
-Ingest data from all databases in Postgres. You can use databaseFilterPattern on top of this.
+If ticked, the workflow will be able to ingest all database in the cluster. If not ticked, the workflow will only ingest tables from the database set above.
