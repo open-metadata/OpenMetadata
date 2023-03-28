@@ -21,12 +21,10 @@ on:
       - '0.[0-9]+.[0-9]+'
     path:
       - 'openmetadata-ui/**'
-      - '!openmetadata-docs/**'
   pull_request_target:
     types: [labeled, opened, synchronize, reopened]
     path:
       - 'openmetadata-ui/**'
-      - '!openmetadata-docs/**'
 
 permissions:
   contents: read
