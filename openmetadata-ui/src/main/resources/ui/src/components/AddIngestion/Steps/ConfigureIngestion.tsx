@@ -501,9 +501,9 @@ const ConfigureIngestion = ({
           <p className="tw-text-grey-muted tw-mt-3">
             {t('message.process-pii-sensitive-column-message-profiler')}
           </p>
-          {getSeparator('')}
           {processPii && (
             <>
+              {getSeparator('')}
               <Typography.Paragraph className="text-grey-muted m-t-0 m-b-xs text-sm">
                 {t('message.confidence-percentage-message')}
               </Typography.Paragraph>
