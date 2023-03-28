@@ -58,12 +58,12 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.generated.schema.type.tagLabel import TagLabel
 from metadata.ingestion.api.common import Entity
-from metadata.ingestion.api.source import InvalidSourceException, Source, SourceStatus
+from metadata.ingestion.api.source import InvalidSourceException, Source
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.models.user import OMetaUserProfile
 from metadata.ingestion.ometa.client_utils import get_chart_entities_from_id
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.connections import get_connection
+from metadata.ingestion.source.connections import get_connection, get_test_connection_fn
 from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
 from metadata.ingestion.source.metadata.amundsen.queries import (
     NEO4J_AMUNDSEN_DASHBOARD_QUERY,
@@ -109,20 +109,6 @@ SUPERSET_DEFAULT_CONFIG = {
 }
 
 
-class AmundsenStatus(SourceStatus):
-    success: List[str] = []
-    failures: List[str] = []
-    warnings: List[str] = []
-    filtered: List[str] = []
-
-    def scanned(self, record: str) -> None:
-        self.success.append(record)
-        logger.info(f"Entity Scanned: {record}")
-
-    def failure(self, key: str, reason: str) -> None:
-        self.failures.append({key: reason})
-
-
 class AmundsenSource(Source[Entity]):
     """
     Amundsen source class
@@ -131,6 +117,7 @@ class AmundsenSource(Source[Entity]):
     dashboard_service: DashboardService
 
     def __init__(self, config: WorkflowSource, metadata_config: OpenMetadataConnection):
+        super().__init__()
         self.config = config
         self.metadata_config = metadata_config
         self.database_schema_object = None
@@ -138,10 +125,11 @@ class AmundsenSource(Source[Entity]):
         self.metadata = OpenMetadata(self.metadata_config)
         self.service_connection = self.config.serviceConnection.__root__.config
         self.client = get_connection(self.service_connection)
-        self.status = AmundsenStatus()
+        self.connection_obj = self.client
         self.database_service_map = {
             service.value.lower(): service.value for service in DatabaseServiceType
         }
+        self.test_connection()
 
     @classmethod
     def create(cls, config_dict, metadata_config: OpenMetadataConnection):
@@ -419,9 +407,10 @@ class AmundsenSource(Source[Entity]):
 
             self.status.scanned(table["name"])
         except Exception as exc:
+            error = f"Failed to create table entity [{table}]: {exc}"
             logger.debug(traceback.format_exc())
-            logger.warning(f"Failed to create table entity [{table}]: {exc}")
-            self.status.failure(table["name"], str(exc))
+            logger.warning(error)
+            self.status.failed(table.get("name"), error, traceback.format_exc())
 
     def create_dashboard_service(self, dashboard: dict):
         service_name = dashboard["cluster"]
@@ -455,9 +444,10 @@ class AmundsenSource(Source[Entity]):
                 service=self.dashboard_service.fullyQualifiedName,
             )
         except Exception as exc:
+            error = f"Failed to create dashboard entity [{dashboard}]: {exc}"
             logger.debug(traceback.format_exc())
-            logger.warning(f"Failed to create dashboard entity [{dashboard}]: {exc}")
-            self.status.failure(dashboard["name"], str(exc))
+            logger.warning(error)
+            self.status.failed(dashboard["name"], error, traceback.format_exc())
 
     def create_chart_entity(self, dashboard):
         for (name, chart_id, chart_type, url) in zip(
@@ -480,9 +470,6 @@ class AmundsenSource(Source[Entity]):
     def close(self):
         if self.client is not None:
             self.client.close()
-
-    def get_status(self) -> SourceStatus:
-        return self.status
 
     def get_type_primitive_type(self, data_type):
         for p_type in PRIMITIVE_TYPES:
@@ -513,4 +500,5 @@ class AmundsenSource(Source[Entity]):
         return None
 
     def test_connection(self) -> None:
-        pass
+        test_connection_fn = get_test_connection_fn(self.service_connection)
+        test_connection_fn(self.metadata, self.connection_obj, self.service_connection)

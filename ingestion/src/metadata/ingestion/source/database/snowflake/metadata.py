@@ -18,7 +18,6 @@ from typing import Iterable, List, Optional, Tuple
 import sqlparse
 from snowflake.sqlalchemy.custom_types import VARIANT
 from snowflake.sqlalchemy.snowdialect import SnowflakeDialect, ischema_names
-from sqlalchemy.engine import reflection
 from sqlalchemy.engine.reflection import Inspector
 from sqlparse.sql import Function, Identifier
 
@@ -40,24 +39,32 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.source.database.column_type_parser import create_sqlalchemy_type
-from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
+from metadata.ingestion.source.database.common_db_source import (
+    CommonDbSourceService,
+    TableNameAndType,
+)
 from metadata.ingestion.source.database.snowflake.queries import (
     SNOWFLAKE_FETCH_ALL_TAGS,
     SNOWFLAKE_GET_CLUSTER_KEY,
-    SNOWFLAKE_GET_COMMENTS,
     SNOWFLAKE_GET_DATABASE_COMMENTS,
+    SNOWFLAKE_GET_DATABASES,
     SNOWFLAKE_GET_SCHEMA_COMMENTS,
-    SNOWFLAKE_GET_TABLE_NAMES,
-    SNOWFLAKE_GET_VIEW_NAMES,
     SNOWFLAKE_SESSION_TAG_QUERY,
+)
+from metadata.ingestion.source.database.snowflake.utils import (
+    get_schema_columns,
+    get_table_comment,
+    get_table_names,
+    get_table_names_reflection,
+    get_unique_constraints,
+    get_view_definition,
+    get_view_names,
+    normalize_names,
 )
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_database
 from metadata.utils.logger import ingestion_logger
-from metadata.utils.sqlalchemy_utils import (
-    get_all_table_comments,
-    get_table_comment_wrapper,
-)
+from metadata.utils.sqlalchemy_utils import get_all_table_comments
 
 GEOGRAPHY = create_sqlalchemy_type("GEOGRAPHY")
 GEOMETRY = create_sqlalchemy_type("GEOMETRY")
@@ -69,71 +76,6 @@ logger = ingestion_logger()
 
 
 SnowflakeDialect._json_deserializer = json.loads  # pylint: disable=protected-access
-
-
-def get_table_names(self, connection, schema, **kw):  # pylint: disable=unused-argument
-    cursor = connection.execute(SNOWFLAKE_GET_TABLE_NAMES.format(schema))
-    result = [self.normalize_name(row[0]) for row in cursor]
-    return result
-
-
-def get_view_names(self, connection, schema, **kw):  # pylint: disable=unused-argument
-    cursor = connection.execute(SNOWFLAKE_GET_VIEW_NAMES.format(schema))
-    result = [self.normalize_name(row[0]) for row in cursor]
-    return result
-
-
-@reflection.cache
-def get_view_definition(  # pylint: disable=unused-argument
-    self, connection, view_name, schema=None, **kw
-):
-    """
-    Gets the view definition
-    """
-    schema = schema or self.default_schema_name
-    if schema:
-        cursor = connection.execute(
-            "SHOW /* sqlalchemy:get_view_definition */ VIEWS "
-            f"LIKE '{view_name}' IN {schema}"
-        )
-    else:
-        cursor = connection.execute(
-            "SHOW /* sqlalchemy:get_view_definition */ VIEWS " f"LIKE '{view_name}'"
-        )
-    n2i = self.__class__._map_name_to_idx(cursor)  # pylint: disable=protected-access
-    try:
-        ret = cursor.fetchone()
-        if ret:
-            return ret[n2i["text"]]
-    except Exception:
-        pass
-    return None
-
-
-@reflection.cache
-def get_table_comment(
-    self, connection, table_name, schema=None, **kw
-):  # pylint: disable=unused-argument
-    return get_table_comment_wrapper(
-        self,
-        connection,
-        table_name=table_name,
-        schema=schema,
-        query=SNOWFLAKE_GET_COMMENTS,
-    )
-
-
-@reflection.cache
-def get_unique_constraints(  # pylint: disable=unused-argument
-    self, connection, table_name, schema=None, **kw
-):
-    return []
-
-
-def normalize_names(self, name):  # pylint: disable=unused-argument
-    return name
-
-
 SnowflakeDialect.get_table_names = get_table_names
 SnowflakeDialect.get_view_names = get_view_names
 SnowflakeDialect.get_all_table_comments = get_all_table_comments
@@ -141,6 +83,10 @@ SnowflakeDialect.normalize_name = normalize_names
 SnowflakeDialect.get_table_comment = get_table_comment
 SnowflakeDialect.get_view_definition = get_view_definition
 SnowflakeDialect.get_unique_constraints = get_unique_constraints
+SnowflakeDialect._get_schema_columns = (  # pylint: disable=protected-access
+    get_schema_columns
+)
+Inspector.get_table_names = get_table_names_reflection
 
 
 class SnowflakeSource(CommonDbSourceService):
@@ -150,8 +96,8 @@ class SnowflakeSource(CommonDbSourceService):
     """
 
     def __init__(self, config, metadata_config):
-        self.partition_details = {}
         super().__init__(config, metadata_config)
+        self.partition_details = {}
         self.schema_desc_map = {}
         self.database_desc_map = {}
 
@@ -220,7 +166,7 @@ class SnowflakeSource(CommonDbSourceService):
             self.set_database_description_map()
             yield configured_db
         else:
-            results = self.connection.execute("SHOW DATABASES")
+            results = self.connection.execute(SNOWFLAKE_GET_DATABASES)
             for res in results:
                 row = list(res)
                 new_database = row[1]
@@ -360,3 +306,30 @@ class SnowflakeSource(CommonDbSourceService):
                         description="SNOWFLAKE TAG VALUE",
                     ),
                 )
+
+    def query_table_names_and_types(
+        self, schema_name: str
+    ) -> Iterable[TableNameAndType]:
+        """
+        Connect to the source database to get the table
+        name and type. By default, use the inspector method
+        to get the names and pass the Regular type.
+
+        This is useful for sources where we need fine-grained
+        logic on how to handle table types, e.g., external, foreign,...
+        """
+
+        if self.config.serviceConnection.__root__.config.includeTempTables:
+
+            return [
+                TableNameAndType(name=table_name)
+                for table_name in self.inspector.get_table_names(
+                    schema=schema_name, include_temp_tables="True"
+                )
+                or []
+            ]
+
+        return [
+            TableNameAndType(name=table_name)
+            for table_name in self.inspector.get_table_names(schema=schema_name) or []
+        ]

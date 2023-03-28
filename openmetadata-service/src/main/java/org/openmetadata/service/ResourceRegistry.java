@@ -22,6 +22,9 @@ public class ResourceRegistry {
     mapFieldOperation(MetadataOperation.EDIT_OWNER, Entity.FIELD_OWNER);
     mapFieldOperation(MetadataOperation.EDIT_CUSTOM_FIELDS, "extension");
     mapFieldOperation(MetadataOperation.EDIT_USERS, "users");
+    mapFieldOperation(MetadataOperation.EDIT_ROLE, "defaultRoles");
+    mapFieldOperation(MetadataOperation.EDIT_ROLE, "roles");
+    mapFieldOperation(MetadataOperation.EDIT_POLICY, "policies");
     // TODO tier, lineage, statues, reviewers, tests, queries, data profile, sample data
   }
 

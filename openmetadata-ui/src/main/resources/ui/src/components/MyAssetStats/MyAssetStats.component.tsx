@@ -12,18 +12,18 @@
  */
 
 import { Button, Card } from 'antd';
+import {
+  GlobalSettingOptions,
+  GlobalSettingsMenuCategory,
+} from 'constants/GlobalSettings.constants';
+import { TeamType } from 'generated/entity/teams/team';
 import { isNil } from 'lodash';
 import React, { FunctionComponent, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
+import { getSettingPath, getTeamsWithFqnPath } from 'utils/RouterUtils';
 import { getExplorePath, ROUTES } from '../../constants/constants';
-import {
-  GlobalSettingOptions,
-  GlobalSettingsMenuCategory,
-} from '../../constants/GlobalSettings.constants';
-import { TeamType } from '../../generated/entity/teams/team';
 import { getCountBadge } from '../../utils/CommonUtils';
-import { getSettingPath, getTeamsWithFqnPath } from '../../utils/RouterUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import EntityListSkeleton from '../Skeleton/MyData/EntityListSkeleton/EntityListSkeleton.component';
 import { MyAssetStatsProps } from './MyAssetStats.interface';
@@ -85,6 +85,13 @@ const MyAssetStats: FunctionComponent<MyAssetStatsProps> = ({
         link: ROUTES.TEST_SUITES,
         dataTestId: 'test-suite',
       },
+      glossaryTerms: {
+        icon: Icons.FLAT_DOC,
+        data: t('label.glossary-term-plural'),
+        count: entityCounts.glossaryTermCount,
+        link: ROUTES.GLOSSARY,
+        dataTestId: 'glossary-terms',
+      },
       service: {
         icon: Icons.SERVICE,
         data: t('label.service-plural'),
@@ -111,7 +118,7 @@ const MyAssetStats: FunctionComponent<MyAssetStatsProps> = ({
         data: t('label.team-plural'),
         count: entityCounts.teamCount,
         link: getTeamsWithFqnPath(TeamType.Organization),
-        dataTestId: 'terms',
+        dataTestId: 'teams',
       },
     }),
     [entityState]

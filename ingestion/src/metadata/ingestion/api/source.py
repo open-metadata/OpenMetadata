@@ -15,7 +15,7 @@ import time
 from abc import ABCMeta, abstractmethod
 from typing import Any, Dict, Generic, Iterable, List
 
-from pydantic import BaseModel
+from pydantic import Field
 
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
@@ -23,6 +23,7 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 from metadata.ingestion.api.closeable import Closeable
 from metadata.ingestion.api.common import Entity
 from metadata.ingestion.api.status import Status
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 
 
 class InvalidSourceException(Exception):
@@ -32,39 +33,33 @@ class InvalidSourceException(Exception):
     """
 
 
-class SourceStatus(BaseModel, Status):
+class SourceStatus(Status):
     """
     Class to handle processed records
     and success %
     """
 
-    records = 0
     source_start_time = time.time()
 
     success: List[Any] = []
-    failures: List[Dict[str, str]] = []
-    warnings: List[Dict[str, str]] = []
-    filtered: List[Dict[str, str]] = []
+    warnings: List[Dict[str, str]] = Field(default_factory=list)
+    filtered: List[Dict[str, str]] = Field(default_factory=list)
 
     def scanned(self, record: Any) -> None:
-        self.records += 1
-        self.success.append(record)
+        self.records.append(record)
 
     def warning(self, key: str, reason: str) -> None:
         self.warnings.append({key: reason})
-
-    def failure(self, key: str, reason: str) -> None:
-        self.failures.append({key: reason})
 
     def filter(self, key: str, reason: str) -> None:
         self.filtered.append({key: reason})
 
     def calculate_success(self) -> float:
-        source_sucess = max(
-            len(self.success), 1
+        source_success = max(
+            len(self.records), 1
         )  # To avoid ZeroDivisionError using minimum value as 1
         source_failed = len(self.failures)
-        return round(source_sucess * 100 / (source_sucess + source_failed), 2)
+        return round(source_success * 100 / (source_success + source_failed), 2)
 
 
 class Source(Closeable, Generic[Entity], metaclass=ABCMeta):
@@ -72,6 +67,14 @@ class Source(Closeable, Generic[Entity], metaclass=ABCMeta):
     Abstract source implementation. The workflow will run
     its next_record and pass them to the next step.
     """
+
+    metadata: OpenMetadata
+    connection_obj: Any
+    service_connection: Any
+    status: SourceStatus
+
+    def __init__(self):
+        self.status = SourceStatus()
 
     @classmethod
     @abstractmethod
@@ -88,9 +91,8 @@ class Source(Closeable, Generic[Entity], metaclass=ABCMeta):
     def next_record(self) -> Iterable[Entity]:
         pass
 
-    @abstractmethod
     def get_status(self) -> SourceStatus:
-        pass
+        return self.status
 
     @abstractmethod
     def test_connection(self) -> None:

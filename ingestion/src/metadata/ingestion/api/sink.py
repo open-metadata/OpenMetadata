@@ -15,7 +15,7 @@ from abc import ABCMeta, abstractmethod
 from dataclasses import dataclass
 from typing import Any, Generic, List
 
-from pydantic import BaseModel
+from pydantic import Field
 
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
@@ -25,10 +25,9 @@ from metadata.ingestion.api.common import Entity
 from metadata.ingestion.api.status import Status
 
 
-class SinkStatus(BaseModel, Status):
-    records: List[str] = []
-    warnings: List[Any] = []
-    failures: List[Any] = []
+class SinkStatus(Status):
+
+    records: List[str] = Field(default_factory=list)
 
     def records_written(self, record: str) -> None:
         self.records.append(record)
@@ -36,13 +35,15 @@ class SinkStatus(BaseModel, Status):
     def warning(self, info: Any) -> None:
         self.warnings.append(info)
 
-    def failure(self, info: Any) -> None:
-        self.failures.append(info)
-
 
 @dataclass  # type: ignore[misc]
 class Sink(Closeable, Generic[Entity], metaclass=ABCMeta):
     """All Sinks must inherit this base class."""
+
+    status: SinkStatus
+
+    def __init__(self):
+        self.status = SinkStatus()
 
     @classmethod
     @abstractmethod
@@ -56,9 +57,8 @@ class Sink(Closeable, Generic[Entity], metaclass=ABCMeta):
         # must call callback when done.
         pass
 
-    @abstractmethod
     def get_status(self) -> SinkStatus:
-        pass
+        return self.status
 
     @abstractmethod
     def close(self) -> None:

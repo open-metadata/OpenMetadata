@@ -32,6 +32,7 @@ import javax.ws.rs.BadRequestException;
 import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Jdbi;
+import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.TokenInterface;
 import org.openmetadata.schema.api.configuration.LoginConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
@@ -53,7 +54,6 @@ import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.auth.JwtResponse;
 import org.openmetadata.service.exception.CustomExceptionMessage;
-import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.TokenRepository;
 import org.openmetadata.service.jdbi3.UserRepository;
@@ -117,9 +117,6 @@ public class BasicAuthenticator implements AuthenticatorHandler {
   @Override
   public void confirmEmailRegistration(UriInfo uriInfo, String emailToken) throws IOException {
     EmailVerificationToken emailVerificationToken = (EmailVerificationToken) tokenRepository.findByToken(emailToken);
-    if (emailVerificationToken == null) {
-      throw new EntityNotFoundException("Invalid Token. Please issue a new Request");
-    }
     User registeredUser =
         userRepository.get(null, emailVerificationToken.getUserId(), userRepository.getFieldsWithUserAuth("*"));
     if (Boolean.TRUE.equals(registeredUser.getIsEmailVerified())) {
@@ -198,9 +195,6 @@ public class BasicAuthenticator implements AuthenticatorHandler {
   public void resetUserPasswordWithToken(UriInfo uriInfo, PasswordResetRequest request) throws IOException {
     String tokenID = request.getToken();
     PasswordResetToken passwordResetToken = (PasswordResetToken) tokenRepository.findByToken(tokenID);
-    if (passwordResetToken == null) {
-      throw new EntityNotFoundException("Invalid Password Request. Please issue a new request.");
-    }
     List<String> fields = userRepository.getAllowedFieldsCopy();
     fields.add(USER_PROTECTED_FIELDS);
     User storedUser =
@@ -328,6 +322,9 @@ public class BasicAuthenticator implements AuthenticatorHandler {
 
   @Override
   public JwtResponse getNewAccessToken(TokenRefreshRequest request) throws IOException {
+    if (CommonUtil.nullOrEmpty(request.getRefreshToken())) {
+      throw new BadRequestException("Token Cannot be Null or Empty String");
+    }
     TokenInterface tokenInterface = tokenRepository.findByToken(request.getRefreshToken());
     User storedUser = userRepository.get(null, tokenInterface.getUserId(), userRepository.getFieldsWithUserAuth("*"));
     if (storedUser.getIsBot() != null && storedUser.getIsBot()) {
@@ -367,9 +364,6 @@ public class BasicAuthenticator implements AuthenticatorHandler {
       throws JsonProcessingException {
     String requestRefreshToken = tokenRefreshRequest.getRefreshToken();
     RefreshToken storedRefreshToken = (RefreshToken) tokenRepository.findByToken(requestRefreshToken);
-    if (storedRefreshToken == null) {
-      throw new RuntimeException("Invalid Refresh Token");
-    }
     if (storedRefreshToken.getExpiryDate().compareTo(Instant.now().toEpochMilli()) < 0) {
       throw new RuntimeException("Expired token. Please login again : " + storedRefreshToken.getToken().toString());
     }

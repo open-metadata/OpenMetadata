@@ -28,7 +28,7 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.ingestion.api.source import InvalidSourceException, SourceStatus
+from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_chart, filter_by_dashboard
@@ -46,14 +46,12 @@ class PowerbiSource(DashboardServiceSource):
 
     config: WorkflowSource
     metadata_config: OpenMetadataConnection
-    status: SourceStatus
 
     def __init__(
         self,
         config: WorkflowSource,
         metadata_config: OpenMetadataConnection,
     ):
-
         super().__init__(config, metadata_config)
         self.pagination_entity_per_page = min(
             100, self.service_connection.pagination_entity_per_page
@@ -274,10 +272,12 @@ class PowerbiSource(DashboardServiceSource):
                     service=self.context.dashboard_service.fullyQualifiedName.__root__,
                 )
                 self.status.scanned(chart_display_name)
-            except Exception as exc:  # pylint: disable=broad-except
+            except Exception as exc:
+                name = chart.get("title")
+                error = f"Error creating chart [{name}]: {exc}"
                 logger.debug(traceback.format_exc())
-                logger.warning(f"Error creating chart [{chart}]: {exc}")
-                self.status.failure(chart.get("id"), repr(exc))
+                logger.warning(error)
+                self.status.failed(name, error, traceback.format_exc())
 
     def fetch_dataset_from_workspace(self, dataset_id: str) -> Optional[dict]:
         """

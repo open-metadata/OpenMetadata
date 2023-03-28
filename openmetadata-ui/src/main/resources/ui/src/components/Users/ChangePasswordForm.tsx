@@ -42,6 +42,7 @@ const ChangePasswordForm: React.FC<ChangePasswordForm> = ({
       centered
       closable={false}
       confirmLoading={isLoading}
+      maskClosable={false}
       okButtonProps={{
         form: 'change-password-form',
         type: 'primary',

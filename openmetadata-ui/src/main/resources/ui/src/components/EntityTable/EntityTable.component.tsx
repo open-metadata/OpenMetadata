@@ -543,7 +543,7 @@ const EntityTable = ({
                 }
               }}>
               <TagsContainer
-                className="w-min-15 "
+                className="w-68"
                 editable={editColumnTag?.index === index}
                 isLoading={isTagLoading && editColumnTag?.index === index}
                 selectedTags={tags || []}

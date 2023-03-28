@@ -40,7 +40,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.generated.schema.type.entityLineage import EntitiesEdge
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.usageRequest import UsageRequest
-from metadata.ingestion.api.source import Source, SourceStatus
+from metadata.ingestion.api.source import Source
 from metadata.ingestion.api.topology_runner import TopologyRunnerMixin
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.models.topology import (
@@ -139,25 +139,41 @@ class DashboardServiceTopology(ServiceTopology):
     )
 
 
-class DashboardSourceStatus(SourceStatus):
-    """
-    Reports the source status after ingestion
-    """
-
-    def scanned(self, record: str) -> None:
-        self.success.append(record)
-        logger.debug(f"Scanned: {record}")
-
-    def filter(self, key: str, reason: str) -> None:
-        self.filtered.append(key)
-        logger.debug(f"Filtered {key}: {reason}")
-
-
 class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
     """
     Base class for Database Services.
     It implements the topology and context.
     """
+
+    source_config: DashboardServiceMetadataPipeline
+    config: WorkflowSource
+    metadata: OpenMetadata
+    # Big union of types we want to fetch dynamically
+    service_connection: DashboardConnection.__fields__["config"].type_
+
+    topology = DashboardServiceTopology()
+    context = create_source_context(topology)
+
+    def __init__(
+        self,
+        config: WorkflowSource,
+        metadata_config: OpenMetadataConnection,
+    ):
+        super().__init__()
+        self.config = config
+        self.metadata_config = metadata_config
+        self.metadata = OpenMetadata(metadata_config)
+        self.service_connection = self.config.serviceConnection.__root__.config
+        self.source_config: DashboardServiceMetadataPipeline = (
+            self.config.sourceConfig.config
+        )
+        self.client = get_connection(self.service_connection)
+
+        # Flag the connection for the test connection
+        self.connection_obj = self.client
+        self.test_connection()
+
+        self.metadata_client = OpenMetadata(self.metadata_config)
 
     @abstractmethod
     def yield_dashboard(
@@ -231,40 +247,8 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
         """
         return  # Dashboard usage currently only available for Looker
 
-    status: DashboardSourceStatus
-    source_config: DashboardServiceMetadataPipeline
-    config: WorkflowSource
-    metadata: OpenMetadata
-    # Big union of types we want to fetch dynamically
-    service_connection: DashboardConnection.__fields__["config"].type_
-
-    topology = DashboardServiceTopology()
-    context = create_source_context(topology)
-
-    def __init__(
-        self,
-        config: WorkflowSource,
-        metadata_config: OpenMetadataConnection,
-    ):
-        super().__init__()
-        self.config = config
-        self.metadata_config = metadata_config
-        self.metadata = OpenMetadata(metadata_config)
-        self.service_connection = self.config.serviceConnection.__root__.config
-        self.source_config: DashboardServiceMetadataPipeline = (
-            self.config.sourceConfig.config
-        )
-        self.client = get_connection(self.service_connection)
-        self.test_connection()
-        self.status = DashboardSourceStatus()
-
-        self.metadata_client = OpenMetadata(self.metadata_config)
-
-    def get_status(self) -> SourceStatus:
-        return self.status
-
     def close(self):
-        pass
+        self.metadata.close()
 
     def get_services(self) -> Iterable[WorkflowSource]:
         yield self.config
@@ -352,7 +336,7 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
 
     def test_connection(self) -> None:
         test_connection_fn = get_test_connection_fn(self.service_connection)
-        test_connection_fn(self.client, self.service_connection)
+        test_connection_fn(self.metadata, self.connection_obj, self.service_connection)
 
     def prepare(self):
         pass

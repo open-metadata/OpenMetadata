@@ -314,12 +314,19 @@ export const STEPS_FOR_ADD_TEST_CASE: Array<StepperStepType> = [
   },
 ];
 
-export const SUPPORTED_PARTITION_TYPE = [
+export const SUPPORTED_PARTITION_TYPE_FOR_DATE_TIME = [
   DataType.Timestamp,
   DataType.Date,
   DataType.Datetime,
   DataType.Timestampz,
 ];
+
+export const SUPPORTED_COLUMN_DATA_TYPE_FOR_INTERVAL = {
+  [PartitionIntervalType.IngestionTime]: SUPPORTED_PARTITION_TYPE_FOR_DATE_TIME,
+  [PartitionIntervalType.TimeUnit]: SUPPORTED_PARTITION_TYPE_FOR_DATE_TIME,
+  [PartitionIntervalType.IntegerRange]: [DataType.Int, DataType.Bigint],
+  [PartitionIntervalType.ColumnValue]: [DataType.Varchar],
+};
 
 export const INTERVAL_TYPE_OPTIONS = Object.values(PartitionIntervalType).map(
   (value) => ({
@@ -353,3 +360,14 @@ export const DEFAULT_HISTOGRAM_DATA = {
   boundaries: [],
   frequencies: [],
 };
+
+export const PROFILER_MODAL_LABEL_STYLE = {
+  style: {
+    paddingBottom: 8,
+  },
+};
+
+export const TIME_BASED_PARTITION = [
+  PartitionIntervalType.IngestionTime,
+  PartitionIntervalType.TimeUnit,
+];

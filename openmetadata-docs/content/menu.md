@@ -131,6 +131,10 @@ site_menu:
     url: /deployment/security/keycloak/bare-metal
   - category: Deployment / Enable Security / Keycloak SSO / Kubernetes
     url: /deployment/security/keycloak/kubernetes
+  - category: Deployment / Enable Security / Saml
+    url: /deployment/security/saml
+  - category: Deployment / Enable Security / Saml / Aws
+    url: /deployment/security/saml/aws
   - category: Deployment / Enable Security / Enable SSL
     url: /deployment/security/enable-ssl
   - category: Deployment / Enable Security / Enable SSL / Use Nginx
@@ -206,6 +210,8 @@ site_menu:
     url: /connectors/database/bigquery/airflow
   - category: Connectors / Database / BigQuery / CLI
     url: /connectors/database/bigquery/cli
+  - category: Connectors / Database / BigQuery / Roles
+    url: /connectors/database/bigquery/roles
   - category: Connectors / Database / Clickhouse
     url: /connectors/database/clickhouse
   - category: Connectors / Database / Clickhouse / Airflow

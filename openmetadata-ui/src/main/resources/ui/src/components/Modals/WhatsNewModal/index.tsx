@@ -75,6 +75,7 @@ export const WhatsNewModal: FunctionComponent<WhatsNewModalProps> = ({
       }
       data-testid="whats-new-dialog"
       footer={null}
+      maskClosable={false}
       open={visible}
       title={
         <Typography.Text strong data-testid="whats-new-header">

@@ -37,7 +37,6 @@ import {
 } from 'components/PermissionProvider/PermissionProvider.interface';
 import { FQN_SEPARATOR_CHAR } from 'constants/char.constants';
 import { getServiceDetailsPath } from 'constants/constants';
-import { ENTITY_CARD_CLASS } from 'constants/entity.constants';
 import { NO_PERMISSION_TO_VIEW } from 'constants/HelperTextUtil';
 import { EntityInfo, EntityType } from 'enums/entity.enum';
 import { ServiceCategory } from 'enums/service.enum';
@@ -74,6 +73,7 @@ import { getEntityLineage, getEntityName } from 'utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from 'utils/PermissionsUtils';
 import { getLineageViewPath } from 'utils/RouterUtils';
 import { serviceTypeLogo } from 'utils/ServiceUtils';
+import { bytesToSize } from 'utils/StringsUtils';
 import { getTagsWithoutTier, getTierTags } from 'utils/TableUtils';
 import { showErrorToast, showSuccessToast } from 'utils/ToastUtils';
 
@@ -236,6 +236,8 @@ const ContainerPage = () => {
     entityId,
     followers,
     isUserFollowing,
+    size,
+    numberOfObjects,
   } = useMemo(() => {
     return {
       deleted: containerData?.deleted,
@@ -250,6 +252,8 @@ const ContainerPage = () => {
         ({ id }: { id: string }) => id === getCurrentUserId()
       ),
       followers: containerData?.followers ?? [],
+      size: containerData?.size || 0,
+      numberOfObjects: containerData?.numberOfObjects || 0,
     };
   }, [containerData]);
 
@@ -268,6 +272,16 @@ const ContainerPage = () => {
     {
       key: EntityInfo.TIER,
       value: tier?.tagFQN ? tier.tagFQN.split(FQN_SEPARATOR_CHAR)[1] : '',
+    },
+    {
+      key: EntityInfo.NUMBER_OF_OBJECTS,
+      value: numberOfObjects,
+      showLabel: true,
+    },
+    {
+      key: EntityInfo.SIZE,
+      value: bytesToSize(size),
+      showLabel: true,
     },
   ];
 
@@ -426,7 +440,7 @@ const ContainerPage = () => {
         const { tags: newTags, version } = await handleUpdateContainerData({
           ...(containerData as Container),
           tags: [
-            ...(containerData?.tags ?? []),
+            ...getTagsWithoutTier(containerData?.tags ?? []),
             {
               tagFQN: updatedTier,
               labelType: LabelType.Manual,
@@ -705,7 +719,7 @@ const ContainerPage = () => {
               </span>
             }>
             <Card
-              className={`${ENTITY_CARD_CLASS} card-body-full`}
+              className="h-full card-body-full"
               data-testid="lineage-details">
               <EntityLineageComponent
                 addLineageHandler={handleAddLineage}
@@ -732,7 +746,7 @@ const ContainerPage = () => {
                 {t('label.custom-property-plural')}
               </span>
             }>
-            <Card className={ENTITY_CARD_CLASS}>
+            <Card className="h-full">
               <CustomPropertyTable
                 entityDetails={
                   containerData as CustomPropertyProps['entityDetails']
