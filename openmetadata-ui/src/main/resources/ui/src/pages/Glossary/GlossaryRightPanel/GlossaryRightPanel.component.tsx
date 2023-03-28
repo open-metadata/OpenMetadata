@@ -11,9 +11,11 @@
  *  limitations under the License.
  */
 
-import { Card, Col, Divider, Row, Space, Typography } from 'antd';
+import { Card, Col, Divider, Row, Space, Tooltip, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import ProfilePicture from 'components/common/ProfilePicture/ProfilePicture';
+import { UserSelectableList } from 'components/common/UserSelectableList/UserSelectableList.component';
+import { UserTag } from 'components/common/UserTag/UserTag.component';
+import { UserTagSize } from 'components/common/UserTag/UserTag.interface';
 import GlossaryTermReferences from 'components/GlossaryTerms/tabs/GlossaryTermReferences';
 import GlossaryTermSynonyms from 'components/GlossaryTerms/tabs/GlossaryTermSynonyms';
 import RelatedTerms from 'components/GlossaryTerms/tabs/RelatedTerms';
@@ -23,14 +25,13 @@ import {
   ResourceEntity,
 } from 'components/PermissionProvider/PermissionProvider.interface';
 import TagsInput from 'components/TagsInput/TagsInput.component';
-import { getUserPath } from 'constants/constants';
-import { Glossary } from 'generated/entity/data/glossary';
+import { NO_PERMISSION_FOR_ACTION } from 'constants/HelperTextUtil';
+import { EntityReference, Glossary } from 'generated/entity/data/glossary';
 import { GlossaryTerm } from 'generated/entity/data/glossaryTerm';
 import { TagLabel } from 'generated/type/tagLabel';
+import { cloneDeep, includes, isEqual } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
-import { getEntityName } from 'utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from 'utils/PermissionsUtils';
 import { showErrorToast } from 'utils/ToastUtils';
 import { ReactComponent as IconLink } from '../../../assets/svg/link.svg';
@@ -81,6 +82,33 @@ const GlossaryRightPanel = ({
     }
   };
 
+  const handleReviewerSave = (data: Array<EntityReference>) => {
+    if (!isEqual(data, entityDetails.reviewers)) {
+      let updatedGlossary = cloneDeep(entityDetails);
+      const oldReviewer = data.filter((d) =>
+        includes(entityDetails.reviewers, d)
+      );
+      const newReviewer = data
+        .filter((d) => !includes(entityDetails.reviewers, d))
+        .map((d) => ({ id: d.id, type: d.type }));
+      updatedGlossary = {
+        ...updatedGlossary,
+        reviewers: [...oldReviewer, ...newReviewer],
+      };
+      if (isGlossary) {
+        onGlossaryUpdate(updatedGlossary);
+      } else {
+        onGlossaryTermUpdate(updatedGlossary as GlossaryTerm);
+      }
+    }
+  };
+
+  const hasEditAccess = useMemo(() => {
+    return isGlossary
+      ? glossaryPermission.EditAll || glossaryPermission.EditReviewers
+      : glossaryTermPermission.EditAll || glossaryTermPermission.EditReviewers;
+  }, [glossaryPermission, glossaryTermPermission]);
+
   useEffect(() => {
     if (isGlossary) {
       fetchGlossaryPermission();
@@ -123,36 +151,44 @@ const GlossaryRightPanel = ({
         data-testid="reviewer-card-container"
         gutter={[0, 8]}>
         <Col span={24}>
-          <Typography.Text
-            className="text-grey-muted"
-            data-testid="profiler-header">
-            {t('label.reviewer-plural')}
-          </Typography.Text>
+          <Space className="w-full justify-between">
+            <Typography.Text
+              className="text-grey-muted"
+              data-testid="profiler-header">
+              {t('label.reviewer-plural')}
+            </Typography.Text>
+
+            <Tooltip
+              title={
+                hasEditAccess ? t('label.edit') : NO_PERMISSION_FOR_ACTION
+              }>
+              <UserSelectableList
+                hasPermission
+                popoverProps={{ placement: 'topLeft' }}
+                selectedUsers={entityDetails.reviewers ?? []}
+                onUpdate={handleReviewerSave}
+              />
+            </Tooltip>
+          </Space>
         </Col>
         <Col span={24}>
           {entityDetails.reviewers && entityDetails.reviewers.length ? (
-            <>
+            <Space wrap size={6}>
               {entityDetails.reviewers.map((reviewer) => (
                 <Space
                   className="m-r-xs"
                   data-testid={`reviewer-${reviewer.displayName}`}
-                  key={reviewer.name}
-                  size={6}>
-                  <ProfilePicture
-                    displayName={getEntityName(reviewer)}
+                  key={reviewer.name}>
+                  <UserTag
+                    bordered
                     id={reviewer.id || ''}
+                    key={reviewer.name}
                     name={reviewer?.name || ''}
-                    textClass="text-xs"
-                    width="20"
+                    size={UserTagSize.small}
                   />
-                  <Space size={2}>
-                    <Link to={getUserPath(reviewer.name ?? '')}>
-                      {getEntityName(reviewer)}
-                    </Link>
-                  </Space>
                 </Space>
               ))}
-            </>
+            </Space>
           ) : (
             <Typography.Text
               className="text-grey-body"
