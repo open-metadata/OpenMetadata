@@ -105,7 +105,6 @@ class MessagingServiceSource(TopologyRunnerMixin, Source, ABC):
 
     source_config: MessagingServiceMetadataPipeline
     config: WorkflowSource
-    metadata: OpenMetadata
     # Big union of types we want to fetch dynamically
     service_connection: MessagingConnection.__fields__["config"].type_
 
@@ -126,6 +125,9 @@ class MessagingServiceSource(TopologyRunnerMixin, Source, ABC):
         )
         self.service_connection = self.config.serviceConnection.__root__.config
         self.connection = get_connection(self.service_connection)
+
+        # Flag the connection for the test connection
+        self.connection_obj = self.connection
         self.test_connection()
 
     @abstractmethod
@@ -178,7 +180,7 @@ class MessagingServiceSource(TopologyRunnerMixin, Source, ABC):
 
     def test_connection(self) -> None:
         test_connection_fn = get_test_connection_fn(self.service_connection)
-        test_connection_fn(self.connection, self.service_connection)
+        test_connection_fn(self.metadata, self.connection_obj, self.service_connection)
 
     def close(self):
         pass

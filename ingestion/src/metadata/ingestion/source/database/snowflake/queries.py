@@ -88,6 +88,16 @@ SNOWFLAKE_GET_DATABASE_COMMENTS = """
 select DATABASE_NAME,COMMENT from information_schema.databases
 """
 
+SNOWFLAKE_TEST_FETCH_TAG = """
+select TAG_NAME from snowflake.account_usage.tag_references limit 1
+"""
+
+SNOWFLAKE_TEST_GET_QUERIES = """
+SELECT query_text from snowflake.account_usage.query_history limit 1
+"""
+
+SNOWFLAKE_GET_DATABASES = "SHOW DATABASES"
+
 
 SNOWFLAKE_GET_SCHEMA_COLUMNS = """
 SELECT /* sqlalchemy:_get_schema_columns */
