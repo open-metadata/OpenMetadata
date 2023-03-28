@@ -73,6 +73,7 @@ import { getEntityLineage, getEntityName } from 'utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from 'utils/PermissionsUtils';
 import { getLineageViewPath } from 'utils/RouterUtils';
 import { serviceTypeLogo } from 'utils/ServiceUtils';
+import { bytesToSize } from 'utils/StringsUtils';
 import { getTagsWithoutTier, getTierTags } from 'utils/TableUtils';
 import { showErrorToast, showSuccessToast } from 'utils/ToastUtils';
 
@@ -235,6 +236,8 @@ const ContainerPage = () => {
     entityId,
     followers,
     isUserFollowing,
+    size,
+    numberOfObjects,
   } = useMemo(() => {
     return {
       deleted: containerData?.deleted,
@@ -249,6 +252,8 @@ const ContainerPage = () => {
         ({ id }: { id: string }) => id === getCurrentUserId()
       ),
       followers: containerData?.followers ?? [],
+      size: containerData?.size || 0,
+      numberOfObjects: containerData?.numberOfObjects || 0,
     };
   }, [containerData]);
 
@@ -267,6 +272,16 @@ const ContainerPage = () => {
     {
       key: EntityInfo.TIER,
       value: tier?.tagFQN ? tier.tagFQN.split(FQN_SEPARATOR_CHAR)[1] : '',
+    },
+    {
+      key: EntityInfo.NUMBER_OF_OBJECTS,
+      value: numberOfObjects,
+      showLabel: true,
+    },
+    {
+      key: EntityInfo.SIZE,
+      value: bytesToSize(size),
+      showLabel: true,
     },
   ];
 

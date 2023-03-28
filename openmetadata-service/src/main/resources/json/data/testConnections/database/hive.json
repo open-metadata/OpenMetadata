@@ -1,0 +1,30 @@
+{
+    "name": "Hive",
+    "fullyQualifiedName": "Hive",
+    "displayName": "Hive Test Connection",
+    "description": "This Test Connection validates the access against the database and basic metadata extraction of schemas and tables.",
+    "steps": [
+      {
+        "name": "CheckAccess",
+        "description": "Validate that we can properly reach the database and authenticate with the given credentials.",
+        "mandatory": true
+      },
+      {
+        "name": "GetSchemas",
+        "description": "List all the schemas available to the user.",
+        "mandatory": true
+      },
+      {
+        "name": "GetTables",
+        "description": "From a given schema, list the tables belonging to that schema. If no schema is specified, we'll list the tables of a random schema.",
+        "mandatory": true
+      },
+      {
+        "name": "GetViews",
+        "description": "From a given schema, list the views belonging to that schema. If no schema is specified, we'll list the tables of a random schema.",
+        "mandatory": false
+      }
+    ]
+  }
+  
+  
