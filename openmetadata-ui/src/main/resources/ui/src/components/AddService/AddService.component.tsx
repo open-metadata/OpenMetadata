@@ -21,7 +21,7 @@ import { useAirflowStatus } from 'hooks/useAirflowStatus';
 import { t } from 'i18next';
 import { capitalize, cloneDeep, isUndefined } from 'lodash';
 import { LoadingState } from 'Models';
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useHistory } from 'react-router-dom';
 import { getServiceDetailsPath } from '../../constants/constants';
 import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
@@ -285,6 +285,10 @@ const AddService = ({
       </div>
     </div>
   );
+
+  useEffect(() => {
+    setActiveField('');
+  }, [activeIngestionStep, activeServiceStep]);
 
   return (
     <PageLayoutV1
