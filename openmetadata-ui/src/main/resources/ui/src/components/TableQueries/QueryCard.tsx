@@ -98,7 +98,7 @@ const QueryCard: FC<QueryCardProp> = ({
     } else {
       history.push({
         search: Qs.stringify({ ...searchFilter, query: query.id }),
-        pathname: getQueryPath(datasetFQN, query.fullyQualifiedName || ''),
+        pathname: getQueryPath(datasetFQN, query.id || ''),
       });
     }
   };
@@ -143,7 +143,6 @@ const QueryCard: FC<QueryCardProp> = ({
                 <FullScreen height={16} width={16} />
               )
             }
-            size="small"
             onClick={handleExpandClick}
           />
 
@@ -157,13 +156,9 @@ const QueryCard: FC<QueryCardProp> = ({
               }
             )}>
             <SchemaEditor
-              editorClass={classNames(
-                'custom-code-mirror-theme',
-                isExpanded && {
-                  'table-query-editor': isAllowExpand,
-                  'h-min-256': !isAllowExpand,
-                }
-              )}
+              editorClass={classNames('custom-code-mirror-theme', {
+                'full-screen-editor-height': isExpanded,
+              })}
               mode={{ name: CSMode.SQL }}
               options={{
                 styleActiveLine: isEditMode,

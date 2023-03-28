@@ -39,7 +39,7 @@ import { isUndefined } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useParams } from 'react-router-dom';
-import { getQueryByFqn, patchQueries, updateQueryVote } from 'rest/queryAPI';
+import { getQueryById, patchQueries, updateQueryVote } from 'rest/queryAPI';
 import { getTableDetailsByFQN } from 'rest/tableAPI';
 import { getPartialNameFromTableFQN } from 'utils/CommonUtils';
 import { getEntityName } from 'utils/EntityUtils';
@@ -49,8 +49,8 @@ import { serviceTypeLogo } from 'utils/ServiceUtils';
 import { showErrorToast } from 'utils/ToastUtils';
 
 const QueryPage = () => {
-  const { datasetFQN, queryFQN } =
-    useParams<{ datasetFQN: string; queryFQN: string }>();
+  const { datasetFQN, queryId } =
+    useParams<{ datasetFQN: string; queryId: string }>();
   const { t } = useTranslation();
   const location = useLocation();
   const searchFilter = useMemo(
@@ -67,15 +67,15 @@ const QueryPage = () => {
   );
   const [query, setQuery] = useState<Query>();
 
-  const { getEntityPermissionByFqn } = usePermissionProvider();
+  const { getEntityPermission } = usePermissionProvider();
 
   const fetchResourcePermission = async () => {
     setIsLoading((pre) => ({ ...pre, permission: true }));
 
     try {
-      const permission = await getEntityPermissionByFqn(
+      const permission = await getEntityPermission(
         ResourceEntity.QUERY,
-        queryFQN || ''
+        queryId || ''
       );
       setQueryPermissions(permission);
     } catch (error) {
@@ -90,10 +90,10 @@ const QueryPage = () => {
   };
 
   useEffect(() => {
-    if (queryFQN) {
+    if (queryId) {
       fetchResourcePermission();
     }
-  }, [queryFQN]);
+  }, [queryId]);
 
   const fetchEntityDetails = async () => {
     try {
@@ -147,10 +147,10 @@ const QueryPage = () => {
     }
   }, [datasetFQN]);
 
-  const fetchQueryByFqn = async () => {
+  const fetchQueryById = async () => {
     setIsLoading((pre) => ({ ...pre, query: true }));
     try {
-      const queryResponse = await getQueryByFqn(queryFQN, {
+      const queryResponse = await getQueryById(queryId, {
         fields: 'votes,queryUsedIn',
       });
       setQuery(queryResponse);
@@ -167,10 +167,10 @@ const QueryPage = () => {
       queryPermissions.ViewBasic ||
       queryPermissions.ViewQueries;
 
-    if (queryFQN && isViewAllowed) {
-      fetchQueryByFqn();
+    if (queryId && isViewAllowed) {
+      fetchQueryById();
     }
-  }, [queryFQN, queryPermissions]);
+  }, [queryId, queryPermissions]);
 
   const handleQueryUpdate = async (updatedQuery: Query, key: keyof Query) => {
     if (isUndefined(query)) {
@@ -189,7 +189,7 @@ const QueryPage = () => {
   const updateVote = async (data: QueryVote, id?: string) => {
     try {
       await updateQueryVote(id || '', data);
-      const response = await getQueryByFqn(queryFQN || '', {
+      const response = await getQueryById(queryId || '', {
         fields: 'votes,queryUsedIn',
       });
       setQuery(response);
