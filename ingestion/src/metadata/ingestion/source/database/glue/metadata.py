@@ -41,7 +41,7 @@ from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.connections import get_connection, get_test_connection_fn
+from metadata.ingestion.source.connections import get_connection
 from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
 from metadata.ingestion.source.database.database_service import (
     DatabaseServiceSource,
@@ -70,6 +70,8 @@ class GlueSource(DatabaseServiceSource):
         self.metadata = OpenMetadata(metadata_config)
         self.service_connection = self.config.serviceConnection.__root__.config
         self.glue = get_connection(self.service_connection)
+
+        self.connection_obj = self.glue
         self.test_connection()
 
     @classmethod
@@ -375,7 +377,3 @@ class GlueSource(DatabaseServiceSource):
 
     def close(self):
         pass
-
-    def test_connection(self) -> None:
-        test_connection_fn = get_test_connection_fn(self.service_connection)
-        test_connection_fn(self.glue, self.service_connection)
