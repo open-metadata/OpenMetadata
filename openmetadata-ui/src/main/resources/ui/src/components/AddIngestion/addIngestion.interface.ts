@@ -91,9 +91,10 @@ export type ModifiedDbtConfig = DbtConfig &
 
 export interface AddIngestionState {
   chartFilterPattern: FilterPattern;
+  database?: string;
   dashboardFilterPattern: FilterPattern;
   databaseFilterPattern: FilterPattern;
-  showDatabaseFilterField: boolean;
+  isDatabaseFilterDisabled: boolean;
   databaseServiceNames: string[];
   dbtClassificationName: string;
   dbtUpdateDescriptions: boolean;

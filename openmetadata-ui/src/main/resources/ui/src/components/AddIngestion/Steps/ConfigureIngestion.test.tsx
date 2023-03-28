@@ -135,22 +135,4 @@ describe('Test ConfigureIngestion component', () => {
     expect(filterPatternComponents).toHaveLength(3);
     expect(toggleSwitchs).toHaveLength(5);
   });
-
-  it('Database filer patten checkbox should not visible if showDatabaseFilterField is false', async () => {
-    const { container } = render(
-      <ConfigureIngestion
-        {...mockConfigureIngestion}
-        data={{
-          ...mockConfigureIngestion.data,
-          showDatabaseFilterField: false,
-        }}
-      />
-    );
-    const filterPatternComponents = await findAllByText(
-      container,
-      'FilterPattern.component'
-    );
-
-    expect(filterPatternComponents).toHaveLength(2);
-  });
 });
