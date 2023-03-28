@@ -330,7 +330,7 @@ def get_entity_tier_from_tags(tags: list[TagLabel]) -> Optional[str]:
     )
 
 
-def format_large_string_numbers(number) -> str:
+def format_large_string_numbers(number: Union[float, int]) -> str:
     """Format large string number to a human readable format.
     (e.g. 1,000,000 -> 1M, 1,000,000,000 -> 1B, etc)
 

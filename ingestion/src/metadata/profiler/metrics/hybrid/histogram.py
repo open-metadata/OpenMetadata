@@ -76,7 +76,9 @@ class Histogram(HybridMetric):
         )  # Decimal to float
 
     @staticmethod
-    def _format_bin_labels(lower_bin, upper_bin=None) -> str:
+    def _format_bin_labels(
+        lower_bin: Union[float, int], upper_bin: Optional[Union[float, int]] = None
+    ) -> str:
         """format bin labels
 
         Args:
