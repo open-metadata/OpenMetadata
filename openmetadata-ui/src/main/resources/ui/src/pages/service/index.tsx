@@ -756,6 +756,11 @@ const ServicePage: FunctionComponent = () => {
   };
 
   const handleUpdateOwner = (owner: ServicesType['owner']) => {
+    if (isUndefined(owner)) {
+      handleRemoveOwner();
+
+      return;
+    }
     const updatedData = {
       connection: serviceDetails?.connection,
       name: serviceDetails?.name,
@@ -1053,12 +1058,6 @@ const ServicePage: FunctionComponent = () => {
                       <EntitySummaryDetails
                         currentOwner={serviceDetails?.owner}
                         data={info}
-                        removeOwner={
-                          servicePermission.EditAll ||
-                          servicePermission.EditOwner
-                            ? handleRemoveOwner
-                            : undefined
-                        }
                         updateOwner={
                           servicePermission.EditAll ||
                           servicePermission.EditOwner

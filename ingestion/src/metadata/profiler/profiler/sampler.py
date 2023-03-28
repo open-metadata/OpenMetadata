@@ -17,6 +17,7 @@ from typing import Dict, Optional, Union, cast
 from sqlalchemy import Column, inspect, text
 from sqlalchemy.orm import DeclarativeMeta, Query, Session, aliased
 from sqlalchemy.orm.util import AliasedClass
+from sqlalchemy.sql.sqltypes import Enum
 
 from metadata.generated.schema.entity.data.table import (
     PartitionIntervalType,
@@ -38,6 +39,22 @@ from metadata.utils.sqa_utils import (
 )
 
 RANDOM_LABEL = "random"
+
+
+def _object_value_for_elem(self, elem):
+    """
+    we have mapped DataType.ENUM: sqlalchemy.Enum
+    if map by default return None,
+    we will always get None because there is no enum map to lookup,
+    so what we are doing here is basically trusting the database,
+    that it will be storing the correct map key and showing directly that on the UI,
+    and in this approach we will be only able to display
+    what database has stored (i.e the key) and not the actual value of the same!
+    """
+    return self._object_lookup.get(elem, elem)  # pylint: disable=protected-access
+
+
+Enum._object_value_for_elem = _object_value_for_elem  # pylint: disable=protected-access
 
 
 class Sampler:

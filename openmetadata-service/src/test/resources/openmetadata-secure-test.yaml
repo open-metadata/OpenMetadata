@@ -190,6 +190,12 @@ jwtTokenConfiguration:
   jwtissuer: "open-metadata.org"
   keyId: "Gb389a-9f76-gdjs-a92j-0242bk94356"
 
+eventMonitoringConfiguration:
+  eventMonitor: "prometheus"
+  batchSize: 10
+  pathPattern: ["/*"]
+  latency: [0.90]
+
 eventHandlerConfiguration:
   eventHandlerClassNames:
     - "org.openmetadata.service.events.AuditEventHandler"

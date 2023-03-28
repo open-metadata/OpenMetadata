@@ -16,18 +16,15 @@ import GlossaryHeader from 'components/Glossary/GlossaryHeader/GlossaryHeader.co
 import GlossaryTermTab from 'components/Glossary/GlossaryTermTab/GlossaryTermTab.component';
 import Tags from 'components/Tag/Tags/tags';
 import { t } from 'i18next';
-import { cloneDeep, includes, isEqual } from 'lodash';
 import { EntityTags } from 'Models';
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { Glossary } from '../../generated/entity/data/glossary';
-import { EntityReference } from '../../generated/type/entityReference';
 import { LabelType, State, TagSource } from '../../generated/type/tagLabel';
 import SVGIcons from '../../utils/SvgUtils';
 import {
   getAllTagsForOptions,
   getTagOptionsFromFQN,
 } from '../../utils/TagsUtils';
-import ReviewerModal from '../Modals/ReviewerModal/ReviewerModal.component';
 import { OperationPermission } from '../PermissionProvider/PermissionProvider.interface';
 import TagsContainer from '../Tag/TagsContainer/tags-container';
 import TagsViewer from '../Tag/TagsViewer/tags-viewer';
@@ -43,30 +40,6 @@ const GlossaryDetails = ({ permissions, glossary, updateGlossary }: props) => {
   const [isTagEditable, setIsTagEditable] = useState<boolean>(false);
   const [tagList, setTagList] = useState<Array<string>>([]);
   const [isTagLoading, setIsTagLoading] = useState<boolean>(false);
-
-  const [showRevieweModal, setShowRevieweModal] = useState(false);
-  const [reviewer, setReviewer] = useState<Array<EntityReference>>([]);
-
-  const onReviewerModalCancel = () => {
-    setShowRevieweModal(false);
-  };
-
-  const handleReviewerSave = (data: Array<EntityReference>) => {
-    if (!isEqual(data, reviewer)) {
-      let updatedGlossary = cloneDeep(glossary);
-      const oldReviewer = data.filter((d) => includes(reviewer, d));
-      const newReviewer = data
-        .filter((d) => !includes(reviewer, d))
-        .map((d) => ({ id: d.id, type: d.type }));
-      updatedGlossary = {
-        ...updatedGlossary,
-        reviewers: [...oldReviewer, ...newReviewer],
-      };
-      setReviewer(data);
-      updateGlossary(updatedGlossary);
-    }
-    onReviewerModalCancel();
-  };
 
   const onTagUpdate = (selectedTags?: Array<string>) => {
     if (selectedTags) {
@@ -114,19 +87,6 @@ const GlossaryDetails = ({ permissions, glossary, updateGlossary }: props) => {
       setIsTagEditable(true);
     }
   };
-
-  useEffect(() => {
-    if (glossary.reviewers && glossary.reviewers.length) {
-      setReviewer(
-        glossary.reviewers.map((d) => ({
-          ...d,
-          type: 'user',
-        }))
-      );
-    } else {
-      setReviewer([]);
-    }
-  }, [glossary.reviewers]);
 
   return (
     <Row data-testid="glossary-details" gutter={[0, 16]}>
@@ -209,15 +169,6 @@ const GlossaryDetails = ({ permissions, glossary, updateGlossary }: props) => {
           selectedGlossaryFqn={glossary.fullyQualifiedName || glossary.name}
         />
       </Col>
-      <ReviewerModal
-        header={t('label.add-entity', {
-          entity: t('label.reviewer'),
-        })}
-        reviewer={reviewer}
-        visible={showRevieweModal}
-        onCancel={onReviewerModalCancel}
-        onSave={handleReviewerSave}
-      />
     </Row>
   );
 };
