@@ -39,7 +39,7 @@ public class ObjectStoreServiceResourceTest extends EntityResourceTest<ObjectSto
         Entity.OBJECT_STORE_SERVICE,
         ObjectStoreService.class,
         ObjectStoreServiceResource.ObjectStoreServiceList.class,
-        "services/objectstoreServices",
+        "services/objectStoreServices",
         "owner");
     this.supportsPatch = false;
   }

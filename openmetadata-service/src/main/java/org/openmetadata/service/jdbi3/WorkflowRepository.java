@@ -77,7 +77,7 @@ public class WorkflowRepository extends EntityRepository<Workflow> {
     @Override
     public void entitySpecificUpdate() throws IOException {
       recordChange("status", original.getStatus(), updated.getStatus());
-      recordChange("response", original.getResponse(), updated.getResponse());
+      recordChange("response", original.getResponse(), updated.getResponse(), true);
     }
   }
 }

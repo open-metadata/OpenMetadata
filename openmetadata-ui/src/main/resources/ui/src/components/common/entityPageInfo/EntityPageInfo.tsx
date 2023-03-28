@@ -85,7 +85,6 @@ interface Props {
   versionHandler?: () => void;
   updateOwner?: (value: Table['owner']) => void;
   updateTier?: (value: string) => void;
-  removeOwner?: () => void;
   currentOwner?: Dashboard['owner'];
   removeTier?: () => void;
   onRestoreEntity?: () => void;
@@ -117,7 +116,6 @@ const EntityPageInfo = ({
   entityType,
   updateOwner,
   updateTier,
-  removeOwner,
   canDelete,
   currentOwner,
   entityFieldTasks,
@@ -490,7 +488,6 @@ const EntityPageInfo = ({
                   currentOwner={currentOwner}
                   data={info}
                   deleted={deleted}
-                  removeOwner={removeOwner}
                   removeTier={removeTier}
                   tier={tier}
                   updateOwner={updateOwner}

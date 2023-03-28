@@ -58,7 +58,7 @@ import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
 
 @Slf4j
-@Path("/v1/services/objectstoreServices")
+@Path("/v1/services/objectStoreServices")
 @Api(value = "Object store service collection", tags = "Services -> Object store service collection")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
@@ -66,7 +66,7 @@ import org.openmetadata.service.util.ResultList;
 public class ObjectStoreServiceResource
     extends ServiceEntityResource<ObjectStoreService, ObjectStoreServiceRepository, ObjectStoreConnection> {
 
-  public static final String COLLECTION_PATH = "v1/services/objectstoreServices/";
+  public static final String COLLECTION_PATH = "v1/services/objectStoreServices/";
   static final String FIELDS = "pipelines,owner,tags";
 
   @Override

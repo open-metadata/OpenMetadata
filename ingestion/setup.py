@@ -33,7 +33,7 @@ VERSIONS = {
     "boto3": "boto3>=1.20,<2.0",  # No need to add botocore separately. It's a dep from boto3
     "geoalchemy2": "GeoAlchemy2~=0.12",
     "google-cloud-storage": "google-cloud-storage==1.43.0",
-    "great-expectations": "great-expectations~=0.15.0",
+    "great-expectations": "great-expectations~=0.16.0",
     "grpc-tools": "grpcio-tools>=1.47.2",
     "msal": "msal~=1.2",
     "neo4j": "neo4j~=5.3.0",
@@ -103,6 +103,7 @@ base_requirements = {
     "setuptools~=65.6.3",
     "sqlalchemy>=1.4.0,<2",
     "openmetadata-sqllineage==1.0.2",
+    "tabulate==0.9.0",
     "typing-compat~=0.1.0",  # compatibility requirements for 3.7
     "typing-inspect",
     "wheel~=0.38.4",

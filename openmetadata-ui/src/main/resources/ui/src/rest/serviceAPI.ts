@@ -12,13 +12,10 @@
  */
 
 import { AxiosResponse } from 'axios';
+import { configOptions } from 'constants/constants';
 import { isNil } from 'lodash';
 import { ServiceData, ServicesData, ServicesUpdateRequest } from 'Models';
-import {
-  ConfigData,
-  ServiceResponse,
-  ServicesType,
-} from '../interface/service.interface';
+import { ServiceResponse, ServicesType } from '../interface/service.interface';
 import { getURLWithQueryFields } from '../utils/APIUtils';
 import APIClient from './index';
 
@@ -96,25 +93,22 @@ export const updateService = async (
   return response.data;
 };
 
+export const updateOwnerService = async (
+  serviceCat: string,
+  id: string,
+  options: ServicesUpdateRequest
+) => {
+  const response = await APIClient.patch<
+    ServicesUpdateRequest,
+    AxiosResponse<ServicesType>
+  >(`/services/${serviceCat}/${id}`, options, configOptions);
+
+  return response.data;
+};
+
 export const deleteService = (
   serviceCat: string,
   id: string
 ): Promise<AxiosResponse> => {
   return APIClient.delete(`/services/${serviceCat}/${id}`);
-};
-
-export const TestConnection = (
-  data: ConfigData,
-  serviceType: string,
-  connectionType?: string,
-  serviceName?: string
-): Promise<AxiosResponse> => {
-  const payload = {
-    connection: { config: data },
-    serviceType: serviceType,
-    connectionType: connectionType,
-    serviceName: serviceName,
-  };
-
-  return APIClient.post(`/services/ingestionPipelines/testConnection`, payload);
 };

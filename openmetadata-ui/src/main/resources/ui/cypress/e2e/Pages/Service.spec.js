@@ -68,26 +68,30 @@ describe('Services page should work properly', () => {
     verifyResponseStatusCode('@getService', 200);
     interceptURL(
       'GET',
-      '/api/v1//search/query?q=*&from=0&size=10&index=*',
+      '/api/v1/search/query?q=*%20AND%20teamType:Group&from=0&size=15&index=team_search_index',
       'editOwner'
     );
-    cy.get('[data-testid="edit-Owner-icon"]')
+    cy.get('[data-testid="edit-owner"]')
       .should('exist')
       .should('be.visible')
       .click();
     verifyResponseStatusCode('@editOwner', 200);
 
-    cy.get('[data-testid="dropdown-list"]')
+    cy.get('.select-owner-tabs')
       .contains('Users')
       .should('exist')
       .should('be.visible')
       .click();
 
-    cy.get('[data-testid="list-item"]')
+    interceptURL('PUT', '/api/v1/services/databaseServices', 'updateService');
+
+    cy.get('[data-testid="selectable-list"]')
       .contains(service.Owner)
       .scrollIntoView()
       .should('be.visible')
       .click();
+
+    verifyResponseStatusCode('@updateService', 200);
 
     cy.get('[data-testid="owner-dropdown"]').should('have.text', service.Owner);
     // Checking if description exists after assigning the owner
@@ -95,5 +99,54 @@ describe('Services page should work properly', () => {
     // need wait here
 
     cy.get('[data-testid="viewer-container"]').contains(service.newDescription);
+  });
+
+  it('Remove owner from service', () => {
+    interceptURL(
+      'GET',
+      '/api/v1/system/config/pipeline-service-client',
+      'getService'
+    );
+    interceptURL(
+      'GET',
+      '/api/v1/search/query?q=*%20AND%20teamType:Group&from=0&size=15&index=team_search_index',
+      'editOwner'
+    );
+    cy.get(`[data-testid="service-name-${service.name}"]`)
+      .should('be.visible')
+      .click();
+
+    verifyResponseStatusCode('@getService', 200);
+
+    cy.get('[data-testid="edit-owner"]')
+      .should('exist')
+      .should('be.visible')
+      .click();
+    verifyResponseStatusCode('@editOwner', 200);
+
+    cy.get('.select-owner-tabs')
+      .contains('Users')
+      .should('exist')
+      .should('be.visible')
+      .click();
+
+    interceptURL('PATCH', '/api/v1/services/databaseServices/*', 'removeOwner');
+    cy.get('[data-testid="selectable-list"]')
+      .eq(1)
+      .contains(service.Owner)
+      .should('be.visible');
+
+    cy.get('[data-testid="remove-owner"]')
+      .should('exist')
+      .should('be.visible')
+      .click();
+
+    verifyResponseStatusCode('@removeOwner', 200);
+
+    // Check if Owner exist
+    cy.get('[data-testid="entity-summary-details"]')
+      .scrollIntoView()
+      .should('exist')
+      .contains('No Owner');
   });
 });

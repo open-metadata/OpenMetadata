@@ -95,3 +95,13 @@ export interface ProfilerSettingModalState {
   partitionData: PartitionProfilerConfig | undefined;
   selectedProfileSampleType: ProfileSampleType | undefined;
 }
+
+export interface ProfilerForm extends PartitionProfilerConfig {
+  profileSample: number | undefined;
+  selectedProfileSampleType: ProfileSampleType | undefined;
+  enablePartition: boolean;
+  profileSampleType: ProfileSampleType | undefined;
+  profileSamplePercentage: number;
+  profileSampleRows: number | undefined;
+  includeColumns: ColumnProfilerConfig[];
+}

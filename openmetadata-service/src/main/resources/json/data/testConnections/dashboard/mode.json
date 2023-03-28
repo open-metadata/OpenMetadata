@@ -1,0 +1,15 @@
+{
+    "name": "Mode",
+    "fullyQualifiedName": "Mode",
+    "displayName": "Mode Test Connection",
+    "description": "This Test Connection validates the access against the server and basic metadata extraction of dashboards and charts.",
+    "steps": [
+      {
+        "name": "CheckAccess",
+        "description": "Validate that the API is accessible with the given credentials",
+        "mandatory": true
+      }
+    ]
+  }
+  
+  

@@ -70,17 +70,17 @@ describe('Create a team and add that team as a owner of the entity', () => {
 
     interceptURL(
       'GET',
-      '/api/v1/search/query?q=*%20AND%20teamType:Group&from=0&size=10&index=team_search_index',
+      '/api/v1/search/query?q=*%20AND%20teamType:Group&from=0&size=15&index=team_search_index',
       'waitForTeams'
     );
 
-    cy.get('[data-testid="edit-Owner-icon"]').should('be.visible').click();
+    cy.get('[data-testid="edit-owner"]').should('be.visible').click();
 
     verifyResponseStatusCode('@waitForTeams', 200);
 
     interceptURL('PATCH', '/api/v1/tables/*', 'validateOwner');
 
-    cy.get('[data-testid="searchInputText"]')
+    cy.get('.user-team-select-popover  [data-testid="searchbar"]')
       .should('be.visible')
       .type(TEAM_DETAILS.name);
 

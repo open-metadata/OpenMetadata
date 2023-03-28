@@ -227,6 +227,7 @@ const EditTestCaseModal: React.FC<EditTestCaseModalProps> = ({
       }}
       closable={false}
       confirmLoading={isLoadingOnSave}
+      maskClosable={false}
       okText={t('label.submit')}
       open={visible}
       title={`${t('label.edit')} ${testCase?.name}`}
