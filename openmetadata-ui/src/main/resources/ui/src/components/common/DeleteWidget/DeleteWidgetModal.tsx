@@ -237,6 +237,7 @@ const DeleteWidgetModal = ({
       confirmLoading={isLoading}
       data-testid="delete-modal"
       footer={Footer()}
+      maskClosable={false}
       okText={t('label.delete')}
       open={visible}
       title={`${t('label.delete')} ${entityName}`}

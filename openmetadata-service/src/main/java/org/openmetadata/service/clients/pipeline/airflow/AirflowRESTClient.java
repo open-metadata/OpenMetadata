@@ -249,7 +249,22 @@ public class AirflowRESTClient extends PipelineServiceClient {
 
   @Override
   public Response runAutomationsWorkflow(Workflow workflow) {
-    return null;
+    HttpResponse<String> response;
+    try {
+      String automationsEndpoint = "%s/%s/run_automation";
+      String automationsUrl = String.format(automationsEndpoint, serviceURL, API_ENDPOINT);
+      String workflowPayload = JsonUtils.pojoToJson(workflow);
+      response = post(automationsUrl, workflowPayload);
+      if (response.statusCode() == 200) {
+        return Response.status(200, response.body()).build();
+      }
+    } catch (Exception e) {
+      throw IngestionPipelineDeploymentException.byMessage(workflow.getName(), e.getMessage());
+    }
+    throw new PipelineServiceClientException(
+        String.format(
+            "%s Failed to trigger workflow due to airflow API returned %s and response %s",
+            workflow.getName(), Response.Status.fromStatusCode(response.statusCode()), response.body()));
   }
 
   @Override

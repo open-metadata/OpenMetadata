@@ -104,6 +104,7 @@ const AddTeamForm: React.FC<AddTeamFormType> = ({
       centered
       closable={false}
       confirmLoading={isLoading}
+      maskClosable={false}
       okButtonProps={{
         form: 'add-team-form',
         type: 'primary',

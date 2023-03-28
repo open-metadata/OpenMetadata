@@ -80,8 +80,8 @@ describe('Test Explore component', () => {
           [SearchIndex.GLOSSARY]: 1,
           [SearchIndex.TAG]: 2,
         }}
-        onChangeAdvancedSearchQueryFilter={mockFunction}
-        onChangePostFilter={mockFunction}
+        onChangeAdvancedSearchQuickFilters={mockFunction}
+        onChangeFacetFilters={mockFunction}
         onChangeSearchIndex={mockFunction}
         onChangeShowDeleted={mockFunction}
         onChangeSortOder={mockFunction}

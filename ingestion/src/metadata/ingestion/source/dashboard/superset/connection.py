@@ -12,10 +12,14 @@
 """
 Source connection handler
 """
-from typing import Union
+from functools import partial
+from typing import Optional, Union
 
 from sqlalchemy.engine import Engine
 
+from metadata.generated.schema.entity.automations.workflow import (
+    Workflow as AutomationWorkflow,
+)
 from metadata.generated.schema.entity.services.connections.dashboard.supersetConnection import (
     SupersetConnection,
 )
@@ -29,10 +33,16 @@ from metadata.generated.schema.entity.utils.supersetApiConnection import (
     SupersetAPIConnection,
 )
 from metadata.ingestion.connections.test_connections import (
-    SourceConnectionException,
-    test_connection_db_common,
+    test_connection_engine_step,
+    test_connection_steps,
+    test_query,
 )
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.dashboard.superset.client import SupersetAPIClient
+from metadata.ingestion.source.dashboard.superset.queries import (
+    FETCH_ALL_CHARTS_TEST,
+    FETCH_DASHBOARDS_TEST,
+)
 from metadata.ingestion.source.database.mysql.connection import (
     get_connection as mysql_get_connection,
 )
@@ -54,15 +64,31 @@ def get_connection(connection: SupersetConnection) -> SupersetAPIClient:
     return None
 
 
-def test_connection(client: Union[SupersetAPIClient, Engine], _) -> None:
+def test_connection(
+    metadata: OpenMetadata,
+    client: Union[SupersetAPIClient, Engine],
+    service_connection: SupersetConnection,
+    automation_workflow: Optional[AutomationWorkflow] = None,
+) -> None:
     """
-    Test connection
+    Test connection. This can be executed either as part
+    of a metadata workflow or during an Automation Workflow
     """
-    try:
-        if isinstance(client, SupersetAPIClient):
-            client.fetch_total_dashboards()
-        else:
-            test_connection_db_common(client)
-    except Exception as exc:
-        msg = f"Unknown error connecting with {client}: {exc}."
-        raise SourceConnectionException(msg)
+
+    test_fn = {}
+
+    if isinstance(client, SupersetAPIClient):
+        test_fn["CheckAccess"] = client.fetch_total_dashboards
+        test_fn["GetDashboards"] = client.fetch_total_dashboards
+        test_fn["GetCharts"] = client.fetch_total_charts
+    else:
+        test_fn["CheckAccess"] = partial(test_connection_engine_step, client)
+        test_fn["GetDashboards"] = partial(test_query, client, FETCH_DASHBOARDS_TEST)
+        test_fn["GetCharts"] = partial(test_query, client, FETCH_ALL_CHARTS_TEST)
+
+    test_connection_steps(
+        metadata=metadata,
+        test_fn=test_fn,
+        service_fqn=service_connection.type.value,
+        automation_workflow=automation_workflow,
+    )
