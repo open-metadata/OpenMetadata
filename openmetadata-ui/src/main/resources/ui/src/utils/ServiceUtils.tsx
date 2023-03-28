@@ -87,6 +87,7 @@ import {
   SALESFORCE,
   SCIKIT,
   serviceTypes,
+  SERVICE_TYPE_MAP,
   SINGLESTORE,
   SNOWFLAKE,
   SQLITE,
@@ -119,7 +120,6 @@ import {
   PipelineService,
   PipelineServiceType,
 } from '../generated/entity/services/pipelineService';
-import { ServiceType } from '../generated/entity/services/serviceType';
 import { ServicesType } from '../interface/service.interface';
 import { getEntityDeleteMessage, pluralize } from './CommonUtils';
 import { getDashboardURL } from './DashboardServiceUtils';
@@ -604,19 +604,8 @@ export const shouldTestConnection = (serviceType: string) => {
   );
 };
 
-export const getTestConnectionType = (serviceCat: ServiceCategory) => {
-  const serviceTypeMap = {
-    [ServiceCategory.DASHBOARD_SERVICES]: ServiceType.Dashboard,
-    [ServiceCategory.DATABASE_SERVICES]: ServiceType.Database,
-    [ServiceCategory.MESSAGING_SERVICES]: ServiceType.Messaging,
-    [ServiceCategory.ML_MODEL_SERVICES]: ServiceType.MlModel,
-    [ServiceCategory.METADATA_SERVICES]: ServiceType.Metadata,
-    [ServiceCategory.OBJECT_STORE_SERVICES]: ServiceType.ObjectStore,
-    [ServiceCategory.PIPELINE_SERVICES]: ServiceType.Pipeline,
-  };
-
-  return serviceTypeMap[serviceCat];
-};
+export const getTestConnectionType = (serviceCat: ServiceCategory) =>
+  SERVICE_TYPE_MAP[serviceCat];
 
 export const getServiceCreatedLabel = (serviceCategory: ServiceCategory) => {
   let serviceCat;
