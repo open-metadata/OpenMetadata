@@ -24,8 +24,8 @@ from metadata.profiler.metrics.static.count import Count
 from metadata.profiler.metrics.static.max import Max
 from metadata.profiler.metrics.static.min import Min
 from metadata.profiler.orm.registry import is_quantifiable
-from metadata.utils.logger import profiler_logger
 from metadata.utils.helpers import format_large_string_numbers
+from metadata.utils.logger import profiler_logger
 
 logger = profiler_logger()
 
@@ -74,7 +74,7 @@ class Histogram(HybridMetric):
             float(res_min),
             float(res_max),
         )  # Decimal to float
-    
+
     @staticmethod
     def _format_bin_labels(lower_bin, upper_bin=None) -> str:
         """format bin labels
@@ -86,9 +86,13 @@ class Histogram(HybridMetric):
         Returns:
             str: formatted bin labels
         """
+        if lower_bin is None:
+            formatted_lower_bin = "null"
+        else:
+            formatted_lower_bin = format_large_string_numbers(lower_bin)
         if upper_bin is None:
-            return f"{format_large_string_numbers(lower_bin)} and up"
-        return f"{format_large_string_numbers(lower_bin)} to {format_large_string_numbers(upper_bin)}"
+            return f"{formatted_lower_bin} and up"
+        return f"{formatted_lower_bin} to {format_large_string_numbers(upper_bin)}"
 
     def fn(
         self,
@@ -195,7 +199,7 @@ class Histogram(HybridMetric):
 
         bins = list(np.arange(num_bins) * bind_width + res_min)
         bins_label = [
-            self._format_bin_labels(bins[i], bins[i+1])
+            self._format_bin_labels(bins[i], bins[i + 1])
             if i < len(bins) - 1
             else self._format_bin_labels(bins[i])
             for i in range(len(bins))

@@ -18,9 +18,9 @@ from __future__ import annotations
 import re
 from datetime import datetime, timedelta
 from functools import wraps
+from math import floor, log
 from time import perf_counter
 from typing import Any, Dict, Iterable, List, Optional, Tuple, Union
-from math import floor, log
 
 from metadata.generated.schema.entity.data.chart import ChartType
 from metadata.generated.schema.entity.data.table import Column, Table
@@ -337,7 +337,9 @@ def format_large_string_numbers(number) -> str:
     Args:
         number: number
     """
+    if number == 0:
+        return "0"
     units = ["", "K", "M", "B", "T"]
     constant_k = 1000.0
     magnitude = int(floor(log(abs(number), constant_k)))
-    return f"{number / constant_k**magnitude}.2f{units[magnitude]}"
+    return f"{number / constant_k**magnitude:.2f}{units[magnitude]}"
