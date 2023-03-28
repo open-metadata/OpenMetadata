@@ -17,6 +17,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import io.dropwizard.Configuration;
 import io.dropwizard.db.DataSourceFactory;
 import io.dropwizard.health.conf.HealthConfiguration;
+import io.dropwizard.web.conf.WebConfiguration;
 import io.federecio.dropwizard.swagger.SwaggerBundleConfiguration;
 import javax.validation.Valid;
 import javax.validation.constraints.NotNull;
@@ -94,6 +95,12 @@ public class OpenMetadataApplicationConfig extends Configuration {
 
   @JsonProperty("email")
   private SmtpSettings smtpSettings;
+
+  @Valid
+  @NotNull
+  @JsonProperty("web")
+  private WebConfiguration webConfiguration = new WebConfiguration();
+
 
   @Override
   public String toString() {

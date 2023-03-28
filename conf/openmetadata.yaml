@@ -306,3 +306,13 @@ applicationConfig:
     accessBlockTime: ${OM_LOGIN_ACCESS_BLOCK_TIME:-600}
     jwtTokenExpiryTime: ${OM_JWT_EXPIRY_TIME:-3600}
 
+web:
+  uriPath: /api
+  hsts:
+    enabled: true
+  frame-options:
+    enabled: true
+  content-type-options:
+    enabled: true
+  xss-protection:
+    enabled: true

@@ -29,6 +29,8 @@ import io.dropwizard.lifecycle.Managed;
 import io.dropwizard.server.DefaultServerFactory;
 import io.dropwizard.setup.Bootstrap;
 import io.dropwizard.setup.Environment;
+import io.dropwizard.web.WebBundle;
+import io.dropwizard.web.conf.WebConfiguration;
 import io.federecio.dropwizard.swagger.SwaggerBundle;
 import io.federecio.dropwizard.swagger.SwaggerBundleConfiguration;
 import io.socket.engineio.server.EngineIoServerOptions;
@@ -268,6 +270,12 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
           }
         });
     bootstrap.addBundle(MicrometerBundleSingleton.getInstance());
+    bootstrap.addBundle(new WebBundle<>() {
+      @Override
+      public WebConfiguration getWebConfiguration(final OpenMetadataApplicationConfig configuration) {
+        return configuration.getWebConfiguration();
+      }
+    });
     super.initialize(bootstrap);
   }
 
