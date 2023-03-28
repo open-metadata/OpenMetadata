@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate.
+ *  Copyright 2023 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -127,6 +127,7 @@ const TableQueryRightPanel = ({
             title={!(EditAll || EditOwner) && NO_PERMISSION_FOR_ACTION}>
             <Button
               className="flex-center p-0"
+              data-testid="edit-owner-btn"
               disabled={!(EditOwner || EditAll)}
               icon={<EditIcon height={16} width={16} />}
               size="small"
@@ -148,7 +149,7 @@ const TableQueryRightPanel = ({
         </div>
       </Col>
       <Col span={24}>
-        <div className="p-x-md">
+        <div className="p-x-md" data-testid="owner-name-container">
           {query.owner && getEntityName(query.owner) ? (
             <Space className="m-r-xss" size={4}>
               <ProfilePicture
@@ -157,7 +158,9 @@ const TableQueryRightPanel = ({
                 name={query.owner?.name || ''}
                 width="26"
               />
-              <Link to={getUserPath(query.owner.name ?? '')}>
+              <Link
+                data-testid="owner-name"
+                to={getUserPath(query.owner.name ?? '')}>
                 {getEntityName(query.owner)}
               </Link>
             </Space>
@@ -184,6 +187,7 @@ const TableQueryRightPanel = ({
               title={!(EditAll || EditDescription) && NO_PERMISSION_FOR_ACTION}>
               <Button
                 className="flex-center p-0"
+                data-testid="edit-description-btn"
                 disabled={!(EditDescription || EditAll)}
                 icon={<EditIcon height={16} width={16} />}
                 size="small"
@@ -213,7 +217,7 @@ const TableQueryRightPanel = ({
         </Typography.Text>
       </Col>
       <Col span={24}>
-        <div className="p-x-md">
+        <div className="p-x-md" data-testid="tag-container">
           {EditAll || EditTags ? (
             <div
               className={classNames(

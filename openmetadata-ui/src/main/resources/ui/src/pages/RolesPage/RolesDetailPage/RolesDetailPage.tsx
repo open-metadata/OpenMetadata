@@ -359,6 +359,7 @@ const RolesDetailPage = () => {
           centered
           closable={false}
           confirmLoading={isLoadingOnSave}
+          maskClosable={false}
           okText={t('label.confirm')}
           open={!isUndefined(selectedEntity.record)}
           title={`${t('label.remove-entity', {

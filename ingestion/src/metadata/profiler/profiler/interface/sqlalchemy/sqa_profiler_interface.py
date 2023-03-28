@@ -413,12 +413,9 @@ class SQAProfilerInterface(ProfilerProtocol, SQAInterfaceMixin):
                     sample=sample,
                 )
             except Exception as exc:
-                logger.error(exc)
-                self.processor_status.failure(
-                    f"{column if column is not None else runner.table.__tablename__}",  # type: ignore
-                    "metric_type.value",
-                    f"{exc}",
-                )
+                error = f"{column if column is not None else runner.table.__tablename__} metric_type.value: {exc}"
+                logger.error(error)
+                self.processor_status.failed_profiler(error, traceback.format_exc())
                 row = None
 
             if column is not None:

@@ -179,6 +179,7 @@ const AddUsersModalV1 = ({
   return (
     <Modal
       data-testid="modal-container"
+      maskClosable={false}
       okButtonProps={{
         id: 'save-button',
       }}

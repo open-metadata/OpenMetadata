@@ -64,6 +64,7 @@ class DynamodbSource(DatabaseServiceSource):
         self.metadata = OpenMetadata(metadata_config)
         self.service_connection = self.config.serviceConnection.__root__.config
         self.dynamodb = get_connection(self.service_connection)
+        self.connection_obj = self.dynamodb
         self.database_source_state = set()
 
     @classmethod
@@ -200,9 +201,10 @@ class DynamodbSource(DatabaseServiceSource):
             self.register_record(table_request=table_request)
 
         except Exception as exc:
+            error = f"Unexpected exception to yield table [{table_name}]: {exc}"
             logger.debug(traceback.format_exc())
-            logger.warning(f"Unexpected exception to yield table [{table_name}]: {exc}")
-            self.status.failures.append(f"{self.config.serviceName}.{table_name}")
+            logger.warning(error)
+            self.status.failed(table_name, error, traceback.format_exc())
 
     def yield_view_lineage(self) -> Optional[Iterable[AddLineageRequest]]:
         yield from []
@@ -214,7 +216,4 @@ class DynamodbSource(DatabaseServiceSource):
         return table
 
     def close(self):
-        pass
-
-    def test_connection(self) -> None:
         pass

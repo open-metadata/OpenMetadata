@@ -75,6 +75,7 @@ export const ModalWithMarkdownEditor: FunctionComponent<ModalWithMarkdownEditorP
             {isLoading ? <Loader size="small" type="white" /> : t('label.save')}
           </Button>,
         ]}
+        maskClosable={false}
         open={visible}
         title={<Typography.Text data-testid="header">{header}</Typography.Text>}
         width="90%"

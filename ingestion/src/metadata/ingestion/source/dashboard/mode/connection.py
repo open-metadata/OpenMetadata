@@ -12,10 +12,16 @@
 """
 Source connection handler
 """
+from typing import Optional
+
+from metadata.generated.schema.entity.automations.workflow import (
+    Workflow as AutomationWorkflow,
+)
 from metadata.generated.schema.entity.services.connections.dashboard.modeConnection import (
     ModeConnection,
 )
-from metadata.ingestion.connections.test_connections import SourceConnectionException
+from metadata.ingestion.connections.test_connections import test_connection_steps
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.dashboard.mode.client import ModeApiClient
 
 
@@ -26,12 +32,22 @@ def get_connection(connection: ModeConnection) -> ModeApiClient:
     return ModeApiClient(connection)
 
 
-def test_connection(client: ModeApiClient, _) -> None:
+def test_connection(
+    metadata: OpenMetadata,
+    client: ModeApiClient,
+    service_connection: ModeConnection,
+    automation_workflow: Optional[AutomationWorkflow] = None,
+) -> None:
     """
-    Test connection
+    Test connection. This can be executed either as part
+    of a metadata workflow or during an Automation Workflow
     """
-    try:
-        client.get_user_account()
-    except Exception as exc:
-        msg = f"Unknown error connecting with {client}: {exc}."
-        raise SourceConnectionException(msg) from exc
+
+    test_fn = {"CheckAccess": client.get_user_account}
+
+    test_connection_steps(
+        metadata=metadata,
+        test_fn=test_fn,
+        service_fqn=service_connection.type.value,
+        automation_workflow=automation_workflow,
+    )

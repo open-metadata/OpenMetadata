@@ -69,7 +69,7 @@ const ProfilerDetailsCard: React.FC<ProfilerDetailsCardProps> = ({
               <LineChart
                 className="tw-w-full"
                 data={data}
-                margin={{ left: 24 }}>
+                margin={{ left: 16 }}>
                 <CartesianGrid stroke={GRAPH_BACKGROUND_COLOR} />
                 <XAxis
                   dataKey="name"
