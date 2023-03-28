@@ -240,14 +240,8 @@ class CliDBBase(TestCase):
             output_clean = re.sub(" +", " ", output_clean)
             output_clean_ansi = re.compile(r"\x1b[^m]*m")
             output_clean = output_clean_ansi.sub(" ", output_clean)
-            if re.match(".* Processor Status: .*", output_clean):
-                regex = (
-                    r"Source Status:%(log)s(.*?)%(log)sProcessor Status: .*" % REGEX_AUX
-                )
-                output_clean = re.findall(regex, output_clean.strip())
-            else:
-                regex = r"Source Status:%(log)s(.*?)%(log)sSink Status: .*" % REGEX_AUX
-                output_clean = re.findall(regex, output_clean.strip())
+            regex = r"Source Status:%(log)s(.*?)%(log)sSink Status: .*" % REGEX_AUX
+            output_clean = re.findall(regex, output_clean.strip())
             return SourceStatus.parse_obj(
                 eval(output_clean[0].strip())  # pylint: disable=eval-used
             )
@@ -258,8 +252,16 @@ class CliDBBase(TestCase):
             output_clean = re.sub(" +", " ", output_clean)
             output_clean_ansi = re.compile(r"\x1b[^m]*m")
             output_clean = output_clean_ansi.sub("", output_clean)
-            regex = r".*Sink Status:%(log)s(.*?)%(log)sWorkflow finished.*" % REGEX_AUX
-            output_clean = re.findall(regex, output_clean.strip())[0].strip()
+            if re.match(".* Processor Status: .*", output_clean):
+                regex = (
+                    r"Sink Status:%(log)s(.*?)%(log)sProcessor Status: .*" % REGEX_AUX
+                )
+                output_clean = re.findall(regex, output_clean.strip())[0].strip()
+            else:
+                regex = (
+                    r".*Sink Status:%(log)s(.*?)%(log)sWorkflow Summary.*" % REGEX_AUX
+                )
+                output_clean = re.findall(regex, output_clean.strip())[0].strip()
             return SinkStatus.parse_obj(eval(output_clean))  # pylint: disable=eval-used
 
         @staticmethod

@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate.
+ *  Copyright 2023 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -36,6 +36,10 @@ import { useParams } from 'react-router-dom';
 import { ENTITY_PATH } from '../../constants/constants';
 import { tabsInfo } from '../../constants/explore.constants';
 import { SearchIndex } from '../../enums/search.enum';
+import {
+  QueryFieldInterface,
+  QueryFieldValueInterface,
+} from '../../pages/explore/ExplorePage.interface';
 import { getDropDownItems } from '../../utils/AdvancedSearchUtils';
 import { getCountBadge } from '../../utils/CommonUtils';
 import { FacetFilterProps } from '../common/facetfilter/facetFilter.interface';
@@ -54,15 +58,17 @@ import {
   ExploreSearchIndexKey,
 } from './explore.interface';
 import './Explore.style.less';
+import { getSelectedValuesFromQuickFilter } from './Explore.utils';
 import ExploreQuickFilters from './ExploreQuickFilters';
 import SortingDropDown from './SortingDropDown';
 
 const Explore: React.FC<ExploreProps> = ({
+  aggregations,
   searchResults,
   tabCounts,
-  onChangeAdvancedSearchQueryFilter,
-  postFilter,
-  onChangePostFilter,
+  onChangeAdvancedSearchQuickFilters,
+  facetFilters,
+  onChangeFacetFilters,
   searchIndex,
   onChangeSearchIndex,
   sortOrder,
@@ -74,6 +80,7 @@ const Explore: React.FC<ExploreProps> = ({
   page = 1,
   onChangePage = noop,
   loading,
+  quickFilters,
 }) => {
   const { t } = useTranslation();
   const { tab } = useParams<{ tab: string }>();
@@ -138,23 +145,23 @@ const Explore: React.FC<ExploreProps> = ({
     key
   ) => {
     const currKeyFilters =
-      isNil(postFilter) || !(key in postFilter)
+      isNil(facetFilters) || !(key in facetFilters)
         ? ([] as string[])
-        : postFilter[key];
+        : facetFilters[key];
     if (checked) {
-      onChangePostFilter({
-        ...postFilter,
+      onChangeFacetFilters({
+        ...facetFilters,
         [key]: unique([...currKeyFilters, value]),
       });
     } else {
       const filteredKeyFilters = currKeyFilters.filter((v) => v !== value);
       if (filteredKeyFilters.length) {
-        onChangePostFilter({
-          ...postFilter,
+        onChangeFacetFilters({
+          ...facetFilters,
           [key]: filteredKeyFilters,
         });
       } else {
-        onChangePostFilter(omit(postFilter, key));
+        onChangeFacetFilters(omit(facetFilters, key));
       }
     }
   };
@@ -167,27 +174,38 @@ const Explore: React.FC<ExploreProps> = ({
     []
   );
 
-  const handleAdvanceSearchFilter = (data: ExploreQuickFilterField[]) => {
-    const terms = [] as Array<Record<string, unknown>>;
+  const handleQuickFiltersChange = (data: ExploreQuickFilterField[]) => {
+    const must = [] as Array<QueryFieldInterface>;
 
+    // Mapping the selected advanced search quick filter dropdown values
+    // to form a queryFilter to pass as a search parameter
     data.forEach((filter) => {
-      filter.value?.map((val) => {
-        if (filter.key) {
-          terms.push({ term: { [filter.key]: val.key } });
+      if (!isEmpty(filter.value)) {
+        const should = [] as Array<QueryFieldValueInterface>;
+        if (filter.value) {
+          filter.value.forEach((filterValue) => {
+            const term = {} as QueryFieldValueInterface['term'];
+
+            term[filter.key] = filterValue.key;
+
+            should.push({ term });
+          });
         }
-      });
+
+        must.push({ bool: { should } });
+      }
     });
 
-    onChangeAdvancedSearchQueryFilter(
-      isEmpty(terms)
+    onChangeAdvancedSearchQuickFilters(
+      isEmpty(must)
         ? undefined
         : {
-            query: { bool: { should: terms } },
+            query: { bool: { must } },
           }
     );
   };
 
-  const handleAdvanceFieldValueSelect = (field: ExploreQuickFilterField) => {
+  const handleQuickFiltersValueSelect = (field: ExploreQuickFilterField) => {
     setSelectedQuickFilters((pre) => {
       const data = pre.map((preField) => {
         if (preField.key === field.key) {
@@ -197,7 +215,7 @@ const Explore: React.FC<ExploreProps> = ({
         }
       });
 
-      handleAdvanceSearchFilter(data);
+      handleQuickFiltersChange(data);
 
       return data;
     });
@@ -220,9 +238,16 @@ const Explore: React.FC<ExploreProps> = ({
     const dropdownItems = getDropDownItems(searchIndex);
 
     setSelectedQuickFilters(
-      dropdownItems.map((item) => ({ ...item, value: [] }))
+      dropdownItems.map((item) => ({
+        ...item,
+        value: getSelectedValuesFromQuickFilter(
+          item,
+          dropdownItems,
+          quickFilters
+        ),
+      }))
     );
-  }, [searchIndex]);
+  }, [searchIndex, quickFilters]);
 
   useEffect(() => {
     if (
@@ -249,11 +274,11 @@ const Explore: React.FC<ExploreProps> = ({
           data-testid="data-summary-container">
           <ExploreSkeleton loading={Boolean(loading)}>
             <FacetFilter
-              aggregations={omit(searchResults?.aggregations, 'entityType')}
-              filters={postFilter}
+              aggregations={omit(aggregations, 'entityType')}
+              filters={facetFilters}
               showDeleted={showDeleted}
               onChangeShowDeleted={onChangeShowDeleted}
-              onClearFilter={onChangePostFilter}
+              onClearFilter={onChangeFacetFilters}
               onSelectHandler={handleFacetFilterChange}
             />
           </ExploreSkeleton>
@@ -261,6 +286,7 @@ const Explore: React.FC<ExploreProps> = ({
       }
       pageTitle={t('label.explore')}>
       <Tabs
+        activeKey={searchIndex}
         defaultActiveKey={defaultActiveTab}
         items={tabItems}
         size="small"
@@ -302,7 +328,7 @@ const Explore: React.FC<ExploreProps> = ({
                 fields={selectedQuickFilters}
                 index={searchIndex}
                 onAdvanceSearch={() => toggleModal(true)}
-                onFieldValueSelect={handleAdvanceFieldValueSelect}
+                onFieldValueSelect={handleQuickFiltersValueSelect}
               />
             </Col>
             {sqlQuery && (

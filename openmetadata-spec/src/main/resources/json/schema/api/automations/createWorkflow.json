@@ -31,6 +31,19 @@
         }
       ]
     },
+    "status": {
+      "description": "Workflow computation status.",
+      "$ref": "../../entity/automations/workflow.json#/definitions/workflowStatus",
+      "default": "Pending"
+    },
+    "response": {
+      "description": "Response to the request.",
+      "oneOf": [
+        {
+          "$ref": "../../entity/services/connections/testConnectionResult.json"
+        }
+      ]
+    },
     "owner": {
       "description": "Owner of this workflow.",
       "$ref": "../../type/entityReference.json",

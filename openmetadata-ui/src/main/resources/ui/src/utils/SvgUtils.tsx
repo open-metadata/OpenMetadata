@@ -43,6 +43,8 @@ import IconBotProfile from '../assets/svg/bot-profile.svg';
 import IconSuccess from '../assets/svg/check.svg';
 import IconCheckboxPrimary from '../assets/svg/checkbox-primary.svg';
 import IconCircleCheckbox from '../assets/svg/circle-checkbox.svg';
+import IconCloseCircleOutlinedColor from '../assets/svg/close-circle-outlined-color.svg';
+import IconCloseCircleOutlined from '../assets/svg/close-circle-outlined.svg';
 import IconClosedLock from '../assets/svg/closed-lock.svg';
 import IconComments from '../assets/svg/comment.svg';
 import IconTaskClose from '../assets/svg/complete.svg';
@@ -114,6 +116,8 @@ import IconMenu from '../assets/svg/ic-menu.svg';
 import IconMyData from '../assets/svg/ic-mydata.svg';
 import IconContainer from '../assets/svg/ic-object-store.svg';
 import IconQuality from '../assets/svg/ic-quality.svg';
+import IconRemoveColored from '../assets/svg/ic-remove-colored.svg';
+import IconRemove from '../assets/svg/ic-remove.svg';
 import IconReply from '../assets/svg/ic-reply.svg';
 import IconReports from '../assets/svg/ic-reports.svg';
 import IconRestore from '../assets/svg/ic-restore.svg';
@@ -129,7 +133,6 @@ import IconStore from '../assets/svg/ic-store.svg';
 import IconSync from '../assets/svg/ic-sync.svg';
 import IconTaskPrimary from '../assets/svg/ic-task-primary.svg';
 import IconTask from '../assets/svg/ic-task.svg';
-import IconTeams from '../assets/svg/ic-teams.svg';
 import IconThumbsUp from '../assets/svg/ic-thumbs-up.svg';
 import IconTimesCircle from '../assets/svg/ic-times-circle.svg';
 import IconTrends from '../assets/svg/ic-trends.svg';
@@ -174,7 +177,6 @@ import IconProfilerColor from '../assets/svg/profiler-color.svg';
 import IconProfiler from '../assets/svg/profiler.svg';
 import IconHelpCircle from '../assets/svg/question-circle.svg';
 import IconReaction from '../assets/svg/Reaction.svg';
-import IconRemove from '../assets/svg/Remove.svg';
 import IconReplyFeed from '../assets/svg/Reply.svg';
 import IconRequest from '../assets/svg/request-icon.svg';
 import IconSampleDataColor from '../assets/svg/sample-data-colored.svg';
@@ -235,7 +237,6 @@ export const Icons = {
   SETTINGS_PRIMERY: 'icon-settings-primery',
   SETTINGS_GRAY: 'icon-settings-gray',
   SQL_BUILDER: 'icon-sql-builder',
-  TEAMS: 'icon-teams',
   TEAMS_GREY: 'icon-teams-grey',
   TEST_SUITE: 'icon-test-suite',
   WORKFLOWS: 'icon-workflows',
@@ -389,6 +390,7 @@ export const Icons = {
   POLICIES: 'policies',
   INFO_SECONDARY: 'info-secondary',
   ICON_REMOVE: 'icon-remove',
+  ICON_REMOVE_COLORED: 'icon-remove-colored',
   DELETE_COLORED: 'icon-delete-colored',
   IC_EDIT_PRIMARY: 'ic-edit-primary',
   MSTEAMS: 'msteams',
@@ -407,6 +409,8 @@ export const Icons = {
   CONTAINER: 'container',
   FLAT_FOLDER: 'flat-folder',
   FLAT_DOC: 'flat-doc',
+  CLOSE_CIRCLE_OUTLINED: 'close-circle-outlined',
+  CLOSE_CIRCLE_OUTLINED_COLOR: 'close-circle-outlined-color',
 };
 
 /**
@@ -445,10 +449,7 @@ const SVGIcons: FunctionComponent<Props> = ({ icon, ...props }: Props) => {
       IconComponent = IconSQLBuilder;
 
       break;
-    case Icons.TEAMS:
-      IconComponent = IconTeams;
 
-      break;
     case Icons.RESTORE:
       IconComponent = IconRestore;
 
@@ -674,6 +675,15 @@ const SVGIcons: FunctionComponent<Props> = ({ icon, ...props }: Props) => {
       IconComponent = IconUser;
 
       break;
+    case Icons.CLOSE_CIRCLE_OUTLINED:
+      IconComponent = IconCloseCircleOutlined;
+
+      break;
+    case Icons.CLOSE_CIRCLE_OUTLINED_COLOR:
+      IconComponent = IconCloseCircleOutlinedColor;
+
+      break;
+
     case Icons.TERMS:
       IconComponent = IconTerns;
 
@@ -1109,6 +1119,10 @@ const SVGIcons: FunctionComponent<Props> = ({ icon, ...props }: Props) => {
       break;
     case Icons.ICON_REMOVE:
       IconComponent = IconRemove;
+
+      break;
+    case Icons.ICON_REMOVE_COLORED:
+      IconComponent = IconRemoveColored;
 
       break;
     case Icons.IC_EDIT_PRIMARY:

@@ -33,6 +33,12 @@ Airflow `2.3.3` from Release `0.12`.
 
 The ingestion using Airflow version 2.3.3 as a source package has been tested against Airflow 2.3.3 and Airflow 2.2.5.
 
+<Note>
+
+Note that we only support officially supported Airflow versions. You can check the version list [here](https://airflow.apache.org/docs/apache-airflow/stable/installation/supported-versions.html).
+
+</Note>
+
 ## Metadata Ingestion
 
 All connectors are defined as JSON Schemas.

@@ -87,7 +87,7 @@ class MlflowSource(MlModelServiceSource):
                 None,
             )
             if not latest_version:
-                self.status.failure(model.name, reason="Invalid version")
+                self.status.failed(model.name, "Invalid version")
                 continue
 
             yield model, latest_version

@@ -12,7 +12,7 @@ version. To see what's coming in next releases, please check our [Roadmap](/over
 
 </Note>
 
-# [0.13.2 Release](https://github.com/open-metadata/OpenMetadata/releases/tag/0.13.2-release) - Latest - Jan 30th 2022 🎉
+# [0.13.2 Release](https://github.com/open-metadata/OpenMetadata/releases/tag/0.13.2-release) - Latest - Jan 30th 2023 🎉
 
 ## Improved SQL Lineage
 - We have collaborated with the [sqllineage](https://github.com/reata/sqllineage) and [sqlfluff](https://www.sqlfluff.com/) communities
