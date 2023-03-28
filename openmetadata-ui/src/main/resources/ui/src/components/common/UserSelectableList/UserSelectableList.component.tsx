@@ -46,7 +46,7 @@ export const UserSelectableList = ({
           searchText,
           1,
           PAGE_SIZE_MEDIUM,
-          '',
+          'isBot:false',
           '',
           '',
           SearchIndex.USER
@@ -70,7 +70,9 @@ export const UserSelectableList = ({
             ? {
                 after,
               }
-            : undefined
+            : undefined,
+          undefined,
+          false
         );
         const filterData = getEntityReferenceListFromEntities(
           data,
@@ -100,6 +102,7 @@ export const UserSelectableList = ({
 
   return (
     <Popover
+      destroyTooltipOnHide
       content={
         <SelectableList
           fetchOptions={fetchOptions}
