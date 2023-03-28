@@ -623,7 +623,7 @@ export const getTestConnectionType = (serviceCat: ServiceCategory) => {
     [ServiceCategory.PIPELINE_SERVICES]: ServiceType.Pipeline,
   };
 
-  return serviceTypeMap[serviceCat] ?? ServiceType.Database;
+  return serviceTypeMap[serviceCat];
 };
 
 export const getServiceCreatedLabel = (serviceCategory: ServiceCategory) => {
