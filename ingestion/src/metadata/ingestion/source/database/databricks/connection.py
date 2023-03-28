@@ -94,4 +94,5 @@ def test_connection(
         test_fn=test_fn,
         service_fqn=service_connection.type.value,
         automation_workflow=automation_workflow,
+        timeout_seconds=service_connection.connectionTimeout,
     )
