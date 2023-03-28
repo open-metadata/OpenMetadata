@@ -41,8 +41,10 @@ const RightPanel: FC<RightPanelProps> = ({
   showDeployedTitle = false,
 }) => {
   const panelContainerRef = useRef<HTMLDivElement>(null);
+
   const { isAirflowAvailable } = useAirflowStatus();
   const { t, i18n } = useTranslation();
+
   const [activeFieldDocument, setActiveFieldDocument] = useState<string>('');
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
@@ -80,6 +82,14 @@ const RightPanel: FC<RightPanelProps> = ({
     }
   }, [activeField]);
 
+  const showActiveFieldElement = Boolean(
+    activeFieldName && activeFieldDocument
+  );
+
+  const shouldFetchFieldDoc = Boolean(
+    selectedService && selectedServiceCategory && activeFieldName
+  );
+
   const getActiveStepTitle = (title: string) => {
     const deployMessage = showDeployedTitle ? ` & ${t('label.deployed')}` : '';
     const updateTitle = title.replace(
@@ -102,30 +112,6 @@ const RightPanel: FC<RightPanelProps> = ({
 
     return getFormattedGuideText(description, replaceText, replacement);
   };
-
-  const activeStepGuideElement = activeStepGuide ? (
-    <>
-      <h6 className="tw-heading tw-text-base">
-        {getActiveStepTitle(activeStepGuide.title)}
-      </h6>
-      <div className="tw-mb-5" data-test="current-step-guide">
-        {getActiveStepDescription(activeStepGuide.description)}
-      </div>
-    </>
-  ) : null;
-
-  const activeFieldDocumentElement = activeFieldName ? (
-    <>
-      <h6 className="tw-heading tw-text-base" data-testid="active-field-name">
-        {startCase(activeFieldName)}
-      </h6>
-      <RichTextEditorPreviewer
-        enableSeeMoreVariant={false}
-        markdown={activeFieldDocument}
-        maxLength={activeFieldDocument.length}
-      />
-    </>
-  ) : null;
 
   const fetchFieldDocument = async () => {
     const serviceType = getServiceType(selectedServiceCategory);
@@ -163,33 +149,36 @@ const RightPanel: FC<RightPanelProps> = ({
 
   useEffect(() => {
     // only fetch file when required fields are present
-    const shouldFetchFieldDoc =
-      selectedService && selectedServiceCategory && activeFieldName;
     if (shouldFetchFieldDoc) {
       fetchFieldDocument();
     }
-  }, [selectedService, selectedServiceCategory, activeFieldName]);
+  }, [shouldFetchFieldDoc]);
 
-  useEffect(() => {
-    const handleDocumentClick = (event: MouseEvent) => {
-      if (
-        panelContainerRef.current &&
-        !panelContainerRef.current.contains(event.target as Node)
-      ) {
-        setActiveFieldDocument('');
-      }
-    };
+  const activeStepGuideElement = activeStepGuide ? (
+    <>
+      <h6 className="tw-heading tw-text-base">
+        {getActiveStepTitle(activeStepGuide.title)}
+      </h6>
+      <div className="tw-mb-5" data-test="current-step-guide">
+        {getActiveStepDescription(activeStepGuide.description)}
+      </div>
+    </>
+  ) : null;
 
-    document.addEventListener('mousedown', handleDocumentClick);
+  const activeFieldDocumentElement = activeFieldName ? (
+    <>
+      <h6 className="tw-heading tw-text-base" data-testid="active-field-name">
+        {startCase(activeFieldName)}
+      </h6>
+      <RichTextEditorPreviewer
+        enableSeeMoreVariant={false}
+        markdown={activeFieldDocument}
+        maxLength={activeFieldDocument.length}
+      />
+    </>
+  ) : null;
 
-    return () => {
-      document.removeEventListener('mousedown', handleDocumentClick);
-    };
-  }, []);
-
-  const showActiveFieldDocument = activeFieldName && activeFieldDocument;
-
-  const renderElement = showActiveFieldDocument
+  const renderElement = showActiveFieldElement
     ? activeFieldDocumentElement
     : activeStepGuideElement;
 
