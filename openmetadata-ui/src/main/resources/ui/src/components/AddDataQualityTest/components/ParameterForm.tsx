@@ -14,7 +14,7 @@
 import { PlusOutlined } from '@ant-design/icons';
 import { Button, Form, Input, InputNumber, Select, Switch } from 'antd';
 import 'codemirror/addon/fold/foldgutter.css';
-import { SUPPORTED_PARTITION_TYPE } from 'constants/profiler.constant';
+import { SUPPORTED_PARTITION_TYPE_FOR_DATE_TIME } from 'constants/profiler.constant';
 import { isUndefined } from 'lodash';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
@@ -46,7 +46,9 @@ const ParameterForm: React.FC<ParameterFormProps> = ({ definition, table }) => {
         ) {
           const partitionColumnOptions = table.columns.reduce(
             (result, column) => {
-              if (SUPPORTED_PARTITION_TYPE.includes(column.dataType)) {
+              if (
+                SUPPORTED_PARTITION_TYPE_FOR_DATE_TIME.includes(column.dataType)
+              ) {
                 return [
                   ...result,
                   {
