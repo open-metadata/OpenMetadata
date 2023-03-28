@@ -14,6 +14,7 @@
 import amazonS3 from 'assets/img/service-icon-amazon-s3.svg';
 import gcs from 'assets/img/service-icon-gcs.png';
 import msAzure from 'assets/img/service-icon-ms-azure.png';
+import { WorkflowStatus } from 'generated/entity/automations/workflow';
 import { ObjectStoreServiceType } from 'generated/entity/services/objectstoreService';
 import { map, startCase } from 'lodash';
 import { ServiceTypes, StepperStepType } from 'Models';
@@ -298,3 +299,10 @@ export const SERVICE_DEFAULT_ERROR_MAP = {
   nameLength: false,
   allowChar: false,
 };
+// 2 minutes
+export const FETCHING_EXPIRY_TIME = 2 * 60 * 1000;
+export const FETCH_INTERVAL = 2000;
+export const WORKFLOW_COMPLETE_STATUS = [
+  WorkflowStatus.Failed,
+  WorkflowStatus.Successful,
+];

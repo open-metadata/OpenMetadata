@@ -23,6 +23,7 @@ import NextPrevious from 'components/common/next-previous/NextPrevious';
 import ProfilePicture from 'components/common/ProfilePicture/ProfilePicture';
 import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
 import TabsPane from 'components/common/TabsPane/TabsPane';
+import TestConnection from 'components/common/TestConnection/TestConnection';
 import TitleBreadcrumb from 'components/common/title-breadcrumb/title-breadcrumb.component';
 import { TitleBreadcrumbProps } from 'components/common/title-breadcrumb/title-breadcrumb.interface';
 import PageContainerV1 from 'components/containers/PageContainerV1';
@@ -60,7 +61,6 @@ import { getContainers } from 'rest/objectStoreAPI';
 import { getPipelines } from 'rest/pipelineAPI';
 import {
   getServiceByFQN,
-  TestConnection,
   updateOwnerService,
   updateService,
 } from 'rest/serviceAPI';
@@ -105,7 +105,6 @@ import {
   getServiceCategoryFromType,
   getServicePageTabs,
   getServiceRouteFromServiceType,
-  getServiceType,
   servicePageTabs,
   serviceTypeLogo,
   setServiceSchemaCount,
@@ -114,7 +113,7 @@ import {
 } from '../../utils/ServiceUtils';
 import { IcDeleteColored } from '../../utils/SvgUtils';
 import { getEntityLink, getUsagePercentile } from '../../utils/TableUtils';
-import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
+import { showErrorToast } from '../../utils/ToastUtils';
 
 export type ServicePageData =
   | Database
@@ -162,9 +161,6 @@ const ServicePage: FunctionComponent = () => {
   const [deleteWidgetVisible, setDeleteWidgetVisible] = useState(false);
   const [servicePermission, setServicePermission] =
     useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
-
-  const [isTestingConnection, setIsTestingConnection] =
-    useState<boolean>(false);
 
   const allowTestConn = useMemo(() => {
     return shouldTestConnection(serviceType);
@@ -655,31 +651,6 @@ const ServicePage: FunctionComponent = () => {
     }
   };
 
-  const checkTestConnect = async () => {
-    if (connectionDetails) {
-      setIsTestingConnection(true);
-      try {
-        const response = await TestConnection(
-          connectionDetails,
-          getServiceType(serviceCategory as ServiceCategory),
-          serviceDetails?.serviceType,
-          serviceDetails?.name
-        );
-        // This api only responds with status 200 on success
-        // No data sent on api success
-        if (response.status === 200) {
-          showSuccessToast(t('server.connection-tested-successfully'));
-        } else {
-          throw t('server.unexpected-response');
-        }
-      } catch (error) {
-        showErrorToast(error as AxiosError, t('server.test-connection-error'));
-      } finally {
-        setIsTestingConnection(false);
-      }
-    }
-  };
-
   useEffect(() => {
     setServiceName(
       (serviceCategory as ServiceTypes) ||
@@ -997,6 +968,12 @@ const ServicePage: FunctionComponent = () => {
     }
   }, [isAirflowAvailable]);
 
+  const isTestingDisabled =
+    !servicePermission.EditAll ||
+    (serviceCategory === ServiceCategory.METADATA_SERVICES &&
+      serviceFQN === OPEN_METADATA) ||
+    isUndefined(connectionDetails);
+
   return (
     <PageContainerV1>
       {isLoading ? (
@@ -1195,22 +1172,16 @@ const ServicePage: FunctionComponent = () => {
                                   })
                                 : t('message.no-permission-for-action')
                             }>
-                            <Button
-                              data-testid="test-connection-button"
-                              disabled={
-                                !servicePermission.EditAll ||
-                                isTestingConnection ||
-                                (serviceCategory ===
-                                  ServiceCategory.METADATA_SERVICES &&
-                                  serviceFQN === OPEN_METADATA)
+                            <TestConnection
+                              connectionType={serviceDetails?.serviceType ?? ''}
+                              formData={connectionDetails as ConfigData}
+                              isTestingDisabled={isTestingDisabled}
+                              serviceCategory={
+                                serviceCategory as ServiceCategory
                               }
-                              loading={isTestingConnection}
-                              type="primary"
-                              onClick={checkTestConnect}>
-                              {t('label.test-entity', {
-                                entity: t('label.connection'),
-                              })}
-                            </Button>
+                              serviceName={serviceDetails?.name}
+                              showDetails={false}
+                            />
                           </Tooltip>
                         )}
                       </Space>
