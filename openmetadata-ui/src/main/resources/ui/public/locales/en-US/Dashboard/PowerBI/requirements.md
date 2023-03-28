@@ -24,3 +24,5 @@ Please refer [here](https://stackoverflow.com/questions/71001110/power-bi-rest-a
 ### Step 3: Create New PowerBI workspace
 The service principal only works with [new workspaces](https://docs.microsoft.com/en-us/power-bi/collaborate-share/service-create-the-new-workspaces).
 [For reference](https://community.powerbi.com/t5/Service/Error-while-executing-Get-dataset-call-quot-API-is-not/m-p/912360#M85711)
+
+You can find further information on the PowerBi connector in the [docs](https://docs.open-metadata.org/connectors/dashboard/powerbi).
