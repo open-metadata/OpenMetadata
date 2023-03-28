@@ -31,7 +31,7 @@
       },
       {
         "name": "GetQueries",
-        "description": "Check if we can access fetch the queries form `https://{your_host}/api/2.0/sql/history/queries` API. NOTE: To access this api you must have a premium subscription to databricks.",
+        "description": "Check if we can access the queries form `https://{your_host}/api/2.0/sql/history/queries` API. NOTE: To access this api you must have a premium subscription to databricks.",
         "mandatory": false
       }
     ]
