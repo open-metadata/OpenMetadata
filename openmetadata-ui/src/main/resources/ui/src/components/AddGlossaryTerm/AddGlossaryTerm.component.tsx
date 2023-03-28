@@ -14,11 +14,15 @@
 import { CheckOutlined, PlusOutlined } from '@ant-design/icons';
 import { Space, Switch } from 'antd';
 import classNames from 'classnames';
+import { UserSelectableList } from 'components/common/UserSelectableList/UserSelectableList.component';
+import { UserTag } from 'components/common/UserTag/UserTag.component';
+import { UserTagSize } from 'components/common/UserTag/UserTag.interface';
 import Tags from 'components/Tag/Tags/tags';
 import { t } from 'i18next';
 import { cloneDeep, isEmpty, isUndefined } from 'lodash';
 import { EntityTags } from 'Models';
 import React, { useEffect, useRef, useState } from 'react';
+import { getEntityName } from 'utils/EntityUtils';
 import { allowedNameRegEx } from '../../constants/regex.constants';
 import { PageLayoutType } from '../../enums/layout.enum';
 import { CreateGlossaryTerm } from '../../generated/api/data/createGlossaryTerm';
@@ -37,7 +41,6 @@ import TitleBreadcrumb from '../common/title-breadcrumb/title-breadcrumb.compone
 import PageLayout from '../containers/PageLayout';
 import Loader from '../Loader/Loader';
 import RelatedTermsModal from '../Modals/RelatedTermsModal/RelatedTermsModal';
-import ReviewerModal from '../Modals/ReviewerModal/ReviewerModal.component';
 import { AddGlossaryTermProps } from './AddGlossaryTerm.interface';
 
 const Field = ({
@@ -70,7 +73,7 @@ const AddGlossaryTerm = ({
 
   const [name, setName] = useState('');
   const [description] = useState<string>('');
-  const [showReviewerModal, setShowReviewerModal] = useState(false);
+
   const [showRelatedTermsModal, setShowRelatedTermsModal] = useState(false);
   const [reviewer, setReviewer] = useState<Array<EntityReference>>([]);
   const [tags, setTags] = useState<EntityTags[]>([]);
@@ -98,19 +101,11 @@ const AddGlossaryTerm = ({
     onRelatedTermsModalCancel();
   };
 
-  const onReviewerModalCancel = () => {
-    setShowReviewerModal(false);
-  };
-
   const handleReviewerSave = (reviewer: Array<EntityReference>) => {
     setReviewer(reviewer);
-    onReviewerModalCancel();
   };
 
-  const handleReviewerRemove = (
-    _event: React.MouseEvent<HTMLElement, MouseEvent>,
-    removedTag: string
-  ) => {
+  const handleReviewerRemove = (removedTag: string) => {
     setReviewer((pre) => pre.filter((option) => option.name !== removedTag));
   };
 
@@ -514,32 +509,37 @@ const AddGlossaryTerm = ({
               <p className="w-form-label tw-mr-3">
                 {t('label.reviewer-plural')}
               </p>
-              <Button
-                className="tw-h-5 tw-px-2"
-                data-testid="add-reviewers"
-                size="x-small"
-                theme="primary"
-                variant="contained"
-                onClick={() => setShowReviewerModal(true)}>
-                <PlusOutlined />
-              </Button>
+              <UserSelectableList
+                hasPermission
+                popoverProps={{ placement: 'topLeft' }}
+                selectedUsers={reviewer ?? []}
+                onUpdate={handleReviewerSave}>
+                <Button
+                  className="tw-h-5 tw-px-2"
+                  data-testid="add-reviewers"
+                  size="x-small"
+                  theme="primary"
+                  variant="contained">
+                  <PlusOutlined />
+                </Button>
+              </UserSelectableList>
             </div>
-            <div className="tw-my-4">
+            <Space wrap className="tw-my-4" size={[8, 8]}>
               {Boolean(reviewer.length) &&
                 reviewer.map((d, index) => {
                   return (
-                    <Tags
-                      editable
-                      isRemovable
-                      className="tw-bg-gray-200"
+                    <UserTag
+                      bordered
+                      closable
+                      id={d.id}
                       key={index}
-                      removeTag={handleReviewerRemove}
-                      tag={d.name ?? ''}
-                      type="contained"
+                      name={getEntityName(d)}
+                      size={UserTagSize.small}
+                      onRemove={() => d.name && handleReviewerRemove(d.name)}
                     />
                   );
                 })}
-            </div>
+            </Space>
           </Field>
 
           <Field className="tw-flex tw-justify-end">
@@ -563,16 +563,6 @@ const AddGlossaryTerm = ({
           visible={showRelatedTermsModal}
           onCancel={onRelatedTermsModalCancel}
           onSave={handleRelatedTermsSave}
-        />
-
-        <ReviewerModal
-          header={t('label.add-entity', {
-            entity: t('label.reviewer-plural'),
-          })}
-          reviewer={reviewer}
-          visible={showReviewerModal}
-          onCancel={onReviewerModalCancel}
-          onSave={handleReviewerSave}
         />
       </div>
     </PageLayout>

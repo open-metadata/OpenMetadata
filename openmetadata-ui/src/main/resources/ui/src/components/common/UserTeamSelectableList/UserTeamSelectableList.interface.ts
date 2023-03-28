@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate.
+ *  Copyright 2023 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,11 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { EntityReference } from 'generated/entity/teams/user';
+import { ReactNode } from 'react';
 
-.user-list {
-  .rc-virtual-list-holder-inner {
-    display: grid !important;
-    gap: 1rem /* 16px */;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
+export interface UserSelectDropdownProps {
+  hasPermission: boolean;
+  owner?: EntityReference;
+  onUpdate: (updatedUser?: EntityReference) => void;
+  children?: ReactNode;
 }

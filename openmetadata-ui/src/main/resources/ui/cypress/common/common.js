@@ -377,12 +377,12 @@ export const editOwnerforCreatedService = (
   verifyResponseStatusCode('@airflow', 200);
   interceptURL(
     'GET',
-    '/api/v1/search/query?q=*%20AND%20teamType:Group&from=0&size=10&index=team_search_index',
+    '/api/v1/search/query?q=*%20AND%20teamType:Group&from=0&size=15&index=team_search_index',
     'waitForTeams'
   );
 
   // Click on edit owner button
-  cy.get('[data-testid="edit-Owner-icon"]')
+  cy.get('[data-testid="edit-owner"]')
     .should('exist')
     .should('be.visible')
     .trigger('mouseover')
@@ -390,21 +390,27 @@ export const editOwnerforCreatedService = (
 
   verifyResponseStatusCode('@waitForTeams', 200);
 
-  // Clicking on users tab
-  cy.get('[data-testid="dropdown-tab"]')
+  cy.get('.user-team-select-popover')
     .contains('Users')
     .should('exist')
     .should('be.visible')
     .click();
 
-  // Selecting the user
-  cy.get('[data-testid="list-item"]')
-    .first()
-    .should('exist')
+  interceptURL(
+    'GET',
+    `api/v1/search/query?q=*${encodeURI('admin')}*&from=0&size=*&index=*`,
+    'searchOwner'
+  );
+  cy.get('.user-team-select-popover [data-testid="searchbar"]')
+    .eq(1)
     .should('be.visible')
-    .click();
+    .and('exist')
+    .trigger('click')
+    .type('admin');
 
-  cy.get('[data-testid="owner-dropdown"]')
+  verifyResponseStatusCode('@searchOwner', 200);
+
+  cy.get('[data-testid="owner-name"]')
     .invoke('text')
     .then((text) => {
       expect(text).equal(ADMIN);
@@ -847,35 +853,21 @@ export const deleteCreatedProperty = (propertyName) => {
     .should('be.visible');
 };
 
-export const updateOwner = (isAddingOwnerToTeam = false) => {
+export const updateOwner = () => {
   cy.get('[data-testid="avatar"]').should('be.visible').click();
   cy.get('[data-testid="user-name"]')
     .should('exist')
     .invoke('text')
     .then((text) => {
       cy.get('[data-testid="hiden-layer"]').should('exist').click();
-      interceptURL(
-        'GET',
-        '/api/v1/search/query?q=*%20AND%20teamType:Group&from=0&size=10&index=team_search_index',
-        'getTeams'
-      );
+      interceptURL('GET', '/api/v1/users?limit=15', 'getUsers');
       // Clicking on edit owner button
-      cy.get('[data-testid="edit-Owner-icon"]').should('be.visible').click();
+      cy.get('[data-testid="add-user"]').should('be.visible').click();
 
-      verifyResponseStatusCode('@getTeams', 200);
+      verifyResponseStatusCode('@getUsers', 200);
 
-      if (!isAddingOwnerToTeam) {
-        // Clicking on users tab
-        cy.get('button[data-testid="dropdown-tab"]')
-          .should('exist')
-          .should('be.visible')
-          .contains('Users')
-          .click();
-      }
-
-      cy.get('[data-testid="list-item"]')
-        .first()
-        .should('contain', text.trim())
+      cy.get('[data-testid="selectable-list"]')
+        .find(`[title="${text.trim()}"]`)
         .click();
 
       // Asserting the added name
@@ -1074,27 +1066,28 @@ export const followAndOwnTheEntity = (termObj) => {
   // go to manage tab and search for logged in user and set the owner
   interceptURL(
     'GET',
-    '/api/v1/search/query?q=*%20AND%20teamType:Group&from=0&size=10&index=team_search_index',
+    '/api/v1/search/query?q=*%20AND%20teamType:Group&from=0&size=15&index=team_search_index',
     'getTeams'
   );
-  cy.get('[data-testid="edit-Owner-icon"]').should('be.visible').click();
+  cy.get('[data-testid="edit-owner"]').should('be.visible').click();
 
   verifyResponseStatusCode('@getTeams', 200);
   // Clicking on users tab
-  cy.get('[data-testid="dropdown-tab"]')
+  cy.get('.user-team-select-popover')
     .contains('Users')
     .should('exist')
     .should('be.visible')
     .click();
 
-  // Selecting the user
-  cy.get('[data-testid="list-item"]')
-    .first()
+  cy.get('[data-testid="selectable-list"]')
+    .eq(1)
     .should('exist')
+    .should('be.visible')
+    .find('[title="admin"]')
     .should('be.visible')
     .click();
 
-  cy.get(':nth-child(2) > [data-testid="owner-link"]')
+  cy.get('[data-testid="owner-link"]')
     .scrollIntoView()
     .invoke('text')
     .then((text) => {

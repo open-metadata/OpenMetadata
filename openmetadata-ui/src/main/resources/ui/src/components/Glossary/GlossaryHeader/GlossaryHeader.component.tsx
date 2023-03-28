@@ -13,9 +13,11 @@
 import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
 import { Button, Col, Input, Row, Space, Tooltip, Typography } from 'antd';
 import Description from 'components/common/description/Description';
-import OwnerWidgetWrapper from 'components/common/OwnerWidget/OwnerWidgetWrapper.component';
 import ProfilePicture from 'components/common/ProfilePicture/ProfilePicture';
-import ReviewerModal from 'components/Modals/ReviewerModal/ReviewerModal.component';
+import { UserSelectableList } from 'components/common/UserSelectableList/UserSelectableList.component';
+import { UserTag } from 'components/common/UserTag/UserTag.component';
+import { UserTagSize } from 'components/common/UserTag/UserTag.interface';
+import { UserTeamSelectableList } from 'components/common/UserTeamSelectableList/UserTeamSelectableList.component';
 import { OperationPermission } from 'components/PermissionProvider/PermissionProvider.interface';
 import { getUserPath } from 'constants/constants';
 import { NO_PERMISSION_FOR_ACTION } from 'constants/HelperTextUtil';
@@ -46,8 +48,6 @@ const GlossaryHeader = ({
   const [isNameEditing, setIsNameEditing] = useState<boolean>(false);
   const [isDescriptionEditable, setIsDescriptionEditable] =
     useState<boolean>(false);
-  const [isEditOwner, setIsEditOwner] = useState<boolean>(false);
-  const [showReviewerModal, setShowReviewerModal] = useState<boolean>(false);
 
   const editDisplayNamePermission = useMemo(() => {
     return permissions.EditAll || permissions.EditDisplayName;
@@ -99,23 +99,12 @@ const GlossaryHeader = ({
     onUpdate(updatedGlossary);
   };
 
-  const handleUpdatedOwner = (newOwner: Glossary['owner']) => {
-    if (newOwner) {
-      const updatedData = {
-        ...selectedData,
-        owner: newOwner,
-      };
-      onUpdate(updatedData);
-    }
-  };
-
-  const handleRemoveOwner = () => {
+  const handleUpdatedOwner = (owner?: Glossary['owner']) => {
     const updatedData = {
       ...selectedData,
-      owner: undefined,
+      owner,
     };
     onUpdate(updatedData);
-    setIsEditOwner(false);
   };
 
   const handleReviewerSave = (data: Array<EntityReference>) => {
@@ -134,7 +123,6 @@ const GlossaryHeader = ({
 
       onUpdate(updatedGlossary);
     }
-    setShowReviewerModal(false);
   };
 
   useEffect(() => {
@@ -158,7 +146,7 @@ const GlossaryHeader = ({
               icon={<CloseOutlined />}
               size="small"
               type="primary"
-              onMouseDown={() => setIsNameEditing(false)}
+              onClick={() => setIsNameEditing(false)}
             />
 
             <Button
@@ -166,7 +154,7 @@ const GlossaryHeader = ({
               icon={<CheckOutlined />}
               size="small"
               type="primary"
-              onMouseDown={onDisplayNameSave}
+              onClick={onDisplayNameSave}
             />
           </Space>
         ) : (
@@ -181,6 +169,7 @@ const GlossaryHeader = ({
                   : NO_PERMISSION_FOR_ACTION
               }>
               <Button
+                data-testid="edit-name"
                 disabled={!editDisplayNamePermission}
                 icon={<SVGIcons alt="icon-tag" icon={Icons.EDIT} width="16" />}
                 type="text"
@@ -218,89 +207,31 @@ const GlossaryHeader = ({
               </span>
             )}
             <div className="tw-relative">
-              <Tooltip
-                placement="topRight"
-                title={
-                  permissions.EditAll || permissions.EditOwner
-                    ? 'Update Owner'
-                    : NO_PERMISSION_FOR_ACTION
-                }>
-                <Button
-                  className="flex-center p-0"
-                  data-testid="owner-dropdown"
-                  disabled={!(permissions.EditOwner || permissions.EditAll)}
-                  icon={
-                    <SVGIcons
-                      alt="edit"
-                      icon={Icons.EDIT}
-                      title="Edit"
-                      width="16px"
-                    />
-                  }
-                  size="small"
-                  type="text"
-                  onClick={() => setIsEditOwner(true)}
-                />
-              </Tooltip>
-              {isEditOwner && (
-                <OwnerWidgetWrapper
-                  className="edit-owner-dropdown"
-                  currentUser={selectedData.owner}
-                  hideWidget={() => setIsEditOwner(false)}
-                  removeOwner={handleRemoveOwner}
-                  updateUser={handleUpdatedOwner}
-                  visible={isEditOwner}
-                />
-              )}
+              <UserTeamSelectableList
+                hasPermission={permissions.EditOwner || permissions.EditAll}
+                owner={selectedData.owner}
+                onUpdate={handleUpdatedOwner}
+              />
             </div>
           </div>
           <span className="tw-mr-1 tw-inline-block tw-text-gray-400">|</span>
 
-          <div
-            className="flex items-center tw-flex-wrap"
-            data-testid="reviewer-card-container">
-            <Typography.Text className="text-grey-muted m-r-xs">
+          <Space align="center" data-testid="reviewer-card-container">
+            <Typography.Text className="text-grey-muted">
               {`${t('label.reviewer')}:`}
-            </Typography.Text>{' '}
+            </Typography.Text>
             {selectedData.reviewers && selectedData.reviewers.length ? (
-              <>
-                {selectedData.reviewers.map((reviewer) => (
-                  <Space
-                    className="m-r-xss"
-                    data-testid={`reviewer-${reviewer.displayName}`}
-                    key={reviewer.name}
-                    size={4}>
-                    <ProfilePicture
-                      displayName={getEntityName(reviewer)}
-                      id={reviewer.id || ''}
-                      name={reviewer?.name || ''}
-                      textClass="text-xs"
-                      width="20"
-                    />
-                    <Space size={2}>
-                      <Link to={getUserPath(reviewer.name ?? '')}>
-                        {getEntityName(reviewer)}
-                      </Link>
-                      <Tooltip
-                        title={
-                          permissions.EditAll
-                            ? 'Remove Reviewer'
-                            : NO_PERMISSION_FOR_ACTION
-                        }>
-                        <Button
-                          className="p-0 flex-center"
-                          data-testid="remove"
-                          disabled={!permissions.EditAll}
-                          icon={<CloseOutlined />}
-                          size="small"
-                          type="text"
-                          onClick={() => handleRemoveReviewer(reviewer.id)}
-                        />
-                      </Tooltip>
-                    </Space>
-                  </Space>
-                ))}
-              </>
+              selectedData.reviewers.map((reviewer) => (
+                <UserTag
+                  bordered
+                  data-testid={`reviewer-${reviewer.displayName}`}
+                  id={reviewer.id}
+                  key={reviewer.name}
+                  name={getEntityName(reviewer)}
+                  size={UserTagSize.small}
+                  onRemove={() => handleRemoveReviewer(reviewer.id)}
+                />
+              ))
             ) : (
               <span className="text-grey-muted">
                 {t('label.no-entity', {
@@ -308,29 +239,12 @@ const GlossaryHeader = ({
                 })}
               </span>
             )}
-            <Tooltip
-              placement="topRight"
-              title={
-                permissions.EditAll ? 'Add Reviewer' : NO_PERMISSION_FOR_ACTION
-              }>
-              <Button
-                className="p-0 flex-center"
-                data-testid="add-new-reviewer"
-                disabled={!permissions.EditAll}
-                icon={
-                  <SVGIcons
-                    alt="edit"
-                    icon={Icons.EDIT}
-                    title="Edit"
-                    width="16px"
-                  />
-                }
-                size="small"
-                type="text"
-                onClick={() => setShowReviewerModal(true)}
-              />
-            </Tooltip>
-          </div>
+            <UserSelectableList
+              hasPermission={permissions.EditAll}
+              selectedUsers={selectedData?.reviewers ?? []}
+              onUpdate={handleReviewerSave}
+            />
+          </Space>
         </Space>
       </Col>
       <Col data-testid="updated-by-container" span={24}>
@@ -344,15 +258,6 @@ const GlossaryHeader = ({
           onDescriptionUpdate={onDescriptionUpdate}
         />
       </Col>
-      <ReviewerModal
-        header={t('label.add-entity', {
-          entity: t('label.reviewer'),
-        })}
-        reviewer={selectedData.reviewers}
-        visible={showReviewerModal}
-        onCancel={() => setShowReviewerModal(false)}
-        onSave={handleReviewerSave}
-      />
     </Row>
   );
 };
