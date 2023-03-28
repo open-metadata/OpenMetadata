@@ -68,6 +68,7 @@ import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.TableRepository;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
+import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.util.EntityUtil.Fields;
@@ -530,7 +531,13 @@ public class TableResource extends EntityResource<Table, TableRepository> {
       throws IOException {
     OperationContext operationContext = new OperationContext(entityType, MetadataOperation.VIEW_SAMPLE_DATA);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
-    return addHref(uriInfo, dao.getSampleData(id));
+    try {
+      operationContext = new OperationContext(entityType, MetadataOperation.VIEW_PII_SAMPLE_DATA);
+      authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
+    } catch (AuthorizationException ignore) {
+      return addHref(uriInfo, dao.getSampleData(id, true));
+    }
+    return addHref(uriInfo, dao.getSampleData(id, false));
   }
 
   @DELETE

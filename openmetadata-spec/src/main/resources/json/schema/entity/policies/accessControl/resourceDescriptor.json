@@ -21,6 +21,7 @@
         "ViewQueries",
         "ViewDataProfile",
         "ViewSampleData",
+        "ViewPIISampleData",
         "EditAll",
         "EditCustomFields",
         "EditDataProfile",

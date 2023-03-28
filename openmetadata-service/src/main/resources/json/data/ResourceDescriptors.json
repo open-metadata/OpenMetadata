@@ -344,6 +344,7 @@
       "ViewQueries",
       "ViewDataProfile",
       "ViewSampleData",
+      "ViewPIISampleData",
       "EditAll",
       "EditDescription",
       "EditDisplayName",
