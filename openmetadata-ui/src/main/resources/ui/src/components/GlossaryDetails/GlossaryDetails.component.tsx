@@ -15,12 +15,8 @@ import { Col, Row } from 'antd';
 import GlossaryHeader from 'components/Glossary/GlossaryHeader/GlossaryHeader.component';
 import GlossaryTermTab from 'components/Glossary/GlossaryTermTab/GlossaryTermTab.component';
 import { GlossaryTerm } from 'generated/entity/data/glossaryTerm';
-import { t } from 'i18next';
-import { cloneDeep, includes, isEqual } from 'lodash';
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { Glossary } from '../../generated/entity/data/glossary';
-import { EntityReference } from '../../generated/type/entityReference';
-import ReviewerModal from '../Modals/ReviewerModal/ReviewerModal.component';
 import { OperationPermission } from '../PermissionProvider/PermissionProvider.interface';
 import './GlossaryDetails.style.less';
 
@@ -39,43 +35,6 @@ const GlossaryDetails = ({
   handleGlossaryDelete,
   glossaryTerms,
 }: props) => {
-  const [showRevieweModal, setShowRevieweModal] = useState(false);
-  const [reviewer, setReviewer] = useState<Array<EntityReference>>([]);
-
-  const onReviewerModalCancel = () => {
-    setShowRevieweModal(false);
-  };
-
-  const handleReviewerSave = (data: Array<EntityReference>) => {
-    if (!isEqual(data, reviewer)) {
-      let updatedGlossary = cloneDeep(glossary);
-      const oldReviewer = data.filter((d) => includes(reviewer, d));
-      const newReviewer = data
-        .filter((d) => !includes(reviewer, d))
-        .map((d) => ({ id: d.id, type: d.type }));
-      updatedGlossary = {
-        ...updatedGlossary,
-        reviewers: [...oldReviewer, ...newReviewer],
-      };
-      setReviewer(data);
-      updateGlossary(updatedGlossary);
-    }
-    onReviewerModalCancel();
-  };
-
-  useEffect(() => {
-    if (glossary.reviewers && glossary.reviewers.length) {
-      setReviewer(
-        glossary.reviewers.map((d) => ({
-          ...d,
-          type: 'user',
-        }))
-      );
-    } else {
-      setReviewer([]);
-    }
-  }, [glossary.reviewers]);
-
   return (
     <Row data-testid="glossary-details" gutter={[0, 16]}>
       <Col span={24}>
@@ -95,15 +54,6 @@ const GlossaryDetails = ({
           selectedGlossaryFqn={glossary.fullyQualifiedName || glossary.name}
         />
       </Col>
-      <ReviewerModal
-        header={t('label.add-entity', {
-          entity: t('label.reviewer'),
-        })}
-        reviewer={reviewer}
-        visible={showRevieweModal}
-        onCancel={onReviewerModalCancel}
-        onSave={handleReviewerSave}
-      />
     </Row>
   );
 };

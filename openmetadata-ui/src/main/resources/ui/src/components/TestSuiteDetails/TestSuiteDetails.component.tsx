@@ -29,7 +29,6 @@ const TestSuiteDetails = ({
   isDescriptionEditable,
   testSuite,
   handleUpdateOwner,
-  handleRemoveOwner,
   testSuiteDescription,
   descriptionHandler,
   handleDescriptionUpdate,
@@ -78,7 +77,6 @@ const TestSuiteDetails = ({
             <EntitySummaryDetails
               currentOwner={testSuite?.owner}
               data={info}
-              removeOwner={handleRemoveOwner}
               updateOwner={hasAccess ? handleUpdateOwner : undefined}
             />
           </span>

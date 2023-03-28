@@ -37,6 +37,7 @@ const visitGlossaryTermPage = (termName) => {
     .should('be.visible')
     .click();
   cy.get('.ant-tabs [id*=tab-summary]').should('be.visible').click();
+  verifyResponseStatusCode('@getGlossaryTerms', 200);
 };
 
 const checkDisplayName = (displayName) => {
@@ -105,7 +106,7 @@ const createGlossaryTerm = (term, glossary, isMutually = false) => {
 
 const deleteGlossaryTerm = ({ name }) => {
   visitGlossaryTermPage(name);
-  cy.wait(500);
+
   cy.get('[data-testid="inactive-link"]').contains(name).should('be.visible');
 
   cy.get('[data-testid="manage-button"]').should('be.visible').click();
@@ -141,7 +142,7 @@ const deleteGlossaryTerm = ({ name }) => {
 
 const goToAssetsTab = (term) => {
   visitGlossaryTermPage(term);
-  cy.wait(500);
+
   cy.get('[data-testid="inactive-link"]').contains(term).should('be.visible');
   cy.get('[data-testid="assets"]').should('be.visible').click();
   cy.get('.ant-tabs-tab-active').contains('Assets').should('be.visible');
@@ -198,6 +199,14 @@ describe('Glossary page should work properly', () => {
       .should('be.visible')
       .click();
     interceptURL('GET', '/api/v1/tags?limit=1000', 'fetchTags');
+
+    interceptURL(
+      'GET',
+      `/api/v1/search/query?q=*${encodeURI(
+        NEW_GLOSSARY.reviewer
+      )}*&from=0&size=15&index=user_search_index`,
+      'getReviewer'
+    );
     cy.get('[data-testid="tags-container"] .ant-select-selection-overflow')
       .scrollIntoView()
       .should('be.visible')
@@ -211,32 +220,16 @@ describe('Glossary page should work properly', () => {
       .should('be.visible')
       .click();
 
-    cy.get('[data-testid="confirmation-modal"]')
-      .should('exist')
-      .within(() => {
-        cy.get('[role="dialog"]').should('be.visible');
-      });
-
-    interceptURL(
-      'GET',
-      '/api/v1/search/suggest?q=*&index=user_search_index',
-      'getReviewer'
-    );
     cy.get('[data-testid="searchbar"]')
       .should('be.visible')
       .type(NEW_GLOSSARY.reviewer);
     verifyResponseStatusCode('@getReviewer', 200);
-    cy.get('[data-testid="user-card-container"]')
-      .first()
+    cy.get(`[title="${NEW_GLOSSARY.reviewer}"]`)
+      .scrollIntoView()
       .should('be.visible')
-      .as('reviewer');
+      .click();
 
-    cy.get('@reviewer')
-      .find('[data-testid="checkboxAddUser"]')
-      .should('be.visible')
-      .check();
-
-    cy.get('[data-testid="save-button"]')
+    cy.get('[data-testid="selectable-list-update-btn"]')
       .should('exist')
       .and('be.visible')
       .click();
@@ -351,7 +344,7 @@ describe('Glossary page should work properly', () => {
       });
     cy.get('[data-testid="reviewer-card-container"]').should('be.visible');
 
-    cy.get(`[data-testid="reviewer-${NEW_GLOSSARY.reviewer}"]`)
+    cy.get(`[data-testid="user-tag"]`)
       .invoke('text')
       .then((text) => {
         expect(text).to.contain(NEW_GLOSSARY.reviewer);
@@ -753,11 +746,7 @@ describe('Glossary page should work properly', () => {
       '/api/v1/search/query?q=*&from=0&size=10&index=glossary_search_index',
       'searchGlossaryTerm'
     );
-    interceptURL(
-      'GET',
-      '/api/v1/search/suggest?q=*&index=user_search_index',
-      'searchReviewer'
-    );
+
     interceptURL('GET', '/api/v1/users/*?fields=profile', 'getProfile');
     fillGlossaryTermDetails(GLOSSARY_TERM_WITH_DETAILS, NEW_GLOSSARY);
     // Add Tags
@@ -786,11 +775,24 @@ describe('Glossary page should work properly', () => {
       GLOSSARY_TERM_WITH_DETAILS.relatedTerms
     );
     verifyResponseStatusCode('@searchGlossaryTerm', 200);
-    cy.wait(500); // adding manual wait for getting updated UI
-    cy.get('[data-testid="user-card-container"]').should('be.visible');
-    cy.get('[data-testid="checkboxAddUser"]').should('be.visible').click();
+
+    cy.get('[data-testid="user-card-container"]')
+      .contains(GLOSSARY_TERM_WITH_DETAILS.relatedTerms)
+      .parents('[data-testid="user-card-container"]')
+      .find('[data-testid="checkboxAddUser"]')
+      .should('be.visible')
+      .click();
+    // cy.get('').should('be.visible').click();
     cy.get('[data-testid="saveButton"]').should('be.visible').click();
     cy.get('.ant-modal-body').should('not.exist');
+
+    interceptURL(
+      'GET',
+      `/api/v1/search/query?q=*${encodeURI(
+        GLOSSARY_TERM_WITH_DETAILS.reviewer
+      )}*&from=0&size=15&index=user_search_index`,
+      'searchReviewer'
+    );
 
     // Add reviewer
     cy.get('[data-testid="add-reviewers"]')
@@ -798,17 +800,21 @@ describe('Glossary page should work properly', () => {
       .should('be.visible')
       .click();
 
-    cy.get('.ant-modal-body').should('be.visible');
+    // cy.get('.ant-modal-body').should('be.visible');
     cy.get('[data-testid="searchbar"]')
       .should('be.visible')
       .type(GLOSSARY_TERM_WITH_DETAILS.reviewer);
 
-    verifyResponseStatusCode('@searchGlossaryTerm', 200);
-    cy.wait(500); // adding manual wait for getting updated UI
-    cy.get('[data-testid="user-card-container"]').should('be.visible');
-    cy.get('[data-testid="checkboxAddUser"]').should('be.visible').click();
-    cy.get('[data-testid="save-button"]').should('be.visible').click();
-    cy.get('.ant-modal-body').should('not.exist');
+    verifyResponseStatusCode('@searchReviewer', 200);
+
+    cy.get(`[title="${GLOSSARY_TERM_WITH_DETAILS.reviewer}"]`)
+      .scrollIntoView()
+      .should('be.visible')
+      .click();
+
+    cy.get('[data-testid="selectable-list-update-btn"]')
+      .should('be.visible')
+      .click();
 
     interceptURL('POST', '/api/v1/glossaryTerms', 'createGlossaryTerms');
     cy.get('[data-testid="save-glossary-term"]')
@@ -872,13 +878,12 @@ describe('Glossary page should work properly', () => {
       .scrollIntoView()
       .as('glossaryTermDetailsPanel');
     cy.get('@glossaryTermDetailsPanel').contains('admin').should('be.visible');
-    cy.get('@glossaryTermDetailsPanel')
-      .find(`[data-testid="reviewer-${GLOSSARY_TERM_WITH_DETAILS.reviewer}"]`)
+    cy.get('[data-testid="user-tag"]')
+      .contains(GLOSSARY_TERM_WITH_DETAILS.reviewer)
       .should('be.visible');
     cy.get('@glossaryTermDetailsPanel')
-      .find(
-        `[data-testid="reviewer-${GLOSSARY_TERM_WITH_DETAILS.inheritedReviewer}"]`
-      )
+      .find(`[data-testid="user-tag"]`)
+      .contains(GLOSSARY_TERM_WITH_DETAILS.inheritedReviewer)
       .should('be.visible');
     cy.get('[data-testid="add-tag"]')
       .contains(GLOSSARY_TERM_WITH_DETAILS.tag)

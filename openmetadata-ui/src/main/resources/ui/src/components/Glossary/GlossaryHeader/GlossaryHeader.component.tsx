@@ -13,19 +13,18 @@
 import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
 import { Button, Col, Input, Row, Space, Tooltip, Typography } from 'antd';
 import DescriptionV1 from 'components/common/description/DescriptionV1';
-import OwnerWidgetWrapper from 'components/common/OwnerWidget/OwnerWidgetWrapper.component';
 import ProfilePicture from 'components/common/ProfilePicture/ProfilePicture';
 import TitleBreadcrumb from 'components/common/title-breadcrumb/title-breadcrumb.component';
 import { TitleBreadcrumbProps } from 'components/common/title-breadcrumb/title-breadcrumb.interface';
-import ReviewerModal from 'components/Modals/ReviewerModal/ReviewerModal.component';
+import { UserTeamSelectableList } from 'components/common/UserTeamSelectableList/UserTeamSelectableList.component';
 import { OperationPermission } from 'components/PermissionProvider/PermissionProvider.interface';
 import { FQN_SEPARATOR_CHAR } from 'constants/char.constants';
 import { getUserPath } from 'constants/constants';
 import { NO_PERMISSION_FOR_ACTION } from 'constants/HelperTextUtil';
-import { EntityReference, Glossary } from 'generated/entity/data/glossary';
+import { Glossary } from 'generated/entity/data/glossary';
 import { GlossaryTerm } from 'generated/entity/data/glossaryTerm';
 import { useAfterMount } from 'hooks/useAfterMount';
-import { cloneDeep, includes, isEqual } from 'lodash';
+import { cloneDeep } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
@@ -56,8 +55,6 @@ const GlossaryHeader = ({
   const [isNameEditing, setIsNameEditing] = useState<boolean>(false);
   const [isDescriptionEditable, setIsDescriptionEditable] =
     useState<boolean>(false);
-  const [isEditOwner, setIsEditOwner] = useState<boolean>(false);
-  const [showReviewerModal, setShowReviewerModal] = useState<boolean>(false);
   const [breadcrumb, setBreadcrumb] = useState<
     TitleBreadcrumbProps['titleLinks']
   >([]);
@@ -138,34 +135,6 @@ const GlossaryHeader = ({
       };
       onUpdate(updatedData);
     }
-  };
-
-  const handleRemoveOwner = () => {
-    const updatedData = {
-      ...selectedData,
-      owner: undefined,
-    };
-    onUpdate(updatedData);
-    setIsEditOwner(false);
-  };
-
-  const handleReviewerSave = (data: Array<EntityReference>) => {
-    if (!isEqual(data, selectedData.reviewers)) {
-      let updatedGlossary = cloneDeep(selectedData);
-      const oldReviewer = data.filter((d) =>
-        includes(selectedData.reviewers, d)
-      );
-      const newReviewer = data
-        .filter((d) => !includes(selectedData.reviewers, d))
-        .map((d) => ({ id: d.id, type: d.type }));
-      updatedGlossary = {
-        ...updatedGlossary,
-        reviewers: [...oldReviewer, ...newReviewer],
-      };
-
-      onUpdate(updatedGlossary);
-    }
-    setShowReviewerModal(false);
   };
 
   useAfterMount(() => {
@@ -326,40 +295,11 @@ const GlossaryHeader = ({
               </span>
             )}
             <div className="tw-relative">
-              <Tooltip
-                placement="topRight"
-                title={
-                  permissions.EditAll || permissions.EditOwner
-                    ? 'Update Owner'
-                    : NO_PERMISSION_FOR_ACTION
-                }>
-                <Button
-                  className="flex-center p-0"
-                  data-testid="owner-dropdown"
-                  disabled={!(permissions.EditOwner || permissions.EditAll)}
-                  icon={
-                    <SVGIcons
-                      alt="edit"
-                      icon={Icons.EDIT}
-                      title="Edit"
-                      width="16px"
-                    />
-                  }
-                  size="small"
-                  type="text"
-                  onClick={() => setIsEditOwner(true)}
-                />
-              </Tooltip>
-              {isEditOwner && (
-                <OwnerWidgetWrapper
-                  className="edit-owner-dropdown"
-                  currentUser={selectedData.owner}
-                  hideWidget={() => setIsEditOwner(false)}
-                  removeOwner={handleRemoveOwner}
-                  updateUser={handleUpdatedOwner}
-                  visible={isEditOwner}
-                />
-              )}
+              <UserTeamSelectableList
+                hasPermission={permissions.EditOwner || permissions.EditAll}
+                owner={selectedData.owner}
+                onUpdate={handleUpdatedOwner}
+              />
             </div>
           </div>
         </Space>
@@ -375,15 +315,6 @@ const GlossaryHeader = ({
           onDescriptionUpdate={onDescriptionUpdate}
         />
       </Col>
-      <ReviewerModal
-        header={t('label.add-entity', {
-          entity: t('label.reviewer'),
-        })}
-        reviewer={selectedData.reviewers}
-        visible={showReviewerModal}
-        onCancel={() => setShowReviewerModal(false)}
-        onSave={handleReviewerSave}
-      />
     </Row>
   );
 };

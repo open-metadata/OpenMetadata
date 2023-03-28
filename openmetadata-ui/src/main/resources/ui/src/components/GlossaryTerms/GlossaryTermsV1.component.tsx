@@ -18,18 +18,15 @@ import GlossaryTermTab from 'components/Glossary/GlossaryTermTab/GlossaryTermTab
 import { PAGE_SIZE } from 'constants/constants';
 import { myDataSearchIndex } from 'constants/Mydata.constants';
 import { t } from 'i18next';
-import { cloneDeep, includes, isEqual } from 'lodash';
 import { AssetsDataType } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { searchData } from 'rest/miscAPI';
 import { formatDataResponse, SearchEntityHits } from 'utils/APIUtils';
 import { GlossaryTerm } from '../../generated/entity/data/glossaryTerm';
-import { EntityReference } from '../../generated/type/entityReference';
 import jsonData from '../../jsons/en';
 import { getCountBadge } from '../../utils/CommonUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
-import ReviewerModal from '../Modals/ReviewerModal/ReviewerModal.component';
 import { OperationPermission } from '../PermissionProvider/PermissionProvider.interface';
 import AssetsTabs from './tabs/AssetsTabs.component';
 
@@ -50,40 +47,13 @@ const GlossaryTermsV1 = ({
 }: Props) => {
   const { glossaryName: glossaryFqn } = useParams<{ glossaryName: string }>();
   const [activeTab, setActiveTab] = useState<string>('glossaryTerms');
-  const [showRevieweModal, setShowRevieweModal] = useState<boolean>(false);
-  const [reviewer, setReviewer] = useState<Array<EntityReference>>([]);
+
   const [assetData, setAssetData] = useState<AssetsDataType>({
     isLoading: true,
     data: [],
     total: 0,
     currPage: 1,
   });
-
-  const onReviewerModalCancel = () => {
-    setShowRevieweModal(false);
-  };
-
-  const handleReviewerSave = (data: Array<EntityReference>) => {
-    if (!isEqual(data, reviewer)) {
-      let updatedGlossaryTerm = cloneDeep(glossaryTerm);
-      const oldReviewer = data.filter((d) => includes(reviewer, d));
-      const newReviewer = data
-        .filter((d) => !includes(reviewer, d))
-        .map((d) => ({
-          id: d.id,
-          type: d.type,
-          displayName: d.displayName,
-          name: d.name,
-        }));
-      updatedGlossaryTerm = {
-        ...updatedGlossaryTerm,
-        reviewers: [...oldReviewer, ...newReviewer],
-      };
-      setReviewer(data);
-      handleGlossaryTermUpdate(updatedGlossaryTerm);
-    }
-    onReviewerModalCancel();
-  };
 
   const activeTabHandler = (tab: string) => {
     setActiveTab(tab);
@@ -136,19 +106,6 @@ const GlossaryTermsV1 = ({
       page as number
     );
   };
-
-  useEffect(() => {
-    if (glossaryTerm.reviewers && glossaryTerm.reviewers.length) {
-      setReviewer(
-        glossaryTerm.reviewers.map((d) => ({
-          ...d,
-          type: 'user',
-        }))
-      );
-    } else {
-      setReviewer([]);
-    }
-  }, [glossaryTerm.reviewers]);
 
   useEffect(() => {
     fetchGlossaryTermAssets(
@@ -218,16 +175,6 @@ const GlossaryTermsV1 = ({
             },
           ]}
           onChange={activeTabHandler}
-        />
-
-        <ReviewerModal
-          header={t('label.add-entity', {
-            entity: t('label.reviewer'),
-          })}
-          reviewer={reviewer}
-          visible={showRevieweModal}
-          onCancel={onReviewerModalCancel}
-          onSave={handleReviewerSave}
         />
       </Col>
     </Row>
