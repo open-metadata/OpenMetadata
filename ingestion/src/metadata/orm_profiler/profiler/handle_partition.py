@@ -18,7 +18,11 @@ import sqlalchemy
 from sqlalchemy import Column, text
 from sqlalchemy.sql import and_
 
-from metadata.orm_profiler.orm.functions.datetime import DateAddFn, DatetimeAddFn
+from metadata.orm_profiler.orm.functions.datetime import (
+    DateAddFn,
+    DatetimeAddFn,
+    TimestampAddFn,
+)
 from metadata.orm_profiler.orm.functions.modulo import ModuloFn
 from metadata.orm_profiler.orm.functions.random_num import RandomNumFn
 from metadata.utils.logger import profiler_logger
@@ -46,9 +50,14 @@ def format_partition_datetime(
             Column(partition_field)
             >= DateAddFn(partition_interval, text(partition_interval_unit))
         )
+    if isinstance(col_type, (sqlalchemy.DATETIME)):
+        return and_(
+            Column(partition_field)
+            >= DatetimeAddFn(partition_interval, text(partition_interval_unit))
+        )
     return and_(
         Column(partition_field)
-        >= DatetimeAddFn(partition_interval, text(partition_interval_unit))
+        >= TimestampAddFn(partition_interval, text(partition_interval_unit))
     )
 
 
