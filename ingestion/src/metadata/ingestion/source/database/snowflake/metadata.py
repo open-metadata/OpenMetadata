@@ -39,7 +39,10 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.source.database.column_type_parser import create_sqlalchemy_type
-from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
+from metadata.ingestion.source.database.common_db_source import (
+    CommonDbSourceService,
+    TableNameAndType,
+)
 from metadata.ingestion.source.database.snowflake.queries import (
     SNOWFLAKE_FETCH_ALL_TAGS,
     SNOWFLAKE_GET_CLUSTER_KEY,
@@ -52,6 +55,7 @@ from metadata.ingestion.source.database.snowflake.utils import (
     get_schema_columns,
     get_table_comment,
     get_table_names,
+    get_table_names_reflection,
     get_unique_constraints,
     get_view_definition,
     get_view_names,
@@ -82,6 +86,7 @@ SnowflakeDialect.get_unique_constraints = get_unique_constraints
 SnowflakeDialect._get_schema_columns = (  # pylint: disable=protected-access
     get_schema_columns
 )
+Inspector.get_table_names = get_table_names_reflection
 
 
 class SnowflakeSource(CommonDbSourceService):
@@ -301,3 +306,30 @@ class SnowflakeSource(CommonDbSourceService):
                         description="SNOWFLAKE TAG VALUE",
                     ),
                 )
+
+    def query_table_names_and_types(
+        self, schema_name: str
+    ) -> Iterable[TableNameAndType]:
+        """
+        Connect to the source database to get the table
+        name and type. By default, use the inspector method
+        to get the names and pass the Regular type.
+
+        This is useful for sources where we need fine-grained
+        logic on how to handle table types, e.g., external, foreign,...
+        """
+
+        if self.config.serviceConnection.__root__.config.includeTempTables:
+
+            return [
+                TableNameAndType(name=table_name)
+                for table_name in self.inspector.get_table_names(
+                    schema=schema_name, include_temp_tables="True"
+                )
+                or []
+            ]
+
+        return [
+            TableNameAndType(name=table_name)
+            for table_name in self.inspector.get_table_names(schema=schema_name) or []
+        ]
