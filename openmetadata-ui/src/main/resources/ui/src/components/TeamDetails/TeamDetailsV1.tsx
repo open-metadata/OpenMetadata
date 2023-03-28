@@ -34,16 +34,22 @@ import { compare } from 'fast-json-patch';
 import { cloneDeep, isEmpty, isUndefined, orderBy, uniqueId } from 'lodash';
 import { ExtraInfo } from 'Models';
 import AddAttributeModal from 'pages/RolesPage/AddAttributeModal/AddAttributeModal';
-import React, { Fragment, useEffect, useMemo, useState } from 'react';
+import React, {
+  Fragment,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { restoreTeam } from 'rest/teamsAPI';
 import AppState from '../../AppState';
 import { ReactComponent as IconEdit } from '../../assets/svg/ic-edit.svg';
+import { ReactComponent as IconRemove } from '../../assets/svg/ic-remove.svg';
 import { ReactComponent as IconRestore } from '../../assets/svg/ic-restore.svg';
 import { ReactComponent as IconDropdown } from '../../assets/svg/menu.svg';
 import { ReactComponent as IconOpenLock } from '../../assets/svg/open-lock.svg';
-import { ReactComponent as IconRemove } from '../../assets/svg/Remove.svg';
 import { ReactComponent as IconShowPassword } from '../../assets/svg/show-password.svg';
 import {
   getTeamAndUserDetailsPath,
@@ -294,7 +300,9 @@ const TeamDetailsV1 = ({
               <Button
                 data-testid="remove-user-btn"
                 disabled={!entityPermissions.EditAll}
-                icon={<IconRemove name={t('label.remove')} />}
+                icon={
+                  <IconRemove height={16} name={t('label.remove')} width={16} />
+                }
                 type="text"
                 onClick={() => deleteUserHandler(record.id)}
               />
@@ -423,29 +431,21 @@ const TeamDetailsV1 = ({
     }
   };
 
-  const updateOwner = (owner?: EntityReference) => {
-    if (currentTeam) {
-      const updatedData: Team = {
-        ...currentTeam,
-        owner: !isUndefined(owner) ? owner : currentTeam.owner,
-      };
+  const updateOwner = useCallback(
+    (owner?: EntityReference) => {
+      if (currentTeam) {
+        const updatedData: Team = {
+          ...currentTeam,
+          owner,
+        };
 
-      return updateTeamHandler(updatedData);
-    }
+        return updateTeamHandler(updatedData);
+      }
 
-    return Promise.reject();
-  };
-
-  const removeOwner = () => {
-    if (currentTeam) {
-      const updatedData: Team = {
-        ...currentTeam,
-        owner: undefined,
-      };
-
-      updateTeamHandler(updatedData);
-    }
-  };
+      return Promise.reject();
+    },
+    [currentTeam]
+  );
 
   const updateTeamType = (type: TeamType) => {
     if (currentTeam) {
@@ -1084,11 +1084,6 @@ const TeamDetailsV1 = ({
                   currentOwner={currentTeam.owner}
                   data={info}
                   isGroupType={isGroupType}
-                  removeOwner={
-                    entityPermissions.EditAll || entityPermissions.EditOwner
-                      ? removeOwner
-                      : undefined
-                  }
                   showGroupOption={!childTeams.length}
                   teamType={currentTeam.teamType}
                   updateOwner={
@@ -1340,6 +1335,7 @@ const TeamDetailsV1 = ({
           centered
           closable={false}
           confirmLoading={isModalLoading}
+          maskClosable={false}
           okText={t('label.confirm')}
           open={!isUndefined(selectedEntity.record)}
           title={`${t('label.remove-entity', {

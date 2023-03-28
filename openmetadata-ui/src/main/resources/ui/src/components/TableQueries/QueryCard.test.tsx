@@ -11,12 +11,7 @@
  *  limitations under the License.
  */
 
-import {
-  findByTestId,
-  findByText,
-  queryByTestId,
-  render,
-} from '@testing-library/react';
+import { findByTestId, findByText, render } from '@testing-library/react';
 import { Query } from 'generated/entity/data/query';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
@@ -67,6 +62,9 @@ jest.mock('../schema-editor/SchemaEditor', () => {
 jest.mock('./QueryCardExtraOption/QueryCardExtraOption.component', () => {
   return jest.fn().mockReturnValue(<>QueryCardExtraOption</>);
 });
+jest.mock('./QueryUsedByOtherTable/QueryUsedByOtherTable.component', () => {
+  return jest.fn().mockReturnValue(<>QueryUsedByOtherTable</>);
+});
 
 const mockProps: QueryCardProp = {
   query: mockQueryData,
@@ -88,33 +86,19 @@ describe('Test QueryCard Component', () => {
       container,
       'QueryCardExtraOption'
     );
+    const queryUsedByOtherTable = await findByText(
+      container,
+      'QueryUsedByOtherTable'
+    );
 
     const expandButton = await findByTestId(
       container,
       'query-entity-expand-button'
     );
 
-    // expect(queryHeader).toBeInTheDocument();
+    expect(queryUsedByOtherTable).toBeInTheDocument();
     expect(query).toBeInTheDocument();
     expect(queryCardExtraOption).toBeInTheDocument();
     expect(expandButton).toBeInTheDocument();
-  });
-
-  it('Should not render header if user is undefined', async () => {
-    const { container } = render(<QueryCard {...mockProps} />, {
-      wrapper: MemoryRouter,
-    });
-    const queryHeader = queryByTestId(container, 'query-header');
-
-    expect(queryHeader).not.toBeInTheDocument();
-  });
-
-  it('Should not render header if duration is undefined', async () => {
-    const { container } = render(<QueryCard {...mockProps} />, {
-      wrapper: MemoryRouter,
-    });
-    const queryHeader = queryByTestId(container, 'query-header');
-
-    expect(queryHeader).not.toBeInTheDocument();
   });
 });

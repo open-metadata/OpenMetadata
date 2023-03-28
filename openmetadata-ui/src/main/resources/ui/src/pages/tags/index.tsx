@@ -581,7 +581,7 @@ const TagsPage = () => {
 
     return getExplorePath({
       extraParameters: {
-        postFilter: {
+        facetFilter: {
           [`${type}.tagFQN`]: [tagFQN],
         },
       },

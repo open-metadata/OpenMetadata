@@ -119,4 +119,6 @@ export enum EntityInfo {
   RETENTION_SIZE = 'Retention Size',
   CLEAN_UP_POLICIES = 'Clean-up Policies',
   MAX_MESSAGE_SIZE = 'Max Message Size',
+  SIZE = 'size',
+  NUMBER_OF_OBJECTS = 'number-of-object-plural',
 }

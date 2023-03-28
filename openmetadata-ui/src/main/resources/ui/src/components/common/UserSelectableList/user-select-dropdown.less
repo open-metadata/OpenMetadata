@@ -1,0 +1,44 @@
+/*
+ *  Copyright 2023 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+@trigger-btn-hover-bg: #efefef;
+@update-btn-hover-bg: #e2e2e2;
+
+.user-select-popover {
+  .ant-popover-inner-content {
+    padding: 0;
+  }
+
+  .page-search-bar {
+    padding: 0;
+  }
+
+  .dropdown-control-bar {
+    padding: 8px;
+  }
+
+  .update-btn {
+    background-color: @trigger-btn-hover-bg;
+    border-color: @trigger-btn-hover-bg;
+  }
+
+  .update-btn:hover {
+    background-color: @update-btn-hover-bg;
+    border-color: @update-btn-hover-bg;
+    color: inherit;
+  }
+
+  .ant-list-header,
+  .ant-list-footer {
+    padding: 12px;
+  }
+}
