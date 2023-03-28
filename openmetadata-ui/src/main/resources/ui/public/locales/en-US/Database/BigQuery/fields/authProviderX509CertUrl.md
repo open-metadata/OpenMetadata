@@ -1,1 +1,1 @@
-Authentication Provider x509 Certificate URL
+This is the URL of the certificate that verifies the authenticity of the authorization server. To fetch this key, look for the value associated with the "auth_provider_x509_cert_url" key in the service account key file.

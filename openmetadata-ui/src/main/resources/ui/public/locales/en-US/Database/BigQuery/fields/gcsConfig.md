@@ -1,1 +1,1 @@
-Pass the path of file containing the GCS credentials info
+Pass the path of file containing the GCP service account keys. You can checkout [this](https://cloud.google.com/iam/docs/keys-create-delete#iam-service-account-keys-create-console) documentation on how to create the service account keys and download it.
