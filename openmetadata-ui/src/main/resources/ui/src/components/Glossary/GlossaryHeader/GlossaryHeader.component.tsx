@@ -10,13 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
-import { Button, Col, Input, Row, Space, Tooltip, Typography } from 'antd';
+import { Button, Col, Row, Space, Tooltip, Typography } from 'antd';
 import DescriptionV1 from 'components/common/description/DescriptionV1';
 import ProfilePicture from 'components/common/ProfilePicture/ProfilePicture';
 import TitleBreadcrumb from 'components/common/title-breadcrumb/title-breadcrumb.component';
 import { TitleBreadcrumbProps } from 'components/common/title-breadcrumb/title-breadcrumb.interface';
 import { UserTeamSelectableList } from 'components/common/UserTeamSelectableList/UserTeamSelectableList.component';
+import EntityDisplayNameModal from 'components/Modals/EntityDisplayNameModal/EntityDisplayNameModal.component';
+import EntityNameModal from 'components/Modals/EntityNameModal/EntityNameModal.component';
 import { OperationPermission } from 'components/PermissionProvider/PermissionProvider.interface';
 import { FQN_SEPARATOR_CHAR } from 'constants/char.constants';
 import { getUserPath } from 'constants/constants';
@@ -51,8 +52,9 @@ const GlossaryHeader = ({
 }: GlossaryHeaderProps) => {
   const { t } = useTranslation();
 
-  const [displayName, setDisplayName] = useState<string>();
   const [isNameEditing, setIsNameEditing] = useState<boolean>(false);
+  const [isDisplayNameEditing, setIsDisplayNameEditing] =
+    useState<boolean>(false);
   const [isDescriptionEditable, setIsDescriptionEditable] =
     useState<boolean>(false);
   const [breadcrumb, setBreadcrumb] = useState<
@@ -72,19 +74,25 @@ const GlossaryHeader = ({
     return permissions.EditAll || permissions.EditDisplayName;
   }, [permissions]);
 
-  const onDisplayNameChange = (value: string) => {
-    if (selectedData.displayName !== value) {
-      setDisplayName(value);
-    }
-  };
-
-  const onDisplayNameSave = () => {
+  const onDisplayNameSave = (displayName: string) => {
     let updatedDetails = cloneDeep(selectedData);
 
     updatedDetails = {
       ...selectedData,
       displayName: displayName?.trim(),
-      name: displayName?.trim() || selectedData.name,
+    };
+
+    onUpdate(updatedDetails);
+
+    setIsDisplayNameEditing(false);
+  };
+
+  const onNameSave = (name: string) => {
+    let updatedDetails = cloneDeep(selectedData);
+
+    updatedDetails = {
+      ...selectedData,
+      name: name?.trim() || selectedData.name,
     };
 
     onUpdate(updatedDetails);
@@ -150,57 +158,35 @@ const GlossaryHeader = ({
   });
 
   useEffect(() => {
-    const { displayName, fullyQualifiedName, name } = selectedData;
-    setDisplayName(displayName);
+    const { fullyQualifiedName, name } = selectedData;
+
     if (!isGlossary) {
       handleBreadcrumb(fullyQualifiedName ? fullyQualifiedName : name);
     }
   }, [selectedData]);
 
   return (
-    <Row gutter={[0, 16]}>
-      <Col span={24}>
-        <Row justify="space-between">
-          <Col span={12}>
-            {!isGlossary && (
-              <div
-                className="tw-text-link tw-text-base glossary-breadcrumb"
-                data-testid="category-name">
-                <TitleBreadcrumb
-                  titleLinks={breadcrumb}
-                  widthDeductions={
-                    leftPanelWidth + addTermButtonWidth + manageButtonWidth + 20 // Additional deduction for margin on the right of leftPanel
-                  }
-                />
-              </div>
-            )}
+    <>
+      <Row gutter={[0, 16]}>
+        <Col span={24}>
+          <Row justify="space-between">
+            <Col span={12}>
+              {!isGlossary && (
+                <div
+                  className="tw-text-link tw-text-base glossary-breadcrumb"
+                  data-testid="category-name">
+                  <TitleBreadcrumb
+                    titleLinks={breadcrumb}
+                    widthDeductions={
+                      leftPanelWidth +
+                      addTermButtonWidth +
+                      manageButtonWidth +
+                      20 // Additional deduction for margin on the right of leftPanel
+                    }
+                  />
+                </div>
+              )}
 
-            {isNameEditing ? (
-              <Space direction="horizontal">
-                <Input
-                  className="input-width"
-                  data-testid="displayName"
-                  name="displayName"
-                  value={displayName}
-                  onChange={(e) => onDisplayNameChange(e.target.value)}
-                />
-                <Button
-                  data-testid="cancelAssociatedTag"
-                  icon={<CloseOutlined />}
-                  size="small"
-                  type="primary"
-                  onMouseDown={() => setIsNameEditing(false)}
-                />
-
-                <Button
-                  data-testid="saveAssociatedTag"
-                  icon={<CheckOutlined />}
-                  size="small"
-                  type="primary"
-                  onMouseDown={onDisplayNameSave}
-                />
-              </Space>
-            ) : (
               <Space direction="vertical" size={0}>
                 <Space>
                   <Typography.Text
@@ -237,7 +223,9 @@ const GlossaryHeader = ({
                   <Tooltip
                     title={
                       editDisplayNamePermission
-                        ? t('label.edit-entity', { entity: t('label.name') })
+                        ? t('label.edit-entity', {
+                            entity: t('label.display-name'),
+                          })
                         : NO_PERMISSION_FOR_ACTION
                     }>
                     <Button
@@ -248,75 +236,87 @@ const GlossaryHeader = ({
                       }
                       size="small"
                       type="text"
-                      onClick={() => setIsNameEditing(true)}
+                      onClick={() => setIsDisplayNameEditing(true)}
                     />
                   </Tooltip>
                 </Space>
               </Space>
-            )}
-          </Col>
-          <Col span={12}>
-            <div style={{ textAlign: 'right' }}>
-              <GlossaryHeaderButtons
-                deleteStatus="success"
-                isGlossary={isGlossary}
-                permission={permissions}
-                selectedData={selectedData}
-                onEntityDelete={onDelete}
-              />
-            </div>
-          </Col>
-        </Row>
-      </Col>
-      <Col span={24}>
-        <Space className="flex-wrap" direction="horizontal">
-          <div className="flex items-center">
-            <Typography.Text className="text-grey-muted m-r-xs">
-              {`${t('label.owner')}:`}
-            </Typography.Text>
-
-            {selectedData.owner && getEntityName(selectedData.owner) ? (
-              <Space className="m-r-xss" size={4}>
-                <ProfilePicture
-                  displayName={getEntityName(selectedData.owner)}
-                  id={selectedData.owner?.id || ''}
-                  name={selectedData.owner?.name || ''}
-                  textClass="text-xs"
-                  width="20"
+            </Col>
+            <Col span={12}>
+              <div style={{ textAlign: 'right' }}>
+                <GlossaryHeaderButtons
+                  deleteStatus="success"
+                  isGlossary={isGlossary}
+                  permission={permissions}
+                  selectedData={selectedData}
+                  onEntityDelete={onDelete}
                 />
-                <Link to={getUserPath(selectedData.owner.name ?? '')}>
-                  {getEntityName(selectedData.owner)}
-                </Link>
-              </Space>
-            ) : (
-              <span className="text-grey-muted">
-                {t('label.no-entity', {
-                  entity: t('label.owner-lowercase'),
-                })}
-              </span>
-            )}
-            <div className="tw-relative">
-              <UserTeamSelectableList
-                hasPermission={permissions.EditOwner || permissions.EditAll}
-                owner={selectedData.owner}
-                onUpdate={handleUpdatedOwner}
-              />
+              </div>
+            </Col>
+          </Row>
+        </Col>
+        <Col span={24}>
+          <Space className="flex-wrap" direction="horizontal">
+            <div className="flex items-center">
+              <Typography.Text className="text-grey-muted m-r-xs">
+                {`${t('label.owner')}:`}
+              </Typography.Text>
+
+              {selectedData.owner && getEntityName(selectedData.owner) ? (
+                <Space className="m-r-xss" size={4}>
+                  <ProfilePicture
+                    displayName={getEntityName(selectedData.owner)}
+                    id={selectedData.owner?.id || ''}
+                    name={selectedData.owner?.name || ''}
+                    textClass="text-xs"
+                    width="20"
+                  />
+                  <Link to={getUserPath(selectedData.owner.name ?? '')}>
+                    {getEntityName(selectedData.owner)}
+                  </Link>
+                </Space>
+              ) : (
+                <span className="text-grey-muted">
+                  {t('label.no-entity', {
+                    entity: t('label.owner-lowercase'),
+                  })}
+                </span>
+              )}
+              <div className="tw-relative">
+                <UserTeamSelectableList
+                  hasPermission={permissions.EditOwner || permissions.EditAll}
+                  owner={selectedData.owner}
+                  onUpdate={handleUpdatedOwner}
+                />
+              </div>
             </div>
-          </div>
-        </Space>
-      </Col>
-      <Col data-testid="updated-by-container" span={24}>
-        <DescriptionV1
-          description={selectedData?.description || ''}
-          entityName={selectedData?.displayName ?? selectedData?.name}
-          hasEditAccess={permissions.EditDescription || permissions.EditAll}
-          isEdit={isDescriptionEditable}
-          onCancel={() => setIsDescriptionEditable(false)}
-          onDescriptionEdit={() => setIsDescriptionEditable(true)}
-          onDescriptionUpdate={onDescriptionUpdate}
-        />
-      </Col>
-    </Row>
+          </Space>
+        </Col>
+        <Col data-testid="updated-by-container" span={24}>
+          <DescriptionV1
+            description={selectedData?.description || ''}
+            entityName={selectedData?.displayName ?? selectedData?.name}
+            hasEditAccess={permissions.EditDescription || permissions.EditAll}
+            isEdit={isDescriptionEditable}
+            onCancel={() => setIsDescriptionEditable(false)}
+            onDescriptionEdit={() => setIsDescriptionEditable(true)}
+            onDescriptionUpdate={onDescriptionUpdate}
+          />
+        </Col>
+      </Row>
+      <EntityNameModal
+        name={selectedData.name}
+        visible={isNameEditing}
+        onCancel={() => setIsNameEditing(false)}
+        onSave={onNameSave}
+      />
+      <EntityDisplayNameModal
+        displayName={selectedData.displayName || ''}
+        visible={isDisplayNameEditing}
+        onCancel={() => setIsDisplayNameEditing(false)}
+        onSave={onDisplayNameSave}
+      />
+    </>
   );
 };
 
