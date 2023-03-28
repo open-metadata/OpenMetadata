@@ -129,8 +129,6 @@ class S3Source(ObjectStoreServiceSource):
 
         for i, bucket_response in enumerate(bucket_results):
             try:
-                if i == 0:
-                    raise RuntimeError("oh no :(")
                 metadata_config = self._load_metadata_file(
                     bucket_name=bucket_response.name
                 )
