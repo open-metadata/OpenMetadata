@@ -487,6 +487,7 @@ const AddIngestion = ({
             dbtConfigSource: omit(dbtConfigSource, [
               'dbtUpdateDescriptions',
               'dbtClassificationName',
+              'includeTags',
             ]),
           } as ConfigClass),
           type: ConfigType.Dbt,
