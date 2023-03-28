@@ -41,10 +41,10 @@ describe('Kafka Ingestion', () => {
       .click();
 
     const connectionInput = () => {
-      cy.get('#root/bootstrapServers').type(
+      cy.get('#root\\/bootstrapServers').type(
         Cypress.env('kafkaBootstrapServers')
       );
-      cy.get('#root/schemaRegistryURL').type(
+      cy.get('#root\\/schemaRegistryURL').type(
         Cypress.env('kafkaSchemaRegistryUrl')
       );
     };
