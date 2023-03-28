@@ -92,7 +92,6 @@ class MlModelServiceSource(TopologyRunnerMixin, Source, ABC):
 
     source_config: MlModelServiceMetadataPipeline
     config: WorkflowSource
-    metadata: OpenMetadata
     # Big union of types we want to fetch dynamically
     service_connection: MlModelConnection.__fields__["config"].type_
 
@@ -113,6 +112,9 @@ class MlModelServiceSource(TopologyRunnerMixin, Source, ABC):
             self.config.sourceConfig.config
         )
         self.connection = get_connection(self.service_connection)
+
+        # Flag the connection for the test connection
+        self.connection_obj = self.connection
         self.test_connection()
 
         self.client = self.connection
@@ -167,7 +169,7 @@ class MlModelServiceSource(TopologyRunnerMixin, Source, ABC):
 
     def test_connection(self) -> None:
         test_connection_fn = get_test_connection_fn(self.service_connection)
-        test_connection_fn(self.connection, self.service_connection)
+        test_connection_fn(self.metadata, self.connection_obj, self.service_connection)
 
     def prepare(self):
         pass

@@ -943,3 +943,10 @@ export const getServicePageTabs = (
 
   return tabs;
 };
+
+export const getTestConnectionName = (connectionType: string) => {
+  return `test-connection-${connectionType}-${cryptoRandomString({
+    length: 8,
+    type: 'alphanumeric',
+  })}`;
+};
