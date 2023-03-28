@@ -25,6 +25,7 @@ on:
     types: [labeled, opened, synchronize, reopened]
     path:
       - 'openmetadata-ui/**'
+      - 'openmetadata-spec/**'
 
 permissions:
   contents: read
