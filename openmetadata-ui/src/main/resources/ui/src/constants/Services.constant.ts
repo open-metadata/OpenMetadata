@@ -211,7 +211,7 @@ export const SERVICE_CATEGORY_TYPE = {
   pipelineServices: 'pipelines',
   mlmodelServices: 'mlModels',
   metadataServices: 'metadata',
-  objectstoreServices: 'objectStores',
+  objectStoreServices: 'objectStores',
 };
 
 export const servicesDisplayName: { [key: string]: string } = {
@@ -233,7 +233,7 @@ export const servicesDisplayName: { [key: string]: string } = {
   metadataServices: i18n.t('label.entity-service', {
     entity: i18n.t('label.metadata'),
   }),
-  objectstoreServices: i18n.t('label.entity-service', {
+  objectStoreServices: i18n.t('label.entity-service', {
     entity: i18n.t('label.object-store'),
   }),
 };
