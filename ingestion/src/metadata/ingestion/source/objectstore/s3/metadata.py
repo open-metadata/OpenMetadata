@@ -159,7 +159,9 @@ class S3Source(ObjectStoreServiceSource):
                 logger.warning(error)
                 self.status.failed(bucket_response.name, error, traceback.format_exc())
             except Exception as err:
-                error = f"Wild error while creating Container from bucket details - {err}"
+                error = (
+                    f"Wild error while creating Container from bucket details - {err}"
+                )
                 logger.debug(traceback.format_exc())
                 logger.warning(error)
                 self.status.failed(bucket_response.name, error, traceback.format_exc())
