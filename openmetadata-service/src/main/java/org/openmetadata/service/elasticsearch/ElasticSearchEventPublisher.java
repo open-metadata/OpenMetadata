@@ -22,12 +22,14 @@ import static org.openmetadata.service.resources.elasticsearch.BuildSearchIndexR
 import static org.openmetadata.service.resources.elasticsearch.BuildSearchIndexResource.ELASTIC_SEARCH_EXTENSION;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
 import java.io.IOException;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -284,6 +286,13 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
         UsageDetails usageSummary = (UsageDetails) fieldChange.getNewValue();
         fieldAddParams.put(fieldChange.getName(), JsonUtils.getMap(usageSummary));
         scriptTxt.append("ctx._source.usageSummary = params.usageSummary;");
+      }
+      if (fieldChange.getName().equalsIgnoreCase("queryUsedIn")) {
+        fieldAddParams.put(
+            fieldChange.getName(),
+            JsonUtils.convertValue(
+                fieldChange.getNewValue(), new TypeReference<List<LinkedHashMap<String, String>>>() {}));
+        scriptTxt.append("ctx._source.queryUsedIn = params.queryUsedIn;");
       }
     }
 

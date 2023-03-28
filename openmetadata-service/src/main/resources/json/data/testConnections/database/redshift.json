@@ -5,6 +5,11 @@
   "description": "This Test Connection validates the access against the database and basic metadata extraction of schemas and tables.",
   "steps": [
     {
+      "name": "CheckAccess",
+      "description": "Validate that we can properly reach the database and authenticate with the given credentials.",
+      "mandatory": true
+    },
+    {
       "name": "GetDatabases",
       "description": "List all the available databases to the user. If all databases option is selected, we will try to go beyond the configured database.",
       "mandatory": true
@@ -25,13 +30,13 @@
       "mandatory": false
     },
     {
-      "name": "GetStlQueryText",
-      "description": "Check that we can properly access the records in stl_querytext. This is required for lineage and usage workflows.",
+      "name": "GetPartitionTableDetails",
+      "description": "Check if we can access the SVV_TABLE_INFO table to fetch table partition details.",
       "mandatory": false
     },
     {
-      "name": "GetStlQuery",
-      "description": "Check that we can properly access the records in stl_query. This is required for lineage and usage workflows.",
+      "name": "GetQueries",
+      "description": "Check if we can access the pg_catalog.svv_table_info & pg_catalog.stl_query tables to get query logs, These queries are analyzed in the usage & lineage workflow.",
       "mandatory": false
     }
   ]

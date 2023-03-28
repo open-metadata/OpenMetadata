@@ -12,11 +12,14 @@
 """
 Source connection handler
 """
-from functools import partial
+
+from typing import Optional
 
 from sqlalchemy.engine import Engine
-from sqlalchemy.inspection import inspect
 
+from metadata.generated.schema.entity.automations.workflow import (
+    Workflow as AutomationWorkflow,
+)
 from metadata.generated.schema.entity.services.connections.database.singleStoreConnection import (
     SingleStoreConnection,
 )
@@ -26,10 +29,9 @@ from metadata.ingestion.connections.builders import (
     get_connection_url_common,
 )
 from metadata.ingestion.connections.test_connections import (
-    TestConnectionResult,
-    TestConnectionStep,
-    test_connection_db_common,
+    test_connection_db_schema_sources,
 )
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 
 
 def get_connection(connection: SingleStoreConnection) -> Engine:
@@ -43,52 +45,19 @@ def get_connection(connection: SingleStoreConnection) -> Engine:
     )
 
 
-def test_connection(engine: Engine, _) -> TestConnectionResult:
+def test_connection(
+    metadata: OpenMetadata,
+    engine: Engine,
+    service_connection: SingleStoreConnection,
+    automation_workflow: Optional[AutomationWorkflow] = None,
+) -> None:
     """
-    Test connection
+    Test connection. This can be executed either as part
+    of a metadata workflow or during an Automation Workflow
     """
-    inspector = inspect(engine)
-
-    def custom_executor_for_table():
-        schema_name = inspector.get_schema_names()
-        if schema_name:
-            for schema in schema_name:
-                if schema not in (
-                    "cluster",
-                    "information_schema",
-                    "memsql",
-                    "s2_dataset_martech_3db3efe6",
-                ):
-                    table_name = inspector.get_table_names(schema)
-                    return table_name
-        return None
-
-    def custom_executor_for_view():
-        schema_name = inspector.get_schema_names()
-        if schema_name:
-            for schema in schema_name:
-                if schema not in (
-                    "cluster",
-                    "information_schema",
-                    "memsql",
-                    "s2_dataset_martech_3db3efe6",
-                ):
-                    view_name = inspector.get_view_names(schema)
-                    return view_name
-        return None
-
-    steps = [
-        TestConnectionStep(
-            function=inspector.get_schema_names,
-            name="Get Schemas",
-        ),
-        TestConnectionStep(
-            function=partial(custom_executor_for_table),
-            name="Get Tables",
-        ),
-        TestConnectionStep(
-            function=partial(custom_executor_for_view),
-            name="Get Views",
-        ),
-    ]
-    return test_connection_db_common(engine, steps)
+    test_connection_db_schema_sources(
+        metadata=metadata,
+        engine=engine,
+        service_connection=service_connection,
+        automation_workflow=automation_workflow,
+    )

@@ -54,7 +54,7 @@ from metadata.ingestion.lineage.sql_lineage import (
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.models.table_metadata import OMetaTableConstraints
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.connections import get_connection, get_test_connection_fn
+from metadata.ingestion.source.connections import get_connection
 from metadata.ingestion.source.database.database_service import DatabaseServiceSource
 from metadata.ingestion.source.database.sql_column_handler import SqlColumnHandlerMixin
 from metadata.ingestion.source.database.sqlalchemy_source import SqlAlchemySource
@@ -102,6 +102,9 @@ class CommonDbSourceService(
         self.service_connection = self.config.serviceConnection.__root__.config
 
         self.engine: Engine = get_connection(self.service_connection)
+
+        # Flag the connection for the test connection
+        self.connection_obj = self.engine
         self.test_connection()
 
         self._connection = None  # Lazy init as well
@@ -522,14 +525,6 @@ class CommonDbSourceService(
                 else:
                     table_constraints.constraints = foreign_constraints
             yield table_constraints
-
-    def test_connection(self) -> None:
-        """
-        Used a timed-bound function to test that the engine
-        can properly reach the source
-        """
-        test_connection_fn = get_test_connection_fn(self.service_connection)
-        test_connection_fn(self.engine, self.service_connection)
 
     @property
     def connection(self) -> Connection:

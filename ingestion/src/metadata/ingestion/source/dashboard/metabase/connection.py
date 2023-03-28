@@ -13,20 +13,21 @@
 Source connection handler
 """
 import json
-from functools import partial
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 import requests
 
+from metadata.generated.schema.entity.automations.workflow import (
+    Workflow as AutomationWorkflow,
+)
 from metadata.generated.schema.entity.services.connections.dashboard.metabaseConnection import (
     MetabaseConnection,
 )
 from metadata.ingestion.connections.test_connections import (
     SourceConnectionException,
-    TestConnectionResult,
-    TestConnectionStep,
     test_connection_steps,
 )
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 
 
 def get_connection(connection: MetabaseConnection) -> Dict[str, Any]:
@@ -56,9 +57,15 @@ def get_connection(connection: MetabaseConnection) -> Dict[str, Any]:
         raise SourceConnectionException(msg) from exc
 
 
-def test_connection(client, _) -> TestConnectionResult:
+def test_connection(
+    metadata: OpenMetadata,
+    client,
+    service_connection: MetabaseConnection,
+    automation_workflow: Optional[AutomationWorkflow] = None,
+) -> None:
     """
-    Test connection
+    Test connection. This can be executed either as part
+    of a metadata workflow or during an Automation Workflow
     """
 
     def custom_executor():
@@ -69,11 +76,11 @@ def test_connection(client, _) -> TestConnectionResult:
 
         return list(result)
 
-    steps = [
-        TestConnectionStep(
-            function=partial(custom_executor),
-            name="Get Dashboard",
-        ),
-    ]
+    test_fn = {"GetDashboards": custom_executor}
 
-    return test_connection_steps(steps)
+    test_connection_steps(
+        metadata=metadata,
+        test_fn=test_fn,
+        service_fqn=service_connection.type.value,
+        automation_workflow=automation_workflow,
+    )

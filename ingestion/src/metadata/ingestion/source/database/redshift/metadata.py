@@ -448,10 +448,14 @@ class RedshiftSource(CommonDbSourceService):
         """
         Populate partition details
         """
-        self.partition_details.clear()
-        results = self.engine.execute(REDSHIFT_PARTITION_DETAILS).fetchall()
-        for row in results:
-            self.partition_details[f"{row.schema}.{row.table}"] = row.diststyle
+        try:
+            self.partition_details.clear()
+            results = self.engine.execute(REDSHIFT_PARTITION_DETAILS).fetchall()
+            for row in results:
+                self.partition_details[f"{row.schema}.{row.table}"] = row.diststyle
+        except Exception as exe:
+            logger.debug(traceback.format_exc())
+            logger.debug(f"Failed to fetch partition details due: {exe}")
 
     def query_table_names_and_types(
         self, schema_name: str

@@ -114,7 +114,7 @@
     <spring-security-kerberos-core.version>1.0.1.RELEASE</spring-security-kerberos-core.version>
     <httpclient.version>4.5.14</httpclient.version>
     <!-- Upgrading to spring version 6.x requires Java 17 -->
-    <spring.version>5.3.24</spring.version>
+    <spring.version>5.3.26</spring.version>
     <log4j.version>2.19.0</log4j.version>
     <org.junit.jupiter.version>5.9.2</org.junit.jupiter.version>
     <dropwizard-health.version>1.7.2</dropwizard-health.version>
