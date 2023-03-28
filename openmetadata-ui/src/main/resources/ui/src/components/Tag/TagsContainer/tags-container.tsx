@@ -147,16 +147,14 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
       data-testid="tag-container"
       size={8}>
       {showTags && !editable && (
-        <Space wrap>
+        <Space wrap align="center" size={4}>
           {showAddTagButton && (
-            <span className="tw-text-primary">
-              <Tags
-                className="tw-font-semibold"
-                startWith="+ "
-                tag="Tags"
-                type="border"
-              />
-            </span>
+            <Tags
+              className="tw-font-semibold"
+              startWith="+ "
+              tag="Tags"
+              type="border"
+            />
           )}
           {tags.map(getTagsElement)}
         </Space>

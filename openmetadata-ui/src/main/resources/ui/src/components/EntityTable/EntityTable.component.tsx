@@ -523,7 +523,7 @@ const EntityTable = ({
       return (
         <div className="hover-icon-group">
           {isReadOnly ? (
-            <TagsViewer sizeCap={-1} tags={tags || []} />
+            <TagsViewer sizeCap={-1} tags={tags || []} type="border" />
           ) : (
             <div
               className={classNames(

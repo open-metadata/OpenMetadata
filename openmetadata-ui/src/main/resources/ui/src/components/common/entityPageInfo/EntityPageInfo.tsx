@@ -16,20 +16,17 @@ import { Button, Popover, Space, Tooltip } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import Tags from 'components/Tag/Tags/tags';
 import { t } from 'i18next';
 import { cloneDeep, isEmpty, isUndefined } from 'lodash';
 import { EntityTags, ExtraInfo, TagOption } from 'Models';
 import React, { Fragment, useCallback, useEffect, useState } from 'react';
 import { useHistory } from 'react-router-dom';
 import { getActiveAnnouncement } from 'rest/feedsAPI';
+import { sortTagsCaseInsensitive } from 'utils/CommonUtils';
 import { ReactComponent as IconCommentPlus } from '../../../assets/svg/add-chat.svg';
 import { ReactComponent as IconComments } from '../../../assets/svg/comment.svg';
-import { ReactComponent as IconEdit } from '../../../assets/svg/ic-edit.svg';
 import { ReactComponent as IconRequest } from '../../../assets/svg/request-icon.svg';
-import { ReactComponent as IconTagGrey } from '../../../assets/svg/tag-grey.svg';
 import { ReactComponent as IconTaskColor } from '../../../assets/svg/Task-ic.svg';
-import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { FOLLOWERS_VIEW_CAP } from '../../../constants/constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { Dashboard } from '../../../generated/entity/data/dashboard';
@@ -50,7 +47,6 @@ import {
 } from '../../../utils/TasksUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import TagsContainer from '../../Tag/TagsContainer/tags-container';
-import TagsViewer from '../../Tag/TagsViewer/tags-viewer';
 import EntitySummaryDetails from '../EntitySummaryDetails/EntitySummaryDetails';
 import ProfilePicture from '../ProfilePicture/ProfilePicture';
 import TitleBreadcrumb from '../title-breadcrumb/title-breadcrumb.component';
@@ -175,22 +171,24 @@ const EntityPageInfo = ({
     setIsEditable(false);
   };
 
-  const getSelectedTags = () => {
-    return tier?.tagFQN
-      ? [
-          ...tags.map((tag) => ({
-            ...tag,
-            isRemovable: true,
-          })),
-          { tagFQN: tier.tagFQN, isRemovable: false },
-        ]
-      : [
-          ...tags.map((tag) => ({
-            ...tag,
-            isRemovable: true,
-          })),
-        ];
-  };
+  const getSelectedTags = useCallback(() => {
+    return sortTagsCaseInsensitive(
+      tier?.tagFQN
+        ? [
+            ...tags.map((tag) => ({
+              ...tag,
+              isRemovable: true,
+            })),
+            { tagFQN: tier.tagFQN, isRemovable: true },
+          ]
+        : [
+            ...tags.map((tag) => ({
+              ...tag,
+              isRemovable: true,
+            })),
+          ]
+    );
+  }, [tier, tags]);
 
   const getFollowers = () => {
     const list = cloneDeep(entityFollowers);
@@ -502,26 +500,6 @@ const EntityPageInfo = ({
             ))}
           </Space>
           <Space wrap align="center" data-testid="entity-tags" size={6}>
-            {(!isEditable || !isTagEditable || deleted) && (
-              <>
-                {(tags.length > 0 || !isEmpty(tier)) && (
-                  <span className="d-flex align-center h-4">
-                    <IconTagGrey height={18} name="icon-tag" width={18} />
-                  </span>
-                )}
-                {tier?.tagFQN && (
-                  <Tags
-                    startWith="#"
-                    tag={{
-                      ...tier,
-                      tagFQN: tier.tagFQN.split(FQN_SEPARATOR_CHAR)[1],
-                    }}
-                    type="label"
-                  />
-                )}
-                {tags.length > 0 && <TagsViewer tags={tags} />}
-              </>
-            )}
             {isTagEditable && !deleted && (
               <Fragment>
                 <Space
@@ -537,12 +515,12 @@ const EntityPageInfo = ({
                     setIsEditable(true);
                   }}>
                   <TagsContainer
+                    showAddTagButton
                     className="w-min-20"
                     dropDownHorzPosRight={false}
                     editable={isEditable}
                     isLoading={isTagLoading}
                     selectedTags={getSelectedTags()}
-                    showTags={!isTagEditable}
                     size="small"
                     tagList={tagList}
                     onCancel={() => {
@@ -550,31 +528,8 @@ const EntityPageInfo = ({
                     }}
                     onSelectionChange={(tags) => {
                       handleTagSelection(tags);
-                    }}>
-                    {tags.length || tier ? (
-                      <Button
-                        className="p-0"
-                        data-testid="edit-button"
-                        size="small"
-                        type="text">
-                        <IconEdit
-                          className="anticon"
-                          height={16}
-                          name={t('label.edit')}
-                          width={16}
-                        />
-                      </Button>
-                    ) : (
-                      <Tags
-                        className="tw-text-primary"
-                        startWith="+ "
-                        tag={t('label.add-entity', {
-                          entity: t('label.tag-lowercase'),
-                        })}
-                        type="label"
-                      />
-                    )}
-                  </TagsContainer>
+                    }}
+                  />
                 </Space>
                 <>
                   {getRequestTagsElements()}

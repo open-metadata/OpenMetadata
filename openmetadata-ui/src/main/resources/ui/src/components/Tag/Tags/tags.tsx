@@ -17,12 +17,16 @@ import classNames from 'classnames';
 import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
 import { FQN_SEPARATOR_CHAR } from 'constants/char.constants';
 import { ROUTES } from 'constants/constants';
+import { TagSource } from 'generated/type/tagLabel';
 import { isEmpty, isString } from 'lodash';
-import React, { FunctionComponent } from 'react';
+import React, { FunctionComponent, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import { getTagDisplay } from 'utils/TagsUtils';
+import { ReactComponent as IconPage } from '../../../assets/svg/ic-flat-doc.svg';
 import { ReactComponent as PlusIcon } from '../../../assets/svg/plus-primary.svg';
+import { ReactComponent as IconTag } from '../../../assets/svg/tag-grey.svg';
+
 import { TagProps } from './tags.interface';
 import { tagStyles } from './tags.styles';
 
@@ -43,18 +47,29 @@ const Tags: FunctionComponent<TagProps> = ({
   const textLayoutStyles = tagStyles.text[type] || tagStyles.text.default;
   const textEditStyles = editable ? tagStyles.text.editable : '';
 
+  const isGlossaryTag = useMemo(() => tag.source === TagSource.Glossary, [tag]);
+
   const { t } = useTranslation();
   const getTagString = (tag: string) => {
     return tag.startsWith('#') ? tag.slice(1) : tag;
   };
 
+  const getStartIcon = useCallback(() => {
+    switch (startWith) {
+      case '+ ':
+        return <PlusIcon height={16} name="plus" width={16} />;
+      case '#':
+        return startWith;
+      default:
+        return isGlossaryTag ? (
+          <IconPage height={12} name="glossary-icon" width={12} />
+        ) : (
+          <IconTag height={12} name="tag-icon" width={12} />
+        );
+    }
+  }, [startWith]);
+
   const getTag = (tag: string, startWith = '', source?: string) => {
-    const startIcon =
-      startWith === '+ ' ? (
-        <PlusIcon height={16} name="plus" width={16} />
-      ) : (
-        startWith
-      );
     const tagName = showOnlyName
       ? tag.split(FQN_SEPARATOR_CHAR).slice(-2).join(FQN_SEPARATOR_CHAR)
       : tag;
@@ -79,9 +94,15 @@ const Tags: FunctionComponent<TagProps> = ({
             'd-flex items-center cursor-pointer'
           )}
           data-testid={editable && isRemovable ? `tag-${tag}` : `add-tag`}
-          size={2}>
-          {startIcon}
-          <span className="text-xs font-medium">{getTagDisplay(tagName)}</span>
+          size={4}>
+          {getStartIcon()}
+          <span
+            className={classNames(
+              'text-xs font-medium',
+              startWith === '+ ' && 'text-primary'
+            )}>
+            {getTagDisplay(tagName)}
+          </span>
         </Space>
         {editable && isRemovable && (
           <span
