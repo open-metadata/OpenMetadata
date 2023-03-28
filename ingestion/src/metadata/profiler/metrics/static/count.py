@@ -46,7 +46,7 @@ class Count(StaticMetric):
     def df_fn(self, dfs=None):
         """pandas function"""
         try:
-            return sum(len(df[self.col.name]) for df in dfs)
+            return sum(df[self.col.name].dropna().shape[0] for df in dfs)
         except Exception as err:
             logger.debug(
                 f"Don't know how to process type {self.col.type} when computing Count"

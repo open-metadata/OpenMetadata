@@ -16,7 +16,6 @@ Population Standard deviation Metric definition
 # Keep SQA docs style defining custom constructs
 # pylint: disable=consider-using-f-string,duplicate-code
 
-import statistics
 
 from sqlalchemy import column
 from sqlalchemy.ext.compiler import compiles
@@ -93,7 +92,8 @@ class StdDev(StaticMetric):
 
     def df_fn(self, dfs=None):
         """pandas function"""
-        import pandas as pd
+        import pandas as pd  # pylint: disable=import-outside-toplevel
+
         if is_quantifiable(self.col.type):
             return pd.concat((df[self.col.name] for df in dfs)).std()
 

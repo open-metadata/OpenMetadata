@@ -14,7 +14,6 @@ Distinct Count Metric definition
 """
 # pylint: disable=duplicate-code
 
-import statistics
 
 from sqlalchemy import column, distinct, func
 
@@ -45,9 +44,10 @@ class DistinctCount(StaticMetric):
 
     def df_fn(self, dfs=None):
         try:
+            import pandas as pd  # pylint: disable=import-outside-toplevel
 
-            return statistics.fmean(
-                [len(df[self.col.name].dropna().drop_duplicates()) for df in dfs]
+            return len(
+                pd.concat((df[self.col.name] for df in dfs)).dropna().drop_duplicates()
             )
         except Exception as err:
             logger.debug(

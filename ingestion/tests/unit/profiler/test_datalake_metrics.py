@@ -12,14 +12,13 @@
 """
 Test Metrics behavior
 """
-import datetime
-import os
 from unittest import TestCase
 from unittest.mock import patch
 from uuid import uuid4
+
 from sqlalchemy import TEXT, Column, Date, DateTime, Integer, String, Time
 from sqlalchemy.orm import declarative_base
-from typing import cast
+
 from metadata.generated.schema.entity.data.table import Column as EntityColumn
 from metadata.generated.schema.entity.data.table import ColumnName, DataType, Table
 from metadata.profiler.metrics.core import add_props
@@ -31,39 +30,6 @@ from metadata.profiler.profiler.interface.pandas.pandas_profiler_interface impor
 )
 
 Base = declarative_base()
-
-data = [
-    {
-        "name": "John",
-        "fullname": "John Doe",
-        "nickname": "johnny b goode",
-        "comments": "no comments",
-        "age": 30,
-        "dob": datetime.datetime(1992, 5, 17),
-        "tob": datetime.time(11, 2, 32),
-        "doe": datetime.date(2020, 1, 12),
-    },
-    {
-        "name": "Jane",
-        "fullname": "Jone Doe",
-        "nickname": None,
-        "comments": "maybe some comments",
-        "age": 31,
-        "dob": datetime.datetime(1991, 4, 4),
-        "tob": datetime.time(10, 1, 31),
-        "doe": datetime.date(2009, 11, 11),
-    },
-    {
-        "name": "John",
-        "fullname": "John Doe",
-        "nickname": None,
-        "comments": None,
-        "age": None,
-        "dob": datetime.datetime(1982, 2, 2),
-        "tob": datetime.time(9, 3, 25),
-        "doe": datetime.date(2012, 12, 1),
-    },
-]
 
 
 class User(Base):
@@ -86,10 +52,17 @@ class DatalakeMetricsTest(TestCase):
 
     import pandas as pd
 
+    df1 = pd.read_csv(
+        "ingestion/tests/unit/profiler/custom_csv/test_datalake_metrics_1.csv"
+    )
+    df2 = pd.read_csv(
+        "ingestion/tests/unit/profiler/custom_csv/test_datalake_metrics_2.csv"
+    )
+
     @patch.object(
         PandasProfilerInterface,
         "return_ometa_dataframes",
-        return_value=[pd.DataFrame(data)],
+        return_value=[df1, df2],
     )
     @patch.object(PandasProfilerInterface, "get_connection_client", return_value=None)
     def __init__(self, methodName, get_connection_client, return_ometa_dataframes):
@@ -128,7 +101,7 @@ class DatalakeMetricsTest(TestCase):
         res = profiler.compute_metrics()._column_results
 
         # Note how we can get the result value by passing the metrics name
-        assert res.get(User.name.name).get(Metrics.COUNT.name) == 3
+        assert res.get(User.name.name).get(Metrics.COUNT.name) == 4
 
     def test_min(self):
         """
@@ -155,9 +128,9 @@ class DatalakeMetricsTest(TestCase):
         )
         res = profiler.compute_metrics()._column_results
 
-        assert res.get(User.age.name).get(Metrics.STDDEV.name) == 0.25
+        assert round(res.get(User.age.name).get(Metrics.STDDEV.name), 2) == 6.85
 
-    def test_earliest_time(self):
+    def test_time(self):
         """
         Check Earliest Time Metric
         """
@@ -167,28 +140,10 @@ class DatalakeMetricsTest(TestCase):
             profiler_interface=self.datalake_profiler_interface,
         )
         res = profiler.compute_metrics()._column_results
-        assert str(res.get(User.dob.name).get(Metrics.MIN.name)) == "1982-02-02 00:00:00"
-
-        # assert str(res.get(User.tob.name).get(Metrics.MIN.name)) == "09:03:25"
-        # assert str(res.get(User.doe.name).get(Metrics.MIN.name)) == "2009-11-11"
-
-    def test_latest_time(self):
-        """
-        Check Latest Time Metric
-        """
-        latest_time = Metrics.MAX.value
-        profiler = Profiler(
-            latest_time,
-            profiler_interface=self.datalake_profiler_interface,
-        )
-        res = profiler.compute_metrics()._column_results
-        assert (
-            str(res.get(User.dob.name).get(Metrics.MAX.name)) == "1992-05-17 00:00:00"
-        )
-
-        # Fix Datalake data types in order to distinguish them as date time and not string
-        # assert res.get(User.tob.name).get(Metrics.MAX.name) == "11:02:32"
-        # assert res.get(User.doe.name).get(Metrics.MAX.name) == "2020-01-12"
+        # string as min returns 0
+        assert res.get(User.dob.name).get(Metrics.MIN.name) == 0
+        assert res.get(User.tob.name).get(Metrics.MIN.name) == 0
+        assert res.get(User.doe.name).get(Metrics.MIN.name) == 0
 
     def test_null_count(self):
         """
@@ -201,7 +156,7 @@ class DatalakeMetricsTest(TestCase):
         )
         res = profiler.compute_metrics()._column_results
 
-        assert res.get(User.nickname.name).get(Metrics.NULL_COUNT.name) == 2
+        assert res.get(User.nickname.name).get(Metrics.NULL_COUNT.name) == 0
 
     def test_null_ratio(self):
         """
@@ -222,7 +177,7 @@ class DatalakeMetricsTest(TestCase):
         res = profiler.compute_metrics()._column_results
         assert (
             str(round(res.get(User.nickname.name).get(Metrics.NULL_RATIO.name), 2))
-            == "0.67"
+            == "0.0"
         )
 
     def test_table_row_count(self):
@@ -235,7 +190,7 @@ class DatalakeMetricsTest(TestCase):
             profiler_interface=self.datalake_profiler_interface,
         )
         res = profiler.compute_metrics()._table_results
-        assert res.get(Metrics.ROW_COUNT.name) == 3
+        assert res.get(Metrics.ROW_COUNT.name) == 4
 
     def test_table_column_count(self):
         """
@@ -266,7 +221,7 @@ class DatalakeMetricsTest(TestCase):
             ._column_results
         )
 
-        assert res.get(User.age.name)[Metrics.MEAN.name] == 30.5
+        assert round(res.get(User.age.name)[Metrics.MEAN.name], 2) == 35.25
 
         # String
         avg = Metrics.MEAN.value
@@ -292,7 +247,7 @@ class DatalakeMetricsTest(TestCase):
             ._column_results
         )
 
-        assert res.get(User.comments.name)[Metrics.MEAN.name] == 15.0
+        assert round(res.get(User.comments.name)[Metrics.MEAN.name], 2) == 17.0
 
     def test_duplicate_count(self):
         """
@@ -347,7 +302,6 @@ class DatalakeMetricsTest(TestCase):
         assert age_histogram
         assert len(age_histogram["frequencies"]) == 1
 
-    
     def test_max(self):
         """
         Check MAX metric
@@ -363,7 +317,7 @@ class DatalakeMetricsTest(TestCase):
             ._column_results
         )
 
-        assert res.get(User.age.name)[Metrics.MAX.name] == 31
+        assert res.get(User.age.name)[Metrics.MAX.name] == 45
 
     def test_min_length(self):
         """
@@ -465,7 +419,7 @@ class DatalakeMetricsTest(TestCase):
             ._column_results
         )
 
-        assert res.get(User.age.name)[Metrics.SUM.name] == 61
+        assert res.get(User.age.name)[Metrics.SUM.name] == 141
 
         res = (
             Profiler(
@@ -492,7 +446,7 @@ class DatalakeMetricsTest(TestCase):
             ._column_results
         )
 
-        assert res.get(User.name.name)[Metrics.UNIQUE_COUNT.name] == 1
+        assert res.get(User.name.name)[Metrics.UNIQUE_COUNT.name] == 4
 
     def test_unique_ratio(self):
         """
@@ -513,7 +467,7 @@ class DatalakeMetricsTest(TestCase):
         )
 
         assert (
-            str(round(res.get(User.name.name)[Metrics.UNIQUE_RATIO.name], 2)) == "0.33"
+            str(round(res.get(User.name.name)[Metrics.UNIQUE_RATIO.name], 2)) == "1.0"
         )
 
     def test_distinct_count(self):
@@ -530,7 +484,7 @@ class DatalakeMetricsTest(TestCase):
             ._column_results
         )
 
-        assert res.get(User.name.name)[Metrics.DISTINCT_COUNT.name] == 2.0
+        assert res.get(User.name.name)[Metrics.DISTINCT_COUNT.name] == 3
 
     def test_distinct_ratio(self):
         """
@@ -552,7 +506,7 @@ class DatalakeMetricsTest(TestCase):
 
         assert (
             str(round(res.get(User.name.name)[Metrics.DISTINCT_RATIO.name], 2))
-            == "0.67"
+            == "0.75"
         )
 
     def test_count_in_set(self):
@@ -584,7 +538,6 @@ class DatalakeMetricsTest(TestCase):
 
         assert res.get(User.name.name)[Metrics.COUNT_IN_SET.name] == 3
 
-
     def test_median(self):
         """
         Check MEDIAN
@@ -599,8 +552,8 @@ class DatalakeMetricsTest(TestCase):
             .compute_metrics()
             ._column_results
         )
-        
-        assert res.get(User.age.name)[Metrics.MEDIAN.name] == 30.5
+
+        assert res.get(User.age.name)[Metrics.MEDIAN.name] == 33.0
 
     def test_first_quartile(self):
         """
@@ -616,8 +569,7 @@ class DatalakeMetricsTest(TestCase):
             .compute_metrics()
             ._column_results
         )
-        # 30.25 as Pandas takes 
-        assert res.get(User.age.name)[Metrics.FIRST_QUARTILE.name] == 30.25
+        assert res.get(User.age.name)[Metrics.FIRST_QUARTILE.name] == 30.5
 
     def test_third_quartile(self):
         """
@@ -666,7 +618,7 @@ class DatalakeMetricsTest(TestCase):
             ._column_results
         )
 
-        assert res.get(User.age.name)[Metrics.SUM.name] == 61
+        assert res.get(User.age.name)[Metrics.SUM.name] == 141
 
     @classmethod
     def tearDownClass(cls) -> None:

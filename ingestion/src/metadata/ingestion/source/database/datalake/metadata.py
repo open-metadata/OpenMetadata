@@ -87,6 +87,7 @@ def ometa_to_dataframe(config_source, client, table):
     """
     Method to get dataframe for profiling
     """
+
     data = None
     if isinstance(config_source, GCSConfig):
         data = DatalakeSource.get_gcs_files(
@@ -100,11 +101,25 @@ def ometa_to_dataframe(config_source, client, table):
             key=table.name.__root__,
             bucket_name=table.databaseSchema.name,
         )
+    if isinstance(config_source, AzureConfig):
+        connection_args = config_source.securityConfig
+        data = DatalakeSource.get_azure_files(
+            client=client,
+            key=table.name.__root__,
+            container_name=table.databaseSchema.name,
+            storage_options={
+                "tenant_id": connection_args.tenantId,
+                "client_id": connection_args.clientId,
+                "client_secret": connection_args.clientSecret.get_secret_value(),
+                "account_name": connection_args.accountName,
+            },
+        )
     if isinstance(data, DatalakeColumnWrapper):
         data = data.dataframes
     return data
 
 
+# pylint: disable=too-many-public-methods
 class DatalakeSource(DatabaseServiceSource):
     """
     Implements the necessary methods to extract

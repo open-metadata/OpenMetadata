@@ -60,7 +60,6 @@ class MinLength(StaticMetric):
     def df_fn(self, dfs=None):
         """dataframe function"""
         from numpy import vectorize
-        from pandas import notnull
 
         length_vectorize_func = vectorize(len)
 

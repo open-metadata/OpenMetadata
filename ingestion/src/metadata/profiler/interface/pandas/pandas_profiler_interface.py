@@ -34,6 +34,7 @@ from metadata.ingestion.api.processor import ProfilerProcessorStatus
 from metadata.ingestion.source.connections import get_connection
 from metadata.ingestion.source.database.datalake.metadata import (
     DATALAKE_DATA_TYPES,
+    DatalakeSource,
     ometa_to_dataframe,
 )
 from metadata.mixins.pandas.pandas_mixin import PandasInterfaceMixin
@@ -394,11 +395,7 @@ class PandasProfilerInterface(ProfilerProtocol, PandasInterfaceMixin):
             return [
                 SQALikeColumn(
                     column_name,
-                    Type(
-                        DATALAKE_DATA_TYPES.get(
-                            df[column_name].dtypes.name, DataType.STRING.value
-                        )
-                    ),
+                    Type(DatalakeSource.fetch_col_types(df, column_name)),
                 )
                 for column_name in df.columns
             ]

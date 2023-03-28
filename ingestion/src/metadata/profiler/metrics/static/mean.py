@@ -15,7 +15,7 @@ AVG Metric definition
 # pylint: disable=duplicate-code
 
 
-import statistics
+import math
 
 from sqlalchemy import column, func
 from sqlalchemy.ext.compiler import compiles
@@ -89,18 +89,25 @@ class Mean(StaticMetric):
         from numpy import vectorize
 
         length_vectorize_func = vectorize(len)
+        total_len = sum(df[self.col.name].dropna().shape[0] for df in dfs)
         if is_quantifiable(self.col.type):
-            return statistics.fmean([df[self.col.name].dropna().mean() for df in dfs])
+            result = [
+                df[self.col.name].dropna().mean() * df.shape[0] / total_len
+                for df in dfs
+                if df[self.col.name].dropna().any()
+            ]
+            return sum(filter(lambda x: not math.isnan(x), result))
 
         if is_concatenable(self.col.type):
-            return statistics.fmean(
-                [
-                    length_vectorize_func(
-                        df[self.col.name].dropna()
-                    ).mean()
-                    for df in dfs
-                ]
-            )
+            result = [
+                length_vectorize_func(df[self.col.name].dropna()).mean()
+                * df.shape[0]
+                / total_len
+                for df in dfs
+                if df[self.col.name].dropna().any()
+            ]
+
+            return sum(filter(lambda x: not math.isnan(x), result))
 
         logger.warning(
             f"Don't know how to process type {self.col.type} when computing MEAN"

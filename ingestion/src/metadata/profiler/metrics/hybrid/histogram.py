@@ -210,7 +210,7 @@ class Histogram(HybridMetric):
         bins.append(np.inf)  # add the last bin
 
         frequencies = np.zeros(num_bins)
-    
+
         for df in dfs:
             if not frequencies.any():
                 frequencies = (
