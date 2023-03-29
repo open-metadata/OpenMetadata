@@ -18,6 +18,7 @@ package org.openmetadata.service.elasticsearch;
 import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
 import static org.openmetadata.service.Entity.FIELD_FOLLOWERS;
 import static org.openmetadata.service.Entity.FIELD_USAGE_SUMMARY;
+import static org.openmetadata.service.Entity.QUERY;
 import static org.openmetadata.service.resources.elasticsearch.BuildSearchIndexResource.ELASTIC_SEARCH_ENTITY_FQN_STREAM;
 import static org.openmetadata.service.resources.elasticsearch.BuildSearchIndexResource.ELASTIC_SEARCH_EXTENSION;
 
@@ -287,12 +288,17 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
         fieldAddParams.put(fieldChange.getName(), JsonUtils.getMap(usageSummary));
         scriptTxt.append("ctx._source.usageSummary = params.usageSummary;");
       }
-      if (fieldChange.getName().equalsIgnoreCase("queryUsedIn")) {
+      if (event.getEntityType().equals(QUERY) && fieldChange.getName().equalsIgnoreCase("queryUsedIn")) {
         fieldAddParams.put(
             fieldChange.getName(),
             JsonUtils.convertValue(
                 fieldChange.getNewValue(), new TypeReference<List<LinkedHashMap<String, String>>>() {}));
         scriptTxt.append("ctx._source.queryUsedIn = params.queryUsedIn;");
+      }
+      if (fieldChange.getName().equalsIgnoreCase("votes")) {
+        Map<String, Object> doc = JsonUtils.getMap(event.getEntity());
+        fieldAddParams.put(fieldChange.getName(), doc.get("votes"));
+        scriptTxt.append("ctx._source.votes = params.votes;");
       }
     }
 
