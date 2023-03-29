@@ -20,7 +20,7 @@ import React, {
   Fragment,
   HTMLAttributes,
   ReactNode,
-  useCallback,
+  useMemo,
 } from 'react';
 import './../../styles/layout/page-layout.less';
 
@@ -55,7 +55,7 @@ const PageLayoutV1: FC<PageLayoutProp> = ({
   leftPanelWidth = 284,
   rightPanelWidth = 284,
 }: PageLayoutProp) => {
-  const flexCSS = useCallback(() => {
+  const contentWidth = useMemo(() => {
     if (leftPanel && rightPanel) {
       return `calc(100% - ${leftPanelWidth + rightPanelWidth}px)`;
     } else if (leftPanel) {
@@ -91,7 +91,7 @@ const PageLayoutV1: FC<PageLayoutProp> = ({
               'flex justify-center': center,
             }
           )}
-          flex={flexCSS()}
+          flex={contentWidth}
           offset={center ? 3 : 0}
           span={center ? 18 : 24}>
           {children}
