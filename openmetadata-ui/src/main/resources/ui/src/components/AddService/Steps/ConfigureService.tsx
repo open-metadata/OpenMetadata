@@ -11,10 +11,10 @@
  *  limitations under the License.
  */
 
+import { Button } from 'antd';
 import { t } from 'i18next';
 import React, { useRef } from 'react';
 import { errorMsg, requiredField } from '../../../utils/CommonUtils';
-import { Button } from '../../buttons/Button/Button';
 import RichTextEditor from '../../common/rich-text-editor/RichTextEditor';
 import { EditorContentRef } from '../../common/rich-text-editor/RichTextEditor.interface';
 import { Field } from '../../Field/Field';
@@ -85,22 +85,19 @@ const ConfigureService = ({
 
       <Field className="tw-flex tw-justify-end tw-mt-10">
         <Button
-          className="tw-mr-2"
+          className="m-r-xs"
           data-testid="back-button"
-          size="regular"
-          theme="primary"
-          variant="text"
+          type="link"
           onClick={onBack}>
-          <span>{t('label.back')}</span>
+          {t('label.back')}
         </Button>
 
         <Button
+          className="font-medium p-x-md p-y-xxs h-auto rounded-6"
           data-testid="next-button"
-          size="regular"
-          theme="primary"
-          variant="contained"
+          type="primary"
           onClick={() => onNext(markdownRef.current?.getEditorContent() || '')}>
-          <span>{t('label.next')}</span>
+          {t('label.next')}
         </Button>
       </Field>
     </div>

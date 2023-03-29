@@ -19,6 +19,7 @@ import { Button, Card, Col, Row, Space, Tabs } from 'antd';
 import FacetFilter from 'components/common/facetfilter/FacetFilter';
 import SearchedData from 'components/searched-data/SearchedData';
 import { SORT_ORDER } from 'enums/common.enum';
+import { EntityType } from 'enums/entity.enum';
 import unique from 'fork-ts-checker-webpack-plugin/lib/utils/array/unique';
 import {
   isEmpty,
@@ -221,6 +222,10 @@ const Explore: React.FC<ExploreProps> = ({
     });
   };
 
+  const showFilters = useMemo(() => {
+    return entityDetails?.entityType !== EntityType.TAG ?? true;
+  }, [entityDetails]);
+
   useEffect(() => {
     const escapeKeyHandler = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
@@ -323,14 +328,17 @@ const Explore: React.FC<ExploreProps> = ({
       <Row gutter={[8, 0]} wrap={false}>
         <Col className="searched-data-container" flex="auto">
           <Row gutter={[16, 16]}>
-            <Col span={24}>
-              <ExploreQuickFilters
-                fields={selectedQuickFilters}
-                index={searchIndex}
-                onAdvanceSearch={() => toggleModal(true)}
-                onFieldValueSelect={handleQuickFiltersValueSelect}
-              />
-            </Col>
+            {showFilters && (
+              <Col span={24}>
+                <ExploreQuickFilters
+                  fields={selectedQuickFilters}
+                  index={searchIndex}
+                  onAdvanceSearch={() => toggleModal(true)}
+                  onFieldValueSelect={handleQuickFiltersValueSelect}
+                />
+              </Col>
+            )}
+
             {sqlQuery && (
               <Col span={24}>
                 <AppliedFilterText
