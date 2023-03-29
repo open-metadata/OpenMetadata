@@ -16,7 +16,7 @@ import PageHeader from 'components/header/PageHeader.component';
 import AddIngestionButton from 'components/Ingestion/AddIngestionButton.component';
 import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
 import SettingsIngestion from 'components/SettingsIngestion/SettingsIngestion.component';
-import { OPENMETADATA } from 'constants/Services.constant';
+import { OPEN_METADATA } from 'constants/Services.constant';
 import { ServiceCategory } from 'enums/service.enum';
 import { PipelineType } from 'generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { IngestionPipeline } from 'generated/entity/services/ingestionPipelines/ingestionPipeline';
@@ -35,7 +35,7 @@ function DataInsightsSettingsPage() {
     useState<Array<IngestionPipeline>>(ingestionPipelines);
 
   const serviceCategory = ServiceCategory.METADATA_SERVICES;
-  const serviceFQN = OPENMETADATA;
+  const serviceFQN = OPEN_METADATA;
 
   const handleServiceDetailsChange = useCallback(
     (details: ServicesType) => {
