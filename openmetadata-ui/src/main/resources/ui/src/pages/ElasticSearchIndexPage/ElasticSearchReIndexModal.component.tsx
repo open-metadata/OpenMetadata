@@ -70,6 +70,7 @@ const ReIndexAllModal = ({
           <TreeSelect
             treeCheckable
             treeDefaultExpandAll
+            showCheckedStrategy={TreeSelect.SHOW_PARENT}
             treeData={ENTITY_TREE_OPTIONS}
           />
         </Form.Item>
