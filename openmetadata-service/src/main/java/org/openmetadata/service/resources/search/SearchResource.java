@@ -707,7 +707,7 @@ public class SearchResource {
             .field("synonyms", 5.0f)
             .field("synonyms.ngram")
             .field(DESCRIPTION, 3.0f)
-            .field("glossary.name",5.0f)
+            .field("glossary.name", 5.0f)
             .field("glossary.displayName", 5.0f)
             .field("glossary.displayName.ngram")
             .defaultOperator(Operator.AND)
@@ -724,8 +724,8 @@ public class SearchResource {
     hb.postTags("</span>");
     SearchSourceBuilder searchSourceBuilder =
         new SearchSourceBuilder().query(queryBuilder).highlighter(hb).from(from).size(size);
-    searchSourceBuilder.aggregation(AggregationBuilders.terms("tags.tagFQN").field("tags.tagFQN")
-        .size(MAX_AGGREGATE_SIZE))
+    searchSourceBuilder
+        .aggregation(AggregationBuilders.terms("tags.tagFQN").field("tags.tagFQN").size(MAX_AGGREGATE_SIZE))
         .aggregation(AggregationBuilders.terms("glossary.name").field("glossary.name.keyword"));
     return searchSourceBuilder;
   }
