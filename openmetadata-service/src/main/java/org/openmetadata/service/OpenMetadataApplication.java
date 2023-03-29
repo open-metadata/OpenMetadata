@@ -270,12 +270,13 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
           }
         });
     bootstrap.addBundle(MicrometerBundleSingleton.getInstance());
-    bootstrap.addBundle(new WebBundle<>() {
-      @Override
-      public WebConfiguration getWebConfiguration(final OpenMetadataApplicationConfig configuration) {
-        return configuration.getWebConfiguration();
-      }
-    });
+    bootstrap.addBundle(
+        new WebBundle<>() {
+          @Override
+          public WebConfiguration getWebConfiguration(final OpenMetadataApplicationConfig configuration) {
+            return configuration.getWebConfiguration();
+          }
+        });
     super.initialize(bootstrap);
   }
 

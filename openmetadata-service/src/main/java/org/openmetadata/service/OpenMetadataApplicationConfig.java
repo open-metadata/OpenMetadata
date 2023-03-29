@@ -101,7 +101,6 @@ public class OpenMetadataApplicationConfig extends Configuration {
   @JsonProperty("web")
   private WebConfiguration webConfiguration = new WebConfiguration();
 
-
   @Override
   public String toString() {
     return "catalogConfig{"
