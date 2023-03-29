@@ -24,7 +24,6 @@ import { getUserPath } from 'constants/constants';
 import { NO_PERMISSION_FOR_ACTION } from 'constants/HelperTextUtil';
 import { Glossary } from 'generated/entity/data/glossary';
 import { GlossaryTerm } from 'generated/entity/data/glossaryTerm';
-import { useAfterMount } from 'hooks/useAfterMount';
 import { cloneDeep } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -60,15 +59,6 @@ const GlossaryHeader = ({
   const [breadcrumb, setBreadcrumb] = useState<
     TitleBreadcrumbProps['titleLinks']
   >([]);
-  const [addTermButtonWidth, setAddTermButtonWidth] = useState(
-    document.getElementById('add-term-button')?.offsetWidth || 0
-  );
-  const [manageButtonWidth, setManageButtonWidth] = useState(
-    document.getElementById('manage-button')?.offsetWidth || 0
-  );
-  const [leftPanelWidth, setLeftPanelWidth] = useState(
-    document.getElementById('glossary-left-panel')?.offsetWidth || 0
-  );
 
   const editDisplayNamePermission = useMemo(() => {
     return permissions.EditAll || permissions.EditDisplayName;
@@ -145,18 +135,6 @@ const GlossaryHeader = ({
     }
   };
 
-  useAfterMount(() => {
-    setLeftPanelWidth(
-      document.getElementById('glossary-left-panel')?.offsetWidth || 0
-    );
-    setAddTermButtonWidth(
-      document.getElementById('add-term-button')?.offsetWidth || 0
-    );
-    setManageButtonWidth(
-      document.getElementById('manage-button')?.offsetWidth || 0
-    );
-  });
-
   useEffect(() => {
     const { fullyQualifiedName, name } = selectedData;
 
@@ -175,15 +153,7 @@ const GlossaryHeader = ({
                 <div
                   className="tw-text-link tw-text-base glossary-breadcrumb"
                   data-testid="category-name">
-                  <TitleBreadcrumb
-                    titleLinks={breadcrumb}
-                    widthDeductions={
-                      leftPanelWidth +
-                      addTermButtonWidth +
-                      manageButtonWidth +
-                      20 // Additional deduction for margin on the right of leftPanel
-                    }
-                  />
+                  <TitleBreadcrumb titleLinks={breadcrumb} />
                 </div>
               )}
 
