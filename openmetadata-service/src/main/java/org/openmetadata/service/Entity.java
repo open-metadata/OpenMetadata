@@ -100,7 +100,6 @@ public final class Entity {
   public static final String CLASSIFICATION = "classification";
   public static final String TYPE = "type";
   public static final String TEST_DEFINITION = "testDefinition";
-
   public static final String ALERT_ACTION = "alertAction";
   public static final String TEST_SUITE = "testSuite";
   public static final String KPI = "kpi";
@@ -139,6 +138,7 @@ public final class Entity {
   public static final String PROFILER_BOT_ROLE = "ProfilerBotRole";
   public static final String QUALITY_BOT_NAME = "quality-bot";
   public static final String QUALITY_BOT_ROLE = "QualityBotRole";
+  public static final String ALL_RESOURCES = "All";
 
   //
   // List of entities whose changes should not be published to the Activity Feed

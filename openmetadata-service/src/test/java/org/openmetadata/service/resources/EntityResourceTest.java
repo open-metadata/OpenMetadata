@@ -29,7 +29,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.schema.type.MetadataOperation.EDIT_ALL;
 import static org.openmetadata.schema.type.MetadataOperation.EDIT_TESTS;
-import static org.openmetadata.schema.type.MetadataOperation.VIEW_ALL;
 import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
 import static org.openmetadata.service.Entity.FIELD_DELETED;
 import static org.openmetadata.service.Entity.FIELD_EXTENSION;
@@ -39,7 +38,6 @@ import static org.openmetadata.service.Entity.FIELD_TAGS;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.ENTITY_ALREADY_EXISTS;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.entityIsNotEmpty;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.entityNotFound;
-import static org.openmetadata.service.exception.CatalogExceptionMessage.permissionDenied;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.permissionNotAllowed;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.readOnlyAttribute;
 import static org.openmetadata.service.security.SecurityUtil.authHeaders;
@@ -1549,60 +1547,6 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
         () -> getChangeEvents(entityType, null, "invalidEntity", System.currentTimeMillis(), ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
         "Invalid entity invalidEntity in query param entityDeleted");
-  }
-
-  @Test
-  protected void testTeamOnlyPolicy(TestInfo test) throws HttpResponseException {
-    testTeamOnlyPolicy(test, VIEW_ALL);
-  }
-
-  protected void testTeamOnlyPolicy(TestInfo test, MetadataOperation disallowedOperation) throws HttpResponseException {
-    if (!supportsOwner) {
-      return;
-    }
-    // TEAM2 allows operations on its entities to users only with in that team due to team only policy attached to it
-    // Create an entity owned by TEAM21
-    K createRequest = createRequest("teamOnlyPolicyTest", "", "", TEAM21.getEntityReference());
-    T entity = createEntity(createRequest, ADMIN_AUTH_HEADERS);
-    UserResourceTest userResourceTest = new UserResourceTest();
-    User userInTeam21 =
-        userResourceTest.createEntity(
-            userResourceTest.createRequest(test, 21).withTeams(List.of(TEAM21.getId())), ADMIN_AUTH_HEADERS);
-    User userInTeam2 =
-        userResourceTest.createEntity(
-            userResourceTest.createRequest(test, 2).withTeams(List.of(TEAM2.getId())), ADMIN_AUTH_HEADERS);
-    User userInTeam11 =
-        userResourceTest.createEntity(
-            userResourceTest.createRequest(test, 11).withTeams(List.of(TEAM11.getId())), ADMIN_AUTH_HEADERS);
-    User userInTeam1 =
-        userResourceTest.createEntity(
-            userResourceTest.createRequest(test, 1).withTeams(List.of(TEAM1.getId())), ADMIN_AUTH_HEADERS);
-
-    // users in team21 and team2 have all the operations allowed
-    T getEntity = getEntity(entity.getId(), authHeaders(userInTeam21.getName()));
-    assertEquals(getEntity.getId(), entity.getId());
-    getEntity = getEntity(entity.getId(), authHeaders(userInTeam2.getName()));
-    assertEquals(getEntity.getId(), entity.getId());
-
-    // users in team11 and team12 have all the operations denied due to Team2 team only policy
-    assertResponse(
-        () -> getEntity(entity.getId(), authHeaders(userInTeam11.getName())),
-        FORBIDDEN,
-        permissionDenied(
-            userInTeam11.getName(),
-            disallowedOperation,
-            null,
-            TEAM_ONLY_POLICY.getName(),
-            TEAM_ONLY_POLICY_RULES.get(0).getName()));
-    assertResponse(
-        () -> getEntity(entity.getId(), authHeaders(userInTeam1.getName())),
-        FORBIDDEN,
-        permissionDenied(
-            userInTeam1.getName(),
-            disallowedOperation,
-            null,
-            TEAM_ONLY_POLICY.getName(),
-            TEAM_ONLY_POLICY_RULES.get(0).getName()));
   }
 
   @Test

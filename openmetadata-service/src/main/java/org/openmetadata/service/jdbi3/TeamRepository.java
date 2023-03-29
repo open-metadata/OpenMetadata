@@ -124,6 +124,9 @@ public class TeamRepository extends EntityRepository<Team> {
     team.withUsers(null).withDefaultRoles(null).withHref(null).withOwner(null).withInheritedRoles(null);
 
     store(team, update);
+    if (update) {
+      SubjectCache.getInstance().invalidateTeam(team.getId());
+    }
 
     // Restore the relationships
     team.withUsers(users)
