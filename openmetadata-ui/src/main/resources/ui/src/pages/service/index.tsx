@@ -75,7 +75,7 @@ import {
 import { CONNECTORS_DOCS } from '../../constants/docs.constants';
 import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
 import {
-  OPENMETADATA,
+  OPEN_METADATA,
   servicesDisplayName,
   SERVICE_CATEGORY_TYPE,
 } from '../../constants/Services.constant';
@@ -970,7 +970,7 @@ const ServicePage: FunctionComponent = () => {
   const isTestingDisabled =
     !servicePermission.EditAll ||
     (serviceCategory === ServiceCategory.METADATA_SERVICES &&
-      serviceFQN === OPENMETADATA) ||
+      serviceFQN === OPEN_METADATA) ||
     isUndefined(connectionDetails);
 
   return (

@@ -11,160 +11,45 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Row, Space } from 'antd';
+import { Col, Row } from 'antd';
 import GlossaryHeader from 'components/Glossary/GlossaryHeader/GlossaryHeader.component';
 import GlossaryTermTab from 'components/Glossary/GlossaryTermTab/GlossaryTermTab.component';
-import Tags from 'components/Tag/Tags/tags';
-import { t } from 'i18next';
-import { EntityTags } from 'Models';
-import React, { useState } from 'react';
+import { GlossaryTerm } from 'generated/entity/data/glossaryTerm';
+import React from 'react';
 import { Glossary } from '../../generated/entity/data/glossary';
-import { LabelType, State, TagSource } from '../../generated/type/tagLabel';
-import SVGIcons from '../../utils/SvgUtils';
-import {
-  getAllTagsForOptions,
-  getTagOptionsFromFQN,
-} from '../../utils/TagsUtils';
 import { OperationPermission } from '../PermissionProvider/PermissionProvider.interface';
-import TagsContainer from '../Tag/TagsContainer/tags-container';
-import TagsViewer from '../Tag/TagsViewer/tags-viewer';
 import './GlossaryDetails.style.less';
 
 type props = {
   permissions: OperationPermission;
   glossary: Glossary;
+  glossaryTerms: GlossaryTerm[];
   updateGlossary: (value: Glossary) => Promise<void>;
+  handleGlossaryDelete: (id: string) => void;
 };
 
-const GlossaryDetails = ({ permissions, glossary, updateGlossary }: props) => {
-  const [isTagEditable, setIsTagEditable] = useState<boolean>(false);
-  const [tagList, setTagList] = useState<Array<string>>([]);
-  const [isTagLoading, setIsTagLoading] = useState<boolean>(false);
-
-  const onTagUpdate = (selectedTags?: Array<string>) => {
-    if (selectedTags) {
-      const prevTags =
-        glossary?.tags?.filter((tag) =>
-          selectedTags.includes(tag?.tagFQN as string)
-        ) || [];
-      const newTags = selectedTags
-        .filter((tag) => {
-          return !prevTags?.map((prevTag) => prevTag.tagFQN).includes(tag);
-        })
-        .map((tag) => ({
-          labelType: LabelType.Manual,
-          state: State.Confirmed,
-          source: TagSource.Classification,
-          tagFQN: tag,
-        }));
-      const updatedTags = [...prevTags, ...newTags];
-      const updatedGlossary = { ...glossary, tags: updatedTags };
-      updateGlossary(updatedGlossary);
-    }
-  };
-  const handleTagSelection = (selectedTags?: Array<EntityTags>) => {
-    onTagUpdate?.(selectedTags?.map((tag) => tag.tagFQN));
-    setIsTagEditable(false);
-  };
-
-  const getSelectedTags = () => {
-    return (glossary.tags || []).map((tag) => ({
-      tagFQN: tag.tagFQN,
-      isRemovable: true,
-    }));
-  };
-
-  const fetchTags = async () => {
-    setIsTagLoading(true);
-    const tags = await getAllTagsForOptions();
-    setTagList(tags.map((t) => t.fullyQualifiedName ?? t.name));
-    setIsTagLoading(false);
-  };
-
-  const handleTagContainerClick = () => {
-    if (!isTagEditable) {
-      fetchTags();
-      setIsTagEditable(true);
-    }
-  };
-
+const GlossaryDetails = ({
+  permissions,
+  glossary,
+  updateGlossary,
+  handleGlossaryDelete,
+  glossaryTerms,
+}: props) => {
   return (
     <Row data-testid="glossary-details" gutter={[0, 16]}>
       <Col span={24}>
         <GlossaryHeader
+          isGlossary
           permissions={permissions}
           selectedData={glossary}
+          onDelete={handleGlossaryDelete}
           onUpdate={updateGlossary}
         />
-        {!isTagEditable && glossary?.tags && glossary.tags.length > 0 && (
-          <>
-            <SVGIcons
-              alt="icon-tag"
-              className="m-x-xss"
-              icon="icon-tag-grey"
-              width="16"
-            />
-            <TagsViewer tags={glossary.tags} />
-          </>
-        )}
-        <Space
-          className="items-center flex-wrap"
-          onClick={handleTagContainerClick}>
-          <TagsContainer
-            buttonContainerClass="m-t-0"
-            className="w-min-20"
-            containerClass="flex items-center gap-2 m-t-xs"
-            dropDownHorzPosRight={false}
-            editable={isTagEditable}
-            isLoading={isTagLoading}
-            selectedTags={getSelectedTags()}
-            showTags={false}
-            size="small"
-            tagList={getTagOptionsFromFQN(tagList)}
-            type="label"
-            onCancel={() => {
-              handleTagSelection();
-            }}
-            onSelectionChange={(tags) => {
-              handleTagSelection(tags);
-            }}>
-            {glossary?.tags && glossary?.tags.length ? (
-              <Button
-                className="p-0 flex-center"
-                data-testid="edit-tag-icon"
-                disabled={!(permissions.EditTags || permissions.EditAll)}
-                icon={
-                  <SVGIcons
-                    alt="edit"
-                    icon="icon-edit"
-                    title="Edit"
-                    width="16px"
-                  />
-                }
-                size="small"
-                type="text"
-              />
-            ) : (
-              <Button
-                className="p-0"
-                disabled={!(permissions.EditTags || permissions.EditAll)}
-                type="text">
-                <Tags
-                  className="tw-text-primary"
-                  startWith="+ "
-                  tag={t('label.add-entity', {
-                    entity: t('label.tag-lowercase'),
-                  })}
-                  type="label"
-                />
-              </Button>
-            )}
-          </TagsContainer>
-        </Space>
       </Col>
 
       <Col span={24}>
         <GlossaryTermTab
+          childGlossaryTerms={glossaryTerms}
           glossaryId={glossary.id}
           selectedGlossaryFqn={glossary.fullyQualifiedName || glossary.name}
         />

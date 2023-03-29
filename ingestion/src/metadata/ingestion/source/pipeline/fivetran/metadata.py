@@ -95,7 +95,7 @@ class FivetranSource(PipelineServiceSource):
         :param pipeline_details: pipeline_details object from fivetran
         :return: Create Pipeline request with tasks
         """
-        yield CreatePipelineRequest(
+        pipeline_request = CreatePipelineRequest(
             name=pipeline_details.pipeline_name,
             displayName=pipeline_details.pipeline_display_name,
             description="",
@@ -103,6 +103,8 @@ class FivetranSource(PipelineServiceSource):
             tasks=self.get_connections_jobs(pipeline_details),
             service=self.context.pipeline_service.fullyQualifiedName.__root__,
         )
+        yield pipeline_request
+        self.register_record(pipeline_request=pipeline_request)
 
     def yield_pipeline_status(
         self, pipeline_details: FivetranPipelineDetails

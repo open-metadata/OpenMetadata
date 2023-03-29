@@ -421,7 +421,7 @@ describe('Test TagsPage page', () => {
   it('Table with respective header should be render', async () => {
     const { container } = render(<TagsPage />);
     const table = await findByTestId(container, 'table');
-    const name = await findByText(container, 'label.name');
+    const name = await findByText(container, 'label.tag');
     const description = await findByText(container, 'label.description');
     const actions = await findByText(container, 'label.action-plural');
 
