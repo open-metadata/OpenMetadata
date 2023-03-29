@@ -108,7 +108,6 @@ public final class Entity {
   public static final String TEST_DEFINITION = "testDefinition";
   public static final String TEST_CONNECTION_DEFINITION = "testConnectionDefinition";
   public static final String WORKFLOW = "workflow";
-  public static final String ALERT_ACTION = "alertAction";
   public static final String TEST_SUITE = "testSuite";
   public static final String KPI = "kpi";
   public static final String TEST_CASE = "testCase";
@@ -290,7 +289,6 @@ public final class Entity {
 
   /** Retrieve the corresponding entity repository for a given entity name. */
   public static EntityRepository<? extends EntityInterface> getEntityRepository(@NonNull String entityType) {
-    @SuppressWarnings("unchecked")
     EntityRepository<? extends EntityInterface> entityRepository = ENTITY_REPOSITORY_MAP.get(entityType);
     if (entityRepository == null) {
       throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityTypeNotFound(entityType));
@@ -301,7 +299,6 @@ public final class Entity {
   /** Retrieve the corresponding entity repository for a given entity name. */
   public static EntityRepository<? extends EntityInterface> getServiceEntityRepository(
       @NonNull ServiceType serviceType) {
-    @SuppressWarnings("unchecked")
     EntityRepository<? extends EntityInterface> entityRepository =
         ENTITY_REPOSITORY_MAP.get(SERVICE_TYPE_ENTITY_MAP.get(serviceType));
     if (entityRepository == null) {
