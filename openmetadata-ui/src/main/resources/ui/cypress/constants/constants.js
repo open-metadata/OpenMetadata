@@ -254,7 +254,7 @@ export const GLOSSARY_TERM_WITH_DETAILS = {
   tag: 'PersonalData.Personal',
   synonyms: 'book,ledger,results',
   relatedTerms: 'Sales',
-  reviewer: 'Aaron Singh',
+  reviewer: 'Colin Ho',
   inheritedReviewer: 'Aaron Johnson',
 };
 
@@ -275,7 +275,7 @@ export const service = {
   name: 'Glue',
   description: 'This is a Glue service',
   newDescription: 'This is updated Glue service description',
-  Owner: 'admin',
+  Owner: 'Aaron Johnson',
 };
 
 export const SERVICE_TYPE = {

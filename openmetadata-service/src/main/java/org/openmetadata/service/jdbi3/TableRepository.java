@@ -68,7 +68,6 @@ import org.openmetadata.schema.type.TableProfile;
 import org.openmetadata.schema.type.TableProfilerConfig;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.resources.databases.DatabaseUtil;
 import org.openmetadata.service.resources.databases.TableResource;
@@ -146,7 +145,7 @@ public class TableRepository extends EntityRepository<Table> {
   public void setFullyQualifiedName(Table table) {
     table.setFullyQualifiedName(
         FullyQualifiedName.add(table.getDatabaseSchema().getFullyQualifiedName(), table.getName()));
-    setColumnFQN(table.getFullyQualifiedName(), table.getColumns());
+    ColumnUtil.setColumnFQN(table.getFullyQualifiedName(), table.getColumns());
   }
 
   @Transaction
@@ -605,17 +604,6 @@ public class TableRepository extends EntityRepository<Table> {
     deleteFrom(tableId, TABLE, Relationship.HAS, LOCATION);
   }
 
-  private void setColumnFQN(String parentFQN, List<Column> columns) {
-    columns.forEach(
-        c -> {
-          String columnFqn = FullyQualifiedName.add(parentFQN, c.getName());
-          c.setFullyQualifiedName(columnFqn);
-          if (c.getChildren() != null) {
-            setColumnFQN(columnFqn, c.getChildren());
-          }
-        });
-  }
-
   private void addDerivedColumnTags(List<Column> columns) {
     if (nullOrEmpty(columns)) {
       return;
@@ -725,19 +713,6 @@ public class TableRepository extends EntityRepository<Table> {
     }
   }
 
-  private void getColumnProfile(boolean setProfile, List<Column> columns) throws IOException {
-    if (setProfile) {
-      for (Column c : listOrEmpty(columns)) {
-        c.setProfile(
-            JsonUtils.readValue(
-                daoCollection
-                    .entityExtensionTimeSeriesDao()
-                    .getLatestExtension(c.getFullyQualifiedName(), TABLE_COLUMN_PROFILE_EXTENSION),
-                ColumnProfile.class));
-      }
-    }
-  }
-
   private void validateTableFQN(String fqn) {
     try {
       dao.existsByName(fqn);
@@ -754,20 +729,6 @@ public class TableRepository extends EntityRepository<Table> {
     }
   }
 
-  // Validate if a given column exists in the table
-  public static void validateColumnFQN(Table table, String columnFQN) {
-    boolean validColumn = false;
-    for (Column column : table.getColumns()) {
-      if (column.getFullyQualifiedName().equals(columnFQN)) {
-        validColumn = true;
-        break;
-      }
-    }
-    if (!validColumn) {
-      throw new IllegalArgumentException(CatalogExceptionMessage.invalidColumnFQN(columnFQN));
-    }
-  }
-
   private void validateColumnFQNs(List<JoinedWith> joinedWithList) {
     for (JoinedWith joinedWith : joinedWithList) {
       // Validate table
@@ -775,7 +736,7 @@ public class TableRepository extends EntityRepository<Table> {
       Table joinedWithTable = dao.findEntityByName(tableFQN);
 
       // Validate column
-      validateColumnFQN(joinedWithTable, joinedWith.getFullyQualifiedName());
+      ColumnUtil.validateColumnFQN(joinedWithTable.getColumns(), joinedWith.getFullyQualifiedName());
     }
   }
 
@@ -946,14 +907,6 @@ public class TableRepository extends EntityRepository<Table> {
     return dc -> CommonUtil.dateInRange(RestUtil.DATE_FORMAT, dc.getDate(), 0, 30);
   }
 
-  private TableProfile getTableProfile(Table table) throws IOException {
-    return JsonUtils.readValue(
-        daoCollection
-            .entityExtensionTimeSeriesDao()
-            .getLatestExtension(table.getFullyQualifiedName(), TABLE_PROFILE_EXTENSION),
-        TableProfile.class);
-  }
-
   private List<CustomMetric> getCustomMetrics(Table table, String columnName) throws IOException {
     String extension = TABLE_COLUMN_EXTENSION + columnName + CUSTOM_METRICS_EXTENSION;
     return JsonUtils.readObjects(
@@ -978,7 +931,7 @@ public class TableRepository extends EntityRepository<Table> {
     public void entitySpecificUpdate() throws IOException {
       Table origTable = original;
       Table updatedTable = updated;
-      DatabaseUtil.validateColumns(updatedTable);
+      DatabaseUtil.validateColumns(updatedTable.getColumns());
       recordChange("tableType", origTable.getTableType(), updatedTable.getTableType());
       updateConstraints(origTable, updatedTable);
       updateColumns("columns", origTable.getColumns(), updated.getColumns(), EntityUtil.columnMatch);

@@ -508,6 +508,7 @@ class Profiler(Generic[TMetric]):
                 sample_data,
                 self.profiler_interface.table_entity,  # type: ignore
                 self.profiler_interface.ometa_client,  # type: ignore
+                self.profiler_interface.source_config.confidence,
             )
         except Exception as exc:
             logger.warning(

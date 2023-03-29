@@ -13,4 +13,15 @@
 export interface UserTags {
   id: string;
   name: string;
+  closable?: boolean;
+  onRemove?: () => void;
+  bordered?: boolean;
+  size?: UserTagSize;
+  className?: string;
+}
+
+export enum UserTagSize {
+  small = 'small',
+  default = 'default',
+  large = 'large',
 }

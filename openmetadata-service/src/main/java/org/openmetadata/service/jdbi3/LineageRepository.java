@@ -100,13 +100,13 @@ public class LineageRepository {
         for (String fromColumn : columnLineage.getFromColumns()) {
           // From column belongs to the fromNode
           if (fromColumn.startsWith(fromTable.getFullyQualifiedName())) {
-            TableRepository.validateColumnFQN(fromTable, fromColumn);
+            ColumnUtil.validateColumnFQN(fromTable.getColumns(), fromColumn);
           } else {
             Table otherTable = dao.tableDAO().findEntityByName(FullyQualifiedName.getTableFQN(fromColumn));
-            TableRepository.validateColumnFQN(otherTable, fromColumn);
+            ColumnUtil.validateColumnFQN(otherTable.getColumns(), fromColumn);
           }
         }
-        TableRepository.validateColumnFQN(toTable, columnLineage.getToColumn());
+        ColumnUtil.validateColumnFQN(toTable.getColumns(), columnLineage.getToColumn());
       }
     }
     return JsonUtils.pojoToJson(details);

@@ -27,7 +27,7 @@ public class ResourceContext implements ResourceContextInterface {
   @NonNull private EntityRepository<? extends EntityInterface> entityRepository;
   private UUID id;
   private String name;
-  @Getter private EntityInterface entity; // Will be lazily initialized
+  private EntityInterface entity; // Will be lazily initialized
 
   // Builder class added for getting around javadoc errors. This class will be filled in by lombok.
   public static class ResourceContextBuilder {}
@@ -41,7 +41,7 @@ public class ResourceContext implements ResourceContextInterface {
   @Override
   public List<TagLabel> getTags() throws IOException {
     resolveEntity();
-    return entity == null ? Collections.EMPTY_LIST : Entity.getEntityTags(getResource(), entity);
+    return entity == null ? Collections.emptyList() : Entity.getEntityTags(getResource(), entity);
   }
 
   @Override

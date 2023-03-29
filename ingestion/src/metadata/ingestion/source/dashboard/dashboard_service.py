@@ -13,7 +13,7 @@ Base class for ingesting dashboard services
 """
 import traceback
 from abc import ABC, abstractmethod
-from typing import Any, Iterable, List, Optional
+from typing import Any, Iterable, List, Optional, Set
 
 from pydantic import BaseModel
 
@@ -42,6 +42,10 @@ from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.usageRequest import UsageRequest
 from metadata.ingestion.api.source import Source
 from metadata.ingestion.api.topology_runner import TopologyRunnerMixin
+from metadata.ingestion.models.delete_entity import (
+    DeleteEntity,
+    delete_entity_from_source,
+)
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.models.topology import (
     NodeStage,
@@ -51,6 +55,7 @@ from metadata.ingestion.models.topology import (
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.connections import get_connection, get_test_connection_fn
+from metadata.utils import fqn
 from metadata.utils.filters import filter_by_dashboard
 from metadata.utils.logger import ingestion_logger
 
@@ -94,6 +99,7 @@ class DashboardServiceTopology(ServiceTopology):
             ),
         ],
         children=["dashboard"],
+        post_process=["mark_dashboards_as_deleted"],
     )
     dashboard = TopologyNode(
         producer="get_dashboard",
@@ -153,6 +159,7 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
 
     topology = DashboardServiceTopology()
     context = create_source_context(topology)
+    dashboard_source_state: Set = set()
 
     def __init__(
         self,
@@ -258,6 +265,22 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
             entity=DashboardService, config=config
         )
 
+    def mark_dashboards_as_deleted(self) -> Iterable[DeleteEntity]:
+        """
+        Method to mark the dashboards as deleted
+        """
+        if self.source_config.markDeletedDashboards:
+            logger.info("Mark Deleted Dashboards set to True")
+            yield from delete_entity_from_source(
+                metadata=self.metadata,
+                entity_type=Dashboard,
+                entity_source_state=self.dashboard_source_state,
+                mark_deleted_entity=self.source_config.markDeletedDashboards,
+                params={
+                    "service": self.context.dashboard_service.fullyQualifiedName.__root__
+                },
+            )
+
     def process_owner(self, dashboard_details):
         try:
             owner = self.get_owner_details(  # pylint: disable=assignment-from-none
@@ -273,6 +296,20 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning(f"Error processing owner for {dashboard_details}: {exc}")
+
+    def register_record(self, dashboard_request: CreateDashboardRequest) -> None:
+        """
+        Mark the dashboard record as scanned and update the dashboard_source_state
+        """
+        dashboard_fqn = fqn.build(
+            self.metadata,
+            entity_type=Dashboard,
+            service_name=dashboard_request.service.__root__,
+            dashboard_name=dashboard_request.name.__root__,
+        )
+
+        self.dashboard_source_state.add(dashboard_fqn)
+        self.status.scanned(dashboard_fqn)
 
     def get_owner_details(  # pylint: disable=useless-return
         self, dashboard_details  # pylint: disable=unused-argument
