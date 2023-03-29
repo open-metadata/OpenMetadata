@@ -37,6 +37,7 @@ interface Props extends DBTFormCommonProps, DbtConfigHttp {
   handleUpdateDBTClassification: (value: string) => void;
   enableDebugLog: boolean;
   handleEnableDebugLogCheck: (value: boolean) => void;
+  handleIncludeTagsClick: (value: boolean) => void;
 }
 
 export const DBTHttpConfig: FunctionComponent<Props> = ({
@@ -44,6 +45,7 @@ export const DBTHttpConfig: FunctionComponent<Props> = ({
   dbtManifestHttpPath = '',
   dbtRunResultsHttpPath = '',
   dbtUpdateDescriptions = false,
+  includeTags = true,
   okText,
   cancelText,
   onCancel,
@@ -56,6 +58,7 @@ export const DBTHttpConfig: FunctionComponent<Props> = ({
   handleUpdateDBTClassification,
   enableDebugLog,
   handleEnableDebugLogCheck,
+  handleIncludeTagsClick,
 }: Props) => {
   const [errors, setErrors] = useState<ErrorDbtHttp>();
   const { t } = useTranslation();
@@ -74,6 +77,7 @@ export const DBTHttpConfig: FunctionComponent<Props> = ({
       dbtRunResultsHttpPath,
       dbtUpdateDescriptions,
       dbtClassificationName,
+      includeTags,
     };
     if (validate(submitData)) {
       onSubmit(submitData);
@@ -149,8 +153,10 @@ export const DBTHttpConfig: FunctionComponent<Props> = ({
         descriptionId="http-update-description"
         enableDebugLog={enableDebugLog}
         handleEnableDebugLogCheck={handleEnableDebugLogCheck}
+        handleIncludeTagsClick={handleIncludeTagsClick}
         handleUpdateDBTClassification={handleUpdateDBTClassification}
         handleUpdateDescriptions={handleUpdateDescriptions}
+        includeTags={includeTags}
       />
 
       {getSeparator('')}

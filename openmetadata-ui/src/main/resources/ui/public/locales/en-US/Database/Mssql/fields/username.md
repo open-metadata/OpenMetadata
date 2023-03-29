@@ -1,0 +1,1 @@
+Username to connect to MSSQL. This user should have privileges to read all the metadata in MsSQL.
