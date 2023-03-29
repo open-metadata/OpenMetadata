@@ -48,6 +48,7 @@ const GlossaryTermReferencesModal = ({
 
   return (
     <Modal
+      destroyOnClose
       footer={[
         <Button key="cancel-btn" type="link" onClick={onClose}>
           {t('label.cancel')}
@@ -60,8 +61,8 @@ const GlossaryTermReferencesModal = ({
           {t('label.save')}
         </Button>,
       ]}
+      open={isVisible}
       title={t('label.reference-plural')}
-      visible={isVisible}
       onCancel={onClose}>
       <Form className="reference-edit-form" form={form} onFinish={handleSubmit}>
         <Form.List name="references">
