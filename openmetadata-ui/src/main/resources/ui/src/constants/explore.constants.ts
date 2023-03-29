@@ -97,7 +97,7 @@ export const tabsInfo: { [K in ExploreSearchIndex]: ExploreTabInfo } = {
     path: 'containers',
   },
   [SearchIndex.GLOSSARY]: {
-    label: t('label.glossary-term-plural'),
+    label: t('label.glossary-plural'),
     sortingFields: entitySortingFields,
     sortField: INITIAL_SORT_FIELD,
     path: 'glossary',
