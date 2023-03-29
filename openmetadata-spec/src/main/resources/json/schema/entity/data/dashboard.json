@@ -46,10 +46,12 @@
     },
     "charts": {
       "description": "All the charts included in this Dashboard.",
-      "type": "array",
-      "items": {
-        "$ref": "../../type/entityReference.json"
-      },
+      "$ref": "../../type/entityReference.json#/definitions/entityReferenceList",
+      "default": null
+    },
+    "dataModels": {
+      "description": "List of data models used by this dashboard or the charts contained on it.",
+      "$ref": "../../type/entityReference.json#/definitions/entityReferenceList",
       "default": null
     },
     "href": {

@@ -11,53 +11,41 @@
  *  limitations under the License.
  */
 
-import { Button, Card, Col, Divider, Row, Space, Tabs } from 'antd';
+import { Col, Row, Tabs } from 'antd';
 import { AxiosError } from 'axios';
 import GlossaryHeader from 'components/Glossary/GlossaryHeader/GlossaryHeader.component';
 import GlossaryTermTab from 'components/Glossary/GlossaryTermTab/GlossaryTermTab.component';
-import Tags from 'components/Tag/Tags/tags';
 import { PAGE_SIZE } from 'constants/constants';
 import { myDataSearchIndex } from 'constants/Mydata.constants';
 import { t } from 'i18next';
-import { AssetsDataType, EntityTags } from 'Models';
+import { AssetsDataType } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { searchData } from 'rest/miscAPI';
 import { formatDataResponse, SearchEntityHits } from 'utils/APIUtils';
 import { GlossaryTerm } from '../../generated/entity/data/glossaryTerm';
-import { LabelType, State, TagSource } from '../../generated/type/tagLabel';
 import jsonData from '../../jsons/en';
 import { getCountBadge } from '../../utils/CommonUtils';
-import SVGIcons from '../../utils/SvgUtils';
-import {
-  getClassifications,
-  getTaglist,
-  getTagOptionsFromFQN,
-} from '../../utils/TagsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { OperationPermission } from '../PermissionProvider/PermissionProvider.interface';
-import TagsContainer from '../Tag/TagsContainer/tags-container';
-import TagsViewer from '../Tag/TagsViewer/tags-viewer';
 import AssetsTabs from './tabs/AssetsTabs.component';
-import GlossaryTermReferences from './tabs/GlossaryTermReferences';
-import GlossaryTermSynonyms from './tabs/GlossaryTermSynonyms';
-import RelatedTerms from './tabs/RelatedTerms';
 
 type Props = {
   permissions: OperationPermission;
   glossaryTerm: GlossaryTerm;
+  childGlossaryTerms: GlossaryTerm[];
   handleGlossaryTermUpdate: (data: GlossaryTerm) => Promise<void>;
+  handleGlossaryTermDelete: (id: string) => void;
 };
 
 const GlossaryTermsV1 = ({
   glossaryTerm,
+  childGlossaryTerms,
   handleGlossaryTermUpdate,
+  handleGlossaryTermDelete,
   permissions,
 }: Props) => {
   const { glossaryName: glossaryFqn } = useParams<{ glossaryName: string }>();
-  const [isTagEditable, setIsTagEditable] = useState<boolean>(false);
-  const [tagList, setTagList] = useState<Array<string>>([]);
-  const [isTagLoading, setIsTagLoading] = useState<boolean>(false);
   const [activeTab, setActiveTab] = useState<string>('glossaryTerms');
 
   const [assetData, setAssetData] = useState<AssetsDataType>({
@@ -69,61 +57,6 @@ const GlossaryTermsV1 = ({
 
   const activeTabHandler = (tab: string) => {
     setActiveTab(tab);
-  };
-
-  const onTagUpdate = (selectedTags?: Array<string>) => {
-    if (selectedTags) {
-      const prevTags =
-        glossaryTerm?.tags?.filter((tag) =>
-          selectedTags.includes(tag?.tagFQN as string)
-        ) || [];
-      const newTags = selectedTags
-        .filter((tag) => {
-          return !prevTags?.map((prevTag) => prevTag.tagFQN).includes(tag);
-        })
-        .map((tag) => ({
-          labelType: LabelType.Manual,
-          state: State.Confirmed,
-          source: TagSource.Classification,
-          tagFQN: tag,
-        }));
-      const updatedTags = [...prevTags, ...newTags];
-      const updatedGlossary = { ...glossaryTerm, tags: updatedTags };
-      handleGlossaryTermUpdate(updatedGlossary);
-    }
-  };
-
-  const getSelectedTags = () => {
-    return (glossaryTerm.tags || []).map((tag) => ({
-      tagFQN: tag.tagFQN,
-      isRemovable: true,
-    }));
-  };
-
-  const fetchTags = () => {
-    setIsTagLoading(true);
-    getClassifications()
-      .then(async (res) => {
-        getTaglist(res.data).then(setTagList);
-      })
-      .catch((err: AxiosError) => {
-        showErrorToast(err, jsonData['api-error-messages']['fetch-tags-error']);
-      })
-      .finally(() => {
-        setIsTagLoading(false);
-      });
-  };
-
-  const handleTagSelection = (selectedTags?: Array<EntityTags>) => {
-    onTagUpdate?.(selectedTags?.map((tag) => tag.tagFQN));
-    setIsTagEditable(false);
-  };
-
-  const handleTagContainerClick = () => {
-    if (!isTagEditable) {
-      fetchTags();
-      setIsTagEditable(true);
-    }
   };
 
   const fetchGlossaryTermAssets = async (fqn: string, currentPage = 1) => {
@@ -184,112 +117,16 @@ const GlossaryTermsV1 = ({
     setActiveTab('glossaryTerms');
   }, [glossaryFqn]);
 
-  const SummaryTab = () => {
-    return (
-      <Row gutter={16}>
-        <Col span={24}>
-          <Card className="glossary-card">
-            <RelatedTerms
-              glossaryTerm={glossaryTerm || ({} as GlossaryTerm)}
-              permissions={permissions}
-              onGlossaryTermUpdate={handleGlossaryTermUpdate}
-            />
-            <Divider className="m-r-1 m-y-sm" />
-
-            <GlossaryTermSynonyms
-              glossaryTerm={glossaryTerm}
-              permissions={permissions}
-              onGlossaryTermUpdate={handleGlossaryTermUpdate}
-            />
-            <Divider className="m-r-1 m-y-sm" />
-
-            <GlossaryTermReferences
-              glossaryTerm={glossaryTerm}
-              permissions={permissions}
-              onGlossaryTermUpdate={handleGlossaryTermUpdate}
-            />
-          </Card>
-        </Col>
-      </Row>
-    );
-  };
-
   return (
-    <Row data-testid="glossary-term">
+    <Row data-testid="glossary-term" gutter={[0, 16]}>
       <Col span={24}>
         <GlossaryHeader
+          isGlossary={false}
           permissions={permissions}
           selectedData={glossaryTerm}
+          onDelete={handleGlossaryTermDelete}
           onUpdate={(data) => handleGlossaryTermUpdate(data as GlossaryTerm)}
         />
-        {!isTagEditable && (
-          <>
-            {glossaryTerm?.tags && glossaryTerm.tags.length > 0 && (
-              <>
-                <SVGIcons
-                  alt="icon-tag"
-                  className="tw-mx-1"
-                  icon="icon-tag-grey"
-                  width="16"
-                />
-                <TagsViewer tags={glossaryTerm.tags} />
-              </>
-            )}
-          </>
-        )}
-        <Space
-          className="flex-wrap items-center"
-          data-testid="tags"
-          onClick={handleTagContainerClick}>
-          <TagsContainer
-            buttonContainerClass="tw--mt-0"
-            className="w-min-20"
-            containerClass="flex items-center tw-gap-2 m-t-xs"
-            dropDownHorzPosRight={false}
-            editable={isTagEditable}
-            isLoading={isTagLoading}
-            selectedTags={getSelectedTags()}
-            showTags={false}
-            size="small"
-            tagList={getTagOptionsFromFQN(tagList)}
-            type="label"
-            onCancel={() => {
-              handleTagSelection();
-            }}
-            onSelectionChange={(tags) => {
-              handleTagSelection(tags);
-            }}>
-            {glossaryTerm?.tags && glossaryTerm?.tags.length ? (
-              <Button
-                className="p-0 m-l-xss flex-center"
-                disabled={!(permissions.EditTags || permissions.EditAll)}
-                icon={
-                  <SVGIcons
-                    alt="edit"
-                    icon="icon-edit"
-                    title="Edit"
-                    width="16px"
-                  />
-                }
-                type="text"
-              />
-            ) : (
-              <Button
-                className="p-0 m-t-xs"
-                disabled={!(permissions.EditTags || permissions.EditAll)}
-                type="text">
-                <Tags
-                  className="tw-text-primary"
-                  startWith="+ "
-                  tag={t('label.add-entity', {
-                    entity: t('label.tag-lowercase'),
-                  })}
-                  type="label"
-                />
-              </Button>
-            )}
-          </TagsContainer>
-        </Space>
       </Col>
 
       <Col span={24}>
@@ -298,9 +135,25 @@ const GlossaryTermsV1 = ({
           activeKey={activeTab}
           items={[
             {
-              label: t('label.glossary-term-plural'),
+              label: (
+                <div data-testid="assets">
+                  {t('label.glossary-term-plural')}
+                  <span className="p-l-xs ">
+                    {getCountBadge(
+                      childGlossaryTerms.length,
+                      '',
+                      activeTab === 'glossaryTerms'
+                    )}
+                  </span>
+                </div>
+              ),
               key: 'glossaryTerms',
-              children: <GlossaryTermTab glossaryTermId={glossaryTerm.id} />,
+              children: (
+                <GlossaryTermTab
+                  childGlossaryTerms={childGlossaryTerms}
+                  glossaryTermId={glossaryTerm.id}
+                />
+              ),
             },
             {
               label: (
@@ -319,11 +172,6 @@ const GlossaryTermsV1 = ({
                   onAssetPaginate={handleAssetPagination}
                 />
               ),
-            },
-            {
-              label: t('label.summary'),
-              key: 'summary',
-              children: <SummaryTab />,
             },
           ]}
           onChange={activeTabHandler}

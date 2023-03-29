@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button } from 'antd';
+import { Button, Col, Row } from 'antd';
 import { AxiosError } from 'axios';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import PageContainerV1 from 'components/containers/PageContainerV1';
@@ -44,6 +44,7 @@ import { checkPermission } from 'utils/PermissionsUtils';
 import { getGlossaryPath } from 'utils/RouterUtils';
 import { showErrorToast, showSuccessToast } from 'utils/ToastUtils';
 import GlossaryLeftPanel from '../GlossaryLeftPanel/GlossaryLeftPanel.component';
+import GlossaryRightPanel from '../GlossaryRightPanel/GlossaryRightPanel.component';
 
 const GlossaryPage = () => {
   const { t } = useTranslation();
@@ -261,15 +262,29 @@ const GlossaryPage = () => {
           // Loader for right panel data
           <Loader />
         ) : (
-          <GlossaryV1
-            deleteStatus={deleteStatus}
-            handleGlossaryTermUpdate={handleGlossaryTermUpdate}
-            isGlossaryActive={isGlossaryActive}
-            selectedData={selectedData as Glossary}
-            updateGlossary={updateGlossary}
-            onGlossaryDelete={handleGlossaryDelete}
-            onGlossaryTermDelete={handleGlossaryTermDelete}
-          />
+          <Row gutter={[16, 0]} wrap={false}>
+            <Col flex="auto">
+              <GlossaryV1
+                deleteStatus={deleteStatus}
+                isGlossaryActive={isGlossaryActive}
+                selectedData={selectedData as Glossary}
+                updateGlossary={updateGlossary}
+                onGlossaryDelete={handleGlossaryDelete}
+                onGlossaryTermDelete={handleGlossaryTermDelete}
+                onGlossaryTermUpdate={handleGlossaryTermUpdate}
+              />
+            </Col>
+            {selectedData && (
+              <Col flex="400px">
+                <GlossaryRightPanel
+                  entityDetails={selectedData as Glossary}
+                  isGlossary={isGlossaryActive}
+                  onGlossaryTermUpdate={handleGlossaryTermUpdate}
+                  onGlossaryUpdate={updateGlossary}
+                />
+              </Col>
+            )}
+          </Row>
         )}
       </PageLayoutV1>
     </PageContainerV1>
