@@ -1,0 +1,1 @@
+Mot de passe pour se connecter à Redshift.

@@ -1,0 +1,1 @@
+Si selectionné, le flux de travail pourra ingérer les métadonnées de toutes les base de données dans votre cluster Redshift. 

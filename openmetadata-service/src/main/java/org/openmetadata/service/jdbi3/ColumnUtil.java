@@ -11,6 +11,8 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.TagLabel;
+import org.openmetadata.service.exception.CatalogExceptionMessage;
+import org.openmetadata.service.util.FullyQualifiedName;
 
 public final class ColumnUtil {
   private ColumnUtil() {}
@@ -55,5 +57,30 @@ public final class ColumnUtil {
       tags.addAll(getAllTags(c));
     }
     return tags;
+  }
+
+  public static void setColumnFQN(String parentFQN, List<Column> columns) {
+    columns.forEach(
+        c -> {
+          String columnFqn = FullyQualifiedName.add(parentFQN, c.getName());
+          c.setFullyQualifiedName(columnFqn);
+          if (c.getChildren() != null) {
+            setColumnFQN(columnFqn, c.getChildren());
+          }
+        });
+  }
+
+  // Validate if a given column exists in the table
+  public static void validateColumnFQN(List<Column> columns, String columnFQN) {
+    boolean validColumn = false;
+    for (Column column : columns) {
+      if (column.getFullyQualifiedName().equals(columnFQN)) {
+        validColumn = true;
+        break;
+      }
+    }
+    if (!validColumn) {
+      throw new IllegalArgumentException(CatalogExceptionMessage.invalidColumnFQN(columnFQN));
+    }
   }
 }

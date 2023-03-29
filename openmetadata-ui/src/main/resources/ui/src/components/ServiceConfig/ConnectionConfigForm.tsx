@@ -12,7 +12,7 @@
  */
 
 import { ISubmitEvent } from '@rjsf/core';
-import { ObjectStoreServiceType } from 'generated/entity/services/objectstoreService';
+import { ObjectStoreServiceType } from 'generated/entity/data/container';
 import { cloneDeep, isNil } from 'lodash';
 import { LoadingState } from 'Models';
 import React, { Fragment, FunctionComponent } from 'react';
@@ -41,9 +41,10 @@ interface Props {
   serviceType: string;
   serviceCategory: ServiceCategory;
   status: LoadingState;
-  onCancel?: () => void;
+  onFocus: (fieldName: string) => void;
   onSave: (data: ISubmitEvent<ConfigData>) => void;
   disableTestConnection?: boolean;
+  onCancel?: () => void;
 }
 
 const ConnectionConfigForm: FunctionComponent<Props> = ({
@@ -55,6 +56,7 @@ const ConnectionConfigForm: FunctionComponent<Props> = ({
   status,
   onCancel,
   onSave,
+  onFocus,
   disableTestConnection = false,
 }: Props) => {
   const config = !isNil(data)
@@ -66,7 +68,7 @@ const ConnectionConfigForm: FunctionComponent<Props> = ({
     onSave({ ...data, formData: updatedFormData });
   };
 
-  const getDatabaseFields = () => {
+  const getConfigFields = () => {
     let connSch = {
       schema: {},
       uiSchema: {},
@@ -131,12 +133,13 @@ const ConnectionConfigForm: FunctionComponent<Props> = ({
         status={status}
         uiSchema={connSch.uiSchema}
         onCancel={onCancel}
+        onFocus={onFocus}
         onSubmit={handleSave}
       />
     );
   };
 
-  return <Fragment>{getDatabaseFields()}</Fragment>;
+  return <Fragment>{getConfigFields()}</Fragment>;
 };
 
 export default ConnectionConfigForm;

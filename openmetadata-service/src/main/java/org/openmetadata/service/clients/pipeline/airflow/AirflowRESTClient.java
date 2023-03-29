@@ -28,7 +28,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.json.JSONObject;
 import org.openmetadata.schema.ServiceEntityInterface;
 import org.openmetadata.schema.api.configuration.pipelineServiceClient.PipelineServiceClientConfiguration;
-import org.openmetadata.schema.entity.automations.TestServiceConnectionRequest;
 import org.openmetadata.schema.entity.automations.Workflow;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
@@ -228,23 +227,6 @@ public class AirflowRESTClient extends PipelineServiceClient {
       throw PipelineServiceClientException.byMessage("Failed to get REST status.", e.getMessage());
     }
     throw new PipelineServiceClientException(String.format("Failed to get REST status due to %s.", response.body()));
-  }
-
-  @Override
-  public Response testConnection(TestServiceConnectionRequest testServiceConnection) {
-    HttpResponse<String> response;
-    try {
-      String statusEndPoint = "%s/%s/test_connection";
-      String statusUrl = String.format(statusEndPoint, serviceURL, API_ENDPOINT);
-      String connectionPayload = JsonUtils.pojoToJson(testServiceConnection);
-      response = post(statusUrl, connectionPayload);
-      if (response.statusCode() == 200) {
-        return Response.status(response.statusCode()).entity(response.body()).build();
-      }
-    } catch (Exception e) {
-      throw PipelineServiceClientException.byMessage("Failed to test connection.", e.getMessage());
-    }
-    throw new PipelineServiceClientException(String.format("Failed to test connection due to %s", response.body()));
   }
 
   @Override

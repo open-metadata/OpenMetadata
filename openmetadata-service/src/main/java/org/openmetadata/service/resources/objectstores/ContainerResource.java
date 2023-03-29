@@ -112,8 +112,8 @@ public class ContainerResource extends EntityResource<Container, ContainerReposi
       @Parameter(
               description = "Filter Containers by Object Store Service name",
               schema = @Schema(type = "string", example = "s3West"))
-          @QueryParam("objectStoreService")
-          String objectStoreServiceParam,
+          @QueryParam("service")
+          String service,
       @Parameter(
               description = "Filter by Containers at the root level. E.g., without parent",
               schema = @Schema(type = "boolean", example = "true"))
@@ -139,7 +139,7 @@ public class ContainerResource extends EntityResource<Container, ContainerReposi
           @DefaultValue("non-deleted")
           Include include)
       throws IOException {
-    ListFilter filter = new ListFilter(include).addQueryParam("objectStoreService", objectStoreServiceParam);
+    ListFilter filter = new ListFilter(include).addQueryParam("service", service);
     if (root != null) {
       filter.addQueryParam("root", root.toString());
     }

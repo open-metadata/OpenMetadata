@@ -126,7 +126,11 @@ class KinesisSource(MessagingServiceSource):
                 ),
                 maximumMessageSize=self._get_max_message_size(),
             )
-            self.status.scanned(topic.name.__root__)
+            if self.generate_sample_data:
+                topic.sampleData = self._get_sample_data(
+                    topic_details.topic_name, topic_details.topic_metadata["partitions"]
+                )
+            self.register_record(topic_request=topic)
             yield topic
 
         except Exception as exc:

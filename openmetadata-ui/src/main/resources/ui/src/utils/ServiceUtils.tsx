@@ -58,7 +58,6 @@ import {
   DRUID,
   DYNAMODB,
   FIVETRAN,
-  GCS,
   GLUE,
   HIVE,
   IBMDB2,
@@ -71,7 +70,6 @@ import {
   MLFLOW,
   MODE,
   MSSQL,
-  MS_AZURE,
   MYSQL,
   NIFI,
   ORACLE,
@@ -89,6 +87,7 @@ import {
   SALESFORCE,
   SCIKIT,
   serviceTypes,
+  SERVICE_TYPE_MAP,
   SINGLESTORE,
   SNOWFLAKE,
   SQLITE,
@@ -121,7 +120,6 @@ import {
   PipelineService,
   PipelineServiceType,
 } from '../generated/entity/services/pipelineService';
-import { ServiceType } from '../generated/entity/services/serviceType';
 import { ServicesType } from '../interface/service.interface';
 import { getEntityDeleteMessage, pluralize } from './CommonUtils';
 import { getDashboardURL } from './DashboardServiceUtils';
@@ -287,14 +285,8 @@ export const serviceTypeLogo = (type: string) => {
     case MetadataServiceType.OpenMetadata:
       return LOGO;
 
-    case ObjectStoreServiceType.Azure:
-      return MS_AZURE;
-
     case ObjectStoreServiceType.S3:
       return AMAZON_S3;
-
-    case ObjectStoreServiceType.Gcs:
-      return GCS;
 
     default: {
       let logo;
@@ -612,19 +604,8 @@ export const shouldTestConnection = (serviceType: string) => {
   );
 };
 
-export const getTestConnectionType = (serviceCat: ServiceCategory) => {
-  switch (serviceCat) {
-    case ServiceCategory.MESSAGING_SERVICES:
-      return ServiceType.Messaging;
-    case ServiceCategory.DASHBOARD_SERVICES:
-      return ServiceType.Dashboard;
-    case ServiceCategory.PIPELINE_SERVICES:
-      return ServiceType.Pipeline;
-    case ServiceCategory.DATABASE_SERVICES:
-    default:
-      return ServiceType.Database;
-  }
-};
+export const getServiceType = (serviceCat: ServiceCategory) =>
+  SERVICE_TYPE_MAP[serviceCat];
 
 export const getServiceCreatedLabel = (serviceCategory: ServiceCategory) => {
   let serviceCat;
@@ -847,7 +828,7 @@ export const getServiceRouteFromServiceType = (type: ServiceTypes) => {
   if (type === 'metadataServices') {
     return GlobalSettingOptions.METADATA;
   }
-  if (type === 'objectstoreServices') {
+  if (type === 'objectStoreServices') {
     return GlobalSettingOptions.OBJECT_STORES;
   }
 
