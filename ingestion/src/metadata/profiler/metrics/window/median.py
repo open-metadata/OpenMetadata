@@ -76,7 +76,8 @@ class Median(StaticMetric):
                     f"We recommend using a smaller sample size or partitionning."
                 )
                 return None
-            return df[self.col.name].dropna().median()
+            median = df[self.col.name].median()
+            return None if pd.isnull(median) else median
         logger.debug(
             f"Don't know how to process type {self.col.type} when computing Median"
         )

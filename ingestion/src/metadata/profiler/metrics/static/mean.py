@@ -15,7 +15,7 @@ AVG Metric definition
 # pylint: disable=duplicate-code
 
 
-import math
+from typing import List, cast
 
 from sqlalchemy import column, func
 from sqlalchemy.ext.compiler import compiles
@@ -86,30 +86,33 @@ class Mean(StaticMetric):
     # pylint: disable=import-outside-toplevel
     def df_fn(self, dfs=None):
         """dataframe function"""
-        from numpy import vectorize
+        import pandas as pd
+        from numpy import average, vectorize
 
-        length_vectorize_func = vectorize(len)
-        total_len = sum(df[self.col.name].dropna().shape[0] for df in dfs)
+        dfs = cast(List[pd.DataFrame], dfs)
+
+        means = []
+        weights = []
+
         if is_quantifiable(self.col.type):
-            result = [
-                df[self.col.name].dropna().mean() * df.shape[0] / total_len
-                for df in dfs
-                if df[self.col.name].dropna().any()
-            ]
-            return sum(filter(lambda x: not math.isnan(x), result))
+            for df in dfs:
+                mean = df[self.col.name].mean()
+                if not pd.isnull(mean):
+                    means.append(mean)
+                    weights.append(df[self.col.name].count())
 
         if is_concatenable(self.col.type):
-            result = [
-                length_vectorize_func(df[self.col.name].dropna()).mean()
-                * df.shape[0]
-                / total_len
-                for df in dfs
-                if df[self.col.name].dropna().any()
-            ]
+            length_vectorize_func = vectorize(len)
+            for df in dfs:
+                mean = length_vectorize_func(df[self.col.name].dropna()).mean()
+                if not pd.isnull(mean):
+                    means.append(mean)
+                    weights.append(df[self.col.name].count())
 
-            return sum(filter(lambda x: not math.isnan(x), result))
+        if means:
+            return average(means, weights=weights)
 
         logger.warning(
             f"Don't know how to process type {self.col.type} when computing MEAN"
         )
-        return 0
+        return None

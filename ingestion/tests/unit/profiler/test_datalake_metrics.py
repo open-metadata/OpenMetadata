@@ -12,6 +12,7 @@
 """
 Test Metrics behavior
 """
+import os
 from unittest import TestCase
 from unittest.mock import patch
 from uuid import uuid4
@@ -23,7 +24,6 @@ from metadata.generated.schema.entity.data.table import Column as EntityColumn
 from metadata.generated.schema.entity.data.table import ColumnName, DataType, Table
 from metadata.profiler.metrics.core import add_props
 from metadata.profiler.metrics.registry import Metrics
-from metadata.profiler.orm.functions.sum import SumFn
 from metadata.profiler.profiler.core import Profiler
 from metadata.profiler.profiler.interface.pandas.pandas_profiler_interface import (
     PandasProfilerInterface,
@@ -52,12 +52,11 @@ class DatalakeMetricsTest(TestCase):
 
     import pandas as pd
 
-    df1 = pd.read_csv(
-        "ingestion/tests/unit/profiler/custom_csv/test_datalake_metrics_1.csv"
-    )
-    df2 = pd.read_csv(
-        "ingestion/tests/unit/profiler/custom_csv/test_datalake_metrics_2.csv"
-    )
+    root_dir = os.path.dirname(os.path.abspath(__file__))
+    csv_dir = "custom_csv"
+
+    df1 = pd.read_csv(os.path.join(root_dir, csv_dir, "test_datalake_metrics_1.csv"))
+    df2 = pd.read_csv(os.path.join(root_dir, csv_dir, "test_datalake_metrics_2.csv"))
 
     @patch.object(
         PandasProfilerInterface,
@@ -300,7 +299,7 @@ class DatalakeMetricsTest(TestCase):
         age_histogram = res.get(User.age.name)[Metrics.HISTOGRAM.name]
 
         assert age_histogram
-        assert len(age_histogram["frequencies"]) == 1
+        assert len(age_histogram["frequencies"]) == 2
 
     def test_max(self):
         """
@@ -586,7 +585,7 @@ class DatalakeMetricsTest(TestCase):
             ._column_results
         )
 
-        assert res.get(User.age.name)[Metrics.THIRD_QUARTILE.name] == 30.75
+        assert res.get(User.age.name)[Metrics.THIRD_QUARTILE.name] == 40
 
     def test_iqr(self):
         """Check IQR metric"""
@@ -604,7 +603,7 @@ class DatalakeMetricsTest(TestCase):
             ._column_results
         )
 
-        assert res.get(User.age.name)[Metrics.IQR.name] == 1
+        assert res.get(User.age.name)[Metrics.IQR.name] == 9.5
 
     def test_sum_function(self):
         """Check overwritten sum function"""

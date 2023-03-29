@@ -183,7 +183,7 @@ DATALAKE_DATA_FRAME = DataFrame(
             "test_case_column_values_to_be_unique",
             "columnValuesToBeUnique",
             "COLUMN",
-            (TestCaseResult, "30", "2", TestCaseStatus.Failed),
+            (TestCaseResult, "20", "2", TestCaseStatus.Failed),
         ),
         (
             "test_case_column_values_to_match_regex",
@@ -282,7 +282,7 @@ def test_suite_validation_datalake(
     )
 
     test_handler = test_handler_obj(
-        DATALAKE_DATA_FRAME,
+        [DATALAKE_DATA_FRAME],
         test_case=test_case,
         execution_date=EXECUTION_DATE.timestamp(),
     )
