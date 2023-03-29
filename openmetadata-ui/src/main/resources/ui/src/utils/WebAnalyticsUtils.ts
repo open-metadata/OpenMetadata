@@ -129,14 +129,7 @@ export const trackPageView = async (
   }
 };
 
-export const trackCustomEvent = async (
-  eventData: AnalyticsData,
-  userId: string
-) => {
-  if (!userId) {
-    return;
-  }
-
+export const trackCustomEvent = async (eventData: AnalyticsData) => {
   // Get the current session
   const currentSession = getSession();
 
@@ -181,7 +174,7 @@ export const getAnalyticInstance = (userId: string): AnalyticsInstance => {
           trackPageView(pageData, userId);
         },
         track: (trackingData: AnalyticsData) => {
-          trackCustomEvent(trackingData, userId);
+          trackCustomEvent(trackingData);
         },
       },
     ],
