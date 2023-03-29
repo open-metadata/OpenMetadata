@@ -16,7 +16,7 @@ import ErrorPlaceHolderIngestion from 'components/common/error-with-placeholder/
 import Ingestion from 'components/Ingestion/Ingestion.component';
 import Loader from 'components/Loader/Loader';
 import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
-import { OPENMETADATA } from 'constants/Services.constant';
+import { OPEN_METADATA } from 'constants/Services.constant';
 import { ServiceCategory } from 'enums/service.enum';
 import { PipelineType } from 'generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { DatabaseService } from 'generated/entity/services/databaseService';
@@ -58,7 +58,7 @@ function SettingsIngestion({
   const [ingestionPaging, setIngestionPaging] = useState<Paging>({} as Paging);
 
   const serviceCategory = ServiceCategory.METADATA_SERVICES;
-  const serviceFQN = OPENMETADATA;
+  const serviceFQN = OPEN_METADATA;
 
   const getAirflowEndpoint = async () => {
     try {

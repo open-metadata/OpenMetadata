@@ -25,7 +25,7 @@ import { getServices } from 'rest/serviceAPI';
 import { pagingObject, SERVICE_VIEW_CAP } from '../../constants/constants';
 import { NO_PERMISSION_TO_VIEW } from '../../constants/HelperTextUtil';
 import {
-  OPENMETADATA,
+  OPEN_METADATA,
   SERVICE_CATEGORY,
 } from '../../constants/Services.constant';
 import { ServiceCategory } from '../../enums/service.enum';
@@ -67,7 +67,7 @@ const ServicesPage = () => {
       setServiceDetails(
         type === ServiceCategory.METADATA_SERVICES
           ? data.filter(
-              (service) => service.fullyQualifiedName !== OPENMETADATA
+              (service) => service.fullyQualifiedName !== OPEN_METADATA
             )
           : data
       );

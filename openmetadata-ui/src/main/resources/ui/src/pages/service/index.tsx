@@ -123,6 +123,14 @@ export type ServicePageData =
   | Pipeline
   | Container;
 
+const tableComponent = {
+  body: {
+    row: ({ children }: { children: React.ReactNode }) => (
+      <tr data-testid="row">{children}</tr>
+    ),
+  },
+};
+
 const ServicePage: FunctionComponent = () => {
   const { t } = useTranslation();
   const { isAirflowAvailable } = useAirflowStatus();
@@ -130,7 +138,7 @@ const ServicePage: FunctionComponent = () => {
     useParams() as Record<string, string>;
 
   const isOpenMetadataService = useMemo(
-    () => serviceFQN === OPENMETADATA,
+    () => serviceFQN === OPEN_METADATA,
     [serviceFQN]
   );
 
@@ -973,11 +981,17 @@ const ServicePage: FunctionComponent = () => {
       serviceFQN === OPEN_METADATA) ||
     isUndefined(connectionDetails);
 
+  if (isLoading) {
+    return (
+      <PageContainerV1>
+        <Loader />
+      </PageContainerV1>
+    );
+  }
+
   return (
     <PageContainerV1>
-      {isLoading ? (
-        <Loader />
-      ) : isError ? (
+      {isError ? (
         <ErrorPlaceHolder>
           {getEntityMissingError(serviceName as string, serviceFQN)}
         </ErrorPlaceHolder>
@@ -1047,8 +1061,8 @@ const ServicePage: FunctionComponent = () => {
               </Col>
               <Col span={24}>
                 <Space>
-                  {extraInfo.map((info, index) => (
-                    <Space key={index}>
+                  {extraInfo.map((info) => (
+                    <Space key={info.id}>
                       <EntitySummaryDetails
                         currentOwner={serviceDetails?.owner}
                         data={info}
@@ -1099,15 +1113,7 @@ const ServicePage: FunctionComponent = () => {
                           bordered
                           className="mt-4 table-shadow"
                           columns={tableColumn}
-                          components={{
-                            body: {
-                              row: ({
-                                children,
-                              }: {
-                                children: React.ReactNode;
-                              }) => <tr data-testid="row">{children}</tr>,
-                            },
-                          }}
+                          components={tableComponent}
                           data-testid="service-children-table"
                           dataSource={data}
                           loading={{
