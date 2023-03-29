@@ -276,6 +276,27 @@ public class TableRepository extends EntityRepository<Table> {
     return table;
   }
 
+  private Column getColumnNameForProfiler(List<Column> columnList, ColumnProfile columnProfile, String parentName) {
+    for (Column col : columnList) {
+      String columnName;
+      if (parentName != null) {
+        columnName = String.format("%s.%s", parentName, col.getName());
+      } else {
+        columnName = col.getName();
+      }
+      if (columnName.equals(columnProfile.getName())) {
+        return col;
+      }
+      if (col.getChildren() != null) {
+        Column childColumn = getColumnNameForProfiler(col.getChildren(), columnProfile, columnName);
+        if (childColumn != null) {
+          return childColumn;
+        }
+      }
+    }
+    return null;
+  }
+
   @Transaction
   public Table addTableProfileData(UUID tableId, CreateTableProfile createTableProfile) throws IOException {
     // Validate the request content
@@ -309,8 +330,7 @@ public class TableRepository extends EntityRepository<Table> {
 
     for (ColumnProfile columnProfile : createTableProfile.getColumnProfile()) {
       // Validate all the columns
-      Column column =
-          table.getColumns().stream().filter(c -> c.getName().equals(columnProfile.getName())).findFirst().orElse(null);
+      Column column = getColumnNameForProfiler(table.getColumns(), columnProfile, null);
       if (column == null) {
         throw new IllegalArgumentException("Invalid column name " + columnProfile.getName());
       }
@@ -433,6 +453,21 @@ public class TableRepository extends EntityRepository<Table> {
     return new ResultList<>(systemProfiles, startTs.toString(), endTs.toString(), systemProfiles.size());
   }
 
+  private void setColumnProfile(List<Column> columnList) throws IOException {
+    for (Column column : columnList) {
+      ColumnProfile columnProfile =
+          JsonUtils.readValue(
+              daoCollection
+                  .entityExtensionTimeSeriesDao()
+                  .getLatestExtension(column.getFullyQualifiedName(), TABLE_COLUMN_PROFILE_EXTENSION),
+              ColumnProfile.class);
+      column.setProfile(columnProfile);
+      if (column.getChildren() != null) {
+        setColumnProfile(column.getChildren());
+      }
+    }
+  }
+
   @Transaction
   public Table getLatestTableProfile(String fqn) throws IOException {
     Table table = dao.findEntityByName(fqn);
@@ -443,14 +478,7 @@ public class TableRepository extends EntityRepository<Table> {
                 .getLatestExtension(table.getFullyQualifiedName(), TABLE_PROFILE_EXTENSION),
             TableProfile.class);
     table.setProfile(tableProfile);
-    for (Column c : table.getColumns()) {
-      c.setProfile(
-          JsonUtils.readValue(
-              daoCollection
-                  .entityExtensionTimeSeriesDao()
-                  .getLatestExtension(c.getFullyQualifiedName(), TABLE_COLUMN_PROFILE_EXTENSION),
-              ColumnProfile.class));
-    }
+    setColumnProfile(table.getColumns());
     return table;
   }
 

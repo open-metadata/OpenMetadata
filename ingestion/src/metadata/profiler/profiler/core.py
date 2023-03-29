@@ -476,7 +476,7 @@ class Profiler(Generic[TMetric]):
 
         return table_profile
 
-    def generate_sample_data(self) -> TableData:
+    def generate_sample_data(self) -> Optional[TableData]:
         """Fetch and ingest sample data
 
         Returns:
