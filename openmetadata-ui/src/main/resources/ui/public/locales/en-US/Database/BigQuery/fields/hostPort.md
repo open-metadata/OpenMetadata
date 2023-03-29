@@ -1,0 +1,1 @@
+BigQuery APIs URL. By default the API URL is `bigquery.googleapis.com` you can modify this if you have custom implementation of 

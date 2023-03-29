@@ -604,7 +604,7 @@ export const shouldTestConnection = (serviceType: string) => {
   );
 };
 
-export const getTestConnectionType = (serviceCat: ServiceCategory) =>
+export const getServiceType = (serviceCat: ServiceCategory) =>
   SERVICE_TYPE_MAP[serviceCat];
 
 export const getServiceCreatedLabel = (serviceCategory: ServiceCategory) => {

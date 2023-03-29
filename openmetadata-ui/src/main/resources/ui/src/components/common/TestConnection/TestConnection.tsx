@@ -34,8 +34,8 @@ import {
 } from 'rest/workflowAPI';
 import { formatFormDataForSubmit } from 'utils/JSONSchemaFormUtils';
 import {
+  getServiceType,
   getTestConnectionName,
-  getTestConnectionType,
   shouldTestConnection,
 } from 'utils/ServiceUtils';
 
@@ -105,7 +105,7 @@ const TestConnection: FC<TestConnectionProps> = ({
   }, [formData]);
 
   const serviceType = useMemo(() => {
-    return getTestConnectionType(serviceCategory);
+    return getServiceType(serviceCategory);
   }, [serviceCategory]);
 
   const allowTestConn = useMemo(() => {
