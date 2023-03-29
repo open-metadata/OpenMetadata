@@ -132,7 +132,7 @@ class Sampler:
         # Assign as an alias
         return aliased(self.table, sampled)
 
-    def fetch_sqa_sample_data(self, sample_columns: list) -> TableData:
+    def fetch_sqa_sample_data(self, sample_columns: Optional[list] = None) -> TableData:
         """
         Use the sampler to retrieve sample data rows as per limit given by user
         :return: TableData to be added to the Table Entity
@@ -142,6 +142,9 @@ class Sampler:
 
         # Add new RandomNumFn column
         rnd = self.get_sample_query()
+        sample_columns = (
+            sample_columns if sample_columns else [col.name for col in inspect(rnd).c]
+        )
         sqa_columns = [
             col
             for col in inspect(rnd).c
