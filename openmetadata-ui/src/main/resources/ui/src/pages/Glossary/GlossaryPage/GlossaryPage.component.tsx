@@ -257,7 +257,18 @@ const GlossaryPage = () => {
     <PageContainerV1>
       <PageLayoutV1
         leftPanel={<GlossaryLeftPanel glossaries={glossaries} />}
-        pageTitle={t('label.glossary')}>
+        pageTitle={t('label.glossary')}
+        rightPanel={
+          selectedData && (
+            <GlossaryRightPanel
+              entityDetails={selectedData as Glossary}
+              isGlossary={isGlossaryActive}
+              onGlossaryTermUpdate={handleGlossaryTermUpdate}
+              onGlossaryUpdate={updateGlossary}
+            />
+          )
+        }
+        rightPanelWidth={400}>
         {isRightPanelLoading ? (
           // Loader for right panel data
           <Loader />
@@ -274,16 +285,6 @@ const GlossaryPage = () => {
                 onGlossaryTermUpdate={handleGlossaryTermUpdate}
               />
             </Col>
-            {selectedData && (
-              <Col flex="400px">
-                <GlossaryRightPanel
-                  entityDetails={selectedData as Glossary}
-                  isGlossary={isGlossaryActive}
-                  onGlossaryTermUpdate={handleGlossaryTermUpdate}
-                  onGlossaryUpdate={updateGlossary}
-                />
-              </Col>
-            )}
           </Row>
         )}
       </PageLayoutV1>
