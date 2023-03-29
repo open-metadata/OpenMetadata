@@ -124,6 +124,10 @@ const GlossaryTermsV1 = ({
           isGlossary={false}
           permissions={permissions}
           selectedData={glossaryTerm}
+          onAssetsUpdate={() =>
+            glossaryTerm.fullyQualifiedName &&
+            fetchGlossaryTermAssets(glossaryTerm.fullyQualifiedName)
+          }
           onDelete={handleGlossaryTermDelete}
           onUpdate={(data) => handleGlossaryTermUpdate(data as GlossaryTerm)}
         />

@@ -126,10 +126,6 @@ class KinesisSource(MessagingServiceSource):
                 ),
                 maximumMessageSize=self._get_max_message_size(),
             )
-            if self.generate_sample_data:
-                topic.sampleData = self._get_sample_data(
-                    topic_details.topic_name, topic_details.topic_metadata["partitions"]
-                )
             self.register_record(topic_request=topic)
             yield topic
 

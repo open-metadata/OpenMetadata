@@ -1145,7 +1145,7 @@
     "schedule-for-ingestion-description": "Scheduling can be set up at an hourly, daily, or weekly cadence. The timezone is in UTC.",
     "scheduled-run-every": "Scheduled to run every",
     "scopes-comma-separated": "Add the Scopes value, separated by commas",
-    "search-for-entity-types": "Search for Tables, Topics, Dashboards, Pipelines and ML Models.",
+    "search-for-entity-types": "Search for Tables, Topics, Dashboards, Pipelines, ML Models, Glossary and Tags.",
     "search-for-ingestion": "Search for ingestion",
     "select-column-name": "Select column name",
     "select-gcs-config-type": "Select GCS Config Type",
