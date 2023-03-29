@@ -39,7 +39,6 @@ import { refreshPage } from 'utils/CommonUtils';
 import { isCommandKeyPress, Keys } from 'utils/KeyboardUtil';
 import AppState from '../../AppState';
 import Logo from '../../assets/svg/logo-monogram.svg';
-
 import {
   NOTIFICATION_READ_TIMER,
   ROUTES,
@@ -113,12 +112,10 @@ const NavBar = ({
     useState<boolean>(false);
   const [activeTab, setActiveTab] = useState<string>('Task');
   const [isImgUrlValid, setIsImgUrlValid] = useState<boolean>(true);
-  const [searchCriteria, setSearchCriteria] = useState<SearchIndex | null>(
-    null
-  );
+  const [searchCriteria, setSearchCriteria] = useState<SearchIndex | ''>('');
   const globalSearchOptions = useMemo(
     () => [
-      { value: null, label: t('label.all') },
+      { value: '', label: t('label.all') },
       { value: SearchIndex.TABLE, label: t('label.table') },
       { value: SearchIndex.TOPIC, label: t('label.topic') },
       { value: SearchIndex.DASHBOARD, label: t('label.dashboard') },
@@ -131,7 +128,7 @@ const NavBar = ({
     []
   );
 
-  const updateSearchCriteria = (criteria: SearchIndex | null) => {
+  const updateSearchCriteria = (criteria: SearchIndex | '') => {
     setSearchCriteria(criteria);
     handleSearchChange(searchValue);
   };
@@ -506,7 +503,9 @@ const NavBar = ({
               ) : (
                 <Suggestions
                   isOpen={isSearchBoxOpen}
-                  searchCriteria={searchCriteria}
+                  searchCriteria={
+                    searchCriteria === '' ? undefined : searchCriteria
+                  }
                   searchText={suggestionSearch}
                   setIsOpen={handleSearchBoxOpen}
                 />

@@ -40,6 +40,7 @@ export interface GlossaryHeaderProps {
   isGlossary: boolean;
   onUpdate: (data: GlossaryTerm | Glossary) => void;
   onDelete: (id: string) => void;
+  onAssetsUpdate?: () => void;
 }
 
 const GlossaryHeader = ({
@@ -48,6 +49,7 @@ const GlossaryHeader = ({
   onUpdate,
   onDelete,
   isGlossary,
+  onAssetsUpdate,
 }: GlossaryHeaderProps) => {
   const { t } = useTranslation();
 
@@ -262,6 +264,7 @@ const GlossaryHeader = ({
                 isGlossary={isGlossary}
                 permission={permissions}
                 selectedData={selectedData}
+                onAssetsUpdate={onAssetsUpdate}
                 onEntityDelete={onDelete}
               />
             </div>
