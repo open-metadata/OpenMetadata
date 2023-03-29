@@ -17,11 +17,14 @@ supporting sqlalchemy abstraction layer
 from abc import ABC, abstractmethod
 from typing import Dict, Optional, Union
 
-from pydantic import BaseModel
-from sqlalchemy import Column, MetaData
+from sqlalchemy import Column
 from typing_extensions import Self
 
-from metadata.generated.schema.entity.data.table import PartitionProfilerConfig, Table
+from metadata.generated.schema.entity.data.table import (
+    PartitionProfilerConfig,
+    Table,
+    TableData,
+)
 from metadata.generated.schema.entity.services.connections.database.datalakeConnection import (
     DatalakeConnection,
 )
@@ -225,6 +228,6 @@ class ProfilerProtocol(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def fetch_sample_data(self, table) -> dict:
+    def fetch_sample_data(self, table) -> TableData:
         """run profiler metrics"""
         raise NotImplementedError

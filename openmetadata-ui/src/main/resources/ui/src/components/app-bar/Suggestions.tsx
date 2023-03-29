@@ -37,7 +37,7 @@ import {
 
 type SuggestionProp = {
   searchText: string;
-  searchCriteria: SearchIndex | null;
+  searchCriteria?: SearchIndex;
   isOpen: boolean;
   setIsOpen: (value: boolean) => void;
 };
@@ -138,7 +138,7 @@ const Suggestions = ({
 
   useEffect(() => {
     if (!isMounting.current && searchText) {
-      getSuggestions(searchText, searchCriteria ?? undefined)
+      getSuggestions(searchText, searchCriteria)
         .then((res) => {
           if (res.data) {
             setOptions(
