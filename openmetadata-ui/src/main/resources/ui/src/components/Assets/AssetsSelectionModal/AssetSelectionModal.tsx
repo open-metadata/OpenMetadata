@@ -91,7 +91,7 @@ export const AssetSelectionModal = ({
       });
 
       const groupedArray = groupBy(res.hits.hits, '_source.entityType');
-      const isAppend = page === 1;
+      const isAppend = page !== 1;
       const tableCount = groupedArray[EntityType.TABLE]?.length ?? 0;
       const containerCount = groupedArray[EntityType.CONTAINER]?.length ?? 0;
       const pipelineCount = groupedArray[EntityType.PIPELINE]?.length ?? 0;
