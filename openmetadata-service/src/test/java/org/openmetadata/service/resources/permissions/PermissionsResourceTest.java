@@ -22,8 +22,10 @@ import static org.openmetadata.schema.type.MetadataOperation.EDIT_DISPLAY_NAME;
 import static org.openmetadata.schema.type.MetadataOperation.EDIT_LINEAGE;
 import static org.openmetadata.schema.type.MetadataOperation.EDIT_OWNER;
 import static org.openmetadata.schema.type.MetadataOperation.EDIT_TAGS;
+import static org.openmetadata.schema.type.MetadataOperation.VIEW_PII_SAMPLE_DATA;
 import static org.openmetadata.schema.type.Permission.Access.ALLOW;
 import static org.openmetadata.schema.type.Permission.Access.CONDITIONAL_ALLOW;
+import static org.openmetadata.schema.type.Permission.Access.DENY;
 import static org.openmetadata.schema.type.Permission.Access.NOT_ALLOW;
 import static org.openmetadata.service.Entity.ORGANIZATION_POLICY_NAME;
 import static org.openmetadata.service.security.policyevaluator.OperationContext.getAllOperations;
@@ -80,8 +82,12 @@ import org.openmetadata.service.util.TestUtils;
 class PermissionsResourceTest extends OpenMetadataApplicationTest {
   private static Rule ORG_IS_OWNER_RULE;
   private static Rule ORG_NO_OWNER_RULE;
+  private static Rule ORG_PII_SENSITIVE_SAMPLE_DATA_RULE;
   private static final List<MetadataOperation> ORG_IS_OWNER_RULE_OPERATIONS = getAllOperations(CREATE);
   private static final List<MetadataOperation> ORG_NO_OWNER_RULE_OPERATIONS = List.of(EDIT_OWNER);
+
+  private static final List<MetadataOperation> ORG_PII_SENSITIVE_SAMPLE_DATA_RULE_OPERATIONS =
+      List.of(VIEW_PII_SAMPLE_DATA);
 
   private static final String DATA_STEWARD_ROLE_NAME = "DataSteward";
   private static Policy DATA_STEWARD_POLICY;
@@ -121,6 +127,7 @@ class PermissionsResourceTest extends OpenMetadataApplicationTest {
     // Rules are alphabetically ordered
     ORG_NO_OWNER_RULE = orgRules.get(0);
     ORG_IS_OWNER_RULE = orgRules.get(1);
+    ORG_PII_SENSITIVE_SAMPLE_DATA_RULE = orgRules.get(2);
 
     DATA_STEWARD_POLICY =
         policyResourceTest.getEntityByName(DATA_STEWARD_POLICY_NAME, null, PolicyResource.FIELDS, ADMIN_AUTH_HEADERS);
@@ -233,9 +240,16 @@ class PermissionsResourceTest extends OpenMetadataApplicationTest {
     Map<String, String> authHeaders = SecurityUtil.authHeaders(DATA_CONSUMER_USER_NAME + "@open-metadata.org");
 
     ResourcePermissionsBuilder permissionsBuilder = new ResourcePermissionsBuilder();
+    // Organization policy of no owner or isOwner does not apply. Hence, not added to expected permissions.
     permissionsBuilder.setPermission(
         DATA_CONSUMER_ALLOWED, ALLOW, DATA_CONSUMER_ROLE_NAME, DATA_CONSUMER_POLICY_NAME, DATA_CONSUMER_RULES.get(0));
-    // Organization policy of no owner or isOwner does not apply. Hence, not added to expected permissions
+    // Added to the expected permissions Organization rule of deny PII.Sensitive tag in sample data if not owner
+    permissionsBuilder.setPermission(
+        ORG_PII_SENSITIVE_SAMPLE_DATA_RULE_OPERATIONS,
+        DENY,
+        null,
+        ORGANIZATION_POLICY_NAME,
+        ORG_PII_SENSITIVE_SAMPLE_DATA_RULE);
 
     // Create a table with owner other than data consumer & make sure data consumer doesn't have permission as non owner
     CreateTable createTable =
