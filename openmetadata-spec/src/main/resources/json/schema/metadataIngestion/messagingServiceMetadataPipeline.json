@@ -25,6 +25,11 @@
       "description": "Option to turn on/off generating sample data during metadata extraction.",
       "type": "boolean",
       "default": false
+    },
+    "markDeletedTopics": {
+      "description": "Optional configuration to soft delete topics in OpenMetadata if the source topics are deleted. Also, if the topic is deleted, all the associated entities like sample data, lineage, etc., with that topic will be deleted",
+      "type": "boolean",
+      "default": true
     }
   },
   "additionalProperties": false

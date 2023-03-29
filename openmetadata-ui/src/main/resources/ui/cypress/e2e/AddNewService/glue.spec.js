@@ -35,19 +35,19 @@ describe('Glue Ingestion', () => {
   it('add and ingest data', () => {
     goToAddNewServicePage(SERVICE_TYPE.Database);
     const connectionInput = () => {
-      cy.get('#root_awsConfig_awsAccessKeyId')
+      cy.get('#root\\/awsConfig\\/awsAccessKeyId')
         .scrollIntoView()
         .type(Cypress.env('glueAwsAccessKeyId'));
-      cy.get('#root_awsConfig_awsSecretAccessKey')
+      cy.get('#root\\/awsConfig\\/awsSecretAccessKey')
         .scrollIntoView()
         .type(Cypress.env('glueAwsSecretAccessKey'));
-      cy.get('#root_awsConfig_awsRegion')
+      cy.get('#root\\/awsConfig\\/awsRegion')
         .scrollIntoView()
         .type(Cypress.env('glueAwsRegion'));
-      cy.get('#root_awsConfig_endPointURL')
+      cy.get('#root\\/awsConfig\\/endPointURL')
         .scrollIntoView()
         .type(Cypress.env('glueEndPointURL'));
-      cy.get('#root_storageServiceName')
+      cy.get('#root\\/storageServiceName')
         .scrollIntoView()
         .type(Cypress.env('glueStorageServiceName'));
     };

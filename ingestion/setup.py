@@ -33,7 +33,7 @@ VERSIONS = {
     "boto3": "boto3>=1.20,<2.0",  # No need to add botocore separately. It's a dep from boto3
     "geoalchemy2": "GeoAlchemy2~=0.12",
     "google-cloud-storage": "google-cloud-storage==1.43.0",
-    "great-expectations": "great-expectations~=0.15.0",
+    "great-expectations": "great-expectations~=0.16.0",
     "grpc-tools": "grpcio-tools>=1.47.2",
     "msal": "msal~=1.2",
     "neo4j": "neo4j~=5.3.0",
@@ -180,7 +180,7 @@ plugins: Dict[str, Set[str]] = {
     "kinesis": {VERSIONS["boto3"]},
     "ldap-users": {"ldap3==2.9.1"},
     "looker": {"looker-sdk>=22.20.0"},
-    "mlflow": {"mlflow-skinny~=1.30"},
+    "mlflow": {"mlflow-skinny~=1.30", "alembic~=1.10.2"},
     "mssql": {"sqlalchemy-pytds~=0.3"},
     "mssql-odbc": {VERSIONS["pyodbc"]},
     "mysql": {VERSIONS["pymysql"]},

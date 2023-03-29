@@ -12,13 +12,15 @@
  */
 
 import { IChangeEvent } from '@rjsf/core';
-import validator from '@rjsf/validator-ajv6';
-import { ObjectStoreServiceType } from 'generated/entity/services/objectstoreService';
+import { ObjectStoreServiceType } from 'generated/entity/data/container';
 import { cloneDeep, isNil } from 'lodash';
 import { LoadingState } from 'Models';
-import React, { FunctionComponent, useCallback, useMemo } from 'react';
-import { useTranslation } from 'react-i18next';
-import { TestConnection } from 'rest/serviceAPI';
+import React, {
+  Fragment,
+  FunctionComponent,
+  useCallback,
+  useMemo,
+} from 'react';
 import { getObjectStoreConfig } from 'utils/ObjectStoreServiceUtils';
 import { ServiceCategory } from '../../enums/service.enum';
 import { MetadataServiceType } from '../../generated/api/services/createMetadataService';
@@ -27,7 +29,6 @@ import { DashboardServiceType } from '../../generated/entity/services/dashboardS
 import { DatabaseServiceType } from '../../generated/entity/services/databaseService';
 import { MessagingServiceType } from '../../generated/entity/services/messagingService';
 import { PipelineServiceType } from '../../generated/entity/services/pipelineService';
-import { useAirflowStatus } from '../../hooks/useAirflowStatus';
 import { ConfigData, ServicesType } from '../../interface/service.interface';
 import { getDashboardConfig } from '../../utils/DashboardServiceUtils';
 import { getDatabaseConfig } from '../../utils/DatabaseServiceUtils';
@@ -36,11 +37,6 @@ import { getMessagingConfig } from '../../utils/MessagingServiceUtils';
 import { getMetadataConfig } from '../../utils/MetadataServiceUtils';
 import { getMlmodelConfig } from '../../utils/MlmodelServiceUtils';
 import { getPipelineConfig } from '../../utils/PipelineServiceUtils';
-import {
-  getTestConnectionType,
-  shouldTestConnection,
-} from '../../utils/ServiceUtils';
-import { showErrorToast } from '../../utils/ToastUtils';
 import FormBuilder from '../common/FormBuilder/FormBuilder';
 
 interface Props {
@@ -50,9 +46,10 @@ interface Props {
   serviceType: string;
   serviceCategory: ServiceCategory;
   status: LoadingState;
-  onCancel?: () => void;
+  onFocus: (fieldName: string) => void;
   onSave: (data: IChangeEvent<ConfigData>) => void;
   disableTestConnection?: boolean;
+  onCancel?: () => void;
 }
 
 const ConnectionConfigForm: FunctionComponent<Props> = ({
@@ -64,15 +61,9 @@ const ConnectionConfigForm: FunctionComponent<Props> = ({
   status,
   onCancel,
   onSave,
+  onFocus,
   disableTestConnection = false,
 }: Props) => {
-  const { t } = useTranslation();
-  const { isAirflowAvailable } = useAirflowStatus();
-
-  const allowTestConn = useMemo(() => {
-    return shouldTestConnection(serviceType);
-  }, [serviceType]);
-
   const config = useMemo(
     () =>
       !isNil(data)
@@ -81,36 +72,15 @@ const ConnectionConfigForm: FunctionComponent<Props> = ({
     [data]
   );
 
-  const handleTestConnection = useCallback(
-    (formData: ConfigData) => {
-      const updatedFormData = formatFormDataForSubmit(formData);
-
-      return new Promise<void>((resolve, reject) => {
-        TestConnection(
-          updatedFormData,
-          getTestConnectionType(serviceCategory),
-          serviceType,
-          data?.name
-        )
-          .then((res) => {
-            // This api only responds with status 200 on success
-            // No data sent on api success
-            if (res.status === 200) {
-              resolve();
-            } else {
-              throw t('server.unexpected-response');
-            }
-          })
-          .catch((err) => {
-            showErrorToast(err, t('server.test-connection-error'));
-            reject(err);
-          });
-      });
+  const handleSave = useCallback(
+    (data: IChangeEvent<ConfigData>) => {
+      const updatedFormData = formatFormDataForSubmit(data.formData);
+      onSave({ ...data, formData: updatedFormData });
     },
-    [serviceCategory, serviceType, data?.name]
+    [onSave]
   );
 
-  const connectionSchema = useMemo(() => {
+  const getConfigFields = () => {
     let connSch = {
       schema: {},
       uiSchema: {},
@@ -162,36 +132,26 @@ const ConnectionConfigForm: FunctionComponent<Props> = ({
       }
     }
 
-    return { ...connSch, validConfig };
-  }, [serviceCategory, config]);
+    return (
+      <FormBuilder
+        cancelText={cancelText}
+        disableTestConnection={disableTestConnection}
+        formData={validConfig}
+        okText={okText}
+        schema={connSch.schema}
+        serviceCategory={serviceCategory}
+        serviceName={data?.name}
+        serviceType={serviceType}
+        status={status}
+        uiSchema={connSch.uiSchema}
+        onCancel={onCancel}
+        onFocus={onFocus}
+        onSubmit={handleSave}
+      />
+    );
+  };
 
-  const handleSave = useCallback(
-    (formData: IChangeEvent<ConfigData>) => {
-      const updatedFormData = formatFormDataForSubmit(formData.formData);
-
-      onSave({ ...formData, formData: updatedFormData });
-    },
-    [onSave]
-  );
-
-  return (
-    <FormBuilder
-      cancelText={cancelText}
-      disableTestConnection={disableTestConnection}
-      formData={connectionSchema.validConfig}
-      isAirflowAvailable={isAirflowAvailable}
-      okText={okText}
-      schema={connectionSchema.schema}
-      status={status}
-      uiSchema={connectionSchema.uiSchema}
-      validator={validator}
-      onCancel={onCancel}
-      onSubmit={handleSave}
-      onTestConnection={
-        allowTestConn && isAirflowAvailable ? handleTestConnection : undefined
-      }
-    />
-  );
+  return <Fragment>{getConfigFields()}</Fragment>;
 };
 
 export default ConnectionConfigForm;

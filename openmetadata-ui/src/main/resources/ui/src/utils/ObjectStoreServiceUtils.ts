@@ -11,9 +11,7 @@
  *  limitations under the License.
  */
 import { COMMON_UI_SCHEMA } from 'constants/Services.constant';
-import { ObjectStoreServiceType } from 'generated/entity/services/objectstoreService';
-import azureConnection from 'jsons/connectionSchemas/connections/objectstore/azureObjectStoreConnection.json';
-import gcsConnection from 'jsons/connectionSchemas/connections/objectstore/gcsObjectStoreConnection.json';
+import { ObjectStoreServiceType } from 'generated/entity/data/container';
 import s3Connection from 'jsons/connectionSchemas/connections/objectstore/s3ObjectStoreConnection.json';
 import { cloneDeep } from 'lodash';
 
@@ -21,18 +19,8 @@ export const getObjectStoreConfig = (type: ObjectStoreServiceType) => {
   let schema = {};
   const uiSchema = { ...COMMON_UI_SCHEMA };
   switch (type) {
-    case ObjectStoreServiceType.Azure: {
-      schema = azureConnection;
-
-      break;
-    }
     case ObjectStoreServiceType.S3: {
       schema = s3Connection;
-
-      break;
-    }
-    case ObjectStoreServiceType.Gcs: {
-      schema = gcsConnection;
 
       break;
     }

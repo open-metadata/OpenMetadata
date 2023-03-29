@@ -109,7 +109,7 @@ const TitleBreadcrumb: FunctionComponent<TitleBreadcrumbProps> = ({
                       <span
                         className={classNames(
                           classes,
-                          'tw-cursor-text hover:tw-text-primary hover:tw-no-underline'
+                          'inactive-link tw-cursor-text hover:tw-text-primary hover:tw-no-underline'
                         )}
                         data-testid="inactive-link"
                         style={{

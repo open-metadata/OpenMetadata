@@ -34,6 +34,7 @@ interface ServiceConfigProps {
     serviceCategory: ServiceCategory
   ) => Promise<void>;
   disableTestConnection: boolean;
+  onFocus: (fieldName: string) => void;
 }
 
 export const Field = ({ children }: { children: React.ReactNode }) => {
@@ -47,6 +48,7 @@ const ServiceConfig = ({
   data,
   handleUpdate,
   disableTestConnection,
+  onFocus,
 }: ServiceConfigProps) => {
   const history = useHistory();
   const [status, setStatus] = useState<LoadingState>('initial');
@@ -89,6 +91,7 @@ const ServiceConfig = ({
         serviceType={serviceType}
         status={status}
         onCancel={onCancel}
+        onFocus={onFocus}
         onSave={handleOnSaveClick}
       />
     );
