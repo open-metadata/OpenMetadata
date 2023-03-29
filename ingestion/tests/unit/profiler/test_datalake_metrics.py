@@ -504,8 +504,7 @@ class DatalakeMetricsTest(TestCase):
         )
 
         assert (
-            str(round(res.get(User.name.name)[Metrics.DISTINCT_RATIO.name], 2))
-            == "0.6"
+            str(round(res.get(User.name.name)[Metrics.DISTINCT_RATIO.name], 2)) == "0.6"
         )
 
     def test_count_in_set(self):
