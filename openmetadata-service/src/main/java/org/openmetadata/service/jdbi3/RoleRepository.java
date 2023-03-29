@@ -32,6 +32,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.service.resources.teams.RoleResource;
+import org.openmetadata.service.security.policyevaluator.RoleCache;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 
@@ -94,6 +95,9 @@ public class RoleRepository extends EntityRepository<Role> {
     List<EntityReference> policies = role.getPolicies();
     role.withPolicies(null);
     store(role, update);
+    if (update) {
+      RoleCache.getInstance().invalidateRole(role.getId());
+    }
     role.withPolicies(policies);
   }
 
@@ -115,6 +119,12 @@ public class RoleRepository extends EntityRepository<Role> {
       throw new IllegalArgumentException(
           CatalogExceptionMessage.systemEntityDeleteNotAllowed(entity.getName(), Entity.ROLE));
     }
+  }
+
+  @Override
+  protected void cleanup(Role role) throws IOException {
+    super.cleanup(role);
+    RoleCache.getInstance().invalidateRole(role.getId());
   }
 
   /** Handles entity updated from PUT and POST operation. */

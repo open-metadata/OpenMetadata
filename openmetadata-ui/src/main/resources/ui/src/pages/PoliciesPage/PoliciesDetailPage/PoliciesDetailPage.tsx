@@ -543,6 +543,7 @@ const PoliciesDetailPage = () => {
           centered
           closable={false}
           confirmLoading={isloadingOnSave}
+          maskClosable={false}
           okText={t('label.confirm')}
           open={!isUndefined(selectedEntity.record)}
           title={`${t('label.remove-entity', {

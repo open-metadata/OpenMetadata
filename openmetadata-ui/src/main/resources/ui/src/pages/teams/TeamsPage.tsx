@@ -14,6 +14,7 @@
 import { AxiosError } from 'axios';
 import { useAuthContext } from 'components/authentication/auth-provider/AuthProvider';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
+import { UserSelectableList } from 'components/common/UserSelectableList/UserSelectableList.component';
 import Loader from 'components/Loader/Loader';
 import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
 import {
@@ -35,7 +36,6 @@ import {
   patchTeamDetail,
 } from 'rest/teamsAPI';
 import { getUsers, updateUserDetail } from 'rest/userAPI';
-import { getEntityName } from 'utils/EntityUtils';
 import AppState from '../../AppState';
 import {
   INITIAL_PAGING_VALUE,
@@ -62,7 +62,6 @@ import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { getSettingPath, getTeamsWithFqnPath } from '../../utils/RouterUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import AddTeamForm from './AddTeamForm';
-import AddUsersModalV1 from './AddUsersModalV1';
 
 const TeamsPage = () => {
   const history = useHistory();
@@ -610,14 +609,10 @@ const TeamsPage = () => {
       )}
 
       {isAddingUsers && (
-        <AddUsersModalV1
-          header={t('message.adding-new-user-to-entity', {
-            entity: getEntityName(selectedTeam),
-          })}
-          isVisible={isAddingUsers}
-          list={selectedTeam.users || []}
-          onCancel={() => setIsAddingUsers(false)}
-          onSave={(data) => addUsersToTeam(data)}
+        <UserSelectableList
+          hasPermission
+          selectedUsers={selectedTeam.users ?? []}
+          onUpdate={(data) => addUsersToTeam(data)}
         />
       )}
       <AddTeamForm

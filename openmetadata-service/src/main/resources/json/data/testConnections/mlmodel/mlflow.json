@@ -1,0 +1,13 @@
+{
+    "name": "Mlflow",
+    "fullyQualifiedName": "Mlflow",
+    "displayName": "Mlflow Test Connection",
+    "description": "This Test Connection validates the access against the server and basic metadata extraction of models.",
+    "steps": [
+        {
+            "name": "GetModels",
+            "description":  "List all the models available to the user.",
+            "mandatory": true
+        }
+    ]
+}

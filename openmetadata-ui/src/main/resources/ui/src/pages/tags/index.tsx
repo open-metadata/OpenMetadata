@@ -646,7 +646,7 @@ const TagsPage = () => {
     () =>
       [
         {
-          title: t('label.name'),
+          title: t('label.tag'),
           dataIndex: 'name',
           key: 'name',
           width: 200,
@@ -880,8 +880,8 @@ const TagsPage = () => {
                       onClick={() => {
                         setIsTagModal((prevState) => !prevState);
                       }}>
-                      {t('label.add-new-entity', {
-                        entity: t('label.tag-lowercase'),
+                      {t('label.add-entity', {
+                        entity: t('label.tag'),
                       })}
                     </Button>
                   </Tooltip>

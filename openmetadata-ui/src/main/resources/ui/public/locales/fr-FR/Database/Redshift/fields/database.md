@@ -1,0 +1,1 @@
+La base de données Redshift à laquelle le service se connectera. Si vous souhaitez ingérer les métadonnées de plusieurs base de données, veuillez selectionner `ingestAllDatabases`.

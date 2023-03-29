@@ -52,6 +52,7 @@ export default (on, config) => {
   // bigquery
   config.env.bigqueryClientEmail = env.CYPRESS_BQ_CLIENT_EMAIL;
   config.env.bigqueryProjectId = env.CYPRESS_BQ_PROJECT_ID;
+  config.env.bigqueryProjectIdTaxonomy = env.CYPRESS_BQ_PROJECT_ID_TAXONOMY;
   config.env.bigqueryPrivateKeyId = env.CYPRESS_BQ_PRIVATE_KEY_ID;
   config.env.bigqueryPrivateKey = env.CYPRESS_BQ_PRIVATE_KEY;
   config.env.bigqueryClientId = env.CYPRESS_BQ_CLIENT_ID;

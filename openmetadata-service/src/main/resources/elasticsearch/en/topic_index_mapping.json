@@ -76,11 +76,110 @@
       "href": {
         "type": "text"
       },
-      "schemaText": {
-        "type": "text"
-      },
-      "schemaType": {
-        "type": "text"
+      "messageSchema": {
+        "properties": {
+          "schemaText": {
+            "type": "text"
+          },
+          "schemaType": {
+            "type": "text"
+          },
+          "schemaFields": {
+            "properties": {
+              "name": {
+                "type": "keyword",
+                "normalizer": "lowercase_normalizer",
+                "fields": {
+                  "keyword": {
+                    "type": "keyword",
+                    "ignore_above": 256
+                  }
+                }
+              },
+              "dataType": {
+                "type": "text"
+              },
+              "description": {
+                "type": "text",
+                "index_options": "docs",
+                "analyzer": "om_analyzer",
+                "norms": false
+              },
+              "fullyQualifiedName": {
+                "type": "text"
+              },
+              "tags": {
+                "properties": {
+                  "tagFQN": {
+                    "type": "keyword"
+                  },
+                  "labelType": {
+                    "type": "keyword"
+                  },
+                  "description": {
+                    "type": "text"
+                  },
+                  "source": {
+                    "type": "keyword"
+                  },
+                  "state": {
+                    "type": "keyword"
+                  }
+                }
+              },
+              "children": {
+                "properties": {
+                  "id": {
+                    "type": "keyword",
+                    "fields": {
+                      "keyword": {
+                        "type": "keyword",
+                        "ignore_above": 36
+                      }
+                    }
+                  },
+                  "type": {
+                    "type": "keyword"
+                  },
+                  "name": {
+                    "type": "keyword",
+                    "fields": {
+                      "keyword": {
+                        "type": "keyword",
+                        "ignore_above": 256
+                      }
+                    }
+                  },
+                  "fullyQualifiedName": {
+                    "type": "text"
+                  },
+                  "description": {
+                    "type": "text"
+                  },
+                  "tags": {
+                    "properties": {
+                      "tagFQN": {
+                        "type": "keyword"
+                      },
+                      "labelType": {
+                        "type": "keyword"
+                      },
+                      "description": {
+                        "type": "text"
+                      },
+                      "source": {
+                        "type": "keyword"
+                      },
+                      "state": {
+                        "type": "keyword"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
       },
       "cleanupPolicies": {
         "type": "keyword"

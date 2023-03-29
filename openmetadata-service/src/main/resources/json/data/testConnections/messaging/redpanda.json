@@ -1,0 +1,13 @@
+{
+    "name": "Redpanda",
+    "fullyQualifiedName": "Redpanda",
+    "displayName": "Redpanda Test Connection",
+    "description": "This Test Connection validates the access against the server and basic metadata extraction of topics.",
+    "steps": [
+        {
+            "name": "GetTopics",
+            "description":  "List all the topics available to the user.",
+            "mandatory": true
+        }
+    ]
+}

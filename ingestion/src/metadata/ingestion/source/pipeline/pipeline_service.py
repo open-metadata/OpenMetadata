@@ -12,7 +12,7 @@
 Base class for ingesting database services
 """
 from abc import ABC, abstractmethod
-from typing import Any, Iterable, List, Optional
+from typing import Any, Iterable, List, Optional, Set
 
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
@@ -32,6 +32,10 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.ingestion.api.source import Source
 from metadata.ingestion.api.topology_runner import TopologyRunnerMixin
+from metadata.ingestion.models.delete_entity import (
+    DeleteEntity,
+    delete_entity_from_source,
+)
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
 from metadata.ingestion.models.topology import (
@@ -42,6 +46,7 @@ from metadata.ingestion.models.topology import (
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.connections import get_connection, get_test_connection_fn
+from metadata.utils import fqn
 from metadata.utils.filters import filter_by_pipeline
 from metadata.utils.logger import ingestion_logger
 
@@ -68,6 +73,7 @@ class PipelineServiceTopology(ServiceTopology):
             ),
         ],
         children=["pipeline"],
+        post_process=["mark_pipelines_as_deleted"],
     )
     pipeline = TopologyNode(
         producer="get_pipeline",
@@ -113,12 +119,12 @@ class PipelineServiceSource(TopologyRunnerMixin, Source, ABC):
 
     source_config: PipelineServiceMetadataPipeline
     config: WorkflowSource
-    metadata: OpenMetadata
     # Big union of types we want to fetch dynamically
     service_connection: PipelineConnection.__fields__["config"].type_
 
     topology = PipelineServiceTopology()
     context = create_source_context(topology)
+    pipeline_source_state: Set = set()
 
     def __init__(
         self,
@@ -133,8 +139,14 @@ class PipelineServiceSource(TopologyRunnerMixin, Source, ABC):
         self.source_config: PipelineServiceMetadataPipeline = (
             self.config.sourceConfig.config
         )
+
         self.connection = get_connection(self.service_connection)
+        # Flag the connection for the test connection
+        self.connection_obj = self.connection
         self.client = self.connection
+
+        # Flag the connection for the test connection
+        self.connection_obj = self.connection
         self.test_connection()
 
     @abstractmethod
@@ -217,7 +229,36 @@ class PipelineServiceSource(TopologyRunnerMixin, Source, ABC):
 
     def test_connection(self) -> None:
         test_connection_fn = get_test_connection_fn(self.service_connection)
-        test_connection_fn(self.connection, self.service_connection)
+        test_connection_fn(self.metadata, self.connection_obj, self.service_connection)
+
+    def register_record(self, pipeline_request: CreatePipelineRequest) -> None:
+        """
+        Mark the pipeline record as scanned and update the pipeline_source_state
+        """
+        pipeline_fqn = fqn.build(
+            self.metadata,
+            entity_type=Pipeline,
+            service_name=pipeline_request.service.__root__,
+            pipeline_name=pipeline_request.name.__root__,
+        )
+
+        self.pipeline_source_state.add(pipeline_fqn)
+        self.status.scanned(pipeline_fqn)
+
+    def mark_pipelines_as_deleted(self) -> Iterable[DeleteEntity]:
+        """
+        Method to mark the pipelines as deleted
+        """
+        if self.source_config.markDeletedPipelines:
+            yield from delete_entity_from_source(
+                metadata=self.metadata,
+                entity_type=Pipeline,
+                entity_source_state=self.pipeline_source_state,
+                mark_deleted_entity=self.source_config.markDeletedPipelines,
+                params={
+                    "service": self.context.pipeline_service.fullyQualifiedName.__root__
+                },
+            )
 
     def prepare(self):
         """

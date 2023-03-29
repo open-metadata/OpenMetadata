@@ -18,6 +18,7 @@ export interface SearchDropdownProps {
   searchKey: string;
   selectedKeys: SearchDropdownOption[];
   highlight?: boolean;
+  showProfilePicture?: boolean;
   onChange: (values: SearchDropdownOption[], searchKey: string) => void;
   onGetInitialOptions?: (searchKey: string) => void;
   onSearch: (searchText: string, searchKey: string) => void;
