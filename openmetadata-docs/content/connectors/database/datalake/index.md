@@ -59,7 +59,7 @@ custom Airflow plugins to handle the workflow deployment.
 
 <Note>
 
-Datalake connector supports extracting metadata from file types `JSON`, `CSV`, `TSV` & `Parquet`.
+Datalake connector supports extracting metadata from file types `JSON`, `CSV`, `TSV`, `Parquet` & `Avro`.
 
 </Note>
 

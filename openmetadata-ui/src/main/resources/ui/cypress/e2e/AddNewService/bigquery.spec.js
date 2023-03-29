@@ -36,23 +36,23 @@ describe('BigQuery Ingestion', () => {
     goToAddNewServicePage(SERVICE_TYPE.Database);
     const connectionInput = () => {
       const clientEmail = Cypress.env('bigqueryClientEmail');
-      cy.get('.form-group > #root_type')
+      cy.get('.form-group > #root\\/type')
         .scrollIntoView()
         .type('service_account');
-      cy.get(':nth-child(3) > .form-group > #root_projectId')
+      cy.get(':nth-child(3) > .form-group > #root\\/projectId')
         .scrollIntoView()
         .type(Cypress.env('bigqueryProjectId'));
-      cy.get('#root_privateKeyId')
+      cy.get('#root\\/privateKeyId')
         .scrollIntoView()
         .type(Cypress.env('bigqueryPrivateKeyId'));
-      cy.get('#root_privateKey')
+      cy.get('#root\\/privateKey')
         .scrollIntoView()
         .type(Cypress.env('bigqueryPrivateKey'));
-      cy.get('#root_clientEmail').scrollIntoView().type(clientEmail);
-      cy.get('#root_clientId')
+      cy.get('#root\\/clientEmail').scrollIntoView().type(clientEmail);
+      cy.get('#root\\/clientId')
         .scrollIntoView()
         .type(Cypress.env('bigqueryClientId'));
-      cy.get('#root_clientX509CertUrl')
+      cy.get('#root\\/clientX509CertUrl')
         .scrollIntoView()
         .type(
           `https://www.googleapis.com/robot/v1/metadata/x509/${encodeURIComponent(
