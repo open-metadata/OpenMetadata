@@ -14,7 +14,13 @@
 import { Col, Row } from 'antd';
 import classNames from 'classnames';
 import DocumentTitle from 'components/DocumentTitle/DocumentTitle';
-import React, { FC, Fragment, HTMLAttributes, ReactNode } from 'react';
+import React, {
+  CSSProperties,
+  FC,
+  Fragment,
+  HTMLAttributes,
+  ReactNode,
+} from 'react';
 import './../../styles/layout/page-layout.less';
 
 interface PageLayoutProp extends HTMLAttributes<HTMLDivElement> {
@@ -25,10 +31,13 @@ interface PageLayoutProp extends HTMLAttributes<HTMLDivElement> {
   pageTitle: string;
 }
 
-export const pageContainerStyles = {
+export const pageContainerStyles: CSSProperties = {
   height: '100%',
   padding: '1rem 0.5rem',
-  margin: 0,
+  marginTop: 0,
+  marginBottom: 0,
+  marginLeft: 0,
+  marginRight: 0,
   overflow: 'hidden',
 };
 
@@ -38,11 +47,13 @@ const PageLayoutV1: FC<PageLayoutProp> = ({
   rightPanel,
   className,
   pageTitle,
+  header,
   center = false,
 }: PageLayoutProp) => {
   return (
     <Fragment>
       <DocumentTitle title={pageTitle} />
+      {header && <div className="m-t-md p-x-md">{header}</div>}
       <Row
         className={className}
         data-testid="page-layout-v1"

@@ -17,18 +17,19 @@ the cloudwatch:GetMetricData permissions
 """
 from dataclasses import dataclass
 from functools import partial
+from typing import Optional
 
 from botocore.client import BaseClient
 
 from metadata.clients.aws_client import AWSClient
+from metadata.generated.schema.entity.automations.workflow import (
+    Workflow as AutomationWorkflow,
+)
 from metadata.generated.schema.entity.services.connections.objectstore.s3ObjectStoreConnection import (
     S3StoreConnection,
 )
-from metadata.ingestion.connections.test_connections import (
-    TestConnectionResult,
-    TestConnectionStep,
-    test_connection_steps,
-)
+from metadata.ingestion.connections.test_connections import test_connection_steps
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 
 
 @dataclass
@@ -48,23 +49,28 @@ def get_connection(connection: S3StoreConnection) -> S3ObjectStoreClient:
     )
 
 
-def test_connection(client: S3ObjectStoreClient) -> TestConnectionResult:
-    """
-    Test connection
-    """
-    steps = [
-        TestConnectionStep(
-            function=client.s3_client.list_buckets,
-            name="List buckets",
-        ),
-        TestConnectionStep(
-            function=partial(
-                client.cloudwatch_client.list_metrics,
-                Namespace="AWS/S3",
-            ),
-            name="Get Cloudwatch AWS/S3 metrics",
-            mandatory=False,
-        ),
-    ]
+def test_connection(
+    metadata: OpenMetadata,
+    client: S3ObjectStoreClient,
+    service_connection: S3StoreConnection,
+    automation_workflow: Optional[AutomationWorkflow] = None,
+) -> None:
 
-    return test_connection_steps(steps)
+    """
+    Test connection. This can be executed either as part
+    of a metadata workflow or during an Automation Workflow
+    """
+
+    test_fn = {
+        "ListBuckets": client.s3_client.list_buckets,
+        "GetMetrics": partial(
+            client.cloudwatch_client.list_metrics, Namespace="AWS/S3"
+        ),
+    }
+
+    test_connection_steps(
+        metadata=metadata,
+        test_fn=test_fn,
+        service_fqn=service_connection.type.value,
+        automation_workflow=automation_workflow,
+    )

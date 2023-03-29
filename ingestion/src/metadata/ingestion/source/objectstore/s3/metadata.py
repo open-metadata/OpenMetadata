@@ -126,8 +126,9 @@ class S3Source(ObjectStoreServiceSource):
 
     def get_containers(self) -> Iterable[S3ContainerDetails]:
         bucket_results = self.fetch_buckets()
-        try:
-            for bucket_response in bucket_results:
+
+        for bucket_response in bucket_results:
+            try:
                 metadata_config = self._load_metadata_file(
                     bucket_name=bucket_response.name
                 )
@@ -152,16 +153,18 @@ class S3Source(ObjectStoreServiceSource):
                     yield self._generate_unstructured_container(
                         bucket_response=bucket_response
                     )
-        except ValidationError as err:
-            logger.debug(traceback.format_exc())
-            logger.warning(
-                f"Validation error while creating Container from bucket details - {err}"
-            )
-        except Exception as err:
-            logger.debug(traceback.format_exc())
-            logger.warning(
-                f"Wild error while creating Container from bucket details - {err}"
-            )
+            except ValidationError as err:
+                error = f"Validation error while creating Container from bucket details - {err}"
+                logger.debug(traceback.format_exc())
+                logger.warning(error)
+                self.status.failed(bucket_response.name, error, traceback.format_exc())
+            except Exception as err:
+                error = (
+                    f"Wild error while creating Container from bucket details - {err}"
+                )
+                logger.debug(traceback.format_exc())
+                logger.warning(error)
+                self.status.failed(bucket_response.name, error, traceback.format_exc())
 
     def yield_create_container_requests(
         self, container_details: S3ContainerDetails

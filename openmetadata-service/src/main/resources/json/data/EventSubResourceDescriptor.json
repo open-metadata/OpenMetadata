@@ -383,5 +383,15 @@
       "matchUpdatedBy",
       "matchAnyFieldChange"
     ]
+  },
+  {
+    "name" : "dashboardDataModel",
+    "supportedFilters" : [
+      "matchAnyOwnerName",
+      "matchAnyEntityFqn",
+      "matchAnyEventType",
+      "matchUpdatedBy",
+      "matchAnyFieldChange"
+    ]
   }
 ]
