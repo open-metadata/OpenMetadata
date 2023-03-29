@@ -100,7 +100,7 @@ class DatalakeMetricsTest(TestCase):
         res = profiler.compute_metrics()._column_results
 
         # Note how we can get the result value by passing the metrics name
-        assert res.get(User.name.name).get(Metrics.COUNT.name) == 4
+        assert res.get(User.name.name).get(Metrics.COUNT.name) == 5
 
     def test_min(self):
         """
@@ -155,7 +155,7 @@ class DatalakeMetricsTest(TestCase):
         )
         res = profiler.compute_metrics()._column_results
 
-        assert res.get(User.nickname.name).get(Metrics.NULL_COUNT.name) == 0
+        assert res.get(User.nickname.name).get(Metrics.NULL_COUNT.name) == 1
 
     def test_null_ratio(self):
         """
@@ -176,7 +176,7 @@ class DatalakeMetricsTest(TestCase):
         res = profiler.compute_metrics()._column_results
         assert (
             str(round(res.get(User.nickname.name).get(Metrics.NULL_RATIO.name), 2))
-            == "0.0"
+            == "0.2"
         )
 
     def test_table_row_count(self):
@@ -189,7 +189,7 @@ class DatalakeMetricsTest(TestCase):
             profiler_interface=self.datalake_profiler_interface,
         )
         res = profiler.compute_metrics()._table_results
-        assert res.get(Metrics.ROW_COUNT.name) == 4
+        assert res.get(Metrics.ROW_COUNT.name) == 5
 
     def test_table_column_count(self):
         """
@@ -466,7 +466,7 @@ class DatalakeMetricsTest(TestCase):
         )
 
         assert (
-            str(round(res.get(User.name.name)[Metrics.UNIQUE_RATIO.name], 2)) == "1.0"
+            str(round(res.get(User.name.name)[Metrics.UNIQUE_RATIO.name], 2)) == "0.8"
         )
 
     def test_distinct_count(self):
@@ -505,7 +505,7 @@ class DatalakeMetricsTest(TestCase):
 
         assert (
             str(round(res.get(User.name.name)[Metrics.DISTINCT_RATIO.name], 2))
-            == "0.75"
+            == "0.6"
         )
 
     def test_count_in_set(self):
