@@ -40,9 +40,7 @@ const Ingestion: React.FC<IngestionProps> = ({
   triggerIngestion,
   deployIngestion,
   paging,
-  pagingHandler,
   handleEnableDisableIngestion,
-  currentPage,
   onIngestionWorkflowsUpdate,
   permissions,
   pipelineType,
@@ -195,7 +193,6 @@ const Ingestion: React.FC<IngestionProps> = ({
         </div>
         <IngestionListTable
           airflowEndpoint={airflowEndpoint}
-          currentPage={currentPage}
           deleteSelection={deleteSelection}
           deployIngestion={deployIngestion}
           handleDeleteSelection={handleDeleteSelection}
@@ -204,7 +201,6 @@ const Ingestion: React.FC<IngestionProps> = ({
           ingestionData={ingestionData}
           isRequiredDetailsAvailable={isRequiredDetailsAvailable}
           paging={paging}
-          pagingHandler={pagingHandler}
           permissions={permissions}
           pipelineNameColWidth={pipelineNameColWidth}
           serviceCategory={serviceCategory}

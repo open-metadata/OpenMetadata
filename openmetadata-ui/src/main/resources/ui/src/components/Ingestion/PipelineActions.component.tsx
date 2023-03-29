@@ -12,6 +12,7 @@
  */
 import { CheckOutlined } from '@ant-design/icons';
 import { Button } from 'antd';
+import { AxiosError } from 'axios';
 import Loader from 'components/Loader/Loader';
 import KillIngestionModal from 'components/Modals/KillIngestionPipelineModal/KillIngestionPipelineModal';
 import { IngestionPipeline } from 'generated/entity/services/ingestionPipelines/ingestionPipeline';
@@ -20,8 +21,8 @@ import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import { getLoadingStatus } from 'utils/CommonUtils';
 import { getEditIngestionPath, getLogsViewerPath } from 'utils/RouterUtils';
-import { showSuccessToast } from 'utils/ToastUtils';
-import { PipelineActionsProps } from './ingestion.interface';
+import { showErrorToast, showSuccessToast } from 'utils/ToastUtils';
+import { PipelineActionsProps } from './PipelineActions.interface';
 
 function PipelineActions({
   record,
@@ -48,17 +49,23 @@ function PipelineActions({
   const getEditPermission = (service: string): boolean =>
     !servicePermission?.[service]?.EditAll;
 
-  const handleTriggerIngestion = (id: string, displayName: string) => {
-    setCurrTriggerId({ id, state: 'waiting' });
-    triggerIngestion(id, displayName)
-      .then(() => {
-        setCurrTriggerId({ id, state: 'success' });
-        setTimeout(() => {
-          setCurrTriggerId({ id: '', state: '' });
-          showSuccessToast(t('message.pipeline-trigger-success-message'));
-        }, 1500);
-      })
-      .catch(() => setCurrTriggerId({ id: '', state: '' }));
+  const handleTriggerIngestion = async (id: string, displayName: string) => {
+    try {
+      setCurrTriggerId({ id, state: 'waiting' });
+      await triggerIngestion(id, displayName);
+
+      setCurrTriggerId({ id, state: 'success' });
+      showSuccessToast(t('message.pipeline-trigger-success-message'));
+      setTimeout(() => {
+        setCurrTriggerId({ id: '', state: '' });
+      }, 1500);
+    } catch (error) {
+      setCurrTriggerId({ id: '', state: '' });
+      showErrorToast(
+        error as AxiosError,
+        t('message.pipeline-trigger-failed-message')
+      );
+    }
   };
 
   const handleDeployIngestion = (id: string) => {

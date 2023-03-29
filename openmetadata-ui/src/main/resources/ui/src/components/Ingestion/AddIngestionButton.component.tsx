@@ -27,7 +27,7 @@ import { PipelineType } from '../../generated/entity/services/ingestionPipelines
 import { getAddIngestionPath } from '../../utils/RouterUtils';
 import { dropdownIcon as DropdownIcon } from '../../utils/svgconstant';
 import DropDownList from '../dropdown/DropDownList';
-import { AddIngestionButtonProps } from './ingestion.interface';
+import { AddIngestionButtonProps } from './AddIngestionButton.interface';
 
 function AddIngestionButton({
   serviceDetails,

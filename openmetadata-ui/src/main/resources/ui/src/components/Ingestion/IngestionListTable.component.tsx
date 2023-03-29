@@ -14,8 +14,9 @@
 import { Popover, Table, Tooltip, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import cronstrue from 'cronstrue';
+import { Paging } from 'generated/type/paging';
 import { isEmpty, isNil } from 'lodash';
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getEntityName } from 'utils/EntityUtils';
 import { getErrorPlaceHolder } from 'utils/IngestionUtils';
@@ -23,7 +24,7 @@ import { PAGE_SIZE } from '../../constants/constants';
 import { IngestionPipeline } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { getLogsViewerPath } from '../../utils/RouterUtils';
 import NextPrevious from '../common/next-previous/NextPrevious';
-import { IngestionListTableProps } from './ingestion.interface';
+import { IngestionListTableProps } from './IngestionListTable.interface';
 import { IngestionRecentRuns } from './IngestionRecentRun/IngestionRecentRuns.component';
 import PipelineActions from './PipelineActions.component';
 
@@ -33,9 +34,7 @@ function IngestionListTable({
   deployIngestion,
   isRequiredDetailsAvailable,
   paging,
-  pagingHandler,
   handleEnableDisableIngestion,
-  currentPage,
   onIngestionWorkflowsUpdate,
   servicePermission,
   serviceCategory,
@@ -48,6 +47,81 @@ function IngestionListTable({
   pipelineNameColWidth,
 }: IngestionListTableProps) {
   const { t } = useTranslation();
+  const [ingestionCurrentPage, setIngestionCurrentPage] = useState(1);
+
+  const ingestionPagingHandler = (
+    cursorType: string | number,
+    activePage?: number
+  ) => {
+    const pagingString = `&${cursorType}=${paging[cursorType as keyof Paging]}`;
+
+    onIngestionWorkflowsUpdate(pagingString);
+    setIngestionCurrentPage(activePage ?? 1);
+  };
+
+  const renderNameField = (text: string, record: IngestionPipeline) => {
+    return airflowEndpoint ? (
+      <Tooltip
+        title={
+          permissions.ViewAll || permissions.ViewBasic
+            ? t('label.view-entity', {
+                entity: t('label.dag'),
+              })
+            : t('message.no-permission-to-view')
+        }>
+        <Typography.Link
+          className="tw-mr-2 overflow-wrap-anywhere"
+          data-testid="airflow-tree-view"
+          disabled={!(permissions.ViewAll || permissions.ViewBasic)}
+          href={`${airflowEndpoint}/tree?dag_id=${text}`}
+          rel="noopener noreferrer"
+          target="_blank">
+          {getEntityName(record)}
+        </Typography.Link>
+      </Tooltip>
+    ) : (
+      getEntityName(record)
+    );
+  };
+
+  const renderScheduleField = (_: string, record: IngestionPipeline) => {
+    return record.airflowConfig?.scheduleInterval ? (
+      <Popover
+        content={
+          <div>
+            {cronstrue.toString(record.airflowConfig.scheduleInterval, {
+              use24HourTimeFormat: true,
+              verbose: true,
+            })}
+          </div>
+        }
+        placement="bottom"
+        trigger="hover">
+        <span>{record.airflowConfig.scheduleInterval}</span>
+      </Popover>
+    ) : (
+      <span>--</span>
+    );
+  };
+
+  const renderActionsField = (_: string, record: IngestionPipeline) => {
+    return (
+      <PipelineActions
+        deleteSelection={deleteSelection}
+        deployIngestion={deployIngestion}
+        handleDeleteSelection={handleDeleteSelection}
+        handleEnableDisableIngestion={handleEnableDisableIngestion}
+        handleIsConfirmationModalOpen={handleIsConfirmationModalOpen}
+        isRequiredDetailsAvailable={isRequiredDetailsAvailable}
+        record={record}
+        serviceCategory={serviceCategory}
+        serviceName={serviceName}
+        servicePermission={servicePermission}
+        triggerIngestion={triggerIngestion}
+        onIngestionWorkflowsUpdate={onIngestionWorkflowsUpdate}
+      />
+    );
+  };
 
   const tableColumn: ColumnsType<IngestionPipeline> = useMemo(
     () => [
@@ -56,29 +130,7 @@ function IngestionListTable({
         dataIndex: 'name',
         key: 'name',
         width: pipelineNameColWidth ?? 500,
-        render: (text, record) =>
-          airflowEndpoint ? (
-            <Tooltip
-              title={
-                permissions.ViewAll || permissions.ViewBasic
-                  ? t('label.view-entity', {
-                      entity: t('label.dag'),
-                    })
-                  : t('message.no-permission-to-view')
-              }>
-              <Typography.Link
-                className="tw-mr-2 overflow-wrap-anywhere"
-                data-testid="airflow-tree-view"
-                disabled={!(permissions.ViewAll || permissions.ViewBasic)}
-                href={`${airflowEndpoint}/tree?dag_id=${text}`}
-                rel="noopener noreferrer"
-                target="_blank">
-                {getEntityName(record)}
-              </Typography.Link>
-            </Tooltip>
-          ) : (
-            getEntityName(record)
-          ),
+        render: renderNameField,
       },
       {
         title: t('label.type'),
@@ -89,24 +141,7 @@ function IngestionListTable({
         title: t('label.schedule'),
         dataIndex: 'schedule',
         key: 'schedule',
-        render: (_, record) =>
-          record.airflowConfig?.scheduleInterval ? (
-            <Popover
-              content={
-                <div>
-                  {cronstrue.toString(record.airflowConfig.scheduleInterval, {
-                    use24HourTimeFormat: true,
-                    verbose: true,
-                  })}
-                </div>
-              }
-              placement="bottom"
-              trigger="hover">
-              <span>{record.airflowConfig.scheduleInterval}</span>
-            </Popover>
-          ) : (
-            <span>--</span>
-          ),
+        render: renderScheduleField,
       },
       {
         title: t('label.recent-run-plural'),
@@ -121,22 +156,7 @@ function IngestionListTable({
         title: t('label.action-plural'),
         dataIndex: 'actions',
         key: 'actions',
-        render: (_, record) => (
-          <PipelineActions
-            deleteSelection={deleteSelection}
-            deployIngestion={deployIngestion}
-            handleDeleteSelection={handleDeleteSelection}
-            handleEnableDisableIngestion={handleEnableDisableIngestion}
-            handleIsConfirmationModalOpen={handleIsConfirmationModalOpen}
-            isRequiredDetailsAvailable={isRequiredDetailsAvailable}
-            record={record}
-            serviceCategory={serviceCategory}
-            serviceName={serviceName}
-            servicePermission={servicePermission}
-            triggerIngestion={triggerIngestion}
-            onIngestionWorkflowsUpdate={onIngestionWorkflowsUpdate}
-          />
-        ),
+        render: renderActionsField,
       },
     ],
     [
@@ -158,6 +178,13 @@ function IngestionListTable({
     ]
   );
 
+  const showNextPrevious = useMemo(
+    () =>
+      Boolean(!isNil(paging.after) || !isNil(paging.before)) &&
+      paging.total > PAGE_SIZE,
+    [paging]
+  );
+
   return !isEmpty(ingestionData) ? (
     <div className="tw-mb-6" data-testid="ingestion-table">
       <Table
@@ -171,12 +198,12 @@ function IngestionListTable({
         size="small"
       />
 
-      {Boolean(!isNil(paging.after) || !isNil(paging.before)) && (
+      {showNextPrevious && (
         <NextPrevious
-          currentPage={currentPage}
+          currentPage={ingestionCurrentPage}
           pageSize={PAGE_SIZE}
           paging={paging}
-          pagingHandler={pagingHandler}
+          pagingHandler={ingestionPagingHandler}
           totalCount={paging.total}
         />
       )}

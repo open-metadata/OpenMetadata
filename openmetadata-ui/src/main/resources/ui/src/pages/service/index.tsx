@@ -158,7 +158,6 @@ const ServicePage: FunctionComponent = () => {
   const [ingestionPaging, setIngestionPaging] = useState<Paging>({} as Paging);
 
   const [currentPage, setCurrentPage] = useState(1);
-  const [ingestionCurrentPage, setIngestionCurrentPage] = useState(1);
   const [airflowEndpoint, setAirflowEndpoint] = useState<string>();
   const [connectionDetails, setConnectionDetails] = useState<ConfigData>();
 
@@ -841,18 +840,6 @@ const ServicePage: FunctionComponent = () => {
     setCurrentPage(activePage ?? 1);
   };
 
-  const ingestionPagingHandler = (
-    cursorType: string | number,
-    activePage?: number
-  ) => {
-    const pagingString = `&${cursorType}=${
-      ingestionPaging[cursorType as keyof typeof paging]
-    }`;
-
-    getAllIngestionWorkflows(pagingString);
-    setIngestionCurrentPage(activePage ?? 1);
-  };
-
   const getIngestionTab = () => {
     if (!isAirflowAvailable) {
       return <ErrorPlaceHolderIngestion />;
@@ -864,13 +851,11 @@ const ServicePage: FunctionComponent = () => {
           <Ingestion
             isRequiredDetailsAvailable
             airflowEndpoint={airflowEndpoint}
-            currentPage={ingestionCurrentPage}
             deleteIngestion={deleteIngestionById}
             deployIngestion={deployIngestion}
             handleEnableDisableIngestion={handleEnableDisableIngestion}
             ingestionList={ingestions}
             paging={ingestionPaging}
-            pagingHandler={ingestionPagingHandler}
             permissions={servicePermission}
             serviceCategory={serviceName as ServiceCategory}
             serviceDetails={serviceDetails as ServicesType}

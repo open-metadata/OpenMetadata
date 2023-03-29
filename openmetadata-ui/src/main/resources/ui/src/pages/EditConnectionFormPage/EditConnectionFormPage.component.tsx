@@ -32,7 +32,6 @@ import { addServiceGuide } from '../../constants/service-guide.constant';
 import { OPENMETADATA } from '../../constants/Services.constant';
 import { ServiceCategory } from '../../enums/service.enum';
 import { ConfigData, ServicesType } from '../../interface/service.interface';
-import jsonData from '../../jsons/en';
 import { getEntityMissingError } from '../../utils/CommonUtils';
 import { getPathByServiceFQN, getSettingPath } from '../../utils/RouterUtils';
 import {
@@ -50,7 +49,7 @@ function EditConnectionFormPage() {
     [serviceFQN]
   );
 
-  const [isLoading, setIsloading] = useState(!isOpenMetadataService);
+  const [isLoading, setIsLoading] = useState(!isOpenMetadataService);
   const [isError, setIsError] = useState(isOpenMetadataService);
   const [serviceDetails, setServiceDetails] = useState<ServicesType>();
   const [slashedBreadcrumb, setSlashedBreadcrumb] = useState<
@@ -70,91 +69,98 @@ function EditConnectionFormPage() {
     );
   };
 
-  const handleConfigUpdate = (updatedData: ConfigData) => {
-    const configData = {
-      name: serviceDetails?.name,
-      serviceType: serviceDetails?.serviceType,
-      description: serviceDetails?.description,
-      owner: serviceDetails?.owner,
-      connection: {
-        config: updatedData,
-      },
-    } as ServicesUpdateRequest;
+  const handleConfigUpdate = async (updatedData: ConfigData) => {
+    try {
+      const configData = {
+        name: serviceDetails?.name,
+        serviceType: serviceDetails?.serviceType,
+        description: serviceDetails?.description,
+        owner: serviceDetails?.owner,
+        connection: {
+          config: updatedData,
+        },
+      } as ServicesUpdateRequest;
 
-    return new Promise<void>((resolve, reject) => {
-      updateService(serviceCategory, serviceDetails?.id ?? '', configData)
-        .then((res) => {
-          if (res) {
-            setServiceDetails({
-              ...res,
-              owner: res?.owner ?? serviceDetails?.owner,
-            });
-          } else {
-            showErrorToast(
-              `${jsonData['api-error-messages']['update-service-config-error']}`
-            );
-          }
+      const res = await updateService(
+        serviceCategory,
+        serviceDetails?.id ?? '',
+        configData
+      );
 
-          resolve();
-        })
-        .catch((error: AxiosError) => {
-          reject();
-          showErrorToast(
-            error,
-            `${jsonData['api-error-messages']['update-service-config-error']}`
-          );
+      if (res) {
+        setServiceDetails({
+          ...res,
+          owner: res?.owner ?? serviceDetails?.owner,
         });
-    });
+      } else {
+        showErrorToast(
+          t('server.entity-updating-error', {
+            entity: t('label.service-configuration-lowercase'),
+          })
+        );
+      }
+    } catch (error) {
+      showErrorToast(
+        error as AxiosError,
+        t('server.entity-updating-error', {
+          entity: t('label.service-configuration-lowercase'),
+        })
+      );
+    }
+  };
+
+  const fetchServiceDetails = async () => {
+    if (!isOpenMetadataService) {
+      try {
+        setIsLoading(true);
+        const resService = await getServiceByFQN(serviceCategory, serviceFQN, [
+          'owner',
+        ]);
+
+        if (resService) {
+          setServiceDetails(resService);
+          setSlashedBreadcrumb([
+            {
+              name: startCase(serviceCategory),
+              url: getSettingPath(
+                GlobalSettingsMenuCategory.SERVICES,
+                getServiceRouteFromServiceType(serviceCategory as ServiceTypes)
+              ),
+            },
+            {
+              name: getEntityName(resService),
+              imgSrc: serviceTypeLogo(resService.serviceType),
+              url: getPathByServiceFQN(serviceCategory, serviceFQN),
+            },
+            {
+              name: t('label.edit-entity', { entity: t('label.connection') }),
+              url: '',
+              activeTitle: true,
+            },
+          ]);
+        } else {
+          showErrorToast(
+            t('server.entity-fetch-error', {
+              entity: t('label.service-detail-lowercase-plural'),
+            })
+          );
+        }
+      } catch (error) {
+        setIsError(true);
+        showErrorToast(
+          error as AxiosError,
+          t('server.entity-fetch-error', {
+            entity: t('label.service-detail-lowercase-plural'),
+          })
+        );
+      } finally {
+        setIsLoading(false);
+      }
+    }
   };
 
   useEffect(() => {
-    if (!isOpenMetadataService) {
-      setIsloading(true);
-      getServiceByFQN(serviceCategory, serviceFQN, ['owner'])
-        .then((resService) => {
-          if (resService) {
-            setServiceDetails(resService);
-            setSlashedBreadcrumb([
-              {
-                name: startCase(serviceCategory),
-                url: getSettingPath(
-                  GlobalSettingsMenuCategory.SERVICES,
-                  getServiceRouteFromServiceType(
-                    serviceCategory as ServiceTypes
-                  )
-                ),
-              },
-              {
-                name: getEntityName(resService),
-                imgSrc: serviceTypeLogo(resService.serviceType),
-                url: getPathByServiceFQN(serviceCategory, serviceFQN),
-              },
-              {
-                name: t('label.edit-entity', { entity: t('label.connection') }),
-                url: '',
-                activeTitle: true,
-              },
-            ]);
-          } else {
-            showErrorToast(
-              jsonData['api-error-messages']['fetch-service-error']
-            );
-          }
-        })
-        .catch((error: AxiosError) => {
-          if (error.response?.status === 404) {
-            setIsError(true);
-          } else {
-            showErrorToast(
-              error,
-              jsonData['api-error-messages']['fetch-service-error']
-            );
-          }
-        })
-        .finally(() => {
-          setIsloading(false);
-        });
-    }
+    fetchServiceDetails();
   }, [serviceFQN, serviceCategory]);
 
   const renderPage = () => {

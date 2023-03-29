@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { Typography } from 'antd';
 import classNames from 'classnames';
 import { isUndefined } from 'lodash';
 import React from 'react';
@@ -91,10 +92,10 @@ const SuccessScreen = ({
             icon={Icons.SUCCESS_BADGE}
           />
         </div>
-        <p data-testid="success-line">
+        <Typography.Paragraph data-testid="success-line" ellipsis={{ rows: 3 }}>
           {isUndefined(successMessage) ? (
             <span>
-              <span className="tw-mr-1 tw-font-semibold overflow-wrap-anywhere">
+              <span className="tw-mr-1 tw-font-semibold">
                 {`"${name || 'demo_mysql'}"`}
               </span>
               {suffix && <span className="tw-mr-1">{suffix}</span>}
@@ -103,7 +104,7 @@ const SuccessScreen = ({
           ) : (
             successMessage
           )}
-        </p>
+        </Typography.Paragraph>
       </div>
 
       {!isAirflowAvailable && (

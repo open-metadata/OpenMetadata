@@ -56,7 +56,6 @@ function SettingsIngestion({
   const [serviceDetails, setServiceDetails] = useState<ServicesType>();
   const [airflowEndpoint, setAirflowEndpoint] = useState<string>();
   const [ingestionPaging, setIngestionPaging] = useState<Paging>({} as Paging);
-  const [ingestionCurrentPage, setIngestionCurrentPage] = useState(1);
 
   const serviceCategory = ServiceCategory.METADATA_SERVICES;
   const serviceFQN = OPENMETADATA;
@@ -223,18 +222,6 @@ function SettingsIngestion({
     }
   };
 
-  const ingestionPagingHandler = (
-    cursorType: string | number,
-    activePage?: number
-  ) => {
-    const pagingString = `&${cursorType}=${
-      ingestionPaging[cursorType as keyof Paging]
-    }`;
-
-    getAllIngestionWorkflows(pagingString);
-    setIngestionCurrentPage(activePage ?? 1);
-  };
-
   const fetchMetadataServiceDetails = async () => {
     try {
       setIsLoading(true);
@@ -279,7 +266,6 @@ function SettingsIngestion({
     <Ingestion
       isRequiredDetailsAvailable
       airflowEndpoint={airflowEndpoint ?? ''}
-      currentPage={ingestionCurrentPage}
       deleteIngestion={deleteIngestionById}
       deployIngestion={deployIngestion}
       displayAddIngestionButton={
@@ -289,7 +275,6 @@ function SettingsIngestion({
       handleIngestionDataChange={handleIngestionDataChange}
       ingestionList={ingestionPipelines}
       paging={ingestionPaging}
-      pagingHandler={ingestionPagingHandler}
       permissions={permissions.metadataService}
       pipelineNameColWidth={300}
       pipelineType={pipelineType}
