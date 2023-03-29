@@ -86,6 +86,9 @@ public class TagResource extends EntityResource<Tag, TagRepository> {
   private final CollectionDAO daoCollection;
   public static final String TAG_COLLECTION_PATH = "/v1/tags/";
 
+  // System tag FQN for Sensitive PII
+  public static final String SENSITIVE_PII_TAG = "PII.Sensitive";
+
   static class TagList extends ResultList<Tag> {
     @SuppressWarnings("unused") // Empty constructor needed for deserialization
     TagList() {}

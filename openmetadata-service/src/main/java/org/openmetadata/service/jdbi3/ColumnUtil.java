@@ -1,10 +1,16 @@
 package org.openmetadata.service.jdbi3;
 
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.service.resources.tags.TagResource.SENSITIVE_PII_TAG;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 import org.openmetadata.schema.type.Column;
+import org.openmetadata.schema.type.TagLabel;
 
 public final class ColumnUtil {
   private ColumnUtil() {}
@@ -34,5 +40,20 @@ public final class ColumnUtil {
         .withScale(column.getScale())
         .withOrdinalPosition(column.getOrdinalPosition())
         .withChildren(children);
+  }
+
+  public static boolean hasPiiSensitiveTag(Column column) {
+    return getAllTags(column).stream().anyMatch(SENSITIVE_PII_TAG::equals);
+  }
+
+  private static Set<String> getAllTags(Column column) {
+    Set<String> tags = new HashSet<>();
+    if (!listOrEmpty(column.getTags()).isEmpty()) {
+      tags.addAll(column.getTags().stream().map(TagLabel::getTagFQN).collect(Collectors.toSet()));
+    }
+    for (Column c : listOrEmpty(column.getChildren())) {
+      tags.addAll(getAllTags(c));
+    }
+    return tags;
   }
 }

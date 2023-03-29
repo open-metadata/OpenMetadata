@@ -17,11 +17,19 @@
     },
     {
       "name": "OrganizationPolicy-NoOwner-Rule",
-      "description" : "Allow any one to set the owner of an entity that has no owner set.",
+      "description" : "Allow anyone to set the owner of an entity that has no owner set.",
       "resources" : ["all"],
       "operations": ["EditOwner"],
       "effect": "allow",
       "condition": "noOwner()"
+    },
+    {
+      "name": "OrganizationPolicy-ViewPIISampleData-Rule",
+      "description" : "Deny seeing column sample data for table columns tagged with PII.Sensitive.",
+      "resources" : ["table"],
+      "operations": ["ViewPIISampleData"],
+      "effect": "deny",
+      "condition": "!isOwner()"
     }
   ]
 }

@@ -34,11 +34,9 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
 import java.util.UUID;
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -100,8 +98,7 @@ public class TableRepository extends EntityRepository<Table> {
   public static final String TABLE_PROFILER_CONFIG_EXTENSION = "table.tableProfilerConfig";
   public static final String TABLE_COLUMN_EXTENSION = "table.column.";
   public static final String CUSTOM_METRICS_EXTENSION = ".customMetrics";
-
-  public static final String PII_SENSITIVE_TAG = "PII.Sensitive";
+  public static final String MASKED_VALUE = "********";
 
   public TableRepository(CollectionDAO daoCollection) {
     super(
@@ -229,7 +226,7 @@ public class TableRepository extends EntityRepository<Table> {
               .collect(Collectors.toMap(Function.identity(), c -> sampleData.getColumns().indexOf(c.getName())))
               .entrySet()
               .stream()
-              .filter(entry -> hasPiiSensitiveTag(entry.getKey()))
+              .filter(entry -> ColumnUtil.hasPiiSensitiveTag(entry.getKey()))
               .map(Map.Entry::getValue)
               .collect(Collectors.toList());
       sampleData.setRows(
@@ -244,26 +241,8 @@ public class TableRepository extends EntityRepository<Table> {
   }
 
   private List<Object> maskSampleDataRow(List<Object> row, List<Integer> columnsPositionToBeMasked) {
-    columnsPositionToBeMasked.forEach(
-        position -> {
-          row.set(position, "********");
-        });
+    columnsPositionToBeMasked.forEach(position -> row.set(position, MASKED_VALUE));
     return row;
-  }
-
-  private boolean hasPiiSensitiveTag(Column column) {
-    return getAllTags(column).stream().anyMatch(PII_SENSITIVE_TAG::equals);
-  }
-
-  private Set<String> getAllTags(Column column) {
-    Set<String> tags = new HashSet<>();
-    if (!listOrEmpty(column.getTags()).isEmpty()) {
-      tags.addAll(column.getTags().stream().map(TagLabel::getTagFQN).collect(Collectors.toSet()));
-    }
-    for (Column c : listOrEmpty(column.getChildren())) {
-      tags.addAll(getAllTags(c));
-    }
-    return tags;
   }
 
   @Transaction
