@@ -18,16 +18,19 @@ package org.openmetadata.service.elasticsearch;
 import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
 import static org.openmetadata.service.Entity.FIELD_FOLLOWERS;
 import static org.openmetadata.service.Entity.FIELD_USAGE_SUMMARY;
+import static org.openmetadata.service.Entity.QUERY;
 import static org.openmetadata.service.resources.elasticsearch.BuildSearchIndexResource.ELASTIC_SEARCH_ENTITY_FQN_STREAM;
 import static org.openmetadata.service.resources.elasticsearch.BuildSearchIndexResource.ELASTIC_SEARCH_EXTENSION;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
 import java.io.IOException;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -284,6 +287,18 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
         UsageDetails usageSummary = (UsageDetails) fieldChange.getNewValue();
         fieldAddParams.put(fieldChange.getName(), JsonUtils.getMap(usageSummary));
         scriptTxt.append("ctx._source.usageSummary = params.usageSummary;");
+      }
+      if (event.getEntityType().equals(QUERY) && fieldChange.getName().equalsIgnoreCase("queryUsedIn")) {
+        fieldAddParams.put(
+            fieldChange.getName(),
+            JsonUtils.convertValue(
+                fieldChange.getNewValue(), new TypeReference<List<LinkedHashMap<String, String>>>() {}));
+        scriptTxt.append("ctx._source.queryUsedIn = params.queryUsedIn;");
+      }
+      if (fieldChange.getName().equalsIgnoreCase("votes")) {
+        Map<String, Object> doc = JsonUtils.getMap(event.getEntity());
+        fieldAddParams.put(fieldChange.getName(), doc.get("votes"));
+        scriptTxt.append("ctx._source.votes = params.votes;");
       }
     }
 

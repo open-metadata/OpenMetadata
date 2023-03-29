@@ -12,20 +12,23 @@
 """
 Source connection handler
 """
-from functools import partial
+
+from typing import Optional
 
 from pydomo import Domo
 
 from metadata.clients.domo_client import DomoClient
+from metadata.generated.schema.entity.automations.workflow import (
+    Workflow as AutomationWorkflow,
+)
 from metadata.generated.schema.entity.services.connections.pipeline.domoPipelineConnection import (
     DomoPipelineConnection,
 )
 from metadata.ingestion.connections.test_connections import (
     SourceConnectionException,
-    TestConnectionResult,
-    TestConnectionStep,
     test_connection_steps,
 )
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 
 
 def get_connection(connection: DomoPipelineConnection) -> Domo:
@@ -39,20 +42,26 @@ def get_connection(connection: DomoPipelineConnection) -> Domo:
         raise SourceConnectionException(msg)
 
 
-def test_connection(connection: Domo, _) -> TestConnectionResult:
+def test_connection(
+    metadata: OpenMetadata,
+    connection: Domo,
+    service_connection: DomoPipelineConnection,
+    automation_workflow: Optional[AutomationWorkflow] = None,
+) -> None:
     """
-    Test connection
+    Test connection. This can be executed either as part
+    of a metadata workflow or during an Automation Workflow
     """
 
     def custom_executor():
         result = connection.get_pipelines()
         return list(result)
 
-    steps = [
-        TestConnectionStep(
-            function=partial(custom_executor),
-            name="Get Pipeline",
-        ),
-    ]
+    test_fn = {"GetPipelines": custom_executor}
 
-    return test_connection_steps(steps)
+    test_connection_steps(
+        metadata=metadata,
+        test_fn=test_fn,
+        service_fqn=service_connection.type.value,
+        automation_workflow=automation_workflow,
+    )

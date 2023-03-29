@@ -49,7 +49,8 @@ export type ExploreSearchIndexKey =
   | 'PIPELINE'
   | 'DASHBOARD'
   | 'MLMODEL'
-  | 'TOPIC';
+  | 'TOPIC'
+  | 'CONTAINER';
 
 export type SearchHitCounts = Record<ExploreSearchIndex, number>;
 

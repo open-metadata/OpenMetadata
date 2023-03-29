@@ -136,7 +136,7 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
                 topic.messageSchema = Topic(
                     schemaText="", schemaType=SchemaType.Other, schemaFields=[]
                 )
-            self.status.scanned(topic.name.__root__)
+            self.register_record(topic_request=topic)
             yield topic
 
         except Exception as exc:

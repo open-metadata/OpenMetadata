@@ -189,7 +189,7 @@ class LookerSource(DashboardServiceSource):
         Method to Get Dashboard Entity
         """
 
-        yield CreateDashboardRequest(
+        dashboard_request = CreateDashboardRequest(
             name=dashboard_details.id.replace("::", "_"),
             displayName=dashboard_details.title,
             description=dashboard_details.description or None,
@@ -205,6 +205,8 @@ class LookerSource(DashboardServiceSource):
             dashboardUrl=f"/dashboards/{dashboard_details.id}",
             service=self.context.dashboard_service.fullyQualifiedName.__root__,
         )
+        yield dashboard_request
+        self.register_record(dashboard_request=dashboard_request)
 
     @staticmethod
     def _clean_table_name(table_name: str) -> str:

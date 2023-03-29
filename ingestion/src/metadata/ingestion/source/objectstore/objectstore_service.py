@@ -75,27 +75,12 @@ class ObjectStoreServiceTopology(ServiceTopology):
     )
 
 
-class ObjectStoreSourceStatus(SourceStatus):
-    """
-    Reports the source status after ingestion
-    """
-
-    def scanned(self, record: str) -> None:
-        self.success.append(record)
-        logger.debug(f"Scanned: {record}")
-
-    def filter(self, key: str, reason: str) -> None:
-        self.filtered.append(key)
-        logger.debug(f"Filtered {key}: {reason}")
-
-
 class ObjectStoreServiceSource(TopologyRunnerMixin, Source, ABC):
     """
     Base class for Object Store Services.
     It implements the topology and context.
     """
 
-    status: ObjectStoreSourceStatus
     source_config: ObjectStoreServiceMetadataPipeline
     config: WorkflowSource
     metadata: OpenMetadata
@@ -119,8 +104,10 @@ class ObjectStoreServiceSource(TopologyRunnerMixin, Source, ABC):
             self.config.sourceConfig.config
         )
         self.connection: S3ObjectStoreClient = get_connection(self.service_connection)
+
+        # Flag the connection for the test connection
+        self.connection_obj = self.connection
         self.test_connection()
-        self.status = ObjectStoreSourceStatus()
 
     @abstractmethod
     def get_containers(self) -> Iterable[Any]:
@@ -148,7 +135,7 @@ class ObjectStoreServiceSource(TopologyRunnerMixin, Source, ABC):
 
     def test_connection(self) -> None:
         test_connection_fn = get_test_connection_fn(self.service_connection)
-        test_connection_fn(self.connection)
+        test_connection_fn(self.metadata, self.connection_obj, self.service_connection)
 
     def yield_create_request_objectstore_service(self, config: WorkflowSource):
         yield self.metadata.get_create_service_from_source(

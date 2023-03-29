@@ -95,14 +95,15 @@ class GluepipelineSource(PipelineServiceSource):
         Method to Get Pipeline Entity
         """
         self.job_name_list = set()
-        pipeline_ev = CreatePipelineRequest(
+        pipeline_request = CreatePipelineRequest(
             name=pipeline_details[NAME],
             displayName=pipeline_details[NAME],
             description="",
             tasks=self.get_tasks(pipeline_details),
             service=self.context.pipeline_service.fullyQualifiedName.__root__,
         )
-        yield pipeline_ev
+        yield pipeline_request
+        self.register_record(pipeline_request=pipeline_request)
 
     def get_tasks(self, pipeline_details: Any) -> List[Task]:
         task_list = []
