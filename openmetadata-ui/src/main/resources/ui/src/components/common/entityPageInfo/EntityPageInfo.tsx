@@ -179,7 +179,7 @@ const EntityPageInfo = ({
               ...tag,
               isRemovable: true,
             })),
-            { tagFQN: tier.tagFQN, isRemovable: true },
+            { tagFQN: tier.tagFQN, isRemovable: false },
           ]
         : [
             ...tags.map((tag) => ({
@@ -279,7 +279,7 @@ const EntityPageInfo = ({
     if (!isUndefined(entityFieldThreads)) {
       return !isUndefined(tagThread) ? (
         <Button
-          className="p-0"
+          className="p-0 flex-center"
           data-testid="tag-thread"
           size="small"
           type="text"
@@ -291,7 +291,7 @@ const EntityPageInfo = ({
         </Button>
       ) : (
         <Button
-          className="p-0"
+          className="p-0 flex-center"
           data-testid="start-tag-thread"
           size="small"
           type="text"
@@ -317,7 +317,7 @@ const EntityPageInfo = ({
     return onThreadLinkSelect &&
       TASK_ENTITIES.includes(entityType as EntityType) ? (
       <Button
-        className="p-0"
+        className="p-0 flex-center"
         data-testid="request-entity-tags"
         size="small"
         type="text"
@@ -342,7 +342,7 @@ const EntityPageInfo = ({
   const getTaskElement = useCallback(() => {
     return !isUndefined(tagTask) ? (
       <Button
-        className="p-0"
+        className="p-0 flex-center"
         data-testid="tag-task"
         size="small"
         type="text"
