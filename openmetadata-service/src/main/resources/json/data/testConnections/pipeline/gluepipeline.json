@@ -2,11 +2,11 @@
     "name": "GluePipeline",
     "fullyQualifiedName": "GluePipeline",
     "displayName": "GluePipeline Test Connection",
-    "description": "This Test Connection validates the access against the server and basic metadata extraction of workbooks and views.",
+    "description": "This Test Connection validates the access against the server and basic metadata extraction of pipelines.",
     "steps": [
         {
             "name": "GetPipelines",
-            "description":  "List all the workflows available to the user",
+            "description":  "List all the workflows available to the user, user must have access to `glue:ListWorkflows` permission",
             "mandatory": true
         }
     ]
