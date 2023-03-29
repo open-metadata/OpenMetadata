@@ -157,7 +157,7 @@ def get_columns(
             name = f"{parent}.{col.name.__root__}"
         else:
             name = col.name.__root__
-        if col.name.__root__ in SQA_RESERVED_ATTRIBUTES:
+        if name in SQA_RESERVED_ATTRIBUTES:
             name = f"{name}_"
 
         cols[name] = build_orm_col(idx, col, service_type, parent)
