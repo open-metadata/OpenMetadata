@@ -18,7 +18,7 @@ import Loader from 'components/Loader/Loader';
 import { PAGE_SIZE_MEDIUM } from 'constants/constants';
 import { EntityType } from 'enums/entity.enum';
 import { SearchIndex } from 'enums/search.enum';
-import { compare, Operation } from 'fast-json-patch';
+import { compare } from 'fast-json-patch';
 import { cloneDeep, groupBy, map, startCase } from 'lodash';
 import { EntityDetailUnion } from 'Models';
 import VirtualList from 'rc-virtual-list';
@@ -30,36 +30,47 @@ import {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { patchDashboardDetails } from 'rest/dashboardAPI';
-import { patchMlModelDetails } from 'rest/mlModelAPI';
-import { patchContainerDetails } from 'rest/objectStoreAPI';
-import { patchPipelineDetails } from 'rest/pipelineAPI';
 import { searchQuery } from 'rest/searchAPI';
-import { patchTableDetails } from 'rest/tableAPI';
-import { patchTopicDetails } from 'rest/topicsAPI';
+import {
+  getAPIfromSource,
+  getEntityAPIfromSource,
+} from 'utils/Assets/AssetsUtils';
 import { getCountBadge } from 'utils/CommonUtils';
 import { getQueryFilterToExcludeTerm } from 'utils/GlossaryUtils';
 import {
   AssetFilterKeys,
   AssetSelectionModalProps,
-  AssetsUnion,
-  MapPatchAPIResponse,
 } from './AssetSelectionModal.interface';
 
 export const AssetSelectionModal = ({
   glossaryFQN,
   onCancel,
+  onSave,
   open,
 }: AssetSelectionModalProps) => {
   const { t } = useTranslation();
   const [search, setSearch] = useState('');
   const [items, setItems] = useState<EntityDetailUnion[]>([]);
-  const [itemCount, setItemCount] = useState<Record<AssetFilterKeys, number>>();
+  const [itemCount, setItemCount] = useState<Record<AssetFilterKeys, number>>({
+    all: 0,
+    table: 0,
+    pipeline: 0,
+    mlmodel: 0,
+    container: 0,
+    topic: 0,
+    dashboard: 0,
+  });
   const [selectedItems, setSelectedItems] =
     useState<Map<string, EntityDetailUnion>>();
   const [isLoading, setIsLoading] = useState(false);
   const [activeFilter, setActiveFilter] = useState<AssetFilterKeys>('all');
   const [pageNumber, setPageNumber] = useState(1);
+
+  useEffect(() => {
+    if (open) {
+      fetchEntities();
+    }
+  }, [open]);
 
   const fetchEntities = async (searchText = '', page = 1) => {
     try {
@@ -80,18 +91,41 @@ export const AssetSelectionModal = ({
       });
 
       const groupedArray = groupBy(res.hits.hits, '_source.entityType');
+      const isAppend = page !== 1;
+      const tableCount = groupedArray[EntityType.TABLE]?.length ?? 0;
+      const containerCount = groupedArray[EntityType.CONTAINER]?.length ?? 0;
+      const pipelineCount = groupedArray[EntityType.PIPELINE]?.length ?? 0;
+      const dashboardCount = groupedArray[EntityType.DASHBOARD]?.length ?? 0;
+      const topicCount = groupedArray[EntityType.TOPIC]?.length ?? 0;
+      const mlmodelCount = groupedArray[EntityType.MLMODEL]?.length ?? 0;
 
-      setItemCount({
+      setItemCount((prevCount) => ({
+        ...prevCount,
         all: res.hits.total.value,
-        [EntityType.TABLE]: groupedArray[EntityType.TABLE]?.length ?? 0,
-        [EntityType.PIPELINE]: groupedArray[EntityType.PIPELINE]?.length ?? 0,
-        [EntityType.MLMODEL]: groupedArray[EntityType.MLMODEL]?.length ?? 0,
-        [EntityType.TOPIC]: groupedArray[EntityType.TOPIC]?.length ?? 0,
-        [EntityType.DASHBOARD]: groupedArray[EntityType.DASHBOARD]?.length ?? 0,
-        [EntityType.CONTAINER]: groupedArray[EntityType.CONTAINER]?.length ?? 0,
-      });
+        ...(isAppend
+          ? {
+              table: prevCount.table + tableCount,
+              pipeline: prevCount.pipeline + pipelineCount,
+              mlmodel: prevCount.mlmodel + mlmodelCount,
+              container: prevCount.container + containerCount,
+              topic: prevCount.topic + topicCount,
+              dashboard: prevCount.dashboard + dashboardCount,
+            }
+          : {
+              table: tableCount,
+              pipeline: pipelineCount,
+              mlmodel: mlmodelCount,
+              container: containerCount,
+              topic: topicCount,
+              dashboard: dashboardCount,
+            }),
+      }));
       setActiveFilter('all');
-      setItems(res.hits.hits);
+      setItems(
+        page === 1
+          ? res.hits.hits
+          : (prevItems) => [...prevItems, ...res.hits.hits]
+      );
       setPageNumber(page);
     } catch (error) {
       console.error(error);
@@ -131,48 +165,51 @@ export const AssetSelectionModal = ({
     }
   };
 
-  const getAPIfromSource = (
-    source: AssetsUnion
-  ): ((
-    id: string,
-    jsonPatch: Operation[]
-  ) => Promise<MapPatchAPIResponse[typeof source]>) => {
-    switch (source) {
-      case EntityType.TABLE:
-        return patchTableDetails;
-      case EntityType.DASHBOARD:
-        return patchDashboardDetails;
-      case EntityType.MLMODEL:
-        return patchMlModelDetails;
-      case EntityType.PIPELINE:
-        return patchPipelineDetails;
-      case EntityType.TOPIC:
-        return patchTopicDetails;
-      case EntityType.CONTAINER:
-        return patchContainerDetails;
-    }
-  };
-
   const handleSave = async () => {
     setIsLoading(true);
-    const promises = [...(selectedItems?.values() ?? [])].map((item) => {
-      const jsonPatch = compare(
-        { tags: item.tags },
-        {
-          tags: [
-            ...item.tags,
-            { tagFQN: glossaryFQN, source: 'Glossary', labelType: 'Manual' },
-          ],
-        }
-      );
-
-      const api = getAPIfromSource(item.entityType);
-
-      return api(item.id, jsonPatch);
-    });
+    const entityDetails = [...(selectedItems?.values() ?? [])].map((item) =>
+      getEntityAPIfromSource(item.entityType)(item.fullyQualifiedName, 'tags')
+    );
 
     try {
-      await Promise.all(promises);
+      const entityDetailsResponse = await Promise.allSettled(entityDetails);
+      const map = new Map();
+
+      entityDetailsResponse.forEach((response) => {
+        if (response.status === 'fulfilled') {
+          const entity = response.value;
+
+          entity && map.set(entity.fullyQualifiedName, entity.tags);
+        }
+      });
+      const patchAPIPromises = [...(selectedItems?.values() ?? [])]
+        .map((item) => {
+          if (map.has(item.fullyQualifiedName)) {
+            const jsonPatch = compare(
+              { tags: map.get(item.fullyQualifiedName) },
+              {
+                tags: [
+                  ...(item.tags ?? []),
+                  {
+                    tagFQN: glossaryFQN,
+                    source: 'Glossary',
+                    labelType: 'Manual',
+                  },
+                ],
+              }
+            );
+
+            const api = getAPIfromSource(item.entityType);
+
+            return api(item.id, jsonPatch);
+          }
+
+          return;
+        })
+        .filter(Boolean);
+
+      await Promise.all(patchAPIPromises);
+      onSave && onSave();
       onCancel();
     } catch (error) {
       console.error(error);
@@ -181,13 +218,9 @@ export const AssetSelectionModal = ({
     }
   };
 
-  useEffect(() => {
-    fetchEntities();
-  }, []);
-
   const onScroll: UIEventHandler<HTMLElement> = (e) => {
     if (e.currentTarget.scrollHeight - e.currentTarget.scrollTop === 500) {
-      fetchEntities(search, pageNumber + 1);
+      !isLoading && fetchEntities(search, pageNumber + 1);
     }
   };
 

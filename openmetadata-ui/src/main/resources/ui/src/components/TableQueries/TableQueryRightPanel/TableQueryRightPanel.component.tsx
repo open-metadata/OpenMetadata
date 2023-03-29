@@ -44,7 +44,7 @@ const TableQueryRightPanel = ({
 }: TableQueryRightPanelProps) => {
   const { t } = useTranslation();
   const { EditAll, EditDescription, EditOwner, EditTags } = permission;
-  const [isEditOwner, setIsEditOwner] = useState(false);
+
   const [isEditDescription, setIsEditDescription] = useState(false);
   const [isEditTags, setIsEditTags] = useState(false);
   const [tagDetails, setTagDetails] = useState<TagDetails>({
@@ -72,7 +72,6 @@ const TableQueryRightPanel = ({
       owner,
     };
     await onQueryUpdate(updatedData, 'owner');
-    setIsEditOwner(false);
   };
 
   const onDescriptionUpdate = async (description: string) => {
@@ -113,26 +112,12 @@ const TableQueryRightPanel = ({
           <Typography.Text className="text-grey-muted">
             {t('label.owner')}
           </Typography.Text>
-          <Tooltip
-            placement="left"
-            title={!(EditAll || EditOwner) && NO_PERMISSION_FOR_ACTION}>
-            <Button
-              className="flex-center p-0"
-              data-testid="edit-owner-btn"
-              disabled={!(EditOwner || EditAll)}
-              icon={<EditIcon height={16} width={16} />}
-              size="small"
-              type="text"
-              onClick={() => setIsEditOwner(true)}
-            />
-          </Tooltip>
-          {isEditOwner && (
-            <UserTeamSelectableList
-              hasPermission
-              owner={query.owner}
-              onUpdate={handleUpdateOwner}
-            />
-          )}
+
+          <UserTeamSelectableList
+            hasPermission={EditAll || EditOwner}
+            owner={query.owner}
+            onUpdate={handleUpdateOwner}
+          />
         </div>
       </Col>
       <Col span={24}>

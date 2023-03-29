@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import { Glossary } from 'generated/entity/data/glossary';
 import React from 'react';
 import { DEFAULT_ENTITY_PERMISSION } from 'utils/PermissionsUtils';
@@ -109,41 +109,6 @@ describe('GlossaryHeader component', () => {
 
     expect(screen.getByTestId('edit-name')).toBeInTheDocument();
     expect(screen.getByTestId('edit-name')).toBeDisabled();
-  });
-
-  it('should show editing of name after clicking on edit icon', () => {
-    render(
-      <GlossaryHeader
-        isGlossary
-        permissions={{
-          ...DEFAULT_ENTITY_PERMISSION,
-          EditAll: true,
-          EditDisplayName: true,
-        }}
-        selectedData={
-          {
-            displayName: 'glossaryTest',
-            reviewers: [
-              { displayName: 'reviewer1' },
-              { displayName: 'reviewer2' },
-            ],
-          } as Glossary
-        }
-        onDelete={mockOnDelete}
-        onUpdate={mockOnUpdate}
-      />
-    );
-
-    expect(screen.getByTestId('edit-name')).toBeInTheDocument();
-
-    act(() => {
-      fireEvent.click(screen.getByTestId('edit-name'));
-    });
-
-    expect(screen.getByTestId('displayName')).toBeInTheDocument();
-    expect(screen.getByTestId('displayName')).toHaveValue('glossaryTest');
-    expect(screen.getByTestId('cancelAssociatedTag')).toBeInTheDocument();
-    expect(screen.getByTestId('saveAssociatedTag')).toBeInTheDocument();
   });
 
   it('should render no owner if owner is not present', () => {
