@@ -12,13 +12,19 @@
 """
 Source connection handler
 """
+from typing import Optional
+
 from dagster_graphql import DagsterGraphQLClient
 from gql.transport.requests import RequestsHTTPTransport
 
+from metadata.generated.schema.entity.automations.workflow import (
+    Workflow as AutomationWorkflow,
+)
 from metadata.generated.schema.entity.services.connections.pipeline.dagsterConnection import (
     DagsterConnection,
 )
-from metadata.ingestion.connections.test_connections import SourceConnectionException
+from metadata.ingestion.connections.test_connections import test_connection_steps
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.pipeline.dagster.queries import TEST_QUERY_GRAPHQL
 
 
@@ -40,12 +46,25 @@ def get_connection(connection: DagsterConnection) -> DagsterGraphQLClient:
     return dagster_connection
 
 
-def test_connection(client: DagsterGraphQLClient, _) -> None:
+def test_connection(
+    metadata: OpenMetadata,
+    client: DagsterGraphQLClient,
+    service_connection: DagsterConnection,
+    automation_workflow: Optional[AutomationWorkflow] = None,
+) -> None:
     """
-    Test connection
+    Test connection. This can be executed either as part
+    of a metadata workflow or during an Automation Workflow
     """
-    try:
+
+    def custom_executor_for_pipeline():
         client._execute(TEST_QUERY_GRAPHQL)  # pylint: disable=protected-access
-    except Exception as exc:
-        msg = f"Unknown error connecting with {client}: {exc}."
-        raise SourceConnectionException(msg) from exc
+
+    test_fn = {"GetPipelines": custom_executor_for_pipeline}
+
+    test_connection_steps(
+        metadata=metadata,
+        test_fn=test_fn,
+        service_fqn=service_connection.type.value,
+        automation_workflow=automation_workflow,
+    )

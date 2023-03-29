@@ -160,7 +160,8 @@ def get_columns(self, connection, table_name, schema=None, **kw):
 @reflection.cache
 def get_schema_names(self, connection, **kw):  # pylint: disable=unused-argument
     # Equivalent to SHOW DATABASES
-    connection.execute(f"USE CATALOG '{kw.get('database')}'")
+    if kw.get("database"):
+        connection.execute(f"USE CATALOG '{kw.get('database')}'")
     return [row[0] for row in connection.execute("SHOW SCHEMAS")]
 
 

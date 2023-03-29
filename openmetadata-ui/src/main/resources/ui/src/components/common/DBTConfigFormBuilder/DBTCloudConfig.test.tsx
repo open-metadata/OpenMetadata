@@ -20,6 +20,7 @@ const mockSubmit = jest.fn();
 const mockAccountIdChange = jest.fn();
 const mockAuthTokenChange = jest.fn();
 const mockUpdateDescriptions = jest.fn();
+const mockIncludeTagsClick = jest.fn();
 const mockDbtCloudProjectId = jest.fn();
 const mockDbtCloudJobId = jest.fn();
 const mockUpdateDBTClassification = jest.fn();
@@ -42,6 +43,7 @@ const mockProps = {
   handleDbtCloudJobId: mockDbtCloudJobId,
   handleDbtCloudUrl: mockUpdateDBTCloudUrl,
   handleUpdateDBTClassification: mockUpdateDBTClassification,
+  handleIncludeTagsClick: mockIncludeTagsClick,
   enableDebugLog: false,
   handleEnableDebugLogCheck: mockHandleEnableDebugLogCheck,
 };

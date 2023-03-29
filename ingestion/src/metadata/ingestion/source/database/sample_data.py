@@ -23,6 +23,9 @@ from pydantic import ValidationError
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createContainer import CreateContainerRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
+from metadata.generated.schema.api.data.createDashboardDataModel import (
+    CreateDashboardDataModelRequest,
+)
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
 from metadata.generated.schema.api.data.createDatabaseSchema import (
     CreateDatabaseSchemaRequest,
@@ -46,6 +49,7 @@ from metadata.generated.schema.api.tests.createTestCase import CreateTestCaseReq
 from metadata.generated.schema.api.tests.createTestSuite import CreateTestSuiteRequest
 from metadata.generated.schema.entity.data.container import Container
 from metadata.generated.schema.entity.data.dashboard import Dashboard
+from metadata.generated.schema.entity.data.dashboardDataModel import DashboardDataModel
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.location import Location
@@ -158,6 +162,10 @@ def get_lineage_entity_ref(edge, metadata_config) -> EntityReference:
         dashboard = metadata.get_by_name(entity=Dashboard, fqn=edge_fqn)
         if dashboard:
             return EntityReference(id=dashboard.id, type="dashboard")
+    if edge["type"] == "dashboardDataModel":
+        data_model = metadata.get_by_name(entity=DashboardDataModel, fqn=edge_fqn)
+        if data_model:
+            return EntityReference(id=data_model.id, type="dashboardDataModel")
     return None
 
 
@@ -328,6 +336,13 @@ class SampleDataSource(
                 encoding="utf-8",
             )
         )
+        self.data_models = json.load(
+            open(  # pylint: disable=consider-using-with
+                sample_data_folder + "/dashboards/dashboardDataModels.json",
+                "r",
+                encoding="utf-8",
+            )
+        )
         self.dashboards = json.load(
             open(  # pylint: disable=consider-using-with
                 sample_data_folder + "/dashboards/dashboards.json",
@@ -478,6 +493,7 @@ class SampleDataSource(
         yield from self.ingest_tables()
         yield from self.ingest_topics()
         yield from self.ingest_charts()
+        yield from self.ingest_data_models()
         yield from self.ingest_dashboards()
         yield from self.ingest_pipelines()
         yield from self.ingest_lineage()
@@ -716,7 +732,7 @@ class SampleDataSource(
                     name=chart["name"],
                     displayName=chart["displayName"],
                     description=chart["description"],
-                    chartType=get_standard_chart_type(chart["chartType"]).value,
+                    chartType=get_standard_chart_type(chart["chartType"]),
                     chartUrl=chart["chartUrl"],
                     service=self.dashboard_service.fullyQualifiedName,
                 )
@@ -726,6 +742,29 @@ class SampleDataSource(
                 logger.debug(traceback.format_exc())
                 logger.warning(f"Unexpected exception ingesting chart [{chart}]: {err}")
 
+    def ingest_data_models(self) -> Iterable[CreateDashboardDataModelRequest]:
+        for data_model in self.data_models["datamodels"]:
+            try:
+                data_model_ev = CreateDashboardDataModelRequest(
+                    name=data_model["name"],
+                    displayName=data_model["displayName"],
+                    description=data_model["description"],
+                    columns=data_model["columns"],
+                    dataModelType=data_model["dataModelType"],
+                    sql=data_model["sql"],
+                    serviceType=data_model["serviceType"],
+                    service=self.dashboard_service.fullyQualifiedName,
+                )
+                self.status.scanned(
+                    f"Data Model Scanned: {data_model_ev.name.__root__}"
+                )
+                yield data_model_ev
+            except ValidationError as err:
+                logger.debug(traceback.format_exc())
+                logger.warning(
+                    f"Unexpected exception ingesting chart [{data_model}]: {err}"
+                )
+
     def ingest_dashboards(self) -> Iterable[CreateDashboardRequest]:
         for dashboard in self.dashboards["dashboards"]:
             dashboard_ev = CreateDashboardRequest(
@@ -734,6 +773,7 @@ class SampleDataSource(
                 description=dashboard["description"],
                 dashboardUrl=dashboard["dashboardUrl"],
                 charts=dashboard["charts"],
+                dataModels=dashboard.get("dataModels", None),
                 service=self.dashboard_service.fullyQualifiedName,
             )
             self.status.scanned(f"Dashboard Scanned: {dashboard_ev.name.__root__}")
@@ -758,8 +798,10 @@ class SampleDataSource(
             edge_entity_ref = get_lineage_entity_ref(
                 edge["edge_meta"], self.metadata_config
             )
-            lineage_details = LineageDetails(
-                pipeline=edge_entity_ref, sqlQuery=edge.get("sql_query")
+            lineage_details = (
+                LineageDetails(pipeline=edge_entity_ref, sqlQuery=edge.get("sql_query"))
+                if edge_entity_ref
+                else None
             )
             lineage = AddLineageRequest(
                 edge=EntitiesEdge(

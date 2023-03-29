@@ -1,0 +1,1 @@
+Enable SSL validation for the Amundsen Neo4j Connection.

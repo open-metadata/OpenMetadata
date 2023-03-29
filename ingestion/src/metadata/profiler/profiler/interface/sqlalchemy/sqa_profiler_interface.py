@@ -488,7 +488,17 @@ class SQAProfilerInterface(ProfilerProtocol, SQAInterfaceMixin):
             partition_details=self.partition_details,
             profile_sample_query=self.profile_query,
         )
-        return sampler.fetch_sqa_sample_data()
+
+        # Only fetch columns that are in the table entity
+        # with struct columns we create a column for each field in the ORM table
+        # but we only want to fetch the columns that are in the table entity
+        sample_columns = [
+            column.name
+            for column in table.__table__.columns
+            if column.name in {col.name.__root__ for col in self.table_entity.columns}
+        ]
+
+        return sampler.fetch_sqa_sample_data(sample_columns)
 
     def get_composed_metrics(
         self, column: Column, metric: Metrics, column_results: Dict

@@ -223,7 +223,7 @@ public class SubjectContext {
       this.user = user;
 
       // Iterate over policies in user role
-      if (user.getRoles() != null) {
+      if (!listOrEmpty(user.getRoles()).isEmpty()) {
         iterators.add(new RolePolicyIterator(Entity.USER, user.getName(), user.getRoles()));
       }
 

@@ -11,8 +11,7 @@
  *  limitations under the License.
  */
 
-import { Form, Input, Modal, Select, Tag } from 'antd';
-import { ReactComponent as IconCloseCircleOutlined } from 'assets/svg/close-circle-outlined.svg';
+import { Form, Input, Modal, Select, TreeSelect } from 'antd';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -69,16 +68,11 @@ const ReIndexAllModal = ({
           />
         </Form.Item>
         <Form.Item label={t('label.entity-plural')} name="entities">
-          <Select
-            allowClear
-            clearIcon={<IconCloseCircleOutlined height={16} width={16} />}
-            mode="multiple"
-            options={ENTITY_TREE_OPTIONS}
-            tagRender={({ label, ...props }) => (
-              <Tag {...props} closable={false}>
-                {label}
-              </Tag>
-            )}
+          <TreeSelect
+            treeCheckable
+            treeDefaultExpandAll
+            showCheckedStrategy={TreeSelect.SHOW_PARENT}
+            treeData={ENTITY_TREE_OPTIONS}
           />
         </Form.Item>
         <Form.Item

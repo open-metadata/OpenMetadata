@@ -25,7 +25,6 @@ from metadata.generated.schema.api.tests.createTestDefinition import (
     CreateTestDefinitionRequest,
 )
 from metadata.generated.schema.api.tests.createTestSuite import CreateTestSuiteRequest
-from metadata.generated.schema.entity.classification.tag import Tag
 from metadata.generated.schema.entity.data.table import (
     Column,
     DataModel,
@@ -56,12 +55,6 @@ from metadata.generated.schema.tests.testSuite import TestSuite
 from metadata.generated.schema.type.basic import FullyQualifiedEntityName
 from metadata.generated.schema.type.entityLineage import EntitiesEdge
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.generated.schema.type.tagLabel import (
-    LabelType,
-    State,
-    TagLabel,
-    TagSource,
-)
 from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper
 from metadata.ingestion.lineage.sql_lineage import get_lineage_by_query
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
@@ -73,7 +66,7 @@ from metadata.ingestion.source.database.dbt.dbt_service import (
     DbtObjects,
     DbtServiceSource,
 )
-from metadata.utils import entity_link, fqn
+from metadata.utils import entity_link, fqn, tag_utils
 from metadata.utils.elasticsearch import get_entity_from_es_result
 from metadata.utils.logger import ingestion_logger
 
@@ -230,22 +223,6 @@ class DbtSource(DbtServiceSource):  # pylint: disable=too-many-public-methods
                     )
         return owner
 
-    def get_dbt_tag_labels(self, dbt_tags_list):
-        return [
-            TagLabel(
-                tagFQN=fqn.build(
-                    self.metadata,
-                    entity_type=Tag,
-                    classification_name=self.tag_classification_name,
-                    tag_name=tag.replace(fqn.FQN_SEPARATOR, ""),
-                ),
-                labelType=LabelType.Automated,
-                state=State.Confirmed,
-                source=TagSource.Classification,
-            )
-            for tag in dbt_tags_list
-        ] or None
-
     def check_columns(self, catalog_node):
         for catalog_key, catalog_column in catalog_node.get("columns").items():
             if all(
@@ -310,7 +287,11 @@ class DbtSource(DbtServiceSource):  # pylint: disable=too-many-public-methods
         """
         Create and yeild tags from DBT
         """
-        if self.source_config.dbtConfigSource and dbt_objects.dbt_manifest:
+        if (
+            self.source_config.dbtConfigSource
+            and dbt_objects.dbt_manifest
+            and self.source_config.includeTags
+        ):
             manifest_entities = {
                 **dbt_objects.dbt_manifest.nodes,
                 **dbt_objects.dbt_manifest.sources,
@@ -341,7 +322,12 @@ class DbtSource(DbtServiceSource):  # pylint: disable=too-many-public-methods
                     )
             try:
                 # Create all the tags added
-                dbt_tag_labels = self.get_dbt_tag_labels(dbt_tags_list)
+                dbt_tag_labels = tag_utils.get_tag_labels(
+                    metadata=self.metadata,
+                    tags=dbt_tags_list,
+                    classification_name=self.tag_classification_name,
+                    include_tags=self.source_config.includeTags,
+                )
                 for tag_label in dbt_tag_labels or []:
                     yield OMetaTagAndClassification(
                         classification_request=CreateClassificationRequest(
@@ -432,8 +418,11 @@ class DbtSource(DbtServiceSource):  # pylint: disable=too-many-public-methods
 
                     dbt_table_tags_list = None
                     if manifest_node.tags:
-                        dbt_table_tags_list = self.get_dbt_tag_labels(
-                            manifest_node.tags
+                        dbt_table_tags_list = tag_utils.get_tag_labels(
+                            metadata=self.metadata,
+                            tags=manifest_node.tags,
+                            classification_name=self.tag_classification_name,
+                            include_tags=self.source_config.includeTags,
                         )
 
                     dbt_compiled_query = self.get_dbt_compiled_query(manifest_node)
@@ -588,7 +577,12 @@ class DbtSource(DbtServiceSource):  # pylint: disable=too-many-public-methods
                         ordinalPosition=catalog_column.index
                         if catalog_column
                         else None,
-                        tags=self.get_dbt_tag_labels(manifest_column.tags),
+                        tags=tag_utils.get_tag_labels(
+                            metadata=self.metadata,
+                            tags=manifest_column.tags,
+                            classification_name=self.tag_classification_name,
+                            include_tags=self.source_config.includeTags,
+                        ),
                     )
                 )
                 logger.info(f"Successfully processed DBT column: {key}")
