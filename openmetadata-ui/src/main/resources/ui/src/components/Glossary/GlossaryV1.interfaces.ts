@@ -20,7 +20,7 @@ export type GlossaryV1Props = {
   selectedData: Glossary | GlossaryTerm;
   isGlossaryActive: boolean;
   updateGlossary: (value: Glossary) => Promise<void>;
-  handleGlossaryTermUpdate: (value: GlossaryTerm) => Promise<void>;
+  onGlossaryTermUpdate: (value: GlossaryTerm) => Promise<void>;
   onGlossaryDelete: (id: string) => void;
   onGlossaryTermDelete: (id: string) => void;
 };

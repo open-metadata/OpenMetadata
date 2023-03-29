@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Space, Tooltip, Typography } from 'antd';
+import { Card, Space, Tooltip, Typography } from 'antd';
 import classNames from 'classnames';
 import { t } from 'i18next';
 import { isUndefined } from 'lodash';
@@ -77,7 +77,7 @@ const DescriptionV1 = ({
           onClick={onDescriptionEdit}>
           <SVGIcons
             alt={t('label.edit')}
-            icon={Icons.IC_EDIT_PRIMARY}
+            icon={Icons.EDIT}
             title="Edit"
             width="16px"
           />
@@ -89,105 +89,107 @@ const DescriptionV1 = ({
   };
 
   return (
-    <Space className="schema-description tw-flex" direction="vertical">
-      <Space
-        style={{
-          display: 'flex',
-          width: '100%',
-          justifyContent: 'space-between',
-        }}>
-        <Text type="secondary">{t('label.description')}</Text>
-        <div>{editButton()}</div>
-      </Space>
-      <div>
-        {description?.trim() ? (
-          <RichTextEditorPreviewer
-            enableSeeMoreVariant={!removeBlur}
-            markdown={description}
-          />
-        ) : (
-          <span>{t('label.no-description')}</span>
-        )}
-        <ModalWithMarkdownEditor
-          header={t('label.edit-description-for', { entityName })}
-          placeholder={t('label.enter-entity', {
-            entity: t('label.description'),
-          })}
-          value={description}
-          visible={Boolean(isEdit)}
-          onCancel={onCancel}
-          onSave={onDescriptionUpdate}
-        />
-      </div>
-      {!isReadOnly ? (
-        <div
-          className={classNames(
-            'tw-w-5 tw-min-w-max tw-flex',
-            description?.trim() ? 'tw-pl-1' : ''
-          )}>
-          {isUndefined(descriptionThread) &&
-          onEntityFieldSelect &&
-          !description?.trim() ? (
-            <button
-              className="focus:tw-outline-none tw-ml-2 tw--mt-6"
-              data-testid="request-description"
-              onClick={() => onEntityFieldSelect?.(EntityField.DESCRIPTION)}>
-              <Tooltip
-                placement="top"
-                title={t('message.request-description')}
-                trigger="hover">
-                <SVGIcons
-                  alt={t('message.request-description')}
-                  className="tw-mt-2"
-                  icon={Icons.REQUEST}
-                />
-              </Tooltip>
-            </button>
-          ) : null}
-          {!isUndefined(descriptionThread) ? (
-            <p
-              className="link-text tw-ml-2 tw-w-8 tw-h-8 tw-flex-none"
-              data-testid="description-thread"
-              onClick={() =>
-                onThreadLinkSelect?.(descriptionThread.entityLink)
-              }>
-              <span className="tw-flex">
-                <SVGIcons alt="comments" icon={Icons.COMMENT} width="20px" />{' '}
-                <span
-                  className="tw-ml-1"
-                  data-testid="description-thread-count">
-                  {' '}
-                  {descriptionThread.count}
-                </span>
-              </span>
-            </p>
+    <Card>
+      <Space className="schema-description tw-flex" direction="vertical">
+        <Space
+          style={{
+            display: 'flex',
+            width: '100%',
+            justifyContent: 'space-between',
+          }}>
+          <Text className="text-grey-muted">{t('label.description')}</Text>
+          <div>{editButton()}</div>
+        </Space>
+        <div>
+          {description?.trim() ? (
+            <RichTextEditorPreviewer
+              enableSeeMoreVariant={!removeBlur}
+              markdown={description}
+            />
           ) : (
-            <Fragment>
-              {description?.trim() && onThreadLinkSelect ? (
-                <p
-                  className="link-text tw-flex-none tw-ml-2"
-                  data-testid="start-description-thread"
-                  onClick={() =>
-                    onThreadLinkSelect?.(
-                      getEntityFeedLink(
-                        entityType,
-                        entityFqn,
-                        EntityField.DESCRIPTION
-                      )
-                    )
-                  }>
-                  <SVGIcons
-                    alt="comments"
-                    icon={Icons.COMMENT_PLUS}
-                    width="20px"
-                  />
-                </p>
-              ) : null}
-            </Fragment>
+            <span>{t('label.no-description')}</span>
           )}
+          <ModalWithMarkdownEditor
+            header={t('label.edit-description-for', { entityName })}
+            placeholder={t('label.enter-entity', {
+              entity: t('label.description'),
+            })}
+            value={description}
+            visible={Boolean(isEdit)}
+            onCancel={onCancel}
+            onSave={onDescriptionUpdate}
+          />
         </div>
-      ) : null}
-    </Space>
+        {!isReadOnly ? (
+          <div
+            className={classNames(
+              'tw-w-5 tw-min-w-max tw-flex',
+              description?.trim() ? 'tw-pl-1' : ''
+            )}>
+            {isUndefined(descriptionThread) &&
+            onEntityFieldSelect &&
+            !description?.trim() ? (
+              <button
+                className="focus:tw-outline-none tw-ml-2 tw--mt-6"
+                data-testid="request-description"
+                onClick={() => onEntityFieldSelect?.(EntityField.DESCRIPTION)}>
+                <Tooltip
+                  placement="top"
+                  title={t('message.request-description')}
+                  trigger="hover">
+                  <SVGIcons
+                    alt={t('message.request-description')}
+                    className="tw-mt-2"
+                    icon={Icons.REQUEST}
+                  />
+                </Tooltip>
+              </button>
+            ) : null}
+            {!isUndefined(descriptionThread) ? (
+              <p
+                className="link-text tw-ml-2 tw-w-8 tw-h-8 tw-flex-none"
+                data-testid="description-thread"
+                onClick={() =>
+                  onThreadLinkSelect?.(descriptionThread.entityLink)
+                }>
+                <span className="tw-flex">
+                  <SVGIcons alt="comments" icon={Icons.COMMENT} width="20px" />{' '}
+                  <span
+                    className="tw-ml-1"
+                    data-testid="description-thread-count">
+                    {' '}
+                    {descriptionThread.count}
+                  </span>
+                </span>
+              </p>
+            ) : (
+              <Fragment>
+                {description?.trim() && onThreadLinkSelect ? (
+                  <p
+                    className="link-text tw-flex-none tw-ml-2"
+                    data-testid="start-description-thread"
+                    onClick={() =>
+                      onThreadLinkSelect?.(
+                        getEntityFeedLink(
+                          entityType,
+                          entityFqn,
+                          EntityField.DESCRIPTION
+                        )
+                      )
+                    }>
+                    <SVGIcons
+                      alt="comments"
+                      icon={Icons.COMMENT_PLUS}
+                      width="20px"
+                    />
+                  </p>
+                ) : null}
+              </Fragment>
+            )}
+          </div>
+        ) : null}
+      </Space>
+    </Card>
   );
 };
 
