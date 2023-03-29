@@ -17,7 +17,7 @@ import classNames from 'classnames';
 import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
 import { FQN_SEPARATOR_CHAR } from 'constants/char.constants';
 import { ROUTES } from 'constants/constants';
-import { TagSource } from 'generated/type/tagLabel';
+import { TagLabel, TagSource } from 'generated/type/tagLabel';
 import { isEmpty, isString } from 'lodash';
 import React, { FunctionComponent, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -47,7 +47,10 @@ const Tags: FunctionComponent<TagProps> = ({
   const textLayoutStyles = tagStyles.text[type] || tagStyles.text.default;
   const textEditStyles = editable ? tagStyles.text.editable : '';
 
-  const isGlossaryTag = useMemo(() => tag.source === TagSource.Glossary, [tag]);
+  const isGlossaryTag = useMemo(
+    () => (tag as TagLabel).source === TagSource.Glossary,
+    [tag]
+  );
 
   const { t } = useTranslation();
   const getTagString = (tag: string) => {

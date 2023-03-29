@@ -27,7 +27,9 @@ const addTags = (tag) => {
 
 const checkTags = (tag, checkForParentEntity) => {
   if (checkForParentEntity) {
-    cy.get('[data-testid="entity-tags"] > :nth-child(2) > .ant-space')
+    cy.get(
+      '[data-testid="entity-tags"] [data-testid="tags-wrapper"] [data-testid="tag-container"] > :nth-child(1) > .ant-space > :nth-child(2)'
+    )
       .scrollIntoView()
       .should('be.visible')
       .contains(tag);
@@ -38,7 +40,7 @@ const checkTags = (tag, checkForParentEntity) => {
 
 const removeTags = (tag, checkForParentEntity) => {
   if (checkForParentEntity) {
-    cy.get('[data-testid="entity-tags"] [data-testid="edit-button"] ')
+    cy.get('[data-testid="entity-tags"] [data-testid="add-tag"] ')
       .scrollIntoView()
       .should('be.visible')
       .click();

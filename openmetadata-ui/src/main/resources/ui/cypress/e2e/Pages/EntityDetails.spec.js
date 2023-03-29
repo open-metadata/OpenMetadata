@@ -173,7 +173,11 @@ describe('Entity Details Page', () => {
       'glossaryRequest'
     );
 
-    cy.get('[data-testid="edit-button"]').should('be.visible').click();
+    cy.get('[data-testid="entity-tags"]')
+      .find('[data-testid="add-tag"]')
+      .scrollIntoView()
+      .should('be.visible')
+      .click();
 
     cy.get('[data-testid="tag-selector"]')
       .scrollIntoView()

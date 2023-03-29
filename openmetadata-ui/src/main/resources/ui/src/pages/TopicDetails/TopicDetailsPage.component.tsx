@@ -57,6 +57,7 @@ import {
   getCurrentUserId,
   getEntityMissingError,
   getFeedCounts,
+  sortTagsCaseInsensitive,
 } from '../../utils/CommonUtils';
 import { getEntityFeedLink, getEntityName } from '../../utils/EntityUtils';
 import { deletePost, updateThreadData } from '../../utils/FeedUtils';
@@ -278,7 +279,8 @@ const TopicDetailsPage: FunctionComponent = () => {
             retentionSize,
             serviceType,
             version,
-          } = res;
+          } = { ...res, tags: sortTagsCaseInsensitive(res.tags || []) };
+
           setName(name);
           setTopicDetails(res);
           setTopicId(id);
@@ -431,25 +433,24 @@ const TopicDetailsPage: FunctionComponent = () => {
     });
   };
 
-  const onTagUpdate = (updatedTopic: Topic) => {
-    saveUpdatedTopicData(updatedTopic)
-      .then((res) => {
-        if (res) {
-          setTopicDetails(res);
-          setTier(getTierTags(res.tags as TagLabel[]));
-          setCurrentVersion(res.version?.toString());
-          setTags(getTagsWithoutTier(res.tags as EntityTags[]));
-          getEntityFeedCount();
-        } else {
-          showErrorToast(jsonData['api-error-messages']['update-tags-error']);
-        }
-      })
-      .catch((err: AxiosError) => {
-        showErrorToast(
-          err,
-          jsonData['api-error-messages']['update-tags-error']
-        );
-      });
+  const onTagUpdate = async (updatedTopic: Topic) => {
+    try {
+      const res = await saveUpdatedTopicData(updatedTopic);
+      const sortedData = {
+        ...res,
+        tags: sortTagsCaseInsensitive(res.tags || []),
+      };
+      setTopicDetails(sortedData);
+      setTier(getTierTags(sortedData.tags as TagLabel[]));
+      setCurrentVersion(sortedData.version?.toString());
+      setTags(getTagsWithoutTier(sortedData.tags as EntityTags[]));
+      getEntityFeedCount();
+    } catch (err) {
+      showErrorToast(
+        err as AxiosError,
+        jsonData['api-error-messages']['update-tags-error']
+      );
+    }
   };
 
   const versionHandler = () => {

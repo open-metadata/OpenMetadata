@@ -20,7 +20,7 @@ import {
   render,
   screen,
 } from '@testing-library/react';
-import { TagOption } from 'Models';
+import { EntityTags, TagOption } from 'Models';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { TagLabel } from '../../../generated/type/tagLabel';
@@ -120,6 +120,10 @@ jest.mock('../../../utils/EntityUtils', () => ({
   getEntityFeedLink: jest.fn(),
 }));
 
+jest.mock('utils/CommonUtils', () => ({
+  sortTagsCaseInsensitive: jest.fn().mockImplementation(() => [mockTier]),
+}));
+
 jest.mock('../../../utils/TagsUtils', () => ({
   fetchTagsAndGlossaryTerms: jest.fn().mockResolvedValue([
     { fqn: 'PersonalData.Personal', source: 'Classification' },
@@ -128,19 +132,21 @@ jest.mock('../../../utils/TagsUtils', () => ({
 }));
 
 jest.mock('components/Tag/TagsContainer/tags-container', () => {
-  return jest.fn().mockImplementation(({ tagList }) => {
+  return jest.fn().mockImplementation(({ tagList, selectedTags }) => {
     return (
       <>
         {tagList.map((tag: TagOption, idx: number) => (
           <p key={idx}>{tag.fqn}</p>
         ))}
+
+        {selectedTags.map((tag: EntityTags, idx: number) => (
+          <p data-testid={`tag-${tag.tagFQN}`} key={`tag-${idx}`}>
+            {tag.tagFQN}
+          </p>
+        ))}
       </>
     );
   });
-});
-
-jest.mock('components/Tag/TagsViewer/tags-viewer', () => {
-  return jest.fn().mockReturnValue(<p data-testid="info-tags">TagViewer</p>);
 });
 
 jest.mock('../EntitySummaryDetails/EntitySummaryDetails', () => {
@@ -149,10 +155,6 @@ jest.mock('../EntitySummaryDetails/EntitySummaryDetails', () => {
     .mockReturnValue(
       <p data-testid="entity-summary-details">EntitySummaryDetails component</p>
     );
-});
-
-jest.mock('components/Tag/Tags/tags', () => {
-  return jest.fn().mockReturnValue(<p data-testid="tier-tag">Tag</p>);
 });
 
 jest.mock('../ProfilePicture/ProfilePicture', () => {
@@ -335,7 +337,11 @@ describe('Test EntityPageInfo component', () => {
 
   it('Should render all the tags including tier tag', async () => {
     const { container } = render(
-      <EntityPageInfo {...mockEntityInfoProp} tier={mockTier as TagLabel} />,
+      <EntityPageInfo
+        {...mockEntityInfoProp}
+        isTagEditable
+        tier={mockTier as TagLabel}
+      />,
       {
         wrapper: MemoryRouter,
       }
@@ -355,13 +361,9 @@ describe('Test EntityPageInfo component', () => {
 
     expect(entityTags).toBeInTheDocument();
 
-    const tierTag = await findByTestId(entityTags, 'tier-tag');
+    const tierTag = await findByTestId(entityTags, 'tag-Tier:Tier1');
 
     expect(tierTag).toBeInTheDocument();
-
-    const infoTags = await findByTestId(entityTags, 'info-tags');
-
-    expect(infoTags).toBeInTheDocument();
   });
 
   it('Check if it has isTagEditable as true and deleted as false value', async () => {

@@ -45,6 +45,7 @@ import {
   getCurrentUserId,
   getEntityMissingError,
   getFeedCounts,
+  sortTagsCaseInsensitive,
 } from '../../utils/CommonUtils';
 import { getEntityFeedLink } from '../../utils/EntityUtils';
 import { deletePost, updateThreadData } from '../../utils/FeedUtils';
@@ -272,25 +273,22 @@ const MlModelPage = () => {
       });
   };
 
-  const onTagUpdate = (updatedMlModel: Mlmodel) => {
-    saveUpdatedMlModelData(updatedMlModel)
-      .then((res) => {
-        if (res) {
-          setMlModelDetail((preVDetail) => ({
-            ...preVDetail,
-            tags: res.tags,
-          }));
-          setCurrentVersion(res.version?.toString());
-        } else {
-          throw jsonData['api-error-messages']['update-tags-error'];
-        }
-      })
-      .catch((err: AxiosError) => {
-        showErrorToast(
-          err,
-          jsonData['api-error-messages']['update-tags-error']
-        );
-      });
+  const onTagUpdate = async (updatedMlModel: Mlmodel) => {
+    try {
+      const res = await saveUpdatedMlModelData(updatedMlModel);
+
+      setMlModelDetail((preVDetail) => ({
+        ...preVDetail,
+        tags: sortTagsCaseInsensitive(res.tags || []),
+      }));
+
+      setCurrentVersion(res.version?.toString());
+    } catch (err) {
+      showErrorToast(
+        err as AxiosError,
+        jsonData['api-error-messages']['update-tags-error']
+      );
+    }
   };
 
   const settingsUpdateHandler = (updatedMlModel: Mlmodel): Promise<void> => {

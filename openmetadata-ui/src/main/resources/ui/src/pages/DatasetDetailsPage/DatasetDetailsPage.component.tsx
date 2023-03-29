@@ -76,6 +76,7 @@ import {
   getFeedCounts,
   getFields,
   getPartialNameFromTableFQN,
+  sortTagsCaseInsensitive,
 } from '../../utils/CommonUtils';
 import {
   datasetTableTabs,
@@ -259,7 +260,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
             service,
             serviceType,
             databaseSchema,
-          } = res;
+          } = { ...res, tags: sortTagsCaseInsensitive(res.tags || []) };
           const serviceName = service?.name ?? '';
           const databaseFullyQualifiedName = database?.fullyQualifiedName ?? '';
           const databaseSchemaFullyQualifiedName =
@@ -476,25 +477,24 @@ const DatasetDetailsPage: FunctionComponent = () => {
     }
   };
 
-  const onTagUpdate = (updatedTable: Table) => {
-    saveUpdatedTableData(updatedTable)
-      .then((res) => {
-        if (res) {
-          setTableDetails((previous) => ({ ...previous, tags: res.tags }));
-          setTier(getTierTags(res.tags ?? []));
-          setCurrentVersion(res.version + '');
-          setTableTags(getTagsWithoutTier(res.tags ?? []));
-          getEntityFeedCount();
-        } else {
-          showErrorToast(jsonData['api-error-messages']['update-tags-error']);
-        }
-      })
-      .catch((err: AxiosError) => {
-        showErrorToast(
-          err,
-          jsonData['api-error-messages']['update-tags-error']
-        );
-      });
+  const onTagUpdate = async (updatedTable: Table) => {
+    try {
+      const res = await saveUpdatedTableData(updatedTable);
+      const sortedData = {
+        ...res,
+        tags: sortTagsCaseInsensitive(res.tags || []),
+      };
+      setTableDetails((previous) => ({ ...previous, tags: sortedData.tags }));
+      setTier(getTierTags(sortedData.tags ?? []));
+      setCurrentVersion(sortedData.version + '');
+      setTableTags(getTagsWithoutTier(sortedData.tags ?? []));
+      getEntityFeedCount();
+    } catch (err) {
+      showErrorToast(
+        err as AxiosError,
+        jsonData['api-error-messages']['update-tags-error']
+      );
+    }
   };
 
   const settingsUpdateHandler = (updatedTable: Table): Promise<void> => {

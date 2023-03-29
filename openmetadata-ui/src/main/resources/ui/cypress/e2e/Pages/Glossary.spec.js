@@ -737,7 +737,6 @@ describe('Glossary page should work properly', () => {
     cy.get('[data-testid="saveAssociatedTag"]').should('be.visible').click();
     verifyResponseStatusCode('@countTag', 200);
     cy.get(`[data-testid="tag-${glossary1}.${term3}"]`)
-      .scrollIntoView()
       .should('be.visible')
       .contains(term3);
 
@@ -954,7 +953,7 @@ describe('Glossary page should work properly', () => {
     verifyResponseStatusCode('@entityDetails', 200);
     // redirect to entity detail page
     cy.get('[data-testid="entity-tags"]')
-      .find('[data-testid="edit-button"]')
+      .find('[data-testid="add-tag"]')
       .scrollIntoView()
       .should('be.visible')
       .click();

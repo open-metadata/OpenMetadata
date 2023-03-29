@@ -57,6 +57,7 @@ import {
   getCurrentUserId,
   getEntityMissingError,
   getFeedCounts,
+  sortTagsCaseInsensitive,
 } from '../../utils/CommonUtils';
 import {
   dashboardDetailsTabs,
@@ -249,7 +250,7 @@ const DashboardDetailsPage = () => {
             dashboardUrl,
             serviceType,
             version,
-          } = res;
+          } = { ...res, tags: sortTagsCaseInsensitive(res.tags || []) };
           setDisplayName(displayName || name);
           setDashboardDetails(res);
           setCurrentVersion(version + '');
@@ -405,25 +406,24 @@ const DashboardDetailsPage = () => {
       });
   };
 
-  const onTagUpdate = (updatedDashboard: Dashboard) => {
-    saveUpdatedDashboardData(updatedDashboard)
-      .then((res) => {
-        if (res) {
-          setDashboardDetails(res);
-          setTier(getTierTags(res.tags ?? []));
-          setCurrentVersion(res.version + '');
-          setTags(getTagsWithoutTier(res.tags ?? []));
-          getEntityFeedCount();
-        } else {
-          throw jsonData['api-error-messages']['unexpected-server-response'];
-        }
-      })
-      .catch((err: AxiosError) => {
-        showErrorToast(
-          err,
-          jsonData['api-error-messages']['update-tags-error']
-        );
-      });
+  const onTagUpdate = async (updatedDashboard: Dashboard) => {
+    try {
+      const res = await saveUpdatedDashboardData(updatedDashboard);
+      const sortedData = {
+        ...res,
+        tags: sortTagsCaseInsensitive(res.tags || []),
+      };
+      setDashboardDetails(sortedData);
+      setTier(getTierTags(sortedData.tags ?? []));
+      setCurrentVersion(sortedData.version + '');
+      setTags(getTagsWithoutTier(sortedData.tags ?? []));
+      getEntityFeedCount();
+    } catch (err) {
+      showErrorToast(
+        err as AxiosError,
+        jsonData['api-error-messages']['update-tags-error']
+      );
+    }
   };
 
   const settingsUpdateHandler = (

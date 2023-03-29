@@ -235,7 +235,7 @@ describe('Tags page should work', () => {
 
     cy.get('[data-testid="tag-thread-count"]').should('exist').contains(2);
 
-    cy.get('[data-testid="edit-button"]').should('exist').click();
+    cy.get('[data-testid="add-tag"]').should('exist').click();
 
     // Remove all added tags
     cy.get('.ant-select-selection-item-remove')

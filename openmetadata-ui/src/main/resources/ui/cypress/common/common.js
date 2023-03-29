@@ -538,9 +538,10 @@ export const addNewTagToEntity = (entityObj, term) => {
     .should('be.visible')
     .contains(term);
 
-  cy.get('[data-testid="tag-container"]')
-    .contains('Tags')
+  cy.get('[data-testid="tags"] > [data-testid="add-tag"]')
+    .eq(1)
     .should('be.visible')
+    .scrollIntoView()
     .click();
 
   cy.get('[data-testid="tag-selector"]')
