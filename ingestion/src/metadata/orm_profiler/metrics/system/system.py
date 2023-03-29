@@ -86,12 +86,6 @@ def _(
     """
     logger.info(f"Fetching system metrics for {dialect}")
 
-    region = (
-        f"region-{conn_config.usageLocation}"
-        if conn_config.usageLocation in {"us", "eu"}
-        else conn_config.usageLocation
-    )
-
     jobs = dedent(
         f"""
         SELECT
@@ -100,7 +94,7 @@ def _(
             destination_table,
             dml_statistics
         FROM
-            `{region}`.INFORMATION_SCHEMA.JOBS
+            `region-{conn_config.usageLocation}`.INFORMATION_SCHEMA.JOBS
         WHERE
             DATE(creation_time) = CURRENT_DATE() - 1 AND
             statement_type IN ('INSERT', 'UPDATE', 'INSERT')
