@@ -11,8 +11,9 @@
  *  limitations under the License.
  */
 
+import { CustomEventTypes } from 'generated/analytics/webAnalyticEventData';
 import AccountActivationConfirmation from 'pages/signup/account-activation-confirmation.component';
-import React, { useEffect } from 'react';
+import React, { useCallback, useEffect } from 'react';
 import { Redirect, Route, Switch, useLocation } from 'react-router-dom';
 import { useAnalytics } from 'use-analytics';
 import { ROUTES } from '../../constants/constants';
@@ -85,6 +86,19 @@ const AppRouter = () => {
       analytics.page();
     }
   }, [location.pathname]);
+
+  const handleClickEvent = useCallback((event: MouseEvent) => {
+    const eventValue =
+      (event.target as HTMLElement)?.textContent || CustomEventTypes.Click;
+    analytics.track(eventValue);
+  }, []);
+
+  useEffect(() => {
+    const targetNode = document.body;
+    targetNode.addEventListener('click', handleClickEvent);
+
+    return () => targetNode.removeEventListener('click', handleClickEvent);
+  }, [handleClickEvent]);
 
   if (loading) {
     return <Loader />;
