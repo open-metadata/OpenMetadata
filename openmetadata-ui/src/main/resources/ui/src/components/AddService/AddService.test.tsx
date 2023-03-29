@@ -17,7 +17,7 @@ import { ServiceCategory } from '../../enums/service.enum';
 import AddService from './AddService.component';
 
 jest.mock(
-  '../containers/PageLayout',
+  'components/containers/PageLayoutV1',
   () =>
     ({
       children,
@@ -54,6 +54,14 @@ jest.mock('../IngestionStepper/IngestionStepper.component', () => {
   return jest.fn().mockImplementation(() => <div>IngestionStepper</div>);
 });
 
+jest.mock('./Steps/ServiceRequirements', () => {
+  return jest.fn().mockReturnValue(<div>Service Requirements</div>);
+});
+
+jest.mock('../common/ServiceRightPanel/ServiceRightPanel', () => {
+  return jest.fn().mockReturnValue(<div>Right Panel</div>);
+});
+
 describe('Test AddService component', () => {
   it('AddService component should render', async () => {
     const { container } = render(
@@ -74,7 +82,6 @@ describe('Test AddService component', () => {
         ]}
         onAddIngestionSave={jest.fn()}
         onAddServiceSave={jest.fn()}
-        onAirflowStatusCheck={jest.fn()}
       />
     );
 

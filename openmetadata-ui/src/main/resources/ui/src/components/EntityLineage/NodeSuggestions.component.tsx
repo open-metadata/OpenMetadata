@@ -150,14 +150,14 @@ const NodeSuggestions: FC<EntitySuggestionProps> = ({
         <div
           aria-labelledby="menu-button"
           aria-orientation="vertical"
-          className="suggestion-node-item tw-z-20
-           tw-mt-1 tw-rounded-md tw-shadow-lg
-        tw-bg-white tw-ring-1 tw-ring-black tw-ring-opacity-5 focus:tw-outline-none text-body"
+          className="suggestion-node-item 
+           m-t-xss tw-rounded-md tw-shadow-lg 
+        tw-ring-1 tw-ring-black tw-ring-opacity-5 focus:tw-outline-none"
           role="menu">
           {data.map((entity) => (
             <>
               <div
-                className="w-full d-flex items-center tw-px-2 tw-py-2 tw-text-sm hover:tw-bg-body-hover"
+                className="d-flex items-center p-xs tw-text-sm hover:tw-bg-body-hover"
                 key={entity.fullyQualifiedName}
                 onClick={() => {
                   setIsOpen(false);
@@ -177,14 +177,14 @@ const NodeSuggestions: FC<EntitySuggestionProps> = ({
                 />
                 <div className="flex-1 text-left tw-px-2">
                   {entity.entityType === EntityType.TABLE && (
-                    <p className="d-block text-xs custom-lineage-heading">
+                    <p className="d-block text-xs tw-text-grey-muted">
                       {getSuggestionLabelHeading(
                         entity.fullyQualifiedName,
                         entity.entityType as string
                       )}
                     </p>
                   )}
-                  <p className="">{entity.name}</p>
+                  <p>{entity.name}</p>
                 </div>
               </div>
               <hr className="tw-w-full" />

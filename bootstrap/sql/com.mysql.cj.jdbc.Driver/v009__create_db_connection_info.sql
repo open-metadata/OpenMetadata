@@ -123,3 +123,14 @@ DELETE FROM alert_entity;
 drop table alert_action_def;
 
 ALTER TABLE alert_entity RENAME TO event_subscription_entity;
+-- create data model table
+CREATE TABLE IF NOT EXISTS dashboard_data_model_entity (
+    id VARCHAR(36) GENERATED ALWAYS AS (json ->> '$.id') STORED NOT NULL,
+    fullyQualifiedName VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.fullyQualifiedName') NOT NULL,
+    json JSON NOT NULL,
+    updatedAt BIGINT UNSIGNED GENERATED ALWAYS AS (json ->> '$.updatedAt') NOT NULL,
+    updatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.updatedBy') NOT NULL,
+    deleted BOOLEAN GENERATED ALWAYS AS (json -> '$.deleted'),
+    PRIMARY KEY (id),
+    UNIQUE (fullyQualifiedName)
+);

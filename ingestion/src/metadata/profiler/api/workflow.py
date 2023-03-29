@@ -497,10 +497,18 @@ class ProfilerWorkflow(WorkflowStatusMixin):
                         service_name,
                     ),
                 )
+                if not service:
+                    raise ConnectionError(
+                        f"Could not retrieve service with name `{service_name}`. "
+                        "Typically caused by the `serviceName` does not exists in OpenMetadata "
+                        "or the JWT Token is invalid."
+                    )
                 if service:
                     self.config.source.serviceConnection = ServiceConnection(
                         __root__=service.connection
                     )
+            except ConnectionError as exc:
+                raise exc
             except Exception as exc:
                 logger.debug(traceback.format_exc())
                 logger.error(
@@ -513,4 +521,4 @@ class ProfilerWorkflow(WorkflowStatusMixin):
         self.engine = get_connection(service_config)
 
         test_connection_fn = get_test_connection_fn(service_config)
-        test_connection_fn(self.engine, service_config)
+        test_connection_fn(self.metadata, self.engine, service_config)

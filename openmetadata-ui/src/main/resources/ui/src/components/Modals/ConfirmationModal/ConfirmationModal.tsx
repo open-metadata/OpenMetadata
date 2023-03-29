@@ -70,6 +70,7 @@ const ConfirmationModal = ({
           </Button>
         </div>
       }
+      maskClosable={false}
       open={visible}
       title={
         <Typography.Text
