@@ -25,6 +25,8 @@ interface Props {
   handleUpdateDescriptions: (value: boolean) => void;
   enableDebugLog: boolean;
   handleEnableDebugLogCheck: (value: boolean) => void;
+  includeTags: boolean;
+  handleIncludeTagsClick: (value: boolean) => void;
 }
 
 function DBTCommonFields({
@@ -35,6 +37,8 @@ function DBTCommonFields({
   handleUpdateDBTClassification,
   handleEnableDebugLogCheck,
   enableDebugLog,
+  includeTags,
+  handleIncludeTagsClick,
 }: Props) {
   const { t } = useTranslation();
 
@@ -80,6 +84,26 @@ function DBTCommonFields({
           data-testid="switch-description">
           {t('message.optional-configuration-update-description-dbt')}
         </Typography.Text>
+        {getSeparator('')}
+      </Field>
+
+      <Field>
+        <Space align="end" className="m-b-xs">
+          <label className="tw-form-label m-b-0">
+            {t('label.include-entity', { entity: t('label.tag-plural') })}
+          </label>
+          <Switch
+            checked={includeTags}
+            data-testid="include-tags"
+            onChange={handleIncludeTagsClick}
+          />
+        </Space>
+        <p className="tw-text-grey-muted tw-mt-3">
+          {t('message.include-assets-message', {
+            assets: t('label.tag-plural'),
+          })}
+        </p>
+        {getSeparator('')}
       </Field>
 
       <Field>
