@@ -6,7 +6,7 @@ import json
 import uuid
 from pathlib import Path
 from unittest import TestCase
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 from dbt_artifacts_parser.parser import parse_catalog, parse_manifest, parse_run_results
 from pydantic import AnyUrl
@@ -25,6 +25,7 @@ from metadata.generated.schema.type.tagLabel import (
 )
 from metadata.ingestion.source.database.database_service import DataModelLink
 from metadata.ingestion.source.database.dbt.metadata import DbtSource
+from metadata.utils import tag_utils
 from metadata.utils.dbt_config import DbtFiles, DbtObjects
 
 mock_dbt_config = {
@@ -108,7 +109,7 @@ EXPECTED_DATA_MODELS = [
                 description=None,
                 source="Classification",
                 labelType="Automated",
-                state="Confirmed",
+                state="Suggested",
                 href=None,
             ),
             TagLabel(
@@ -116,7 +117,7 @@ EXPECTED_DATA_MODELS = [
                 description=None,
                 source="Classification",
                 labelType="Automated",
-                state="Confirmed",
+                state="Suggested",
                 href=None,
             ),
         ],
@@ -236,19 +237,19 @@ MOCK_TAG_LABELS = [
     TagLabel(
         tagFQN="dbtTags.tag1",
         labelType=LabelType.Automated,
-        state=State.Confirmed,
+        state=State.Suggested,
         source=TagSource.Classification,
     ),
     TagLabel(
-        tagFQN="dbtTags.tag2name",
+        tagFQN='dbtTags."tag2.name"',
         labelType=LabelType.Automated,
-        state=State.Confirmed,
+        state=State.Suggested,
         source=TagSource.Classification,
     ),
     TagLabel(
         tagFQN="dbtTags.tag3",
         labelType=LabelType.Automated,
-        state=State.Confirmed,
+        state=State.Suggested,
         source=TagSource.Classification,
     ),
 ]
@@ -323,7 +324,13 @@ class DbtUnitTest(TestCase):
         self.assertIsNotNone(self.dbt_source_obj.get_corrected_name(name="dev"))
 
     def test_dbt_get_dbt_tag_labels(self):
-        result = self.dbt_source_obj.get_dbt_tag_labels(["tag1", "tag2.name", "tag3"])
+        mocked_metadata = MagicMock()
+        result = tag_utils.get_tag_labels(
+            metadata=mocked_metadata,
+            classification_name="dbtTags",
+            tags=["tag1", "tag2.name", "tag3"],
+            include_tags=True,
+        )
         self.assertListEqual(result, MOCK_TAG_LABELS)
 
     def test_dbt_get_data_model_path(self):

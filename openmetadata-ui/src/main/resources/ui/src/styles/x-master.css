@@ -1298,3 +1298,10 @@ div.ant-typography-ellipsis-custom {
 svg {
   vertical-align: baseline;
 }
+
+/**
+* Style for Antd Form Item Extra
+*/
+.help-text {
+  box-decoration-break: clone;
+}

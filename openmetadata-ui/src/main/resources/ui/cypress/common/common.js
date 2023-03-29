@@ -151,7 +151,12 @@ export const testServiceCreationAndIngestion = (
   cy.get(`[data-testid="${serviceType}"]`).should('exist').click();
   cy.get('[data-testid="next-button"]').should('exist').click();
 
-  // Enter service name in step 2
+  // Should show requirements in step 2
+
+  cy.get('[data-testid="service-requirements"]').should('exist');
+  cy.get('[data-testid="next-button"]').should('exist').click();
+
+  // Enter service name in step 3
   cy.get('[data-testid="service-name"]').should('exist').type(serviceName);
   interceptURL(
     'GET',
@@ -160,7 +165,8 @@ export const testServiceCreationAndIngestion = (
   );
   cy.get('[data-testid="next-button"]').should('exist').click();
   verifyResponseStatusCode('@getIngestionPipelineStatus', 200);
-  // Connection Details in step 3
+
+  // Connection Details in step 4
   cy.get('[data-testid="add-new-service-container"]')
     .parent()
     .parent()
@@ -212,6 +218,11 @@ export const testServiceCreationAndIngestion = (
     '/api/v1/services/ingestionPipelines/status',
     'getIngestionPipelineStatus'
   );
+  interceptURL(
+    'POST',
+    '/api/v1/services/ingestionPipelines/deploy/*',
+    'deployPipeline'
+  );
   cy.get('[data-testid="submit-btn"]').should('exist').click();
   verifyResponseStatusCode('@getIngestionPipelineStatus', 200);
   // check success
@@ -241,6 +252,8 @@ export const testServiceCreationAndIngestion = (
   cy.get('[data-testid="next-button"]').should('exist').click();
 
   scheduleIngestion();
+
+  verifyResponseStatusCode('@deployPipeline', 200);
 
   cy.contains(`${serviceName}_metadata`).should('be.visible');
   // On the Right panel
@@ -876,10 +889,10 @@ export const updateOwner = () => {
 };
 
 export const mySqlConnectionInput = () => {
-  cy.get('#root_username').type(Cypress.env('mysqlUsername'));
-  cy.get('#root_password').type(Cypress.env('mysqlPassword'));
-  cy.get('#root_hostPort').type(Cypress.env('mysqlHostPort'));
-  cy.get('#root_databaseSchema').type(Cypress.env('mysqlDatabaseSchema'));
+  cy.get('#root\\/username').type(Cypress.env('mysqlUsername'));
+  cy.get('#root\\/password').type(Cypress.env('mysqlPassword'));
+  cy.get('#root\\/hostPort').type(Cypress.env('mysqlHostPort'));
+  cy.get('#root\\/databaseSchema').type(Cypress.env('mysqlDatabaseSchema'));
 };
 
 export const login = (username, password) => {
