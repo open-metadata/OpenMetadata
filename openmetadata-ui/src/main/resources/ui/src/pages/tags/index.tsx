@@ -730,41 +730,60 @@ const TagsPage = () => {
                 }}
               />
 
-              <Button
-                className="p-0 flex-center"
-                data-testid={`rename-${record.name}-tag-button`}
-                disabled={
+              <Tooltip
+                placement="topRight"
+                title={
                   record.provider === ProviderType.System ||
                   !classificationPermissions.EditAll
-                }
-                icon={
-                  <EditNameIcon
-                    data-testid="editTagName"
-                    height={16}
-                    name="editName"
-                    width={16}
-                  />
-                }
-                size="small"
-                type="text"
-                onClick={() => {
-                  setIsRenameTagModal(true);
-                  setEditTag(record);
-                }}
-              />
+                    ? t('message.no-permission-for-action')
+                    : t('label.rename-entity', {
+                        entity: t('label.tag'),
+                      })
+                }>
+                <Button
+                  className="p-0 flex-center"
+                  data-testid={`rename-${record.name}-tag-button`}
+                  disabled={
+                    record.provider === ProviderType.System ||
+                    !classificationPermissions.EditAll
+                  }
+                  icon={
+                    <EditNameIcon
+                      data-testid="editTagName"
+                      height={16}
+                      name="editName"
+                      width={16}
+                    />
+                  }
+                  size="small"
+                  type="text"
+                  onClick={() => {
+                    setIsRenameTagModal(true);
+                    setEditTag(record);
+                  }}
+                />
+              </Tooltip>
 
-              <Button
-                className="p-0 flex-center"
-                data-testid="delete-tag"
-                disabled={
-                  record.provider === ProviderType.System ||
-                  !classificationPermissions.EditAll
-                }
-                icon={getDeleteIcon(deleteTags, record.id)}
-                size="small"
-                type="text"
-                onClick={() => handleActionDeleteTag(record)}
-              />
+              <Tooltip
+                placement="topRight"
+                title={
+                  (record.provider === ProviderType.System ||
+                    !classificationPermissions.EditAll) &&
+                  t('message.no-permission-for-action')
+                }>
+                <Button
+                  className="p-0 flex-center"
+                  data-testid="delete-tag"
+                  disabled={
+                    record.provider === ProviderType.System ||
+                    !classificationPermissions.EditAll
+                  }
+                  icon={getDeleteIcon(deleteTags, record.id)}
+                  size="small"
+                  type="text"
+                  onClick={() => handleActionDeleteTag(record)}
+                />
+              </Tooltip>
             </Space>
           ),
         },
