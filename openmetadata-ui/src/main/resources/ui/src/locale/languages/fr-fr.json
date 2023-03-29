@@ -914,6 +914,7 @@
     "click-text-to-view-details": "Click <0>{{text}}</0> to view details.",
     "closed-this-task": "closed this task",
     "collaborate-with-other-user": "to collaborate with other users.",
+    "confidence-percentage-message": "Entrer le niveau de confiance à utiliser pour le modèle NLP lorsque celui-ci détermine si un champs contain des données IIP.",
     "configure-a-service-description": "Enter a unique service name. The name must be unique across the category of services. For e.g., among database services, both MySQL and Snowflake cannot have the same service name (E.g. customer_data). However, different service categories (dashboard, pipeline) can have the same service name. Spaces are not supported in the service name. Characters like - _ are supported. Also, add a description.",
     "configure-airflow": "To set up metadata extraction through UI, you first need to configure and connect to Airflow. For more details visit our",
     "configure-dbt-model-description": "A dbt model provides transformation logic that creates a table from raw data. Lineage traces the path of data across tables, but a dbt model provides specifics. Select the  required dbt source provider and fill in the mandatory fields. Integrate with dbt from OpenMetadata to view the models used to generate tables.",

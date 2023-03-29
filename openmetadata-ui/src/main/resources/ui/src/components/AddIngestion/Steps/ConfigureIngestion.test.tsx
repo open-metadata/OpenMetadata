@@ -103,6 +103,7 @@ const mockConfigureIngestion: ConfigureIngestionProps = {
     threadCount: 5,
     timeoutSeconds: 43200,
     useFqnFilter: false,
+    confidence: 80,
   } as unknown as AddIngestionState,
 };
 

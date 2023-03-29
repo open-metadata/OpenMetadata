@@ -14,7 +14,6 @@
 package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
-import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.Entity.FIELD_FOLLOWERS;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -35,8 +34,8 @@ import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 public class DashboardRepository extends EntityRepository<Dashboard> {
-  private static final String DASHBOARD_UPDATE_FIELDS = "owner,tags,charts,extension,followers";
-  private static final String DASHBOARD_PATCH_FIELDS = "owner,tags,charts,extension,followers";
+  private static final String DASHBOARD_UPDATE_FIELDS = "owner,tags,charts,extension,followers,dataModels";
+  private static final String DASHBOARD_PATCH_FIELDS = "owner,tags,charts,extension,followers,dataModels";
 
   public DashboardRepository(CollectionDAO dao) {
     super(
@@ -58,7 +57,9 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
   public Dashboard setFields(Dashboard dashboard, Fields fields) throws IOException {
     dashboard.setService(getContainer(dashboard.getId()));
     dashboard.setFollowers(fields.contains(FIELD_FOLLOWERS) ? getFollowers(dashboard) : null);
-    dashboard.setCharts(fields.contains("charts") ? getCharts(dashboard) : null);
+    dashboard.setCharts(fields.contains("charts") ? getRelatedEntities(dashboard, Entity.CHART) : null);
+    dashboard.setDataModels(
+        fields.contains("dataModels") ? getRelatedEntities(dashboard, Entity.DASHBOARD_DATA_MODEL) : null);
     return dashboard.withUsageSummary(
         fields.contains("usageSummary")
             ? EntityUtil.getLatestUsage(daoCollection.usageDAO(), dashboard.getId())
@@ -92,16 +93,20 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
   @Override
   public void prepare(Dashboard dashboard) throws IOException {
     populateService(dashboard);
-    dashboard.setCharts(getCharts(dashboard.getCharts()));
+    dashboard.setCharts(EntityUtil.getEntityReferences(dashboard.getCharts(), Include.NON_DELETED));
+    dashboard.setDataModels(EntityUtil.getEntityReferences(dashboard.getDataModels(), Include.NON_DELETED));
   }
 
   @Override
   public void storeEntity(Dashboard dashboard, boolean update) throws JsonProcessingException {
     // Relationships and fields such as service are not stored as part of json
     EntityReference service = dashboard.getService();
-    dashboard.withService(null);
+    List<EntityReference> charts = dashboard.getCharts();
+    List<EntityReference> dataModels = dashboard.getDataModels();
+
+    dashboard.withService(null).withCharts(null).withDataModels(null);
     store(dashboard, update);
-    dashboard.withService(service);
+    dashboard.withService(service).withCharts(charts).withDataModels(dataModels);
   }
 
   @Override
@@ -114,6 +119,15 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
         addRelationship(dashboard.getId(), chart.getId(), Entity.DASHBOARD, Entity.CHART, Relationship.HAS);
       }
     }
+
+    // Add relationship from dashboard to data models
+    if (dashboard.getDataModels() != null) {
+      for (EntityReference dataModel : dashboard.getDataModels()) {
+        addRelationship(
+            dashboard.getId(), dataModel.getId(), Entity.DASHBOARD, Entity.DASHBOARD_DATA_MODEL, Relationship.HAS);
+      }
+    }
+
     // Add owner relationship
     storeOwner(dashboard, dashboard.getOwner());
 
@@ -126,30 +140,12 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
     return new DashboardUpdater(original, updated, operation);
   }
 
-  private List<EntityReference> getCharts(Dashboard dashboard) throws IOException {
+  private List<EntityReference> getRelatedEntities(Dashboard dashboard, String entityType) throws IOException {
     if (dashboard == null) {
       return Collections.emptyList();
     }
-    List<EntityRelationshipRecord> chartIds =
-        findTo(dashboard.getId(), Entity.DASHBOARD, Relationship.HAS, Entity.CHART);
-    return EntityUtil.populateEntityReferences(chartIds, Entity.CHART);
-  }
-
-  /**
-   * This method is used to populate the dashboard entity with all details of Chart EntityReference Users/Tools can send
-   * minimum details required to set relationship as id, type are the only required fields in entity reference, whereas
-   * we need to send fully populated object such that ElasticSearch index has all the details.
-   */
-  private List<EntityReference> getCharts(List<EntityReference> charts) throws IOException {
-    if (nullOrEmpty(charts)) {
-      return Collections.emptyList();
-    }
-    List<EntityReference> chartRefs = new ArrayList<>();
-    for (EntityReference chart : charts) {
-      EntityReference chartRef = Entity.getEntityReference(chart, Include.NON_DELETED);
-      chartRefs.add(chartRef);
-    }
-    return chartRefs.isEmpty() ? null : chartRefs;
+    List<EntityRelationshipRecord> ids = findTo(dashboard.getId(), Entity.DASHBOARD, Relationship.HAS, entityType);
+    return EntityUtil.populateEntityReferences(ids, entityType);
   }
 
   /** Handles entity updated from PUT and POST operation. */
@@ -160,23 +156,28 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
 
     @Override
     public void entitySpecificUpdate() throws IOException {
-      updateCharts();
+      update(Entity.CHART, "charts", listOrEmpty(updated.getCharts()), listOrEmpty(original.getCharts()));
+      update(
+          Entity.DASHBOARD_DATA_MODEL,
+          "dataModels",
+          listOrEmpty(updated.getDataModels()),
+          listOrEmpty(original.getDataModels()));
     }
 
-    private void updateCharts() throws JsonProcessingException {
-      // Remove all charts associated with this dashboard
-      deleteFrom(updated.getId(), Entity.DASHBOARD, Relationship.HAS, Entity.CHART);
+    private void update(
+        String entityType, String field, List<EntityReference> updEntities, List<EntityReference> oriEntities)
+        throws JsonProcessingException {
+      // Remove all entity type associated with this dashboard
+      deleteFrom(updated.getId(), Entity.DASHBOARD, Relationship.HAS, entityType);
 
-      // Add relationship from dashboard to chart
-      List<EntityReference> updatedCharts = listOrEmpty(updated.getCharts());
-      List<EntityReference> origCharts = listOrEmpty(original.getCharts());
-      for (EntityReference chart : updatedCharts) {
-        addRelationship(updated.getId(), chart.getId(), Entity.DASHBOARD, Entity.CHART, Relationship.HAS);
+      // Add relationship from dashboard to entity type
+      for (EntityReference entity : updEntities) {
+        addRelationship(updated.getId(), entity.getId(), Entity.DASHBOARD, entityType, Relationship.HAS);
       }
 
       List<EntityReference> added = new ArrayList<>();
       List<EntityReference> deleted = new ArrayList<>();
-      recordListChange("charts", origCharts, updatedCharts, added, deleted, EntityUtil.entityReferenceMatch);
+      recordListChange(field, oriEntities, updEntities, added, deleted, EntityUtil.entityReferenceMatch);
     }
   }
 }
