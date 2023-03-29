@@ -59,6 +59,7 @@ const DBTConfigFormBuilder: FunctionComponent<DBTConfigFormProps> = ({
           ...data.dbtConfigSource,
           dbtClassificationName: data.dbtClassificationName,
           dbtUpdateDescriptions: data.dbtUpdateDescriptions,
+          includeTags: data.includeTags,
         },
       }),
       [
@@ -66,6 +67,7 @@ const DBTConfigFormBuilder: FunctionComponent<DBTConfigFormProps> = ({
         data.gcsConfigType,
         data.dbtConfigSourceType,
         data.dbtConfigSource,
+        data.includeTags,
       ]
     );
 
@@ -85,6 +87,10 @@ const DBTConfigFormBuilder: FunctionComponent<DBTConfigFormProps> = ({
     onChange({
       enableDebugLog: value,
     });
+
+  const handleIncludeTagsClick = (val: boolean) => {
+    updateDbtConfig('includeTags', val);
+  };
 
   const getCloudConfigFields = () => {
     return (
@@ -112,12 +118,14 @@ const DBTConfigFormBuilder: FunctionComponent<DBTConfigFormProps> = ({
         }}
         handleDbtCloudUrl={(val) => updateDbtConfig('dbtCloudUrl', val)}
         handleEnableDebugLogCheck={handleEnableDebugLogCheck}
+        handleIncludeTagsClick={handleIncludeTagsClick}
         handleUpdateDBTClassification={(val) => {
           updateDbtConfig('dbtClassificationName', val);
         }}
         handleUpdateDescriptions={(val) => {
           updateDbtConfig('dbtUpdateDescriptions', val);
         }}
+        includeTags={dbtConfig?.includeTags}
         okText={okText}
         onCancel={onCancel}
         onSubmit={onSubmit}
@@ -139,6 +147,7 @@ const DBTConfigFormBuilder: FunctionComponent<DBTConfigFormProps> = ({
           updateDbtConfig('dbtCatalogFilePath', val);
         }}
         handleEnableDebugLogCheck={handleEnableDebugLogCheck}
+        handleIncludeTagsClick={handleIncludeTagsClick}
         handleManifestFilePathChange={(val) => {
           updateDbtConfig('dbtManifestFilePath', val);
         }}
@@ -151,6 +160,7 @@ const DBTConfigFormBuilder: FunctionComponent<DBTConfigFormProps> = ({
         handleUpdateDescriptions={(val) => {
           updateDbtConfig('dbtUpdateDescriptions', val);
         }}
+        includeTags={dbtConfig?.includeTags}
         okText={okText}
         onCancel={onCancel}
         onSubmit={onSubmit}
@@ -172,6 +182,7 @@ const DBTConfigFormBuilder: FunctionComponent<DBTConfigFormProps> = ({
           updateDbtConfig('dbtCatalogHttpPath', val);
         }}
         handleEnableDebugLogCheck={handleEnableDebugLogCheck}
+        handleIncludeTagsClick={handleIncludeTagsClick}
         handleManifestHttpPathChange={(val) => {
           updateDbtConfig('dbtManifestHttpPath', val);
         }}
@@ -184,6 +195,7 @@ const DBTConfigFormBuilder: FunctionComponent<DBTConfigFormProps> = ({
         handleUpdateDescriptions={(val) => {
           updateDbtConfig('dbtUpdateDescriptions', val);
         }}
+        includeTags={dbtConfig?.includeTags}
         okText={okText}
         onCancel={onCancel}
         onSubmit={onSubmit}
@@ -201,6 +213,7 @@ const DBTConfigFormBuilder: FunctionComponent<DBTConfigFormProps> = ({
         dbtUpdateDescriptions={dbtConfig?.dbtUpdateDescriptions}
         enableDebugLog={data.enableDebugLog}
         handleEnableDebugLogCheck={handleEnableDebugLogCheck}
+        handleIncludeTagsClick={handleIncludeTagsClick}
         handlePrefixConfigChange={(val) => {
           updateDbtConfig('dbtPrefixConfig', val);
         }}
@@ -213,6 +226,7 @@ const DBTConfigFormBuilder: FunctionComponent<DBTConfigFormProps> = ({
         handleUpdateDescriptions={(val) => {
           updateDbtConfig('dbtUpdateDescriptions', val);
         }}
+        includeTags={dbtConfig?.includeTags}
         okText={okText}
         onCancel={onCancel}
         onSubmit={onSubmit}
@@ -248,6 +262,7 @@ const DBTConfigFormBuilder: FunctionComponent<DBTConfigFormProps> = ({
         gcsType={gcsConfigType}
         handleEnableDebugLogCheck={handleEnableDebugLogCheck}
         handleGcsTypeChange={handleGcsTypeChange}
+        handleIncludeTagsClick={handleIncludeTagsClick}
         handlePrefixConfigChange={(val) => {
           updateDbtConfig('dbtPrefixConfig', val);
         }}
@@ -260,6 +275,7 @@ const DBTConfigFormBuilder: FunctionComponent<DBTConfigFormProps> = ({
         handleUpdateDescriptions={(val) => {
           updateDbtConfig('dbtUpdateDescriptions', val);
         }}
+        includeTags={dbtConfig?.includeTags}
         okText={okText}
         onCancel={onCancel}
         onSubmit={onSubmit}
