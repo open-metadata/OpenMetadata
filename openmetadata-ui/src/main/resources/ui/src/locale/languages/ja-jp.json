@@ -599,6 +599,7 @@
     "query": "クエリ",
     "query-log-duration": "クエリログの時間",
     "query-lowercase": "クエリ",
+    "query-lowercase-plural": "queries",
     "query-plural": "クエリ",
     "range": "Range",
     "re-deploy": "再デプロイ",

@@ -72,7 +72,7 @@ const QueryUsedByOtherTable = ({
               <Space direction="vertical">
                 {remainingTable.map((table) => (
                   <Link
-                    key={table.name}
+                    key={table.id}
                     to={getTableDetailsPath(table.fullyQualifiedName || '')}>
                     {getEntityName(table)}
                   </Link>
