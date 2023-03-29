@@ -125,7 +125,7 @@ const NavBar = ({
       { value: SearchIndex.PIPELINE, label: t('label.pipeline') },
       { value: SearchIndex.MLMODEL, label: t('label.ml-model') },
       { value: SearchIndex.CONTAINER, label: t('label.container') },
-      { value: SearchIndex.GLOSSARY, label: t('label.glossary-term') },
+      { value: SearchIndex.GLOSSARY, label: t('label.glossary') },
       { value: SearchIndex.TAG, label: t('label.tag') },
     ],
     []
@@ -142,6 +142,7 @@ const NavBar = ({
         defaultActiveFirstOption
         className="global-search-select"
         listHeight={300}
+        popupClassName="global-search-select-menu"
         value={searchCriteria}
         onChange={updateSearchCriteria}>
         {globalSearchOptions.map(({ value, label }) => (
@@ -289,7 +290,7 @@ const NavBar = ({
           to={{
             pathname: ROUTES.TAGS,
           }}>
-          {t('label.tag-plural')}
+          {t('label.classification')}
         </NavLink>
       ),
     },
