@@ -85,6 +85,10 @@ const GlossaryHeaderButtons = ({
       } else {
         history.push(getAddGlossaryTermsPath(glossary));
       }
+    } else {
+      history.push(
+        getAddGlossaryTermsPath(selectedData.fullyQualifiedName ?? '')
+      );
     }
   }, [glossaryFqn]);
 

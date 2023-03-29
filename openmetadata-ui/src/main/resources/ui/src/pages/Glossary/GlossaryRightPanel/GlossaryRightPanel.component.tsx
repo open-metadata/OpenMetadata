@@ -180,7 +180,6 @@ const GlossaryRightPanel = ({
                   data-testid={`reviewer-${reviewer.displayName}`}
                   key={reviewer.name}>
                   <UserTag
-                    bordered
                     id={reviewer.id || ''}
                     key={reviewer.name}
                     name={reviewer?.name || ''}
