@@ -91,21 +91,19 @@ function SummaryListItem({
                       className="w-12 h-12"
                       data-testid="tag-grey-icon"
                     />
-                    <Row wrap>
-                      <TagsViewer
-                        sizeCap={-1}
-                        tags={(entityDetails.tags || []).map((tag) =>
-                          getTagValue(tag)
-                        )}
-                      />
-                    </Row>
+                    <TagsViewer
+                      sizeCap={-1}
+                      tags={(entityDetails.tags || []).map((tag) =>
+                        getTagValue(tag)
+                      )}
+                    />
                   </Space>
                 </Col>
               </>
             )}
           </Row>
         </Col>
-        <Col className="m-t-md" span={24}>
+        <Col span={24}>
           <Paragraph className="text-grey-body">
             {entityDetails.description ? (
               <RichTextEditorPreviewer

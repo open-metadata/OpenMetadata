@@ -60,6 +60,7 @@ import {
   patchClassification,
   patchTag,
 } from 'rest/tagAPI';
+import { getEntityName } from 'utils/EntityUtils';
 import { ReactComponent as PlusIcon } from '../../assets/svg/plus-primary.svg';
 import {
   getExplorePath,
@@ -79,7 +80,6 @@ import {
   getActiveCatClass,
   getCountBadge,
   getEntityDeleteMessage,
-  getEntityName,
   isUrlFriendlyName,
 } from '../../utils/CommonUtils';
 import {
@@ -175,8 +175,8 @@ const TagsPage = () => {
       const tagsResponse = await getTags({
         arrQueryFields: 'usageCount',
         parent: currentClassificationName,
-        after: paging?.after,
-        before: paging?.before,
+        after: paging && paging.after,
+        before: paging && paging.before,
         limit: PAGE_SIZE,
       });
       setTags(tagsResponse.data);
@@ -581,7 +581,7 @@ const TagsPage = () => {
 
     return getExplorePath({
       extraParameters: {
-        postFilter: {
+        facetFilter: {
           [`${type}.tagFQN`]: [tagFQN],
         },
       },
@@ -637,12 +637,20 @@ const TagsPage = () => {
     history.push(getTagPath(category.name));
   };
 
-  const handlePageChange = (after: string | number, activePage?: number) => {
-    if (after) {
-      setCurrentPage(activePage ?? INITIAL_PAGING_VALUE);
-      fetchClassificationChildren(currentClassificationName, paging);
-    }
-  };
+  const handlePageChange = useCallback(
+    (cursorType: string | number, activePage?: number) => {
+      if (cursorType) {
+        const pagination = {
+          [cursorType]: paging[cursorType as keyof Paging] as string,
+          total: paging.total,
+        } as Paging;
+
+        setCurrentPage(activePage ?? INITIAL_PAGING_VALUE);
+        fetchClassificationChildren(currentClassificationName, pagination);
+      }
+    },
+    [fetchClassificationChildren, paging, currentClassificationName]
+  );
 
   // Use the component in the render method
 
@@ -710,88 +718,92 @@ const TagsPage = () => {
     );
   };
 
-  const tableColumn: ColumnsType<Tag> = useMemo(
-    () => [
-      {
-        title: t('label.name'),
-        dataIndex: 'name',
-        key: 'name',
-      },
-      {
-        title: t('label.description'),
-        dataIndex: 'description',
-        key: 'description',
-        render: (text: string, record: Tag) => (
-          <div className="tw-group tableBody-cell">
-            <div className="cursor-pointer d-flex">
-              <div>
-                {text ? (
-                  <RichTextEditorPreviewer markdown={text} />
+  const tableColumn = useMemo(
+    () =>
+      [
+        {
+          title: t('label.name'),
+          dataIndex: 'name',
+          key: 'name',
+          render: (_, record: Tag) => getEntityName(record),
+        },
+        {
+          title: t('label.description'),
+          dataIndex: 'description',
+          key: 'description',
+          render: (text: string, record: Tag) => (
+            <div className="tw-group tableBody-cell">
+              <div className="cursor-pointer d-flex">
+                <div>
+                  {text ? (
+                    <RichTextEditorPreviewer markdown={text} />
+                  ) : (
+                    <span className="tw-no-description">
+                      {t('label.no-entity', {
+                        entity: t('label.description'),
+                      })}
+                    </span>
+                  )}
+                </div>
+
+                {(classificationPermissions.EditDescription ||
+                  classificationPermissions.EditAll) && (
+                  <button
+                    className="tw-self-start tw-w-8 tw-h-auto tw-opacity-0 tw-ml-1 group-hover:tw-opacity-100 focus:tw-outline-none"
+                    onClick={() => {
+                      setIsEditTag(true);
+                      setEditTag(record);
+                    }}>
+                    <SVGIcons
+                      alt="edit"
+                      data-testid="editTagDescription"
+                      icon="icon-edit"
+                      title="Edit"
+                      width="16px"
+                    />
+                  </button>
+                )}
+              </div>
+              <div className="tw-mt-1" data-testid="usage">
+                <span className="tw-text-grey-muted tw-mr-1">
+                  {`${t('label.usage')}:`}
+                </span>
+                {record.usageCount ? (
+                  <Link
+                    className="link-text tw-align-middle"
+                    data-testid="usage-count"
+                    to={getUsageCountLink(record.fullyQualifiedName || '')}>
+                    {record.usageCount}
+                  </Link>
                 ) : (
                   <span className="tw-no-description">
-                    {t('label.no-entity', {
-                      entity: t('label.description'),
-                    })}
+                    {t('label.not-used')}
                   </span>
                 )}
               </div>
-
-              {(classificationPermissions.EditDescription ||
-                classificationPermissions.EditAll) && (
-                <button
-                  className="tw-self-start tw-w-8 tw-h-auto tw-opacity-0 tw-ml-1 group-hover:tw-opacity-100 focus:tw-outline-none"
-                  onClick={() => {
-                    setIsEditTag(true);
-                    setEditTag(record);
-                  }}>
-                  <SVGIcons
-                    alt="edit"
-                    data-testid="editTagDescription"
-                    icon="icon-edit"
-                    title="Edit"
-                    width="16px"
-                  />
-                </button>
-              )}
             </div>
-            <div className="tw-mt-1" data-testid="usage">
-              <span className="tw-text-grey-muted tw-mr-1">
-                {`${t('label.usage')}:`}
-              </span>
-              {record.usageCount ? (
-                <Link
-                  className="link-text tw-align-middle"
-                  data-testid="usage-count"
-                  to={getUsageCountLink(record.fullyQualifiedName || '')}>
-                  {record.usageCount}
-                </Link>
-              ) : (
-                <span className="tw-no-description">{t('label.not-used')}</span>
-              )}
-            </div>
-          </div>
-        ),
-      },
-      {
-        title: t('label.action-plural'),
-        dataIndex: 'actions',
-        key: 'actions',
-        width: 120,
-        align: 'center',
-        render: (_, record: Tag) => (
-          <button
-            className="link-text"
-            data-testid="delete-tag"
-            disabled={
-              record.provider === ProviderType.System ||
-              !classificationPermissions.EditAll
-            }
-            onClick={() => handleActionDeleteTag(record)}>
-            {getDeleteIcon(deleteTags, record.id)}
-          </button>
-        ),
-      },
-    ],
+          ),
+        },
+        {
+          title: t('label.action-plural'),
+          dataIndex: 'actions',
+          key: 'actions',
+          width: 120,
+          align: 'center',
+          render: (_, record: Tag) => (
+            <button
+              className="link-text"
+              data-testid="delete-tag"
+              disabled={
+                record.provider === ProviderType.System ||
+                !classificationPermissions.EditAll
+              }
+              onClick={() => handleActionDeleteTag(record)}>
+              {getDeleteIcon(deleteTags, record.id)}
+            </button>
+          ),
+        },
+      ] as ColumnsType<Tag>,
     [
       currentClassification,
       classificationPermissions,

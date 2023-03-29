@@ -9,7 +9,7 @@
     "ssoServiceType": {
       "description": "Type of database service such as Amundsen, Atlas...",
       "type": "string",
-      "enum": ["google", "okta", "auth0", "custom-oidc", "azure", "basic"]
+      "enum": ["google", "okta", "auth0", "custom-oidc", "azure", "basic", "saml"]
     },
     "authConfig": {
       "description": "The authentication configuration used by the SSO",
@@ -33,6 +33,10 @@
         {
           "description": "Custom OIDC SSO Configuration",
           "$ref": "../security/client/customOidcSSOClientConfig.json"
+        },
+        {
+          "description": "SAML SSO Configuration",
+          "$ref": "../security/client/samlSSOClientConfig.json"
         }
       ]
     }

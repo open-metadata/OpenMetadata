@@ -20,6 +20,7 @@ import React, { FC, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import { updateUser } from 'rest/userAPI';
+import { getEntityName } from 'utils/EntityUtils';
 import { PAGE_SIZE_MEDIUM, ROUTES } from '../../constants/constants';
 import { ADMIN_ONLY_ACTION } from '../../constants/HelperTextUtil';
 import { PAGE_HEADERS } from '../../constants/PageHeaders.constant';
@@ -27,7 +28,6 @@ import { CreateUser } from '../../generated/api/teams/createUser';
 import { User } from '../../generated/entity/teams/user';
 import { Paging } from '../../generated/type/paging';
 import { useAuth } from '../../hooks/authHooks';
-import { getEntityName } from '../../utils/CommonUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import DeleteWidgetModal from '../common/DeleteWidget/DeleteWidgetModal';
@@ -223,7 +223,10 @@ const UserListV1: FC<UserListV1Props> = ({
   }
 
   return (
-    <Row className="user-listing" gutter={[16, 16]}>
+    <Row
+      className="user-listing"
+      data-testid="user-list-v1-component"
+      gutter={[16, 16]}>
       <Col span={12}>
         <PageHeader
           data={isAdminPage ? PAGE_HEADERS.ADMIN : PAGE_HEADERS.USERS}
@@ -275,6 +278,7 @@ const UserListV1: FC<UserListV1Props> = ({
           bordered
           className="user-list-table"
           columns={columns}
+          data-testid="user-list-table"
           dataSource={data}
           loading={{
             spinning: isDataLoading,
@@ -305,6 +309,7 @@ const UserListV1: FC<UserListV1Props> = ({
         className="reactive-modal"
         closable={false}
         confirmLoading={isLoading}
+        maskClosable={false}
         okText={t('label.restore')}
         open={showReactiveModal}
         title={t('label.restore-entity', {

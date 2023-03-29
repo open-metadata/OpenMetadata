@@ -26,8 +26,9 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useHistory } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { restoreDashboard } from 'rest/dashboardAPI';
+import { getEntityName } from 'utils/EntityUtils';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { EntityField } from '../../constants/Feeds.constants';
 import { observerOptions } from '../../constants/Mydata.constants';
@@ -42,7 +43,6 @@ import { LabelType, State, TagLabel } from '../../generated/type/tagLabel';
 import { useInfiniteScroll } from '../../hooks/useInfiniteScroll';
 import {
   getCurrentUserId,
-  getEntityName,
   getEntityPlaceHolder,
   getOwnerValue,
   refreshPage,
@@ -53,7 +53,6 @@ import {
   getGlossaryTermlist,
 } from '../../utils/GlossaryUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
-import { getLineageViewPath } from '../../utils/RouterUtils';
 import SVGIcons from '../../utils/SvgUtils';
 import { getTagsWithoutTier } from '../../utils/TableUtils';
 import { getClassifications, getTaglist } from '../../utils/TagsUtils';
@@ -97,17 +96,9 @@ const DashboardDetails = ({
   charts,
   chartDescriptionUpdateHandler,
   chartTagUpdateHandler,
-  entityLineage,
-  isNodeLoading,
-  lineageLeafNodes,
-  loadNodeHandler,
   versionHandler,
   version,
   deleted,
-  addLineageHandler,
-  removeLineageHandler,
-  entityLineageHandler,
-  isLineageLoading,
   entityThread,
   isentityThreadLoading,
   postFeedHandler,
@@ -123,7 +114,6 @@ const DashboardDetails = ({
   onExtensionUpdate,
 }: DashboardDetailsProps) => {
   const { t } = useTranslation();
-  const history = useHistory();
   const [isEdit, setIsEdit] = useState(false);
   const [followersCount, setFollowersCount] = useState(0);
   const [isFollowing, setIsFollowing] = useState(false);
@@ -270,27 +260,16 @@ const DashboardDetails = ({
     }
   };
 
-  const onOwnerUpdate = (newOwner?: Dashboard['owner']) => {
-    if (newOwner) {
+  const onOwnerUpdate = useCallback(
+    (newOwner?: Dashboard['owner']) => {
       const updatedDashboardDetails = {
         ...dashboardDetails,
-        owner: newOwner
-          ? { ...dashboardDetails.owner, ...newOwner }
-          : dashboardDetails.owner,
+        owner: newOwner ? { ...owner, ...newOwner } : undefined,
       };
       settingsUpdateHandler(updatedDashboardDetails);
-    }
-  };
-
-  const onOwnerRemove = () => {
-    if (dashboardDetails) {
-      const updatedDashboardDetails = {
-        ...dashboardDetails,
-        owner: undefined,
-      };
-      settingsUpdateHandler(updatedDashboardDetails);
-    }
-  };
+    },
+    [owner]
+  );
 
   const onTierUpdate = (newTier?: string) => {
     if (newTier) {
@@ -316,7 +295,7 @@ const DashboardDetails = ({
     if (dashboardDetails) {
       const updatedDashboardDetails = {
         ...dashboardDetails,
-        tags: undefined,
+        tags: getTagsWithoutTier(dashboardDetails.tags ?? []),
       };
       settingsUpdateHandler(updatedDashboardDetails);
     }
@@ -476,10 +455,6 @@ const DashboardDetails = ({
       });
   };
 
-  const handleFullScreenClick = () => {
-    history.push(getLineageViewPath(EntityType.DASHBOARD, dashboardFQN));
-  };
-
   const onThreadLinkSelect = (link: string, threadType?: ThreadType) => {
     setThreadLink(link);
     if (threadType) {
@@ -616,9 +591,7 @@ const DashboardDetails = ({
               data-testid="tags-wrapper"
               onClick={() => handleTagContainerClick(record, index)}>
               {deleted ? (
-                <Space>
-                  <TagsViewer sizeCap={-1} tags={tags || []} />
-                </Space>
+                <TagsViewer sizeCap={-1} tags={tags || []} />
               ) : (
                 <TagsContainer
                   editable={editChartTags?.index === index}
@@ -684,11 +657,6 @@ const DashboardDetails = ({
           isFollowing={isFollowing}
           isTagEditable={
             dashboardPermissions.EditAll || dashboardPermissions.EditTags
-          }
-          removeOwner={
-            dashboardPermissions.EditAll || dashboardPermissions.EditOwner
-              ? onOwnerRemove
-              : undefined
           }
           removeTier={
             dashboardPermissions.EditAll || dashboardPermissions.EditTier
@@ -790,21 +758,11 @@ const DashboardDetails = ({
           {activeTab === 3 && (
             <Card className={`${ENTITY_CARD_CLASS} card-body-full`}>
               <EntityLineageComponent
-                addLineageHandler={addLineageHandler}
-                deleted={deleted}
-                entityLineage={entityLineage}
-                entityLineageHandler={entityLineageHandler}
                 entityType={EntityType.DASHBOARD}
                 hasEditAccess={
                   dashboardPermissions.EditAll ||
                   dashboardPermissions.EditLineage
                 }
-                isLoading={isLineageLoading}
-                isNodeLoading={isNodeLoading}
-                lineageLeafNodes={lineageLeafNodes}
-                loadNodeHandler={loadNodeHandler}
-                removeLineageHandler={removeLineageHandler}
-                onFullScreenClick={handleFullScreenClick}
               />
             </Card>
           )}

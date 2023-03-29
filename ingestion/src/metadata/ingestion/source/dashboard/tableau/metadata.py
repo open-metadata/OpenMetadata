@@ -26,7 +26,6 @@ from metadata.generated.schema.api.classification.createTag import CreateTagRequ
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
-from metadata.generated.schema.entity.classification.tag import Tag
 from metadata.generated.schema.entity.data.chart import Chart
 from metadata.generated.schema.entity.data.dashboard import (
     Dashboard as LineageDashboard,
@@ -42,8 +41,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.generated.schema.type.tagLabel import TagLabel
-from metadata.ingestion.api.source import InvalidSourceException, SourceStatus
+from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
 from metadata.ingestion.source.dashboard.tableau import (
@@ -53,7 +51,7 @@ from metadata.ingestion.source.dashboard.tableau import (
 from metadata.ingestion.source.dashboard.tableau.queries import (
     TABLEAU_LINEAGE_GRAPHQL_QUERY,
 )
-from metadata.utils import fqn
+from metadata.utils import fqn, tag_utils
 from metadata.utils.filters import filter_by_chart
 from metadata.utils.helpers import get_standard_chart_type
 from metadata.utils.logger import ingestion_logger
@@ -91,7 +89,19 @@ class TableauChart(TableauBaseModel):
     workbook_id: str
     sheet_type: str
     view_url_name: str
+    content_url: str
     tags: List[str]
+
+
+class ChartUrl:
+    workbook_name: str
+    sheets: str
+    chart_url_name: str
+
+    def __init__(self, context_url: str) -> None:
+        self.workbook_name, self.sheets, self.chart_url_name = (
+            context_url.split("/") if "/" in context_url else ["", "", ""]
+        )
 
 
 class TableauDashboard(TableauBaseModel):
@@ -113,7 +123,6 @@ class TableauSource(DashboardServiceSource):
 
     config: WorkflowSource
     metadata_config: OpenMetadataConnection
-    status: SourceStatus
 
     def __init__(
         self,
@@ -138,9 +147,9 @@ class TableauSource(DashboardServiceSource):
                 id=workbook["id"],
                 name=workbook["name"],
                 description=workbook.get("description"),
-                tags=[
-                    tag["label"] for tag in workbook.get("tags", {}).get("tag") or []
-                ],
+                tags=[tag["label"] for tag in workbook.get("tags", {}).get("tag") or []]
+                if self.source_config.includeTags
+                else [],
                 owner=TableauOwner(
                     id=workbook.get("owner", {}).get("id"),
                     name=workbook.get("owner", {}).get("name"),
@@ -165,7 +174,10 @@ class TableauSource(DashboardServiceSource):
                 workbook_id=chart["workbook"]["id"],
                 sheet_type=chart["sheetType"],
                 view_url_name=chart["viewUrlName"],
-                tags=[tag["label"] for tag in chart.get("tags", {}).get("tag") or []],
+                tags=[tag["label"] for tag in chart.get("tags", {}).get("tag") or []]
+                if self.source_config.includeTags
+                else [],
+                content_url=chart.get("contentUrl", ""),
             )
             for chart in extract_pages(
                 self.client.query_views_for_site,
@@ -181,9 +193,10 @@ class TableauSource(DashboardServiceSource):
             ]
 
         # Collecting all view & workbook tags
-        for container in [self.workbooks, charts]:
-            for elem in container:
-                self.tags.update(elem.tags)
+        if self.source_config.includeTags:
+            for container in [self.workbooks, charts]:
+                for elem in container:
+                    self.tags.update(elem.tags)
 
         if self.source_config.dbServiceNames:
             try:
@@ -251,52 +264,31 @@ class TableauSource(DashboardServiceSource):
                 return EntityReference(id=user.id.__root__, type="user")
         return None
 
-    def process_owner(
-        self, dashboard_details: TableauDashboard
-    ) -> Optional[LineageDashboard]:
-        owner = self.get_owner_details(dashboard_details=dashboard_details)
-        if owner and self.source_config.overrideOwner:
-            self.metadata.patch_owner(
-                entity=LineageDashboard,
-                entity_id=self.context.dashboard.id,
-                owner=owner,
-                force=True,
-            )
-
     def yield_tag(self, *_, **__) -> OMetaTagAndClassification:
         """
         Fetch Dashboard Tags
         """
-        for tag in self.tags:
-            classification = OMetaTagAndClassification(
-                classification_request=CreateClassificationRequest(
-                    name=TABLEAU_TAG_CATEGORY,
-                    description="Tags associates with tableau entities",
-                ),
-                tag_request=CreateTagRequest(
-                    classification=TABLEAU_TAG_CATEGORY,
-                    name=tag,
-                    description="Tableau Tag",
-                ),
-            )
-            yield classification
-            logger.info(f"Classification {TABLEAU_TAG_CATEGORY}, Tag {tag} Ingested")
-
-    def get_tag_labels(self, tags: List[str]) -> Optional[List[TagLabel]]:
-        return [
-            TagLabel(
-                tagFQN=fqn.build(
-                    self.metadata,
-                    Tag,
-                    classification_name=TABLEAU_TAG_CATEGORY,
-                    tag_name=tag,
-                ),
-                labelType="Automated",
-                state="Suggested",
-                source="Classification",
-            )
-            for tag in tags
-        ]
+        if self.source_config.includeTags:
+            for tag in self.tags:
+                try:
+                    classification = OMetaTagAndClassification(
+                        classification_request=CreateClassificationRequest(
+                            name=TABLEAU_TAG_CATEGORY,
+                            description="Tags associates with tableau entities",
+                        ),
+                        tag_request=CreateTagRequest(
+                            classification=TABLEAU_TAG_CATEGORY,
+                            name=tag,
+                            description="Tableau Tag",
+                        ),
+                    )
+                    yield classification
+                    logger.info(
+                        f"Classification {TABLEAU_TAG_CATEGORY}, Tag {tag} Ingested"
+                    )
+                except Exception as err:
+                    logger.debug(traceback.format_exc())
+                    logger.error(f"Error ingesting tag [{tag}]: {err}")
 
     def yield_dashboard(
         self, dashboard_details: TableauDashboard
@@ -304,24 +296,35 @@ class TableauSource(DashboardServiceSource):
         """
         Method to Get Dashboard Entity
         """
-        workbook_url = urlparse(dashboard_details.webpage_url).fragment
-        yield CreateDashboardRequest(
-            name=dashboard_details.id,
-            displayName=dashboard_details.name,
-            description=dashboard_details.description,
-            charts=[
-                fqn.build(
-                    self.metadata,
-                    entity_type=Chart,
-                    service_name=self.context.dashboard_service.fullyQualifiedName.__root__,
-                    chart_name=chart.name.__root__,
-                )
-                for chart in self.context.charts
-            ],
-            tags=self.get_tag_labels(dashboard_details.tags),
-            dashboardUrl=f"#{workbook_url}",
-            service=self.context.dashboard_service.fullyQualifiedName.__root__,
-        )
+        try:
+            workbook_url = urlparse(dashboard_details.webpage_url).fragment
+            dashboard_request = CreateDashboardRequest(
+                name=dashboard_details.id,
+                displayName=dashboard_details.name,
+                description=dashboard_details.description,
+                charts=[
+                    fqn.build(
+                        self.metadata,
+                        entity_type=Chart,
+                        service_name=self.context.dashboard_service.fullyQualifiedName.__root__,
+                        chart_name=chart.name.__root__,
+                    )
+                    for chart in self.context.charts
+                ],
+                tags=tag_utils.get_tag_labels(
+                    metadata=self.metadata,
+                    tags=dashboard_details.tags,
+                    classification_name=TABLEAU_TAG_CATEGORY,
+                    include_tags=self.source_config.includeTags,
+                ),
+                dashboardUrl=f"#{workbook_url}",
+                service=self.context.dashboard_service.fullyQualifiedName.__root__,
+            )
+            yield dashboard_request
+            self.register_record(dashboard_request=dashboard_request)
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Error to yield dashboard for {dashboard_details}: {exc}")
 
     def yield_dashboard_lineage_details(
         self, dashboard_details: TableauDashboard, db_service_name: str
@@ -387,21 +390,30 @@ class TableauSource(DashboardServiceSource):
                 if filter_by_chart(self.source_config.chartFilterPattern, chart.name):
                     self.status.filter(chart.name, "Chart Pattern not allowed")
                     continue
-                workbook_name = dashboard_details.name.replace(" ", "")
                 site_url = (
                     f"site/{self.service_connection.siteUrl}/"
                     if self.service_connection.siteUrl
                     else ""
                 )
+                workbook_chart_name = ChartUrl(chart.content_url)
+
                 chart_url = (
-                    f"#/{site_url}" f"views/{workbook_name}/" f"{chart.view_url_name}"
+                    f"#{site_url}"
+                    f"views/{workbook_chart_name.workbook_name}/"
+                    f"{workbook_chart_name.chart_url_name}"
                 )
+
                 yield CreateChartRequest(
                     name=chart.id,
                     displayName=chart.name,
                     chartType=get_standard_chart_type(chart.sheet_type),
                     chartUrl=chart_url,
-                    tags=self.get_tag_labels(chart.tags),
+                    tags=tag_utils.get_tag_labels(
+                        metadata=self.metadata,
+                        tags=chart.tags,
+                        classification_name=TABLEAU_TAG_CATEGORY,
+                        include_tags=self.source_config.includeTags,
+                    ),
                     service=self.context.dashboard_service.fullyQualifiedName.__root__,
                 )
                 self.status.scanned(chart.id)

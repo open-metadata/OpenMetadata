@@ -41,12 +41,16 @@ interface Props extends DBTFormCommonProps, DbtConfigS3GCS {
   handlePrefixConfigChange: (value: DBTBucketDetails) => void;
   handleUpdateDescriptions: (value: boolean) => void;
   handleUpdateDBTClassification: (value: string) => void;
+  enableDebugLog: boolean;
+  handleEnableDebugLogCheck: (value: boolean) => void;
+  handleIncludeTagsClick: (value: boolean) => void;
 }
 
 export const DBTS3Config: FunctionComponent<Props> = ({
   dbtSecurityConfig,
   dbtPrefixConfig,
   dbtUpdateDescriptions = false,
+  includeTags = true,
   dbtClassificationName,
   okText,
   cancelText,
@@ -56,6 +60,9 @@ export const DBTS3Config: FunctionComponent<Props> = ({
   handlePrefixConfigChange,
   handleUpdateDescriptions,
   handleUpdateDBTClassification,
+  enableDebugLog,
+  handleEnableDebugLogCheck,
+  handleIncludeTagsClick,
 }: Props) => {
   const updateS3Creds = (key: keyof SCredentials, val: string) => {
     const updatedCreds: SCredentials = {
@@ -93,6 +100,7 @@ export const DBTS3Config: FunctionComponent<Props> = ({
       dbtPrefixConfig,
       dbtUpdateDescriptions,
       dbtClassificationName,
+      includeTags,
     };
     if (validate(submitData)) {
       onSubmit(submitData);
@@ -239,8 +247,12 @@ export const DBTS3Config: FunctionComponent<Props> = ({
         dbtClassificationName={dbtClassificationName}
         dbtUpdateDescriptions={dbtUpdateDescriptions}
         descriptionId="s3-update-description"
+        enableDebugLog={enableDebugLog}
+        handleEnableDebugLogCheck={handleEnableDebugLogCheck}
+        handleIncludeTagsClick={handleIncludeTagsClick}
         handleUpdateDBTClassification={handleUpdateDBTClassification}
         handleUpdateDescriptions={handleUpdateDescriptions}
+        includeTags={includeTags}
       />
 
       {getSeparator('')}

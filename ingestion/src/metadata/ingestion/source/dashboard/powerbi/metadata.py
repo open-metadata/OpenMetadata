@@ -28,7 +28,7 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.ingestion.api.source import InvalidSourceException, SourceStatus
+from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_chart, filter_by_dashboard
@@ -46,14 +46,12 @@ class PowerbiSource(DashboardServiceSource):
 
     config: WorkflowSource
     metadata_config: OpenMetadataConnection
-    status: SourceStatus
 
     def __init__(
         self,
         config: WorkflowSource,
         metadata_config: OpenMetadataConnection,
     ):
-
         super().__init__(config, metadata_config)
         self.pagination_entity_per_page = min(
             100, self.service_connection.pagination_entity_per_page
@@ -91,7 +89,13 @@ class PowerbiSource(DashboardServiceSource):
                     response = self.client.fetch_workspace_scan_result(
                         scan_id=workspace_scan_id
                     )
-                    self.workspace_data.extend(response.get("workspaces"))
+                    self.workspace_data.extend(
+                        [
+                            active_workspace
+                            for active_workspace in response.get("workspaces")
+                            if active_workspace.get("state") == "Active"
+                        ]
+                    )
                 else:
                     logger.error("Error in fetching dashboards and charts")
                 count += 1
@@ -141,7 +145,7 @@ class PowerbiSource(DashboardServiceSource):
         """
         Get List of all dashboards
         """
-        return self.context.workspace.get("dashboards")
+        return self.context.workspace.get("dashboards", [])
 
     def get_dashboard_name(self, dashboard: dict) -> str:
         """
@@ -165,7 +169,7 @@ class PowerbiSource(DashboardServiceSource):
             f"/groups/{self.context.workspace.get('id')}"
             f"/dashboards/{dashboard_details.get('id')}"
         )
-        yield CreateDashboardRequest(
+        dashboard_request = CreateDashboardRequest(
             name=dashboard_details["id"],
             # PBI has no hostPort property. Urls are built manually.
             dashboardUrl=dashboard_url,
@@ -182,6 +186,8 @@ class PowerbiSource(DashboardServiceSource):
             ],
             service=self.context.dashboard_service.fullyQualifiedName.__root__,
         )
+        yield dashboard_request
+        self.register_record(dashboard_request=dashboard_request)
 
     def yield_dashboard_lineage_details(
         self, dashboard_details: dict, db_service_name: str
@@ -268,10 +274,12 @@ class PowerbiSource(DashboardServiceSource):
                     service=self.context.dashboard_service.fullyQualifiedName.__root__,
                 )
                 self.status.scanned(chart_display_name)
-            except Exception as exc:  # pylint: disable=broad-except
+            except Exception as exc:
+                name = chart.get("title")
+                error = f"Error creating chart [{name}]: {exc}"
                 logger.debug(traceback.format_exc())
-                logger.warning(f"Error creating chart [{chart}]: {exc}")
-                self.status.failure(chart.get("id"), repr(exc))
+                logger.warning(error)
+                self.status.failed(name, error, traceback.format_exc())
 
     def fetch_dataset_from_workspace(self, dataset_id: str) -> Optional[dict]:
         """

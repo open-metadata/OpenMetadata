@@ -102,9 +102,9 @@ const UserListPageV1 = () => {
     isAdmin = false,
     isDeleted = false
   ) => {
-    let filters = '';
+    let filters = 'isBot:false';
     if (isAdmin) {
-      filters = '(isAdmin:true)';
+      filters = 'isAdmin:true isBot:false';
     }
 
     return new Promise<Array<User>>((resolve) => {
@@ -219,7 +219,7 @@ const UserListPageV1 = () => {
 
   return (
     <UserListV1
-      afterDeleteAction={handleFetch}
+      afterDeleteAction={() => handleSearch('')}
       currentPage={currentPage}
       data={userList}
       isAdminPage={isAdminPage}

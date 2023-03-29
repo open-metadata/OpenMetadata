@@ -23,6 +23,8 @@ import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
 import javax.ws.rs.core.MediaType;
 import org.openmetadata.api.configuration.ApplicationConfiguration;
+import org.openmetadata.catalog.security.client.SamlSSOClientConfig;
+import org.openmetadata.catalog.type.IdentityProviderConfig;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
@@ -66,6 +68,15 @@ public class ConfigResource {
     AuthenticationConfiguration authenticationConfiguration = new AuthenticationConfiguration();
     if (openMetadataApplicationConfig.getAuthenticationConfiguration() != null) {
       authenticationConfiguration = openMetadataApplicationConfig.getAuthenticationConfiguration();
+      // Remove Ldap Configuration
+      authenticationConfiguration.setLdapConfiguration(null);
+
+      // Remove Saml Fields
+      SamlSSOClientConfig ssoClientConfig = new SamlSSOClientConfig();
+      ssoClientConfig.setIdp(
+          new IdentityProviderConfig()
+              .withAuthorityUrl(authenticationConfiguration.getSamlConfiguration().getIdp().getAuthorityUrl()));
+      authenticationConfiguration.setSamlConfiguration(ssoClientConfig);
     }
     return authenticationConfiguration;
   }

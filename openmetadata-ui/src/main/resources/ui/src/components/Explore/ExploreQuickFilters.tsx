@@ -34,7 +34,7 @@ import {
 import { showErrorToast } from '../../utils/ToastUtils';
 import SearchDropdown from '../SearchDropdown/SearchDropdown';
 import { SearchDropdownOption } from '../SearchDropdown/SearchDropdown.interface';
-import { EntityDetailsType } from './explore.interface';
+import { EntityUnion } from './explore.interface';
 import { ExploreQuickFiltersProps } from './ExploreQuickFilters.interface';
 
 const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
@@ -100,7 +100,7 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
 
           const formattedSuggestions = suggestOptions.map((op) => ({
             text: op.text,
-            source: op._source as EntityDetailsType,
+            source: op._source as EntityUnion,
           }));
 
           const optionsArray = getOptionsObject(key, formattedSuggestions);

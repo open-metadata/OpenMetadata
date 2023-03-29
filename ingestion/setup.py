@@ -29,11 +29,11 @@ def get_long_description():
 # Add here versions required for multiple plugins
 VERSIONS = {
     "airflow": "apache-airflow==2.3.3",
-    "avro-python3": "avro-python3~=1.10",
+    "avro": "avro~=1.11",
     "boto3": "boto3>=1.20,<2.0",  # No need to add botocore separately. It's a dep from boto3
     "geoalchemy2": "GeoAlchemy2~=0.12",
     "google-cloud-storage": "google-cloud-storage==1.43.0",
-    "great-expectations": "great-expectations~=0.15.0",
+    "great-expectations": "great-expectations~=0.16.0",
     "grpc-tools": "grpcio-tools>=1.47.2",
     "msal": "msal~=1.2",
     "neo4j": "neo4j~=5.3.0",
@@ -52,8 +52,7 @@ COMMONS = {
         "pyhive~=0.6",
     },
     "kafka": {
-        "avro~=1.11",
-        VERSIONS["avro-python3"],
+        VERSIONS["avro"],
         "confluent_kafka==1.8.2",
         "fastavro>=1.2.0",
         # Due to https://github.com/grpc/grpc/issues/30843#issuecomment-1303816925
@@ -78,7 +77,7 @@ pii_requirements = {
 
 base_requirements = {
     "antlr4-python3-runtime==4.9.2",
-    VERSIONS["avro-python3"],  # Used in sample data
+    VERSIONS["avro"],  # Used in sample data
     VERSIONS["boto3"],  # Required in base for the secrets manager
     "cached-property==1.5.2",
     "chardet==4.0.0",
@@ -104,6 +103,7 @@ base_requirements = {
     "setuptools~=65.6.3",
     "sqlalchemy>=1.4.0,<2",
     "openmetadata-sqllineage==1.0.2",
+    "tabulate==0.9.0",
     "typing-compat~=0.1.0",  # compatibility requirements for 3.7
     "typing-inspect",
     "wheel~=0.38.4",
@@ -180,7 +180,7 @@ plugins: Dict[str, Set[str]] = {
     "kinesis": {VERSIONS["boto3"]},
     "ldap-users": {"ldap3==2.9.1"},
     "looker": {"looker-sdk>=22.20.0"},
-    "mlflow": {"mlflow-skinny~=1.30"},
+    "mlflow": {"mlflow-skinny~=1.30", "alembic~=1.10.2"},
     "mssql": {"sqlalchemy-pytds~=0.3"},
     "mssql-odbc": {VERSIONS["pyodbc"]},
     "mysql": {VERSIONS["pymysql"]},
@@ -193,7 +193,7 @@ plugins: Dict[str, Set[str]] = {
     "presto": {*COMMONS["hive"]},
     "pymssql": {"pymssql==2.2.5"},
     "quicksight": {VERSIONS["boto3"]},
-    "redash": {"redash-toolbelt~=0.1"},
+    "redash": {"packaging==21.3"},
     "redpanda": {*COMMONS["kafka"]},
     "redshift": {
         "sqlalchemy-redshift~=0.8",

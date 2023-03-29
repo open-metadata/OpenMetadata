@@ -267,7 +267,9 @@ const KPIChart: FC<Props> = ({ chartFilter, kpiList }) => {
               )}
             </>
           ) : (
-            <EmptyGraphPlaceholder />
+            <Col className="justify-center" span={24}>
+              <EmptyGraphPlaceholder />
+            </Col>
           )}
         </Row>
       ) : (

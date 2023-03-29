@@ -21,6 +21,7 @@ import {
   Switch,
   Typography,
 } from 'antd';
+import { ReactComponent as IconTeamsGrey } from 'assets/svg/teams-grey.svg';
 import { AxiosError } from 'axios';
 import { capitalize, isEmpty, isEqual, toLower } from 'lodash';
 import { observer } from 'mobx-react';
@@ -37,6 +38,7 @@ import { useHistory, useLocation } from 'react-router-dom';
 import { changePassword } from 'rest/auth-API';
 import { getRoles } from 'rest/rolesAPIV1';
 import { getTeams } from 'rest/teamsAPI';
+import { getEntityName } from 'utils/EntityUtils';
 import {
   getUserPath,
   PAGE_SIZE,
@@ -63,7 +65,6 @@ import { Paging } from '../../generated/type/paging';
 import { useInfiniteScroll } from '../../hooks/useInfiniteScroll';
 import jsonData from '../../jsons/en';
 import {
-  getEntityName,
   getNonDeletedTeams,
   getTierFromEntityInfo,
 } from '../../utils/CommonUtils';
@@ -409,7 +410,7 @@ const Users = ({
             className="tw-mb-2 tw-flex tw-items-center tw-gap-2"
             data-testid={team.name}
             key={i}>
-            <SVGIcons alt="icon" className="tw-w-4" icon={Icons.TEAMS_GREY} />
+            <IconTeamsGrey height={16} width={16} />
             <Typography.Text
               className="ant-typography-ellipsis-custom w-48"
               ellipsis={{ tooltip: true }}>

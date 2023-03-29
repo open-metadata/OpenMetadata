@@ -30,7 +30,6 @@ import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.csv.EntityCsvTest.assertSummary;
 import static org.openmetadata.schema.type.MetadataOperation.EDIT_ALL;
 import static org.openmetadata.schema.type.MetadataOperation.EDIT_TESTS;
-import static org.openmetadata.schema.type.MetadataOperation.VIEW_ALL;
 import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
 import static org.openmetadata.service.Entity.FIELD_DELETED;
 import static org.openmetadata.service.Entity.FIELD_EXTENSION;
@@ -40,7 +39,6 @@ import static org.openmetadata.service.Entity.FIELD_TAGS;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.ENTITY_ALREADY_EXISTS;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.entityIsNotEmpty;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.entityNotFound;
-import static org.openmetadata.service.exception.CatalogExceptionMessage.permissionDenied;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.permissionNotAllowed;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.readOnlyAttribute;
 import static org.openmetadata.service.security.SecurityUtil.authHeaders;
@@ -153,12 +151,13 @@ import org.openmetadata.service.resources.databases.TableResourceTest;
 import org.openmetadata.service.resources.dqtests.TestCaseResourceTest;
 import org.openmetadata.service.resources.dqtests.TestDefinitionResourceTest;
 import org.openmetadata.service.resources.dqtests.TestSuiteResourceTest;
-import org.openmetadata.service.resources.events.AlertResourceTest;
-import org.openmetadata.service.resources.events.EventResource.ChangeEventList;
+import org.openmetadata.service.resources.events.EventResource.EventList;
+import org.openmetadata.service.resources.events.EventSubscriptionResourceTest;
 import org.openmetadata.service.resources.glossary.GlossaryResourceTest;
 import org.openmetadata.service.resources.kpi.KpiResourceTest;
 import org.openmetadata.service.resources.metadata.TypeResourceTest;
 import org.openmetadata.service.resources.policies.PolicyResourceTest;
+import org.openmetadata.service.resources.query.QueryResourceTest;
 import org.openmetadata.service.resources.services.DashboardServiceResourceTest;
 import org.openmetadata.service.resources.services.DatabaseServiceResourceTest;
 import org.openmetadata.service.resources.services.MessagingServiceResourceTest;
@@ -378,11 +377,12 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     new TypeResourceTest().setupTypes();
     new KpiResourceTest().setupKpi();
     new BotResourceTest().setupBots();
+    new QueryResourceTest().setupQuery(test);
 
     runWebhookTests = new Random().nextBoolean();
     if (runWebhookTests) {
       webhookCallbackResource.clearEvents();
-      AlertResourceTest alertResourceTest = new AlertResourceTest();
+      EventSubscriptionResourceTest alertResourceTest = new EventSubscriptionResourceTest();
       alertResourceTest.startWebhookSubscription(true);
       alertResourceTest.startWebhookEntitySubscriptions(entityType);
     }
@@ -391,7 +391,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   @AfterAll
   public void afterAllTests() throws Exception {
     if (runWebhookTests) {
-      AlertResourceTest alertResourceTest = new AlertResourceTest();
+      EventSubscriptionResourceTest alertResourceTest = new EventSubscriptionResourceTest();
       alertResourceTest.validateWebhookEvents();
       alertResourceTest.validateWebhookEntityEvents(entityType);
     }
@@ -562,12 +562,12 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
     // Test listing entities that include deleted, non-deleted, and all the entities
     Random random = new Random();
-    for (String include : List.of("non-deleted", "all", "deleted")) {
-      if (!supportsSoftDelete && include.equals("deleted")) {
+    for (Include include : List.of(Include.NON_DELETED, Include.ALL, Include.DELETED)) {
+      if (!supportsSoftDelete && include.equals(Include.DELETED)) {
         continue;
       }
       Map<String, String> queryParams = new HashMap<>();
-      queryParams.put("include", include);
+      queryParams.put("include", include.value());
 
       // List all entities and use it for checking pagination
       ResultList<T> allEntities = listEntities(queryParams, 1000000, null, null, ADMIN_AUTH_HEADERS);
@@ -605,7 +605,8 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
           pageCount++;
         } while (after != null);
 
-        if ("all".equals(include) || "deleted".equals(include)) {
+        boolean includeAllOrDeleted = Include.ALL.equals(include) || Include.DELETED.equals(include);
+        if (includeAllOrDeleted) {
           assertTrue(!supportsSoftDelete || foundDeleted);
         } else { // non-delete
           assertFalse(foundDeleted);
@@ -626,7 +627,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
           indexInAllTables -= forwardPage.getData().size();
         } while (before != null);
 
-        if ("all".equals(include) || "deleted".equals(include)) {
+        if (includeAllOrDeleted) {
           assertTrue(!supportsSoftDelete || foundDeleted);
         } else { // non-delete
           assertFalse(foundDeleted);
@@ -634,7 +635,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       }
 
       // before running "deleted" delete all created entries otherwise the test doesn't work with just one element.
-      if ("all".equals(include)) {
+      if (Include.ALL.equals(include)) {
         for (T toBeDeleted : allEntities.getData()) {
           if (createdUUIDs.contains(toBeDeleted.getId()) && Boolean.FALSE.equals(toBeDeleted.getDeleted())) {
             deleteAndCheckEntity(toBeDeleted, ADMIN_AUTH_HEADERS);
@@ -651,7 +652,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     if (container != null) {
       // List both deleted and non deleted entities
       Map<String, String> queryParams = new HashMap<>();
-      queryParams.put("include", "all");
+      queryParams.put("include", Include.ALL.value());
       ResultList<T> listBeforeDeletion = listEntities(queryParams, 1000, null, null, ADMIN_AUTH_HEADERS);
 
       // Delete non-empty container entity and ensure deletion is not allowed
@@ -796,8 +797,8 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
     // Ensure entity is returned in GET with include param set to deleted || all
     Map<String, String> queryParams = new HashMap<>();
-    for (String include : List.of("deleted", "all")) {
-      queryParams.put("include", include);
+    for (Include include : List.of(Include.DELETED, Include.ALL)) {
+      queryParams.put("include", include.value());
       T entityAfterDeletion = getEntity(entity.getId(), queryParams, allFields, ADMIN_AUTH_HEADERS);
       validateDeletedEntity(create, entityBeforeDeletion, entityAfterDeletion, ADMIN_AUTH_HEADERS);
       entityAfterDeletion = getEntityByName(entity.getFullyQualifiedName(), queryParams, allFields, ADMIN_AUTH_HEADERS);
@@ -924,7 +925,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   @Execution(ExecutionMode.CONCURRENT)
   protected void post_delete_entity_as_bot(TestInfo test) throws IOException {
     // Ingestion bot can create and delete all the entities except websocket and bot
-    if (List.of(Entity.ALERT, Entity.ALERT_ACTION, Entity.BOT).contains(entityType)) {
+    if (List.of(Entity.EVENT_SUBSCRIPTION, Entity.BOT).contains(entityType)) {
       return;
     }
     // Delete by ID
@@ -957,7 +958,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
   @Test
   @Execution(ExecutionMode.CONCURRENT)
-  void post_entityWithDots_200() throws HttpResponseException {
+  protected void post_entityWithDots_200() throws HttpResponseException {
     if (!supportedNameCharacters.contains(".")) { // Name does not support dot
       return;
     }
@@ -1247,10 +1248,13 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
     deleteEntity(entityId, ADMIN_AUTH_HEADERS);
 
-    Map<String, String> queryParams = new HashMap<>();
-    queryParams.put("include", "deleted");
-    entity = getEntity(entityId, queryParams, FIELD_FOLLOWERS, ADMIN_AUTH_HEADERS);
-    TestUtils.existsInEntityReferenceList(entity.getFollowers(), user1.getId(), true);
+    // in case of only soft delete
+    if (supportsSoftDelete) {
+      Map<String, String> queryParams = new HashMap<>();
+      queryParams.put("include", "deleted");
+      entity = getEntity(entityId, queryParams, FIELD_FOLLOWERS, ADMIN_AUTH_HEADERS);
+      TestUtils.existsInEntityReferenceList(entity.getFollowers(), user1.getId(), true);
+    }
   }
 
   @Test
@@ -1608,61 +1612,6 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
         () -> getChangeEvents(entityType, null, "invalidEntity", System.currentTimeMillis(), ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
         "Invalid entity invalidEntity in query param entityDeleted");
-  }
-
-  @Test
-  @Execution(ExecutionMode.CONCURRENT)
-  protected void testTeamOnlyPolicy(TestInfo test) throws HttpResponseException {
-    testTeamOnlyPolicy(test, VIEW_ALL);
-  }
-
-  protected void testTeamOnlyPolicy(TestInfo test, MetadataOperation disallowedOperation) throws HttpResponseException {
-    if (!supportsOwner) {
-      return;
-    }
-    // TEAM2 allows operations on its entities to users only with in that team due to team only policy attached to it
-    // Create an entity owned by TEAM21
-    K createRequest = createRequest("teamOnlyPolicyTest", "", "", TEAM21.getEntityReference());
-    T entity = createEntity(createRequest, ADMIN_AUTH_HEADERS);
-    UserResourceTest userResourceTest = new UserResourceTest();
-    User userInTeam21 =
-        userResourceTest.createEntity(
-            userResourceTest.createRequest(test, 21).withTeams(List.of(TEAM21.getId())), ADMIN_AUTH_HEADERS);
-    User userInTeam2 =
-        userResourceTest.createEntity(
-            userResourceTest.createRequest(test, 2).withTeams(List.of(TEAM2.getId())), ADMIN_AUTH_HEADERS);
-    User userInTeam11 =
-        userResourceTest.createEntity(
-            userResourceTest.createRequest(test, 11).withTeams(List.of(TEAM11.getId())), ADMIN_AUTH_HEADERS);
-    User userInTeam1 =
-        userResourceTest.createEntity(
-            userResourceTest.createRequest(test, 1).withTeams(List.of(TEAM1.getId())), ADMIN_AUTH_HEADERS);
-
-    // users in team21 and team2 have all the operations allowed
-    T getEntity = getEntity(entity.getId(), authHeaders(userInTeam21.getName()));
-    assertEquals(getEntity.getId(), entity.getId());
-    getEntity = getEntity(entity.getId(), authHeaders(userInTeam2.getName()));
-    assertEquals(getEntity.getId(), entity.getId());
-
-    // users in team11 and team12 have all the operations denied due to Team2 team only policy
-    assertResponse(
-        () -> getEntity(entity.getId(), authHeaders(userInTeam11.getName())),
-        FORBIDDEN,
-        permissionDenied(
-            userInTeam11.getName(),
-            disallowedOperation,
-            null,
-            TEAM_ONLY_POLICY.getName(),
-            TEAM_ONLY_POLICY_RULES.get(0).getName()));
-    assertResponse(
-        () -> getEntity(entity.getId(), authHeaders(userInTeam1.getName())),
-        FORBIDDEN,
-        permissionDenied(
-            userInTeam1.getName(),
-            disallowedOperation,
-            null,
-            TEAM_ONLY_POLICY.getName(),
-            TEAM_ONLY_POLICY_RULES.get(0).getName()));
   }
 
   @Test
@@ -2165,7 +2114,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     target = entityUpdated == null ? target : target.queryParam("entityUpdated", entityUpdated);
     target = entityDeleted == null ? target : target.queryParam("entityDeleted", entityDeleted);
     target = target.queryParam("timestamp", timestamp);
-    return TestUtils.get(target, ChangeEventList.class, authHeaders);
+    return TestUtils.get(target, EventList.class, authHeaders);
   }
 
   protected T getVersion(UUID id, Double version, Map<String, String> authHeaders) throws HttpResponseException {
@@ -2338,7 +2287,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
   public void assertEntityDeleted(T entity, boolean hardDelete) {
     Map<String, String> queryParams = new HashMap<>();
-    queryParams.put("include", hardDelete ? "all" : "non-deleted");
+    queryParams.put("include", hardDelete ? Include.ALL.value() : Include.NON_DELETED.value());
 
     // Make sure getting entity by ID get 404 not found response
     assertEntityDeleted(entity.getId(), hardDelete);
@@ -2352,7 +2301,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
   public void assertEntityDeleted(UUID id, boolean hardDelete) {
     Map<String, String> queryParams = new HashMap<>();
-    queryParams.put("include", hardDelete ? "all" : "non-deleted");
+    queryParams.put("include", hardDelete ? Include.ALL.value() : Include.NON_DELETED.value());
     assertResponse(() -> getEntity(id, queryParams, "", ADMIN_AUTH_HEADERS), NOT_FOUND, entityNotFound(entityType, id));
   }
 

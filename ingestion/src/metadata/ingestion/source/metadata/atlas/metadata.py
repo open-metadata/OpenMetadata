@@ -49,10 +49,10 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.generated.schema.type.entityLineage import EntitiesEdge
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.tagLabel import TagLabel
-from metadata.ingestion.api.source import InvalidSourceException, Source, SourceStatus
+from metadata.ingestion.api.source import InvalidSourceException, Source
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.connections import get_connection
+from metadata.ingestion.source.connections import get_connection, get_test_connection_fn
 from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
 from metadata.ingestion.source.metadata.atlas.client import AtlasClient
 from metadata.utils import fqn
@@ -65,17 +65,6 @@ ATLAS_TAG_CATEGORY = "AtlasMetadata"
 ATLAS_TABLE_TAG = "atlas_table"
 
 
-class AtlasSourceStatus(SourceStatus):
-    tables_scanned: List[str] = []
-    filtered: List[str] = []
-
-    def table_scanned(self, table: str) -> None:
-        self.tables_scanned.append(table)
-
-    def dropped(self, topic: str) -> None:
-        self.filtered.append(topic)
-
-
 @dataclass
 class AtlasSource(Source):
     """
@@ -84,7 +73,6 @@ class AtlasSource(Source):
 
     config: WorkflowSource
     atlas_client: AtlasClient
-    status: AtlasSourceStatus
     tables: Dict[str, Any]
     topics: Dict[str, Any]
 
@@ -93,13 +81,14 @@ class AtlasSource(Source):
         config: WorkflowSource,
         metadata_config: OpenMetadataConnection,
     ):
+        super().__init__()
         self.config = config
         self.metadata_config = metadata_config
         self.metadata = OpenMetadata(metadata_config)
         self.service_connection = self.config.serviceConnection.__root__.config
-        self.status = AtlasSourceStatus()
 
         self.atlas_client = get_connection(self.service_connection)
+        self.connection_obj = self.atlas_client
         self.tables: Dict[str, Any] = {}
         self.topics: Dict[str, Any] = {}
 
@@ -111,6 +100,7 @@ class AtlasSource(Source):
             },
             "Topic": {"Topic": {"schema": "schema"}},
         }
+        self.test_connection()
 
     @classmethod
     def create(cls, config_dict, metadata_config: OpenMetadataConnection):
@@ -165,9 +155,6 @@ class AtlasSource(Source):
         """
         Not required to implement
         """
-
-    def get_status(self) -> SourceStatus:
-        return self.status
 
     def _parse_topic_entity(self, name):
         for key in self.topics:
@@ -474,4 +461,5 @@ class AtlasSource(Source):
         return None
 
     def test_connection(self) -> None:
-        pass
+        test_connection_fn = get_test_connection_fn(self.service_connection)
+        test_connection_fn(self.metadata, self.connection_obj, self.service_connection)

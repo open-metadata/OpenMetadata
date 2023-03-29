@@ -46,6 +46,7 @@ import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Field;
 import org.openmetadata.schema.type.FieldChange;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.MlFeature;
 import org.openmetadata.schema.type.MlHyperParameter;
@@ -213,15 +214,15 @@ public final class EntityUtil {
     return details;
   }
 
-  /** Merge derivedTags into tags, if it already does not exist in tags */
-  public static void mergeTags(List<TagLabel> tags, List<TagLabel> derivedTags) {
-    if (nullOrEmpty(derivedTags)) {
+  /** Merge two sets of tags */
+  public static void mergeTags(List<TagLabel> mergeTo, List<TagLabel> mergeFrom) {
+    if (nullOrEmpty(mergeFrom)) {
       return;
     }
-    for (TagLabel derivedTag : derivedTags) {
-      TagLabel tag = tags.stream().filter(t -> tagLabelMatch.test(t, derivedTag)).findAny().orElse(null);
-      if (tag == null) { // Derived tag does not exist in the list. Add it.
-        tags.add(derivedTag);
+    for (TagLabel fromTag : mergeFrom) {
+      TagLabel tag = mergeTo.stream().filter(t -> tagLabelMatch.test(t, fromTag)).findAny().orElse(null);
+      if (tag == null) { // The tag does not exist in the mergeTo list. Add it.
+        mergeTo.add(fromTag);
       }
     }
   }
@@ -328,10 +329,11 @@ public final class EntityUtil {
   }
 
   /** Return column field name of format "columns".columnName.columnFieldName */
-  public static String getColumnField(Table table, Column column, String columnField) {
+  public static <T extends EntityInterface> String getColumnField(
+      T entityWithColumns, Column column, String columnField) {
     // Remove table FQN from column FQN to get the local name
     String localColumnName =
-        EntityUtil.getLocalColumnName(table.getFullyQualifiedName(), column.getFullyQualifiedName());
+        EntityUtil.getLocalColumnName(entityWithColumns.getFullyQualifiedName(), column.getFullyQualifiedName());
     return columnField == null
         ? FullyQualifiedName.build("columns", localColumnName)
         : FullyQualifiedName.build("columns", localColumnName, columnField);
@@ -484,5 +486,23 @@ public final class EntityUtil {
     // Note - before calling this method - fullyQualifiedName should set up for the tags
     // Sort tags by tag hierarchy. Tags with parents null come first, followed by tags with
     tags.sort(Comparator.comparing(Tag::getFullyQualifiedName));
+  }
+
+  /**
+   * This method is used to populate the entity with all details of EntityReference Users/Tools can send minimum details
+   * required to set relationship as id, type are the only required fields in entity reference, whereas we need to send
+   * fully populated object such that ElasticSearch index has all the details.
+   */
+  public static List<EntityReference> getEntityReferences(List<EntityReference> entities, Include include)
+      throws IOException {
+    if (nullOrEmpty(entities)) {
+      return Collections.emptyList();
+    }
+    List<EntityReference> refs = new ArrayList<>();
+    for (EntityReference entityReference : entities) {
+      EntityReference entityRef = Entity.getEntityReference(entityReference, include);
+      refs.add(entityRef);
+    }
+    return refs;
   }
 }

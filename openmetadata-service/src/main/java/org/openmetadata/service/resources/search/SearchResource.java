@@ -89,7 +89,9 @@ public class SearchResource {
   private static final String NAME_KEYWORD = "name.keyword";
   private static final String DISPLAY_NAME = "displayName";
   private static final String DISPLAY_NAME_KEYWORD = "displayName.keyword";
-  public static final String FIELD_DISPLAY_NAME_NGRAM = "displayName.ngram";
+  private static final String FIELD_DISPLAY_NAME_NGRAM = "displayName.ngram";
+  private static final String QUERY = "query";
+  private static final String QUERY_NGRAM = "query.ngram";
   private static final String DESCRIPTION = "description";
   private static final String UNIFIED = "unified";
 
@@ -225,6 +227,12 @@ public class SearchResource {
         break;
       case "tag_search_index":
         searchSourceBuilder = buildTagSearchBuilder(query, from, size);
+        break;
+      case "container_search_index":
+        searchSourceBuilder = buildContainerSearchBuilder(query, from, size);
+        break;
+      case "query_search_index":
+        searchSourceBuilder = buildQuerySearchBuilder(query, from, size);
         break;
       default:
         searchSourceBuilder = buildAggregateSearchBuilder(query, from, size);
@@ -563,6 +571,71 @@ public class SearchResource {
     hb.field(highlightTaskDescriptions);
     SearchSourceBuilder searchSourceBuilder = searchBuilder(queryBuilder, hb, from, size);
     return addAggregation(searchSourceBuilder);
+  }
+
+  private SearchSourceBuilder buildContainerSearchBuilder(String query, int from, int size) {
+    QueryStringQueryBuilder queryBuilder =
+        QueryBuilders.queryStringQuery(query)
+            .field(FIELD_DISPLAY_NAME, 15.0f)
+            .field(FIELD_DISPLAY_NAME_NGRAM)
+            .field(FIELD_NAME, 15.0f)
+            .field(FIELD_DESCRIPTION, 1.0f)
+            .field("dataModel.columns.name", 2.0f)
+            .field("dataModel.columns.name.ngram")
+            .field("dataModel.columns.displayName", 2.0f)
+            .field("dataModel.columns.displayName.ngram")
+            .field("dataModel.columns.description", 1.0f)
+            .field("dataModel.columns.children.name", 2.0f)
+            .defaultOperator(Operator.AND)
+            .fuzziness(Fuzziness.AUTO);
+    HighlightBuilder.Field highlightContainerName = new HighlightBuilder.Field(FIELD_DISPLAY_NAME);
+    highlightContainerName.highlighterType(UNIFIED);
+    HighlightBuilder.Field highlightDescription = new HighlightBuilder.Field(DESCRIPTION);
+    highlightDescription.highlighterType(UNIFIED);
+    HighlightBuilder hb = new HighlightBuilder();
+    HighlightBuilder.Field highlightColumns = new HighlightBuilder.Field("dataModel.columns.name");
+    highlightColumns.highlighterType(UNIFIED);
+    HighlightBuilder.Field highlightColumnDescriptions = new HighlightBuilder.Field("dataModel.columns.description");
+    highlightColumnDescriptions.highlighterType(UNIFIED);
+    HighlightBuilder.Field highlightColumnChildren = new HighlightBuilder.Field("dataModel.columns.children.name");
+    highlightColumnDescriptions.highlighterType(UNIFIED);
+    hb.field(highlightDescription);
+    hb.field(highlightContainerName);
+    hb.field(highlightColumns);
+    hb.field(highlightColumnDescriptions);
+    hb.field(highlightColumnChildren);
+    hb.preTags("<span class=\"text-highlighter\">");
+    hb.postTags("</span>");
+    SearchSourceBuilder searchSourceBuilder =
+        new SearchSourceBuilder().query(queryBuilder).highlighter(hb).from(from).size(size);
+    return addAggregation(searchSourceBuilder);
+  }
+
+  private SearchSourceBuilder buildQuerySearchBuilder(String query, int from, int size) {
+    QueryStringQueryBuilder queryBuilder =
+        QueryBuilders.queryStringQuery(query)
+            .field(DISPLAY_NAME, 10.0f)
+            .field(FIELD_DISPLAY_NAME_NGRAM)
+            .field(QUERY, 10.0f)
+            .field(QUERY_NGRAM, 10.0f)
+            .field(DESCRIPTION, 3.0f)
+            .defaultOperator(Operator.AND)
+            .fuzziness(Fuzziness.AUTO);
+
+    HighlightBuilder.Field highlightGlossaryName = new HighlightBuilder.Field(DISPLAY_NAME);
+    highlightGlossaryName.highlighterType(UNIFIED);
+    HighlightBuilder.Field highlightDescription = new HighlightBuilder.Field(FIELD_DESCRIPTION);
+    highlightDescription.highlighterType(UNIFIED);
+    HighlightBuilder.Field highlightQuery = new HighlightBuilder.Field(QUERY);
+    highlightGlossaryName.highlighterType(UNIFIED);
+    HighlightBuilder hb = new HighlightBuilder();
+    hb.field(highlightDescription);
+    hb.field(highlightGlossaryName);
+    hb.field(highlightQuery);
+    hb.preTags("<span class=\"text-highlighter\">");
+    hb.postTags("</span>");
+
+    return searchBuilder(queryBuilder, hb, from, size);
   }
 
   private SearchSourceBuilder searchBuilder(QueryBuilder queryBuilder, HighlightBuilder hb, int from, int size) {

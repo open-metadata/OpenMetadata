@@ -12,19 +12,21 @@
       "ViewDataProfile",
       "ViewSampleData",
       "EditAll",
-      "EditDescription",
-      "EditDisplayName",
-      "EditTags",
-      "EditOwner",
-      "EditTier",
       "EditCustomFields",
-      "EditLineage",
-      "EditStatus",
-      "EditReviewers",
-      "EditTests",
-      "EditQueries",
+      "EditDescription",
       "EditDataProfile",
+      "EditDisplayName",
+      "EditLineage",
+      "EditPolicy",
+      "EditOwner",
+      "EditQueries",
+      "EditReviewers",
+      "EditRole",
       "EditSampleData",
+      "EditStatus",
+      "EditTags",
+      "EditTier",
+      "EditTests",
       "EditUsers"
     ]
   },
@@ -55,6 +57,20 @@
       "EditTier",
       "EditCustomFields",
       "EditLineage"
+    ]
+  },
+  {
+    "name" : "query",
+    "operations" : [
+      "Create",
+      "Delete",
+      "ViewAll",
+      "ViewQueries",
+      "EditAll",
+      "EditDescription",
+      "EditDisplayName",
+      "EditTags",
+      "EditOwner"
     ]
   },
   {
@@ -373,9 +389,11 @@
       "Delete",
       "ViewAll",
       "EditAll",
+      "EditCustomFields",
       "EditDescription",
       "EditDisplayName",
-      "EditCustomFields",
+      "EditRole",
+      "EditPolicy",
       "EditUsers"
     ]
   },
@@ -398,9 +416,10 @@
       "Delete",
       "ViewAll",
       "EditAll",
+      "EditCustomFields",
       "EditDescription",
       "EditDisplayName",
-      "EditCustomFields"
+      "EditRole"
     ]
   },
   {
@@ -522,7 +541,7 @@
     ]
   },
   {
-    "name" : "alert",
+    "name" : "eventsubscription",
     "operations" : [
       "Create",
       "Delete",
@@ -531,12 +550,32 @@
     ]
   },
   {
-    "name" : "alertAction",
-    "operations" : [
+    "name": "dataModel",
+    "operations": [
       "Create",
       "Delete",
       "ViewAll",
-      "EditDescription"
+      "EditAll",
+      "EditDescription",
+      "EditDisplayName",
+      "EditTags",
+      "EditOwner",
+      "EditLineage"
+    ]
+  },
+  {
+    "name": "dashboardDataModel",
+    "operations": [
+      "Create",
+      "Delete",
+      "ViewAll",
+      "ViewUsage",
+      "EditAll",
+      "EditDescription",
+      "EditDisplayName",
+      "EditTags",
+      "EditOwner",
+      "EditLineage"
     ]
   }
 ]

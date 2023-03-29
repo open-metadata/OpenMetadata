@@ -138,7 +138,6 @@ describe('Test UserListPage component', () => {
   });
 
   it('handleSearch function should work properly', async () => {
-    mockParam.tab = GlobalSettingOptions.ADMINS;
     const userAPI = getUsers as jest.Mock;
     const searchAPI = searchData as jest.Mock;
     render(<UserListPageV1 />);
@@ -150,6 +149,17 @@ describe('Test UserListPage component', () => {
     await act(async () => {
       fireEvent.change(searchBox, { target: { value: 'test' } });
     });
+
+    expect(searchAPI.mock.calls[0]).toEqual([
+      'test',
+      1,
+      15,
+      'isBot:false',
+      '',
+      '',
+      'user_search_index',
+      false,
+    ]);
 
     await waitForElement(async () => {
       const userSearchTerm = new URLSearchParams(window.location.search).get(
@@ -171,6 +181,43 @@ describe('Test UserListPage component', () => {
     expect(searchBox).toHaveValue('');
     expect(userAPI).toHaveBeenCalled();
     expect(userlist).toBeInTheDocument();
+  });
+
+  it('handleSearch function should work properly for Admin', async () => {
+    mockParam.tab = GlobalSettingOptions.ADMINS;
+    const searchAPI = searchData as jest.Mock;
+
+    render(<UserListPageV1 />);
+
+    const searchBox = await screen.findByTestId('search-input');
+
+    expect(searchBox).toBeInTheDocument();
+
+    await act(async () => {
+      fireEvent.change(searchBox, { target: { value: 'test' } });
+    });
+
+    expect(searchAPI.mock.calls[0]).toEqual([
+      'test',
+      1,
+      15,
+      'isAdmin:true isBot:false',
+      '',
+      '',
+      'user_search_index',
+      false,
+    ]);
+
+    await waitForElement(async () => {
+      const userSearchTerm = new URLSearchParams(window.location.search).get(
+        'user'
+      );
+
+      return userSearchTerm === 'test';
+    });
+
+    expect(searchBox).toHaveValue('test');
+    expect(searchAPI).toHaveBeenCalled();
   });
 
   it('handleShowDeletedUserChange function should work properly', async () => {

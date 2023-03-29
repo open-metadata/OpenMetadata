@@ -19,8 +19,6 @@ import static org.openmetadata.service.util.TestUtils.assertListNull;
 import static org.openmetadata.service.util.TestUtils.assertResponse;
 
 import java.io.IOException;
-import java.util.Arrays;
-import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
@@ -36,6 +34,7 @@ import org.junit.jupiter.api.TestMethodOrder;
 import org.openmetadata.schema.api.data.CreateContainer;
 import org.openmetadata.schema.entity.data.Container;
 import org.openmetadata.schema.type.ChangeDescription;
+import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.ContainerDataModel;
 import org.openmetadata.schema.type.ContainerFileFormat;
@@ -52,14 +51,14 @@ import org.openmetadata.service.util.TestUtils;
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class ContainerResourceTest extends EntityResourceTest<Container, CreateContainer> {
 
+  public static final List<Column> dataModelColumns =
+      List.of(
+          getColumn(C1, BIGINT, USER_ADDRESS_TAG_LABEL),
+          getColumn(C2, ColumnDataType.VARCHAR, USER_ADDRESS_TAG_LABEL).withDataLength(10),
+          getColumn(C3, BIGINT, GLOSSARY1_TERM1_LABEL));
+
   public static final ContainerDataModel PARTITIONED_DATA_MODEL =
-      new ContainerDataModel()
-          .withIsPartitioned(true)
-          .withColumns(
-              Arrays.asList(
-                  getColumn(C1, BIGINT, USER_ADDRESS_TAG_LABEL),
-                  getColumn(C2, ColumnDataType.VARCHAR, USER_ADDRESS_TAG_LABEL).withDataLength(10),
-                  getColumn(C3, BIGINT, GLOSSARY1_TERM1_LABEL)));
+      new ContainerDataModel().withIsPartitioned(true).withColumns(dataModelColumns);
 
   public static final List<ContainerFileFormat> FILE_FORMATS = List.of(ContainerFileFormat.Parquet);
 
@@ -154,9 +153,9 @@ public class ContainerResourceTest extends EntityResourceTest<Container, CreateC
     Container container = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
     ChangeDescription change = getChangeDescription(container.getVersion());
 
-    ContainerDataModel newDataModel =
-        new ContainerDataModel().withIsPartitioned(false).withColumns(Collections.emptyList());
-    fieldUpdated(change, "dataModel", PARTITIONED_DATA_MODEL, newDataModel);
+    // We are removing the columns here. This is a major change
+    ContainerDataModel newDataModel = PARTITIONED_DATA_MODEL.withIsPartitioned(false);
+    fieldUpdated(change, "dataModel.partition", true, false);
     updateAndCheckEntity(request.withDataModel(newDataModel), OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
   }
 
@@ -179,9 +178,9 @@ public class ContainerResourceTest extends EntityResourceTest<Container, CreateC
         new CreateContainer()
             .withName("0_root")
             .withService(S3_OBJECT_STORE_SERVICE_REFERENCE.getName())
-            .withNumberOfObjects(0)
+            .withNumberOfObjects(0.0)
             .withOwner(USER_WITH_DATA_CONSUMER_ROLE.getEntityReference())
-            .withSize(0);
+            .withSize(0.0);
     Container rootContainer = createAndCheckEntity(createRootContainer, ADMIN_AUTH_HEADERS);
 
     CreateContainer createChildOneContainer =
@@ -189,8 +188,8 @@ public class ContainerResourceTest extends EntityResourceTest<Container, CreateC
             .withName("1_child_1")
             .withService(S3_OBJECT_STORE_SERVICE_REFERENCE.getName())
             .withParent(rootContainer.getEntityReference())
-            .withNumberOfObjects(0)
-            .withSize(0);
+            .withNumberOfObjects(0.0)
+            .withSize(0.0);
     Container childOneContainer = createAndCheckEntity(createChildOneContainer, ADMIN_AUTH_HEADERS);
 
     CreateContainer createChildTwoContainer =
@@ -198,8 +197,8 @@ public class ContainerResourceTest extends EntityResourceTest<Container, CreateC
             .withName("2_child_2")
             .withService(S3_OBJECT_STORE_SERVICE_REFERENCE.getName())
             .withParent(rootContainer.getEntityReference())
-            .withNumberOfObjects(0)
-            .withSize(0);
+            .withNumberOfObjects(0.0)
+            .withSize(0.0);
     Container childTwoContainer = createAndCheckEntity(createChildTwoContainer, ADMIN_AUTH_HEADERS);
 
     CreateContainer createChildThreeContainer =
@@ -207,8 +206,8 @@ public class ContainerResourceTest extends EntityResourceTest<Container, CreateC
             .withName("3_child_3")
             .withService(S3_OBJECT_STORE_SERVICE_REFERENCE.getName())
             .withParent(childOneContainer.getEntityReference())
-            .withNumberOfObjects(0)
-            .withSize(0);
+            .withNumberOfObjects(0.0)
+            .withSize(0.0);
     Container childThreeContainer = createAndCheckEntity(createChildThreeContainer, ADMIN_AUTH_HEADERS);
 
     // GET .../containers?fields=parent,children
@@ -266,6 +265,12 @@ public class ContainerResourceTest extends EntityResourceTest<Container, CreateC
     assertEquals("s3.0_root.1_child_1.3_child_3", childThreeContainer.getFullyQualifiedName());
     assertEquals(returnedChildThreeContainer.getParent().getId(), childOneContainer.getId());
     assertEquals(0, returnedChildThreeContainer.getChildren().size());
+
+    // Test that we can list only the root level containers (no parents)
+    queryParams.put("root", "true");
+    ResultList<Container> rootContainerList = listEntities(queryParams, ADMIN_AUTH_HEADERS);
+    assertEquals(1, rootContainerList.getData().size());
+    assertEquals("s3.0_root", rootContainerList.getData().get(0).getFullyQualifiedName());
   }
 
   @Override
@@ -275,8 +280,8 @@ public class ContainerResourceTest extends EntityResourceTest<Container, CreateC
         .withService(S3_OBJECT_STORE_SERVICE_REFERENCE.getFullyQualifiedName())
         .withDataModel(PARTITIONED_DATA_MODEL)
         .withFileFormats(FILE_FORMATS)
-        .withNumberOfObjects(3)
-        .withSize(4096);
+        .withNumberOfObjects(3.0)
+        .withSize(4096.0);
   }
 
   @Override

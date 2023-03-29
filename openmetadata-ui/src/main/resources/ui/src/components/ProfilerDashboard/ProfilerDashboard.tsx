@@ -27,10 +27,11 @@ import { SwitchChangeEventHandler } from 'antd/lib/switch';
 import { AxiosError } from 'axios';
 import PageLayoutV1 from 'components/containers/PageLayoutV1';
 import { EntityTags, ExtraInfo } from 'Models';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import { addFollower, removeFollower } from 'rest/tableAPI';
+import { getEntityName } from 'utils/EntityUtils';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import {
   getDatabaseDetailsPath,
@@ -52,7 +53,6 @@ import { LabelType, State } from '../../generated/type/tagLabel';
 import jsonData from '../../jsons/en';
 import {
   getCurrentUserId,
-  getEntityName,
   getEntityPlaceHolder,
   getNameFromFQN,
   getPartialNameFromTableFQN,
@@ -256,28 +256,21 @@ const ProfilerDashboard: React.FC<ProfilerDashboardProps> = ({
     ];
   }, [table]);
 
-  const handleOwnerUpdate = (newOwner?: Table['owner']) => {
-    if (newOwner) {
+  const handleOwnerUpdate = useCallback(
+    (newOwner?: Table['owner']) => {
       const updatedTableDetails = {
         ...table,
-        owner: {
-          ...table.owner,
-          ...newOwner,
-        },
+        owner: newOwner
+          ? {
+              ...table.owner,
+              ...newOwner,
+            }
+          : undefined,
       };
       onTableChange(updatedTableDetails);
-    }
-  };
-
-  const handleOwnerRemove = () => {
-    if (table) {
-      const updatedTableDetails = {
-        ...table,
-        owner: undefined,
-      };
-      onTableChange(updatedTableDetails);
-    }
-  };
+    },
+    [table, table.owner]
+  );
 
   const handleTierRemove = () => {
     if (table) {
@@ -472,11 +465,6 @@ const ProfilerDashboard: React.FC<ProfilerDashboardProps> = ({
             followers={follower.length}
             followersList={follower}
             isFollowing={isFollowing}
-            removeOwner={
-              tablePermissions.EditAll || tablePermissions.EditOwner
-                ? handleOwnerRemove
-                : undefined
-            }
             removeTier={
               tablePermissions.EditAll || tablePermissions.EditTier
                 ? handleTierRemove

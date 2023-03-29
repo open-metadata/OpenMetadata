@@ -57,7 +57,6 @@ import org.openmetadata.schema.type.DataModel;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
-import org.openmetadata.schema.type.SQLQuery;
 import org.openmetadata.schema.type.SystemProfile;
 import org.openmetadata.schema.type.TableData;
 import org.openmetadata.schema.type.TableJoins;
@@ -850,87 +849,6 @@ public class TableResource extends EntityResource<Table, TableRepository> {
   }
 
   @PUT
-  @Path("/{id}/tableQuery")
-  @Operation(
-      operationId = "addTableQuery",
-      summary = "Add table query data",
-      tags = "tables",
-      description = "Add table query data to the table.",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "OK",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Table.class)))
-      })
-  public Table addQuery(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the table", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
-      @Valid SQLQuery sqlQuery)
-      throws IOException {
-    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.EDIT_ALL);
-    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
-    Table table = dao.addQuery(id, sqlQuery);
-    return addHref(uriInfo, table);
-  }
-
-  @GET
-  @Path("/{id}/tableQuery")
-  @Operation(
-      operationId = "getTableQuery",
-      summary = "Get table query data",
-      tags = "tables",
-      description = "Get table query data from the table.",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "OK",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Table.class)))
-      })
-  public Table getQuery(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the table", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
-      @Valid SQLQuery sqlQuery)
-      throws IOException {
-    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.VIEW_QUERIES);
-    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
-    Table table = dao.getQueries(id);
-    return addHref(uriInfo, table);
-  }
-
-  @GET
-  @Path("/{id}/getTableQueries")
-  @Operation(
-      operationId = "getTableQueryList",
-      summary = "Get table query data",
-      tags = "tables",
-      description = "Get table query data from the table.",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "OK",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Table.class)))
-      })
-  public ResultList<SQLQuery> getTableQueryList(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the table", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
-      @Valid SQLQuery sqlQuery,
-      @DefaultValue("10") @Min(0) @Max(1000000) @QueryParam("limit") int limitParam,
-      @Parameter(description = "Returns list of users before this cursor", schema = @Schema(type = "string"))
-          @QueryParam("before")
-          String before,
-      @Parameter(description = "Returns list of users after this cursor", schema = @Schema(type = "string"))
-          @QueryParam("after")
-          String after)
-      throws IOException {
-    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.VIEW_QUERIES);
-    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
-    return dao.getQueriesForPagination(id, limitParam, before, after);
-  }
-
-  @PUT
   @Path("/{id}/dataModel")
   @Operation(
       operationId = "addDataModel",
@@ -1062,7 +980,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
     DatabaseUtil.validateConstraints(table.getColumns(), table.getTableConstraints());
     DatabaseUtil.validateTablePartition(table.getColumns(), table.getTablePartition());
     DatabaseUtil.validateViewDefinition(table.getTableType(), table.getViewDefinition());
-    DatabaseUtil.validateColumns(table);
+    DatabaseUtil.validateColumns(table.getColumns());
     return table;
   }
 

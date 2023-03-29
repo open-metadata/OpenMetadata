@@ -33,7 +33,7 @@ import {
 
 import { ReactComponent as EditIcon } from 'assets/svg/ic-edit.svg';
 import { ModalWithMarkdownEditor } from 'components/Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
-import { getEntityName } from 'utils/CommonUtils';
+import { getEntityName } from 'utils/EntityUtils';
 
 const ContainerDataModel: FC<ContainerDataModelProps> = ({
   dataModel,
@@ -66,23 +66,25 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
     }
   };
 
-  const handleFieldTagsChange = async (selectedTags: EntityTags[] = []) => {
-    if (!isUndefined(editContainerColumnTags)) {
-      const newSelectedTags: TagOption[] = selectedTags.map((tag) => ({
-        fqn: tag.tagFQN,
-        source: tag.source,
-      }));
+  const handleFieldTagsChange = async (
+    selectedTags: EntityTags[] = [],
+    selectedColumn: Column
+  ) => {
+    const newSelectedTags: TagOption[] = selectedTags.map((tag) => ({
+      fqn: tag.tagFQN,
+      source: tag.source,
+    }));
 
-      const containerDataModel = cloneDeep(dataModel);
+    const containerDataModel = cloneDeep(dataModel);
 
-      updateContainerColumnTags(
-        containerDataModel?.columns,
-        editContainerColumnTags?.name,
-        newSelectedTags
-      );
+    updateContainerColumnTags(
+      containerDataModel?.columns,
+      editContainerColumnTags?.name ?? selectedColumn.name,
+      newSelectedTags
+    );
 
-      await onUpdate(containerDataModel);
-    }
+    await onUpdate(containerDataModel);
+
     setEditContainerColumnTags(undefined);
   };
 
@@ -153,9 +155,7 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
     return (
       <>
         {isReadOnly ? (
-          <Space wrap>
-            <TagsViewer sizeCap={-1} tags={tags || []} />
-          </Space>
+          <TagsViewer sizeCap={-1} tags={tags || []} />
         ) : (
           <Space
             align={isUpdatingTags ? 'start' : 'center'}
@@ -172,7 +172,7 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
               tagList={tagList}
               type="label"
               onCancel={() => setEditContainerColumnTags(undefined)}
-              onSelectionChange={handleFieldTagsChange}
+              onSelectionChange={(tags) => handleFieldTagsChange(tags, record)}
             />
           </Space>
         )}

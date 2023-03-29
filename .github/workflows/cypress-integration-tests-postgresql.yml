@@ -17,14 +17,15 @@ name: PostgreSQL Cypress Integration Tests
 on:
   push:
     branches:
-      - main
+      - main 
       - '0.[0-9]+.[0-9]+'
-    paths-ignore:
-      - 'openmetadata-docs/**'
+    path:
+      - 'openmetadata-ui/**'
   pull_request_target:
     types: [labeled, opened, synchronize, reopened]
-    paths-ignore:
-      - 'openmetadata-docs/**'
+    path:
+      - 'openmetadata-ui/**'
+      - 'openmetadata-spec/**'
 
 permissions:
   contents: read
@@ -126,6 +127,7 @@ jobs:
           CYPRESS_BQ_PRIVATE_KEY: ${{ secrets.TEST_BQ_PRIVATE_KEY }}
           CYPRESS_BQ_PROJECT_ID: ${{ secrets.TEST_BQ_PROJECT_ID }}
           CYPRESS_BQ_PRIVATE_KEY_ID: ${{ secrets.TEST_BQ_PRIVATE_KEY_ID }}
+          CYPRESS_BQ_PROJECT_ID_TAXONOMY: ${{ secrets.TEST_BQ_PROJECT_ID_TAXONOMY }}
           CYPRESS_BQ_CLIENT_EMAIL: ${{ secrets.TEST_BQ_CLIENT_EMAIL }}
           CYPRESS_BQ_CLIENT_ID: ${{ secrets.TEST_BQ_CLIENT_ID }}
           CYPRESS_REDSHIFT_HOST: ${{ secrets.TEST_REDSHIFT_HOST }}

@@ -61,6 +61,10 @@ site_menu:
     url: /deployment/security/basic-auth
   - category: Deployment / Enable Security / Ldap Authentication
     url: /deployment/security/ldap
+  - category: Deployment / Enable Security / Ldap Authentication / Docker
+    url: /deployment/security/ldap/docker
+  - category: Deployment / Enable Security / Ldap Authentication / Bare Metal
+    url: /deployment/security/ldap/bare-metal
   - category: Deployment / Enable Security / Auth0 SSO
     url: /deployment/security/auth0
   - category: Deployment / Enable Security / Auth0 SSO / Docker
@@ -127,6 +131,10 @@ site_menu:
     url: /deployment/security/keycloak/bare-metal
   - category: Deployment / Enable Security / Keycloak SSO / Kubernetes
     url: /deployment/security/keycloak/kubernetes
+  - category: Deployment / Enable Security / Saml
+    url: /deployment/security/saml
+  - category: Deployment / Enable Security / Saml / Aws
+    url: /deployment/security/saml/aws
   - category: Deployment / Enable Security / Enable SSL
     url: /deployment/security/enable-ssl
   - category: Deployment / Enable Security / Enable SSL / Use Nginx
@@ -165,7 +173,7 @@ site_menu:
     url: /deployment/upgrade/versions/011-to-012
   - category: Deployment / Upgrade OpenMetadata / Upgrade Version Instructions / 0.12 to 0.13
     url: /deployment/upgrade/versions/012-to-013
-  
+
   - category: Deployment / Backup & Restore Metadata
     url: /deployment/backup-restore-metadata
 
@@ -202,6 +210,8 @@ site_menu:
     url: /connectors/database/bigquery/airflow
   - category: Connectors / Database / BigQuery / CLI
     url: /connectors/database/bigquery/cli
+  - category: Connectors / Database / BigQuery / Roles
+    url: /connectors/database/bigquery/roles
   - category: Connectors / Database / Clickhouse
     url: /connectors/database/clickhouse
   - category: Connectors / Database / Clickhouse / Airflow
@@ -579,6 +589,8 @@ site_menu:
     url: /how-to-guides/how-to-add-custom-property-to-an-entity
   - category: How to guides / How to add Custom Logo
     url: /how-to-guides/custom-logo/how-to-add-custom-logo
+  - category: How to guides / How to Add Language Support
+    url: /how-to-guides/how-to-add-language-support
 
   - category: Features
     url: /openmetadata

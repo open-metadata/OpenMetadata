@@ -48,6 +48,7 @@ import {
   patchRole,
 } from 'rest/rolesAPIV1';
 import { getTeamByName, patchTeamDetail } from 'rest/teamsAPI';
+import { getEntityName } from 'utils/EntityUtils';
 import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
@@ -56,7 +57,6 @@ import { EntityType } from '../../../enums/entity.enum';
 import { Rule } from '../../../generated/api/policies/createPolicy';
 import { Policy } from '../../../generated/entity/policies/policy';
 import { EntityReference } from '../../../generated/type/entityReference';
-import { getEntityName } from '../../../utils/CommonUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import {
   getAddPolicyRulePath,
@@ -543,6 +543,7 @@ const PoliciesDetailPage = () => {
           centered
           closable={false}
           confirmLoading={isloadingOnSave}
+          maskClosable={false}
           okText={t('label.confirm')}
           open={!isUndefined(selectedEntity.record)}
           title={`${t('label.remove-entity', {

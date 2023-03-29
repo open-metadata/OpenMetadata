@@ -29,7 +29,7 @@ import TestSuitePipelineTab from 'components/TestSuitePipelineTab/TestSuitePipel
 import { compare } from 'fast-json-patch';
 import { camelCase, startCase } from 'lodash';
 import { ExtraInfo } from 'Models';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router-dom';
 import {
@@ -39,6 +39,7 @@ import {
   restoreTestSuite,
   updateTestSuiteById,
 } from 'rest/testAPI';
+import { getEntityName } from 'utils/EntityUtils';
 import {
   getTeamAndUserDetailsPath,
   INITIAL_PAGING_VALUE,
@@ -54,7 +55,7 @@ import { TestSuite } from '../../generated/tests/testSuite';
 import { Include } from '../../generated/type/include';
 import { Paging } from '../../generated/type/paging';
 import jsonData from '../../jsons/en';
-import { getEntityName, getEntityPlaceHolder } from '../../utils/CommonUtils';
+import { getEntityPlaceHolder } from '../../utils/CommonUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import './TestSuiteDetailsPage.styles.less';
@@ -205,30 +206,22 @@ const TestSuiteDetailsPage = () => {
       });
   };
 
-  const onUpdateOwner = (updatedOwner: TestSuite['owner']) => {
-    if (updatedOwner) {
+  const onUpdateOwner = useCallback(
+    (updatedOwner: TestSuite['owner']) => {
       const updatedTestSuite = {
         ...testSuite,
-        owner: {
-          ...testSuite?.owner,
-          ...updatedOwner,
-        },
+        owner: updatedOwner
+          ? {
+              ...testOwner,
+              ...updatedOwner,
+            }
+          : undefined,
       } as TestSuite;
 
       updateTestSuiteData(updatedTestSuite, ACTION_TYPE.UPDATE);
-    }
-  };
-
-  const onRemoveOwner = () => {
-    if (testSuite) {
-      const updatedTestSuite = {
-        ...testSuite,
-        owner: undefined,
-      } as TestSuite;
-
-      updateTestSuiteData(updatedTestSuite, ACTION_TYPE.REMOVE);
-    }
-  };
+    },
+    [testOwner, testSuite]
+  );
 
   const onDescriptionUpdate = async (updatedHTML: string) => {
     if (testSuite?.description !== updatedHTML) {
@@ -332,7 +325,6 @@ const TestSuiteDetailsPage = () => {
                 descriptionHandler={descriptionHandler}
                 extraInfo={extraInfo}
                 handleDescriptionUpdate={onDescriptionUpdate}
-                handleRemoveOwner={onRemoveOwner}
                 handleRestoreTestSuite={onRestoreTestSuite}
                 handleUpdateOwner={onUpdateOwner}
                 isDescriptionEditable={isDescriptionEditable}

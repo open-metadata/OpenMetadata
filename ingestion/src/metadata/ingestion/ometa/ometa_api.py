@@ -39,6 +39,7 @@ from metadata.generated.schema.entity.classification.tag import Tag
 from metadata.generated.schema.entity.data.chart import Chart
 from metadata.generated.schema.entity.data.container import Container
 from metadata.generated.schema.entity.data.dashboard import Dashboard
+from metadata.generated.schema.entity.data.dashboardDataModel import DashboardDataModel
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.glossary import Glossary
@@ -47,12 +48,16 @@ from metadata.generated.schema.entity.data.location import Location
 from metadata.generated.schema.entity.data.metrics import Metrics
 from metadata.generated.schema.entity.data.mlmodel import MlModel
 from metadata.generated.schema.entity.data.pipeline import Pipeline
+from metadata.generated.schema.entity.data.query import Query
 from metadata.generated.schema.entity.data.report import Report
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.data.topic import Topic
 from metadata.generated.schema.entity.policies.policy import Policy
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
+)
+from metadata.generated.schema.entity.services.connections.testConnectionDefinition import (
+    TestConnectionDefinition,
 )
 from metadata.generated.schema.entity.services.dashboardService import DashboardService
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
@@ -90,6 +95,8 @@ from metadata.ingestion.ometa.mixins.ingestion_pipeline_mixin import (
 from metadata.ingestion.ometa.mixins.mlmodel_mixin import OMetaMlModelMixin
 from metadata.ingestion.ometa.mixins.patch_mixin import OMetaPatchMixin
 from metadata.ingestion.ometa.mixins.pipeline_mixin import OMetaPipelineMixin
+from metadata.ingestion.ometa.mixins.query_mixin import OMetaQueryMixin
+from metadata.ingestion.ometa.mixins.role_policy_mixin import OMetaRolePolicyMixin
 from metadata.ingestion.ometa.mixins.server_mixin import OMetaServerMixin
 from metadata.ingestion.ometa.mixins.service_mixin import OMetaServiceMixin
 from metadata.ingestion.ometa.mixins.table_mixin import OMetaTableMixin
@@ -164,6 +171,8 @@ class OpenMetadata(
     DataInsightMixin,
     OMetaIngestionPipelineMixin,
     OMetaUserMixin,
+    OMetaQueryMixin,
+    OMetaRolePolicyMixin,
     Generic[T, C],
 ):
     """
@@ -240,6 +249,16 @@ class OpenMetadata(
             entity, get_args(Union[Chart, self.get_create_entity_type(Chart)])
         ):
             return "/charts"
+
+        if issubclass(
+            entity,
+            get_args(
+                Union[
+                    DashboardDataModel, self.get_create_entity_type(DashboardDataModel)
+                ]
+            ),
+        ):
+            return "/dashboard/datamodels"
 
         if issubclass(
             entity, get_args(Union[Dashboard, self.get_create_entity_type(Dashboard)])
@@ -332,6 +351,11 @@ class OpenMetadata(
         if issubclass(entity, get_args(Union[Role, self.get_create_entity_type(Role)])):
             return "/roles"
 
+        if issubclass(
+            entity, get_args(Union[Query, self.get_create_entity_type(Query)])
+        ):
+            return "/queries"
+
         if issubclass(entity, get_args(Union[Team, self.get_create_entity_type(Team)])):
             return "/teams"
 
@@ -346,7 +370,7 @@ class OpenMetadata(
         if issubclass(
             entity, get_args(Union[Workflow, self.get_create_entity_type(Workflow)])
         ):
-            return "/operations/workflow"
+            return "/automations/workflow"
 
         # Services Schemas
         if issubclass(
@@ -413,13 +437,19 @@ class OpenMetadata(
                 ]
             ),
         ):
-            return "/services/objectstoreServices"
+            return "/services/objectStoreServices"
 
         if issubclass(
             entity,
             IngestionPipeline,
         ):
             return "/services/ingestionPipelines"
+
+        if issubclass(
+            entity,
+            TestConnectionDefinition,
+        ):
+            return "/services/testConnectionDefinition"
 
         if issubclass(
             entity,
@@ -510,6 +540,7 @@ class OpenMetadata(
         file_name = (
             class_name.lower()
             .replace("glossaryterm", "glossaryTerm")
+            .replace("dashboarddatamodel", "dashboardDataModel")
             .replace("testsuite", "testSuite")
             .replace("testdefinition", "testDefinition")
             .replace("testcase", "testCase")

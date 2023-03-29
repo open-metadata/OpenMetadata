@@ -13,6 +13,7 @@
 
 import { t } from 'i18next';
 import { StepperStepType } from 'Models';
+import i18n from 'utils/i18next/LocalUtil';
 import { CSMode } from '../enums/codemirror.enum';
 import { DMLOperationType } from '../generated/api/data/createTableProfile';
 import {
@@ -171,24 +172,19 @@ export const INITIAL_PROPORTION_METRIC_VALUE = {
 export const INITIAL_MATH_METRIC_VALUE = {
   information: [
     {
-      title: t('label.median'),
-      dataKey: 'median',
-      color: '#1890FF',
-    },
-    {
       title: t('label.max'),
       dataKey: 'max',
-      color: '#7147E8',
+      color: '#1890FF',
     },
     {
       title: t('label.mean'),
       dataKey: 'mean',
-      color: '#008376',
+      color: '#7147E8',
     },
     {
       title: t('label.min'),
       dataKey: 'min',
-      color: '#B02AAC',
+      color: '#008376',
     },
   ],
   data: [],
@@ -200,6 +196,31 @@ export const INITIAL_SUM_METRIC_VALUE = {
       title: t('label.sum'),
       dataKey: 'sum',
       color: '#1890FF',
+    },
+  ],
+  data: [],
+};
+export const INITIAL_QUARTILE_METRIC_VALUE = {
+  information: [
+    {
+      title: i18n.t('label.first-quartile'),
+      dataKey: 'firstQuartile',
+      color: '#1890FF',
+    },
+    {
+      title: i18n.t('label.median'),
+      dataKey: 'median',
+      color: '#7147E8',
+    },
+    {
+      title: i18n.t('label.inter-quartile-range'),
+      dataKey: 'interQuartileRange',
+      color: '#008376',
+    },
+    {
+      title: i18n.t('label.third-quartile'),
+      dataKey: 'thirdQuartile',
+      color: '#B02AAC',
     },
   ],
   data: [],
@@ -293,12 +314,19 @@ export const STEPS_FOR_ADD_TEST_CASE: Array<StepperStepType> = [
   },
 ];
 
-export const SUPPORTED_PARTITION_TYPE = [
+export const SUPPORTED_PARTITION_TYPE_FOR_DATE_TIME = [
   DataType.Timestamp,
   DataType.Date,
   DataType.Datetime,
   DataType.Timestampz,
 ];
+
+export const SUPPORTED_COLUMN_DATA_TYPE_FOR_INTERVAL = {
+  [PartitionIntervalType.IngestionTime]: SUPPORTED_PARTITION_TYPE_FOR_DATE_TIME,
+  [PartitionIntervalType.TimeUnit]: SUPPORTED_PARTITION_TYPE_FOR_DATE_TIME,
+  [PartitionIntervalType.IntegerRange]: [DataType.Int, DataType.Bigint],
+  [PartitionIntervalType.ColumnValue]: [DataType.Varchar],
+};
 
 export const INTERVAL_TYPE_OPTIONS = Object.values(PartitionIntervalType).map(
   (value) => ({
@@ -326,4 +354,20 @@ export const PROFILE_SAMPLE_OPTIONS = [
     key: ProfileSampleType.Rows,
     value: ProfileSampleType.Rows,
   },
+];
+
+export const DEFAULT_HISTOGRAM_DATA = {
+  boundaries: [],
+  frequencies: [],
+};
+
+export const PROFILER_MODAL_LABEL_STYLE = {
+  style: {
+    paddingBottom: 8,
+  },
+};
+
+export const TIME_BASED_PARTITION = [
+  PartitionIntervalType.IngestionTime,
+  PartitionIntervalType.TimeUnit,
 ];

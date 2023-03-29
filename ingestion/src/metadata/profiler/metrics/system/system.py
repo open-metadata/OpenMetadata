@@ -86,12 +86,11 @@ def _(
         List[Dict]:
     """
     logger.info(f"Fetching system metrics for {dialect}")
-
-    region = (
-        f"region-{conn_config.usageLocation}"
-        if conn_config.usageLocation in {"us", "eu"}
-        else conn_config.usageLocation
-    )
+    dml_stat_to_dml_statement_mapping = {
+        "inserted_row_count": "INSERT",
+        "deleted_row_count": "DELETE",
+        "updated_row_count": "UPDATE",
+    }
 
     jobs = dedent(
         f"""
@@ -101,10 +100,10 @@ def _(
             destination_table,
             dml_statistics
         FROM
-            `{region}`.INFORMATION_SCHEMA.JOBS
+            `region-{conn_config.usageLocation}`.INFORMATION_SCHEMA.JOBS
         WHERE
-            DATE(creation_time) = CURRENT_DATE() - 1 AND
-            statement_type IN ('INSERT', 'UPDATE', 'INSERT')
+            DATE(creation_time) >= CURRENT_DATE() - 1 AND
+            statement_type IN ('INSERT', 'UPDATE', 'INSERT', 'MERGE')
         ORDER BY creation_time DESC;
         """
     )
@@ -140,6 +139,21 @@ def _(
                 rows_affected = row_jobs.dml_statistics.get("deleted_row_count")
             if row_jobs.query_type == "UPDATE":
                 rows_affected = row_jobs.dml_statistics.get("updated_row_count")
+            if row_jobs.query_type == "MERGE":
+                for i, key in enumerate(row_jobs.dml_statistics):
+                    if row_jobs.dml_statistics[key] != 0:
+                        metric_results.append(
+                            {
+                                # Merge statement can include multiple DML operations
+                                # We are padding timestamps by 0,1,2 millisesond to avoid
+                                # duplicate timestamps
+                                "timestamp": int(row_jobs.timestamp.timestamp() * 1000)
+                                + i,
+                                "operation": dml_stat_to_dml_statement_mapping.get(key),
+                                "rowsAffected": row_jobs.dml_statistics[key],
+                            }
+                        )
+                continue
 
             metric_results.append(
                 {

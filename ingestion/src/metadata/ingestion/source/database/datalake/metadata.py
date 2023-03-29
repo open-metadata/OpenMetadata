@@ -49,14 +49,11 @@ from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.ingestion.api.source import InvalidSourceException, SourceStatus
+from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.connections import get_connection, get_test_connection_fn
-from metadata.ingestion.source.database.database_service import (
-    DatabaseServiceSource,
-    SQLSourceStatus,
-)
+from metadata.ingestion.source.connections import get_connection
+from metadata.ingestion.source.database.database_service import DatabaseServiceSource
 from metadata.ingestion.source.database.datalake.models import DatalakeColumnWrapper
 from metadata.utils import fqn
 from metadata.utils.constants import DEFAULT_DATABASE
@@ -107,14 +104,14 @@ def ometa_to_dataframe(config_source, client, table):
     return data
 
 
-class DatalakeSource(DatabaseServiceSource):  # pylint: disable=too-many-public-methods
+class DatalakeSource(DatabaseServiceSource):
     """
     Implements the necessary methods to extract
     Database metadata from Datalake Source
     """
 
     def __init__(self, config: WorkflowSource, metadata_config: OpenMetadataConnection):
-        self.status = SQLSourceStatus()
+        super().__init__()
         self.config = config
         self.source_config: DatabaseServiceMetadataPipeline = (
             self.config.sourceConfig.config
@@ -123,12 +120,15 @@ class DatalakeSource(DatabaseServiceSource):  # pylint: disable=too-many-public-
         self.metadata = OpenMetadata(metadata_config)
         self.service_connection = self.config.serviceConnection.__root__.config
         self.connection = get_connection(self.service_connection)
+
         self.client = self.connection.client
         self.table_constraints = None
         self.data_models = {}
         self.dbt_tests = {}
         self.database_source_state = set()
-        super().__init__()
+
+        self.connection_obj = self.connection
+        self.test_connection()
 
     @classmethod
     def create(cls, config_dict, metadata_config: OpenMetadataConnection):
@@ -449,9 +449,10 @@ class DatalakeSource(DatabaseServiceSource):  # pylint: disable=too-many-public-
                 yield table_request
                 self.register_record(table_request=table_request)
         except Exception as exc:
+            error = f"Unexpected exception to yield table [{table_name}]: {exc}"
             logger.debug(traceback.format_exc())
-            logger.warning(f"Unexpected exception to yield table [{table_name}]: {exc}")
-            self.status.failures.append(f"{self.config.serviceName}.{table_name}")
+            logger.warning(error)
+            self.status.failed(table_name, error, traceback.format_exc())
 
     @staticmethod
     def get_gcs_files(client, key, bucket_name):
@@ -615,11 +616,3 @@ class DatalakeSource(DatabaseServiceSource):  # pylint: disable=too-many-public-
     def close(self):
         if isinstance(self.service_connection.configSource, AzureConfig):
             self.client.close()
-
-    def get_status(self) -> SourceStatus:
-        return self.status
-
-    def test_connection(self) -> None:
-
-        test_connection_fn = get_test_connection_fn(self.service_connection)
-        test_connection_fn(self.connection, self.service_connection)

@@ -14,19 +14,22 @@ Source connection handler
 """
 import traceback
 from functools import partial
+from typing import Optional
 
 from tableau_api_lib import TableauServerConnection
 from tableau_api_lib.utils import extract_pages
 
+from metadata.generated.schema.entity.automations.workflow import (
+    Workflow as AutomationWorkflow,
+)
 from metadata.generated.schema.entity.services.connections.dashboard.tableauConnection import (
     TableauConnection,
 )
 from metadata.ingestion.connections.test_connections import (
     SourceConnectionException,
-    TestConnectionResult,
-    TestConnectionStep,
     test_connection_steps,
 )
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.dashboard.tableau import (
     TABLEAU_GET_VIEWS_PARAM_DICT,
     TABLEAU_GET_WORKBOOKS_PARAM_DICT,
@@ -85,32 +88,35 @@ def get_connection(connection: TableauConnection) -> TableauServerConnection:
         )
 
 
-def test_connection(client: TableauServerConnection, _) -> TestConnectionResult:
+def test_connection(
+    metadata: OpenMetadata,
+    client: TableauServerConnection,
+    service_connection: TableauConnection,
+    automation_workflow: Optional[AutomationWorkflow] = None,
+) -> None:
     """
-    Test connection
+    Test connection. This can be executed either as part
+    of a metadata workflow or during an Automation Workflow
     """
-    steps = [
-        TestConnectionStep(
-            function=client.server_info,
-            name="Server Info",
-        ),
-        TestConnectionStep(
-            function=partial(
-                extract_pages,
-                query_func=client.query_workbooks_for_site,
-                parameter_dict=TABLEAU_GET_WORKBOOKS_PARAM_DICT,
-            ),
-            name="Get Workbooks",
-        ),
-        TestConnectionStep(
-            function=partial(
-                extract_pages,
-                query_func=client.query_views_for_site,
-                content_id=client.site_id,
-                parameter_dict=TABLEAU_GET_VIEWS_PARAM_DICT,
-            ),
-            name="Get Views",
-        ),
-    ]
 
-    return test_connection_steps(steps)
+    test_fn = {
+        "ServerInfo": client.server_info,
+        "GetWorkbooks": partial(
+            extract_pages,
+            query_func=client.query_workbooks_for_site,
+            parameter_dict=TABLEAU_GET_WORKBOOKS_PARAM_DICT,
+        ),
+        "GetViews": partial(
+            extract_pages,
+            query_func=client.query_views_for_site,
+            content_id=client.site_id,
+            parameter_dict=TABLEAU_GET_VIEWS_PARAM_DICT,
+        ),
+    }
+
+    test_connection_steps(
+        metadata=metadata,
+        test_fn=test_fn,
+        service_fqn=service_connection.type.value,
+        automation_workflow=automation_workflow,
+    )

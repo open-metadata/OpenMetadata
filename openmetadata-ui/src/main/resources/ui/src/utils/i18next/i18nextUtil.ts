@@ -15,12 +15,14 @@ import { InitOptions } from 'i18next';
 import { map } from 'lodash';
 import enUS from '../../locale/languages/en-us.json';
 import frFR from '../../locale/languages/fr-fr.json';
+import jaJP from '../../locale/languages/ja-jp.json';
 import zhCN from '../../locale/languages/zh-cn.json';
 
 export enum SupportedLocales {
   English = 'en-US',
   Français = 'fr-FR',
   简体中文 = 'zh-CN',
+  日本語 = 'ja-JP',
 }
 
 export const languageSelectOptions = map(SupportedLocales, (value, key) => ({
@@ -36,6 +38,7 @@ export const getInitOptions = (): InitOptions => {
       'en-US': { translation: enUS },
       'fr-FR': { translation: frFR },
       'zh-CN': { translation: zhCN },
+      'ja-JP': { translation: jaJP },
     },
     fallbackLng: ['en-US'],
     detection: {

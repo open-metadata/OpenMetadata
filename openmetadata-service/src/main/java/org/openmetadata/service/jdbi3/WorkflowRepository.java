@@ -7,7 +7,7 @@ import org.openmetadata.schema.entity.automations.Workflow;
 import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.resources.operations.WorkflowResource;
+import org.openmetadata.service.resources.automations.WorkflowResource;
 import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.util.EntityUtil;
@@ -77,7 +77,7 @@ public class WorkflowRepository extends EntityRepository<Workflow> {
     @Override
     public void entitySpecificUpdate() throws IOException {
       recordChange("status", original.getStatus(), updated.getStatus());
-      recordChange("response", original.getResponse(), updated.getResponse());
+      recordChange("response", original.getResponse(), updated.getResponse(), true);
     }
   }
 }

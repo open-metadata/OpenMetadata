@@ -18,7 +18,6 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
-import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnConstraint;
 import org.openmetadata.schema.type.ColumnDataType;
@@ -88,9 +87,9 @@ public final class DatabaseUtil {
     }
   }
 
-  public static void validateColumns(Table table) {
-    validateColumnNames(table.getColumns());
-    for (Column c : table.getColumns()) {
+  public static void validateColumns(List<Column> columns) {
+    validateColumnNames(columns);
+    for (Column c : columns) {
       validateColumnDataTypeDisplay(c);
       validateColumnDataLength(c);
       validateArrayColumn(c);

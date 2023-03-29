@@ -44,3 +44,12 @@ export const ROLE_DOCS =
 
 export const DATA_INSIGHT_DOCS =
   'https://docs.open-metadata.org/openmetadata/data-insight';
+
+export const INGESTION_DOCS =
+  'https://docs.open-metadata.org/connectors/ingestion/workflows';
+
+export const LOCAL_DEPLOYMENT =
+  'https://docs.open-metadata.org/quick-start/local-deployment';
+
+export const OMD_SLACK_LINK =
+  'https://join.slack.com/t/openmetadata/shared_invite/zt-1r1kv175f-9qM5eTB39MF6U2DBhZhWow';
