@@ -599,6 +599,7 @@
     "query": "Query",
     "query-log-duration": "Query Log Duration",
     "query-lowercase": "query",
+    "query-lowercase-plural": "queries",
     "query-plural": "Queries",
     "range": "Range",
     "re-deploy": "Re Deploy",
