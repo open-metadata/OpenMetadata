@@ -75,22 +75,7 @@ export const ELASTIC_SEARCH_INDEX_ENTITIES = [
 ];
 
 export const ELASTIC_SEARCH_INITIAL_VALUES = {
-  entities: [
-    'table',
-    'topic',
-    'dashboard',
-    'pipeline',
-    'mlmodel',
-    'user',
-    'team',
-    'glossaryTerm',
-    'tag',
-    'entityReportData',
-    'webAnalyticEntityViewReportData',
-    'webAnalyticUserActivityReportData',
-    'container',
-    'query',
-  ],
+  entities: ['all'],
   batchSize: 100,
   flushIntervalInSec: 30,
   recreateIndex: true,
@@ -109,10 +94,17 @@ export const RECREATE_INDEX_OPTIONS = [
 ];
 
 export const ENTITY_TREE_OPTIONS = [
-  ...ELASTIC_SEARCH_INDEX_ENTITIES.map(({ value, label }) => ({
-    label: label,
-    value: value,
-  })),
+  {
+    title: 'All',
+    value: 'all',
+    key: 'all',
+    children: [
+      ...ELASTIC_SEARCH_INDEX_ENTITIES.map(({ value, label }) => ({
+        label: label,
+        value: value,
+      })),
+    ],
+  },
 ];
 
 export const RE_INDEX_LANG_OPTIONS = map(
