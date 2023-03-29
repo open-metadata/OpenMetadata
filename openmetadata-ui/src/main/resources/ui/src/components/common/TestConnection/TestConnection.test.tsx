@@ -67,6 +67,9 @@ jest.mock('rest/workflowAPI', () => ({
     .fn()
     .mockImplementation(() => Promise.resolve(WORKFLOW_DETAILS)),
   triggerWorkflowById: jest.fn().mockImplementation(() => Promise.resolve(200)),
+  deleteWorkflowById: jest
+    .fn()
+    .mockImplementation(() => Promise.resolve(WORKFLOW_DETAILS)),
 }));
 
 describe('Test Connection Component', () => {
