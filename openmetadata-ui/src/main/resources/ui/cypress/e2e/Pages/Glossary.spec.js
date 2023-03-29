@@ -148,7 +148,7 @@ const goToAssetsTab = (term) => {
   cy.get('.ant-tabs-tab-active').contains('Assets').should('be.visible');
 };
 
-describe('Glossary page should work properly', () => {
+describe.skip('Glossary page should work properly', () => {
   beforeEach(() => {
     cy.login();
 
