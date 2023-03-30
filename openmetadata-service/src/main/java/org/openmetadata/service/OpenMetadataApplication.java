@@ -297,7 +297,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     }
     if (catalogConfig.getPipelineServiceClientConfiguration().getAuthConfig() != null) {
       LOG.warn(
-          "'authProvider' and 'authConfig' form the 'pipelineServiceClientConfiguration' option are deprecated and will be removed in future releases.");
+          "'authProvider' and 'authConfig' from the 'pipelineServiceClientConfiguration' option are deprecated and will be removed in future releases.");
     }
   }
 
