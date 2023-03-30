@@ -228,6 +228,34 @@ class ContainerESDocument(BaseModel):
     fileFormats: Optional[List[str]] = None
 
 
+class QueryESDocument(BaseModel):
+    """ElasticSearch Mapping doc for Containers"""
+
+    entityType: str = "query"
+    id: str
+    name: str
+    displayName: str
+    fullyQualifiedName: str
+    description: Optional[str] = None
+    version: float
+    updatedAt: Optional[int]
+    updatedBy: Optional[str]
+    tags: List[TagLabel]
+    tier: Optional[TagLabel] = None
+    owner: ESEntityReference = None
+    followers: List[str]
+    href: Optional[str]
+    deleted: bool
+    suggest: List[dict]
+    service_suggest: List[dict] = None
+    doc_as_upsert: bool = True
+    duration: Optional[float] = None
+    users: Optional[List[dict]] = None
+    votes: Optional[dict] = None
+    query: str
+    queryDate: float
+
+
 class UserESDocument(BaseModel):
     """ElasticSearch Mapping doc for Users"""
 

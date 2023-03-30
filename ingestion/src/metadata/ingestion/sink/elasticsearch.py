@@ -40,6 +40,7 @@ from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.glossaryTerm import GlossaryTerm
 from metadata.generated.schema.entity.data.mlmodel import MlModel
 from metadata.generated.schema.entity.data.pipeline import Pipeline
+from metadata.generated.schema.entity.data.query import Query
 from metadata.generated.schema.entity.data.table import Column, Table
 from metadata.generated.schema.entity.data.topic import Topic
 from metadata.generated.schema.entity.policies.policy import Policy
@@ -58,6 +59,7 @@ from metadata.ingestion.models.es_documents import (
     GlossaryTermESDocument,
     MlModelESDocument,
     PipelineESDocument,
+    QueryESDocument,
     TableESDocument,
     TagESDocument,
     TeamESDocument,
@@ -82,6 +84,9 @@ from metadata.ingestion.sink.elasticsearch_mapping.mlmodel_search_index_mapping 
 )
 from metadata.ingestion.sink.elasticsearch_mapping.pipeline_search_index_mapping import (
     PIPELINE_ELASTICSEARCH_INDEX_MAPPING,
+)
+from metadata.ingestion.sink.elasticsearch_mapping.query_search_index_mapping import (
+    QUERY_ELASTICSEARCH_INDEX_MAPPING,
 )
 from metadata.ingestion.sink.elasticsearch_mapping.table_search_index_mapping import (
     TABLE_ELASTICSEARCH_INDEX_MAPPING,
@@ -142,6 +147,7 @@ class ElasticSearchConfig(ConfigModel):
     index_glossary_terms: Optional[bool] = True
     index_tags: Optional[bool] = True
     index_containers: Optional[bool] = True
+    index_queries: Optional[bool] = True
     index_entity_report_data: Optional[bool] = True
     index_web_analytic_user_activity_report_data: Optional[bool] = True
     index_web_analytic_entity_view_report_data: Optional[bool] = True
@@ -155,6 +161,7 @@ class ElasticSearchConfig(ConfigModel):
     mlmodel_index_name: str = "mlmodel_search_index"
     tag_index_name: str = "tag_search_index"
     container_index_name: str = "container_search_index"
+    query_index_name: str = "query_search_index"
     entity_report_data_index_name: str = "entity_report_data_index"
     web_analytic_user_activity_report_data_index_name: str = (
         "web_analytic_user_activity_report_data_index"
@@ -302,6 +309,12 @@ class ElasticsearchSink(Sink[Entity]):
                 CONTAINER_ELASTICSEARCH_INDEX_MAPPING,
             )
 
+        if self.config.index_queries:
+            self._check_or_create_index(
+                self.config.query_index_name,
+                QUERY_ELASTICSEARCH_INDEX_MAPPING,
+            )
+
         # Prepare write record dispatching
         self._write_record = singledispatch(self._write_record)
         self._write_record.register(Table, self.index_table)
@@ -315,6 +328,7 @@ class ElasticsearchSink(Sink[Entity]):
         self._write_record.register(Classification, self.index_classification)
         self._write_record.register(ReportData, self.index_report_data)
         self._write_record.register(Container, self.index_container)
+        self._write_record.register(Query, self.index_queries)
         self._write_record.register(Policy, self.index_policy)
 
         super().__init__()
@@ -470,6 +484,15 @@ class ElasticsearchSink(Sink[Entity]):
             index=self.config.container_index_name,
             id=str(container_doc.id),
             body=container_doc.json(),
+            request_timeout=self.config.timeout,
+        )
+
+    def index_queries(self, record: Query) -> None:
+        query_doc = self._create_query_es_doc(record)
+        self.elasticsearch_client.index(
+            index=self.config.query_index_name,
+            id=str(query_doc.id),
+            body=query_doc.json(),
             request_timeout=self.config.timeout,
         )
 
@@ -852,6 +875,48 @@ class ElasticsearchSink(Sink[Entity]):
             fileFormats=[
                 file_format.value for file_format in container.fileFormats or []
             ],
+        )
+
+        return container_doc
+
+    def _create_query_es_doc(self, record: Query):
+        display_name = (
+            record.displayName if record.displayName else record.name.__root__
+        )
+        suggest = [{"input": [display_name], "weight": 10}]
+        tags = []
+        followers = []
+        if record.followers:
+            for follower in record.followers.__root__:
+                followers.append(str(follower.id.__root__))
+        tier = None
+        for tag in record.tags or []:
+            if "Tier" in record.tagFQN.__root__:
+                tier = record
+            else:
+                tags.append(tag)
+
+        container_doc = QueryESDocument(
+            id=str(record.id.__root__),
+            name=record.name.__root__,
+            displayName=display_name,
+            description=record.description.__root__ if record.description else "",
+            fullyQualifiedName=record.fullyQualifiedName.__root__,
+            version=record.version.__root__,
+            updatedAt=record.updatedAt.__root__,
+            updatedBy=record.updatedBy,
+            href=record.href.__root__,
+            deleted=record.deleted,
+            suggest=suggest,
+            tier=tier,
+            tags=list(tags),
+            owner=record.owner,
+            followers=followers,
+            duration=record.duration,
+            users=record.users,
+            votes=record.votes,
+            query=record.query.__root__,
+            queryDate=record.queryDate.__root__,
         )
 
         return container_doc
