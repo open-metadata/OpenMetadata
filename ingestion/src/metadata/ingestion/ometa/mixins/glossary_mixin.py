@@ -25,7 +25,7 @@ from metadata.generated.schema.type import basic
 from metadata.ingestion.ometa.utils import model_str
 from metadata.utils.logger import ometa_logger
 
-from .patch_mixin_utils import (
+from metadata.ingestion.ometa.mixins.patch_mixin_utils import (
     OMetaPatchMixinBase,
     PatchField,
     PatchOperation,
@@ -312,7 +312,7 @@ class GlossaryMixin(OMetaPatchMixinBase):
         self,
         entity_id: Union[str, basic.Uuid],
         synonym: Optional[str] = None,
-    ) -> GlossaryTerm:
+    ) -> Optional[GlossaryTerm]:
         """
         Update the synonyms of a Glossary Term via PATCH
         Params
@@ -391,7 +391,7 @@ class GlossaryMixin(OMetaPatchMixinBase):
         entity_id: Union[str, basic.Uuid],
         reference_name: Optional[str] = None,
         reference_endpoint: Optional[str] = None,
-    ) -> GlossaryTerm:
+    ) -> Optional[GlossaryTerm]:
         """
         Update the references of a GlossaryTerm. If reference_name and reference_endpoint are None, the last reference
         is removed.
