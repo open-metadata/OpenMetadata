@@ -316,6 +316,160 @@ class TestSuiteWorkflowTests(unittest.TestCase):
 
         assert not created_test_case
 
+    def test_compare_and_create_test_cases_same_test_name_diff_test_suite(self):
+        """Test function creates the correct test case if they don't exists when
+        test case name is the same but test suite and entity is different
+        """
+        _test_suite_config = deepcopy(test_suite_config)
+        processor = {
+            "processor": {
+                "type": "orm-test-runner",
+                "config": {
+                    "testSuites": [
+                        {
+                            "name": "another_test_suite",
+                            "testCases": [
+                                {
+                                    "name": "table_column_count_between",
+                                    "testDefinitionName": "TableColumnCountToBeBetween",
+                                    "entityLink": "<#E::table::sample_data.ecommerce_db.shopify.dim_customer>",
+                                    "parameterValues": [
+                                        {"name": "minColValue", "value": 1},
+                                        {"name": "maxColValue", "value": 15},
+                                    ],
+                                },
+                            ],
+                        },
+                        {
+                            "name": "new_test_suite",
+                            "testCases": [
+                                {
+                                    "name": "table_column_count_between",
+                                    "testDefinitionName": "TableColumnCountToBeBetween",
+                                    "entityLink": "<#E::table::sample_data.ecommerce_db.shopify.dim_customer>",
+                                    "parameterValues": [
+                                        {"name": "minColValue", "value": 1},
+                                        {"name": "maxColValue", "value": 5},
+                                    ],
+                                },
+                            ],
+                        },
+                    ],
+                },
+            }
+        }
+
+        _test_suite_config.update(processor)
+        workflow = TestSuiteWorkflow.create(_test_suite_config)
+
+        assert not self.metadata.get_by_name(
+            entity=TestCase,
+            fqn="sample_data.ecommerce_db.shopify.dim_customer.table_column_count_between",
+        )
+
+        test_suite = workflow.get_or_create_test_suite_entity_for_cli_workflow()
+        test_cases = workflow.get_test_cases_from_test_suite(test_suite)
+        config_test_cases_def = workflow.get_test_case_from_cli_config()
+        created_workflow = workflow.compare_and_create_test_cases(config_test_cases_def, test_cases)
+
+        my_test_case = self.metadata.get_by_name(
+            entity=TestCase,
+            fqn="sample_data.ecommerce_db.shopify.dim_customer.table_column_count_between",
+            fields=["testDefinition", "testSuite"],
+        )
+
+        assert len(created_workflow) == 1
+
+        another_test_suite = self.metadata.get_by_name(
+            entity=TestSuite,
+            fqn="another_test_suite",
+        )
+        new_test_suite = self.metadata.get_by_name(
+            entity=TestSuite,
+            fqn="new_test_suite",
+        )
+        assert not self.metadata.list_entities(
+            entity=TestCase,
+            fields=["testSuite", "entityLink", "testDefinition"],
+            params={"testSuiteId": new_test_suite.id.__root__},
+        ).entities
+
+        self.metadata.delete(
+            entity=TestSuite, entity_id=new_test_suite.id, recursive=True
+        )
+        self.metadata.delete(
+            entity=TestSuite, entity_id=another_test_suite.id, recursive=True
+        )
+
+    def test_compare_and_create_test_cases_same_test_name_same_test_suite(self):
+        """Test function creates the correct test case if they don't exists when
+        test case name is the same but test suite and entity is different
+        """
+        _test_suite_config = deepcopy(test_suite_config)
+        processor = {
+            "processor": {
+                "type": "orm-test-runner",
+                "config": {
+                    "testSuites": [
+                        {
+                            "name": "critical_metrics_suite",
+                            "testCases": [
+                                {
+                                    "name": "table_column_count_between",
+                                    "testDefinitionName": "TableColumnCountToBeBetween",
+                                    "entityLink": "<#E::table::sample_data.ecommerce_db.shopify.dim_address>",
+                                    "parameterValues": [
+                                        {"name": "minColValue", "value": 1},
+                                        {"name": "maxColValue", "value": 30},
+                                    ],
+                                },
+                                {
+                                    "name": "table_column_count_between",
+                                    "testDefinitionName": "TableColumnCountToBeBetween",
+                                    "entityLink": "<#E::table::sample_data.ecommerce_db.shopify.dim_customer>",
+                                    "parameterValues": [
+                                        {"name": "minColValue", "value": 1},
+                                        {"name": "maxColValue", "value": 5},
+                                    ],
+                                },
+                            ],
+                        },
+                    ],
+                },
+            }
+        }
+
+        _test_suite_config.update(processor)
+        workflow = TestSuiteWorkflow.create(_test_suite_config)
+
+        assert not self.metadata.get_by_name(
+            entity=TestCase,
+            fqn="sample_data.ecommerce_db.shopify.dim_customer.table_column_count_between",
+        )
+        assert self.metadata.get_by_name(
+            entity=TestCase,
+            fqn="sample_data.ecommerce_db.shopify.dim_address.table_column_count_between",
+            fields=["testDefinition", "testSuite"],
+        )
+
+        test_suite = workflow.get_or_create_test_suite_entity_for_cli_workflow()
+        test_cases = workflow.get_test_cases_from_test_suite(test_suite)
+        config_test_cases_def = workflow.get_test_case_from_cli_config()
+        created_test_case = workflow.compare_and_create_test_cases(
+            config_test_cases_def, test_cases
+        )
+
+        dim_customer_test_case = self.metadata.get_by_name(
+            entity=TestCase,
+            fqn="sample_data.ecommerce_db.shopify.dim_customer.table_column_count_between",
+            fields=["testDefinition", "testSuite"],
+        )
+
+        assert len(created_test_case) == 1
+        assert created_test_case[0].name.__root__ == "table_column_count_between"
+        assert created_test_case[0].testSuite.name == "critical_metrics_suite"
+        self.metadata.delete(entity=TestCase, entity_id=dim_customer_test_case.id)
+
     def test_get_service_connection_from_test_case(self):
         """test get service connection returns correct info"""
         workflow = TestSuiteWorkflow.create(test_suite_config)
