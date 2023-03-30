@@ -1,7 +1,6 @@
 package org.openmetadata.service.resources.dqtests;
 
 import com.google.inject.Inject;
-import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -10,6 +9,7 @@ import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import java.io.IOException;
 import java.util.UUID;
 import javax.json.JsonPatch;
@@ -49,8 +49,9 @@ import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
 
 @Slf4j
+// TODO tests/testSuites
 @Path("/v1/testSuite")
-@Api(value = "Test Suite collection", tags = "Test Suite collection")
+@Tag(name = "Test suites", description = "`TestSuite` is a set of test cases grouped together to capture data quality.")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "TestSuites")
@@ -82,7 +83,6 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
   @Operation(
       operationId = "listTestSuites",
       summary = "List test suites",
-      tags = "testSuites",
       description =
           "Get a list of test suites. Use `fields` "
               + "parameter to get only necessary fields. Use cursor-based pagination to limit the number "
@@ -132,7 +132,6 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
   @Operation(
       operationId = "listAllTestSuiteVersion",
       summary = "List test suite versions",
-      tags = "testSuites",
       description = "Get a list of all the versions of a test suite identified by `id`",
       responses = {
         @ApiResponse(
@@ -152,7 +151,6 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
   @Path("/{id}")
   @Operation(
       summary = "Get a test suite by Id",
-      tags = "testSuites",
       description = "Get a Test Suite by `Id`.",
       responses = {
         @ApiResponse(
@@ -185,7 +183,6 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
   @Operation(
       operationId = "getTestSuiteByName",
       summary = "Get a test suite by name",
-      tags = "testSuites",
       description = "Get a test suite by  name.",
       responses = {
         @ApiResponse(
@@ -219,7 +216,6 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
   @Operation(
       operationId = "getSpecificTestSuiteVersion",
       summary = "Get a version of the test suite",
-      tags = "testSuites",
       description = "Get a version of the test suite by given `id`",
       responses = {
         @ApiResponse(
@@ -247,7 +243,6 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
   @Operation(
       operationId = "createTestSuite",
       summary = "Create a test suite",
-      tags = "testSuites",
       description = "Create a test suite.",
       responses = {
         @ApiResponse(
@@ -268,7 +263,6 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
   @Operation(
       operationId = "patchTestSuite",
       summary = "Update a test suite",
-      tags = "testSuites",
       description = "Update an existing testSuite using JsonPatch.",
       externalDocs = @ExternalDocumentation(description = "JsonPatch RFC", url = "https://tools.ietf.org/html/rfc6902"))
   @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
@@ -293,7 +287,6 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
   @Operation(
       operationId = "createOrUpdateTestSuite",
       summary = "Update test suite",
-      tags = "testSuites",
       description = "Create a TestSuite, it it does not exist or update an existing test suite.",
       responses = {
         @ApiResponse(
@@ -313,7 +306,6 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
   @Operation(
       operationId = "deleteTestSuiteByName",
       summary = "Delete a test suite",
-      tags = "testSuites",
       description = "Delete a test suite by `name`.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
@@ -337,7 +329,6 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
   @Operation(
       operationId = "deleteTestSuite",
       summary = "Delete a test suite",
-      tags = "testSuites",
       description = "Delete a test suite by `Id`.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
@@ -364,7 +355,6 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
   @Operation(
       operationId = "restore",
       summary = "Restore a soft deleted test suite",
-      tags = "testSuites",
       description = "Restore a soft deleted test suite.",
       responses = {
         @ApiResponse(

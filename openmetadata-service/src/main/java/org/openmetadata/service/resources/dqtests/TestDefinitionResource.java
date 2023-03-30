@@ -1,7 +1,6 @@
 package org.openmetadata.service.resources.dqtests;
 
 import com.google.inject.Inject;
-import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -10,6 +9,7 @@ import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
@@ -54,8 +54,13 @@ import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
 
 @Slf4j
+// TODO tests/testDefinitions
 @Path("/v1/testDefinition")
-@Api(value = "Test Definitions collection", tags = "Test Definitions collection")
+@Tag(
+    name = "Test Definitions",
+    description =
+        "`Test Definition` is a definition of a type of test using which test cases are created "
+            + "that run against data to capture data quality.")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "TestDefinitions")
@@ -95,7 +100,6 @@ public class TestDefinitionResource extends EntityResource<TestDefinition, TestD
   @Operation(
       operationId = "listTestDefinitions",
       summary = "List test definitions",
-      tags = "testDefinitions",
       description =
           "Get a list of test definitions, optionally filtered by `service` it belongs to. Use `fields` "
               + "parameter to get only necessary fields. Use cursor-based pagination to limit the number "
@@ -167,7 +171,6 @@ public class TestDefinitionResource extends EntityResource<TestDefinition, TestD
   @Operation(
       operationId = "listAllTestDefinitionVersion",
       summary = "List test definition versions",
-      tags = "testDefinitions",
       description = "Get a list of all the versions of a test definition identified by `Id`",
       responses = {
         @ApiResponse(
@@ -187,7 +190,6 @@ public class TestDefinitionResource extends EntityResource<TestDefinition, TestD
   @Path("/{id}")
   @Operation(
       summary = "Get a test definition by Id",
-      tags = "testDefinitions",
       description = "Get a Test Definition by `Id`.",
       responses = {
         @ApiResponse(
@@ -221,7 +223,6 @@ public class TestDefinitionResource extends EntityResource<TestDefinition, TestD
   @Operation(
       operationId = "getTestDefinitionByName",
       summary = "Get a test definition by name",
-      tags = "testDefinitions",
       description = "Get a test definition by `name`.",
       responses = {
         @ApiResponse(
@@ -256,7 +257,6 @@ public class TestDefinitionResource extends EntityResource<TestDefinition, TestD
   @Operation(
       operationId = "getSpecificTestDefinitionVersion",
       summary = "Get a version of the test definition",
-      tags = "testDefinitions",
       description = "Get a version of the test definition by given `Id`",
       responses = {
         @ApiResponse(
@@ -285,7 +285,6 @@ public class TestDefinitionResource extends EntityResource<TestDefinition, TestD
   @Operation(
       operationId = "createTestDefinition",
       summary = "Create a test definition",
-      tags = "testDefinitions",
       description = "Create a Test definition.",
       responses = {
         @ApiResponse(
@@ -307,7 +306,6 @@ public class TestDefinitionResource extends EntityResource<TestDefinition, TestD
   @Operation(
       operationId = "patchTestDefinition",
       summary = "Update a test definition",
-      tags = "testDefinitions",
       description = "Update an existing Test Definition using JsonPatch.",
       externalDocs = @ExternalDocumentation(description = "JsonPatch RFC", url = "https://tools.ietf.org/html/rfc6902"))
   @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
@@ -332,7 +330,6 @@ public class TestDefinitionResource extends EntityResource<TestDefinition, TestD
   @Operation(
       operationId = "createOrUpdateTestDefinition",
       summary = "Update test definition",
-      tags = "testDefinitions",
       description = "Create a test definition, if it does not exist, or update an existing test definition.",
       responses = {
         @ApiResponse(
@@ -352,7 +349,6 @@ public class TestDefinitionResource extends EntityResource<TestDefinition, TestD
   @Operation(
       operationId = "deleteTestDefinition",
       summary = "Delete a test definition",
-      tags = "testDefinitions",
       description = "Delete a test definition by `id`.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
@@ -375,7 +371,6 @@ public class TestDefinitionResource extends EntityResource<TestDefinition, TestD
   @Operation(
       operationId = "deleteTestDefinitionByName",
       summary = "Delete a test definition",
-      tags = "testDefinitions",
       description = "Delete a test definition by `name`.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
@@ -399,7 +394,6 @@ public class TestDefinitionResource extends EntityResource<TestDefinition, TestD
   @Operation(
       operationId = "restore",
       summary = "Restore a soft deleted test definition",
-      tags = "testDefinitions",
       description = "Restore a soft deleted TestDefinition.",
       responses = {
         @ApiResponse(

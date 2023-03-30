@@ -13,12 +13,12 @@
 
 package org.openmetadata.service.resources.reports;
 
-import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
@@ -49,12 +49,16 @@ import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.ResultList;
 
 @Path("/v1/reports")
-@Api(value = "Reports collection", tags = "Reports collection")
+@Tag(
+    name = "Reports",
+    description =
+        "`Reports` are static information computed from data periodically that includes "
+            + "data in text, table, and visual form.")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "reports")
 public class ReportResource extends EntityResource<Report, ReportRepository> {
-  public static final String COLLECTION_PATH = "/v1/bots/";
+  public static final String COLLECTION_PATH = "/v1/reports/";
 
   public ReportResource(CollectionDAO dao, Authorizer authorizer) {
     super(Report.class, new ReportRepository(dao), authorizer);
@@ -77,7 +81,6 @@ public class ReportResource extends EntityResource<Report, ReportRepository> {
   @Operation(
       operationId = "listReports",
       summary = "List reports",
-      tags = "reports",
       description = "Get a list of reports. Use `fields` parameter to get only necessary fields.",
       responses = {
         @ApiResponse(
@@ -103,7 +106,6 @@ public class ReportResource extends EntityResource<Report, ReportRepository> {
   @Operation(
       operationId = "getReportByID",
       summary = "Get a report by Id",
-      tags = "reports",
       description = "Get a report by `Id`.",
       responses = {
         @ApiResponse(
@@ -135,7 +137,6 @@ public class ReportResource extends EntityResource<Report, ReportRepository> {
   @Operation(
       operationId = "getReportByFQN",
       summary = "Create a report",
-      tags = "reports",
       description = "Create a new report.",
       responses = {
         @ApiResponse(
@@ -154,7 +155,6 @@ public class ReportResource extends EntityResource<Report, ReportRepository> {
   @Operation(
       operationId = "createOrUpdateReport",
       summary = "Create or update a report",
-      tags = "reports",
       description = "Create a new report, it it does not exist or update an existing report.",
       responses = {
         @ApiResponse(

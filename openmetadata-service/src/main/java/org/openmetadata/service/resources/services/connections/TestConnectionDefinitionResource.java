@@ -38,6 +38,7 @@ import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
 
 @Slf4j
+// TODO fix this
 @Path("/v1/services/testConnectionDefinition")
 @Api(value = "Test Connection Definitions collection", tags = "Test Connection Definitions collection")
 @Produces(MediaType.APPLICATION_JSON)

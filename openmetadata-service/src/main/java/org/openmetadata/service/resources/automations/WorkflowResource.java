@@ -4,7 +4,6 @@ import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.service.Entity.FIELD_OWNER;
 
 import com.google.inject.Inject;
-import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -13,6 +12,7 @@ import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import java.io.IOException;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -73,8 +73,9 @@ import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
 
 @Slf4j
+// TODO system/automation/workflows?
 @Path("/v1/automations/workflow")
-@Api(value = "Automations Workflow collection", tags = "Automations Workflow collection")
+@Tag(name = "Workflows", description = "APIs related to creating and managing Automation workflows.")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "Workflow")
@@ -117,7 +118,6 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
   @Operation(
       operationId = "listWorkflows",
       summary = "List automations workflows",
-      tags = "automationsWorkflow",
       description =
           "Get a list of automations workflows. Use `fields` "
               + "parameter to get only necessary fields. Use cursor-based pagination to limit the number "
@@ -189,7 +189,6 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
   @Operation(
       operationId = "listAllWorkflowVersion",
       summary = "List Workflow versions",
-      tags = "automationsWorkflow",
       description = "Get a list of all the versions of a Workflow identified by `Id`",
       responses = {
         @ApiResponse(
@@ -209,7 +208,6 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
   @Path("/{id}")
   @Operation(
       summary = "Get a Workflow by Id",
-      tags = "automationsWorkflow",
       description = "Get a Workflow by `Id`.",
       responses = {
         @ApiResponse(
@@ -242,7 +240,6 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
   @Operation(
       operationId = "getWorkflowByName",
       summary = "Get a Workflow by name",
-      tags = "automationsWorkflow",
       description = "Get a Workflow by `name`.",
       responses = {
         @ApiResponse(
@@ -276,7 +273,6 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
   @Operation(
       operationId = "getSpecificWorkflowVersion",
       summary = "Get a version of the Workflow",
-      tags = "automationsWorkflow",
       description = "Get a version of the Workflow by given `Id`",
       responses = {
         @ApiResponse(
@@ -304,7 +300,6 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
   @Operation(
       operationId = "createWorkflow",
       summary = "Create a Workflow",
-      tags = "automationsWorkflow",
       description = "Create a Workflow.",
       responses = {
         @ApiResponse(
@@ -328,7 +323,6 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
   @Operation(
       operationId = "triggerWorkflow",
       summary = "Trigger an workflow run",
-      tags = "automationsWorkflow",
       description = "Trigger a workflow run by id.",
       responses = {
         @ApiResponse(
@@ -355,7 +349,6 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
   @Operation(
       operationId = "patchWorkflow",
       summary = "Update a Workflow",
-      tags = "automationsWorkflow",
       description = "Update an existing Workflow using JsonPatch.",
       externalDocs = @ExternalDocumentation(description = "JsonPatch RFC", url = "https://tools.ietf.org/html/rfc6902"))
   @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
@@ -383,7 +376,6 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
   @Operation(
       operationId = "createOrUpdateWorkflow",
       summary = "Update Workflow",
-      tags = "automationsWorkflow",
       description = "Create a Workflow, if it does not exist, or update an existing Workflow.",
       responses = {
         @ApiResponse(
@@ -407,7 +399,6 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
   @Operation(
       operationId = "deleteWorkflow",
       summary = "Delete a Workflow",
-      tags = "automationsWorkflow",
       description = "Delete a Workflow by `id`.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
@@ -433,7 +424,6 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
   @Operation(
       operationId = "deleteWorkflowByName",
       summary = "Delete a Workflow",
-      tags = "automationsWorkflow",
       description = "Delete a Workflow by `name`.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
@@ -460,7 +450,6 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
   @Operation(
       operationId = "restore",
       summary = "Restore a soft deleted Workflow",
-      tags = "automationsWorkflow",
       description = "Restore a soft deleted Workflow.",
       responses = {
         @ApiResponse(

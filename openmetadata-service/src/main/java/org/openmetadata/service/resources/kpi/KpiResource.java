@@ -1,7 +1,6 @@
 package org.openmetadata.service.resources.kpi;
 
 import com.google.inject.Inject;
-import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -10,6 +9,7 @@ import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import java.io.IOException;
 import java.util.UUID;
 import javax.json.JsonPatch;
@@ -52,8 +52,9 @@ import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
 
 @Slf4j
+// TODO change to KPIs
 @Path("/v1/kpi")
-@Api(value = "Kpi collection", tags = "Kpi collection")
+@Tag(name = "KPIs", description = "A `KPI` defines a metric and a target.")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "kpi")
@@ -93,7 +94,7 @@ public class KpiResource extends EntityResource<Kpi, KpiRepository> {
   @Operation(
       operationId = "listKpis",
       summary = "List kpi",
-      tags = "kpi",
+      // Change to kpis
       description =
           "Get a list of kpi. Use `fields` "
               + "parameter to get only necessary fields. Use cursor-based pagination to limit the number "
@@ -140,7 +141,6 @@ public class KpiResource extends EntityResource<Kpi, KpiRepository> {
   @Operation(
       operationId = "listAllKpiVersion",
       summary = "List kpi versions",
-      tags = "kpi",
       description = "Get a list of all the versions of a Kpi identified by `id`",
       responses = {
         @ApiResponse(
@@ -160,7 +160,6 @@ public class KpiResource extends EntityResource<Kpi, KpiRepository> {
   @Path("/{id}")
   @Operation(
       summary = "Get a kpi by Id",
-      tags = "kpi",
       description = "Get a Kpi by `Id`.",
       responses = {
         @ApiResponse(
@@ -193,7 +192,6 @@ public class KpiResource extends EntityResource<Kpi, KpiRepository> {
   @Operation(
       operationId = "getKpiByName",
       summary = "Get a kpi by name",
-      tags = "kpi",
       description = "Get a kpi by `name`.",
       responses = {
         @ApiResponse(
@@ -226,7 +224,6 @@ public class KpiResource extends EntityResource<Kpi, KpiRepository> {
   @Operation(
       operationId = "getSpecificKpiVersion",
       summary = "Get a version of the kpi",
-      tags = "kpi",
       description = "Get a version of the kpi by given `id`",
       responses = {
         @ApiResponse(
@@ -254,7 +251,6 @@ public class KpiResource extends EntityResource<Kpi, KpiRepository> {
   @Operation(
       operationId = "createKpi",
       summary = "Create a kpi",
-      tags = "kpi",
       description = "Create a kpi.",
       responses = {
         @ApiResponse(
@@ -277,7 +273,6 @@ public class KpiResource extends EntityResource<Kpi, KpiRepository> {
   @Operation(
       operationId = "patchKpi",
       summary = "Update a kpi",
-      tags = "kpi",
       description = "Update an existing Kpi using JsonPatch.",
       externalDocs = @ExternalDocumentation(description = "JsonPatch RFC", url = "https://tools.ietf.org/html/rfc6902"))
   @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
@@ -302,7 +297,6 @@ public class KpiResource extends EntityResource<Kpi, KpiRepository> {
   @Operation(
       operationId = "createOrUpdateKpi",
       summary = "Update kpi",
-      tags = "kpi",
       description = "Create a Kpi, it it does not exist or update an existing Kpi.",
       responses = {
         @ApiResponse(
@@ -331,7 +325,6 @@ public class KpiResource extends EntityResource<Kpi, KpiRepository> {
   @Operation(
       operationId = "deleteKpiByName",
       summary = "Delete a kpi by name",
-      tags = "kpi",
       description = "Delete a kpi by `name`.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
@@ -354,7 +347,6 @@ public class KpiResource extends EntityResource<Kpi, KpiRepository> {
   @Operation(
       operationId = "deleteKpi",
       summary = "Delete a Kpi by Id",
-      tags = "kpi",
       description = "Delete a Kpi by `Id`.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
@@ -381,7 +373,6 @@ public class KpiResource extends EntityResource<Kpi, KpiRepository> {
   @Operation(
       operationId = "restore",
       summary = "Restore a soft deleted Kpi",
-      tags = "kpi",
       description = "Restore a soft deleted Kpi.",
       responses = {
         @ApiResponse(
@@ -400,7 +391,6 @@ public class KpiResource extends EntityResource<Kpi, KpiRepository> {
   @Operation(
       operationId = "addKpiResult",
       summary = "Add kpi result data",
-      tags = "kpi",
       description = "Add Kpi Result data to the kpi.",
       responses = {
         @ApiResponse(
@@ -422,7 +412,6 @@ public class KpiResource extends EntityResource<Kpi, KpiRepository> {
   @Operation(
       operationId = "listKpiResults",
       summary = "List of kpi results",
-      tags = "kpi",
       description =
           "Get a list of all the kpi results for the given kpi id, optionally filtered by  `startTs` and `endTs` of the profile. "
               + "Use cursor-based pagination to limit the number of "
@@ -461,7 +450,6 @@ public class KpiResource extends EntityResource<Kpi, KpiRepository> {
   @Operation(
       operationId = "getLatestKpiResults",
       summary = "Get a latest Kpi Result",
-      tags = "kpi",
       description = "Get Latest Kpi Result for the given kpi",
       responses = {
         @ApiResponse(
@@ -484,7 +472,6 @@ public class KpiResource extends EntityResource<Kpi, KpiRepository> {
   @Operation(
       operationId = "deleteKpiResult",
       summary = "Delete kpi result",
-      tags = "kpi",
       description = "Delete kpi result for a kpi.",
       responses = {
         @ApiResponse(

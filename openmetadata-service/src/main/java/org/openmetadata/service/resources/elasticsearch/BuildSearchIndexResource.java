@@ -32,8 +32,9 @@ import org.openmetadata.service.util.ElasticSearchClientUtils;
 import org.openmetadata.service.util.ElasticSearchIndexUtil;
 import org.openmetadata.service.util.JsonUtils;
 
+// TODO fix this
 @Path("/v1/indexResource")
-@Api(value = "Elastic Search Collection", tags = "Elastic Search Collection")
+@Api(value = "Elastic Search Collection", tags = "Elastic Search Collection", hidden = true)
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "indexResource")

@@ -13,7 +13,6 @@
 
 package org.openmetadata.service.resources.locations;
 
-import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -22,6 +21,7 @@ import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
@@ -64,7 +64,7 @@ import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
 
 @Path("/v1/locations")
-@Api(value = "Locations collection", tags = "Locations collection")
+@Tag(name = "locations")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "locations")
@@ -94,7 +94,6 @@ public class LocationResource extends EntityResource<Location, LocationRepositor
   @Operation(
       operationId = "listLocations",
       summary = "List locations",
-      tags = "locations",
       description =
           "Get a list of locations, optionally filtered by `service` it belongs to. Use `fields` "
               + "parameter to get only necessary fields. Use cursor-based pagination to limit the number "
@@ -146,7 +145,6 @@ public class LocationResource extends EntityResource<Location, LocationRepositor
   @Operation(
       operationId = "listAllLocationVersion",
       summary = "List location versions",
-      tags = "locations",
       description = "Get a list of all the versions of a location identified by `Id`",
       responses = {
         @ApiResponse(
@@ -167,7 +165,6 @@ public class LocationResource extends EntityResource<Location, LocationRepositor
   @Operation(
       operationId = "getLocationByID",
       summary = "Get a location by Id",
-      tags = "locations",
       description = "Get a location by `Id`.",
       responses = {
         @ApiResponse(
@@ -200,7 +197,6 @@ public class LocationResource extends EntityResource<Location, LocationRepositor
   @Operation(
       operationId = "listLocationPrefixes",
       summary = "List locations that are prefixes",
-      tags = "locations",
       description =
           "Get a list of locations. Use `fields` parameter to get only necessary fields. "
               + "Use cursor-based pagination to limit the number entries in the list using `limit` and `before` "
@@ -254,7 +250,6 @@ public class LocationResource extends EntityResource<Location, LocationRepositor
   @Operation(
       operationId = "getLocationByFQN",
       summary = "Get a location by fully qualified name",
-      tags = "locations",
       description = "Get a location by fully qualified name.",
       responses = {
         @ApiResponse(
@@ -291,7 +286,6 @@ public class LocationResource extends EntityResource<Location, LocationRepositor
   @Operation(
       operationId = "getEntityByLocation",
       summary = "Get a table associated with location",
-      tags = "locations",
       description = "Get a table associated with location by given `Id`",
       responses = {
         @ApiResponse(
@@ -313,7 +307,6 @@ public class LocationResource extends EntityResource<Location, LocationRepositor
   @Operation(
       operationId = "getSpecificLocationVersion",
       summary = "Get a version of the location",
-      tags = "locations",
       description = "Get a version of the location by given `Id`",
       responses = {
         @ApiResponse(
@@ -341,7 +334,6 @@ public class LocationResource extends EntityResource<Location, LocationRepositor
   @Operation(
       operationId = "createLocation",
       summary = "Create a location",
-      tags = "locations",
       description = "Create a location under an existing `service`.",
       responses = {
         @ApiResponse(
@@ -361,7 +353,6 @@ public class LocationResource extends EntityResource<Location, LocationRepositor
   @Operation(
       operationId = "createOrUpdateLocation",
       summary = "Create or update location",
-      tags = "locations",
       description = "Create a location, it it does not exist or update an existing location.",
       responses = {
         @ApiResponse(
@@ -382,7 +373,6 @@ public class LocationResource extends EntityResource<Location, LocationRepositor
   @Operation(
       operationId = "patchLocation",
       summary = "Update a location",
-      tags = "locations",
       description = "Update an existing location using JsonPatch.",
       externalDocs = @ExternalDocumentation(description = "JsonPatch RFC", url = "https://tools.ietf.org/html/rfc6902"))
   @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
@@ -408,7 +398,6 @@ public class LocationResource extends EntityResource<Location, LocationRepositor
   @Operation(
       operationId = "deleteLocationByFQN",
       summary = "Delete a location by fully qualified name",
-      tags = "locations",
       description = "Delete a location by `fullyQualifiedName`.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
@@ -433,7 +422,6 @@ public class LocationResource extends EntityResource<Location, LocationRepositor
   @Operation(
       operationId = "deleteLocation",
       summary = "Delete a location by Id",
-      tags = "locations",
       description = "Delete a location by `Id`.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
@@ -456,7 +444,6 @@ public class LocationResource extends EntityResource<Location, LocationRepositor
   @Operation(
       operationId = "restore",
       summary = "Restore a soft deleted location.",
-      tags = "locations",
       description = "Restore a soft deleted location.",
       responses = {
         @ApiResponse(
@@ -475,7 +462,6 @@ public class LocationResource extends EntityResource<Location, LocationRepositor
   @Operation(
       operationId = "addFollower",
       summary = "Add a follower",
-      tags = "locations",
       description = "Add a user identified by `userId` as followed of this location",
       responses = {
         @ApiResponse(
@@ -498,7 +484,6 @@ public class LocationResource extends EntityResource<Location, LocationRepositor
   @Operation(
       operationId = "deleteFollower",
       summary = "Remove a follower",
-      tags = "locations",
       description = "Remove the user identified `userId` as a follower of the location.",
       responses = {
         @ApiResponse(

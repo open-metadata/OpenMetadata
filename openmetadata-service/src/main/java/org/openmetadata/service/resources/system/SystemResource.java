@@ -1,6 +1,5 @@
 package org.openmetadata.service.resources.system;
 
-import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -9,6 +8,7 @@ import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import java.io.IOException;
 import java.util.List;
 import java.util.Objects;
@@ -45,7 +45,7 @@ import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
 
 @Path("/v1/system")
-@Api(value = "Util collection", tags = "Util collection")
+@Tag(name = "System", description = "APIs related to System configuration and settings.")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "system")
@@ -105,7 +105,6 @@ public class SystemResource {
   @Operation(
       operationId = "listSettings",
       summary = "List all settings",
-      tags = "system",
       description = "Get a list of all OpenMetadata settings",
       responses = {
         @ApiResponse(
@@ -123,7 +122,6 @@ public class SystemResource {
   @Operation(
       operationId = "getSetting",
       summary = "Get a setting",
-      tags = "system",
       description = "Get a OpenMetadata Settings",
       responses = {
         @ApiResponse(
@@ -145,7 +143,6 @@ public class SystemResource {
   @Operation(
       operationId = "createOrUpdate",
       summary = "Update setting",
-      tags = "system",
       description = "Update existing settings",
       responses = {
         @ApiResponse(
@@ -164,7 +161,6 @@ public class SystemResource {
   @Operation(
       operationId = "patchSetting",
       summary = "Patch a setting",
-      tags = "system",
       description = "Update an existing Setting using JsonPatch.",
       externalDocs = @ExternalDocumentation(description = "JsonPatch RFC", url = "https://tools.ietf.org/html/rfc6902"))
   @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
@@ -191,7 +187,6 @@ public class SystemResource {
   @Operation(
       operationId = "listEntitiesCount",
       summary = "List all entities counts",
-      tags = "system",
       description = "Get a list of all entities count",
       responses = {
         @ApiResponse(
@@ -216,7 +211,6 @@ public class SystemResource {
   @Operation(
       operationId = "listServicesCount",
       summary = "List all services counts",
-      tags = "system",
       description = "Get a list of all entities count",
       responses = {
         @ApiResponse(

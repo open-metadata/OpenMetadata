@@ -15,7 +15,6 @@ package org.openmetadata.service.resources.events.subscription;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
-import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -24,6 +23,7 @@ import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -74,7 +74,10 @@ import org.openmetadata.service.util.ResultList;
 
 @Slf4j
 @Path("/v1/events/subscription")
-@Api(value = "Event Subscription  collection", tags = "Event Subscription Collection")
+@Tag(
+    name = "Events",
+    description =
+        "The `Events` are changes to metadata and are sent when entities are created, modified, or updated. External systems can subscribe to events using event subscription API over Webhooks, Slack, or Microsoft Teams.")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "events/subscription")
@@ -147,7 +150,6 @@ public class EventSubscriptionResource extends EntityResource<EventSubscription,
   @Operation(
       operationId = "listEventSubscriptions",
       summary = "List all available Event Subscriptions",
-      tags = "eventsSubscription",
       description = "Get a list of All available Event Subscriptions",
       responses = {
         @ApiResponse(
@@ -199,7 +201,6 @@ public class EventSubscriptionResource extends EntityResource<EventSubscription,
   @Operation(
       operationId = "getEventSubscriptionByID",
       summary = "Get a event Subscription by ID",
-      tags = "eventsSubscription",
       description = "Get a event Subscription by given Id",
       responses = {
         @ApiResponse(
@@ -234,7 +235,6 @@ public class EventSubscriptionResource extends EntityResource<EventSubscription,
   @Operation(
       operationId = "getEventSubscriptionByName",
       summary = "Get an Event Subscription by name",
-      tags = "eventsSubscription",
       description = "Get an Event Subscription by name.",
       responses = {
         @ApiResponse(
@@ -271,7 +271,6 @@ public class EventSubscriptionResource extends EntityResource<EventSubscription,
   @Operation(
       operationId = "createEventSubscription",
       summary = "Create a new Event Subscription",
-      tags = "eventsSubscription",
       description = "Create a new Event Subscription",
       responses = {
         @ApiResponse(
@@ -296,7 +295,6 @@ public class EventSubscriptionResource extends EntityResource<EventSubscription,
   @Operation(
       operationId = "createOrUpdateEventSubscription",
       summary = "Updated an existing or create a new Event Subscription",
-      tags = "eventsSubscription",
       description = "Updated an existing or create a new Event Subscription",
       responses = {
         @ApiResponse(
@@ -322,7 +320,6 @@ public class EventSubscriptionResource extends EntityResource<EventSubscription,
   @Operation(
       operationId = "patchEventSubscription",
       summary = "Update an Event Subscriptions",
-      tags = "eventsSubscription",
       description = "Update an existing Event Subscriptions using JsonPatch.",
       externalDocs = @ExternalDocumentation(description = "JsonPatch RFC", url = "https://tools.ietf.org/html/rfc6902"))
   @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
@@ -351,7 +348,6 @@ public class EventSubscriptionResource extends EntityResource<EventSubscription,
   @Operation(
       operationId = "listAllEventSubscriptionVersion",
       summary = "List Event Subscription versions",
-      tags = "eventsSubscription",
       description = "Get a list of all the versions of an Event Subscription identified by `Id`",
       responses = {
         @ApiResponse(
@@ -373,7 +369,6 @@ public class EventSubscriptionResource extends EntityResource<EventSubscription,
   @Operation(
       operationId = "getSpecificEventSubscriptionVersion",
       summary = "Get a version of the Event Subscription",
-      tags = "eventsSubscription",
       description = "Get a version of the Event Subscription by given `Id`",
       responses = {
         @ApiResponse(
@@ -405,7 +400,6 @@ public class EventSubscriptionResource extends EntityResource<EventSubscription,
   @Operation(
       operationId = "deleteEventSubscription",
       summary = "Delete an Event Subscription by Id",
-      tags = "eventsSubscription",
       description = "Delete an Event Subscription",
       responses = {
         @ApiResponse(
@@ -431,7 +425,6 @@ public class EventSubscriptionResource extends EntityResource<EventSubscription,
   @Operation(
       operationId = "deleteEventSubscriptionByName",
       summary = "Delete an Event Subscription by name",
-      tags = "eventsSubscription",
       description = "Delete an Event Subscription by given `name`.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
@@ -454,7 +447,6 @@ public class EventSubscriptionResource extends EntityResource<EventSubscription,
   @Operation(
       operationId = "getEventSubscriptionStatus",
       summary = "Get Event Subscription status",
-      tags = "eventsSubscription",
       description = "Get a event Subscription status by given Name",
       responses = {
         @ApiResponse(
@@ -481,7 +473,6 @@ public class EventSubscriptionResource extends EntityResource<EventSubscription,
   @Operation(
       operationId = "getEventSubscriptionStatusById",
       summary = "Get Event Subscription status by Id",
-      tags = "eventsSubscription",
       description = "Get a event Subscription status by given Name",
       responses = {
         @ApiResponse(
@@ -505,7 +496,6 @@ public class EventSubscriptionResource extends EntityResource<EventSubscription,
   @Operation(
       operationId = "listEventSubscriptionFunctions",
       summary = "Get list of Event Subscription functions used in filtering EventSubscription",
-      tags = "eventsSubscription",
       description = "Get list of Event Subscription functions used in filtering conditions in Event Subscriptions")
   public List<Function> listEventSubscriptionFunctions(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext) {
@@ -517,7 +507,6 @@ public class EventSubscriptionResource extends EntityResource<EventSubscription,
   @Operation(
       operationId = "listEventSubscriptionResources",
       summary = "Get list of Event Subscriptions Resources used in filtering Event Subscription",
-      tags = "eventsSubscription",
       description = "Get list of EventSubscription functions used in filtering conditions in Event Subscription")
   public EventSubResourceDescriptorList listEventSubResources(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext) {
@@ -529,7 +518,6 @@ public class EventSubscriptionResource extends EntityResource<EventSubscription,
   @Operation(
       operationId = "validateCondition",
       summary = "Validate a given condition",
-      tags = "eventsSubscription",
       description = "Validate a given condition expression used in filtering rules.",
       responses = {
         @ApiResponse(responseCode = "204", description = "No value is returned"),

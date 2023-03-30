@@ -1,12 +1,12 @@
 package org.openmetadata.service.resources.analytics;
 
 import com.google.inject.Inject;
-import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import java.io.IOException;
 import javax.validation.Valid;
 import javax.ws.rs.Consumes;
@@ -38,7 +38,7 @@ import org.openmetadata.service.util.ResultList;
 
 @Slf4j
 @Path("/v1/analytics/dataInsights/data")
-@Api(value = "DataInsight data collection", tags = "analytics collection")
+@Tag(name = "Data Insights", description = "APIs related to Data Insights data and charts.")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "analytics")
@@ -64,7 +64,6 @@ public class ReportDataResource {
   @Operation(
       operationId = "getReportData",
       summary = "List the report data",
-      tags = "analytics",
       description =
           "Get a list of all the report data for a given data insight report type , optionally filtered by  `startTs` and `endTs` of the result. "
               + "Use cursor-based pagination to limit the number of "
@@ -106,8 +105,7 @@ public class ReportDataResource {
   @POST
   @Operation(
       operationId = "addReportData",
-      summary = "Add data to a data insight report type",
-      tags = "analytics",
+      summary = "Add data to a data insight report",
       description = "Add data to a data insight report type",
       responses = {
         @ApiResponse(
