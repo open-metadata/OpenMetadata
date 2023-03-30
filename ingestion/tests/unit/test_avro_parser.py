@@ -16,13 +16,7 @@ from unittest import TestCase
 
 from metadata.parsers.avro_parser import parse_avro_schema
 
-
-class AvroParserTests(TestCase):
-    """
-    Check methods from avro_parser.py
-    """
-
-    sample_avro_schema = """
+SAMPLE_AVRO_SCHEMA = """
     {
     "namespace": "openmetadata.kafka",
     "name": "level",
@@ -80,9 +74,48 @@ class AvroParserTests(TestCase):
         }
     ]
 }
+"""
+
+# SAMPLE_AVRO_SCHEMA = """
+# {
+#   "type": "record",
+#   "name": "ExampleUnionRecord",
+#   "fields": [
+#     {
+#       "name": "id",
+#       "type": "int"
+#     },
+#     {
+#       "name": "data",
+#       "type": [
+#         "null",
+#         {
+#           "type": "record",
+#           "name": "ExampleRecord",
+#           "fields": [
+#             {
+#               "name": "name",
+#               "type": "string"
+#             },
+#             {
+#               "name": "age",
+#               "type": "int"
+#             }
+#           ]
+#         }
+#       ]
+#     }
+#   ]
+# }
+# """
+
+
+class AvroParserTests(TestCase):
+    """
+    Check methods from avro_parser.py
     """
 
-    parsed_schema = parse_avro_schema(sample_avro_schema)
+    parsed_schema = parse_avro_schema(SAMPLE_AVRO_SCHEMA)
 
     def test_first_level(self):
         self.assertEqual(self.parsed_schema[0].name.__root__, "level")
@@ -139,3 +172,19 @@ class AvroParserTests(TestCase):
             for field in children
         }
         self.assertEqual(field_descriptions, {None, "level 2 array"})
+
+    def test_fourth_level(self):
+        level3_record = self.parsed_schema[0].children[2].children[0]
+
+        children = level3_record.children[1].children[0].children
+
+        field_names = {str(field.name.__root__) for field in children}
+
+        self.assertEqual(
+            field_names,
+            {"item1_lvl3", "item2_lvl3", "item3_lvl3"},
+        )
+
+        field_types = {str(field.dataType.name) for field in children}
+
+        self.assertEqual(field_types, {"STRING", "UNION"})

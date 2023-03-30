@@ -17,7 +17,7 @@ import traceback
 from typing import List, Optional, Union
 
 import avro.schema as avroschema
-from avro.schema import ArraySchema
+from avro.schema import ArraySchema, RecordSchema, UnionSchema
 from pydantic.main import ModelMetaclass
 
 from metadata.generated.schema.entity.data.table import Column, DataType
@@ -28,12 +28,12 @@ logger = ingestion_logger()
 
 
 def parse_array_fields(
-    field, cls: ModelMetaclass = FieldModel
+    field, cls: ModelMetaclass = FieldModel, items=None
 ) -> Optional[List[Union[FieldModel, Column]]]:
     """
     Parse array field for avro schema
     """
-    field_items = field.type.items
+    field_items = items or field.type.items
     child_obj = cls(
         name=field_items.name,
         dataType=str(field_items.type).upper(),
@@ -61,6 +61,44 @@ def parse_array_fields(
 
     obj.children = [child_obj]
 
+    return obj
+
+
+def parse_union_fields(
+    union_field, cls: ModelMetaclass = FieldModel
+) -> Optional[List[Union[FieldModel, Column]]]:
+    """
+    Parse array field for avro schema
+    """
+
+    field_type = union_field.type
+    child_obj = []
+    obj = cls(
+        name=union_field.name,
+        dataType=str(union_field.type.type).upper(),
+        description=union_field.doc,
+    )
+    non_null_schema = [schema for schema in field_type.schemas if schema.type != "null"]
+    if len(field_type.schemas) == 2 and len(non_null_schema) == 1:
+        field = non_null_schema[0]
+        if isinstance(field, ArraySchema):
+            child_obj.append(parse_array_fields(field, cls=cls, items=field.items))
+
+        elif isinstance(field, RecordSchema):
+            child_obj.append(
+                cls(
+                    name=field.name,
+                    dataType=str(field.type).upper(),
+                    children=get_avro_fields(field, cls),
+                    description=field.doc,
+                )
+            )
+
+        if child_obj:
+            obj.children = child_obj
+
+    sub_type = ",".join(schema.type for schema in field_type.schemas)
+    obj.dataTypeDisplay = f"UNION<{sub_type}>"
     return obj
 
 
@@ -113,6 +151,8 @@ def get_avro_fields(
         try:
             if isinstance(field.type, ArraySchema):
                 field_models.append(parse_array_fields(field, cls=cls))
+            elif isinstance(field.type, UnionSchema):
+                field_models.append(parse_union_fields(field, cls=cls))
             else:
                 field_models.append(parse_single_field(field, cls=cls))
         except Exception as exc:  # pylint: disable=broad-except

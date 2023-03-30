@@ -201,6 +201,7 @@ public class TopicRepository extends EntityRepository<Topic> {
         .withDisplayName(field.getDisplayName())
         .withFullyQualifiedName(field.getFullyQualifiedName())
         .withDataType(field.getDataType())
+        .withDataTypeDisplay(field.getDataTypeDisplay())
         .withChildren(children);
   }
 
