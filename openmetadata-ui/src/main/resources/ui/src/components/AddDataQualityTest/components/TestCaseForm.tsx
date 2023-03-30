@@ -250,7 +250,7 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
             message: `${t('label.field-required', { field: t('label.name') })}`,
           },
           {
-            pattern: /^[A-Za-z0-9_]*$/g,
+            pattern: /^[-A-Za-z0-9_]*$/g,
             message: t('message.special-character-not-allowed'),
           },
           {
