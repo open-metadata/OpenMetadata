@@ -10,15 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { AdvanceSearchProvider } from 'components/Explore/AdvanceSearchProvider/AdvanceSearchProvider.component';
-import React, { FC } from 'react';
-
-export const withAdvanceSearch =
-  (Component: FC) =>
-  (props: JSX.IntrinsicAttributes & { children?: React.ReactNode }) => {
-    return (
-      <AdvanceSearchProvider>
-        <Component {...props} />
-      </AdvanceSearchProvider>
-    );
-  };
+export interface TeamsSelectableProps {
+  showTeamsAlert?: boolean;
+  onSelectionChange: (teams: string[]) => void;
+  filterJoinable?: boolean;
+  placeholder?: string;
+  selectedTeams?: string[];
+}
