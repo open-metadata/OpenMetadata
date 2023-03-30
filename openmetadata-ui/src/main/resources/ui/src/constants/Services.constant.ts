@@ -307,7 +307,7 @@ export const SERVICE_DEFAULT_ERROR_MAP = {
   specialChar: false,
   nameLength: false,
   allowChar: false,
-  isError: true,
+  isError: false,
 };
 // 2 minutes
 export const FETCHING_EXPIRY_TIME = 2 * 60 * 1000;
