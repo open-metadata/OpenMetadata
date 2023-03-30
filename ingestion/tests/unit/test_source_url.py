@@ -14,8 +14,10 @@ OpenMetadata source URL building tests
 """
 from unittest import TestCase
 
-from metadata.generated.schema.entity.services.connections.database.mssqlConnection import MssqlConnection, MssqlScheme
-
+from metadata.generated.schema.entity.services.connections.database.mssqlConnection import (
+    MssqlConnection,
+    MssqlScheme,
+)
 from metadata.generated.schema.entity.services.connections.database.mysqlConnection import (
     MysqlConnection,
 )
