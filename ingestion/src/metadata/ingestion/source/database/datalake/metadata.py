@@ -128,7 +128,7 @@ def ometa_to_dataframe(config_source, client, table, profile_sample_config):
                 profile_sample_config.profile_sample_type
                 == ProfileSampleType.PERCENTAGE
             ):
-                dfs = [
+                data = [
                     df.sample(
                         frac=profile_sample_config.profile_sample / 100,
                         random_state=random.randint(0, 100),
@@ -141,7 +141,7 @@ def ometa_to_dataframe(config_source, client, table, profile_sample_config):
                 pass
         else:
             # randomize the samples
-            dfs = [
+            data = [
                 df.sample(
                     frac=1,
                     random_state=random.randint(0, 100),
