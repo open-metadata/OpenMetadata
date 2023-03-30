@@ -45,7 +45,10 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 )
 from metadata.generated.schema.entity.teams.team import Team
 from metadata.generated.schema.entity.teams.user import User
-from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.generated.schema.type.entityReference import (
+    EntityReference,
+    EntityReferenceList,
+)
 from metadata.ingestion.api.common import Entity
 from metadata.ingestion.api.sink import Sink
 from metadata.ingestion.models.es_documents import (
@@ -576,8 +579,8 @@ class ElasticsearchSink(Sink[Entity]):
             {"input": [display_name], "weight": 5},
         ]
         service_suggest = []
-        chart_suggest = []
-        data_model_suggest = []
+        chart_suggest = self._build_suggest_of(dashboard.charts)
+        data_model_suggest = self._build_suggest_of(dashboard.dataModels)
         tags = []
         dashboard_followers = []
         if dashboard.followers:
@@ -589,16 +592,6 @@ class ElasticsearchSink(Sink[Entity]):
                 tier = dashboard_tag
             else:
                 tags.append(dashboard_tag)
-
-        for chart in dashboard.charts:
-            chart_display_name = chart.displayName if chart.displayName else chart.name
-            chart_suggest.append({"input": [chart_display_name], "weight": 5})
-
-        for data_model in dashboard.dataModels:
-            data_model_display_name = (
-                data_model.displayName if data_model.displayName else data_model.name
-            )
-            data_model_suggest.append({"input": [data_model_display_name], "weight": 5})
 
         service_suggest.append({"input": [dashboard.service.name], "weight": 5})
 
@@ -629,6 +622,18 @@ class ElasticsearchSink(Sink[Entity]):
         )
 
         return dashboard_doc
+
+    @staticmethod
+    def _build_suggest_of(entity_list: Optional[EntityReferenceList]) -> List[dict]:
+        suggest_list = []
+        if not entity_list:
+            return suggest_list
+        for entity in entity_list.__root__:
+            entity_display_name = (
+                entity.displayName if entity.displayName else entity.name
+            )
+            suggest_list.append({"input": [entity_display_name], "weight": 5})
+        return suggest_list
 
     def _create_pipeline_es_doc(self, pipeline: Pipeline):
         display_name = (
