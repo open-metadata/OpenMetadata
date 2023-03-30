@@ -39,6 +39,7 @@ from metadata.utils import fqn
 from metadata.utils.filters import filter_by_chart
 from metadata.utils.helpers import get_standard_chart_type, replace_special_with
 from metadata.utils.logger import ingestion_logger
+from .client import MetabaseClient
 
 HEADERS = {"Content-Type": "application/json", "Accept": "*/*"}
 
@@ -60,6 +61,7 @@ class MetabaseSource(DashboardServiceSource):
     ):
         super().__init__(config, metadata_config)
         self.metabase_session = self.client["metabase_session"]
+        self.client = MetabaseClient(config, metadata_config)
 
     @classmethod
     def create(cls, config_dict, metadata_config: OpenMetadataConnection):
@@ -75,7 +77,7 @@ class MetabaseSource(DashboardServiceSource):
         """
         Get List of all dashboards
         """
-        resp_dashboards = self.req_get("/api/dashboard")
+        resp_dashboards = self.client.req_get("/api/dashboard")
         if resp_dashboards.status_code == 200:
             return resp_dashboards.json()
         return []
@@ -90,7 +92,7 @@ class MetabaseSource(DashboardServiceSource):
         """
         Get Dashboard Details
         """
-        resp_dashboard = self.req_get(f"/api/dashboard/{dashboard['id']}")
+        resp_dashboard = self.client.req_get(f"/api/dashboard/{dashboard['id']}")
         return resp_dashboard.json()
 
     def yield_dashboard(
@@ -214,22 +216,10 @@ class MetabaseSource(DashboardServiceSource):
                 logger.debug(traceback.format_exc())
                 logger.error(f"Error creating chart [{chart}]: {exc}")
 
-    def req_get(self, path):
-        """Send get request method
-
-        Args:
-            path:
-        """
-        return requests.get(
-            self.service_connection.hostPort + path,
-            headers=self.metabase_session,
-            timeout=30,
-        )
-
     def _yield_lineage_from_query(
         self, chart_details: dict, db_service_name: str, dashboard_name: str
     ) -> Optional[AddLineageRequest]:
-        resp_database = self.req_get(f"/api/database/{chart_details['database_id']}")
+        resp_database = self.client.req_get(f"/api/database/{chart_details['database_id']}")
         if resp_database.status_code == 200:
             database = resp_database.json()
             query = (
@@ -282,7 +272,7 @@ class MetabaseSource(DashboardServiceSource):
     def _yield_lineage_from_api(
         self, chart_details: dict, db_service_name: str, dashboard_name: str
     ) -> Optional[AddLineageRequest]:
-        resp_tables = self.req_get(f"/api/table/{chart_details['table_id']}")
+        resp_tables = self.client.req_get(f"/api/table/{chart_details['table_id']}")
         if resp_tables.status_code == 200:
             table = resp_tables.json()
             database_name = table.get("db", {}).get("details", {}).get("db", None)
