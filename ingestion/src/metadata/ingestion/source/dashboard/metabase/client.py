@@ -28,6 +28,7 @@ logger = ingestion_logger()
 class MetabaseClient(DashboardServiceSource):
     
     def __init__(
+        self,
         config: WorkflowSource,
         metadata_config: OpenMetadataConnection
     ):
