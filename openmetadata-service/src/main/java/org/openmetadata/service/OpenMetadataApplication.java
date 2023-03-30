@@ -295,6 +295,10 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
           "'botPrincipals' configuration is deprecated. Please remove it from "
               + "'openmetadata.yaml and restart the server");
     }
+    if (catalogConfig.getPipelineServiceClientConfiguration().getAuthConfig() != null) {
+      LOG.warn(
+          "'authProvider' and 'authConfig' form the 'pipelineServiceClientConfiguration' option are deprecated and will be removed in future releases.");
+    }
   }
 
   private void registerAuthorizer(OpenMetadataApplicationConfig catalogConfig, Environment environment)
