@@ -13,14 +13,34 @@
 
 package org.openmetadata.service.util;
 
-import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
-import static org.openmetadata.service.Entity.FIELD_DISPLAY_NAME;
-import static org.openmetadata.service.Entity.FIELD_NAME;
-import static org.openmetadata.service.Entity.FIELD_OWNER;
-import static org.openmetadata.service.Entity.INGESTION_PIPELINE;
-import static org.openmetadata.service.Entity.KPI;
-import static org.openmetadata.service.Entity.TEST_CASE;
+import org.apache.commons.lang.StringUtils;
+import org.bitbucket.cowwoc.diffmatchpatch.DiffMatchPatch;
+import org.openmetadata.common.utils.CommonUtil;
+import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.dataInsight.kpi.Kpi;
+import org.openmetadata.schema.dataInsight.type.KpiResult;
+import org.openmetadata.schema.dataInsight.type.KpiTarget;
+import org.openmetadata.schema.entity.data.Query;
+import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
+import org.openmetadata.schema.tests.TestCase;
+import org.openmetadata.schema.tests.type.TestCaseResult;
+import org.openmetadata.schema.type.ChangeDescription;
+import org.openmetadata.schema.type.ChangeEvent;
+import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.FieldChange;
+import org.openmetadata.service.Entity;
+import org.openmetadata.service.events.subscription.emailAlert.EmailMessage;
+import org.openmetadata.service.events.subscription.gchat.GChatMessage;
+import org.openmetadata.service.events.subscription.msteams.TeamsMessage;
+import org.openmetadata.service.events.subscription.slack.SlackAttachment;
+import org.openmetadata.service.events.subscription.slack.SlackMessage;
+import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 
+import javax.json.JsonArray;
+import javax.json.JsonObject;
+import javax.json.JsonValue;
+import javax.json.JsonValue.ValueType;
+import javax.json.stream.JsonParsingException;
 import java.net.URI;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -36,32 +56,14 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
-import javax.json.JsonArray;
-import javax.json.JsonObject;
-import javax.json.JsonValue;
-import javax.json.JsonValue.ValueType;
-import javax.json.stream.JsonParsingException;
-import org.apache.commons.lang.StringUtils;
-import org.bitbucket.cowwoc.diffmatchpatch.DiffMatchPatch;
-import org.openmetadata.common.utils.CommonUtil;
-import org.openmetadata.schema.EntityInterface;
-import org.openmetadata.schema.dataInsight.kpi.Kpi;
-import org.openmetadata.schema.dataInsight.type.KpiResult;
-import org.openmetadata.schema.dataInsight.type.KpiTarget;
-import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
-import org.openmetadata.schema.tests.TestCase;
-import org.openmetadata.schema.tests.type.TestCaseResult;
-import org.openmetadata.schema.type.ChangeDescription;
-import org.openmetadata.schema.type.ChangeEvent;
-import org.openmetadata.schema.type.EntityReference;
-import org.openmetadata.schema.type.FieldChange;
-import org.openmetadata.service.Entity;
-import org.openmetadata.service.events.subscription.emailAlert.EmailMessage;
-import org.openmetadata.service.events.subscription.gchat.GChatMessage;
-import org.openmetadata.service.events.subscription.msteams.TeamsMessage;
-import org.openmetadata.service.events.subscription.slack.SlackAttachment;
-import org.openmetadata.service.events.subscription.slack.SlackMessage;
-import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
+
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.service.Entity.FIELD_DISPLAY_NAME;
+import static org.openmetadata.service.Entity.FIELD_NAME;
+import static org.openmetadata.service.Entity.FIELD_OWNER;
+import static org.openmetadata.service.Entity.INGESTION_PIPELINE;
+import static org.openmetadata.service.Entity.KPI;
+import static org.openmetadata.service.Entity.TEST_CASE;
 
 public final class ChangeEventParser {
   public static final String FEED_ADD_MARKER = "<!add>";
@@ -333,8 +335,16 @@ public final class ChangeEventParser {
     for (FieldChange field : fields) {
       // if field name has dots, then it is an array field
       String fieldName = field.getName();
-      String newFieldValue = getFieldValue(field.getNewValue());
-      String oldFieldValue = getFieldValue(field.getOldValue());
+      String newFieldValue;
+      String oldFieldValue;
+      if (entity.getEntityReference().getType().equals(Entity.QUERY) && fieldName.equals("queryUsedIn")){
+        fieldName = "queryUsage";
+        newFieldValue = getFieldValueForQuery(field.getNewValue(), entity);
+        oldFieldValue = getFieldValueForQuery(field.getOldValue(), entity);
+      }else {
+        newFieldValue = getFieldValue(field.getNewValue());
+        oldFieldValue = getFieldValue(field.getOldValue());
+      }
       EntityLink link = getEntityLink(fieldName, entity);
       if (link.getEntityType().equals(TEST_CASE) && link.getFieldName().equals("testCaseResult")) {
         String message = handleTestCaseResult(publishTo, entity, link, field.getOldValue(), field.getNewValue());
@@ -359,12 +369,11 @@ public final class ChangeEventParser {
       return StringUtils.EMPTY;
     }
     try {
-      // Check if field value is a json string
       JsonValue json = JsonUtils.readJson(fieldValue.toString());
       if (json.getValueType() == ValueType.ARRAY) {
         JsonArray jsonArray = json.asJsonArray();
         List<String> labels = new ArrayList<>();
-        for (JsonValue item : jsonArray) {
+          for (JsonValue item : jsonArray) {
           if (item.getValueType() == ValueType.OBJECT) {
             Set<String> keys = item.asJsonObject().keySet();
             if (keys.contains("tagFQN")) {
@@ -400,6 +409,23 @@ public final class ChangeEventParser {
       // If unable to parse json, just return the string
     }
     return fieldValue.toString();
+  }
+
+  private static String getFieldValueForQuery(Object fieldValue,EntityInterface entity){
+    Query query = (Query) entity;
+    StringBuilder field = new StringBuilder();
+    List<EntityReference> queryUsedIn = (List<EntityReference>) fieldValue;
+    field.append("for ").append("'" + query.getQuery() + "'").append(", <br>");
+    field.append("Query Used in :- ");
+    int i = 1;
+    for (EntityReference queryUsage : queryUsedIn){
+      field.append(queryUsage.getFullyQualifiedName());
+      if (i < queryUsedIn.size()){
+        field.append(", ");
+      }
+      i++;
+    }
+    return field.toString();
   }
 
   /** Tries to merge additions and deletions into updates and returns a map of formatted messages. */
