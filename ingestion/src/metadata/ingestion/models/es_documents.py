@@ -135,6 +135,7 @@ class DashboardESDocument(BaseModel):
     tier: Optional[TagLabel] = None
     suggest: List[dict]
     chart_suggest: List[dict]
+    data_model_suggest: List[dict]
     service_suggest: List[dict]
     doc_as_upsert: bool = True
 

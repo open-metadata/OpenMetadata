@@ -577,6 +577,7 @@ class ElasticsearchSink(Sink[Entity]):
         ]
         service_suggest = []
         chart_suggest = []
+        data_model_suggest = []
         tags = []
         dashboard_followers = []
         if dashboard.followers:
@@ -592,6 +593,12 @@ class ElasticsearchSink(Sink[Entity]):
         for chart in dashboard.charts:
             chart_display_name = chart.displayName if chart.displayName else chart.name
             chart_suggest.append({"input": [chart_display_name], "weight": 5})
+
+        for data_model in dashboard.dataModels:
+            data_model_display_name = (
+                data_model.displayName if data_model.displayName else data_model.name
+            )
+            data_model_suggest.append({"input": [data_model_display_name], "weight": 5})
 
         service_suggest.append({"input": [dashboard.service.name], "weight": 5})
 
@@ -617,6 +624,7 @@ class ElasticsearchSink(Sink[Entity]):
             followers=dashboard_followers,
             suggest=suggest,
             chart_suggest=chart_suggest,
+            data_model_suggest=data_model_suggest,
             service_suggest=service_suggest,
         )
 
