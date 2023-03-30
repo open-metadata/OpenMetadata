@@ -54,8 +54,7 @@ def warn_auth_deprecation(auth_provider: AuthProvider) -> None:
         "Please, configure the ingestion-bot with the 'OpenMetadata JWT' configuration.\n"
         f"The '{auth_provider.value}' configuration is deprecated and will be removed in future releases.\n"
         f"Visit https://docs.open-metadata.org/deployment/security/enable-jwt-tokens to learn how to "
-        f"configure the 'OpenMetadata JWT'.",
-        DeprecationWarning,
+        f"configure the 'OpenMetadata JWT'."
     )
 
 
