@@ -13,6 +13,7 @@
 import { AdvanceSearchProvider } from 'components/Explore/AdvanceSearchProvider/AdvanceSearchProvider.component';
 import React, { FC } from 'react';
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const withAdvanceSearch = (Component: FC) => (props: any) => {
   return (
     <AdvanceSearchProvider>

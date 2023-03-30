@@ -12,17 +12,17 @@
  */
 
 import {
-    deleteCreatedService,
-    editOwnerforCreatedService,
-    goToAddNewServicePage,
-    handleIngestionRetry,
-    interceptURL,
-    scheduleIngestion,
-    testServiceCreationAndIngestion,
-    updateDescriptionForIngestedTables,
-    uuid,
-    verifyResponseStatusCode,
-    visitEntityDetailsPage
+  deleteCreatedService,
+  editOwnerforCreatedService,
+  goToAddNewServicePage,
+  handleIngestionRetry,
+  interceptURL,
+  scheduleIngestion,
+  testServiceCreationAndIngestion,
+  updateDescriptionForIngestedTables,
+  uuid,
+  verifyResponseStatusCode,
+  visitEntityDetailsPage,
 } from '../../common/common';
 import { API_SERVICE, SERVICE_TYPE } from '../../constants/constants';
 
