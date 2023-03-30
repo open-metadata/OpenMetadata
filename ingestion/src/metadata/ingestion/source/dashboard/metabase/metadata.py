@@ -103,7 +103,7 @@ class MetabaseSource(DashboardServiceSource):
             f"/dashboard/{dashboard_details['id']}-"
             f"{replace_special_with(raw=dashboard_details['name'].lower(), replacement='-')}"
         )
-        yield CreateDashboardRequest(
+        dashboard_request = CreateDashboardRequest(
             name=dashboard_details["id"],
             dashboardUrl=dashboard_url,
             displayName=dashboard_details.get("name"),
@@ -119,6 +119,8 @@ class MetabaseSource(DashboardServiceSource):
             ],
             service=self.context.dashboard_service.fullyQualifiedName.__root__,
         )
+        yield dashboard_request
+        self.register_record(dashboard_request=dashboard_request)
 
     def yield_dashboard_chart(
         self, dashboard_details: dict

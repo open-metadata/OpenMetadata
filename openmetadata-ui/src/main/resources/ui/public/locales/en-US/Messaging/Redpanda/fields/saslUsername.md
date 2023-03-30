@@ -1,0 +1,1 @@
+SASL username for use with the PLAIN and SASL-SCRAM mechanisms.

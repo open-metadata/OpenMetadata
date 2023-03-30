@@ -12,6 +12,7 @@
  */
 
 import { OperationPermission } from 'components/PermissionProvider/PermissionProvider.interface';
+import { SearchDropdownOption } from 'components/SearchDropdown/SearchDropdown.interface';
 import { Query } from 'generated/entity/data/query';
 import { EntityReference } from 'generated/type/entityReference';
 import { HTMLAttributes } from 'react';
@@ -32,11 +33,12 @@ export interface TableQueriesProp {
 }
 
 export interface QueryCardProp extends HTMLAttributes<HTMLDivElement> {
+  isExpanded: boolean;
   query: Query;
   selectedId?: string;
-  tableId: string;
+  tableId?: string;
   permission: OperationPermission;
-  onQuerySelection: (query: Query) => void;
+  onQuerySelection?: (query: Query) => void;
   onQueryUpdate: (updatedQuery: Query, key: keyof Query) => Promise<void>;
   onUpdateVote: (data: QueryVote, id?: string) => Promise<void>;
 }
@@ -48,5 +50,41 @@ export type QueryUsedByTable = {
 
 export interface QueryUsedByOtherTableProps {
   query: Query;
-  tableId: string;
+  tableId?: string;
 }
+
+export type QueryFiltersType = {
+  user: SearchDropdownOption[];
+  team: SearchDropdownOption[];
+};
+
+export interface QueryFiltersProps {
+  onFilterChange: (value: QueryFiltersType) => void;
+}
+
+export type QuerySearchParams = QueryFiltersType & {
+  page: string;
+  tableId: string;
+  query: string;
+};
+
+export type QuerySearchShouldFilterType = {
+  term: {
+    'owner.id': string;
+  };
+};
+export type QuerySearchMustFilterType = {
+  term?: {
+    'queryUsedIn.id': string;
+  };
+  bool?: {
+    should: QuerySearchShouldFilterType[];
+  };
+};
+export type QuerySearchFilterType = {
+  query: {
+    bool: {
+      must: QuerySearchMustFilterType[];
+    };
+  };
+};
