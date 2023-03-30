@@ -589,7 +589,7 @@ class ElasticsearchSink(Sink[Entity]):
             else:
                 tags.append(dashboard_tag)
 
-        for chart in dashboard.charts:
+        for chart in dashboard.charts.__root__:
             chart_display_name = chart.displayName if chart.displayName else chart.name
             chart_suggest.append({"input": [chart_display_name], "weight": 5})
 
