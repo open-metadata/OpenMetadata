@@ -115,12 +115,22 @@ class NERScanner:
     """A scanner that uses Spacy NER for entity recognition"""
 
     def __init__(self, metadata: OpenMetadata):
+        import spacy  # pylint: disable=import-outside-toplevel
         from presidio_analyzer import (  # pylint: disable=import-outside-toplevel
             AnalyzerEngine,
         )
         from presidio_analyzer.nlp_engine.spacy_nlp_engine import (  # pylint: disable=import-outside-toplevel
             SpacyNlpEngine,
         )
+
+        try:
+            spacy.load("en_core_web_md")
+        except OSError:
+            logging.warning("Downloading en_core_web_md language model for the spaCy")
+            from spacy.cli import download  # pylint: disable=import-outside-toplevel
+
+            download("en_core_web_md")
+            spacy.load("en_core_web_md")
 
         self.metadata = metadata
         self.text = ""
