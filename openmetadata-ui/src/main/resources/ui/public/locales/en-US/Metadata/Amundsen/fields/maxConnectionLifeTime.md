@@ -1,0 +1,1 @@
+Maximum connection lifetime for the Amundsen Neo4j Connection.

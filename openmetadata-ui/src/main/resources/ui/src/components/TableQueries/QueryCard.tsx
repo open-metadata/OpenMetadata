@@ -13,9 +13,15 @@
 
 import { Button, Card, Col, Row, Space, Typography } from 'antd';
 import classNames from 'classnames';
+import { getTableTabPath, SINGLE_DOT } from 'constants/constants';
+import { QUERY_DATE_FORMAT, QUERY_LINE_HEIGHT } from 'constants/Query.constant';
 import { split } from 'lodash';
+import Qs from 'qs';
 import React, { FC, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useHistory, useLocation, useParams } from 'react-router-dom';
+import { parseSearchParams } from 'utils/Query/QueryUtils';
+import { getQueryPath } from 'utils/RouterUtils';
 import { getFormattedDateFromSeconds } from 'utils/TimeUtils';
 import { CSMode } from '../../enums/codemirror.enum';
 import SchemaEditor from '../schema-editor/SchemaEditor';
@@ -26,13 +32,12 @@ import { ReactComponent as ExitFullScreen } from '/assets/svg/exit-full-screen.s
 import { ReactComponent as FullScreen } from '/assets/svg/full-screen.svg';
 
 // css import
-import { SINGLE_DOT } from 'constants/constants';
-import { QUERY_DATE_FORMAT, QUERY_LINE_HEIGHT } from 'constants/Query.constant';
 import './table-queries.style.less';
 
 const { Text } = Typography;
 
 const QueryCard: FC<QueryCardProp> = ({
+  isExpanded = false,
   className,
   query,
   selectedId,
@@ -43,8 +48,14 @@ const QueryCard: FC<QueryCardProp> = ({
   onUpdateVote,
 }: QueryCardProp) => {
   const { t } = useTranslation();
+  const { datasetFQN } = useParams<{ datasetFQN: string }>();
+  const location = useLocation();
+  const history = useHistory();
+  const searchFilter = useMemo(
+    () => parseSearchParams(location.search),
+    [location.search]
+  );
 
-  const [expanded, setExpanded] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
   const [sqlQuery, setSqlQuery] = useState({
     query: query.query,
@@ -79,12 +90,21 @@ const QueryCard: FC<QueryCardProp> = ({
   };
 
   const handleExpandClick = () => {
-    setExpanded((pre) => !pre);
-    onQuerySelection(query);
+    if (isExpanded) {
+      history.push({
+        search: Qs.stringify(searchFilter),
+        pathname: getTableTabPath(datasetFQN, 'table_queries'),
+      });
+    } else {
+      history.push({
+        search: Qs.stringify({ ...searchFilter, query: query.id }),
+        pathname: getQueryPath(datasetFQN, query.id || ''),
+      });
+    }
   };
 
   const handleCardClick = () => {
-    onQuerySelection(query);
+    onQuerySelection && onQuerySelection(query);
   };
 
   return (
@@ -113,31 +133,31 @@ const QueryCard: FC<QueryCardProp> = ({
             </Space>
           }
           onClick={handleCardClick}>
-          {isAllowExpand && (
-            <Button
-              className="query-entity-expand-button bg-white"
-              data-testid="query-entity-expand-button"
-              icon={
-                expanded ? (
-                  <ExitFullScreen height={16} width={16} />
-                ) : (
-                  <FullScreen height={16} width={16} />
-                )
-              }
-              size="small"
-              onClick={handleExpandClick}
-            />
-          )}
+          <Button
+            className="query-entity-expand-button bg-white"
+            data-testid="query-entity-expand-button"
+            icon={
+              isExpanded ? (
+                <ExitFullScreen height={16} width={16} />
+              ) : (
+                <FullScreen height={16} width={16} />
+              )
+            }
+            onClick={handleExpandClick}
+          />
 
           <div
-            className={classNames('sql-editor-container', {
-              'h-max-24': !isAllowExpand,
-              'h-24': !expanded && !isEditMode,
-              'h-max-56': isEditMode && !expanded && isAllowExpand,
-            })}>
+            className={classNames(
+              'sql-editor-container',
+              !isExpanded && {
+                'h-max-24': !isAllowExpand,
+                'h-24': !isEditMode,
+                'h-max-56': isEditMode && isAllowExpand,
+              }
+            )}>
             <SchemaEditor
               editorClass={classNames('custom-code-mirror-theme', {
-                'table-query-editor': expanded,
+                'full-screen-editor-height': isExpanded,
               })}
               mode={{ name: CSMode.SQL }}
               options={{

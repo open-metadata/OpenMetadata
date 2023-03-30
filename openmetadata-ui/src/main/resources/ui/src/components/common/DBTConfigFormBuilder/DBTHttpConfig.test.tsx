@@ -21,6 +21,7 @@ const mockCatalogChange = jest.fn();
 const mockManifestChange = jest.fn();
 const mockRunResultsHttpPathChange = jest.fn();
 const mockUpdateDescriptions = jest.fn();
+const mockIncludeTagsClick = jest.fn();
 const mockUpdateDBTClassification = jest.fn();
 const mockHandleEnableDebugLogCheck = jest.fn();
 
@@ -41,6 +42,7 @@ const mockProps = {
   handleManifestHttpPathChange: mockManifestChange,
   handleRunResultsHttpPathChange: mockRunResultsHttpPathChange,
   handleUpdateDescriptions: mockUpdateDescriptions,
+  handleIncludeTagsClick: mockIncludeTagsClick,
   handleUpdateDBTClassification: mockUpdateDBTClassification,
   enableDebugLog: false,
   handleEnableDebugLogCheck: mockHandleEnableDebugLogCheck,

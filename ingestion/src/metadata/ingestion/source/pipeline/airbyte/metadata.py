@@ -106,7 +106,7 @@ class AirbyteSource(PipelineServiceSource):
             f"/workspaces/{pipeline_details.workspace.get('workspaceId')}"
             f"/connections/{pipeline_details.connection.get('connectionId')}"
         )
-        yield CreatePipelineRequest(
+        pipeline_request = CreatePipelineRequest(
             name=pipeline_details.connection.get("connectionId"),
             displayName=pipeline_details.connection.get("name"),
             description="",
@@ -116,6 +116,8 @@ class AirbyteSource(PipelineServiceSource):
             ),
             service=self.context.pipeline_service.fullyQualifiedName.__root__,
         )
+        yield pipeline_request
+        self.register_record(pipeline_request=pipeline_request)
 
     def yield_pipeline_status(
         self, pipeline_details: AirbytePipelineDetails
