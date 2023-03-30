@@ -1,0 +1,1 @@
+This is the email address associated with the service account. To fetch this key, look for the value associated with the "client_email" key in the service account key file.

@@ -27,7 +27,7 @@ import { GlossaryTerm } from 'generated/entity/data/glossaryTerm';
 import { EntityHistory } from 'generated/type/entityHistory';
 import { toString } from 'lodash';
 import { LoadingState } from 'Models';
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import {
@@ -51,6 +51,7 @@ interface GlossaryHeaderButtonsProps {
   selectedData: Glossary | GlossaryTerm;
   permission: OperationPermission;
   onEntityDelete: (id: string) => void;
+  onAssetsUpdate?: () => void;
 }
 
 const GlossaryHeaderButtons = ({
@@ -59,6 +60,7 @@ const GlossaryHeaderButtons = ({
   selectedData,
   permission,
   onEntityDelete,
+  onAssetsUpdate,
 }: GlossaryHeaderButtonsProps) => {
   const { t } = useTranslation();
   const { action, glossaryName: glossaryFqn } =
@@ -74,17 +76,21 @@ const GlossaryHeaderButtons = ({
     [action]
   );
 
-  const handleAddGlossaryTermClick = (glossaryFQN: string) => {
-    if (glossaryFQN) {
-      const activeTerm = glossaryFQN.split(FQN_SEPARATOR_CHAR);
+  const handleAddGlossaryTermClick = useCallback(() => {
+    if (glossaryFqn) {
+      const activeTerm = glossaryFqn.split(FQN_SEPARATOR_CHAR);
       const glossary = activeTerm[0];
       if (activeTerm.length > 1) {
-        history.push(getAddGlossaryTermsPath(glossary, glossaryFQN));
+        history.push(getAddGlossaryTermsPath(glossary, glossaryFqn));
       } else {
         history.push(getAddGlossaryTermsPath(glossary));
       }
+    } else {
+      history.push(
+        getAddGlossaryTermsPath(selectedData.fullyQualifiedName ?? '')
+      );
     }
-  };
+  }, [glossaryFqn]);
 
   const handleGlossaryExport = () =>
     history.push(
@@ -125,7 +131,7 @@ const GlossaryHeaderButtons = ({
     {
       label: t('label.glossary-term'),
       key: '1',
-      onClick: () => handleAddGlossaryTermClick(glossaryFqn),
+      onClick: handleAddGlossaryTermClick,
     },
     {
       label: t('label.asset-plural'),
@@ -244,7 +250,7 @@ const GlossaryHeaderButtons = ({
             data-testid="add-new-tag-button-header"
             size="middle"
             type="primary"
-            onClick={() => handleAddGlossaryTermClick(glossaryFqn)}>
+            onClick={handleAddGlossaryTermClick}>
             {t('label.add-entity', { entity: t('label.term-lowercase') })}
           </Button>
         ) : (
@@ -329,6 +335,7 @@ const GlossaryHeaderButtons = ({
           glossaryFQN={selectedData.fullyQualifiedName}
           open={showAddAssets}
           onCancel={() => setShowAddAssets(false)}
+          onSave={onAssetsUpdate}
         />
       )}
     </>

@@ -19,7 +19,7 @@ RUN  apk update \
   && rm -rf /var/cache/apk/*
 
 COPY docker/openmetadata-start.sh docker/openmetadata.yaml ./
-RUN wget https://github.com/open-metadata/OpenMetadata/releases/download/0.13.2-release/openmetadata-0.13.2.tar.gz && \
+RUN wget https://github.com/open-metadata/OpenMetadata/releases/download/1.0.0-alpha-release/openmetadata-1.0.0-alpha.tar.gz && \
     tar zxvf openmetadata-*.tar.gz && \
     rm openmetadata-*.tar.gz
 RUN chmod 777 openmetadata-start.sh

@@ -46,6 +46,7 @@ export type DbtConfigCloud = Pick<
   | 'dbtClassificationName'
   | 'dbtCloudUrl'
   | 'dbtCloudJobId'
+  | 'includeTags'
 >;
 
 export type DbtConfigLocal = Pick<
@@ -55,6 +56,7 @@ export type DbtConfigLocal = Pick<
   | 'dbtRunResultsFilePath'
   | 'dbtUpdateDescriptions'
   | 'dbtClassificationName'
+  | 'includeTags'
 >;
 
 export type DbtConfigHttp = Pick<
@@ -64,6 +66,7 @@ export type DbtConfigHttp = Pick<
   | 'dbtRunResultsHttpPath'
   | 'dbtUpdateDescriptions'
   | 'dbtClassificationName'
+  | 'includeTags'
 >;
 
 export type DbtConfigS3GCS = Pick<
@@ -72,6 +75,7 @@ export type DbtConfigS3GCS = Pick<
   | 'dbtPrefixConfig'
   | 'dbtUpdateDescriptions'
   | 'dbtClassificationName'
+  | 'includeTags'
 >;
 
 export type DbtS3Creds = Pick<

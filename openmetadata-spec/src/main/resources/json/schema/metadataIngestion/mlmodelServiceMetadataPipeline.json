@@ -20,6 +20,11 @@
     "mlModelFilterPattern": {
       "description": "Regex to only fetch MlModels with names matching the pattern.",
       "$ref": "../type/filterPattern.json#/definitions/filterPattern"
+    },
+    "markDeletedMlModels": {
+      "description": "Optional configuration to soft delete MlModels in OpenMetadata if the source MlModels are deleted. Also, if the MlModel is deleted, all the associated entities like lineage, etc., with that MlModels will be deleted",
+      "type": "boolean",
+      "default": true
     }
   },
   "additionalProperties": false

@@ -26,7 +26,7 @@ import org.openmetadata.service.util.QueryUtil;
 import org.openmetadata.service.util.RestUtil;
 
 public class QueryRepository extends EntityRepository<Query> {
-  private static final String QUERY_PATCH_FIELDS = "owner,tags,users,followers";
+  private static final String QUERY_PATCH_FIELDS = "owner,tags,users,followers,query";
   private static final String QUERY_UPDATE_FIELDS = "owner,tags,users,votes,followers";
 
   public QueryRepository(CollectionDAO dao) {
@@ -182,6 +182,12 @@ public class QueryRepository extends EntityRepository<Query> {
     public void entitySpecificUpdate() throws IOException {
       updateFromRelationships(
           "users", USER, original.getUsers(), updated.getUsers(), Relationship.USES, Entity.QUERY, original.getId());
+      if (operation.isPatch() && !original.getQuery().equals(updated.getQuery())) {
+        recordChange("query", original.getQuery(), updated.getQuery());
+        String checkSum = QueryUtil.getCheckSum(updated.getQuery());
+        recordChange("name", original.getName(), checkSum);
+        recordChange("checkSum", original.getChecksum(), checkSum);
+      }
     }
   }
 }

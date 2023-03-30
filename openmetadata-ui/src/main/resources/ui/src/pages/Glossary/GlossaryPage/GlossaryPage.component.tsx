@@ -41,7 +41,7 @@ import {
   patchGlossaryTerm,
 } from 'rest/glossaryAPI';
 import { checkPermission } from 'utils/PermissionsUtils';
-import { getGlossaryPath } from 'utils/RouterUtils';
+import { getGlossaryPath, getGlossaryTermsPath } from 'utils/RouterUtils';
 import { showErrorToast, showSuccessToast } from 'utils/ToastUtils';
 import GlossaryLeftPanel from '../GlossaryLeftPanel/GlossaryLeftPanel.component';
 import GlossaryRightPanel from '../GlossaryRightPanel/GlossaryRightPanel.component';
@@ -124,6 +124,11 @@ const GlossaryPage = () => {
           glossaries.find((glossary) => glossary.name === glossaryFqn) ||
             glossaries[0]
         );
+        !glossaryFqn &&
+          glossaries[0].fullyQualifiedName &&
+          history.replace(
+            getGlossaryTermsPath(glossaries[0].fullyQualifiedName)
+          );
         setIsRightPanelLoading(false);
       }
     }
