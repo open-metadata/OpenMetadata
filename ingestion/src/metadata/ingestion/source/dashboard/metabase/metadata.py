@@ -11,7 +11,7 @@
 """Metabase source module"""
 
 import traceback
-from typing import Iterable, List, Optional
+from typing import Iterable, Optional
 
 import requests
 
@@ -193,6 +193,10 @@ class MetabaseSource(DashboardServiceSource):
         self, chart_details: dict, db_service_name: str, dashboard_name: str
     ) -> Optional[AddLineageRequest]:
         database = self.client.get_database(chart_details['database_id'])
+
+        if database is None:
+            return None
+
         query = (
             chart_details.get("dataset_query", {})
             .get("native", {})
@@ -244,6 +248,10 @@ class MetabaseSource(DashboardServiceSource):
         self, chart_details: dict, db_service_name: str, dashboard_name: str
     ) -> Optional[AddLineageRequest]:
         table = self.client.get_table(chart_details['table_id'])
+
+        if table is None:
+            return None
+
         database_name = table.get("db", {}).get("details", {}).get("db", None)
         if database_name:
             from_entities = search_table_entities(

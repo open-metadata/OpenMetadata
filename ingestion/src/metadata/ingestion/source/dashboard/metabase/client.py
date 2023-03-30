@@ -73,16 +73,22 @@ class MetabaseClient(DashboardServiceSource):
         resp_dashboard = self.req_get(f"/api/dashboard/{dashboard['id']}")
         return resp_dashboard.json()
     
-    def get_database(self, database_id: str) -> dict:
+    def get_database(self, database_id: str) -> Optional[dict]:
         """
         Get Database using database ID
         """
         resp_database = self.req_get(f"/api/database/{database_id}")
-        return resp_database.json()
+        if resp_database.status_code == 200:
+            return resp_database.json()
+        else:
+            return None
     
-    def get_table(self, table_id: str) -> dict:
+    def get_table(self, table_id: str) -> Optional[dict]:
         """
         Get Table using table ID
         """
         resp_table = self.req_get(f"/api/table/{table_id}")
-        return resp_table.json()
+        if resp_table.status_code == 200:
+            return resp_table.json()
+        else:
+          return None
