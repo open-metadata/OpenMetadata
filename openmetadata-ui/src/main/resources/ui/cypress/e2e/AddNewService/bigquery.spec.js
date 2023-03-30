@@ -62,7 +62,7 @@ describe('BigQuery Ingestion', () => {
       cy.get('[data-testid="add-item-Taxonomy Project IDs"]')
         .scrollIntoView()
         .click();
-      cy.get('#root_taxonomyProjectID_0')
+      cy.get('#root\\/taxonomyProjectID_0')
         .scrollIntoView()
         .type(Cypress.env('bigqueryProjectIdTaxonomy'));
     };
