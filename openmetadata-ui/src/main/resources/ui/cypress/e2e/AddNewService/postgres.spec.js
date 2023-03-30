@@ -12,17 +12,17 @@
  */
 
 import {
-  deleteCreatedService,
-  editOwnerforCreatedService,
-  goToAddNewServicePage,
-  handleIngestionRetry,
-  interceptURL,
-  scheduleIngestion,
-  testServiceCreationAndIngestion,
-  updateDescriptionForIngestedTables,
-  uuid,
-  verifyResponseStatusCode,
-  visitEntityDetailsPage,
+    deleteCreatedService,
+    editOwnerforCreatedService,
+    goToAddNewServicePage,
+    handleIngestionRetry,
+    interceptURL,
+    scheduleIngestion,
+    testServiceCreationAndIngestion,
+    updateDescriptionForIngestedTables,
+    uuid,
+    verifyResponseStatusCode,
+    visitEntityDetailsPage
 } from '../../common/common';
 import { API_SERVICE, SERVICE_TYPE } from '../../constants/constants';
 
@@ -161,7 +161,11 @@ describe('Postgres Ingestion', () => {
     );
     visitEntityDetailsPage(tableName, serviceName, 'tables');
     verifyResponseStatusCode('@entityDetailsPage', 200);
-    interceptURL('GET', '/api/v1/queries?*', 'queriesTab');
+    interceptURL(
+      'GET',
+      '/api/v1/search/query?q=&index=query_search_index*',
+      'queriesTab'
+    );
     cy.get('[data-testid="Queries"]').should('be.visible').trigger('click');
     verifyResponseStatusCode('@queriesTab', 200);
     // Validate that the triggered query is visible in the queries container
