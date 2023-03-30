@@ -134,7 +134,7 @@ def ometa_to_dataframe(config_source, client, table, profile_sample_config):
                         random_state=random.randint(0, 100),
                         replace=True,
                     )
-                    for df in dfs
+                    for df in data
                 ]
             elif profile_sample_config.profile_sample_type == ProfileSampleType.ROWS:
                 # TODO add ROWS logic
@@ -146,7 +146,7 @@ def ometa_to_dataframe(config_source, client, table, profile_sample_config):
                     frac=1,
                     random_state=random.randint(0, 100),
                 )
-                for df in dfs
+                for df in data
             ]
     return data
 

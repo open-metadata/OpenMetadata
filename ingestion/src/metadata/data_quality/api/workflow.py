@@ -289,7 +289,7 @@ class TestSuiteWorkflow(WorkflowStatusMixin):
             service_connection_config=service_connection_config,
             ometa_client=self.client,
             df=return_ometa_dataframes(
-                service_connection_config.configSource,
+                service_connection_config,
                 get_connection(service_connection_config).client,
                 table_entity,
                 profile_sample_config=profile_sample_config,
