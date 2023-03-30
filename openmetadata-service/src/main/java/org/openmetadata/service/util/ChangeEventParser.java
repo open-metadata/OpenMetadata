@@ -13,6 +13,33 @@
 
 package org.openmetadata.service.util;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.service.Entity.FIELD_DISPLAY_NAME;
+import static org.openmetadata.service.Entity.FIELD_NAME;
+import static org.openmetadata.service.Entity.FIELD_OWNER;
+import static org.openmetadata.service.Entity.INGESTION_PIPELINE;
+import static org.openmetadata.service.Entity.KPI;
+import static org.openmetadata.service.Entity.TEST_CASE;
+
+import java.net.URI;
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
+import javax.json.JsonArray;
+import javax.json.JsonObject;
+import javax.json.JsonValue;
+import javax.json.JsonValue.ValueType;
+import javax.json.stream.JsonParsingException;
 import org.apache.commons.lang.StringUtils;
 import org.bitbucket.cowwoc.diffmatchpatch.DiffMatchPatch;
 import org.openmetadata.common.utils.CommonUtil;
@@ -29,41 +56,13 @@ import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.events.subscription.emailAlert.EmailMessage;
 import org.openmetadata.service.events.subscription.gchat.GChatMessage;
 import org.openmetadata.service.events.subscription.msteams.TeamsMessage;
 import org.openmetadata.service.events.subscription.slack.SlackAttachment;
 import org.openmetadata.service.events.subscription.slack.SlackMessage;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
-
-import javax.json.JsonArray;
-import javax.json.JsonObject;
-import javax.json.JsonValue;
-import javax.json.JsonValue.ValueType;
-import javax.json.stream.JsonParsingException;
-import java.net.URI;
-import java.text.SimpleDateFormat;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.Set;
-import java.util.stream.Collectors;
-
-import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
-import static org.openmetadata.service.Entity.FIELD_DISPLAY_NAME;
-import static org.openmetadata.service.Entity.FIELD_NAME;
-import static org.openmetadata.service.Entity.FIELD_OWNER;
-import static org.openmetadata.service.Entity.INGESTION_PIPELINE;
-import static org.openmetadata.service.Entity.KPI;
-import static org.openmetadata.service.Entity.TEST_CASE;
 
 public final class ChangeEventParser {
   public static final String FEED_ADD_MARKER = "<!add>";
@@ -76,7 +75,13 @@ public final class ChangeEventParser {
   public static final String FEED_LINE_BREAK = " <br/> ";
   public static final String SLACK_LINE_BREAK = "\n";
 
+  public static OpenMetadataApplicationConfig configuration;
+
   private ChangeEventParser() {}
+
+  public static void init(OpenMetadataApplicationConfig config) {
+    configuration = config;
+  }
 
   public enum CHANGE_TYPE {
     UPDATE,
@@ -185,7 +190,7 @@ public final class ChangeEventParser {
     String fqn;
     String entityType;
     EntityInterface entity = (EntityInterface) event.getEntity();
-    URI urlInstance = entity.getHref();
+    //    URI urlInstance = entity.getHref();
     if (entity instanceof TestCase) {
       fqn = ((TestCase) entity).getTestSuite().getFullyQualifiedName();
       entityType = "test-suites";
@@ -193,17 +198,17 @@ public final class ChangeEventParser {
       fqn = event.getEntityFullyQualifiedName();
       entityType = event.getEntityType();
     }
-    if (Objects.nonNull(urlInstance)) {
-      String scheme = urlInstance.getScheme();
-      String host = urlInstance.getHost();
-      if (publishTo == PUBLISH_TO.SLACK || publishTo == PUBLISH_TO.GCHAT) {
-        return String.format("<%s://%s/%s/%s|%s>", scheme, host, entityType, fqn, fqn);
-      } else if (publishTo == PUBLISH_TO.TEAMS) {
-        return String.format("[%s](%s://%s/%s/%s)", fqn, scheme, host, entityType, fqn);
-      } else if (publishTo == PUBLISH_TO.EMAIL) {
-        return String.format("%s://%s/%s/%s", scheme, host, entityType, fqn);
-      }
+    //    if (Objects.nonNull(urlInstance)) {
+    //      String scheme = urlInstance.getScheme();
+    //      String host = urlInstance.getHost();
+    if (publishTo == PUBLISH_TO.SLACK || publishTo == PUBLISH_TO.GCHAT) {
+      return String.format("<%s/%s/%s|%s>", configuration.getChangeEventConfiguration().getUri(), entityType, fqn, fqn);
+    } else if (publishTo == PUBLISH_TO.TEAMS) {
+      return String.format("[%s](/%s/%s)", fqn, configuration.getChangeEventConfiguration().getUri(), entityType, fqn);
+    } else if (publishTo == PUBLISH_TO.EMAIL) {
+      return String.format("%s/%s", configuration.getChangeEventConfiguration().getUri(), entityType, fqn);
     }
+    //    }
     return "";
   }
 
@@ -337,11 +342,11 @@ public final class ChangeEventParser {
       String fieldName = field.getName();
       String newFieldValue;
       String oldFieldValue;
-      if (entity.getEntityReference().getType().equals(Entity.QUERY) && fieldName.equals("queryUsedIn")){
+      if (entity.getEntityReference().getType().equals(Entity.QUERY) && fieldName.equals("queryUsedIn")) {
         fieldName = "queryUsage";
         newFieldValue = getFieldValueForQuery(field.getNewValue(), entity);
         oldFieldValue = getFieldValueForQuery(field.getOldValue(), entity);
-      }else {
+      } else {
         newFieldValue = getFieldValue(field.getNewValue());
         oldFieldValue = getFieldValue(field.getOldValue());
       }
@@ -373,7 +378,7 @@ public final class ChangeEventParser {
       if (json.getValueType() == ValueType.ARRAY) {
         JsonArray jsonArray = json.asJsonArray();
         List<String> labels = new ArrayList<>();
-          for (JsonValue item : jsonArray) {
+        for (JsonValue item : jsonArray) {
           if (item.getValueType() == ValueType.OBJECT) {
             Set<String> keys = item.asJsonObject().keySet();
             if (keys.contains("tagFQN")) {
@@ -411,16 +416,22 @@ public final class ChangeEventParser {
     return fieldValue.toString();
   }
 
-  private static String getFieldValueForQuery(Object fieldValue,EntityInterface entity){
+  private static String getFieldValueForQuery(Object fieldValue, EntityInterface entity) {
     Query query = (Query) entity;
+    URI urlInstance = query.getHref();
     StringBuilder field = new StringBuilder();
+    String queryUsageLink;
     List<EntityReference> queryUsedIn = (List<EntityReference>) fieldValue;
     field.append("for ").append("'" + query.getQuery() + "'").append(", <br>");
     field.append("Query Used in :- ");
     int i = 1;
-    for (EntityReference queryUsage : queryUsedIn){
-      field.append(queryUsage.getFullyQualifiedName());
-      if (i < queryUsedIn.size()){
+    for (EntityReference queryUsage : queryUsedIn) {
+      queryUsageLink =
+          String.format(
+              "[%s](/%s/%s)",
+              queryUsage.getFullyQualifiedName(), queryUsage.getType(), queryUsage.getFullyQualifiedName());
+      field.append(queryUsageLink);
+      if (i < queryUsedIn.size()) {
         field.append(", ");
       }
       i++;

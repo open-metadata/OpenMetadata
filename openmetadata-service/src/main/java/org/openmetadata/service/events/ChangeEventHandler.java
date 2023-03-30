@@ -60,6 +60,7 @@ public class ChangeEventHandler implements EventHandler {
     this.feedDao = new FeedRepository(dao);
     this.mapper = new ObjectMapper();
     this.notificationHandler = new NotificationHandler(jdbi.onDemand(CollectionDAO.class));
+    ChangeEventParser.init(config);
   }
 
   public Void process(ContainerRequestContext requestContext, ContainerResponseContext responseContext) {

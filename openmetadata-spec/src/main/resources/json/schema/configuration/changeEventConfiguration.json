@@ -1,0 +1,14 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/configuration/changeEventConfiguration.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ChangeEventConfiguration",
+  "description": "This schema defines the ChangeEvent Configuration.",
+  "type": "object",
+  "javaType": "org.openmetadata.api.configuration.ChangeEventConfiguration",
+  "properties": {
+    "uri" : {
+      "type": "string"
+    }
+  },
+  "additionalProperties": false
+}
