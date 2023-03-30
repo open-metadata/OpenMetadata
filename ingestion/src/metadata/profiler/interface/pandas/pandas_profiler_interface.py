@@ -14,7 +14,6 @@ Interfaces with database for all database engine
 supporting sqlalchemy abstraction layer
 """
 
-import random
 import traceback
 from collections import defaultdict
 from datetime import datetime, timezone
@@ -35,7 +34,6 @@ from metadata.ingestion.source.connections import get_connection
 from metadata.ingestion.source.database.datalake.metadata import (
     DATALAKE_DATA_TYPES,
     DatalakeSource,
-    ometa_to_dataframe,
 )
 from metadata.mixins.pandas.pandas_mixin import PandasInterfaceMixin
 from metadata.profiler.interface.profiler_protocol import ProfilerProtocol
@@ -44,6 +42,7 @@ from metadata.profiler.metrics.registry import Metrics
 from metadata.profiler.processor.datalake_sampler import DatalakeSampler
 from metadata.utils.dispatch import valuedispatch
 from metadata.utils.logger import profiler_interface_registry_logger
+from metadata.utils.pandas_utils import return_ometa_dataframes
 from metadata.utils.sqa_like_column import SQALikeColumn, Type
 
 logger = profiler_interface_registry_logger()
@@ -88,40 +87,12 @@ class PandasProfilerInterface(ProfilerProtocol, PandasInterfaceMixin):
         self.profile_query = sample_query
         self.table_partition_config = table_partition_config
         self._table = entity
-        self.dfs = self.return_ometa_dataframes()
-
-        # shuffling sample data for profiling
-        random.shuffle(self.dfs)
-
-        # sampling data based on profiler config (if any)
-        if hasattr(self.profile_sample_config, "profile_sample"):
-            if (
-                self.profile_sample_config.profile_sample_type
-                == ProfileSampleType.PERCENTAGE
-            ):
-                self.dfs = [
-                    df.sample(
-                        frac=self.profile_sample_config.profile_sample / 100,
-                        random_state=random.randint(0, 100),
-                        replace=True,
-                    )
-                    for df in self.dfs
-                ]
-            elif (
-                self.profile_sample_config.profile_sample_type == ProfileSampleType.ROWS
-            ):
-                # TODO add ROWS logic
-                pass
-        else:
-            # randomize the samples
-            self.dfs = [
-                df.sample(
-                    frac=1,
-                    random_state=random.randint(0, 100),
-                )
-                for df in self.dfs
-            ]
-
+        self.dfs = return_ometa_dataframes(
+            service_connection_config=self.service_connection_config,
+            client=self.client,
+            table=self.table,
+            profile_sample_config=self.profile_sample_config,
+        )
         if self.dfs and self.table_partition_config:
             self.dfs = [self.get_partitioned_df(df) for df in self.dfs]
 
@@ -403,13 +374,6 @@ class PandasProfilerInterface(ProfilerProtocol, PandasInterfaceMixin):
 
     def get_connection_client(self):
         return get_connection(self.service_connection_config).client
-
-    def return_ometa_dataframes(self):
-        return ometa_to_dataframe(
-            config_source=self.service_connection_config.configSource,
-            client=self.client,
-            table=self.table,
-        )
 
     def close(self):
         """Nothing to close with pandas"""

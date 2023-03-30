@@ -64,11 +64,11 @@ from metadata.ingestion.api.processor import ProcessorStatus
 from metadata.ingestion.ometa.client_utils import create_ometa_client
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.connections import get_connection
-from metadata.ingestion.source.database.datalake.metadata import ometa_to_dataframe
 from metadata.profiler.api.models import ProfileSampleConfig
 from metadata.utils import entity_link
 from metadata.utils.importer import get_sink
 from metadata.utils.logger import test_suite_logger
+from metadata.utils.pandas_utils import return_ometa_dataframes
 from metadata.utils.partition import get_partition_details
 from metadata.utils.workflow_output_handler import print_test_suite_status
 from metadata.workflow.workflow_status_mixin import WorkflowStatusMixin
@@ -288,11 +288,12 @@ class TestSuiteWorkflow(WorkflowStatusMixin):
         return PandasTestSuiteInterface(
             service_connection_config=service_connection_config,
             ometa_client=self.client,
-            df=ometa_to_dataframe(
+            df=return_ometa_dataframes(
                 service_connection_config.configSource,
                 get_connection(service_connection_config).client,
                 table_entity,
-            )[0],
+                profile_sample_config=profile_sample_config,
+            ),
             table_entity=table_entity,
         )
 

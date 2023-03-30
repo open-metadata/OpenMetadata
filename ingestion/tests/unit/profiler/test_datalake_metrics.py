@@ -25,9 +25,7 @@ from metadata.generated.schema.entity.data.table import ColumnName, DataType, Ta
 from metadata.profiler.metrics.core import add_props
 from metadata.profiler.metrics.registry import Metrics
 from metadata.profiler.profiler.core import Profiler
-from metadata.profiler.profiler.interface.pandas.pandas_profiler_interface import (
-    PandasProfilerInterface,
-)
+from metadata.profiler.profiler.interface.pandas import pandas_profiler_interface
 
 Base = declarative_base()
 
@@ -54,17 +52,18 @@ class DatalakeMetricsTest(TestCase):
 
     root_dir = os.path.dirname(os.path.abspath(__file__))
     csv_dir = "custom_csv"
-
     df1 = pd.read_csv(os.path.join(root_dir, csv_dir, "test_datalake_metrics_1.csv"))
     df2 = pd.read_csv(os.path.join(root_dir, csv_dir, "test_datalake_metrics_2.csv"))
 
     @patch.object(
-        PandasProfilerInterface,
-        "return_ometa_dataframes",
-        return_value=[df1, df2],
+        pandas_profiler_interface.PandasProfilerInterface,
+        "get_connection_client",
+        return_value=None,
     )
-    @patch.object(PandasProfilerInterface, "get_connection_client", return_value=None)
-    def __init__(self, methodName, get_connection_client, return_ometa_dataframes):
+    @patch.object(
+        pandas_profiler_interface, "return_ometa_dataframes", return_value=[df1, df2]
+    )
+    def __init__(self, methodName, return_ometa_dataframes, get_connection_client):
         super().__init__(methodName)
         table_entity = Table(
             id=uuid4(),
@@ -77,15 +76,17 @@ class DatalakeMetricsTest(TestCase):
             ],
         )
 
-        self.datalake_profiler_interface = PandasProfilerInterface(
-            entity=table_entity,
-            service_connection_config=None,
-            ometa_client=None,
-            thread_count=None,
-            profile_sample_config=None,
-            source_config=None,
-            sample_query=None,
-            table_partition_config=None,
+        self.datalake_profiler_interface = (
+            pandas_profiler_interface.PandasProfilerInterface(
+                entity=table_entity,
+                service_connection_config=None,
+                ometa_client=None,
+                thread_count=None,
+                profile_sample_config=None,
+                source_config=None,
+                sample_query=None,
+                table_partition_config=None,
+            )
         )
 
     def test_count(self):

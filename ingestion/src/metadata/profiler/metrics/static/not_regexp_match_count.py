@@ -55,13 +55,14 @@ class NotRegexCount(StaticMetric):
             )
         )
 
-    def df_fn(self, df):
+    def df_fn(self, dfs):
         """pandas function"""
         if not hasattr(self, "expression"):
             raise AttributeError(
                 "Regex Count requires an expression to be set: add_props(expression=...)(Metrics.REGEX_COUNT)"
             )
 
-        return df[self.col.name][
-            df[self.col.name].str.contains(self.expression)
-        ].count()
+        return sum(
+            df[self.col.name][df[self.col.name].str.contains(self.expression)].count()
+            for df in dfs
+        )

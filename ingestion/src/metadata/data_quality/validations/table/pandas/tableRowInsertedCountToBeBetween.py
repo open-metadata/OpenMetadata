@@ -72,4 +72,4 @@ class TableRowInsertedCountToBeBetweenValidator(
         """
         threshold_date = self._get_threshold_date(range_type, range_interval)
 
-        return len(self.runner.query(f"{column_name} >= {threshold_date}"))
+        return len(self.runner[0].query(f"{column_name} >= {threshold_date}"))

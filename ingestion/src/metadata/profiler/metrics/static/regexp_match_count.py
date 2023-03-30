@@ -52,7 +52,7 @@ class RegexCount(StaticMetric):
             case([(column(self.col.name).regexp_match(self.expression), 1)], else_=0)
         )
 
-    def df_fn(self, df):
+    def df_fn(self, dfs):
         """pandas function"""
 
         if not hasattr(self, "expression"):
@@ -60,6 +60,7 @@ class RegexCount(StaticMetric):
                 "Regex Count requires an expression to be set: add_props(expression=...)(Metrics.REGEX_COUNT)"
             )
 
-        return df[self.col.name][
-            df[self.col.name].str.contains(self.expression)
-        ].count()
+        return sum(
+            df[self.col.name][df[self.col.name].str.contains(self.expression)].count()
+            for df in dfs
+        )

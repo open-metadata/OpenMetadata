@@ -12,6 +12,7 @@
 """
 DataLake connector to fetch metadata from a files stored s3, gcs and Hdfs
 """
+import random
 import traceback
 from typing import Iterable, List, Optional, Tuple
 
@@ -25,6 +26,7 @@ from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.table import (
     Column,
     DataType,
+    ProfileSampleType,
     Table,
     TableType,
 )
@@ -83,7 +85,7 @@ DATALAKE_SUPPORTED_FILE_TYPES = (
 ) + JSON_SUPPORTED_TYPES
 
 
-def ometa_to_dataframe(config_source, client, table):
+def ometa_to_dataframe(config_source, client, table, profile_sample_config):
     """
     Method to get dataframe for profiling
     """
@@ -116,6 +118,36 @@ def ometa_to_dataframe(config_source, client, table):
         )
     if isinstance(data, DatalakeColumnWrapper):
         data = data.dataframes
+    if data:
+
+        random.shuffle(data)
+
+        # sampling data based on profiler config (if any)
+        if hasattr(profile_sample_config, "profile_sample"):
+            if (
+                profile_sample_config.profile_sample_type
+                == ProfileSampleType.PERCENTAGE
+            ):
+                dfs = [
+                    df.sample(
+                        frac=profile_sample_config.profile_sample / 100,
+                        random_state=random.randint(0, 100),
+                        replace=True,
+                    )
+                    for df in dfs
+                ]
+            elif profile_sample_config.profile_sample_type == ProfileSampleType.ROWS:
+                # TODO add ROWS logic
+                pass
+        else:
+            # randomize the samples
+            dfs = [
+                df.sample(
+                    frac=1,
+                    random_state=random.randint(0, 100),
+                )
+                for df in dfs
+            ]
     return data
 
 

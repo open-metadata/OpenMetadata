@@ -8,24 +8,19 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-
 """
-Validator for table custom SQL Query test case
+Module centralising pandas methods
 """
-
-from metadata.data_quality.validations.mixins.pandas_validator_mixin import (
-    PandasValidatorMixin,
-)
-from metadata.data_quality.validations.table.base.tableCustomSQLQuery import (
-    BaseTableCustomSQLQueryValidator,
-)
+from metadata.ingestion.source.database.datalake.metadata import ometa_to_dataframe
 
 
-class TableCustomSQLQueryValidator(
-    BaseTableCustomSQLQueryValidator, PandasValidatorMixin
+def return_ometa_dataframes(
+    service_connection_config, client, table, profile_sample_config
 ):
-    """Validator for table custom SQL Query test case"""
 
-    def _run_results(self, sql_expression: str):
-        """compute result of the test case"""
-        return self.runner[0].query(sql_expression)
+    return ometa_to_dataframe(
+        config_source=service_connection_config.configSource,
+        client=client,
+        table=table,
+        profile_sample_config=profile_sample_config,
+    )
