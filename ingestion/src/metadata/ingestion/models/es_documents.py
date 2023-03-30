@@ -198,6 +198,36 @@ class MlModelESDocument(BaseModel):
     doc_as_upsert: bool = True
 
 
+class ContainerESDocument(BaseModel):
+    """ElasticSearch Mapping doc for Containers"""
+
+    entityType: str = "container"
+    id: str
+    name: str
+    displayName: str
+    fullyQualifiedName: str
+    description: Optional[str] = None
+    version: float
+    updatedAt: Optional[int]
+    updatedBy: Optional[str]
+    tags: List[TagLabel]
+    tier: Optional[TagLabel] = None
+    owner: ESEntityReference = None
+    followers: List[str]
+    href: Optional[str]
+    deleted: bool
+    suggest: List[dict]
+    service_suggest: List[dict] = None
+    doc_as_upsert: bool = True
+    parent: Optional[dict] = None
+    dataModel: Optional[dict] = None
+    children: Optional[List[dict]] = None
+    prefix: Optional[str] = None
+    numberOfObjects: Optional[int] = None
+    size: Optional[int] = None
+    fileFormats: Optional[List[str]] = None
+
+
 class UserESDocument(BaseModel):
     """ElasticSearch Mapping doc for Users"""
 

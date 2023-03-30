@@ -18,6 +18,7 @@ We disable unexpected-keyword-arg as we get a false positive for request_timeout
 import json
 import ssl
 import traceback
+from functools import singledispatch
 from typing import List, Optional
 
 import boto3
@@ -32,6 +33,7 @@ from metadata.generated.schema.entity.classification.classification import (
     Classification,
 )
 from metadata.generated.schema.entity.classification.tag import Tag
+from metadata.generated.schema.entity.data.container import Container
 from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
@@ -40,6 +42,7 @@ from metadata.generated.schema.entity.data.mlmodel import MlModel
 from metadata.generated.schema.entity.data.pipeline import Pipeline
 from metadata.generated.schema.entity.data.table import Column, Table
 from metadata.generated.schema.entity.data.topic import Topic
+from metadata.generated.schema.entity.policies.policy import Policy
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
@@ -49,6 +52,7 @@ from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.common import Entity
 from metadata.ingestion.api.sink import Sink
 from metadata.ingestion.models.es_documents import (
+    ContainerESDocument,
     DashboardESDocument,
     ESEntityReference,
     GlossaryTermESDocument,
@@ -61,6 +65,9 @@ from metadata.ingestion.models.es_documents import (
     UserESDocument,
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.sink.elasticsearch_mapping.container_search_index_mapping import (
+    CONTAINER_ELASTICSEARCH_INDEX_MAPPING,
+)
 from metadata.ingestion.sink.elasticsearch_mapping.dashboard_search_index_mapping import (
     DASHBOARD_ELASTICSEARCH_INDEX_MAPPING,
 )
@@ -134,6 +141,7 @@ class ElasticSearchConfig(ConfigModel):
     index_mlmodels: Optional[bool] = True
     index_glossary_terms: Optional[bool] = True
     index_tags: Optional[bool] = True
+    index_containers: Optional[bool] = True
     index_entity_report_data: Optional[bool] = True
     index_web_analytic_user_activity_report_data: Optional[bool] = True
     index_web_analytic_entity_view_report_data: Optional[bool] = True
@@ -146,6 +154,7 @@ class ElasticSearchConfig(ConfigModel):
     glossary_term_index_name: str = "glossary_search_index"
     mlmodel_index_name: str = "mlmodel_search_index"
     tag_index_name: str = "tag_search_index"
+    container_index_name: str = "container_search_index"
     entity_report_data_index_name: str = "entity_report_data_index"
     web_analytic_user_activity_report_data_index_name: str = (
         "web_analytic_user_activity_report_data_index"
@@ -287,6 +296,27 @@ class ElasticsearchSink(Sink[Entity]):
                 WEB_ANALYTIC_ENTITY_VIEW_REPORT_DATA_INDEX_MAPPING,
             )
 
+        if self.config.index_containers:
+            self._check_or_create_index(
+                self.config.container_index_name,
+                CONTAINER_ELASTICSEARCH_INDEX_MAPPING,
+            )
+
+        # Prepare write record dispatching
+        self._write_record = singledispatch(self._write_record)
+        self._write_record.register(Table, self.index_table)
+        self._write_record.register(Topic, self.index_topic)
+        self._write_record.register(Dashboard, self.index_dashboard)
+        self._write_record.register(Pipeline, self.index_pipeline)
+        self._write_record.register(User, self.index_user)
+        self._write_record.register(Team, self.index_team)
+        self._write_record.register(GlossaryTerm, self.index_glossary_term)
+        self._write_record.register(MlModel, self.index_mlmodel)
+        self._write_record.register(Classification, self.index_classification)
+        self._write_record.register(ReportData, self.index_report_data)
+        self._write_record.register(Container, self.index_container)
+        self._write_record.register(Policy, self.index_policy)
+
         super().__init__()
 
     def _check_or_create_index(self, index_name: str, es_mapping: str):
@@ -331,101 +361,128 @@ class ElasticsearchSink(Sink[Entity]):
             )
 
     def write_record(self, record: Entity) -> None:
+        """
+        Default implementation for the single dispatch
+        """
+
         try:
-            if isinstance(record, Table):
-                table_doc = self._create_table_es_doc(record)
-                self.elasticsearch_client.index(
-                    index=self.config.table_index_name,
-                    id=str(table_doc.id),
-                    body=table_doc.json(),
-                    request_timeout=self.config.timeout,
-                )
-            if isinstance(record, Topic):
-                topic_doc = self._create_topic_es_doc(record)
-                self.elasticsearch_client.index(
-                    index=self.config.topic_index_name,
-                    id=str(topic_doc.id),
-                    body=topic_doc.json(),
-                    request_timeout=self.config.timeout,
-                )
-            if isinstance(record, Dashboard):
-                dashboard_doc = self._create_dashboard_es_doc(record)
-                self.elasticsearch_client.index(
-                    index=self.config.dashboard_index_name,
-                    id=str(dashboard_doc.id),
-                    body=dashboard_doc.json(),
-                    request_timeout=self.config.timeout,
-                )
-            if isinstance(record, Pipeline):
-                pipeline_doc = self._create_pipeline_es_doc(record)
-                self.elasticsearch_client.index(
-                    index=self.config.pipeline_index_name,
-                    id=str(pipeline_doc.id),
-                    body=pipeline_doc.json(),
-                    request_timeout=self.config.timeout,
-                )
-
-            if isinstance(record, User):
-                user_doc = self._create_user_es_doc(record)
-                self.elasticsearch_client.index(
-                    index=self.config.user_index_name,
-                    id=str(user_doc.id),
-                    body=user_doc.json(),
-                    request_timeout=self.config.timeout,
-                )
-
-            if isinstance(record, Team):
-                team_doc = self._create_team_es_doc(record)
-                self.elasticsearch_client.index(
-                    index=self.config.team_index_name,
-                    id=str(team_doc.id),
-                    body=team_doc.json(),
-                    request_timeout=self.config.timeout,
-                )
-
-            if isinstance(record, GlossaryTerm):
-                glossary_term_doc = self._create_glossary_term_es_doc(record)
-                self.elasticsearch_client.index(
-                    index=self.config.glossary_term_index_name,
-                    id=str(glossary_term_doc.id),
-                    body=glossary_term_doc.json(),
-                    request_timeout=self.config.timeout,
-                )
-
-            if isinstance(record, MlModel):
-                ml_model_doc = self._create_ml_model_es_doc(record)
-                self.elasticsearch_client.index(
-                    index=self.config.mlmodel_index_name,
-                    id=str(ml_model_doc.id),
-                    body=ml_model_doc.json(),
-                    request_timeout=self.config.timeout,
-                )
-
-            if isinstance(record, Classification):
-                tag_docs = self._create_tag_es_doc(record)
-                for tag_doc in tag_docs:
-                    self.elasticsearch_client.index(
-                        index=self.config.tag_index_name,
-                        id=str(tag_doc.id),
-                        body=tag_doc.json(),
-                        request_timeout=self.config.timeout,
-                    )
-                    self.status.records_written(tag_doc.name)
-
-            if isinstance(record, ReportData):
-                self.elasticsearch_client.index(
-                    index=DataInsightEsIndex[record.data.__class__.__name__].value,
-                    id=record.id,
-                    body=record.json(),
-                    request_timeout=self.config.timeout,
-                )
-                self.status.records_written(
-                    f"Event written for record type {record.data.__class__.__name__}"
-                )
+            self._write_record(record)
+            self.status.records_written(record.name.__root__)
 
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.error(f"Failed to index entity {record}: {exc}")
+
+    def index_table(self, record: Table) -> None:
+        table_doc = self._create_table_es_doc(record)
+        self.elasticsearch_client.index(
+            index=self.config.table_index_name,
+            id=str(table_doc.id),
+            body=table_doc.json(),
+            request_timeout=self.config.timeout,
+        )
+
+    def index_topic(self, record: Topic) -> None:
+        topic_doc = self._create_topic_es_doc(record)
+        self.elasticsearch_client.index(
+            index=self.config.topic_index_name,
+            id=str(topic_doc.id),
+            body=topic_doc.json(),
+            request_timeout=self.config.timeout,
+        )
+
+    def index_dashboard(self, record: Dashboard) -> None:
+        dashboard_doc = self._create_dashboard_es_doc(record)
+        self.elasticsearch_client.index(
+            index=self.config.dashboard_index_name,
+            id=str(dashboard_doc.id),
+            body=dashboard_doc.json(),
+            request_timeout=self.config.timeout,
+        )
+
+    def index_pipeline(self, record: Pipeline) -> None:
+        pipeline_doc = self._create_pipeline_es_doc(record)
+        self.elasticsearch_client.index(
+            index=self.config.pipeline_index_name,
+            id=str(pipeline_doc.id),
+            body=pipeline_doc.json(),
+            request_timeout=self.config.timeout,
+        )
+
+    def index_user(self, record: User) -> None:
+        user_doc = self._create_user_es_doc(record)
+        self.elasticsearch_client.index(
+            index=self.config.user_index_name,
+            id=str(user_doc.id),
+            body=user_doc.json(),
+            request_timeout=self.config.timeout,
+        )
+
+    def index_team(self, record: Team) -> None:
+        team_doc = self._create_team_es_doc(record)
+        self.elasticsearch_client.index(
+            index=self.config.team_index_name,
+            id=str(team_doc.id),
+            body=team_doc.json(),
+            request_timeout=self.config.timeout,
+        )
+
+    def index_glossary_term(self, record: GlossaryTerm) -> None:
+        glossary_term_doc = self._create_glossary_term_es_doc(record)
+        self.elasticsearch_client.index(
+            index=self.config.glossary_term_index_name,
+            id=str(glossary_term_doc.id),
+            body=glossary_term_doc.json(),
+            request_timeout=self.config.timeout,
+        )
+
+    def index_mlmodel(self, record: MlModel) -> None:
+        ml_model_doc = self._create_ml_model_es_doc(record)
+        self.elasticsearch_client.index(
+            index=self.config.mlmodel_index_name,
+            id=str(ml_model_doc.id),
+            body=ml_model_doc.json(),
+            request_timeout=self.config.timeout,
+        )
+
+    def index_classification(self, record: Classification) -> None:
+        tag_docs = self._create_tag_es_doc(record)
+        for tag_doc in tag_docs:
+            self.elasticsearch_client.index(
+                index=self.config.tag_index_name,
+                id=str(tag_doc.id),
+                body=tag_doc.json(),
+                request_timeout=self.config.timeout,
+            )
+            self.status.records_written(tag_doc.name)
+
+    def index_report_data(self, record: ReportData) -> None:
+        self.elasticsearch_client.index(
+            index=DataInsightEsIndex[record.data.__class__.__name__].value,
+            id=record.id,
+            body=record.json(),
+            request_timeout=self.config.timeout,
+        )
+
+    def index_container(self, record: Container) -> None:
+        container_doc = self._create_container_es_doc(record)
+        self.elasticsearch_client.index(
+            index=self.config.container_index_name,
+            id=str(container_doc.id),
+            body=container_doc.json(),
+            request_timeout=self.config.timeout,
+        )
+
+    @staticmethod
+    def index_policy(_: Policy) -> None:
+        logger.debug("Policies are not indexed")
+        pass
+
+    def _write_record(self, record: Entity) -> None:
+        """
+        Default implementation for the single dispatch
+        """
+        logger.info(f"Entity of type {type(record)} is not implemented")
 
     def read_records(self, index: str, query: dict):
         """Read records from es index
@@ -605,7 +662,7 @@ class ElasticsearchSink(Sink[Entity]):
             updatedAt=dashboard.updatedAt.__root__,
             updatedBy=dashboard.updatedBy,
             dashboardUrl=dashboard.dashboardUrl,
-            charts=dashboard.charts,
+            charts=dashboard.charts.__root__,
             href=dashboard.href.__root__,
             deleted=dashboard.deleted,
             service=dashboard.service,
@@ -736,6 +793,68 @@ class ElasticsearchSink(Sink[Entity]):
         )
 
         return ml_model_doc
+
+    def _create_container_es_doc(self, container: Container):
+        display_name = (
+            container.displayName if container.displayName else container.name.__root__
+        )
+        suggest = [{"input": [display_name], "weight": 10}]
+        tags = []
+        followers = []
+        if container.followers:
+            for follower in container.followers.__root__:
+                followers.append(str(follower.id.__root__))
+        tier = None
+        for tag in container.tags or []:
+            if "Tier" in container.tagFQN.__root__:
+                tier = container
+            else:
+                tags.append(tag)
+
+        service_entity = ESEntityReference(
+            id=str(container.service.id.__root__),
+            name=container.service.name,
+            displayName=container.service.displayName
+            if container.service.displayName
+            else "",
+            description=container.service.description.__root__
+            if container.service.description
+            else "",
+            type=container.service.type,
+            fullyQualifiedName=container.service.fullyQualifiedName,
+            deleted=container.service.deleted,
+            href=container.service.href.__root__,
+        )
+
+        container_doc = ContainerESDocument(
+            id=str(container.id.__root__),
+            name=container.name.__root__,
+            displayName=display_name,
+            description=container.description.__root__ if container.description else "",
+            fullyQualifiedName=container.fullyQualifiedName.__root__,
+            version=container.version.__root__,
+            updatedAt=container.updatedAt.__root__,
+            updatedBy=container.updatedBy,
+            href=container.href.__root__,
+            deleted=container.deleted,
+            suggest=suggest,
+            tier=tier,
+            tags=list(tags),
+            owner=container.owner,
+            followers=followers,
+            service=service_entity,
+            parent=container.parent,
+            dataModel=container.dataModel,
+            children=container.children,
+            prefix=container.prefix,
+            numberOfObjects=container.numberOfObjects,
+            size=container.size,
+            fileFormats=[
+                file_format.value for file_format in container.fileFormats or []
+            ],
+        )
+
+        return container_doc
 
     def _create_user_es_doc(self, user: User):
         display_name = user.displayName if user.displayName else user.name.__root__
