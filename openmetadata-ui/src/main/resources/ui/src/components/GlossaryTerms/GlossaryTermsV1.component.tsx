@@ -15,12 +15,12 @@ import { Col, Row, Tabs } from 'antd';
 import { AxiosError } from 'axios';
 import GlossaryHeader from 'components/Glossary/GlossaryHeader/GlossaryHeader.component';
 import GlossaryTermTab from 'components/Glossary/GlossaryTermTab/GlossaryTermTab.component';
-import { PAGE_SIZE } from 'constants/constants';
+import { getGlossaryTermDetailsPath, PAGE_SIZE } from 'constants/constants';
 import { myDataSearchIndex } from 'constants/Mydata.constants';
 import { t } from 'i18next';
 import { AssetsDataType } from 'Models';
-import React, { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import React, { useEffect, useMemo, useState } from 'react';
+import { useHistory, useParams } from 'react-router-dom';
 import { searchData } from 'rest/miscAPI';
 import { formatDataResponse, SearchEntityHits } from 'utils/APIUtils';
 import { GlossaryTerm } from '../../generated/entity/data/glossaryTerm';
@@ -45,8 +45,9 @@ const GlossaryTermsV1 = ({
   handleGlossaryTermDelete,
   permissions,
 }: Props) => {
-  const { glossaryName: glossaryFqn } = useParams<{ glossaryName: string }>();
-  const [activeTab, setActiveTab] = useState<string>('glossaryTerms');
+  const { glossaryName: glossaryFqn, tab } =
+    useParams<{ glossaryName: string; tab: string }>();
+  const history = useHistory();
 
   const [assetData, setAssetData] = useState<AssetsDataType>({
     isLoading: true,
@@ -56,7 +57,9 @@ const GlossaryTermsV1 = ({
   });
 
   const activeTabHandler = (tab: string) => {
-    setActiveTab(tab);
+    history.push({
+      pathname: getGlossaryTermDetailsPath(glossaryFqn, tab),
+    });
   };
 
   const fetchGlossaryTermAssets = async (fqn: string, currentPage = 1) => {
@@ -107,15 +110,15 @@ const GlossaryTermsV1 = ({
     );
   };
 
+  const activeTab = useMemo(() => {
+    return tab ?? 'terms';
+  }, [tab]);
+
   useEffect(() => {
     fetchGlossaryTermAssets(
       glossaryTerm.fullyQualifiedName || glossaryTerm.name
     );
   }, [glossaryTerm.fullyQualifiedName]);
-
-  useEffect(() => {
-    setActiveTab('glossaryTerms');
-  }, [glossaryFqn]);
 
   return (
     <Row data-testid="glossary-term" gutter={[0, 16]}>
@@ -146,12 +149,12 @@ const GlossaryTermsV1 = ({
                     {getCountBadge(
                       childGlossaryTerms.length,
                       '',
-                      activeTab === 'glossaryTerms'
+                      activeTab === 'terms'
                     )}
                   </span>
                 </div>
               ),
-              key: 'glossaryTerms',
+              key: 'terms',
               children: (
                 <GlossaryTermTab
                   childGlossaryTerms={childGlossaryTerms}
