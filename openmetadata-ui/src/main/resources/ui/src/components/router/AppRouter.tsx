@@ -90,7 +90,9 @@ const AppRouter = () => {
   const handleClickEvent = useCallback((event: MouseEvent) => {
     const eventValue =
       (event.target as HTMLElement)?.textContent || CustomEventTypes.Click;
-    analytics.track(eventValue);
+    if (eventValue) {
+      analytics.track(eventValue);
+    }
   }, []);
 
   useEffect(() => {

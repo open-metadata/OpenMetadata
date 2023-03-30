@@ -85,10 +85,7 @@ const handlePostAnalytic = async (
  * @param pageData PageData
  * @param userId string
  */
-export const trackPageView = async (
-  pageData: AnalyticsData,
-  userId: string
-) => {
+export const trackPageView = (pageData: AnalyticsData, userId: string) => {
   // Get the current session
   const currentSession = getSession();
 
@@ -129,7 +126,7 @@ export const trackPageView = async (
   }
 };
 
-export const trackCustomEvent = async (eventData: AnalyticsData) => {
+export const trackCustomEvent = (eventData: AnalyticsData) => {
   // Get the current session
   const currentSession = getSession();
 
