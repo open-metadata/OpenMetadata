@@ -370,7 +370,9 @@ class TestSuiteWorkflowTests(unittest.TestCase):
         test_suite = workflow.get_or_create_test_suite_entity_for_cli_workflow()
         test_cases = workflow.get_test_cases_from_test_suite(test_suite)
         config_test_cases_def = workflow.get_test_case_from_cli_config()
-        created_workflow = workflow.compare_and_create_test_cases(config_test_cases_def, test_cases)
+        created_workflow = workflow.compare_and_create_test_cases(
+            config_test_cases_def, test_cases
+        )
 
         my_test_case = self.metadata.get_by_name(
             entity=TestCase,

@@ -368,7 +368,7 @@ class TestSuiteWorkflow(WorkflowStatusMixin):
             for test_suite in self.processor_config.testSuites
             for test_case in test_suite.testCases
         ]
-    
+
     def get_unique_test_case_name_in_config(self, test_cases_in_config: set) -> set:
         """Get unique test case names in config. If a test case is created for the same entity
         with the same name in different test suites, we only create one test case in the platform.
@@ -464,10 +464,8 @@ class TestSuiteWorkflow(WorkflowStatusMixin):
             for test_case in unique_test_cases_across_test_suites
             if not self.test_case_name_exists(test_case)
         }
-        test_case_names_to_create = (
-            self.get_unique_test_case_name_in_config(
-                unique_test_case_across_entities
-            )
+        test_case_names_to_create = self.get_unique_test_case_name_in_config(
+            unique_test_case_across_entities
         )
 
         if not test_case_names_to_create:
