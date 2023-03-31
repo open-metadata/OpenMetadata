@@ -17,9 +17,10 @@ import sys
 import traceback
 
 from metadata.config.common import load_config_file
-from metadata.test_suite.api.workflow import TestSuiteWorkflow
+from metadata.data_quality.api.workflow import TestSuiteWorkflow
 from metadata.utils.logger import cli_logger
-from metadata.utils.workflow_output_handler import WorkflowType, print_init_error
+from metadata.utils.workflow_output_handler import (WorkflowType,
+                                                    print_init_error)
 
 logger = cli_logger()
 

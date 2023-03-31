@@ -20,16 +20,15 @@ from uuid import uuid4
 
 import pytest
 import sqlalchemy as sqa
-from sqlalchemy.orm import declarative_base
-
+from metadata.data_quality.interface.sqlalchemy.sqa_test_suite_interface import \
+    SQATestSuiteInterface
 from metadata.generated.schema.entity.data.table import Column, DataType, Table
 from metadata.generated.schema.entity.services.connections.database.sqliteConnection import (
-    SQLiteConnection,
-    SQLiteScheme,
-)
-from metadata.generated.schema.tests.testCase import TestCase, TestCaseParameterValue
+    SQLiteConnection, SQLiteScheme)
+from metadata.generated.schema.tests.testCase import (TestCase,
+                                                      TestCaseParameterValue)
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.interfaces.sqalchemy.sqa_test_suite_interface import SQATestSuiteInterface
+from sqlalchemy.orm import declarative_base
 
 Base = declarative_base()
 

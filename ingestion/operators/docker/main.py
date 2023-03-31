@@ -21,7 +21,7 @@ from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipel
 )
 from metadata.ingestion.api.workflow import Workflow
 from metadata.profiler.api.workflow import ProfilerWorkflow
-from metadata.test_suite.api.workflow import TestSuiteWorkflow
+from metadata.data_quality.api.workflow import TestSuiteWorkflow
 
 WORKFLOW_MAP = {
     PipelineType.metadata.value: Workflow,

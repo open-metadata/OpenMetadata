@@ -21,33 +21,24 @@ from uuid import uuid4
 
 import pytest
 import sqlalchemy.types
-from sqlalchemy import Column, Integer, String
-from sqlalchemy.orm import declarative_base
-
-from metadata.generated.schema.api.data.createTableProfile import (
-    CreateTableProfileRequest,
-)
+from metadata.generated.schema.api.data.createTableProfile import \
+    CreateTableProfileRequest
 from metadata.generated.schema.entity.data.table import Column as EntityColumn
-from metadata.generated.schema.entity.data.table import (
-    ColumnName,
-    ColumnProfile,
-    DataType,
-    Histogram,
-    Table,
-    TableProfile,
-)
+from metadata.generated.schema.entity.data.table import (ColumnName,
+                                                         ColumnProfile,
+                                                         DataType, Histogram,
+                                                         Table, TableProfile)
 from metadata.generated.schema.entity.services.connections.database.sqliteConnection import (
-    SQLiteConnection,
-    SQLiteScheme,
-)
+    SQLiteConnection, SQLiteScheme)
 from metadata.ingestion.source import sqa_types
+from metadata.profiler.interface.sqlalchemy.sqa_profiler_interface import \
+    SQAProfilerInterface
 from metadata.profiler.metrics.core import add_props
 from metadata.profiler.metrics.registry import Metrics
 from metadata.profiler.profiler.core import MissingMetricException, Profiler
 from metadata.profiler.profiler.default import DefaultProfiler
-from metadata.profiler.profiler.interface.sqlalchemy.sqa_profiler_interface import (
-    SQAProfilerInterface,
-)
+from sqlalchemy import Column, Integer, String
+from sqlalchemy.orm import declarative_base
 
 Base = declarative_base()
 

@@ -14,21 +14,15 @@ testSuite DAG function builder
 import json
 
 from airflow import DAG
-from openmetadata_managed_apis.utils.logger import set_operator_logger
-from openmetadata_managed_apis.workflows.ingestion.common import build_dag, build_source
-
-from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
-    IngestionPipeline,
-)
+from metadata.data_quality.api.workflow import TestSuiteWorkflow
+from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import \
+    IngestionPipeline
 from metadata.generated.schema.metadataIngestion.workflow import (
-    LogLevels,
-    OpenMetadataWorkflowConfig,
-    Processor,
-    Sink,
-    WorkflowConfig,
-)
+    LogLevels, OpenMetadataWorkflowConfig, Processor, Sink, WorkflowConfig)
 from metadata.ingestion.models.encoders import show_secrets_encoder
-from metadata.test_suite.api.workflow import TestSuiteWorkflow
+from openmetadata_managed_apis.utils.logger import set_operator_logger
+from openmetadata_managed_apis.workflows.ingestion.common import (build_dag,
+                                                                  build_source)
 
 
 def test_suite_workflow(workflow_config: OpenMetadataWorkflowConfig):
