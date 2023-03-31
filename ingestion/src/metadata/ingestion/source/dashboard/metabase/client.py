@@ -27,18 +27,10 @@ logger = ingestion_logger()
 
 class MetabaseClient:
     
-    def __init__(
-        self,
-        config: WorkflowSource,
-        metadata_config: OpenMetadataConnection
-    ):
-        try:
-          super().__init__(config, metadata_config)
-          self.metabase_session = self.client["metabase_session"]
-        except Exception as exc:
-            logger.debug(traceback.format_exc())
-            logger.error(f"Error in initializing Metabase Client: {exc}")
-    
+    def __init__(self, service_connection, metabase_session):
+        self.service_connection = service_connection
+        self.metabase_session = metabase_session
+
     def req_get(self, path: str) -> requests.Response:
       """Send get request method
 

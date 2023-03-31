@@ -51,12 +51,17 @@ class MetabaseSource(DashboardServiceSource):
     Metabase Source Class
     """
 
+    config: WorkflowSource
+    metadata_config: OpenMetadataConnection
+
     def __init__(
         self,
         config: WorkflowSource,
         metadata_config: OpenMetadataConnection,
     ):
-        self.client = MetabaseClient(config, metadata_config)
+        super().__init__(config, metadata_config)
+        self.metabase_session = self.client["metabase_session"]
+        self.client = MetabaseClient(self.service_connection, self.metabase_session)
 
     @classmethod
     def create(cls, config_dict, metadata_config: OpenMetadataConnection):
