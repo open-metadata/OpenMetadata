@@ -146,6 +146,9 @@ describe('Test Connection Component', () => {
     expect(
       screen.getByText('message.testing-your-connection-may-take-two-minutes')
     ).toBeInTheDocument();
+    expect(
+      screen.getByTestId('test-connection-details-btn')
+    ).toBeInTheDocument();
   });
 
   it('Should create, trigger and fetch the workflow on test connection click', async () => {
