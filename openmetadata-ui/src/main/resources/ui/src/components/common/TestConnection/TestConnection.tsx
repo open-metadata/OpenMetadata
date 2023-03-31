@@ -271,14 +271,15 @@ const TestConnection: FC<TestConnectionProps> = ({
             {testStatus === StatusType.Failed && (
               <FailIcon data-testid="fail-badge" height={24} width={24} />
             )}
-            <Space data-testid="messag-text" size={2}>
+            <Space wrap data-testid="messag-text" size={2}>
               {message}{' '}
-              {testStatus && (
+              {(testStatus || isTestingConnection) && (
                 <Transi18next
                   i18nKey="message.click-text-to-view-details"
                   renderElement={
                     <Button
                       className="p-0 test-connection-message-btn"
+                      data-testid="test-connection-details-btn"
                       type="link"
                       onClick={() => setDialogOpen(true)}
                     />
