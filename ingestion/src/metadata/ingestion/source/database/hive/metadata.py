@@ -183,6 +183,68 @@ def get_table_comment(  # pylint: disable=unused-argument
         return {"text": None}
     return {"text": None}
 
+def get_impala_table_or_view_names(connection, schema=None, targetType="table"):
+    query = f"show tables"
+    if schema:
+        query += " IN " + schema
+        
+    #print(query)
+    cursor = connection.execute(query)
+    results = cursor.fetchall()
+    tables_and_views = [result[0] for result in results]
+    #print(tables_and_views)
+    
+    retvalue = []
+    
+    for tv in tables_and_views:
+        #print(tv)
+        full_table_name = f"{schema}.{tv}"
+        query = f"describe formatted `{schema}`.`{tv}`"
+        #print(query)
+        #cursor = connection.cursor()
+        cursor = connection.execute(query)
+        results = cursor.fetchall()
+
+        for result in list(results):
+            data = result
+            if data[0].strip() == "Table Type:":
+                if targetType.lower() in data[1].lower():
+                    retvalue.append(tv)
+
+
+    #print(retvalue)
+    return retvalue
+
+def get_impala_view_names(self, connection, schema=None, **kw):
+    results = get_impala_table_or_view_names(connection, schema, "view") 
+    return results
+    
+def get_impala_table_names(self, connection, schema=None, **kw):
+    results = get_impala_table_or_view_names(connection, schema, "table")
+    return results
+
+def get_impala_table_comment(self, connection, table_name, schema_name, **kw):
+    print(table_name)
+    full_table_name = f"{schema_name}.{table_name}" if schema_name is not None else table_name
+    split_name = full_table_name.split('.')
+    query = f"describe formatted `{split_name[0]}`.`{split_name[1]}`"
+    print(query)
+    cursor = connection.execute(query)
+    results = cursor.fetchall()
+    
+    foundTableParameters = False
+    try:
+        for result in list(results):
+            data = result
+            if not foundTableParameters and data[0].strip() == "Table Parameters:":
+                foundTableParameters = True
+            if foundTableParameters:
+                coltext = data[1].strip() if data[1] is not None else ""
+                if coltext == "comment":
+                    return { "text": data[2] }
+    except Exception:
+            return {"text": None}
+    return {"text": None}
 
 def get_impala_columns(self, connection, table_name, schema=None, **kwargs):
     """
@@ -191,26 +253,45 @@ def get_impala_columns(self, connection, table_name, schema=None, **kwargs):
     By default, this gives us the column name as `table.column`. We just
     want to get `column`.
     """
-    # pylint: disable=unused-argument
     full_table_name = f"{schema}.{table_name}" if schema is not None else table_name
-    query = f"SELECT * FROM {full_table_name} LIMIT 0"
+    split_name = full_table_name.split('.')
+    query = f"DESCRIBE `{split_name[0]}`.`{split_name[1]}`"
     cursor = connection.execute(query)
-    schema = cursor.cursor.description
-    # We need to fetch the empty results otherwise these queries remain in
-    # flight
-    cursor.fetchall()
+    results = cursor.fetchall()
     column_info = []
-    for col in schema:
-        column_info.append(
-            {
-                "name": remove_table_from_column_name(table_name, col[0]),
-                # Using Hive's map instead of Impala's, as we are pointing to a Hive Server
-                # Passing the lower as Hive's map is based on lower strings.
-                "type": _type_map[col[1].lower()],
-                "nullable": True,
-                "autoincrement": False,
-            }
-        )
+    op = 0
+    for col in results:
+       op = op + 1
+       col_raw = col[1]
+       attype = re.sub(r"\(.*\)", "", col[1])
+       col_type = re.search(r"^\w+", col[1]).group(0)
+       try:
+           coltype = _type_map[col_type]
+       except KeyError:
+           util.warn(f"Did not recognize type '{col_raw}' of column '{col[0]}'")
+           coltype = types.NullType
+       charlen = re.search(r"\(([\d,]+)\)", col_raw.lower())
+       if charlen:
+           charlen = charlen.group(1)
+           print(f"column: {col[0]}, col_raw: {col_raw}, attype: {attype}, col_type: {col_type}")
+           if attype == "decimal":
+               prec, scale = charlen.split(",")
+               print(f"prec, scale: {prec}, {scale}")
+               args = (int(prec), int(scale))
+           else:
+               print(f"charlen: {charlen}")
+               args = (int(charlen),)
+           coltype = coltype(*args)
+       a = {
+           "name": col[0],
+           "type": coltype,
+           "comment": col[2],
+           "nullable": True,
+           "autoincrement": False,
+           "ordinalPosition": op
+       }
+       #print(a)
+       column_info.append(a)
     return column_info
 
 
@@ -218,7 +299,7 @@ HiveDialect.get_columns = get_columns
 HiveDialect.get_table_comment = get_table_comment
 
 ImpalaDialect.get_columns = get_impala_columns
-ImpalaDialect.get_table_comment = get_table_comment
+ImpalaDialect.get_table_comment = get_impala_table_comment
 
 
 HIVE_VERSION_WITH_VIEW_SUPPORT = "2.2.0"
@@ -251,13 +332,20 @@ class HiveSource(CommonDbSourceService):
         Fetching views in hive server with query "SHOW VIEWS" was possible
         only after hive 2.2.0 version
         """
-        result = dict(self.engine.execute("SELECT VERSION()").fetchone())
-        version = result.get("_c0", "").split()
-        if version and self._parse_version(version[0]) >= self._parse_version(
-            HIVE_VERSION_WITH_VIEW_SUPPORT
-        ):
-            HiveDialect.get_table_names = get_table_names
-            HiveDialect.get_view_names = get_view_names
+        if self.engine.driver == "impala":
+            ImpalaDialect.get_table_names = get_impala_table_names
+            ImpalaDialect.get_view_names = get_impala_view_names
+            ImpalaDialect.get_table_comment = get_impala_table_comment
+            ImpalaDialect.get_columns = get_impala_columns            
         else:
-            HiveDialect.get_table_names = get_table_names_older_versions
-            HiveDialect.get_view_names = get_view_names_older_versions
+            result = dict(self.engine.execute("SELECT VERSION()").fetchone())
+            
+            version = result.get("_c0", "").split()
+            if version and self._parse_version(version[0]) >= self._parse_version(
+                HIVE_VERSION_WITH_VIEW_SUPPORT
+            ):
+                HiveDialect.get_table_names = get_table_names
+                HiveDialect.get_view_names = get_view_names
+            else:
+                HiveDialect.get_table_names = get_table_names_older_versions
+                HiveDialect.get_view_names = get_view_names_older_versions
