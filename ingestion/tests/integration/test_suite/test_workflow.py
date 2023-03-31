@@ -58,6 +58,28 @@ class TestSuiteWorkflowTests(unittest.TestCase):
         )
     )
 
+    test_case_ids = []
+    test_suite_ids = []
+
+    def tearDown(self) -> None:
+        for test_case_id in self.test_case_ids:
+            self.metadata.delete(
+                entity=TestCase,
+                entity_id=test_case_id,
+                recursive=True,
+                hard_delete=True,
+            )
+        for test_suite_id in self.test_suite_ids:
+            self.metadata.delete(
+                entity=TestSuite,
+                entity_id=test_suite_id,
+                recursive=True,
+                hard_delete=True,
+            )
+
+        self.test_case_ids = []
+        self.test_suite_ids = []
+
     def test_create_workflow_object(self):
         """Test workflow object is correctly instantiated"""
         TestSuiteWorkflow.create(test_suite_config)
@@ -101,6 +123,7 @@ class TestSuiteWorkflowTests(unittest.TestCase):
         test_suite = self.metadata.get_by_name(entity=TestSuite, fqn="my_test_suite")
 
         assert workflow_test_suite[0].id == test_suite.id
+        self.test_suite_ids = [test_suite.id]
 
     def test_get_test_suite_entity_for_ui_workflow(self):
         """test we can correctly retrieve a test suite"""
@@ -332,7 +355,7 @@ class TestSuiteWorkflowTests(unittest.TestCase):
                                 {
                                     "name": "table_column_count_between",
                                     "testDefinitionName": "TableColumnCountToBeBetween",
-                                    "entityLink": "<#E::table::sample_data.ecommerce_db.shopify.dim_customer>",
+                                    "entityLink": "<#E::table::sample_data.ecommerce_db.shopify.dim_address_clean>",
                                     "parameterValues": [
                                         {"name": "minColValue", "value": 1},
                                         {"name": "maxColValue", "value": 15},
@@ -346,7 +369,7 @@ class TestSuiteWorkflowTests(unittest.TestCase):
                                 {
                                     "name": "table_column_count_between",
                                     "testDefinitionName": "TableColumnCountToBeBetween",
-                                    "entityLink": "<#E::table::sample_data.ecommerce_db.shopify.dim_customer>",
+                                    "entityLink": "<#E::table::sample_data.ecommerce_db.shopify.dim_address_clean>",
                                     "parameterValues": [
                                         {"name": "minColValue", "value": 1},
                                         {"name": "maxColValue", "value": 5},
@@ -364,7 +387,7 @@ class TestSuiteWorkflowTests(unittest.TestCase):
 
         assert not self.metadata.get_by_name(
             entity=TestCase,
-            fqn="sample_data.ecommerce_db.shopify.dim_customer.table_column_count_between",
+            fqn="sample_data.ecommerce_db.shopify.dim_address_clean.table_column_count_between",
         )
 
         test_suite = workflow.get_or_create_test_suite_entity_for_cli_workflow()
@@ -376,7 +399,7 @@ class TestSuiteWorkflowTests(unittest.TestCase):
 
         my_test_case = self.metadata.get_by_name(
             entity=TestCase,
-            fqn="sample_data.ecommerce_db.shopify.dim_customer.table_column_count_between",
+            fqn="sample_data.ecommerce_db.shopify.dim_address_clean.table_column_count_between",
             fields=["testDefinition", "testSuite"],
         )
 
@@ -390,18 +413,8 @@ class TestSuiteWorkflowTests(unittest.TestCase):
             entity=TestSuite,
             fqn="new_test_suite",
         )
-        assert not self.metadata.list_entities(
-            entity=TestCase,
-            fields=["testSuite", "entityLink", "testDefinition"],
-            params={"testSuiteId": new_test_suite.id.__root__},
-        ).entities
 
-        self.metadata.delete(
-            entity=TestSuite, entity_id=new_test_suite.id, recursive=True
-        )
-        self.metadata.delete(
-            entity=TestSuite, entity_id=another_test_suite.id, recursive=True
-        )
+        self.test_suite_ids = [new_test_suite.id, another_test_suite.id]
 
     def test_compare_and_create_test_cases_same_test_name_same_test_suite(self):
         """Test function creates the correct test case if they don't exists when
@@ -470,7 +483,8 @@ class TestSuiteWorkflowTests(unittest.TestCase):
         assert len(created_test_case) == 1
         assert created_test_case[0].name.__root__ == "table_column_count_between"
         assert created_test_case[0].testSuite.name == "critical_metrics_suite"
-        self.metadata.delete(entity=TestCase, entity_id=dim_customer_test_case.id)
+
+        self.test_case_ids = [dim_customer_test_case.id]
 
     def test_get_service_connection_from_test_case(self):
         """test get service connection returns correct info"""
