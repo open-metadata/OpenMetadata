@@ -22,9 +22,6 @@ from pydantic import BaseModel
 from metadata.generated.schema.entity.data.glossary import Glossary
 from metadata.generated.schema.entity.data.glossaryTerm import GlossaryTerm
 from metadata.generated.schema.type import basic
-from metadata.ingestion.ometa.utils import model_str
-from metadata.utils.logger import ometa_logger
-
 from metadata.ingestion.ometa.mixins.patch_mixin_utils import (
     OMetaPatchMixinBase,
     PatchField,
@@ -32,6 +29,8 @@ from metadata.ingestion.ometa.mixins.patch_mixin_utils import (
     PatchPath,
     PatchValue,
 )
+from metadata.ingestion.ometa.utils import model_str
+from metadata.utils.logger import ometa_logger
 
 logger = ometa_logger()
 
