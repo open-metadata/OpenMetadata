@@ -54,7 +54,7 @@ import {
 } from '../../utils/GlossaryUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import SVGIcons from '../../utils/SvgUtils';
-import { getTagsWithoutTier } from '../../utils/TableUtils';
+import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
 import { getClassifications, getTaglist } from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import ActivityFeedList from '../ActivityFeed/ActivityFeedList/ActivityFeedList';
@@ -76,19 +76,13 @@ import TagsViewer from '../Tag/TagsViewer/tags-viewer';
 import { ChartType, DashboardDetailsProps } from './DashboardDetails.interface';
 
 const DashboardDetails = ({
-  entityName,
-  followers,
   followDashboardHandler,
   unfollowDashboardHandler,
-  owner,
-  tier,
   slashedDashboardName,
   activeTab,
   setActiveTabHandler,
-  description,
-  serviceType,
+
   dashboardUrl,
-  dashboardTags,
   dashboardDetails,
   descriptionUpdateHandler,
   settingsUpdateHandler,
@@ -97,8 +91,6 @@ const DashboardDetails = ({
   chartDescriptionUpdateHandler,
   chartTagUpdateHandler,
   versionHandler,
-  version,
-  deleted,
   entityThread,
   isentityThreadLoading,
   postFeedHandler,
@@ -115,8 +107,6 @@ const DashboardDetails = ({
 }: DashboardDetailsProps) => {
   const { t } = useTranslation();
   const [isEdit, setIsEdit] = useState(false);
-  const [followersCount, setFollowersCount] = useState(0);
-  const [isFollowing, setIsFollowing] = useState(false);
   const [editChart, setEditChart] = useState<{
     chart: ChartType;
     index: number;
@@ -137,6 +127,33 @@ const DashboardDetails = ({
   const [dashboardPermissions, setDashboardPermissions] = useState(
     DEFAULT_ENTITY_PERMISSION
   );
+
+  const {
+    tier,
+    dashboardTags,
+    owner,
+    serviceType,
+    description,
+    name: entityName,
+    followers = [],
+    deleted,
+    version,
+  } = useMemo(() => {
+    const { tags = [] } = dashboardDetails;
+
+    return {
+      ...dashboardDetails,
+      tier: getTierTags(tags),
+      dashboardTags: getTagsWithoutTier(tags),
+    };
+  }, [dashboardDetails]);
+
+  const { isFollowing, followersCount } = useMemo(() => {
+    return {
+      isFollowing: followers?.some(({ id }) => id === getCurrentUserId()),
+      followersCount: followers?.length ?? 0,
+    };
+  }, [followers]);
 
   const { getEntityPermission } = usePermissionProvider();
 
@@ -162,12 +179,6 @@ const DashboardDetails = ({
     }
   }, [dashboardDetails.id]);
 
-  const setFollowersData = (followers: Array<EntityReference>) => {
-    setIsFollowing(
-      followers.some(({ id }: { id: string }) => id === getCurrentUserId())
-    );
-    setFollowersCount(followers?.length);
-  };
   const tabs = [
     {
       name: t('label.detail-plural'),
@@ -330,15 +341,7 @@ const DashboardDetails = ({
   };
 
   const followDashboard = () => {
-    if (isFollowing) {
-      setFollowersCount((preValu) => preValu - 1);
-      setIsFollowing(false);
-      unfollowDashboardHandler();
-    } else {
-      setFollowersCount((preValu) => preValu + 1);
-      setIsFollowing(true);
-      followDashboardHandler();
-    }
+    isFollowing ? unfollowDashboardHandler() : followDashboardHandler();
   };
   const handleUpdateChart = (chart: ChartType, index: number) => {
     setEditChart({ chart, index });
@@ -489,10 +492,6 @@ const DashboardDetails = ({
       handleEditChartTag(chart, index);
     }
   };
-
-  useEffect(() => {
-    setFollowersData(followers);
-  }, [followers]);
 
   useEffect(() => {
     fetchMoreThread(isInView as boolean, paging, isentityThreadLoading);
@@ -665,7 +664,7 @@ const DashboardDetails = ({
           }
           tags={dashboardTags}
           tagsHandler={onTagUpdate}
-          tier={tier || ''}
+          tier={tier}
           titleLinks={slashedDashboardName}
           updateOwner={
             dashboardPermissions.EditAll || dashboardPermissions.EditOwner

@@ -704,7 +704,7 @@ export const getHostNameFromURL = (url: string) => {
   }
 };
 
-export const getOwnerValue = (owner: EntityReference) => {
+export const getOwnerValue = (owner?: EntityReference) => {
   switch (owner?.type) {
     case 'team':
       return getTeamAndUserDetailsPath(owner?.name || '');

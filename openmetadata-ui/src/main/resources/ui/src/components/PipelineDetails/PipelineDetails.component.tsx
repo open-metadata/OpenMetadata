@@ -776,7 +776,7 @@ const PipelineDetails = ({
               ? onTierUpdate
               : undefined
           }
-          version={version + ''}
+          version={version}
           versionHandler={versionHandler}
           onRestoreEntity={handleRestorePipeline}
           onThreadLinkSelect={onThreadLinkSelect}

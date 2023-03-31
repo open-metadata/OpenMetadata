@@ -26,12 +26,9 @@ jest.mock('react-router-dom', () => ({
 
 describe('Test SampleData Component', () => {
   it('Should render message cards', () => {
-    const { getAllByTestId } = render(
-      <SampleDataTopic sampleData={mockSampleData} />,
-      {
-        wrapper: MemoryRouter,
-      }
-    );
+    const { getAllByTestId } = render(<SampleDataTopic topicFQN="" />, {
+      wrapper: MemoryRouter,
+    });
 
     const messageCards = getAllByTestId('message-card');
 
@@ -40,12 +37,9 @@ describe('Test SampleData Component', () => {
 
   it('Should render no data placeholder if no data available', () => {
     act(() => {
-      const { getByTestId } = render(
-        <SampleDataTopic sampleData={undefined} />,
-        {
-          wrapper: MemoryRouter,
-        }
-      );
+      const { getByTestId } = render(<SampleDataTopic topicFQN="" />, {
+        wrapper: MemoryRouter,
+      });
 
       const noDataPlaceHolder = getByTestId('no-data');
 

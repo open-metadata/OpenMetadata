@@ -635,7 +635,7 @@ const ContainerPage = () => {
           titleLinks={breadcrumbTitles}
           updateOwner={hasEditOwnerPermission ? handleUpdateOwner : undefined}
           updateTier={hasEditTierPermission ? handleUpdateTier : undefined}
-          version={version + ''}
+          version={version}
           onRestoreEntity={handleRestoreContainer}
         />
         <Tabs activeKey={tab} className="h-full" onChange={handleTabChange}>

@@ -22,9 +22,8 @@ import {
 } from 'components/PermissionProvider/PermissionProvider.interface';
 import TopicDetails from 'components/TopicDetails/TopicDetails.component';
 import { compare, Operation } from 'fast-json-patch';
-import { isUndefined, omitBy } from 'lodash';
+import { isUndefined, omitBy, toString } from 'lodash';
 import { observer } from 'mobx-react';
-import { EntityTags } from 'Models';
 import React, { FunctionComponent, useEffect, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
 import { getAllFeeds, postFeedById, postThread } from 'rest/feedsAPI';
@@ -45,11 +44,9 @@ import { EntityType, TabSpecificField } from '../../enums/entity.enum';
 import { FeedFilter } from '../../enums/mydata.enum';
 import { ServiceCategory } from '../../enums/service.enum';
 import { CreateThread } from '../../generated/api/feed/createThread';
-import { Topic, TopicSampleData } from '../../generated/entity/data/topic';
+import { Topic } from '../../generated/entity/data/topic';
 import { Post, Thread, ThreadType } from '../../generated/entity/feed/thread';
-import { EntityReference } from '../../generated/type/entityReference';
 import { Paging } from '../../generated/type/paging';
-import { TagLabel } from '../../generated/type/tagLabel';
 import { EntityFieldThreadCount } from '../../interface/feed.interface';
 import jsonData from '../../jsons/en';
 import {
@@ -62,7 +59,6 @@ import { getEntityFeedLink, getEntityName } from '../../utils/EntityUtils';
 import { deletePost, updateThreadData } from '../../utils/FeedUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { serviceTypeLogo } from '../../utils/ServiceUtils';
-import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import {
   getCurrentTopicTab,
@@ -77,26 +73,13 @@ const TopicDetailsPage: FunctionComponent = () => {
 
   const { topicFQN, tab } = useParams() as Record<string, string>;
   const [topicDetails, setTopicDetails] = useState<Topic>({} as Topic);
-  const [topicId, setTopicId] = useState<string>('');
   const [isLoading, setLoading] = useState<boolean>(true);
-  const [description, setDescription] = useState<string>('');
-  const [followers, setFollowers] = useState<Array<EntityReference>>([]);
-  const [owner, setOwner] = useState<EntityReference>();
-  const [tier, setTier] = useState<TagLabel>();
-  const [tags, setTags] = useState<Array<EntityTags>>([]);
   const [activeTab, setActiveTab] = useState<number>(getCurrentTopicTab(tab));
-  const [partitions, setPartitions] = useState<number>(0);
-  const [cleanupPolicies, setCleanupPolicies] = useState<Array<string>>([]);
-  const [maximumMessageSize, setMaximumMessageSize] = useState<number>(0);
-  const [replicationFactor, setReplicationFactor] = useState<number>(0);
-  const [retentionSize, setRetentionSize] = useState<number>(0);
-  const [name, setName] = useState<string>('');
-  const [deleted, setDeleted] = useState<boolean>(false);
   const [isError, setIsError] = useState(false);
   const [slashedTopicName, setSlashedTopicName] = useState<
     TitleBreadcrumbProps['titleLinks']
   >([]);
-  const [currentVersion, setCurrentVersion] = useState<string>();
+
   const [entityThread, setEntityThread] = useState<Thread[]>([]);
   const [isentityThreadLoading, setIsentityThreadLoading] =
     useState<boolean>(false);
@@ -108,10 +91,6 @@ const TopicDetailsPage: FunctionComponent = () => {
     EntityFieldThreadCount[]
   >([]);
   const [paging, setPaging] = useState<Paging>({} as Paging);
-
-  const [sampleData, setSampleData] = useState<TopicSampleData>();
-  const [isSampleDataLoading, setIsSampleDataLoading] =
-    useState<boolean>(false);
 
   const [topicPermissions, setTopicPermissions] = useState<OperationPermission>(
     DEFAULT_ENTITY_PERMISSION
@@ -183,43 +162,13 @@ const TopicDetailsPage: FunctionComponent = () => {
     fetchActivityFeed(after, filterType, type);
   };
 
+  const { id: topicId, version: currentVersion } = topicDetails;
+
   const fetchTabSpecificData = (tabField = '') => {
     switch (tabField) {
       case TabSpecificField.ACTIVITY_FEED: {
         fetchActivityFeed();
 
-        break;
-      }
-
-      case TabSpecificField.SAMPLE_DATA: {
-        if (!isUndefined(sampleData)) {
-          break;
-        } else {
-          setIsSampleDataLoading(true);
-          getTopicByFqn(topicFQN, tabField)
-            .then((res) => {
-              if (res) {
-                const { sampleData } = res;
-                setSampleData(sampleData);
-              } else {
-                showErrorToast(
-                  jsonData['api-error-messages']['fetch-sample-data-error']
-                );
-              }
-            })
-            .catch((err: AxiosError) => {
-              showErrorToast(
-                err,
-                jsonData['api-error-messages']['fetch-sample-data-error']
-              );
-            })
-            .finally(() => setIsSampleDataLoading(false));
-
-          break;
-        }
-      }
-
-      case TabSpecificField.LINEAGE: {
         break;
       }
 
@@ -261,39 +210,10 @@ const TopicDetailsPage: FunctionComponent = () => {
     ])
       .then((res) => {
         if (res) {
-          const {
-            id,
-            deleted,
-            description,
-            followers,
-            fullyQualifiedName,
-            name,
-            service,
-            tags,
-            owner,
-            partitions,
-            cleanupPolicies,
-            maximumMessageSize,
-            replicationFactor,
-            retentionSize,
-            serviceType,
-            version,
-          } = res;
-          setName(name);
+          const { id, fullyQualifiedName, service, serviceType } = res;
+
           setTopicDetails(res);
-          setTopicId(id);
-          setCurrentVersion(version?.toString());
-          setDescription(description ?? '');
-          setFollowers(followers ?? []);
-          setOwner(owner);
-          setTier(getTierTags(tags ?? []));
-          setTags(getTagsWithoutTier(tags ?? []));
-          setPartitions(partitions);
-          setCleanupPolicies(cleanupPolicies ?? []);
-          setMaximumMessageSize(maximumMessageSize ?? 0);
-          setReplicationFactor(replicationFactor ?? 0);
-          setRetentionSize(retentionSize ?? 0);
-          setDeleted(deleted ?? false);
+
           setSlashedTopicName([
             {
               name: service.name ?? '',
@@ -347,8 +267,10 @@ const TopicDetailsPage: FunctionComponent = () => {
       .then((res) => {
         if (res) {
           const { newValue } = res.changeDescription.fieldsAdded[0];
-
-          setFollowers([...followers, ...newValue]);
+          setTopicDetails((prev) => ({
+            ...prev,
+            followers: [...(prev?.followers ?? []), ...newValue],
+          }));
         } else {
           showErrorToast(
             jsonData['api-error-messages']['update-entity-follow-error']
@@ -368,10 +290,12 @@ const TopicDetailsPage: FunctionComponent = () => {
       .then((res) => {
         if (res) {
           const { oldValue } = res.changeDescription.fieldsDeleted[0];
-
-          setFollowers(
-            followers.filter((follower) => follower.id !== oldValue[0].id)
-          );
+          setTopicDetails((prev) => ({
+            ...prev,
+            followers: (prev?.followers ?? []).filter(
+              (follower) => follower.id !== oldValue[0].id
+            ),
+          }));
         } else {
           showErrorToast(
             jsonData['api-error-messages']['update-entity-unfollow-error']
@@ -390,10 +314,8 @@ const TopicDetailsPage: FunctionComponent = () => {
     try {
       const response = await saveUpdatedTopicData(updatedTopic);
       if (response) {
-        const { description = '', version } = response;
-        setCurrentVersion(version + '');
         setTopicDetails(response);
-        setDescription(description);
+
         getEntityFeedCount();
       } else {
         throw jsonData['api-error-messages']['update-description-error'];
@@ -410,9 +332,7 @@ const TopicDetailsPage: FunctionComponent = () => {
           if (res) {
             const formattedTopicDetails = getFormattedTopicDetails(res);
             setTopicDetails(formattedTopicDetails);
-            setCurrentVersion(res.version?.toString());
-            setOwner(res.owner);
-            setTier(getTierTags((res.tags ?? []) as EntityTags[]));
+
             getEntityFeedCount();
             resolve();
           } else {
@@ -436,9 +356,6 @@ const TopicDetailsPage: FunctionComponent = () => {
       .then((res) => {
         if (res) {
           setTopicDetails(res);
-          setTier(getTierTags(res.tags as TagLabel[]));
-          setCurrentVersion(res.version?.toString());
-          setTags(getTagsWithoutTier(res.tags as EntityTags[]));
           getEntityFeedCount();
         } else {
           showErrorToast(jsonData['api-error-messages']['update-tags-error']);
@@ -453,9 +370,10 @@ const TopicDetailsPage: FunctionComponent = () => {
   };
 
   const versionHandler = () => {
-    history.push(
-      getVersionPath(EntityType.TOPIC, topicFQN, currentVersion as string)
-    );
+    currentVersion &&
+      history.push(
+        getVersionPath(EntityType.TOPIC, topicFQN, toString(currentVersion))
+      );
   };
 
   const postFeedHandler = (value: string, id: string) => {
@@ -530,11 +448,7 @@ const TopicDetailsPage: FunctionComponent = () => {
       const data = await saveUpdatedTopicData(updatedTopic);
 
       if (data) {
-        const { version, owner: ownerValue, tags } = data;
-        setCurrentVersion(version?.toString());
         setTopicDetails(data);
-        setOwner(ownerValue);
-        setTier(getTierTags(tags ?? []));
       } else {
         throw jsonData['api-error-messages']['update-entity-error'];
       }
@@ -581,41 +495,26 @@ const TopicDetailsPage: FunctionComponent = () => {
           {topicPermissions.ViewAll || topicPermissions.ViewBasic ? (
             <TopicDetails
               activeTab={activeTab}
-              cleanupPolicies={cleanupPolicies}
               createThread={createThread}
               deletePostHandler={deletePostHandler}
-              deleted={deleted}
-              description={description}
               descriptionUpdateHandler={descriptionUpdateHandler}
               entityFieldTaskCount={entityFieldTaskCount}
               entityFieldThreadCount={entityFieldThreadCount}
-              entityName={name}
               entityThread={entityThread}
               feedCount={feedCount}
               fetchFeedHandler={handleFeedFetchFromFeedList}
               followTopicHandler={followTopic}
-              followers={followers}
-              isSampleDataLoading={isSampleDataLoading}
               isentityThreadLoading={isentityThreadLoading}
-              maximumMessageSize={maximumMessageSize}
-              owner={owner as EntityReference}
               paging={paging}
-              partitions={partitions}
               postFeedHandler={postFeedHandler}
-              replicationFactor={replicationFactor}
-              retentionSize={retentionSize}
-              sampleData={sampleData}
               setActiveTabHandler={activeTabHandler}
               settingsUpdateHandler={settingsUpdateHandler}
               slashedTopicName={slashedTopicName}
               tagUpdateHandler={onTagUpdate}
-              tier={tier as TagLabel}
               topicDetails={topicDetails}
               topicFQN={topicFQN}
-              topicTags={tags}
               unfollowTopicHandler={unfollowTopic}
               updateThreadHandler={updateThreadHandler}
-              version={currentVersion}
               versionHandler={versionHandler}
               onExtensionUpdate={handleExtentionUpdate}
             />

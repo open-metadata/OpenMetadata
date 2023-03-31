@@ -1235,6 +1235,7 @@
     "entity-details-fetch-error": "Erro ao buscar detalhes para {{entityType}} {{entityName}}",
     "entity-fetch-error": "Erro ao buscar {{entity}}",
     "entity-fetch-version-error": "Erro ao buscar {{entity}} versão {{version}}",
+    "entity-unfollow-error": "Error while unfollowing {{entity}}",
     "entity-updating-error": "Erro ao atualizar {{entity}}",
     "error-selected-node-name-details": "Erro ao obter detalhes do {{selectedNodeName}}",
     "error-while-renewing-id-token-with-message": "Erro ao renovar token de ID do Auth0 SSO: {{message}}",
