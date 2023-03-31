@@ -13,6 +13,8 @@
 
 package org.openmetadata.service;
 
+import static org.openmetadata.service.util.MicrometerBundleSingleton.webAnalyticEvents;
+
 import io.dropwizard.Application;
 import io.dropwizard.configuration.EnvironmentVariableSubstitutor;
 import io.dropwizard.configuration.SubstitutingSourceProvider;
@@ -183,10 +185,11 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     // authenticationHandler Handles auth related activities
     authenticatorHandler.init(catalogConfig, jdbi);
 
+    webAnalyticEvents = MicrometerBundleSingleton.latencyTimer(catalogConfig.getEventMonitorConfiguration());
     FilterRegistration.Dynamic micrometerFilter =
         environment.servlets().addFilter("OMMicrometerHttpFilter", new OMMicrometerHttpFilter());
-    micrometerFilter.addMappingForUrlPatterns(EnumSet.allOf(DispatcherType.class), true, "/*");
-
+    micrometerFilter.addMappingForUrlPatterns(
+        EnumSet.allOf(DispatcherType.class), true, catalogConfig.getEventMonitorConfiguration().getPathPattern());
     initializeWebsockets(catalogConfig, environment);
     registerSamlHandlers(catalogConfig, environment);
 
@@ -291,6 +294,10 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
       throw new ConfigurationException(
           "'botPrincipals' configuration is deprecated. Please remove it from "
               + "'openmetadata.yaml and restart the server");
+    }
+    if (catalogConfig.getPipelineServiceClientConfiguration().getAuthConfig() != null) {
+      LOG.warn(
+          "'authProvider' and 'authConfig' from the 'pipelineServiceClientConfiguration' option are deprecated and will be removed in future releases.");
     }
   }
 

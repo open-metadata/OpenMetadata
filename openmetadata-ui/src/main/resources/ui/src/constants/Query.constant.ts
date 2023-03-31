@@ -14,3 +14,17 @@
 export const QUERY_USED_BY_TABLE_VIEW_CAP = 3;
 export const QUERY_LINE_HEIGHT = 4;
 export const QUERY_DATE_FORMAT = "'On' MMMM do 'at' h:mma 'UTC'ZZ"; // eg: On March 6th at 6:20pm UTC+1
+
+export const QUERY_PAGE_LOADING_STATE = {
+  page: true,
+  rightPanel: true,
+  query: true,
+};
+export const QUERY_PAGE_ERROR_STATE = {
+  page: false,
+  search: false,
+};
+export const QUERY_PAGE_FILTER = {
+  team: [],
+  user: [],
+};

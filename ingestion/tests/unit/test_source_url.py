@@ -14,6 +14,10 @@ OpenMetadata source URL building tests
 """
 from unittest import TestCase
 
+from metadata.generated.schema.entity.services.connections.database.mssqlConnection import (
+    MssqlConnection,
+    MssqlScheme,
+)
 from metadata.generated.schema.entity.services.connections.database.mysqlConnection import (
     MysqlConnection,
 )
@@ -48,3 +52,22 @@ class TestConfig(TestCase):
         )
         url = get_connection_url_common(connection)
         assert url == "redshift+psycopg2://username:password@localhost:1234/dev"
+
+    def test_mssql_url(self):
+        """
+        Validate URL building for MSSQL
+        """
+        from metadata.ingestion.source.database.mssql.connection import (
+            get_connection_url,
+        )
+
+        expected_url = "mssql+pytds://sa:password@james\\bond:1433"
+        mssql_conn_obj = MssqlConnection(
+            username="sa",
+            password="password",
+            hostPort="james\\bond:1433",
+            scheme=MssqlScheme.mssql_pytds,
+            database=None,
+        )
+
+        assert expected_url == get_connection_url(mssql_conn_obj)

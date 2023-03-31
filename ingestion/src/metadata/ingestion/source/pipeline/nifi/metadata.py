@@ -137,7 +137,7 @@ class NifiSource(PipelineServiceSource):
         :param pipeline_details: pipeline_details object from Nifi
         :return: Create Pipeline request with tasks
         """
-        yield CreatePipelineRequest(
+        pipeline_request = CreatePipelineRequest(
             name=pipeline_details.id_,
             displayName=pipeline_details.name,
             pipelineUrl=pipeline_details.uri.replace(
@@ -146,6 +146,8 @@ class NifiSource(PipelineServiceSource):
             tasks=self._get_tasks_from_details(pipeline_details),
             service=self.context.pipeline_service.fullyQualifiedName.__root__,
         )
+        yield pipeline_request
+        self.register_record(pipeline_request=pipeline_request)
 
     def yield_pipeline_status(
         self, pipeline_details: NifiPipelineDetails

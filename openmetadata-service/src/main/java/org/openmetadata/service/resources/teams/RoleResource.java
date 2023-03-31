@@ -323,9 +323,7 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateRole createRole)
       throws IOException {
     Role role = getRole(createRole, securityContext.getUserPrincipal().getName());
-    Response response = createOrUpdate(uriInfo, securityContext, role);
-    RoleCache.getInstance().invalidateRole(role.getId());
-    return response;
+    return createOrUpdate(uriInfo, securityContext, role);
   }
 
   @PATCH
@@ -351,10 +349,7 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
                       }))
           JsonPatch patch)
       throws IOException {
-    Response response = patchInternal(uriInfo, securityContext, id, patch);
-    Role role = (Role) response.getEntity();
-    RoleCache.getInstance().invalidateRole(role.getId());
-    return response;
+    return patchInternal(uriInfo, securityContext, id, patch);
   }
 
   @DELETE
@@ -379,9 +374,7 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
       throws IOException {
     // A role has a strong relationship with a policy. Recursively delete the policy that the role contains, to avoid
     // leaving a dangling policy without a role.
-    Response response = delete(uriInfo, securityContext, id, true, hardDelete);
-    RoleCache.getInstance().invalidateRole(id);
-    return response;
+    return delete(uriInfo, securityContext, id, true, hardDelete);
   }
 
   @DELETE

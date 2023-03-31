@@ -1,0 +1,1 @@
+Password to connect to the Amundsen Neo4j Connection.

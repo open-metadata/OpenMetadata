@@ -160,3 +160,27 @@ export const getSearchedDataFromGlossaryTree = (
     return acc;
   }, [] as ModifiedGlossaryTerm[]);
 };
+
+export const getQueryFilterToExcludeTerm = (fqn: string) => ({
+  query: {
+    bool: {
+      must: [
+        {
+          bool: {
+            must: [
+              {
+                bool: {
+                  must_not: {
+                    term: {
+                      'tags.tagFQN': fqn,
+                    },
+                  },
+                },
+              },
+            ],
+          },
+        },
+      ],
+    },
+  },
+});

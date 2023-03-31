@@ -74,6 +74,27 @@ export const PIPELINE_DROPDOWN_ITEMS = [
   },
 ];
 
+export const TOPIC_DROPDOWN_ITEMS = [
+  {
+    label: t('label.schema-field'),
+    key: 'messageSchema.schemaFields.name',
+  },
+];
+
+export const CONTAINER_DROPDOWN_ITEMS = [
+  {
+    label: t('label.column'),
+    key: 'dataModel.columns.name',
+  },
+];
+
+export const GLOSSARY_DROPDOWN_ITEMS = [
+  {
+    label: t('label.owner'),
+    key: 'owner.displayName',
+  },
+];
+
 export const ALL_DROPDOWN_ITEMS = [
   ...COMMON_DROPDOWN_ITEMS,
   ...TABLE_DROPDOWN_ITEMS,

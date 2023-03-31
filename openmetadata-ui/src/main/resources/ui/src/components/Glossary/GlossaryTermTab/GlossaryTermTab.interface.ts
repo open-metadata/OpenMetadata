@@ -17,6 +17,7 @@ export interface GlossaryTermTabProps {
   glossaryId?: string;
   glossaryTermId?: string;
   selectedGlossaryFqn?: string;
+  childGlossaryTerms: GlossaryTerm[];
 }
 
 export type ModifiedGlossaryTerm = Omit<GlossaryTerm, 'children'> & {
