@@ -46,7 +46,6 @@ import { Chart } from '../../generated/entity/data/chart';
 import { Dashboard } from '../../generated/entity/data/dashboard';
 import { Post, Thread, ThreadType } from '../../generated/entity/feed/thread';
 import { Connection } from '../../generated/entity/services/dashboardService';
-import { EntityReference } from '../../generated/type/entityReference';
 import { Paging } from '../../generated/type/paging';
 import { EntityFieldThreadCount } from '../../interface/feed.interface';
 import jsonData from '../../jsons/en';
@@ -81,10 +80,7 @@ const DashboardDetailsPage = () => {
   const [dashboardDetails, setDashboardDetails] = useState<Dashboard>(
     {} as Dashboard
   );
-
   const [isLoading, setLoading] = useState<boolean>(false);
-
-  const [followers, setFollowers] = useState<Array<EntityReference>>([]);
   const [activeTab, setActiveTab] = useState<number>(
     getCurrentDashboardTab(tab)
   );
@@ -345,7 +341,10 @@ const DashboardDetailsPage = () => {
         if (res) {
           const { newValue } = res.changeDescription.fieldsAdded[0];
 
-          setFollowers([...followers, ...newValue]);
+          setDashboardDetails((prev) => ({
+            ...prev,
+            followers: [...(prev.followers ?? []), ...newValue],
+          }));
         } else {
           throw jsonData['api-error-messages']['unexpected-server-response'];
         }
@@ -364,9 +363,13 @@ const DashboardDetailsPage = () => {
         if (res) {
           const { oldValue } = res.changeDescription.fieldsDeleted[0];
 
-          setFollowers(
-            followers.filter((follower) => follower.id !== oldValue[0].id)
-          );
+          setDashboardDetails((prev) => ({
+            ...prev,
+            followers:
+              prev.followers?.filter(
+                (follower) => follower.id !== oldValue[0].id
+              ) ?? [],
+          }));
         } else {
           throw jsonData['api-error-messages']['unexpected-server-response'];
         }

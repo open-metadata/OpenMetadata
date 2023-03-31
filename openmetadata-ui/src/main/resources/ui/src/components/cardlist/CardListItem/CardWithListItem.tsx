@@ -89,15 +89,23 @@ const CardListItem: FunctionComponent<Props> = ({
         </Space>
       );
     } else if (isSelected) {
-      return <CheckCircleOutlined className="tw-text-h4" />;
+      return (
+        <Space align="center">
+          <Button danger size="small" type="primary" onClick={onRemove}>
+            {t('label.remove')}
+          </Button>
+          <CheckCircleOutlined className="tw-text-h4" />
+        </Space>
+      );
     } else if (isActive) {
       return getTierSelectButton(cardId);
     } else {
       return (
         <Button
+          ghost
           data-testid="select-tier-button"
           size="small"
-          type="text"
+          type="primary"
           onClick={() => onSave(cardId)}>
           {t('label.select')}
         </Button>
