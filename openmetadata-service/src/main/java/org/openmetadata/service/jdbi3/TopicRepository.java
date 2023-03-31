@@ -319,6 +319,7 @@ public class TopicRepository extends EntityRepository<Topic> {
         }
 
         updateFieldDescription(stored, updated);
+        updateFieldDataTypeDisplay(stored, updated);
         updateFieldDisplayName(stored, updated);
         updateTags(
             stored.getFullyQualifiedName(),
@@ -353,6 +354,16 @@ public class TopicRepository extends EntityRepository<Topic> {
       }
       String field = getSchemaField(original, origField, FIELD_DISPLAY_NAME);
       recordChange(field, origField.getDisplayName(), updatedField.getDisplayName());
+    }
+
+    private void updateFieldDataTypeDisplay(Field origField, Field updatedField) throws JsonProcessingException {
+      if (operation.isPut() && !nullOrEmpty(origField.getDataTypeDisplay()) && updatedByBot()) {
+        // Revert the non-empty field description if being updated by a bot
+        updatedField.setDataTypeDisplay(origField.getDataTypeDisplay());
+        return;
+      }
+      String field = getSchemaField(original, origField, FIELD_DISPLAY_NAME);
+      recordChange(field, origField.getDataTypeDisplay(), updatedField.getDataTypeDisplay());
     }
   }
 }

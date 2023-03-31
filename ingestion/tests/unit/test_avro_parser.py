@@ -76,38 +76,356 @@ SAMPLE_AVRO_SCHEMA = """
 }
 """
 
-# SAMPLE_AVRO_SCHEMA = """
-# {
-#   "type": "record",
-#   "name": "ExampleUnionRecord",
-#   "fields": [
-#     {
-#       "name": "id",
-#       "type": "int"
-#     },
-#     {
-#       "name": "data",
-#       "type": [
-#         "null",
-#         {
-#           "type": "record",
-#           "name": "ExampleRecord",
-#           "fields": [
-#             {
-#               "name": "name",
-#               "type": "string"
-#             },
-#             {
-#               "name": "age",
-#               "type": "int"
-#             }
-#           ]
-#         }
-#       ]
-#     }
-#   ]
-# }
-# """
+ARRAY_OF_STR = """
+{
+  "type": "record",
+  "name": "ArrayOfArrays",
+  "fields": [
+    {
+      "name": "matrix",
+      "type": {
+        "type": "array",
+        "items": "string"
+      }
+    }
+  ]
+}
+"""
+
+ARRAY_OF_ARRAY = """
+{
+  "type": "record",
+  "name": "ArrayOfArrays",
+  "fields": [
+    {
+      "name": "matrix",
+      "type": {
+        "type": "array",
+        "items": {
+          "type": "array",
+          "items": "int"
+        }
+      }
+    }
+  ]
+}
+"""
+
+ARRAY_OF_ARRAY_OF_RECORD = """
+{
+  "type": "record",
+  "name": "ArrayOfArrays",
+  "fields": [
+    {
+      "name": "matrix",
+      "type": {
+        "type": "array",
+        "items": {
+          "type": "array",
+          "items": {
+          "type": "record",
+          "name": "Record",
+          "fields": [
+            {
+              "name": "field1",
+              "type": "string"
+            },
+            {
+              "name": "field2",
+              "type": "int"
+            }
+          ]
+        }
+        }
+      }
+    }
+  ]
+}
+"""
+
+ARRAY_OF_NESTED_ARRAY = """
+{
+  "type": "record",
+  "name": "ArrayOfArrays",
+  "fields": [
+    {
+      "name": "matrix",
+      "type": {
+        "type": "array",
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "array",
+            "items": {
+                "type": "array",
+                "items": {
+                    "type": "array",
+                    "items": "int"
+                }
+            }
+          }
+        }
+      }
+    }
+  ]
+}
+"""
+
+
+ARRAY_OF_NESTED_ARRAY_WITH_CHILD = """
+{
+  "type": "record",
+  "name": "ArrayOfArrays",
+  "fields": [
+    {
+      "name": "matrix",
+      "type": {
+        "type": "array",
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "array",
+            "items": {
+                "type": "array",
+                "items": {
+                    "type": "array",
+                    "items":{
+                        "type": "record",
+                        "name": "Record",
+                        "fields": [
+                            {
+                            "name": "field1",
+                            "type": "string"
+                            },
+                            {
+                            "name": "field2",
+                            "type": "int"
+                            }
+                        ]
+                        }
+                }
+            }
+          }
+        }
+      }
+    }
+  ]
+}
+"""
+
+UNION_EXAMPLE_1 = """
+{
+  "type": "record",
+  "name": "ArrayOfArrays",
+  "fields": [
+    {
+      "name": "id",
+      "type": ["null","int"]
+    }
+  ]
+}
+"""
+
+UNION_EXAMPLE_2 = """
+{
+  "type": "record",
+  "name": "ArrayOfArrays",
+  "fields": [
+    {
+      "name": "id",
+      "type": ["null","int","string","boolean"]
+    }
+  ]
+}
+"""
+
+UNION_EXAMPLE_3 = """
+{
+  "type": "record",
+  "name": "ArrayOfArrays",
+  "fields": [
+    {
+      "name": "id",
+      "type": [
+        "null",
+        {
+          "type": "record",
+          "name": "Record",
+          "fields": [
+            {
+              "name": "field1",
+              "type": "string"
+            },
+            {
+              "name": "field2",
+              "type": "int"
+            }
+          ]
+        }
+        ]
+    }
+  ]
+}
+"""
+
+
+UNION_EXAMPLE_4 = """
+{
+  "type": "record",
+  "name": "ArrayOfArrays",
+  "fields": [
+    {
+      "name": "id",
+      "type": [
+        "null",
+        {
+          "type": "record",
+          "name": "Record",
+          "fields": [
+            {
+              "name": "field1",
+              "type": "string"
+            },
+            {
+              "name": "field2",
+              "type": "int"
+            }
+          ]
+        },
+        {
+          "type": "record",
+          "name": "Record2",
+          "fields": [
+            {
+              "name": "field1",
+              "type": "string"
+            },
+            {
+              "name": "field2",
+              "type": "int"
+            }
+          ]
+        }
+        
+        ]
+    }
+  ]
+}
+"""
+
+UNION_OF_STR_AND_RECORD = """
+{
+  "type": "record",
+  "name": "ArrayOfArrays",
+  "fields": [
+    {
+      "name": "id",
+      "type": [
+        "string",
+        {
+          "type": "record",
+          "name": "Record",
+          "fields": [
+            {
+              "name": "field1",
+              "type": "string"
+            },
+            {
+              "name": "field2",
+              "type": "int"
+            }
+          ]
+        }
+        ]
+    }
+  ]
+}
+"""
+
+
+UNION_OF_ARRAY = """
+{
+  "type": "record",
+  "name": "UnionOfArray",
+  "fields": [
+    {
+      "name": "matrix",
+      "type":[
+            "null",
+            {
+            "type": "array",
+            "items": "int"
+            }
+        ]
+    }
+  ]
+}
+"""
+
+
+UNION_OF_ARRAY_OF_RECORD = """
+{
+  "type": "record",
+  "name": "UnionOfArray",
+  "fields": [
+    {
+      "name": "matrix",
+      "type":[
+            "null",
+            {
+            "type": "array",
+            "items": {
+          "type": "record",
+          "name": "Record2",
+          "fields": [
+            {
+              "name": "field1",
+              "type": "string"
+            },
+            {
+              "name": "field2",
+              "type": "int"
+            }
+          ]
+        }
+            }
+        ]
+    }
+  ]
+}
+"""
+
+UNION_OF_ARRAY_OF_RECORD_1 = """
+{
+  "type": "record",
+  "name": "UnionOfArray",
+  "fields": [
+    {
+      "name": "matrix",
+      "type":[
+            "int",
+            {
+            "type": "array",
+            "items": {
+          "type": "record",
+          "name": "Record2",
+          "fields": [
+            {
+              "name": "field1",
+              "type": "string"
+            },
+            {
+              "name": "field2",
+              "type": "int"
+            }
+          ]
+        }
+            }
+        ]
+    }
+  ]
+}
+"""
 
 
 class AvroParserTests(TestCase):
@@ -118,6 +436,9 @@ class AvroParserTests(TestCase):
     parsed_schema = parse_avro_schema(SAMPLE_AVRO_SCHEMA)
 
     def test_first_level(self):
+        """
+        Test nested schema
+        """
         self.assertEqual(self.parsed_schema[0].name.__root__, "level")
         self.assertEqual(
             self.parsed_schema[0].description.__root__, "This is a first level record"
@@ -125,6 +446,9 @@ class AvroParserTests(TestCase):
         self.assertEqual(self.parsed_schema[0].dataType.name, "RECORD")
 
     def test_second_level(self):
+        """
+        Test nested schema
+        """
         children = self.parsed_schema[0].children
         field_names = {str(field.name.__root__) for field in children}
         self.assertEqual(
@@ -149,6 +473,9 @@ class AvroParserTests(TestCase):
         )
 
     def test_third_level(self):
+        """
+        Test nested schema
+        """
         level3_record = self.parsed_schema[0].children[2].children[0]
         children = level3_record.children
 
@@ -174,6 +501,9 @@ class AvroParserTests(TestCase):
         self.assertEqual(field_descriptions, {None, "level 2 array"})
 
     def test_fourth_level(self):
+        """
+        Test nested schema
+        """
         level3_record = self.parsed_schema[0].children[2].children[0]
 
         children = level3_record.children[1].children[0].children
@@ -182,9 +512,65 @@ class AvroParserTests(TestCase):
 
         self.assertEqual(
             field_names,
-            {"item1_lvl3", "item2_lvl3", "item3_lvl3"},
+            {"item1_lvl3", "item2_lvl3"},
         )
 
         field_types = {str(field.dataType.name) for field in children}
 
-        self.assertEqual(field_types, {"STRING", "UNION"})
+        self.assertEqual(field_types, {"STRING"})
+
+    def parse_schema_assert_without_child(self, schema: str, display: str):
+        example = parse_avro_schema(schema)
+        self.assertIsNotNone(example)  # is parsed
+        field = example[0].children[0]
+        self.assertEqual(field.dataTypeDisplay, display)
+        self.assertIsNone(field.children)  # no child
+
+    def parse_schema_assert_one_child(self, schema: str, display: str):
+        example = parse_avro_schema(schema)
+        self.assertIsNotNone(example)  # is parsed
+        field = example[0].children[0]
+        self.assertEqual(field.dataTypeDisplay, display)
+        # has one child
+        self.assertIsNotNone(field.children)
+        self.assertEqual(len(field.children), 1)
+
+    def test_array_parsing(self):
+        """
+        Test array parsing
+        """
+        self.parse_schema_assert_without_child(ARRAY_OF_STR, "ARRAY<string>")
+        self.parse_schema_assert_without_child(ARRAY_OF_ARRAY, "ARRAY<ARRAY<int>>")
+        self.parse_schema_assert_without_child(
+            ARRAY_OF_NESTED_ARRAY, "ARRAY<ARRAY<ARRAY<ARRAY<ARRAY<int>>>>>"
+        )
+        self.parse_schema_assert_one_child(
+            ARRAY_OF_ARRAY_OF_RECORD, "ARRAY<ARRAY<record>>"
+        )
+        self.parse_schema_assert_one_child(
+            ARRAY_OF_NESTED_ARRAY_WITH_CHILD,
+            "ARRAY<ARRAY<ARRAY<ARRAY<ARRAY<record>>>>>",
+        )
+
+    def test_union_parsing(self):
+        """
+        Test union parsing
+        """
+        self.parse_schema_assert_without_child(UNION_EXAMPLE_1, "UNION<null,int>")
+        self.parse_schema_assert_without_child(
+            UNION_EXAMPLE_2, "UNION<null,int,string,boolean>"
+        )
+        self.parse_schema_assert_one_child(UNION_EXAMPLE_3, "UNION<null,record>")
+        self.parse_schema_assert_without_child(
+            UNION_EXAMPLE_4, "UNION<null,record,record>"
+        )
+        self.parse_schema_assert_without_child(UNION_OF_ARRAY, "UNION<null,ARRAY<int>>")
+        self.parse_schema_assert_without_child(
+            UNION_OF_STR_AND_RECORD, "UNION<string,record>"
+        )
+        self.parse_schema_assert_one_child(
+            UNION_OF_ARRAY_OF_RECORD, "UNION<null,ARRAY<record>>"
+        )
+        self.parse_schema_assert_without_child(
+            UNION_OF_ARRAY_OF_RECORD_1, "UNION<int,array>"
+        )

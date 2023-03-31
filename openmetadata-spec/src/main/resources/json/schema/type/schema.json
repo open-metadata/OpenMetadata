@@ -58,7 +58,8 @@
         "ENUM",
         "UNION",
         "FIXED",
-        "ERROR"
+        "ERROR",
+        "UNKNOWN"
       ]
     },
     "fieldName": {
