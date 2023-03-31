@@ -40,6 +40,7 @@ const Tags: FunctionComponent<TagProps> = ({
   isRemovable = true,
   showOnlyName = false,
 }: TagProps) => {
+  const { t } = useTranslation();
   const history = useHistory();
   const baseStyle = tagStyles.base;
   const layoutStyles = tagStyles[type];
@@ -49,13 +50,8 @@ const Tags: FunctionComponent<TagProps> = ({
 
   const isGlossaryTag = useMemo(
     () => (tag as TagLabel).source === TagSource.Glossary,
-    [tag]
+    [(tag as TagLabel).source]
   );
-
-  const { t } = useTranslation();
-  const getTagString = (tag: string) => {
-    return tag.startsWith('#') ? tag.slice(1) : tag;
-  };
 
   const getStartIcon = useCallback(() => {
     switch (startWith) {
@@ -63,12 +59,22 @@ const Tags: FunctionComponent<TagProps> = ({
         return <PlusIcon height={16} name="plus" width={16} />;
       default:
         return isGlossaryTag ? (
-          <IconPage height={12} name="glossary-icon" width={12} />
+          <IconPage
+            data-testid="glossary-icon"
+            height={12}
+            name="glossary-icon"
+            width={12}
+          />
         ) : (
-          <IconTag height={12} name="tag-icon" width={12} />
+          <IconTag
+            data-testid="tags-icon"
+            height={12}
+            name="tag-icon"
+            width={12}
+          />
         );
     }
-  }, [startWith]);
+  }, [startWith, isGlossaryTag]);
 
   const getTag = (tag: string, startWith = '', source?: string) => {
     const tagName = showOnlyName
@@ -112,7 +118,7 @@ const Tags: FunctionComponent<TagProps> = ({
             onClick={(e: React.MouseEvent<HTMLElement, MouseEvent>) => {
               e.preventDefault();
               e.stopPropagation();
-              removeTag && removeTag(e, getTagString(tag));
+              removeTag && removeTag(e, tag);
             }}>
             <CloseOutlined className="tw-text-primary" />
           </span>

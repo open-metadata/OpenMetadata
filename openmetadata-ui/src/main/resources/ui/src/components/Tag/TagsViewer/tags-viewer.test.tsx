@@ -11,23 +11,11 @@
  *  limitations under the License.
  */
 
-import {
-  getAllByTestId,
-  getAllByText,
-  getByText,
-  queryAllByText,
-  queryByText,
-  render,
-} from '@testing-library/react';
+import { getAllByTestId, getByText, render } from '@testing-library/react';
 import React from 'react';
 import TagsViewer from './tags-viewer';
 
 const tags = [
-  { tagFQN: `tags.tag 1`, source: 'Classification' },
-  { tagFQN: `tags.tag 2`, source: 'Classification' },
-];
-
-const tagsWithTerm = [
   { tagFQN: `tags.tag 1`, source: 'Classification' },
   { tagFQN: `tags.tag 2`, source: 'Classification' },
   { tagFQN: `test.tags.term`, source: 'Glossary' },
@@ -42,73 +30,34 @@ describe('Test TagsViewer Component', () => {
     const { container } = render(<TagsViewer sizeCap={-1} tags={tags} />);
     const TagViewer = getAllByTestId(container, 'tags');
 
-    expect(TagViewer).toHaveLength(2);
+    expect(TagViewer).toHaveLength(3);
   });
 
   it('Should render tags', () => {
     const { container } = render(<TagsViewer sizeCap={-1} tags={tags} />);
     const TagViewer = getAllByTestId(container, 'tags');
 
-    expect(TagViewer).toHaveLength(2);
+    expect(TagViewer).toHaveLength(3);
 
     const tag1 = getByText(container, /tags.tag 1/);
     const tag2 = getByText(container, /tags.tag 2/);
+    const tag3 = getByText(container, /tags.term/);
 
     expect(tag1).toBeInTheDocument();
     expect(tag2).toBeInTheDocument();
+    expect(tag3).toBeInTheDocument();
   });
 
-  it('Should render tags and terms', () => {
+  it('Should render tags and glossary with their respective symbol', () => {
     const { container } = render(
-      <TagsViewer sizeCap={-1} tags={tagsWithTerm} />
+      <TagsViewer showStartWith={false} sizeCap={-1} tags={tags} />
     );
     const TagViewer = getAllByTestId(container, 'tags');
+    const tagIcons = getAllByTestId(container, 'tags-icon');
+    const glossaryIcons = getAllByTestId(container, 'glossary-icon');
 
     expect(TagViewer).toHaveLength(3);
-
-    const term = getByText(container, /term/);
-    const termFqn = queryByText(container, /test.tags.term/);
-    const glossary = getByText(container, /tags.term/);
-
-    expect(term).toBeInTheDocument();
-    expect(termFqn).not.toBeInTheDocument();
-    expect(glossary).toBeInTheDocument();
-  });
-
-  it('Should render tags without hash symbol', () => {
-    const { container } = render(
-      <TagsViewer showStartWith={false} sizeCap={-1} tags={tagsWithTerm} />
-    );
-    const TagViewer = getAllByTestId(container, 'tags');
-
-    expect(TagViewer).toHaveLength(3);
-
-    const term = queryByText(container, '#');
-
-    expect(term).not.toBeInTheDocument();
-  });
-
-  it('Should render tags with hash symbol only if tag source is "Classification"', () => {
-    const { container } = render(
-      <TagsViewer showStartWith sizeCap={-1} tags={tags} />
-    );
-
-    const tagWithHash = getAllByText(container, '#');
-
-    expect(tagWithHash).toHaveLength(2);
-  });
-
-  it('Should not render tags with hash symbol if tag source is "Glossary"', () => {
-    const { container } = render(
-      <TagsViewer
-        showStartWith
-        sizeCap={-1}
-        tags={[{ tagFQN: `test.tags.term`, source: 'Glossary' }]}
-      />
-    );
-
-    const tagWithHash = queryAllByText(container, '#');
-
-    expect(tagWithHash).toHaveLength(0);
+    expect(tagIcons).toHaveLength(2);
+    expect(glossaryIcons).toHaveLength(1);
   });
 });
