@@ -73,13 +73,21 @@ def _(elements, compiler, **kwargs):
 
 
 @compiles(MedianFn, Dialects.Hive)
-@compiles(MedianFn, Dialects.Impala)
 def _(elements, compiler, **kwargs):
     """Median computation for Hive"""
     col, _, percentile = [
         compiler.process(element, **kwargs) for element in elements.clauses
     ]
     return "percentile(cast(%s as BIGINT), %s)" % (col, percentile)
+
+
+@compiles(MedianFn, Dialects.Impala)
+def _(elements, compiler, **kwargs):
+    """Median computation for Impala"""
+    col, _, percentile = [
+        compiler.process(element, **kwargs) for element in elements.clauses
+    ]
+    return "appx_median(%s)" % col
 
 
 @compiles(MedianFn, Dialects.MySQL)

@@ -119,6 +119,10 @@ def build_orm_col(
     As this is only used for INSERT/UPDATE/DELETE,
     there is no impact for our read-only purposes.
     """
+    if table_service_type == databaseService.DatabaseServiceType.Hive:
+        shouldQuote = True
+    else:
+        shouldQuote = False
 
     if parent:
         name = f"{parent}.{col.name.__root__}"
@@ -129,7 +133,7 @@ def build_orm_col(
         name=str(name),
         type_=map_types(col, table_service_type),
         primary_key=not bool(idx),  # The first col seen is used as PK
-        quote=check_snowflake_case_sensitive(table_service_type, col.name.__root__),
+        quote=shouldQuote or check_snowflake_case_sensitive(table_service_type, col.name.__root__),
         key=str(
             col.name.__root__
         ).lower(),  # Add lowercase column name as key for snowflake case sensitive columns
