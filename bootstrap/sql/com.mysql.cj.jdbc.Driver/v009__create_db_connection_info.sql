@@ -134,3 +134,9 @@ CREATE TABLE IF NOT EXISTS dashboard_data_model_entity (
     PRIMARY KEY (id),
     UNIQUE (fullyQualifiedName)
 );
+
+-- We were using the same jsonSchema for Pipeline Services and Ingestion Pipeline status
+-- Also, we relied on the extension to store the run id
+UPDATE entity_extension_time_series
+SET jsonSchema = 'ingestionPipelineStatus', extension = 'ingestionPipeline.pipelineStatus'
+WHERE jsonSchema = 'pipelineStatus' AND extension <> 'pipeline.PipelineStatus';
