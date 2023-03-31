@@ -12,14 +12,14 @@
 REST Auth & Client for Metabase
 """
 from typing import List, Optional
-import traceback
+from typing import Dict, Any
+import json
 import requests
-from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
-from metadata.generated.schema.metadataIngestion.workflow import (
-    Source as WorkflowSource,
+from metadata.generated.schema.entity.services.connections.dashboard.metabaseConnection import (
+    MetabaseConnection,
 )
-from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
-    OpenMetadataConnection,
+from metadata.ingestion.connections.test_connections import (
+    SourceConnectionException,
 )
 from metadata.utils.logger import ingestion_logger
 
@@ -29,9 +29,13 @@ class MetabaseClient:
     """
     Client Handling API communication with Metabase
     """
-    def __init__(self, service_connection, metabase_session):
+    def __init__(self,
+                 service_connection=None,
+                 metabase_session=None,
+                 connection: MetabaseConnection = None):
         self.service_connection = service_connection
         self.metabase_session = metabase_session
+        self.connection = connection
 
     def req_get(self, path: str) -> requests.Response:
       """Send get request method
@@ -86,3 +90,30 @@ class MetabaseClient:
             return resp_table.json()
         else:
           return None
+    
+    def get_connection(self) -> Dict[str, Any]:
+      """
+      Create connection
+      """
+      try:
+          connection = self.connection
+          params = {}
+          params["username"] = connection.username
+          params["password"] = connection.password.get_secret_value()
+
+          headers = {"Content-Type": "application/json", "Accept": "*/*"}
+
+          resp = requests.post(  # pylint: disable=missing-timeout
+              connection.hostPort + "/api/session/",
+              data=json.dumps(params),
+              headers=headers,
+          )
+
+          session_id = resp.json()["id"]
+          metabase_session = {"X-Metabase-Session": session_id}
+          conn = {"connection": connection, "metabase_session": metabase_session}
+          return conn
+
+      except Exception as exc:
+          msg = f"Unknown error connecting with {connection}: {exc}."
+          raise SourceConnectionException(msg) from exc

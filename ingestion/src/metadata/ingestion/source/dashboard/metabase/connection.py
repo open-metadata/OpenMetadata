@@ -24,37 +24,17 @@ from metadata.generated.schema.entity.services.connections.dashboard.metabaseCon
     MetabaseConnection,
 )
 from metadata.ingestion.connections.test_connections import (
-    SourceConnectionException,
     test_connection_steps,
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from .client import MetabaseClient
 
 
 def get_connection(connection: MetabaseConnection) -> Dict[str, Any]:
     """
     Create connection
     """
-    try:
-        params = {}
-        params["username"] = connection.username
-        params["password"] = connection.password.get_secret_value()
-
-        headers = {"Content-Type": "application/json", "Accept": "*/*"}
-
-        resp = requests.post(  # pylint: disable=missing-timeout
-            connection.hostPort + "/api/session/",
-            data=json.dumps(params),
-            headers=headers,
-        )
-
-        session_id = resp.json()["id"]
-        metabase_session = {"X-Metabase-Session": session_id}
-        conn = {"connection": connection, "metabase_session": metabase_session}
-        return conn
-
-    except Exception as exc:
-        msg = f"Unknown error connecting with {connection}: {exc}."
-        raise SourceConnectionException(msg) from exc
+    return MetabaseClient(connection=connection).get_connection()
 
 
 def test_connection(

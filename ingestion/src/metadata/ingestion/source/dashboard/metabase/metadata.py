@@ -61,7 +61,8 @@ class MetabaseSource(DashboardServiceSource):
     ):
         super().__init__(config, metadata_config)
         self.metabase_session = self.client["metabase_session"]
-        self.metabaseClient = MetabaseClient(self.service_connection, self.metabase_session)
+        self.metabaseClient = MetabaseClient(service_connection = self.service_connection, 
+                                             metabase_session = self.metabase_session)
 
     @classmethod
     def create(cls, config_dict, metadata_config: OpenMetadataConnection):
