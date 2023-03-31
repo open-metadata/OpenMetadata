@@ -148,10 +148,11 @@ public abstract class PipelineServiceClient {
     } catch (Exception e) {
       LOG.error("Failed to get Pipeline Service host IP. {}", e.getMessage());
       // We don't want the request to fail for an informative ping
-      body = Map.of(
-          "ip",
-          "Failed to find the IP of Airflow Container. Please make sure https://api.ipify.org, "
-              + "https://api.my-ip.io/ip reachable from your network or that the `hostIp` setting is configured.");
+      body =
+          Map.of(
+              "ip",
+              "Failed to find the IP of Airflow Container. Please make sure https://api.ipify.org, "
+                  + "https://api.my-ip.io/ip reachable from your network or that the `hostIp` setting is configured.");
       return Response.ok(body, MediaType.APPLICATION_JSON_TYPE).build();
     }
   }
