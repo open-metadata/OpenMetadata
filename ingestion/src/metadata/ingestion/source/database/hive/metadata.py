@@ -259,9 +259,9 @@ def get_impala_columns(self, connection, table_name, schema=None, **kwargs):
     cursor = connection.execute(query)
     results = cursor.fetchall()
     column_info = []
-    op = 0
+    ordinalPos = 0
     for col in results:
-       op = op + 1
+       ordinalPos = ordinalPos + 1
        col_raw = col[1]
        attype = re.sub(r"\(.*\)", "", col[1])
        col_type = re.search(r"^\w+", col[1]).group(0)
@@ -288,7 +288,7 @@ def get_impala_columns(self, connection, table_name, schema=None, **kwargs):
            "comment": col[2],
            "nullable": True,
            "autoincrement": False,
-           "ordinalPosition": op
+           "ordinalPosition": ordinalPos
        }
        #print(a)
        column_info.append(a)
