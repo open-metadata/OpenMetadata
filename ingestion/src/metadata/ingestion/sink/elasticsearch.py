@@ -49,6 +49,7 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 )
 from metadata.generated.schema.entity.teams.team import Team
 from metadata.generated.schema.entity.teams.user import User
+from metadata.generated.schema.type.entityReference import EntityReferenceList
 from metadata.ingestion.api.common import Entity
 from metadata.ingestion.api.sink import Sink
 from metadata.ingestion.models.es_documents import (
@@ -514,6 +515,25 @@ def _get_es_suggest(input_5: str, input_10: str) -> List[Dict[str, Any]]:
     ]
 
 
+def _build_suggest_of(
+    entity_list: Optional[EntityReferenceList],
+) -> List[Dict[str, Any]]:
+    """
+    Build the ES suggest field from a EntityReferenceList
+    Args:
+        entity_list: a EntityReferenceList
+    Returns:
+        The ES suggest field
+    """
+    suggest_list = []
+    if not entity_list:
+        return suggest_list
+    for entity in entity_list.__root__:
+        entity_display_name = entity.displayName if entity.displayName else entity.name
+        suggest_list.append({"input": [entity_display_name], "weight": 5})
+    return suggest_list
+
+
 @singledispatch
 def create_record_document(record: Entity, _: OpenMetadata) -> Any:
     """
@@ -627,10 +647,8 @@ def _(record: Dashboard, _: OpenMetadata) -> DashboardESDocument:
     display_name = get_es_display_name(record)
     followers = get_es_followers(record)
 
-    chart_suggest = []
-    for chart in record.charts.__root__:
-        chart_display_name = chart.displayName if chart.displayName else chart.name
-        chart_suggest.append({"input": [chart_display_name], "weight": 5})
+    chart_suggest = _build_suggest_of(record.charts)
+    data_model_suggest = _build_suggest_of(record.dataModels)
 
     return DashboardESDocument(
         id=str(record.id.__root__),
@@ -654,6 +672,7 @@ def _(record: Dashboard, _: OpenMetadata) -> DashboardESDocument:
         followers=followers,
         suggest=suggest,
         chart_suggest=chart_suggest,
+        data_model_suggest=data_model_suggest,
         service_suggest=[{"input": [record.service.name], "weight": 5}],
     )
 

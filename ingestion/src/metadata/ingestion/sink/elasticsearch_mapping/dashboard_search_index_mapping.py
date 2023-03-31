@@ -144,6 +144,53 @@ DASHBOARD_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
           }
         }
       },
+      "dataModels": {
+        "properties": {
+          "id": {
+            "type": "keyword",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "ignore_above": 36
+              }
+            }
+          },
+          "type": {
+            "type": "text"
+          },
+          "name": {
+            "type": "keyword",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "ignore_above": 256
+              }
+            }
+          },
+          "displayName": {
+            "type": "text",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "ignore_above": 256
+              }
+            }
+          },
+          "fullyQualifiedName": {
+            "type": "text"
+          },
+          "description": {
+            "type": "text",
+            "analyzer": "om_analyzer"
+          },
+          "deleted": {
+            "type": "text"
+          },
+          "href": {
+            "type": "text"
+          }
+        }
+      },
       "owner": {
         "properties": {
           "id": {
@@ -322,6 +369,9 @@ DASHBOARD_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
         ]
       },
       "chart_suggest": {
+        "type": "completion"
+      },
+      "data_model_suggest": {
         "type": "completion"
       },
       "service_suggest": {
