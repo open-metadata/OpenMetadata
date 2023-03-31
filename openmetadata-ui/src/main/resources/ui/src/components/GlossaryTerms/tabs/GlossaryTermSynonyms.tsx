@@ -67,6 +67,11 @@ const GlossaryTermSynonyms = ({
     </div>
   );
 
+  const handleCancel = () => {
+    setSynonyms(glossaryTerm.synonyms || []);
+    setIsViewMode(true);
+  };
+
   const handleSynonymsSave = (newSynonyms: string[]) => {
     if (!isEqual(newSynonyms, glossaryTerm.synonyms)) {
       let updatedGlossaryTerm = cloneDeep(glossaryTerm);
@@ -110,7 +115,7 @@ const GlossaryTermSynonyms = ({
               data-testid="cancelAssociatedTag"
               icon={<CloseOutlined size={12} />}
               size="small"
-              onClick={() => setIsViewMode(true)}
+              onClick={() => handleCancel()}
             />
             <Button
               className="w-6 p-x-05"

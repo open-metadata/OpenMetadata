@@ -163,7 +163,7 @@ const GlossaryRightPanel = ({
                 hasEditAccess ? t('label.edit') : NO_PERMISSION_FOR_ACTION
               }>
               <UserSelectableList
-                hasPermission
+                hasPermission={hasEditAccess}
                 popoverProps={{ placement: 'topLeft' }}
                 selectedUsers={entityDetails.reviewers ?? []}
                 onUpdate={handleReviewerSave}

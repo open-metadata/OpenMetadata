@@ -21,8 +21,10 @@ import { usePermissionProvider } from 'components/PermissionProvider/PermissionP
 import { ResourceEntity } from 'components/PermissionProvider/PermissionProvider.interface';
 import { FQN_SEPARATOR_CHAR } from 'constants/char.constants';
 import { API_RES_MAX_SIZE } from 'constants/constants';
+import { GLOSSARIES_DOCS } from 'constants/docs.constants';
 import { NO_PERMISSION_FOR_ACTION } from 'constants/HelperTextUtil';
 import { TABLE_CONSTANTS } from 'constants/Teams.constants';
+import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { compare } from 'fast-json-patch';
 import { GlossaryTerm } from 'generated/entity/data/glossaryTerm';
 import { Operation } from 'generated/entity/policies/policy';
@@ -128,7 +130,7 @@ const GlossaryTermTab = ({
             onClick={() => {
               handleAddGlossaryTermClick(record.fullyQualifiedName || '');
             }}>
-            <div className="tw-ml-1">{t('label.new-term')}</div>
+            <div className="tw-ml-1">{t('label.add')}</div>
           </Button>
         ),
       },
@@ -267,27 +269,35 @@ const GlossaryTermTab = ({
 
   if (glossaryTerms.length === 0) {
     return (
-      <ErrorPlaceHolder>
-        {t('message.no-entity-data-available', {
-          entity: t('label.glossary-term'),
-        })}
-        <Tooltip
-          title={
-            createGlossaryTermPermission
-              ? t('label.add-entity', { entity: t('label.term-lowercase') })
-              : NO_PERMISSION_FOR_ACTION
-          }>
-          <Button
-            className="m-t-md"
-            data-testid="add-new-tag-button"
-            disabled={!createGlossaryTermPermission}
-            size="middle"
-            type="primary"
-            onClick={() => handleAddGlossaryTermClick(glossaryName)}>
-            {t('label.add-entity', { entity: t('label.term-lowercase') })}
-          </Button>
-        </Tooltip>
-      </ErrorPlaceHolder>
+      <div className="m-t-xlg">
+        <ErrorPlaceHolder
+          buttons={
+            <div className="tw-text-lg tw-text-center">
+              <Tooltip
+                title={
+                  createGlossaryTermPermission
+                    ? t('label.add-entity', {
+                        entity: t('label.term-lowercase'),
+                      })
+                    : NO_PERMISSION_FOR_ACTION
+                }>
+                <Button
+                  ghost
+                  data-testid="add-new-tag-button"
+                  type="primary"
+                  onClick={() => handleAddGlossaryTermClick(glossaryName)}>
+                  {t('label.add-entity', {
+                    entity: t('label.glossary-term'),
+                  })}
+                </Button>
+              </Tooltip>
+            </div>
+          }
+          doc={GLOSSARIES_DOCS}
+          heading={t('label.glossary-term')}
+          type={ERROR_PLACEHOLDER_TYPE.ADD}
+        />
+      </div>
     );
   }
 

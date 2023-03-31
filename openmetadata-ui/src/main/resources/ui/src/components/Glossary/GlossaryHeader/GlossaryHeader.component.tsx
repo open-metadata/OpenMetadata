@@ -10,27 +10,22 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Col, Row, Space, Tooltip, Typography } from 'antd';
+import { Col, Row, Space, Typography } from 'antd';
 import DescriptionV1 from 'components/common/description/DescriptionV1';
 import ProfilePicture from 'components/common/ProfilePicture/ProfilePicture';
 import TitleBreadcrumb from 'components/common/title-breadcrumb/title-breadcrumb.component';
 import { TitleBreadcrumbProps } from 'components/common/title-breadcrumb/title-breadcrumb.interface';
 import { UserTeamSelectableList } from 'components/common/UserTeamSelectableList/UserTeamSelectableList.component';
-import EntityDisplayNameModal from 'components/Modals/EntityDisplayNameModal/EntityDisplayNameModal.component';
-import EntityNameModal from 'components/Modals/EntityNameModal/EntityNameModal.component';
 import { OperationPermission } from 'components/PermissionProvider/PermissionProvider.interface';
 import { FQN_SEPARATOR_CHAR } from 'constants/char.constants';
 import { getUserPath } from 'constants/constants';
-import { NO_PERMISSION_FOR_ACTION } from 'constants/HelperTextUtil';
 import { Glossary } from 'generated/entity/data/glossary';
 import { GlossaryTerm } from 'generated/entity/data/glossaryTerm';
-import { cloneDeep } from 'lodash';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { getEntityName } from 'utils/EntityUtils';
 import { getGlossaryPath } from 'utils/RouterUtils';
-import SVGIcons, { Icons } from 'utils/SvgUtils';
 import GlossaryHeaderButtons from '../GlossaryHeaderButtons/GlossaryHeaderButtons.component';
 
 export interface GlossaryHeaderProps {
@@ -52,45 +47,11 @@ const GlossaryHeader = ({
   onAssetsUpdate,
 }: GlossaryHeaderProps) => {
   const { t } = useTranslation();
-
-  const [isNameEditing, setIsNameEditing] = useState<boolean>(false);
-  const [isDisplayNameEditing, setIsDisplayNameEditing] =
-    useState<boolean>(false);
   const [isDescriptionEditable, setIsDescriptionEditable] =
     useState<boolean>(false);
   const [breadcrumb, setBreadcrumb] = useState<
     TitleBreadcrumbProps['titleLinks']
   >([]);
-
-  const editDisplayNamePermission = useMemo(() => {
-    return permissions.EditAll || permissions.EditDisplayName;
-  }, [permissions]);
-
-  const onDisplayNameSave = (displayName: string) => {
-    let updatedDetails = cloneDeep(selectedData);
-
-    updatedDetails = {
-      ...selectedData,
-      displayName: displayName?.trim(),
-    };
-
-    onUpdate(updatedDetails);
-
-    setIsDisplayNameEditing(false);
-  };
-
-  const onNameSave = (name: string) => {
-    let updatedDetails = cloneDeep(selectedData);
-
-    updatedDetails = {
-      ...selectedData,
-      name: name?.trim() || selectedData.name,
-    };
-
-    onUpdate(updatedDetails);
-
-    setIsNameEditing(false);
-  };
 
   /**
    * To create breadcrumb from the fqn
@@ -160,31 +121,6 @@ const GlossaryHeader = ({
               )}
 
               <Space direction="vertical" size={0}>
-                <Space>
-                  <Typography.Text
-                    className="text-grey-muted"
-                    data-testid="glossary-name">
-                    {selectedData.name}
-                  </Typography.Text>
-                  <Tooltip
-                    title={
-                      editDisplayNamePermission
-                        ? t('label.edit-entity', { entity: t('label.name') })
-                        : NO_PERMISSION_FOR_ACTION
-                    }>
-                    <Button
-                      className="glossary-header-edit-btn"
-                      data-testid="edit-name"
-                      disabled={!editDisplayNamePermission}
-                      icon={
-                        <SVGIcons alt="icon-tag" icon={Icons.EDIT} width="16" />
-                      }
-                      size="small"
-                      type="text"
-                      onClick={() => setIsNameEditing(true)}
-                    />
-                  </Tooltip>
-                </Space>
                 <Space direction="horizontal">
                   <Typography.Title
                     className="m-b-0"
@@ -192,25 +128,6 @@ const GlossaryHeader = ({
                     level={5}>
                     {getEntityName(selectedData)}
                   </Typography.Title>
-                  <Tooltip
-                    title={
-                      editDisplayNamePermission
-                        ? t('label.edit-entity', {
-                            entity: t('label.display-name'),
-                          })
-                        : NO_PERMISSION_FOR_ACTION
-                    }>
-                    <Button
-                      className="glossary-header-edit-btn"
-                      disabled={!editDisplayNamePermission}
-                      icon={
-                        <SVGIcons alt="icon-tag" icon={Icons.EDIT} width="16" />
-                      }
-                      size="small"
-                      type="text"
-                      onClick={() => setIsDisplayNameEditing(true)}
-                    />
-                  </Tooltip>
                 </Space>
               </Space>
             </Col>
@@ -223,6 +140,7 @@ const GlossaryHeader = ({
                   selectedData={selectedData}
                   onAssetsUpdate={onAssetsUpdate}
                   onEntityDelete={onDelete}
+                  onUpdate={onUpdate}
                 />
               </div>
             </Col>
@@ -277,18 +195,6 @@ const GlossaryHeader = ({
           />
         </Col>
       </Row>
-      <EntityNameModal
-        name={selectedData.name}
-        visible={isNameEditing}
-        onCancel={() => setIsNameEditing(false)}
-        onSave={onNameSave}
-      />
-      <EntityDisplayNameModal
-        displayName={selectedData.displayName || ''}
-        visible={isDisplayNameEditing}
-        onCancel={() => setIsDisplayNameEditing(false)}
-        onSave={onDisplayNameSave}
-      />
     </>
   );
 };

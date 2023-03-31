@@ -12,6 +12,7 @@
  */
 
 import { AxiosError } from 'axios';
+import Loader from 'components/Loader/Loader';
 import { API_RES_MAX_SIZE } from 'constants/constants';
 import { isEmpty } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
@@ -51,6 +52,7 @@ const GlossaryV1 = ({
   const history = useHistory();
 
   const { getEntityPermission } = usePermissionProvider();
+  const [isLoading, setIsLoading] = useState(true);
 
   const [isDelete, setIsDelete] = useState<boolean>(false);
 
@@ -75,6 +77,7 @@ const GlossaryV1 = ({
   );
 
   const fetchGlossaryTerm = async (params?: ListGlossaryTermsParams) => {
+    setIsLoading(true);
     try {
       const { data } = await getGlossaryTerms({
         ...params,
@@ -84,6 +87,8 @@ const GlossaryV1 = ({
       setGlossaryTerms(data);
     } catch (error) {
       showErrorToast(error as AxiosError);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -140,7 +145,9 @@ const GlossaryV1 = ({
     <ImportGlossary glossaryName={selectedData.name} />
   ) : (
     <>
-      {!isEmpty(selectedData) &&
+      {isLoading && <Loader />}
+      {!isLoading &&
+        !isEmpty(selectedData) &&
         (isGlossaryActive ? (
           <GlossaryDetails
             glossary={selectedData as Glossary}

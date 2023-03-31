@@ -11,36 +11,38 @@
  *  limitations under the License.
  */
 import { Button, Form, Input, Modal, Typography } from 'antd';
+import { EntityReference } from 'generated/type/entityReference';
 import React, { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 
 interface Props {
   visible: boolean;
-  name: string;
   onCancel: () => void;
-  onSave: (name: string) => void;
+  onSave: (obj: { name: string; displayName: string }) => void;
+  entity: EntityReference;
 }
 
 const EntityNameModal: React.FC<Props> = ({
   visible,
-  name,
+  entity,
   onCancel,
   onSave,
 }) => {
   const { t } = useTranslation();
-  const [form] = Form.useForm<{ name: string }>();
+  const [form] = Form.useForm<{ name: string; displayName: string }>();
 
-  const handleSave = async (obj: { name: string }) => {
+  const handleSave = async (obj: { name: string; displayName: string }) => {
     try {
       await form.validateFields();
-      onSave(obj.name);
+      onSave(obj);
     } catch (error) {
       console.log(error);
     }
   };
 
   useEffect(() => {
-    form.setFieldValue('name', name);
+    form.setFieldValue('name', entity.name);
+    form.setFieldValue('displayName', entity.displayName);
   }, [visible]);
 
   return (
@@ -72,7 +74,6 @@ const EntityNameModal: React.FC<Props> = ({
               {t('message.edit-glossary-name-help')}
             </Typography.Text>
           }
-          initialValue={name}
           label={`${t('label.name')}:`}
           name="name"
           rules={[
@@ -88,6 +89,24 @@ const EntityNameModal: React.FC<Props> = ({
               entity: t('label.glossary'),
             })}
           />
+        </Form.Item>
+        <Form.Item
+          extra={
+            <Typography.Text className="help-text p-x-xs tw-text-xs tw-text-grey-muted">
+              {t('message.edit-glossary-display-name-help')}
+            </Typography.Text>
+          }
+          label={`${t('label.display-name')}:`}
+          name="displayName"
+          rules={[
+            {
+              required: true,
+              message: `${t('label.field-required', {
+                field: t('label.name'),
+              })}`,
+            },
+          ]}>
+          <Input placeholder={t('message.enter-display-name')} />
         </Form.Item>
       </Form>
     </Modal>
