@@ -96,6 +96,7 @@ export interface AddIngestionState {
   chartFilterPattern: FilterPattern;
   dashboardFilterPattern: FilterPattern;
   databaseFilterPattern: FilterPattern;
+  containerFilterPattern: FilterPattern;
   databaseServiceNames: string[];
   dbtClassificationName: string;
   dbtUpdateDescriptions: boolean;
@@ -143,6 +144,7 @@ export interface AddIngestionState {
   processPii: boolean;
   overrideOwner: boolean;
   confidence?: number;
+  showContainerFilter: boolean;
 }
 
 export enum ShowFilter {
@@ -154,4 +156,5 @@ export enum ShowFilter {
   showSchemaFilter = 'showSchemaFilter',
   showTableFilter = 'showTableFilter',
   showTopicFilter = 'showTopicFilter',
+  showContainerFilter = 'showContainerFilter',
 }
