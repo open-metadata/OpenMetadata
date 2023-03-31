@@ -27,12 +27,12 @@ from metadata.utils.logger import ingestion_logger
 logger = ingestion_logger()
 
 
-def _parse_arr_children(
+def _parse_array_children(
     arr_item: Schema, cls: ModelMetaclass = FieldModel
 ) -> Tuple[str, Optional[Union[FieldModel, Column]]]:
 
     if isinstance(arr_item, ArraySchema):
-        display_type, children = _parse_arr_children(arr_item.items, cls=cls)
+        display_type, children = _parse_array_children(arr_item.items, cls=cls)
         return f"ARRAY<{display_type}>", children
 
     if isinstance(arr_item, UnionSchema):
@@ -46,8 +46,7 @@ def _parse_arr_children(
             children=get_avro_fields(arr_item, cls),
             description=arr_item.doc,
         )
-        display_type = str(arr_item.type)
-        return display_type, child_obj
+        return str(arr_item.type), child_obj
 
     return str(arr_item.type), None
 
@@ -91,7 +90,7 @@ def parse_array_fields(
         description=field.doc,
     )
 
-    display, children = _parse_arr_children(arr_item=field.type.items, cls=cls)
+    display, children = _parse_array_children(arr_item=field.type.items, cls=cls)
 
     obj.dataTypeDisplay = f"ARRAY<{display}>"
     if cls == Column:
@@ -117,7 +116,7 @@ def _parse_union_children(
         field = non_null_schema[0][1]
 
         if isinstance(field, ArraySchema):
-            display, children = _parse_arr_children(arr_item=field.items, cls=cls)
+            display, children = _parse_array_children(arr_item=field.items, cls=cls)
             sub_type = [None, None]
             sub_type[non_null_schema[0][0]] = f"ARRAY<{display}>"
             sub_type[non_null_schema[0][0] ^ 1] = "null"

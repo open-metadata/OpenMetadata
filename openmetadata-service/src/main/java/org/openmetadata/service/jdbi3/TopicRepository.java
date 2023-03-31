@@ -15,9 +15,7 @@ package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
-import static org.openmetadata.service.Entity.FIELD_DISPLAY_NAME;
-import static org.openmetadata.service.Entity.FIELD_FOLLOWERS;
-import static org.openmetadata.service.Entity.FIELD_TAGS;
+import static org.openmetadata.service.Entity.*;
 import static org.openmetadata.service.util.EntityUtil.getSchemaField;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -237,6 +235,8 @@ public class TopicRepository extends EntityRepository<Topic> {
   }
 
   public class TopicUpdater extends EntityUpdater {
+    public static final String FIELD_DATA_TYPE_DISPLAY = "dataTypeDisplay";
+
     public TopicUpdater(Topic original, Topic updated, Operation operation) {
       super(original, updated, operation);
     }
@@ -342,7 +342,7 @@ public class TopicRepository extends EntityRepository<Topic> {
         updatedField.setDescription(origField.getDescription());
         return;
       }
-      String field = getSchemaField(original, origField, FIELD_DISPLAY_NAME);
+      String field = getSchemaField(original, origField, FIELD_DESCRIPTION);
       recordChange(field, origField.getDescription(), updatedField.getDescription());
     }
 
@@ -358,11 +358,11 @@ public class TopicRepository extends EntityRepository<Topic> {
 
     private void updateFieldDataTypeDisplay(Field origField, Field updatedField) throws JsonProcessingException {
       if (operation.isPut() && !nullOrEmpty(origField.getDataTypeDisplay()) && updatedByBot()) {
-        // Revert the non-empty field description if being updated by a bot
+        // Revert the non-empty field dataTypeDisplay if being updated by a bot
         updatedField.setDataTypeDisplay(origField.getDataTypeDisplay());
         return;
       }
-      String field = getSchemaField(original, origField, FIELD_DISPLAY_NAME);
+      String field = getSchemaField(original, origField, FIELD_DATA_TYPE_DISPLAY);
       recordChange(field, origField.getDataTypeDisplay(), updatedField.getDataTypeDisplay());
     }
   }
