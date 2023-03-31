@@ -26,7 +26,9 @@ from metadata.utils.logger import ingestion_logger
 logger = ingestion_logger()
 
 class MetabaseClient:
-    
+    """
+    Client Handling API communication with Metabase
+    """
     def __init__(self, service_connection, metabase_session):
         self.service_connection = service_connection
         self.metabase_session = metabase_session

@@ -61,7 +61,7 @@ class MetabaseSource(DashboardServiceSource):
     ):
         super().__init__(config, metadata_config)
         self.metabase_session = self.client["metabase_session"]
-        self.client = MetabaseClient(self.service_connection, self.metabase_session)
+        self.metabaseClient = MetabaseClient(self.service_connection, self.metabase_session)
 
     @classmethod
     def create(cls, config_dict, metadata_config: OpenMetadataConnection):
@@ -77,7 +77,7 @@ class MetabaseSource(DashboardServiceSource):
         """
         Get List of all dashboards
         """
-        return self.client.get_dashboards_list()
+        return self.metabaseClient.get_dashboards_list()
 
     def get_dashboard_name(self, dashboard: dict) -> str:
         """
@@ -89,7 +89,7 @@ class MetabaseSource(DashboardServiceSource):
         """
         Get Dashboard Details
         """
-        return self.client.get_dashboard_details(dashboard['id'])
+        return self.metabaseClient.get_dashboard_details(dashboard['id'])
 
     def yield_dashboard(
         self, dashboard_details: dict
@@ -215,7 +215,7 @@ class MetabaseSource(DashboardServiceSource):
     def _yield_lineage_from_query(
         self, chart_details: dict, db_service_name: str, dashboard_name: str
     ) -> Optional[AddLineageRequest]:
-        database = self.client.get_database(chart_details['database_id'])
+        database = self.metabaseClient.get_database(chart_details['database_id'])
 
         if database is None:
             return None
@@ -270,7 +270,7 @@ class MetabaseSource(DashboardServiceSource):
     def _yield_lineage_from_api(
         self, chart_details: dict, db_service_name: str, dashboard_name: str
     ) -> Optional[AddLineageRequest]:
-        table = self.client.get_table(chart_details['table_id'])
+        table = self.metabaseClient.get_table(chart_details['table_id'])
 
         if table is None:
             return None
