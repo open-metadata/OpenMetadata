@@ -11,7 +11,7 @@
 """Metabase source module"""
 
 import traceback
-from typing import Iterable, Optional
+from typing import Iterable, List, Optional
 
 import requests
 
@@ -67,6 +67,24 @@ class MetabaseSource(DashboardServiceSource):
                 f"Expected MetabaseConnection, but got {connection}"
             )
         return cls(config, metadata_config)
+
+    def get_dashboards_list(self) -> Optional[List[dict]]:
+        """
+        Get List of all dashboards
+        """
+        return self.client.get_dashboards_list()
+
+    def get_dashboard_name(self, dashboard: dict) -> str:
+        """
+        Get Dashboard Name
+        """
+        return dashboard["name"]
+
+    def get_dashboard_details(self, dashboard: dict) -> dict:
+        """
+        Get Dashboard Details
+        """
+        return self.client.get_dashboard_details(dashboard['id'])
 
     def yield_dashboard(
         self, dashboard_details: dict

@@ -25,7 +25,7 @@ from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
 
-class MetabaseClient(DashboardServiceSource):
+class MetabaseClient:
     
     def __init__(
         self,
@@ -66,11 +66,11 @@ class MetabaseClient(DashboardServiceSource):
         """
         return dashboard["name"]
 
-    def get_dashboard_details(self, dashboard: dict) -> dict:
+    def get_dashboard_details(self, dashboard_id: str) -> dict:
         """
         Get Dashboard Details
         """
-        resp_dashboard = self.req_get(f"/api/dashboard/{dashboard['id']}")
+        resp_dashboard = self.req_get(f"/api/dashboard/{dashboard_id}")
         return resp_dashboard.json()
     
     def get_database(self, database_id: str) -> Optional[dict]:
