@@ -87,13 +87,16 @@ const AppRouter = () => {
     }
   }, [location.pathname]);
 
-  const handleClickEvent = useCallback((event: MouseEvent) => {
-    const eventValue =
-      (event.target as HTMLElement)?.textContent || CustomEventTypes.Click;
-    if (eventValue) {
-      analytics.track(eventValue);
-    }
-  }, []);
+  const handleClickEvent = useCallback(
+    (event: MouseEvent) => {
+      const eventValue =
+        (event.target as HTMLElement)?.textContent || CustomEventTypes.Click;
+      if (eventValue) {
+        analytics.track(eventValue);
+      }
+    },
+    [analytics]
+  );
 
   useEffect(() => {
     const targetNode = document.body;
