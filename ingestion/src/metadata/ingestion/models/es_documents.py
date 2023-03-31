@@ -31,22 +31,6 @@ from metadata.generated.schema.type.tagLabel import TagLabel
 from metadata.generated.schema.type.usageDetails import UsageDetails
 
 
-class ESEntityReference(BaseModel):
-    """JsonSchema generated pydantic contains many unnecessary fields its not one-to-one representation of JsonSchema
-    Example all the "__root__" fields. This will not index into ES elegantly hence we are creating special class
-    for EntityReference
-    """
-
-    id: str
-    name: str
-    displayName: str
-    description: str = ""
-    type: str
-    fullyQualifiedName: str
-    deleted: bool
-    href: str
-
-
 class TableESDocument(BaseModel):
     """ElasticSearch Mapping doc"""
 
@@ -95,6 +79,7 @@ class TopicESDocument(BaseModel):
     href: Optional[str]
     deleted: bool
     service: EntityReference
+    serviceType: str
     schemaText: Optional[str] = None
     schemaType: Optional[schema.SchemaType] = None
     cleanupPolicies: List[str] = None
@@ -190,13 +175,73 @@ class MlModelESDocument(BaseModel):
     usageSummary: UsageDetails = None
     tags: List[TagLabel]
     tier: Optional[TagLabel] = None
-    owner: ESEntityReference = None
+    owner: EntityReference = None
+    followers: List[str]
+    href: Optional[str]
+    deleted: bool
+    suggest: List[dict]
+    service_suggest: List[dict] = None
+    service: EntityReference
+    doc_as_upsert: bool = True
+
+
+class ContainerESDocument(BaseModel):
+    """ElasticSearch Mapping doc for Containers"""
+
+    entityType: str = "container"
+    id: str
+    name: str
+    displayName: str
+    fullyQualifiedName: str
+    description: Optional[str] = None
+    version: float
+    updatedAt: Optional[int]
+    updatedBy: Optional[str]
+    tags: List[TagLabel]
+    tier: Optional[TagLabel] = None
+    owner: EntityReference = None
+    followers: List[str]
+    href: Optional[str]
+    deleted: bool
+    suggest: List[dict]
+    service_suggest: List[dict] = None
+    service: EntityReference
+    doc_as_upsert: bool = True
+    parent: Optional[dict] = None
+    dataModel: Optional[dict] = None
+    children: Optional[List[dict]] = None
+    prefix: Optional[str] = None
+    numberOfObjects: Optional[int] = None
+    size: Optional[int] = None
+    fileFormats: Optional[List[str]] = None
+
+
+class QueryESDocument(BaseModel):
+    """ElasticSearch Mapping doc for Containers"""
+
+    entityType: str = "query"
+    id: str
+    name: str
+    displayName: str
+    fullyQualifiedName: str
+    description: Optional[str] = None
+    version: float
+    updatedAt: Optional[int]
+    updatedBy: Optional[str]
+    tags: List[TagLabel]
+    tier: Optional[TagLabel] = None
+    owner: EntityReference = None
     followers: List[str]
     href: Optional[str]
     deleted: bool
     suggest: List[dict]
     service_suggest: List[dict] = None
     doc_as_upsert: bool = True
+    duration: Optional[float] = None
+    users: Optional[List[dict]] = None
+    votes: Optional[dict] = None
+    query: str
+    queryDate: float
 
 
 class UserESDocument(BaseModel):

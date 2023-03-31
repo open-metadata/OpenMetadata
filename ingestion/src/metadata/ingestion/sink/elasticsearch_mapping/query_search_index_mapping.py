@@ -9,11 +9,11 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 """
-Defines the Elasticsearch mapping for ML Models
+Defines the Elasticsearch mapping for Queries
 """
 import textwrap
 
-MLMODEL_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
+QUERY_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
     """
 {
   "settings": {
@@ -38,7 +38,10 @@ MLMODEL_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
         "om_ngram": {
           "tokenizer": "ngram",
           "min_gram": 1,
-          "max_gram": 2
+          "max_gram": 2,
+          "filter": [
+            "lowercase"
+          ]
         }
       },
       "filter": {
@@ -52,7 +55,7 @@ MLMODEL_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
   "mappings": {
     "properties": {
       "id": {
-        "type": "text"
+        "type": "keyword"
       },
       "name": {
         "type": "text",
@@ -79,7 +82,9 @@ MLMODEL_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
       },
       "description": {
         "type": "text",
-        "analyzer": "om_analyzer"
+        "index_options": "docs",
+        "analyzer": "om_analyzer",
+        "norms": false
       },
       "version": {
         "type": "float"
@@ -94,57 +99,10 @@ MLMODEL_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
       "href": {
         "type": "text"
       },
-      "pipelineUrl": {
-        "type": "text"
+      "duration": {
+        "type": "long"
       },
-      "mlFeatures": {
-        "properties": {
-          "name": {
-            "type": "keyword",
-            "fields": {
-              "keyword": {
-                "type": "keyword",
-                "ignore_above": 256
-              }
-            }
-          },
-          "dataType": {
-            "type": "text"
-          },
-          "description": {
-            "type": "text",
-            "analyzer": "om_analyzer"
-          },
-          "fullyQualifiedName": {
-            "type": "text"
-          },
-          "featureSources": {
-            "properties": {
-              "name": {
-                "type": "text"
-              },
-              "dataType": {
-                "type": "text"
-              }
-            }
-          }
-        }
-      },
-      "mlHyperParameters": {
-        "properties": {
-          "name": {
-            "type": "text",
-            "analyzer": "om_analyzer"
-          },
-          "value": {
-            "type": "text"
-          }
-        }
-      },
-      "target": {
-        "type": "text"
-      },
-      "dashboard": {
+      "users": {
         "properties": {
           "id": {
             "type": "keyword",
@@ -181,18 +139,96 @@ MLMODEL_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
           }
         }
       },
-      "mlStore": {
+      "votes": {
         "properties": {
-          "storage": {
-            "type": "text"
+          "upVotes": {
+            "type": "long"
           },
-          "imageRepository": {
-            "type": "text"
+          "downVotes": {
+            "type": "long"
+          },
+          "upVoters": {
+            "properties": {
+              "id": {
+                "type": "keyword",
+                "fields": {
+                  "keyword": {
+                    "type": "keyword",
+                    "ignore_above": 36
+                  }
+                }
+              },
+              "type": {
+                "type": "keyword"
+              },
+              "name": {
+                "type": "keyword",
+                "fields": {
+                  "keyword": {
+                    "type": "keyword",
+                    "ignore_above": 256
+                  }
+                }
+              },
+              "fullyQualifiedName": {
+                "type": "text"
+              },
+              "description": {
+                "type": "text"
+              },
+              "deleted": {
+                "type": "text"
+              },
+              "href": {
+                "type": "text"
+              }
+            }
+          },
+          "downVoters": {
+            "properties": {
+              "id": {
+                "type": "keyword",
+                "fields": {
+                  "keyword": {
+                    "type": "keyword",
+                    "ignore_above": 36
+                  }
+                }
+              },
+              "type": {
+                "type": "keyword"
+              },
+              "name": {
+                "type": "keyword",
+                "fields": {
+                  "keyword": {
+                    "type": "keyword",
+                    "ignore_above": 256
+                  }
+                }
+              },
+              "fullyQualifiedName": {
+                "type": "text"
+              },
+              "description": {
+                "type": "text"
+              },
+              "deleted": {
+                "type": "text"
+              },
+              "href": {
+                "type": "text"
+              }
+            }
           }
         }
       },
-      "server": {
-        "type": "text"
+      "query": {
+        "type": "text",
+        "analyzer": "om_analyzer"
+      },
+      "queryDate": {
+        "type": "long"
       },
       "owner": {
         "properties": {
@@ -210,6 +246,7 @@ MLMODEL_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
           },
           "name": {
             "type": "keyword",
+            "normalizer": "lowercase_normalizer",
             "fields": {
               "keyword": {
                 "type": "keyword",
@@ -240,7 +277,29 @@ MLMODEL_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
           }
         }
       },
-      "service": {
+      "followers": {
+        "type": "keyword"
+      },
+      "tags": {
+        "properties": {
+          "tagFQN": {
+            "type": "keyword"
+          },
+          "labelType": {
+            "type": "keyword"
+          },
+          "description": {
+            "type": "text"
+          },
+          "source": {
+            "type": "keyword"
+          },
+          "state": {
+            "type": "keyword"
+          }
+        }
+      },
+      "queryUsedIn": {
         "properties": {
           "id": {
             "type": "keyword",
@@ -255,6 +314,16 @@ MLMODEL_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
             "type": "keyword"
           },
           "name": {
+            "type": "keyword",
+            "normalizer": "lowercase_normalizer",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "ignore_above": 256
+              }
+            }
+          },
+          "displayName": {
             "type": "keyword",
             "fields": {
               "keyword": {
@@ -277,87 +346,6 @@ MLMODEL_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
           }
         }
       },
-      "usageSummary": {
-        "properties": {
-          "dailyStats": {
-            "properties": {
-              "count": {
-                "type": "long"
-              },
-              "percentileRank": {
-                "type": "long"
-              }
-            }
-          },
-          "weeklyStats": {
-            "properties": {
-              "count": {
-                "type": "long"
-              },
-              "percentileRank": {
-                "type": "long"
-              }
-            }
-          },
-          "monthlyStats": {
-            "properties": {
-              "count": {
-                "type": "long"
-              },
-              "percentileRank": {
-                "type": "long"
-              }
-            }
-          }
-        }
-      },
-      "deleted": {
-        "type": "text"
-      },
-      "followers": {
-        "type": "keyword"
-      },
-      "tier": {
-        "properties": {
-          "tagFQN": {
-            "type": "keyword"
-          },
-          "labelType": {
-            "type": "keyword"
-          },
-          "description": {
-            "type": "text"
-          },
-          "source": {
-            "type": "keyword"
-          },
-          "state": {
-            "type": "keyword"
-          }
-        }
-      },
-      "tags": {
-        "properties": {
-          "tagFQN": {
-            "type": "keyword"
-          },
-          "labelType": {
-            "type": "keyword"
-          },
-          "description": {
-            "type": "text"
-          },
-          "source": {
-            "type": "keyword"
-          },
-          "state": {
-            "type": "keyword"
-          }
-        }
-      },
-      "serviceType": {
-        "type": "keyword"
-      },
       "entityType": {
         "type": "keyword"
       },
@@ -370,6 +358,9 @@ MLMODEL_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
             "path": "deleted"
           }
         ]
+      },
+      "column_suggest": {
+        "type": "completion"
       },
       "service_suggest": {
         "type": "completion"
