@@ -61,8 +61,6 @@ const Tags: FunctionComponent<TagProps> = ({
     switch (startWith) {
       case '+ ':
         return <PlusIcon height={16} name="plus" width={16} />;
-      case '#':
-        return startWith;
       default:
         return isGlossaryTag ? (
           <IconPage height={12} name="glossary-icon" width={12} />

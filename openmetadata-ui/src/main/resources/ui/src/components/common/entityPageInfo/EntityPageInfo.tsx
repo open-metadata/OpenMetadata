@@ -171,24 +171,26 @@ const EntityPageInfo = ({
     setIsEditable(false);
   };
 
-  const getSelectedTags = useCallback(() => {
-    return sortTagsCaseInsensitive(
-      tier?.tagFQN
-        ? [
-            ...tags.map((tag) => ({
-              ...tag,
-              isRemovable: true,
-            })),
-            { tagFQN: tier.tagFQN, isRemovable: false },
-          ]
-        : [
-            ...tags.map((tag) => ({
-              ...tag,
-              isRemovable: true,
-            })),
-          ]
-    );
-  }, [tier, tags]);
+  const getSelectedTags = useCallback(
+    () =>
+      sortTagsCaseInsensitive(
+        tier?.tagFQN
+          ? [
+              ...tags.map((tag) => ({
+                ...tag,
+                isRemovable: true,
+              })),
+              { tagFQN: tier.tagFQN, isRemovable: false },
+            ]
+          : [
+              ...tags.map((tag) => ({
+                ...tag,
+                isRemovable: true,
+              })),
+            ]
+      ),
+    [tier, tags]
+  );
 
   const getFollowers = () => {
     const list = cloneDeep(entityFollowers);
