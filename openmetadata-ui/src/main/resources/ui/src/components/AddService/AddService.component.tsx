@@ -19,7 +19,7 @@ import {
 } from 'constants/Services.constant';
 import { useAirflowStatus } from 'hooks/useAirflowStatus';
 import { t } from 'i18next';
-import { capitalize, cloneDeep, isUndefined } from 'lodash';
+import { capitalize, isUndefined } from 'lodash';
 import { LoadingState } from 'Models';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useHistory } from 'react-router-dom';
@@ -118,27 +118,35 @@ const AddService = ({
   const handleConfigureServiceNextClick = (descriptionValue: string) => {
     setDescription(descriptionValue.trim());
 
-    const trimmedServiceName = serviceName.trim();
-
-    let errorObj = cloneDeep(showErrorMessage);
-
-    if (!trimmedServiceName) {
-      errorObj = { ...errorObj, name: true };
-    } else if (nameWithSpace.test(trimmedServiceName)) {
-      errorObj = { ...errorObj, nameWithSpace: true };
-    } else if (delimiterRegex.test(trimmedServiceName)) {
-      errorObj = { ...errorObj, delimit: true };
-    } else if (!isUrlFriendlyName(trimmedServiceName)) {
-      errorObj = { ...errorObj, specialChar: true };
-    } else if (
-      trimmedServiceName.length < 1 ||
-      trimmedServiceName.length > 128
-    ) {
-      errorObj = { ...errorObj, nameLength: true };
-    } else {
+    if (!serviceName.trim()) {
+      setShowErrorMessage({ ...showErrorMessage, name: true, isError: true });
+    } else if (nameWithSpace.test(serviceName)) {
+      setShowErrorMessage({
+        ...showErrorMessage,
+        nameWithSpace: true,
+        isError: true,
+      });
+    } else if (delimiterRegex.test(serviceName)) {
+      setShowErrorMessage({
+        ...showErrorMessage,
+        delimit: true,
+        isError: true,
+      });
+    } else if (!isUrlFriendlyName(serviceName.trim())) {
+      setShowErrorMessage({
+        ...showErrorMessage,
+        specialChar: true,
+        isError: true,
+      });
+    } else if (serviceName.length < 1 || serviceName.length > 128) {
+      setShowErrorMessage({
+        ...showErrorMessage,
+        nameLength: true,
+        isError: true,
+      });
+    } else if (!showErrorMessage.isError) {
       setActiveServiceStep(4);
     }
-    setShowErrorMessage(errorObj);
   };
 
   // Service connection
@@ -193,6 +201,7 @@ const AddService = ({
         delimit: false,
         specialChar: false,
         nameLength: false,
+        isError: false,
       });
     }
   };

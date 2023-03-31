@@ -86,10 +86,6 @@ const RightPanel: FC<RightPanelProps> = ({
     activeFieldName && activeFieldDocument
   );
 
-  const shouldFetchFieldDoc = Boolean(
-    selectedService && selectedServiceCategory && activeFieldName
-  );
-
   const getActiveStepTitle = (title: string) => {
     const deployMessage = showDeployedTitle ? ` & ${t('label.deployed')}` : '';
     const updateTitle = title.replace(
@@ -148,11 +144,14 @@ const RightPanel: FC<RightPanelProps> = ({
   const handleAffixTarget = () => document.getElementById('page-container-v1');
 
   useEffect(() => {
+    const shouldFetchFieldDoc = Boolean(
+      selectedService && selectedServiceCategory && activeFieldName
+    );
     // only fetch file when required fields are present
     if (shouldFetchFieldDoc) {
       fetchFieldDocument();
     }
-  }, [shouldFetchFieldDoc]);
+  }, [selectedService, selectedServiceCategory, activeFieldName]);
 
   const activeStepGuideElement = activeStepGuide ? (
     <>
