@@ -13,9 +13,8 @@ Tableau source module
 """
 import json
 import traceback
-from typing import Iterable, List, Optional
+from typing import Any, Iterable, List, Optional
 
-from pydantic import BaseModel, Extra
 from requests.utils import urlparse
 from tableau_api_lib.utils import extract_pages
 
@@ -25,17 +24,24 @@ from metadata.generated.schema.api.classification.createClassification import (
 from metadata.generated.schema.api.classification.createTag import CreateTagRequest
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
+from metadata.generated.schema.api.data.createDashboardDataModel import (
+    CreateDashboardDataModelRequest,
+)
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.chart import Chart
 from metadata.generated.schema.entity.data.dashboard import (
     Dashboard as LineageDashboard,
 )
-from metadata.generated.schema.entity.data.table import Table
+from metadata.generated.schema.entity.data.dashboardDataModel import DataModelType
+from metadata.generated.schema.entity.data.table import Column, Table
 from metadata.generated.schema.entity.services.connections.dashboard.tableauConnection import (
     TableauConnection,
 )
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
+)
+from metadata.generated.schema.entity.services.dashboardService import (
+    DashboardServiceType,
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
@@ -48,8 +54,17 @@ from metadata.ingestion.source.dashboard.tableau import (
     TABLEAU_GET_VIEWS_PARAM_DICT,
     TABLEAU_GET_WORKBOOKS_PARAM_DICT,
 )
+from metadata.ingestion.source.dashboard.tableau.models import (
+    ChartUrl,
+    TableauChart,
+    TableauDashboard,
+    TableauDataModel,
+    TableauOwner,
+    TableauSheets,
+)
 from metadata.ingestion.source.dashboard.tableau.queries import (
     TABLEAU_LINEAGE_GRAPHQL_QUERY,
+    TABLEAU_SHEET_QUERY_BY_ID,
 )
 from metadata.utils import fqn, tag_utils
 from metadata.utils.filters import filter_by_chart
@@ -59,61 +74,6 @@ from metadata.utils.logger import ingestion_logger
 logger = ingestion_logger()
 
 TABLEAU_TAG_CATEGORY = "TableauTags"
-
-
-class TableauBaseModel(BaseModel):
-    """
-    Tableau basic configurations
-    """
-
-    class Config:
-        extra = Extra.allow
-
-    id: str
-    name: str
-
-
-class TableauOwner(TableauBaseModel):
-    """
-    Tableau Owner Details
-    """
-
-    email: str
-
-
-class TableauChart(TableauBaseModel):
-    """
-    Chart (View) representation from API
-    """
-
-    workbook_id: str
-    sheet_type: str
-    view_url_name: str
-    content_url: str
-    tags: List[str]
-
-
-class ChartUrl:
-    workbook_name: str
-    sheets: str
-    chart_url_name: str
-
-    def __init__(self, context_url: str) -> None:
-        self.workbook_name, self.sheets, self.chart_url_name = (
-            context_url.split("/") if "/" in context_url else ["", "", ""]
-        )
-
-
-class TableauDashboard(TableauBaseModel):
-    """
-    Response from Tableau API
-    """
-
-    description: Optional[str]
-    tags: List[str]
-    owner: Optional[TableauOwner]
-    charts: Optional[List[TableauChart]]
-    webpage_url: Optional[str]
 
 
 class TableauSource(DashboardServiceSource):
@@ -289,6 +249,71 @@ class TableauSource(DashboardServiceSource):
                 except Exception as err:
                     logger.debug(traceback.format_exc())
                     logger.error(f"Error ingesting tag [{tag}]: {err}")
+
+    def get_column_info(self, data_model: TableauDataModel) -> Optional[List[Any]]:
+        datasource_columns = []
+        for column in data_model.datasourceFields:
+            parsed_string = {
+                "dataTypeDisplay": column.remoteField.dataType,
+                "dataType": column.remoteField.dataType,
+                "name": column.id,
+                "displayName": column.name,
+            }
+            datasource_columns.append(Column(**parsed_string))
+
+        for column in data_model.worksheetFields:
+            parsed_string = {
+                "dataTypeDisplay": column.dataType,
+                "dataType": column.dataType,
+                "name": column.id,
+                "displayName": column.name,
+            }
+
+            datasource_columns.append(Column(**parsed_string))
+
+    def yield_datamodel(
+        self, dashboard_details: TableauDashboard
+    ) -> Iterable[CreateDashboardDataModelRequest]:
+        data_models: TableauSheets = TableauSheets()
+        for sheet in dashboard_details.charts:
+            try:
+                data_model_graphql_result = self.client.metadata_graphql_query(
+                    query=TABLEAU_SHEET_QUERY_BY_ID.format(id=sheet.id)
+                )
+
+                data_models = TableauSheets(
+                    **json.loads(data_model_graphql_result.text).get("data", [])
+                )
+            except Exception as exc:
+                error_msg = f"Error fetching Data Model for sheet {sheet.name} - {exc}"
+                self.status.failed(
+                    name=sheet.name, error=error_msg, stack_trace=traceback.format_exc()
+                )
+                logger.error(error_msg)
+                logger.debug(traceback.format_exc())
+
+        for data_model in data_models.sheets:
+            try:
+                data_model_request = CreateDashboardDataModelRequest(
+                    name=data_model.id,
+                    displayName=data_model.name,
+                    description=data_model.description,
+                    service=self.context.dashboard_service.fullyQualifiedName.__root__,
+                    serviceType=DashboardServiceType.Tableau.value,
+                    dataModelType=DataModelType.TableauSheet.value,
+                    columns=self.get_column_info(data_model),
+                )
+                yield data_model_request
+
+            except Exception as exc:
+                error_msg = f"Error yeilding Data Model - {data_model.name} - {exc}"
+                self.status.failed(
+                    name=data_model.name,
+                    error=error_msg,
+                    stack_trace=traceback.format_exc(),
+                )
+                logger.error(error_msg)
+                logger.debug(traceback.format_exc())
 
     def yield_dashboard(
         self, dashboard_details: TableauDashboard

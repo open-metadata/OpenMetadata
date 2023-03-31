@@ -22,6 +22,7 @@ from metadata.generated.schema.api.data.createDashboard import CreateDashboardRe
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.chart import Chart
 from metadata.generated.schema.entity.data.dashboard import Dashboard
+from metadata.generated.schema.entity.data.dashboardDataModel import DashboardDataModel
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
@@ -112,6 +113,12 @@ class DashboardServiceTopology(ServiceTopology):
                 nullable=True,
                 cache_all=True,
                 clear_cache=True,
+            ),
+            NodeStage(
+                type_=DashboardDataModel,
+                context="dataModel",
+                processor="yield_datamodel",
+                consumer=["dashboard_service"],
             ),
             NodeStage(
                 type_=Dashboard,
@@ -223,6 +230,15 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
         """
         Get Dashboard Details
         """
+
+    def yield_datamodel(self, _) -> Any:
+        """
+        Method to fetch DataModel linked to Dashboard
+        """
+
+        logger.debug(
+            f"DataModel is not supported for {self.service_connection.type.name}"
+        )
 
     def yield_dashboard_lineage(
         self, dashboard_details: Any
