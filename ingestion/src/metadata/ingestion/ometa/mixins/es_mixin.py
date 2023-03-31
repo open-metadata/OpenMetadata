@@ -47,7 +47,8 @@ class ESMixin(Generic[T]):
         fields: Optional[List[str]] = None,
     ) -> Optional[List[T]]:
         """
-        Run the ES query and return a list of entities that match doing an extra query to the OM API
+        Run the ES query and return a list of entities that match. It does an extra query to the OM API with the
+        requested fields per each entity found in ES.
         :param entity_type: Entity to look for
         :param query_string: Query to run
         :return: List of Entities or None
