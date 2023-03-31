@@ -27,7 +27,7 @@ export enum EntityType {
   DASHBOARD_SERVICE = 'dashboardService',
   PIPELINE_SERVICE = 'pipelineService',
   MLMODEL_SERVICE = 'mlmodelService',
-  OBJECT_STORE_SERVICE = 'objectstoreService',
+  OBJECT_STORE_SERVICE = 'objectStoreService',
   WEBHOOK = 'webhook',
   MLMODEL = 'mlmodel',
   TYPE = 'type',
@@ -41,6 +41,7 @@ export enum EntityType {
   KPI = 'kpi',
   ALERT = 'alert',
   CONTAINER = 'container',
+  TAG = 'tag',
 }
 
 export enum AssetsType {
@@ -118,4 +119,6 @@ export enum EntityInfo {
   RETENTION_SIZE = 'Retention Size',
   CLEAN_UP_POLICIES = 'Clean-up Policies',
   MAX_MESSAGE_SIZE = 'Max Message Size',
+  SIZE = 'size',
+  NUMBER_OF_OBJECTS = 'number-of-object-plural',
 }

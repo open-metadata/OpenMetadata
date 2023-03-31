@@ -13,13 +13,17 @@
 Source connection handler
 """
 
-from botocore.client import ClientError
+from typing import Optional
 
 from metadata.clients.aws_client import AWSClient
+from metadata.generated.schema.entity.automations.workflow import (
+    Workflow as AutomationWorkflow,
+)
 from metadata.generated.schema.entity.services.connections.messaging.kinesisConnection import (
     KinesisConnection,
 )
-from metadata.ingestion.connections.test_connections import SourceConnectionException
+from metadata.ingestion.connections.test_connections import test_connection_steps
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -32,15 +36,22 @@ def get_connection(connection: KinesisConnection):
     return AWSClient(connection.awsConfig).get_kinesis_client()
 
 
-def test_connection(client, _) -> None:
+def test_connection(
+    metadata: OpenMetadata,
+    client,
+    service_connection: KinesisConnection,
+    automation_workflow: Optional[AutomationWorkflow] = None,
+) -> None:
     """
-    Test connection
+    Test connection. This can be executed either as part
+    of a metadata workflow or during an Automation Workflow
     """
-    try:
-        client.list_streams()
-    except ClientError as err:
-        msg = f"Connection error for {client}: {err}. Check the connection details."
-        raise SourceConnectionException(msg) from err
-    except Exception as exc:
-        msg = f"Unknown error connecting with {client}: {exc}."
-        raise SourceConnectionException(msg) from exc
+
+    test_fn = {"GetTopics": client.list_streams}
+
+    test_connection_steps(
+        metadata=metadata,
+        test_fn=test_fn,
+        service_fqn=service_connection.type.value,
+        automation_workflow=automation_workflow,
+    )

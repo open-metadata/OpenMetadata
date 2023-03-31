@@ -89,7 +89,9 @@ public class SearchResource {
   private static final String NAME_KEYWORD = "name.keyword";
   private static final String DISPLAY_NAME = "displayName";
   private static final String DISPLAY_NAME_KEYWORD = "displayName.keyword";
-  public static final String FIELD_DISPLAY_NAME_NGRAM = "displayName.ngram";
+  private static final String FIELD_DISPLAY_NAME_NGRAM = "displayName.ngram";
+  private static final String QUERY = "query";
+  private static final String QUERY_NGRAM = "query.ngram";
   private static final String DESCRIPTION = "description";
   private static final String UNIFIED = "unified";
 
@@ -228,6 +230,9 @@ public class SearchResource {
         break;
       case "container_search_index":
         searchSourceBuilder = buildContainerSearchBuilder(query, from, size);
+        break;
+      case "query_search_index":
+        searchSourceBuilder = buildQuerySearchBuilder(query, from, size);
         break;
       default:
         searchSourceBuilder = buildAggregateSearchBuilder(query, from, size);
@@ -410,7 +415,10 @@ public class SearchResource {
             .field(FIELD_DISPLAY_NAME, 15.0f)
             .field(FIELD_DISPLAY_NAME_NGRAM)
             .field(FIELD_NAME, 15.0f)
+            .field(DISPLAY_NAME_KEYWORD, 25.0f)
+            .field(NAME_KEYWORD, 25.0f)
             .field(FIELD_DESCRIPTION, 1.0f)
+            .field("columns.name.keyword", 10.0f)
             .field("columns.name", 2.0f)
             .field("columns.name.ngram")
             .field("columns.displayName", 2.0f)
@@ -461,6 +469,8 @@ public class SearchResource {
             .field(FIELD_DISPLAY_NAME, 15.0f)
             .field(FIELD_DISPLAY_NAME_NGRAM)
             .field(FIELD_NAME, 15.0f)
+            .field(DISPLAY_NAME_KEYWORD, 25.0f)
+            .field(NAME_KEYWORD, 25.0f)
             .field(FIELD_DESCRIPTION, 1.0f)
             .field("messageSchema.schemaFields.name", 2.0f)
             .field("messageSchema.schemaFields.description", 1.0f)
@@ -488,6 +498,8 @@ public class SearchResource {
             .field(FIELD_DISPLAY_NAME, 15.0f)
             .field(FIELD_DISPLAY_NAME_NGRAM)
             .field(FIELD_NAME, 15.0f)
+            .field(DISPLAY_NAME_KEYWORD, 25.0f)
+            .field(NAME_KEYWORD, 25.0f)
             .field(FIELD_DESCRIPTION, 1.0f)
             .field("charts.name", 2.0f)
             .field("charts.description", 1.0f)
@@ -518,6 +530,8 @@ public class SearchResource {
             .field(FIELD_DISPLAY_NAME, 15.0f)
             .field(FIELD_DISPLAY_NAME_NGRAM)
             .field(FIELD_NAME, 15.0f)
+            .field(DISPLAY_NAME_KEYWORD, 25.0f)
+            .field(NAME_KEYWORD, 25.0f)
             .field(DESCRIPTION, 1.0f)
             .field("tasks.name", 2.0f)
             .field("tasks.description", 1.0f)
@@ -546,6 +560,8 @@ public class SearchResource {
             .field(FIELD_DISPLAY_NAME, 15.0f)
             .field(FIELD_DISPLAY_NAME_NGRAM)
             .field(FIELD_NAME, 15.0f)
+            .field(DISPLAY_NAME_KEYWORD, 25.0f)
+            .field(NAME_KEYWORD, 25.0f)
             .field(DESCRIPTION, 1.0f)
             .field("mlFeatures.name", 2.0f)
             .field("mlFeatures.description", 1.0f)
@@ -575,7 +591,10 @@ public class SearchResource {
             .field(FIELD_DISPLAY_NAME_NGRAM)
             .field(FIELD_NAME, 15.0f)
             .field(FIELD_DESCRIPTION, 1.0f)
+            .field(DISPLAY_NAME_KEYWORD, 25.0f)
+            .field(NAME_KEYWORD, 25.0f)
             .field("dataModel.columns.name", 2.0f)
+            .field("dataModel.columns.name.keyword", 10.0f)
             .field("dataModel.columns.name.ngram")
             .field("dataModel.columns.displayName", 2.0f)
             .field("dataModel.columns.displayName.ngram")
@@ -604,6 +623,33 @@ public class SearchResource {
     SearchSourceBuilder searchSourceBuilder =
         new SearchSourceBuilder().query(queryBuilder).highlighter(hb).from(from).size(size);
     return addAggregation(searchSourceBuilder);
+  }
+
+  private SearchSourceBuilder buildQuerySearchBuilder(String query, int from, int size) {
+    QueryStringQueryBuilder queryBuilder =
+        QueryBuilders.queryStringQuery(query)
+            .field(DISPLAY_NAME, 10.0f)
+            .field(FIELD_DISPLAY_NAME_NGRAM)
+            .field(QUERY, 10.0f)
+            .field(QUERY_NGRAM, 10.0f)
+            .field(DESCRIPTION, 3.0f)
+            .defaultOperator(Operator.AND)
+            .fuzziness(Fuzziness.AUTO);
+
+    HighlightBuilder.Field highlightGlossaryName = new HighlightBuilder.Field(DISPLAY_NAME);
+    highlightGlossaryName.highlighterType(UNIFIED);
+    HighlightBuilder.Field highlightDescription = new HighlightBuilder.Field(FIELD_DESCRIPTION);
+    highlightDescription.highlighterType(UNIFIED);
+    HighlightBuilder.Field highlightQuery = new HighlightBuilder.Field(QUERY);
+    highlightGlossaryName.highlighterType(UNIFIED);
+    HighlightBuilder hb = new HighlightBuilder();
+    hb.field(highlightDescription);
+    hb.field(highlightGlossaryName);
+    hb.field(highlightQuery);
+    hb.preTags("<span class=\"text-highlighter\">");
+    hb.postTags("</span>");
+
+    return searchBuilder(queryBuilder, hb, from, size);
   }
 
   private SearchSourceBuilder searchBuilder(QueryBuilder queryBuilder, HighlightBuilder hb, int from, int size) {
@@ -654,7 +700,16 @@ public class SearchResource {
     QueryStringQueryBuilder queryBuilder =
         QueryBuilders.queryStringQuery(query)
             .field(FIELD_NAME, 10.0f)
+            .field(NAME_KEYWORD, 10.0f)
+            .field(DISPLAY_NAME_KEYWORD, 10.0f)
+            .field(FIELD_DISPLAY_NAME, 10.0f)
+            .field(FIELD_DISPLAY_NAME_NGRAM)
+            .field("synonyms", 5.0f)
+            .field("synonyms.ngram")
             .field(DESCRIPTION, 3.0f)
+            .field("glossary.name", 5.0f)
+            .field("glossary.displayName", 5.0f)
+            .field("glossary.displayName.ngram")
             .defaultOperator(Operator.AND)
             .fuzziness(Fuzziness.AUTO);
 
@@ -667,8 +722,12 @@ public class SearchResource {
     hb.field(highlightGlossaryName);
     hb.preTags("<span class=\"text-highlighter\">");
     hb.postTags("</span>");
-
-    return searchBuilder(queryBuilder, hb, from, size);
+    SearchSourceBuilder searchSourceBuilder =
+        new SearchSourceBuilder().query(queryBuilder).highlighter(hb).from(from).size(size);
+    searchSourceBuilder
+        .aggregation(AggregationBuilders.terms("tags.tagFQN").field("tags.tagFQN").size(MAX_AGGREGATE_SIZE))
+        .aggregation(AggregationBuilders.terms("glossary.name").field("glossary.name.keyword"));
+    return searchSourceBuilder;
   }
 
   private SearchSourceBuilder buildTagSearchBuilder(String query, int from, int size) {

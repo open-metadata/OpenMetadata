@@ -39,6 +39,7 @@ from metadata.generated.schema.entity.classification.tag import Tag
 from metadata.generated.schema.entity.data.chart import Chart
 from metadata.generated.schema.entity.data.container import Container
 from metadata.generated.schema.entity.data.dashboard import Dashboard
+from metadata.generated.schema.entity.data.dashboardDataModel import DashboardDataModel
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.glossary import Glossary
@@ -54,6 +55,9 @@ from metadata.generated.schema.entity.data.topic import Topic
 from metadata.generated.schema.entity.policies.policy import Policy
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
+)
+from metadata.generated.schema.entity.services.connections.testConnectionDefinition import (
+    TestConnectionDefinition,
 )
 from metadata.generated.schema.entity.services.dashboardService import DashboardService
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
@@ -247,6 +251,16 @@ class OpenMetadata(
             return "/charts"
 
         if issubclass(
+            entity,
+            get_args(
+                Union[
+                    DashboardDataModel, self.get_create_entity_type(DashboardDataModel)
+                ]
+            ),
+        ):
+            return "/dashboard/datamodels"
+
+        if issubclass(
             entity, get_args(Union[Dashboard, self.get_create_entity_type(Dashboard)])
         ):
             return "/dashboards"
@@ -423,13 +437,19 @@ class OpenMetadata(
                 ]
             ),
         ):
-            return "/services/objectstoreServices"
+            return "/services/objectStoreServices"
 
         if issubclass(
             entity,
             IngestionPipeline,
         ):
             return "/services/ingestionPipelines"
+
+        if issubclass(
+            entity,
+            TestConnectionDefinition,
+        ):
+            return "/services/testConnectionDefinition"
 
         if issubclass(
             entity,
@@ -520,6 +540,7 @@ class OpenMetadata(
         file_name = (
             class_name.lower()
             .replace("glossaryterm", "glossaryTerm")
+            .replace("dashboarddatamodel", "dashboardDataModel")
             .replace("testsuite", "testSuite")
             .replace("testdefinition", "testDefinition")
             .replace("testcase", "testCase")

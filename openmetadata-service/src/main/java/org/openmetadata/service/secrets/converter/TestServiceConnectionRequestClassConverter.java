@@ -21,6 +21,7 @@ import org.openmetadata.schema.entity.services.MetadataConnection;
 import org.openmetadata.schema.type.DashboardConnection;
 import org.openmetadata.schema.type.MessagingConnection;
 import org.openmetadata.schema.type.MlModelConnection;
+import org.openmetadata.schema.type.ObjectStoreConnection;
 import org.openmetadata.schema.type.PipelineConnection;
 import org.openmetadata.service.exception.InvalidServiceConnectionException;
 import org.openmetadata.service.util.JsonUtils;
@@ -36,7 +37,8 @@ public class TestServiceConnectionRequestClassConverter extends ClassConverter {
           MessagingConnection.class,
           PipelineConnection.class,
           MlModelConnection.class,
-          MetadataConnection.class);
+          MetadataConnection.class,
+          ObjectStoreConnection.class);
 
   public TestServiceConnectionRequestClassConverter() {
     super(TestServiceConnectionRequest.class);

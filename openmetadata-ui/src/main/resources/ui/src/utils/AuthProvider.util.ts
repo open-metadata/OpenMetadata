@@ -26,6 +26,7 @@ import { oidcTokenKey, ROUTES } from '../constants/constants';
 import { validEmailRegEx } from '../constants/regex.constants';
 import { AuthTypes } from '../enums/signin.enum';
 import { AuthenticationConfiguration } from '../generated/configuration/authenticationConfiguration';
+import { SamlSSOClientConfig } from '../generated/security/client/samlSSOClientConfig';
 import { isDev } from './EnvironmentUtils';
 
 export let msalInstance: IPublicClientApplication;
@@ -62,6 +63,15 @@ export const getUserManagerConfig = (
   };
 };
 
+export type AuthClient = {
+  authority: string;
+  clientId: string;
+  callbackUrl: string;
+  provider: string;
+  providerName: string;
+  samlConfiguration?: SamlSSOClientConfig;
+};
+
 export const getAuthConfig = (
   authClient: AuthenticationConfiguration
 ): Record<string, string | boolean> => {
@@ -72,6 +82,7 @@ export const getAuthConfig = (
     provider,
     providerName,
     enableSelfSignup,
+    samlConfiguration,
   } = authClient;
   let config = {};
   const redirectUri = getRedirectUri(callbackUrl);
@@ -112,6 +123,15 @@ export const getAuthConfig = (
           provider,
           scope: 'openid email profile',
           responseType: 'id_token',
+        };
+      }
+
+      break;
+    case AuthTypes.SAML:
+      {
+        config = {
+          samlConfiguration,
+          provider,
         };
       }
 
@@ -244,6 +264,7 @@ export const isProtectedRoute = (pathname: string) => {
       ROUTES.FORGOT_PASSWORD,
       ROUTES.CALLBACK,
       ROUTES.SILENT_CALLBACK,
+      ROUTES.SAML_CALLBACK,
       ROUTES.REGISTER,
       ROUTES.RESET_PASSWORD,
       ROUTES.ACCOUNT_ACTIVATION,

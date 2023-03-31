@@ -581,7 +581,7 @@ const TagsPage = () => {
 
     return getExplorePath({
       extraParameters: {
-        postFilter: {
+        facetFilter: {
           [`${type}.tagFQN`]: [tagFQN],
         },
       },
@@ -722,7 +722,7 @@ const TagsPage = () => {
     () =>
       [
         {
-          title: t('label.name'),
+          title: t('label.tag'),
           dataIndex: 'name',
           key: 'name',
           render: (_, record: Tag) => getEntityName(record),
@@ -918,8 +918,8 @@ const TagsPage = () => {
                         setIsAddingTag((prevState) => !prevState);
                         setErrorDataTag(undefined);
                       }}>
-                      {t('label.add-new-entity', {
-                        entity: t('label.tag-lowercase'),
+                      {t('label.add-entity', {
+                        entity: t('label.tag'),
                       })}
                     </Button>
                   </Tooltip>

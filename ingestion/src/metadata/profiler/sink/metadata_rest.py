@@ -81,8 +81,8 @@ class MetadataRestSink(Sink[Entity]):
             )
 
         except APIError as err:
+            name = record.table.fullyQualifiedName.__root__
+            error = f"Failed to sink profiler & test data for {name}: {err}"
             logger.debug(traceback.format_exc())
-            logger.warning(
-                f"Failed to sink profiler & test data for {record.table.fullyQualifiedName.__root__}: {err}"
-            )
-            self.status.failure(f"Table: {record.table.fullyQualifiedName.__root__}")
+            logger.warning(error)
+            self.status.failed(name, error, traceback.format_exc())

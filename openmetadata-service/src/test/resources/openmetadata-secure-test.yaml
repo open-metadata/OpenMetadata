@@ -157,12 +157,44 @@ authenticationConfiguration:
     - "preferred_username"
     - "sub"
   enableSelfSignup : true
+  samlConfiguration:
+    debugMode: false
+    idp:
+      entityId: ""
+      ssoLoginUrl: ""
+      idpX509Certificate: ""
+      authorityUrl: ""
+      nameId: ""
+    sp:
+      entityId: ""
+      acs: ""
+      spX509Certificate: ""
+      callback: ""
+    security:
+      strictMode: false
+      tokenValidity: 3600
+      sendEncryptedNameId: false
+      sendSignedAuthRequest: false
+      signSpMetadata: false
+      wantMessagesSigned: false
+      wantAssertionsSigned: false
+      wantAssertionEncrypted: false
+      wantNameIdEncrypted: false
+      keyStoreFilePath: ""
+      keyStoreAlias: ""
+      keyStorePassword: ""
 
 jwtTokenConfiguration:
   rsapublicKeyFilePath: "src/test/resources/public_key.der"
   rsaprivateKeyFilePath: "src/test/resources/private_key.der"
   jwtissuer: "open-metadata.org"
   keyId: "Gb389a-9f76-gdjs-a92j-0242bk94356"
+
+eventMonitoringConfiguration:
+  eventMonitor: "prometheus"
+  batchSize: 10
+  pathPattern: ["/*"]
+  latency: [0.90]
 
 eventHandlerConfiguration:
   eventHandlerClassNames:

@@ -44,6 +44,7 @@ import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.type.Votes;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.ListFilter;
@@ -52,6 +53,7 @@ import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
+import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.ResultList;
 
 @Path("/v1/queries")
@@ -408,7 +410,7 @@ public class QueryResource extends EntityResource<Query, QueryRepository> {
             description = "OK",
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = Query.class)))
       })
-  public Query addQueryUsage(
+  public Response addQueryUsage(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "Id of the query", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
@@ -416,7 +418,7 @@ public class QueryResource extends EntityResource<Query, QueryRepository> {
       throws IOException {
     OperationContext operationContext = new OperationContext(entityType, MetadataOperation.EDIT_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
-    return dao.addQueryUsage(id, entityIds);
+    return dao.addQueryUsage(securityContext.getUserPrincipal().getName(), id, entityIds).toResponse();
   }
 
   @DELETE
@@ -432,7 +434,7 @@ public class QueryResource extends EntityResource<Query, QueryRepository> {
             description = "OK",
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = Query.class)))
       })
-  public Query removeQueryUsedIn(
+  public Response removeQueryUsedIn(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "Id of the query", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
@@ -440,7 +442,7 @@ public class QueryResource extends EntityResource<Query, QueryRepository> {
       throws IOException {
     OperationContext operationContext = new OperationContext(entityType, MetadataOperation.EDIT_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
-    return dao.removeQueryUsedIn(id, entityIds);
+    return dao.removeQueryUsedIn(securityContext.getUserPrincipal().getName(), id, entityIds).toResponse();
   }
 
   @PUT
@@ -507,8 +509,9 @@ public class QueryResource extends EntityResource<Query, QueryRepository> {
         .withTags(create.getTags())
         .withQuery(create.getQuery())
         .withDuration(create.getDuration())
+        .withVotes(new Votes().withUpVotes(0).withDownVotes(0))
         .withUsers(getEntityReferences(USER, create.getUsers()))
-        .withQueryUsedIn(create.getQueryUsedIn())
+        .withQueryUsedIn(EntityUtil.populateEntityReferences(create.getQueryUsedIn()))
         .withQueryDate(create.getQueryDate());
   }
 }

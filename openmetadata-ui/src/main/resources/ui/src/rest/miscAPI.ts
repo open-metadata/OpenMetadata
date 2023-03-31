@@ -116,6 +116,9 @@ export const getSuggestions = <T extends SearchIndex>(
       SearchIndex.TOPIC,
       SearchIndex.PIPELINE,
       SearchIndex.MLMODEL,
+      SearchIndex.CONTAINER,
+      SearchIndex.GLOSSARY,
+      SearchIndex.TAG,
     ],
   };
 
@@ -135,6 +138,12 @@ export const getSuggestions = <T extends SearchIndex>(
 
 export const getVersion = async () => {
   const response = await APIClient.get<{ version: string }>('/system/version');
+
+  return response.data;
+};
+
+export const postSamlLogout = async (data: { token: string }) => {
+  const response = await APIClient.post(`/users/logout`, { ...data });
 
   return response.data;
 };
