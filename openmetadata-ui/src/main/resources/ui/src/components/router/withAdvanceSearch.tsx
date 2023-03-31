@@ -13,10 +13,12 @@
 import { AdvanceSearchProvider } from 'components/Explore/AdvanceSearchProvider/AdvanceSearchProvider.component';
 import React, { FC } from 'react';
 
-export const withAdvanceSearch = (Component: FC) => (props: any) => {
-  return (
-    <AdvanceSearchProvider>
-      <Component {...props} />
-    </AdvanceSearchProvider>
-  );
-};
+export const withAdvanceSearch =
+  (Component: FC) =>
+  (props: JSX.IntrinsicAttributes & { children?: React.ReactNode }) => {
+    return (
+      <AdvanceSearchProvider>
+        <Component {...props} />
+      </AdvanceSearchProvider>
+    );
+  };
