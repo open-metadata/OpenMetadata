@@ -37,13 +37,13 @@ import org.openmetadata.service.security.policyevaluator.ResourceContextInterfac
 import org.openmetadata.service.util.ResultList;
 
 @Slf4j
-@Path("/v1/analytics/reports")
-@Api(value = "ReportData collection", tags = "ReportData collection")
+@Path("/v1/analytics/dataInsight/data")
+@Api(value = "DataInsight data collection", tags = "analytics collection")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(name = "reportData")
+@Collection(name = "analytics")
 public class ReportDataResource {
-  public static final String COLLECTION_PATH = "v1/analytics/reports";
+  public static final String COLLECTION_PATH = "v1/analytics/dataInsight/data";
   @Getter protected final ReportDataRepository dao;
   protected final Authorizer authorizer;
 
@@ -64,7 +64,7 @@ public class ReportDataResource {
   @Operation(
       operationId = "getReportData",
       summary = "List the report data",
-      tags = "reportData",
+      tags = "analytics",
       description =
           "Get a list of all the report data for a given reportDataType, optionally filtered by  `startTs` and `endTs` of the result. "
               + "Use cursor-based pagination to limit the number of "
@@ -107,7 +107,7 @@ public class ReportDataResource {
   @Operation(
       operationId = "addReportData",
       summary = "Add report data",
-      tags = "reportData",
+      tags = "analytics",
       description = "Add report data",
       responses = {
         @ApiResponse(
