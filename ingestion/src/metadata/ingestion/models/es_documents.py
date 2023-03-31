@@ -212,7 +212,7 @@ class ContainerESDocument(BaseModel):
     children: Optional[List[dict]] = None
     prefix: Optional[str] = None
     numberOfObjects: Optional[int] = None
-    size: Optional[int] = None
+    size: Optional[float] = None
     fileFormats: Optional[List[str]] = None
 
 

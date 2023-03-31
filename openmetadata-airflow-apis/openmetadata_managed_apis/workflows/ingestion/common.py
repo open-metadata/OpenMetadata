@@ -19,6 +19,8 @@ from typing import Callable
 
 import airflow
 from airflow import DAG
+from metadata.generated.schema.entity.services.objectstoreService import ObjectStoreService
+
 from openmetadata_managed_apis.api.utils import clean_dag_id
 from pydantic import ValidationError
 from requests.utils import quote
@@ -167,6 +169,11 @@ def build_source(ingestion_pipeline: IngestionPipeline) -> WorkflowSource:
         elif service_type == "metadataService":
             entity_class = MetadataService
             service: MetadataService = metadata.get_by_name(
+                entity=entity_class, fqn=ingestion_pipeline.service.name
+            )
+        elif service_type == "objectStoreService":
+            entity_class = ObjectStoreService
+            service: ObjectStoreService = metadata.get_by_name(
                 entity=entity_class, fqn=ingestion_pipeline.service.name
             )
         else:
