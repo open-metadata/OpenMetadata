@@ -49,7 +49,6 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 )
 from metadata.generated.schema.entity.teams.team import Team
 from metadata.generated.schema.entity.teams.user import User
-from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.common import Entity
 from metadata.ingestion.api.sink import Sink
 from metadata.ingestion.models.es_documents import (
@@ -162,8 +161,7 @@ class ElasticsearchSink(Sink[Entity]):
         config = ElasticSearchConfig.parse_obj(config_dict)
         return cls(config, metadata_config)
 
-    # to be fix in https://github.com/open-metadata/OpenMetadata/issues/8352
-    # pylint: disable=too-many-branches
+    # pylint: disable=too-many-branches, too-many-statements
     def __init__(
         self,
         config: ElasticSearchConfig,
@@ -348,8 +346,10 @@ class ElasticsearchSink(Sink[Entity]):
             logger.debug(traceback.format_exc())
             logger.error(f"Failed to index due to {exc} - Entity: {record}")
 
-    def _write_record(self, record: Entity) -> None:
+    def _write_record(self, record: Entity) -> None:  # pylint: disable=method-hidden
         """
+        We disable method-hidden as we are just manually setting the singledispatch
+
         Default implementation for the single dispatch
         """
         es_record = create_record_document(record, self.metadata)
