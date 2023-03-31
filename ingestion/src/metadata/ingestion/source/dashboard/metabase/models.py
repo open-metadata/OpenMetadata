@@ -13,5 +13,6 @@ Metabase Models
 """
 from pydantic import BaseModel
 
+
 class MetabaseModel(BaseModel):
-    pass #TODO: find out MetabaseModel data structure and fill in using pydantic types
+    pass  # TODO: find out MetabaseModel data structure and fill in using pydantic types

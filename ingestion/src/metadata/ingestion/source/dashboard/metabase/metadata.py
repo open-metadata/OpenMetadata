@@ -39,6 +39,7 @@ from metadata.utils import fqn
 from metadata.utils.filters import filter_by_chart
 from metadata.utils.helpers import get_standard_chart_type, replace_special_with
 from metadata.utils.logger import ingestion_logger
+
 from .client import MetabaseClient
 
 HEADERS = {"Content-Type": "application/json", "Accept": "*/*"}
@@ -61,8 +62,10 @@ class MetabaseSource(DashboardServiceSource):
     ):
         super().__init__(config, metadata_config)
         self.metabase_session = self.client["metabase_session"]
-        self.metabaseClient = MetabaseClient(service_connection = self.service_connection, 
-                                             metabase_session = self.metabase_session)
+        self.metabaseClient = MetabaseClient(
+            service_connection=self.service_connection,
+            metabase_session=self.metabase_session,
+        )
 
     @classmethod
     def create(cls, config_dict, metadata_config: OpenMetadataConnection):
@@ -90,7 +93,7 @@ class MetabaseSource(DashboardServiceSource):
         """
         Get Dashboard Details
         """
-        return self.metabaseClient.get_dashboard_details(dashboard['id'])
+        return self.metabaseClient.get_dashboard_details(dashboard["id"])
 
     def yield_dashboard(
         self, dashboard_details: dict
@@ -216,23 +219,19 @@ class MetabaseSource(DashboardServiceSource):
     def _yield_lineage_from_query(
         self, chart_details: dict, db_service_name: str, dashboard_name: str
     ) -> Optional[AddLineageRequest]:
-        database = self.metabaseClient.get_database(chart_details['database_id'])
+        database = self.metabaseClient.get_database(chart_details["database_id"])
 
         if database is None:
             return None
 
         query = (
-            chart_details.get("dataset_query", {})
-            .get("native", {})
-            .get("query", "")
+            chart_details.get("dataset_query", {}).get("native", {}).get("query", "")
         )
         lineage_parser = LineageParser(query)
         for table in lineage_parser.source_tables:
             database_schema_name, table = fqn.split(str(table))[-2:]
             database_schema_name = (
-                None
-                if database_schema_name == "<default>"
-                else database_schema_name
+                None if database_schema_name == "<default>" else database_schema_name
             )
             database = database.get("details", {}).get("db", None)
             if database:
@@ -271,7 +270,7 @@ class MetabaseSource(DashboardServiceSource):
     def _yield_lineage_from_api(
         self, chart_details: dict, db_service_name: str, dashboard_name: str
     ) -> Optional[AddLineageRequest]:
-        table = self.metabaseClient.get_table(chart_details['table_id'])
+        table = self.metabaseClient.get_table(chart_details["table_id"])
 
         if table is None:
             return None
