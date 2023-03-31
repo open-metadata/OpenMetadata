@@ -17,7 +17,6 @@ import React, { FunctionComponent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { TagLabel } from '../../../generated/type/tagLabel';
 import { getTagValue } from '../../../utils/CommonUtils';
-import SVGIcons from '../../../utils/SvgUtils';
 import TagsViewer from '../../Tag/TagsViewer/tags-viewer';
 import EntitySummaryDetails from '../EntitySummaryDetails/EntitySummaryDetails';
 import RichTextEditorPreviewer from '../rich-text-editor/RichTextEditorPreviewer';
@@ -68,20 +67,11 @@ const TableDataCardBody: FunctionComponent<Props> = ({
       {Boolean(tags?.length) && (
         <div className="tw-mt-4" data-testid="tags-container">
           <hr className="tw--mx-3 tw-pt-2" />
-          <div className="tw-flex tw-relative">
-            <SVGIcons
-              alt="icon-tag"
-              className="tw-absolute tw-top-1.5"
-              icon="icon-tag-grey"
-              width="14"
-            />
-            <div className="tw-ml-4">
-              <TagsViewer
-                sizeCap={-1}
-                tags={(tags || []).map((tag) => getTagValue(tag))}
-              />
-            </div>
-          </div>
+
+          <TagsViewer
+            sizeCap={-1}
+            tags={(tags || []).map((tag) => getTagValue(tag))}
+          />
         </div>
       )}
     </div>
