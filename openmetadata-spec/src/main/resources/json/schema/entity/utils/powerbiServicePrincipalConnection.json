@@ -1,0 +1,17 @@
+{
+    "$id": "https://open-metadata.org/schema/entity/utils/powerbiServicePrincipalConnection.json",
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "PowerBIServicePrincipalConnection",
+    "description": "PowerBI Service Principal Connection Config",
+    "type": "object",
+    "properties": {
+        "clientSecret": {
+            "title": "Client Secret",
+            "description": "A string containing client secret",
+            "type": "string",
+            "format": "password"
+          }
+    },
+    "additionalProperties": false,
+    "required": ["clientSecret"]
+}

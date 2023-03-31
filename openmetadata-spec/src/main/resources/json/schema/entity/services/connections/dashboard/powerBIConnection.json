@@ -20,16 +20,23 @@
       "$ref": "#/definitions/powerBiType",
       "default": "PowerBI"
     },
+    "powerbiAuthType": {
+      "mask": true,
+      "title": "PowerBI Authentication Type",
+      "description": "Select authentication mechanism for the PowerBI APIs",
+      "oneOf": [
+        {
+          "$ref": "../../../utils/powerbiBasicAuthConnection.json"
+        },
+        {
+          "$ref": "../../../utils/powerbiServicePrincipalConnection.json"
+        }
+      ]
+    },
     "clientId": {
       "title": "Client ID",
       "description": "client_id for PowerBI.",
       "type": "string"
-    },
-    "clientSecret": {
-      "title": "Client Secret",
-      "description": "clientSecret for PowerBI.",
-      "type": "string",
-      "format": "password"
     },
     "tenantId": {
       "title": "Tenant ID",
@@ -71,5 +78,5 @@
     }
   },
   "additionalProperties": false,
-  "required": ["clientId", "clientSecret", "tenantId"]
+  "required": ["clientId", "powerbiAuthType", "tenantId"]
 }

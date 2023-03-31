@@ -1,0 +1,22 @@
+{
+    "$id": "https://open-metadata.org/schema/entity/utils/powerbiBasicAuthConnection.json",
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "PowerBIBasicAuthConnection",
+    "description": "PowerBI Basic Authentication Connection Config",
+    "type": "object",
+    "properties": {
+        "username": {
+            "title": "Username",
+            "description": "Username for PowerBI Account. Typically a UPN in the form of an email address.",
+            "type": "string"
+        },
+        "password": {
+            "title": "Password",
+            "description": "Password for PowerBI Account.",
+            "type": "string",
+            "format": "password"
+        }
+    },
+    "additionalProperties": false,
+    "required": ["password","username"]
+}

@@ -18,7 +18,9 @@ from time import sleep
 from typing import List, Optional, Tuple
 
 import msal
-
+from metadata.generated.schema.entity.utils.powerbiBasicAuthConnection import (
+    PowerBIBasicAuthConnection,
+)
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.ometa.client import REST, ClientConfig
 from metadata.utils.logger import utils_logger
@@ -37,11 +39,17 @@ class PowerBiApiClient:
 
     def __init__(self, config):
         self.config = config
-        self.msal_client = msal.ConfidentialClientApplication(
-            client_id=self.config.clientId,
-            client_credential=self.config.clientSecret.get_secret_value(),
-            authority=self.config.authorityURI + self.config.tenantId,
-        )
+        if isinstance(self.config.powerbiAuthType, PowerBIBasicAuthConnection):
+            self.msal_client = msal.PublicClientApplication(
+                self.config.clientId, 
+                authority=self.config.authorityURI + self.config.tenantId
+                )
+        else:
+            self.msal_client = msal.ConfidentialClientApplication(
+                client_id=self.config.clientId,
+                client_credential=self.config.clientSecret.get_secret_value(),
+                authority=self.config.authorityURI + self.config.tenantId,
+            )
         self.auth_token = self.get_auth_token()
         client_config = ClientConfig(
             base_url="https://api.powerbi.com",
