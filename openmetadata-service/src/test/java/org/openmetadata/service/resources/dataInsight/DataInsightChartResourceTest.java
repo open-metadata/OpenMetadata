@@ -45,7 +45,7 @@ public class DataInsightChartResourceTest extends EntityResourceTest<DataInsight
         DATA_INSIGHT_CHART,
         DataInsightChart.class,
         DataInsightChartResource.DataInsightChartList.class,
-        "dataInsight",
+        "analytics/dataInsights/charts",
         DataInsightChartResource.FIELDS);
   }
 
