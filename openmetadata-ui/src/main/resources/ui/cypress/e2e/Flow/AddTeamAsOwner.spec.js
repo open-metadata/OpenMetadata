@@ -80,9 +80,15 @@ describe('Create a team and add that team as a owner of the entity', () => {
 
     interceptURL('PATCH', '/api/v1/tables/*', 'validateOwner');
 
+    interceptURL(
+      'GET',
+      `/api/v1/search/query?q=*${TEAM_DETAILS.name}*%20AND%20teamType:Group&from=0&size=15&index=team_search_index`,
+      'searchTeamName'
+    );
     cy.get('.user-team-select-popover  [data-testid="searchbar"]')
       .should('be.visible')
       .type(TEAM_DETAILS.name);
+    verifyResponseStatusCode('@searchTeamName', 200);
 
     // Selecting the team
     cy.get(`[title="${TEAM_DETAILS.name}"]`)

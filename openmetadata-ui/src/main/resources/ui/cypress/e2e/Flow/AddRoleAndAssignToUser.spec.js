@@ -131,10 +131,14 @@ describe('Test Add role and assign it to the user', () => {
 
     verifyResponseStatusCode('@getUserPage', 200);
 
+    interceptURL('GET', `/api/v1/search/query?q=*${userName}*`, 'searchUser');
+
     cy.get('[data-testid="searchbar"]')
       .should('exist')
       .should('be.visible')
       .type(userName);
+
+    verifyResponseStatusCode('@searchUser', 200);
 
     cy.get(`[data-testid="${userName}"]`).should('be.visible');
 
