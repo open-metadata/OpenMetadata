@@ -73,6 +73,7 @@ const mockProps: QueryCardProp = {
   onQuerySelection: jest.fn(),
   onQueryUpdate: jest.fn(),
   onUpdateVote: jest.fn(),
+  isExpanded: false,
 };
 
 describe('Test QueryCard Component', () => {

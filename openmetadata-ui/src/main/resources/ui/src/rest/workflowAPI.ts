@@ -64,3 +64,15 @@ export const getWorkflowById = async (workflowId: string) => {
 
   return response.data;
 };
+
+export const deleteWorkflowById = async (
+  workflowId: string,
+  hardDelete = false
+) => {
+  const response = await APIClient.delete<Workflow>(
+    `/automations/workflow/${workflowId}`,
+    { params: { hardDelete } }
+  );
+
+  return response.data;
+};

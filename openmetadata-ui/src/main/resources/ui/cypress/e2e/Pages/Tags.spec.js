@@ -70,7 +70,7 @@ describe('Tags page should work', () => {
 
     cy.get('.ant-table-thead > tr > .ant-table-cell')
       .eq(0)
-      .contains('Name')
+      .contains('Tag')
       .should('be.visible');
     cy.get('.ant-table-thead > tr > .ant-table-cell')
       .eq(1)
