@@ -81,7 +81,6 @@ const DashboardDetails = ({
   slashedDashboardName,
   activeTab,
   setActiveTabHandler,
-
   dashboardUrl,
   dashboardDetails,
   descriptionUpdateHandler,
