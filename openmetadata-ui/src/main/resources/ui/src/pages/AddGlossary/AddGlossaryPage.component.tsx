@@ -18,7 +18,6 @@ import PageContainerV1 from 'components/containers/PageContainerV1';
 import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from 'components/PermissionProvider/PermissionProvider.interface';
 import { ERROR_MESSAGE } from 'constants/constants';
-import { LoadingState } from 'Models';
 import React, {
   FunctionComponent,
   useCallback,
@@ -43,7 +42,7 @@ const AddGlossaryPage: FunctionComponent = () => {
   const { permissions } = usePermissionProvider();
   const [tagList, setTagList] = useState<Array<string>>([]);
   const [isTagLoading, setIsTagLoading] = useState<boolean>(false);
-  const [status, setStatus] = useState<LoadingState>('initial');
+  const [isLoading, setIsLoading] = useState<boolean>(false);
   const [slashedBreadcrumb, setSlashedBreadcrumb] = useState<
     TitleBreadcrumbProps['titleLinks']
   >([]);
@@ -68,28 +67,25 @@ const AddGlossaryPage: FunctionComponent = () => {
     fallbackText?: string
   ) => {
     showErrorToast(error, fallbackText);
-    setStatus('initial');
   };
 
   const onSave = useCallback(async (data: CreateGlossary) => {
-    setStatus('waiting');
+    setIsLoading(true);
     try {
       const res = await addGlossaries(data);
-      setStatus('success');
-      setTimeout(() => {
-        setStatus('initial');
-        goToGlossary(res.name);
-      }, 500);
+      goToGlossary(res.name);
     } catch (error) {
       handleSaveFailure(
         getIsErrorMatch(error as AxiosError, ERROR_MESSAGE.alreadyExist)
-          ? t('server.glossary-entity-already-exist', {
-              entity: '',
+          ? t('server.entity-already-exist', {
+              entity: t('label.glossary'),
               name: data.name,
             })
           : (error as AxiosError),
         jsonData['api-error-messages']['add-glossary-error']
       );
+    } finally {
+      setIsLoading(false);
     }
   }, []);
 
@@ -137,8 +133,8 @@ const AddGlossaryPage: FunctionComponent = () => {
           header={t('label.add-entity', {
             entity: t('label.glossary'),
           })}
+          isLoading={isLoading}
           isTagLoading={isTagLoading}
-          saveState={status}
           slashedBreadcrumb={slashedBreadcrumb}
           tagList={tagList}
           onCancel={handleCancel}

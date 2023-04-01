@@ -14,10 +14,8 @@
 import { AxiosError } from 'axios';
 import PageContainerV1 from 'components/containers/PageContainerV1';
 import CreateUserComponent from 'components/CreateUser/CreateUser.component';
-import { LOADING_STATE } from 'enums/common.enum';
 import _ from 'lodash';
 import { observer } from 'mobx-react';
-import { LoadingState } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
@@ -40,7 +38,7 @@ const CreateUserPage = () => {
   const { t } = useTranslation();
 
   const [roles, setRoles] = useState<Array<Role>>([]);
-  const [status, setStatus] = useState<LoadingState>(LOADING_STATE.INITIAL);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
 
   const { bot } = useParams<{ bot: string }>();
 
@@ -71,7 +69,6 @@ const CreateUserPage = () => {
     fallbackText?: string
   ) => {
     showErrorToast(error, fallbackText);
-    setStatus(LOADING_STATE.INITIAL);
   };
 
   const checkBotInUse = async (name: string) => {
@@ -89,13 +86,14 @@ const CreateUserPage = () => {
    * @param userData Data for creating new user
    */
   const handleAddUserSave = async (userData: CreateUser) => {
-    setStatus(LOADING_STATE.WAITING);
+    setIsLoading(true);
     if (bot) {
       const isBotExists = await checkBotInUse(userData.name);
       if (isBotExists) {
-        setStatus(LOADING_STATE.INITIAL);
         showErrorToast(
-          t('message.entity-already-exists', { entity: userData.name })
+          t('server.user-already-exist', {
+            name: userData.name,
+          })
         );
       } else {
         try {
@@ -106,28 +104,16 @@ const CreateUserPage = () => {
           });
 
           // Create a bot entity with botUser data
-          const botResponse = await createBotWithPut({
+          await createBotWithPut({
             botUser: _.toString(userResponse.fullyQualifiedName),
             name: userResponse.name,
             displayName: userResponse.displayName,
             description: userResponse.description,
           });
-
-          if (botResponse) {
-            setStatus(LOADING_STATE.SUCCESS);
-            showSuccessToast(
-              t('server.create-entity-success', { entity: t('label.bot') })
-            );
-            setTimeout(() => {
-              setStatus(LOADING_STATE.INITIAL);
-
-              goToUserListPage();
-            }, 500);
-          } else {
-            handleSaveFailure(
-              t('server.create-entity-error', { entity: t('label.bot') })
-            );
-          }
+          showSuccessToast(
+            t('server.create-entity-success', { entity: t('label.bot') })
+          );
+          goToUserListPage();
         } catch (error) {
           handleSaveFailure(
             error as AxiosError,
@@ -137,19 +123,8 @@ const CreateUserPage = () => {
       }
     } else {
       try {
-        const response = await createUser(userData);
-
-        if (response) {
-          setStatus(LOADING_STATE.SUCCESS);
-          setTimeout(() => {
-            setStatus(LOADING_STATE.WAITING);
-            goToUserListPage();
-          }, 500);
-        } else {
-          handleSaveFailure(
-            t('server.create-entity-error', { entity: t('label.user') })
-          );
-        }
+        await createUser(userData);
+        goToUserListPage();
       } catch (error) {
         handleSaveFailure(
           getIsErrorMatch(error as AxiosError, ERROR_MESSAGE.alreadyExist)
@@ -161,6 +136,7 @@ const CreateUserPage = () => {
         );
       }
     }
+    setIsLoading(false);
   };
 
   const fetchRoles = async () => {
@@ -191,8 +167,8 @@ const CreateUserPage = () => {
       <div className="self-center">
         <CreateUserComponent
           forceBot={Boolean(bot)}
+          isLoading={isLoading}
           roles={roles}
-          saveState={status}
           onCancel={handleCancel}
           onSave={handleAddUserSave}
         />

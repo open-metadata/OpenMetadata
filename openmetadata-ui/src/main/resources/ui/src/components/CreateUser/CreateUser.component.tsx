@@ -23,7 +23,6 @@ import {
 } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { LOADING_STATE } from 'enums/common.enum';
 import { isUndefined, trim } from 'lodash';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -50,10 +49,7 @@ import {
   SsoServiceType,
 } from '../../generated/entity/teams/user';
 import jsonData from '../../jsons/en';
-import {
-  getJWTOption,
-  getJWTTokenExpiryOptions,
-} from '../../utils/BotsUtils';
+import { getJWTOption, getJWTTokenExpiryOptions } from '../../utils/BotsUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { useAuthContext } from '../authentication/auth-provider/AuthProvider';
@@ -72,7 +68,7 @@ const { Option } = Select;
 
 const CreateUser = ({
   roles,
-  saveState = 'initial',
+  isLoading,
   onCancel,
   onSave,
   forceBot,
@@ -989,7 +985,7 @@ const CreateUser = ({
               data-testid="save-user"
               form="create-user-bot-form"
               htmlType="submit"
-              loading={saveState === LOADING_STATE.WAITING}
+              loading={isLoading}
               type="primary">
               {t('label.create')}
             </Button>
