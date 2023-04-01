@@ -729,20 +729,15 @@ const ServicePage: FunctionComponent = () => {
     if (description !== updatedHTML && !isUndefined(serviceDetails)) {
       const { id } = serviceDetails;
 
-      const updatedServiceDetails = {
-        connection: serviceDetails?.connection,
-        name: serviceDetails.name,
-        serviceType: serviceDetails.serviceType,
+      const updatedData: ServicesType = {
+        ...serviceDetails,
         description: updatedHTML,
-        owner: serviceDetails.owner,
-      } as ServicesUpdateRequest;
+      };
+
+      const jsonPatch = compare(serviceDetails, updatedData);
 
       try {
-        const response = await updateService(
-          serviceName,
-          id,
-          updatedServiceDetails
-        );
+        const response = await updateOwnerService(serviceName, id, jsonPatch);
         setDescription(updatedHTML);
         setServiceDetails(response);
       } catch (error) {
