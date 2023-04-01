@@ -1226,6 +1226,7 @@
     "create-entity-success": "{{entity}}の作成が正常に終了しました。",
     "delete-entity-error": "{{entity}}の削除中にエラーが発生しました。",
     "deploy-entity-error": "{{entity}}のデプロイ中にエラーが発生しました!",
+    "email-already-exist": " A {{entity}} with the name \"{{name}}\" already exists. Please choose another email.",
     "email-confirmation": "メールアドレスの確認のためのメールを送信しました。メールを確認してください。",
     "email-found": "このメールアドレスは既に他のユーザが利用しています!",
     "email-not-found": "このメールアドレスのユーザーは存在しません!",
@@ -1265,7 +1266,6 @@
     "unexpected-error": "予期しないエラーが発生しました。",
     "unexpected-response": "サーバから予期しない応答が返りました。",
     "update-entity-success": "{{entity}}は正常に更新されました。",
-    "user-already-exist": " A user with the name {{name}} already exists. Please choose another email.",
     "you-have-not-action-anything-yet": "あなたが{{action}}のデータはありません。"
   }
 }

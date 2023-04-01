@@ -1226,6 +1226,7 @@
     "create-entity-success": "{{entity}} created successfully.",
     "delete-entity-error": "Error while deleting {{entity}}.",
     "deploy-entity-error": "Error while deploying {{entity}}!",
+    "email-already-exist": " A {{entity}} with the name \"{{name}}\" already exists. Please choose another email.",
     "email-confirmation": "Please confirm your email, confirmation has been sent to your email",
     "email-found": "User with the given email address already exists!",
     "email-not-found": "User with the given email address does not exist!",
@@ -1265,7 +1266,6 @@
     "unexpected-error": "Une erreur inattendu est survenue.",
     "unexpected-response": "Réponse inattendu du serveur !",
     "update-entity-success": "{{entity}} updated successfully.",
-    "user-already-exist": " A user with the name {{name}} already exists. Please choose another email.",
     "you-have-not-action-anything-yet": "You have not {{action}} anything yet."
   }
 }
