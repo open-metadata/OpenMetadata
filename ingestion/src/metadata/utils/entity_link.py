@@ -68,6 +68,24 @@ def get_table_fqn(entity_link: str) -> str:
     return entity_link.split("::")[2]
 
 
+def get_table_or_column_fqn(entity_link: str) -> str:
+    """From an entity link get the column fqn
+
+    Args:
+        entity_link: entity link
+    """
+    split_entity_link = split(entity_link)
+    if len(split_entity_link) == 2:
+        return split_entity_link[1]
+    if len(split_entity_link) == 4 and split_entity_link[2] == "columns":
+        return f"{split_entity_link[1]}.{split_entity_link[3]}"
+
+    raise ValueError(
+        "Invalid entity link."
+        " {split_entity_link} does not look like a table or a column entity link"
+    )
+
+
 def get_entity_link(table_fqn: str, column_name: Optional[str]) -> str:
     """From table fqn and column name get the entity_link
 

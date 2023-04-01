@@ -1,3 +1,20 @@
+#  Copyright 2021 Collate
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#  http://www.apache.org/licenses/LICENSE-2.0
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+"""
+Defines the Elasticsearch mapping for Containers
+"""
+import textwrap
+
+CONTAINER_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
+    """
 {
   "settings": {
     "analysis": {
@@ -21,7 +38,10 @@
         "om_ngram": {
           "tokenizer": "ngram",
           "min_gram": 1,
-          "max_gram": 2
+          "max_gram": 2,
+          "filter": [
+            "lowercase"
+          ]
         }
       },
       "filter": {
@@ -35,7 +55,7 @@
   "mappings": {
     "properties": {
       "id": {
-        "type": "text"
+        "type": "keyword"
       },
       "name": {
         "type": "text",
@@ -62,7 +82,9 @@
       },
       "description": {
         "type": "text",
-        "analyzer": "om_analyzer"
+        "index_options": "docs",
+        "analyzer": "om_analyzer",
+        "norms": false
       },
       "version": {
         "type": "float"
@@ -77,10 +99,7 @@
       "href": {
         "type": "text"
       },
-      "dashboardUrl": {
-        "type": "text"
-      },
-      "charts": {
+      "parent": {
         "properties": {
           "id": {
             "type": "keyword",
@@ -96,15 +115,7 @@
           },
           "name": {
             "type": "keyword",
-            "fields": {
-              "keyword": {
-                "type": "keyword",
-                "ignore_above": 256
-              }
-            }
-          },
-          "displayName": {
-            "type": "text",
+            "normalizer": "lowercase_normalizer",
             "fields": {
               "keyword": {
                 "type": "keyword",
@@ -116,8 +127,7 @@
             "type": "text"
           },
           "description": {
-            "type": "text",
-            "analyzer": "om_analyzer"
+            "type": "text"
           },
           "deleted": {
             "type": "text"
@@ -127,7 +137,65 @@
           }
         }
       },
-      "dataModels": {
+      "dataModel": {
+        "properties": {
+          "isPartitioned": {
+            "type": "boolean"
+          },
+          "columns": {
+            "properties": {
+              "name": {
+                "type": "keyword",
+                "normalizer": "lowercase_normalizer",
+                "fields": {
+                  "keyword": {
+                    "type": "keyword",
+                    "ignore_above": 256
+                  }
+                }
+              },
+              "dataType": {
+                "type": "text"
+              },
+              "dataTypeDisplay": {
+                "type": "text"
+              },
+              "description": {
+                "type": "text",
+                "index_options": "docs",
+                "analyzer": "om_analyzer",
+                "norms": false
+              },
+              "fullyQualifiedName": {
+                "type": "text"
+              },
+              "tags": {
+                "properties": {
+                  "tagFQN": {
+                    "type": "keyword"
+                  },
+                  "labelType": {
+                    "type": "keyword"
+                  },
+                  "description": {
+                    "type": "text"
+                  },
+                  "source": {
+                    "type": "keyword"
+                  },
+                  "state": {
+                    "type": "keyword"
+                  }
+                }
+              },
+              "ordinalPosition": {
+                "type": "integer"
+              }
+            }
+          }
+        }
+      },
+      "children": {
         "properties": {
           "id": {
             "type": "keyword",
@@ -139,19 +207,10 @@
             }
           },
           "type": {
-            "type": "text"
+            "type": "keyword"
           },
           "name": {
             "type": "keyword",
-            "fields": {
-              "keyword": {
-                "type": "keyword",
-                "ignore_above": 256
-              }
-            }
-          },
-          "displayName": {
-            "type": "text",
             "fields": {
               "keyword": {
                 "type": "keyword",
@@ -163,8 +222,56 @@
             "type": "text"
           },
           "description": {
-            "type": "text",
-            "analyzer": "om_analyzer"
+            "type": "text"
+          },
+          "deleted": {
+            "type": "text"
+          },
+          "href": {
+            "type": "text"
+          }
+        }
+      },
+      "prefix": {
+        "type": "text"
+      },
+      "numberOfObjects": {
+        "type": "integer"
+      },
+      "size": {
+        "type": "integer"
+      },
+      "fileFormats": {
+        "type": "keyword"
+      },
+      "service": {
+        "properties": {
+          "id": {
+            "type": "keyword",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "ignore_above": 36
+              }
+            }
+          },
+          "type": {
+            "type": "keyword"
+          },
+          "name": {
+            "type": "keyword",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "ignore_above": 256
+              }
+            }
+          },
+          "fullyQualifiedName": {
+            "type": "text"
+          },
+          "description": {
+            "type": "text"
           },
           "deleted": {
             "type": "text"
@@ -190,6 +297,7 @@
           },
           "name": {
             "type": "keyword",
+            "normalizer": "lowercase_normalizer",
             "fields": {
               "keyword": {
                 "type": "keyword",
@@ -198,43 +306,6 @@
             }
           },
           "displayName": {
-            "type": "keyword",
-            "fields": {
-              "keyword": {
-                "type": "keyword",
-                "ignore_above": 256
-              }
-            }
-          },
-          "fullyQualifiedName": {
-            "type": "text"
-          },
-          "description": {
-            "type": "text"
-          },
-          "deleted": {
-            "type": "text"
-          },
-          "href": {
-            "type": "text"
-          }
-        }
-      },
-      "service": {
-        "properties": {
-          "id": {
-            "type": "keyword",
-            "fields": {
-              "keyword": {
-                "type": "keyword",
-                "ignore_above": 36
-              }
-            }
-          },
-          "type": {
-            "type": "keyword"
-          },
-          "name": {
             "type": "keyword",
             "fields": {
               "keyword": {
@@ -351,10 +422,7 @@
           }
         ]
       },
-      "chart_suggest": {
-        "type": "completion"
-      },
-      "data_model_suggest": {
+      "column_suggest": {
         "type": "completion"
       },
       "service_suggest": {
@@ -363,3 +431,5 @@
     }
   }
 }
+"""
+)
