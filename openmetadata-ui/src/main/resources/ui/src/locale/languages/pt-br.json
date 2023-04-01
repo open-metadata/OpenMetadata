@@ -1230,6 +1230,7 @@
     "email-found": "Usuário com o endereço de e-mail fornecido já existe!",
     "email-not-found": "Usuário com o endereço de e-mail fornecido não existe!",
     "email-verification-error": "Não foi possível enviar um e-mail para verificação. Entre em contato com seu Administrador.",
+    "entity-already-exist": "{{entity}} \"{{name}}\" already exists. Duplicated {{entity}} are not allowed.",
     "entity-creation-error": "Erro ao criar {{entity}}",
     "entity-deleted-successfully": "{{entity}} excluído com sucesso!",
     "entity-details-fetch-error": "Erro ao buscar detalhes para {{entityType}} {{entityName}}",
@@ -1264,6 +1265,7 @@
     "unexpected-error": "Ocorreu um erro inesperado.",
     "unexpected-response": "Resposta inesperada do servidor.",
     "update-entity-success": "{{entity}} atualizado com sucesso.",
+    "user-already-exist": " A user with the name \"{{name}}\" already exists. Please choose another email.",
     "you-have-not-action-anything-yet": "Você ainda não {{action}} nada."
   }
 }
