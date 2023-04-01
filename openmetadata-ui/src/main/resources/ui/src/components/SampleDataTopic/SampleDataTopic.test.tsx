@@ -23,16 +23,21 @@ const mockSampleData = {
 jest.mock('react-router-dom', () => ({
   Link: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
 }));
+jest.mock('rest/topicsAPI', () => ({
+  getTopicByFqn: jest
+    .fn()
+    .mockImplementation(() => ({ sampleData: mockSampleData })),
+}));
 
 describe('Test SampleData Component', () => {
-  it('Should render message cards', () => {
-    const { getAllByTestId } = render(<SampleDataTopic topicFQN="" />, {
+  it('Should render message cards', async () => {
+    const { findAllByTestId } = render(<SampleDataTopic topicFQN="" />, {
       wrapper: MemoryRouter,
     });
 
-    const messageCards = getAllByTestId('message-card');
-
-    expect(messageCards).toHaveLength(mockSampleData.messages.length);
+    expect(await findAllByTestId('message-card')).toHaveLength(
+      mockSampleData.messages.length
+    );
   });
 
   it('Should render no data placeholder if no data available', () => {

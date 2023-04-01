@@ -29,7 +29,6 @@ import './tier-card.css';
 
 export interface TierCardProps {
   currentTier?: string;
-  hideTier?: boolean;
   updateTier?: (value: string) => void;
   onSave?: (
     owner?: EntityReference,
@@ -42,7 +41,6 @@ export interface TierCardProps {
 
 const TierCard = ({
   currentTier,
-  hideTier,
   updateTier,
   removeTier,
   children,
@@ -79,7 +77,6 @@ const TierCard = ({
                 tier.description.indexOf('\n\n') + 1
               ),
             })) ?? [];
-
           setTierData(tierData);
         } else {
           setTierData([]);
@@ -106,12 +103,6 @@ const TierCard = ({
     const newTier = prepareTier(updatedTier);
     updateTier?.(newTier as string);
   };
-
-  useEffect(() => {
-    if (!hideTier) {
-      getTierData();
-    }
-  }, []);
 
   useEffect(() => {
     setActiveTier(currentTier);
@@ -171,7 +162,8 @@ const TierCard = ({
       data-testid="tier-card-container"
       placement="bottomRight"
       showArrow={false}
-      trigger="click">
+      trigger="click"
+      onOpenChange={(visible) => visible && !tierData.length && getTierData()}>
       {children}
     </Popover>
   );
