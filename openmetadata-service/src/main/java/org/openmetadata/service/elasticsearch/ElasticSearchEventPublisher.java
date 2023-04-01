@@ -18,16 +18,19 @@ package org.openmetadata.service.elasticsearch;
 import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
 import static org.openmetadata.service.Entity.FIELD_FOLLOWERS;
 import static org.openmetadata.service.Entity.FIELD_USAGE_SUMMARY;
+import static org.openmetadata.service.Entity.QUERY;
 import static org.openmetadata.service.resources.elasticsearch.BuildSearchIndexResource.ELASTIC_SEARCH_ENTITY_FQN_STREAM;
 import static org.openmetadata.service.resources.elasticsearch.BuildSearchIndexResource.ELASTIC_SEARCH_EXTENSION;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
 import java.io.IOException;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -68,6 +71,7 @@ import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.MlModel;
 import org.openmetadata.schema.entity.data.Pipeline;
+import org.openmetadata.schema.entity.data.Query;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.data.Topic;
 import org.openmetadata.schema.entity.services.DashboardService;
@@ -184,6 +188,9 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
           case Entity.CONTAINER:
             updateContainer(event);
             break;
+          case Entity.QUERY:
+            updateQuery(event);
+            break;
           case Entity.TAG:
             updateTag(event);
             break;
@@ -280,6 +287,18 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
         UsageDetails usageSummary = (UsageDetails) fieldChange.getNewValue();
         fieldAddParams.put(fieldChange.getName(), JsonUtils.getMap(usageSummary));
         scriptTxt.append("ctx._source.usageSummary = params.usageSummary;");
+      }
+      if (event.getEntityType().equals(QUERY) && fieldChange.getName().equalsIgnoreCase("queryUsedIn")) {
+        fieldAddParams.put(
+            fieldChange.getName(),
+            JsonUtils.convertValue(
+                fieldChange.getNewValue(), new TypeReference<List<LinkedHashMap<String, String>>>() {}));
+        scriptTxt.append("ctx._source.queryUsedIn = params.queryUsedIn;");
+      }
+      if (fieldChange.getName().equalsIgnoreCase("votes")) {
+        Map<String, Object> doc = JsonUtils.getMap(event.getEntity());
+        fieldAddParams.put(fieldChange.getName(), doc.get("votes"));
+        scriptTxt.append("ctx._source.votes = params.votes;");
       }
     }
 
@@ -586,6 +605,39 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
       case ENTITY_DELETED:
         DeleteRequest deleteRequest =
             new DeleteRequest(ElasticSearchIndexType.CONTAINER_SEARCH_INDEX.indexName, event.getEntityId().toString());
+        deleteEntityFromElasticSearch(deleteRequest);
+        break;
+    }
+  }
+
+  private void updateQuery(ChangeEvent event) throws IOException {
+    UpdateRequest updateRequest =
+        new UpdateRequest(ElasticSearchIndexType.QUERY_SEARCH_INDEX.indexName, event.getEntityId().toString());
+    QueryIndex queryIndex;
+
+    switch (event.getEventType()) {
+      case ENTITY_CREATED:
+        queryIndex = new QueryIndex((Query) event.getEntity());
+        updateRequest.doc(JsonUtils.pojoToJson(queryIndex.buildESDoc()), XContentType.JSON);
+        updateRequest.docAsUpsert(true);
+        updateElasticSearch(updateRequest);
+        break;
+      case ENTITY_UPDATED:
+        if (Objects.equals(event.getCurrentVersion(), event.getPreviousVersion())) {
+          updateRequest = applyChangeEvent(event);
+        } else {
+          queryIndex = new QueryIndex((Query) event.getEntity());
+          scriptedUpsert(queryIndex.buildESDoc(), updateRequest);
+        }
+        updateElasticSearch(updateRequest);
+        break;
+      case ENTITY_SOFT_DELETED:
+        softDeleteEntity(updateRequest);
+        updateElasticSearch(updateRequest);
+        break;
+      case ENTITY_DELETED:
+        DeleteRequest deleteRequest =
+            new DeleteRequest(ElasticSearchIndexType.QUERY_SEARCH_INDEX.indexName, event.getEntityId().toString());
         deleteEntityFromElasticSearch(deleteRequest);
         break;
     }

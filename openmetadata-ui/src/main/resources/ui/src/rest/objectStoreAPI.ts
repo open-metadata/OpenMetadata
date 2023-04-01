@@ -48,7 +48,10 @@ export const getContainers = async (args: {
   return response.data;
 };
 
-export const getContainerByName = async (name: string, fields: string) => {
+export const getContainerByName = async (
+  name: string,
+  fields: string | string[]
+) => {
   const response = await APIClient.get<Container>(
     `containers/name/${name}?fields=${fields}`
   );

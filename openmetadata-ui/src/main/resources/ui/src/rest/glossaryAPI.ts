@@ -14,6 +14,7 @@
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { CSVImportResult } from 'generated/type/csvImportResult';
+import { EntityHistory } from 'generated/type/entityHistory';
 import { Include } from 'generated/type/include';
 import { PagingResponse } from 'Models';
 import { CreateGlossary } from '../generated/api/data/createGlossary';
@@ -183,6 +184,22 @@ export const importGlossaryInCSVFormat = async (
     data,
     configOptions
   );
+
+  return response.data;
+};
+
+export const getGlossaryVersions = async (id: string) => {
+  const url = `/glossaries/${id}/versions`;
+
+  const response = await APIClient.get<EntityHistory>(url);
+
+  return response.data;
+};
+
+export const getGlossaryTermsVersions = async (id: string) => {
+  const url = `/glossaryTerms/${id}/versions`;
+
+  const response = await APIClient.get<EntityHistory>(url);
 
   return response.data;
 };

@@ -136,17 +136,14 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
                 topic.messageSchema = Topic(
                     schemaText="", schemaType=SchemaType.Other, schemaFields=[]
                 )
-            self.status.scanned(topic.name.__root__)
+            self.register_record(topic_request=topic)
             yield topic
 
         except Exception as exc:
+            error = f"Unexpected exception to yield topic [{topic_details}]: {exc}"
             logger.debug(traceback.format_exc())
-            logger.warning(
-                f"Unexpected exception to yield topic [{topic_details.topic_name}]: {exc}"
-            )
-            self.status.failures.append(
-                f"{self.config.serviceName}.{topic_details.topic_name}"
-            )
+            logger.warning(error)
+            self.status.failed(topic_details.topic_name, error, traceback.format_exc())
 
     @staticmethod
     def add_properties_to_topic_from_resource(

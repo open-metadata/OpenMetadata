@@ -87,7 +87,7 @@ class MlflowSource(MlModelServiceSource):
                 None,
             )
             if not latest_version:
-                self.status.failure(model.name, reason="Invalid version")
+                self.status.failed(model.name, "Invalid version")
                 continue
 
             yield model, latest_version
@@ -107,7 +107,7 @@ class MlflowSource(MlModelServiceSource):
 
         run = self.client.get_run(latest_version.run_id)
 
-        yield CreateMlModelRequest(
+        mlmodel_request = CreateMlModelRequest(
             name=model.name,
             description=model.description,
             algorithm=self._get_algorithm(),  # Setting this to a constant
@@ -118,6 +118,8 @@ class MlflowSource(MlModelServiceSource):
             mlStore=self._get_ml_store(latest_version),
             service=self.context.mlmodel_service.fullyQualifiedName,
         )
+        yield mlmodel_request
+        self.register_record(mlmodel_request=mlmodel_request)
 
     def _get_hyper_params(  # pylint: disable=arguments-differ
         self,

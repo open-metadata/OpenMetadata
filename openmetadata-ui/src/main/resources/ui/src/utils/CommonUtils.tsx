@@ -664,6 +664,14 @@ export const formTwoDigitNmber = (number: number) => {
   });
 };
 
+export const digitFormatter = (value: number) => {
+  // convert 1000 to 1k
+  return Intl.NumberFormat('en', {
+    notation: 'compact',
+    maximumFractionDigits: 1,
+  }).format(value);
+};
+
 export const getTeamsUser = (
   data?: ExtraInfo
 ): Record<string, string | undefined> | undefined => {
@@ -754,9 +762,6 @@ export const refreshPage = () => window.location.reload();
 // return array of id as  strings
 export const getEntityIdArray = (entities: EntityReference[]): string[] =>
   entities.map((item) => item.id);
-
-export const getEntityFqnArray = (entities: EntityReference[]): string[] =>
-  entities.map((item) => item.fullyQualifiedName!);
 
 export const getTierFromEntityInfo = (entity: FormattedTableData) => {
   return (

@@ -54,7 +54,7 @@ const FacetFilter: React.FC<FacetFilterProps> = ({
 
       const sortedTiersList = {
         ...tier,
-        buckets: getSortedTierBucketList(tier.buckets),
+        buckets: tier ? getSortedTierBucketList(tier.buckets) : [],
       };
 
       return Object.entries({ ...restProps, 'tier.tagFQN': sortedTiersList })

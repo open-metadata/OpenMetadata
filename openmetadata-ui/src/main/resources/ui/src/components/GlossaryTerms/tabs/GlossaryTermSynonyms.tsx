@@ -11,13 +11,15 @@
  *  limitations under the License.
  */
 
-import { Select, Typography } from 'antd';
+import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
+import { Button, Select, Space } from 'antd';
+import TagButton from 'components/TagButton/TagButton.component';
 import { t } from 'i18next';
 import { cloneDeep, isEmpty, isEqual } from 'lodash';
 import React, { useEffect, useState } from 'react';
+import { ReactComponent as PlusIcon } from '../../../assets/svg/plus-primary.svg';
 import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
 import { OperationPermission } from '../../PermissionProvider/PermissionProvider.interface';
-import SummaryDetail from '../SummaryDetail';
 
 interface GlossaryTermSynonymsProps {
   permissions: OperationPermission;
@@ -32,27 +34,45 @@ const GlossaryTermSynonyms = ({
 }: GlossaryTermSynonymsProps) => {
   const [isViewMode, setIsViewMode] = useState<boolean>(true);
   const [synonyms, setSynonyms] = useState<string[]>([]);
-  const getSynonyms = () => {
-    return !isEmpty(synonyms) ? (
-      synonyms.map((synonym, index) => (
-        <span key={index}>
-          {index > 0 ? <span className="tw-mr-2">,</span> : null}
-          <span>{synonym}</span>
-        </span>
-      ))
-    ) : (
-      <Typography.Text type="secondary">
-        {t('message.no-synonyms-available')}
-      </Typography.Text>
-    );
+
+  const removeSynonym = (removedTag: string) => {
+    const newSynonyms = synonyms.filter((synonym) => synonym !== removedTag);
+    setSynonyms(newSynonyms);
+    handleSynonymsSave(newSynonyms);
   };
 
-  const handleSynonymsSave = () => {
-    if (!isEqual(synonyms, glossaryTerm.synonyms)) {
+  const getSynonyms = () => (
+    <div className="d-flex flex-wrap">
+      {permissions.EditAll && (
+        <TagButton
+          className="tw-text-primary"
+          icon={<PlusIcon height={16} name="plus" width={16} />}
+          label={t('label.synonym-plural')}
+          onClick={() => {
+            setIsViewMode(false);
+          }}
+        />
+      )}
+      {synonyms.map((synonym, index) => (
+        <TagButton
+          className="glossary-synonym-tag"
+          isRemovable={permissions.EditAll}
+          key={index}
+          label={synonym}
+          removeTag={(_e, removedTag: string) => {
+            removeSynonym(removedTag);
+          }}
+        />
+      ))}
+    </div>
+  );
+
+  const handleSynonymsSave = (newSynonyms: string[]) => {
+    if (!isEqual(newSynonyms, glossaryTerm.synonyms)) {
       let updatedGlossaryTerm = cloneDeep(glossaryTerm);
       updatedGlossaryTerm = {
         ...updatedGlossaryTerm,
-        synonyms,
+        synonyms: newSynonyms,
       };
 
       onGlossaryTermUpdate(updatedGlossaryTerm);
@@ -68,19 +88,13 @@ const GlossaryTermSynonyms = ({
   }, [glossaryTerm]);
 
   return (
-    <SummaryDetail
-      hasAccess={permissions.EditAll}
-      key="synonyms"
-      setShow={() => setIsViewMode(false)}
-      showIcon={isViewMode}
-      title={t('label.synonym-plural')}
-      onSave={handleSynonymsSave}>
-      <div className="flex" data-testid="synonyms-container">
-        {isViewMode ? (
-          getSynonyms()
-        ) : (
+    <div className="flex" data-testid="synonyms-container">
+      {isViewMode ? (
+        getSynonyms()
+      ) : (
+        <Space align="center" className="w-full" size={8}>
           <Select
-            allowClear
+            className="w-min-15"
             id="synonyms-select"
             mode="tags"
             placeholder={t('label.add-entity', {
@@ -90,9 +104,26 @@ const GlossaryTermSynonyms = ({
             value={synonyms}
             onChange={(value) => setSynonyms(value)}
           />
-        )}
-      </div>
-    </SummaryDetail>
+          <>
+            <Button
+              className="w-6 p-x-05"
+              data-testid="cancelAssociatedTag"
+              icon={<CloseOutlined size={12} />}
+              size="small"
+              onClick={() => setIsViewMode(true)}
+            />
+            <Button
+              className="w-6 p-x-05"
+              data-testid="saveAssociatedTag"
+              icon={<CheckOutlined size={12} />}
+              size="small"
+              type="primary"
+              onClick={() => handleSynonymsSave(synonyms)}
+            />
+          </>
+        </Space>
+      )}
+    </div>
   );
 };
 

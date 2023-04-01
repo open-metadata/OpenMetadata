@@ -26,6 +26,7 @@ from sqlalchemy.engine import reflection
 from sqlalchemy.engine.reflection import Inspector
 from sqlalchemy.sql import sqltypes
 from sqlalchemy_redshift.dialect import (
+    REDSHIFT_ISCHEMA_NAMES,
     RedshiftDialect,
     RedshiftDialectMixin,
     RelationKey,
@@ -49,6 +50,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.ingestion.api.source import InvalidSourceException
+from metadata.ingestion.source.database.column_type_parser import create_sqlalchemy_type
 from metadata.ingestion.source.database.common_db_source import (
     CommonDbSourceService,
     TableNameAndType,
@@ -73,7 +75,10 @@ sa_version = Version(sa.__version__)
 logger = ingestion_logger()
 
 ischema_names = pg_ischema_names
+GEOGRAPHY = create_sqlalchemy_type("GEOGRAPHY")
+ischema_names["geography"] = GEOGRAPHY
 ischema_names.update({"binary varying": sqltypes.VARBINARY})
+ischema_names.update(REDSHIFT_ISCHEMA_NAMES)
 
 # pylint: disable=protected-access
 @reflection.cache
@@ -106,6 +111,7 @@ def get_columns(self, connection, table_name, schema=None, **kw):
         )
         column_info["distkey"] = col.distkey
         column_info["sortkey"] = col.sortkey
+        column_info["system_data_type"] = col.format_type
         columns.append(column_info)
     return columns
 
@@ -132,7 +138,7 @@ def _get_column_info(self, *args, **kwargs):
     )._get_column_info(*args, **kwdrs)
 
     # raw_data_type is not included in column_info as
-    # redhift doesn't suport compex data types directly
+    # redhift doesn't support complex data types directly
     # https://docs.aws.amazon.com/redshift/latest/dg/c_Supported_data_types.html
 
     if "info" not in column_info:
@@ -442,10 +448,14 @@ class RedshiftSource(CommonDbSourceService):
         """
         Populate partition details
         """
-        self.partition_details.clear()
-        results = self.engine.execute(REDSHIFT_PARTITION_DETAILS).fetchall()
-        for row in results:
-            self.partition_details[f"{row.schema}.{row.table}"] = row.diststyle
+        try:
+            self.partition_details.clear()
+            results = self.engine.execute(REDSHIFT_PARTITION_DETAILS).fetchall()
+            for row in results:
+                self.partition_details[f"{row.schema}.{row.table}"] = row.diststyle
+        except Exception as exe:
+            logger.debug(traceback.format_exc())
+            logger.debug(f"Failed to fetch partition details due: {exe}")
 
     def query_table_names_and_types(
         self, schema_name: str

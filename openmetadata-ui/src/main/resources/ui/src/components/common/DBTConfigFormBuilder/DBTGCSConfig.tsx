@@ -48,6 +48,7 @@ interface Props extends DBTFormCommonProps, DbtConfigS3GCS {
   handleUpdateDBTClassification: (value: string) => void;
   enableDebugLog: boolean;
   handleEnableDebugLogCheck: (value: boolean) => void;
+  handleIncludeTagsClick: (value: boolean) => void;
 }
 
 export const DBTGCSConfig: FunctionComponent<Props> = ({
@@ -55,6 +56,7 @@ export const DBTGCSConfig: FunctionComponent<Props> = ({
   dbtPrefixConfig,
   dbtUpdateDescriptions = false,
   gcsType = GCS_CONFIG.GCSValues,
+  includeTags = true,
   okText,
   cancelText,
   onCancel,
@@ -67,6 +69,7 @@ export const DBTGCSConfig: FunctionComponent<Props> = ({
   handleUpdateDBTClassification,
   enableDebugLog,
   handleEnableDebugLogCheck,
+  handleIncludeTagsClick,
 }: Props) => {
   const isMounted = useRef<boolean>(false);
   const updateGCSCredsConfig = (
@@ -124,6 +127,7 @@ export const DBTGCSConfig: FunctionComponent<Props> = ({
       dbtPrefixConfig,
       dbtUpdateDescriptions,
       dbtClassificationName,
+      includeTags,
     };
     if (validate(submitData)) {
       onSubmit(submitData);
@@ -445,8 +449,10 @@ export const DBTGCSConfig: FunctionComponent<Props> = ({
         descriptionId="gcs-update-description"
         enableDebugLog={enableDebugLog}
         handleEnableDebugLogCheck={handleEnableDebugLogCheck}
+        handleIncludeTagsClick={handleIncludeTagsClick}
         handleUpdateDBTClassification={handleUpdateDBTClassification}
         handleUpdateDescriptions={handleUpdateDescriptions}
+        includeTags={includeTags}
       />
 
       {getSeparator('')}

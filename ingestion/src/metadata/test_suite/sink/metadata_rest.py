@@ -76,10 +76,8 @@ class MetadataRestSink(Sink[Entity]):
             )
 
         except APIError as err:
-            logger.error(
-                f"Failed to sink test case results for {record.testCase.fullyQualifiedName.__root__} - {err}"
-            )
+            name = record.testCase.fullyQualifiedName.__root__
+            error = f"Failed to sink test case results for {name}: {err}"
+            logger.error(error)
             logger.debug(traceback.format_exc())
-            self.status.failure(
-                f"Test Case: {record.testCase.fullyQualifiedName.__root__}"
-            )
+            self.status.failed(name, error, traceback.format_exc())

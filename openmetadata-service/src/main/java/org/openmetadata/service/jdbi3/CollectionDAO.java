@@ -65,6 +65,7 @@ import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.entity.data.Chart;
 import org.openmetadata.schema.entity.data.Container;
 import org.openmetadata.schema.entity.data.Dashboard;
+import org.openmetadata.schema.entity.data.DashboardDataModel;
 import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Glossary;
@@ -269,6 +270,9 @@ public interface CollectionDAO {
 
   @CreateSqlObject
   WorkflowDAO workflowDAO();
+
+  @CreateSqlObject
+  DataModelDAO dataModelDAO();
 
   interface DashboardDAO extends EntityDAO<Dashboard> {
     @Override
@@ -3665,5 +3669,22 @@ public interface CollectionDAO {
         @Define("table") String table,
         @Define("nameColumn") String nameColumn,
         @Define("sqlCondition") String sqlCondition);
+  }
+
+  interface DataModelDAO extends EntityDAO<DashboardDataModel> {
+    @Override
+    default String getTableName() {
+      return "dashboard_data_model_entity";
+    }
+
+    @Override
+    default Class<DashboardDataModel> getEntityClass() {
+      return DashboardDataModel.class;
+    }
+
+    @Override
+    default String getNameColumn() {
+      return "fullyQualifiedName";
+    }
   }
 }

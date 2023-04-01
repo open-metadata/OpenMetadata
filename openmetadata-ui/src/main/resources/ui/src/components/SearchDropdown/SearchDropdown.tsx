@@ -47,6 +47,7 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
   searchKey,
   selectedKeys,
   highlight = false,
+  showProfilePicture = false,
   onChange,
   onGetInitialOptions,
   onSearch,
@@ -65,7 +66,8 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
       getSearchDropdownLabels(
         selectedOptions,
         true,
-        highlight ? searchText : ''
+        highlight ? searchText : '',
+        showProfilePicture
       ) || [];
 
     // Filtering out unselected options
@@ -79,7 +81,8 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
       getSearchDropdownLabels(
         unselectedOptions,
         false,
-        highlight ? searchText : ''
+        highlight ? searchText : '',
+        showProfilePicture
       ) || [];
 
     return [...selectedOptionKeys, ...otherOptions];
