@@ -127,7 +127,7 @@ export const IngestionRecentRuns: FunctionComponent<Props> = ({
                   )}
                   {r.endDate && (
                     <p>
-                      {`${t('label.end-date')}"`}{' '}
+                      {`${t('label.end-date')}:`}{' '}
                       {getDateTimeFromMilliSeconds(r.endDate)}
                     </p>
                   )}
