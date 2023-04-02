@@ -14,11 +14,6 @@
 package org.openmetadata.service.jdbi3;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import java.io.IOException;
-import java.util.List;
-import java.util.UUID;
-import javax.ws.rs.core.Response;
-import javax.ws.rs.core.UriInfo;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.json.JSONObject;
 import org.openmetadata.schema.EntityInterface;
@@ -44,6 +39,13 @@ import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
+
+import javax.ws.rs.core.Response;
+import javax.ws.rs.core.UriInfo;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
 
 public class IngestionPipelineRepository extends EntityRepository<IngestionPipeline> {
   private static final String UPDATE_FIELDS = "owner,sourceConfig,airflowConfig,loggerLevel,enabled,deployed";
@@ -111,6 +113,16 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
         Relationship.CONTAINS);
     storeOwner(ingestionPipeline, ingestionPipeline.getOwner());
     applyTags(ingestionPipeline);
+  }
+
+  public List<IngestionPipeline> getIngestionPipelineByServiceType(String serviceType) throws IOException {
+    List<CollectionDAO.EntityRelationshipRecord> ingestionPipelines = daoCollection.relationshipDAO().findTo(serviceType,Relationship.CONTAINS.ordinal(),Entity.INGESTION_PIPELINE);
+    List<IngestionPipeline> ingestionPipelineList = new ArrayList<>();
+    for (CollectionDAO.EntityRelationshipRecord ingestionPipeline : ingestionPipelines){
+      IngestionPipeline ingestionPipeline1 = Entity.getEntity(ingestionPipeline.getType(),ingestionPipeline.getId(),"*",Include.ALL);
+      ingestionPipelineList.add(ingestionPipeline1);
+    }
+    return ingestionPipelineList;
   }
 
   @Override
