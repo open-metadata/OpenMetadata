@@ -28,10 +28,18 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
+import java.util.UUID;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
+import javax.validation.Valid;
 import javax.ws.rs.DefaultValue;
 import javax.ws.rs.GET;
+import javax.ws.rs.POST;
 import javax.ws.rs.Path;
+import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
 import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.Context;
@@ -73,9 +81,15 @@ import org.elasticsearch.search.suggest.SuggestBuilder;
 import org.elasticsearch.search.suggest.SuggestBuilders;
 import org.elasticsearch.search.suggest.completion.CompletionSuggestionBuilder;
 import org.elasticsearch.search.suggest.completion.context.CategoryQueryContext;
+import org.openmetadata.schema.api.CreateEventPublisherJob;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.elasticsearch.ElasticSearchIndexDefinition;
+import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.jobs.reindexing.ReindexingJob;
 import org.openmetadata.service.resources.Collection;
+import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.util.ElasticSearchClientUtils;
+import org.openmetadata.service.util.ReIndexingHandler;
 
 @Slf4j
 @Path("/v1/search")
@@ -84,6 +98,7 @@ import org.openmetadata.service.util.ElasticSearchClientUtils;
 @Collection(name = "search")
 public class SearchResource {
   private RestHighLevelClient client;
+  private ElasticSearchIndexDefinition elasticSearchIndexDefinition;
   private static final Integer MAX_AGGREGATE_SIZE = 50;
   private static final Integer MAX_RESULT_HITS = 10000;
   private static final String NAME_KEYWORD = "name.keyword";
@@ -94,20 +109,31 @@ public class SearchResource {
   private static final String QUERY_NGRAM = "query.ngram";
   private static final String DESCRIPTION = "description";
   private static final String UNIFIED = "unified";
-
   private static final NamedXContentRegistry xContentRegistry;
+  private final CollectionDAO dao;
+  private final Authorizer authorizer;
+  private final ExecutorService threadScheduler;
+
+  private final ConcurrentHashMap<UUID, ReindexingJob> REINDEXING_JOBS_MAP = new ConcurrentHashMap<>();
 
   static {
     SearchModule searchModule = new SearchModule(Settings.EMPTY, false, List.of());
-
     xContentRegistry = new NamedXContentRegistry(searchModule.getNamedXContents());
   }
 
-  public SearchResource() {}
+  public SearchResource(CollectionDAO dao, Authorizer authorizer) {
+    this.dao = dao;
+    this.authorizer = authorizer;
+    this.threadScheduler =
+        new ThreadPoolExecutor(
+            2, 2, 0L, TimeUnit.MILLISECONDS, new ArrayBlockingQueue<>(5), new ThreadPoolExecutor.CallerRunsPolicy());
+  }
 
   public void initialize(OpenMetadataApplicationConfig config) {
     if (config.getElasticSearchConfiguration() != null) {
       this.client = ElasticSearchClientUtils.createElasticSearchClient(config.getElasticSearchConfiguration());
+      this.elasticSearchIndexDefinition = new ElasticSearchIndexDefinition(client, dao);
+      ReIndexingHandler.initialize(client, elasticSearchIndexDefinition, dao);
     }
   }
 
@@ -401,6 +427,86 @@ public class SearchResource {
     String response =
         client.search(new SearchRequest(index).source(searchSourceBuilder), RequestOptions.DEFAULT).toString();
     return Response.status(OK).entity(response).build();
+  }
+
+  @POST
+  @Path("/reindex")
+  @Operation(
+      operationId = "reindexEntities",
+      summary = "Reindex entities",
+      tags = "search",
+      description = "Reindex Elastic Search Entities",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "Success"),
+        @ApiResponse(responseCode = "404", description = "Bot for instance {id} is not found")
+      })
+  public Response reindexEntities(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Valid CreateEventPublisherJob createRequest) {
+    authorizer.authorizeAdmin(securityContext);
+    return Response.status(Response.Status.CREATED)
+        .entity(
+            ReIndexingHandler.getInstance()
+                .createReindexingJob(securityContext.getUserPrincipal().getName(), createRequest))
+        .build();
+  }
+
+  @GET
+  @Path("/reindex/latest")
+  @Operation(
+      operationId = "getReindexLatestJob",
+      summary = "Get last reindex job status",
+      tags = "search",
+      description = "Last Reindex job last status",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "Success"),
+        @ApiResponse(responseCode = "404", description = "Run model {runMode} is not found")
+      })
+  public Response reindexLatestJob(@Context UriInfo uriInfo, @Context SecurityContext securityContext)
+      throws IOException {
+    // Only admins  can issue a reindex request
+    authorizer.authorizeAdmin(securityContext);
+    return Response.status(Response.Status.OK).entity(ReIndexingHandler.getInstance().getLatestJob()).build();
+  }
+
+  @GET
+  @Path("/reindex/{jobId}")
+  @Operation(
+      operationId = "getReindexJobId",
+      summary = "Get reindex job with Id",
+      tags = "search",
+      description = "Get reindex job with Id",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "Success"),
+        @ApiResponse(responseCode = "404", description = "Not found")
+      })
+  public Response reindexJobWithId(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "jobId Id", schema = @Schema(type = "UUID")) @PathParam("jobId") UUID id)
+      throws IOException {
+    // Only admins  can issue a reindex request
+    authorizer.authorizeAdmin(securityContext);
+    return Response.status(Response.Status.OK).entity(ReIndexingHandler.getInstance().getJob(id)).build();
+  }
+
+  @GET
+  @Path("/reindex")
+  @Operation(
+      operationId = "getAllReindexJob",
+      summary = "Get all reindex job",
+      tags = "search",
+      description = "Get all reindex",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "Success"),
+        @ApiResponse(responseCode = "404", description = "Not found")
+      })
+  public Response reindexAllJobs(@Context UriInfo uriInfo, @Context SecurityContext securityContext)
+      throws IOException {
+    // Only admins  can issue a reindex request
+    authorizer.authorizeAdmin(securityContext);
+    return Response.status(Response.Status.OK).entity(ReIndexingHandler.getInstance().getAllJobs()).build();
   }
 
   private SearchSourceBuilder buildAggregateSearchBuilder(String query, int from, int size) {

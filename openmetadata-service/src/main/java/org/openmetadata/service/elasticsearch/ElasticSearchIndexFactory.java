@@ -1,12 +1,13 @@
 package org.openmetadata.service.elasticsearch;
 
 import lombok.extern.slf4j.Slf4j;
-import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.classification.Tag;
+import org.openmetadata.schema.entity.data.Container;
 import org.openmetadata.schema.entity.data.Dashboard;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.MlModel;
 import org.openmetadata.schema.entity.data.Pipeline;
+import org.openmetadata.schema.entity.data.Query;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.data.Topic;
 import org.openmetadata.schema.entity.teams.Team;
@@ -17,7 +18,7 @@ import org.openmetadata.service.Entity;
 public class ElasticSearchIndexFactory {
   private ElasticSearchIndexFactory() {}
 
-  public static ElasticSearchIndex buildIndex(String entityType, EntityInterface entity) {
+  public static ElasticSearchIndex buildIndex(String entityType, Object entity) {
     switch (entityType) {
       case Entity.TABLE:
         return new TableIndex((Table) entity);
@@ -37,6 +38,10 @@ public class ElasticSearchIndexFactory {
         return new MlModelIndex((MlModel) entity);
       case Entity.TAG:
         return new TagIndex((Tag) entity);
+      case Entity.CONTAINER:
+        return new ContainerIndex((Container) entity);
+      case Entity.QUERY:
+        return new QueryIndex((Query) entity);
       default:
         LOG.warn("Ignoring Entity Type {}", entityType);
     }
