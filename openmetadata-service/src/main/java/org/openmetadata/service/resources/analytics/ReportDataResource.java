@@ -20,6 +20,8 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
+
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.Getter;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
@@ -37,13 +39,13 @@ import org.openmetadata.service.security.policyevaluator.ResourceContextInterfac
 import org.openmetadata.service.util.ResultList;
 
 @Slf4j
-@Path("/v1/analytics/dataInsight/data")
-@Api(value = "DataInsight data collection", tags = "analytics collection")
+@Path("/v1/analytics/dataInsights/data")
+@Tag(name = "Data Insights", description = "APIs related to Data Insights data and charts.")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "analytics")
 public class ReportDataResource {
-  public static final String COLLECTION_PATH = "v1/analytics/dataInsight/data";
+  public static final String COLLECTION_PATH = "v1/analytics/dataInsights/data";
   @Getter protected final ReportDataRepository dao;
   protected final Authorizer authorizer;
 
@@ -64,7 +66,6 @@ public class ReportDataResource {
   @Operation(
       operationId = "getReportData",
       summary = "List the report data",
-      tags = "analytics",
       description =
           "Get a list of all the report data for a given reportDataType, optionally filtered by  `startTs` and `endTs` of the result. "
               + "Use cursor-based pagination to limit the number of "
@@ -107,7 +108,6 @@ public class ReportDataResource {
   @Operation(
       operationId = "addReportData",
       summary = "Add report data",
-      tags = "analytics",
       description = "Add report data",
       responses = {
         @ApiResponse(
