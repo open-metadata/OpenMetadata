@@ -17,10 +17,7 @@ from abc import ABC
 from datetime import datetime, timedelta
 from typing import Iterable, Optional
 
-from sqlalchemy.engine import Engine
-
 from metadata.generated.schema.type.tableQuery import TableQueries, TableQuery
-from metadata.ingestion.source.connections import get_connection
 from metadata.ingestion.source.database.query_parser_source import QueryParserSource
 from metadata.utils.logger import ingestion_logger
 
@@ -34,12 +31,8 @@ class UsageSource(QueryParserSource, ABC):
     Parse a query log to extract a `TableQuery` object
     """
 
-    def get_table_query(self) -> Optional[Iterable[TableQuery]]:
-        """
-        If queryLogFilePath available in config iterate through log file
-        otherwise execute the sql query to fetch TableQuery data
-        """
-        if self.config.sourceConfig.config.queryLogFilePath:
+    def yield_table_queries_from_logs(self) -> Optional[Iterable[TableQuery]]:
+        try:
             query_list = []
             with open(
                 self.config.sourceConfig.config.queryLogFilePath, "r", encoding="utf-8"
@@ -68,12 +61,21 @@ class UsageSource(QueryParserSource, ABC):
                         )
                     )
             yield TableQueries(queries=query_list)
+        except Exception as err:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Failed to read queries form log file due to: {err}")
 
+    def get_table_query(self) -> Optional[Iterable[TableQuery]]:
+        """
+        If queryLogFilePath available in config iterate through log file
+        otherwise execute the sql query to fetch TableQuery data
+        """
+        if self.config.sourceConfig.config.queryLogFilePath:
+            yield from self.yield_table_queries_from_logs()
         else:
-            engine = get_connection(self.service_connection)
-            yield from self.yield_table_queries(engine)
+            yield from self.yield_table_queries()
 
-    def yield_table_queries(self, engine: Engine):
+    def yield_table_queries(self):
         """
         Given an Engine, iterate over the day range and
         query the results
@@ -85,7 +87,7 @@ class UsageSource(QueryParserSource, ABC):
                 f"{(self.start + timedelta(days=days + 1)).date()}"
             )
             try:
-                with engine.connect() as conn:
+                with self.engine.connect() as conn:
                     rows = conn.execute(
                         self.get_sql_statement(
                             start_time=self.start + timedelta(days=days),

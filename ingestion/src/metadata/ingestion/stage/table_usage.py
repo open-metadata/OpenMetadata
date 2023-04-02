@@ -86,18 +86,7 @@ class TableUsageStage(Stage[QueryParserData]):
         if username:
             user = self.metadata.get_by_name(entity=User, fqn=username)
             if user:
-                return [
-                    EntityReference(
-                        id=user.id,
-                        type="user",
-                        name=user.name.__root__,
-                        fullyQualifiedName=user.fullyQualifiedName.__root__,
-                        description=user.description,
-                        displayName=user.displayName,
-                        deleted=user.deleted,
-                        href=user.href,
-                    )
-                ]
+                return [user.fullyQualifiedName.__root__]
         return []
 
     def _add_sql_query(self, record, table):
