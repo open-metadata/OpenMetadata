@@ -1173,8 +1173,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
       for (EntityReference entityReference : entityReferences) {
         EntityReference ref =
             entityReference.getId() != null
-                ? daoCollection.userDAO().findEntityReferenceById(entityReference.getId())
-                : daoCollection.userDAO().findEntityReferenceByName(entityReference.getFullyQualifiedName());
+                ? daoCollection.userDAO().findEntityReferenceById(entityReference.getId(), ALL)
+                : daoCollection.userDAO().findEntityReferenceByName(entityReference.getFullyQualifiedName(), ALL);
         EntityUtil.copy(ref, entityReference);
       }
       entityReferences.sort(EntityUtil.compareEntityReference);
@@ -1184,7 +1184,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   public void validateRoles(List<EntityReference> roles) throws IOException {
     if (roles != null) {
       for (EntityReference entityReference : roles) {
-        EntityReference ref = daoCollection.roleDAO().findEntityReferenceById(entityReference.getId());
+        EntityReference ref = daoCollection.roleDAO().findEntityReferenceById(entityReference.getId(), ALL);
         EntityUtil.copy(ref, entityReference);
       }
       roles.sort(EntityUtil.compareEntityReference);
@@ -1194,7 +1194,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   void validatePolicies(List<EntityReference> policies) throws IOException {
     if (policies != null) {
       for (EntityReference entityReference : policies) {
-        EntityReference ref = daoCollection.policyDAO().findEntityReferenceById(entityReference.getId());
+        EntityReference ref = daoCollection.policyDAO().findEntityReferenceById(entityReference.getId(), ALL);
         EntityUtil.copy(ref, entityReference);
       }
       policies.sort(EntityUtil.compareEntityReference);
