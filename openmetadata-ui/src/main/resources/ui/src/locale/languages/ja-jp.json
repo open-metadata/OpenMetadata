@@ -1134,7 +1134,6 @@
     "redirecting-to-home-page": "ホームに戻っています",
     "remove-edge-between-source-and-target": "Are you sure you want to remove the edge between \"{{sourceDisplayName}} and {{targetDisplayName}}\"?.",
     "remove-lineage-edge": "Remove lineage edge",
-    "renaming-entity-message": "Changing Name will be remove the existing tag and create new one with mentioned",
     "request-description": "Request description",
     "request-update-description": "Request update description",
     "reset-link-has-been-sent": "パスワードリセット用のリンクがあなたのメールアドレスに送信されました",
