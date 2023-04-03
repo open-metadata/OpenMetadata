@@ -139,7 +139,10 @@
         "LOWCARDINALITY",
         "YEAR",
         "POINT",
-        "POLYGON"
+        "POLYGON",
+        "TUPLE",
+        "SPATIAL",
+        "TABLE"
       ]
     },
     "constraint": {
