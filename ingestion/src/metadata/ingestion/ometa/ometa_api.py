@@ -469,7 +469,7 @@ class OpenMetadata(
             entity,
             get_args(Union[TestCase, self.get_create_entity_type(TestCase)]),
         ):
-            return "/testCase"
+            return "/testCases"
 
         if issubclass(entity, WebAnalyticEventData):
             return "/analytics/web/events/collect"

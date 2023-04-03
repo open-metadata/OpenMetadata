@@ -55,7 +55,7 @@ export type ListTestCaseResultsParams = Omit<
   endTs?: number;
 };
 
-const testCaseUrl = '/testCase';
+const testCaseUrl = '/testCases';
 const testSuiteUrl = '/testSuite';
 const testDefinitionUrl = '/testDefinition';
 

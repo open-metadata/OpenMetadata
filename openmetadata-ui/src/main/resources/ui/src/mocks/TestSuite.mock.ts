@@ -392,7 +392,7 @@ export const MOCK_TEST_CASE = [
     version: 0.1,
     updatedAt: 1676033824688,
     updatedBy: 'admin',
-    href: 'http://localhost:8585/api/v1/testCase/5f83c798-91ac-4289-aeb0-99ef372e7e96',
+    href: 'http://localhost:8585/api/v1/testCases/5f83c798-91ac-4289-aeb0-99ef372e7e96',
     deleted: false,
   },
   {
@@ -449,7 +449,7 @@ export const MOCK_TEST_CASE = [
     version: 0.1,
     updatedAt: 1676033824652,
     updatedBy: 'admin',
-    href: 'http://localhost:8585/api/v1/testCase/08c516ab-4b6b-496a-ae9b-334a22163537',
+    href: 'http://localhost:8585/api/v1/testCases/08c516ab-4b6b-496a-ae9b-334a22163537',
     deleted: false,
   },
   {
@@ -505,7 +505,7 @@ export const MOCK_TEST_CASE = [
     version: 0.1,
     updatedAt: 1676033824610,
     updatedBy: 'admin',
-    href: 'http://localhost:8585/api/v1/testCase/b3d92505-339d-437e-b687-842c4442385c',
+    href: 'http://localhost:8585/api/v1/testCases/b3d92505-339d-437e-b687-842c4442385c',
     deleted: false,
   },
   {
@@ -557,7 +557,7 @@ export const MOCK_TEST_CASE = [
     version: 0.1,
     updatedAt: 1676033824530,
     updatedBy: 'admin',
-    href: 'http://localhost:8585/api/v1/testCase/d8736860-6c46-47f1-b13b-42ebd22ff651',
+    href: 'http://localhost:8585/api/v1/testCases/d8736860-6c46-47f1-b13b-42ebd22ff651',
     deleted: false,
   },
   {
@@ -619,7 +619,7 @@ export const MOCK_TEST_CASE = [
     version: 0.1,
     updatedAt: 1676033824726,
     updatedBy: 'admin',
-    href: 'http://localhost:8585/api/v1/testCase/3b753aa2-41ec-473f-a391-f1367d8729a7',
+    href: 'http://localhost:8585/api/v1/testCases/3b753aa2-41ec-473f-a391-f1367d8729a7',
     deleted: false,
   },
 ] as TestCase[];

@@ -335,7 +335,7 @@ Make sure to keep the `UUID` from the response as you will need it to create the
 
 
 ### Creating a `TestCase`
-Once you have your Test Definition created you can create a Test Case -- which is a specification of your Test Definition. You can use the following endpoint `/api/v1/testCase` using a POST protocol to create your Test Case. You will need to pass the following data in the body your request at minimum.
+Once you have your Test Definition created you can create a Test Case -- which is a specification of your Test Definition. You can use the following endpoint `/api/v1/testCases` using a POST protocol to create your Test Case. You will need to pass the following data in the body your request at minimum.
 
 ```json
 {
@@ -356,7 +356,7 @@ Once you have your Test Definition created you can create a Test Case -- which i
 Here is a complete CURL request
 
 ```bash
-curl --request POST 'http://localhost:8585/api/v1/testCase' \
+curl --request POST 'http://localhost:8585/api/v1/testCases' \
 --header 'Content-Type: application/json' \
 --data-raw '{
     "entityLink": "<#E::table::local_redshift.dev.dbt_jaffle.customers>",
@@ -382,7 +382,7 @@ Make sure to keep the `UUID` from the response as you will need it to create the
 
 
 ### Writing `TestCaseResults`
-Once you have your Test Case created you can write your results to it. You can use the following endpoint `/api/v1/testCase/{test FQN}/testCaseResult` using a PUT protocol to add Test Case Results. You will need to pass the following data in the body your request at minimum.
+Once you have your Test Case created you can write your results to it. You can use the following endpoint `/api/v1/testCases/{test FQN}/testCaseResult` using a PUT protocol to add Test Case Results. You will need to pass the following data in the body your request at minimum.
 
 ```json
 {
@@ -400,7 +400,8 @@ Once you have your Test Case created you can write your results to it. You can u
 Here is a complete CURL request
 
 ```bash
-curl --location --request PUT 'http://localhost:8585/api/v1/testCase/local_redshift.dev.dbt_jaffle.customers.custom_test_Case/testCaseResult' \
+curl --location --request PUT 'http://localhost:8585/api/v1/testCases/local_redshift.dev.dbt_jaffle.customers.
+custom_test_Case/testCaseResult' \
 --header 'Content-Type: application/json' \
 --data-raw '{
     "result": "found 1 values expected n",
