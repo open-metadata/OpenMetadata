@@ -25,7 +25,7 @@ import {
   Typography,
 } from 'antd';
 import classNames from 'classnames';
-import { isEmpty, isUndefined } from 'lodash';
+import { debounce, isEmpty, isUndefined } from 'lodash';
 import React, { ChangeEvent, FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as DropDown } from '../../assets/svg/DropDown.svg';
@@ -112,11 +112,15 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
     setSelectedOptions([]);
   };
 
+  const debouncedSearch = debounce((value: string) => {
+    setSearchText(value);
+    onSearch(value, searchKey);
+  }, 500);
+
   // handle search
   const handleSearch = (e: ChangeEvent<HTMLInputElement>) => {
     const { value } = e.target;
-    setSearchText(value);
-    onSearch(value, searchKey);
+    debouncedSearch(value);
   };
 
   // Handle dropdown close
