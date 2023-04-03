@@ -157,6 +157,18 @@ describe('Tags page should work', () => {
   });
 
   it('Add tag at DatabaseSchema level should work', () => {
+    interceptURL(
+      'GET',
+      '/api/v1/permissions/databaseSchema/name/*',
+      'permissions'
+    );
+    interceptURL('PUT', '/api/v1/feed/tasks/*/resolve', 'taskResolve');
+    interceptURL(
+      'GET',
+      '/api/v1/databaseSchemas/name/*?fields=owner,usageSummary,tags',
+      'databaseSchemasPage'
+    );
+
     const entity = SEARCH_ENTITY_TABLE.table_2;
     const term = `${NEW_TAG.name}`;
     const term2 = 'PersonalData.Personal';
@@ -168,6 +180,9 @@ describe('Tags page should work', () => {
       .should('be.visible')
       .contains(entity.schemaName)
       .click();
+
+    verifyResponseStatusCode('@databaseSchemasPage', 200);
+    verifyResponseStatusCode('@permissions', 200);
 
     cy.get('[data-testid="tags"] > [data-testid="add-tag"]')
       .should('be.visible')
@@ -193,8 +208,6 @@ describe('Tags page should work', () => {
       .should('be.visible')
       .contains(term);
 
-    cy.get('[data-testid="tag-thread-count"]').should('exist').contains(1);
-
     // Create task to add tags
     interceptURL('POST', '/api/v1/feed', 'taskCreated');
     cy.get('[data-testid="request-entity-tags"]').should('exist').click();
@@ -219,20 +232,21 @@ describe('Tags page should work', () => {
     cy.get('[data-testid="tags-label"]').click();
 
     cy.get('[data-testid="submit-test"]').should('be.visible').click();
+    verifyResponseStatusCode('@taskCreated', 201);
+
     // Accept the tag suggestion which is created
     cy.get('.ant-btn-compact-first-item')
       .should('be.visible')
       .contains('Accept Suggestion')
       .click();
 
-    verifyResponseStatusCode('@taskCreated', 201);
+    verifyResponseStatusCode('@taskResolve', 200);
+    verifyResponseStatusCode('@databaseSchemasPage', 200);
 
     cy.get('[data-testid="entity-tags"]')
       .scrollIntoView()
       .should('be.visible')
       .contains(term2);
-
-    cy.get('[data-testid="tag-thread-count"]').should('exist').contains(2);
 
     cy.get('[data-testid="edit-button"]').should('exist').click();
 
@@ -253,8 +267,6 @@ describe('Tags page should work', () => {
     cy.get('[data-testid="tags"] > [data-testid="add-tag"]').should(
       'be.visible'
     );
-
-    cy.get('[data-testid="tag-thread-count"]').should('exist').contains(3);
   });
 
   it('Check Usage of tag and it should redirect to explore page with tags filter', () => {

@@ -26,8 +26,13 @@ describe('Restore entity functionality should work properly', () => {
     cy.login();
     interceptURL(
       'GET',
-      'api/v1/search/query?q=&index=*&from=0&size=10&deleted=true&query_filter=*&sort_field=_score&sort_order=desc',
+      'api/v1/search/query?q=*&index=*&from=0&size=10&deleted=true&query_filter=*&sort_field=_score&sort_order=desc',
       'showDeletedTables'
+    );
+    interceptURL(
+      'GET',
+      'api/v1/search/query?q=*&index=*&from=0&size=10&deleted=false&query_filter=*&sort_field=_score&sort_order=desc',
+      'nonDeletedTables'
     );
   });
 
@@ -69,6 +74,8 @@ describe('Restore entity functionality should work properly', () => {
 
   it('Check Soft Deleted entity table', () => {
     cy.get('[data-testid="appbar-item-explore"]').should('exist').click();
+
+    verifyResponseStatusCode('@nonDeletedTables', 200);
     cy.get('[data-testid="show-deleted"]').should('exist').click();
     verifyResponseStatusCode('@showDeletedTables', 200);
 
@@ -85,6 +92,7 @@ describe('Restore entity functionality should work properly', () => {
 
   it("Check Soft Deleted table in it's Schema", () => {
     cy.get('[data-testid="appbar-item-explore"]').should('exist').click();
+    verifyResponseStatusCode('@nonDeletedTables', 200);
     cy.get('[data-testid="show-deleted"]').should('exist').click();
     verifyResponseStatusCode('@showDeletedTables', 200);
 
@@ -125,6 +133,7 @@ describe('Restore entity functionality should work properly', () => {
 
   it('Restore Soft Deleted table', () => {
     cy.get('[data-testid="appbar-item-explore"]').should('exist').click();
+    verifyResponseStatusCode('@nonDeletedTables', 200);
     cy.get('[data-testid="show-deleted"]').should('exist').click();
     verifyResponseStatusCode('@showDeletedTables', 200);
 
