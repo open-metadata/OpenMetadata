@@ -64,6 +64,7 @@ class DynamodbSource(DatabaseServiceSource):
         self.metadata = OpenMetadata(metadata_config)
         self.service_connection = self.config.serviceConnection.__root__.config
         self.dynamodb = get_connection(self.service_connection)
+        self.connection_obj = self.dynamodb
         self.database_source_state = set()
 
     @classmethod
@@ -215,7 +216,4 @@ class DynamodbSource(DatabaseServiceSource):
         return table
 
     def close(self):
-        pass
-
-    def test_connection(self) -> None:
         pass

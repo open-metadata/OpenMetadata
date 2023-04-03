@@ -135,4 +135,9 @@ public final class CsvUtil {
         nullOrEmpty(tags) ? null : tags.stream().map(TagLabel::getTagFQN).collect(Collectors.joining(FIELD_SEPARATOR)));
     return record;
   }
+
+  public static List<String> addOwner(List<String> record, EntityReference owner) {
+    record.add(nullOrEmpty(owner) ? null : owner.getType() + FIELD_SEPARATOR + owner.getName());
+    return record;
+  }
 }

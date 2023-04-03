@@ -85,8 +85,10 @@ def parse_xlets(xlet: List[dict]) -> Optional[Dict[str, List[str]]]:
     :param xlet: airflow v2 xlet dict
     :return: dictionary of xlet list or None
     """
+    # This branch is for lineage parser op
     if isinstance(xlet, list) and len(xlet) and isinstance(xlet[0], dict):
         xlet_dict = xlet[0]
+        # This is how the Serialized DAG is giving us the info from _inlets & _outlets
         if isinstance(xlet_dict, dict) and xlet_dict.get("__var"):
             xlet_dict = xlet_dict["__var"]
         return {

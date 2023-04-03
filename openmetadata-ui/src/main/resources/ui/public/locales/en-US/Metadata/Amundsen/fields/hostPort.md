@@ -1,0 +1,1 @@
+Host and port of the Amundsen Neo4j Connection. This expect a URI format like: `bolt://localhost:7687`.

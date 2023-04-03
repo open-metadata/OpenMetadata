@@ -16,15 +16,13 @@ import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { ReactComponent as IconFolder } from 'assets/svg/folder.svg';
 import { ReactComponent as PlusIcon } from 'assets/svg/plus-primary.svg';
 import LeftPanelCard from 'components/common/LeftPanelCard/LeftPanelCard';
-import Searchbar from 'components/common/searchbar/Searchbar';
 import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from 'components/PermissionProvider/PermissionProvider.interface';
 import GlossaryV1Skeleton from 'components/Skeleton/GlossaryV1/GlossaryV1LeftPanelSkeleton.component';
 import { FQN_SEPARATOR_CHAR } from 'constants/char.constants';
 import { ROUTES } from 'constants/constants';
 import { Operation } from 'generated/entity/policies/policy';
-import { isEmpty } from 'lodash';
-import React, { useMemo, useState } from 'react';
+import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import { checkPermission } from 'utils/PermissionsUtils';
@@ -36,8 +34,6 @@ const GlossaryLeftPanel = ({ glossaries }: GlossaryLeftPanelProps) => {
   const { permissions } = usePermissionProvider();
   const { glossaryName } = useParams<{ glossaryName: string }>();
   const history = useHistory();
-
-  const [searchTerm, setSearchTerm] = useState('');
 
   const createGlossaryPermission = useMemo(
     () =>
@@ -54,15 +50,6 @@ const GlossaryLeftPanel = ({ glossaries }: GlossaryLeftPanelProps) => {
 
   const menuItems: ItemType[] = useMemo(() => {
     return glossaries.reduce((acc, glossary) => {
-      if (
-        !isEmpty(searchTerm) &&
-        !glossary.name
-          .toLocaleLowerCase()
-          .includes(searchTerm.toLocaleLowerCase())
-      ) {
-        return acc;
-      }
-
       return [
         ...acc,
         {
@@ -72,16 +59,13 @@ const GlossaryLeftPanel = ({ glossaries }: GlossaryLeftPanelProps) => {
         },
       ];
     }, [] as ItemType[]);
-  }, [glossaries, searchTerm]);
+  }, [glossaries]);
 
   const handleAddGlossaryClick = () => {
     history.push(ROUTES.ADD_GLOSSARY);
   };
   const handleMenuClick: MenuProps['onClick'] = (event) => {
     history.push(getGlossaryPath(event.key));
-  };
-  const handleSearch = (term: string) => {
-    setSearchTerm(term);
   };
 
   return (
@@ -92,18 +76,6 @@ const GlossaryLeftPanel = ({ glossaries }: GlossaryLeftPanelProps) => {
             <Typography.Text strong className="m-b-0">
               {t('label.glossary')}
             </Typography.Text>
-          </Col>
-          <Col className="p-x-sm" span={24}>
-            <Searchbar
-              removeMargin
-              showLoadingStatus
-              placeholder={`${t('label.search-for-type', {
-                type: t('label.glossary'),
-              })}...`}
-              searchValue={searchTerm}
-              typingInterval={500}
-              onSearch={handleSearch}
-            />
           </Col>
           <Col className="p-x-sm" span={24}>
             <Tooltip
@@ -135,16 +107,7 @@ const GlossaryLeftPanel = ({ glossaries }: GlossaryLeftPanelProps) => {
               />
             ) : (
               <p className="text-grey-muted text-center">
-                {searchTerm ? (
-                  <span>
-                    {t('message.no-entity-found-for-name', {
-                      entity: t('label.glossary'),
-                      name: searchTerm,
-                    })}
-                  </span>
-                ) : (
-                  <span>{t('label.no-glossary-found')}</span>
-                )}
+                <span>{t('label.no-glossary-found')}</span>
               </p>
             )}
           </Col>
