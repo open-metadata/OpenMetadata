@@ -26,7 +26,7 @@ import { NO_PERMISSION_FOR_ACTION } from 'constants/HelperTextUtil';
 import { EntityReference, Glossary } from 'generated/entity/data/glossary';
 import { GlossaryTerm } from 'generated/entity/data/glossaryTerm';
 import { EntityHistory } from 'generated/type/entityHistory';
-import { cloneDeep, toLower, toString } from 'lodash';
+import { cloneDeep, toString } from 'lodash';
 import { LoadingState } from 'Models';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -288,8 +288,8 @@ const GlossaryHeaderButtons = ({
             <p className="tw-text-grey-muted tw-text-xs">
               {t('message.delete-entity-type-action-description', {
                 entityType: isGlossary
-                  ? toLower(t('label.glossary'))
-                  : toLower(t('label.glossary-term')),
+                  ? t('label.glossary')
+                  : t('label.glossary-term'),
               })}
             </p>
           </Col>
