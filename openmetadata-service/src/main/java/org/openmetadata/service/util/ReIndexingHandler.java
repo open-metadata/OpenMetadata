@@ -21,11 +21,11 @@ import java.util.Date;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.RejectedExecutionHandler;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
@@ -67,23 +67,7 @@ public class ReIndexingHandler {
       dao = daoObject;
       esIndexDefinition = elasticSearchIndexDefinition;
       taskQueue = new ArrayBlockingQueue<>(5);
-      threadScheduler =
-          new ThreadPoolExecutor(
-              5,
-              5,
-              0L,
-              TimeUnit.MILLISECONDS,
-              taskQueue,
-              new RejectedExecutionHandler() {
-                @Override
-                @SneakyThrows
-                public void rejectedExecution(Runnable r, ThreadPoolExecutor executor) {
-                  LOG.error("[Reindexing Executor Service] Rejected a job");
-                  ReindexingJob job = (ReindexingJob) r;
-                  job.getJobData().setStatus(EventPublisherJob.Status.FAILED);
-                  job.updateRecordToDb();
-                }
-              });
+      threadScheduler = new ThreadPoolExecutor(5, 5, 0L, TimeUnit.MILLISECONDS, taskQueue);
       INSTANCE = new ReIndexingHandler();
       INITIALIZED = true;
     } else {
@@ -100,16 +84,36 @@ public class ReIndexingHandler {
     if (taskQueue.size() >= 5) {
       throw new RuntimeException("Cannot create new Reindexing Jobs. There are pending jobs.");
     }
-    EventPublisherJob jobData = getReindexJob(startedBy, createReindexingJob);
-    // Create Entry in the DB
-    dao.entityExtensionTimeSeriesDao()
-        .insert(
-            jobData.getId().toString(), REINDEXING_JOB_EXTENSION, "eventPublisherJob", JsonUtils.pojoToJson(jobData));
-    // Create Job
-    ReindexingJob job = new ReindexingJob(dao, esIndexDefinition, client, jobData);
-    threadScheduler.submit(job);
-    REINDEXING_JOB_MAP.put(jobData.getId(), job);
-    return jobData;
+    if (((ThreadPoolExecutor) threadScheduler).getActiveCount() > 5) {
+      throw new RuntimeException("Thread unavailable to run the jobs. There are pending jobs.");
+    } else {
+      EventPublisherJob jobData = getReindexJob(startedBy, createReindexingJob);
+      List<ReindexingJob> activeJobs = new ArrayList<>(REINDEXING_JOB_MAP.values());
+      Set<String> entityList = jobData.getEntities();
+      for (ReindexingJob job : activeJobs) {
+        EventPublisherJob runningJob = job.getJobData();
+        runningJob.getEntities().forEach(entityList::remove);
+      }
+
+      LOG.info("Reindexing triggered for the following Entities: {}", entityList);
+
+      if (entityList.size() > 0) {
+        // Create Entry in the DB
+        dao.entityExtensionTimeSeriesDao()
+            .insert(
+                jobData.getId().toString(),
+                REINDEXING_JOB_EXTENSION,
+                "eventPublisherJob",
+                JsonUtils.pojoToJson(jobData));
+        // Create Job
+        ReindexingJob job = new ReindexingJob(dao, esIndexDefinition, client, jobData);
+        threadScheduler.submit(job);
+        REINDEXING_JOB_MAP.put(jobData.getId(), job);
+        return jobData;
+      } else {
+        throw new RuntimeException("There are already executing Jobs working on the same Entities. Please try later.");
+      }
+    }
   }
 
   private void clearCompletedJobs() {

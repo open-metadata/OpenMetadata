@@ -116,10 +116,11 @@ public class ReindexingJob implements Runnable {
       while (!reader.isDone()) {
         long currentTime = System.currentTimeMillis();
         int requestToProcess = jobData.getBatchSize();
-        int failed = 0;
+        int failed = requestToProcess;
         int success = 0;
         try {
           resultList = reader.readNext(null);
+          requestToProcess = resultList.getData().size() + resultList.getErrors().size();
           // process data to build Reindex Request
           BulkRequest requests = entitiesProcessor.process(resultList, contextData);
           // write the data to ElasticSearch
@@ -130,19 +131,16 @@ public class ReindexingJob implements Runnable {
           success = getSuccessFromBulkResponse(response);
           failed = requestToProcess - success;
         } catch (ReaderException rx) {
-          failed = requestToProcess;
           handleReaderError(
               rx.getMessage(),
               String.format("Cause: %s \n Stack: %s", rx.getCause(), ExceptionUtils.getStackTrace(rx)),
               currentTime);
         } catch (ProcessorException px) {
-          failed = requestToProcess;
           handleProcessorError(
               px.getMessage(),
               String.format("Cause: %s \n Stack: %s", px.getCause(), ExceptionUtils.getStackTrace(px)),
               currentTime);
         } catch (WriterException wx) {
-          failed = requestToProcess;
           handleEsError(
               wx.getMessage(),
               String.format("Cause: %s \n Stack: %s", wx.getCause(), ExceptionUtils.getStackTrace(wx)),
@@ -163,10 +161,11 @@ public class ReindexingJob implements Runnable {
       while (!dataInsightReader.isDone()) {
         long currentTime = System.currentTimeMillis();
         int requestToProcess = jobData.getBatchSize();
-        int failed = 0;
+        int failed = requestToProcess;
         int success = 0;
         try {
           resultList = dataInsightReader.readNext(null);
+          requestToProcess = resultList.getData().size() + resultList.getErrors().size();
           // process data to build Reindex Request
           BulkRequest requests = dataInsightProcessor.process(resultList, contextData);
           // write the data to ElasticSearch
@@ -177,19 +176,16 @@ public class ReindexingJob implements Runnable {
           success = getSuccessFromBulkResponse(response);
           failed = requestToProcess - success;
         } catch (ReaderException rx) {
-          failed = requestToProcess;
           handleReaderError(
               rx.getMessage(),
               String.format("Cause: %s \n Stack: %s", rx.getCause(), ExceptionUtils.getStackTrace(rx)),
               currentTime);
         } catch (ProcessorException px) {
-          failed = requestToProcess;
           handleProcessorError(
               px.getMessage(),
               String.format("Cause: %s \n Stack: %s", px.getCause(), ExceptionUtils.getStackTrace(px)),
               currentTime);
         } catch (WriterException wx) {
-          failed = requestToProcess;
           handleEsError(
               wx.getMessage(),
               String.format("Cause: %s \n Stack: %s", wx.getCause(), ExceptionUtils.getStackTrace(wx)),
