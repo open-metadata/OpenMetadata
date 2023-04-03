@@ -30,6 +30,7 @@ import {
 import {
   getAdvancedField,
   getOptionsObject,
+  getOptionTextFromKey,
 } from '../../utils/AdvancedSearchUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import SearchDropdown from '../SearchDropdown/SearchDropdown';
@@ -99,7 +100,7 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
             res.data.suggest['metadata-suggest'][0].options ?? [];
 
           const formattedSuggestions = suggestOptions.map((op) => ({
-            text: op.text,
+            text: getOptionTextFromKey(index, op, key),
             source: op._source as EntityUnion,
           }));
 

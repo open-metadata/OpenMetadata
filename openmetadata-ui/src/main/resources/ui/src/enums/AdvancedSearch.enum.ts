@@ -31,6 +31,7 @@ export enum AdvancedFields {
   CHART = 'chart_suggest',
   DATA_MODEL = 'data_model_suggest',
   TASK = 'task_suggest',
+  FIELD = 'field_suggest',
 }
 
 export enum EntityFields {

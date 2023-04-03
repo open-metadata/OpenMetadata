@@ -31,10 +31,23 @@ import {
   TOPIC_DROPDOWN_ITEMS,
 } from '../constants/AdvancedSearch.constants';
 
+import { EntityReference as ChartEntityReference } from 'generated/entity/data/dashboard';
+import { Column } from 'generated/entity/data/table';
+import { Field } from 'generated/entity/data/topic';
+import {
+  ContainerSearchSource,
+  DashboardSearchSource,
+  ExploreSearchSource,
+  MlmodelSearchSource,
+  PipelineSearchSource,
+  SuggestOption,
+  TableSearchSource,
+  TopicSearchSource,
+} from 'interface/search.interface';
 import { AdvancedFields, EntityFields } from '../enums/AdvancedSearch.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { Dashboard } from '../generated/entity/data/dashboard';
-import { Pipeline } from '../generated/entity/data/pipeline';
+import { Pipeline, Task } from '../generated/entity/data/pipeline';
 import SVGIcons, { Icons } from './SvgUtils';
 
 export const getDropDownItems = (index: string) => {
@@ -74,6 +87,7 @@ export const getItemLabel = (key: string) => {
 export const getAdvancedField = (field: string) => {
   switch (field) {
     case 'columns.name':
+    case 'dataModel.columns.name':
       return AdvancedFields.COLUMN;
 
     case 'databaseSchema.name':
@@ -82,11 +96,14 @@ export const getAdvancedField = (field: string) => {
     case 'database.name':
       return AdvancedFields.DATABASE;
 
-    case 'charts.name':
+    case 'charts.displayName.keyword':
       return AdvancedFields.CHART;
 
-    case 'tasks.name':
+    case 'tasks.displayName.keyword':
       return AdvancedFields.TASK;
+
+    case 'messageSchema.schemaFields.name':
+      return AdvancedFields.FIELD;
 
     case 'service.name':
       return AdvancedFields.SERVICE;
@@ -287,6 +304,124 @@ export const getOptionsObject = (
         key: op.text,
         label: op.text,
       }));
+    }
+  }
+};
+
+export const getDisplayNameFromEntity = (
+  text: string,
+  entity?: ChartEntityReference | Task | Column | Field
+) => {
+  return entity ? entity.displayName ?? entity.name ?? text : text;
+};
+
+export const getChartsOptions = (
+  op: SuggestOption<SearchIndex, ExploreSearchSource>
+) => {
+  const chartRef = (
+    op as SuggestOption<SearchIndex.DASHBOARD, DashboardSearchSource>
+  )._source.charts?.find(
+    (chart) => chart.displayName === op.text || chart.name === op.text
+  );
+
+  return getDisplayNameFromEntity(op.text, chartRef);
+};
+
+export const getTasksOptions = (
+  op: SuggestOption<SearchIndex, ExploreSearchSource>
+) => {
+  const taskRef = (
+    op as SuggestOption<SearchIndex.PIPELINE, PipelineSearchSource>
+  )._source.tasks?.find(
+    (task) => task.displayName === op.text || task.name === op.text
+  );
+
+  return getDisplayNameFromEntity(op.text, taskRef);
+};
+
+export const getColumnsOptions = (
+  op: SuggestOption<SearchIndex, ExploreSearchSource>,
+  index: SearchIndex
+) => {
+  if (index === SearchIndex.TABLE) {
+    const columnRef = (
+      op as SuggestOption<SearchIndex.TABLE, TableSearchSource>
+    )._source.columns.find(
+      (column) => column.displayName === op.text || column.name === op.text
+    );
+
+    return getDisplayNameFromEntity(op.text, columnRef);
+  } else {
+    const dataModel = (
+      op as SuggestOption<SearchIndex.CONTAINER, ContainerSearchSource>
+    )._source.dataModel;
+    const columnRef = dataModel
+      ? dataModel.columns.find(
+          (column) => column.displayName === op.text || column.name === op.text
+        )
+      : undefined;
+
+    return getDisplayNameFromEntity(op.text, columnRef);
+  }
+};
+
+export const getTopicOptions = (
+  op: SuggestOption<SearchIndex, ExploreSearchSource>
+) => {
+  const schemaFields = (
+    op as SuggestOption<SearchIndex.TOPIC, TopicSearchSource>
+  )._source.messageSchema?.schemaFields;
+
+  const schemaRef = schemaFields
+    ? schemaFields.find(
+        (field) => field.displayName === op.text || field.name === op.text
+      )
+    : undefined;
+
+  return getDisplayNameFromEntity(op.text, schemaRef);
+};
+
+export const getServiceOptions = (
+  op: SuggestOption<SearchIndex, ExploreSearchSource>
+) => {
+  const service = (
+    op as SuggestOption<
+      SearchIndex,
+      | TableSearchSource
+      | DashboardSearchSource
+      | PipelineSearchSource
+      | MlmodelSearchSource
+      | TopicSearchSource
+    >
+  )._source.service;
+
+  return service ? service.displayName ?? service.name ?? op.text : op.text;
+};
+
+// Function to get the display name to show in the options for search Dropdowns
+export const getOptionTextFromKey = (
+  index: SearchIndex,
+  op: SuggestOption<SearchIndex, ExploreSearchSource>,
+  key: string
+) => {
+  switch (key) {
+    case 'charts.displayName.keyword': {
+      return getChartsOptions(op);
+    }
+    case 'tasks.displayName.keyword': {
+      return getTasksOptions(op);
+    }
+    case 'columns.name': {
+      return getColumnsOptions(op, index);
+    }
+    case 'service.name': {
+      return getServiceOptions(op);
+    }
+    case 'messageSchema.schemaFields.name': {
+      return getTopicOptions(op);
+    }
+    default: {
+      return op.text;
     }
   }
 };

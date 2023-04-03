@@ -87,6 +87,8 @@ export type ExploreSearchSource =
   | ContainerSearchSource
   | GlossarySearchSource
   | QuerySearchSource
+  | UserSearchSource
+  | TeamSearchSource
   | TagClassSearchSource;
 
 export type SearchIndexSearchSourceMapping = {

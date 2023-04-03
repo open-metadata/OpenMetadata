@@ -63,14 +63,14 @@ export const TABLE_DROPDOWN_ITEMS = [
 export const DASHBOARD_DROPDOWN_ITEMS = [
   {
     label: t('label.chart'),
-    key: 'charts.name',
+    key: 'charts.displayName.keyword',
   },
 ];
 
 export const PIPELINE_DROPDOWN_ITEMS = [
   {
     label: t('label.task'),
-    key: 'tasks.name',
+    key: 'tasks.displayName.keyword',
   },
 ];
 
