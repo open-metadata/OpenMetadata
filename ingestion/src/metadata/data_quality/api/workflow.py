@@ -27,6 +27,7 @@ from sqlalchemy import MetaData
 from metadata.config.common import WorkflowExecutionError
 from metadata.data_quality.api.models import (
     TestCaseDefinition,
+    TestSuiteDefinition,
     TestSuiteProcessorConfig,
 )
 from metadata.data_quality.interface.pandas.pandas_test_suite_interface import (
