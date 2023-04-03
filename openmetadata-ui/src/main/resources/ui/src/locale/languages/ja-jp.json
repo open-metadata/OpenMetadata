@@ -1171,6 +1171,7 @@
     "successfully-completed-the-tour": "あなたは無事ツアーを終了しました。",
     "team-moved-success": "チームの移動が成功しました！",
     "team-no-asset": "あなたのチームはアセットを持っていません。",
+    "test-connection-cannot-be-triggered": "Test connection cannot be triggered.",
     "test-connection-taking-too-long": "The test connection is taking too long. Please try again.",
     "test-your-connection-before-creating-service": "サービスを作成する前に接続テストをしてください。",
     "testing-your-connection-may-take-two-minutes": "Testing your connections may take up-to 2 minutes",

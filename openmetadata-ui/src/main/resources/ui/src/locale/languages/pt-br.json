@@ -1171,6 +1171,7 @@
     "successfully-completed-the-tour": "Você concluiu o tour com sucesso.",
     "team-moved-success": "Time movido com sucesso!",
     "team-no-asset": "Seu time não possui nenhum ativo.",
+    "test-connection-cannot-be-triggered": "Test connection cannot be triggered.",
     "test-connection-taking-too-long": "The test connection is taking too long. Please try again.",
     "test-your-connection-before-creating-service": "Teste suas conexões antes de criar o serviço",
     "testing-your-connection-may-take-two-minutes": "Testing your connections may take up-to 2 minutes",
