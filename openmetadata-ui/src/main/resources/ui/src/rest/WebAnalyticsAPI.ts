@@ -15,13 +15,13 @@ import { AxiosResponse } from 'axios';
 import { WebAnalyticEventData } from '../generated/analytics/webAnalyticEventData';
 import APIClient from './index';
 
-export const postPageView = async (
+export const postWebAnalyticEvent = async (
   webAnalyticEventData: WebAnalyticEventData
 ) => {
   const response = await APIClient.put<
     WebAnalyticEventData,
     AxiosResponse<WebAnalyticEventData>
-  >('/analytics/webAnalyticEvent/collect', webAnalyticEventData);
+  >('/analytics/web/events/collect', webAnalyticEventData);
 
   return response.data;
 };
