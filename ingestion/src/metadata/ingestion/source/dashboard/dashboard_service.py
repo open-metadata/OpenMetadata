@@ -19,6 +19,9 @@ from pydantic import BaseModel
 
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
+from metadata.generated.schema.api.data.createDashboardDataModel import (
+    CreateDashboardDataModelRequest,
+)
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.chart import Chart
 from metadata.generated.schema.entity.data.dashboard import Dashboard
@@ -231,7 +234,7 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
         Get Dashboard Details
         """
 
-    def yield_datamodel(self, _) -> Any:
+    def yield_datamodel(self, _) -> Optional[Iterable[CreateDashboardDataModelRequest]]:
         """
         Method to fetch DataModel linked to Dashboard
         """

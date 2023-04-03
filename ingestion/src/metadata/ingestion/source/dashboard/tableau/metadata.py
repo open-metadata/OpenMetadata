@@ -258,9 +258,11 @@ class TableauSource(DashboardServiceSource):
         datasource_columns = []
         for column in data_model.datasourceFields:
             parsed_string = {
-                "dataTypeDisplay": column.remoteField.dataType,
+                "dataTypeDisplay": column.remoteField.dataType
+                if column.remoteField
+                else None,
                 "dataType": ColumnTypeParser.get_column_type(
-                    column.remoteField.dataType
+                    column.remoteField.dataType if column.remoteField else None
                 ),
                 "name": column.id,
                 "displayName": column.name,

@@ -12,6 +12,7 @@
 Tableau Source Model module
 """
 
+from enum import Enum
 from typing import List, Optional
 
 from pydantic import BaseModel, Extra
@@ -72,20 +73,31 @@ class TableauDashboard(TableauBaseModel):
     webpage_url: Optional[str]
 
 
-class TableauDataModelColumn(TableauBaseModel):
+class TableauDataModelColumnDataType(Enum):
     """
-    Tableau Data Model Column
+    Column Data Type for Tablea Data Model
+    ref ->
+    https://help.tableau.com/current/api/metadata_api/en-us/reference/fielddatatype.doc.html
     """
 
-    data_type: str
+    INTEGER = "INTEGER"
+    REAL = "REAL"
+    STRING = "STRING"
+    DATETIME = "DATETIME"
+    DATE = "DATE"
+    TUPLE = "TUPLE"
+    SPATIAL = "SPATIAL"
+    BOOLEAN = "BOOLEAN"
+    TABLE = "TABLE"
+    UNKNOWN = "UNKNOWN"
 
 
 class WorksheetField(TableauBaseModel):
-    dataType: str
+    dataType: TableauDataModelColumnDataType
 
 
 class RemoteField(BaseModel):
-    dataType: str
+    dataType: TableauDataModelColumnDataType
 
 
 class DatasourceField(TableauBaseModel):
