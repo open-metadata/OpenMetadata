@@ -141,12 +141,13 @@ export const tiers = [
 ];
 
 export const globalSearchOptions = [
-  { value: undefined, label: t('label.all') },
+  { value: '', label: t('label.all') },
   { value: SearchIndex.TABLE, label: t('label.table') },
   { value: SearchIndex.TOPIC, label: t('label.topic') },
   { value: SearchIndex.DASHBOARD, label: t('label.dashboard') },
   { value: SearchIndex.PIPELINE, label: t('label.pipeline') },
   { value: SearchIndex.MLMODEL, label: t('label.ml-model') },
+  { value: SearchIndex.CONTAINER, label: t('label.container') },
   { value: SearchIndex.GLOSSARY, label: t('label.glossary') },
   { value: SearchIndex.TAG, label: t('label.tag') },
 ];

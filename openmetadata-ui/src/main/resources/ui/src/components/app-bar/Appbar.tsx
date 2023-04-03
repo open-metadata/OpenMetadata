@@ -13,6 +13,8 @@
 
 import { Button, Typography } from 'antd';
 import { AxiosError } from 'axios';
+import { ExploreSearchIndex } from 'components/Explore/explore.interface';
+import { tabsInfo } from 'constants/explore.constants';
 import { CookieStorage } from 'cookie-storage';
 import { isEmpty, isString } from 'lodash';
 import { observer } from 'mobx-react';
@@ -80,6 +82,9 @@ const Appbar: React.FC = (): JSX.Element => {
     : '';
 
   const [searchValue, setSearchValue] = useState(searchQuery);
+  const [searchCriteria, setSearchCriteria] = useState<ExploreSearchIndex | ''>(
+    ''
+  );
 
   const [isOpen, setIsOpen] = useState<boolean>(false);
   const [isFeatureModalOpen, setIsFeatureModalOpen] = useState<boolean>(false);
@@ -94,6 +99,10 @@ const Appbar: React.FC = (): JSX.Element => {
 
     setSearchValue(value);
     value ? setIsOpen(true) : setIsOpen(false);
+  };
+
+  const handleSearchCriteriaChange = (value: ExploreSearchIndex | '') => {
+    setSearchCriteria(value);
   };
 
   const supportLinks = [
@@ -298,15 +307,11 @@ const Appbar: React.FC = (): JSX.Element => {
   const searchHandler = (value: string) => {
     setIsOpen(false);
     addToRecentSearched(value);
-    if (location.pathname.startsWith(ROUTES.EXPLORE)) {
-      // Already on explore page, only push search change
-      history.push({
-        search: Qs.stringify({ ...parsedQueryString, search: value }),
-      });
-    } else {
-      // Outside Explore page
-      history.push(getExplorePath({ tab: 'tables', search: value }));
-    }
+
+    const defaultTab: string =
+      searchCriteria !== '' ? tabsInfo[searchCriteria].path : 'tables';
+
+    history.push(getExplorePath({ tab: defaultTab, search: value }));
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -318,6 +323,11 @@ const Appbar: React.FC = (): JSX.Element => {
 
   const handleOnclick = () => {
     searchHandler(searchValue);
+  };
+
+  const handleClear = () => {
+    setSearchValue('');
+    searchHandler('');
   };
 
   const fetchOMVersion = () => {
@@ -382,15 +392,18 @@ const Appbar: React.FC = (): JSX.Element => {
       (isAuthDisabled || isAuthenticated) &&
       !isTourRoute(location.pathname) ? (
         <NavBar
+          handleClear={handleClear}
           handleFeatureModal={handleFeatureModal}
           handleKeyDown={handleKeyDown}
           handleOnClick={handleOnclick}
           handleSearchBoxOpen={setIsOpen}
           handleSearchChange={handleSearchChange}
+          handleSearchCriteriaChange={handleSearchCriteriaChange}
           isFeatureModalOpen={isFeatureModalOpen}
           isSearchBoxOpen={isOpen}
           pathname={location.pathname}
           profileDropdown={profileDropdown}
+          searchCriteria={searchCriteria}
           searchValue={searchValue || ''}
           supportDropdown={supportLinks}
           username={getUserName()}
