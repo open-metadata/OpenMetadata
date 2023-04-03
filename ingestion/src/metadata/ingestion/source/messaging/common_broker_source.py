@@ -217,6 +217,8 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
                     f"Broker consumer polling for sample messages in topic {topic_name}"
                 )
                 messages = self.consumer_client.consume(num_messages=10, timeout=10)
+
+                self.consumer_client.unsubscribe()
             except Exception as exc:
                 logger.debug(traceback.format_exc())
                 logger.warning(
@@ -239,7 +241,6 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
                                 f"Failed to decode sample data from topic {topic_name}: {exc}"
                             )
 
-            self.consumer_client.unsubscribe()
             yield OMetaTopicSampleData(
                 topic=self.context.topic,
                 sample_data=TopicSampleData(messages=sample_data),
