@@ -73,6 +73,26 @@ class TestEntityLink(TestCase):
                 "<#E::database::bigquery_gcp.shopify::tags>",
                 ["database", "bigquery_gcp.shopify", "tags"],
             ),
+            EntityLinkTest(
+                "<#E::table::bigquery_gcp.shopify.raw-product-catalog5>",
+                ["table", "bigquery_gcp.shopify.raw-product-catalog5"],
+            ),
+            EntityLinkTest(
+                '<#E::table::bigquery_gcp.shopify."raw-product-catalog6"::description>',
+                [
+                    "table",
+                    'bigquery_gcp.shopify."raw-product-catalog6"',
+                    "description",
+                ],
+            ),
+            EntityLinkTest(
+                "<#E::table::bigquery_gcp.shopify.raw-product-catalog5::description>",
+                ["table", "bigquery_gcp.shopify.raw-product-catalog5", "description"],
+            ),
+            EntityLinkTest(
+                '<#E::table::bigquery_gcp.\"shop-ify\"."raw-product-catalog6">',
+                ["table", 'bigquery_gcp.\"shop-ify\"."raw-product-catalog6"'],
+            ),
         ]
         for x in xs:
             x.validate(entity_link.split(x.entitylink), x.split_list)
