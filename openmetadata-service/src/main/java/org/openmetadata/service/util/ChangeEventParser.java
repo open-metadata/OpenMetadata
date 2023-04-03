@@ -203,7 +203,6 @@ public final class ChangeEventParser {
     String fqn;
     String entityType;
     EntityInterface entity = (EntityInterface) event.getEntity();
-    //    URI urlInstance = entity.getHref();
     if (entity instanceof TestCase) {
       fqn = ((TestCase) entity).getTestSuite().getFullyQualifiedName();
       entityType = "test-suites";
