@@ -13,12 +13,15 @@
 Validator for table column nanme to exist test case
 """
 
-from metadata.data_quality.validations.mixins.sqa_validator_mixin import \
-    SQAValidatorMixin
-from metadata.data_quality.validations.table.base.tableColumnNameToExist import \
-    BaseTableColumnNameToExistValidator
-from metadata.utils.logger import test_suite_logger
 from sqlalchemy import inspect
+
+from metadata.data_quality.validations.mixins.sqa_validator_mixin import (
+    SQAValidatorMixin,
+)
+from metadata.data_quality.validations.table.base.tableColumnNameToExist import (
+    BaseTableColumnNameToExistValidator,
+)
+from metadata.utils.logger import test_suite_logger
 
 logger = test_suite_logger()
 

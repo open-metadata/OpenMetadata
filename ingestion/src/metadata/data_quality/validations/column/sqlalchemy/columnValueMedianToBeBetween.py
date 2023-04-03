@@ -17,11 +17,13 @@ from typing import Optional
 
 from sqlalchemy import Column, inspect
 
-from metadata.profiler.metrics.registry import Metrics
 from metadata.data_quality.validations.column.base.columnValueMedianToBeBetween import (
     BaseColumnValueMedianToBeBetweenValidator,
 )
-from metadata.data_quality.validations.mixins.sqa_validator_mixin import SQAValidatorMixin
+from metadata.data_quality.validations.mixins.sqa_validator_mixin import (
+    SQAValidatorMixin,
+)
+from metadata.profiler.metrics.registry import Metrics
 
 
 class ColumnValueMedianToBeBetweenValidator(

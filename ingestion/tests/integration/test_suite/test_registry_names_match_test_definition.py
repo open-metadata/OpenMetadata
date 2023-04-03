@@ -21,8 +21,9 @@ import metadata.data_quality.validations.column.pandas as pandas_column
 import metadata.data_quality.validations.column.sqlalchemy as sqa_column
 import metadata.data_quality.validations.table.pandas as pandas_table
 import metadata.data_quality.validations.table.sqlalchemy as sqa_table
-from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import \
-    OpenMetadataConnection
+from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
+    OpenMetadataConnection,
+)
 from metadata.generated.schema.tests.testDefinition import TestDefinition
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 

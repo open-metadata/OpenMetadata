@@ -17,30 +17,55 @@ import uuid
 from unittest import TestCase
 from unittest.mock import patch
 
+from openmetadata_managed_apis.workflows.ingestion.lineage import (
+    build_lineage_workflow_config,
+)
+from openmetadata_managed_apis.workflows.ingestion.metadata import (
+    build_metadata_workflow_config,
+)
+from openmetadata_managed_apis.workflows.ingestion.profiler import (
+    build_profiler_workflow_config,
+)
+from openmetadata_managed_apis.workflows.ingestion.test_suite import (
+    build_test_suite_workflow_config,
+)
+from openmetadata_managed_apis.workflows.ingestion.usage import (
+    build_usage_workflow_config,
+)
+
 from metadata.data_quality.api.workflow import TestSuiteWorkflow
-from metadata.generated.schema.api.tests.createTestSuite import \
-    CreateTestSuiteRequest
-from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import \
-    OpenMetadataConnection
-from metadata.generated.schema.entity.services.databaseService import \
-    DatabaseService
+from metadata.generated.schema.api.tests.createTestSuite import CreateTestSuiteRequest
+from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
+    OpenMetadataConnection,
+)
+from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
-    AirflowConfig, IngestionPipeline, PipelineType)
-from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline import \
-    DatabaseServiceMetadataPipeline
-from metadata.generated.schema.metadataIngestion.databaseServiceProfilerPipeline import \
-    DatabaseServiceProfilerPipeline
-from metadata.generated.schema.metadataIngestion.databaseServiceQueryLineagePipeline import \
-    DatabaseServiceQueryLineagePipeline
-from metadata.generated.schema.metadataIngestion.databaseServiceQueryUsagePipeline import \
-    DatabaseServiceQueryUsagePipeline
-from metadata.generated.schema.metadataIngestion.testSuitePipeline import \
-    TestSuitePipeline
-from metadata.generated.schema.metadataIngestion.workflow import \
-    Source as WorkflowSource
+    AirflowConfig,
+    IngestionPipeline,
+    PipelineType,
+)
+from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline import (
+    DatabaseServiceMetadataPipeline,
+)
+from metadata.generated.schema.metadataIngestion.databaseServiceProfilerPipeline import (
+    DatabaseServiceProfilerPipeline,
+)
+from metadata.generated.schema.metadataIngestion.databaseServiceQueryLineagePipeline import (
+    DatabaseServiceQueryLineagePipeline,
+)
+from metadata.generated.schema.metadataIngestion.databaseServiceQueryUsagePipeline import (
+    DatabaseServiceQueryUsagePipeline,
+)
+from metadata.generated.schema.metadataIngestion.testSuitePipeline import (
+    TestSuitePipeline,
+)
+from metadata.generated.schema.metadataIngestion.workflow import (
+    Source as WorkflowSource,
+)
 from metadata.generated.schema.metadataIngestion.workflow import SourceConfig
-from metadata.generated.schema.security.client.openMetadataJWTClientConfig import \
-    OpenMetadataJWTClientConfig
+from metadata.generated.schema.security.client.openMetadataJWTClientConfig import (
+    OpenMetadataJWTClientConfig,
+)
 from metadata.generated.schema.tests.testSuite import TestSuite
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.parser import parse_workflow_config_gracefully
@@ -48,16 +73,6 @@ from metadata.ingestion.api.workflow import Workflow
 from metadata.ingestion.models.encoders import show_secrets_encoder
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.profiler.api.workflow import ProfilerWorkflow
-from openmetadata_managed_apis.workflows.ingestion.lineage import \
-    build_lineage_workflow_config
-from openmetadata_managed_apis.workflows.ingestion.metadata import \
-    build_metadata_workflow_config
-from openmetadata_managed_apis.workflows.ingestion.profiler import \
-    build_profiler_workflow_config
-from openmetadata_managed_apis.workflows.ingestion.test_suite import \
-    build_test_suite_workflow_config
-from openmetadata_managed_apis.workflows.ingestion.usage import \
-    build_usage_workflow_config
 
 
 def mock_set_ingestion_pipeline_status(self, state):

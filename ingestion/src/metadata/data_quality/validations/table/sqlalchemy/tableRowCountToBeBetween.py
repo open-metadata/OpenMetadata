@@ -15,10 +15,12 @@ Validator for table row count to be between test case
 
 from typing import Optional
 
-from metadata.data_quality.validations.mixins.sqa_validator_mixin import \
-    SQAValidatorMixin
-from metadata.data_quality.validations.table.base.tableRowCountToBeBetween import \
-    BaseTableRowCountToBeBetweenValidator
+from metadata.data_quality.validations.mixins.sqa_validator_mixin import (
+    SQAValidatorMixin,
+)
+from metadata.data_quality.validations.table.base.tableRowCountToBeBetween import (
+    BaseTableRowCountToBeBetweenValidator,
+)
 from metadata.profiler.metrics.registry import Metrics
 from metadata.utils.logger import test_suite_logger
 

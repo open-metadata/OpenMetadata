@@ -19,13 +19,18 @@ from collections import defaultdict
 from datetime import datetime, timezone
 from typing import Dict, List
 
+from sqlalchemy import Column
+
 from metadata.generated.schema.entity.data.table import DataType, TableData
-from metadata.generated.schema.entity.services.connections.database.datalakeConnection import \
-    DatalakeConnection
+from metadata.generated.schema.entity.services.connections.database.datalakeConnection import (
+    DatalakeConnection,
+)
 from metadata.ingestion.api.processor import ProfilerProcessorStatus
 from metadata.ingestion.source.connections import get_connection
 from metadata.ingestion.source.database.datalake.metadata import (
-    DATALAKE_DATA_TYPES, ometa_to_dataframe)
+    DATALAKE_DATA_TYPES,
+    ometa_to_dataframe,
+)
 from metadata.mixins.pandas.pandas_mixin import PandasInterfaceMixin
 from metadata.profiler.interface.profiler_protocol import ProfilerProtocol
 from metadata.profiler.metrics.core import MetricTypes
@@ -34,7 +39,6 @@ from metadata.profiler.profiler.datalake_sampler import DatalakeSampler
 from metadata.utils.dispatch import valuedispatch
 from metadata.utils.logger import profiler_interface_registry_logger
 from metadata.utils.sqa_like_column import SQALikeColumn, Type
-from sqlalchemy import Column
 
 logger = profiler_interface_registry_logger()
 

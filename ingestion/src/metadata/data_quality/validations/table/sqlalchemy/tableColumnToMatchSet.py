@@ -16,12 +16,15 @@ Validator for table column name to match set test case
 
 from typing import Optional
 
-from metadata.data_quality.validations.mixins.sqa_validator_mixin import \
-    SQAValidatorMixin
-from metadata.data_quality.validations.table.base.tableColumnToMatchSet import \
-    BaseTableColumnToMatchSetValidator
-from metadata.utils.logger import test_suite_logger
 from sqlalchemy import inspect
+
+from metadata.data_quality.validations.mixins.sqa_validator_mixin import (
+    SQAValidatorMixin,
+)
+from metadata.data_quality.validations.table.base.tableColumnToMatchSet import (
+    BaseTableColumnToMatchSetValidator,
+)
+from metadata.utils.logger import test_suite_logger
 
 logger = test_suite_logger()
 

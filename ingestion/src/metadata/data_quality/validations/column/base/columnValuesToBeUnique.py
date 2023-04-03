@@ -19,13 +19,13 @@ from typing import Union
 
 from sqlalchemy import Column
 
+from metadata.data_quality.validations.base_test_handler import BaseTestValidator
 from metadata.generated.schema.tests.basic import (
     TestCaseResult,
     TestCaseStatus,
     TestResultValue,
 )
 from metadata.profiler.metrics.registry import Metrics
-from metadata.data_quality.validations.base_test_handler import BaseTestValidator
 from metadata.utils.logger import test_suite_logger
 from metadata.utils.sqa_like_column import SQALikeColumn
 

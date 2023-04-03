@@ -15,13 +15,13 @@ Validator for column value missing count to be equal test case
 
 from typing import Optional
 
-from metadata.profiler.metrics.registry import Metrics
 from metadata.data_quality.validations.column.base.columnValuesMissingCount import (
     BaseColumnValuesMissingCountValidator,
 )
 from metadata.data_quality.validations.mixins.pandas_validator_mixin import (
     PandasValidatorMixin,
 )
+from metadata.profiler.metrics.registry import Metrics
 from metadata.utils.sqa_like_column import SQALikeColumn
 
 

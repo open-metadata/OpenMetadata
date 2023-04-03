@@ -13,11 +13,14 @@
 Validator for table custom SQL Query test case
 """
 
-from metadata.data_quality.validations.mixins.sqa_validator_mixin import \
-    SQAValidatorMixin
-from metadata.data_quality.validations.table.base.tableCustomSQLQuery import \
-    BaseTableCustomSQLQueryValidator
 from sqlalchemy import text
+
+from metadata.data_quality.validations.mixins.sqa_validator_mixin import (
+    SQAValidatorMixin,
+)
+from metadata.data_quality.validations.table.base.tableCustomSQLQuery import (
+    BaseTableCustomSQLQueryValidator,
+)
 
 
 class TableCustomSQLQueryValidator(BaseTableCustomSQLQueryValidator, SQAValidatorMixin):

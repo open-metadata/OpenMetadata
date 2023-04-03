@@ -14,8 +14,7 @@ Main class to run data tests
 """
 
 
-from metadata.data_quality.interface.test_suite_protocol import \
-    TestSuiteProtocol
+from metadata.data_quality.interface.test_suite_protocol import TestSuiteProtocol
 from metadata.data_quality.runner.models import TestCaseResultResponse
 from metadata.generated.schema.tests.testCase import TestCase
 from metadata.utils.logger import test_suite_logger

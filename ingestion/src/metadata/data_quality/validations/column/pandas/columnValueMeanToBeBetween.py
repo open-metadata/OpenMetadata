@@ -16,13 +16,13 @@ Validator for column value mean to be between test case
 
 from typing import Optional
 
-from metadata.profiler.metrics.registry import Metrics
 from metadata.data_quality.validations.column.base.columnValueMeanToBeBetween import (
     BaseColumnValueMeanToBeBetweenValidator,
 )
 from metadata.data_quality.validations.mixins.pandas_validator_mixin import (
     PandasValidatorMixin,
 )
+from metadata.profiler.metrics.registry import Metrics
 from metadata.utils.sqa_like_column import SQALikeColumn
 
 

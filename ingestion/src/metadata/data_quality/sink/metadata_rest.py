@@ -18,8 +18,9 @@ from typing import Optional
 
 from metadata.config.common import ConfigModel
 from metadata.data_quality.runner.models import TestCaseResultResponse
-from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import \
-    OpenMetadataConnection
+from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
+    OpenMetadataConnection,
+)
 from metadata.ingestion.api.common import Entity
 from metadata.ingestion.api.sink import Sink
 from metadata.ingestion.ometa.client import APIError

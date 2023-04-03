@@ -18,26 +18,34 @@ import unittest
 from datetime import datetime, timedelta
 
 import sqlalchemy as sqa
+from sqlalchemy.orm import Session, declarative_base
+
 from metadata.data_quality.api.workflow import TestSuiteWorkflow
-from metadata.generated.schema.api.data.createDatabase import \
-    CreateDatabaseRequest
-from metadata.generated.schema.api.data.createDatabaseSchema import \
-    CreateDatabaseSchemaRequest
+from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
+from metadata.generated.schema.api.data.createDatabaseSchema import (
+    CreateDatabaseSchemaRequest,
+)
 from metadata.generated.schema.api.data.createTable import CreateTableRequest
-from metadata.generated.schema.api.services.createDatabaseService import \
-    CreateDatabaseServiceRequest
+from metadata.generated.schema.api.services.createDatabaseService import (
+    CreateDatabaseServiceRequest,
+)
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.table import Column, DataType
 from metadata.generated.schema.entity.services.connections.database.sqliteConnection import (
-    SQLiteConnection, SQLiteScheme)
-from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import \
-    OpenMetadataConnection
+    SQLiteConnection,
+    SQLiteScheme,
+)
+from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
+    OpenMetadataConnection,
+)
 from metadata.generated.schema.entity.services.databaseService import (
-    DatabaseConnection, DatabaseService, DatabaseServiceType)
+    DatabaseConnection,
+    DatabaseService,
+    DatabaseServiceType,
+)
 from metadata.generated.schema.tests.testCase import TestCase
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from sqlalchemy.orm import Session, declarative_base
 
 test_suite_config = {
     "source": {

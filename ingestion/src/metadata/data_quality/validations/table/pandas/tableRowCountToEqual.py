@@ -15,13 +15,13 @@ Validator for table row count to be equal test case
 
 from typing import Optional
 
-from metadata.profiler.metrics.registry import Metrics
 from metadata.data_quality.validations.mixins.pandas_validator_mixin import (
     PandasValidatorMixin,
 )
 from metadata.data_quality.validations.table.base.tableRowCountToEqual import (
     BaseTableRowCountToEqualValidator,
 )
+from metadata.profiler.metrics.registry import Metrics
 
 
 class TableRowCountToEqualValidator(

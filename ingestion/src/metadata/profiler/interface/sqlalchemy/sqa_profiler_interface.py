@@ -21,12 +21,14 @@ from collections import defaultdict
 from datetime import datetime, timezone
 from typing import Dict, List
 
+from sqlalchemy import Column
+from sqlalchemy.exc import ProgrammingError
+from sqlalchemy.orm import scoped_session
+
 from metadata.generated.schema.entity.data.table import TableData
-from metadata.generated.schema.entity.services.databaseService import \
-    DatabaseConnection
+from metadata.generated.schema.entity.services.databaseService import DatabaseConnection
 from metadata.ingestion.api.processor import ProfilerProcessorStatus
-from metadata.ingestion.connections.session import \
-    create_and_bind_thread_safe_session
+from metadata.ingestion.connections.session import create_and_bind_thread_safe_session
 from metadata.ingestion.source.connections import get_connection
 from metadata.mixins.sqalchemy.sqa_mixin import SQAInterfaceMixin
 from metadata.profiler.interface.profiler_protocol import ProfilerProtocol
@@ -40,9 +42,6 @@ from metadata.profiler.profiler.sampler import Sampler
 from metadata.utils.custom_thread_pool import CustomThreadPoolExecutor
 from metadata.utils.dispatch import valuedispatch
 from metadata.utils.logger import profiler_interface_registry_logger
-from sqlalchemy import Column
-from sqlalchemy.exc import ProgrammingError
-from sqlalchemy.orm import scoped_session
 
 logger = profiler_interface_registry_logger()
 thread_local = threading.local()

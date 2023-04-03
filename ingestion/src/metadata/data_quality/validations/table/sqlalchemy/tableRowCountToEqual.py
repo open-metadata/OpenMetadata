@@ -15,10 +15,12 @@ Validator for table row inserted count to be between test case
 
 from typing import Optional
 
-from metadata.data_quality.validations.mixins.sqa_validator_mixin import \
-    SQAValidatorMixin
-from metadata.data_quality.validations.table.base.tableRowCountToEqual import \
-    BaseTableRowCountToEqualValidator
+from metadata.data_quality.validations.mixins.sqa_validator_mixin import (
+    SQAValidatorMixin,
+)
+from metadata.data_quality.validations.table.base.tableRowCountToEqual import (
+    BaseTableRowCountToEqualValidator,
+)
 from metadata.profiler.metrics.registry import Metrics
 
 

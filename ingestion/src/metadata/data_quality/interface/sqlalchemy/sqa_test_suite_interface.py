@@ -17,13 +17,14 @@ supporting sqlalchemy abstraction layer
 from datetime import datetime, timezone
 from typing import Optional, Union
 
-from metadata.data_quality.interface.test_suite_protocol import \
-    TestSuiteProtocol
+from sqlalchemy import MetaData
+from sqlalchemy.orm import DeclarativeMeta
+from sqlalchemy.orm.util import AliasedClass
+
+from metadata.data_quality.interface.test_suite_protocol import TestSuiteProtocol
 from metadata.data_quality.validations.validator import Validator
-from metadata.generated.schema.entity.data.table import (
-    PartitionProfilerConfig, Table)
-from metadata.generated.schema.entity.services.databaseService import \
-    DatabaseConnection
+from metadata.generated.schema.entity.data.table import PartitionProfilerConfig, Table
+from metadata.generated.schema.entity.services.databaseService import DatabaseConnection
 from metadata.generated.schema.tests.basic import TestCaseResult
 from metadata.generated.schema.tests.testCase import TestCase
 from metadata.generated.schema.tests.testDefinition import TestDefinition
@@ -38,9 +39,6 @@ from metadata.utils.constants import TEN_MIN
 from metadata.utils.importer import import_test_case_class
 from metadata.utils.logger import test_suite_logger
 from metadata.utils.timeout import cls_timeout
-from sqlalchemy import MetaData
-from sqlalchemy.orm import DeclarativeMeta
-from sqlalchemy.orm.util import AliasedClass
 
 logger = test_suite_logger()
 
