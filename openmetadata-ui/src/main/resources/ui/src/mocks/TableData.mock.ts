@@ -219,7 +219,7 @@ export const TEST_CASE = {
           'This schema defines the test ColumnValueMaxToBeBetween. Test the maximum value in a col is within a range.',
         displayName: 'columnValueMaxToBeBetween',
         deleted: false,
-        href: 'http://localhost:8585/api/v1/testDefinition/16b32e12-21c5-491c-919e-88748d9d5d67',
+        href: 'http://localhost:8585/api/v1/testDefinitions/16b32e12-21c5-491c-919e-88748d9d5d67',
       },
       entityLink:
         '<#E::table::sample_data.ecommerce_db.shopify.dim_address::columns::shop_id>',

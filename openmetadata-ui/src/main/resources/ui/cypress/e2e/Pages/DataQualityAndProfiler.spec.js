@@ -674,7 +674,7 @@ describe('Data Quality and Profiler should work properly', () => {
       .click();
 
     interceptURL('GET', '/api/v1/testCases?fields=*', 'testCase');
-    interceptURL('GET', '/api/v1/testDefinition/*', 'testCaseDefinition');
+    interceptURL('GET', '/api/v1/testDefinitions/*', 'testCaseDefinition');
 
     cy.get('[data-testid="success-line"]')
       .scrollIntoView()

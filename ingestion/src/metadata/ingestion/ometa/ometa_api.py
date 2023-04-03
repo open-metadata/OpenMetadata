@@ -457,7 +457,7 @@ class OpenMetadata(
                 Union[TestDefinition, self.get_create_entity_type(TestDefinition)]
             ),
         ):
-            return "/testDefinition"
+            return "/testDefinitions"
 
         if issubclass(
             entity,

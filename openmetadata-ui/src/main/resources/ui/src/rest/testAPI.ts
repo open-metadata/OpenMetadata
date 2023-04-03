@@ -57,7 +57,7 @@ export type ListTestCaseResultsParams = Omit<
 
 const testCaseUrl = '/testCases';
 const testSuiteUrl = '/testSuite';
-const testDefinitionUrl = '/testDefinition';
+const testDefinitionUrl = '/testDefinitions';
 
 // testCase section
 export const getListTestCase = async (params?: ListTestCaseParams) => {

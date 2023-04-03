@@ -273,7 +273,8 @@ On the profiler page, click on a specific column name. This will bring you to a 
 ## Adding Custom Tests
 While OpenMetadata provides out of the box tests, you may want to write your test results from your own custom quality test suite. This is very easy to do using the API.
 ### Creating a `TestDefinition`
-First, you'll need to create a Test Definition for your test. You can use the following endpoint `/api/v1/testDefinition` using a POST protocol to create your Test Definition. You will need to pass the following data in the body your request at minimum.
+First, you'll need to create a Test Definition for your test. You can use the following endpoint 
+`/api/v1/testDefinitions` using a POST protocol to create your Test Definition. You will need to pass the following data in the body your request at minimum.
 
 ```json
 {
@@ -295,7 +296,7 @@ First, you'll need to create a Test Definition for your test. You can use the fo
 Here is a complete CURL request
 
 ```bash
-curl --request POST 'http://localhost:8585/api/v1/testDefinition' \
+curl --request POST 'http://localhost:8585/api/v1/testDefinitions' \
 --header 'Content-Type: application/json' \
 --data-raw '{
     "description": "A demo custom test",
