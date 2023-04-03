@@ -67,6 +67,9 @@ jest.mock('rest/workflowAPI', () => ({
     .fn()
     .mockImplementation(() => Promise.resolve(WORKFLOW_DETAILS)),
   triggerWorkflowById: jest.fn().mockImplementation(() => Promise.resolve(200)),
+  deleteWorkflowById: jest
+    .fn()
+    .mockImplementation(() => Promise.resolve(WORKFLOW_DETAILS)),
 }));
 
 describe('Test Connection Component', () => {
@@ -145,6 +148,9 @@ describe('Test Connection Component', () => {
 
     expect(
       screen.getByText('message.testing-your-connection-may-take-two-minutes')
+    ).toBeInTheDocument();
+    expect(
+      screen.getByTestId('test-connection-details-btn')
     ).toBeInTheDocument();
   });
 

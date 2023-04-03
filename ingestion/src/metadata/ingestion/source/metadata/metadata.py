@@ -15,19 +15,27 @@ from typing import Iterable
 from metadata.generated.schema.entity.classification.classification import (
     Classification,
 )
+from metadata.generated.schema.entity.data.container import Container
 from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.entity.data.glossary import Glossary
 from metadata.generated.schema.entity.data.glossaryTerm import GlossaryTerm
 from metadata.generated.schema.entity.data.mlmodel import MlModel
 from metadata.generated.schema.entity.data.pipeline import Pipeline
+from metadata.generated.schema.entity.data.query import Query
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.data.topic import Topic
 from metadata.generated.schema.entity.policies.policy import Policy
+from metadata.generated.schema.entity.services.connections.metadata.metadataESConnection import (
+    MetadataESConnection,
+)
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.entity.services.messagingService import MessagingService
+from metadata.generated.schema.entity.services.objectstoreService import (
+    ObjectStoreService,
+)
 from metadata.generated.schema.entity.services.pipelineService import PipelineService
 from metadata.generated.schema.entity.teams.team import Team
 from metadata.generated.schema.entity.teams.user import User
@@ -58,7 +66,9 @@ class MetadataSource(Source[Entity]):
         self.config = config
         self.metadata_config = metadata_config
         self.metadata = OpenMetadata(metadata_config)
-        self.service_connection = config.serviceConnection.__root__.config
+        self.service_connection: MetadataESConnection = (
+            config.serviceConnection.__root__.config
+        )
         self.wrote_something = False
         self.tables = None
         self.topics = None
@@ -158,6 +168,24 @@ class MetadataSource(Source[Entity]):
         if self.service_connection.includePipelineServices:
             yield from self.fetch_entities(
                 entity_class=PipelineService,
+                fields=["owner"],
+            )
+
+        if self.service_connection.includeContainers:
+            yield from self.fetch_entities(
+                entity_class=Container,
+                fields=["owner"],
+            )
+
+        if self.service_connection.includeStorageServices:
+            yield from self.fetch_entities(
+                entity_class=ObjectStoreService,
+                fields=["owner"],
+            )
+
+        if self.service_connection.includeQueries:
+            yield from self.fetch_entities(
+                entity_class=Query,
                 fields=["owner"],
             )
 
