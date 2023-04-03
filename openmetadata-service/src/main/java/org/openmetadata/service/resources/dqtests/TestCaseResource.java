@@ -62,7 +62,7 @@ import org.openmetadata.service.util.ResultList;
 @Slf4j
 @Path("/v1/testCases")
 @Tag(
-    name = "Test cases",
+    name = "Test Cases",
     description =
         "Test case is a test definition to capture data quality tests against tables,"
             + " columns, and other data assets.")

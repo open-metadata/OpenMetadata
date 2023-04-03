@@ -50,7 +50,7 @@ import org.openmetadata.service.util.ResultList;
 
 @Slf4j
 @Path("/v1/testSuites")
-@Tag(name = "Test suites", description = "`TestSuite` is a set of test cases grouped together to capture data quality.")
+@Tag(name = "Test Suites", description = "`TestSuite` is a set of test cases grouped together to capture data quality.")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "TestSuites")
