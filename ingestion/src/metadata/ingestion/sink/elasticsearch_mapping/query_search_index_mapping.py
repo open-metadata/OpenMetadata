@@ -1,3 +1,20 @@
+#  Copyright 2021 Collate
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#  http://www.apache.org/licenses/LICENSE-2.0
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+"""
+Defines the Elasticsearch mapping for Queries
+"""
+import textwrap
+
+QUERY_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
+    """
 {
   "settings": {
     "analysis": {
@@ -21,7 +38,10 @@
         "om_ngram": {
           "tokenizer": "ngram",
           "min_gram": 1,
-          "max_gram": 2
+          "max_gram": 2,
+          "filter": [
+            "lowercase"
+          ]
         }
       },
       "filter": {
@@ -35,7 +55,7 @@
   "mappings": {
     "properties": {
       "id": {
-        "type": "text"
+        "type": "keyword"
       },
       "name": {
         "type": "text",
@@ -62,7 +82,9 @@
       },
       "description": {
         "type": "text",
-        "analyzer": "om_analyzer"
+        "index_options": "docs",
+        "analyzer": "om_analyzer",
+        "norms": false
       },
       "version": {
         "type": "float"
@@ -77,10 +99,10 @@
       "href": {
         "type": "text"
       },
-      "dashboardUrl": {
-        "type": "text"
+      "duration": {
+        "type": "long"
       },
-      "charts": {
+      "users": {
         "properties": {
           "id": {
             "type": "keyword",
@@ -92,19 +114,10 @@
             }
           },
           "type": {
-            "type": "text"
+            "type": "keyword"
           },
           "name": {
             "type": "keyword",
-            "fields": {
-              "keyword": {
-                "type": "keyword",
-                "ignore_above": 256
-              }
-            }
-          },
-          "displayName": {
-            "type": "text",
             "fields": {
               "keyword": {
                 "type": "keyword",
@@ -116,8 +129,7 @@
             "type": "text"
           },
           "description": {
-            "type": "text",
-            "analyzer": "om_analyzer"
+            "type": "text"
           },
           "deleted": {
             "type": "text"
@@ -127,52 +139,96 @@
           }
         }
       },
-      "dataModels": {
+      "votes": {
         "properties": {
-          "id": {
-            "type": "keyword",
-            "fields": {
-              "keyword": {
+          "upVotes": {
+            "type": "long"
+          },
+          "downVotes": {
+            "type": "long"
+          },
+          "upVoters": {
+            "properties": {
+              "id": {
                 "type": "keyword",
-                "ignore_above": 36
+                "fields": {
+                  "keyword": {
+                    "type": "keyword",
+                    "ignore_above": 36
+                  }
+                }
+              },
+              "type": {
+                "type": "keyword"
+              },
+              "name": {
+                "type": "keyword",
+                "fields": {
+                  "keyword": {
+                    "type": "keyword",
+                    "ignore_above": 256
+                  }
+                }
+              },
+              "fullyQualifiedName": {
+                "type": "text"
+              },
+              "description": {
+                "type": "text"
+              },
+              "deleted": {
+                "type": "text"
+              },
+              "href": {
+                "type": "text"
               }
             }
           },
-          "type": {
-            "type": "text"
-          },
-          "name": {
-            "type": "keyword",
-            "fields": {
-              "keyword": {
+          "downVoters": {
+            "properties": {
+              "id": {
                 "type": "keyword",
-                "ignore_above": 256
+                "fields": {
+                  "keyword": {
+                    "type": "keyword",
+                    "ignore_above": 36
+                  }
+                }
+              },
+              "type": {
+                "type": "keyword"
+              },
+              "name": {
+                "type": "keyword",
+                "fields": {
+                  "keyword": {
+                    "type": "keyword",
+                    "ignore_above": 256
+                  }
+                }
+              },
+              "fullyQualifiedName": {
+                "type": "text"
+              },
+              "description": {
+                "type": "text"
+              },
+              "deleted": {
+                "type": "text"
+              },
+              "href": {
+                "type": "text"
               }
             }
-          },
-          "displayName": {
-            "type": "text",
-            "fields": {
-              "keyword": {
-                "type": "keyword",
-                "ignore_above": 256
-              }
-            }
-          },
-          "fullyQualifiedName": {
-            "type": "text"
-          },
-          "description": {
-            "type": "text",
-            "analyzer": "om_analyzer"
-          },
-          "deleted": {
-            "type": "text"
-          },
-          "href": {
-            "type": "text"
           }
         }
+      },
+      "query": {
+        "type": "text",
+        "analyzer": "om_analyzer"
+      },
+      "queryDate": {
+        "type": "long"
       },
       "owner": {
         "properties": {
@@ -190,6 +246,7 @@
           },
           "name": {
             "type": "keyword",
+            "normalizer": "lowercase_normalizer",
             "fields": {
               "keyword": {
                 "type": "keyword",
@@ -220,101 +277,8 @@
           }
         }
       },
-      "service": {
-        "properties": {
-          "id": {
-            "type": "keyword",
-            "fields": {
-              "keyword": {
-                "type": "keyword",
-                "ignore_above": 36
-              }
-            }
-          },
-          "type": {
-            "type": "keyword"
-          },
-          "name": {
-            "type": "keyword",
-            "fields": {
-              "keyword": {
-                "type": "keyword",
-                "ignore_above": 256
-              }
-            }
-          },
-          "fullyQualifiedName": {
-            "type": "text"
-          },
-          "description": {
-            "type": "text"
-          },
-          "deleted": {
-            "type": "text"
-          },
-          "href": {
-            "type": "text"
-          }
-        }
-      },
-      "usageSummary": {
-        "properties": {
-          "dailyStats": {
-            "properties": {
-              "count": {
-                "type": "long"
-              },
-              "percentileRank": {
-                "type": "long"
-              }
-            }
-          },
-          "weeklyStats": {
-            "properties": {
-              "count": {
-                "type": "long"
-              },
-              "percentileRank": {
-                "type": "long"
-              }
-            }
-          },
-          "monthlyStats": {
-            "properties": {
-              "count": {
-                "type": "long"
-              },
-              "percentileRank": {
-                "type": "long"
-              }
-            }
-          }
-        }
-      },
-      "deleted": {
-        "type": "text"
-      },
       "followers": {
         "type": "keyword"
-      },
-      "tier": {
-        "properties": {
-          "tagFQN": {
-            "type": "keyword"
-          },
-          "labelType": {
-            "type": "keyword"
-          },
-          "description": {
-            "type": "text"
-          },
-          "source": {
-            "type": "keyword"
-          },
-          "state": {
-            "type": "keyword"
-          }
-        }
       },
       "tags": {
         "properties": {
@@ -335,8 +299,52 @@
           }
         }
       },
-      "serviceType": {
-        "type": "keyword"
+      "queryUsedIn": {
+        "properties": {
+          "id": {
+            "type": "keyword",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "ignore_above": 36
+              }
+            }
+          },
+          "type": {
+            "type": "keyword"
+          },
+          "name": {
+            "type": "keyword",
+            "normalizer": "lowercase_normalizer",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "ignore_above": 256
+              }
+            }
+          },
+          "displayName": {
+            "type": "keyword",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "ignore_above": 256
+              }
+            }
+          },
+          "fullyQualifiedName": {
+            "type": "text"
+          },
+          "description": {
+            "type": "text"
+          },
+          "deleted": {
+            "type": "text"
+          },
+          "href": {
+            "type": "text"
+          }
+        }
       },
       "entityType": {
         "type": "keyword"
@@ -351,10 +359,7 @@
           }
         ]
       },
-      "chart_suggest": {
-        "type": "completion"
-      },
-      "data_model_suggest": {
+      "column_suggest": {
         "type": "completion"
       },
       "service_suggest": {
@@ -363,3 +368,5 @@
     }
   }
 }
+"""
+)

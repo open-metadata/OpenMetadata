@@ -144,10 +144,12 @@ public abstract class EntityCsv<T extends EntityInterface> {
 
   /** Owner field is in entityType;entityName format */
   public EntityReference getOwner(CSVPrinter printer, CSVRecord record, int fieldNumber) throws IOException {
-    List<String> list = CsvUtil.fieldToStrings(record.get(fieldNumber));
-    if (list == null) {
+    String owner = record.get(fieldNumber);
+    if (nullOrEmpty(owner)) {
       return null;
     }
+
+    List<String> list = CsvUtil.fieldToStrings(owner);
     if (list.size() != 2) {
       importFailure(printer, invalidOwner(fieldNumber), record);
     }
