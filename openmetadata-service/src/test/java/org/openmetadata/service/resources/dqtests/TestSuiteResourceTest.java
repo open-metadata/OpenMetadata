@@ -103,7 +103,7 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
 
   public ResultList<TestSuite> getTestSuites(Integer limit, String fields, Map<String, String> authHeaders)
       throws HttpResponseException {
-    WebTarget target = getResource("testSuite");
+    WebTarget target = getResource("testSuites");
     target = limit != null ? target.queryParam("limit", limit) : target;
     target = target.queryParam("fields", fields);
     return TestUtils.get(target, TestSuiteResource.TestSuiteList.class, authHeaders);
