@@ -67,10 +67,6 @@ COMMONS = {
 # required library for pii tagging
 pii_requirements = {
     "spacy==3.5.0",
-    (
-        "en-core-web-md @ https://github.com/explosion/spacy-models/releases/download/"
-        "en_core_web_md-3.5.0/en_core_web_md-3.5.0-py3-none-any.whl"
-    ),
     VERSIONS["pandas"],
     "presidio-analyzer==2.2.32",
 }
@@ -180,7 +176,7 @@ plugins: Dict[str, Set[str]] = {
     "kinesis": {VERSIONS["boto3"]},
     "ldap-users": {"ldap3==2.9.1"},
     "looker": {"looker-sdk>=22.20.0"},
-    "mlflow": {"mlflow-skinny~=1.30"},
+    "mlflow": {"mlflow-skinny~=1.30", "alembic~=1.10.2"},
     "mssql": {"sqlalchemy-pytds~=0.3"},
     "mssql-odbc": {VERSIONS["pyodbc"]},
     "mysql": {VERSIONS["pymysql"]},

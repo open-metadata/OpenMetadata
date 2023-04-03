@@ -11,17 +11,22 @@
  *  limitations under the License.
  */
 
+import { Card } from 'antd';
+import PageLayoutV1 from 'components/containers/PageLayoutV1';
+import {
+  SERVICE_DEFAULT_ERROR_MAP,
+  STEPS_FOR_ADD_SERVICE,
+} from 'constants/Services.constant';
+import { useAirflowStatus } from 'hooks/useAirflowStatus';
 import { t } from 'i18next';
 import { capitalize, isUndefined } from 'lodash';
 import { LoadingState } from 'Models';
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useHistory } from 'react-router-dom';
 import { getServiceDetailsPath } from '../../constants/constants';
 import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
-import { STEPS_FOR_ADD_SERVICE } from '../../constants/Ingestions.constant';
 import { delimiterRegex, nameWithSpace } from '../../constants/regex.constants';
 import { FormSubmitType } from '../../enums/form.enum';
-import { PageLayoutType } from '../../enums/layout.enum';
 import { ServiceCategory } from '../../enums/service.enum';
 import { PipelineType } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { ConfigData } from '../../interface/service.interface';
@@ -29,18 +34,19 @@ import { getCurrentUserId, isUrlFriendlyName } from '../../utils/CommonUtils';
 import { getAddServicePath, getSettingPath } from '../../utils/RouterUtils';
 import {
   getServiceCreatedLabel,
-  getServiceIngestionStepGuide,
   getServiceRouteFromServiceType,
+  getServiceType,
 } from '../../utils/ServiceUtils';
 import AddIngestion from '../AddIngestion/AddIngestion.component';
+import ServiceRightPanel from '../common/ServiceRightPanel/ServiceRightPanel';
 import SuccessScreen from '../common/success-screen/SuccessScreen';
 import TitleBreadcrumb from '../common/title-breadcrumb/title-breadcrumb.component';
-import PageLayout from '../containers/PageLayout';
 import IngestionStepper from '../IngestionStepper/IngestionStepper.component';
 import ConnectionConfigForm from '../ServiceConfig/ConnectionConfigForm';
 import { AddServiceProps } from './AddService.interface';
 import ConfigureService from './Steps/ConfigureService';
 import SelectServiceType from './Steps/SelectServiceType';
+import ServiceRequirements from './Steps/ServiceRequirements';
 
 const AddService = ({
   serviceCategory,
@@ -56,20 +62,13 @@ const AddService = ({
   slashedBreadcrumb,
   addIngestion,
   handleAddIngestion,
-  onAirflowStatusCheck,
 }: AddServiceProps) => {
   const history = useHistory();
-  const [showErrorMessage, setShowErrorMessage] = useState({
-    serviceType: false,
-    name: false,
-    duplicateName: false,
-    nameWithSpace: false,
-    delimit: false,
-    specialChar: false,
-    nameLength: false,
-    allowChar: false,
-    isError: false,
-  });
+  const { fetchAirflowStatus } = useAirflowStatus();
+
+  const [showErrorMessage, setShowErrorMessage] = useState(
+    SERVICE_DEFAULT_ERROR_MAP
+  );
   const [activeServiceStep, setActiveServiceStep] = useState(1);
   const [activeIngestionStep, setActiveIngestionStep] = useState(1);
   const [selectServiceType, setSelectServiceType] = useState('');
@@ -77,25 +76,22 @@ const AddService = ({
   const [description, setDescription] = useState('');
   const [saveServiceState, setSaveServiceState] =
     useState<LoadingState>('initial');
-  const [isAirflowRunning, setIsAirflowRunning] = useState(true);
-
-  const resetServiceData = () => {
-    setServiceName('');
-    setDescription('');
-  };
+  const [activeField, setActiveField] = useState<string>('');
 
   const handleServiceTypeClick = (type: string) => {
     setShowErrorMessage({ ...showErrorMessage, serviceType: false });
-    resetServiceData();
+    setServiceName('');
+    setDescription('');
     setSelectServiceType(type);
   };
 
-  const serviceCategoryHandler = (category: ServiceCategory) => {
+  const handleServiceCategoryChange = (category: ServiceCategory) => {
     setShowErrorMessage({ ...showErrorMessage, serviceType: false });
     setSelectServiceType('');
     history.push(getAddServicePath(category));
   };
 
+  // Select service
   const handleSelectServiceCancel = () => {
     history.push(
       getSettingPath(
@@ -113,12 +109,14 @@ const AddService = ({
     }
   };
 
-  const handleConfigureServiceBackClick = () => {
-    setActiveServiceStep(1);
-  };
+  // Service requirements
+  const handleServiceRequirementsBackClick = () => setActiveServiceStep(1);
+  const handleServiceRequirementsNextClick = () => setActiveServiceStep(3);
 
+  // Configure service name
+  const handleConfigureServiceBackClick = () => setActiveServiceStep(2);
   const handleConfigureServiceNextClick = (descriptionValue: string) => {
-    setDescription(descriptionValue);
+    setDescription(descriptionValue.trim());
 
     if (!serviceName.trim()) {
       setShowErrorMessage({ ...showErrorMessage, name: true, isError: true });
@@ -147,24 +145,13 @@ const AddService = ({
         isError: true,
       });
     } else if (!showErrorMessage.isError) {
-      setActiveServiceStep(3);
+      setActiveServiceStep(4);
     }
   };
 
-  const handleAirflowStatusCheck = () => {
-    return new Promise<void>((resolve) => {
-      onAirflowStatusCheck()
-        .then(() => {
-          setIsAirflowRunning(true);
-        })
-        .catch(() => {
-          setIsAirflowRunning(false);
-        })
-        .finally(() => resolve());
-    });
-  };
-
-  const handleConfigUpdate = (oData: ConfigData) => {
+  // Service connection
+  const handleConnectionDetailsBackClick = () => setActiveServiceStep(3);
+  const handleConfigUpdate = async (newConfigData: ConfigData) => {
     const data = {
       name: serviceName,
       serviceType: selectServiceType,
@@ -177,37 +164,32 @@ const AddService = ({
     const configData = {
       ...data,
       connection: {
-        config: oData,
+        config: newConfigData,
       },
     };
+    setSaveServiceState('waiting');
+    try {
+      await onAddServiceSave(configData);
 
-    return new Promise<void>((resolve, reject) => {
-      setSaveServiceState('waiting');
-      onAddServiceSave(configData)
-        .then(() => {
-          handleAirflowStatusCheck().finally(() => {
-            setActiveServiceStep(4);
-            resolve();
-          });
-        })
-        .catch((err) => {
-          reject(err);
-        })
-        .finally(() => setSaveServiceState('initial'));
-    });
+      setActiveServiceStep(5);
+
+      await fetchAirflowStatus();
+    } catch (error) {
+      return error;
+    } finally {
+      setSaveServiceState('initial');
+    }
   };
 
-  const handleConnectionDetailsBackClick = () => {
-    setActiveServiceStep(2);
-  };
-
+  // View new service
   const handleViewServiceClick = () => {
     if (!isUndefined(newServiceData)) {
       history.push(getServiceDetailsPath(newServiceData.name, serviceCategory));
     }
   };
 
-  const handleValidation = (
+  // Service name validation
+  const handleServiceNameValidation = (
     event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
   ) => {
     const value = event.target.value;
@@ -216,140 +198,153 @@ const AddService = ({
       setShowErrorMessage({
         ...showErrorMessage,
         name: false,
-        isError: false,
         delimit: false,
         specialChar: false,
         nameLength: false,
+        isError: false,
       });
     }
   };
 
-  const addNewService = () => {
-    return (
-      <div data-testid="add-new-service-container">
-        <h6 className="tw-heading tw-text-base" data-testid="header">
-          {t('label.add-new-entity', { entity: t('label.service') })}
-        </h6>
-        <IngestionStepper
-          activeStep={activeServiceStep}
-          steps={STEPS_FOR_ADD_SERVICE}
-        />
-        <div className="tw-pt-5">
-          {activeServiceStep === 1 && (
-            <SelectServiceType
-              handleServiceTypeClick={handleServiceTypeClick}
-              selectServiceType={selectServiceType}
-              serviceCategory={serviceCategory}
-              serviceCategoryHandler={serviceCategoryHandler}
-              showError={showErrorMessage.serviceType}
-              onCancel={handleSelectServiceCancel}
-              onNext={handleSelectServiceNextClick}
-            />
-          )}
+  // Service focused field
+  const handleFieldFocus = (fieldName: string) => setActiveField(fieldName);
 
-          {activeServiceStep === 2 && (
-            <ConfigureService
-              description={description}
-              handleValidation={handleValidation}
-              serviceName={serviceName}
-              showError={{
-                name: showErrorMessage.name,
-                duplicateName: showErrorMessage.duplicateName,
-                nameWithSpace: showErrorMessage.nameWithSpace,
-                delimit: showErrorMessage.delimit,
-                specialChar: showErrorMessage.specialChar,
-                nameLength: showErrorMessage.nameLength,
-                allowChar: showErrorMessage.allowChar,
-              }}
-              onBack={handleConfigureServiceBackClick}
-              onNext={handleConfigureServiceNextClick}
-            />
-          )}
+  // Flag to check if pipeline is deployed or not
+  const isDeployed = useMemo(
+    () => activeIngestionStep >= 3 && !showDeployButton,
+    [activeIngestionStep, showDeployButton]
+  );
 
-          {activeServiceStep === 3 && (
-            <ConnectionConfigForm
-              cancelText={t('label.back')}
-              serviceCategory={serviceCategory}
-              serviceType={selectServiceType}
-              status={saveServiceState}
-              onCancel={handleConnectionDetailsBackClick}
-              onSave={(e) => {
-                handleConfigUpdate(e.formData);
-              }}
-            />
-          )}
+  // rendering
 
-          {activeServiceStep > 3 && (
-            <SuccessScreen
-              showIngestionButton
-              handleIngestionClick={() => handleAddIngestion(true)}
-              handleViewServiceClick={handleViewServiceClick}
-              name={serviceName}
-              state={FormSubmitType.ADD}
-              suffix={getServiceCreatedLabel(serviceCategory)}
-            />
-          )}
-        </div>
+  const addNewServiceElement = (
+    <div data-testid="add-new-service-container">
+      <h6 className="tw-heading tw-text-base" data-testid="header">
+        {t('label.add-new-entity', { entity: t('label.service') })}
+      </h6>
+      <IngestionStepper
+        activeStep={activeServiceStep}
+        steps={STEPS_FOR_ADD_SERVICE}
+      />
+      <div className="tw-pt-5">
+        {activeServiceStep === 1 && (
+          <SelectServiceType
+            handleServiceTypeClick={handleServiceTypeClick}
+            selectServiceType={selectServiceType}
+            serviceCategory={serviceCategory}
+            serviceCategoryHandler={handleServiceCategoryChange}
+            showError={showErrorMessage.serviceType}
+            onCancel={handleSelectServiceCancel}
+            onNext={handleSelectServiceNextClick}
+          />
+        )}
+
+        {activeServiceStep === 2 && (
+          <ServiceRequirements
+            serviceName={selectServiceType}
+            serviceType={getServiceType(serviceCategory)}
+            onBack={handleServiceRequirementsBackClick}
+            onNext={handleServiceRequirementsNextClick}
+          />
+        )}
+
+        {activeServiceStep === 3 && (
+          <ConfigureService
+            description={description}
+            handleValidation={handleServiceNameValidation}
+            serviceName={serviceName}
+            showError={{
+              name: showErrorMessage.name,
+              duplicateName: showErrorMessage.duplicateName,
+              nameWithSpace: showErrorMessage.nameWithSpace,
+              delimit: showErrorMessage.delimit,
+              specialChar: showErrorMessage.specialChar,
+              nameLength: showErrorMessage.nameLength,
+              allowChar: showErrorMessage.allowChar,
+            }}
+            onBack={handleConfigureServiceBackClick}
+            onNext={handleConfigureServiceNextClick}
+          />
+        )}
+
+        {activeServiceStep === 4 && (
+          <ConnectionConfigForm
+            cancelText={t('label.back')}
+            serviceCategory={serviceCategory}
+            serviceType={selectServiceType}
+            status={saveServiceState}
+            onCancel={handleConnectionDetailsBackClick}
+            onFocus={handleFieldFocus}
+            onSave={(e) => {
+              handleConfigUpdate(e.formData);
+            }}
+          />
+        )}
+
+        {activeServiceStep > 4 && (
+          <SuccessScreen
+            showIngestionButton
+            handleIngestionClick={() => handleAddIngestion(true)}
+            handleViewServiceClick={handleViewServiceClick}
+            name={serviceName}
+            state={FormSubmitType.ADD}
+            suffix={getServiceCreatedLabel(serviceCategory)}
+          />
+        )}
       </div>
-    );
-  };
+    </div>
+  );
 
-  const isDeployed = () => {
-    return activeIngestionStep >= 3 && !showDeployButton;
-  };
-
-  const fetchRightPanel = () => {
-    const stepData = addIngestion ? activeIngestionStep : activeServiceStep;
-
-    return getServiceIngestionStepGuide(
-      stepData,
-      addIngestion,
-      `${serviceName}_${PipelineType.Metadata}`,
-      serviceName,
-      PipelineType.Metadata,
-      isDeployed(),
-      false,
-      isAirflowRunning
-    );
-  };
+  useEffect(() => {
+    setActiveField('');
+  }, [activeIngestionStep, activeServiceStep]);
 
   return (
-    <div className="tw-self-center">
-      {' '}
-      <PageLayout
-        classes="tw-max-w-full-hd tw-h-full tw-pt-4"
-        header={<TitleBreadcrumb titleLinks={slashedBreadcrumb} />}
-        layout={PageLayoutType['2ColRTL']}
-        pageTitle={t('label.add-entity', { entity: t('label.service') })}
-        rightPanel={fetchRightPanel()}>
-        <div className="tw-form-container">
-          {addIngestion ? (
-            <AddIngestion
-              activeIngestionStep={activeIngestionStep}
-              handleCancelClick={() => handleAddIngestion(false)}
-              handleViewServiceClick={handleViewServiceClick}
-              heading={`${t('label.add-workflow-ingestion', {
-                workflow: capitalize(PipelineType.Metadata),
-              })}`}
-              ingestionAction={ingestionAction}
-              ingestionProgress={ingestionProgress}
-              isIngestionCreated={isIngestionCreated}
-              isIngestionDeployed={isIngestionDeployed}
-              pipelineType={PipelineType.Metadata}
-              serviceCategory={serviceCategory}
-              serviceData={newServiceData}
-              setActiveIngestionStep={(step) => setActiveIngestionStep(step)}
-              showDeployButton={showDeployButton}
-              status={FormSubmitType.ADD}
-              onAddIngestionSave={onAddIngestionSave}
-              onIngestionDeploy={onIngestionDeploy}
-            />
-          ) : (
-            addNewService()
-          )}
-        </div>
-      </PageLayout>
-    </div>
+    <PageLayoutV1
+      className="tw-max-w-full-hd tw-h-full tw-pt-4"
+      header={<TitleBreadcrumb titleLinks={slashedBreadcrumb} />}
+      pageTitle={t('label.add-entity', { entity: t('label.service') })}
+      rightPanel={
+        <ServiceRightPanel
+          activeField={activeField}
+          activeStep={addIngestion ? activeIngestionStep : activeServiceStep}
+          ingestionName={`${serviceName}_${PipelineType.Metadata}`}
+          isIngestion={addIngestion}
+          isUpdating={false}
+          pipelineType={PipelineType.Metadata}
+          selectedService={selectServiceType}
+          selectedServiceCategory={serviceCategory}
+          serviceName={serviceName}
+          showDeployedTitle={isDeployed}
+        />
+      }>
+      <Card className="p-lg">
+        {addIngestion ? (
+          <AddIngestion
+            activeIngestionStep={activeIngestionStep}
+            handleCancelClick={() => handleAddIngestion(false)}
+            handleViewServiceClick={handleViewServiceClick}
+            heading={`${t('label.add-workflow-ingestion', {
+              workflow: capitalize(PipelineType.Metadata),
+            })}`}
+            ingestionAction={ingestionAction}
+            ingestionProgress={ingestionProgress}
+            isIngestionCreated={isIngestionCreated}
+            isIngestionDeployed={isIngestionDeployed}
+            pipelineType={PipelineType.Metadata}
+            serviceCategory={serviceCategory}
+            serviceData={newServiceData}
+            setActiveIngestionStep={(step) => setActiveIngestionStep(step)}
+            showDeployButton={showDeployButton}
+            status={FormSubmitType.ADD}
+            onAddIngestionSave={onAddIngestionSave}
+            onIngestionDeploy={onIngestionDeploy}
+          />
+        ) : (
+          addNewServiceElement
+        )}
+      </Card>
+    </PageLayoutV1>
   );
 };
 

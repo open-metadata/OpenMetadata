@@ -87,7 +87,10 @@ export type ScheduleIntervalProps = {
 
 // Todo: Need to refactor below type, as per schema change #9575
 export type ModifiedDbtConfig = DbtConfig &
-  Pick<DbtPipelineClass, 'dbtUpdateDescriptions' | 'dbtClassificationName'>;
+  Pick<
+    DbtPipelineClass,
+    'dbtUpdateDescriptions' | 'dbtClassificationName' | 'includeTags'
+  >;
 
 export interface AddIngestionState {
   chartFilterPattern: FilterPattern;
@@ -110,6 +113,10 @@ export interface AddIngestionState {
   ingestSampleData: boolean;
   markAllDeletedTables: boolean | undefined;
   markDeletedTables: boolean | undefined;
+  markDeletedDashboards?: boolean;
+  markDeletedTopics?: boolean;
+  markDeletedMlModels?: boolean;
+  markDeletedPipelines?: boolean;
   metadataToESConfig: ConfigClass | undefined;
   mlModelFilterPattern: FilterPattern;
   pipelineFilterPattern: FilterPattern;

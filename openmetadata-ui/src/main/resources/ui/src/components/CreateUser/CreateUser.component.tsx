@@ -50,10 +50,7 @@ import {
   SsoServiceType,
 } from '../../generated/entity/teams/user';
 import jsonData from '../../jsons/en';
-import {
-  getAuthMechanismTypeOptions,
-  getJWTTokenExpiryOptions,
-} from '../../utils/BotsUtils';
+import { getJWTOption, getJWTTokenExpiryOptions } from '../../utils/BotsUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { useAuthContext } from '../authentication/auth-provider/AuthProvider';
@@ -129,6 +126,8 @@ const CreateUser = ({
     ],
     [forceBot]
   );
+
+  const jwtOption = getJWTOption();
 
   /**
    * Handle on change event
@@ -787,9 +786,7 @@ const CreateUser = ({
                     field: t('label.auth-mechanism'),
                   })}
                   onChange={(value) => setAuthMechanism(value)}>
-                  {getAuthMechanismTypeOptions(authConfig).map((option) => (
-                    <Option key={option.value}>{option.label}</Option>
-                  ))}
+                  <Option key={jwtOption.value}>{jwtOption.label}</Option>
                 </Select>
               </Form.Item>
               {authMechanism === AuthType.Jwt && (

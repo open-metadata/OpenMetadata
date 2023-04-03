@@ -50,6 +50,13 @@ export const getQueryById = async (id: string, params?: QueryByIdParams) => {
 
   return response.data;
 };
+export const getQueryByFqn = async (fqn: string, params?: QueryByIdParams) => {
+  const response = await APIClient.get<Query>(`${BASE_URL}/name/${fqn}`, {
+    params,
+  });
+
+  return response.data;
+};
 export const postQuery = async (query: CreateQuery) => {
   const response = await APIClient.post<CreateQuery, AxiosResponse<Query>>(
     BASE_URL,
