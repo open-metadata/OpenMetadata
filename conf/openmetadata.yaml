@@ -89,7 +89,7 @@ server:
 # Logging settings.
 # https://logback.qos.ch/manual/layouts.html#conversionWord
 logging:
-  level: ${LOG_LEVEL:-DEBUG}
+  level: ${LOG_LEVEL:-INFO}
   loggers:
     io.swagger: ERROR
   appenders:
@@ -120,12 +120,12 @@ logging:
 
 database:
   # the name of the JDBC driver, mysql in our case
-  driverClass: ${DB_DRIVER_CLASS:-org.postgresql.Driver}
+  driverClass: ${DB_DRIVER_CLASS:-com.mysql.cj.jdbc.Driver}
   # the username and password
   user: ${DB_USER:-openmetadata_user}
   password: ${DB_USER_PASSWORD:-openmetadata_password}
   # the JDBC URL; the database is called openmetadata_db
-  url: jdbc:${DB_SCHEME:-postgresql}://${DB_HOST:-localhost}:${DB_PORT:-5432}/${OM_DATABASE:-openmetadata_db}?allowPublicKeyRetrieval=true&useSSL=${DB_USE_SSL:-false}&serverTimezone=UTC
+  url: jdbc:${DB_SCHEME:-mysql}://${DB_HOST:-localhost}:${DB_PORT:-3306}/${OM_DATABASE:-openmetadata_db}?allowPublicKeyRetrieval=true&useSSL=${DB_USE_SSL:-false}&serverTimezone=UTC
 
 
 migrationConfiguration:
@@ -154,16 +154,15 @@ authenticationConfiguration:
   samlConfiguration:
     debugMode: ${SAML_DEBUG_MODE:-false}
     idp:
-      entityId: ${SAML_IDP_ENTITY_ID:-"https://mocksaml.com/api/saml/sso"}
-      ssoLoginUrl: ${SAML_IDP_SSO_LOGIN_URL:-"https://saml.example.com/entityid"}
-      idpX509Certificate: ${SAML_IDP_CERTIFICATE:-"MIIC4jCCAcoCCQC33wnybT5QZDANBgkqhkiG9w0BAQsFADAyMQswCQYDVQQGEwJVSzEPMA0GA1UECgwGQm94eUhRMRIwEAYDVQQDDAlNb2NrIFNBTUwwIBcNMjIwMjI4MjE0NjM4WhgPMzAyMTA3MDEyMTQ2MzhaMDIxCzAJBgNVBAYTAlVLMQ8wDQYDVQQKDAZCb3h5SFExEjAQBgNVBAMMCU1vY2sgU0FNTDCCASIwDQYJKoZIhvcNAQEBBQADggEPADCCAQoCggEBALGfYettMsct1T6tVUwTudNJH5Pnb9GGnkXi9Zw/e6x45DD0RuRONbFlJ2T4RjAE/uG+AjXxXQ8o2SZfb9+GgmCHuTJFNgHoZ1nFVXCmb/Hg8Hpd4vOAGXndixaReOiq3EH5XvpMjMkJ3+8+9VYMzMZOjkgQtAqO36eAFFfNKX7dTj3VpwLkvz6/KFCq8OAwY+AUi4eZm5J57D31GzjHwfjH9WTeX0MyndmnNB1qV75qQR3b2/W5sGHRv+9AarggJkF+ptUkXoLtVA51wcfYm6hILptpde5FQC8RWY1YrswBWAEZNfyrR4JeSweElNHg4NVOs4TwGjOPwWGqzTfgTlECAwEAATANBgkqhkiG9w0BAQsFAAOCAQEAAYRlYflSXAWoZpFfwNiCQVE5d9zZ0DPzNdWhAybXcTyMf0z5mDf6FWBW5Gyoi9u3EMEDnzLcJNkwJAAc39Apa4I2/tml+Jy29dk8bTyX6m93ngmCgdLh5Za4khuU3AM3L63g7VexCuO7kwkjh/+LqdcIXsVGO6XDfu2QOs1Xpe9zIzLpwm/RNYeXUjbSj5ce/jekpAw7qyVVL4xOyh8AtUW1ek3wIw1MJvEgEPt0d16oshWJpoS1OT8Lr/22SvYEo3EmSGdTVGgk3x3s+A0qWAqTcyjr7Q4s/GKYRFfomGwz0TZ4Iw1ZN99Mm0eo2USlSRTVl7QHRTuiuSThHpLKQQ=="}
+      entityId: ${SAML_IDP_ENTITY_ID:-""}
+      ssoLoginUrl: ${SAML_IDP_SSO_LOGIN_URL:-""}
+      idpX509Certificate: ${SAML_IDP_CERTIFICATE:-""}
       authorityUrl: ${SAML_AUTHORITY_URL:-"http://localhost:8585/api/v1/saml/login"}
-      nameId: ${SAML_IDP_NAME_ID:-"urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress"}
+      nameId: ${SAML_IDP_NAME_ID:-"urn:oasis:names:tc:SAML:2.0:nameid-format:emailAddress"}
     sp:
       entityId: ${SAML_SP_ENTITY_ID:-"http://localhost:8585/api/v1/saml/metadata"}
       acs: ${SAML_SP_ACS:-"http://localhost:8585/api/v1/saml/acs"}
       spX509Certificate: ${SAML_SP_CERTIFICATE:-""}
-      spPrivateKey: ${SAML_SP_PRIVATE_KEY:-""}
       callback: ${SAML_SP_CALLBACK:-"http://localhost:8585/saml/callback"}
     security:
       strictMode: ${SAML_STRICT_MODE:-false}
@@ -289,15 +288,14 @@ health:
 email:
   emailingEntity: ${OM_EMAIL_ENTITY:-"OpenMetadata"}
   supportUrl: ${OM_SUPPORT_URL:-"https://slack.open-metadata.org"}
-  enableSmtpServer : ${AUTHORIZER_ENABLE_SMTP:-true}
-  openMetadataUrl: ${OPENMETADATA_SERVER_URL:-"http://localhost:8585"}
-  senderMail: ${OPENMETADATA_SMTP_SENDER_MAIL:-"mohit.y@deuexsolutions.com"}
-  serverEndpoint: ${SMTP_SERVER_ENDPOINT:-"smtp.gmail.com"}
-  serverPort: ${SMTP_SERVER_PORT:-"587"}
-  username: ${SMTP_SERVER_USERNAME:-"mohit.y@deuexsolutions.com"}
-  password: ${SMTP_SERVER_PWD:-"nfebmqwofhfkirld"}
+  enableSmtpServer : ${AUTHORIZER_ENABLE_SMTP:-false}
+  openMetadataUrl: ${OPENMETADATA_SERVER_URL:-""}
+  senderMail: ${OPENMETADATA_SMTP_SENDER_MAIL:-""}
+  serverEndpoint: ${SMTP_SERVER_ENDPOINT:-""}
+  serverPort: ${SMTP_SERVER_PORT:-""}
+  username: ${SMTP_SERVER_USERNAME:-""}
+  password: ${SMTP_SERVER_PWD:-""}
   transportationStrategy: ${SMTP_SERVER_STRATEGY:-"SMTP_TLS"}
-
 
 applicationConfig:
   logoConfig:
