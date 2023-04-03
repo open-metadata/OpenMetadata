@@ -13,33 +13,6 @@
 
 package org.openmetadata.service.util;
 
-import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
-import static org.openmetadata.service.Entity.FIELD_DISPLAY_NAME;
-import static org.openmetadata.service.Entity.FIELD_NAME;
-import static org.openmetadata.service.Entity.FIELD_OWNER;
-import static org.openmetadata.service.Entity.INGESTION_PIPELINE;
-import static org.openmetadata.service.Entity.KPI;
-import static org.openmetadata.service.Entity.TEST_CASE;
-
-import java.net.URI;
-import java.text.SimpleDateFormat;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
-import java.util.Optional;
-import java.util.Set;
-import java.util.stream.Collectors;
-import javax.json.JsonArray;
-import javax.json.JsonObject;
-import javax.json.JsonValue;
-import javax.json.JsonValue.ValueType;
-import javax.json.stream.JsonParsingException;
 import org.apache.commons.lang.StringUtils;
 import org.bitbucket.cowwoc.diffmatchpatch.DiffMatchPatch;
 import org.openmetadata.common.utils.CommonUtil;
@@ -63,6 +36,34 @@ import org.openmetadata.service.events.subscription.msteams.TeamsMessage;
 import org.openmetadata.service.events.subscription.slack.SlackAttachment;
 import org.openmetadata.service.events.subscription.slack.SlackMessage;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
+
+import javax.json.JsonArray;
+import javax.json.JsonObject;
+import javax.json.JsonValue;
+import javax.json.JsonValue.ValueType;
+import javax.json.stream.JsonParsingException;
+import java.net.URI;
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
+
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.service.Entity.FIELD_DISPLAY_NAME;
+import static org.openmetadata.service.Entity.FIELD_NAME;
+import static org.openmetadata.service.Entity.FIELD_OWNER;
+import static org.openmetadata.service.Entity.INGESTION_PIPELINE;
+import static org.openmetadata.service.Entity.KPI;
+import static org.openmetadata.service.Entity.TEST_CASE;
 
 public final class ChangeEventParser {
   public static final String FEED_ADD_MARKER = "<!add>";
@@ -706,13 +707,13 @@ public final class ChangeEventParser {
     for (DiffMatchPatch.Diff d : diffs) {
       if (DiffMatchPatch.Operation.EQUAL.equals(d.operation)) {
         // merging equal values of both string
-        outputStr.append(d.text.trim());
+        outputStr.append(d.text.trim()).append(" ");
       } else if (DiffMatchPatch.Operation.INSERT.equals(d.operation)) {
         // merging added values with addMarker before and after of new values added
         outputStr.append(addMarker).append(d.text.trim()).append(addMarker).append(" ");
       } else {
         // merging deleted values with removeMarker before and after of old value removed ..
-        outputStr.append(" ").append(removeMarker).append(d.text.trim()).append(removeMarker).append(" ");
+        outputStr.append(removeMarker).append(d.text.trim()).append(removeMarker).append(" ");
       }
     }
     String diff = outputStr.toString().trim();
