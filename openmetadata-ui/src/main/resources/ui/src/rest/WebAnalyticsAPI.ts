@@ -21,7 +21,7 @@ export const postWebAnalyticEvent = async (
   const response = await APIClient.put<
     WebAnalyticEventData,
     AxiosResponse<WebAnalyticEventData>
-  >('/analytics/webAnalyticEvent/collect', webAnalyticEventData);
+  >('/analytics/web/events/collect', webAnalyticEventData);
 
   return response.data;
 };

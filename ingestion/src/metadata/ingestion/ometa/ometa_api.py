@@ -472,10 +472,10 @@ class OpenMetadata(
             return "/testCase"
 
         if issubclass(entity, WebAnalyticEventData):
-            return "/analytics/webAnalyticEvent/collect"
+            return "/analytics/web/events/collect"
 
         if issubclass(entity, DataInsightChart):
-            return "/dataInsight"
+            return "/analytics/dataInsights/charts"
 
         if issubclass(
             entity,
