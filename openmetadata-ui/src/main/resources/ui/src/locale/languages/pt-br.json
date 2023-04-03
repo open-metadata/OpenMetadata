@@ -1103,7 +1103,7 @@
     "no-users": "Não há usuários {{text}}",
     "no-version-type-available": "Nenhuma versão de {{type}} disponível",
     "nodes-per-layer-message": "Por favor, insira um valor para o número de nós por camada",
-    "nodes-per-layer-tooltip": "Escolha exibir 'n' número de nós por camada. Se o número de nós existentes exceder o número definido de nós, então a paginação será exibida.",
+    "nodes-per-layer-tooltip": "Escolha exibir ‘n’ número de nós por camada. Se o número de nós existentes exceder o número definido de nós, então a paginação será exibida.",
     "not-followed-anything": "Você ainda não seguiu nada.",
     "om-description": "Repositório centralizado de metadados, para descobrir, colaborar e manter seus dados corretos.",
     "onboarding-claim-ownership-description": "Dados funcionam bem quando possuem um dono. Dê uma olhada nos ativos de dados que você é responsável e reivindique a propriedade.",

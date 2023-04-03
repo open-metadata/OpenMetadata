@@ -66,13 +66,6 @@ class OMetaTestSuiteTest(TestCase):
 
     assert metadata.health_check()
 
-    test_suite: TestSuite = metadata.create_or_update(
-        CreateTestSuiteRequest(
-            name="testSuiteForIntegrationTest",
-            description="This is a test suite for the integration tests",
-        )
-    )
-
     test_definition = metadata.create_or_update(
         CreateTestDefinitionRequest(
             name="testDefinitionForIntegration",
@@ -86,6 +79,13 @@ class OMetaTestSuiteTest(TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         """set up tests"""
+
+        cls.test_suite: TestSuite = cls.metadata.create_or_update(
+            CreateTestSuiteRequest(
+                name="testSuiteForIntegrationTest",
+                description="This is a test suite for the integration tests",
+            )
+        )
 
         cls.metadata.create_or_update(
             CreateTestCaseRequest(

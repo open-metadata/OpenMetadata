@@ -84,6 +84,21 @@
       "type": "boolean",
       "default": true
     },
+    "includeContainers": {
+      "description": "Include Containers for Indexing",
+      "type": "boolean",
+      "default": true
+    },
+    "includeStorageServices": {
+      "description": "Include Storage Services for Indexing",
+      "type": "boolean",
+      "default": true
+    },
+    "includeQueries": {
+      "description": "Include Queries for Indexing",
+      "type": "boolean",
+      "default": true
+    },
     "limitRecords": {
       "description": "Limit the number of records for Indexing.",
       "type": "integer",

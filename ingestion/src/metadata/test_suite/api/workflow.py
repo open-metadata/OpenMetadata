@@ -21,7 +21,7 @@ from copy import deepcopy
 from logging import Logger
 from typing import List, Optional, Set, Tuple
 
-from pydantic import ValidationError
+from pydantic import BaseModel, ValidationError
 from sqlalchemy import MetaData
 
 from metadata.config.common import WorkflowExecutionError
@@ -58,7 +58,11 @@ from metadata.interfaces.datalake.datalake_test_suite_interface import (
 )
 from metadata.interfaces.sqalchemy.sqa_test_suite_interface import SQATestSuiteInterface
 from metadata.profiler.api.models import ProfileSampleConfig
-from metadata.test_suite.api.models import TestCaseDefinition, TestSuiteProcessorConfig
+from metadata.test_suite.api.models import (
+    TestCaseDefinition,
+    TestSuiteDefinition,
+    TestSuiteProcessorConfig,
+)
 from metadata.test_suite.runner.core import DataTestsRunner
 from metadata.utils import entity_link
 from metadata.utils.importer import get_sink
@@ -68,6 +72,22 @@ from metadata.utils.workflow_output_handler import print_test_suite_status
 from metadata.workflow.workflow_status_mixin import WorkflowStatusMixin
 
 logger: Logger = test_suite_logger()
+
+
+class TestCaseToCreate(BaseModel):
+    """Test case to create"""
+
+    test_suite_name: str
+    test_case_name: str
+    entity_link: str
+
+    def __hash__(self):
+        """make this base model hashable on unique_name"""
+        return hash(f"{self.test_suite_name}.{self.test_case_name}")
+
+    def __str__(self) -> str:
+        """make this base model printable"""
+        return f"{self.test_suite_name}.{self.test_case_name}"
 
 
 class TestSuiteWorkflow(WorkflowStatusMixin):
@@ -339,7 +359,9 @@ class TestSuiteWorkflow(WorkflowStatusMixin):
 
         return test_cases_entity
 
-    def get_test_case_from_cli_config(self) -> List[str]:
+    def get_test_case_from_cli_config(
+        self,
+    ) -> List[Tuple[TestCaseDefinition, TestSuiteDefinition]]:
         """Get all the test cases names defined in the CLI config file"""
         return [
             (test_case, test_suite)
@@ -347,9 +369,66 @@ class TestSuiteWorkflow(WorkflowStatusMixin):
             for test_case in test_suite.testCases
         ]
 
+    def get_unique_test_case_name_in_config(self, test_cases_in_config: set) -> set:
+        """Get unique test case names in config. If a test case is created for the same entity
+        with the same name in different test suites, we only create one test case in the platform.
+        The other ones will be skipped.
+
+        Args:
+            test_cases_in_config (set): set of test cases in config
+
+        Returns:
+            set: set of unique test case names in config
+        """
+        seen = []
+        unique_test_case = []
+        for test_case in test_cases_in_config:
+            unique_test_case_name_in_entity = (
+                f"{test_case.test_case_name}/{test_case.entity_link}"
+            )
+            if unique_test_case_name_in_entity not in seen:
+                seen.append(unique_test_case_name_in_entity)
+                unique_test_case.append(test_case)
+                continue
+            logger.info(
+                f"Test case {test_case.test_case_name} for entity {test_case.entity_link}"
+                " was already defined in your profiler config file. Skipping it."
+            )
+
+        return set(unique_test_case)
+
+    def test_case_name_exists(self, test_case: TestCaseToCreate) -> bool:
+        """Check if a test case name already exists in the platform
+        for the same entity.
+
+        Args:
+            other (set): a set of platform test cases
+        Returns:
+            Optional["TestCaseToCreate"]
+        """
+        try:
+            entity_fqn = entity_link.get_table_or_column_fqn(test_case.entity_link)
+        except ValueError as exc:
+            logger.debug(traceback.format_exc())
+            logger.error(f"Failed to get entity fqn: {exc}")
+            # we'll assume that the test case name is not unique
+            return True
+
+        test_case_fqn = f"{entity_fqn}.{test_case.test_case_name}"
+
+        test_case = self.metadata.get_by_name(
+            entity=TestCase,
+            fqn=test_case_fqn,
+            fields=["testDefinition", "testSuite"],
+        )
+
+        if not test_case:
+            return False
+        return True
+
     def compare_and_create_test_cases(
         self,
-        cli_config_test_cases_def: List[Tuple[TestCaseDefinition, TestSuite]],
+        cli_config_test_cases_def: List[Tuple[TestCaseDefinition, TestSuiteDefinition]],
         test_cases: List[TestCase],
     ) -> Optional[List[TestCase]]:
         """
@@ -360,9 +439,34 @@ class TestSuiteWorkflow(WorkflowStatusMixin):
             cli_config_test_case_name: test cases defined in CLI workflow associated with its test suite
             test_cases: list of test cases entities fetch from the server using test suite names in the config file
         """
-        test_case_names_to_create = {
-            test_case_def[0].name for test_case_def in cli_config_test_cases_def
-        } - {test_case.name.__root__ for test_case in test_cases}
+        cli_test_cases = {
+            TestCaseToCreate(
+                test_suite_name=test_case_def[1].name,
+                test_case_name=test_case_def[0].name,
+                entity_link=test_case_def[0].entityLink.__root__,
+            )
+            for test_case_def in cli_config_test_cases_def
+        }
+        platform_test_cases = {
+            TestCaseToCreate(
+                test_suite_name=test_case.testSuite.name,
+                test_case_name=test_case.name.__root__,
+                entity_link=test_case.entityLink.__root__,
+            )
+            for test_case in test_cases
+        }
+
+        # we'll check the test cases defined in the CLI config file and not present in the platform
+        unique_test_cases_across_test_suites = cli_test_cases - platform_test_cases
+        # we'll check if we are creating a test case for an entity that already has the same name
+        unique_test_case_across_entities = {
+            test_case
+            for test_case in unique_test_cases_across_test_suites
+            if not self.test_case_name_exists(test_case)
+        }
+        test_case_names_to_create = self.get_unique_test_case_name_in_config(
+            unique_test_case_across_entities
+        )
 
         if not test_case_names_to_create:
             return None
@@ -374,7 +478,14 @@ class TestSuiteWorkflow(WorkflowStatusMixin):
                 (
                     cli_config_test_case_def
                     for cli_config_test_case_def in cli_config_test_cases_def
-                    if cli_config_test_case_def[0].name == test_case_name_to_create
+                    if (
+                        cli_config_test_case_def[0].name
+                        == test_case_name_to_create.test_case_name
+                        and cli_config_test_case_def[0].entityLink.__root__
+                        == test_case_name_to_create.entity_link
+                        and cli_config_test_case_def[1].name
+                        == test_case_name_to_create.test_suite_name
+                    )
                 ),
                 (None, None),
             )
