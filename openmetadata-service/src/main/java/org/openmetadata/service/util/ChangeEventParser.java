@@ -13,8 +13,35 @@
 
 package org.openmetadata.service.util;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.service.Entity.FIELD_DISPLAY_NAME;
+import static org.openmetadata.service.Entity.FIELD_NAME;
+import static org.openmetadata.service.Entity.FIELD_OWNER;
+import static org.openmetadata.service.Entity.INGESTION_PIPELINE;
+import static org.openmetadata.service.Entity.KPI;
+import static org.openmetadata.service.Entity.TEST_CASE;
+
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
+import javax.json.JsonArray;
+import javax.json.JsonObject;
+import javax.json.JsonValue;
+import javax.json.JsonValue.ValueType;
+import javax.json.stream.JsonParsingException;
 import org.apache.commons.lang.StringUtils;
 import org.bitbucket.cowwoc.diffmatchpatch.DiffMatchPatch;
+import org.openmetadata.api.configuration.ChangeEventConfiguration;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.dataInsight.kpi.Kpi;
@@ -37,33 +64,6 @@ import org.openmetadata.service.events.subscription.slack.SlackAttachment;
 import org.openmetadata.service.events.subscription.slack.SlackMessage;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 
-import javax.json.JsonArray;
-import javax.json.JsonObject;
-import javax.json.JsonValue;
-import javax.json.JsonValue.ValueType;
-import javax.json.stream.JsonParsingException;
-import java.text.SimpleDateFormat;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
-import java.util.Optional;
-import java.util.Set;
-import java.util.stream.Collectors;
-
-import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
-import static org.openmetadata.service.Entity.FIELD_DISPLAY_NAME;
-import static org.openmetadata.service.Entity.FIELD_NAME;
-import static org.openmetadata.service.Entity.FIELD_OWNER;
-import static org.openmetadata.service.Entity.INGESTION_PIPELINE;
-import static org.openmetadata.service.Entity.KPI;
-import static org.openmetadata.service.Entity.TEST_CASE;
-
 public final class ChangeEventParser {
   public static final String FEED_ADD_MARKER = "<!add>";
   public static final String FEED_REMOVE_MARKER = "<!remove>";
@@ -75,12 +75,19 @@ public final class ChangeEventParser {
   public static final String FEED_LINE_BREAK = " <br/> ";
   public static final String SLACK_LINE_BREAK = "\n";
 
-  public static OpenMetadataApplicationConfig configuration;
+  private static ChangeEventConfiguration CHANGE_EVENT_CONFIGURATION_INSTANCE;
+
+  private static volatile boolean INITIALIZED = false;
 
   private ChangeEventParser() {}
 
-  public static void init(OpenMetadataApplicationConfig config) {
-    configuration = config;
+  public static void initialize(OpenMetadataApplicationConfig config) {
+    if (!INITIALIZED) {
+      if (config.getChangeEventConfiguration() != null) {
+        CHANGE_EVENT_CONFIGURATION_INSTANCE = config.getChangeEventConfiguration();
+      }
+      INITIALIZED = true;
+    }
   }
 
   public enum CHANGE_TYPE {
@@ -101,6 +108,7 @@ public final class ChangeEventParser {
     switch (publishTo) {
       case FEED:
       case TEAMS:
+      case EMAIL:
         // TEAMS and FEED bold formatting is same
         return FEED_BOLD;
       case SLACK:
@@ -117,6 +125,7 @@ public final class ChangeEventParser {
       case FEED:
       case TEAMS:
       case GCHAT:
+      case EMAIL:
         // TEAMS, GCHAT, FEED linebreak formatting are same
         return FEED_LINE_BREAK;
       case SLACK:
@@ -135,6 +144,7 @@ public final class ChangeEventParser {
       case SLACK:
         return "*";
       case GCHAT:
+      case EMAIL:
         return "<b>";
       default:
         return "INVALID";
@@ -150,6 +160,7 @@ public final class ChangeEventParser {
       case SLACK:
         return "*";
       case GCHAT:
+      case EMAIL:
         return "</b>";
       default:
         return "INVALID";
@@ -165,6 +176,7 @@ public final class ChangeEventParser {
       case SLACK:
         return "~";
       case GCHAT:
+      case EMAIL:
         return "<s>";
       default:
         return "INVALID";
@@ -180,6 +192,7 @@ public final class ChangeEventParser {
       case SLACK:
         return "~";
       case GCHAT:
+      case EMAIL:
         return "</s>";
       default:
         return "INVALID";
@@ -198,15 +211,16 @@ public final class ChangeEventParser {
       fqn = event.getEntityFullyQualifiedName();
       entityType = event.getEntityType();
     }
-    //    if (Objects.nonNull(urlInstance)) {
-    //      String scheme = urlInstance.getScheme();
-    //      String host = urlInstance.getHost();
     if (publishTo == PUBLISH_TO.SLACK || publishTo == PUBLISH_TO.GCHAT) {
-      return String.format("<%s/%s/%s|%s>", configuration.getChangeEventConfiguration().getUri(), entityType, fqn.trim(), fqn.trim());
+      return String.format(
+          "<%s/%s/%s|%s>", CHANGE_EVENT_CONFIGURATION_INSTANCE.getUri(), entityType, fqn.trim(), fqn.trim());
     } else if (publishTo == PUBLISH_TO.TEAMS) {
-      return String.format("[%s](/%s/%s)", fqn, configuration.getChangeEventConfiguration().getUri(), entityType, fqn.trim());
+      return String.format(
+          "[%s](/%s/%s)", fqn.trim(), CHANGE_EVENT_CONFIGURATION_INSTANCE.getUri(), entityType, fqn.trim());
     } else if (publishTo == PUBLISH_TO.EMAIL) {
-      return String.format("%s/%s", configuration.getChangeEventConfiguration().getUri(), entityType, fqn.trim());
+      return String.format(
+          "<a href = '%s/%s/%s'>%s</a>",
+          CHANGE_EVENT_CONFIGURATION_INSTANCE.getUri(), entityType, fqn.trim(), fqn.trim());
     }
     //    }
     return "";
@@ -224,11 +238,10 @@ public final class ChangeEventParser {
       }
       String headerTxt;
       String headerText;
-      if (event.getEventType().equals(Entity.QUERY)){
+      if (event.getEventType().equals(Entity.QUERY)) {
         headerTxt = "%s posted on " + eventType;
         headerText = String.format(headerTxt);
-      }
-      else{
+      } else {
         headerTxt = "%s posted on " + eventType + " %s";
         headerText = String.format(headerTxt, event.getUserName(), getEntityUrl(PUBLISH_TO.SLACK, event));
       }
@@ -257,7 +270,7 @@ public final class ChangeEventParser {
       emailMessage.setEntityUrl(getEntityUrl(PUBLISH_TO.EMAIL, event));
     }
     Map<EntityLink, String> messages =
-        getFormattedMessages(PUBLISH_TO.SLACK, event.getChangeDescription(), (EntityInterface) event.getEntity());
+        getFormattedMessages(PUBLISH_TO.EMAIL, event.getChangeDescription(), (EntityInterface) event.getEntity());
     List<String> changeMessage = new ArrayList<>();
     for (Entry<EntityLink, String> entry : messages.entrySet()) {
       changeMessage.add(entry.getValue());
@@ -432,7 +445,7 @@ public final class ChangeEventParser {
     field.append("Query Used in :- ");
     int i = 1;
     for (EntityReference queryUsage : queryUsedIn) {
-      field.append(getQueryUsageUrl(publishTo,queryUsage.getFullyQualifiedName(),queryUsage.getType()));
+      field.append(getQueryUsageUrl(publishTo, queryUsage.getFullyQualifiedName(), queryUsage.getType()));
       if (i < queryUsedIn.size()) {
         field.append(", ");
       }
@@ -441,19 +454,19 @@ public final class ChangeEventParser {
     return field.toString();
   }
 
-  private static String getQueryUsageUrl(PUBLISH_TO publishTo, String fqn, String entityType){
+  private static String getQueryUsageUrl(PUBLISH_TO publishTo, String fqn, String entityType) {
     if (publishTo == PUBLISH_TO.SLACK || publishTo == PUBLISH_TO.GCHAT) {
-      return String.format("<%s/%s/%s|%s>", configuration.getChangeEventConfiguration().getUri(), entityType, fqn.trim(), fqn.trim());
+      return String.format(
+          "<%s/%s/%s|%s>", CHANGE_EVENT_CONFIGURATION_INSTANCE.getUri(), entityType, fqn.trim(), fqn.trim());
     } else if (publishTo == PUBLISH_TO.TEAMS) {
-      return String.format("[%s](/%s/%s)", fqn, configuration.getChangeEventConfiguration().getUri(), entityType, fqn.trim());
+      return String.format("[%s](/%s/%s)", fqn, CHANGE_EVENT_CONFIGURATION_INSTANCE.getUri(), entityType, fqn.trim());
     } else if (publishTo == PUBLISH_TO.EMAIL) {
-      return String.format("%s/%s", configuration.getChangeEventConfiguration().getUri(), entityType, fqn.trim());
+      return String.format(
+          "<a href = '%s/%s/%s'>%s</a>",
+          CHANGE_EVENT_CONFIGURATION_INSTANCE.getUri(), entityType, fqn.trim(), fqn.trim());
     }
-    return String.format(
-            "[%s](/%s/%s)",
-            fqn, entityType, fqn.trim());
+    return String.format("[%s](/%s/%s)", fqn, entityType, fqn.trim());
   }
-
 
   /** Tries to merge additions and deletions into updates and returns a map of formatted messages. */
   private static Map<EntityLink, String> mergeAddtionsDeletion(
