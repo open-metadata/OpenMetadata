@@ -10,21 +10,51 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Badge, BadgeProps } from 'antd';
+import { Typography } from 'antd';
 import classNames from 'classnames';
-import React from 'react';
+import React, { ReactNode } from 'react';
 import './badge.style.less';
 
-interface AppBadgeProps extends BadgeProps {
+interface AppBadgeProps {
   label: string;
+  icon?: ReactNode;
+  color?: string;
+  className?: string;
+  bgColor?: string;
 }
-const AppBadge = ({ label, status, className }: AppBadgeProps) => {
+
+/**
+ * Create Badge like component.
+ * Accepts `label` as required prop
+ * @param props
+ * {
+ *   label - Render text between Badge
+ *   className -  To customize look & feel of the badge
+ *   icon - Renders icon before label
+ *   color - Controls color of font or Icon
+ *   bgColor - Controls color of badge itself
+ * }
+ * @returns Badge component
+ */
+const AppBadge = ({
+  label,
+  className,
+  icon,
+  color,
+  bgColor,
+}: AppBadgeProps) => {
   return (
-    <Badge
-      className={classNames('app-badge text-600', className)}
-      count={label}
-      status={status}
-    />
+    <span
+      className={classNames('app-badge d-flex', className)}
+      data-testid="badge-container"
+      style={{ color, backgroundColor: bgColor }}>
+      {icon && (
+        <span className="m-r-xss" data-testid="badge-icon">
+          {icon}
+        </span>
+      )}
+      <Typography.Text>{label}</Typography.Text>
+    </span>
   );
 };
 

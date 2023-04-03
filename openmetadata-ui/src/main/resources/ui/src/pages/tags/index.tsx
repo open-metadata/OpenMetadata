@@ -24,6 +24,7 @@ import {
   Typography,
 } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
+import { ReactComponent as LockIcon } from 'assets/svg/closed-lock.svg';
 import { AxiosError } from 'axios';
 import AppBadge from 'components/common/Badge/Badge.component';
 import Description from 'components/common/description/Description';
@@ -895,8 +896,8 @@ const TagsPage = () => {
                       ) : (
                         <AppBadge
                           className="m--t-xss"
+                          icon={<LockIcon height={12} />}
                           label={capitalize(currentClassification.provider)}
-                          status="processing"
                         />
                       )}
                     </Space>
