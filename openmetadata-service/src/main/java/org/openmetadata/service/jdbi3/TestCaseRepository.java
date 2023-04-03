@@ -35,7 +35,7 @@ import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
 
 public class TestCaseRepository extends EntityRepository<TestCase> {
-  public static final String COLLECTION_PATH = "/v1/testCase";
+  public static final String COLLECTION_PATH = "/v1/testCases";
   private static final String UPDATE_FIELDS = "owner,entityLink,testSuite,testDefinition";
   private static final String PATCH_FIELDS = "owner,entityLink,testSuite,testDefinition";
   public static final String TESTCASE_RESULT_EXTENSION = "testCase.testCaseResult";
