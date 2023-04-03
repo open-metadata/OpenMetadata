@@ -50,7 +50,9 @@ describe('Test GlossaryTermTab component', () => {
     });
 
     expect(
-      await screen.findByText('message.no-entity-data-available')
+      await screen.findByText(
+        'message.adding-new-entity-is-easy-just-give-it-a-spin'
+      )
     ).toBeInTheDocument();
   });
 });

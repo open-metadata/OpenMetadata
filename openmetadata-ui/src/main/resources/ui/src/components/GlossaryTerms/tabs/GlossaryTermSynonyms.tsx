@@ -115,7 +115,7 @@ const GlossaryTermSynonyms = ({
               data-testid="cancelAssociatedTag"
               icon={<CloseOutlined size={12} />}
               size="small"
-              onClick={() => handleCancel()}
+              onClick={handleCancel}
             />
             <Button
               className="w-6 p-x-05"

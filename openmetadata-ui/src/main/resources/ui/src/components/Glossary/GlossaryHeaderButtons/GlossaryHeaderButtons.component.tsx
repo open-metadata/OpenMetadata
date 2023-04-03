@@ -258,8 +258,8 @@ const GlossaryHeaderButtons = ({
                   <p className="tw-text-grey-muted tw-text-xs">
                     {t('label.rename-entity', {
                       entity: isGlossary
-                        ? toLower(t('label.glossary'))
-                        : toLower(t('label.glossary-term')),
+                        ? t('label.glossary')
+                        : t('label.glossary-term'),
                     })}
                   </p>
                 </Col>

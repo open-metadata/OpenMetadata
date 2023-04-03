@@ -41,8 +41,7 @@ const EntityNameModal: React.FC<Props> = ({
   };
 
   useEffect(() => {
-    form.setFieldValue('name', entity.name);
-    form.setFieldValue('displayName', entity.displayName);
+    form.setFieldsValue({ name: entity.name, displayName: entity.displayName });
   }, [visible]);
 
   return (
