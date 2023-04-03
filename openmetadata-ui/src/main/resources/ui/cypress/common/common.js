@@ -57,7 +57,17 @@ export const handleIngestionRetry = (
   interceptURL(
     'GET',
     '/api/v1/services/ingestionPipelines?fields=owner,pipelineStatuses&service=*',
+    'ingestionPipelines'
+  );
+  interceptURL(
+    'GET',
+    '/api/v1/services/ingestionPipelines/*/pipelineStatus?startTs=*&endTs=*',
     'pipelineStatuses'
+  );
+  interceptURL(
+    'GET',
+    '/api/v1/permissions/ingestionPipeline/name/*',
+    'ingestionPermissions'
   );
   interceptURL('GET', '/api/v1/services/*/name/*', 'serviceDetails');
 
@@ -72,9 +82,16 @@ export const handleIngestionRetry = (
     // click on the tab only for the first time
     if (retryCount === 0) {
       // Wait for pipeline status to be loaded
-      verifyResponseStatusCode('@pipelineStatuses', 200);
-      cy.wait(1000); // adding manual wait for ingestion button to attach to DOM
+      if (ingestionType === 'metadata') {
+        verifyResponseStatusCode('@ingestionPipelines', 200);
+      }
+
       cy.get('[data-testid="Ingestions"]').click();
+
+      if (ingestionType === 'metadata') {
+        verifyResponseStatusCode('@pipelineStatuses', 200);
+        verifyResponseStatusCode('@ingestionPermissions', 200);
+      }
     }
     if (isDatabaseService(type) && testIngestionButton) {
       cy.get('[data-testid="add-new-ingestion-button"]').should('be.visible');
@@ -82,12 +99,14 @@ export const handleIngestionRetry = (
   };
   const checkSuccessState = () => {
     testIngestionsTab();
+
+    if (retryCount !== 0) {
+      verifyResponseStatusCode('@ingestionPipelines', 200);
+      verifyResponseStatusCode('@pipelineStatuses', 200);
+      verifyResponseStatusCode('@ingestionPermissions', 200);
+    }
+
     retryCount++;
-    cy.get('body').then(($body) => {
-      if ($body.find('.ant-skeleton-input').length) {
-        cy.wait(1000);
-      }
-    });
 
     if (ingestionType === 'metadata') {
       cy.get(`[data-row-key*="${ingestionType}"]`)
