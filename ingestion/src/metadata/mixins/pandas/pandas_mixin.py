@@ -17,39 +17,62 @@ from metadata.data_quality.validations.table.pandas.tableRowInsertedCountToBeBet
     TableRowInsertedCountToBeBetweenValidator,
 )
 from metadata.generated.schema.entity.data.table import PartitionIntervalType
+from typing import cast
+
+from metadata.generated.schema.entity.data.table import (
+    PartitionIntervalType,
+    PartitionProfilerConfig,
+)
+from metadata.utils.logger import test_suite_logger
+
+logger = test_suite_logger()
 
 
 class PandasInterfaceMixin:
     """Interface mixin grouping shared methods between test suite and profiler interfaces"""
 
-    def get_partitioned_df(self, df):
+    def get_partitioned_df(self, dfs):
         """Get partitioned dataframe
 
         Returns:
             DataFrame
         """
+        self.table_partition_config = cast(
+            PartitionProfilerConfig, self.table_partition_config
+        )
         partition_field = self.table_partition_config.partitionColumnName
         if (
             self.table_partition_config.partitionIntervalType
             == PartitionIntervalType.COLUMN_VALUE
         ):
-            return df[
-                df[partition_field].isin(self.table_partition_config.partitionValues)
+            return [
+                df[
+                    df[partition_field].isin(
+                        self.table_partition_config.partitionValues
+                    )
+                ]
+                for df in dfs
             ]
         if (
             self.table_partition_config.partitionIntervalType
             == PartitionIntervalType.INTEGER_RANGE
         ):
-            return df[
-                df[partition_field].between(
-                    self.table_partition_config.partitionIntegerRangeStart,
-                    self.table_partition_config.partitionIntegerRangeEnd,
+            return [
+                df[
+                    df[partition_field].between(
+                        self.table_partition_config.partitionIntegerRangeStart,
+                        self.table_partition_config.partitionIntegerRangeEnd,
+                    )
+                ]
+                for df in dfs
+            ]
+        return [
+            df[
+                df[partition_field]
+                >= TableRowInsertedCountToBeBetweenValidator._get_threshold_date(  # pylint: disable=protected-access
+                    self.table_partition_config.partitionIntervalUnit.value,
+                    self.table_partition_config.partitionInterval,
                 )
             ]
-        return df[
-            df[partition_field]
-            >= TableRowInsertedCountToBeBetweenValidator._get_threshold_date(  # pylint: disable=protected-access
-                self.table_partition_config.partitionIntervalUnit.value,
-                self.table_partition_config.partitionInterval,
-            )
+            for df in dfs
         ]

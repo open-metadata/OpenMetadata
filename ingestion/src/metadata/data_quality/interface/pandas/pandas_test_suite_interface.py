@@ -44,12 +44,17 @@ class PandasTestSuiteInterface(TestSuiteProtocol, PandasInterfaceMixin):
         ometa_client: OpenMetadata = None,
         service_connection_config: DatalakeConnection = None,
         table_entity=None,
-        df=None,
+        dfs=None,
+        table_partition_config=None,
     ):
         self.table_entity = table_entity
-        self.df = df
+        self.dfs = dfs
         self.ometa_client = ometa_client
         self.service_connection_config = service_connection_config
+        # add partition logic to test suite
+        self.table_partition_config = table_partition_config
+        if self.dfs and self.table_partition_config:
+            self.dfs = self.get_partitioned_df(self.dfs)
 
     def run_test_case(
         self,
@@ -74,7 +79,7 @@ class PandasTestSuiteInterface(TestSuiteProtocol, PandasInterfaceMixin):
             )
 
             test_handler = TestHandler(
-                self.df,
+                self.dfs,
                 test_case=test_case,
                 execution_date=datetime.now(tz=timezone.utc).timestamp(),
             )

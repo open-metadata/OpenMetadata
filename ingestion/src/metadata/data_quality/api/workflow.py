@@ -72,7 +72,7 @@ from metadata.utils.pandas_utils import return_ometa_dataframes
 from metadata.utils.partition import get_partition_details
 from metadata.utils.workflow_output_handler import print_test_suite_status
 from metadata.workflow.workflow_status_mixin import WorkflowStatusMixin
-
+from antlr4.error.Errors import ParseCancellationException
 logger: Logger = test_suite_logger()
 
 
@@ -288,13 +288,14 @@ class TestSuiteWorkflow(WorkflowStatusMixin):
         return PandasTestSuiteInterface(
             service_connection_config=service_connection_config,
             ometa_client=self.client,
-            df=return_ometa_dataframes(
+            dfs=return_ometa_dataframes(
                 service_connection_config,
                 get_connection(service_connection_config).client,
                 table_entity,
                 profile_sample_config=profile_sample_config,
             ),
             table_entity=table_entity,
+            table_partition_config=table_partition_config,
         )
 
     def _create_data_tests_runner(self, sqa_interface):
@@ -416,7 +417,11 @@ class TestSuiteWorkflow(WorkflowStatusMixin):
             logger.error(f"Failed to get entity fqn: {exc}")
             # we'll assume that the test case name is not unique
             return True
-
+        except ParseCancellationException as err:
+            logger.debug(traceback.format_exc())
+            logger.error(f"Failed to parse: {test_case.entity_link}, err: {err}")
+            # we'll assume that the test case name is not unique
+            return True
         test_case_fqn = f"{entity_fqn}.{test_case.test_case_name}"
 
         test_case = self.metadata.get_by_name(

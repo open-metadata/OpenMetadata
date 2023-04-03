@@ -13,7 +13,6 @@
 Interfaces with database for all database engine
 supporting sqlalchemy abstraction layer
 """
-
 import traceback
 from collections import defaultdict
 from datetime import datetime, timezone
@@ -23,6 +22,8 @@ from sqlalchemy import Column
 
 from metadata.generated.schema.entity.data.table import (
     DataType,
+    PartitionIntervalType,
+    PartitionProfilerConfig,
     ProfileSampleType,
     TableData,
 )
@@ -85,7 +86,7 @@ class PandasProfilerInterface(ProfilerProtocol, PandasInterfaceMixin):
         )
         self.profile_sample_config = profile_sample_config
         self.profile_query = sample_query
-        self.table_partition_config = table_partition_config
+        self.table_partition_config: PartitionProfilerConfig = table_partition_config
         self._table = entity
         self.dfs = return_ometa_dataframes(
             service_connection_config=self.service_connection_config,
@@ -94,7 +95,7 @@ class PandasProfilerInterface(ProfilerProtocol, PandasInterfaceMixin):
             profile_sample_config=self.profile_sample_config,
         )
         if self.dfs and self.table_partition_config:
-            self.dfs = [self.get_partitioned_df(df) for df in self.dfs]
+            self.dfs = self.get_partitioned_df(self.dfs)
 
     @valuedispatch
     def _get_metrics(self, *args, **kwargs):
