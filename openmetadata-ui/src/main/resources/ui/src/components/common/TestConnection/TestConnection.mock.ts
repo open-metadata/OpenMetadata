@@ -125,7 +125,7 @@ export const WORKFLOW_DETAILS = {
   version: 0.6,
   updatedAt: 1679640427530,
   updatedBy: 'ingestion-bot',
-  href: 'http://localhost:8585/api/v1/automations/workflow/d6a5178d-06ba-4702-9b32-ce72349aa88c',
+  href: 'http://localhost:8585/api/v1/automations/workflows/d6a5178d-06ba-4702-9b32-ce72349aa88c',
   deleted: false,
 };
 

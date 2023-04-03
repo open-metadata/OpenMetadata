@@ -73,7 +73,6 @@ import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
 
 @Slf4j
-// TODO call this subscriptions
 @Path("/v1/events/subscriptions")
 @Tag(
     name = "Events",

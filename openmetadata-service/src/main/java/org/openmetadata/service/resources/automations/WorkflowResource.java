@@ -74,8 +74,7 @@ import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
 
 @Slf4j
-// TODO system/automation/workflows?
-@Path("/v1/automations/workflow")
+@Path("/v1/automations/workflows")
 @Tag(name = "Workflows", description = "APIs related to creating and managing Automation workflows.")
 @Hidden
 @Produces(MediaType.APPLICATION_JSON)
@@ -83,7 +82,7 @@ import org.openmetadata.service.util.ResultList;
 @Collection(name = "Workflow")
 public class WorkflowResource extends EntityResource<Workflow, WorkflowRepository> {
 
-  public static final String COLLECTION_PATH = "/v1/automations/workflow";
+  public static final String COLLECTION_PATH = "/v1/automations/workflows";
   static final String FIELDS = "owner";
 
   private PipelineServiceClient pipelineServiceClient;

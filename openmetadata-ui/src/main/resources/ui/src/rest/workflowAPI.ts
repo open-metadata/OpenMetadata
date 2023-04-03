@@ -30,14 +30,14 @@ export const addWorkflow = async (data: CreateWorkflow) => {
   const response = await APIClient.post<
     CreateWorkflow,
     AxiosResponse<Workflow>
-  >(`automations/workflow`, data);
+  >(`automations/workflows`, data);
 
   return response.data;
 };
 
 export const updateWorkflow = async (data: CreateWorkflow) => {
   const response = await APIClient.put<CreateWorkflow, AxiosResponse<Workflow>>(
-    `automations/workflow`,
+    `automations/workflows`,
     data
   );
 
@@ -51,7 +51,7 @@ export const updateWorkflow = async (data: CreateWorkflow) => {
  */
 export const triggerWorkflowById = async (workflowId: string) => {
   const response = await APIClient.post(
-    `automations/workflow/trigger/${workflowId}`
+    `automations/workflows/trigger/${workflowId}`
   );
 
   return response.status;
@@ -59,7 +59,7 @@ export const triggerWorkflowById = async (workflowId: string) => {
 
 export const getWorkflowById = async (workflowId: string) => {
   const response = await APIClient.get<Workflow>(
-    `automations/workflow/${workflowId}`
+    `automations/workflows/${workflowId}`
   );
 
   return response.data;
@@ -70,7 +70,7 @@ export const deleteWorkflowById = async (
   hardDelete = false
 ) => {
   const response = await APIClient.delete<Workflow>(
-    `/automations/workflow/${workflowId}`,
+    `/automations/workflows/${workflowId}`,
     { params: { hardDelete } }
   );
 
