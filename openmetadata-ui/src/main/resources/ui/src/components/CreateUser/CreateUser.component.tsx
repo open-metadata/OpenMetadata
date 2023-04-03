@@ -50,10 +50,7 @@ import {
   SsoServiceType,
 } from '../../generated/entity/teams/user';
 import jsonData from '../../jsons/en';
-import {
-  getJWTOption,
-  getJWTTokenExpiryOptions,
-} from '../../utils/BotsUtils';
+import { getJWTOption, getJWTTokenExpiryOptions } from '../../utils/BotsUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { useAuthContext } from '../authentication/auth-provider/AuthProvider';
