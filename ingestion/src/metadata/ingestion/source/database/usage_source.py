@@ -32,6 +32,9 @@ class UsageSource(QueryParserSource, ABC):
     """
 
     def yield_table_queries_from_logs(self) -> Optional[Iterable[TableQuery]]:
+        """
+        Method to handle the usage from query logs
+        """
         try:
             query_list = []
             with open(

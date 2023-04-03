@@ -31,6 +31,7 @@ from metadata.ingestion.source.database.athena.models import (
     QueryExecutionIdsResponse,
 )
 from metadata.ingestion.source.database.query_parser_source import QueryParserSource
+from metadata.utils.constants import QUERY_WITH_DBT, QUERY_WITH_OM_VERSION
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -76,3 +77,9 @@ class AthenaQueryParserSource(QueryParserSource, ABC):
             query_limit -= 1
             if not query_limit:
                 break
+
+    def is_not_dbt_or_om_query(self, query_text: str) -> bool:
+        return not (
+            query_text.startswith(QUERY_WITH_DBT)
+            or query_text.startswith(QUERY_WITH_OM_VERSION)
+        )

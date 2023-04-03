@@ -39,6 +39,9 @@ class LineageSource(QueryParserSource, ABC):
     """
 
     def yield_table_queries_from_logs(self) -> Optional[Iterator[TableQuery]]:
+        """
+        Method to handle the usage from query logs
+        """
         try:
             with open(
                 self.config.sourceConfig.config.queryLogFilePath, "r", encoding="utf-8"
@@ -63,7 +66,7 @@ class LineageSource(QueryParserSource, ABC):
         This is a simplified version of the UsageSource query parsing.
         """
         if self.config.sourceConfig.config.queryLogFilePath:
-            yield from self.get_query_from_log()
+            yield from self.yield_table_queries_from_logs()
         else:
             logger.info(
                 f"Scanning query logs for {self.start.date()} - {self.end.date()}"

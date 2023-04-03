@@ -13,7 +13,7 @@ Athena lineage module
 """
 from typing import Iterable, Optional
 
-from metadata.generated.schema.type.tableQuery import TableQueries, TableQuery
+from metadata.generated.schema.type.tableQuery import TableQuery
 from metadata.ingestion.source.database.athena.query_parser import (
     AthenaQueryParserSource,
 )
@@ -34,7 +34,10 @@ class AthenaLineageSource(AthenaQueryParserSource, LineageSource):
         """
         for query_list in self.get_queries() or []:
             for query in query_list.QueryExecutions:
-                if query.Status.SubmissionDateTime.date() >= self.start.date():
+                if (
+                    query.Status.SubmissionDateTime.date() >= self.start.date()
+                    and self.is_not_dbt_or_om_query(query.Query)
+                ):
                     yield TableQuery(
                         query=query.Query,
                         serviceName=self.config.serviceName,

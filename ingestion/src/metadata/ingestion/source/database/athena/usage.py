@@ -52,5 +52,6 @@ class AthenaUsageSource(AthenaQueryParserSource, UsageSource):
                 )
                 for query in query_list.QueryExecutions
                 if query.Status.SubmissionDateTime.date() >= self.start.date()
+                and self.is_not_dbt_or_om_query(query.Query)
             ]
             yield TableQueries(queries=queries)
