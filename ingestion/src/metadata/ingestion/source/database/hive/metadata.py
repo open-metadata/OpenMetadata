@@ -188,7 +188,6 @@ def get_impala_table_or_view_names(connection, schema=None, targetType="table"):
     if schema:
         query += " IN " + schema
         
-    #print(query)
     cursor = connection.execute(query)
     results = cursor.fetchall()
     tables_and_views = [result[0] for result in results]
@@ -197,11 +196,8 @@ def get_impala_table_or_view_names(connection, schema=None, targetType="table"):
     retvalue = []
     
     for tv in tables_and_views:
-        #print(tv)
         full_table_name = f"{schema}.{tv}"
         query = f"describe formatted `{schema}`.`{tv}`"
-        #print(query)
-        #cursor = connection.cursor()
         cursor = connection.execute(query)
         results = cursor.fetchall()
 
@@ -210,9 +206,6 @@ def get_impala_table_or_view_names(connection, schema=None, targetType="table"):
             if data[0].strip() == "Table Type:":
                 if targetType.lower() in data[1].lower():
                     retvalue.append(tv)
-
-
-    #print(retvalue)
     return retvalue
 
 def get_impala_view_names(self, connection, schema=None, **kw):
@@ -223,12 +216,10 @@ def get_impala_table_names(self, connection, schema=None, **kw):
     results = get_impala_table_or_view_names(connection, schema, "table")
     return results
 
-def get_impala_table_comment(self, connection, table_name, schema_name, **kw):
-    print(table_name)
+def get_impala_table_comment(self, connection, table_name, schema_name, **kw):    
     full_table_name = f"{schema_name}.{table_name}" if schema_name is not None else table_name
     split_name = full_table_name.split('.')
     query = f"describe formatted `{split_name[0]}`.`{split_name[1]}`"
-    print(query)
     cursor = connection.execute(query)
     results = cursor.fetchall()
     
