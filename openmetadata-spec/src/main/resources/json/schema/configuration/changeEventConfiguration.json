@@ -6,7 +6,7 @@
   "type": "object",
   "javaType": "org.openmetadata.api.configuration.ChangeEventConfiguration",
   "properties": {
-    "uri" : {
+    "omUri" : {
       "type": "string"
     }
   },

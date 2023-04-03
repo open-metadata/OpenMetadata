@@ -102,7 +102,6 @@ import org.openmetadata.service.socket.FeedServlet;
 import org.openmetadata.service.socket.OpenMetadataAssetServlet;
 import org.openmetadata.service.socket.SocketAddressFilter;
 import org.openmetadata.service.socket.WebSocketManager;
-import org.openmetadata.service.util.ChangeEventParser;
 import org.openmetadata.service.util.EmailUtil;
 import org.openmetadata.service.util.MicrometerBundleSingleton;
 
@@ -121,7 +120,8 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
 
     // init email Util for handling
     EmailUtil.initialize(catalogConfig);
-    ChangeEventParser.initialize(catalogConfig);
+
+    ChangeEventConfig.initialize(catalogConfig);
     final Jdbi jdbi = createAndSetupJDBI(environment, catalogConfig.getDataSourceFactory());
 
     // init Secret Manager

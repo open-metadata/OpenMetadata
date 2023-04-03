@@ -307,5 +307,5 @@ applicationConfig:
     jwtTokenExpiryTime: ${OM_JWT_EXPIRY_TIME:-3600}
 
 changeEventConfig:
-  uri: ${URI:- "http://loclhost:8585"} #openmetadata in uri for eg http://loclhost:8585
+  omUri: ${OM_URI:- "http://localhost:8585"} #openmetadata in om uri for eg http://loclhost:8585
 

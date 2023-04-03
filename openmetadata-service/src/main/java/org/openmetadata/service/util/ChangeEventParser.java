@@ -41,7 +41,6 @@ import javax.json.JsonValue.ValueType;
 import javax.json.stream.JsonParsingException;
 import org.apache.commons.lang.StringUtils;
 import org.bitbucket.cowwoc.diffmatchpatch.DiffMatchPatch;
-import org.openmetadata.api.configuration.ChangeEventConfiguration;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.dataInsight.kpi.Kpi;
@@ -55,8 +54,8 @@ import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.FieldChange;
+import org.openmetadata.service.ChangeEventConfig;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.events.subscription.emailAlert.EmailMessage;
 import org.openmetadata.service.events.subscription.gchat.GChatMessage;
 import org.openmetadata.service.events.subscription.msteams.TeamsMessage;
@@ -75,20 +74,9 @@ public final class ChangeEventParser {
   public static final String FEED_LINE_BREAK = " <br/> ";
   public static final String SLACK_LINE_BREAK = "\n";
 
-  private static ChangeEventConfiguration CHANGE_EVENT_CONFIGURATION_INSTANCE;
-
   private static volatile boolean INITIALIZED = false;
 
   private ChangeEventParser() {}
-
-  public static void initialize(OpenMetadataApplicationConfig config) {
-    if (!INITIALIZED) {
-      if (config.getChangeEventConfiguration() != null) {
-        CHANGE_EVENT_CONFIGURATION_INSTANCE = config.getChangeEventConfiguration();
-      }
-      INITIALIZED = true;
-    }
-  }
 
   public enum CHANGE_TYPE {
     UPDATE,
@@ -212,14 +200,14 @@ public final class ChangeEventParser {
     }
     if (publishTo == PUBLISH_TO.SLACK || publishTo == PUBLISH_TO.GCHAT) {
       return String.format(
-          "<%s/%s/%s|%s>", CHANGE_EVENT_CONFIGURATION_INSTANCE.getUri(), entityType, fqn.trim(), fqn.trim());
+          "<%s/%s/%s|%s>", ChangeEventConfig.getInstance().getOmUri(), entityType, fqn.trim(), fqn.trim());
     } else if (publishTo == PUBLISH_TO.TEAMS) {
       return String.format(
-          "[%s](/%s/%s)", fqn.trim(), CHANGE_EVENT_CONFIGURATION_INSTANCE.getUri(), entityType, fqn.trim());
+          "[%s](/%s/%s)", fqn.trim(), ChangeEventConfig.getInstance().getOmUri(), entityType, fqn.trim());
     } else if (publishTo == PUBLISH_TO.EMAIL) {
       return String.format(
           "<a href = '%s/%s/%s'>%s</a>",
-          CHANGE_EVENT_CONFIGURATION_INSTANCE.getUri(), entityType, fqn.trim(), fqn.trim());
+          ChangeEventConfig.getInstance().getOmUri(), entityType, fqn.trim(), fqn.trim());
     }
     //    }
     return "";
@@ -366,15 +354,16 @@ public final class ChangeEventParser {
       String fieldName = field.getName();
       String newFieldValue;
       String oldFieldValue;
+      EntityLink link = getEntityLink(fieldName, entity);
       if (entity.getEntityReference().getType().equals(Entity.QUERY) && fieldName.equals("queryUsedIn")) {
-        fieldName = "queryUsage";
-        newFieldValue = getFieldValueForQuery(field.getNewValue(), entity, publishTo);
-        oldFieldValue = getFieldValueForQuery(field.getOldValue(), entity, publishTo);
+        String message =
+            handleQueryUsage(field.getNewValue(), field.getOldValue(), entity, publishTo, changeType, link);
+        messages.put(link, message);
+        return messages;
       } else {
         newFieldValue = getFieldValue(field.getNewValue());
         oldFieldValue = getFieldValue(field.getOldValue());
       }
-      EntityLink link = getEntityLink(fieldName, entity);
       if (link.getEntityType().equals(TEST_CASE) && link.getFieldName().equals("testCaseResult")) {
         String message = handleTestCaseResult(publishTo, entity, link, field.getOldValue(), field.getNewValue());
         messages.put(link, message);
@@ -440,6 +429,20 @@ public final class ChangeEventParser {
     return fieldValue.toString();
   }
 
+  private static String handleQueryUsage(
+      Object newValue,
+      Object oldValue,
+      EntityInterface entity,
+      PUBLISH_TO publishTo,
+      CHANGE_TYPE changeType,
+      EntityLink link) {
+    String fieldName = "queryUsage";
+    String newVal = getFieldValueForQuery(newValue, entity, publishTo);
+    String oldVal = getFieldValueForQuery(oldValue, entity, publishTo);
+    String message = createMessageForField(publishTo, link, changeType, fieldName, oldVal, newVal);
+    return message;
+  }
+
   private static String getFieldValueForQuery(Object fieldValue, EntityInterface entity, PUBLISH_TO publishTo) {
     Query query = (Query) entity;
     StringBuilder field = new StringBuilder();
@@ -460,13 +463,13 @@ public final class ChangeEventParser {
   private static String getQueryUsageUrl(PUBLISH_TO publishTo, String fqn, String entityType) {
     if (publishTo == PUBLISH_TO.SLACK || publishTo == PUBLISH_TO.GCHAT) {
       return String.format(
-          "<%s/%s/%s|%s>", CHANGE_EVENT_CONFIGURATION_INSTANCE.getUri(), entityType, fqn.trim(), fqn.trim());
+          "<%s/%s/%s|%s>", ChangeEventConfig.getInstance().getOmUri(), entityType, fqn.trim(), fqn.trim());
     } else if (publishTo == PUBLISH_TO.TEAMS) {
-      return String.format("[%s](/%s/%s)", fqn, CHANGE_EVENT_CONFIGURATION_INSTANCE.getUri(), entityType, fqn.trim());
+      return String.format("[%s](/%s/%s)", fqn, ChangeEventConfig.getInstance().getOmUri(), entityType, fqn.trim());
     } else if (publishTo == PUBLISH_TO.EMAIL) {
       return String.format(
           "<a href = '%s/%s/%s'>%s</a>",
-          CHANGE_EVENT_CONFIGURATION_INSTANCE.getUri(), entityType, fqn.trim(), fqn.trim());
+          ChangeEventConfig.getInstance().getOmUri(), entityType, fqn.trim(), fqn.trim());
     }
     return String.format("[%s](/%s/%s)", fqn, entityType, fqn.trim());
   }
