@@ -15,11 +15,12 @@ Validator for column values to be between test case
 
 import traceback
 from abc import abstractmethod
-from datetime import datetime
+from datetime import date, datetime, time
 from typing import Union
 
 from sqlalchemy import Column
 
+from metadata.data_quality.validations.base_test_handler import BaseTestValidator
 from metadata.generated.schema.tests.basic import (
     TestCaseResult,
     TestCaseStatus,
@@ -27,7 +28,6 @@ from metadata.generated.schema.tests.basic import (
 )
 from metadata.profiler.metrics.registry import Metrics
 from metadata.profiler.orm.registry import is_date_time
-from metadata.data_quality.validations.base_test_handler import BaseTestValidator
 from metadata.utils.logger import test_suite_logger
 from metadata.utils.sqa_like_column import SQALikeColumn
 from metadata.utils.time_utils import convert_timestamp
@@ -40,6 +40,20 @@ MAX = "max"
 
 class BaseColumnValuesToBeBetweenValidator(BaseTestValidator):
     """Validator for column values to be between test case"""
+
+    def _convert_date_to_datetime(
+        self, date_object: date, time_converter: time
+    ) -> datetime:
+        """Convert date object to datetime object
+
+        Args:
+            date_object (date): date object
+            time_converter (time): time converter to use one of time.min or time.max
+
+        Returns:
+            datetime:
+        """
+        return datetime.combine(date_object, time_converter)
 
     def run_validation(self) -> TestCaseResult:
         """Run validation for the given test case
@@ -64,6 +78,11 @@ class BaseColumnValuesToBeBetweenValidator(BaseTestValidator):
                     TestResultValue(name=MAX, value=None),
                 ],
             )
+
+        if type(min_res) is date:  # pylint: disable=unidiomatic-typecheck
+            min_res = self._convert_date_to_datetime(min_res, time.min)
+        if type(max_res) is date:  # pylint: disable=unidiomatic-typecheck
+            max_res = self._convert_date_to_datetime(max_res, time.max)
 
         min_bound = self.get_test_case_param_value(
             self.test_case.parameterValues,  # type: ignore
