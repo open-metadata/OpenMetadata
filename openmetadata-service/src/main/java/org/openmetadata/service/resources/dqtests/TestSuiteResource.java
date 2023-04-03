@@ -49,14 +49,13 @@ import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
 
 @Slf4j
-// TODO tests/testSuites
-@Path("/v1/testSuite")
+@Path("/v1/testSuites")
 @Tag(name = "Test suites", description = "`TestSuite` is a set of test cases grouped together to capture data quality.")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "TestSuites")
 public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteRepository> {
-  public static final String COLLECTION_PATH = "/v1/testSuite";
+  public static final String COLLECTION_PATH = "/v1/testSuites";
 
   static final String FIELDS = "owner,tests";
 

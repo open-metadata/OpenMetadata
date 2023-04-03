@@ -312,7 +312,7 @@ curl --request POST 'http://localhost:8585/api/v1/testDefinitions' \
 Make sure to keep the `UUID` from the response as you will need it to create the Test Case.
 
 ### Creating a `TestSuite`
-You'll also need to create a Test Suite for your Test Case -- note that you can also use an existing one if you want to. You can use the following endpoint `/api/v1/testSuite` using a POST protocol to create your Test Definition. You will need to pass the following data in the body your request at minimum.
+You'll also need to create a Test Suite for your Test Case -- note that you can also use an existing one if you want to. You can use the following endpoint `/api/v1/testSuites` using a POST protocol to create your Test Definition. You will need to pass the following data in the body your request at minimum.
 
 ```json
 {
@@ -324,7 +324,7 @@ You'll also need to create a Test Suite for your Test Case -- note that you can 
 Here is a complete CURL request
 
 ```bash
-curl --request POST 'http://localhost:8585/api/v1/testSuite' \
+curl --request POST 'http://localhost:8585/api/v1/testSuites' \
 --header 'Content-Type: application/json' \
 --data-raw '{
   "name": "<test_suite_name>",

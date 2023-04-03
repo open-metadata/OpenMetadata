@@ -393,7 +393,7 @@ class MetadataRestSink(Sink[Entity]):
 
     def write_test_suite_sample(self, record: OMetaTestSuiteSample):
         """
-        Use the /testSuite endpoint to ingest sample test suite
+        Use the /testSuites endpoint to ingest sample test suite
         """
         try:
             self.metadata.create_or_update(record.test_suite)

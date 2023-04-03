@@ -491,7 +491,7 @@ describe('Data Quality and Profiler should work properly', () => {
       .type(DELETE_TERM);
     interceptURL(
       'DELETE',
-      '/api/v1/testSuite/*?hardDelete=false&recursive=true',
+      '/api/v1/testSuites/*?hardDelete=false&recursive=true',
       'deleteTestSuite'
     );
     cy.get('[data-testid="confirm-button"]')
@@ -523,7 +523,7 @@ describe('Data Quality and Profiler should work properly', () => {
       .contains(`Are you sure you want to restore ${NEW_TEST_SUITE.name}`)
       .should('be.visible');
 
-    interceptURL('PUT', '/api/v1/testSuite/restore', 'restoreTestSuite');
+    interceptURL('PUT', '/api/v1/testSuites/restore', 'restoreTestSuite');
 
     cy.get('.ant-modal-footer').contains('Restore').click();
 
@@ -558,7 +558,7 @@ describe('Data Quality and Profiler should work properly', () => {
       .type(DELETE_TERM);
     interceptURL(
       'DELETE',
-      '/api/v1/testSuite/*?hardDelete=true&recursive=true',
+      '/api/v1/testSuites/*?hardDelete=true&recursive=true',
       'deleteTestSuite'
     );
     cy.get('[data-testid="confirm-button"]')

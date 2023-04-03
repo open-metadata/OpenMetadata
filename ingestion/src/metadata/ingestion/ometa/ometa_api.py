@@ -463,7 +463,7 @@ class OpenMetadata(
             entity,
             get_args(Union[TestSuite, self.get_create_entity_type(TestSuite)]),
         ):
-            return "/testSuite"
+            return "/testSuites"
 
         if issubclass(
             entity,

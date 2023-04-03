@@ -20,7 +20,7 @@ export const MOCK_TABLE_DATA = {
       deleted: false,
       description: 'this is test test',
       fullyQualifiedName: 'test',
-      href: 'http://localhost:8585/api/v1/testSuite/db3e145b-4e17-4e39-b44e-801ed0d5e6dc',
+      href: 'http://localhost:8585/api/v1/testSuites/db3e145b-4e17-4e39-b44e-801ed0d5e6dc',
       id: 'db3e145b-4e17-4e39-b44e-801ed0d5e6dc',
       name: 'test',
       owner: {
@@ -53,14 +53,14 @@ export const MOCK_TABLE_DATA = {
       version: 0.1,
       updatedAt: 1670667255078,
       updatedBy: 'admin',
-      href: 'http://localhost:8585/api/v1/testSuite/164159a3-d3d8-4847-a0b5-814849e52676',
+      href: 'http://localhost:8585/api/v1/testSuites/164159a3-d3d8-4847-a0b5-814849e52676',
       deleted: false,
     },
     {
       deleted: false,
       description: 'this is test test',
       fullyQualifiedName: 'test2',
-      href: 'http://localhost:8585/api/v1/testSuite/db3e145b-4e17-4e39-b44e-801ed0d5e6dc',
+      href: 'http://localhost:8585/api/v1/testSuites/db3e145b-4e17-4e39-b44e-801ed0d5e6dc',
       id: 'db3e145b-4e17-4e39-b44e-801ed0d5e6dd',
       name: 'test2',
       owner: {
@@ -93,14 +93,14 @@ export const MOCK_TABLE_DATA = {
       version: 0.1,
       updatedAt: 1670667255078,
       updatedBy: 'admin',
-      href: 'http://localhost:8585/api/v1/testSuite/164159a3-d3d8-4847-a0b5-814849e52676',
+      href: 'http://localhost:8585/api/v1/testSuites/164159a3-d3d8-4847-a0b5-814849e52676',
       deleted: false,
     },
     {
       deleted: false,
       description: 'this is test test',
       fullyQualifiedName: 'test4',
-      href: 'http://localhost:8585/api/v1/testSuite/db3e145b-4e17-4e39-b44e-801ed0d5e6dc',
+      href: 'http://localhost:8585/api/v1/testSuites/db3e145b-4e17-4e39-b44e-801ed0d5e6dc',
       id: 'db3e145b-4e17-4e39-b44e-801ed0d5e6df',
       name: 'test4',
       owner: {
@@ -133,14 +133,14 @@ export const MOCK_TABLE_DATA = {
       version: 0.1,
       updatedAt: 1670667255078,
       updatedBy: 'admin',
-      href: 'http://localhost:8585/api/v1/testSuite/164159a3-d3d8-4847-a0b5-814849e52676',
+      href: 'http://localhost:8585/api/v1/testSuites/164159a3-d3d8-4847-a0b5-814849e52676',
       deleted: false,
     },
     {
       deleted: false,
       description: 'this is test test',
       fullyQualifiedName: 'test6',
-      href: 'http://localhost:8585/api/v1/testSuite/db3e145b-4e17-4e39-b44e-801ed0d5e6dc',
+      href: 'http://localhost:8585/api/v1/testSuites/db3e145b-4e17-4e39-b44e-801ed0d5e6dc',
       id: 'db3e145b-4e17-4e39-b44e-801ed0d5e6dh',
       name: 'test6',
       owner: {
@@ -173,7 +173,7 @@ export const MOCK_TABLE_DATA = {
       version: 0.1,
       updatedAt: 1670667255078,
       updatedBy: 'admin',
-      href: 'http://localhost:8585/api/v1/testSuite/164159a3-d3d8-4847-a0b5-814849e52676',
+      href: 'http://localhost:8585/api/v1/testSuites/164159a3-d3d8-4847-a0b5-814849e52676',
       deleted: false,
     },
     {
@@ -193,7 +193,7 @@ export const MOCK_TABLE_DATA = {
       version: 0.1,
       updatedAt: 1670667255078,
       updatedBy: 'admin',
-      href: 'http://localhost:8585/api/v1/testSuite/164159a3-d3d8-4847-a0b5-814849e52676',
+      href: 'http://localhost:8585/api/v1/testSuites/164159a3-d3d8-4847-a0b5-814849e52676',
       deleted: false,
     },
     {
@@ -213,7 +213,7 @@ export const MOCK_TABLE_DATA = {
       version: 0.1,
       updatedAt: 1670667255078,
       updatedBy: 'admin',
-      href: 'http://localhost:8585/api/v1/testSuite/164159a3-d3d8-4847-a0b5-814849e52676',
+      href: 'http://localhost:8585/api/v1/testSuites/164159a3-d3d8-4847-a0b5-814849e52676',
       deleted: false,
     },
     {
@@ -233,7 +233,7 @@ export const MOCK_TABLE_DATA = {
       version: 0.1,
       updatedAt: 1670667255078,
       updatedBy: 'admin',
-      href: 'http://localhost:8585/api/v1/testSuite/164159a3-d3d8-4847-a0b5-814849e52676',
+      href: 'http://localhost:8585/api/v1/testSuites/164159a3-d3d8-4847-a0b5-814849e52676',
       deleted: false,
     },
     {
@@ -253,7 +253,7 @@ export const MOCK_TABLE_DATA = {
       version: 0.1,
       updatedAt: 1670667255078,
       updatedBy: 'admin',
-      href: 'http://localhost:8585/api/v1/testSuite/164159a3-d3d8-4847-a0b5-814849e52676',
+      href: 'http://localhost:8585/api/v1/testSuites/164159a3-d3d8-4847-a0b5-814849e52676',
       deleted: false,
     },
     {
@@ -273,7 +273,7 @@ export const MOCK_TABLE_DATA = {
       version: 0.1,
       updatedAt: 1670667255078,
       updatedBy: 'admin',
-      href: 'http://localhost:8585/api/v1/testSuite/164159a3-d3d8-4847-a0b5-814849e52676',
+      href: 'http://localhost:8585/api/v1/testSuites/164159a3-d3d8-4847-a0b5-814849e52676',
       deleted: false,
     },
     {
@@ -293,7 +293,7 @@ export const MOCK_TABLE_DATA = {
       version: 0.1,
       updatedAt: 1670667255078,
       updatedBy: 'admin',
-      href: 'http://localhost:8585/api/v1/testSuite/164159a3-d3d8-4847-a0b5-814849e52676',
+      href: 'http://localhost:8585/api/v1/testSuites/164159a3-d3d8-4847-a0b5-814849e52676',
       deleted: false,
     },
     {
@@ -313,7 +313,7 @@ export const MOCK_TABLE_DATA = {
       version: 0.1,
       updatedAt: 1670667255078,
       updatedBy: 'admin',
-      href: 'http://localhost:8585/api/v1/testSuite/164159a3-d3d8-4847-a0b5-814849e52676',
+      href: 'http://localhost:8585/api/v1/testSuites/164159a3-d3d8-4847-a0b5-814849e52676',
       deleted: false,
     },
     {
@@ -333,7 +333,7 @@ export const MOCK_TABLE_DATA = {
       version: 0.1,
       updatedAt: 1670667255078,
       updatedBy: 'admin',
-      href: 'http://localhost:8585/api/v1/testSuite/164159a3-d3d8-4847-a0b5-814849e52676',
+      href: 'http://localhost:8585/api/v1/testSuites/164159a3-d3d8-4847-a0b5-814849e52676',
       deleted: false,
     },
   ],
@@ -369,7 +369,7 @@ export const MOCK_TEST_CASE = [
       description:
         'This is a critical test suite running tests important for the business',
       deleted: false,
-      href: 'http://localhost:8585/api/v1/testSuite/9842a678-5d48-4942-b25a-c07511fcedbb',
+      href: 'http://localhost:8585/api/v1/testSuites/9842a678-5d48-4942-b25a-c07511fcedbb',
     },
     parameterValues: [
       {
@@ -423,7 +423,7 @@ export const MOCK_TEST_CASE = [
       description:
         'This is a critical test suite running tests important for the business',
       deleted: false,
-      href: 'http://localhost:8585/api/v1/testSuite/9842a678-5d48-4942-b25a-c07511fcedbb',
+      href: 'http://localhost:8585/api/v1/testSuites/9842a678-5d48-4942-b25a-c07511fcedbb',
     },
     parameterValues: [
       {
@@ -479,7 +479,7 @@ export const MOCK_TEST_CASE = [
       description:
         'This is a critical test suite running tests important for the business',
       deleted: false,
-      href: 'http://localhost:8585/api/v1/testSuite/9842a678-5d48-4942-b25a-c07511fcedbb',
+      href: 'http://localhost:8585/api/v1/testSuites/9842a678-5d48-4942-b25a-c07511fcedbb',
     },
     parameterValues: [
       {
@@ -535,7 +535,7 @@ export const MOCK_TEST_CASE = [
       description:
         'This is a critical test suite running tests important for the business',
       deleted: false,
-      href: 'http://localhost:8585/api/v1/testSuite/9842a678-5d48-4942-b25a-c07511fcedbb',
+      href: 'http://localhost:8585/api/v1/testSuites/9842a678-5d48-4942-b25a-c07511fcedbb',
     },
     parameterValues: [
       {
@@ -588,7 +588,7 @@ export const MOCK_TEST_CASE = [
       description:
         'This is a critical test suite running tests important for the business',
       deleted: false,
-      href: 'http://localhost:8585/api/v1/testSuite/9842a678-5d48-4942-b25a-c07511fcedbb',
+      href: 'http://localhost:8585/api/v1/testSuites/9842a678-5d48-4942-b25a-c07511fcedbb',
     },
     parameterValues: [
       {
