@@ -15,7 +15,7 @@ To be used by OpenMetadata class
 """
 import json
 import traceback
-from typing import Dict, Generic, List, Optional, Type, TypeVar, Union
+from typing import Dict, List, Optional, Type, TypeVar, Union
 
 from pydantic import BaseModel
 
@@ -24,7 +24,8 @@ from metadata.generated.schema.type import basic
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.tagLabel import LabelType, State, TagSource
 from metadata.ingestion.ometa.client import REST
-from metadata.ingestion.ometa.patch import (
+from metadata.ingestion.ometa.mixins.patch_mixin_utils import (
+    OMetaPatchMixinBase,
     PatchField,
     PatchOperation,
     PatchPath,
@@ -41,7 +42,7 @@ T = TypeVar("T", bound=BaseModel)
 OWNER_TYPES: List[str] = ["user", "team"]
 
 
-class OMetaPatchMixin(Generic[T]):
+class OMetaPatchMixin(OMetaPatchMixinBase):
     """
     OpenMetadata API methods related to Tables.
 
@@ -49,33 +50,6 @@ class OMetaPatchMixin(Generic[T]):
     """
 
     client: REST
-
-    def _fetch_entity_if_exists(
-        self, entity: Type[T], entity_id: Union[str, basic.Uuid]
-    ) -> Optional[T]:
-        """
-        Validates if we can update a description or not. Will return
-        the instance if it can be updated. None otherwise.
-
-        Args
-            entity (T): Entity Type
-            entity_id: ID
-            description: new description to add
-            force: if True, we will patch any existing description. Otherwise, we will maintain
-                the existing data.
-        Returns
-            instance to update
-        """
-
-        instance = self.get_by_id(entity=entity, entity_id=entity_id, fields=["*"])
-
-        if not instance:
-            logger.warning(
-                f"Cannot find an instance of '{entity.__class__.__name__}' with id [{str(entity_id)}]."
-            )
-            return None
-
-        return instance
 
     def patch_description(
         self,
