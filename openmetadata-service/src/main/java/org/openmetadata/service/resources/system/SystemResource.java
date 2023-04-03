@@ -1,6 +1,7 @@
 package org.openmetadata.service.resources.system;
 
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
+import io.swagger.v3.oas.annotations.Hidden;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -46,6 +47,7 @@ import org.openmetadata.service.util.ResultList;
 
 @Path("/v1/system")
 @Tag(name = "System", description = "APIs related to System configuration and settings.")
+@Hidden
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "system")

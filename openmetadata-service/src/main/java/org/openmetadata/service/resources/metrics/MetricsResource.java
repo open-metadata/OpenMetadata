@@ -51,7 +51,7 @@ import org.openmetadata.service.util.ResultList;
 
 @Path("/v1/metrics")
 @Tag(
-    name = "Metrics",
+    name = "Metrics (beta)",
     description =
         "`Metrics` are measurements computed from data such as `Monthly Active Users`. Some of the metrics that "
             + "measures used to determine performance against an objective are called KPIs or Key Performance Indicators, such as `User Retention`.")

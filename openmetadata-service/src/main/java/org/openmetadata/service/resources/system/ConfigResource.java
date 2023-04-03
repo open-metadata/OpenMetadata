@@ -13,6 +13,7 @@
 
 package org.openmetadata.service.resources.system;
 
+import io.swagger.v3.oas.annotations.Hidden;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -35,6 +36,7 @@ import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 
 @Path("/v1/system/config")
 @Tag(name = "System", description = "APIs related to System configuration and settings.")
+@Hidden
 @Produces(MediaType.APPLICATION_JSON)
 @Collection(name = "config")
 public class ConfigResource {

@@ -2,6 +2,7 @@ package org.openmetadata.service.resources.analytics;
 
 import com.google.inject.Inject;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
+import io.swagger.v3.oas.annotations.Hidden;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -58,6 +59,7 @@ import org.openmetadata.service.util.ResultList;
 @Slf4j
 @Path("/v1/analytics/web/events")
 @Tag(name = "Data Insights", description = "APIs related to Data Insights data and charts.")
+@Hidden
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "analytics")

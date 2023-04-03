@@ -5,6 +5,7 @@ import static org.openmetadata.service.Entity.FIELD_OWNER;
 
 import com.google.inject.Inject;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
+import io.swagger.v3.oas.annotations.Hidden;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -76,6 +77,7 @@ import org.openmetadata.service.util.ResultList;
 // TODO system/automation/workflows?
 @Path("/v1/automations/workflow")
 @Tag(name = "Workflows", description = "APIs related to creating and managing Automation workflows.")
+@Hidden
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "Workflow")

@@ -2,6 +2,7 @@ package org.openmetadata.service.resources.kpi;
 
 import com.google.inject.Inject;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
+import io.swagger.v3.oas.annotations.Hidden;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -55,6 +56,7 @@ import org.openmetadata.service.util.ResultList;
 // TODO change to KPIs
 @Path("/v1/kpi")
 @Tag(name = "KPIs", description = "A `KPI` defines a metric and a target.")
+@Hidden
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "kpi")

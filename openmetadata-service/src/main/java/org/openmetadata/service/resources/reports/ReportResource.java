@@ -50,7 +50,7 @@ import org.openmetadata.service.util.ResultList;
 
 @Path("/v1/reports")
 @Tag(
-    name = "Reports",
+    name = "Reports (beta)",
     description =
         "`Reports` are static information computed from data periodically that includes "
             + "data in text, table, and visual form.")
