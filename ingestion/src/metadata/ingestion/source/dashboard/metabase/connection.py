@@ -51,14 +51,6 @@ def test_connection(
 
     def custom_executor():
         return client.get_dashboards_list()
-        get_dashboards_list()
-
-        result = requests.get(  # pylint: disable=missing-timeout
-            client.host_port + "/api/dashboard",
-            headers=client.metabase_session,
-        )
-
-        return list(result)
 
     test_fn = {"GetDashboards": custom_executor}
 
