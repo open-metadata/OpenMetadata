@@ -66,6 +66,7 @@ from metadata.ingestion.source.dashboard.tableau.queries import (
     TABLEAU_LINEAGE_GRAPHQL_QUERY,
     TABLEAU_SHEET_QUERY_BY_ID,
 )
+from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
 from metadata.utils import fqn, tag_utils
 from metadata.utils.filters import filter_by_chart
 from metadata.utils.helpers import get_standard_chart_type
@@ -251,11 +252,16 @@ class TableauSource(DashboardServiceSource):
                     logger.error(f"Error ingesting tag [{tag}]: {err}")
 
     def get_column_info(self, data_model: TableauDataModel) -> Optional[List[Any]]:
+        """
+        get columns details for Data Model
+        """
         datasource_columns = []
         for column in data_model.datasourceFields:
             parsed_string = {
                 "dataTypeDisplay": column.remoteField.dataType,
-                "dataType": column.remoteField.dataType,
+                "dataType": ColumnTypeParser.get_column_type(
+                    column.remoteField.dataType
+                ),
                 "name": column.id,
                 "displayName": column.name,
             }
@@ -264,12 +270,14 @@ class TableauSource(DashboardServiceSource):
         for column in data_model.worksheetFields:
             parsed_string = {
                 "dataTypeDisplay": column.dataType,
-                "dataType": column.dataType,
+                "dataType": ColumnTypeParser.get_column_type(column.dataType),
                 "name": column.id,
                 "displayName": column.name,
             }
 
             datasource_columns.append(Column(**parsed_string))
+
+        return datasource_columns
 
     def yield_datamodel(
         self, dashboard_details: TableauDashboard
@@ -294,17 +302,20 @@ class TableauSource(DashboardServiceSource):
 
         for data_model in data_models.sheets:
             try:
+
                 data_model_request = CreateDashboardDataModelRequest(
                     name=data_model.id,
                     displayName=data_model.name,
                     description=data_model.description,
                     service=self.context.dashboard_service.fullyQualifiedName.__root__,
-                    serviceType=DashboardServiceType.Tableau.value,
                     dataModelType=DataModelType.TableauSheet.value,
+                    serviceType=DashboardServiceType.Tableau.value,
                     columns=self.get_column_info(data_model),
                 )
                 yield data_model_request
-
+                self.status.scanned(
+                    f"Data Model Scanned: {data_model_request.name.__root__}"
+                )
             except Exception as exc:
                 error_msg = f"Error yeilding Data Model - {data_model.name} - {exc}"
                 self.status.failed(

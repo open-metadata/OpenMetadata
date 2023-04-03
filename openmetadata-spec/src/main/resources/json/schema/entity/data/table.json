@@ -140,7 +140,6 @@
         "YEAR",
         "POINT",
         "POLYGON",
-        "INTEGER",
         "TUPLE",
         "SPATIAL",
         "TABLE"

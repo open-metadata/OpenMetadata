@@ -125,7 +125,8 @@
   },
   "required": [
     "name",
-    "modelType"
+    "modelType",
+    "columns"
   ],
   "additionalProperties": false
 }
