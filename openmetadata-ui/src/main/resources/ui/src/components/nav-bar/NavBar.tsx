@@ -438,9 +438,7 @@ const NavBar = ({
                       <SVGIcons
                         alt="icon-cancel"
                         icon={cancelIcon}
-                        onClick={() => {
-                          handleClear();
-                        }}
+                        onClick={handleClear}
                       />
                     ) : (
                       <SVGIcons
