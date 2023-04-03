@@ -90,8 +90,8 @@ class TestEntityLink(TestCase):
                 ["table", "bigquery_gcp.shopify.raw-product-catalog5", "description"],
             ),
             EntityLinkTest(
-                '<#E::table::bigquery_gcp.\"shop-ify\"."raw-product-catalog6">',
-                ["table", 'bigquery_gcp.\"shop-ify\"."raw-product-catalog6"'],
+                '<#E::table::bigquery_gcp."shop-ify"."raw-product-catalog6">',
+                ["table", 'bigquery_gcp."shop-ify"."raw-product-catalog6"'],
             ),
         ]
         for x in xs:
