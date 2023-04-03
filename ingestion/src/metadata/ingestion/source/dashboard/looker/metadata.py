@@ -21,6 +21,7 @@ Notes:
 
 import traceback
 from datetime import datetime
+from json import JSONDecodeError
 from typing import Iterable, List, Optional, Set, cast
 
 from looker_sdk.error import SDKError
@@ -79,6 +80,13 @@ GET_DASHBOARD_FIELDS = [
     "folder",
     "user_id",  # Use as owner
 ]
+
+
+def clean_dashboard_name(name: str) -> str:
+    """
+    Clean incorrect (and known) looker characters in ids
+    """
+    return name.replace("::", "_")
 
 
 class LookerSource(DashboardServiceSource):
@@ -160,27 +168,17 @@ class LookerSource(DashboardServiceSource):
             Optional[EntityReference]
         """
         try:
-            if (
-                dashboard_details.user_id is not None
-                and dashboard_details.user_id not in self._owners_ref
-            ):
+            if dashboard_details.user_id is not None:
                 dashboard_owner = self.client.user(dashboard_details.user_id)
                 user = self.metadata.get_user_by_email(dashboard_owner.email)
-                if user:  # Save the EntityRef
-                    self._owners_ref[dashboard_details.user_id] = EntityReference(
-                        id=user.id, type="user"
-                    )
-                else:  # Otherwise, flag the user as missing in OM
-                    self._owners_ref[dashboard_details.user_id] = None
-                    logger.debug(
-                        f"User {dashboard_owner.email} not found in OpenMetadata."
-                    )
+                if user:
+                    return EntityReference(id=user.id.__root__, type="user")
 
         except Exception as err:
             logger.debug(traceback.format_exc())
             logger.warning(f"Could not fetch owner data due to {err}")
 
-        return self._owners_ref.get(dashboard_details.user_id)
+        return None
 
     def yield_dashboard(
         self, dashboard_details: LookerDashboard
@@ -190,7 +188,7 @@ class LookerSource(DashboardServiceSource):
         """
 
         dashboard_request = CreateDashboardRequest(
-            name=dashboard_details.id.replace("::", "_"),
+            name=clean_dashboard_name(dashboard_details.id),
             displayName=dashboard_details.title,
             description=dashboard_details.description or None,
             charts=[
@@ -237,10 +235,15 @@ class LookerSource(DashboardServiceSource):
             if table_name:
                 dashboard_sources.add(self._clean_table_name(table_name))
 
-        except SDKError as err:
+        except (SDKError, JSONDecodeError):
             logger.debug(traceback.format_exc())
             logger.warning(
-                f"Cannot get explore from model={query.model}, view={query.view}: {err}"
+                f"Cannot get explore from model={query.model}, view={query.view}. Is the model name correct?"
+            )
+        except Exception as err:
+            logger.debug(traceback.format_exc())
+            logger.warning(
+                f"Unknown error getting the explore from model={query.model}, view={query.view}: {err}"
             )
 
     def get_dashboard_sources(self, dashboard_details: LookerDashboard) -> Set[str]:
@@ -282,7 +285,7 @@ class LookerSource(DashboardServiceSource):
             self.metadata,
             entity_type=MetadataDashboard,
             service_name=self.config.serviceName,
-            dashboard_name=dashboard_details.id.replace("::", "_"),
+            dashboard_name=clean_dashboard_name(dashboard_details.id),
         )
         to_entity = self.metadata.get_by_name(
             entity=MetadataDashboard,
