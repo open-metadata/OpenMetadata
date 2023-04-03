@@ -21,6 +21,7 @@ from copy import deepcopy
 from logging import Logger
 from typing import List, Optional, Set, Tuple
 
+from antlr4.error.Errors import ParseCancellationException
 from pydantic import BaseModel, ValidationError
 from sqlalchemy import MetaData
 
@@ -72,7 +73,7 @@ from metadata.utils.pandas_utils import return_ometa_dataframes
 from metadata.utils.partition import get_partition_details
 from metadata.utils.workflow_output_handler import print_test_suite_status
 from metadata.workflow.workflow_status_mixin import WorkflowStatusMixin
-from antlr4.error.Errors import ParseCancellationException
+
 logger: Logger = test_suite_logger()
 
 
