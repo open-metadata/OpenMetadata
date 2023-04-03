@@ -19,6 +19,7 @@ from metadata.ingestion.source.database.athena.query_parser import (
     AthenaQueryParserSource,
 )
 from metadata.ingestion.source.database.usage_source import UsageSource
+from metadata.utils.constants import DATETIME_STR_FORMAT
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -40,10 +41,10 @@ class AthenaUsageSource(AthenaQueryParserSource, UsageSource):
                 TableQuery(
                     query=query.Query,
                     startTime=datetime.strftime(
-                        query.Status.SubmissionDateTime, "%Y-%m-%d %H:%M:%S.%f"
+                        query.Status.SubmissionDateTime, DATETIME_STR_FORMAT
                     ),
                     endTime=datetime.strftime(
-                        query.Status.SubmissionDateTime, "%Y-%m-%d %H:%M:%S.%f"
+                        query.Status.SubmissionDateTime, DATETIME_STR_FORMAT
                     ),
                     analysisDate=query.Status.SubmissionDateTime,
                     serviceName=self.config.serviceName,
