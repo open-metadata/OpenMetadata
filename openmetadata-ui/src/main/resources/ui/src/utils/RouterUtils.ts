@@ -37,6 +37,7 @@ import {
   PLACEHOLDER_ROUTE_SERVICE_FQN,
   PLACEHOLDER_ROUTE_TAB,
   PLACEHOLDER_ROUTE_TABLE_FQN,
+  PLACEHOLDER_ROUTE_VERSION,
   PLACEHOLDER_RULE_NAME,
   PLACEHOLDER_SETTING_CATEGORY,
   PLACEHOLDER_TAG_NAME,
@@ -448,6 +449,32 @@ export const getGlossaryPathWithAction = (
   path = path
     .replace(PLACEHOLDER_GLOSSARY_NAME, fqn)
     .replace(PLACEHOLDER_ACTION, action);
+
+  return path;
+};
+
+export const getGlossaryVersionsPath = (
+  glossaryName: string,
+  version: string
+) => {
+  let path = ROUTES.GLOSSARY_VERSION;
+  path = path
+    .replace(PLACEHOLDER_GLOSSARY_NAME, glossaryName)
+    .replace(PLACEHOLDER_ROUTE_VERSION, version);
+
+  return path;
+};
+
+export const getGlossaryTermsVersionsPath = (
+  glossaryName: string,
+  glossaryTermsFQN: string,
+  version: string
+) => {
+  let path = ROUTES.GLOSSARY_TERMS_VERSION;
+  path = path
+    .replace(PLACEHOLDER_GLOSSARY_NAME, glossaryName)
+    .replace(PLACEHOLDER_ROUTE_VERSION, version)
+    .replace(PLACEHOLDER_GLOSSARY_TERMS_FQN, glossaryTermsFQN);
 
   return path;
 };

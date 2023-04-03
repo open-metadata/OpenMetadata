@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
 import { isEmpty } from 'lodash';
 
 import LineagePage from 'pages/LineagePage/LineagePage';
@@ -92,6 +91,13 @@ const UserPage = withSuspenseFallback(
 const AddGlossaryPage = withSuspenseFallback(
   React.lazy(() => import('pages/AddGlossary/AddGlossaryPage.component'))
 );
+
+const GlossaryVersionPage = withSuspenseFallback(
+  React.lazy(
+    () => import('../../components/GlossaryVersion/GlossaryVersion.component')
+  )
+);
+
 const AddGlossaryTermPage = withSuspenseFallback(
   React.lazy(
     () => import('pages/AddGlossaryTermPage/AddGlossaryTermPage.component')
@@ -148,7 +154,6 @@ const ExplorePage = withSuspenseFallback(
 const GlossaryPage = withSuspenseFallback(
   React.lazy(() => import('pages/Glossary/GlossaryPage/GlossaryPage.component'))
 );
-
 const MlModelPage = withSuspenseFallback(
   React.lazy(() => import('pages/MlModelPage/MlModelPage.component'))
 );
@@ -365,6 +370,11 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         exact
         component={PipelineDetailsPage}
         path={ROUTES.PIPELINE_DETAILS_WITH_TAB}
+      />
+      <Route
+        exact
+        component={GlossaryVersionPage}
+        path={ROUTES.GLOSSARY_VERSION}
       />
       <Route exact component={EntityVersionPage} path={ROUTES.ENTITY_VERSION} />
       <AdminProtectedRoute
