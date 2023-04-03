@@ -19,6 +19,7 @@ import com.google.common.cache.LoadingCache;
 import java.util.concurrent.TimeUnit;
 import javax.annotation.CheckForNull;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.email.SmtpSettings;
 import org.openmetadata.schema.settings.Settings;
 import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.service.jdbi3.CollectionDAO;
@@ -72,6 +73,10 @@ public class SettingsCache {
     @Override
     public Settings load(@CheckForNull String settingsName) {
       Settings setting = systemRepository.getConfigWithKey(settingsName);
+      if (setting.getConfigType() == SettingsType.EMAIL_CONFIGURATION) {
+        SmtpSettings emailConfig = SystemRepository.decryptSetting((SmtpSettings) setting.getConfigValue());
+        setting.setConfigValue(emailConfig);
+      }
       LOG.info("Loaded Setting {}", setting.getConfigType());
       return setting;
     }

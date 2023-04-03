@@ -81,6 +81,7 @@ import org.openmetadata.service.monitoring.EventMonitor;
 import org.openmetadata.service.monitoring.EventMonitorFactory;
 import org.openmetadata.service.monitoring.EventMonitorPublisher;
 import org.openmetadata.service.resources.CollectionRegistry;
+import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.secrets.SecretsManagerUpdateService;
@@ -102,7 +103,6 @@ import org.openmetadata.service.socket.FeedServlet;
 import org.openmetadata.service.socket.OpenMetadataAssetServlet;
 import org.openmetadata.service.socket.SocketAddressFilter;
 import org.openmetadata.service.socket.WebSocketManager;
-import org.openmetadata.service.util.EmailUtil;
 import org.openmetadata.service.util.MicrometerBundleSingleton;
 
 /** Main catalog application */
@@ -118,9 +118,10 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
           NoSuchAlgorithmException {
     validateConfiguration(catalogConfig);
 
-    // init email Util for handling
-    EmailUtil.initialize(catalogConfig);
     final Jdbi jdbi = createAndSetupJDBI(environment, catalogConfig.getDataSourceFactory());
+
+    // Init Settings Cache
+    SettingsCache.initialize(jdbi.onDemand(CollectionDAO.class));
 
     // init Secret Manager
     final SecretsManager secretsManager =
