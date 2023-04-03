@@ -28,7 +28,7 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.dashboard.metabase.client import MetabaseClient
 
 
-def get_connection(connection: MetabaseConnection) -> Dict[str, Any]:
+def get_connection(connection: MetabaseConnection) -> MetabaseClient:
     """
     Create connection
     """

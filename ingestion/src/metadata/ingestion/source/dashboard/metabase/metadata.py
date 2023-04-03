@@ -37,7 +37,7 @@ from metadata.utils import fqn
 from metadata.utils.filters import filter_by_chart
 from metadata.utils.helpers import get_standard_chart_type, replace_special_with
 from metadata.utils.logger import ingestion_logger
-
+from metadata.ingestion.source.dashboard.metabase.models import Dashboard
 
 logger = ingestion_logger()
 
@@ -67,7 +67,7 @@ class MetabaseSource(DashboardServiceSource):
             )
         return cls(config, metadata_config)
 
-    def get_dashboards_list(self) -> Optional[List[dict]]:
+    def get_dashboards_list(self) -> Optional[List[Dashboard]]:
         """
         Get List of all dashboards
         """
