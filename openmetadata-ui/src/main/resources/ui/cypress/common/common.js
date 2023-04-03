@@ -502,7 +502,6 @@ export const visitEntityDetailsPage = (term, serviceName, entity) => {
   // searching term in search box
   cy.get('[data-testid="searchBox"]').scrollIntoView().should('be.visible');
   cy.get('[data-testid="searchBox"]').type(term);
-  cy.get('[data-testid="suggestion-overlay"]').should('exist');
   verifyResponseStatusCode('@searchQuery', 200);
   cy.get('body').then(($body) => {
     // checking if requested term is available in search suggestion

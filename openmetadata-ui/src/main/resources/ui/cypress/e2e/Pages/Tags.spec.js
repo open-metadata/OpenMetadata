@@ -166,9 +166,8 @@ describe('Tags page should work', () => {
 
     cy.get('[data-testid="breadcrumb-link"]')
       .should('be.visible')
-      .within(() => {
-        cy.contains(entity.schemaName).click();
-      });
+      .contains(entity.schemaName)
+      .click();
 
     cy.get('[data-testid="tags"] > [data-testid="add-tag"]')
       .should('be.visible')
