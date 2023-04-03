@@ -53,7 +53,9 @@ jest.mock('utils/ServiceUtils', () => ({
 jest.mock('./TestConnectionModal/TestConnectionModal', () =>
   jest
     .fn()
-    .mockReturnValue(<div data-testid="test-connection-modal">Modal</div>)
+    .mockImplementation(({ isOpen }) =>
+      isOpen ? <div data-testid="test-connection-modal">Modal</div> : null
+    )
 );
 
 jest.mock('rest/workflowAPI', () => ({
@@ -300,5 +302,29 @@ describe('Test Connection Component', () => {
     expect(
       screen.getByText('message.test-connection-taking-too-long')
     ).toBeInTheDocument();
+  });
+
+  it('Should not show the connection status modal if test connection definition API fails', async () => {
+    (getTestConnectionDefinitionByName as jest.Mock).mockImplementationOnce(
+      () => Promise.reject()
+    );
+    await act(async () => {
+      render(<TestConnection {...mockProps} />);
+    });
+
+    const testConnectionButton = screen.getByTestId('test-connection-btn');
+
+    await act(async () => {
+      userEvent.click(testConnectionButton);
+    });
+
+    expect(getTestConnectionDefinitionByName).toHaveBeenCalledWith('Mysql');
+
+    expect(
+      screen.queryByTestId('test-connection-modal')
+    ).not.toBeInTheDocument();
+
+    // add workflow API should not get called
+    expect(addWorkflow).not.toHaveBeenCalled();
   });
 });
