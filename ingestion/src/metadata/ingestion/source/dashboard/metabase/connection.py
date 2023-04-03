@@ -40,7 +40,7 @@ def get_connection(connection: MetabaseConnection) -> MetabaseClient:
 
 def test_connection(
     metadata: OpenMetadata,
-    client,
+    client: MetabaseClient,
     service_connection: MetabaseConnection,
     automation_workflow: Optional[AutomationWorkflow] = None,
 ) -> None:
@@ -50,6 +50,9 @@ def test_connection(
     """
 
     def custom_executor():
+        return client.get_dashboards_list()
+        get_dashboards_list()
+
         result = requests.get(  # pylint: disable=missing-timeout
             client.host_port + "/api/dashboard",
             headers=client.metabase_session,
