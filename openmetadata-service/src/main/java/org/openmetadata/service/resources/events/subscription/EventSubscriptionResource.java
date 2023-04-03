@@ -73,16 +73,17 @@ import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
 
 @Slf4j
-@Path("/v1/events/subscription")
+// TODO call this subscriptions
+@Path("/v1/events/subscriptions")
 @Tag(
     name = "Events",
     description =
         "The `Events` are changes to metadata and are sent when entities are created, modified, or updated. External systems can subscribe to events using event subscription API over Webhooks, Slack, or Microsoft Teams.")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(name = "events/subscription")
+@Collection(name = "events/subscriptions")
 public class EventSubscriptionResource extends EntityResource<EventSubscription, EventSubscriptionRepository> {
-  public static final String COLLECTION_PATH = "/v1/events/subscription";
+  public static final String COLLECTION_PATH = "/v1/events/subscriptions";
   public static final String FIELDS = "owner,filteringRules";
   private final CollectionDAO daoCollection;
 

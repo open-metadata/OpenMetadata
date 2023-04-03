@@ -2,6 +2,7 @@ package org.openmetadata.service.resources.services.connections;
 
 import com.google.inject.Inject;
 import io.swagger.annotations.Api;
+import io.swagger.v3.oas.annotations.Hidden;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -38,9 +39,10 @@ import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
 
 @Slf4j
-// TODO fix this
+// TODO call this testConnectionDefinitions
 @Path("/v1/services/testConnectionDefinition")
 @Api(value = "Test Connection Definitions collection", tags = "Test Connection Definitions collection")
+@Hidden
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "TestConnectionDefinitions")
@@ -77,6 +79,7 @@ public class TestConnectionDefinitionResource
     }
   }
 
+  // TODO remove the list method?
   @GET
   @Operation(
       operationId = "listTestConnectionDefinitions",

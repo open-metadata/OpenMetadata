@@ -63,6 +63,7 @@ import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
 
+// TODO remove this
 @Path("/v1/locations")
 @Tag(name = "locations")
 @Produces(MediaType.APPLICATION_JSON)
