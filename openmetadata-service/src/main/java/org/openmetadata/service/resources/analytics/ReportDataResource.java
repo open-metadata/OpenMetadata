@@ -37,13 +37,13 @@ import org.openmetadata.service.security.policyevaluator.ResourceContextInterfac
 import org.openmetadata.service.util.ResultList;
 
 @Slf4j
-@Path("/v1/analytics/dataInsight/data")
+@Path("/v1/analytics/dataInsights/data")
 @Api(value = "DataInsight data collection", tags = "analytics collection")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "analytics")
 public class ReportDataResource {
-  public static final String COLLECTION_PATH = "v1/analytics/dataInsight/data";
+  public static final String COLLECTION_PATH = "v1/analytics/dataInsights/data";
   @Getter protected final ReportDataRepository dao;
   protected final Authorizer authorizer;
 
@@ -66,7 +66,7 @@ public class ReportDataResource {
       summary = "List the report data",
       tags = "analytics",
       description =
-          "Get a list of all the report data for a given reportDataType, optionally filtered by  `startTs` and `endTs` of the result. "
+          "Get a list of all the report data for a given data insight report type , optionally filtered by  `startTs` and `endTs` of the result. "
               + "Use cursor-based pagination to limit the number of "
               + "entries in the list using `limit` and `before` or `after` query params.",
       responses = {
@@ -85,13 +85,13 @@ public class ReportDataResource {
           @QueryParam("reportDataType")
           ReportDataType reportDataType,
       @Parameter(
-              description = "Filter reportData results after the given start timestamp",
+              description = "Filter report data results after the given start timestamp",
               schema = @Schema(type = "number"))
           @NonNull
           @QueryParam("startTs")
           Long startTs,
       @Parameter(
-              description = "Filter reportData results before the given end timestamp",
+              description = "Filter report data results before the given end timestamp",
               schema = @Schema(type = "number"))
           @NonNull
           @QueryParam("endTs")
@@ -106,9 +106,9 @@ public class ReportDataResource {
   @POST
   @Operation(
       operationId = "addReportData",
-      summary = "Add report data",
+      summary = "Add data to a data insight report type",
       tags = "analytics",
-      description = "Add report data",
+      description = "Add data to a data insight report type",
       responses = {
         @ApiResponse(
             responseCode = "200",
