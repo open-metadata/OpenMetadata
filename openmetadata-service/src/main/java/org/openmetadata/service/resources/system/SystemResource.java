@@ -2,8 +2,6 @@ package org.openmetadata.service.resources.system;
 
 import static org.openmetadata.schema.settings.SettingsType.EMAIL_CONFIGURATION;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Hidden;
 import io.swagger.v3.oas.annotations.Operation;
@@ -61,13 +59,11 @@ public class SystemResource {
   public static final String COLLECTION_PATH = "/v1/util";
   private final SystemRepository systemRepository;
   private final Authorizer authorizer;
-  private final CollectionDAO dao;
 
   public SystemResource(CollectionDAO dao, Authorizer authorizer) {
     Objects.requireNonNull(dao, "SystemRepository must not be null");
     this.systemRepository = new SystemRepository(dao.systemDAO());
     this.authorizer = authorizer;
-    this.dao = dao;
   }
 
   @SuppressWarnings("unused") // Method used for reflection
@@ -103,8 +99,7 @@ public class SystemResource {
     }
   }
 
-  private void createEmailConfiguration(OpenMetadataApplicationConfig applicationConfig)
-      throws JsonProcessingException {
+  private void createEmailConfiguration(OpenMetadataApplicationConfig applicationConfig) {
     Settings storedSettings = systemRepository.getConfigWithKey(EMAIL_CONFIGURATION.toString());
     if (storedSettings == null) {
       // Only in case a config doesn't exist in DB we insert it
