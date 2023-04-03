@@ -449,7 +449,7 @@ class OpenMetadata(
             entity,
             TestConnectionDefinition,
         ):
-            return "/services/testConnectionDefinition"
+            return "/services/testConnectionDefinitions"
 
         if issubclass(
             entity,

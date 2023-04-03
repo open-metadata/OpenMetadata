@@ -183,7 +183,7 @@ export const testServiceCreationAndIngestion = (
   // Test the connection
   interceptURL(
     'GET',
-    '/api/v1/services/testConnectionDefinition/name/*',
+    '/api/v1/services/testConnectionDefinitions/name/*',
     'testConnectionStepDefinition'
   );
 

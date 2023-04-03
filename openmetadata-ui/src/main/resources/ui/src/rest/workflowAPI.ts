@@ -20,7 +20,7 @@ export const getTestConnectionDefinitionByName = async (
   testDefinitionName: string
 ) => {
   const response = await APIClient.get<TestConnectionDefinition>(
-    `services/testConnectionDefinition/name/${testDefinitionName}`
+    `services/testConnectionDefinitions/name/${testDefinitionName}`
   );
 
   return response.data;

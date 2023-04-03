@@ -35,7 +35,7 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
         Entity.TEST_SUITE,
         TestSuite.class,
         TestSuiteResource.TestSuiteList.class,
-        "testSuite",
+        "testSuites",
         TestSuiteResource.FIELDS);
     supportsEmptyDescription = false;
   }
