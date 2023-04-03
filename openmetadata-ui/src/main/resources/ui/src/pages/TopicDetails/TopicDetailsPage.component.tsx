@@ -164,19 +164,6 @@ const TopicDetailsPage: FunctionComponent = () => {
 
   const { id: topicId, version: currentVersion } = topicDetails;
 
-  const fetchTabSpecificData = (tabField = '') => {
-    switch (tabField) {
-      case TabSpecificField.ACTIVITY_FEED: {
-        fetchActivityFeed();
-
-        break;
-      }
-
-      default:
-        break;
-    }
-  };
-
   const saveUpdatedTopicData = (updatedData: Topic) => {
     const jsonPatch = compare(omitBy(topicDetails, isUndefined), updatedData);
 
@@ -468,7 +455,9 @@ const TopicDetailsPage: FunctionComponent = () => {
   }, [tab]);
 
   useEffect(() => {
-    fetchTabSpecificData(topicDetailsTabs[activeTab - 1].field);
+    if (activeTab === 2) {
+      fetchActivityFeed();
+    }
   }, [activeTab]);
 
   useEffect(() => {

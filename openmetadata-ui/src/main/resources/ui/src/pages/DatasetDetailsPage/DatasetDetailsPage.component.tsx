@@ -405,8 +405,6 @@ const DatasetDetailsPage: FunctionComponent = () => {
     try {
       const response = await saveUpdatedTableData(updatedTable);
       if (response) {
-        response;
-
         setTableDetails(response);
         getEntityFeedCount();
       } else {

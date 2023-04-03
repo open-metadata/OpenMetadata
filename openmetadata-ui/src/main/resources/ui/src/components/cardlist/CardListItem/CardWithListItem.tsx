@@ -79,16 +79,7 @@ const CardListItem: FunctionComponent<Props> = ({
   };
 
   const getCardIcon = (cardId: string) => {
-    if (isSelected && isActive) {
-      return (
-        <Space align="center">
-          <Button danger size="small" type="primary" onClick={onRemove}>
-            {t('label.remove')}
-          </Button>
-          <CheckCircleOutlined className="tw-text-h4" />
-        </Space>
-      );
-    } else if (isSelected) {
+    if (isSelected || (isSelected && isActive)) {
       return (
         <Space align="center">
           <Button danger size="small" type="primary" onClick={onRemove}>
