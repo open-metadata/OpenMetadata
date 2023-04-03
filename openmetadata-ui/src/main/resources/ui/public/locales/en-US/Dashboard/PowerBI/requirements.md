@@ -1,8 +1,20 @@
 # Requirements
 PowerBi Pro license is required to access the APIs
 
-## PowerBI Account Setup and Permissions
+# PowerBI can be configured using two types of Authentication Mechanisms
 
+## 1. Basic Authentication
+With this authentication, the PowerBI ingestion process will only scan the dashboards and charts from the workspaces that the user has been granted access to, instead of scanning all available workspaces. This limits the scope of the ingestion process to only those resources that the user has permission to access.
+
+### Step 1: Disable 2FA/MFA on the account
+The PowerBI ingestion process can only be performed on accounts that do not have two-factor authentication (2FA) or multi-factor authentication (MFA) enabled. If an account has 2FA/MFA enabled, the ingestion process will not work for that account.
+### Step 2: Provide necessary API permissions to the app
+Go to the `Azure Ad app registrations` page, select your app and add the dashboard permissions to the app for PowerBI service and grant admin consent for the same:
+- Dashboard.Read.All
+- Dashboard.ReadWrite.All
+
+## 2. Service Pricipal Authentication
+This authentication requires admin level access and the PowerBI ingestion will scan all the available PowerBI workspaces to fetch the all metadata for dashboards and charts
 ### Step 1: Create an Azure AD app and configure the PowerBI Admin consle
 
 Please follow the steps mentioned [here](https://docs.microsoft.com/en-us/power-bi/developer/embedded/embed-service-principal) for setting up the Azure AD application service principle and configure PowerBI admin settings

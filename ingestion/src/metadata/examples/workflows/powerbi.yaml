@@ -3,6 +3,13 @@ source:
   serviceName: local_powerbi
   serviceConnection:
     config:
+      # For PowerBI, choose one of Basic Auth or Service Princpal Auth
+      powerbiAuthType:
+      # For Basic Auth
+        # username: username
+        # password: password
+      # For Service Principal Auth
+        # clientSecret: client_secret
       clientId: client_id
       clientSecret: client_secret
       tenantId: tenant_id

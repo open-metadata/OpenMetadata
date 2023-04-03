@@ -12,6 +12,7 @@
 """
 Source connection handler
 """
+from functools import partial
 from typing import Optional
 
 from metadata.generated.schema.entity.automations.workflow import (
@@ -19,6 +20,9 @@ from metadata.generated.schema.entity.automations.workflow import (
 )
 from metadata.generated.schema.entity.services.connections.dashboard.powerBIConnection import (
     PowerBIConnection,
+)
+from metadata.generated.schema.entity.utils.powerbiBasicAuthConnection import (
+    PowerBIBasicAuthConnection,
 )
 from metadata.ingestion.connections.test_connections import test_connection_steps
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -43,7 +47,10 @@ def test_connection(
     of a metadata workflow or during an Automation Workflow
     """
 
-    test_fn = {"GetDashboards": client.fetch_dashboards}
+    if isinstance(service_connection.powerbiAuthType, PowerBIBasicAuthConnection):
+        test_fn = {"GetDashboards": partial(client.fetch_dashboards, False)}
+    else:
+        test_fn = {"GetDashboards": client.fetch_dashboards}
 
     test_connection_steps(
         metadata=metadata,

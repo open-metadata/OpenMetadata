@@ -18,11 +18,23 @@ from time import sleep
 from typing import List, Optional, Tuple
 
 import msal
+
 from metadata.generated.schema.entity.utils.powerbiBasicAuthConnection import (
     PowerBIBasicAuthConnection,
 )
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.ometa.client import REST, ClientConfig
+from metadata.ingestion.source.dashboard.powerbi.models import (
+    DashboardsResponse,
+    Group,
+    GroupsResponse,
+    PowerBIDashboard,
+    PowerBiToken,
+    Tile,
+    TilesResponse,
+    Workspaces,
+    WorkSpaceScanResponse,
+)
 from metadata.utils.logger import utils_logger
 
 logger = utils_logger()
@@ -39,17 +51,7 @@ class PowerBiApiClient:
 
     def __init__(self, config):
         self.config = config
-        if isinstance(self.config.powerbiAuthType, PowerBIBasicAuthConnection):
-            self.msal_client = msal.PublicClientApplication(
-                self.config.clientId, 
-                authority=self.config.authorityURI + self.config.tenantId
-                )
-        else:
-            self.msal_client = msal.ConfidentialClientApplication(
-                client_id=self.config.clientId,
-                client_credential=self.config.clientSecret.get_secret_value(),
-                authority=self.config.authorityURI + self.config.tenantId,
-            )
+        self.msal_client = self.get_msal_client()
         self.auth_token = self.get_auth_token()
         client_config = ClientConfig(
             base_url="https://api.powerbi.com",
@@ -57,8 +59,23 @@ class PowerBiApiClient:
             auth_token=lambda: self.auth_token,
             auth_header="Authorization",
             allow_redirects=True,
+            retry_codes=[429],
+            retry=100,
+            retry_wait=30,
         )
         self.client = REST(client_config)
+
+    def get_msal_client(self):
+        if isinstance(self.config.powerbiAuthType, PowerBIBasicAuthConnection):
+            return msal.PublicClientApplication(
+                self.config.clientId,
+                authority=self.config.authorityURI + self.config.tenantId,
+            )
+        return msal.ConfidentialClientApplication(
+            client_id=self.config.clientId,
+            client_credential=self.config.powerbiAuthType.clientSecret.get_secret_value(),
+            authority=self.config.authorityURI + self.config.tenantId,
+        )
 
     def get_auth_token(self) -> Tuple[str, str]:
         """
@@ -66,50 +83,91 @@ class PowerBiApiClient:
         """
         logger.info("Generating PowerBi access token")
 
-        auth_response = self.msal_client.acquire_token_silent(
+        response_data = self.msal_client.acquire_token_silent(
             scopes=self.config.scope, account=None
         )
 
-        if not auth_response:
+        if not response_data:
             logger.info("Token does not exist in the cache. Getting a new token.")
-            auth_response = self.msal_client.acquire_token_for_client(
-                scopes=self.config.scope
-            )
-
-        if not auth_response.get("access_token"):
+            if isinstance(self.config.powerbiAuthType, PowerBIBasicAuthConnection):
+                response_data = self.msal_client.acquire_token_by_username_password(
+                    username=self.config.powerbiAuthType.username,
+                    password=self.config.powerbiAuthType.password.get_secret_value(),
+                    scopes=self.config.scope,
+                )
+            else:
+                response_data = self.msal_client.acquire_token_for_client(
+                    scopes=self.config.scope
+                )
+        auth_response = PowerBiToken(**response_data)
+        if not auth_response.access_token:
             raise InvalidSourceException(
                 "Failed to generate the PowerBi access token. Please check provided config"
             )
 
         logger.info("PowerBi Access Token generated successfully")
-        access_token = auth_response.get("access_token")
-        expiry = auth_response.get("expires_in")
+        return auth_response.access_token, auth_response.expires_in
 
-        return access_token, expiry
-
-    def fetch_dashboards(self) -> Optional[dict]:
+    def fetch_dashboards(self, admin: bool = True) -> Optional[List[PowerBIDashboard]]:
         """Get dashboards method
         Returns:
-            dict
+            List[PowerBIDashboard]
         """
         try:
-            return self.client.get("/myorg/admin/dashboards")
+            is_admin_api = "admin/" if admin else ""
+            response_data = self.client.get(f"/myorg/{is_admin_api}dashboards")
+            response = DashboardsResponse(**response_data)
+            return response.value
+
         except Exception as exc:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())
             logger.warning(f"Error fetching dashboards: {exc}")
 
         return None
 
-    def fetch_all_workspaces(self) -> Optional[List[dict]]:
-        """Method to fetch all powerbi workspace details
+    def fetch_charts(self, dashboard_id: str) -> Optional[List[Tile]]:
+        """Get charts method
+        Returns:
+            List[Tile]
+        """
+        try:
+            response_data = self.client.get(f"/myorg/dashboards/{dashboard_id}/tiles")
+            response = TilesResponse(**response_data)
+            return response.value
+        except Exception as exc:  # pylint: disable=broad-except
+            logger.debug(traceback.format_exc())
+            logger.warning(
+                f"Error fetching charts for dashboard_id - {dashboard_id}: {exc}"
+            )
+
+        return None
+
+    def fetch_dataset(self, dataset_id: str) -> Optional[dict]:
+        """Get Dataset method
         Returns:
             dict
         """
         try:
+            return self.client.get(f"/myorg/datasets/{dataset_id}")
+        except Exception as exc:  # pylint: disable=broad-except
+            logger.debug(traceback.format_exc())
+            logger.warning(
+                f"Error fetching dataset for dataset_id - {dataset_id}: {exc}"
+            )
+
+        return None
+
+    def fetch_all_workspaces(self) -> Optional[List[Group]]:
+        """Method to fetch all powerbi workspace details
+        Returns:
+            Group
+        """
+        try:
             entities_per_page = min(100, self.config.pagination_entity_per_page)
             params_data = {"$top": "1"}
-            response = self.client.get("/myorg/admin/groups", data=params_data)
-            count = response.get("@odata.count")
+            response_data = self.client.get("/myorg/admin/groups", data=params_data)
+            response = GroupsResponse(**response_data)
+            count = response.odata_count
             indexes = math.ceil(count / entities_per_page)
 
             workspaces = []
@@ -118,20 +176,23 @@ class PowerBiApiClient:
                     "$top": str(entities_per_page),
                     "$skip": str(index * entities_per_page),
                 }
-                response = self.client.get("/myorg/admin/groups", data=params_data)
-                workspaces.extend(response.get("value"))
+                response_data = self.client.get("/myorg/admin/groups", data=params_data)
+                response = GroupsResponse(**response_data)
+                workspaces.extend(response.value)
             return workspaces
         except Exception as exc:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())
             logger.warning(f"Error fetching workspaces: {exc}")
         return None
 
-    def initiate_workspace_scan(self, workspace_ids: List[str]) -> Optional[dict]:
+    def initiate_workspace_scan(
+        self, workspace_ids: List[str]
+    ) -> Optional[WorkSpaceScanResponse]:
         """Method to initiate workspace scan
         Args:
             workspace_ids:
         Returns:
-            dict
+            WorkSpaceScanResponse
         """
         try:
             data = json.dumps({"workspaces": workspace_ids})
@@ -140,37 +201,46 @@ class PowerBiApiClient:
                 "datasetExpressions=True&datasetSchema=True"
                 "&datasourceDetails=True&getArtifactUsers=True&lineage=True"
             )
-            return self.client.post(path=path, data=data)
+            response_data = self.client.post(path=path, data=data)
+            return WorkSpaceScanResponse(**response_data)
         except Exception as exc:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())
             logger.warning(f"Error initiating workspace scan: {exc}")
 
         return None
 
-    def fetch_workspace_scan_status(self, scan_id: str) -> Optional[dict]:
+    def fetch_workspace_scan_status(
+        self, scan_id: str
+    ) -> Optional[WorkSpaceScanResponse]:
         """Get Workspace scan status by id method
         Args:
             scan_id:
         Returns:
-            dict
+            WorkSpaceScanResponse
         """
         try:
-            return self.client.get(f"/myorg/admin/workspaces/scanStatus/{scan_id}")
+            response_data = self.client.get(
+                f"/myorg/admin/workspaces/scanStatus/{scan_id}"
+            )
+            return WorkSpaceScanResponse(**response_data)
         except Exception as exc:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())
             logger.warning(f"Error fetching workspace scan status: {exc}")
 
         return None
 
-    def fetch_workspace_scan_result(self, scan_id: str) -> Optional[dict]:
+    def fetch_workspace_scan_result(self, scan_id: str) -> Optional[Workspaces]:
         """Get Workspace scan result by id method
         Args:
             scan_id:
         Returns:
-            dict
+            Workspaces
         """
         try:
-            return self.client.get(f"/myorg/admin/workspaces/scanResult/{scan_id}")
+            response_data = self.client.get(
+                f"/myorg/admin/workspaces/scanResult/{scan_id}"
+            )
+            return Workspaces(**response_data)
         except Exception as exc:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())
             logger.warning(f"Error fetching workspace scan result: {exc}")
@@ -191,7 +261,7 @@ class PowerBiApiClient:
         while True:
             logger.info(f"Starting poll - {poll}/{max_poll}")
             response = self.fetch_workspace_scan_status(scan_id=scan_id)
-            status = response.get("status")
+            status = response.status
             if status:
                 if status.lower() == "succeeded":
                     return True

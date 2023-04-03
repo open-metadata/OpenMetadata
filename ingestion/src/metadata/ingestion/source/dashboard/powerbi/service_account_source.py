@@ -29,8 +29,8 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.ingestion.api.source import InvalidSourceException
-from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
 from metadata.ingestion.source.dashboard.powerbi.mixin import PowerBISourceMixin
+from metadata.ingestion.source.dashboard.powerbi.models import Dataset, PowerBIDashboard
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_chart, filter_by_dashboard
 from metadata.utils.logger import ingestion_logger
@@ -63,7 +63,7 @@ class PowerBIServiceAccountSource(PowerBISourceMixin):
         # fetch all the workspace ids
         workspaces = self.client.fetch_all_workspaces()
         if workspaces:
-            workspace_id_list = [workspace.get("id") for workspace in workspaces]
+            workspace_id_list = [workspace.id for workspace in workspaces]
 
             # Start the scan of the available workspaces for dashboard metadata
             workspace_paginated_list = [
@@ -80,21 +80,20 @@ class PowerBIServiceAccountSource(PowerBISourceMixin):
                 workspace_scan = self.client.initiate_workspace_scan(
                     workspace_ids_chunk
                 )
-                workspace_scan_id = workspace_scan.get("id")
 
                 # Keep polling the scan status endpoint to check if scan is succeeded
                 workspace_scan_status = self.client.wait_for_scan_complete(
-                    scan_id=workspace_scan_id
+                    scan_id=workspace_scan.id
                 )
                 if workspace_scan_status:
                     response = self.client.fetch_workspace_scan_result(
-                        scan_id=workspace_scan_id
+                        scan_id=workspace_scan.id
                     )
                     self.workspace_data.extend(
                         [
                             active_workspace
-                            for active_workspace in response.get("workspaces")
-                            if active_workspace.get("state") == "Active"
+                            for active_workspace in response.workspaces
+                            if active_workspace.state == "Active"
                         ]
                     )
                 else:
@@ -142,39 +141,26 @@ class PowerBIServiceAccountSource(PowerBISourceMixin):
                     continue
                 yield dashboard_details
 
-    def get_dashboards_list(self) -> Optional[List[dict]]:
+    def get_dashboards_list(self) -> Optional[List[PowerBIDashboard]]:
         """
         Get List of all dashboards
         """
-        return self.context.workspace.get("dashboards", [])
-
-    def get_dashboard_name(self, dashboard: dict) -> str:
-        """
-        Get Dashboard Name
-        """
-        return dashboard["displayName"]
-
-    def get_dashboard_details(self, dashboard: dict) -> dict:
-        """
-        Get Dashboard Details
-        """
-        return dashboard
+        return self.context.workspace.dashboards or []
 
     def yield_dashboard(
-        self, dashboard_details: dict
+        self, dashboard_details: PowerBIDashboard
     ) -> Iterable[CreateDashboardRequest]:
         """
         Method to Get Dashboard Entity, Dashboard Charts & Lineage
         """
         dashboard_url = (
-            f"/groups/{self.context.workspace.get('id')}"
-            f"/dashboards/{dashboard_details.get('id')}"
+            f"/groups/{self.context.workspace.id}" f"/dashboards/{dashboard_details.id}"
         )
         dashboard_request = CreateDashboardRequest(
-            name=dashboard_details["id"],
+            name=dashboard_details.id,
             # PBI has no hostPort property. Urls are built manually.
             dashboardUrl=dashboard_url,
-            displayName=dashboard_details["displayName"],
+            displayName=dashboard_details.displayName,
             description="",
             charts=[
                 fqn.build(
@@ -191,43 +177,42 @@ class PowerBIServiceAccountSource(PowerBISourceMixin):
         self.register_record(dashboard_request=dashboard_request)
 
     def yield_dashboard_lineage_details(
-        self, dashboard_details: dict, db_service_name: str
+        self, dashboard_details: PowerBIDashboard, db_service_name: str
     ) -> Optional[Iterable[AddLineageRequest]]:
         """
         Get lineage between dashboard and data sources
         """
         try:
-            charts = dashboard_details.get("tiles")
-            for chart in charts:
-                dataset_id = chart.get("datasetId")
-                if dataset_id:
-                    dataset = self.fetch_dataset_from_workspace(dataset_id)
-                    if dataset:
-                        for table in dataset.get("tables"):
-                            table_name = table.get("name")
+            charts = dashboard_details.tiles
+            for chart in charts or []:
+                dataset = self.fetch_dataset_from_workspace(chart.datasetId)
+                if dataset:
+                    for table in dataset.tables:
+                        table_name = table.name
 
-                            from_fqn = fqn.build(
-                                self.metadata,
-                                entity_type=Table,
-                                service_name=db_service_name,
-                                database_name=None,
-                                schema_name=None,
-                                table_name=table_name,
-                            )
-                            from_entity = self.metadata.get_by_name(
-                                entity=Table,
-                                fqn=from_fqn,
-                            )
-                            to_fqn = fqn.build(
-                                self.metadata,
-                                entity_type=Dashboard,
-                                service_name=self.config.serviceName,
-                                dashboard_name=dashboard_details["id"],
-                            )
-                            to_entity = self.metadata.get_by_name(
-                                entity=Dashboard,
-                                fqn=to_fqn,
-                            )
+                        from_fqn = fqn.build(
+                            self.metadata,
+                            entity_type=Table,
+                            service_name=db_service_name,
+                            database_name=None,
+                            schema_name=None,
+                            table_name=table_name,
+                        )
+                        from_entity = self.metadata.get_by_name(
+                            entity=Table,
+                            fqn=from_fqn,
+                        )
+                        to_fqn = fqn.build(
+                            self.metadata,
+                            entity_type=Dashboard,
+                            service_name=self.config.serviceName,
+                            dashboard_name=dashboard_details.id,
+                        )
+                        to_entity = self.metadata.get_by_name(
+                            entity=Dashboard,
+                            fqn=to_fqn,
+                        )
+                        if from_entity and to_entity:
                             yield self._get_add_lineage_request(
                                 to_entity=to_entity, from_entity=from_entity
                             )
@@ -238,7 +223,7 @@ class PowerBIServiceAccountSource(PowerBISourceMixin):
             )
 
     def yield_dashboard_chart(
-        self, dashboard_details: dict
+        self, dashboard_details: PowerBIDashboard
     ) -> Optional[Iterable[CreateChartRequest]]:
         """Get chart method
         Args:
@@ -246,27 +231,25 @@ class PowerBIServiceAccountSource(PowerBISourceMixin):
         Returns:
             Iterable[Chart]
         """
-        charts = dashboard_details.get("tiles")
-        for chart in charts:
+        charts = dashboard_details.tiles
+        for chart in charts or []:
             try:
-                chart_title = chart.get("title")
-                chart_display_name = chart_title if chart_title else chart.get("id")
+                chart_title = chart.title
+                chart_display_name = chart_title if chart_title else chart.id
                 if filter_by_chart(
                     self.source_config.chartFilterPattern, chart_display_name
                 ):
                     self.status.filter(chart_display_name, "Chart Pattern not Allowed")
                     continue
-                report_id = chart.get("reportId")
+                report_id = chart.reportId
                 chart_url_postfix = (
                     f"reports/{report_id}"
                     if report_id
-                    else f"dashboards/{dashboard_details.get('id')}"
+                    else f"dashboards/{dashboard_details.id}"
                 )
-                chart_url = (
-                    f"/groups/{self.context.workspace.get('id')}/{chart_url_postfix}"
-                )
+                chart_url = f"/groups/{self.context.workspace.id}/{chart_url_postfix}"
                 yield CreateChartRequest(
-                    name=chart["id"],
+                    name=chart.id,
                     displayName=chart_display_name,
                     description="",
                     chartType=ChartType.Other.value,
@@ -276,23 +259,26 @@ class PowerBIServiceAccountSource(PowerBISourceMixin):
                 )
                 self.status.scanned(chart_display_name)
             except Exception as exc:
-                name = chart.get("title")
+                name = chart.title
                 error = f"Error creating chart [{name}]: {exc}"
                 logger.debug(traceback.format_exc())
                 logger.warning(error)
                 self.status.failed(name, error, traceback.format_exc())
 
-    def fetch_dataset_from_workspace(self, dataset_id: str) -> Optional[dict]:
+    def fetch_dataset_from_workspace(
+        self, dataset_id: Optional[str]
+    ) -> Optional[Dataset]:
         """
         Method to search the dataset using id in the workspace dict
         """
-
-        dataset_data = next(
-            (
-                dataset
-                for dataset in self.context.workspace.get("datasets") or []
-                if dataset["id"] == dataset_id
-            ),
-            None,
-        )
-        return dataset_data
+        if dataset_id:
+            dataset_data = next(
+                (
+                    dataset
+                    for dataset in self.context.workspace.datasets or []
+                    if dataset.id == dataset_id
+                ),
+                None,
+            )
+            return dataset_data
+        return None

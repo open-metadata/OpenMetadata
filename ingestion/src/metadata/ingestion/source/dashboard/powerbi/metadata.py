@@ -20,15 +20,16 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 from metadata.generated.schema.entity.utils.powerbiBasicAuthConnection import (
     PowerBIBasicAuthConnection,
 )
-from metadata.generated.schema.entity.utils.powerbiServicePrincipalConnection import (
-    PowerBIServicePrincipalConnection,
-)
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.ingestion.api.source import InvalidSourceException
-from metadata.ingestion.source.dashboard.powerbi.basic_auth_source import PowerBIBasicAuthSource
-from metadata.ingestion.source.dashboard.powerbi.service_account_source import PowerBIServiceAccountSource
+from metadata.ingestion.source.dashboard.powerbi.basic_auth_source import (
+    PowerBIBasicAuthSource,
+)
+from metadata.ingestion.source.dashboard.powerbi.service_account_source import (
+    PowerBIServiceAccountSource,
+)
 
 
 class PowerbiSource:
