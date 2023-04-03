@@ -25,14 +25,17 @@ from metadata.generated.schema.entity.services.connections.dashboard.metabaseCon
 from metadata.ingestion.connections.test_connections import test_connection_steps
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 
-from .client import MetabaseClient
+from metadata.ingestion.source.dashboard.metabase.client import MetabaseClient
 
 
 def get_connection(connection: MetabaseConnection) -> Dict[str, Any]:
     """
     Create connection
     """
-    return MetabaseClient(connection=connection).get_connection()
+    return MetabaseClient(username=connection.username,
+                          password=connection.password,
+                          host_port=connection.hostPort,
+                          )
 
 
 def test_connection(
@@ -48,8 +51,8 @@ def test_connection(
 
     def custom_executor():
         result = requests.get(  # pylint: disable=missing-timeout
-            client["connection"].hostPort + "/api/dashboard",
-            headers=client["metabase_session"],
+            client.host_port + "/api/dashboard",
+            headers=client.metabase_session,
         )
 
         return list(result)

@@ -32,13 +32,31 @@ class MetabaseClient:
 
     def __init__(
         self,
-        service_connection=None,
-        metabase_session=None,
-        connection: MetabaseConnection = None,
+        username: Optional[str] = None,
+        password: Optional[str] = None,
+        host_port: Optional[str] = None
     ):
-        self.service_connection = service_connection
-        self.metabase_session = metabase_session
-        self.connection = connection
+        self.username = username
+        self.password = password
+        self.host_port = host_port
+        try:
+            params = {}
+            params["username"] = self.username
+            params["password"] = self.password.get_secret_value()
+            headers = {"Content-Type": "application/json", "Accept": "*/*"}
+            self.resp = requests.post(  # pylint: disable=missing-timeout
+                host_port + "/api/session/",
+                data=json.dumps(params),
+                headers=headers,
+            )
+            session_id = self.resp.json()["id"]
+            metabase_session = {"X-Metabase-Session": session_id}
+            self.metabase_session = metabase_session
+        
+        except Exception as exc:
+            msg = f"Unknown error in connection: {exc}."
+            raise SourceConnectionException(msg) from exc
+
 
     def req_get(self, path: str) -> requests.Response:
         """Send get request method
@@ -47,7 +65,7 @@ class MetabaseClient:
             path:
         """
         return requests.get(
-            self.service_connection.hostPort + path,
+            self.host_port + path,
             headers=self.metabase_session,
             timeout=30,
         )
@@ -93,30 +111,3 @@ class MetabaseClient:
             return resp_table.json()
         else:
             return None
-
-    def get_connection(self) -> Dict[str, Any]:
-        """
-        Create connection
-        """
-        try:
-            connection = self.connection
-            params = {}
-            params["username"] = connection.username
-            params["password"] = connection.password.get_secret_value()
-
-            headers = {"Content-Type": "application/json", "Accept": "*/*"}
-
-            resp = requests.post(  # pylint: disable=missing-timeout
-                connection.hostPort + "/api/session/",
-                data=json.dumps(params),
-                headers=headers,
-            )
-
-            session_id = resp.json()["id"]
-            metabase_session = {"X-Metabase-Session": session_id}
-            conn = {"connection": connection, "metabase_session": metabase_session}
-            return conn
-
-        except Exception as exc:
-            msg = f"Unknown error connecting with {connection}: {exc}."
-            raise SourceConnectionException(msg) from exc
