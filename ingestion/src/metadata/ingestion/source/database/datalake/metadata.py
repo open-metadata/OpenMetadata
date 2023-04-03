@@ -12,6 +12,7 @@
 """
 DataLake connector to fetch metadata from a files stored s3, gcs and Hdfs
 """
+import math
 import random
 import traceback
 from typing import Iterable, List, Optional, Tuple
@@ -119,7 +120,6 @@ def ometa_to_dataframe(config_source, client, table, profile_sample_config):
     if isinstance(data, DatalakeColumnWrapper):
         data = data.dataframes
     if data:
-
         random.shuffle(data)
 
         # sampling data based on profiler config (if any)
@@ -137,8 +137,17 @@ def ometa_to_dataframe(config_source, client, table, profile_sample_config):
                     for df in data
                 ]
             elif profile_sample_config.profile_sample_type == ProfileSampleType.ROWS:
-                # TODO add ROWS logic
-                pass
+                sample_rows_per_chunk: int = math.floor(
+                    profile_sample_config.profile_sample / len(data)
+                )
+                data = [
+                    df.sample(
+                        n=sample_rows_per_chunk,
+                        random_state=random.randint(0, 100),
+                        replace=True,
+                    )
+                    for df in data
+                ]
         else:
             # randomize the samples
             data = [
