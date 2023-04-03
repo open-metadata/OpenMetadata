@@ -108,12 +108,12 @@ public final class ChangeEventParser {
     switch (publishTo) {
       case FEED:
       case TEAMS:
-      case EMAIL:
         // TEAMS and FEED bold formatting is same
         return FEED_BOLD;
       case SLACK:
         return SLACK_BOLD;
       case GCHAT:
+      case EMAIL:
         return "<b>%s</b>";
       default:
         return "INVALID";
@@ -238,9 +238,9 @@ public final class ChangeEventParser {
       }
       String headerTxt;
       String headerText;
-      if (event.getEventType().equals(Entity.QUERY)) {
+      if (eventType.equals(Entity.QUERY)) {
         headerTxt = "%s posted on " + eventType;
-        headerText = String.format(headerTxt);
+        headerText = String.format(headerTxt, event.getUserName());
       } else {
         headerTxt = "%s posted on " + eventType + " %s";
         headerText = String.format(headerTxt, event.getUserName(), getEntityUrl(PUBLISH_TO.SLACK, event));
@@ -267,7 +267,11 @@ public final class ChangeEventParser {
     emailMessage.setUserName(event.getUserName());
     if (event.getEntity() != null) {
       emailMessage.setUpdatedBy(event.getUserName());
-      emailMessage.setEntityUrl(getEntityUrl(PUBLISH_TO.EMAIL, event));
+      if (event.getEntityType().equals(Entity.QUERY)) {
+        emailMessage.setEntityUrl(Entity.QUERY);
+      } else {
+        emailMessage.setEntityUrl(getEntityUrl(PUBLISH_TO.EMAIL, event));
+      }
     }
     Map<EntityLink, String> messages =
         getFormattedMessages(PUBLISH_TO.EMAIL, event.getChangeDescription(), (EntityInterface) event.getEntity());
