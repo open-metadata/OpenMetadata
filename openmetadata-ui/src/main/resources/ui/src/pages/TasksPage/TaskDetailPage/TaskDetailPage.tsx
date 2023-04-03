@@ -18,7 +18,6 @@ import classNames from 'classnames';
 import ActivityFeedEditor from 'components/ActivityFeed/ActivityFeedEditor/ActivityFeedEditor';
 import FeedPanelBody from 'components/ActivityFeed/ActivityFeedPanel/FeedPanelBody';
 import ActivityThreadPanelBody from 'components/ActivityFeed/ActivityThreadPanel/ActivityThreadPanelBody';
-import { useAuthContext } from 'components/authentication/auth-provider/AuthProvider';
 import AssigneeList from 'components/common/AssigneeList/AssigneeList';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import UserPopOverCard from 'components/common/PopOverCard/UserPopOverCard';
@@ -28,7 +27,13 @@ import Loader from 'components/Loader/Loader';
 import { compare, Operation } from 'fast-json-patch';
 import { isEmpty, isEqual, toLower } from 'lodash';
 import { observer } from 'mobx-react';
-import React, { Fragment, useEffect, useMemo, useState } from 'react';
+import React, {
+  Fragment,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import {
@@ -101,7 +106,6 @@ const TaskDetailPage = () => {
   const { Content, Sider } = Layout;
   const { TabPane } = Tabs;
   const { isAdminUser } = useAuth();
-  const { isAuthDisabled } = useAuthContext();
 
   const { taskId } = useParams<{ [key: string]: string }>();
 
@@ -155,13 +159,21 @@ const TaskDetailPage = () => {
     );
   }, [taskDetail, entityData]);
 
-  // const isRequestTag = isEqual(taskDetail.task?.type, TaskType.RequestTag);
-  // const isUpdateTag = isEqual(taskDetail.task?.type, TaskType.UpdateTag);
-
   const isOwner = isEqual(entityData.owner?.id, currentUser?.id);
+
+  const checkIfUserPartOfTeam = useCallback(
+    (teamId: string): boolean => {
+      return Boolean(currentUser?.teams?.find((team) => teamId === team.id));
+    },
+    [currentUser]
+  );
 
   const isAssignee = taskDetail.task?.assignees?.some((assignee) =>
     isEqual(assignee.id, currentUser?.id)
+  );
+
+  const isPartOfAssigneeTeam = taskDetail.task?.assignees?.some((assignee) =>
+    assignee.type === 'team' ? checkIfUserPartOfTeam(assignee.id) : false
   );
 
   const isTaskClosed = isEqual(
@@ -516,8 +528,9 @@ const TaskDetailPage = () => {
    *
    * @returns True if has access otherwise false
    */
-  const hasEditAccess = () =>
-    isAdminUser || isAuthDisabled || isAssignee || isOwner;
+  const hasEditAccess = () => isAdminUser || isAssignee || isOwner;
+
+  const hasTaskUpdateAccess = () => hasEditAccess() || isPartOfAssigneeTeam;
 
   return (
     <>
@@ -672,7 +685,7 @@ const TaskDetailPage = () => {
                     className="m-t-xss"
                     data-testid="task-cta-buttons"
                     size="small">
-                    {(hasEditAccess() || isCreator) && !isTaskClosed && (
+                    {(hasTaskUpdateAccess() || isCreator) && !isTaskClosed && (
                       <Button
                         className="ant-btn-link-custom"
                         type="link"
@@ -681,7 +694,7 @@ const TaskDetailPage = () => {
                       </Button>
                     )}
 
-                    {hasEditAccess() && !isTaskClosed && (
+                    {hasTaskUpdateAccess() && !isTaskClosed && (
                       <Fragment>
                         {taskDetail.task?.suggestion ? (
                           <Dropdown.Button
