@@ -16,34 +16,13 @@ import RichTextEditor from 'components/common/rich-text-editor/RichTextEditor';
 import { VALIDATION_MESSAGES } from 'constants/constants';
 import { delimiterRegex } from 'constants/regex.constants';
 import { DEFAULT_FORM_VALUE } from 'constants/Tags.constant';
-import { Classification } from 'generated/entity/classification/classification';
-import { Tag } from 'generated/entity/classification/tag';
 import { isUndefined, toLower } from 'lodash';
 import React, { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { isUrlFriendlyName } from 'utils/CommonUtils';
+import { RenameFormProps } from './TagsPage.interface';
 
-interface SubmitProps {
-  name: string;
-  description: string;
-  displayName: string;
-  mutuallyExclusive?: boolean;
-}
-
-interface RenameFormProps {
-  visible: boolean;
-  onCancel: () => void;
-  header: string;
-  initialValues?: Tag;
-  onSubmit: (value: SubmitProps) => void;
-  showMutuallyExclusive?: boolean;
-  isClassification?: boolean;
-  data?: Classification[];
-  disableName?: boolean;
-  isLoading: boolean;
-}
-
-const TagsForm: React.FC<RenameFormProps> = ({
+const TagsForm = ({
   visible,
   onCancel,
   header,
@@ -52,9 +31,8 @@ const TagsForm: React.FC<RenameFormProps> = ({
   showMutuallyExclusive = false,
   data,
   isClassification = false,
-  disableName = false,
   isLoading,
-}): JSX.Element => {
+}: RenameFormProps) => {
   const { t } = useTranslation();
   const [form] = Form.useForm();
 
@@ -141,7 +119,7 @@ const TagsForm: React.FC<RenameFormProps> = ({
               },
             },
           ]}>
-          <Input disabled={disableName} placeholder={t('label.name')} />
+          <Input placeholder={t('label.name')} />
         </Form.Item>
 
         <Form.Item

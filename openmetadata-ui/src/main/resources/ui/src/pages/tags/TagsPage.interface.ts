@@ -11,6 +11,8 @@
  *  limitations under the License.
  */
 
+import { Classification } from 'generated/entity/classification/classification';
+import { Tag } from 'generated/entity/classification/tag';
 import { LoadingState } from 'Models';
 
 export type DeleteTagDetailsType = {
@@ -25,3 +27,22 @@ export type DeleteTagsType = {
   data: DeleteTagDetailsType | undefined;
   state: boolean;
 };
+
+interface SubmitProps {
+  name: string;
+  description: string;
+  displayName: string;
+  mutuallyExclusive?: boolean;
+}
+
+export interface RenameFormProps {
+  visible: boolean;
+  onCancel: () => void;
+  header: string;
+  initialValues?: Tag;
+  onSubmit: (value: SubmitProps) => void;
+  showMutuallyExclusive?: boolean;
+  isClassification?: boolean;
+  data?: Classification[];
+  isLoading: boolean;
+}
