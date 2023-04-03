@@ -14,7 +14,7 @@
 import { uniqueId } from 'lodash';
 import React, { FC, HTMLAttributes } from 'react';
 import { useHistory } from 'react-router-dom';
-import { getUserPath } from '../../../constants/constants';
+import { getOwnerValue } from 'utils/CommonUtils';
 import { EntityReference } from '../../../generated/type/entityReference';
 import UserPopOverCard from '../PopOverCard/UserPopOverCard';
 import ProfilePicture from '../ProfilePicture/ProfilePicture';
@@ -26,6 +26,12 @@ interface Props extends HTMLAttributes<HTMLDivElement> {
 const AssigneeList: FC<Props> = ({ assignees, className }) => {
   const history = useHistory();
 
+  const handleClick = (e: React.MouseEvent, assignee: EntityReference) => {
+    e.stopPropagation();
+    const linkPath = getOwnerValue(assignee);
+    history.push(linkPath);
+  };
+
   return (
     <span className={className}>
       {assignees.map((assignee) => (
@@ -36,10 +42,7 @@ const AssigneeList: FC<Props> = ({ assignees, className }) => {
           <span
             className="tw-flex tw-m-1.5 tw-mt-0 tw-cursor-pointer"
             data-testid="assignee"
-            onClick={(e) => {
-              e.stopPropagation();
-              history.push(getUserPath(assignee.name ?? ''));
-            }}>
+            onClick={(e) => handleClick(e, assignee)}>
             <ProfilePicture id="" name={assignee.name || ''} width="20" />
             <span className="tw-ml-1">{assignee.name || ''}</span>
           </span>
