@@ -288,13 +288,13 @@ health:
 email:
   emailingEntity: ${OM_EMAIL_ENTITY:-"OpenMetadata"}
   supportUrl: ${OM_SUPPORT_URL:-"https://slack.open-metadata.org"}
-  enableSmtpServer : ${AUTHORIZER_ENABLE_SMTP:-false}
-  openMetadataUrl: ${OPENMETADATA_SERVER_URL:-""}
-  senderMail: ${OPENMETADATA_SMTP_SENDER_MAIL:-""}
-  serverEndpoint: ${SMTP_SERVER_ENDPOINT:-""}
-  serverPort: ${SMTP_SERVER_PORT:-""}
-  username: ${SMTP_SERVER_USERNAME:-""}
-  password: ${SMTP_SERVER_PWD:-""}
+  enableSmtpServer : ${AUTHORIZER_ENABLE_SMTP:-true}
+  openMetadataUrl: ${OPENMETADATA_SERVER_URL:-"http://localhost:8585"}
+  senderMail: ${OPENMETADATA_SMTP_SENDER_MAIL:-"himank.m@deuexsolution.com"}
+  serverEndpoint: ${SMTP_SERVER_ENDPOINT:-"smtp.gmail.com"}
+  serverPort: ${SMTP_SERVER_PORT:-"587"}
+  username: ${SMTP_SERVER_USERNAME:-"himank.m@deuexsolution.com"}
+  password: ${SMTP_SERVER_PWD:-"HimankDeuex@07"}
   transportationStrategy: ${SMTP_SERVER_STRATEGY:-"SMTP_TLS"}
 
 applicationConfig:
@@ -307,5 +307,5 @@ applicationConfig:
     jwtTokenExpiryTime: ${OM_JWT_EXPIRY_TIME:-3600}
 
 changeEventConfig:
-  uri: 'http://localhost:8585'
+  uri: ${URI:- "http://localhost:8585"}
 
