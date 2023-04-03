@@ -11,7 +11,6 @@
 """
 Athena usage module
 """
-from datetime import datetime
 from typing import Iterable, Optional
 
 from metadata.generated.schema.type.tableQuery import TableQueries, TableQuery
@@ -19,12 +18,13 @@ from metadata.ingestion.source.database.athena.query_parser import (
     AthenaQueryParserSource,
 )
 from metadata.ingestion.source.database.usage_source import UsageSource
-from metadata.utils.constants import DATETIME_STR_FORMAT
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
 
 QUERY_ABORTED_STATE = "CANCELLED"
+DATETIME_SEPARATOR = " "
+DATETIME_TIME_SPEC = "seconds"
 
 
 class AthenaUsageSource(AthenaQueryParserSource, UsageSource):
@@ -40,11 +40,11 @@ class AthenaUsageSource(AthenaQueryParserSource, UsageSource):
             queries = [
                 TableQuery(
                     query=query.Query,
-                    startTime=datetime.strftime(
-                        query.Status.SubmissionDateTime, DATETIME_STR_FORMAT
+                    startTime=query.Status.SubmissionDateTime.isoformat(
+                        DATETIME_SEPARATOR, DATETIME_TIME_SPEC
                     ),
-                    endTime=datetime.strftime(
-                        query.Status.SubmissionDateTime, DATETIME_STR_FORMAT
+                    endTime=query.Status.SubmissionDateTime.isoformat(
+                        DATETIME_SEPARATOR, DATETIME_TIME_SPEC
                     ),
                     analysisDate=query.Status.SubmissionDateTime,
                     serviceName=self.config.serviceName,

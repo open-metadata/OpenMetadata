@@ -32,5 +32,3 @@ ES_SOURCE_TO_ES_OBJ_ARGS = {
 QUERY_WITH_OM_VERSION = '/* {"app": "OpenMetadata"'
 
 QUERY_WITH_DBT = '/* {"app": "dbt"'
-
-DATETIME_STR_FORMAT = "%Y-%m-%d %H:%M:%S.%f"
