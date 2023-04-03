@@ -16,7 +16,7 @@ import textwrap
 MLMODEL_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
     """
 {
-"settings": {
+  "settings": {
     "analysis": {
       "normalizer": {
         "lowercase_normalizer": {
@@ -34,6 +34,11 @@ MLMODEL_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
             "lowercase",
             "om_stemmer"
           ]
+        },
+        "om_ngram": {
+          "tokenizer": "ngram",
+          "min_gram": 1,
+          "max_gram": 2
         }
       },
       "filter": {
@@ -64,11 +69,17 @@ MLMODEL_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
       },
       "displayName": {
         "type": "text",
-        "analyzer": "om_analyzer"
+        "analyzer": "om_analyzer",
+        "fields": {
+          "ngram": {
+            "type": "text",
+            "analyzer": "om_ngram"
+          }
+        }
       },
       "description": {
         "type": "text",
-         "analyzer": "om_analyzer"
+        "analyzer": "om_analyzer"
       },
       "version": {
         "type": "float"
@@ -102,7 +113,7 @@ MLMODEL_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
           },
           "description": {
             "type": "text",
-             "analyzer": "om_analyzer"
+            "analyzer": "om_analyzer"
           },
           "fullyQualifiedName": {
             "type": "text"
@@ -122,13 +133,8 @@ MLMODEL_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
       "mlHyperParameters": {
         "properties": {
           "name": {
-            "type": "keyword",
-            "fields": {
-              "keyword": {
-                "type": "keyword",
-                "ignore_above": 256
-              }
-            }
+            "type": "text",
+            "analyzer": "om_analyzer"
           },
           "value": {
             "type": "text"
@@ -203,6 +209,15 @@ MLMODEL_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
             "type": "keyword"
           },
           "name": {
+            "type": "keyword",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "ignore_above": 256
+              }
+            }
+          },
+          "displayName": {
             "type": "keyword",
             "fields": {
               "keyword": {

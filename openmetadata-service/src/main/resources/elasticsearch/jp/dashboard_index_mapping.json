@@ -297,6 +297,9 @@
       "chart_suggest": {
         "type": "completion"
       },
+      "data_model_suggest": {
+        "type": "completion"
+      },
       "service_suggest": {
         "type": "completion"
       }

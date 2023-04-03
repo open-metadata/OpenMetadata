@@ -33,7 +33,7 @@ import { EntityTags, TagOption } from 'Models';
 import React, { FC, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getEntityName } from 'utils/EntityUtils';
-import { Field } from '../../../generated/entity/data/topic';
+import { DataTypeTopic, Field } from '../../../generated/entity/data/topic';
 import SVGIcons from '../../../utils/SvgUtils';
 import { getTableExpandableConfig } from '../../../utils/TableUtils';
 import { fetchTagsAndGlossaryTerms } from '../../../utils/TagsUtils';
@@ -227,8 +227,10 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
         key: 'dataType',
         ellipsis: true,
         width: 220,
-        render: (dataType: Field['dataType']) => (
-          <Typography.Text>{dataType}</Typography.Text>
+        render: (dataType: DataTypeTopic, record: Field) => (
+          <Typography.Text>
+            {record.dataTypeDisplay || dataType}
+          </Typography.Text>
         ),
       },
       {
