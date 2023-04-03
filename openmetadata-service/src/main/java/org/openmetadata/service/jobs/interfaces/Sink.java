@@ -16,6 +16,6 @@ package org.openmetadata.service.jobs.interfaces;
 import java.util.Map;
 import org.openmetadata.service.exception.WriterException;
 
-public interface Writer<I, O> extends Stats {
+public interface Sink<I, O> extends Stats {
   O write(I data, Map<String, Object> contextData) throws WriterException;
 }

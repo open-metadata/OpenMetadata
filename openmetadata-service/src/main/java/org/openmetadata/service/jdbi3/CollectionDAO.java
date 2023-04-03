@@ -3260,9 +3260,7 @@ public interface CollectionDAO {
             + "ORDER BY timestamp DESC LIMIT 1")
     String getLatestByExtension(@Bind("extension") String extension);
 
-    @SqlQuery(
-        "SELECT json FROM entity_extension_time_series WHERE extension = :extension "
-            + "ORDER BY timestamp DESC LIMIT 1")
+    @SqlQuery("SELECT json FROM entity_extension_time_series WHERE extension = :extension " + "ORDER BY timestamp DESC")
     List<String> getAllByExtension(@Bind("extension") String extension);
 
     @RegisterRowMapper(ExtensionMapper.class)

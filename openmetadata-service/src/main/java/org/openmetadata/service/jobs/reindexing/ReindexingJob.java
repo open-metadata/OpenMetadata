@@ -47,6 +47,7 @@ import org.openmetadata.service.exception.ReaderException;
 import org.openmetadata.service.exception.WriterException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.util.JsonUtils;
+import org.openmetadata.service.util.ReIndexingHandler;
 import org.openmetadata.service.util.ResultList;
 
 @Slf4j
@@ -103,6 +104,7 @@ public class ReindexingJob implements Runnable {
 
     // store job details in Database
     updateRecordToDb();
+    ReIndexingHandler.getInstance().removeCompletedJob(jobData.getId());
   }
 
   private void entitiesReIndexer() {
@@ -216,17 +218,17 @@ public class ReindexingJob implements Runnable {
     jobDataStats.setJobStats(stats);
 
     // Reader Stats
-    jobDataStats.setReaderStats(reader);
+    jobDataStats.setSourceStats(reader);
 
     // Processor
     jobDataStats.setProcessorStats(processor);
 
     // Writer
-    jobDataStats.setWriterStats(writer);
+    jobDataStats.setSinkStats(writer);
     jobData.setStats(jobDataStats);
   }
 
-  private void updateRecordToDb() throws IOException {
+  public void updateRecordToDb() throws IOException {
     String recordString =
         dao.entityExtensionTimeSeriesDao().getExtension(jobData.getId().toString(), REINDEXING_JOB_EXTENSION);
     EventPublisherJob lastRecord = JsonUtils.readValue(recordString, EventPublisherJob.class);
@@ -257,7 +259,7 @@ public class ReindexingJob implements Runnable {
   private void handleReaderError(String context, String reason, long time) {
     Failure failures = getFailure();
     FailureDetails readerFailures = getFailureDetails(context, reason, time);
-    failures.setReaderError(readerFailures);
+    failures.setSourceError(readerFailures);
     jobData.setFailure(failures);
   }
 
@@ -271,7 +273,7 @@ public class ReindexingJob implements Runnable {
   private void handleEsError(String context, String reason, long time) {
     Failure failures = getFailure();
     FailureDetails writerFailure = getFailureDetails(context, reason, time);
-    failures.setWriterError(writerFailure);
+    failures.setProcessorError(writerFailure);
     jobData.setFailure(failures);
   }
 
@@ -315,8 +317,8 @@ public class ReindexingJob implements Runnable {
   }
 
   private void updateJobStatus() {
-    if (jobData.getFailure().getWriterError() != null
-        || jobData.getFailure().getReaderError() != null
+    if (jobData.getFailure().getSinkError() != null
+        || jobData.getFailure().getSourceError() != null
         || jobData.getFailure().getProcessorError() != null) {
       jobData.setStatus(EventPublisherJob.Status.FAILED);
     } else {

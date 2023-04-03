@@ -16,7 +16,7 @@ package org.openmetadata.service.jobs.interfaces;
 import java.util.Map;
 import org.openmetadata.service.exception.ReaderException;
 
-public interface Reader<R> extends Stats {
+public interface Source<R> extends Stats {
   R readNext(Map<String, Object> contextData) throws ReaderException;
 
   void reset();

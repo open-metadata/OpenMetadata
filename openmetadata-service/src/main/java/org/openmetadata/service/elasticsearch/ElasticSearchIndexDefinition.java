@@ -222,8 +222,8 @@ public class ElasticSearchIndexDefinition {
 
   /**
    * This method is used lazily to populate ES Mapping fields and corresponding Entity Fields getting common fields in
-   * between NOTE: This is not done as part of constructor since Resource Using this night start to getting exception
-   * since it utilizes EntityRepository.
+   * between NOTE: This is not done as part of constructor since Resource Using this might start to get exception since
+   * it utilizes EntityRepository.
    *
    * @param elasticSearchIndexType
    * @param lang
@@ -297,7 +297,7 @@ public class ElasticSearchIndexDefinition {
       lastRecord.setTimestamp(updateTime);
       lastRecord.setFailure(
           new Failure()
-              .withWriterError(
+              .withSinkError(
                   new FailureDetails()
                       .withContext(failedFor)
                       .withLastFailedAt(updateTime)

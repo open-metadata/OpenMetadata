@@ -25,6 +25,7 @@ import java.util.UUID;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.RejectedExecutionHandler;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
@@ -66,7 +67,23 @@ public class ReIndexingHandler {
       dao = daoObject;
       esIndexDefinition = elasticSearchIndexDefinition;
       taskQueue = new ArrayBlockingQueue<>(5);
-      threadScheduler = new ThreadPoolExecutor(5, 5, 0L, TimeUnit.MILLISECONDS, taskQueue);
+      threadScheduler =
+          new ThreadPoolExecutor(
+              5,
+              5,
+              0L,
+              TimeUnit.MILLISECONDS,
+              taskQueue,
+              new RejectedExecutionHandler() {
+                @Override
+                @SneakyThrows
+                public void rejectedExecution(Runnable r, ThreadPoolExecutor executor) {
+                  LOG.error("[Reindexing Executor Service] Rejected a job");
+                  ReindexingJob job = (ReindexingJob) r;
+                  job.getJobData().setStatus(EventPublisherJob.Status.FAILED);
+                  job.updateRecordToDb();
+                }
+              });
       INSTANCE = new ReIndexingHandler();
       INITIALIZED = true;
     } else {
@@ -104,10 +121,15 @@ public class ReIndexingHandler {
                     && entry.getValue().getJobData().getStatus() != EventPublisherJob.Status.RUNNING);
   }
 
+  public void removeCompletedJob(UUID jobId) {
+    REINDEXING_JOB_MAP.remove(jobId);
+  }
+
   public EventPublisherJob getJob(UUID jobId) throws IOException {
     ReindexingJob job = REINDEXING_JOB_MAP.get(jobId);
     if (job == null) {
-      String recordString = dao.entityExtensionTimeSeriesDao().getLatestByExtension(REINDEXING_JOB_EXTENSION);
+      String recordString =
+          dao.entityExtensionTimeSeriesDao().getLatestExtension(jobId.toString(), REINDEXING_JOB_EXTENSION);
       return JsonUtils.readValue(recordString, EventPublisherJob.class);
     }
     return REINDEXING_JOB_MAP.get(jobId).getJobData();
@@ -125,10 +147,23 @@ public class ReIndexingHandler {
 
   public List<EventPublisherJob> getAllJobs() throws IOException {
     List<EventPublisherJob> result = new ArrayList<>();
-    List<ReindexingJob> activeJob = new ArrayList<>(REINDEXING_JOB_MAP.values());
-    List<String> jobs = dao.entityExtensionTimeSeriesDao().getAllByExtension(REINDEXING_JOB_EXTENSION);
-    result.addAll(JsonUtils.readObjects(jobs, EventPublisherJob.class));
-    result.addAll(activeJob.stream().map(ReindexingJob::getJobData).collect(Collectors.toList()));
+    List<ReindexingJob> activeReindexingJob = new ArrayList<>(REINDEXING_JOB_MAP.values());
+    List<EventPublisherJob> activeEventPubJob =
+        activeReindexingJob.stream().map(ReindexingJob::getJobData).collect(Collectors.toList());
+    List<EventPublisherJob> jobsFromDatabase =
+        JsonUtils.readObjects(
+            dao.entityExtensionTimeSeriesDao().getAllByExtension(REINDEXING_JOB_EXTENSION), EventPublisherJob.class);
+    jobsFromDatabase.removeIf(
+        (job) -> {
+          for (EventPublisherJob active : activeEventPubJob) {
+            if (active.getId().equals(job.getId())) {
+              return true;
+            }
+          }
+          return false;
+        });
+    result.addAll(activeEventPubJob);
+    result.addAll(jobsFromDatabase);
     return result;
   }
 

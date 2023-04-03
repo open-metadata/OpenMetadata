@@ -27,11 +27,11 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.ReaderException;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
-import org.openmetadata.service.jobs.interfaces.Reader;
+import org.openmetadata.service.jobs.interfaces.Source;
 import org.openmetadata.service.util.ResultList;
 
 @Slf4j
-public class PaginatedEntitiesReader implements Reader<ResultList<? extends EntityInterface>> {
+public class PaginatedEntitiesReader implements Source<ResultList<? extends EntityInterface>> {
   @Getter private final int batchSize;
   @Getter private final String entityType;
   @Getter private final List<String> fields;

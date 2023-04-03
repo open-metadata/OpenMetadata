@@ -50,13 +50,13 @@
     "stats": {
       "type": "object",
       "properties": {
-        "readerStats": {
+        "sourceStats": {
           "$ref" : "#/definitions/stepStats"
         },
         "processorStats": {
           "$ref" : "#/definitions/stepStats"
         },
-        "writerStats": {
+        "sinkStats": {
           "$ref" : "#/definitions/stepStats"
         },
         "jobStats": {
@@ -126,7 +126,7 @@
       "description": "List of Failures in the Job",
       "type": "array",
       "properties": {
-        "readerError": {
+        "sourceError": {
           "type": "object",
           "$ref": "#/definitions/failureDetails",
           "default": null
@@ -136,7 +136,7 @@
           "$ref": "#/definitions/failureDetails",
           "default": null
         },
-        "writerError" : {
+        "sinkError" : {
           "type": "object",
           "$ref": "#/definitions/failureDetails",
           "default": null

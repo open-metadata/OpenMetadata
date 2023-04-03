@@ -892,7 +892,7 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
               .withTimestamp(startTime)
               .withStartedBy(ADMIN_USER_NAME)
               .withStartTime(startTime)
-              .withFailure(new Failure().withWriterError(failureDetails));
+              .withFailure(new Failure().withSinkError(failureDetails));
       dao.entityExtensionTimeSeriesDao()
           .insert(
               ELASTIC_SEARCH_ENTITY_FQN_STREAM,
@@ -915,7 +915,7 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
       lastRecord.setTimestamp(updateTime);
       lastRecord.setFailure(
           new Failure()
-              .withWriterError(
+              .withSinkError(
                   new FailureDetails()
                       .withContext(context)
                       .withLastFailedAt(updateTime)

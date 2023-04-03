@@ -24,12 +24,12 @@ import org.openmetadata.schema.analytics.ReportData;
 import org.openmetadata.schema.system.StepStats;
 import org.openmetadata.service.exception.ReaderException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
-import org.openmetadata.service.jobs.interfaces.Reader;
+import org.openmetadata.service.jobs.interfaces.Source;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
 
 @Slf4j
-public class PaginatedDataInsightReader implements Reader<ResultList<ReportData>> {
+public class PaginatedDataInsightReader implements Source<ResultList<ReportData>> {
   private final CollectionDAO dao;
   @Getter private final String entityType;
   @Getter private final int batchSize;

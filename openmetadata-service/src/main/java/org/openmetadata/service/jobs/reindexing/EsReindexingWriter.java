@@ -25,10 +25,10 @@ import org.elasticsearch.client.RequestOptions;
 import org.elasticsearch.client.RestHighLevelClient;
 import org.openmetadata.schema.system.StepStats;
 import org.openmetadata.service.exception.WriterException;
-import org.openmetadata.service.jobs.interfaces.Writer;
+import org.openmetadata.service.jobs.interfaces.Sink;
 
 @Slf4j
-public class EsReindexingWriter implements Writer<BulkRequest, BulkResponse> {
+public class EsReindexingWriter implements Sink<BulkRequest, BulkResponse> {
   private final StepStats stats = new StepStats();
   private final RestHighLevelClient client;
 
