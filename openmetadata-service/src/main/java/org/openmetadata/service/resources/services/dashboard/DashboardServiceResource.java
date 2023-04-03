@@ -15,7 +15,6 @@ package org.openmetadata.service.resources.services.dashboard;
 
 import static org.openmetadata.service.Entity.FIELD_OWNER;
 
-import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -24,6 +23,7 @@ import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
@@ -71,7 +71,7 @@ import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
 
 @Path("/v1/services/dashboardServices")
-@Api(value = "Dashboard service collection", tags = "Services -> Dashboard service collection")
+@Tag(name = "Dashboard Services")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "dashboardServices")
@@ -101,7 +101,6 @@ public class DashboardServiceResource
   @Operation(
       operationId = "listDashboardsService",
       summary = "List dashboard services",
-      tags = "dashboardServices",
       description = "Get a list of dashboard services.",
       responses = {
         @ApiResponse(
@@ -148,7 +147,6 @@ public class DashboardServiceResource
   @Operation(
       operationId = "getDashboardServiceByID",
       summary = "Get a dashboard service by Id",
-      tags = "dashboardServices",
       description = "Get a dashboard service by `Id`.",
       responses = {
         @ApiResponse(
@@ -183,7 +181,6 @@ public class DashboardServiceResource
   @Operation(
       operationId = "getDashboardServiceByFQN",
       summary = "Get dashboard service by name",
-      tags = "dashboardServices",
       description = "Get a dashboard service by the service `name`.",
       responses = {
         @ApiResponse(
@@ -219,7 +216,6 @@ public class DashboardServiceResource
   @Operation(
       operationId = "addTestConnectionResult",
       summary = "Add test connection result",
-      tags = "dashboardServices",
       description = "Add test connection result to the service.",
       responses = {
         @ApiResponse(
@@ -245,7 +241,6 @@ public class DashboardServiceResource
   @Operation(
       operationId = "listAllDashboardServiceVersion",
       summary = "List dashboard service versions",
-      tags = "dashboardServices",
       description = "Get a list of all the versions of a dashboard service identified by `Id`",
       responses = {
         @ApiResponse(
@@ -281,7 +276,6 @@ public class DashboardServiceResource
   @Operation(
       operationId = "getSpecificDashboardServiceVersion",
       summary = "Get a version of the dashboard service",
-      tags = "dashboardServices",
       description = "Get a version of the dashboard service by given `Id`",
       responses = {
         @ApiResponse(
@@ -311,7 +305,6 @@ public class DashboardServiceResource
   @Operation(
       operationId = "createDashboardService",
       summary = "Create a dashboard service",
-      tags = "dashboardServices",
       description = "Create a new dashboard service.",
       responses = {
         @ApiResponse(
@@ -334,7 +327,6 @@ public class DashboardServiceResource
   @Operation(
       operationId = "createOrUpdateDashboardService",
       summary = "Update a dashboard service",
-      tags = "dashboardServices",
       description = "Update an existing dashboard service identified by `Id`.",
       responses = {
         @ApiResponse(
@@ -358,7 +350,6 @@ public class DashboardServiceResource
   @Operation(
       operationId = "patchDashboardService",
       summary = "Update a dashboard service",
-      tags = "dashboardServices",
       description = "Update an existing dashboard service using JsonPatch.",
       externalDocs = @ExternalDocumentation(description = "JsonPatch RFC", url = "https://tools.ietf.org/html/rfc6902"))
   @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
@@ -384,7 +375,6 @@ public class DashboardServiceResource
   @Operation(
       operationId = "deleteDashboardService",
       summary = "Delete a dashboard service by Id",
-      tags = "dashboardServices",
       description =
           "Delete a Dashboard services. If dashboard (and charts) belong to the service, it can't be " + "deleted.",
       responses = {
@@ -412,7 +402,6 @@ public class DashboardServiceResource
   @Operation(
       operationId = "deleteDashboardServiceByName",
       summary = "Delete a dashboard service by name",
-      tags = "dashboardServices",
       description =
           "Delete a Dashboard services by `name`. If dashboard (and charts) belong to the service, it can't be "
               + "deleted.",
@@ -440,7 +429,6 @@ public class DashboardServiceResource
   @Operation(
       operationId = "restore",
       summary = "Restore a soft deleted dashboard service",
-      tags = "dashboardServices",
       description = "Restore a soft deleted dashboard service.",
       responses = {
         @ApiResponse(

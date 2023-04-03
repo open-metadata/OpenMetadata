@@ -14,7 +14,6 @@
 package org.openmetadata.service.resources.glossary;
 
 import com.google.inject.Inject;
-import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -23,6 +22,7 @@ import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import java.io.IOException;
 import java.util.UUID;
 import javax.json.JsonPatch;
@@ -65,7 +65,7 @@ import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
 
 @Path("/v1/glossaries")
-@Api(value = "Glossary collection", tags = "Glossary collection")
+@Tag(name = "Glossaries", description = "A `Glossary` is collection of hierarchical `GlossaryTerms`.")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "glossaries", order = 6) // Initialize before GlossaryTerm and after Classification and Tags
@@ -99,7 +99,6 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
   @Operation(
       operationId = "listGlossaries",
       summary = "List glossaries",
-      tags = "glossaries",
       description =
           "Get a list of glossaries. Use `fields` parameter to get only necessary fields. "
               + " Use cursor-based pagination to limit the number "
@@ -146,7 +145,6 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
   @Operation(
       operationId = "getGlossaryByID",
       summary = "Get a glossary by Id",
-      tags = "glossaries",
       description = "Get a glossary by `Id`.",
       responses = {
         @ApiResponse(
@@ -179,7 +177,6 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
   @Operation(
       operationId = "getGlossaryByFQN",
       summary = "Get a glossary by name",
-      tags = "glossaries",
       description = "Get a glossary by name.",
       responses = {
         @ApiResponse(
@@ -213,7 +210,6 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
   @Operation(
       operationId = "listAllGlossaryVersion",
       summary = "List glossary versions",
-      tags = "glossaries",
       description = "Get a list of all the versions of a glossary identified by `id`",
       responses = {
         @ApiResponse(
@@ -234,7 +230,6 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
   @Operation(
       operationId = "getSpecificGlossaryVersion",
       summary = "Get a version of the glossaries",
-      tags = "glossaries",
       description = "Get a version of the glossary by given `Id`",
       responses = {
         @ApiResponse(
@@ -262,7 +257,6 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
   @Operation(
       operationId = "createGlossary",
       summary = "Create a glossary",
-      tags = "glossaries",
       description = "Create a new glossary.",
       responses = {
         @ApiResponse(
@@ -283,7 +277,6 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
   @Operation(
       operationId = "patchGlossary",
       summary = "Update a glossary",
-      tags = "glossaries",
       description = "Update an existing glossary using JsonPatch.",
       externalDocs = @ExternalDocumentation(description = "JsonPatch RFC", url = "https://tools.ietf.org/html/rfc6902"))
   @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
@@ -308,7 +301,6 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
   @Operation(
       operationId = "createOrUpdateGlossary",
       summary = "Create or update a glossary",
-      tags = "glossaries",
       description = "Create a new glossary, if it does not exist or update an existing glossary.",
       responses = {
         @ApiResponse(
@@ -329,7 +321,6 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
   @Operation(
       operationId = "deleteGlossary",
       summary = "Delete a glossary by Id",
-      tags = "glossaries",
       description = "Delete a glossary by `Id`.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
@@ -356,7 +347,6 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
   @Operation(
       operationId = "deleteGlossaryByName",
       summary = "Delete a glossary by name",
-      tags = "glossaries",
       description = "Delete a glossary by `name`.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
@@ -380,7 +370,6 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
   @Operation(
       operationId = "restore",
       summary = "Restore a soft deleted glossary",
-      tags = "glossaries",
       description = "Restore a soft deleted Glossary.",
       responses = {
         @ApiResponse(
@@ -397,7 +386,7 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
   @GET
   @Path("/documentation/csv")
   @Valid
-  @Operation(operationId = "getCsvDocumentation", summary = "Get CSV documentation", tags = "glossaries")
+  @Operation(operationId = "getCsvDocumentation", summary = "Get CSV documentation")
   public String getCsvDocumentation(
       @Context SecurityContext securityContext,
       @Parameter(description = "Name of the glossary", schema = @Schema(type = "string")) @PathParam("name")
@@ -413,7 +402,6 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
   @Operation(
       operationId = "exportGlossary",
       summary = "Export glossary in CSV format",
-      tags = "glossaries",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -436,7 +424,6 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
   @Operation(
       operationId = "importGlossary",
       summary = "Import glossary terms from CSV to create, and update glossary terms",
-      tags = "glossaries",
       responses = {
         @ApiResponse(
             responseCode = "200",
