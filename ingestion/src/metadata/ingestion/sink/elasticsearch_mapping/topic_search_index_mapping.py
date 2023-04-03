@@ -16,8 +16,8 @@ import textwrap
 TOPIC_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
     """
 {
-"settings": {
-   "analysis": {
+  "settings": {
+    "analysis": {
       "normalizer": {
         "lowercase_normalizer": {
           "type": "custom",
@@ -34,6 +34,11 @@ TOPIC_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
             "lowercase",
             "om_stemmer"
           ]
+        },
+        "om_ngram": {
+          "tokenizer": "ngram",
+          "min_gram": 1,
+          "max_gram": 2
         }
       },
       "filter": {
@@ -59,15 +64,22 @@ TOPIC_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
         }
       },
       "fullyQualifiedName": {
-        "type": "text"
+        "type": "keyword",
+        "normalizer": "lowercase_normalizer"
       },
       "displayName": {
         "type": "text",
-        "analyzer": "om_analyzer"
+        "analyzer": "om_analyzer",
+        "fields": {
+          "ngram": {
+            "type": "text",
+            "analyzer": "om_ngram"
+          }
+        }
       },
       "description": {
         "type": "text",
-         "analyzer": "om_analyzer"
+        "analyzer": "om_analyzer"
       },
       "version": {
         "type": "float"
@@ -84,11 +96,10 @@ TOPIC_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
       },
       "messageSchema": {
         "properties": {
-          "schemaType": {
-            "type": "keyword",
-            "normalizer": "lowercase_normalizer"
-          },
           "schemaText": {
+            "type": "text"
+          },
+          "schemaType": {
             "type": "text"
           },
           "schemaFields": {
@@ -108,7 +119,9 @@ TOPIC_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
               },
               "description": {
                 "type": "text",
-                "analyzer": "om_analyzer"
+                "index_options": "docs",
+                "analyzer": "om_analyzer",
+                "norms": false
               },
               "fullyQualifiedName": {
                 "type": "text"
@@ -129,6 +142,56 @@ TOPIC_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
                   },
                   "state": {
                     "type": "keyword"
+                  }
+                }
+              },
+              "children": {
+                "properties": {
+                  "id": {
+                    "type": "keyword",
+                    "fields": {
+                      "keyword": {
+                        "type": "keyword",
+                        "ignore_above": 36
+                      }
+                    }
+                  },
+                  "type": {
+                    "type": "keyword"
+                  },
+                  "name": {
+                    "type": "keyword",
+                    "fields": {
+                      "keyword": {
+                        "type": "keyword",
+                        "ignore_above": 256
+                      }
+                    }
+                  },
+                  "fullyQualifiedName": {
+                    "type": "text"
+                  },
+                  "description": {
+                    "type": "text"
+                  },
+                  "tags": {
+                    "properties": {
+                      "tagFQN": {
+                        "type": "keyword"
+                      },
+                      "labelType": {
+                        "type": "keyword"
+                      },
+                      "description": {
+                        "type": "text"
+                      },
+                      "source": {
+                        "type": "keyword"
+                      },
+                      "state": {
+                        "type": "keyword"
+                      }
+                    }
                   }
                 }
               }
@@ -200,6 +263,15 @@ TOPIC_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
             "type": "keyword"
           },
           "name": {
+            "type": "keyword",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "ignore_above": 256
+              }
+            }
+          },
+          "displayName": {
             "type": "keyword",
             "fields": {
               "keyword": {
@@ -281,6 +353,9 @@ TOPIC_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
             "path": "deleted"
           }
         ]
+      },
+      "field_suggest": {
+        "type": "completion"
       },
       "service_suggest": {
         "type": "completion"
