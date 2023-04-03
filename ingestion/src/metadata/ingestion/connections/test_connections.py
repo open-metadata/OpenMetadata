@@ -105,7 +105,7 @@ def _test_connection_steps(
 def _test_connection_steps_automation_workflow(
     metadata: OpenMetadata,
     steps: List[TestConnectionStep],
-    automation_workflow: Optional[AutomationWorkflow],
+    automation_workflow: AutomationWorkflow,
 ) -> None:
     """
     Run the test connection as part of the automation workflow
@@ -137,15 +137,9 @@ def _test_connection_steps_automation_workflow(
                 )
 
             test_connection_result.lastUpdatedAt = datetime.now().timestamp()
-            updated_workflow = CreateWorkflowRequest(
-                name=automation_workflow.name,
-                description=automation_workflow.description,
-                workflowType=automation_workflow.workflowType,
-                request=automation_workflow.request,
-                response=test_connection_result,
-                status=WorkflowStatus.Running,
+            metadata.patch_automation_workflow_response(
+                automation_workflow, test_connection_result, WorkflowStatus.Running
             )
-            metadata.create_or_update(updated_workflow)
 
         test_connection_result.lastUpdatedAt = datetime.now().timestamp()
 
@@ -155,15 +149,8 @@ def _test_connection_steps_automation_workflow(
             else StatusType.Successful
         )
 
-        metadata.create_or_update(
-            CreateWorkflowRequest(
-                name=automation_workflow.name,
-                description=automation_workflow.description,
-                workflowType=automation_workflow.workflowType,
-                request=automation_workflow.request,
-                response=test_connection_result,
-                status=WorkflowStatus.Successful,
-            )
+        metadata.patch_automation_workflow_response(
+            automation_workflow, test_connection_result, WorkflowStatus.Successful
         )
 
     except Exception as err:
