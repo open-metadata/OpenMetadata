@@ -29,15 +29,18 @@ export const useClipboard = (
   const [valueState, setValueState] = useState(value);
 
   // handlers
-  const handleCopy = useCallback(async () => {
-    try {
-      await navigator.clipboard.writeText(valueState);
-      setHasCopied(true);
-      callBack && callBack();
-    } catch (error) {
-      setHasCopied(false);
-    }
-  }, [valueState]);
+  const handleCopy = useCallback(
+    async (textValue = valueState) => {
+      try {
+        await navigator.clipboard.writeText(textValue);
+        setHasCopied(true);
+        callBack && callBack();
+      } catch (error) {
+        setHasCopied(false);
+      }
+    },
+    [valueState]
+  );
 
   // side effects
   useEffect(() => setValueState(value), [value]);

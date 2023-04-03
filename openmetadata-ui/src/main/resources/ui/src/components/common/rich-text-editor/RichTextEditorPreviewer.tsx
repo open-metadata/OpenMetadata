@@ -15,10 +15,11 @@ import { Viewer } from '@toast-ui/react-editor';
 import { Button } from 'antd';
 import classNames from 'classnames';
 import { uniqueId } from 'lodash';
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { getTrimmedContent } from 'utils/CommonUtils';
 import { DESCRIPTION_MAX_PREVIEW_CHARACTERS } from '../../../constants/constants';
-import { getTrimmedContent } from '../../../utils/CommonUtils';
+import { customHTMLRenderer } from './CustomHtmlRederer/CustomHtmlRederer';
 import { PreviewerProp } from './RichTextEditor.interface';
 import './RichTextEditorPreviewer.less';
 
@@ -43,6 +44,35 @@ const RichTextEditorPreviewer = ({
     setContent(markdown);
   }, [markdown]);
 
+  const handleMouseDownEvent = useCallback(async (e: MouseEvent) => {
+    const targetNode = e.target as HTMLElement;
+    const previousSibling = targetNode.previousElementSibling as HTMLElement;
+    const targetNodeDataTestId = targetNode.getAttribute('data-testid');
+
+    if (targetNodeDataTestId === 'code-block-copy-icon' && previousSibling) {
+      const content =
+        targetNode.parentElement?.getAttribute('data-content') ?? '';
+
+      try {
+        await navigator.clipboard.writeText(content);
+        previousSibling.setAttribute('data-copied', 'true');
+        targetNode.setAttribute('data-copied', 'true');
+        setTimeout(() => {
+          previousSibling.setAttribute('data-copied', 'false');
+          targetNode.setAttribute('data-copied', 'false');
+        }, 2000);
+      } catch (error) {
+        // handle error
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    window.addEventListener('mousedown', handleMouseDownEvent);
+
+    return () => window.removeEventListener('mousedown', handleMouseDownEvent);
+  }, [handleMouseDownEvent]);
+
   return (
     <div
       className={classNames('rich-text-editor-container', className)}
@@ -52,6 +82,7 @@ const RichTextEditorPreviewer = ({
         data-testid="markdown-parser">
         <Viewer
           extendedAutolinks
+          customHTMLRenderer={customHTMLRenderer}
           initialValue={
             hideReadMoreText
               ? content
