@@ -13,6 +13,7 @@
 
 import DatasetDetails from 'components/DatasetDetails/DatasetDetails.component';
 import Explore from 'components/Explore/Explore.component';
+import { ExploreSearchIndex } from 'components/Explore/explore.interface';
 import MyData from 'components/MyData/MyData.component';
 import { MyDataProps } from 'components/MyData/MyData.interface';
 import NavBar from 'components/nav-bar/NavBar';
@@ -69,6 +70,9 @@ const TourPage = () => {
   );
   const [explorePageCounts, setExplorePageCounts] = useState(exploreCount);
   const [searchValue, setSearchValue] = useState('');
+  const [searchCriteria, setSearchCriteria] = useState<ExploreSearchIndex | ''>(
+    ''
+  );
 
   const handleCountChange = async () => {
     setExplorePageCounts(exploreCount);
@@ -87,6 +91,10 @@ const TourPage = () => {
 
       return;
     }
+  };
+
+  const handleClear = () => {
+    setSearchValue('');
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -223,15 +231,18 @@ const TourPage = () => {
     <div>
       <NavBar
         isTourRoute
+        handleClear={handleClear}
         handleFeatureModal={handleCountChange}
         handleKeyDown={handleKeyDown}
         handleOnClick={handleOnClick}
         handleSearchBoxOpen={handleCountChange}
         handleSearchChange={(value) => setSearchValue(value)}
+        handleSearchCriteriaChange={(value) => setSearchCriteria(value)}
         isFeatureModalOpen={false}
         isSearchBoxOpen={false}
         pathname={location.pathname}
         profileDropdown={[]}
+        searchCriteria={searchCriteria}
         searchValue={searchValue}
         supportDropdown={[]}
         username="User"
