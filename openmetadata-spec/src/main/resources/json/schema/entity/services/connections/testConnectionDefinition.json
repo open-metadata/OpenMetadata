@@ -20,10 +20,19 @@
           "description": "What is the goal of the step",
           "type": "string"
         },
+        "errorMessage": {
+          "description": "In case of error this message should be displayed on UI",
+          "type": "string"
+        },
         "mandatory": {
           "description": "Is this step mandatory to be passed?",
           "type": "boolean",
           "default": true
+        },
+        "shortCircuit": {
+          "description": "Is this step to check the access to data source, if data source is not reachable stop further processing",
+          "type": "boolean",
+          "default": false
         }
       },
       "additionalProperties": false,

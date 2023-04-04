@@ -74,8 +74,10 @@ class TestConnectionStep(BaseModel):
 
     function: Callable
     name: str
+    error_message: str
     description: Optional[str] = None
     mandatory: bool = True
+    short_circuit: bool = False
 
 
 class TestConnectionIngestionResult(BaseModel):
@@ -127,14 +129,20 @@ def _test_connection_steps_automation_workflow(
                     )
                 )
             except Exception as err:
+                logger.debug(traceback.format_exc())
+                logger.warning(f"{step.name}-{err}")
                 test_connection_result.steps.append(
                     TestConnectionStepResult(
                         name=step.name,
                         mandatory=step.mandatory,
                         passed=False,
-                        message=str(err),
+                        message=step.error_message,
+                        errorLog=str(err),
                     )
                 )
+                if step.short_circuit:
+                    # break the workflow if the step is a short circuit step
+                    break
 
             test_connection_result.lastUpdatedAt = datetime.now().timestamp()
             updated_workflow = CreateWorkflowRequest(
@@ -210,6 +218,10 @@ def _test_connection_steps_during_ingestion(steps: List[TestConnectionStep]) -> 
                     f"Failed due to: {exc}"
                 )
 
+            if step.short_circuit:
+                # break the workflow if the step is a short circuit step
+                break
+
     logger.info("Test connection results:")
     logger.info(test_connection_result)
 
@@ -250,6 +262,8 @@ def test_connection_steps(
             description=step.description,
             mandatory=step.mandatory,
             function=test_fn[step.name],
+            error_message=step.errorMessage,
+            short_circuit=step.shortCircuit,
         )
         for step in test_connection_definition.steps
     ]

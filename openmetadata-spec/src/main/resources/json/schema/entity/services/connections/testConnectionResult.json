@@ -28,6 +28,11 @@
           "description": "Results or exceptions to be shared after running the test.",
           "type": "string",
           "default": null
+        },
+        "errorLog": {
+          "description": "In case of failed step, this field would contain the actual error faced during the step.",
+          "type": "string",
+          "default": null
         }
       },
       "additionalProperties": false,
