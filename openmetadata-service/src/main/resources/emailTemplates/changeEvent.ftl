@@ -49,7 +49,7 @@
                                   <br />
                                   <br />
                                   <span style="font-weight: 400;">
-                                    <strong>${changeMessage} </span>
+                                    ${changeMessage} </span>
                                   <span style="font-weight: 400;">
                                     <p class="tw-signoff" style="margin: 45px 0 5px; font-size: 16px; mso-line-height-rule: exactly; line-height: 24px;"> Happy Exploring! <br />Thanks </p>
                               </td>

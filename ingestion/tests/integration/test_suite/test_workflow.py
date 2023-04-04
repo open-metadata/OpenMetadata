@@ -17,6 +17,7 @@ import unittest
 from collections.abc import MutableSequence
 from copy import deepcopy
 
+from metadata.data_quality.api.workflow import TestSuiteWorkflow
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
@@ -24,7 +25,6 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 from metadata.generated.schema.tests.testCase import TestCase
 from metadata.generated.schema.tests.testSuite import TestSuite
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.test_suite.api.workflow import TestSuiteWorkflow
 
 sqlite_shared = "file:cachedb?mode=memory&cache=shared&check_same_thread=False"
 

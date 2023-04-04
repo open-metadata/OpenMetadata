@@ -55,11 +55,7 @@ describe('Collect end point should work properly', () => {
 
   beforeEach(() => {
     cy.login();
-    interceptURL(
-      'PUT',
-      '/api/v1/analytics/webAnalyticEvent/collect',
-      'collect'
-    );
+    interceptURL('PUT', '/api/v1/analytics/web/events/collect', 'collect');
   });
 
   Object.values(PAGES).map((page) => {
