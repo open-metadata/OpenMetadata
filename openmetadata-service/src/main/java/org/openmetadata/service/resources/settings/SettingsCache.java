@@ -13,6 +13,8 @@
 
 package org.openmetadata.service.resources.settings;
 
+import static org.openmetadata.schema.settings.SettingsType.EMAIL_CONFIGURATION;
+
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
@@ -22,6 +24,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.email.SmtpSettings;
 import org.openmetadata.schema.settings.Settings;
 import org.openmetadata.schema.settings.SettingsType;
+import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.SystemRepository;
 import org.openmetadata.service.util.JsonUtils;
@@ -34,12 +37,23 @@ public class SettingsCache {
   protected static SystemRepository systemRepository;
 
   // Expected to be called only once from the DefaultAuthorizer
-  public static void initialize(CollectionDAO dao) {
+  public static void initialize(CollectionDAO dao, OpenMetadataApplicationConfig config) {
     if (!INITIALIZED) {
       SETTINGS_CACHE =
           CacheBuilder.newBuilder().maximumSize(1000).expireAfterWrite(3, TimeUnit.MINUTES).build(new SettingsLoader());
       systemRepository = new SystemRepository(dao.systemDAO());
       INITIALIZED = true;
+      createEmailConfiguration(config);
+    }
+  }
+
+  private static void createEmailConfiguration(OpenMetadataApplicationConfig applicationConfig) {
+    Settings storedSettings = systemRepository.getConfigWithKey(EMAIL_CONFIGURATION.toString());
+    if (storedSettings == null) {
+      // Only in case a config doesn't exist in DB we insert it
+      SmtpSettings emailConfig = applicationConfig.getSmtpSettings();
+      Settings setting = new Settings().withConfigType(EMAIL_CONFIGURATION).withConfigValue(emailConfig);
+      systemRepository.createNewSetting(setting);
     }
   }
 

@@ -121,7 +121,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     final Jdbi jdbi = createAndSetupJDBI(environment, catalogConfig.getDataSourceFactory());
 
     // Init Settings Cache
-    SettingsCache.initialize(jdbi.onDemand(CollectionDAO.class));
+    SettingsCache.initialize(jdbi.onDemand(CollectionDAO.class), catalogConfig);
 
     // init Secret Manager
     final SecretsManager secretsManager =

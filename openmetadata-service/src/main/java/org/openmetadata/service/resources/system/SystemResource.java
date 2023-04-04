@@ -1,7 +1,5 @@
 package org.openmetadata.service.resources.system;
 
-import static org.openmetadata.schema.settings.SettingsType.EMAIL_CONFIGURATION;
-
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Hidden;
 import io.swagger.v3.oas.annotations.Operation;
@@ -33,7 +31,6 @@ import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.common.utils.CommonUtil;
-import org.openmetadata.schema.email.SmtpSettings;
 import org.openmetadata.schema.settings.Settings;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.util.EntitiesCount;
@@ -93,19 +90,8 @@ public class SystemResource {
               LOG.debug("Fetching from DB failed ", ex);
             }
           });
-      createEmailConfiguration(applicationConfig);
     } catch (Exception e) {
       LOG.warn("Failed to initialize the {} from file {}", "filters", jsonDataFile, e);
-    }
-  }
-
-  private void createEmailConfiguration(OpenMetadataApplicationConfig applicationConfig) {
-    Settings storedSettings = systemRepository.getConfigWithKey(EMAIL_CONFIGURATION.toString());
-    if (storedSettings == null) {
-      // Only in case a config doesn't exist in DB we insert it
-      SmtpSettings emailConfig = applicationConfig.getSmtpSettings();
-      Settings setting = new Settings().withConfigType(EMAIL_CONFIGURATION).withConfigValue(emailConfig);
-      systemRepository.createNewSetting(setting);
     }
   }
 
