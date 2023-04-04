@@ -188,10 +188,17 @@ export const importGlossaryInCSVFormat = async (
   return response.data;
 };
 
-export const getGlossaryVersions = async (id: string) => {
+export const getGlossaryVersionsList = async (id: string) => {
   const url = `/glossaries/${id}/versions`;
 
   const response = await APIClient.get<EntityHistory>(url);
+
+  return response.data;
+};
+
+export const getGlossaryVersion = async (id: string, version: string) => {
+  const url = `/glossaries/${id}/versions/${version}`;
+  const response = await APIClient.get<Glossary>(url);
 
   return response.data;
 };

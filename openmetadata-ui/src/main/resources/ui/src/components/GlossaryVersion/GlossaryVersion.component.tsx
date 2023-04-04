@@ -10,57 +10,101 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Col, Row } from 'antd';
 import { AxiosError } from 'axios';
-import classNames from 'classnames';
 import PageContainer from 'components/containers/PageContainer';
 import EntityVersionTimeLine from 'components/EntityVersionTimeLine/EntityVersionTimeLine';
+import GlossaryV1 from 'components/Glossary/GlossaryV1.component';
+import { LOADING_STATE } from 'enums/common.enum';
+import { Glossary } from 'generated/entity/data/glossary';
+import { GlossaryTerm } from 'generated/entity/data/glossaryTerm';
 import { EntityHistory } from 'generated/type/entityHistory';
+import GlossaryRightPanel from 'pages/Glossary/GlossaryRightPanel/GlossaryRightPanel.component';
 import React, { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
-import { getGlossaryVersions } from 'rest/glossaryAPI';
+import { useHistory, useParams } from 'react-router-dom';
+import { getGlossaryVersion, getGlossaryVersionsList } from 'rest/glossaryAPI';
+import { getGlossaryVersionsPath } from 'utils/RouterUtils';
 import { showErrorToast } from 'utils/ToastUtils';
 
 const GlossaryVersion: React.FC = () => {
+  const history = useHistory();
   const { glossaryName, version } =
     useParams<{ glossaryName: string; version: string }>();
   const [versionList, setVersionList] = useState<EntityHistory>(
     {} as EntityHistory
   );
+  const [selectedData, setSelectedData] = useState<Glossary | GlossaryTerm>();
 
   const fetchVersionsInfo = async () => {
     try {
-      const res = await getGlossaryVersions(glossaryName);
+      const res = await getGlossaryVersionsList(glossaryName);
       setVersionList(res);
     } catch (error) {
       showErrorToast(error as AxiosError);
     }
   };
 
-  const onBackClick = () => {
-    console.debug('On back');
+  const fetchActiveVersion = async () => {
+    try {
+      const res = await getGlossaryVersion(glossaryName, version);
+      setSelectedData(res);
+      console.log(res);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
   };
-  const onVersionHandler = () => {
-    console.debug('onVersionHandler');
+
+  const mockFnGlossary = async (value: Glossary) => {
+    console.debug('On back', value);
+  };
+
+  const mockFn = () => {
+    console.debug('mock fn');
+  };
+  const onVersionHandler = (selectedVersion: string) => {
+    const path = getGlossaryVersionsPath(glossaryName, selectedVersion);
+    history.push(path);
   };
 
   useEffect(() => {
     fetchVersionsInfo();
-  }, [glossaryName]);
+    fetchActiveVersion();
+  }, [glossaryName, version]);
 
   return (
     <PageContainer>
-      <div
-        className={classNames(
-          'tw-px-6 tw-w-full tw-h-full tw-flex tw-flex-col tw-relative'
-        )}>
-        <EntityVersionTimeLine
-          show
-          currentVersion={version}
-          versionHandler={onVersionHandler}
-          versionList={versionList}
-          onBack={onBackClick}
-        />
+      <div className="version-data p-l-lg">
+        <Row gutter={[16, 0]} wrap={false}>
+          <Col flex="auto">
+            <GlossaryV1
+              isGlossaryActive
+              deleteStatus={LOADING_STATE.INITIAL}
+              selectedData={selectedData as Glossary}
+              updateGlossary={mockFnGlossary}
+              onGlossaryDelete={mockFn}
+              onGlossaryTermDelete={mockFn}
+              onGlossaryTermUpdate={mockFnGlossary}
+            />
+          </Col>
+          {selectedData && (
+            <Col flex="400px">
+              <GlossaryRightPanel
+                isGlossary
+                entityDetails={selectedData as Glossary}
+                onGlossaryTermUpdate={mockFnGlossary}
+                onGlossaryUpdate={mockFnGlossary}
+              />
+            </Col>
+          )}
+        </Row>
       </div>
+      <EntityVersionTimeLine
+        show
+        currentVersion={version}
+        versionHandler={onVersionHandler}
+        versionList={versionList}
+        onBack={mockFn}
+      />
     </PageContainer>
   );
 };
