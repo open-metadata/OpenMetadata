@@ -24,8 +24,12 @@ import {
   Typography,
 } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
+import { ReactComponent as IconDisabled } from 'assets/svg/icon-notnull.svg';
 import { AxiosError } from 'axios';
 import Description from 'components/common/description/Description';
+import ManageButton, {
+  ManageButtonItem,
+} from 'components/common/entityPageInfo/ManageButton/ManageButton';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import LeftPanelCard from 'components/common/LeftPanelCard/LeftPanelCard';
 import NextPrevious from 'components/common/next-previous/NextPrevious';
@@ -44,7 +48,7 @@ import {
 import TagsLeftPanelSkeleton from 'components/Skeleton/Tags/TagsLeftPanelSkeleton.component';
 import { LOADING_STATE } from 'enums/common.enum';
 import { compare } from 'fast-json-patch';
-import { isEmpty, isUndefined, toLower, trim } from 'lodash';
+import { cloneDeep, isEmpty, isUndefined, toLower, trim } from 'lodash';
 import { FormErrorData } from 'Models';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -330,18 +334,18 @@ const TagsPage = () => {
   /**
    * It will set current tag category for delete
    */
-  const deleteTagHandler = () => {
-    if (currentClassification) {
-      setDeleteTags({
-        data: {
-          id: currentClassification.id as string,
-          name: currentClassification.displayName || currentClassification.name,
-          isCategory: true,
-        },
-        state: true,
-      });
-    }
-  };
+  //   const deleteTagHandler = () => {
+  //     if (currentClassification) {
+  //       setDeleteTags({
+  //         data: {
+  //           id: currentClassification.id as string,
+  //           name: currentClassification.displayName || currentClassification.name,
+  //           isCategory: true,
+  //         },
+  //         state: true,
+  //       });
+  //     }
+  //   };
 
   /**
    * Take tag category id and delete.
@@ -813,6 +817,17 @@ const TagsPage = () => {
     ]
   );
 
+  const handleDisabledClick = (classification: Classification) => {
+    if (!classification.id) {
+      return;
+    }
+    const jsonData = compare(classification, {
+      ...cloneDeep(classification),
+      disabled: true,
+    });
+    patchClassification(classification.id, jsonData);
+  };
+
   return (
     <PageContainerV1>
       <PageLayoutV1
@@ -894,7 +909,7 @@ const TagsPage = () => {
                     </Space>
                   )}
                 </Space>
-                <div className="flex-center">
+                <Space align="center">
                   <Tooltip
                     title={
                       createTagPermission || classificationPermissions.EditAll
@@ -904,7 +919,6 @@ const TagsPage = () => {
                         : t('message.no-permission-for-action')
                     }>
                     <Button
-                      className="add-new-tag-btn"
                       data-testid="add-new-tag-button"
                       disabled={
                         !(
@@ -912,7 +926,6 @@ const TagsPage = () => {
                           classificationPermissions.EditAll
                         )
                       }
-                      size="small"
                       type="primary"
                       onClick={() => {
                         setIsAddingTag((prevState) => !prevState);
@@ -923,7 +936,33 @@ const TagsPage = () => {
                       })}
                     </Button>
                   </Tooltip>
-                  <Tooltip
+                  <ManageButton
+                    canDelete={
+                      !(
+                        currentClassification.provider ===
+                          ProviderType.System ||
+                        !classificationPermissions.Delete
+                      )
+                    }
+                    entityName={t('label.classification')}
+                    extraDropdownContent={[
+                      {
+                        label: (
+                          <ManageButtonItem
+                            description="Option to disabled tags, You won't be able to see it within application"
+                            disabled={false}
+                            icon={<IconDisabled height={16} />}
+                            label="Disabled"
+                            onClick={() =>
+                              handleDisabledClick(currentClassification)
+                            }
+                          />
+                        ),
+                        key: 'disabled',
+                      },
+                    ]}
+                  />
+                  {/* <Tooltip
                     title={
                       !(
                         currentClassification.provider ===
@@ -949,8 +988,8 @@ const TagsPage = () => {
                         entity: t('label.classification'),
                       })}
                     </Button>
-                  </Tooltip>
-                </div>
+                  </Tooltip> */}
+                </Space>
               </Space>
             )}
             <div className="m-b-sm m-t-xs" data-testid="description-container">

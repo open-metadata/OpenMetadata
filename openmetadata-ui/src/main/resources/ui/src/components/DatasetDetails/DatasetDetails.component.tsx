@@ -292,7 +292,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
           selectedName: 'dbtmodel-primery',
         },
         isProtected: false,
-        isHidden: !dataModel?.sql,
+        isHidden: !(dataModel?.sql || dataModel?.rawSql),
         position: 8,
       },
       {
@@ -808,12 +808,12 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
                 />
               </Card>
             )}
-            {activeTab === 8 && Boolean(dataModel?.sql) && (
-              <Card className="m-y-md h-full">
+            {activeTab === 8 && Boolean(dataModel?.sql || dataModel?.rawSql) && (
+              <Card className="m-y-md h-full" title={dataModel?.path}>
                 <SchemaEditor
                   className="tw-h-full"
                   mode={{ name: CSMode.SQL }}
-                  value={dataModel?.sql || ''}
+                  value={dataModel?.sql || dataModel?.rawSql || ''}
                 />
               </Card>
             )}
