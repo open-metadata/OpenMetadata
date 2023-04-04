@@ -14,29 +14,23 @@ for the profiler
 """
 from typing import Dict, Optional, Union, cast
 
-from sqlalchemy import Column, inspect, text
-from sqlalchemy.orm import DeclarativeMeta, Query, Session, aliased
-from sqlalchemy.orm.util import AliasedClass
-from sqlalchemy.sql.sqltypes import Enum
-
 from metadata.generated.schema.entity.data.table import (
-    PartitionIntervalType,
-    PartitionProfilerConfig,
-    ProfileSampleType,
-    TableData,
-)
+    PartitionIntervalType, PartitionProfilerConfig, ProfileSampleType,
+    TableData)
 from metadata.profiler.api.models import ProfileSampleConfig
 from metadata.profiler.orm.functions.modulo import ModuloFn
 from metadata.profiler.orm.functions.random_num import RandomNumFn
 from metadata.profiler.orm.registry import Dialects
-from metadata.profiler.profiler.handle_partition import partition_filter_handler
-from metadata.utils.sqa_utils import (
-    build_query_filter,
-    dispatch_to_date_or_datetime,
-    get_integer_range_filter,
-    get_partition_col_type,
-    get_value_filter,
-)
+from metadata.profiler.processor.handle_partition import \
+    partition_filter_handler
+from metadata.utils.sqa_utils import (build_query_filter,
+                                      dispatch_to_date_or_datetime,
+                                      get_integer_range_filter,
+                                      get_partition_col_type, get_value_filter)
+from sqlalchemy import Column, inspect, text
+from sqlalchemy.orm import DeclarativeMeta, Query, Session, aliased
+from sqlalchemy.orm.util import AliasedClass
+from sqlalchemy.sql.sqltypes import Enum
 
 RANDOM_LABEL = "random"
 

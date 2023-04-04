@@ -18,18 +18,13 @@ multiple profilers per table and columns.
 from typing import List, Optional, Union
 
 from metadata.config.common import ConfigModel
-from metadata.generated.schema.api.data.createTableProfile import (
-    CreateTableProfileRequest,
-)
+from metadata.generated.schema.api.data.createTableProfile import \
+    CreateTableProfileRequest
 from metadata.generated.schema.entity.data.table import (
-    ColumnProfilerConfig,
-    PartitionProfilerConfig,
-    ProfileSampleType,
-    Table,
-    TableData,
-)
+    ColumnProfilerConfig, PartitionProfilerConfig, ProfileSampleType, Table,
+    TableData)
 from metadata.generated.schema.type.basic import FullyQualifiedEntityName
-from metadata.profiler.profiler.models import ProfilerDef
+from metadata.profiler.processor.models import ProfilerDef
 
 
 class ColumnConfig(ConfigModel):

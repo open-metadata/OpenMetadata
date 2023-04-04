@@ -15,14 +15,13 @@ Validator Mixin for SQA tests cases
 
 from typing import Any, List, Optional
 
-from sqlalchemy import Column
-from sqlalchemy.exc import SQLAlchemyError
-
 from metadata.profiler.metrics.core import add_props
 from metadata.profiler.metrics.registry import Metrics
-from metadata.profiler.profiler.runner import QueryRunner
+from metadata.profiler.processor.runner import QueryRunner
 from metadata.utils.entity_link import get_decoded_column
 from metadata.utils.logger import test_suite_logger
+from sqlalchemy import Column
+from sqlalchemy.exc import SQLAlchemyError
 
 logger = test_suite_logger()
 

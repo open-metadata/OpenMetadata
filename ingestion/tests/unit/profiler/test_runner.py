@@ -16,15 +16,14 @@ import time
 from unittest import TestCase
 
 import pytest
+from metadata.ingestion.connections.session import create_and_bind_session
+from metadata.profiler.api.models import ProfileSampleConfig
+from metadata.profiler.processor.runner import QueryRunner
+from metadata.profiler.processor.sampler import Sampler
+from metadata.utils.timeout import cls_timeout
 from sqlalchemy import TEXT, Column, Integer, String, create_engine, func
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import declarative_base
-
-from metadata.ingestion.connections.session import create_and_bind_session
-from metadata.profiler.api.models import ProfileSampleConfig
-from metadata.profiler.profiler.runner import QueryRunner
-from metadata.profiler.profiler.sampler import Sampler
-from metadata.utils.timeout import cls_timeout
 
 Base = declarative_base()
 
