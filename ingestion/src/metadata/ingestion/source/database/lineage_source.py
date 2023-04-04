@@ -16,13 +16,10 @@ import traceback
 from abc import ABC
 from typing import Iterable, Iterator, Optional
 
-from sqlalchemy.engine import Engine
-
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.type.tableQuery import TableQuery
 from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper
 from metadata.ingestion.lineage.sql_lineage import get_lineage_by_query
-from metadata.ingestion.source.connections import get_connection
 from metadata.ingestion.source.database.query_parser_source import QueryParserSource
 from metadata.utils.logger import ingestion_logger
 
@@ -41,14 +38,11 @@ class LineageSource(QueryParserSource, ABC):
     - schema
     """
 
-    def get_table_query(self) -> Optional[Iterator[TableQuery]]:
+    def yield_table_queries_from_logs(self) -> Optional[Iterator[TableQuery]]:
         """
-        If queryLogFilePath available in config iterate through log file
-        otherwise execute the sql query to fetch TableQuery data.
-
-        This is a simplified version of the UsageSource query parsing.
+        Method to handle the usage from query logs
         """
-        if self.config.sourceConfig.config.queryLogFilePath:
+        try:
             with open(
                 self.config.sourceConfig.config.queryLogFilePath, "r", encoding="utf-8"
             ) as file:
@@ -60,25 +54,31 @@ class LineageSource(QueryParserSource, ABC):
                         serviceName=self.config.serviceName,
                         databaseSchema=self.get_schema_name(query_dict),
                     )
+        except Exception as err:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Failed to read queries form log file due to: {err}")
 
+    def get_table_query(self) -> Optional[Iterator[TableQuery]]:
+        """
+        If queryLogFilePath available in config iterate through log file
+        otherwise execute the sql query to fetch TableQuery data.
+
+        This is a simplified version of the UsageSource query parsing.
+        """
+        if self.config.sourceConfig.config.queryLogFilePath:
+            yield from self.yield_table_queries_from_logs()
         else:
             logger.info(
                 f"Scanning query logs for {self.start.date()} - {self.end.date()}"
             )
-            try:
-                engine = get_connection(self.service_connection)
-                yield from self.yield_table_query(engine)
+            yield from self.yield_table_query()
 
-            except Exception as exc:
-                logger.debug(traceback.format_exc())
-                logger.error(f"Source usage processing error: {exc}")
-
-    def yield_table_query(self, engine: Engine) -> Iterator[TableQuery]:
+    def yield_table_query(self) -> Iterator[TableQuery]:
         """
         Given an engine, iterate over the query results to
         yield a TableQuery with query parsing info
         """
-        with engine.connect() as conn:
+        with self.engine.connect() as conn:
             rows = conn.execute(
                 self.get_sql_statement(
                     start_time=self.start,
