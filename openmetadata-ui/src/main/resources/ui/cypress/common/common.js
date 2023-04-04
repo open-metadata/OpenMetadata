@@ -41,8 +41,8 @@ export const interceptURL = (method, url, alias, callback) => {
 };
 
 // waiting for response and validating the response status code
-export const verifyResponseStatusCode = (alias, responseCode) => {
-  cy.wait(alias).its('response.statusCode').should('eq', responseCode);
+export const verifyResponseStatusCode = (alias, responseCode, option) => {
+  cy.wait(alias, option).its('response.statusCode').should('eq', responseCode);
 };
 
 export const handleIngestionRetry = (
@@ -89,7 +89,9 @@ export const handleIngestionRetry = (
       cy.get('[data-testid="Ingestions"]').click();
 
       if (ingestionType === 'metadata') {
-        verifyResponseStatusCode('@pipelineStatuses', 200);
+        verifyResponseStatusCode('@pipelineStatuses', 200, {
+          responseTimeout: 50000,
+        });
         verifyResponseStatusCode('@ingestionPermissions', 200);
       }
     }
@@ -102,7 +104,9 @@ export const handleIngestionRetry = (
 
     if (retryCount !== 0) {
       verifyResponseStatusCode('@ingestionPipelines', 200);
-      verifyResponseStatusCode('@pipelineStatuses', 200);
+      verifyResponseStatusCode('@pipelineStatuses', 200, {
+        responseTimeout: 50000,
+      });
       verifyResponseStatusCode('@ingestionPermissions', 200);
     }
 
@@ -228,7 +232,8 @@ export const testServiceCreationAndIngestion = (
     .click();
 
   verifyResponseStatusCode('@createWorkflow', 201);
-  verifyResponseStatusCode('@triggerWorkflow', 200);
+  // added extra buffer time as triggerWorkflow API takes time to provide result
+  verifyResponseStatusCode('@triggerWorkflow', 200, { responseTimeout: 50000 });
   verifyResponseStatusCode('@getWorkflow', 200);
 
   cy.contains('Connection test was successful').should('exist');

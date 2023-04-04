@@ -48,6 +48,12 @@ const permanentDeleteModal = (entity) => {
 describe('Tags page should work', () => {
   beforeEach(() => {
     cy.login();
+    interceptURL(
+      'GET',
+      `/api/v1/tags?fields=usageCount&parent=${NEW_TAG_CATEGORY.name}&limit=10`,
+      'getTagList'
+    );
+    interceptURL('GET', `/api/v1/permissions/classification/*`, 'permissions');
     interceptURL('GET', '/api/v1/tags*', 'getTags');
 
     cy.get('[data-testid="governance"]')
@@ -307,11 +313,6 @@ describe('Tags page should work', () => {
   });
 
   it('Check Usage of tag and it should redirect to explore page with tags filter', () => {
-    interceptURL(
-      'GET',
-      `/api/v1/tags?fields=usageCount&parent=${NEW_TAG_CATEGORY.name}&limit=10`,
-      'getTagList'
-    );
     cy.get('[data-testid="data-summary-container"]')
       .contains(NEW_TAG_CATEGORY.name)
       .should('be.visible')
@@ -321,6 +322,7 @@ describe('Tags page should work', () => {
       .parent()
       .should('have.class', 'activeCategory');
 
+    verifyResponseStatusCode('@permissions', 200);
     verifyResponseStatusCode('@getTagList', 200);
 
     cy.get('[data-testid="usage-count"]').should('be.visible').as('count');
@@ -356,11 +358,6 @@ describe('Tags page should work', () => {
       '/api/v1/tags/*?recursive=true&hardDelete=true',
       'deleteTag'
     );
-    interceptURL(
-      'GET',
-      `/api/v1/tags?fields=usageCount&parent=${NEW_TAG_CATEGORY.name}&limit=10`,
-      'getTagList'
-    );
     cy.get('[data-testid="data-summary-container"]')
       .contains(NEW_TAG_CATEGORY.name)
       .should('be.visible')
@@ -371,6 +368,7 @@ describe('Tags page should work', () => {
       .parent()
       .should('have.class', 'activeCategory');
 
+    verifyResponseStatusCode('@permissions', 200);
     verifyResponseStatusCode('@getTagList', 200);
     cy.get('[data-testid="table"]')
       .should('be.visible')
