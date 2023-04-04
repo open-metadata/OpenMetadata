@@ -120,6 +120,8 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
 
     // init email Util for handling
     EmailUtil.initialize(catalogConfig);
+
+    ChangeEventConfig.initialize(catalogConfig);
     final Jdbi jdbi = createAndSetupJDBI(environment, catalogConfig.getDataSourceFactory());
 
     // init Secret Manager
