@@ -20,11 +20,12 @@ from abc import ABC, abstractmethod
 from datetime import datetime
 from typing import Callable, List, Optional, TypeVar, Union
 
-from metadata.generated.schema.tests.basic import (TestCaseResult,
-                                                   TestCaseStatus,
-                                                   TestResultValue)
-from metadata.generated.schema.tests.testCase import (TestCase,
-                                                      TestCaseParameterValue)
+from metadata.generated.schema.tests.basic import (
+    TestCaseResult,
+    TestCaseStatus,
+    TestResultValue,
+)
+from metadata.generated.schema.tests.testCase import TestCase, TestCaseParameterValue
 from metadata.profiler.processor.runner import QueryRunner
 
 T = TypeVar("T", bound=Callable)

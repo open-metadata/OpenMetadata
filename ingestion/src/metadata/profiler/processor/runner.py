@@ -18,13 +18,13 @@ and manage behavior such as timeouts.
 """
 from typing import Dict, Optional, Union
 
-from metadata.profiler.processor.handle_partition import \
-    partition_filter_handler
-from metadata.utils.logger import query_runner_logger
-from metadata.utils.sqa_utils import get_query_filter_for_runner
 from sqlalchemy import text
 from sqlalchemy.orm import DeclarativeMeta, Query, Session
 from sqlalchemy.orm.util import AliasedClass
+
+from metadata.profiler.processor.handle_partition import partition_filter_handler
+from metadata.utils.logger import query_runner_logger
+from metadata.utils.sqa_utils import get_query_filter_for_runner
 
 logger = query_runner_logger()
 
