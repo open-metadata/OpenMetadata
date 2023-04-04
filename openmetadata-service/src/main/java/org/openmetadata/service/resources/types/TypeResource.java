@@ -17,7 +17,6 @@ import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
 
 import com.google.inject.Inject;
-import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -26,6 +25,7 @@ import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
@@ -72,7 +72,11 @@ import org.openmetadata.service.util.RestUtil.PutResponse;
 import org.openmetadata.service.util.ResultList;
 
 @Path("/v1/metadata/types")
-@Api(value = "Types collection", tags = "metadata")
+@Tag(
+    name = "Metadata",
+    description =
+        "These APIs are for adding new `Types` to OpenMetadata and use those `Types` to "
+            + "extend the metadata of an entity with custom properties.")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "types")
@@ -134,7 +138,6 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
   @Operation(
       operationId = "listTypes",
       summary = "List types",
-      tags = "metadata",
       description =
           "Get a list of types."
               + " Use cursor-based pagination to limit the number "
@@ -175,7 +178,6 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
   @Operation(
       operationId = "getTypeByID",
       summary = "Get a type",
-      tags = "metadata",
       description = "Get a type by `id`.",
       responses = {
         @ApiResponse(
@@ -208,7 +210,6 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
   @Operation(
       operationId = "getTypeByName",
       summary = "Get a type by name",
-      tags = "metadata",
       description = "Get a type by name.",
       responses = {
         @ApiResponse(
@@ -241,7 +242,6 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
   @Operation(
       operationId = "listAllTypeVersion",
       summary = "List type versions",
-      tags = "metadata",
       description = "Get a list of all the versions of a type identified by `id`",
       responses = {
         @ApiResponse(
@@ -262,7 +262,6 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
   @Operation(
       operationId = "getSpecificTypeVersion",
       summary = "Get a version of the types",
-      tags = "metadata",
       description = "Get a version of the type by given `id`",
       responses = {
         @ApiResponse(
@@ -290,7 +289,6 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
   @Operation(
       operationId = "createType",
       summary = "Create a type",
-      tags = "metadata",
       description = "Create a new type.",
       responses = {
         @ApiResponse(
@@ -310,7 +308,6 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
   @Operation(
       operationId = "patchType",
       summary = "Update a type",
-      tags = "metadata",
       description = "Update an existing type using JsonPatch.",
       externalDocs = @ExternalDocumentation(description = "JsonPatch RFC", url = "https://tools.ietf.org/html/rfc6902"))
   @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
@@ -334,7 +331,6 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
   @PUT
   @Operation(
       summary = "Create or update a type",
-      tags = "metadata",
       description = "Create a new type, if it does not exist or update an existing type.",
       responses = {
         @ApiResponse(
@@ -354,7 +350,6 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
   @Operation(
       operationId = "deleteType",
       summary = "Delete a type by id",
-      tags = "metadata",
       description = "Delete a type by `id`.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
@@ -373,7 +368,6 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
   @Operation(
       operationId = "deleteTypeByName",
       summary = "Delete a type by name",
-      tags = "metadata",
       description = "Delete a type by `name`.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
@@ -392,7 +386,6 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
   @Operation(
       operationId = "addProperty",
       summary = "Add or update a Property to an entity",
-      tags = "metadata",
       description =
           "Add or update a property to an entity type. "
               + "Properties can only be added to entity type and not property type.",

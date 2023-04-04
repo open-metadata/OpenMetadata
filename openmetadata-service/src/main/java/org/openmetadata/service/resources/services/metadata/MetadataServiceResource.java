@@ -1,6 +1,5 @@
 package org.openmetadata.service.resources.services.metadata;
 
-import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -9,6 +8,7 @@ import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import java.io.IOException;
 import java.util.List;
 import java.util.Objects;
@@ -67,7 +67,11 @@ import org.openmetadata.service.util.ResultList;
 
 @Slf4j
 @Path("/v1/services/metadataServices")
-@Api(value = "Metadata service collection", tags = "MetadataServices -> Metadata service collection")
+@Tag(
+    name = "Metadata Services",
+    description =
+        "APIs related to creating and managing other Metadata Services that "
+            + "OpenMetadata integrates with such as `Apache Atlas`, `Amundsen`, etc.")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "metadataServices")
@@ -130,7 +134,6 @@ public class MetadataServiceResource
   @Operation(
       operationId = "listMetadataServices",
       summary = "List metadata services",
-      tags = "metadataService",
       description = "Get a list of metadata services.",
       responses = {
         @ApiResponse(
@@ -183,7 +186,6 @@ public class MetadataServiceResource
   @Operation(
       operationId = "getMetadataServiceByID",
       summary = "Get a metadata service by Id",
-      tags = "metadataService",
       description = "Get a Metadata Service by `Id`.",
       responses = {
         @ApiResponse(
@@ -218,7 +220,6 @@ public class MetadataServiceResource
   @Operation(
       operationId = "getMetadataServiceByFQN",
       summary = "Get a metadata service by name",
-      tags = "metadataService",
       description = "Get a Metadata Service by the service `name`.",
       responses = {
         @ApiResponse(
@@ -254,7 +255,6 @@ public class MetadataServiceResource
   @Operation(
       operationId = "addTestConnectionResult",
       summary = "Add test connection result",
-      tags = "metadataServices",
       description = "Add test connection result to the service.",
       responses = {
         @ApiResponse(
@@ -280,7 +280,6 @@ public class MetadataServiceResource
   @Operation(
       operationId = "listAllMetadataServiceVersion",
       summary = "List metadata service versions",
-      tags = "metadataService",
       description = "Get a list of all the versions of a Metadata Service identified by `Id`",
       responses = {
         @ApiResponse(
@@ -316,7 +315,6 @@ public class MetadataServiceResource
   @Operation(
       operationId = "getSpecificMetadataServiceVersion",
       summary = "Get a version of the metadata service",
-      tags = "metadataService",
       description = "Get a version of the Metadata Service by given `Id`",
       responses = {
         @ApiResponse(
@@ -346,7 +344,6 @@ public class MetadataServiceResource
   @Operation(
       operationId = "createMetadataService",
       summary = "Create metadata service",
-      tags = "metadataService",
       description = "Create a new Metadata Service.",
       responses = {
         @ApiResponse(
@@ -369,7 +366,6 @@ public class MetadataServiceResource
   @Operation(
       operationId = "createOrUpdateMetadataService",
       summary = "Update metadata service",
-      tags = "metadataService",
       description = "Update an existing or create a new Metadata Service.",
       responses = {
         @ApiResponse(
@@ -393,7 +389,6 @@ public class MetadataServiceResource
   @Operation(
       operationId = "patchMetadataService",
       summary = "Update a metadata service",
-      tags = "metadataService",
       description = "Update an existing Metadata service using JsonPatch.",
       externalDocs = @ExternalDocumentation(description = "JsonPatch RFC", url = "https://tools.ietf.org/html/rfc6902"))
   @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
@@ -419,7 +414,6 @@ public class MetadataServiceResource
   @Operation(
       operationId = "deleteMetadataService",
       summary = "Delete a metadata service by Id",
-      tags = "metadataService",
       description = "Delete a metadata services. If some service belong the service, it can't be " + "deleted.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
@@ -446,7 +440,6 @@ public class MetadataServiceResource
   @Operation(
       operationId = "deleteMetadataServiceByName",
       summary = "Delete a metadata service by name",
-      tags = "metadataService",
       description =
           "Delete a metadata services by `name`. If some service belong the service, it can't be " + "deleted.",
       responses = {
@@ -473,7 +466,6 @@ public class MetadataServiceResource
   @Operation(
       operationId = "restore",
       summary = "Restore a soft deleted metadata service.",
-      tags = "metadataService",
       description = "Restore a soft deleted metadata service.",
       responses = {
         @ApiResponse(
