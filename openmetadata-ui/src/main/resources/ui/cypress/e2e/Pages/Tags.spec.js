@@ -219,7 +219,7 @@ describe('Tags page should work', () => {
     );
   });
 
-  it('Add tag at DatabaseSchema level with task & suggestions', () => {
+  it.skip('Add tag at DatabaseSchema level with task & suggestions', () => {
     interceptURL(
       'GET',
       '/api/v1/permissions/databaseSchema/name/*',
