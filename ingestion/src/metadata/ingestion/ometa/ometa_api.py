@@ -370,7 +370,7 @@ class OpenMetadata(
         if issubclass(
             entity, get_args(Union[Workflow, self.get_create_entity_type(Workflow)])
         ):
-            return "/automations/workflow"
+            return "/automations/workflows"
 
         # Services Schemas
         if issubclass(
@@ -449,7 +449,7 @@ class OpenMetadata(
             entity,
             TestConnectionDefinition,
         ):
-            return "/services/testConnectionDefinition"
+            return "/services/testConnectionDefinitions"
 
         if issubclass(
             entity,
@@ -457,25 +457,25 @@ class OpenMetadata(
                 Union[TestDefinition, self.get_create_entity_type(TestDefinition)]
             ),
         ):
-            return "/testDefinition"
+            return "/testDefinitions"
 
         if issubclass(
             entity,
             get_args(Union[TestSuite, self.get_create_entity_type(TestSuite)]),
         ):
-            return "/testSuite"
+            return "/testSuites"
 
         if issubclass(
             entity,
             get_args(Union[TestCase, self.get_create_entity_type(TestCase)]),
         ):
-            return "/testCase"
+            return "/testCases"
 
         if issubclass(entity, WebAnalyticEventData):
-            return "/analytics/webAnalyticEvent/collect"
+            return "/analytics/web/events/collect"
 
         if issubclass(entity, DataInsightChart):
-            return "/dataInsight"
+            return "/analytics/dataInsights/charts"
 
         if issubclass(
             entity,

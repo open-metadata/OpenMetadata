@@ -5,7 +5,7 @@ slug: /main-concepts/metadata-standard/apis
 
 # APIs
 
-OpenMetadata supports REST APIs for getting data and in and out of the metadata system. APIs are built using general
+OpenMetadata supports REST APIs for getting data and in and out of the metadata service. APIs are built using general
 best practices of REST API design. We take a schema-first approach by defining Types and Entities in JSON Schema. We
 implement APIs based on these schemas.
 
@@ -15,10 +15,10 @@ implement APIs based on these schemas.
 
 Following REST API conventions are followed for Resource URIs:
 - Operations for an entity are available through the Resource URI as a collection `.../api/<version>/entities`. 
-  Plural of the entity name is used as the collection name - example `.../api/v1/users`.
+- Plural of the entity name is used as the collection name - example `.../api/v1/users`.
 - Trailing forward slash is not used in the endpoint URI. Example use `.../api/v1/databases` instead of `.../api/v1/databases/`.
-- Resource URI for an entity instance by the entity id is `.../api/v1/entities/{id}`. Resource URI for an entity 
-  instance by name is `.../api/v1/entities/name/{name}`.
+- Resource URI for an entity instance by the entity id is `.../api/v1/entities/{id}`. 
+- Resource URI for an entity instance by name is `.../api/v1/entities/name/{name}`.
 
 ### Resource Representation
 
@@ -35,7 +35,7 @@ Following REST API conventions are followed for Resource URIs:
 
 You can find the swagger documentation [here](/swagger.html). In a nutshell:
 
-Data Asset APIs - These API endpoints support operations related to data asset entities.
+**Data Asset APIs** - support operations related to data asset entities.
 - `.../api/v1/databases`
 - `...api/v1/tables`
 - `.../api/v1/metrics`
@@ -44,31 +44,22 @@ Data Asset APIs - These API endpoints support operations related to data asset e
 - `.../api/v1/pipelines`
 - `.../api/v1/topics`
 
-Service APIs - These API endpoints support operations related to services from which metadata is collected:
+**Service APIs** - support operations related to services from which metadata is collected:
 - `.../api/v1/services` is the collection of all service resources.
-- `.../api/v1/services/databaseService` - APIs related to database services. This includes transactional databases - MySQL, Postgres, MSSQL, Oracle, and data warehouses - Apache Hive BigQuery, Redshift, and Snowflake.
-- `.../api/v1/services/dashboardService` - APIs related to dashboard services. This includes Looker, Superset, and Tableau.
-- `.../api/v1/services/messaingService` - APIs related to messaging services. This includes Apache Kafka and Apache Pulsar (work in progress).
+- `.../api/v1/services/databaseService` - APIs related to database services. This includes Transactional databases - MySQL, Postgres, MSSQL, Oracle, and Data Warehouses - Apache Hive BigQuery, Redshift, and Snowflake.
+- `.../api/v1/services/dashboardService` - APIs related to Dashboard Services. This includes Looker, Superset, and Tableau.
+- `.../api/v1/services/messagingService` - APIs related to Messaging Services. This includes Apache Kafka, Redpanda, - Kinesis, and others.
 
-Teams & Users APIs
+**Teams & Users APIs**
 - `.../api/v1/teams` - APIs related to team entities
 - `.../api/v1/users` - APIs related to user entities
 
-Search & Suggest APIs - These API endpoints support search and suggest APIs:
+**Search & Suggest APIs** - support search and suggest APIs:
 - `.../api/v1/search` - collection for search and suggest APIs
 - `.../api/v1/search/query` - search entities using query text
 - `.../api/v1/search/suggest` - get suggested entities used for auto-completion
 
-Other APIs
+**Other APIs**
 - `.../api/v1/tags` for APIs related to Classification and Tag entities
 - `../api/v1/feeds` for APIs related to Threads and Posts entities
 - `.../api/v1/usage` for reporting usage information of entities
-
-## Implementation Notes
-
-We use the [Dropwizard](https://www.dropwizard.io/en/latest/) Java framework for developing Restful web services. 
-APIs are documented using [Swagger/OpenAPI 3.x](https://swagger.io/specification/).
-We take schema first approach and define metadata entities and types in [JSON schema](https://json-schema.org/) 
-specification version [Draft-07 to 2019-09](https://json-schema.org/draft/2019-09/release-notes.html). Java code is 
-generated from the JSON schema using [JSON schema 2 pojo](https://www.jsonschema2pojo.org/) tool and Python code is 
-generated using the [Data model code generator](https://github.com/koxudaxi/datamodel-code-generator) tool.
