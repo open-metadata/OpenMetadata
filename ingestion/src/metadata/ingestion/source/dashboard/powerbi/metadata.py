@@ -204,13 +204,13 @@ class PowerbiSource(DashboardServiceSource):
         """
         Method to Get Dashboard Entity, Dashboard Charts & Lineage
         """
-        dashboard_url = (
-            f"/groups/{self.context.workspace.id}" f"/dashboards/{dashboard_details.id}"
-        )
         dashboard_request = CreateDashboardRequest(
             name=dashboard_details.id,
             # PBI has no hostPort property. Urls are built manually.
-            dashboardUrl=dashboard_url,
+            dashboardUrl=self.client.get_dashboard_url(
+                workspace_id=self.context.workspace.id,
+                dashboard_id=dashboard_details.id,
+            ),
             displayName=dashboard_details.displayName,
             description="",
             charts=[
@@ -292,20 +292,17 @@ class PowerbiSource(DashboardServiceSource):
                 ):
                     self.status.filter(chart_display_name, "Chart Pattern not Allowed")
                     continue
-                report_id = chart.reportId
-                chart_url_postfix = (
-                    f"reports/{report_id}"
-                    if report_id
-                    else f"dashboards/{dashboard_details.id}"
-                )
-                chart_url = f"/groups/{self.context.workspace.id}/{chart_url_postfix}"
                 yield CreateChartRequest(
                     name=chart.id,
                     displayName=chart_display_name,
                     description="",
                     chartType=ChartType.Other.value,
                     # PBI has no hostPort property. All URL details are present in the webUrl property.
-                    chartUrl=chart_url,
+                    chartUrl=self.client.get_chart_url(
+                        report_id=chart.reportId,
+                        workspace_id=self.context.workspace.id,
+                        dashboard_id=dashboard_details.id,
+                    ),
                     service=self.context.dashboard_service.fullyQualifiedName.__root__,
                 )
                 self.status.scanned(chart_display_name)

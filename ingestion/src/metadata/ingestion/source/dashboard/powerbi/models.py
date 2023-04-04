@@ -18,6 +18,11 @@ from pydantic import BaseModel, Field
 
 
 class Tile(BaseModel):
+    """
+    PowerBI Tile/Chart Model
+    Definition: https://learn.microsoft.com/en-us/rest/api/power-bi/dashboards/get-tiles-in-group#tile
+    """
+
     id: str
     title: Optional[str]
     subTitle: Optional[str]
@@ -27,6 +32,11 @@ class Tile(BaseModel):
 
 
 class PowerBIDashboard(BaseModel):
+    """
+    PowerBI PowerBIDashboard Model
+    Definition: https://learn.microsoft.com/en-us/rest/api/power-bi/dashboards/get-dashboards-in-group#dashboard
+    """
+
     id: str
     displayName: str
     webUrl: Optional[str]
@@ -35,36 +45,71 @@ class PowerBIDashboard(BaseModel):
 
 
 class DashboardsResponse(BaseModel):
+    """
+    PowerBI DashboardsResponse Model
+    Definition: https://learn.microsoft.com/en-us/rest/api/power-bi/dashboards/get-dashboards-in-group
+    """
+
     odata_context: str = Field(alias="@odata.context")
     value: List[PowerBIDashboard]
 
 
 class TilesResponse(BaseModel):
+    """
+    PowerBI TilesResponse Model
+    Definition: https://learn.microsoft.com/en-us/rest/api/power-bi/dashboards/get-tiles-in-group
+    """
+
     odata_context: str = Field(alias="@odata.context")
     value: List[Tile]
 
 
 class PowerBiTable(BaseModel):
+    """
+    PowerBI Table Model
+    Definition: https://learn.microsoft.com/en-us/rest/api/power-bi/push-datasets/datasets-get-tables-in-group#table
+    """
+
     name: str
 
 
 class TablesResponse(BaseModel):
+    """
+    PowerBI TablesResponse Model
+    Definition: https://learn.microsoft.com/en-us/rest/api/power-bi/push-datasets/datasets-get-tables-in-group
+    """
+
     odata_context: str = Field(alias="@odata.context")
     value: List[PowerBiTable]
 
 
 class Dataset(BaseModel):
+    """
+    PowerBI Dataset Model
+    Definition: https://learn.microsoft.com/en-us/rest/api/power-bi/datasets/get-datasets-in-group#dataset
+    """
+
     id: str
     name: str
     tables: Optional[List[PowerBiTable]] = []
 
 
 class DatasetResponse(BaseModel):
+    """
+    PowerBI DatasetResponse Model
+    Definition: https://learn.microsoft.com/en-us/rest/api/power-bi/datasets/get-datasets-in-group
+    """
+
     odata_context: str = Field(alias="@odata.context")
     value: List[Dataset]
 
 
 class Group(BaseModel):
+    """
+    PowerBI Group Model
+    Definition: https://learn.microsoft.com/en-us/rest/api/power-bi/groups/get-groups#group
+    """
+
     id: str
     name: Optional[str]
     type: Optional[str]
@@ -74,21 +119,40 @@ class Group(BaseModel):
 
 
 class GroupsResponse(BaseModel):
+    """
+    PowerBI GroupsResponse Model
+    Definition: https://learn.microsoft.com/en-us/rest/api/power-bi/groups/get-groups
+    """
+
     odata_context: str = Field(alias="@odata.context")
     odata_count: int = Field(alias="@odata.count")
     value: List[Group]
 
 
 class WorkSpaceScanResponse(BaseModel):
+    """
+    PowerBI WorkSpaceScanResponse Model
+    Definition: https://learn.microsoft.com/en-us/rest/api/power-bi/admin/workspace-info-get-scan-status
+    """
+
     id: str
     createdDateTime: datetime
     status: Optional[str]
 
 
 class Workspaces(BaseModel):
+    """
+    PowerBI Workspaces Model
+    Definition: https://learn.microsoft.com/en-us/rest/api/power-bi/admin/workspace-info-get-scan-result
+    """
+
     workspaces: List[Group]
 
 
 class PowerBiToken(BaseModel):
+    """
+    PowerBI Token Model
+    """
+
     expires_in: Optional[int]
     access_token: Optional[str]
