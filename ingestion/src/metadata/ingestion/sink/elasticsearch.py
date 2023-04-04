@@ -341,7 +341,11 @@ class ElasticsearchSink(Sink[Entity]):
 
         try:
             self._write_record(record)
-            self.status.records_written(record.name.__root__)
+            self.status.records_written(
+                record.name.__root__
+                if hasattr(record, "name")
+                else type(record).__name__
+            )
 
         except Exception as exc:
             logger.debug(traceback.format_exc())
