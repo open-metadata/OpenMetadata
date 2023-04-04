@@ -13,7 +13,6 @@
 
 package org.openmetadata.service.resources.mlmodels;
 
-import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -22,6 +21,7 @@ import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import java.io.IOException;
 import java.util.UUID;
 import javax.json.JsonPatch;
@@ -61,7 +61,9 @@ import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
 
 @Path("/v1/mlmodels")
-@Api(value = "MlModels collection", tags = "MlModels collection")
+@Tag(
+    name = "ML Models",
+    description = "`Machine Learning Models` are algorithms trained on data to find patterns or " + "make predictions.")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "mlmodels")
@@ -96,7 +98,6 @@ public class MlModelResource extends EntityResource<MlModel, MlModelRepository> 
   @Operation(
       operationId = "listMlModels",
       summary = "List ML models",
-      tags = "mlModels",
       description =
           "Get a list of mlmodels, optionally filtered by `service` it belongs to. Use `fields` "
               + "parameter to get only necessary fields. Use cursor-based pagination to limit the number "
@@ -148,7 +149,6 @@ public class MlModelResource extends EntityResource<MlModel, MlModelRepository> 
   @Operation(
       operationId = "getMlModelByID",
       summary = "Get an ML model by Id",
-      tags = "mlModels",
       description = "Get an ML model by `Id`.",
       responses = {
         @ApiResponse(
@@ -181,7 +181,6 @@ public class MlModelResource extends EntityResource<MlModel, MlModelRepository> 
   @Operation(
       operationId = "getMlModelByFQN",
       summary = "Get an ML model by fully qualified name",
-      tags = "mlModels",
       description = "Get an ML model by fully qualified name.",
       responses = {
         @ApiResponse(
@@ -214,7 +213,6 @@ public class MlModelResource extends EntityResource<MlModel, MlModelRepository> 
   @Operation(
       operationId = "createMlModel",
       summary = "Create an ML model",
-      tags = "mlModels",
       description = "Create a new ML model.",
       responses = {
         @ApiResponse(
@@ -235,7 +233,6 @@ public class MlModelResource extends EntityResource<MlModel, MlModelRepository> 
   @Operation(
       operationId = "patchMlModel",
       summary = "Update an ML model",
-      tags = "mlModels",
       description = "Update an existing ML model using JsonPatch.",
       externalDocs = @ExternalDocumentation(description = "JsonPatch RFC", url = "https://tools.ietf.org/html/rfc6902"))
   @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
@@ -260,7 +257,6 @@ public class MlModelResource extends EntityResource<MlModel, MlModelRepository> 
   @Operation(
       operationId = "createOrUpdateMlModel",
       summary = "Create or update an ML model",
-      tags = "mlModels",
       description = "Create a new ML model, if it does not exist or update an existing model.",
       responses = {
         @ApiResponse(
@@ -281,7 +277,6 @@ public class MlModelResource extends EntityResource<MlModel, MlModelRepository> 
   @Operation(
       operationId = "addFollower",
       summary = "Add a follower",
-      tags = "mlModels",
       description = "Add a user identified by `userId` as follower of this model",
       responses = {
         @ApiResponse(
@@ -304,7 +299,6 @@ public class MlModelResource extends EntityResource<MlModel, MlModelRepository> 
   @Operation(
       operationId = "deleteFollower",
       summary = "Remove a follower",
-      tags = "mlModels",
       description = "Remove the user identified `userId` as a follower of the model.",
       responses = {
         @ApiResponse(
@@ -328,7 +322,6 @@ public class MlModelResource extends EntityResource<MlModel, MlModelRepository> 
   @Operation(
       operationId = "listAllMlModelVersion",
       summary = "List ML model versions",
-      tags = "mlModels",
       description = "Get a list of all the versions of an ML Model identified by `id`",
       responses = {
         @ApiResponse(
@@ -349,7 +342,6 @@ public class MlModelResource extends EntityResource<MlModel, MlModelRepository> 
   @Operation(
       operationId = "getSpecificMlModelVersion",
       summary = "Get a version of the ML model",
-      tags = "mlModels",
       description = "Get a version of the ML model by given `id`",
       responses = {
         @ApiResponse(
@@ -378,7 +370,6 @@ public class MlModelResource extends EntityResource<MlModel, MlModelRepository> 
   @Operation(
       operationId = "deleteMlModel",
       summary = "Delete an ML model by Id",
-      tags = "mlModels",
       description = "Delete an ML model by `Id`.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
@@ -401,7 +392,6 @@ public class MlModelResource extends EntityResource<MlModel, MlModelRepository> 
   @Operation(
       operationId = "deleteMlModelByFQN",
       summary = "Delete a ML model by fully qualified name",
-      tags = "mlModels",
       description = "Delete an ML model by `fullyQualifiedName`.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
@@ -424,7 +414,6 @@ public class MlModelResource extends EntityResource<MlModel, MlModelRepository> 
   @Operation(
       operationId = "restore",
       summary = "Restore a soft deleted ML model",
-      tags = "mlModels",
       description = "Restore a soft deleted ML Model.",
       responses = {
         @ApiResponse(

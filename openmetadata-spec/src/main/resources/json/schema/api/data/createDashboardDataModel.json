@@ -56,6 +56,6 @@
       "default": null
     }
   },
-  "required": ["name", "service", "modelType"],
+  "required": ["name", "service", "modelType", "columns"],
   "additionalProperties": false
 }

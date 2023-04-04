@@ -7,6 +7,7 @@ slug: /connectors/ingestion/workflows/usage
 Learn how to configure the Usage workflow from the UI to ingest Query history data from your data sources.
 
 This workflow is available ONLY for the following connectors:
+- [Athena](/connectors/database/athena) (supported with 1.0 release onwards)
 - [BigQuery](/connectors/database/bigquery)
 - [Snowflake](/connectors/database/snowflake)
 - [MSSQL](/connectors/database/mssql)
