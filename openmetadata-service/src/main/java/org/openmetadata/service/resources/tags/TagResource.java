@@ -498,12 +498,8 @@ public class TagResource extends EntityResource<Tag, TagRepository> {
 
   private Tag getTag(CreateTag create, String updateBy) throws IOException {
     String parentFQN = create.getParent() != null ? create.getParent() : create.getClassification();
-    EntityReference classification =
-        new EntityReference().withFullyQualifiedName(create.getClassification()).withType(CLASSIFICATION);
-    EntityReference parent =
-        create.getParent() == null
-            ? null
-            : new EntityReference().withFullyQualifiedName(create.getParent()).withType(TAG);
+    EntityReference classification = getEntityReference(CLASSIFICATION, create.getClassification());
+    EntityReference parent = create.getParent() == null ? null : getEntityReference(TAG, create.getParent());
     return copy(new Tag(), create, updateBy)
         .withFullyQualifiedName(FullyQualifiedName.add(parentFQN, create.getName()))
         .withParent(parent)
