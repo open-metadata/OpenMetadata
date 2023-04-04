@@ -22,12 +22,11 @@ from metadata.generated.schema.entity.services.connections.database.databricksCo
     DatabricksConnection,
 )
 from metadata.ingestion.ometa.client import APIError
+from metadata.utils.constants import QUERY_WITH_DBT, QUERY_WITH_OM_VERSION
 from metadata.utils.helpers import datetime_to_ts
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
-QUERY_WITH_OM_VERSION = '/* {"app": "OpenMetadata"'
-QUERY_WITH_DBT = '/* {"app": "dbt"'
 API_TIMEOUT = 10
 
 

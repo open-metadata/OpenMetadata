@@ -202,19 +202,19 @@ export const testServiceCreationAndIngestion = (
   // Test the connection
   interceptURL(
     'GET',
-    '/api/v1/services/testConnectionDefinition/name/*',
+    '/api/v1/services/testConnectionDefinitions/name/*',
     'testConnectionStepDefinition'
   );
 
-  interceptURL('POST', '/api/v1/automations/workflow', 'createWorkflow');
+  interceptURL('POST', '/api/v1/automations/workflows', 'createWorkflow');
 
   interceptURL(
     'POST',
-    '/api/v1/automations/workflow/trigger/*',
+    '/api/v1/automations/workflows/trigger/*',
     'triggerWorkflow'
   );
 
-  interceptURL('GET', '/api/v1/automations/workflow/*', 'getWorkflow');
+  interceptURL('GET', '/api/v1/automations/workflows/*', 'getWorkflow');
 
   cy.get('[data-testid="test-connection-btn"]').should('exist');
   cy.get('[data-testid="test-connection-btn"]').click();
