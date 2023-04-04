@@ -21,7 +21,7 @@
           "type": "string"
         },
         "errorMessage": {
-          "description": "In case of error this message should be displayed on UI",
+          "description": "In case of error this message should be displayed on UI, We define this message manually on test connection definition",
           "type": "string"
         },
         "mandatory": {
@@ -30,7 +30,7 @@
           "default": true
         },
         "shortCircuit": {
-          "description": "Is this step to check the access to data source, if data source is not reachable stop further processing",
+          "description": "This field if set to true, indicates that the step is important enough to break the process in case of failure.",
           "type": "boolean",
           "default": false
         }

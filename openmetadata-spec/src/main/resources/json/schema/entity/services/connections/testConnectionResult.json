@@ -25,7 +25,7 @@
           "type": "boolean"
         },
         "message": {
-          "description": "Results or exceptions to be shared after running the test.",
+          "description": "Results or exceptions to be shared after running the test. This message comes from the test connection definition",
           "type": "string",
           "default": null
         },
