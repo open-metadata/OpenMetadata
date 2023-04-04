@@ -53,7 +53,7 @@ const getHTMLTokens = (node: CodeBlockMdNode): HTMLToken[] => {
       type: 'openTag',
       tagName: 'div',
       outerNewLine: true,
-      classNames: ['admonition', `${node.info}`],
+      classNames: ['admonition', `admonition_${node.info}`],
     },
     {
       type: 'html',
@@ -66,42 +66,42 @@ const getHTMLTokens = (node: CodeBlockMdNode): HTMLToken[] => {
 };
 
 export const customHTMLRenderer: CustomHTMLRenderer = {
-  admonition_note(node) {
+  note(node) {
     const tempNode = node as CodeBlockMdNode;
 
     const htmlTokens = getHTMLTokens(tempNode);
 
     return htmlTokens;
   },
-  admonition_warning(node) {
+  warning(node) {
     const tempNode = node as CodeBlockMdNode;
 
     const htmlTokens = getHTMLTokens(tempNode);
 
     return htmlTokens;
   },
-  admonition_danger(node) {
+  danger(node) {
     const tempNode = node as CodeBlockMdNode;
 
     const htmlTokens = getHTMLTokens(tempNode);
 
     return htmlTokens;
   },
-  admonition_info(node) {
+  info(node) {
     const tempNode = node as CodeBlockMdNode;
 
     const htmlTokens = getHTMLTokens(tempNode);
 
     return htmlTokens;
   },
-  admonition_tip(node) {
+  tip(node) {
     const tempNode = node as CodeBlockMdNode;
 
     const htmlTokens = getHTMLTokens(tempNode);
 
     return htmlTokens;
   },
-  admonition_caution(node) {
+  caution(node) {
     const tempNode = node as CodeBlockMdNode;
 
     const htmlTokens = getHTMLTokens(tempNode);
