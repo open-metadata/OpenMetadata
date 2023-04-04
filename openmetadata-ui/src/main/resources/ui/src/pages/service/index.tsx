@@ -738,7 +738,7 @@ const ServicePage: FunctionComponent = () => {
 
       try {
         const response = await updateOwnerService(serviceName, id, jsonPatch);
-        setDescription(updatedHTML);
+        setDescription(response.description ?? '');
         setServiceDetails(response);
       } catch (error) {
         showErrorToast(error as AxiosError);
