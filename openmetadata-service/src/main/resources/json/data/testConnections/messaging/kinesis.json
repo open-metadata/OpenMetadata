@@ -7,6 +7,8 @@
         {
             "name": "GetTopics",
             "description":  "List all the topics available to the user.",
+            "errorMessage": "Failed to fetch topics, please validate the credentials or validate is user has access to fetch topics",
+            "shortCircuit": true,
             "mandatory": true
         }
     ]
