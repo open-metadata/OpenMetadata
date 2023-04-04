@@ -51,6 +51,7 @@ import {
   FETCH_INTERVAL,
   WORKFLOW_COMPLETE_STATUS,
 } from 'constants/Services.constant';
+import { useAirflowStatus } from 'hooks/useAirflowStatus';
 import './test-connection.style.less';
 
 const TestConnection: FC<TestConnectionProps> = ({
@@ -62,6 +63,7 @@ const TestConnection: FC<TestConnectionProps> = ({
   showDetails = true,
 }) => {
   const { t } = useTranslation();
+  const { isAirflowAvailable } = useAirflowStatus();
 
   const initialMessage = t(
     'message.test-your-connection-before-creating-service'
@@ -114,7 +116,10 @@ const TestConnection: FC<TestConnectionProps> = ({
   }, [connectionType]);
 
   const isTestConnectionDisabled =
-    isTestingConnection || isTestingDisabled || !allowTestConn;
+    isTestingConnection ||
+    isTestingDisabled ||
+    !allowTestConn ||
+    !isAirflowAvailable;
 
   // data fetch handlers
 

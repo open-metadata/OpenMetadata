@@ -179,7 +179,7 @@ class ChangeEventParserResourceTest extends OpenMetadataApplicationTest {
     assertEquals(1, messages.size());
 
     assertEquals(
-        "Updated **columns.lo_orderpriority**: <br/> name: \"lo_order<span class=\"diff-added\">priority</span> \" <br/> displayName: \"lo_order<span class=\"diff-added\">priority</span> \" <br/> fullyQualifiedName: \"local_mysql.sample_db.lineorder.lo_order<span class=\"diff-added\">priority</span> \"",
+        "Updated **columns.lo_orderpriority**: <br/> name: \"lo_order <span class=\"diff-added\">priority</span> \" <br/> displayName: \"lo_order <span class=\"diff-added\">priority</span> \" <br/> fullyQualifiedName: \"local_mysql.sample_db.lineorder.lo_order <span class=\"diff-added\">priority</span> \"",
         messages.values().iterator().next());
 
     // Simulate a change of datatype change in column
@@ -215,7 +215,7 @@ class ChangeEventParserResourceTest extends OpenMetadataApplicationTest {
     assertEquals(1, messages.size());
 
     assertEquals(
-        "Updated **columns** : lo_orderpriority<span class=\"diff-added\">, newColumn</span>",
+        "Updated **columns** : lo_orderpriority <span class=\"diff-added\">, newColumn</span>",
         messages.values().iterator().next());
   }
 
@@ -239,9 +239,9 @@ class ChangeEventParserResourceTest extends OpenMetadataApplicationTest {
 
     assertEquals(
         "Updated *columns.lo_orderpriority*:\n"
-            + "name: \"lo_order*priority* \"\n"
-            + "displayName: \"lo_order*priority* \"\n"
-            + "fullyQualifiedName: \"local_mysql.sample_db.lineorder.lo_order*priority* \"",
+            + "name: \"lo_order *priority* \"\n"
+            + "displayName: \"lo_order *priority* \"\n"
+            + "fullyQualifiedName: \"local_mysql.sample_db.lineorder.lo_order *priority* \"",
         messages.values().iterator().next());
 
     // Simulate a change of datatype change in column
@@ -278,6 +278,6 @@ class ChangeEventParserResourceTest extends OpenMetadataApplicationTest {
     messages = ChangeEventParser.getFormattedMessages(ChangeEventParser.PUBLISH_TO.SLACK, changeDescription, TABLE);
     assertEquals(1, messages.size());
 
-    assertEquals("Updated *columns* : lo_orderpriority*, newColumn*", messages.values().iterator().next());
+    assertEquals("Updated *columns* : lo_orderpriority *, newColumn*", messages.values().iterator().next());
   }
 }
