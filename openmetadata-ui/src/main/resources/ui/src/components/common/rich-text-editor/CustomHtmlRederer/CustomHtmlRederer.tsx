@@ -10,56 +10,31 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { CodeBlockMdNode, CustomHTMLRenderer } from '@toast-ui/editor';
+import { CodeBlockMdNode, CustomHTMLRenderer, MdNode } from '@toast-ui/editor';
 import { ReactComponent as CopyIcon } from 'assets/svg/icon-copy.svg';
 import { t } from 'i18next';
 import React from 'react';
 import ReactDOMServer from 'react-dom/server';
+import { MarkdownToHTMLConverter } from 'utils/FeedUtils';
+import { HTMLToken } from './CustomHtmlRederer.interface';
 
-interface TagToken {
-  tagName: string;
-  outerNewLine?: boolean;
-  innerNewLine?: boolean;
-}
+const getHTMLTokens = (node: MdNode): HTMLToken[] => {
+  const blockNode = node as CodeBlockMdNode;
 
-export interface OpenTagToken extends TagToken {
-  type: 'openTag';
-  classNames?: string[];
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  attributes?: Record<string, any>;
-  selfClose?: boolean;
-}
+  // Parse inline markdown to html string
+  const htmlContent = MarkdownToHTMLConverter.makeHtml(blockNode.literal ?? '');
 
-export interface CloseTagToken extends TagToken {
-  type: 'closeTag';
-}
-
-export interface TextToken {
-  type: 'text';
-  content: string;
-}
-
-export interface RawHTMLToken {
-  type: 'html';
-  content: string;
-  outerNewLine?: boolean;
-}
-
-export type HTMLToken = OpenTagToken | CloseTagToken | TextToken | RawHTMLToken;
-
-const getHTMLTokens = (node: CodeBlockMdNode): HTMLToken[] => {
   return [
     {
       type: 'openTag',
       tagName: 'div',
       outerNewLine: true,
-      classNames: ['admonition', `admonition_${node.info}`],
+      classNames: ['admonition', `admonition_${blockNode.info}`],
     },
     {
       type: 'html',
-      content: ReactDOMServer.renderToString(
-        <p className="admonition-text">{node.literal}</p>
-      ),
+      content: htmlContent,
+      outerNewLine: true,
     },
     { type: 'closeTag', tagName: 'div', outerNewLine: true },
   ];
@@ -67,46 +42,22 @@ const getHTMLTokens = (node: CodeBlockMdNode): HTMLToken[] => {
 
 export const customHTMLRenderer: CustomHTMLRenderer = {
   note(node) {
-    const tempNode = node as CodeBlockMdNode;
-
-    const htmlTokens = getHTMLTokens(tempNode);
-
-    return htmlTokens;
+    return getHTMLTokens(node);
   },
   warning(node) {
-    const tempNode = node as CodeBlockMdNode;
-
-    const htmlTokens = getHTMLTokens(tempNode);
-
-    return htmlTokens;
+    return getHTMLTokens(node);
   },
   danger(node) {
-    const tempNode = node as CodeBlockMdNode;
-
-    const htmlTokens = getHTMLTokens(tempNode);
-
-    return htmlTokens;
+    return getHTMLTokens(node);
   },
   info(node) {
-    const tempNode = node as CodeBlockMdNode;
-
-    const htmlTokens = getHTMLTokens(tempNode);
-
-    return htmlTokens;
+    return getHTMLTokens(node);
   },
   tip(node) {
-    const tempNode = node as CodeBlockMdNode;
-
-    const htmlTokens = getHTMLTokens(tempNode);
-
-    return htmlTokens;
+    return getHTMLTokens(node);
   },
   caution(node) {
-    const tempNode = node as CodeBlockMdNode;
-
-    const htmlTokens = getHTMLTokens(tempNode);
-
-    return htmlTokens;
+    return getHTMLTokens(node);
   },
   codeBlock(node) {
     const { fenceLength, info } = node as CodeBlockMdNode;
