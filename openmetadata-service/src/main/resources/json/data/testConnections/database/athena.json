@@ -7,8 +7,8 @@
       {
         "name": "CheckAccess",
         "description": "Validate that we can properly reach the database and authenticate with the given credentials.",
-        "errorMessage": "Failed to connect to athena, please validate the access key & secret or validate the environment in case of aws default authentication",
-        "isPrimaryStep": true,
+        "errorMessage": "Failed to connect to athena, please validate the credentials",
+        "shortCircuit": true,
         "mandatory": true
       },
       {

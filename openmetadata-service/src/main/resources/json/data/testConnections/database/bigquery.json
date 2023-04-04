@@ -8,7 +8,7 @@
         "name": "CheckAccess",
         "description": "Validate that we can properly reach the database and authenticate with the given credentials.",
         "errorMessage": "Failed to connect to bigquery, please validate to the credentials of service account",
-        "isPrimaryStep": true,
+        "shortCircuit": true,
         "mandatory": true
       },
       {

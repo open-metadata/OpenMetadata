@@ -7,8 +7,8 @@
       {
         "name": "ListBuckets",
         "description": "List all the buckets available to the user.",
-        "errorMessage": "Failed to fetch buckets, please validate if the user has enough privilege to fetch views.",
-        "isPrimaryStep": true,
+        "errorMessage": "Failed to fetch buckets, please validate the credentials if the user has access to list buckets",
+        "shortCircuit": true,
         "mandatory": true
       }
     ]

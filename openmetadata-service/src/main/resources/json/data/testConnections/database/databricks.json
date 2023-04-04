@@ -8,7 +8,7 @@
         "name": "CheckAccess",
         "description": "Validate that we can properly reach the database and authenticate with the given credentials.",
         "errorMessage": "Failed to connect to azure sql, please validate to token, http path  & hostport",
-        "isPrimaryStep": true,
+        "shortCircuit": true,
         "mandatory": true
       },
       {

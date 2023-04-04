@@ -7,8 +7,8 @@
       {
         "name": "CheckAccess",
         "description": "Validate that we can properly reach the database and authenticate with the given credentials.",
-        "errorMessage": "Failed to connect to azure sql, please validate to username, password & hostport",
-        "isPrimaryStep": true,
+        "errorMessage": "Failed to connect to azuresql, please validate the credentials",
+        "shortCircuit": true,
         "mandatory": true
       },
       {
