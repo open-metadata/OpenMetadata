@@ -43,7 +43,6 @@ import org.openmetadata.service.util.ResultList;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.UriInfo;
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -113,16 +112,6 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
         Relationship.CONTAINS);
     storeOwner(ingestionPipeline, ingestionPipeline.getOwner());
     applyTags(ingestionPipeline);
-  }
-
-  public List<IngestionPipeline> getIngestionPipelineByServiceType(String serviceType) throws IOException {
-    List<CollectionDAO.EntityRelationshipRecord> ingestionPipelines = daoCollection.relationshipDAO().findTo(serviceType,Relationship.CONTAINS.ordinal(),Entity.INGESTION_PIPELINE);
-    List<IngestionPipeline> ingestionPipelineList = new ArrayList<>();
-    for (CollectionDAO.EntityRelationshipRecord ingestionPipeline : ingestionPipelines){
-      IngestionPipeline ingestionPipeline1 = Entity.getEntity(ingestionPipeline.getType(),ingestionPipeline.getId(),"*",Include.ALL);
-      ingestionPipelineList.add(ingestionPipeline1);
-    }
-    return ingestionPipelineList;
   }
 
   @Override
