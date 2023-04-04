@@ -15,7 +15,6 @@ package org.openmetadata.service.resources.services.messaging;
 
 import static org.openmetadata.service.Entity.FIELD_OWNER;
 
-import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -24,6 +23,7 @@ import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
@@ -71,7 +71,7 @@ import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
 
 @Path("/v1/services/messagingServices")
-@Api(value = "Messaging service collection", tags = "Services -> Messaging service collection")
+@Tag(name = "Messaging Services")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "messagingServices")
@@ -101,7 +101,6 @@ public class MessagingServiceResource
   @Operation(
       operationId = "listMessagingService",
       summary = "List messaging services",
-      tags = "messagingServices",
       description =
           "Get a list of messaging services. Use cursor-based pagination to limit the number "
               + "entries in the list using `limit` and `before` or `after` query params.",
@@ -150,7 +149,6 @@ public class MessagingServiceResource
   @Operation(
       operationId = "getMessagingServiceByID",
       summary = "Get a messaging service by Id",
-      tags = "messagingServices",
       description = "Get a messaging service by `Id`.",
       responses = {
         @ApiResponse(
@@ -185,7 +183,6 @@ public class MessagingServiceResource
   @Operation(
       operationId = "getMessagingServiceByFQN",
       summary = "Get messaging service by name",
-      tags = "messagingServices",
       description = "Get a messaging service by the service `name`.",
       responses = {
         @ApiResponse(
@@ -221,7 +218,6 @@ public class MessagingServiceResource
   @Operation(
       operationId = "addTestConnectionResult",
       summary = "Add test connection result",
-      tags = "messagingServices",
       description = "Add test connection result to the service.",
       responses = {
         @ApiResponse(
@@ -247,7 +243,6 @@ public class MessagingServiceResource
   @Operation(
       operationId = "listAllMessagingServiceVersion",
       summary = "List messaging service versions",
-      tags = "messagingServices",
       description = "Get a list of all the versions of a messaging service identified by `id`",
       responses = {
         @ApiResponse(
@@ -283,7 +278,6 @@ public class MessagingServiceResource
   @Operation(
       operationId = "getSpecificMessagingServiceVersion",
       summary = "Get a version of the messaging service",
-      tags = "messagingServices",
       description = "Get a version of the messaging service by given `Id`",
       responses = {
         @ApiResponse(
@@ -313,7 +307,6 @@ public class MessagingServiceResource
   @Operation(
       operationId = "createMessagingService",
       summary = "Create a messaging service",
-      tags = "messagingServices",
       description = "Create a new messaging service.",
       responses = {
         @ApiResponse(
@@ -336,7 +329,6 @@ public class MessagingServiceResource
   @Operation(
       operationId = "createOrUpdateMessagingService",
       summary = "Update messaging service",
-      tags = "messagingServices",
       description = "Create a new messaging service or Update an existing messaging service identified by `id`.",
       responses = {
         @ApiResponse(
@@ -360,7 +352,6 @@ public class MessagingServiceResource
   @Operation(
       operationId = "patchMessagingService",
       summary = "Update a messaging service",
-      tags = "messagingServices",
       description = "Update an existing messaging service using JsonPatch.",
       externalDocs = @ExternalDocumentation(description = "JsonPatch RFC", url = "https://tools.ietf.org/html/rfc6902"))
   @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
@@ -386,7 +377,6 @@ public class MessagingServiceResource
   @Operation(
       operationId = "deleteMessagingService",
       summary = "Delete a messaging service by Id",
-      tags = "messagingServices",
       description = "Delete a messaging service. If topics belong the service, it can't be " + "deleted.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
@@ -413,7 +403,6 @@ public class MessagingServiceResource
   @Operation(
       operationId = "deleteMessagingServiceByName",
       summary = "Delete a messaging service by name",
-      tags = "messagingServices",
       description = "Delete a messaging service by `name`. If topics belong the service, it can't be " + "deleted.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
@@ -439,7 +428,6 @@ public class MessagingServiceResource
   @Operation(
       operationId = "restore",
       summary = "Restore a soft deleted messaging service",
-      tags = "messagingServices",
       description = "Restore a soft deleted messaging service.",
       responses = {
         @ApiResponse(
