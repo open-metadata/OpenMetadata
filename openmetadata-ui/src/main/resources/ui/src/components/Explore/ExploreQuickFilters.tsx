@@ -29,13 +29,11 @@ import {
 } from '../../constants/AdvancedSearch.constants';
 import {
   getAdvancedField,
-  getOptionsObject,
   getOptionTextFromKey,
 } from '../../utils/AdvancedSearchUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import SearchDropdown from '../SearchDropdown/SearchDropdown';
 import { SearchDropdownOption } from '../SearchDropdown/SearchDropdown.interface';
-import { EntityUnion } from './explore.interface';
 import { ExploreQuickFiltersProps } from './ExploreQuickFilters.interface';
 
 const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
@@ -99,14 +97,16 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
           const suggestOptions =
             res.data.suggest['metadata-suggest'][0].options ?? [];
 
-          const formattedSuggestions = suggestOptions.map((op) => ({
-            text: getOptionTextFromKey(index, op, key),
-            source: op._source as EntityUnion,
-          }));
+          const formattedSuggestions = suggestOptions.map((op) => {
+            const optionsText = getOptionTextFromKey(index, op, key);
 
-          const optionsArray = getOptionsObject(key, formattedSuggestions);
+            return {
+              key: optionsText,
+              label: optionsText,
+            };
+          });
 
-          setOptions(uniqWith(optionsArray, isEqual));
+          setOptions(uniqWith(formattedSuggestions, isEqual));
         } else {
           if (key === 'tags.tagFQN') {
             const res = await getTagSuggestions(value);

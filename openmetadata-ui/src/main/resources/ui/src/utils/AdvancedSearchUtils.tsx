@@ -14,7 +14,6 @@
 import Icon, { CloseCircleOutlined, PlusOutlined } from '@ant-design/icons';
 import { Button, Checkbox, MenuProps, Space, Typography } from 'antd';
 import ProfilePicture from 'components/common/ProfilePicture/ProfilePicture';
-import { FormattedSuggestResponseObject } from 'components/Explore/ExploreQuickFilters.interface';
 import { SearchDropdownOption } from 'components/SearchDropdown/SearchDropdown.interface';
 import i18next from 'i18next';
 import { isArray, isUndefined } from 'lodash';
@@ -44,10 +43,9 @@ import {
   TableSearchSource,
   TopicSearchSource,
 } from 'interface/search.interface';
-import { AdvancedFields, EntityFields } from '../enums/AdvancedSearch.enum';
+import { AdvancedFields } from '../enums/AdvancedSearch.enum';
 import { SearchIndex } from '../enums/search.enum';
-import { Dashboard } from '../generated/entity/data/dashboard';
-import { Pipeline, Task } from '../generated/entity/data/pipeline';
+import { Task } from '../generated/entity/data/pipeline';
 import SVGIcons, { Icons } from './SvgUtils';
 
 export const getDropDownItems = (index: string) => {
@@ -235,76 +233,6 @@ export const getSelectedOptionLabelString = (
     }
   } else {
     return '';
-  }
-};
-
-export const getOptionFromDashboardSource = (
-  uniqueOption: FormattedSuggestResponseObject
-): SearchDropdownOption => {
-  const charts = (uniqueOption.source as Dashboard).charts;
-  const option: SearchDropdownOption = { key: '', label: '' };
-
-  if (charts) {
-    // As of now, the value sent by suggest API in uniqueOption.text is uncertain
-    // It is either from name or sometimes from displayName,
-    // we are checking both for now to figure out which 'Dashboard' has desired chart
-    const chart = charts.find(
-      (chart) =>
-        chart.displayName === uniqueOption.text ||
-        chart.name === uniqueOption.text
-    );
-
-    if (chart) {
-      option.key = chart.name ?? '';
-      option.label = chart.displayName ?? chart.name ?? '';
-    }
-  }
-
-  return option;
-};
-
-export const getOptionFromPipelineSource = (
-  uniqueOption: FormattedSuggestResponseObject
-): SearchDropdownOption => {
-  const tasks = (uniqueOption.source as Pipeline).tasks;
-  const option: SearchDropdownOption = { key: '', label: '' };
-
-  if (tasks) {
-    // As of now, the value sent by suggest API in uniqueOption.text is uncertain
-    // It is either from name or sometimes from displayName,
-    // we are checking both for now to figure out which 'Pipeline' has desired task
-    const task = tasks.find(
-      (task) =>
-        task.name === uniqueOption.text ||
-        task.displayName === uniqueOption.text
-    );
-
-    if (task) {
-      option.key = task.name;
-      option.label = task.displayName ?? task.name;
-    }
-  }
-
-  return option;
-};
-
-export const getOptionsObject = (
-  key: string,
-  uniqueOptions: FormattedSuggestResponseObject[]
-): SearchDropdownOption[] => {
-  switch (key) {
-    case EntityFields.CHART: {
-      return uniqueOptions.map((op) => getOptionFromDashboardSource(op));
-    }
-    case EntityFields.TASK: {
-      return uniqueOptions.map((op) => getOptionFromPipelineSource(op));
-    }
-    default: {
-      return uniqueOptions.map((op) => ({
-        key: op.text,
-        label: op.text,
-      }));
-    }
   }
 };
 
