@@ -93,7 +93,7 @@ public class EmailUtil {
   }
 
   private static Mailer createMailer(SmtpSettings smtpServerSettings) {
-    if(smtpServerSettings.getEnableSmtpServer()){
+    if (smtpServerSettings.getEnableSmtpServer()) {
       TransportStrategy strategy;
       switch (smtpServerSettings.getTransportationStrategy()) {
         case SMPTS:
@@ -107,12 +107,12 @@ public class EmailUtil {
           break;
       }
       return MailerBuilder.withSMTPServer(
-                      smtpServerSettings.getServerEndpoint(),
-                      smtpServerSettings.getServerPort(),
-                      smtpServerSettings.getUsername(),
-                      smtpServerSettings.getPassword())
-              .withTransportStrategy(strategy)
-              .buildMailer();
+              smtpServerSettings.getServerEndpoint(),
+              smtpServerSettings.getServerPort(),
+              smtpServerSettings.getUsername(),
+              smtpServerSettings.getPassword())
+          .withTransportStrategy(strategy)
+          .buildMailer();
     }
     return null;
   }
