@@ -1,14 +1,16 @@
 package org.openmetadata.service.jdbi3;
 
+import lombok.Getter;
+import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.service.Entity;
+import org.openmetadata.service.resources.databases.DatasourceConfig;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import lombok.Getter;
-import org.openmetadata.schema.type.Include;
-import org.openmetadata.schema.type.Relationship;
-import org.openmetadata.service.Entity;
 
 public class ListFilter {
   @Getter private final Include include;
@@ -39,6 +41,7 @@ public class ListFilter {
     String condition = getIncludeCondition(tableName);
     condition = addCondition(condition, getDatabaseCondition(tableName));
     condition = addCondition(condition, getServiceCondition(tableName));
+    condition = addCondition(condition, getPipelineTypeCondition(tableName));
     condition = addCondition(condition, getParentCondition(tableName));
     condition = addCondition(condition, getCategoryCondition(tableName));
     condition = addCondition(condition, getWebhookCondition(tableName));
@@ -88,6 +91,11 @@ public class ListFilter {
     return webhookType == null ? "" : getWebhookTypePrefixCondition(tableName, webhookType);
   }
 
+  public String getPipelineTypeCondition(String tableName) {
+    String pipelineType = queryParams.get("pipelineType");
+    return pipelineType == null ? "" : getPipelineTypePrefixCondition(tableName, pipelineType);
+  }
+
   private String getTestCaseCondition() {
     String condition1 = "";
     String entityFQN = getQueryParam("entityFQN");
@@ -124,6 +132,18 @@ public class ListFilter {
     return tableName == null
         ? String.format("webhookType LIKE '%s%%'", typePrefix)
         : String.format("%s.webhookType LIKE '%s%%'", tableName, typePrefix);
+  }
+
+  private String getPipelineTypePrefixCondition(String tableName, String pipelineType) {
+    pipelineType = escape(pipelineType);
+    if (DatasourceConfig.getInstance().getDriverClass().startsWith("com.mysql.cj.jdbc")) {
+      return tableName == null
+          ? String.format("JSON_UNQUOTE(JSON_EXTRACT(json, '$.pipelineType')) = '%s'", pipelineType)
+          : String.format("%s.JSON_UNQUOTE(JSON_EXTRACT(json, '$.pipelineType')) = '%s%%'", tableName, pipelineType);
+    }
+    return tableName == null
+        ? String.format("json->>'pipelineType' = '%s'", pipelineType)
+        : String.format("json->>'pipelineType' = '%s%%'", tableName, pipelineType);
   }
 
   private String getCategoryPrefixCondition(String tableName, String category) {
