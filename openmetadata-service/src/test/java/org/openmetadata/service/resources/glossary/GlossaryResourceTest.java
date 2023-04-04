@@ -314,7 +314,16 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
         copyGlossaryTerm(updatedTerm, termToMove);
       }
     }
+
+    // Move a parent term g1.t1 to its child g1.t1.t11 should be disallowed
+    assertResponse(
+        () -> glossaryTermResourceTest.moveGlossaryTerm(g.getEntityReference(), t11.getEntityReference(), t1),
+        Status.BAD_REQUEST,
+        CatalogExceptionMessage.invalidGlossaryTermMove(t1.getFullyQualifiedName(), t11.getFullyQualifiedName()));
   }
+
+  @Test
+  void patch_moveGlossaryTermParentToChild() {}
 
   @Test
   void testCsvDocumentation() throws HttpResponseException {
