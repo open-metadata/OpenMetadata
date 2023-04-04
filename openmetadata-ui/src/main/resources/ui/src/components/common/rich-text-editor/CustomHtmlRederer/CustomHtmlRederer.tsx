@@ -10,6 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+
+/**
+ * This file contains code for custom renderers read more
+ * @see {@link https://github.com/nhn/tui.editor/blob/master/docs/en/custom-html-renderer.md}
+ */
+
 import {
   CodeBlockMdNode,
   CustomHTMLRenderer,
