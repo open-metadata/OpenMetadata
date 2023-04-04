@@ -553,7 +553,9 @@
     <profile>	<!-- run SCA -->
       <id>static-code-analysis</id>
       <activation>
-        <activeByDefault>true</activeByDefault>
+        <property>
+          <name>!skipCodeAnalysis</name>
+        </property>
       </activation>
       <build>
         <plugins>
