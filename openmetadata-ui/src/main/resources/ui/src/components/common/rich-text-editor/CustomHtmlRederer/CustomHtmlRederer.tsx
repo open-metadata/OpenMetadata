@@ -10,13 +10,18 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { CodeBlockMdNode, CustomHTMLRenderer, MdNode } from '@toast-ui/editor';
+import {
+  CodeBlockMdNode,
+  CustomHTMLRenderer,
+  LinkMdNode,
+  MdNode,
+} from '@toast-ui/editor';
 import { ReactComponent as CopyIcon } from 'assets/svg/icon-copy.svg';
 import { t } from 'i18next';
 import React from 'react';
 import ReactDOMServer from 'react-dom/server';
 import { MarkdownToHTMLConverter } from 'utils/FeedUtils';
-import { HTMLToken } from './CustomHtmlRederer.interface';
+import { HTMLToken, OpenTagToken } from './CustomHtmlRederer.interface';
 
 const getHTMLTokens = (node: MdNode): HTMLToken[] => {
   const blockNode = node as CodeBlockMdNode;
@@ -106,5 +111,26 @@ export const customHTMLRenderer: CustomHTMLRenderer = {
       },
       { type: 'closeTag', tagName: 'pre' },
     ];
+  },
+  link(node, { origin, entering }) {
+    const linkNode = node as LinkMdNode;
+
+    // get the origin result
+    const originResult = (origin && origin()) as OpenTagToken;
+
+    // get the attributes
+    const attributes = originResult.attributes ?? {};
+
+    // derive the target
+    const target = linkNode.destination?.startsWith('#') ? '_self' : '_blank';
+
+    if (entering) {
+      originResult.attributes = {
+        ...attributes,
+        target,
+      };
+    }
+
+    return originResult;
   },
 };
