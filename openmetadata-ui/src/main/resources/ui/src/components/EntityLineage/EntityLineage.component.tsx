@@ -12,7 +12,9 @@
  */
 
 import { Modal, Space } from 'antd';
+import AppState from 'AppState';
 import { AxiosError } from 'axios';
+import { mockDatasetData } from 'constants/mockTourData.constants';
 import jsonData from 'jsons/en';
 import {
   debounce,
@@ -222,28 +224,36 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
 
   const fetchLineageData = useCallback(
     async (config: LineageConfig) => {
-      setIsLineageLoading(true);
-      try {
-        const res = await getLineageByFQN(
-          entityFQN,
-          entityType,
-          config.upstreamDepth,
-          config.downstreamDepth
-        );
-        if (res) {
-          setPaginationData({});
-          setEntityLineage(res);
-          setUpdatedLineageData(res);
-        } else {
-          showErrorToast(jsonData['api-error-messages']['fetch-lineage-error']);
+      if (AppState.isTourOpen) {
+        setPaginationData({});
+        setEntityLineage(mockDatasetData.entityLineage);
+        setUpdatedLineageData(mockDatasetData.entityLineage);
+      } else {
+        setIsLineageLoading(true);
+        try {
+          const res = await getLineageByFQN(
+            entityFQN,
+            entityType,
+            config.upstreamDepth,
+            config.downstreamDepth
+          );
+          if (res) {
+            setPaginationData({});
+            setEntityLineage(res);
+            setUpdatedLineageData(res);
+          } else {
+            showErrorToast(
+              jsonData['api-error-messages']['fetch-lineage-error']
+            );
+          }
+        } catch (err) {
+          showErrorToast(
+            err as AxiosError,
+            jsonData['api-error-messages']['fetch-lineage-error']
+          );
+        } finally {
+          setIsLineageLoading(false);
         }
-      } catch (err) {
-        showErrorToast(
-          err as AxiosError,
-          jsonData['api-error-messages']['fetch-lineage-error']
-        );
-      } finally {
-        setIsLineageLoading(false);
       }
     },
     [entityFQN, entityType]
