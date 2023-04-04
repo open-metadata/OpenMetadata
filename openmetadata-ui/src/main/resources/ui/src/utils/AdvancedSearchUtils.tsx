@@ -244,76 +244,79 @@ export const getDisplayNameFromEntity = (
 };
 
 export const getChartsOptions = (
-  op: SuggestOption<SearchIndex, ExploreSearchSource>
+  option: SuggestOption<SearchIndex, ExploreSearchSource>
 ) => {
   const chartRef = (
-    op as SuggestOption<SearchIndex.DASHBOARD, DashboardSearchSource>
+    option as SuggestOption<SearchIndex.DASHBOARD, DashboardSearchSource>
   )._source.charts?.find(
-    (chart) => chart.displayName === op.text || chart.name === op.text
+    (chart) => chart.displayName === option.text || chart.name === option.text
   );
 
-  return getDisplayNameFromEntity(op.text, chartRef);
+  return getDisplayNameFromEntity(option.text, chartRef);
 };
 
 export const getTasksOptions = (
-  op: SuggestOption<SearchIndex, ExploreSearchSource>
+  option: SuggestOption<SearchIndex, ExploreSearchSource>
 ) => {
   const taskRef = (
-    op as SuggestOption<SearchIndex.PIPELINE, PipelineSearchSource>
+    option as SuggestOption<SearchIndex.PIPELINE, PipelineSearchSource>
   )._source.tasks?.find(
-    (task) => task.displayName === op.text || task.name === op.text
+    (task) => task.displayName === option.text || task.name === option.text
   );
 
-  return getDisplayNameFromEntity(op.text, taskRef);
+  return getDisplayNameFromEntity(option.text, taskRef);
 };
 
 export const getColumnsOptions = (
-  op: SuggestOption<SearchIndex, ExploreSearchSource>,
+  option: SuggestOption<SearchIndex, ExploreSearchSource>,
   index: SearchIndex
 ) => {
   if (index === SearchIndex.TABLE) {
     const columnRef = (
-      op as SuggestOption<SearchIndex.TABLE, TableSearchSource>
+      option as SuggestOption<SearchIndex.TABLE, TableSearchSource>
     )._source.columns.find(
-      (column) => column.displayName === op.text || column.name === op.text
+      (column) =>
+        column.displayName === option.text || column.name === option.text
     );
 
-    return getDisplayNameFromEntity(op.text, columnRef);
+    return getDisplayNameFromEntity(option.text, columnRef);
   } else {
     const dataModel = (
-      op as SuggestOption<SearchIndex.CONTAINER, ContainerSearchSource>
+      option as SuggestOption<SearchIndex.CONTAINER, ContainerSearchSource>
     )._source.dataModel;
     const columnRef = dataModel
       ? dataModel.columns.find(
-          (column) => column.displayName === op.text || column.name === op.text
+          (column) =>
+            column.displayName === option.text || column.name === option.text
         )
       : undefined;
 
-    return getDisplayNameFromEntity(op.text, columnRef);
+    return getDisplayNameFromEntity(option.text, columnRef);
   }
 };
 
-export const getTopicOptions = (
-  op: SuggestOption<SearchIndex, ExploreSearchSource>
+export const getSchemaFieldOptions = (
+  option: SuggestOption<SearchIndex, ExploreSearchSource>
 ) => {
   const schemaFields = (
-    op as SuggestOption<SearchIndex.TOPIC, TopicSearchSource>
+    option as SuggestOption<SearchIndex.TOPIC, TopicSearchSource>
   )._source.messageSchema?.schemaFields;
 
   const schemaRef = schemaFields
     ? schemaFields.find(
-        (field) => field.displayName === op.text || field.name === op.text
+        (field) =>
+          field.displayName === option.text || field.name === option.text
       )
     : undefined;
 
-  return getDisplayNameFromEntity(op.text, schemaRef);
+  return getDisplayNameFromEntity(option.text, schemaRef);
 };
 
 export const getServiceOptions = (
-  op: SuggestOption<SearchIndex, ExploreSearchSource>
+  option: SuggestOption<SearchIndex, ExploreSearchSource>
 ) => {
   const service = (
-    op as SuggestOption<
+    option as SuggestOption<
       SearchIndex,
       | TableSearchSource
       | DashboardSearchSource
@@ -323,33 +326,35 @@ export const getServiceOptions = (
     >
   )._source.service;
 
-  return service ? service.displayName ?? service.name ?? op.text : op.text;
+  return service
+    ? service.displayName ?? service.name ?? option.text
+    : option.text;
 };
 
 // Function to get the display name to show in the options for search Dropdowns
 export const getOptionTextFromKey = (
   index: SearchIndex,
-  op: SuggestOption<SearchIndex, ExploreSearchSource>,
+  option: SuggestOption<SearchIndex, ExploreSearchSource>,
   key: string
 ) => {
   switch (key) {
     case 'charts.displayName.keyword': {
-      return getChartsOptions(op);
+      return getChartsOptions(option);
     }
     case 'tasks.displayName.keyword': {
-      return getTasksOptions(op);
+      return getTasksOptions(option);
     }
     case 'columns.name': {
-      return getColumnsOptions(op, index);
+      return getColumnsOptions(option, index);
     }
     case 'service.name': {
-      return getServiceOptions(op);
+      return getServiceOptions(option);
     }
     case 'messageSchema.schemaFields.name': {
-      return getTopicOptions(op);
+      return getSchemaFieldOptions(option);
     }
     default: {
-      return op.text;
+      return option.text;
     }
   }
 };

@@ -97,8 +97,8 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
           const suggestOptions =
             res.data.suggest['metadata-suggest'][0].options ?? [];
 
-          const formattedSuggestions = suggestOptions.map((op) => {
-            const optionsText = getOptionTextFromKey(index, op, key);
+          const formattedSuggestions = suggestOptions.map((option) => {
+            const optionsText = getOptionTextFromKey(index, option, key);
 
             return {
               key: optionsText,
