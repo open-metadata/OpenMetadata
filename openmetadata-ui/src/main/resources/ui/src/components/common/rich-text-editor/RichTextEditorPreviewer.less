@@ -204,16 +204,21 @@
       width: 16px;
       opacity: 0;
       padding: 8px;
+      background: @border-color;
+      border-radius: 4px;
     }
 
     .code-copy-message {
-      opacity: 0;
+      display: none;
       position: absolute;
       top: 16px;
       right: 16px;
       pointer-events: all;
       cursor: pointer;
-      z-index: 1;
+      z-index: 2;
+      background: @border-color;
+      border-radius: 4px;
+      padding: 0px 4px;
     }
 
     .code-block {
@@ -223,10 +228,10 @@
     }
 
     .code-copy-message[data-copied='true'] {
-      opacity: 1;
+      display: inline-block;
     }
     .code-copy-message[data-copied='false'] {
-      opacity: 0;
+      display: none;
     }
     .code-copy-button[data-copied='true'] {
       opacity: 0;
