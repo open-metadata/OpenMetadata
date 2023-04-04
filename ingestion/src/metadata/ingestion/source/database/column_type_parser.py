@@ -121,6 +121,8 @@ class ColumnTypeParser:
         "INT4": "INT",
         "INT8": "BIGINT",
         "INT16": "BIGINT",
+        "TUPLE": "TUPLE",
+        "SPATIAL": "SPATIAL",
         "INT32": "BIGINT",
         "INT64": "BIGINT",
         "INT128": "BIGINT",
