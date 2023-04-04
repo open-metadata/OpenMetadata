@@ -265,6 +265,9 @@ describe('Tags page should work', () => {
       .should('be.visible')
       .click()
       .type(tag);
+
+    verifyResponseStatusCode('@searchQuery', 200);
+
     cy.get('.ant-select-item-option-content').contains(tag).click();
 
     cy.get('[data-testid="tags-label"]').click();
