@@ -171,20 +171,18 @@ describe('Tags page should work', () => {
       .click()
       .parent()
       .should('have.class', 'activeCategory');
-    cy.get('[data-testid="rename-test-tag-button"]')
-      .should('be.visible')
-      .click();
+    cy.get('[data-testid="edit-button"]').should('be.visible').click();
     cy.get('[data-testid="modal-container"]')
       .should('exist')
       .then(() => {
         cy.get('[role="dialog"]').should('be.visible');
       });
-    cy.get('[data-testid="rename-header"] > strong')
+    cy.get('[data-testid="header"] > strong')
       .should('be.visible')
-      .contains('Rename Tags');
+      .contains('Edit Tag');
 
     interceptURL('PATCH', '/api/v1/tags/*', 'renameTag');
-    cy.get('[data-testid="rename-input"]')
+    cy.get('[data-testid="name"] input')
       .should('be.visible')
       .clear()
       .type(NEW_TAG.renameTag);
