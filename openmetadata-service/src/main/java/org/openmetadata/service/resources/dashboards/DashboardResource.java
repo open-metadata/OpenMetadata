@@ -13,7 +13,6 @@
 
 package org.openmetadata.service.resources.dashboards;
 
-import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -22,6 +21,7 @@ import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import java.io.IOException;
 import java.util.UUID;
 import javax.json.JsonPatch;
@@ -59,7 +59,11 @@ import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.util.ResultList;
 
 @Path("/v1/dashboards")
-@Api(value = "Dashboards collection", tags = "Dashboards collection")
+@Tag(
+    name = "Dashboards",
+    description =
+        "Dashboards are computed from data and visually present data, metrics, and "
+            + "KPIs. They are typically updated in real-time and allow interactive data exploration.")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "dashboards")
@@ -94,7 +98,6 @@ public class DashboardResource extends EntityResource<Dashboard, DashboardReposi
   @Operation(
       operationId = "listDashboards",
       summary = "List dashboards",
-      tags = "dashboards",
       description =
           "Get a list of dashboards, optionally filtered by `service` it belongs to. Use `fields` "
               + "parameter to get only necessary fields. Use cursor-based pagination to limit the number "
@@ -146,7 +149,6 @@ public class DashboardResource extends EntityResource<Dashboard, DashboardReposi
   @Operation(
       operationId = "listAllDashboardVersion",
       summary = "List dashboard versions",
-      tags = "dashboards",
       description = "Get a list of all the versions of a dashboard identified by `Id`",
       responses = {
         @ApiResponse(
@@ -167,7 +169,6 @@ public class DashboardResource extends EntityResource<Dashboard, DashboardReposi
   @Operation(
       operationId = "getDashboardByID",
       summary = "Get a dashboard by Id",
-      tags = "dashboards",
       description = "Get a dashboard by `Id`.",
       responses = {
         @ApiResponse(
@@ -200,7 +201,6 @@ public class DashboardResource extends EntityResource<Dashboard, DashboardReposi
   @Operation(
       operationId = "getDashboardByFQN",
       summary = "Get a dashboard by fully qualified name",
-      tags = "dashboards",
       description = "Get a dashboard by fully qualified name.",
       responses = {
         @ApiResponse(
@@ -235,7 +235,6 @@ public class DashboardResource extends EntityResource<Dashboard, DashboardReposi
   @Operation(
       operationId = "getSpecificDashboardVersion",
       summary = "Get a version of the dashboard",
-      tags = "dashboards",
       description = "Get a version of the dashboard by given `id`",
       responses = {
         @ApiResponse(
@@ -263,7 +262,6 @@ public class DashboardResource extends EntityResource<Dashboard, DashboardReposi
   @Operation(
       operationId = "createDashboard",
       summary = "Create a dashboard",
-      tags = "dashboards",
       description = "Create a new dashboard.",
       responses = {
         @ApiResponse(
@@ -284,7 +282,6 @@ public class DashboardResource extends EntityResource<Dashboard, DashboardReposi
   @Operation(
       operationId = "patchDashboard",
       summary = "Update a dashboard",
-      tags = "dashboards",
       description = "Update an existing dashboard using JsonPatch.",
       externalDocs = @ExternalDocumentation(description = "JsonPatch RFC", url = "https://tools.ietf.org/html/rfc6902"))
   @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
@@ -309,7 +306,6 @@ public class DashboardResource extends EntityResource<Dashboard, DashboardReposi
   @Operation(
       operationId = "createOrUpdateDashboard",
       summary = "Create or update a dashboard",
-      tags = "dashboards",
       description = "Create a new dashboard, if it does not exist or update an existing dashboard.",
       responses = {
         @ApiResponse(
@@ -330,7 +326,6 @@ public class DashboardResource extends EntityResource<Dashboard, DashboardReposi
   @Operation(
       operationId = "addFollowerToDashboard",
       summary = "Add a follower",
-      tags = "dashboards",
       description = "Add a user identified by `userId` as follower of this dashboard",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
@@ -350,7 +345,6 @@ public class DashboardResource extends EntityResource<Dashboard, DashboardReposi
   @Operation(
       operationId = "removeFollowerFromDashboard",
       summary = "Remove a follower",
-      tags = "dashboards",
       description = "Remove the user identified `userId` as a follower of the dashboard.")
   public Response deleteFollower(
       @Context UriInfo uriInfo,
@@ -368,7 +362,6 @@ public class DashboardResource extends EntityResource<Dashboard, DashboardReposi
   @Operation(
       operationId = "deleteDashboard",
       summary = "Delete a dashboard by Id",
-      tags = "dashboards",
       description = "Delete a dashboard by `Id`.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
@@ -391,7 +384,6 @@ public class DashboardResource extends EntityResource<Dashboard, DashboardReposi
   @Operation(
       operationId = "deleteDashboardByFQN",
       summary = "Delete a dashboard by fully qualified name",
-      tags = "dashboards",
       description = "Delete a dashboard by `fullyQualifiedName`.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
@@ -416,7 +408,6 @@ public class DashboardResource extends EntityResource<Dashboard, DashboardReposi
   @Operation(
       operationId = "restore",
       summary = "Restore a soft deleted dashboard",
-      tags = "dashboards",
       description = "Restore a soft deleted dashboard.",
       responses = {
         @ApiResponse(

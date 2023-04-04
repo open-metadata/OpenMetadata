@@ -1,7 +1,6 @@
 package org.openmetadata.service.resources.dqtests;
 
 import com.google.inject.Inject;
-import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -10,6 +9,7 @@ import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import java.io.IOException;
 import java.util.UUID;
 import javax.json.JsonPatch;
@@ -60,13 +60,17 @@ import org.openmetadata.service.util.RestUtil.PutResponse;
 import org.openmetadata.service.util.ResultList;
 
 @Slf4j
-@Path("/v1/testCase")
-@Api(value = "TestCase collection", tags = "TestCase collection")
+@Path("/v1/testCases")
+@Tag(
+    name = "Test Cases",
+    description =
+        "Test case is a test definition to capture data quality tests against tables,"
+            + " columns, and other data assets.")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "TestCases")
 public class TestCaseResource extends EntityResource<TestCase, TestCaseRepository> {
-  public static final String COLLECTION_PATH = "/v1/testCase";
+  public static final String COLLECTION_PATH = "/v1/testCases";
 
   static final String FIELDS = "owner,testSuite,testDefinition";
 
@@ -102,7 +106,6 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
   @Operation(
       operationId = "listTestCases",
       summary = "List test cases",
-      tags = "testCases",
       description =
           "Get a list of test. Use `fields` "
               + "parameter to get only necessary fields. Use cursor-based pagination to limit the number "
@@ -180,7 +183,6 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
   @Operation(
       operationId = "listAllTestCaseVersion",
       summary = "List test case versions",
-      tags = "testCases",
       description = "Get a list of all the versions of a testCases identified by `Id`",
       responses = {
         @ApiResponse(
@@ -204,7 +206,6 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
   @Path("/{id}")
   @Operation(
       summary = "Get a test case by Id",
-      tags = "testCases",
       description = "Get a TestCase by `Id`.",
       responses = {
         @ApiResponse(
@@ -242,7 +243,6 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
   @Operation(
       operationId = "getTestCaseByName",
       summary = "Get a test case by fully qualified name",
-      tags = "testCases",
       description = "Get a test case by `fullyQualifiedName`.",
       responses = {
         @ApiResponse(
@@ -282,7 +282,6 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
   @Operation(
       operationId = "getSpecificTestCaseVersion",
       summary = "Get a version of the test case",
-      tags = "testCases",
       description = "Get a version of the test case by given `Id`",
       responses = {
         @ApiResponse(
@@ -312,7 +311,6 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
   @Operation(
       operationId = "createTestCase",
       summary = "Create a test case",
-      tags = "testCases",
       description = "Create a test case",
       responses = {
         @ApiResponse(
@@ -340,7 +338,6 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
   @Operation(
       operationId = "patchTest",
       summary = "Update a test case",
-      tags = "testCases",
       description = "Update an existing test using JsonPatch.",
       externalDocs = @ExternalDocumentation(description = "JsonPatch RFC", url = "https://tools.ietf.org/html/rfc6902"))
   @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
@@ -371,7 +368,6 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
   @Operation(
       operationId = "createOrUpdateTest",
       summary = "Update test case",
-      tags = "testCases",
       description = "Create a TestCase, it it does not exist or update an existing TestCase.",
       responses = {
         @ApiResponse(
@@ -400,7 +396,6 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
   @Operation(
       operationId = "deleteTestCase",
       summary = "Delete a test case by Id",
-      tags = "testCases",
       description = "Delete a test case by `Id`.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
@@ -429,7 +424,6 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
   @Operation(
       operationId = "deleteTestCaseByName",
       summary = "Delete a test case by fully qualified name",
-      tags = "testCases",
       description = "Delete a testCase by `fullyQualifiedName`.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
@@ -454,7 +448,6 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
   @Operation(
       operationId = "restore",
       summary = "Restore a soft deleted test case",
-      tags = "testCases",
       description = "Restore a soft deleted test case.",
       responses = {
         @ApiResponse(
@@ -473,7 +466,6 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
   @Operation(
       operationId = "addTestCaseResult",
       summary = "Add test case result data",
-      tags = "testCases",
       description = "Add test case result data to the testCase.",
       responses = {
         @ApiResponse(
@@ -501,7 +493,6 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
   @Operation(
       operationId = "listTestCaseResults",
       summary = "List of test case results",
-      tags = "testCases",
       description =
           "Get a list of all the test case results for the given testCase id, optionally filtered by  `startTs` and `endTs` of the profile. "
               + "Use cursor-based pagination to limit the number of "
@@ -541,7 +532,6 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
   @Operation(
       operationId = "DeleteTestCaseResult",
       summary = "Delete test case result",
-      tags = "testCases",
       description = "Delete testCase result for a testCase.",
       responses = {
         @ApiResponse(

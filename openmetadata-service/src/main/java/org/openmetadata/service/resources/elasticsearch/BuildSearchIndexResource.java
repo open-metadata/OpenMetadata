@@ -1,8 +1,9 @@
 package org.openmetadata.service.resources.elasticsearch;
 
-import io.swagger.annotations.Api;
+import io.swagger.v3.oas.annotations.Hidden;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import java.io.IOException;
 import javax.validation.Valid;
 import javax.ws.rs.Consumes;
@@ -32,8 +33,11 @@ import org.openmetadata.service.util.ElasticSearchClientUtils;
 import org.openmetadata.service.util.ElasticSearchIndexUtil;
 import org.openmetadata.service.util.JsonUtils;
 
+// TODO bring this under search/indexResource
+// TODO rename indexResource?
 @Path("/v1/indexResource")
-@Api(value = "Elastic Search Collection", tags = "Elastic Search Collection")
+@Tag(name = "indexResource")
+@Hidden
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "indexResource")
@@ -72,7 +76,6 @@ public class BuildSearchIndexResource {
   @Operation(
       operationId = "reindexEntities",
       summary = "Reindex entities",
-      tags = "indexResource",
       description = "Reindex Elastic Search Entities",
       responses = {
         @ApiResponse(responseCode = "200", description = "Success"),
@@ -97,7 +100,6 @@ public class BuildSearchIndexResource {
   @Operation(
       operationId = "getReindexAllLastJobStatus",
       summary = "Get last run reindex all job status",
-      tags = "indexResource",
       description = "Reindex all job last status",
       responses = {
         @ApiResponse(responseCode = "200", description = "Success"),
