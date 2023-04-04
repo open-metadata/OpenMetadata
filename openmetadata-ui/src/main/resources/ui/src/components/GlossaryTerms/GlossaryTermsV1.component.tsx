@@ -46,7 +46,9 @@ const GlossaryTermsV1 = ({
   permissions,
 }: Props) => {
   const { glossaryName: glossaryFqn } = useParams<{ glossaryName: string }>();
-  const [activeTab, setActiveTab] = useState<string>('glossaryTerms');
+  const [activeTab, setActiveTab] = useState<'glossaryTerms' | 'assets'>(
+    'glossaryTerms'
+  );
 
   const [assetData, setAssetData] = useState<AssetsDataType>({
     isLoading: true,
@@ -56,7 +58,7 @@ const GlossaryTermsV1 = ({
   });
 
   const activeTabHandler = (tab: string) => {
-    setActiveTab(tab);
+    setActiveTab(tab as 'glossaryTerms' | 'assets');
   };
 
   const fetchGlossaryTermAssets = async (fqn: string, currentPage = 1) => {
@@ -124,10 +126,12 @@ const GlossaryTermsV1 = ({
           isGlossary={false}
           permissions={permissions}
           selectedData={glossaryTerm}
-          onAssetsUpdate={() =>
-            glossaryTerm.fullyQualifiedName &&
-            fetchGlossaryTermAssets(glossaryTerm.fullyQualifiedName)
-          }
+          onAssetsUpdate={() => {
+            if (glossaryTerm.fullyQualifiedName) {
+              setActiveTab('assets');
+              fetchGlossaryTermAssets(glossaryTerm.fullyQualifiedName);
+            }
+          }}
           onDelete={handleGlossaryTermDelete}
           onUpdate={(data) => handleGlossaryTermUpdate(data as GlossaryTerm)}
         />

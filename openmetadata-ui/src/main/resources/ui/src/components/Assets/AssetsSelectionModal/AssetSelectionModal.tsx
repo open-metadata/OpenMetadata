@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, List, Modal, Radio, Space } from 'antd';
+import { Button, List, Modal, Select, Space } from 'antd';
 import Searchbar from 'components/common/searchbar/Searchbar';
 import TableDataCardV2 from 'components/common/table-data-card-v2/TableDataCardV2';
 import { EntityUnion } from 'components/Explore/explore.interface';
@@ -35,7 +35,6 @@ import {
   getAPIfromSource,
   getEntityAPIfromSource,
 } from 'utils/Assets/AssetsUtils';
-import { getCountBadge } from 'utils/CommonUtils';
 import { getQueryFilterToExcludeTerm } from 'utils/GlossaryUtils';
 import {
   AssetFilterKeys,
@@ -259,19 +258,15 @@ export const AssetSelectionModal = ({
             fetchEntities(s);
           }}
         />
-        <Radio.Group
-          value={activeFilter}
-          onChange={(e) => setActiveFilter(e.target.value)}>
-          {map(
-            itemCount,
-            (value, key) =>
-              value > 0 && (
-                <Radio.Button key={key} value={key}>
-                  {startCase(key)} {getCountBadge(value)}
-                </Radio.Button>
-              )
-          )}
-        </Radio.Group>
+        <Select
+          defaultValue="all"
+          options={map(itemCount, (_, key) => ({
+            label: startCase(key),
+            value: key,
+          }))}
+          style={{ minWidth: 120 }}
+          onChange={setActiveFilter}
+        />
         <List loading={{ spinning: isLoading, indicator: <Loader /> }}>
           <VirtualList
             data={filteredData}
