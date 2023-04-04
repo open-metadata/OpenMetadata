@@ -142,9 +142,9 @@ export const emptyJsonTree: JsonTree = {
  */
 export const autocomplete: (args: {
   searchIndex: SearchIndex | SearchIndex[];
+  entitySearchIndex: SearchIndex | SearchIndex[];
+  entityField: EntityFields;
   suggestField?: SuggestionField;
-  entitySearchIndex?: SearchIndex;
-  entityField?: EntityFields;
 }) => SelectFieldSettings['asyncFetch'] = ({
   searchIndex,
   suggestField,
@@ -183,8 +183,8 @@ export const autocomplete: (args: {
       });
     } else {
       return getAdvancedFieldDefaultOptions(
-        entitySearchIndex as SearchIndex,
-        entityField ?? ''
+        entitySearchIndex,
+        entityField
       ).then((response) => {
         const buckets =
           response.data.aggregations[`sterms#${entityField}`].buckets;
@@ -227,7 +227,7 @@ const getCommonQueryBuilderFields = (
       fieldSettings: {
         asyncFetch: autocomplete({
           searchIndex: [SearchIndex.USER, SearchIndex.TEAM],
-          entitySearchIndex,
+          entitySearchIndex: [SearchIndex.USER, SearchIndex.TEAM],
           entityField: EntityFields.OWNER,
         }),
         useAsyncSearch: true,
@@ -278,9 +278,9 @@ const getServiceQueryBuilderFields = (index: SearchIndex) => {
       fieldSettings: {
         asyncFetch: autocomplete({
           searchIndex: index,
-          suggestField: SuggestionField.SERVICE,
           entitySearchIndex: index,
           entityField: EntityFields.SERVICE,
+          suggestField: SuggestionField.SERVICE,
         }),
         useAsyncSearch: true,
       },
@@ -301,9 +301,9 @@ const tableQueryBuilderFields: Fields = {
     fieldSettings: {
       asyncFetch: autocomplete({
         searchIndex: SearchIndex.TABLE,
-        suggestField: SuggestionField.DATABASE,
         entitySearchIndex: SearchIndex.TABLE,
         entityField: EntityFields.DATABASE,
+        suggestField: SuggestionField.DATABASE,
       }),
       useAsyncSearch: true,
     },
@@ -316,9 +316,9 @@ const tableQueryBuilderFields: Fields = {
     fieldSettings: {
       asyncFetch: autocomplete({
         searchIndex: SearchIndex.TABLE,
-        suggestField: SuggestionField.SCHEMA,
         entitySearchIndex: SearchIndex.TABLE,
         entityField: EntityFields.DATABASE_SCHEMA,
+        suggestField: SuggestionField.SCHEMA,
       }),
       useAsyncSearch: true,
     },
@@ -331,9 +331,9 @@ const tableQueryBuilderFields: Fields = {
     fieldSettings: {
       asyncFetch: autocomplete({
         searchIndex: SearchIndex.TABLE,
-        suggestField: SuggestionField.COLUMN,
         entitySearchIndex: SearchIndex.TABLE,
         entityField: EntityFields.COLUMN,
+        suggestField: SuggestionField.COLUMN,
       }),
       useAsyncSearch: true,
     },
