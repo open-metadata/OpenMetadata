@@ -42,8 +42,8 @@ const ServiceRequirements: FC<ServiceRequirementsProp> = ({
     try {
       let response = '';
       const isEnglishLanguage = i18n.language === SupportedLocales.English;
-      const filePath = `${i18n.language}/${serviceType}/${serviceName}/requirements.md`;
-      const fallbackFilePath = `${SupportedLocales.English}/${serviceType}/${serviceName}/requirements.md`;
+      const filePath = `${i18n.language}/${serviceType}/${serviceName}.md`;
+      const fallbackFilePath = `${SupportedLocales.English}/${serviceType}/${serviceName}.md`;
 
       const [translation, fallbackTranslation] = await Promise.allSettled([
         fetchMarkdownFile(filePath),
