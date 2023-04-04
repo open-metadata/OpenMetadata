@@ -102,8 +102,25 @@ class DashboardServiceTopology(ServiceTopology):
                 nullable=True,
             ),
         ],
-        children=["dashboard"],
+        children=["bulk_data_model", "dashboard"],
         post_process=["mark_dashboards_as_deleted"],
+    )
+    # Dashboard Services have very different approaches when
+    # when dealing with data models. Tableau has the models
+    # tightly coupled with dashboards, while Looker
+    # handles them as independent entities.
+    # When configuring a new source, we will either implement
+    # the yield_bulk_datamodel or yield_datamodel functions.
+    bulk_data_model = TopologyNode(
+        producer="list_datamodels",
+        stages=[
+            NodeStage(
+                type_=DashboardDataModel,
+                context="dataModel",
+                processor="yield_bulk_datamodel",
+                consumer=["dashboard_service"],
+            )
+        ],
     )
     dashboard = TopologyNode(
         producer="get_dashboard",
@@ -234,9 +251,27 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
         Get Dashboard Details
         """
 
+    def list_datamodels(self) -> Iterable[Any]:
+        """
+        Optional Node producer for processing datamodels in bulk
+        before the dashboards
+        """
+        return []
+
     def yield_datamodel(self, _) -> Optional[Iterable[CreateDashboardDataModelRequest]]:
         """
         Method to fetch DataModel linked to Dashboard
+        """
+
+        logger.debug(
+            f"DataModel is not supported for {self.service_connection.type.name}"
+        )
+
+    def yield_bulk_datamodel(
+        self, _
+    ) -> Optional[Iterable[CreateDashboardDataModelRequest]]:
+        """
+        Method to fetch DataModels in bulk
         """
 
         logger.debug(

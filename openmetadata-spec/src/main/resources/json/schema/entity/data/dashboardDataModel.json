@@ -16,7 +16,9 @@
       "enum": [
         "TableauSheet",
         "SupersetDataModel",
-        "MetabaseDataModel"
+        "MetabaseDataModel",
+        "LookMlView",
+        "LookMlExplore"
       ],
       "javaEnums": [
         {
@@ -27,6 +29,12 @@
         },
         {
           "name": "MetabaseDataModel"
+        },
+        {
+          "name": "LookMlView"
+        },
+        {
+          "name": "LookMlExplore"
         }
       ]
     }

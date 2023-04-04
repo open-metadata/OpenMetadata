@@ -22,7 +22,7 @@ Notes:
 import traceback
 from datetime import datetime
 from json import JSONDecodeError
-from typing import Iterable, List, Optional, Set, cast
+from typing import Iterable, List, Optional, Sequence, Set, cast
 
 from looker_sdk.error import SDKError
 from looker_sdk.sdk.api31.models import Query
@@ -31,22 +31,32 @@ from looker_sdk.sdk.api40.models import Dashboard as LookerDashboard
 from looker_sdk.sdk.api40.models import (
     DashboardBase,
     DashboardElement,
+    LookmlModel,
     LookmlModelExplore,
+    LookmlModelNavExplore,
 )
+from pydantic import ValidationError
 
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
+from metadata.generated.schema.api.data.createDashboardDataModel import (
+    CreateDashboardDataModelRequest,
+)
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.chart import Chart
 from metadata.generated.schema.entity.data.dashboard import (
     Dashboard as MetadataDashboard,
 )
+from metadata.generated.schema.entity.data.dashboardDataModel import DataModelType
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.connections.dashboard.lookerConnection import (
     LookerConnection,
 )
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
+)
+from metadata.generated.schema.entity.services.dashboardService import (
+    DashboardServiceType,
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
@@ -58,6 +68,7 @@ from metadata.ingestion.source.dashboard.dashboard_service import (
     DashboardServiceSource,
     DashboardUsage,
 )
+from metadata.ingestion.source.dashboard.looker.columns import get_column_from_model
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_chart
 from metadata.utils.helpers import get_standard_chart_type
@@ -122,6 +133,77 @@ class LookerSource(DashboardServiceSource):
                 f"Expected LookerConnection, but got {connection}"
             )
         return cls(config, metadata_config)
+
+    def list_datamodels(self) -> Iterable[LookmlModelExplore]:
+        """
+        Fetch explores with the SDK
+        """
+        # First, pick up all the LookML Models
+        all_lookml_models: Sequence[LookmlModel] = self.client.all_lookml_models()
+
+        # Then, fetch the explores for each of them
+        for lookml_model in all_lookml_models:
+            # Each LookML model have a list of explores we'll be ingesting
+            for explore_nav in (
+                cast(Sequence[LookmlModelNavExplore], lookml_model.explores) or []
+            ):
+                explore = self.client.lookml_model_explore(
+                    lookml_model_name=lookml_model.name, explore_name=explore_nav.name
+                )
+                yield explore
+
+    def yield_bulk_datamodel(
+        self, model: LookmlModelExplore
+    ) -> Optional[Iterable[CreateDashboardDataModelRequest]]:
+        """
+        Get the Explore and View information and prepare
+        the model creation request
+        """
+        try:
+            yield CreateDashboardDataModelRequest(
+                name=clean_dashboard_name(model.id),
+                displayName=model.name,
+                description=model.description,
+                service=self.context.dashboard_service.fullyQualifiedName.__root__,
+                dataModelType=DataModelType.LookMlExplore.value,
+                serviceType=DashboardServiceType.Looker.value,
+                columns=get_column_from_model(model),
+                # TODO: Pick up SQL query from the file from git
+                sql=None,
+            )
+            self.status.scanned(f"Data Model Scanned: {model.name}")
+
+            # We can get VIEWs from the JOINs to know the dependencies
+            # We will only try and fetch if we have the credentials
+            if self.service_connection.githubCredentials:
+                for view in model.joins:
+                    yield from self._process_view(view_name=view.name, explore=model)
+
+        except ValidationError as err:
+            error = f"Validation error yielding Data Model [{model.name}]: {err}"
+            logger.debug(traceback.format_exc())
+            logger.error(error)
+            self.status.failed(
+                name=model.name, error=error, stack_trace=traceback.format_exc()
+            )
+        except Exception as err:
+            error = f"Wild error yielding Data Model [{model.name}]: {err}"
+            logger.debug(traceback.format_exc())
+            logger.error(error)
+            self.status.failed(
+                name=model.name, error=error, stack_trace=traceback.format_exc()
+            )
+
+    def _process_view(self, view_name: str, explore: LookmlModelExplore):
+        """
+        For each view referenced in the JOIN of the explore,
+        We first load the explore file from GitHub, then:
+        1. Fetch the view from the GitHub files (search in includes)
+        2. Yield the view as a dashboard Model
+        3. Yield the lineage between the View -> Explore and Source -> View
+        Every visited view, will be cached so that we don't need to process
+        everything again.
+        """
 
     def get_dashboards_list(self) -> List[DashboardBase]:
         """
@@ -279,32 +361,41 @@ class LookerSource(DashboardServiceSource):
         - chart.look (chart.look.query)
         - chart.result_maker
         """
-        datasource_list = self.get_dashboard_sources(dashboard_details)
 
-        to_fqn = fqn.build(
-            self.metadata,
-            entity_type=MetadataDashboard,
-            service_name=self.config.serviceName,
-            dashboard_name=clean_dashboard_name(dashboard_details.id),
-        )
-        to_entity = self.metadata.get_by_name(
-            entity=MetadataDashboard,
-            fqn=to_fqn,
-        )
+        try:
+            datasource_list = self.get_dashboard_sources(dashboard_details)
 
-        for source in datasource_list:
-            try:
-                yield self.build_lineage_request(
-                    source=source,
-                    db_service_name=db_service_name,
-                    to_entity=to_entity,
-                )
+            to_fqn = fqn.build(
+                self.metadata,
+                entity_type=MetadataDashboard,
+                service_name=self.config.serviceName,
+                dashboard_name=clean_dashboard_name(dashboard_details.id),
+            )
+            to_entity = self.metadata.get_by_name(
+                entity=MetadataDashboard,
+                fqn=to_fqn,
+            )
 
-            except (Exception, IndexError) as err:
-                logger.debug(traceback.format_exc())
-                logger.warning(
-                    f"Error building lineage for database service [{db_service_name}]: {err}"
-                )
+            for source in datasource_list:
+                try:
+                    yield self.build_lineage_request(
+                        source=source,
+                        db_service_name=db_service_name,
+                        to_entity=to_entity,
+                    )
+
+                except (Exception, IndexError) as err:
+                    logger.debug(traceback.format_exc())
+                    logger.warning(
+                        f"Error building lineage for database service [{db_service_name}]: {err}"
+                    )
+        except Exception as exc:
+            error = f"Unexpected exception yielding lineage from [{self.context.dashboard.displayName}]: {exc}"
+            logger.debug(traceback.format_exc())
+            logger.warning(error)
+            self.status.failed(
+                self.context.dashboard.displayName, error, traceback.format_exc()
+            )
 
     def build_lineage_request(
         self, source: str, db_service_name: str, to_entity: MetadataDashboard
