@@ -69,9 +69,8 @@ export interface SearchedDataProps {
   children?: ReactNode;
   selectedEntityId: string;
   data: SearchHitBody<ExploreSearchIndex, SourceType>[];
-  currentPage: number;
   isLoading?: boolean;
-  paginate: (value: string | number) => void;
+  onPaginationChange: (value: number, pageSize?: number) => void;
   totalValue: number;
   fetchLeftPanel?: () => ReactNode;
   isSummaryPanelVisible: boolean;

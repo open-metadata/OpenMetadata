@@ -93,7 +93,7 @@ const MOCK_PROPS = {
   currentPage: 0,
   data: mockData,
   handleSummaryPanelDisplay: mockHandleSummaryPanelDisplay,
-  paginate: mockPaginate,
+  onPaginationChange: mockPaginate,
   selectedEntityId: 'name1',
   totalValue: 10,
 };

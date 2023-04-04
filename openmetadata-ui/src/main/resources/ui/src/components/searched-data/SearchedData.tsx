@@ -11,17 +11,16 @@
  *  limitations under the License.
  */
 
+import { Pagination } from 'antd';
 import classNames from 'classnames';
 import { ELASTICSEARCH_ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
-import { isUndefined, toString } from 'lodash';
-import PropTypes from 'prop-types';
-import React from 'react';
+import { isNumber, isUndefined, toString } from 'lodash';
+import Qs from 'qs';
+import React, { useMemo } from 'react';
 import { PAGE_SIZE } from '../../constants/constants';
 import { MAX_RESULT_HITS } from '../../constants/explore.constants';
-import { Paging } from '../../generated/type/paging';
 import { pluralize } from '../../utils/CommonUtils';
 import ErrorPlaceHolderES from '../common/error-with-placeholder/ErrorPlaceHolderES';
-import NextPrevious from '../common/next-previous/NextPrevious';
 import TableDataCardV2 from '../common/table-data-card-v2/TableDataCardV2';
 import Loader from '../Loader/Loader';
 import Onboarding from '../onboarding/Onboarding';
@@ -37,9 +36,8 @@ const ASSETS_NAME = [
 const SearchedData: React.FC<SearchedDataProps> = ({
   children,
   data,
-  currentPage,
   isLoading = false,
-  paginate,
+  onPaginationChange,
   showResultCount = false,
   showOnboardingTemplate = false,
   showOnlyChildren = false,
@@ -122,6 +120,16 @@ const SearchedData: React.FC<SearchedDataProps> = ({
     }
   };
 
+  const { page, size } = useMemo(
+    () =>
+      Qs.parse(
+        location.search.startsWith('?')
+          ? location.search.substr(1)
+          : location.search
+      ),
+    [location.search]
+  );
+
   return (
     <>
       {isLoading ? (
@@ -139,16 +147,17 @@ const SearchedData: React.FC<SearchedDataProps> = ({
                       className="tw-grid tw-grid-rows-1 tw-grid-cols-1"
                       data-testid="search-results">
                       {highlightSearchResult()}
-                      {totalValue > PAGE_SIZE && data.length > 0 && (
-                        <NextPrevious
-                          isNumberBased
-                          currentPage={currentPage}
-                          pageSize={PAGE_SIZE}
-                          paging={{} as Paging}
-                          pagingHandler={paginate}
-                          totalCount={totalValue}
-                        />
-                      )}
+                      <Pagination
+                        hideOnSinglePage
+                        className="text-center"
+                        current={isNumber(Number(page)) ? Number(page) : 1}
+                        pageSize={
+                          isNumber(Number(size)) ? Number(size) : PAGE_SIZE
+                        }
+                        pageSizeOptions={[10, 25, 50]}
+                        total={totalValue}
+                        onChange={onPaginationChange}
+                      />
                     </div>
                   ) : (
                     <Onboarding />
@@ -169,18 +178,6 @@ const SearchedData: React.FC<SearchedDataProps> = ({
       )}
     </>
   );
-};
-
-SearchedData.propTypes = {
-  children: PropTypes.element,
-  data: PropTypes.array.isRequired,
-  currentPage: PropTypes.number.isRequired,
-  isLoading: PropTypes.bool,
-  paginate: PropTypes.func.isRequired,
-  showResultCount: PropTypes.bool,
-  showOnboardingTemplate: PropTypes.bool,
-  totalValue: PropTypes.number.isRequired,
-  fetchLeftPanel: PropTypes.func,
 };
 
 export default SearchedData;
