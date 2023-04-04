@@ -19,12 +19,12 @@ import static org.openmetadata.service.Entity.FIELD_DESCRIPTION;
 import static org.openmetadata.service.Entity.FIELD_DISPLAY_NAME;
 import static org.openmetadata.service.Entity.FIELD_NAME;
 
-import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
@@ -79,7 +79,7 @@ import org.openmetadata.service.util.ElasticSearchClientUtils;
 
 @Slf4j
 @Path("/v1/search")
-@Api(value = "Search collection", tags = "Search collection")
+@Tag(name = "Search", description = "APIs related to search and suggest.")
 @Produces(MediaType.APPLICATION_JSON)
 @Collection(name = "search")
 public class SearchResource {
@@ -116,7 +116,6 @@ public class SearchResource {
   @Operation(
       operationId = "searchEntitiesWithQuery",
       summary = "Search entities",
-      tags = "search",
       description =
           "Search entities using query test. Use query params `from` and `size` for pagination. Use "
               + "`sort_field` to sort the results in `sort_order`.",
@@ -298,7 +297,6 @@ public class SearchResource {
   @Operation(
       operationId = "getSuggestedEntities",
       summary = "Suggest entities",
-      tags = "search",
       description = "Get suggested entities used for auto-completion.",
       responses = {
         @ApiResponse(
@@ -372,7 +370,6 @@ public class SearchResource {
   @Operation(
       operationId = "getAggregateFields",
       summary = "Get aggregated fields",
-      tags = "search",
       description = "Get aggregated fields from entities.",
       responses = {
         @ApiResponse(
