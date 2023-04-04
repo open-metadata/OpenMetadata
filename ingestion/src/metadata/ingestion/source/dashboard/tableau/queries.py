@@ -20,12 +20,15 @@ TABLEAU_LINEAGE_GRAPHQL_QUERY = """
     luid
     name
     upstreamTables{
+      id
       name
       schema
       upstreamDatabases{
+        id
         name
       }
       referencedByQueries{
+        id
         name
         query
       }
@@ -36,30 +39,27 @@ TABLEAU_LINEAGE_GRAPHQL_QUERY = """
 
 TABLEAU_SHEET_QUERY_BY_ID = """
 query SheetQuery {{
-	sheets(filter: {{id: "6dfc8b64-03c4-79f2-f807-360779c0155b" }} ) {{
-		name
+  sheets(filter: {{id: "{id}" }} ) {{
+    name
     id
     worksheetFields {{ 
-        name
-        id
-        dataType
+      name
+      id
+      dataType
     }}
     datasourceFields {{
       __typename
       name
       id
       ... on DatasourceField {{
-          remoteField {{
-        __typename
-        ... on ColumnField {{
-          dataType
+        remoteField {{
+          __typename
+          ... on ColumnField {{
+            dataType
+          }}
         }}
       }}
     }}
   }}
-  sheetFieldInstances {{ 
-    name
-  }}
-}}
 }}
 """

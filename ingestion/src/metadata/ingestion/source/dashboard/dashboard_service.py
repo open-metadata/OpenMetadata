@@ -119,9 +119,12 @@ class DashboardServiceTopology(ServiceTopology):
             ),
             NodeStage(
                 type_=DashboardDataModel,
-                context="dataModel",
+                context="dataModels",
                 processor="yield_datamodel",
                 consumer=["dashboard_service"],
+                nullable=True,
+                cache_all=True,
+                clear_cache=True,
             ),
             NodeStage(
                 type_=Dashboard,
