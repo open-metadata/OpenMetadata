@@ -28,6 +28,7 @@ import React, { FC, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   addWorkflow,
+  deleteWorkflowById,
   getTestConnectionDefinitionByName,
   getWorkflowById,
   triggerWorkflowById,
@@ -149,6 +150,15 @@ const TestConnection: FC<TestConnectionProps> = ({
     setTestStatus(undefined);
   };
 
+  const handleDeleteWorkflow = async (workflowId: string) => {
+    try {
+      const response = await deleteWorkflowById(workflowId, true);
+      setCurrentWorkflow(response);
+    } catch (error) {
+      // do not throw error for this API
+    }
+  };
+
   // handlers
   const handleTestConnection = async () => {
     setIsTestingConnection(true);
@@ -223,6 +233,9 @@ const TestConnection: FC<TestConnectionProps> = ({
 
           // set testing connection to false
           setIsTestingConnection(false);
+
+          // delete the workflow once it's finished
+          await handleDeleteWorkflow(workflowResponse.id);
         }, FETCH_INTERVAL)
       );
 
@@ -271,14 +284,15 @@ const TestConnection: FC<TestConnectionProps> = ({
             {testStatus === StatusType.Failed && (
               <FailIcon data-testid="fail-badge" height={24} width={24} />
             )}
-            <Space data-testid="messag-text" size={2}>
+            <Space wrap data-testid="messag-text" size={2}>
               {message}{' '}
-              {testStatus && (
+              {(testStatus || isTestingConnection) && (
                 <Transi18next
                   i18nKey="message.click-text-to-view-details"
                   renderElement={
                     <Button
                       className="p-0 test-connection-message-btn"
+                      data-testid="test-connection-details-btn"
                       type="link"
                       onClick={() => setDialogOpen(true)}
                     />

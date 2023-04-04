@@ -16,7 +16,7 @@ import textwrap
 PIPELINE_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
     """
 {
-"settings": {
+  "settings": {
     "analysis": {
       "normalizer": {
         "lowercase_normalizer": {
@@ -59,7 +59,8 @@ PIPELINE_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
         }
       },
       "fullyQualifiedName": {
-        "type": "text"
+        "type": "keyword",
+        "normalizer": "lowercase_normalizer"
       },
       "displayName": {
         "type": "text",
@@ -98,7 +99,12 @@ PIPELINE_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
           },
           "displayName": {
             "type": "text",
-            "analyzer": "om_analyzer"
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "ignore_above": 256
+              }
+            }
           },
           "description": {
             "type": "text",
@@ -127,6 +133,15 @@ PIPELINE_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
             "type": "keyword"
           },
           "name": {
+            "type": "keyword",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "ignore_above": 256
+              }
+            }
+          },
+          "displayName": {
             "type": "keyword",
             "fields": {
               "keyword": {

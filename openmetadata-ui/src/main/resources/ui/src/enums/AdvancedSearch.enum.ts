@@ -17,6 +17,7 @@ export enum SuggestionField {
   SCHEMA = 'schema_suggest',
   SERVICE = 'service_suggest',
   CHART = 'chart_suggest',
+  DATA_MODEL = 'data_model_suggest',
   TASK = 'task_suggest',
   ROOT = 'suggest',
   SERVICE_TYPE = 'serviceType',
@@ -28,6 +29,7 @@ export enum AdvancedFields {
   SCHEMA = 'schema_suggest',
   SERVICE = 'service_suggest',
   CHART = 'chart_suggest',
+  DATA_MODEL = 'data_model_suggest',
   TASK = 'task_suggest',
 }
 
