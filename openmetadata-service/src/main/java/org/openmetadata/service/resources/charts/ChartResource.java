@@ -13,7 +13,6 @@
 
 package org.openmetadata.service.resources.charts;
 
-import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -22,6 +21,7 @@ import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import java.io.IOException;
 import java.util.UUID;
 import javax.json.JsonPatch;
@@ -61,7 +61,9 @@ import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
 
 @Path("/v1/charts")
-@Api(value = "Chart data asset collection", tags = "Chart data asset collection")
+@Tag(
+    name = "Charts",
+    description = "A `Chart` are computed from data presents data visually and can be part of " + "`Dashboards`.")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "charts")
@@ -94,7 +96,6 @@ public class ChartResource extends EntityResource<Chart, ChartRepository> {
   @Operation(
       operationId = "listCharts",
       summary = "List charts",
-      tags = "charts",
       description =
           "Get a list of charts, optionally filtered by `service` it belongs to. Use `fields` "
               + "parameter to get only necessary fields. Use cursor-based pagination to limit the number "
@@ -144,7 +145,6 @@ public class ChartResource extends EntityResource<Chart, ChartRepository> {
   @Operation(
       operationId = "listAllChartVersions",
       summary = "List chart versions",
-      tags = "charts",
       description = "Get a list of all the versions of a chart identified by `id`",
       responses = {
         @ApiResponse(
@@ -165,7 +165,6 @@ public class ChartResource extends EntityResource<Chart, ChartRepository> {
   @Operation(
       operationId = "getChartByID",
       summary = "Get a chart by Id",
-      tags = "charts",
       description = "Get a chart by `Id`.",
       responses = {
         @ApiResponse(
@@ -198,7 +197,6 @@ public class ChartResource extends EntityResource<Chart, ChartRepository> {
   @Operation(
       operationId = "getChartByFQN",
       summary = "Get a chart by fully qualified name",
-      tags = "charts",
       description = "Get a chart by `fullyQualifiedName`.",
       responses = {
         @ApiResponse(
@@ -232,7 +230,6 @@ public class ChartResource extends EntityResource<Chart, ChartRepository> {
   @Operation(
       operationId = "getSpecificChartVersion",
       summary = "Get a version of the chart",
-      tags = "charts",
       description = "Get a version of the chart by given `Id`",
       responses = {
         @ApiResponse(
@@ -260,7 +257,6 @@ public class ChartResource extends EntityResource<Chart, ChartRepository> {
   @Operation(
       operationId = "createChart",
       summary = "Create a chart",
-      tags = "charts",
       description = "Create a chart under an existing `service`.",
       responses = {
         @ApiResponse(
@@ -280,7 +276,6 @@ public class ChartResource extends EntityResource<Chart, ChartRepository> {
   @Operation(
       operationId = "patchChart",
       summary = "Update a chart",
-      tags = "charts",
       description = "Update an existing chart using JsonPatch.",
       externalDocs = @ExternalDocumentation(description = "JsonPatch RFC", url = "https://tools.ietf.org/html/rfc6902"))
   @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
@@ -305,7 +300,6 @@ public class ChartResource extends EntityResource<Chart, ChartRepository> {
   @Operation(
       operationId = "createOrUpdateChart",
       summary = "Create or update chart",
-      tags = "charts",
       description = "Create a chart, it it does not exist or update an existing chart.",
       responses = {
         @ApiResponse(
@@ -325,7 +319,6 @@ public class ChartResource extends EntityResource<Chart, ChartRepository> {
   @Operation(
       operationId = "addFollowerToChart",
       summary = "Add a follower",
-      tags = "charts",
       description = "Add a user identified by `userId` as followed of this chart",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
@@ -345,7 +338,6 @@ public class ChartResource extends EntityResource<Chart, ChartRepository> {
   @Operation(
       operationId = "deleteFollowerFromChart",
       summary = "Remove a follower",
-      tags = "charts",
       description = "Remove the user identified `userId` as a follower of the chart.")
   public Response deleteFollower(
       @Context UriInfo uriInfo,
@@ -363,7 +355,6 @@ public class ChartResource extends EntityResource<Chart, ChartRepository> {
   @Operation(
       operationId = "deleteChart",
       summary = "Delete a chart by Id",
-      tags = "charts",
       description = "Delete a chart by `Id`.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
@@ -386,7 +377,6 @@ public class ChartResource extends EntityResource<Chart, ChartRepository> {
   @Operation(
       operationId = "deleteChartByFQN",
       summary = "Delete a chart by fully qualified name",
-      tags = "charts",
       description = "Delete a chart by `fullyQualifiedName`.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
@@ -410,7 +400,6 @@ public class ChartResource extends EntityResource<Chart, ChartRepository> {
   @Operation(
       operationId = "restore",
       summary = "Restore a soft deleted chart",
-      tags = "charts",
       description = "Restore a soft deleted chart.",
       responses = {
         @ApiResponse(

@@ -17,7 +17,6 @@ import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
 import static org.openmetadata.service.Entity.CLASSIFICATION;
 import static org.openmetadata.service.Entity.TAG;
 
-import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -78,7 +77,15 @@ import org.openmetadata.service.util.ResultList;
 
 @Slf4j
 @Path("/v1/tags")
-@Api(value = "Tags resources collection", tags = "Tags resources collection")
+@io.swagger.v3.oas.annotations.tags.Tag(
+    name = "Classifications",
+    description =
+        "These APIs are related to `Classification` and `Tags`. A `Classification`"
+            + " "
+            + "entity "
+            + "contains hierarchical"
+            + " terms called `Tags` used "
+            + "for categorizing and classifying data assets and other entities.")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "tags", order = 5) // initialize after Classification, and before Glossary and GlossaryTerm
@@ -188,7 +195,6 @@ public class TagResource extends EntityResource<Tag, TagRepository> {
   @Operation(
       operationId = "listTags",
       summary = "List tags",
-      tags = "classification",
       description =
           "Get a list of tags. Use `fields` parameter to get only necessary fields. "
               + " Use cursor-based pagination to limit the number "
@@ -242,7 +248,6 @@ public class TagResource extends EntityResource<Tag, TagRepository> {
   @Operation(
       operationId = "getTagByID",
       summary = "Get a tag by id",
-      tags = "classification",
       description = "Get a tag by `id`.",
       responses = {
         @ApiResponse(
@@ -275,7 +280,6 @@ public class TagResource extends EntityResource<Tag, TagRepository> {
   @Operation(
       operationId = "getTagByFQN",
       summary = "Get a tag by fully qualified name",
-      tags = "classification",
       description = "Get a tag by `fullyQualifiedName`.",
       responses = {
         @ApiResponse(
@@ -309,7 +313,6 @@ public class TagResource extends EntityResource<Tag, TagRepository> {
   @Operation(
       operationId = "listAllTagVersion",
       summary = "List tag versions",
-      tags = "classification",
       description = "Get a list of all the versions of a tag identified by `id`",
       responses = {
         @ApiResponse(
@@ -330,7 +333,6 @@ public class TagResource extends EntityResource<Tag, TagRepository> {
   @Operation(
       operationId = "getSpecificTagVersion",
       summary = "Get a version of the tags",
-      tags = "classification",
       description = "Get a version of the tag by given `id`",
       responses = {
         @ApiResponse(
@@ -358,7 +360,6 @@ public class TagResource extends EntityResource<Tag, TagRepository> {
   @Operation(
       operationId = "createTag",
       summary = "Create a tag",
-      tags = "classification",
       description = "Create a new tag.",
       responses = {
         @ApiResponse(
@@ -378,7 +379,6 @@ public class TagResource extends EntityResource<Tag, TagRepository> {
   @Operation(
       operationId = "patchTag",
       summary = "Update a tag",
-      tags = "classification",
       description = "Update an existing tag using JsonPatch.",
       externalDocs = @ExternalDocumentation(description = "JsonPatch RFC", url = "https://tools.ietf.org/html/rfc6902"))
   @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
@@ -403,7 +403,6 @@ public class TagResource extends EntityResource<Tag, TagRepository> {
   @Operation(
       operationId = "createOrUpdateTag",
       summary = "Create or update a tag",
-      tags = "classification",
       description = "Create a new tag, if it does not exist or update an existing tag.",
       responses = {
         @ApiResponse(
@@ -423,7 +422,6 @@ public class TagResource extends EntityResource<Tag, TagRepository> {
   @Operation(
       operationId = "deleteTag",
       summary = "Delete a tag by id",
-      tags = "classification",
       description = "Delete a tag by `id`.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
@@ -450,7 +448,6 @@ public class TagResource extends EntityResource<Tag, TagRepository> {
   @Operation(
       operationId = "deleteTagByName",
       summary = "Delete a tag by fully qualified name",
-      tags = "classification",
       description = "Delete a tag by `fullyQualifiedName`.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
@@ -474,7 +471,6 @@ public class TagResource extends EntityResource<Tag, TagRepository> {
   @Operation(
       operationId = "restoreTag",
       summary = "Restore a soft deleted tag.",
-      tags = "classification",
       description = "Restore a soft deleted tag.",
       responses = {
         @ApiResponse(
