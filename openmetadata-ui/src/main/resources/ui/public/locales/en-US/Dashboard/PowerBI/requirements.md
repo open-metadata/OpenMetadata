@@ -14,8 +14,13 @@ Login to Power BI as Admin and from `Tenant` settings allow below permissions.
 
 ### Step 2: Provide necessary API permissions to the app
 Go to the `Azure Ad app registrations` page, select your app and add the dashboard permissions to the app for PowerBI service and grant admin consent for the same:
+Compulsory Permissions:
 - Dashboard.Read.All
 - Dashboard.ReadWrite.All
+
+Optional Permissions: (Without granting these permissions, the dataset information cannot be retrieved and only the lineage processing will be excluded)
+- Dataset.Read.All
+- Dataset.ReadWrite.All
 
 **Note**:
 Make sure that in the API permissions section **Tenant** related permissions are not being given to the app
