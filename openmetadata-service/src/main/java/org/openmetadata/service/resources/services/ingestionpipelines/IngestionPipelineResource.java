@@ -150,7 +150,7 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
           @QueryParam("service")
           String serviceParam,
       @Parameter(
-              description = "Filter airflow pipelines by service pipeline Type",
+              description = "Filter airflow pipelines by pipeline Type",
               schema = @Schema(type = "string", example = "elasticSearchReindex"))
           @QueryParam("pipelineType")
           String pipelineType,
