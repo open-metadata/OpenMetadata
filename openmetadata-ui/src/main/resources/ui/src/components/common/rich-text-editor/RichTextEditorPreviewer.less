@@ -11,16 +11,11 @@
  *  limitations under the License.
  */
 
-@body-text-color: #37352f;
-@badge-color: #d5d8dc;
-@white-color: #ffffff;
+@import url('./../../../styles/variables.less');
 @border-radius: 6px;
-@primary-color: #7147e8;
-@grey-color: #6b7280;
-@code-block: #ebeff4;
-@table-bg: #fafafa;
-@table-header-color: #5e5c58;
-@table-border-color: #f0f0f0;
+@border-color: #e8e8ed;
+@markdown-bg-color: #f8f8fa;
+@admonition-border-color: #afafc1;
 
 .markdown-parser {
   .toastui-editor-contents {
@@ -73,19 +68,19 @@
 
     th,
     td {
-      border: 1px solid #e8e8ed;
+      border: 1px solid @border-color;
       margin: 0;
       padding: 8px 16px;
     }
 
     th {
-      background: #f8f8fa;
-      color: @body-text-color;
+      background: @markdown-bg-color;
+      color: @text-color;
       font-weight: 500;
     }
 
     blockquote {
-      border-left: 4px solid #e8e8ed;
+      border-left: 4px solid @border-color;
       padding-left: 16px;
       margin-left: 25px;
     }
@@ -96,8 +91,8 @@
 
     code {
       white-space: break-spaces;
-      background: #f8f8fa;
-      color: @body-text-color;
+      background: @markdown-bg-color;
+      color: @text-color;
     }
 
     pre {
@@ -110,7 +105,7 @@
         padding: 15px;
         overflow: auto;
         border-radius: 8px;
-        border-bottom: 2px solid #e8e8ed;
+        border-bottom: 2px solid @border-color;
       }
     }
 
@@ -127,7 +122,7 @@
     p {
       margin-top: 10px;
       margin-bottom: 0px;
-      color: @body-text-color;
+      color: @text-color;
       word-break: break-word;
       line-height: 20px;
       &:last-child {
@@ -138,7 +133,7 @@
     .task-list-item {
       border-radius: 0.125rem;
       border-width: 1px;
-      border-color: @body-text-color;
+      border-color: @text-color;
     }
     .task-list-item.checked {
       background-size: 100% 100%;
@@ -151,10 +146,10 @@
     }
     .admonition {
       border-radius: 8px;
-      border-left: 8px solid #afafc1;
+      border-left: 8px solid @admonition-border-color;
       padding: 1px 16px 1px 48px;
       margin: 15px 0 0px;
-      background-color: #f8f8fa;
+      background-color: @markdown-bg-color;
       position: relative;
 
       &::before {
@@ -176,7 +171,7 @@
     .admonition_warning,
     .admonition_caution {
       background-color: #fff3dc;
-      border-left-color: #ffc34e;
+      border-left-color: @warning-color;
       &::before {
         content: '⚠️';
       }
@@ -184,7 +179,7 @@
     .admonition_tip,
     .admonition_info {
       background-color: #d1e9ff;
-      border-left-color: #1890ff;
+      border-left-color: @info-color;
     }
     .admonition_tip {
       &::before {
@@ -193,7 +188,7 @@
     }
     .admonition_danger {
       background-color: #ff4c3b33;
-      border-left-color: #e41e0b;
+      border-left-color: @error-color;
 
       &::before {
         content: '⚠️';
@@ -242,10 +237,10 @@
 .markdown-parser.white {
   .toastui-editor-contents {
     p {
-      color: @white-color;
+      color: @white;
     }
     ul li::before {
-      background-color: @white-color;
+      background-color: @white;
     }
   }
 }

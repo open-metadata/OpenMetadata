@@ -19,6 +19,7 @@
 import {
   CodeBlockMdNode,
   CustomHTMLRenderer,
+  HeadingMdNode,
   LinkMdNode,
   MdNode,
 } from '@toast-ui/editor';
@@ -134,6 +135,35 @@ export const customHTMLRenderer: CustomHTMLRenderer = {
       originResult.attributes = {
         ...attributes,
         target,
+      };
+    }
+
+    return originResult;
+  },
+  heading(node, { entering, origin, getChildrenText }) {
+    // get the origin result
+    const originResult = (origin && origin()) as OpenTagToken;
+
+    // get the attributes
+    const attributes = originResult.attributes ?? {};
+
+    const headingNode = node as HeadingMdNode;
+    const childrenText = getChildrenText(headingNode);
+
+    /**
+     * create an id from the child text without any space and punctuation
+     * and make it lowercase for bookmarking
+     * @example (Postgres) will be postgres
+     */
+    const id = childrenText
+      .replace(/[^\w\s-]/g, '')
+      .replace(/\s+/g, '-')
+      .toLowerCase();
+
+    if (entering) {
+      originResult.attributes = {
+        ...attributes,
+        id,
       };
     }
 
