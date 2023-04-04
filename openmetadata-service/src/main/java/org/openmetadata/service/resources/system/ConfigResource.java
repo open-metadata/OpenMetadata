@@ -13,11 +13,12 @@
 
 package org.openmetadata.service.resources.system;
 
-import io.swagger.annotations.Api;
+import io.swagger.v3.oas.annotations.Hidden;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import javax.ws.rs.GET;
 import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
@@ -34,7 +35,8 @@ import org.openmetadata.service.security.jwt.JWKSResponse;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 
 @Path("/v1/system/config")
-@Api(value = "System configuration APIs")
+@Tag(name = "System", description = "APIs related to System configuration and settings.")
+@Hidden
 @Produces(MediaType.APPLICATION_JSON)
 @Collection(name = "config")
 public class ConfigResource {
@@ -54,7 +56,6 @@ public class ConfigResource {
   @Operation(
       operationId = "getAuthConfiguration",
       summary = "Get auth configuration",
-      tags = "system",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -86,7 +87,6 @@ public class ConfigResource {
   @Operation(
       operationId = "getAuthorizerConfig",
       summary = "Get authorizer configuration",
-      tags = "system",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -109,7 +109,6 @@ public class ConfigResource {
   @Operation(
       operationId = "getApplicationConfiguration",
       summary = "Get application configuration",
-      tags = "system",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -128,7 +127,6 @@ public class ConfigResource {
   @Operation(
       operationId = "getAirflowConfiguration",
       summary = "Get airflow configuration",
-      tags = "system",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -152,7 +150,6 @@ public class ConfigResource {
   @Operation(
       operationId = "getJWKSResponse",
       summary = "Get JWKS public key",
-      tags = "system",
       responses = {
         @ApiResponse(
             responseCode = "200",

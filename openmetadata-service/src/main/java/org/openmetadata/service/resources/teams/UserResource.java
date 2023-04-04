@@ -27,7 +27,6 @@ import at.favre.lib.crypto.bcrypt.BCrypt;
 import freemarker.template.TemplateException;
 import io.dropwizard.jersey.PATCH;
 import io.dropwizard.jersey.errors.ErrorMessage;
-import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -37,6 +36,7 @@ import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import java.io.IOException;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
@@ -142,7 +142,10 @@ import org.openmetadata.service.util.UserUtil;
 
 @Slf4j
 @Path("/v1/users")
-@Api(value = "User collection", tags = "User collection")
+@Tag(
+    name = "Users",
+    description =
+        "A `User` represents a user of OpenMetadata. A user can be part of 0 or more teams. A special type of user called Bot is used for automation. A user can be an owner of zero or more data assets. A user can also follow zero or more data assets.")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "users", order = 3) // Initialize user resource before bot resource (at default order 9)
@@ -201,7 +204,6 @@ public class UserResource extends EntityResource<User, UserRepository> {
   @Operation(
       operationId = "listUsers",
       summary = "List users",
-      tags = "users",
       description =
           "Get a list of users. Use `fields` "
               + "parameter to get only necessary fields. Use cursor-based pagination to limit the number "
@@ -265,7 +267,6 @@ public class UserResource extends EntityResource<User, UserRepository> {
   @Operation(
       operationId = "listAllUserVersion",
       summary = "List user versions",
-      tags = "users",
       description = "Get a list of all the versions of a user identified by `id`",
       responses = {
         @ApiResponse(
@@ -286,7 +287,6 @@ public class UserResource extends EntityResource<User, UserRepository> {
   @Operation(
       operationId = "generateRandomPwd",
       summary = "Generate a random password",
-      tags = "users",
       description = "Generate a random password",
       responses = {@ApiResponse(responseCode = "200", description = "Random pwd")})
   public Response generateRandomPassword(@Context UriInfo uriInfo, @Context SecurityContext securityContext) {
@@ -300,7 +300,6 @@ public class UserResource extends EntityResource<User, UserRepository> {
   @Operation(
       operationId = "getUserByID",
       summary = "Get a user",
-      tags = "users",
       description = "Get a user by `id`",
       responses = {
         @ApiResponse(
@@ -336,7 +335,6 @@ public class UserResource extends EntityResource<User, UserRepository> {
   @Operation(
       operationId = "getUserByFQN",
       summary = "Get a user by name",
-      tags = "users",
       description = "Get a user by `name`.",
       responses = {
         @ApiResponse(
@@ -372,7 +370,6 @@ public class UserResource extends EntityResource<User, UserRepository> {
   @Operation(
       operationId = "getCurrentLoggedInUser",
       summary = "Get current logged in user",
-      tags = "users",
       description = "Get the user who is authenticated and is currently logged in.",
       responses = {
         @ApiResponse(
@@ -402,7 +399,6 @@ public class UserResource extends EntityResource<User, UserRepository> {
   @Operation(
       operationId = "getCurrentLoggedInUserGroupTeams",
       summary = "Get group type of teams for current logged in user",
-      tags = "users",
       description = "Get the group type of teams of user who is authenticated and is currently logged in.",
       responses = {
         @ApiResponse(
@@ -425,7 +421,6 @@ public class UserResource extends EntityResource<User, UserRepository> {
   @Operation(
       operationId = "logoutUser",
       summary = "Logout a User(Only called for saml and basic Auth)",
-      tags = "users",
       description = "Logout a User(Only called for saml and basic Auth)",
       responses = {
         @ApiResponse(responseCode = "200", description = "The user "),
@@ -452,7 +447,6 @@ public class UserResource extends EntityResource<User, UserRepository> {
   @Operation(
       operationId = "getSpecificUserVersion",
       summary = "Get a version of the user",
-      tags = "users",
       description = "Get a version of the user by given `id`",
       responses = {
         @ApiResponse(
@@ -480,7 +474,6 @@ public class UserResource extends EntityResource<User, UserRepository> {
   @Operation(
       operationId = "createUser",
       summary = "Create a user",
-      tags = "users",
       description = "Create a new user.",
       responses = {
         @ApiResponse(
@@ -542,7 +535,6 @@ public class UserResource extends EntityResource<User, UserRepository> {
   @PUT
   @Operation(
       summary = "Update user",
-      tags = "users",
       description = "Create or Update a user.",
       responses = {
         @ApiResponse(
@@ -581,7 +573,6 @@ public class UserResource extends EntityResource<User, UserRepository> {
   @Operation(
       operationId = "generateJWTTokenForBotUser",
       summary = "Generate JWT Token for a Bot User",
-      tags = "users",
       description = "Generate JWT Token for a Bot User.",
       responses = {
         @ApiResponse(
@@ -615,7 +606,6 @@ public class UserResource extends EntityResource<User, UserRepository> {
   @Operation(
       operationId = "revokeJWTTokenForBotUser",
       summary = "Revoke JWT Token for a Bot User",
-      tags = "users",
       description = "Revoke JWT Token for a Bot User.",
       responses = {
         @ApiResponse(
@@ -649,7 +639,6 @@ public class UserResource extends EntityResource<User, UserRepository> {
   @Operation(
       operationId = "getJWTTokenForBotUser",
       summary = "Get JWT Token for a Bot User",
-      tags = "users",
       description = "Get JWT Token for a Bot User.",
       responses = {
         @ApiResponse(
@@ -685,7 +674,6 @@ public class UserResource extends EntityResource<User, UserRepository> {
   @Operation(
       operationId = "getAuthenticationMechanismBotUser",
       summary = "Get Authentication Mechanism for a Bot User",
-      tags = "users",
       description = "Get Authentication Mechanism for a Bot User.",
       responses = {
         @ApiResponse(
@@ -718,7 +706,6 @@ public class UserResource extends EntityResource<User, UserRepository> {
   @Operation(
       operationId = "patchUser",
       summary = "Update a user",
-      tags = "users",
       description = "Update an existing user using JsonPatch.",
       externalDocs = @ExternalDocumentation(description = "JsonPatch RFC", url = "https://tools.ietf.org/html/rfc6902"))
   public Response patch(
@@ -771,7 +758,6 @@ public class UserResource extends EntityResource<User, UserRepository> {
   @Operation(
       operationId = "deleteUser",
       summary = "Delete a user",
-      tags = "users",
       description = "Users can't be deleted but are soft-deleted.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
@@ -796,7 +782,6 @@ public class UserResource extends EntityResource<User, UserRepository> {
   @Operation(
       operationId = "deleteUserByName",
       summary = "Delete a user",
-      tags = "users",
       description = "Users can't be deleted but are soft-deleted.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
@@ -819,7 +804,6 @@ public class UserResource extends EntityResource<User, UserRepository> {
   @Operation(
       operationId = "restore",
       summary = "Restore a soft deleted User.",
-      tags = "users",
       description = "Restore a soft deleted User.",
       responses = {
         @ApiResponse(
@@ -838,7 +822,6 @@ public class UserResource extends EntityResource<User, UserRepository> {
   @Operation(
       operationId = "registerUser",
       summary = "Register User",
-      tags = "users",
       description = "Register a new User",
       responses = {
         @ApiResponse(responseCode = "200", description = "The user "),
@@ -857,7 +840,6 @@ public class UserResource extends EntityResource<User, UserRepository> {
   @Operation(
       operationId = "confirmUserEmail",
       summary = "Confirm User Email",
-      tags = "users",
       description = "Confirm User Email",
       responses = {
         @ApiResponse(responseCode = "200", description = "The user "),
@@ -878,7 +860,6 @@ public class UserResource extends EntityResource<User, UserRepository> {
   @Operation(
       operationId = "resendRegistrationToken",
       summary = "Resend Registration Token",
-      tags = "users",
       description = "Resend Registration Token",
       responses = {
         @ApiResponse(responseCode = "200", description = "The user "),
@@ -905,7 +886,6 @@ public class UserResource extends EntityResource<User, UserRepository> {
   @Operation(
       operationId = "generatePasswordResetLink",
       summary = "Generate Password Reset Link",
-      tags = "users",
       description = "Generate Password Reset Link",
       responses = {
         @ApiResponse(responseCode = "200", description = "The user "),
@@ -939,7 +919,6 @@ public class UserResource extends EntityResource<User, UserRepository> {
   @Operation(
       operationId = "resetUserPassword",
       summary = "Reset Password For User",
-      tags = "users",
       description = "Reset User Password",
       responses = {
         @ApiResponse(
@@ -958,7 +937,6 @@ public class UserResource extends EntityResource<User, UserRepository> {
   @Operation(
       operationId = "changeUserPassword",
       summary = "Change Password For User",
-      tags = "users",
       description = "Create a new user.",
       responses = {
         @ApiResponse(
@@ -984,7 +962,6 @@ public class UserResource extends EntityResource<User, UserRepository> {
   @Operation(
       operationId = "checkEmailInUse",
       summary = "Check if a mail is already in use",
-      tags = "users",
       description = "Check if a mail is already in use",
       responses = {
         @ApiResponse(
@@ -1003,7 +980,6 @@ public class UserResource extends EntityResource<User, UserRepository> {
   @Operation(
       operationId = "checkEmailIsVerified",
       summary = "Check if a mail is verified",
-      tags = "users",
       description = "Check if a mail is already in use",
       responses = {
         @ApiResponse(
@@ -1022,7 +998,6 @@ public class UserResource extends EntityResource<User, UserRepository> {
   @Operation(
       operationId = "loginUserWithPwd",
       summary = "Login User with email (plain-text) and Password (encoded in base 64)",
-      tags = "users",
       description = "Login User with email(plain-text) and Password (encoded in base 64)",
       responses = {
         @ApiResponse(
@@ -1049,7 +1024,6 @@ public class UserResource extends EntityResource<User, UserRepository> {
   @Operation(
       operationId = "refreshToken",
       summary = "Provide access token to User with refresh token",
-      tags = "users",
       description = "Provide access token to User with refresh token",
       responses = {
         @ApiResponse(
@@ -1069,7 +1043,6 @@ public class UserResource extends EntityResource<User, UserRepository> {
   @Operation(
       operationId = "getPersonalAccessToken",
       summary = "Get personal access token to User",
-      tags = "users",
       description = "Get a personal access token",
       responses = {
         @ApiResponse(
@@ -1103,7 +1076,6 @@ public class UserResource extends EntityResource<User, UserRepository> {
   @Operation(
       operationId = "revokePersonalAccessToken",
       summary = "Revoke personal access token to User",
-      tags = "users",
       description = "Revoke personal access token",
       responses = {
         @ApiResponse(
@@ -1149,7 +1121,6 @@ public class UserResource extends EntityResource<User, UserRepository> {
   @Operation(
       operationId = "createPersonalAccessToken",
       summary = "Provide access token to User",
-      tags = "users",
       description = "Provide access token to User",
       responses = {
         @ApiResponse(
@@ -1185,10 +1156,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
   @GET
   @Path("/documentation/csv")
   @Valid
-  @Operation(
-      operationId = "getCsvDocumentation",
-      summary = "Get CSV documentation for user import/export",
-      tags = "users")
+  @Operation(operationId = "getCsvDocumentation", summary = "Get CSV documentation for user import/export")
   public String getUserCsvDocumentation(@Context SecurityContext securityContext, @PathParam("name") String name)
       throws IOException {
     return JsonUtils.pojoToJson(UserCsv.DOCUMENTATION);
@@ -1201,7 +1169,6 @@ public class UserResource extends EntityResource<User, UserRepository> {
   @Operation(
       operationId = "exportUsers",
       summary = "Export users in a team in CSV format",
-      tags = "users",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -1227,7 +1194,6 @@ public class UserResource extends EntityResource<User, UserRepository> {
   @Operation(
       operationId = "importTeams",
       summary = "Import from CSV to create, and update teams.",
-      tags = "users",
       responses = {
         @ApiResponse(
             responseCode = "200",
