@@ -81,9 +81,16 @@ Then, when extracting usage and lineage data, the query log duration will have n
 <Note>
 
 - For usage and lineage grant your user `pg_read_all_stats` permission.
+For Postgres version 14 and above
 
 ```sql
 GRANT pg_read_all_stats TO your_user;
+```
+
+For any other Postgres version
+
+```sql
+GRANT USAGE ON SCHEMA public TO my_user;
 ```
 
 </Note>
