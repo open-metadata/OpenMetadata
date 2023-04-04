@@ -135,7 +135,7 @@ public class ListFilter {
 
   private String getPipelineTypePrefixCondition(String tableName, String pipelineType) {
     pipelineType = escape(pipelineType);
-    if (DatasourceConfig.getInstance().getDriverClass().startsWith("com.mysql.cj.jdbc")) {
+    if (DatasourceConfig.getInstance().isMySQL()) {
       return tableName == null
           ? String.format("JSON_UNQUOTE(JSON_EXTRACT(json, '$.pipelineType')) = '%s'", pipelineType)
           : String.format("%s.JSON_UNQUOTE(JSON_EXTRACT(json, '$.pipelineType')) = '%s%%'", tableName, pipelineType);
