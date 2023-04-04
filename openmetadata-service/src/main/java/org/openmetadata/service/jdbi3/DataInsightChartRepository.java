@@ -22,7 +22,7 @@ import org.openmetadata.schema.dataInsight.DataInsightChartResult;
 import org.openmetadata.service.util.EntityUtil;
 
 public class DataInsightChartRepository extends EntityRepository<DataInsightChart> {
-  public static final String COLLECTION_PATH = "/v1/dataInsight";
+  public static final String COLLECTION_PATH = "/v1/analytics/dataInsights/charts";
   public static final String LAST_SESSION = "lastSession";
   private static final String UPDATE_FIELDS = "owner";
   private static final String PATCH_FIELDS = "owner";

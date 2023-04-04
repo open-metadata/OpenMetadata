@@ -9,7 +9,7 @@ slug: /connectors/database/athena
 
 | Stage | Metadata |Query Usage | Data Profiler | Data Quality | Lineage | DBT | Supported Versions |
 |:------:|:------:|:-----------:|:-------------:|:------------:|:-------:|:---:|:------------------:|
-|  PROD  |   ✅   |      ❌      |       ✅       |       ✅      |    1.0 ( upcoming release )    |  ✅  |  --  |
+|  PROD  |   ✅   |     ✅ (1.0 release onwards)      |       ✅       |       ✅      |    ✅ (1.0 release onwards)    |  ✅  |  --  |
 
 </Table>
 
@@ -17,7 +17,7 @@ slug: /connectors/database/athena
 
 | Lineage | Table-level | Column-level |
 |:------:|:-----------:|:-------------:|
-| 1.0 ( upcoming release ) | TBD | TBD |
+| ✅ (1.0 release onwards) | ✅  | ✅  |
 
 </Table>
 
@@ -26,8 +26,10 @@ In this section, we provide guides and references to use the Athena connector.
 Configure and schedule Athena metadata and profiler workflows from the OpenMetadata UI:
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
+- [Query Usage](#query-usage)
 - [Data Profiler](#data-profiler)
-- [dbt Integration](#dbt-integration)
+- [Data Quality](#data-quality)
+- [Lineage](#lineage)
 
 If you don't want to use the OpenMetadata Ingestion container to configure the workflows via the UI, then you can check
 the following docs to connect using Airflow SDK or with the CLI.
@@ -238,6 +240,15 @@ caption="Edit and Deploy the Ingestion Pipeline"
 
 From the Connection tab, you can also Edit the Service if needed.
 
+## Query Usage
+
+<Tile
+icon="manage_accounts"
+title="Usage Workflow"
+text="Learn more about how to configure the Usage Workflow to ingest Query information from the UI."
+link="/connectors/ingestion/workflows/usage"
+/>
+
 ## Data Profiler
 
 <Tile
@@ -263,4 +274,13 @@ icon="mediation"
 title="dbt Integration"
 text="Learn more about how to ingest dbt models' definitions and their lineage."
 link="/connectors/ingestion/workflows/dbt"
+/>
+
+## Lineage
+
+<Tile
+icon="air"
+title="Lineage Workflow"
+text="Learn more about how to configure the Lineage from the UI."
+link="/connectors/ingestion/workflows/lineage"
 />
