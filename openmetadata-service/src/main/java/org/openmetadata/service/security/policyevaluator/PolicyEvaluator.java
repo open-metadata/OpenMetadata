@@ -248,8 +248,7 @@ public class PolicyEvaluator {
   }
 
   public static ResourcePermission trimResourcePermission(ResourcePermission resourcePermission) {
-    resourcePermission.withPermissions(trimPermissions(resourcePermission.getPermissions()));
-    return resourcePermission;
+    return resourcePermission.withPermissions(trimPermissions(resourcePermission.getPermissions()));
   }
 
   public static List<ResourcePermission> trimResourcePermissions(List<ResourcePermission> resourcePermissions) {
