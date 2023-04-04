@@ -30,7 +30,9 @@ import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { DROPDOWN_ICON_SIZE_PROPS } from 'constants/ManageButton.constants';
 import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
+import { SearchIndex } from 'enums/search.enum';
 import { compare } from 'fast-json-patch';
+import { RawSuggestResponse } from 'interface/search.interface';
 import { cloneDeep, isEmpty, isUndefined, orderBy, uniqueId } from 'lodash';
 import { ExtraInfo } from 'Models';
 import AddAttributeModal from 'pages/RolesPage/AddAttributeModal/AddAttributeModal';
@@ -43,6 +45,7 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
+import { getSuggestions } from 'rest/miscAPI';
 import { restoreTeam } from 'rest/teamsAPI';
 import AppState from '../../AppState';
 import { ReactComponent as IconEdit } from '../../assets/svg/ic-edit.svg';
@@ -108,7 +111,7 @@ import {
 } from '../PermissionProvider/PermissionProvider.interface';
 import { commonUserDetailColumns } from '../Users/Users.util';
 import ListEntities from './RolesAndPoliciesList';
-import { getTabs, searchTeam } from './TeamDetailsV1.utils';
+import { getTabs } from './TeamDetailsV1.utils';
 import TeamHierarchy from './TeamHierarchy';
 import './teams.less';
 
@@ -347,6 +350,19 @@ const TeamDetailsV1 = ({
         ]),
   ];
 
+  const searchTeams = async (text: string) => {
+    try {
+      const res = await getSuggestions(text, SearchIndex.TEAM);
+      const data = (res.data as RawSuggestResponse<SearchIndex.TEAM>).suggest[
+        'metadata-suggest'
+      ][0].options.map((value) => value._source);
+
+      setTable(data);
+    } catch (error) {
+      setTable([]);
+    }
+  };
+
   const isActionAllowed = (operation = false) => {
     return hasAccess || isOwner() || operation;
   };
@@ -463,9 +479,7 @@ const TeamDetailsV1 = ({
   const handleTeamSearch = (value: string) => {
     setSearchTerm(value);
     if (value) {
-      setTable(
-        filterChildTeams(searchTeam(childTeams, value), showDeletedTeam)
-      );
+      searchTeams(value);
     } else {
       setTable(filterChildTeams(childTeams ?? [], showDeletedTeam));
     }
@@ -788,9 +802,9 @@ const TeamDetailsV1 = ({
               <div className="tw-w-4/12">
                 <Searchbar
                   removeMargin
-                  placeholder={`${t('label.search-for-type', {
+                  placeholder={t('label.search-for-type', {
                     type: t('label.user-lowercase'),
-                  })}...`}
+                  })}
                   searchValue={teamUsersSearchText}
                   typingInterval={500}
                   onSearch={handleTeamUsersSearchAction}
@@ -1145,9 +1159,9 @@ const TeamDetailsV1 = ({
                     <Col span={8}>
                       <Searchbar
                         removeMargin
-                        placeholder={`${t('label.search-entity', {
+                        placeholder={t('label.search-entity', {
                           entity: t('label.team'),
-                        })}...`}
+                        })}
                         searchValue={searchTerm}
                         typingInterval={500}
                         onSearch={handleTeamSearch}
