@@ -93,25 +93,28 @@ public class EmailUtil {
   }
 
   private static Mailer createMailer(SmtpSettings smtpServerSettings) {
-    TransportStrategy strategy;
-    switch (smtpServerSettings.getTransportationStrategy()) {
-      case SMPTS:
-        strategy = SMTPS;
-        break;
-      case SMTP_TLS:
-        strategy = SMTP_TLS;
-        break;
-      default:
-        strategy = SMTP;
-        break;
+    if(smtpServerSettings.getEnableSmtpServer()){
+      TransportStrategy strategy;
+      switch (smtpServerSettings.getTransportationStrategy()) {
+        case SMPTS:
+          strategy = SMTPS;
+          break;
+        case SMTP_TLS:
+          strategy = SMTP_TLS;
+          break;
+        default:
+          strategy = SMTP;
+          break;
+      }
+      return MailerBuilder.withSMTPServer(
+                      smtpServerSettings.getServerEndpoint(),
+                      smtpServerSettings.getServerPort(),
+                      smtpServerSettings.getUsername(),
+                      smtpServerSettings.getPassword())
+              .withTransportStrategy(strategy)
+              .buildMailer();
     }
-    return MailerBuilder.withSMTPServer(
-            smtpServerSettings.getServerEndpoint(),
-            smtpServerSettings.getServerPort(),
-            smtpServerSettings.getUsername(),
-            smtpServerSettings.getPassword())
-        .withTransportStrategy(strategy)
-        .buildMailer();
+    return null;
   }
 
   public static EmailUtil getInstance() {
