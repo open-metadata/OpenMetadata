@@ -7,7 +7,7 @@
         {
             "name": "GetModels",
             "description":  "List all the models available to the user.",
-            "errorMessage": "Failed to fetch models, please validate the credentials or validate is user has access to fetch topics",
+            "errorMessage": "Failed to fetch models, please validate the credentials or validate if user has access to fetch models",
             "shortCircuit": true,
             "mandatory": true
         }

@@ -7,7 +7,7 @@
       {
         "name": "GetDashboards",
         "description": "List all the dashboards available to the user",
-        "errorMessage": "Failed to fetch dashboards, please validate the credentials or validate is user has access to fetch dashboards",
+        "errorMessage": "Failed to fetch dashboards, please validate the credentials or validate if user has access to fetch dashboards",
         "shortCircuit": true,
         "mandatory": true
       }
