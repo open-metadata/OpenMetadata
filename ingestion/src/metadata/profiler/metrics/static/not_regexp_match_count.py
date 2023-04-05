@@ -63,6 +63,8 @@ class NotRegexCount(StaticMetric):
             )
 
         return sum(
-            df[self.col.name][df[self.col.name].str.contains(self.expression)].count()
+            df[self.col.name][
+                df[self.col.name].astype(str).str.contains(self.expression)
+            ].count()
             for df in dfs
         )

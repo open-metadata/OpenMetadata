@@ -102,7 +102,7 @@ class StdDev(StaticMetric):
                     f"Unable to compute distinctCount for {self.col.name} due to memory constraints."
                     f"We recommend using a smaller sample size or partitionning."
                 )
-                return 0
+                return None
 
         logger.debug(
             f"{self.col.name} has type {self.col.type}, which is not listed as quantifiable."

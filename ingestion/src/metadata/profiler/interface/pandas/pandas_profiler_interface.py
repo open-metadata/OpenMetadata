@@ -119,10 +119,9 @@ class PandasProfilerInterface(ProfilerProtocol, PandasInterfaceMixin):
 
         try:
             row_dict = {}
+            df_list = [df.where(pd.notnull(df), None) for df in self.dfs]
             for metric in metrics:
-                row_dict[metric.name()] = metric().df_fn(
-                    [df.where(pd.notnull(df), None) for df in self.dfs]
-                )
+                row_dict[metric.name()] = metric().df_fn(df_list)
             return row_dict
         except Exception as exc:
             logger.debug(traceback.format_exc())

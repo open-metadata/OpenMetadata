@@ -22,10 +22,13 @@ from sqlalchemy.orm import declarative_base
 
 from metadata.generated.schema.entity.data.table import Column as EntityColumn
 from metadata.generated.schema.entity.data.table import ColumnName, DataType, Table
+from metadata.mixins.pandas.pandas_mixin import PandasInterfaceMixin
+from metadata.profiler.interface.pandas.pandas_profiler_interface import (
+    PandasProfilerInterface,
+)
 from metadata.profiler.metrics.core import add_props
 from metadata.profiler.metrics.registry import Metrics
-from metadata.profiler.profiler.core import Profiler
-from metadata.profiler.profiler.interface.pandas import pandas_profiler_interface
+from metadata.profiler.processor.core import Profiler
 
 Base = declarative_base()
 
@@ -56,12 +59,12 @@ class DatalakeMetricsTest(TestCase):
     df2 = pd.read_csv(os.path.join(root_dir, csv_dir, "test_datalake_metrics_2.csv"))
 
     @patch.object(
-        pandas_profiler_interface.PandasProfilerInterface,
+        PandasProfilerInterface,
         "get_connection_client",
         return_value=None,
     )
     @patch.object(
-        pandas_profiler_interface.PandasInterfaceMixin,
+        PandasInterfaceMixin,
         "return_ometa_dataframes_sampled",
         return_value=[df1, df2],
     )
@@ -80,17 +83,15 @@ class DatalakeMetricsTest(TestCase):
             ],
         )
 
-        self.datalake_profiler_interface = (
-            pandas_profiler_interface.PandasProfilerInterface(
-                entity=table_entity,
-                service_connection_config=None,
-                ometa_client=None,
-                thread_count=None,
-                profile_sample_config=None,
-                source_config=None,
-                sample_query=None,
-                table_partition_config=None,
-            )
+        self.datalake_profiler_interface = PandasProfilerInterface(
+            entity=table_entity,
+            service_connection_config=None,
+            ometa_client=None,
+            thread_count=None,
+            profile_sample_config=None,
+            source_config=None,
+            sample_query=None,
+            table_partition_config=None,
         )
 
     def test_count(self):
