@@ -186,8 +186,10 @@ export const testServiceCreationAndIngestion = (
     'api/v1/services/ingestionPipelines/*',
     'getIngestionPipelineStatus'
   );
+  interceptURL('GET', '/api/v1/services/ingestionPipelines/ip', 'ipApi');
   cy.get('[data-testid="next-button"]').should('exist').click();
   verifyResponseStatusCode('@getIngestionPipelineStatus', 200);
+  verifyResponseStatusCode('@ipApi', 200);
 
   // Connection Details in step 4
   cy.get('[data-testid="add-new-service-container"]')
@@ -199,9 +201,6 @@ export const testServiceCreationAndIngestion = (
   cy.contains('Connection Details').scrollIntoView().should('be.visible');
 
   connectionInput();
-
-  // check for the ip-address widget
-  cy.get('[data-testid="ip-address"]').should('exist');
 
   // Test the connection
   interceptURL(
