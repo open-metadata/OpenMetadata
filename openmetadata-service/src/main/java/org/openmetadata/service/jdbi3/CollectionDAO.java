@@ -57,6 +57,7 @@ import org.openmetadata.schema.auth.RefreshToken;
 import org.openmetadata.schema.auth.TokenType;
 import org.openmetadata.schema.dataInsight.DataInsightChart;
 import org.openmetadata.schema.dataInsight.kpi.Kpi;
+import org.openmetadata.schema.email.SmtpSettings;
 import org.openmetadata.schema.entity.Bot;
 import org.openmetadata.schema.entity.Type;
 import org.openmetadata.schema.entity.automations.Workflow;
@@ -3255,6 +3256,14 @@ public interface CollectionDAO {
             + "ORDER BY timestamp DESC LIMIT 1")
     String getLatestExtension(@Bind("entityFQN") String entityFQN, @Bind("extension") String extension);
 
+    @SqlQuery(
+        "SELECT json FROM entity_extension_time_series WHERE extension = :extension "
+            + "ORDER BY timestamp DESC LIMIT 1")
+    String getLatestByExtension(@Bind("extension") String extension);
+
+    @SqlQuery("SELECT json FROM entity_extension_time_series WHERE extension = :extension " + "ORDER BY timestamp DESC")
+    List<String> getAllByExtension(@Bind("extension") String extension);
+
     @RegisterRowMapper(ExtensionMapper.class)
     @SqlQuery(
         "SELECT extension, json FROM entity_extension WHERE id = :id AND extension "
@@ -3453,6 +3462,9 @@ public interface CollectionDAO {
             break;
           case TEST_RESULT_NOTIFICATION_CONFIGURATION:
             value = JsonUtils.readValue(json, TestResultNotificationConfiguration.class);
+            break;
+          case EMAIL_CONFIGURATION:
+            value = JsonUtils.readValue(json, SmtpSettings.class);
             break;
           default:
             throw new IllegalArgumentException("Invalid Settings Type " + configType);

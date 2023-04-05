@@ -19,7 +19,14 @@ from typing import Dict, List, Optional, Type, TypeVar, Union
 
 from pydantic import BaseModel
 
+from metadata.generated.schema.entity.automations.workflow import (
+    Workflow as AutomationWorkflow,
+)
+from metadata.generated.schema.entity.automations.workflow import WorkflowStatus
 from metadata.generated.schema.entity.data.table import Table, TableConstraint
+from metadata.generated.schema.entity.services.connections.testConnectionResult import (
+    TestConnectionResult,
+)
 from metadata.generated.schema.type import basic
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.tagLabel import LabelType, State, TagSource
@@ -462,3 +469,40 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
             )
 
         return None
+
+    def patch_automation_workflow_response(
+        self,
+        automation_workflow: AutomationWorkflow,
+        test_connection_result: TestConnectionResult,
+        workflow_status: WorkflowStatus,
+    ) -> None:
+        """
+        Given an AutomationWorkflow, JSON PATCH the status and response.
+        """
+        result_data: Dict = {
+            PatchField.PATH: PatchPath.RESPONSE,
+            PatchField.VALUE: test_connection_result.dict(),
+            PatchField.OPERATION: PatchOperation.ADD,
+        }
+
+        # for deserializing into json convert enum object to string
+        result_data[PatchField.VALUE]["status"] = result_data[PatchField.VALUE][
+            "status"
+        ].value
+
+        status_data: Dict = {
+            PatchField.PATH: PatchPath.STATUS,
+            PatchField.OPERATION: PatchOperation.ADD,
+            PatchField.VALUE: workflow_status.value,
+        }
+
+        try:
+            self.client.patch(
+                path=f"{self.get_suffix(AutomationWorkflow)}/{model_str(automation_workflow.id)}",
+                data=json.dumps([result_data, status_data]),
+            )
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.error(
+                f"Error trying to PATCH status for automation workflow [{model_str(automation_workflow)}]: {exc}"
+            )

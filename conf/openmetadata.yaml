@@ -307,3 +307,6 @@ applicationConfig:
     accessBlockTime: ${OM_LOGIN_ACCESS_BLOCK_TIME:-600}
     jwtTokenExpiryTime: ${OM_JWT_EXPIRY_TIME:-3600}
 
+changeEventConfig:
+  omUri: ${OM_URI:- "http://localhost:8585"} #openmetadata in om uri for eg http://loclhost:8585
+

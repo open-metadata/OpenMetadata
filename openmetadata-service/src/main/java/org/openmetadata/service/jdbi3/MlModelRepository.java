@@ -129,7 +129,6 @@ public class MlModelRepository extends EntityRepository<MlModel> {
   @Override
   public void prepare(MlModel mlModel) throws IOException {
     populateService(mlModel);
-    setFullyQualifiedName(mlModel);
     if (!nullOrEmpty(mlModel.getMlFeatures())) {
       validateReferences(mlModel.getMlFeatures());
     }
