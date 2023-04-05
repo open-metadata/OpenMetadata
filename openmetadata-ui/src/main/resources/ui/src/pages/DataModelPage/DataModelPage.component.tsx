@@ -31,7 +31,6 @@ import { getServiceDetailsPath } from 'constants/constants';
 import { ENTITY_CARD_CLASS } from 'constants/entity.constants';
 import { NO_PERMISSION_TO_VIEW } from 'constants/HelperTextUtil';
 import { CSMode } from 'enums/codemirror.enum';
-import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { EntityInfo, EntityType } from 'enums/entity.enum';
 import { ServiceCategory } from 'enums/service.enum';
 import { OwnerType } from 'enums/user.enum';
@@ -465,15 +464,15 @@ const DataModelsPage = () => {
             </Card>
           </Tabs.TabPane>
 
-          <Tabs.TabPane
-            key={DATA_MODELS_DETAILS_TABS.SQL}
-            tab={
-              <span data-testid={DATA_MODELS_DETAILS_TABS.SQL}>
-                {t('label.sql-uppercase')}
-              </span>
-            }>
-            <Card className={ENTITY_CARD_CLASS}>
-              {dataModelData?.sql ? (
+          {dataModelData?.sql && (
+            <Tabs.TabPane
+              key={DATA_MODELS_DETAILS_TABS.SQL}
+              tab={
+                <span data-testid={DATA_MODELS_DETAILS_TABS.SQL}>
+                  {t('label.sql-uppercase')}
+                </span>
+              }>
+              <Card className={ENTITY_CARD_CLASS}>
                 <SchemaEditor
                   editorClass="custom-code-mirror-theme full-screen-editor-height"
                   mode={{ name: CSMode.SQL }}
@@ -483,14 +482,9 @@ const DataModelsPage = () => {
                   }}
                   value={dataModelData.sql}
                 />
-              ) : (
-                <ErrorPlaceHolder
-                  heading={t('label.query-lowercase-plural')}
-                  type={ERROR_PLACEHOLDER_TYPE.VIEW}
-                />
-              )}
-            </Card>
-          </Tabs.TabPane>
+              </Card>
+            </Tabs.TabPane>
+          )}
         </Tabs>
       </div>
     </PageContainerV1>
