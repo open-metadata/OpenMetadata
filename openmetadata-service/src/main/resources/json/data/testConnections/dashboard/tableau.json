@@ -7,16 +7,20 @@
     {
       "name": "ServerInfo",
       "description": "Validate that the API can properly reach the server",
+      "errorMessage": "Failed to connect to tableau, please validate the credentials",
+      "shortCircuit": true,
       "mandatory": true
     },
     {
       "name": "GetWorkbooks",
       "description": "List all the workbooks available to the user. We will ingest Workbooks as Dashboards.",
+      "errorMessage": "Failed to fetch workbooks, please validate if user has access to fetch workbooks",
       "mandatory": true
     },
     {
       "name": "GetViews",
       "description": "List the Views (charts) from a given Workbook.",
+      "errorMessage": "Failed to fetch views(charts), please validate if user has access to fetch views",
       "mandatory": false
     }
   ]

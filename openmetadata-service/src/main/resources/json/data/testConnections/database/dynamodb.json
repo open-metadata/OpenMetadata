@@ -7,6 +7,8 @@
       {
         "name": "GetTables",
         "description": "List all the tables available to the user.",
+        "errorMessage": "Failed to fetch tables, please validate the credentials & validate if user has access to fetch tables",
+        "shortCircuit": true,
         "mandatory": true
       }
     ]
