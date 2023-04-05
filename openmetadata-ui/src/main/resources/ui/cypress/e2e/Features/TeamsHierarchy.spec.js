@@ -38,6 +38,7 @@ describe('Add nested teams and test TeamsSelectable', () => {
     cy.login();
 
     cy.get('[data-testid="appbar-item-settings"]').should('be.visible').click();
+    interceptURL('GET', '/api/v1/teams/name/Organization?*', 'getOrganization');
     interceptURL('GET', '/api/v1/users*', 'getTeams');
     // Clicking on teams
     cy.get('[data-menu-id*="teams"]')
@@ -46,6 +47,7 @@ describe('Add nested teams and test TeamsSelectable', () => {
       .click();
 
     verifyResponseStatusCode('@getTeams', 200);
+    verifyResponseStatusCode('@getOrganization', 200);
   });
 
   it('Add teams', () => {
@@ -59,6 +61,7 @@ describe('Add nested teams and test TeamsSelectable', () => {
         '/api/v1/search/query?q=*&from=*&size=*&index=*',
         'getCreatedTeam'
       );
+      verifyResponseStatusCode('@getOrganization', 200);
       // asserting the added values
       cy.get('table').find('.ant-table-row').contains(teamName).click();
 
