@@ -145,6 +145,12 @@ class DbtServiceSource(TopologyRunnerMixin, Source, ABC):
         """
         Method to remove the non required keys from manifest file
         """
+        # To ensure smooth ingestion of data,
+        # we are selectively processing the metadata, nodes, and sources from the manifest file
+        # while trimming out any other irrelevant data that might be present.
+        # This step is necessary as the manifest file may not always adhere to the schema definition
+        # and the presence of other nodes can hinder the ingestion process from progressing any further.
+        # Therefore, we are only retaining the essential data for further processing.
         required_manifest_keys = ["nodes", "sources", "metadata"]
         for key, _ in manifest_dict.items():
             if key.lower() in required_manifest_keys:
