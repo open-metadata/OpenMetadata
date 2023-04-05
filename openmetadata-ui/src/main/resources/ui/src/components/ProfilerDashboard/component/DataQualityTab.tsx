@@ -251,7 +251,6 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
         entityId={selectedTestCase?.id || ''}
         entityName={selectedTestCase?.name || ''}
         entityType="testCase"
-        prepareType={false}
         visible={!isUndefined(selectedTestCase)}
         onCancel={() => {
           setSelectedTestCase(undefined);
