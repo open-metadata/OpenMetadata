@@ -187,7 +187,7 @@ except ModuleNotFoundError:
     from airflow.operators.python_operator import PythonOperator
 
 from metadata.config.common import load_config_file
-from metadata.test_suite.api.workflow import TestSuiteWorkflow
+from metadata.data_quality.api.workflow import TestSuiteWorkflow
 from airflow.utils.dates import days_ago
 
 default_args = {
@@ -273,7 +273,8 @@ On the profiler page, click on a specific column name. This will bring you to a 
 ## Adding Custom Tests
 While OpenMetadata provides out of the box tests, you may want to write your test results from your own custom quality test suite. This is very easy to do using the API.
 ### Creating a `TestDefinition`
-First, you'll need to create a Test Definition for your test. You can use the following endpoint `/api/v1/testDefinition` using a POST protocol to create your Test Definition. You will need to pass the following data in the body your request at minimum.
+First, you'll need to create a Test Definition for your test. You can use the following endpoint 
+`/api/v1/testDefinitions` using a POST protocol to create your Test Definition. You will need to pass the following data in the body your request at minimum.
 
 ```json
 {
@@ -295,7 +296,7 @@ First, you'll need to create a Test Definition for your test. You can use the fo
 Here is a complete CURL request
 
 ```bash
-curl --request POST 'http://localhost:8585/api/v1/testDefinition' \
+curl --request POST 'http://localhost:8585/api/v1/testDefinitions' \
 --header 'Content-Type: application/json' \
 --data-raw '{
     "description": "A demo custom test",
@@ -311,7 +312,7 @@ curl --request POST 'http://localhost:8585/api/v1/testDefinition' \
 Make sure to keep the `UUID` from the response as you will need it to create the Test Case.
 
 ### Creating a `TestSuite`
-You'll also need to create a Test Suite for your Test Case -- note that you can also use an existing one if you want to. You can use the following endpoint `/api/v1/testSuite` using a POST protocol to create your Test Definition. You will need to pass the following data in the body your request at minimum.
+You'll also need to create a Test Suite for your Test Case -- note that you can also use an existing one if you want to. You can use the following endpoint `/api/v1/testSuites` using a POST protocol to create your Test Definition. You will need to pass the following data in the body your request at minimum.
 
 ```json
 {
@@ -323,7 +324,7 @@ You'll also need to create a Test Suite for your Test Case -- note that you can 
 Here is a complete CURL request
 
 ```bash
-curl --request POST 'http://localhost:8585/api/v1/testSuite' \
+curl --request POST 'http://localhost:8585/api/v1/testSuites' \
 --header 'Content-Type: application/json' \
 --data-raw '{
   "name": "<test_suite_name>",
@@ -335,7 +336,7 @@ Make sure to keep the `UUID` from the response as you will need it to create the
 
 
 ### Creating a `TestCase`
-Once you have your Test Definition created you can create a Test Case -- which is a specification of your Test Definition. You can use the following endpoint `/api/v1/testCase` using a POST protocol to create your Test Case. You will need to pass the following data in the body your request at minimum.
+Once you have your Test Definition created you can create a Test Case -- which is a specification of your Test Definition. You can use the following endpoint `/api/v1/testCases` using a POST protocol to create your Test Case. You will need to pass the following data in the body your request at minimum.
 
 ```json
 {
@@ -356,7 +357,7 @@ Once you have your Test Definition created you can create a Test Case -- which i
 Here is a complete CURL request
 
 ```bash
-curl --request POST 'http://localhost:8585/api/v1/testCase' \
+curl --request POST 'http://localhost:8585/api/v1/testCases' \
 --header 'Content-Type: application/json' \
 --data-raw '{
     "entityLink": "<#E::table::local_redshift.dev.dbt_jaffle.customers>",
@@ -382,7 +383,7 @@ Make sure to keep the `UUID` from the response as you will need it to create the
 
 
 ### Writing `TestCaseResults`
-Once you have your Test Case created you can write your results to it. You can use the following endpoint `/api/v1/testCase/{test FQN}/testCaseResult` using a PUT protocol to add Test Case Results. You will need to pass the following data in the body your request at minimum.
+Once you have your Test Case created you can write your results to it. You can use the following endpoint `/api/v1/testCases/{test FQN}/testCaseResult` using a PUT protocol to add Test Case Results. You will need to pass the following data in the body your request at minimum.
 
 ```json
 {
@@ -400,7 +401,8 @@ Once you have your Test Case created you can write your results to it. You can u
 Here is a complete CURL request
 
 ```bash
-curl --location --request PUT 'http://localhost:8585/api/v1/testCase/local_redshift.dev.dbt_jaffle.customers.custom_test_Case/testCaseResult' \
+curl --location --request PUT 'http://localhost:8585/api/v1/testCases/local_redshift.dev.dbt_jaffle.customers.
+custom_test_Case/testCaseResult' \
 --header 'Content-Type: application/json' \
 --data-raw '{
     "result": "found 1 values expected n",

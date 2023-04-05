@@ -13,7 +13,6 @@
 
 package org.openmetadata.service.resources.databases;
 
-import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -22,6 +21,7 @@ import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import java.io.IOException;
 import java.util.UUID;
 import javax.json.JsonPatch;
@@ -59,7 +59,9 @@ import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.util.ResultList;
 
 @Path("/v1/databaseSchemas")
-@Api(value = "Database schemas collection", tags = "Database schemas collection")
+@Tag(
+    name = "Database Schemas",
+    description = "A `Database Schema` is collection of tables, views, stored procedures, and other database objects.")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "databaseSchemas")
@@ -90,7 +92,6 @@ public class DatabaseSchemaResource extends EntityResource<DatabaseSchema, Datab
   @Operation(
       operationId = "listDBSchemas",
       summary = "List database schemas",
-      tags = "databaseSchemas",
       description =
           "Get a list of database schemas, optionally filtered by `database` it belongs to. Use `fields` "
               + "parameter to get only necessary fields. Use cursor-based pagination to limit the number "
@@ -143,7 +144,6 @@ public class DatabaseSchemaResource extends EntityResource<DatabaseSchema, Datab
   @Operation(
       operationId = "listAllDBSchemaVersion",
       summary = "List schema versions",
-      tags = "databaseSchemas",
       description = "Get a list of all the versions of a schema identified by `Id`",
       responses = {
         @ApiResponse(
@@ -164,7 +164,6 @@ public class DatabaseSchemaResource extends EntityResource<DatabaseSchema, Datab
   @Operation(
       operationId = "getDBSchemaByID",
       summary = "Get a schema by Id",
-      tags = "databaseSchemas",
       description = "Get a database schema by `Id`.",
       responses = {
         @ApiResponse(
@@ -198,7 +197,6 @@ public class DatabaseSchemaResource extends EntityResource<DatabaseSchema, Datab
   @Operation(
       operationId = "getDBSchemaByFQN",
       summary = "Get a schema by fully qualified name",
-      tags = "databaseSchemas",
       description = "Get a database schema by fully qualified name.",
       responses = {
         @ApiResponse(
@@ -234,7 +232,6 @@ public class DatabaseSchemaResource extends EntityResource<DatabaseSchema, Datab
   @Operation(
       operationId = "getSpecificDBSchemaVersion",
       summary = "Get a version of the schema",
-      tags = "databaseSchemas",
       description = "Get a version of the database schema by given `Id`",
       responses = {
         @ApiResponse(
@@ -263,7 +260,6 @@ public class DatabaseSchemaResource extends EntityResource<DatabaseSchema, Datab
   @Operation(
       operationId = "createDBSchema",
       summary = "Create a schema",
-      tags = "databaseSchemas",
       description = "Create a schema under an existing `service`.",
       responses = {
         @ApiResponse(
@@ -285,7 +281,6 @@ public class DatabaseSchemaResource extends EntityResource<DatabaseSchema, Datab
   @Operation(
       operationId = "patchDBSchema",
       summary = "Update a database schema",
-      tags = "databaseSchemas",
       description = "Update an existing database schema using JsonPatch.",
       externalDocs = @ExternalDocumentation(description = "JsonPatch RFC", url = "https://tools.ietf.org/html/rfc6902"))
   @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
@@ -310,7 +305,6 @@ public class DatabaseSchemaResource extends EntityResource<DatabaseSchema, Datab
   @Operation(
       operationId = "createOrUpdateDBSchema",
       summary = "Create or update schema",
-      tags = "databaseSchemas",
       description = "Create a database schema, if it does not exist or update an existing database schema.",
       responses = {
         @ApiResponse(
@@ -330,7 +324,6 @@ public class DatabaseSchemaResource extends EntityResource<DatabaseSchema, Datab
   @Operation(
       operationId = "deleteDBSchema",
       summary = "Delete a schema by Id",
-      tags = "databaseSchemas",
       description = "Delete a schema by `Id`. Schema can only be deleted if it has no tables.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
@@ -357,7 +350,6 @@ public class DatabaseSchemaResource extends EntityResource<DatabaseSchema, Datab
   @Operation(
       operationId = "deleteDBSchemaByFQN",
       summary = "Delete a schema by fully qualified name",
-      tags = "databaseSchemas",
       description = "Delete a schema by `fullyQualifiedName`. Schema can only be deleted if it has no tables.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
@@ -380,7 +372,6 @@ public class DatabaseSchemaResource extends EntityResource<DatabaseSchema, Datab
   @Operation(
       operationId = "restore",
       summary = "Restore a soft deleted database schema.",
-      tags = "databaseSchemas",
       description = "Restore a soft deleted database schema.",
       responses = {
         @ApiResponse(

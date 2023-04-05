@@ -55,9 +55,9 @@ export type ListTestCaseResultsParams = Omit<
   endTs?: number;
 };
 
-const testCaseUrl = '/testCase';
-const testSuiteUrl = '/testSuite';
-const testDefinitionUrl = '/testDefinition';
+const testCaseUrl = '/testCases';
+const testSuiteUrl = '/testSuites';
+const testDefinitionUrl = '/testDefinitions';
 
 // testCase section
 export const getListTestCase = async (params?: ListTestCaseParams) => {
@@ -184,7 +184,7 @@ export const restoreTestSuite = async (id: string) => {
   const response = await APIClient.put<
     RestoreRequestType,
     AxiosResponse<TestSuite>
-  >('/testSuite/restore', { id });
+  >('/testSuites/restore', { id });
 
   return response.data;
 };
