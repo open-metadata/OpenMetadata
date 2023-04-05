@@ -95,7 +95,14 @@ class StdDev(StaticMetric):
         import pandas as pd  # pylint: disable=import-outside-toplevel
 
         if is_quantifiable(self.col.type):
-            return pd.concat(df[self.col.name] for df in dfs).std()
+            try:
+                return pd.concat(df[self.col.name] for df in dfs).std()
+            except MemoryError:
+                logger.error(
+                    f"Unable to compute distinctCount for {self.col.name} due to memory constraints."
+                    f"We recommend using a smaller sample size or partitionning."
+                )
+                return 0
 
         logger.debug(
             f"{self.col.name} has type {self.col.type}, which is not listed as quantifiable."

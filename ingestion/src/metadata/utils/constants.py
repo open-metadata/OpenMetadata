@@ -16,7 +16,7 @@ Define constants useful for the metadata ingestion
 DOT = "_DOT_"
 TEN_MIN = 10 * 60
 UTF_8 = "utf-8"
-CHUNKSIZE = 200000
+CHUNKSIZE = 2
 DEFAULT_DATABASE = "default"
 
 

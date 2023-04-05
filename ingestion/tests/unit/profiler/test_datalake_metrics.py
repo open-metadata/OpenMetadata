@@ -61,9 +61,13 @@ class DatalakeMetricsTest(TestCase):
         return_value=None,
     )
     @patch.object(
-        pandas_profiler_interface, "return_ometa_dataframes", return_value=[df1, df2]
+        pandas_profiler_interface.PandasInterfaceMixin,
+        "return_ometa_dataframes_sampled",
+        return_value=[df1, df2],
     )
-    def __init__(self, methodName, return_ometa_dataframes, get_connection_client):
+    def __init__(
+        self, methodName, return_ometa_dataframes_sampled, get_connection_client
+    ):
         super().__init__(methodName)
         table_entity = Table(
             id=uuid4(),

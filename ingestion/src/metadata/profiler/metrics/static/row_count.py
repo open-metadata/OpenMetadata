@@ -14,7 +14,6 @@ Table Count Metric definition
 """
 # pylint: disable=duplicate-code
 
-from typing import cast
 
 from sqlalchemy import func
 
@@ -50,6 +49,4 @@ class RowCount(StaticMetric):
 
     def df_fn(self, dfs=None):
         """pandas function"""
-        from pandas import DataFrame  # pylint: disable=import-outside-toplevel
-
-        return sum(map(lambda df: len(cast(DataFrame, df).index), dfs))
+        return sum(len(df.index) for df in dfs)

@@ -60,21 +60,13 @@ class MaxLength(StaticMetric):
     def df_fn(self, dfs=None):
         """dataframe function"""
         from numpy import vectorize
-        from pandas import notnull
 
         length_vectorize_func = vectorize(len)
         if self._is_concatenable():
 
             return max(
-                map(
-                    lambda df: length_vectorize_func(
-                        df.astype(object).where(
-                            notnull(df),
-                            "",
-                        )[self.col.name]
-                    ).max(),
-                    dfs,
-                )
+                length_vectorize_func(df[self.col.name].dropna().astype(str)).max()
+                for df in dfs
             )
         logger.debug(
             f"Don't know how to process type {self.col.type} when computing MAX_LENGTH"

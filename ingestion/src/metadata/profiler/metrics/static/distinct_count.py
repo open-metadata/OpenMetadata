@@ -46,9 +46,14 @@ class DistinctCount(StaticMetric):
         try:
             import pandas as pd  # pylint: disable=import-outside-toplevel
 
-            return len(
-                pd.concat((df[self.col.name] for df in dfs)).dropna().drop_duplicates()
+            return len(pd.concat(df[self.col.name] for df in dfs).value_counts())
+        except MemoryError:
+            logger.error(
+                f"Unable to compute distinctCount for {self.col.name} due to memory constraints."
+                f"We recommend using a smaller sample size or partitionning."
             )
+            return 0
+
         except Exception as err:
             logger.debug(
                 f"Don't know how to process type {self.col.type} "

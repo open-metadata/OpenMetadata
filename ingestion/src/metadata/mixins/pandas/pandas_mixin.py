@@ -17,12 +17,16 @@ from metadata.data_quality.validations.table.pandas.tableRowInsertedCountToBeBet
     TableRowInsertedCountToBeBetweenValidator,
 )
 from metadata.generated.schema.entity.data.table import PartitionIntervalType
+import math
+import random
 from typing import cast
 
 from metadata.generated.schema.entity.data.table import (
     PartitionIntervalType,
     PartitionProfilerConfig,
+    ProfileSampleType,
 )
+from metadata.ingestion.source.database.datalake.metadata import ometa_to_dataframe
 from metadata.utils.logger import test_suite_logger
 
 logger = test_suite_logger()
@@ -76,3 +80,56 @@ class PandasInterfaceMixin:
             ]
             for df in dfs
         ]
+
+    def return_ometa_dataframes_sampled(  # pylint: disable=inconsistent-return-statements
+        self, service_connection_config, client, table, profile_sample_config
+    ):
+        """
+        returns sampled ometa dataframes
+        """
+
+        data = ometa_to_dataframe(
+            config_source=service_connection_config.configSource,
+            client=client,
+            table=table,
+        )
+
+        if data:
+            random.shuffle(data)
+
+            # sampling data based on profiler config (if any)
+            if hasattr(profile_sample_config, "profile_sample"):
+                if (
+                    profile_sample_config.profile_sample_type
+                    == ProfileSampleType.PERCENTAGE
+                ):
+                    return [
+                        df.sample(
+                            frac=profile_sample_config.profile_sample / 100,
+                            random_state=random.randint(0, 100),
+                            replace=True,
+                        )
+                        for df in data
+                    ]
+                if profile_sample_config.profile_sample_type == ProfileSampleType.ROWS:
+                    sample_rows_per_chunk: int = math.floor(
+                        profile_sample_config.profile_sample / len(data)
+                    )
+                    return [
+                        df.sample(
+                            n=sample_rows_per_chunk,
+                            random_state=random.randint(0, 100),
+                            replace=True,
+                        )
+                        for df in data
+                    ]
+            else:
+                # randomize the samples
+                return [
+                    df.sample(
+                        frac=1,
+                        random_state=random.randint(0, 100),
+                    )
+                    for df in data
+                ]
+            return data

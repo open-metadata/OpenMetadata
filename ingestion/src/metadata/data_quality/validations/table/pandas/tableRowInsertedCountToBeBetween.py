@@ -23,6 +23,9 @@ from metadata.data_quality.validations.mixins.pandas_validator_mixin import (
 from metadata.data_quality.validations.table.base.tableRowInsertedCountToBeBetween import (
     BaseTableRowInsertedCountToBeBetweenValidator,
 )
+from metadata.utils.logger import test_suite_logger
+
+logger = test_suite_logger()
 
 
 class TableRowInsertedCountToBeBetweenValidator(
@@ -70,6 +73,19 @@ class TableRowInsertedCountToBeBetweenValidator(
             range_type (str): range type (DAY, HOUR, MONTH, YEAR)
             range_interval (int): range interval
         """
-        threshold_date = self._get_threshold_date(range_type, range_interval)
+        import pandas as pd  # pylint: disable=import-outside-toplevel
 
-        return len(self.runner[0].query(f"{column_name} >= {threshold_date}"))
+        threshold_date = self._get_threshold_date(range_type, range_interval)
+        try:
+            return len(
+                pd.concat(
+                    runner.query(f"{column_name} >= {threshold_date}")
+                    for runner in self.runner
+                )
+            )
+        except MemoryError:
+            logger.error(
+                "Unable to compute due to memory constraints."
+                "We recommend using a smaller sample size or partitionning for the query."
+            )
+            return 0

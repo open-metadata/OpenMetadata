@@ -45,16 +45,7 @@ class DatalakeSampler:
         self._sample_rows = None
 
     def _fetch_rows(self, data_frame):
-        from pandas import notnull  # pylint: disable=import-outside-toplevel
-
-        return (
-            data_frame.astype(object)
-            .where(
-                notnull(data_frame),
-                None,
-            )
-            .values.tolist()[:100]
-        )
+        return data_frame.dropna().values.tolist()
 
     def get_col_row(self, data_frame):
         """
@@ -63,8 +54,9 @@ class DatalakeSampler:
         cols = []
         rows = []
         cols = data_frame[0].columns.tolist()
+        # Sample Data should not exceed sample limit
         for chunk in data_frame:
-            rows.extend(self._fetch_rows(chunk)[: 100 - len(rows)])
+            rows.extend(self._fetch_rows(chunk)[: self.sample_limit])
             if len(rows) >= self.sample_limit:
                 break
         return cols, rows

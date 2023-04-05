@@ -21,10 +21,7 @@ from typing import Dict, List
 from sqlalchemy import Column
 
 from metadata.generated.schema.entity.data.table import (
-    DataType,
-    PartitionIntervalType,
     PartitionProfilerConfig,
-    ProfileSampleType,
     TableData,
 )
 from metadata.generated.schema.entity.services.connections.database.datalakeConnection import (
@@ -38,12 +35,12 @@ from metadata.ingestion.source.database.datalake.metadata import (
 )
 from metadata.mixins.pandas.pandas_mixin import PandasInterfaceMixin
 from metadata.profiler.interface.profiler_protocol import ProfilerProtocol
+from metadata.ingestion.source.database.datalake.metadata import DatalakeSource
 from metadata.profiler.metrics.core import MetricTypes
 from metadata.profiler.metrics.registry import Metrics
 from metadata.profiler.processor.datalake_sampler import DatalakeSampler
 from metadata.utils.dispatch import valuedispatch
 from metadata.utils.logger import profiler_interface_registry_logger
-from metadata.utils.pandas_utils import return_ometa_dataframes
 from metadata.utils.sqa_like_column import SQALikeColumn, Type
 
 logger = profiler_interface_registry_logger()
@@ -69,8 +66,6 @@ class PandasProfilerInterface(ProfilerProtocol, PandasInterfaceMixin):
         table_partition_config=None,
         **kwargs,
     ):
-        from pandas import notnull
-
         """Instantiate SQA Interface object"""
         self._thread_count = thread_count
         self.table_entity = entity
@@ -88,7 +83,7 @@ class PandasProfilerInterface(ProfilerProtocol, PandasInterfaceMixin):
         self.profile_query = sample_query
         self.table_partition_config: PartitionProfilerConfig = table_partition_config
         self._table = entity
-        self.dfs = return_ometa_dataframes(
+        self.dfs = self.return_ometa_dataframes_sampled(
             service_connection_config=self.service_connection_config,
             client=self.client,
             table=self.table,
@@ -127,12 +122,7 @@ class PandasProfilerInterface(ProfilerProtocol, PandasInterfaceMixin):
             row = []
             for metric in metrics:
                 row.append(
-                    metric().df_fn(
-                        [
-                            df.astype(object).where(pd.notnull(df), None)
-                            for df in self.dfs
-                        ]
-                    )
+                    metric().df_fn([df.where(pd.notnull(df), None) for df in self.dfs])
                 )
             if row:
                 if isinstance(row, list):
