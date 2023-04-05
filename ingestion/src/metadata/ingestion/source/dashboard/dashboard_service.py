@@ -45,7 +45,7 @@ from metadata.generated.schema.type.entityLineage import EntitiesEdge
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.usageRequest import UsageRequest
 from metadata.ingestion.api.source import Source
-from metadata.ingestion.api.topology_runner import TopologyRunnerMixin
+from metadata.ingestion.api.topology_runner import C, TopologyRunnerMixin
 from metadata.ingestion.models.delete_entity import (
     DeleteEntity,
     delete_entity_from_source,
@@ -406,3 +406,25 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
 
     def prepare(self):
         pass
+
+    def fqn_from_context(self, stage: NodeStage, entity_request: C) -> str:
+        """
+        We are overriding this method since CreateDashboardDataModelRequest needs to add an extra value to the context
+        names.
+
+        Read the context
+        :param stage: Topology node being processed
+        :param entity_request: Request sent to the sink
+        :return: Entity FQN derived from context
+        """
+        context_names = [
+            self.context.__dict__[dependency].name.__root__
+            for dependency in stage.consumer or []  # root nodes do not have consumers
+        ]
+
+        if isinstance(entity_request, CreateDashboardDataModelRequest):
+            context_names.append("model")
+
+        return fqn._build(  # pylint: disable=protected-access
+            *context_names, entity_request.name.__root__
+        )

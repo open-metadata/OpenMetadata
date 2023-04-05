@@ -12,8 +12,9 @@
 Wrapper module of TableauServerConnection client
 """
 import json
-from typing import Any, Dict, List
+from typing import Any, Callable, Dict, List
 
+from cached_property import cached_property
 from tableau_api_lib import TableauServerConnection
 from tableau_api_lib.utils import extract_pages
 
@@ -53,8 +54,8 @@ class TableauClient:
         )
         self._client.sign_in().json()
 
-    @property
-    def server_info(self) -> object:
+    @cached_property
+    def server_info(self) -> Callable:
         return self._client.server_info
 
     @property
@@ -62,11 +63,11 @@ class TableauClient:
         return self._client.site_id
 
     @property
-    def query_workbooks_for_site(self) -> object:
+    def query_workbooks_for_site(self) -> Callable:
         return self._client.query_workbooks_for_site
 
     @property
-    def query_views_for_site(self) -> object:
+    def query_views_for_site(self) -> Callable:
         return self._client.query_views_for_site
 
     def get_workbooks(self) -> List[TableauDashboard]:

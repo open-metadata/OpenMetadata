@@ -171,9 +171,6 @@ class TopologyRunnerMixin(Generic[C]):
             for dependency in stage.consumer or []  # root nodes do not have consumers
         ]
 
-        if isinstance(entity_request, CreateDashboardDataModelRequest):
-            context_names.append("model")
-
         return fqn._build(  # pylint: disable=protected-access
             *context_names, entity_request.name.__root__
         )
