@@ -124,6 +124,7 @@ export const INGESTION_NAME = ':ingestionName';
 export const LOG_ENTITY_NAME = ':logEntityName';
 export const KPI_NAME = ':kpiName';
 export const PLACEHOLDER_ACTION = ':action';
+export const PLACEHOLDER_ROUTE_DATA_MODEL_FQN = ':dataModelFQN';
 
 export const pagingObject = { after: '', before: '', total: 0 };
 
@@ -212,6 +213,8 @@ export const ROUTES = {
   TOPIC_DETAILS_WITH_TAB: `/topic/${PLACEHOLDER_ROUTE_TOPIC_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
   DASHBOARD_DETAILS: `/dashboard/${PLACEHOLDER_ROUTE_DASHBOARD_FQN}`,
   DASHBOARD_DETAILS_WITH_TAB: `/dashboard/${PLACEHOLDER_ROUTE_DASHBOARD_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
+  DATA_MODEL_DETAILS: `/dataModel/${PLACEHOLDER_ROUTE_DATA_MODEL_FQN}`,
+  DATA_MODEL_DETAILS_WITH_TAB: `/dataModel/${PLACEHOLDER_ROUTE_DATA_MODEL_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
   DATABASE_DETAILS: `/database/${PLACEHOLDER_ROUTE_DATABASE_FQN}`,
   SCHEMA_DETAILS: `/databaseSchema/${PLACEHOLDER_ROUTE_DATABASE_SCHEMA_FQN}`,
   DATABASE_DETAILS_WITH_TAB: `/database/${PLACEHOLDER_ROUTE_DATABASE_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
@@ -430,6 +433,19 @@ export const getTopicDetailsPath = (topicFQN: string, tab?: string) => {
 export const getDashboardDetailsPath = (dashboardFQN: string, tab?: string) => {
   let path = tab ? ROUTES.DASHBOARD_DETAILS_WITH_TAB : ROUTES.DASHBOARD_DETAILS;
   path = path.replace(PLACEHOLDER_ROUTE_DASHBOARD_FQN, dashboardFQN);
+
+  if (tab) {
+    path = path.replace(PLACEHOLDER_ROUTE_TAB, tab);
+  }
+
+  return path;
+};
+
+export const getDataModelDetailsPath = (dataModelFQN: string, tab?: string) => {
+  let path = tab
+    ? ROUTES.DATA_MODEL_DETAILS_WITH_TAB
+    : ROUTES.DATA_MODEL_DETAILS;
+  path = path.replace(PLACEHOLDER_ROUTE_DATA_MODEL_FQN, dataModelFQN);
 
   if (tab) {
     path = path.replace(PLACEHOLDER_ROUTE_TAB, tab);

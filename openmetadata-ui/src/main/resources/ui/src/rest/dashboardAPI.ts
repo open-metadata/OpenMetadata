@@ -129,3 +129,22 @@ export const restoreDashboard = async (id: string) => {
 
   return response.data;
 };
+
+export const getDataModels = async (
+  service: string,
+  fields: string,
+  paging?: PagingWithoutTotal
+) => {
+  const response = await APIClient.get<{
+    data: ServicePageData[];
+    paging: Paging;
+  }>(`/dashboard/datamodels`, {
+    params: {
+      service,
+      fields,
+      ...paging,
+    },
+  });
+
+  return response.data;
+};
