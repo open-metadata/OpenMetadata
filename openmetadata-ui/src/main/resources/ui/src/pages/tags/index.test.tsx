@@ -544,6 +544,30 @@ describe('Test TagsPage page', () => {
     expect(tagCategoryHeading).toHaveValue('newPII');
   });
 
+  it('User tag should be load', async () => {
+    const { container } = render(<TagsPage />);
+
+    const tagsComponent = await screen.findByTestId('tags-container');
+    const classification = await screen.findAllByText('PersonalData');
+
+    act(() => {
+      fireEvent.click(classification[0]);
+    });
+
+    act(async () => {
+      const tagEditIcon = await findAllByTestId(container, 'tag-edit-icon');
+
+      expect(tagEditIcon[0]).toBeInTheDocument();
+
+      fireEvent.click(tagEditIcon[0]);
+    });
+
+    const tagName = await screen.findByText('test_tag');
+
+    expect(tagName).toBeInTheDocument();
+    expect(tagsComponent).toBeInTheDocument();
+  });
+
   describe('Render Sad Paths', () => {
     it('Show error message on failing of deleteClassification API', async () => {
       (deleteClassification as jest.Mock).mockImplementation(() =>

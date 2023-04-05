@@ -20,6 +20,7 @@ from datetime import datetime, timedelta
 import sqlalchemy as sqa
 from sqlalchemy.orm import Session, declarative_base
 
+from metadata.data_quality.api.workflow import TestSuiteWorkflow
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
 from metadata.generated.schema.api.data.createDatabaseSchema import (
     CreateDatabaseSchemaRequest,
@@ -45,7 +46,6 @@ from metadata.generated.schema.entity.services.databaseService import (
 )
 from metadata.generated.schema.tests.testCase import TestCase
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.test_suite.api.workflow import TestSuiteWorkflow
 
 test_suite_config = {
     "source": {
@@ -232,14 +232,14 @@ class TestE2EWorkflow(unittest.TestCase):
         assert test_case_2
 
         test_case_result_1 = self.metadata.client.get(
-            "/testCase/test_suite_service_test.test_suite_database.test_suite_database_schema.users.my_test_case/testCaseResult",
+            "/testCases/test_suite_service_test.test_suite_database.test_suite_database_schema.users.my_test_case/testCaseResult",
             data={
                 "startTs": int((datetime.now() - timedelta(days=3)).timestamp()),
                 "endTs": int((datetime.now() + timedelta(days=3)).timestamp()),
             },
         )
         test_case_result_2 = self.metadata.client.get(
-            "/testCase/test_suite_service_test.test_suite_database.test_suite_database_schema.users.table_column_name_to_exists/testCaseResult",
+            "/testCases/test_suite_service_test.test_suite_database.test_suite_database_schema.users.table_column_name_to_exists/testCaseResult",
             data={
                 "startTs": int((datetime.now() - timedelta(days=3)).timestamp()),
                 "endTs": int((datetime.now() + timedelta(days=3)).timestamp()),

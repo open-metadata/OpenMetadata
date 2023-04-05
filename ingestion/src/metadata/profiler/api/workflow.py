@@ -59,16 +59,16 @@ from metadata.profiler.api.models import (
     ProfilerResponse,
     TableConfig,
 )
-from metadata.profiler.metrics.registry import Metrics
-from metadata.profiler.profiler.core import Profiler
-from metadata.profiler.profiler.default import DefaultProfiler, get_default_metrics
-from metadata.profiler.profiler.interface.pandas.pandas_profiler_interface import (
+from metadata.profiler.interface.pandas.pandas_profiler_interface import (
     PandasProfilerInterface,
 )
-from metadata.profiler.profiler.interface.profiler_protocol import ProfilerProtocol
-from metadata.profiler.profiler.interface.sqlalchemy.sqa_profiler_interface import (
+from metadata.profiler.interface.profiler_protocol import ProfilerProtocol
+from metadata.profiler.interface.sqlalchemy.sqa_profiler_interface import (
     SQAProfilerInterface,
 )
+from metadata.profiler.metrics.registry import Metrics
+from metadata.profiler.processor.core import Profiler
+from metadata.profiler.processor.default import DefaultProfiler, get_default_metrics
 from metadata.utils import fqn
 from metadata.utils.class_helper import (
     get_service_class_from_service_type,

@@ -23,7 +23,8 @@
         "sandboxModeEnabled",
         "slackChat",
         "taskNotificationConfiguration",
-        "testResultNotificationConfiguration"
+        "testResultNotificationConfiguration",
+        "emailConfiguration"
       ]
     }
   },
@@ -57,6 +58,9 @@
         },
         {
           "$ref": "../configuration/taskNotificationConfiguration.json"
+        },
+        {
+          "$ref": "../email/smtpSettings.json"
         }
 
       ]
