@@ -72,12 +72,14 @@ public class ConfigResource {
       // Remove Ldap Configuration
       authenticationConfiguration.setLdapConfiguration(null);
 
-      // Remove Saml Fields
-      SamlSSOClientConfig ssoClientConfig = new SamlSSOClientConfig();
-      ssoClientConfig.setIdp(
-          new IdentityProviderConfig()
-              .withAuthorityUrl(authenticationConfiguration.getSamlConfiguration().getIdp().getAuthorityUrl()));
-      authenticationConfiguration.setSamlConfiguration(ssoClientConfig);
+      if (authenticationConfiguration.getSamlConfiguration() != null) {
+        // Remove Saml Fields
+        SamlSSOClientConfig ssoClientConfig = new SamlSSOClientConfig();
+        ssoClientConfig.setIdp(
+            new IdentityProviderConfig()
+                .withAuthorityUrl(authenticationConfiguration.getSamlConfiguration().getIdp().getAuthorityUrl()));
+        authenticationConfiguration.setSamlConfiguration(ssoClientConfig);
+      }
     }
     return authenticationConfiguration;
   }
