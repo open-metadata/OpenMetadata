@@ -56,6 +56,11 @@ describe('Tags page should work', () => {
       'getTagList'
     );
     interceptURL('GET', `/api/v1/permissions/classification/*`, 'permissions');
+    interceptURL(
+      'GET',
+      `/api/v1/search/suggest?q=*&index=tag_search_index*glossary_search_index`,
+      'suggestTag'
+    );
     interceptURL('GET', '/api/v1/tags*', 'getTags');
 
     cy.get('[data-testid="governance"]')
@@ -274,7 +279,7 @@ describe('Tags page should work', () => {
       .click()
       .type(tag);
 
-    verifyResponseStatusCode('@searchQuery', 200);
+    verifyResponseStatusCode('@suggestTag', 200);
 
     cy.get('.ant-select-item-option-content').contains(tag).click();
 
