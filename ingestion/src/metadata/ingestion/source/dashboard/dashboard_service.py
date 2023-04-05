@@ -13,7 +13,7 @@ Base class for ingesting dashboard services
 """
 import traceback
 from abc import ABC, abstractmethod
-from typing import Any, Iterable, List, Optional, Set
+from typing import Any, Iterable, List, Optional, Set, Union
 
 from pydantic import BaseModel
 
@@ -382,7 +382,7 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
 
     @staticmethod
     def _get_add_lineage_request(
-        to_entity: Dashboard, from_entity: Table
+        to_entity: Union[Dashboard, DashboardDataModel], from_entity: Table
     ) -> Optional[AddLineageRequest]:
         if from_entity and to_entity:
             return AddLineageRequest(
@@ -391,7 +391,10 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
                         id=from_entity.id.__root__, type="table"
                     ),
                     toEntity=EntityReference(
-                        id=to_entity.id.__root__, type="dashboard"
+                        id=to_entity.id.__root__,
+                        type="dashboard"
+                        if isinstance(to_entity, Dashboard)
+                        else "dashboardDataModel",
                     ),
                 )
             )
