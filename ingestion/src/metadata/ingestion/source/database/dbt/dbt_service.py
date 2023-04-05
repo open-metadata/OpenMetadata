@@ -141,15 +141,27 @@ class DbtServiceSource(TopologyRunnerMixin, Source, ABC):
     topology = DbtServiceTopology()
     context = create_source_context(topology)
 
+    def remove_manifest_non_required_keys(self, manifest_dict: dict):
+        """
+        Method to remove the non required keys from manifest file
+        """
+        required_manifest_keys = ["nodes", "sources", "metadata"]
+        for key, _ in manifest_dict.items():
+            if key.lower() in required_manifest_keys:
+                continue
+            manifest_dict[key] = {}
+
     def get_dbt_files(self) -> DbtFiles:
         dbt_files = get_dbt_details(
             self.source_config.dbtConfigSource  # pylint: disable=no-member
         )
-
         self.context.dbt_files = dbt_files
         yield dbt_files
 
     def get_dbt_objects(self) -> DbtObjects:
+        self.remove_manifest_non_required_keys(
+            manifest_dict=self.context.dbt_files.dbt_manifest
+        )
         dbt_objects = DbtObjects(
             dbt_catalog=parse_catalog(self.context.dbt_files.dbt_catalog)
             if self.context.dbt_files.dbt_catalog
