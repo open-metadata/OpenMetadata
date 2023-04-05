@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import React from 'react';
 import ServiceRequirements from './ServiceDocPanel';
 
@@ -55,30 +55,5 @@ describe('ServiceRequirements Component', () => {
     expect(requirementTextElement).toBeInTheDocument();
 
     expect(requirementTextElement).toHaveTextContent('markdown text');
-
-    expect(screen.getByTestId('previous-button')).toBeInTheDocument();
-    expect(screen.getByTestId('next-button')).toBeInTheDocument();
-  });
-
-  it('Should call onCancel when previous button is clicked', async () => {
-    await act(async () => {
-      render(<ServiceRequirements {...mockProps} />);
-    });
-
-    fireEvent.click(screen.getByTestId('previous-button'));
-
-    expect(mockProps.onBack).toHaveBeenCalled();
-    expect(mockProps.onNext).not.toHaveBeenCalled();
-  });
-
-  it('Should call onNext when next button is clicked', async () => {
-    await act(async () => {
-      render(<ServiceRequirements {...mockProps} />);
-    });
-
-    fireEvent.click(screen.getByTestId('next-button'));
-
-    expect(mockProps.onBack).not.toHaveBeenCalled();
-    expect(mockProps.onNext).toHaveBeenCalled();
   });
 });

@@ -19,7 +19,7 @@ import PanelContainer from './PanelContainer/PanelContainer';
 import { ResizablePanelsProps } from './ResizablePanels.interface';
 import './ResizablePanels.less';
 
-export const ResizablePanels: React.FC<ResizablePanelsProps> = ({
+const ResizablePanels: React.FC<ResizablePanelsProps> = ({
   className,
   orientation = 'vertical',
   firstPanel,
@@ -72,3 +72,5 @@ export const ResizablePanels: React.FC<ResizablePanelsProps> = ({
     </>
   );
 };
+
+export default ResizablePanels;

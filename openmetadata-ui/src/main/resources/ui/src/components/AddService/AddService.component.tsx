@@ -12,7 +12,7 @@
  */
 
 import { Card } from 'antd';
-import { ResizablePanels } from 'components/common/ResizablePanels/ResizablePanels';
+import ResizablePanels from 'components/common/ResizablePanels/ResizablePanels';
 import {
   SERVICE_DEFAULT_ERROR_MAP,
   STEPS_FOR_ADD_SERVICE,
