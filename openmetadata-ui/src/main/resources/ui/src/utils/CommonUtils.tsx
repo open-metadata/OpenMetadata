@@ -221,7 +221,7 @@ export const getCountBadge = (
   return (
     <span
       className={classNames(
-        'tw-py-px tw-px-1 tw-mx-1 tw-border tw-rounded tw-text-xs tw-min-w-badgeCount tw-text-center',
+        'tw-py-px p-x-xss m-x-xss tw-border tw-rounded tw-text-xs tw-min-w-badgeCount text-center',
         clsBG,
         className
       )}>

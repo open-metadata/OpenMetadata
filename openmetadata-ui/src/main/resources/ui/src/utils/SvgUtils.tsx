@@ -55,7 +55,7 @@ import IconControlPlus from '../assets/svg/control-plus.svg';
 import IconCreateIngestion from '../assets/svg/creating-ingestion.svg';
 import IconDashboardGrey from '../assets/svg/dashboard-grey.svg';
 import IconDashboard from '../assets/svg/dashboard.svg';
-import IconAsstest from '../assets/svg/data-assets.svg';
+import IconAssets from '../assets/svg/data-assets.svg';
 import IconDBTModelGrey from '../assets/svg/dbt-model-grey.svg';
 import IconDBTModelLightGrey from '../assets/svg/dbt-model-light-grey.svg';
 import IconDBTModelPrimeryColor from '../assets/svg/dbt-model-primery.svg';
@@ -662,7 +662,7 @@ const SVGIcons: FunctionComponent<Props> = ({ icon, ...props }: Props) => {
 
       break;
     case Icons.ASSETS:
-      IconComponent = IconAsstest;
+      IconComponent = IconAssets;
 
       break;
     case Icons.TOAST_INFO:
