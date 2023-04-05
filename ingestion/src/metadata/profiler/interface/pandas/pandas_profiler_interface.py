@@ -121,8 +121,8 @@ class PandasProfilerInterface(ProfilerProtocol, PandasInterfaceMixin):
         try:
             row_dict = {}
             for metric in metrics:
-                row_dict[metric.name()] = (
-                    metric().df_fn([df.where(pd.notnull(df), None) for df in self.dfs])
+                row_dict[metric.name()] = metric().df_fn(
+                    [df.where(pd.notnull(df), None) for df in self.dfs]
                 )
             return row_dict
         except Exception as exc:

@@ -69,8 +69,13 @@ class UniqueCount(QueryMetric):
         """
         Build the Unique Count metric
         """
+        from collections import Counter  # pylint: disable=import-outside-toplevel
+
         try:
-            return sum(len(df[self.col.name].dropna().unique()) for df in dfs)
+            counter = Counter()
+            for df in dfs:
+                counter.update(df[self.col.name].dropna().to_list())
+            return len([i for i in counter if counter[i] == 1])
         except Exception as err:
             logger.debug(
                 f"Don't know how to process type {self.col.type}"

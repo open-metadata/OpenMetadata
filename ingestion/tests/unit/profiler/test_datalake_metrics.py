@@ -450,7 +450,7 @@ class DatalakeMetricsTest(TestCase):
             ._column_results
         )
 
-        assert res.get(User.name.name)[Metrics.UNIQUE_COUNT.name] == 4
+        assert res.get(User.name.name)[Metrics.UNIQUE_COUNT.name] == 1
 
     def test_unique_ratio(self):
         """
@@ -471,7 +471,7 @@ class DatalakeMetricsTest(TestCase):
         )
 
         assert (
-            str(round(res.get(User.name.name)[Metrics.UNIQUE_RATIO.name], 2)) == "0.8"
+            str(round(res.get(User.name.name)[Metrics.UNIQUE_RATIO.name], 2)) == "0.2"
         )
 
     def test_distinct_count(self):
