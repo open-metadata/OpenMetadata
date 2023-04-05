@@ -123,14 +123,8 @@ const PoliciesListPage = () => {
         <Space className="w-full justify-between">
           <PageHeader data={PAGE_HEADERS.POLICIES} />
           <Tooltip
-            placement="left"
-            title={
-              addPolicyPermission
-                ? t('label.add-entity', {
-                    entity: t('label.policy'),
-                  })
-                : NO_PERMISSION_FOR_ACTION
-            }>
+            placement="topLeft"
+            title={!addPolicyPermission && NO_PERMISSION_FOR_ACTION}>
             <Button
               data-testid="add-policy"
               disabled={!addPolicyPermission}
