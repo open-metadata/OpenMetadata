@@ -286,9 +286,7 @@ const AddService = ({
   }, [activeIngestionStep, activeServiceStep]);
 
   const firstPanelChildren = (
-    <div
-      className="max-width-md w-9/10"
-      style={{ margin: '16px auto 0', paddingBottom: '16px' }}>
+    <div className="max-width-md w-9/10 service-form-container">
       <TitleBreadcrumb titleLinks={slashedBreadcrumb} />
       <Card className="p-lg m-t-md">
         {addIngestion ? (
