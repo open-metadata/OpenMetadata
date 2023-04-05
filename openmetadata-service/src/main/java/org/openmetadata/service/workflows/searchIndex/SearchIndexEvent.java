@@ -36,30 +36,32 @@ public class SearchIndexEvent implements ContainerResponseFilter {
   @Override
   public void filter(ContainerRequestContext containerRequestContext, ContainerResponseContext containerResponseContext)
       throws IOException {
-    Reindex annotationFromResource = null;
-    Annotation[] annotations = containerResponseContext.getEntityAnnotations();
-    for (Annotation an : annotations) {
-      if (an instanceof Reindex) {
-        annotationFromResource = (Reindex) an;
-        break;
+    if (ReIndexingHandler.getInstance() != null) {
+      Reindex annotationFromResource = null;
+      Annotation[] annotations = containerResponseContext.getEntityAnnotations();
+      for (Annotation an : annotations) {
+        if (an instanceof Reindex) {
+          annotationFromResource = (Reindex) an;
+          break;
+        }
       }
-    }
-    if (annotationFromResource != null && !CommonUtil.nullOrEmpty(annotationFromResource.entities())) {
-      String jobName = annotationFromResource.jobName();
-      Set<String> entityList = new HashSet<>(Arrays.asList(annotationFromResource.entities().split(",")));
-      CreateEventPublisherJob jobRequest =
-          new CreateEventPublisherJob()
-              .withName(jobName)
-              .withEntities(entityList)
-              .withBatchSize(annotationFromResource.batchSize())
-              .withRecreateIndex(annotationFromResource.recreateIndex())
-              .withPublisherType(ELASTIC_SEARCH)
-              .withRunMode(CreateEventPublisherJob.RunMode.BATCH)
-              .withSearchIndexMappingLanguage(IndexMappingLanguage.EN);
-      // TODO: Once automation bots are in place update here
-      ReIndexingHandler.getInstance().createReindexingJob("system", jobRequest);
-    } else {
-      LOG.error("[SearchIndexEvent] Reindexing invoked but with wrong info : {}", annotationFromResource);
+      if (annotationFromResource != null && !CommonUtil.nullOrEmpty(annotationFromResource.entities())) {
+        String jobName = annotationFromResource.jobName();
+        Set<String> entityList = new HashSet<>(Arrays.asList(annotationFromResource.entities().split(",")));
+        CreateEventPublisherJob jobRequest =
+            new CreateEventPublisherJob()
+                .withName(jobName)
+                .withEntities(entityList)
+                .withBatchSize(annotationFromResource.batchSize())
+                .withRecreateIndex(annotationFromResource.recreateIndex())
+                .withPublisherType(ELASTIC_SEARCH)
+                .withRunMode(CreateEventPublisherJob.RunMode.BATCH)
+                .withSearchIndexMappingLanguage(IndexMappingLanguage.EN);
+        // TODO: Once automation bots are in place update here
+        ReIndexingHandler.getInstance().createReindexingJob("system", jobRequest);
+      } else {
+        LOG.error("[SearchIndexEvent] Reindexing invoked but with wrong info : {}", annotationFromResource);
+      }
     }
   }
 }

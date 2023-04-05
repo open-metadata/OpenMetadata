@@ -29,10 +29,6 @@ import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
-import java.util.concurrent.ArrayBlockingQueue;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import javax.validation.Valid;
 import javax.ws.rs.DefaultValue;
@@ -89,7 +85,6 @@ import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.util.ElasticSearchClientUtils;
 import org.openmetadata.service.util.ReIndexingHandler;
-import org.openmetadata.service.workflows.searchIndex.SearchIndexWorkflow;
 
 @Slf4j
 @Path("/v1/search")
@@ -98,7 +93,6 @@ import org.openmetadata.service.workflows.searchIndex.SearchIndexWorkflow;
 @Collection(name = "search")
 public class SearchResource {
   private RestHighLevelClient client;
-  private ElasticSearchIndexDefinition elasticSearchIndexDefinition;
   private static final Integer MAX_AGGREGATE_SIZE = 50;
   private static final Integer MAX_RESULT_HITS = 10000;
   private static final String NAME_KEYWORD = "name.keyword";
@@ -112,9 +106,6 @@ public class SearchResource {
   private static final NamedXContentRegistry xContentRegistry;
   private final CollectionDAO dao;
   private final Authorizer authorizer;
-  private final ExecutorService threadScheduler;
-
-  private final ConcurrentHashMap<UUID, SearchIndexWorkflow> REINDEXING_JOBS_MAP = new ConcurrentHashMap<>();
 
   static {
     SearchModule searchModule = new SearchModule(Settings.EMPTY, false, List.of());
@@ -124,15 +115,12 @@ public class SearchResource {
   public SearchResource(CollectionDAO dao, Authorizer authorizer) {
     this.dao = dao;
     this.authorizer = authorizer;
-    this.threadScheduler =
-        new ThreadPoolExecutor(
-            2, 2, 0L, TimeUnit.MILLISECONDS, new ArrayBlockingQueue<>(5), new ThreadPoolExecutor.CallerRunsPolicy());
   }
 
   public void initialize(OpenMetadataApplicationConfig config) {
     if (config.getElasticSearchConfiguration() != null) {
       this.client = ElasticSearchClientUtils.createElasticSearchClient(config.getElasticSearchConfiguration());
-      this.elasticSearchIndexDefinition = new ElasticSearchIndexDefinition(client, dao);
+      ElasticSearchIndexDefinition elasticSearchIndexDefinition = new ElasticSearchIndexDefinition(client, dao);
       ReIndexingHandler.initialize(client, elasticSearchIndexDefinition, dao);
     }
   }
