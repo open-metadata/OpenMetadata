@@ -59,6 +59,7 @@ source:
       # authorityURI: https://login.microsoftonline.com/ (default)
       # hostPort: https://analysis.windows.net/powerbi (default)
       # pagination_entity_per_page: 100 (default)
+      # useAdminApis: true or false
       type: PowerBI
   sourceConfig:
     config:
@@ -102,6 +103,13 @@ workflowConfig:
 - **authorityUri**: Authority URI for the service.
 - **scope**: Service scope. By default `["https://analysis.windows.net/powerbi/api/.default"]`.
 - **Pagination Entity Per Page**: Entity Limit set here will be used to paginate the PowerBi APIs. PowerBi API do not allow more than 100 workspaces to be inputed at a time. This field sets the limit of entities used for paginating the powerbi APIs. By default 100
+- **Use PowerBI Admin APIs**:
+Option for using the PowerBI admin APIs:
+1. Enabled (Use PowerBI Admin APIs):
+Using the admin APIs will fetch the dashboard and chart metadata from all the workspaces available in the powerbi instance
+
+2. Disabled (Use Non-Admin PowerBI APIs):
+Using the non-admin APIs will only fetch the dashboard and chart metadata from the workspaces that have the security group of the service principal assigned to them.
 
 #### Source Configuration - Source Config
 

@@ -35,7 +35,7 @@ const CREDENTIALS = {
 
 const policy = 'Data Consumer';
 const ENTITIES = {
-  table: SEARCH_ENTITY_TABLE.table_1,
+  table: SEARCH_ENTITY_TABLE.table_2,
   topic: SEARCH_ENTITY_TOPIC.topic_1,
   dashboard: SEARCH_ENTITY_DASHBOARD.dashboard_1,
   pipeline: SEARCH_ENTITY_PIPELINE.pipeline_1,

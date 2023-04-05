@@ -595,8 +595,15 @@ const ConfigureIngestion = ({
             handleShowFilter(value, ShowFilter.showDatabaseFilter)
           }
           includePattern={databaseFilterPattern?.includes ?? []}
+          includePatternExtraInfo={
+            data.database
+              ? t('message.include-database-filter-extra-information')
+              : undefined
+          }
+          isDisabled={data.isDatabaseFilterDisabled}
           type={FilterPatternEnum.DATABASE}
         />
+
         <FilterPattern
           checked={showSchemaFilter}
           excludePattern={schemaFilterPattern?.excludes ?? []}

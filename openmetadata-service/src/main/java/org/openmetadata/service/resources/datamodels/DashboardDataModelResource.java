@@ -13,7 +13,6 @@
 
 package org.openmetadata.service.resources.datamodels;
 
-import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -22,6 +21,7 @@ import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import java.io.IOException;
 import java.util.UUID;
 import javax.json.JsonPatch;
@@ -62,7 +62,9 @@ import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
 
 @Path("/v1/dashboard/datamodels")
-@Api(value = "Data Model data asset collection", tags = "Data Model data asset collection")
+@Tag(
+    name = "Dashboard Data Models",
+    description = "`Data Models` are the schemas used to build dashboards, charts, or other data assets.")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "datamodels")
@@ -94,7 +96,6 @@ public class DashboardDataModelResource extends EntityResource<DashboardDataMode
   @Operation(
       operationId = "listDashboardDataModels",
       summary = "List Dashboard Data Models",
-      tags = "dashboardDataModel",
       description =
           "Get a list of dashboard datamodels, optionally filtered by `service` it belongs to. Use `fields` "
               + "parameter to get only necessary fields. Use cursor-based pagination to limit the number "
@@ -153,7 +154,6 @@ public class DashboardDataModelResource extends EntityResource<DashboardDataMode
   @Operation(
       operationId = "listAllDataModelVersions",
       summary = "List dashboard datamodel versions",
-      tags = "dashboardDataModel",
       description = "Get a list of all the versions of a dashboard datamodel identified by `id`",
       responses = {
         @ApiResponse(
@@ -175,7 +175,6 @@ public class DashboardDataModelResource extends EntityResource<DashboardDataMode
   @Operation(
       operationId = "getDataModelByID",
       summary = "Get a dashboard datamodel by Id",
-      tags = "dashboardDataModel",
       description = "Get a dashboard datamodel by `id`.",
       responses = {
         @ApiResponse(
@@ -210,7 +209,6 @@ public class DashboardDataModelResource extends EntityResource<DashboardDataMode
   @Operation(
       operationId = "getDataModelByFQN",
       summary = "Get a dashboard datamodel by fully qualified name",
-      tags = "dashboardDataModel",
       description = "Get a dashboard datamodel by `fullyQualifiedName`.",
       responses = {
         @ApiResponse(
@@ -246,7 +244,6 @@ public class DashboardDataModelResource extends EntityResource<DashboardDataMode
   @Operation(
       operationId = "getSpecificDataModelVersion",
       summary = "Get a version of the dashboard datamodel",
-      tags = "dashboardDataModel",
       description = "Get a version of the dashboard datamodel by given `id`",
       responses = {
         @ApiResponse(
@@ -276,7 +273,6 @@ public class DashboardDataModelResource extends EntityResource<DashboardDataMode
   @Operation(
       operationId = "createDataModel",
       summary = "Create a dashboard datamodel",
-      tags = "dashboardDataModel",
       description = "Create a dashboard datamodel under an existing `service`.",
       responses = {
         @ApiResponse(
@@ -298,7 +294,6 @@ public class DashboardDataModelResource extends EntityResource<DashboardDataMode
   @Operation(
       operationId = "patchDataModel",
       summary = "Update a dashboard datamodel",
-      tags = "dashboardDataModel",
       description = "Update an existing dashboard datamodel using JsonPatch.",
       externalDocs = @ExternalDocumentation(description = "JsonPatch RFC", url = "https://tools.ietf.org/html/rfc6902"))
   @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
@@ -324,7 +319,6 @@ public class DashboardDataModelResource extends EntityResource<DashboardDataMode
   @Operation(
       operationId = "createOrUpdateDataModel",
       summary = "Create or update dashboard datamodel",
-      tags = "dashboardDataModel",
       description = "Create a dashboard datamodel, it it does not exist or update an existing dashboard datamodel.",
       responses = {
         @ApiResponse(
@@ -345,7 +339,6 @@ public class DashboardDataModelResource extends EntityResource<DashboardDataMode
   @Operation(
       operationId = "addFollowerToDataModel",
       summary = "Add a follower",
-      tags = "dashboardDataModel",
       description = "Add a user identified by `userId` as followed of this data model",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
@@ -365,7 +358,6 @@ public class DashboardDataModelResource extends EntityResource<DashboardDataMode
   @Operation(
       operationId = "deleteFollowerFromDataModel",
       summary = "Remove a follower",
-      tags = "dashboardDataModel",
       description = "Remove the user identified `userId` as a follower of the data model.")
   public Response deleteFollower(
       @Context UriInfo uriInfo,
@@ -383,7 +375,6 @@ public class DashboardDataModelResource extends EntityResource<DashboardDataMode
   @Operation(
       operationId = "deleteDataModel",
       summary = "Delete a data model by `id`.",
-      tags = "dashboardDataModel",
       description = "Delete a dashboard datamodel by `id`.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
@@ -406,7 +397,6 @@ public class DashboardDataModelResource extends EntityResource<DashboardDataMode
   @Operation(
       operationId = "deleteDataModelByFQN",
       summary = "Delete a data model by fully qualified name.",
-      tags = "dashboardDataModel",
       description = "Delete a data model by `fullyQualifiedName`.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
@@ -431,7 +421,6 @@ public class DashboardDataModelResource extends EntityResource<DashboardDataMode
   @Operation(
       operationId = "restore",
       summary = "Restore a soft deleted data model.",
-      tags = "dashboardDataModel",
       description = "Restore a soft deleted data model.",
       responses = {
         @ApiResponse(

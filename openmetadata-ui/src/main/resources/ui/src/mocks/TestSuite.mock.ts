@@ -20,7 +20,7 @@ export const MOCK_TABLE_DATA = {
       deleted: false,
       description: 'this is test test',
       fullyQualifiedName: 'test',
-      href: 'http://localhost:8585/api/v1/testSuite/db3e145b-4e17-4e39-b44e-801ed0d5e6dc',
+      href: 'http://localhost:8585/api/v1/testSuites/db3e145b-4e17-4e39-b44e-801ed0d5e6dc',
       id: 'db3e145b-4e17-4e39-b44e-801ed0d5e6dc',
       name: 'test',
       owner: {
@@ -53,14 +53,14 @@ export const MOCK_TABLE_DATA = {
       version: 0.1,
       updatedAt: 1670667255078,
       updatedBy: 'admin',
-      href: 'http://localhost:8585/api/v1/testSuite/164159a3-d3d8-4847-a0b5-814849e52676',
+      href: 'http://localhost:8585/api/v1/testSuites/164159a3-d3d8-4847-a0b5-814849e52676',
       deleted: false,
     },
     {
       deleted: false,
       description: 'this is test test',
       fullyQualifiedName: 'test2',
-      href: 'http://localhost:8585/api/v1/testSuite/db3e145b-4e17-4e39-b44e-801ed0d5e6dc',
+      href: 'http://localhost:8585/api/v1/testSuites/db3e145b-4e17-4e39-b44e-801ed0d5e6dc',
       id: 'db3e145b-4e17-4e39-b44e-801ed0d5e6dd',
       name: 'test2',
       owner: {
@@ -93,14 +93,14 @@ export const MOCK_TABLE_DATA = {
       version: 0.1,
       updatedAt: 1670667255078,
       updatedBy: 'admin',
-      href: 'http://localhost:8585/api/v1/testSuite/164159a3-d3d8-4847-a0b5-814849e52676',
+      href: 'http://localhost:8585/api/v1/testSuites/164159a3-d3d8-4847-a0b5-814849e52676',
       deleted: false,
     },
     {
       deleted: false,
       description: 'this is test test',
       fullyQualifiedName: 'test4',
-      href: 'http://localhost:8585/api/v1/testSuite/db3e145b-4e17-4e39-b44e-801ed0d5e6dc',
+      href: 'http://localhost:8585/api/v1/testSuites/db3e145b-4e17-4e39-b44e-801ed0d5e6dc',
       id: 'db3e145b-4e17-4e39-b44e-801ed0d5e6df',
       name: 'test4',
       owner: {
@@ -133,14 +133,14 @@ export const MOCK_TABLE_DATA = {
       version: 0.1,
       updatedAt: 1670667255078,
       updatedBy: 'admin',
-      href: 'http://localhost:8585/api/v1/testSuite/164159a3-d3d8-4847-a0b5-814849e52676',
+      href: 'http://localhost:8585/api/v1/testSuites/164159a3-d3d8-4847-a0b5-814849e52676',
       deleted: false,
     },
     {
       deleted: false,
       description: 'this is test test',
       fullyQualifiedName: 'test6',
-      href: 'http://localhost:8585/api/v1/testSuite/db3e145b-4e17-4e39-b44e-801ed0d5e6dc',
+      href: 'http://localhost:8585/api/v1/testSuites/db3e145b-4e17-4e39-b44e-801ed0d5e6dc',
       id: 'db3e145b-4e17-4e39-b44e-801ed0d5e6dh',
       name: 'test6',
       owner: {
@@ -173,7 +173,7 @@ export const MOCK_TABLE_DATA = {
       version: 0.1,
       updatedAt: 1670667255078,
       updatedBy: 'admin',
-      href: 'http://localhost:8585/api/v1/testSuite/164159a3-d3d8-4847-a0b5-814849e52676',
+      href: 'http://localhost:8585/api/v1/testSuites/164159a3-d3d8-4847-a0b5-814849e52676',
       deleted: false,
     },
     {
@@ -193,7 +193,7 @@ export const MOCK_TABLE_DATA = {
       version: 0.1,
       updatedAt: 1670667255078,
       updatedBy: 'admin',
-      href: 'http://localhost:8585/api/v1/testSuite/164159a3-d3d8-4847-a0b5-814849e52676',
+      href: 'http://localhost:8585/api/v1/testSuites/164159a3-d3d8-4847-a0b5-814849e52676',
       deleted: false,
     },
     {
@@ -213,7 +213,7 @@ export const MOCK_TABLE_DATA = {
       version: 0.1,
       updatedAt: 1670667255078,
       updatedBy: 'admin',
-      href: 'http://localhost:8585/api/v1/testSuite/164159a3-d3d8-4847-a0b5-814849e52676',
+      href: 'http://localhost:8585/api/v1/testSuites/164159a3-d3d8-4847-a0b5-814849e52676',
       deleted: false,
     },
     {
@@ -233,7 +233,7 @@ export const MOCK_TABLE_DATA = {
       version: 0.1,
       updatedAt: 1670667255078,
       updatedBy: 'admin',
-      href: 'http://localhost:8585/api/v1/testSuite/164159a3-d3d8-4847-a0b5-814849e52676',
+      href: 'http://localhost:8585/api/v1/testSuites/164159a3-d3d8-4847-a0b5-814849e52676',
       deleted: false,
     },
     {
@@ -253,7 +253,7 @@ export const MOCK_TABLE_DATA = {
       version: 0.1,
       updatedAt: 1670667255078,
       updatedBy: 'admin',
-      href: 'http://localhost:8585/api/v1/testSuite/164159a3-d3d8-4847-a0b5-814849e52676',
+      href: 'http://localhost:8585/api/v1/testSuites/164159a3-d3d8-4847-a0b5-814849e52676',
       deleted: false,
     },
     {
@@ -273,7 +273,7 @@ export const MOCK_TABLE_DATA = {
       version: 0.1,
       updatedAt: 1670667255078,
       updatedBy: 'admin',
-      href: 'http://localhost:8585/api/v1/testSuite/164159a3-d3d8-4847-a0b5-814849e52676',
+      href: 'http://localhost:8585/api/v1/testSuites/164159a3-d3d8-4847-a0b5-814849e52676',
       deleted: false,
     },
     {
@@ -293,7 +293,7 @@ export const MOCK_TABLE_DATA = {
       version: 0.1,
       updatedAt: 1670667255078,
       updatedBy: 'admin',
-      href: 'http://localhost:8585/api/v1/testSuite/164159a3-d3d8-4847-a0b5-814849e52676',
+      href: 'http://localhost:8585/api/v1/testSuites/164159a3-d3d8-4847-a0b5-814849e52676',
       deleted: false,
     },
     {
@@ -313,7 +313,7 @@ export const MOCK_TABLE_DATA = {
       version: 0.1,
       updatedAt: 1670667255078,
       updatedBy: 'admin',
-      href: 'http://localhost:8585/api/v1/testSuite/164159a3-d3d8-4847-a0b5-814849e52676',
+      href: 'http://localhost:8585/api/v1/testSuites/164159a3-d3d8-4847-a0b5-814849e52676',
       deleted: false,
     },
     {
@@ -333,7 +333,7 @@ export const MOCK_TABLE_DATA = {
       version: 0.1,
       updatedAt: 1670667255078,
       updatedBy: 'admin',
-      href: 'http://localhost:8585/api/v1/testSuite/164159a3-d3d8-4847-a0b5-814849e52676',
+      href: 'http://localhost:8585/api/v1/testSuites/164159a3-d3d8-4847-a0b5-814849e52676',
       deleted: false,
     },
   ],
@@ -356,7 +356,7 @@ export const MOCK_TEST_CASE = [
         'This schema defines the test ColumnValuesToMatchRegex. Test the values in a column to match a given regular expression. ',
       displayName: 'Column Values To Match Regex Pattern',
       deleted: false,
-      href: 'http://localhost:8585/api/v1/testDefinition/2e5decd0-1a7e-45a3-bee6-aa9252d5d4f4',
+      href: 'http://localhost:8585/api/v1/testDefinitions/2e5decd0-1a7e-45a3-bee6-aa9252d5d4f4',
     },
     entityLink:
       '<#E::table::sample_data.ecommerce_db.shopify.dim_address::columns::last_name>',
@@ -369,7 +369,7 @@ export const MOCK_TEST_CASE = [
       description:
         'This is a critical test suite running tests important for the business',
       deleted: false,
-      href: 'http://localhost:8585/api/v1/testSuite/9842a678-5d48-4942-b25a-c07511fcedbb',
+      href: 'http://localhost:8585/api/v1/testSuites/9842a678-5d48-4942-b25a-c07511fcedbb',
     },
     parameterValues: [
       {
@@ -392,7 +392,7 @@ export const MOCK_TEST_CASE = [
     version: 0.1,
     updatedAt: 1676033824688,
     updatedBy: 'admin',
-    href: 'http://localhost:8585/api/v1/testCase/5f83c798-91ac-4289-aeb0-99ef372e7e96',
+    href: 'http://localhost:8585/api/v1/testCases/5f83c798-91ac-4289-aeb0-99ef372e7e96',
     deleted: false,
   },
   {
@@ -410,7 +410,7 @@ export const MOCK_TEST_CASE = [
         'This schema defines the test ColumnValueMaxToBeBetween. Test the maximum value in a col is within a range.',
       displayName: 'Column Value Max. to be Between',
       deleted: false,
-      href: 'http://localhost:8585/api/v1/testDefinition/01fec9a7-55a2-476f-8957-b3bda6a02aaf',
+      href: 'http://localhost:8585/api/v1/testDefinitions/01fec9a7-55a2-476f-8957-b3bda6a02aaf',
     },
     entityLink:
       '<#E::table::sample_data.ecommerce_db.shopify.dim_address::columns::shop_id>',
@@ -423,7 +423,7 @@ export const MOCK_TEST_CASE = [
       description:
         'This is a critical test suite running tests important for the business',
       deleted: false,
-      href: 'http://localhost:8585/api/v1/testSuite/9842a678-5d48-4942-b25a-c07511fcedbb',
+      href: 'http://localhost:8585/api/v1/testSuites/9842a678-5d48-4942-b25a-c07511fcedbb',
     },
     parameterValues: [
       {
@@ -449,7 +449,7 @@ export const MOCK_TEST_CASE = [
     version: 0.1,
     updatedAt: 1676033824652,
     updatedBy: 'admin',
-    href: 'http://localhost:8585/api/v1/testCase/08c516ab-4b6b-496a-ae9b-334a22163537',
+    href: 'http://localhost:8585/api/v1/testCases/08c516ab-4b6b-496a-ae9b-334a22163537',
     deleted: false,
   },
   {
@@ -467,7 +467,7 @@ export const MOCK_TEST_CASE = [
         'This schema defines the test TableColumnCountToBeBetween. Test the number of columns to be between min max value.',
       displayName: 'Table Column Count To Be Between',
       deleted: false,
-      href: 'http://localhost:8585/api/v1/testDefinition/95c5d470-2f5f-4c6b-89cb-4f52a77be26e',
+      href: 'http://localhost:8585/api/v1/testDefinitions/95c5d470-2f5f-4c6b-89cb-4f52a77be26e',
     },
     entityLink: '<#E::table::sample_data.ecommerce_db.shopify.dim_address>',
     entityFQN: 'sample_data.ecommerce_db.shopify.dim_address',
@@ -479,7 +479,7 @@ export const MOCK_TEST_CASE = [
       description:
         'This is a critical test suite running tests important for the business',
       deleted: false,
-      href: 'http://localhost:8585/api/v1/testSuite/9842a678-5d48-4942-b25a-c07511fcedbb',
+      href: 'http://localhost:8585/api/v1/testSuites/9842a678-5d48-4942-b25a-c07511fcedbb',
     },
     parameterValues: [
       {
@@ -505,7 +505,7 @@ export const MOCK_TEST_CASE = [
     version: 0.1,
     updatedAt: 1676033824610,
     updatedBy: 'admin',
-    href: 'http://localhost:8585/api/v1/testCase/b3d92505-339d-437e-b687-842c4442385c',
+    href: 'http://localhost:8585/api/v1/testCases/b3d92505-339d-437e-b687-842c4442385c',
     deleted: false,
   },
   {
@@ -523,7 +523,7 @@ export const MOCK_TEST_CASE = [
         'This test defines the test TableColumnCountToEqual. Test the number of columns equal to a value.',
       displayName: 'Table Column Count To Equal',
       deleted: false,
-      href: 'http://localhost:8585/api/v1/testDefinition/6d96ba53-e630-4cde-85e7-effca05d859e',
+      href: 'http://localhost:8585/api/v1/testDefinitions/6d96ba53-e630-4cde-85e7-effca05d859e',
     },
     entityLink: '<#E::table::sample_data.ecommerce_db.shopify.dim_address>',
     entityFQN: 'sample_data.ecommerce_db.shopify.dim_address',
@@ -535,7 +535,7 @@ export const MOCK_TEST_CASE = [
       description:
         'This is a critical test suite running tests important for the business',
       deleted: false,
-      href: 'http://localhost:8585/api/v1/testSuite/9842a678-5d48-4942-b25a-c07511fcedbb',
+      href: 'http://localhost:8585/api/v1/testSuites/9842a678-5d48-4942-b25a-c07511fcedbb',
     },
     parameterValues: [
       {
@@ -557,7 +557,7 @@ export const MOCK_TEST_CASE = [
     version: 0.1,
     updatedAt: 1676033824530,
     updatedBy: 'admin',
-    href: 'http://localhost:8585/api/v1/testCase/d8736860-6c46-47f1-b13b-42ebd22ff651',
+    href: 'http://localhost:8585/api/v1/testCases/d8736860-6c46-47f1-b13b-42ebd22ff651',
     deleted: false,
   },
   {
@@ -575,7 +575,7 @@ export const MOCK_TEST_CASE = [
         'This schema defines the test ColumnValuesToBeBetween. Test the values in a column to be between minimum and maximum value. ',
       displayName: 'Column Values To Be Between',
       deleted: false,
-      href: 'http://localhost:8585/api/v1/testDefinition/a4a51fd7-7482-4479-877d-387c6371d1dd',
+      href: 'http://localhost:8585/api/v1/testDefinitions/a4a51fd7-7482-4479-877d-387c6371d1dd',
     },
     entityLink:
       '<#E::table::sample_data.ecommerce_db.shopify.dim_address::columns::zip>',
@@ -588,7 +588,7 @@ export const MOCK_TEST_CASE = [
       description:
         'This is a critical test suite running tests important for the business',
       deleted: false,
-      href: 'http://localhost:8585/api/v1/testSuite/9842a678-5d48-4942-b25a-c07511fcedbb',
+      href: 'http://localhost:8585/api/v1/testSuites/9842a678-5d48-4942-b25a-c07511fcedbb',
     },
     parameterValues: [
       {
@@ -619,7 +619,7 @@ export const MOCK_TEST_CASE = [
     version: 0.1,
     updatedAt: 1676033824726,
     updatedBy: 'admin',
-    href: 'http://localhost:8585/api/v1/testCase/3b753aa2-41ec-473f-a391-f1367d8729a7',
+    href: 'http://localhost:8585/api/v1/testCases/3b753aa2-41ec-473f-a391-f1367d8729a7',
     deleted: false,
   },
 ] as TestCase[];
@@ -735,7 +735,7 @@ export const MOCK_TABLE_ROW_INSERTED_COUNT_TO_BE_BETWEEN = {
   version: 0.1,
   updatedAt: 1675211404184,
   updatedBy: 'admin',
-  href: 'http://sandbox-beta.open-metadata.org/api/v1/testDefinition/756c7770-0af3-49a9-9905-75a2886e5eec',
+  href: 'http://sandbox-beta.open-metadata.org/api/v1/testDefinitions/756c7770-0af3-49a9-9905-75a2886e5eec',
   deleted: false,
 };
 
@@ -761,6 +761,6 @@ export const MOCK_TABLE_COLUMN_NAME_TO_EXIST = {
   version: 0.1,
   updatedAt: 1672236872076,
   updatedBy: 'admin',
-  href: 'http://sandbox-beta.open-metadata.org/api/v1/testDefinition/6d4e4673-fd7f-4b37-811e-7645c3c17e93',
+  href: 'http://sandbox-beta.open-metadata.org/api/v1/testDefinitions/6d4e4673-fd7f-4b37-811e-7645c3c17e93',
   deleted: false,
 };
