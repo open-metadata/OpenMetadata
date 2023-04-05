@@ -41,13 +41,13 @@ from metadata.generated.schema.entity.services.connections.database.sqliteConnec
     SQLiteScheme,
 )
 from metadata.ingestion.source import sqa_types
-from metadata.profiler.metrics.core import add_props
-from metadata.profiler.metrics.registry import Metrics
-from metadata.profiler.profiler.core import MissingMetricException, Profiler
-from metadata.profiler.profiler.default import DefaultProfiler
-from metadata.profiler.profiler.interface.sqlalchemy.sqa_profiler_interface import (
+from metadata.profiler.interface.sqlalchemy.sqa_profiler_interface import (
     SQAProfilerInterface,
 )
+from metadata.profiler.metrics.core import add_props
+from metadata.profiler.metrics.registry import Metrics
+from metadata.profiler.processor.core import MissingMetricException, Profiler
+from metadata.profiler.processor.default import DefaultProfiler
 
 Base = declarative_base()
 
