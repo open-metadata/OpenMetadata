@@ -38,6 +38,9 @@ from metadata.generated.schema.entity.services.connections.database.sqliteConnec
     SQLiteConnection,
     SQLiteScheme,
 )
+from metadata.profiler.interface.sqlalchemy.sqa_profiler_interface import (
+    SQAProfilerInterface,
+)
 from metadata.profiler.metrics.core import (
     ComposedMetric,
     MetricTypes,
@@ -45,10 +48,7 @@ from metadata.profiler.metrics.core import (
     StaticMetric,
 )
 from metadata.profiler.metrics.static.row_count import RowCount
-from metadata.profiler.profiler.default import get_default_metrics
-from metadata.profiler.profiler.interface.sqlalchemy.sqa_profiler_interface import (
-    SQAProfilerInterface,
-)
+from metadata.profiler.processor.default import get_default_metrics
 
 
 class User(declarative_base()):

@@ -138,3 +138,7 @@ CREATE TABLE IF NOT EXISTS dashboard_data_model_entity (
     PRIMARY KEY (id),
     UNIQUE (fullyQualifiedName)
 );
+
+UPDATE dbservice_entity
+SET json = jsonb_set(json::jsonb #- '{connection,config,database}', '{connection,config,databaseName}', json#> '{connection,config,database}', true)
+WHERE servicetype = 'Druid' and json #>'{connection,config,database}' is not null;

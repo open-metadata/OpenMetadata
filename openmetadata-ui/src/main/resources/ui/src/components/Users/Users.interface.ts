@@ -18,21 +18,6 @@ import { User } from '../../generated/entity/teams/user';
 import { Paging } from '../../generated/type/paging';
 import { ThreadUpdatedFunc } from '../../interface/feed.interface';
 
-export interface Option {
-  label: string;
-  value: string;
-}
-export interface PatchObject {
-  id: string;
-  name: string;
-  type: string;
-}
-
-export type UserDetails = Record<
-  string,
-  string | Array<string> | boolean | Array<PatchObject>
->;
-
 export interface Props {
   userData: User;
   followingEntities: AssetsDataType;
@@ -46,7 +31,7 @@ export interface Props {
   isAdminUser: boolean;
   isLoggedinUser: boolean;
   isAuthDisabled: boolean;
-  updateUserDetails: (data: UserDetails) => Promise<void>;
+  updateUserDetails: (data: Partial<User>) => Promise<void>;
   fetchFeedHandler: (
     threadType: ThreadType,
     after?: string,
