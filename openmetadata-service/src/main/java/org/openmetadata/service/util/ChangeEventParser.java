@@ -200,7 +200,8 @@ public final class ChangeEventParser {
     }
     if (publishTo == PUBLISH_TO.SLACK || publishTo == PUBLISH_TO.GCHAT) {
       return String.format(
-          "<%s/%s/%s|%s>", ChangeEventConfig.getInstance().getOmUri(), entityType, fqn.trim(), fqn.trim());
+          "<%s/%s/%s|%s>",
+          ChangeEventConfig.getInstance().getOmUri(), entityType, fqn.trim().replaceAll(" ", "%20"), fqn.trim());
     } else if (publishTo == PUBLISH_TO.TEAMS) {
       return String.format(
           "[%s](/%s/%s)", fqn.trim(), ChangeEventConfig.getInstance().getOmUri(), entityType, fqn.trim());
@@ -463,7 +464,8 @@ public final class ChangeEventParser {
   private static String getQueryUsageUrl(PUBLISH_TO publishTo, String fqn, String entityType) {
     if (publishTo == PUBLISH_TO.SLACK || publishTo == PUBLISH_TO.GCHAT) {
       return String.format(
-          "<%s/%s/%s|%s>", ChangeEventConfig.getInstance().getOmUri(), entityType, fqn.trim(), fqn.trim());
+          "<%s/%s/%s|%s>",
+          ChangeEventConfig.getInstance().getOmUri(), entityType, fqn.trim().replaceAll(" ", "%20"), fqn.trim());
     } else if (publishTo == PUBLISH_TO.TEAMS) {
       return String.format("[%s](/%s/%s)", fqn, ChangeEventConfig.getInstance().getOmUri(), entityType, fqn.trim());
     } else if (publishTo == PUBLISH_TO.EMAIL) {

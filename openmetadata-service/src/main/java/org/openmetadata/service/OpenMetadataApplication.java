@@ -105,6 +105,7 @@ import org.openmetadata.service.socket.OpenMetadataAssetServlet;
 import org.openmetadata.service.socket.SocketAddressFilter;
 import org.openmetadata.service.socket.WebSocketManager;
 import org.openmetadata.service.util.MicrometerBundleSingleton;
+import org.openmetadata.service.workflows.searchIndex.SearchIndexEvent;
 
 /** Main catalog application */
 @Slf4j
@@ -132,7 +133,6 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
 
     // init Entity Masker
     EntityMaskerFactory.createEntityMasker(catalogConfig.getSecurityConfiguration());
-
     // Configure the Fernet instance
     Fernet.getInstance().setFernetKey(catalogConfig);
 
@@ -354,6 +354,8 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     if (catalogConfig.getEventHandlerConfiguration() != null) {
       ContainerResponseFilter eventFilter = new EventFilter(catalogConfig, jdbi);
       environment.jersey().register(eventFilter);
+      ContainerResponseFilter reindexingJobs = new SearchIndexEvent();
+      environment.jersey().register(reindexingJobs);
     }
   }
 

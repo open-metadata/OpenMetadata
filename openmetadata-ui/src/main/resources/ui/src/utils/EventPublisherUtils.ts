@@ -11,24 +11,23 @@
  *  limitations under the License.
  */
 
+import { Status } from 'generated/system/eventPublisherJob';
 import { t } from 'i18next';
-import { Status } from '../generated/settings/eventPublisherJob';
 import { Icons } from './SvgUtils';
 
 export const getStatusResultBadgeIcon = (status: string) => {
   switch (status) {
-    case Status.Idle:
-      return Icons.TASK_OPEN;
-    case Status.Starting:
+    case Status.Running:
+    case Status.Started:
     case Status.Active:
+      return Icons.TASK_OPEN;
+
     case Status.Completed:
       return Icons.SUCCESS_BADGE;
 
+    case Status.Failed:
     case Status.ActiveWithError:
       return Icons.FAIL_BADGE;
-
-    case Status.Retry:
-      return Icons.PENDING_BADGE;
 
     default:
       return '';
@@ -37,10 +36,10 @@ export const getStatusResultBadgeIcon = (status: string) => {
 
 export const getEventPublisherStatusText = (status?: string) => {
   switch (status) {
-    case Status.Starting:
-      return t('label.starting');
-    case Status.Idle:
-      return t('label.idle');
+    case Status.Failed:
+      return t('label.failed');
+    case Status.Running:
+      return t('label.running');
     case Status.Completed:
       return t('label.completed');
     case Status.Active:
@@ -49,8 +48,8 @@ export const getEventPublisherStatusText = (status?: string) => {
     case Status.ActiveWithError:
       return t('label.active-with-error');
 
-    case Status.Retry:
-      return t('label.retry');
+    case Status.Started:
+      return t('label.started');
 
     default:
       return status || '';
