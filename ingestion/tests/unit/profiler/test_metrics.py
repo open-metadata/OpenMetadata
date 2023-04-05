@@ -27,13 +27,13 @@ from metadata.generated.schema.entity.services.connections.database.sqliteConnec
     SQLiteConnection,
     SQLiteScheme,
 )
+from metadata.profiler.interface.sqlalchemy.sqa_profiler_interface import (
+    SQAProfilerInterface,
+)
 from metadata.profiler.metrics.core import add_props
 from metadata.profiler.metrics.registry import Metrics
 from metadata.profiler.orm.functions.sum import SumFn
-from metadata.profiler.profiler.core import Profiler
-from metadata.profiler.profiler.interface.sqlalchemy.sqa_profiler_interface import (
-    SQAProfilerInterface,
-)
+from metadata.profiler.processor.core import Profiler
 
 Base = declarative_base()
 
