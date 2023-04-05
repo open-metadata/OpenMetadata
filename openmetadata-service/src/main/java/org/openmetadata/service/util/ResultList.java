@@ -35,11 +35,15 @@ public class ResultList<T> {
   @JsonProperty("paging")
   private Paging paging;
 
+  @JsonProperty("errors")
+  private List<T> errors;
+
   public ResultList() {}
 
   public ResultList(List<T> data) {
     this.data = data;
     this.paging = null;
+    this.errors = null;
   }
 
   /**
@@ -85,6 +89,16 @@ public class ResultList<T> {
             .withTotal(total);
   }
 
+  public ResultList(List<T> data, List<T> errors, String beforeCursor, String afterCursor, int total) {
+    this.data = data;
+    this.errors = errors;
+    paging =
+        new Paging()
+            .withBefore(RestUtil.encodeCursor(beforeCursor))
+            .withAfter(RestUtil.encodeCursor(afterCursor))
+            .withTotal(total);
+  }
+
   @JsonProperty("data")
   public List<T> getData() {
     return data;
@@ -93,6 +107,16 @@ public class ResultList<T> {
   @JsonProperty("data")
   public void setData(List<T> data) {
     this.data = data;
+  }
+
+  @JsonProperty("errors")
+  public List<T> getErrors() {
+    return errors;
+  }
+
+  @JsonProperty("errors")
+  public void setErrors(List<T> data) {
+    this.errors = data;
   }
 
   @JsonProperty("paging")

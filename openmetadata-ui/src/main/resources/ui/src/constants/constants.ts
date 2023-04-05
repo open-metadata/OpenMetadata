@@ -571,3 +571,7 @@ export const VALIDATE_MESSAGES = {
     fieldText: '${label}',
   }),
 };
+
+export const ERROR_MESSAGE = {
+  alreadyExist: 'already exists',
+};
