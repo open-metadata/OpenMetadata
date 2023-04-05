@@ -71,7 +71,7 @@ const DataModelsPage = () => {
   const { t } = useTranslation();
 
   const { getEntityPermissionByFqn } = usePermissionProvider();
-  const { dataModelFQN, tab } = useParams() as Record<string, string>;
+  const { dashboardDataModelFQN, tab } = useParams() as Record<string, string>;
 
   const [isEditDescription, setIsEditDescription] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -80,12 +80,12 @@ const DataModelsPage = () => {
     useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
   const [dataModelData, setDataModelData] = useState<DashboardDataModel>();
 
-  const fetchResourcePermission = async (containerFQN: string) => {
+  const fetchResourcePermission = async (dashboardDataModelFQN: string) => {
     setIsLoading(true);
     try {
       const entityPermission = await getEntityPermissionByFqn(
         ResourceEntity.CONTAINER,
-        containerFQN
+        dashboardDataModelFQN
       );
       setDataModelPermissions(entityPermission);
     } catch (error) {
@@ -117,8 +117,6 @@ const DataModelsPage = () => {
         dataModelPermissions.EditAll || dataModelPermissions.EditTags,
       hasEditTierPermission:
         dataModelPermissions.EditAll || dataModelPermissions.EditTier,
-      hasEditCustomFieldsPermission:
-        dataModelPermissions.EditAll || dataModelPermissions.EditCustomFields,
       hasEditLineagePermission:
         dataModelPermissions.EditAll || dataModelPermissions.EditLineage,
     };
@@ -174,7 +172,7 @@ const DataModelsPage = () => {
         activeTitle: true,
       },
     ];
-  }, [dataModelData, dataModelFQN, entityName]);
+  }, [dataModelData, dashboardDataModelFQN, entityName]);
 
   // get current user details
   const currentUser = useMemo(
@@ -191,7 +189,7 @@ const DataModelsPage = () => {
   const handleTabChange = (tabValue: string) => {
     if (tabValue !== tab) {
       history.push({
-        pathname: getDataModelsDetailPath(dataModelFQN, tabValue),
+        pathname: getDataModelsDetailPath(dashboardDataModelFQN, tabValue),
       });
     }
   };
@@ -214,11 +212,11 @@ const DataModelsPage = () => {
     }
   };
 
-  const fetchDataModelDetails = async (dataModelFQN: string) => {
+  const fetchDataModelDetails = async (dashboardDataModelFQN: string) => {
     setIsLoading(true);
     try {
       const response = await getDataModelsByName(
-        dataModelFQN,
+        dashboardDataModelFQN,
         'owner,tags,followers'
       );
       setDataModelData(response);
@@ -378,13 +376,13 @@ const DataModelsPage = () => {
 
   useEffect(() => {
     if (hasViewPermission) {
-      fetchDataModelDetails(dataModelFQN);
+      fetchDataModelDetails(dashboardDataModelFQN);
     }
-  }, [dataModelFQN, dataModelPermissions]);
+  }, [dashboardDataModelFQN, dataModelPermissions]);
 
   useEffect(() => {
-    fetchResourcePermission(dataModelFQN);
-  }, [dataModelFQN]);
+    fetchResourcePermission(dashboardDataModelFQN);
+  }, [dashboardDataModelFQN]);
 
   // Rendering
   if (isLoading) {
@@ -394,7 +392,7 @@ const DataModelsPage = () => {
   if (hasError) {
     return (
       <ErrorPlaceHolder>
-        {getEntityMissingError(t('label.data-model'), dataModelFQN)}
+        {getEntityMissingError(t('label.data-model'), dashboardDataModelFQN)}
       </ErrorPlaceHolder>
     );
   }
@@ -410,7 +408,7 @@ const DataModelsPage = () => {
           canDelete={dataModelPermissions.Delete}
           currentOwner={owner}
           deleted={deleted}
-          entityFqn={dataModelFQN}
+          entityFqn={dashboardDataModelFQN}
           entityId={entityId}
           entityName={entityName || ''}
           entityType={EntityType.DASHBOARD_DATA_MODEL}
@@ -441,7 +439,7 @@ const DataModelsPage = () => {
               <Space className="w-full" direction="vertical" size={8}>
                 <Description
                   description={description}
-                  entityFqn={dataModelFQN}
+                  entityFqn={dashboardDataModelFQN}
                   entityName={entityName}
                   entityType={EntityType.CONTAINER}
                   hasEditAccess={hasEditDescriptionPermission}
