@@ -23,6 +23,7 @@ import {
 } from 'pages/TasksPage/TasksPage.interface';
 import { getDashboardByFqn } from 'rest/dashboardAPI';
 import { getDatabaseSchemaDetailsByFQN } from 'rest/databaseAPI';
+import { getDataModelDetailsByFQN } from 'rest/dataModelsAPI';
 import { getUserSuggestions } from 'rest/miscAPI';
 import { getMlModelByFQN } from 'rest/mlModelAPI';
 import { getPipelineByFqn } from 'rest/pipelineAPI';
@@ -44,6 +45,7 @@ import { TaskType } from '../generated/entity/feed/thread';
 import { getPartialNameFromTableFQN } from './CommonUtils';
 import { defaultFields as DashboardFields } from './DashboardDetailsUtils';
 import { defaultFields as DatabaseSchemaFields } from './DatabaseSchemaDetailsUtils';
+import { defaultFields as DataModelFields } from './DataModelsUtils';
 import { defaultFields as TableFields } from './DatasetDetailsUtils';
 import { getEntityName } from './EntityUtils';
 import { defaultFields as MlModelFields } from './MlModelDetailsUtils';
@@ -189,6 +191,7 @@ export const TASK_ENTITIES = [
   EntityType.PIPELINE,
   EntityType.MLMODEL,
   EntityType.DATABASE_SCHEMA,
+  EntityType.DASHBOARD_DATA_MODEL,
 ];
 
 export const getBreadCrumbList = (
@@ -266,6 +269,10 @@ export const getBreadCrumbList = (
       ];
     }
 
+    case EntityType.DASHBOARD_DATA_MODEL: {
+      return [service(ServiceCategory.DASHBOARD_DATA_MODEL)];
+    }
+
     default:
       return [];
   }
@@ -320,6 +327,15 @@ export const fetchEntityDetail = (
 
     case EntityType.DATABASE_SCHEMA:
       getDatabaseSchemaDetailsByFQN(entityFQN, DatabaseSchemaFields)
+        .then((res) => {
+          setEntityData(res);
+        })
+        .catch((err: AxiosError) => showErrorToast(err));
+
+      break;
+
+    case EntityType.DASHBOARD_DATA_MODEL:
+      getDataModelDetailsByFQN(entityFQN, DataModelFields)
         .then((res) => {
           setEntityData(res);
         })
