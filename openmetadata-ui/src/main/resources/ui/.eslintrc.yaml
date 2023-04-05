@@ -204,6 +204,9 @@ overrides:
   - files:
       - '*.json'
     parser: jsonc-eslint-parser
+    rules:
+      eol-last:
+        - off
 
   # disable rules on generated files
   - files:

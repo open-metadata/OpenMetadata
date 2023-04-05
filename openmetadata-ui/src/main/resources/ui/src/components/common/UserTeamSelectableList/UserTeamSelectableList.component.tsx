@@ -144,7 +144,7 @@ export const UserTeamSelectableList = ({
           data: filterData,
           paging: {
             total: data.hits.total.value,
-            after: toString(currentTeamPage + 1),
+            after: toString(Number(currentTeamPage) + 1),
           },
         };
       } catch (error) {
@@ -191,6 +191,7 @@ export const UserTeamSelectableList = ({
 
   return (
     <Popover
+      destroyTooltipOnHide
       content={
         <Tabs
           centered
