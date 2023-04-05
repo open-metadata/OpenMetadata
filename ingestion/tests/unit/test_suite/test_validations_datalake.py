@@ -183,7 +183,7 @@ DATALAKE_DATA_FRAME = DataFrame(
             "test_case_column_values_to_be_unique",
             "columnValuesToBeUnique",
             "COLUMN",
-            (TestCaseResult, "20", "2", TestCaseStatus.Failed),
+            (TestCaseResult, "20", "0", TestCaseStatus.Failed),
         ),
         (
             "test_case_column_values_to_match_regex",
