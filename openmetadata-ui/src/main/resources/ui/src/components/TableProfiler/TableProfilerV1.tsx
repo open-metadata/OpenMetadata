@@ -250,7 +250,7 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
     setIsTestCaseLoading(true);
     try {
       const { data } = await getListTestCase({
-        fields: 'testCaseResult',
+        fields: 'testCaseResult,entityLink,testDefinition,testSuite',
         entityLink: generateEntityLink(table?.fullyQualifiedName || ''),
         includeAllTests: true,
         limit: API_RES_MAX_SIZE,
