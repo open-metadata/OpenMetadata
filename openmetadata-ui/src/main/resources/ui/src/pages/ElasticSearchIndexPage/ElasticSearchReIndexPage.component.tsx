@@ -16,6 +16,7 @@ import { Badge, Button, Card, Col, Divider, Row, Space } from 'antd';
 import { AxiosError } from 'axios';
 import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
 import PageHeader from 'components/header/PageHeader.component';
+import Loader from 'components/Loader/Loader';
 import { useWebSocketConnector } from 'components/web-scoket/web-scoket.provider';
 import {
   ELASTIC_SEARCH_INDEX_ENTITIES,
@@ -33,6 +34,7 @@ import { CreateEventPublisherJob } from '../../generated/api/createEventPublishe
 import {
   EventPublisherJob,
   RunMode,
+  Status,
 } from '../../generated/system/eventPublisherJob';
 import { useAuth } from '../../hooks/authHooks';
 import jsonData from '../../jsons/en';
@@ -191,9 +193,12 @@ const ElasticSearchIndexPage = () => {
                         <span className="text-grey-muted">{`${t(
                           'label.status'
                         )}:`}</span>
-                        <span className="m-l-xs">
-                          <Space size={8}>
-                            {batchJobData?.status && (
+
+                        <Space align="center" className="m-l-xs" size={8}>
+                          {batchJobData?.status &&
+                            (batchJobData.status === Status.Active ? (
+                              <Loader size="x-small" />
+                            ) : (
                               <SVGIcons
                                 alt="result"
                                 className="w-4"
@@ -201,14 +206,13 @@ const ElasticSearchIndexPage = () => {
                                   batchJobData?.status
                                 )}
                               />
-                            )}
-                            <span>
-                              {getEventPublisherStatusText(
-                                batchJobData?.status
-                              ) || '--'}
-                            </span>
-                          </Space>
-                        </span>
+                            ))}
+                          <span>
+                            {getEventPublisherStatusText(
+                              batchJobData?.status
+                            ) || '--'}
+                          </span>
+                        </Space>
                       </div>
                       <Divider type="vertical" />
                       <div className="flex">
@@ -346,7 +350,7 @@ const ElasticSearchIndexPage = () => {
                 title={t('label.elasticsearch')}>
                 <Row gutter={[16, 8]}>
                   <Col span={24}>
-                    <Space direction="horizontal" size={16}>
+                    <Space direction="horizontal" size={0}>
                       <div className="flex">
                         <span className="text-grey-muted">{`${t(
                           'label.mode'
@@ -355,13 +359,16 @@ const ElasticSearchIndexPage = () => {
                           {startCase(streamJobData?.runMode) || '--'}
                         </span>
                       </div>
+                      <Divider type="vertical" />
                       <div className="flex">
                         <span className="text-grey-muted">{`${t(
                           'label.status'
                         )}:`}</span>
-                        <span className="m-l-xs">
-                          <Space size={8}>
-                            {streamJobData?.status && (
+                        <Space align="center" className="m-l-xs" size={8}>
+                          {streamJobData?.status &&
+                            (streamJobData.status === Status.Active ? (
+                              <Loader size="x-small" />
+                            ) : (
                               <SVGIcons
                                 alt="result"
                                 className="w-4"
@@ -369,16 +376,15 @@ const ElasticSearchIndexPage = () => {
                                   streamJobData?.status
                                 )}
                               />
-                            )}
-                            <span>
-                              {getEventPublisherStatusText(
-                                streamJobData?.status
-                              ) || '--'}
-                            </span>
-                          </Space>
-                        </span>
+                            ))}
+                          <span>
+                            {getEventPublisherStatusText(
+                              streamJobData?.status
+                            ) || '--'}
+                          </span>
+                        </Space>
                       </div>
-
+                      <Divider type="vertical" />
                       <div className="flex">
                         <span className="text-grey-muted">{`${t(
                           'label.last-updated'
@@ -391,6 +397,7 @@ const ElasticSearchIndexPage = () => {
                             : '--'}
                         </span>
                       </div>
+                      <Divider type="vertical" />
                       <div className="flex">
                         <span className="text-grey-muted">{`${t(
                           'label.last-failed-at'

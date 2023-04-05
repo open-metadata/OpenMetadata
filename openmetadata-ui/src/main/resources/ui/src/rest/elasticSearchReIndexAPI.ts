@@ -22,7 +22,12 @@ import {
 
 export const getAllReIndexStatus = async (mode: RunMode) => {
   const res = await axiosClient.get<EventPublisherJob>(
-    `/indexResource/reindex/status/${mode}`
+    `/search/reindex/stream/status`,
+    {
+      params: {
+        runMode: mode,
+      },
+    }
   );
 
   return res.data;
@@ -37,7 +42,7 @@ export const reIndexByPublisher = async (data: CreateEventPublisherJob) => {
   const res = await axiosClient.post<
     CreateEventPublisherJob,
     AxiosResponse<EventPublisherJob>
-  >('/indexResource/reindex', payload);
+  >('/search/reindex', payload);
 
   return res.data;
 };

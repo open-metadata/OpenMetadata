@@ -19,7 +19,6 @@ export const getStatusResultBadgeIcon = (status: string) => {
   switch (status) {
     case Status.Running:
     case Status.Started:
-    case Status.Active:
       return Icons.TASK_OPEN;
 
     case Status.Completed:
