@@ -32,7 +32,7 @@ def get_connection(connection: DagsterConnection) -> DagsterGraphQLClient:
     """
     Create connection
     """
-    url = connection.host
+    url = connection.host[:-1] if connection.host.endswith("/") else connection.host
     dagster_connection = DagsterGraphQLClient(
         url,
         transport=RequestsHTTPTransport(
@@ -40,6 +40,7 @@ def get_connection(connection: DagsterConnection) -> DagsterGraphQLClient:
             headers={"Dagster-Cloud-Api-Token": connection.token.get_secret_value()}
             if connection.token
             else None,
+            timeout=connection.timeout,
         ),
     )
 
