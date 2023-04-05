@@ -118,7 +118,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
           InvocationTargetException, IOException, ConfigurationException, CertificateException, KeyStoreException,
           NoSuchAlgorithmException {
     validateConfiguration(catalogConfig);
-    
+
     ChangeEventConfig.initialize(catalogConfig);
     final Jdbi jdbi = createAndSetupJDBI(environment, catalogConfig.getDataSourceFactory());
 

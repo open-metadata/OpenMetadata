@@ -86,13 +86,15 @@ public class SettingsCache {
   static class SettingsLoader extends CacheLoader<String, Settings> {
     @Override
     public Settings load(@CheckForNull String settingsName) {
-      Settings setting = systemRepository.getConfigWithKey(settingsName);
-      if (setting.getConfigType() == SettingsType.EMAIL_CONFIGURATION) {
-        SmtpSettings emailConfig = SystemRepository.decryptSetting((SmtpSettings) setting.getConfigValue());
-        setting.setConfigValue(emailConfig);
+      Settings fetchedSettings;
+      if (SettingsType.EMAIL_CONFIGURATION.value().equals(settingsName)) {
+        fetchedSettings = systemRepository.getEmailConfigInternal();
+        LOG.info("Loaded Email Setting");
+      } else {
+        fetchedSettings = systemRepository.getConfigWithKey(settingsName);
+        LOG.info("Loaded Setting {}", fetchedSettings.getConfigType());
       }
-      LOG.info("Loaded Setting {}", setting.getConfigType());
-      return setting;
+      return fetchedSettings;
     }
   }
 }

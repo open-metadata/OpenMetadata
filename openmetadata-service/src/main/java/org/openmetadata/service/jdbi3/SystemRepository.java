@@ -51,9 +51,28 @@ public class SystemRepository {
 
   public Settings getConfigWithKey(String key) {
     try {
-      return dao.getConfigWithKey(key);
+      Settings fetchedSettings = dao.getConfigWithKey(key);
+      if (fetchedSettings.getConfigType() == SettingsType.EMAIL_CONFIGURATION) {
+        SmtpSettings emailConfig = (SmtpSettings) fetchedSettings.getConfigValue();
+        emailConfig.setPassword("***********");
+        fetchedSettings.setConfigValue(emailConfig);
+      }
+      return fetchedSettings;
+
     } catch (Exception ex) {
       LOG.error("Error while trying fetch Settings " + ex.getMessage());
+    }
+    return null;
+  }
+
+  public Settings getEmailConfigInternal() {
+    try {
+      Settings setting = dao.getConfigWithKey(SettingsType.EMAIL_CONFIGURATION.value());
+      SmtpSettings emailConfig = SystemRepository.decryptSetting((SmtpSettings) setting.getConfigValue());
+      setting.setConfigValue(emailConfig);
+      return setting;
+    } catch (Exception ex) {
+      LOG.error("Error while trying fetch EMAIL Settings " + ex.getMessage());
     }
     return null;
   }
@@ -114,12 +133,18 @@ public class SystemRepository {
   }
 
   public static SmtpSettings encryptSetting(SmtpSettings decryptedSetting) {
-    String encryptedPwd = Fernet.getInstance().encrypt(decryptedSetting.getPassword());
-    return decryptedSetting.withPassword(encryptedPwd);
+    if (Fernet.getInstance().isKeyDefined()) {
+      String encryptedPwd = Fernet.getInstance().encrypt(decryptedSetting.getPassword());
+      return decryptedSetting.withPassword(encryptedPwd);
+    }
+    return decryptedSetting;
   }
 
   public static SmtpSettings decryptSetting(SmtpSettings encryptedSetting) {
-    String decryptedPassword = Fernet.getInstance().decrypt(encryptedSetting.getPassword());
-    return encryptedSetting.withPassword(decryptedPassword);
+    if (Fernet.getInstance().isKeyDefined()) {
+      String decryptedPassword = Fernet.getInstance().decrypt(encryptedSetting.getPassword());
+      return encryptedSetting.withPassword(decryptedPassword);
+    }
+    return encryptedSetting;
   }
 }
