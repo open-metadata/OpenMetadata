@@ -231,7 +231,7 @@ def import_test_case_class(
         test_definition[0].upper() + test_definition[1:]
     )  # change test names to camel case
     return import_from_module(
-        "metadata.test_suite.validations.{}.{}.{}.{}Validator".format(
+        "metadata.data_quality.validations.{}.{}.{}.{}Validator".format(
             test_type.lower(),
             runner_type,
             test_definition,
