@@ -12,6 +12,7 @@
  */
 
 import { LOADING_STATE } from 'enums/common.enum';
+import { Connection } from 'generated/api/services/createDatabaseService';
 import { isEmpty, isUndefined, omit, trim } from 'lodash';
 import React, {
   Reducer,
@@ -131,9 +132,12 @@ const AddIngestion = ({
     () => getSourceTypeFromConfig(configData as DbtConfig | undefined),
     [configData]
   );
+  const { database, ingestAllDatabases } = serviceData.connection
+    .config as Connection;
 
   const initialState: AddIngestionState = useMemo(
     () => ({
+      database,
       saveState: 'initial',
       showDeployModal: false,
       ingestionName:
@@ -147,7 +151,12 @@ const AddIngestion = ({
         data?.airflowConfig.scheduleInterval ??
         getIngestionFrequency(pipelineType),
       showDashboardFilter: !isUndefined(sourceConfig?.dashboardFilterPattern),
-      showDatabaseFilter: !isUndefined(sourceConfig?.databaseFilterPattern),
+      showDatabaseFilter: Boolean(
+        database || sourceConfig?.databaseFilterPattern
+      ),
+      isDatabaseFilterDisabled: ingestAllDatabases
+        ? !ingestAllDatabases
+        : Boolean(database),
       showSchemaFilter: !isUndefined(sourceConfig?.schemaFilterPattern),
       showTableFilter: !isUndefined(sourceConfig?.tableFilterPattern),
       showTopicFilter: !isUndefined(sourceConfig?.topicFilterPattern),
@@ -164,13 +173,21 @@ const AddIngestion = ({
         : undefined,
       dashboardFilterPattern:
         sourceConfig?.dashboardFilterPattern ?? INITIAL_FILTER_PATTERN,
-      databaseFilterPattern:
-        sourceConfig?.databaseFilterPattern ?? INITIAL_FILTER_PATTERN,
+      databaseFilterPattern: isUndefined(database)
+        ? sourceConfig?.databaseFilterPattern ?? INITIAL_FILTER_PATTERN
+        : {
+            includes: [database],
+            excludes: [],
+          },
       markAllDeletedTables: isDatabaseService
         ? Boolean(sourceConfig?.markAllDeletedTables ?? false)
         : undefined,
+      markDeletedDashboards: sourceConfig?.markDeletedDashboards ?? true,
+      markDeletedTopics: sourceConfig?.markDeletedDashboards ?? true,
+      markDeletedMlModels: sourceConfig?.markDeletedDashboards ?? true,
+      markDeletedPipelines: sourceConfig?.markDeletedDashboards ?? true,
       includeView: Boolean(sourceConfig?.includeViews),
-      includeTags: Boolean(sourceConfig?.includeTags),
+      includeTags: sourceConfig?.includeTags ?? true,
       overrideOwner: Boolean(sourceConfig?.overrideOwner),
       includeLineage: Boolean(sourceConfig?.includeLineage ?? true),
       enableDebugLog: data?.loggerLevel === LogLevels.Debug,
@@ -317,6 +334,10 @@ const AddIngestion = ({
       ingestSampleData,
       markAllDeletedTables,
       markDeletedTables,
+      markDeletedDashboards,
+      markDeletedTopics,
+      markDeletedMlModels,
+      markDeletedPipelines,
       mlModelFilterPattern,
       pipelineFilterPattern,
       schemaFilterPattern,
@@ -365,6 +386,7 @@ const AddIngestion = ({
           ),
           generateSampleData: ingestSampleData,
           type: ConfigType.MessagingMetadata,
+          markDeletedTopics,
         };
       }
       case ServiceCategory.DASHBOARD_SERVICES: {
@@ -380,6 +402,8 @@ const AddIngestion = ({
           dbServiceNames: databaseServiceNames,
           overrideOwner,
           type: ConfigType.DashboardMetadata,
+          markDeletedDashboards,
+          includeTags,
         };
       }
       case ServiceCategory.PIPELINE_SERVICES: {
@@ -390,6 +414,8 @@ const AddIngestion = ({
             showPipelineFilter
           ),
           type: ConfigType.PipelineMetadata,
+          markDeletedPipelines,
+          includeTags,
         };
       }
       case ServiceCategory.ML_MODEL_SERVICES: {
@@ -399,6 +425,7 @@ const AddIngestion = ({
             showMlModelFilter
           ),
           type: ConfigType.MlModelMetadata,
+          markDeletedMlModels,
         };
       }
       default: {
@@ -476,10 +503,12 @@ const AddIngestion = ({
             dbtConfigSource: omit(dbtConfigSource, [
               'dbtUpdateDescriptions',
               'dbtClassificationName',
+              'includeTags',
             ]),
           } as ConfigClass),
           type: ConfigType.Dbt,
           dbtUpdateDescriptions: dbtConfigSource?.dbtUpdateDescriptions,
+          includeTags: dbtConfigSource?.includeTags,
           dbtClassificationName: dbtConfigSource?.dbtClassificationName,
         };
       }
@@ -543,7 +572,7 @@ const AddIngestion = ({
         })
         .finally(() => {
           setTimeout(() => setSaveState(LOADING_STATE.INITIAL), 500);
-          setTimeout(() => setShowDeployModal(false), 500);
+          setShowDeployModal(false);
         });
     }
   };

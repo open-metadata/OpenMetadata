@@ -39,7 +39,6 @@ import { refreshPage } from 'utils/CommonUtils';
 import { isCommandKeyPress, Keys } from 'utils/KeyboardUtil';
 import AppState from '../../AppState';
 import Logo from '../../assets/svg/logo-monogram.svg';
-
 import {
   NOTIFICATION_READ_TIMER,
   ROUTES,
@@ -105,7 +104,9 @@ const NavBar = ({
   const { Option } = Select;
   const searchRef = useRef<InputRef>(null);
   const [searchIcon, setSearchIcon] = useState<string>('icon-searchv1');
-  const [cancelIcon, setCancelIcon] = useState<string>('close-circle-outlined');
+  const [cancelIcon, setCancelIcon] = useState<string>(
+    Icons.CLOSE_CIRCLE_OUTLINED
+  );
   const [suggestionSearch, setSuggestionSearch] = useState<string>('');
   const [hasTaskNotification, setHasTaskNotification] =
     useState<boolean>(false);
@@ -113,25 +114,23 @@ const NavBar = ({
     useState<boolean>(false);
   const [activeTab, setActiveTab] = useState<string>('Task');
   const [isImgUrlValid, setIsImgUrlValid] = useState<boolean>(true);
-  const [searchCriteria, setSearchCriteria] = useState<SearchIndex | null>(
-    null
-  );
+  const [searchCriteria, setSearchCriteria] = useState<SearchIndex | ''>('');
   const globalSearchOptions = useMemo(
     () => [
-      { value: null, label: t('label.all') },
+      { value: '', label: t('label.all') },
       { value: SearchIndex.TABLE, label: t('label.table') },
       { value: SearchIndex.TOPIC, label: t('label.topic') },
       { value: SearchIndex.DASHBOARD, label: t('label.dashboard') },
       { value: SearchIndex.PIPELINE, label: t('label.pipeline') },
       { value: SearchIndex.MLMODEL, label: t('label.ml-model') },
       { value: SearchIndex.CONTAINER, label: t('label.container') },
-      { value: SearchIndex.GLOSSARY, label: t('label.glossary-term') },
+      { value: SearchIndex.GLOSSARY, label: t('label.glossary') },
       { value: SearchIndex.TAG, label: t('label.tag') },
     ],
     []
   );
 
-  const updateSearchCriteria = (criteria: SearchIndex | null) => {
+  const updateSearchCriteria = (criteria: SearchIndex | '') => {
     setSearchCriteria(criteria);
     handleSearchChange(searchValue);
   };
@@ -142,6 +141,7 @@ const NavBar = ({
         defaultActiveFirstOption
         className="global-search-select"
         listHeight={300}
+        popupClassName="global-search-select-menu"
         value={searchCriteria}
         onChange={updateSearchCriteria}>
         {globalSearchOptions.map(({ value, label }) => (
@@ -289,7 +289,7 @@ const NavBar = ({
           to={{
             pathname: ROUTES.TAGS,
           }}>
-          {t('label.tag-plural')}
+          {t('label.classification')}
         </NavLink>
       ),
     },
@@ -480,7 +480,7 @@ const NavBar = ({
               value={searchValue}
               onBlur={() => {
                 setSearchIcon('icon-searchv1');
-                setCancelIcon('close-circle-outlined');
+                setCancelIcon(Icons.CLOSE_CIRCLE_OUTLINED);
               }}
               onChange={(e) => {
                 const { value } = e.target;
@@ -489,7 +489,7 @@ const NavBar = ({
               }}
               onFocus={() => {
                 setSearchIcon('icon-searchv1color');
-                setCancelIcon('close-circle-outlined-color');
+                setCancelIcon(Icons.CLOSE_CIRCLE_OUTLINED_COLOR);
               }}
               onKeyDown={handleKeyDown}
             />
@@ -506,7 +506,9 @@ const NavBar = ({
               ) : (
                 <Suggestions
                   isOpen={isSearchBoxOpen}
-                  searchCriteria={searchCriteria}
+                  searchCriteria={
+                    searchCriteria === '' ? undefined : searchCriteria
+                  }
                   searchText={suggestionSearch}
                   setIsOpen={handleSearchBoxOpen}
                 />

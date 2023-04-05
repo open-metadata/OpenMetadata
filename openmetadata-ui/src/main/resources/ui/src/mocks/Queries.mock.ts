@@ -334,3 +334,7 @@ export const MOCK_QUERIES = [
     deleted: false,
   },
 ];
+
+export const MOCK_QUERIES_ES_DATA = MOCK_QUERIES.map((data) => ({
+  _source: data,
+}));

@@ -19,12 +19,12 @@ import static org.openmetadata.service.Entity.FIELD_DESCRIPTION;
 import static org.openmetadata.service.Entity.FIELD_DISPLAY_NAME;
 import static org.openmetadata.service.Entity.FIELD_NAME;
 
-import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
@@ -79,7 +79,7 @@ import org.openmetadata.service.util.ElasticSearchClientUtils;
 
 @Slf4j
 @Path("/v1/search")
-@Api(value = "Search collection", tags = "Search collection")
+@Tag(name = "Search", description = "APIs related to search and suggest.")
 @Produces(MediaType.APPLICATION_JSON)
 @Collection(name = "search")
 public class SearchResource {
@@ -116,7 +116,6 @@ public class SearchResource {
   @Operation(
       operationId = "searchEntitiesWithQuery",
       summary = "Search entities",
-      tags = "search",
       description =
           "Search entities using query test. Use query params `from` and `size` for pagination. Use "
               + "`sort_field` to sort the results in `sort_order`.",
@@ -298,7 +297,6 @@ public class SearchResource {
   @Operation(
       operationId = "getSuggestedEntities",
       summary = "Suggest entities",
-      tags = "search",
       description = "Get suggested entities used for auto-completion.",
       responses = {
         @ApiResponse(
@@ -372,7 +370,6 @@ public class SearchResource {
   @Operation(
       operationId = "getAggregateFields",
       summary = "Get aggregated fields",
-      tags = "search",
       description = "Get aggregated fields from entities.",
       responses = {
         @ApiResponse(
@@ -415,7 +412,10 @@ public class SearchResource {
             .field(FIELD_DISPLAY_NAME, 15.0f)
             .field(FIELD_DISPLAY_NAME_NGRAM)
             .field(FIELD_NAME, 15.0f)
+            .field(DISPLAY_NAME_KEYWORD, 25.0f)
+            .field(NAME_KEYWORD, 25.0f)
             .field(FIELD_DESCRIPTION, 1.0f)
+            .field("columns.name.keyword", 10.0f)
             .field("columns.name", 2.0f)
             .field("columns.name.ngram")
             .field("columns.displayName", 2.0f)
@@ -466,6 +466,8 @@ public class SearchResource {
             .field(FIELD_DISPLAY_NAME, 15.0f)
             .field(FIELD_DISPLAY_NAME_NGRAM)
             .field(FIELD_NAME, 15.0f)
+            .field(DISPLAY_NAME_KEYWORD, 25.0f)
+            .field(NAME_KEYWORD, 25.0f)
             .field(FIELD_DESCRIPTION, 1.0f)
             .field("messageSchema.schemaFields.name", 2.0f)
             .field("messageSchema.schemaFields.description", 1.0f)
@@ -493,6 +495,8 @@ public class SearchResource {
             .field(FIELD_DISPLAY_NAME, 15.0f)
             .field(FIELD_DISPLAY_NAME_NGRAM)
             .field(FIELD_NAME, 15.0f)
+            .field(DISPLAY_NAME_KEYWORD, 25.0f)
+            .field(NAME_KEYWORD, 25.0f)
             .field(FIELD_DESCRIPTION, 1.0f)
             .field("charts.name", 2.0f)
             .field("charts.description", 1.0f)
@@ -523,6 +527,8 @@ public class SearchResource {
             .field(FIELD_DISPLAY_NAME, 15.0f)
             .field(FIELD_DISPLAY_NAME_NGRAM)
             .field(FIELD_NAME, 15.0f)
+            .field(DISPLAY_NAME_KEYWORD, 25.0f)
+            .field(NAME_KEYWORD, 25.0f)
             .field(DESCRIPTION, 1.0f)
             .field("tasks.name", 2.0f)
             .field("tasks.description", 1.0f)
@@ -551,6 +557,8 @@ public class SearchResource {
             .field(FIELD_DISPLAY_NAME, 15.0f)
             .field(FIELD_DISPLAY_NAME_NGRAM)
             .field(FIELD_NAME, 15.0f)
+            .field(DISPLAY_NAME_KEYWORD, 25.0f)
+            .field(NAME_KEYWORD, 25.0f)
             .field(DESCRIPTION, 1.0f)
             .field("mlFeatures.name", 2.0f)
             .field("mlFeatures.description", 1.0f)
@@ -580,7 +588,10 @@ public class SearchResource {
             .field(FIELD_DISPLAY_NAME_NGRAM)
             .field(FIELD_NAME, 15.0f)
             .field(FIELD_DESCRIPTION, 1.0f)
+            .field(DISPLAY_NAME_KEYWORD, 25.0f)
+            .field(NAME_KEYWORD, 25.0f)
             .field("dataModel.columns.name", 2.0f)
+            .field("dataModel.columns.name.keyword", 10.0f)
             .field("dataModel.columns.name.ngram")
             .field("dataModel.columns.displayName", 2.0f)
             .field("dataModel.columns.displayName.ngram")
@@ -617,7 +628,7 @@ public class SearchResource {
             .field(DISPLAY_NAME, 10.0f)
             .field(FIELD_DISPLAY_NAME_NGRAM)
             .field(QUERY, 10.0f)
-            .field(QUERY_NGRAM, 10.0f)
+            .field(QUERY_NGRAM)
             .field(DESCRIPTION, 3.0f)
             .defaultOperator(Operator.AND)
             .fuzziness(Fuzziness.AUTO);
@@ -663,10 +674,12 @@ public class SearchResource {
   private SearchSourceBuilder buildUserSearchBuilder(String query, int from, int size) {
     QueryStringQueryBuilder queryBuilder =
         QueryBuilders.queryStringQuery(query)
-            .field(DISPLAY_NAME, 5.0f)
-            .field(DISPLAY_NAME_KEYWORD, 3.0f)
+            .field(DISPLAY_NAME, 3.0f)
+            .field(DISPLAY_NAME_KEYWORD, 5.0f)
+            .field(FIELD_DISPLAY_NAME_NGRAM)
             .field(FIELD_NAME, 2.0f)
             .field(NAME_KEYWORD, 3.0f)
+            .defaultOperator(Operator.AND)
             .fuzziness(Fuzziness.AUTO);
     return searchBuilder(queryBuilder, null, from, size);
   }
@@ -674,10 +687,12 @@ public class SearchResource {
   private SearchSourceBuilder buildTeamSearchBuilder(String query, int from, int size) {
     QueryStringQueryBuilder queryBuilder =
         QueryBuilders.queryStringQuery(query)
-            .field(DISPLAY_NAME, 5.0f)
-            .field(DISPLAY_NAME_KEYWORD, 3.0f)
+            .field(DISPLAY_NAME, 3.0f)
+            .field(DISPLAY_NAME_KEYWORD, 5.0f)
+            .field(FIELD_DISPLAY_NAME_NGRAM)
             .field(FIELD_NAME, 2.0f)
             .field(NAME_KEYWORD, 3.0f)
+            .defaultOperator(Operator.AND)
             .fuzziness(Fuzziness.AUTO);
     return searchBuilder(queryBuilder, null, from, size);
   }
@@ -686,7 +701,16 @@ public class SearchResource {
     QueryStringQueryBuilder queryBuilder =
         QueryBuilders.queryStringQuery(query)
             .field(FIELD_NAME, 10.0f)
+            .field(NAME_KEYWORD, 10.0f)
+            .field(DISPLAY_NAME_KEYWORD, 10.0f)
+            .field(FIELD_DISPLAY_NAME, 10.0f)
+            .field(FIELD_DISPLAY_NAME_NGRAM)
+            .field("synonyms", 5.0f)
+            .field("synonyms.ngram")
             .field(DESCRIPTION, 3.0f)
+            .field("glossary.name", 5.0f)
+            .field("glossary.displayName", 5.0f)
+            .field("glossary.displayName.ngram")
             .defaultOperator(Operator.AND)
             .fuzziness(Fuzziness.AUTO);
 
@@ -694,13 +718,20 @@ public class SearchResource {
     highlightGlossaryName.highlighterType(UNIFIED);
     HighlightBuilder.Field highlightDescription = new HighlightBuilder.Field(FIELD_DESCRIPTION);
     highlightDescription.highlighterType(UNIFIED);
+    HighlightBuilder.Field highlightSynonym = new HighlightBuilder.Field("synonyms");
+    highlightDescription.highlighterType(UNIFIED);
     HighlightBuilder hb = new HighlightBuilder();
     hb.field(highlightDescription);
     hb.field(highlightGlossaryName);
+    hb.field(highlightSynonym);
     hb.preTags("<span class=\"text-highlighter\">");
     hb.postTags("</span>");
-
-    return searchBuilder(queryBuilder, hb, from, size);
+    SearchSourceBuilder searchSourceBuilder =
+        new SearchSourceBuilder().query(queryBuilder).highlighter(hb).from(from).size(size);
+    searchSourceBuilder
+        .aggregation(AggregationBuilders.terms("tags.tagFQN").field("tags.tagFQN").size(MAX_AGGREGATE_SIZE))
+        .aggregation(AggregationBuilders.terms("glossary.name").field("glossary.name.keyword"));
+    return searchSourceBuilder;
   }
 
   private SearchSourceBuilder buildTagSearchBuilder(String query, int from, int size) {

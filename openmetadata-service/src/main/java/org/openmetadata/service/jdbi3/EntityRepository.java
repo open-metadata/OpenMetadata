@@ -34,6 +34,7 @@ import static org.openmetadata.service.util.EntityUtil.compareTagLabel;
 import static org.openmetadata.service.util.EntityUtil.entityReferenceMatch;
 import static org.openmetadata.service.util.EntityUtil.fieldAdded;
 import static org.openmetadata.service.util.EntityUtil.fieldDeleted;
+import static org.openmetadata.service.util.EntityUtil.fieldUpdated;
 import static org.openmetadata.service.util.EntityUtil.getColumnField;
 import static org.openmetadata.service.util.EntityUtil.getExtensionField;
 import static org.openmetadata.service.util.EntityUtil.nextMajorVersion;
@@ -597,11 +598,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
 
     ChangeDescription change = new ChangeDescription().withPreviousVersion(originalEntity.getVersion());
+    fieldUpdated(change, FIELD_VOTES, null, request.getUpdatedVoteType());
 
     // Add or Delete relationship
     if (request.getUpdatedVoteType() == VoteRequest.VoteType.UN_VOTED) {
       deleteRelationship(userId, Entity.USER, entityId, entityType, Relationship.VOTED);
-      fieldDeleted(change, FIELD_VOTES, request.getUpdatedVoteType());
     } else {
       addRelationship(
           userId,
@@ -611,7 +612,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
           Relationship.VOTED,
           JsonUtils.pojoToJson(request.getUpdatedVoteType()),
           false);
-      fieldAdded(change, FIELD_VOTES, request.getUpdatedVoteType());
     }
 
     setFieldsInternal(originalEntity, new EntityUtil.Fields(allowedFields, "votes"));
@@ -1132,8 +1132,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
       for (EntityReference entityReference : entityReferences) {
         EntityReference ref =
             entityReference.getId() != null
-                ? daoCollection.userDAO().findEntityReferenceById(entityReference.getId())
-                : daoCollection.userDAO().findEntityReferenceByName(entityReference.getFullyQualifiedName());
+                ? daoCollection.userDAO().findEntityReferenceById(entityReference.getId(), ALL)
+                : daoCollection.userDAO().findEntityReferenceByName(entityReference.getFullyQualifiedName(), ALL);
         EntityUtil.copy(ref, entityReference);
       }
       entityReferences.sort(EntityUtil.compareEntityReference);
@@ -1143,7 +1143,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   public void validateRoles(List<EntityReference> roles) throws IOException {
     if (roles != null) {
       for (EntityReference entityReference : roles) {
-        EntityReference ref = daoCollection.roleDAO().findEntityReferenceById(entityReference.getId());
+        EntityReference ref = daoCollection.roleDAO().findEntityReferenceById(entityReference.getId(), ALL);
         EntityUtil.copy(ref, entityReference);
       }
       roles.sort(EntityUtil.compareEntityReference);
@@ -1153,7 +1153,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   void validatePolicies(List<EntityReference> policies) throws IOException {
     if (policies != null) {
       for (EntityReference entityReference : policies) {
-        EntityReference ref = daoCollection.policyDAO().findEntityReferenceById(entityReference.getId());
+        EntityReference ref = daoCollection.policyDAO().findEntityReferenceById(entityReference.getId(), ALL);
         EntityUtil.copy(ref, entityReference);
       }
       policies.sort(EntityUtil.compareEntityReference);

@@ -46,6 +46,7 @@ const mockConfigureIngestion: ConfigureIngestionProps = {
   serviceCategory: ServiceCategory.DATABASE_SERVICES,
   onChange: jest.fn(),
   data: {
+    showDatabaseFilterField: true,
     ingestionName: '',
     databaseFilterPattern: {
       includes: [],
@@ -87,6 +88,10 @@ const mockConfigureIngestion: ConfigureIngestionProps = {
     resultLimit: 100,
     stageFileLocation: '',
     markDeletedTables: false,
+    markDeletedDashboards: true,
+    markDeletedTopics: true,
+    markDeletedMlModels: true,
+    markDeletedPipelines: true,
     showDashboardFilter: false,
     showDatabaseFilter: false,
     showSchemaFilter: false,

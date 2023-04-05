@@ -55,7 +55,7 @@ import IconControlPlus from '../assets/svg/control-plus.svg';
 import IconCreateIngestion from '../assets/svg/creating-ingestion.svg';
 import IconDashboardGrey from '../assets/svg/dashboard-grey.svg';
 import IconDashboard from '../assets/svg/dashboard.svg';
-import IconAsstest from '../assets/svg/data-assets.svg';
+import IconAssets from '../assets/svg/data-assets.svg';
 import IconDBTModelGrey from '../assets/svg/dbt-model-grey.svg';
 import IconDBTModelLightGrey from '../assets/svg/dbt-model-light-grey.svg';
 import IconDBTModelPrimeryColor from '../assets/svg/dbt-model-primery.svg';
@@ -157,6 +157,7 @@ import IconTaskOpen from '../assets/svg/in-progress.svg';
 import IconInfo from '../assets/svg/info.svg';
 import IconIngestion from '../assets/svg/ingestion.svg';
 import IconLineageColor from '../assets/svg/lineage-color.svg';
+import IconLink from '../assets/svg/link.svg';
 import LogoMonogram from '../assets/svg/logo-monogram.svg';
 import Logo from '../assets/svg/logo.svg';
 import IconManageColor from '../assets/svg/manage-color.svg';
@@ -411,6 +412,7 @@ export const Icons = {
   FLAT_DOC: 'flat-doc',
   CLOSE_CIRCLE_OUTLINED: 'close-circle-outlined',
   CLOSE_CIRCLE_OUTLINED_COLOR: 'close-circle-outlined-color',
+  LINK: 'link',
 };
 
 /**
@@ -472,6 +474,10 @@ const SVGIcons: FunctionComponent<Props> = ({ icon, ...props }: Props) => {
       break;
     case Icons.LOGO:
       IconComponent = Logo;
+
+      break;
+    case Icons.LINK:
+      IconComponent = IconLink;
 
       break;
     case Icons.ROLE_GREY:
@@ -656,7 +662,7 @@ const SVGIcons: FunctionComponent<Props> = ({ icon, ...props }: Props) => {
 
       break;
     case Icons.ASSETS:
-      IconComponent = IconAsstest;
+      IconComponent = IconAssets;
 
       break;
     case Icons.TOAST_INFO:

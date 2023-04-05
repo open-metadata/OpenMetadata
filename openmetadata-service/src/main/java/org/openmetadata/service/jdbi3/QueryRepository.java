@@ -8,6 +8,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 import javax.ws.rs.core.Response;
+import javax.ws.rs.core.UriInfo;
 import lombok.SneakyThrows;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.entity.data.Query;
@@ -25,7 +26,7 @@ import org.openmetadata.service.util.QueryUtil;
 import org.openmetadata.service.util.RestUtil;
 
 public class QueryRepository extends EntityRepository<Query> {
-  private static final String QUERY_PATCH_FIELDS = "owner,tags,users,followers";
+  private static final String QUERY_PATCH_FIELDS = "owner,tags,users,followers,query";
   private static final String QUERY_UPDATE_FIELDS = "owner,tags,users,votes,followers";
 
   public QueryRepository(CollectionDAO dao) {
@@ -120,8 +121,8 @@ public class QueryRepository extends EntityRepository<Query> {
     return new QueryUpdater(original, updated, operation);
   }
 
-  public RestUtil.PutResponse<?> addQueryUsage(String updatedBy, UUID queryId, List<EntityReference> entityIds)
-      throws IOException {
+  public RestUtil.PutResponse<?> addQueryUsage(
+      UriInfo uriInfo, String updatedBy, UUID queryId, List<EntityReference> entityIds) throws IOException {
     Query query = Entity.getEntity(Entity.QUERY, queryId, "queryUsedIn", Include.NON_DELETED);
     List<EntityReference> oldValue = query.getQueryUsedIn();
     // Create Relationships
@@ -131,12 +132,14 @@ public class QueryRepository extends EntityRepository<Query> {
 
     // Populate Fields
     setFieldsInternal(query, new EntityUtil.Fields(allowedFields, "queryUsedIn"));
-    ChangeEvent changeEvent = getQueryChangeEvent(updatedBy, "queryUsedIn", oldValue, query.getQueryUsedIn(), query);
+    Entity.withHref(uriInfo, query.getQueryUsedIn());
+    ChangeEvent changeEvent =
+        getQueryChangeEvent(updatedBy, "queryUsedIn", oldValue, query.getQueryUsedIn(), withHref(uriInfo, query));
     return new RestUtil.PutResponse<>(Response.Status.CREATED, changeEvent, RestUtil.ENTITY_FIELDS_CHANGED);
   }
 
-  public RestUtil.PutResponse<?> removeQueryUsedIn(String updatedBy, UUID queryId, List<EntityReference> entityIds)
-      throws IOException {
+  public RestUtil.PutResponse<?> removeQueryUsedIn(
+      UriInfo uriInfo, String updatedBy, UUID queryId, List<EntityReference> entityIds) throws IOException {
     Query query = Entity.getEntity(Entity.QUERY, queryId, "queryUsedIn", Include.NON_DELETED);
     List<EntityReference> oldValue = query.getQueryUsedIn();
 
@@ -146,7 +149,9 @@ public class QueryRepository extends EntityRepository<Query> {
 
     // Populate Fields
     setFieldsInternal(query, new EntityUtil.Fields(allowedFields, "queryUsedIn"));
-    ChangeEvent changeEvent = getQueryChangeEvent(updatedBy, "queryUsedIn", oldValue, query.getQueryUsedIn(), query);
+    Entity.withHref(uriInfo, query.getQueryUsedIn());
+    ChangeEvent changeEvent =
+        getQueryChangeEvent(updatedBy, "queryUsedIn", oldValue, query.getQueryUsedIn(), withHref(uriInfo, query));
     return new RestUtil.PutResponse<>(Response.Status.CREATED, changeEvent, RestUtil.ENTITY_FIELDS_CHANGED);
   }
 
@@ -177,6 +182,12 @@ public class QueryRepository extends EntityRepository<Query> {
     public void entitySpecificUpdate() throws IOException {
       updateFromRelationships(
           "users", USER, original.getUsers(), updated.getUsers(), Relationship.USES, Entity.QUERY, original.getId());
+      if (operation.isPatch() && !original.getQuery().equals(updated.getQuery())) {
+        recordChange("query", original.getQuery(), updated.getQuery());
+        String checkSum = QueryUtil.getCheckSum(updated.getQuery());
+        recordChange("name", original.getName(), checkSum);
+        recordChange("checkSum", original.getChecksum(), checkSum);
+      }
     }
   }
 }

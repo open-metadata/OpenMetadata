@@ -34,11 +34,12 @@ from metadata.generated.schema.entity.teams.role import Role
 from metadata.generated.schema.entity.teams.team import Team
 from metadata.ingestion.api.common import Entity
 from metadata.ingestion.api.sink import Sink
+from metadata.ingestion.models.delete_entity import DeleteEntity
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.models.ometa_topic_data import OMetaTopicSampleData
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
 from metadata.ingestion.models.profile_data import OMetaTableProfileSampleData
-from metadata.ingestion.models.table_metadata import DeleteTable, OMetaTableConstraints
+from metadata.ingestion.models.table_metadata import OMetaTableConstraints
 from metadata.ingestion.models.tests_data import (
     OMetaTestCaseResultsSample,
     OMetaTestCaseSample,
@@ -93,7 +94,7 @@ class MetadataRestSink(Sink[Entity]):
         self.write_record.register(AddLineageRequest, self.write_lineage)
         self.write_record.register(OMetaUserProfile, self.write_users)
         self.write_record.register(OMetaTagAndClassification, self.write_classification)
-        self.write_record.register(DeleteTable, self.delete_table)
+        self.write_record.register(DeleteEntity, self.delete_entity)
         self.write_record.register(OMetaPipelineStatus, self.write_pipeline_status)
         self.write_record.register(DataModelLink, self.write_datamodel)
         self.write_record.register(TableLocationLink, self.write_table_location_link)
@@ -339,21 +340,21 @@ class MetadataRestSink(Sink[Entity]):
             logger.debug(traceback.format_exc())
             logger.error(f"Unexpected error writing user [{metadata_user}]: {exc}")
 
-    def delete_table(self, record: DeleteTable):
+    def delete_entity(self, record: DeleteEntity):
         try:
 
             self.metadata.delete(
-                entity=Table,
-                entity_id=record.table.id,
-                recursive=record.mark_deleted_tables,
+                entity=type(record.entity),
+                entity_id=record.entity.id,
+                recursive=record.mark_deleted_entities,
             )
             logger.debug(
-                f"{record.table.name} doesn't exist in source state, marking it as deleted"
+                f"{record.entity.name} doesn't exist in source state, marking it as deleted"
             )
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.error(
-                f"Unexpected error deleting table [{record.table.name}]: {exc}"
+                f"Unexpected error deleting table [{record.entity.name}]: {exc}"
             )
 
     def write_pipeline_status(self, record: OMetaPipelineStatus) -> None:
@@ -392,7 +393,7 @@ class MetadataRestSink(Sink[Entity]):
 
     def write_test_suite_sample(self, record: OMetaTestSuiteSample):
         """
-        Use the /testSuite endpoint to ingest sample test suite
+        Use the /testSuites endpoint to ingest sample test suite
         """
         try:
             self.metadata.create_or_update(record.test_suite)
@@ -408,7 +409,7 @@ class MetadataRestSink(Sink[Entity]):
 
     def write_test_case_sample(self, record: OMetaTestCaseSample):
         """
-        Use the /testCase endpoint to ingest sample test suite
+        Use the /testCases endpoint to ingest sample test suite
         """
         try:
             self.metadata.create_or_update(record.test_case)
@@ -422,7 +423,7 @@ class MetadataRestSink(Sink[Entity]):
 
     def write_test_case_results_sample(self, record: OMetaTestCaseResultsSample):
         """
-        Use the /testCase endpoint to ingest sample test suite
+        Use the /testCases endpoint to ingest sample test suite
         """
         try:
             self.metadata.add_test_case_results(
@@ -443,7 +444,7 @@ class MetadataRestSink(Sink[Entity]):
 
     def write_topic_sample_data(self, record: OMetaTopicSampleData):
         """
-        Use the /testCase endpoint to ingest sample test suite
+        Use the /testCases endpoint to ingest sample test suite
         """
         try:
             if record.sample_data.messages:

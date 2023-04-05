@@ -9,7 +9,7 @@ slug: /connectors/database/athena
 
 | Stage | Metadata |Query Usage | Data Profiler | Data Quality | Lineage | DBT | Supported Versions |
 |:------:|:------:|:-----------:|:-------------:|:------------:|:-------:|:---:|:------------------:|
-|  PROD  |   ✅   |      ❌      |       ✅       |       ✅      |    1.0 ( upcoming release )    |  ✅  |  --  |
+|  PROD  |   ✅   |     ✅ (1.0 release onwards)      |       ✅       |       ✅      |    ✅ (1.0 release onwards)    |  ✅  |  --  |
 
 </Table>
 
@@ -17,7 +17,7 @@ slug: /connectors/database/athena
 
 | Lineage | Table-level | Column-level |
 |:------:|:-----------:|:-------------:|
-| 1.0 ( upcoming release ) | TBD | TBD |
+| ✅ (1.0 release onwards) | ✅  | ✅  |
 
 </Table>
 
@@ -26,8 +26,10 @@ In this section, we provide guides and references to use the Athena connector.
 Configure and schedule Athena metadata and profiler workflows from the OpenMetadata UI:
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
+- [Query Usage](#query-usage)
 - [Data Profiler](#data-profiler)
-- [dbt Integration](#dbt-integration)
+- [Data Quality](#data-quality)
+- [Lineage](#lineage)
 
 If you don't want to use the OpenMetadata Ingestion container to configure the workflows via the UI, then you can check
 the following docs to connect using Airflow SDK or with the CLI.
@@ -186,8 +188,8 @@ caption="Configure Metadata Ingestion Page"
 - **Include views (toggle)**: Set the Include views toggle to control whether or not to include views as part of metadata ingestion.
 - **Include tags (toggle)**: Set the Include tags toggle to control whether or not to include tags as part of metadata ingestion.
 - **Enable Debug Log (toggle)**: Set the Enable Debug Log toggle to set the default log level to debug, these logs can be viewed later in Airflow.
-- **Mark Deleted Tables (toggle)**: Set the Mark Deleted Tables toggle to flag tables as soft-deleted if they are not present anymore in the source system.
-- **Mark Deleted Tables from Filter Only (toggle)**: Set the Mark Deleted Tables from Filter Only toggle to flag tables as soft-deleted if they are not present anymore within the filtered schema or database only. This flag is useful when you have more than one ingestion pipelines. For example if you have a schema
+- **Mark Deleted Tables (toggle)**: This is an optional configuration for enabling soft deletion of tables. When this option is enabled, only tables that have been deleted from the source will be soft deleted, and this will apply solely to the schema that is currently being ingested via the pipeline. Any related entities such as test suites or lineage information that were associated with those tables will also be deleted..
+- **Mark All Deleted Tables (toggle)**: This is an optional configuration for enabling soft deletion of tables. When this option is enabled, only tables that have been deleted from the source will be soft deleted, and this will apply to all the schemas available in the data source. Any related entities such as test suites or lineage information that were associated with those tables will also be deleted. Do not enable this option when you have multiple metadata ingestion pipelines. Also make sure to enable the markDeletedTables option for this to work.
 - **Auto Tag PII(toggle)**: Auto PII tagging checks for column name to mark PII Sensitive/NonSensitive tag
 
 ### 7. Schedule the Ingestion and Deploy
@@ -238,6 +240,15 @@ caption="Edit and Deploy the Ingestion Pipeline"
 
 From the Connection tab, you can also Edit the Service if needed.
 
+## Query Usage
+
+<Tile
+icon="manage_accounts"
+title="Usage Workflow"
+text="Learn more about how to configure the Usage Workflow to ingest Query information from the UI."
+link="/connectors/ingestion/workflows/usage"
+/>
+
 ## Data Profiler
 
 <Tile
@@ -263,4 +274,13 @@ icon="mediation"
 title="dbt Integration"
 text="Learn more about how to ingest dbt models' definitions and their lineage."
 link="/connectors/ingestion/workflows/dbt"
+/>
+
+## Lineage
+
+<Tile
+icon="air"
+title="Lineage Workflow"
+text="Learn more about how to configure the Lineage from the UI."
+link="/connectors/ingestion/workflows/lineage"
 />

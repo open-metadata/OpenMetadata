@@ -14,12 +14,13 @@ Test Table and Column Tests' validate implementations.
 
 Each test should validate the Success, Failure and Aborted statuses
 """
-from datetime import datetime
+from datetime import date, datetime
+from unittest.mock import patch
 
 import pytest
 
+from metadata.data_quality.validations.validator import Validator
 from metadata.generated.schema.tests.basic import TestCaseResult, TestCaseStatus
-from metadata.test_suite.validations.validator import Validator
 from metadata.utils.importer import import_test_case_class
 
 EXECUTION_DATE = datetime.strptime("2021-07-03", "%Y-%m-%d")
@@ -28,6 +29,28 @@ EXECUTION_DATE = datetime.strptime("2021-07-03", "%Y-%m-%d")
 @pytest.mark.parametrize(
     "test_case_name,test_case_type,test_type,expected",
     [
+        (
+            "test_case_column_values_to_be_between_date",
+            "columnValuesToBeBetween",
+            "COLUMN",
+            (
+                TestCaseResult,
+                "2021-07-01 00:00:00",
+                "2021-07-01 23:59:59.999999",
+                TestCaseStatus.Failed,
+            ),
+        ),
+        (
+            "test_case_column_values_to_be_between_datetime",
+            "columnValuesToBeBetween",
+            "COLUMN",
+            (
+                TestCaseResult,
+                "2021-07-01 10:37:59",
+                "2021-07-01 10:37:59",
+                TestCaseStatus.Success,
+            ),
+        ),
         (
             "test_case_column_value_length_to_be_between",
             "columnValueLengthsToBeBetween",
@@ -239,20 +262,59 @@ def test_suite_validation_database(
     test_case = request.getfixturevalue(test_case_name)
     type_, val_1, val_2, status = expected
 
-    test_handler_obj = import_test_case_class(
-        test_type,
-        "sqlalchemy",
-        test_case_type,
-    )
+    if test_case_name == "test_case_column_values_to_be_between_date":
+        with patch(
+            "metadata.data_quality.validations.column.sqlalchemy.columnValuesToBeBetween.ColumnValuesToBeBetweenValidator._run_results",
+            return_value=date(2021, 7, 1),
+        ):
+            test_handler_obj = import_test_case_class(
+                test_type,
+                "sqlalchemy",
+                test_case_type,
+            )
 
-    test_handler = test_handler_obj(
-        create_sqlite_table,
-        test_case=test_case,
-        execution_date=EXECUTION_DATE.timestamp(),
-    )
+            test_handler = test_handler_obj(
+                create_sqlite_table,
+                test_case=test_case,
+                execution_date=EXECUTION_DATE.timestamp(),
+            )
 
-    validator = Validator(test_handler)
-    res = validator.validate()
+            validator = Validator(test_handler)
+            res = validator.validate()
+    elif test_case_name == "test_case_column_values_to_be_between_datetime":
+        with patch(
+            "metadata.data_quality.validations.column.sqlalchemy.columnValuesToBeBetween.ColumnValuesToBeBetweenValidator._run_results",
+            return_value=datetime(2021, 7, 1, 10, 37, 59),
+        ):
+            test_handler_obj = import_test_case_class(
+                test_type,
+                "sqlalchemy",
+                test_case_type,
+            )
+
+            test_handler = test_handler_obj(
+                create_sqlite_table,
+                test_case=test_case,
+                execution_date=EXECUTION_DATE.timestamp(),
+            )
+
+            validator = Validator(test_handler)
+            res = validator.validate()
+    else:
+        test_handler_obj = import_test_case_class(
+            test_type,
+            "sqlalchemy",
+            test_case_type,
+        )
+
+        test_handler = test_handler_obj(
+            create_sqlite_table,
+            test_case=test_case,
+            execution_date=EXECUTION_DATE.timestamp(),
+        )
+
+        validator = Validator(test_handler)
+        res = validator.validate()
 
     assert isinstance(res, type_)
     if val_1:
