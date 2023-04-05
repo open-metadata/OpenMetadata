@@ -119,20 +119,12 @@ class PandasProfilerInterface(ProfilerProtocol, PandasInterfaceMixin):
         import pandas as pd  # pylint: disable=import-outside-toplevel
 
         try:
-            row = []
+            row_dict = {}
             for metric in metrics:
-                row.append(
+                row_dict[metric.name()] = (
                     metric().df_fn([df.where(pd.notnull(df), None) for df in self.dfs])
                 )
-            if row:
-                if isinstance(row, list):
-                    row_dict = {}
-                    for index, table_metric in enumerate(metrics):
-                        row_dict[table_metric.name()] = row[index]
-                    return row_dict
-                return dict(row)
-            return None
-
+            return row_dict
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning(f"Error trying to compute profile for {exc}")
