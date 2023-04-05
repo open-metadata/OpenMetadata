@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate.
+ *  Copyright 2023 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,14 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-import { Role } from '../../../generated/entity/teams/role';
-import { User } from '../../../generated/entity/teams/user';
-
-export interface RolesComponentProps {
-  roles: Array<Role>;
-  userData: User;
-  updateUserDetails: (data: Partial<User>) => Promise<void>;
-  selectedRoles: Array<string>;
-  setSelectedRoles: (selectedRoles: string[]) => void;
+export interface TeamsSelectableProps {
+  showTeamsAlert?: boolean;
+  onSelectionChange: (teams: string[]) => void;
+  filterJoinable?: boolean;
+  placeholder?: string;
+  selectedTeams?: string[];
 }
