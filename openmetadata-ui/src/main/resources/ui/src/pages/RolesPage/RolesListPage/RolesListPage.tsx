@@ -124,14 +124,8 @@ const RolesListPage = () => {
         <Space className="w-full justify-between">
           <PageHeader data={PAGE_HEADERS.ROLES} />
           <Tooltip
-            placement="left"
-            title={
-              addRolePermission
-                ? t('label.add-entity', {
-                    entity: t('label.role'),
-                  })
-                : NO_PERMISSION_FOR_ACTION
-            }>
+            placement="topLeft"
+            title={!addRolePermission && NO_PERMISSION_FOR_ACTION}>
             <Button
               data-testid="add-role"
               disabled={!addRolePermission}
