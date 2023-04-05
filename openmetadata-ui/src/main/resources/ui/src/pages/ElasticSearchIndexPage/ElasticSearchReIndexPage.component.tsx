@@ -17,7 +17,11 @@ import { AxiosError } from 'axios';
 import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
 import PageHeader from 'components/header/PageHeader.component';
 import { useWebSocketConnector } from 'components/web-scoket/web-scoket.provider';
-import { isEmpty, startCase } from 'lodash';
+import {
+  ELASTIC_SEARCH_INDEX_ENTITIES,
+  ELASTIC_SEARCH_INITIAL_VALUES,
+} from 'constants/elasticsearch.constant';
+import { isEmpty, isEqual, startCase } from 'lodash';
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -87,6 +91,9 @@ const ElasticSearchIndexPage = () => {
       setConfirmLoading(true);
       await reIndexByPublisher({
         ...data,
+        entities: isEqual(data.entities, ELASTIC_SEARCH_INITIAL_VALUES.entities)
+          ? ELASTIC_SEARCH_INDEX_ENTITIES.map((e) => e.value)
+          : data.entities ?? [],
         runMode: RunMode.Batch,
       } as CreateEventPublisherJob);
 
