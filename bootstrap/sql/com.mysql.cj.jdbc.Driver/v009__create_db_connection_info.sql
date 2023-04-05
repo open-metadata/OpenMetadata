@@ -134,3 +134,11 @@ CREATE TABLE IF NOT EXISTS dashboard_data_model_entity (
     PRIMARY KEY (id),
     UNIQUE (fullyQualifiedName)
 );
+
+UPDATE dbservice_entity
+SET json = JSON_INSERT(
+        JSON_REMOVE(json, '$.connection.config.database'),
+        '$.connection.config.databaseName', JSON_EXTRACT(json, '$.connection.config.database')
+    )
+where serviceType = 'Druid'
+  and JSON_EXTRACT(json, '$.connection.config.database') is not null;

@@ -22,6 +22,9 @@ import pytest
 import sqlalchemy as sqa
 from sqlalchemy.orm import declarative_base
 
+from metadata.data_quality.interface.sqlalchemy.sqa_test_suite_interface import (
+    SQATestSuiteInterface,
+)
 from metadata.generated.schema.entity.data.table import Column, DataType, Table
 from metadata.generated.schema.entity.services.connections.database.sqliteConnection import (
     SQLiteConnection,
@@ -29,7 +32,6 @@ from metadata.generated.schema.entity.services.connections.database.sqliteConnec
 )
 from metadata.generated.schema.tests.testCase import TestCase, TestCaseParameterValue
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.interfaces.sqalchemy.sqa_test_suite_interface import SQATestSuiteInterface
 
 Base = declarative_base()
 
@@ -39,6 +41,7 @@ ENTITY_LINK_FNAME = "<#E::table::service.db.users::columns::first name>"
 ENTITY_LINK_AGE = "<#E::table::service.db.users::columns::age>"
 ENTITY_LINK_NAME = "<#E::table::service.db.users::columns::name>"
 ENTITY_LINK_USER = "<#E::table::service.db.users>"
+ENTITY_LINK_INSERTED_DATE = "<#E::table::service.db.users::columns::inserted_date>"
 
 TABLE = Table(
     id=uuid4(),
@@ -615,3 +618,31 @@ def test_case_table_custom_sql_query_success_dl():
             TestCaseParameterValue(name="sqlExpression", value="age < 0"),
         ],
     )
+
+
+@pytest.fixture
+def test_case_column_values_to_be_between_date():
+    return TestCase(
+        name=TEST_CASE_NAME,
+        entityLink=ENTITY_LINK_INSERTED_DATE,
+        testSuite=EntityReference(id=uuid4(), type="TestSuite"),  # type: ignore
+        testDefinition=EntityReference(id=uuid4(), type="TestDefinition"),  # type: ignore
+        parameterValues=[
+            TestCaseParameterValue(name="minValue", value="1625127852000"),
+            TestCaseParameterValue(name="maxValue", value="1625127852000"),
+        ],
+    )  # type: ignore
+
+
+@pytest.fixture
+def test_case_column_values_to_be_between_datetime():
+    return TestCase(
+        name=TEST_CASE_NAME,
+        entityLink=ENTITY_LINK_INSERTED_DATE,
+        testSuite=EntityReference(id=uuid4(), type="TestSuite"),  # type: ignore
+        testDefinition=EntityReference(id=uuid4(), type="TestDefinition"),  # type: ignore
+        parameterValues=[
+            TestCaseParameterValue(name="minValue", value="1625127852000"),
+            TestCaseParameterValue(name="maxValue", value="1625171052000"),
+        ],
+    )  # type: ignore

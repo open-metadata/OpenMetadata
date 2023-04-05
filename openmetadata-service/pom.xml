@@ -231,6 +231,11 @@
       <version>${awssdk.version}</version>
     </dependency>
 
+    <dependency>
+      <groupId>io.dropwizard.modules</groupId>
+      <artifactId>dropwizard-web</artifactId>
+    </dependency>
+
     <!-- Dependencies for cloudwatch monitoring -->
     <dependency>
       <groupId>software.amazon.awssdk</groupId>
@@ -415,11 +420,6 @@
       <groupId>org.apache.commons</groupId>
       <artifactId>commons-csv</artifactId>
       <version>1.9.0</version>
-    </dependency>
-    <dependency>
-      <groupId>com.onelogin</groupId>
-      <artifactId>java-saml</artifactId>
-      <version>2.9.0</version>
     </dependency>
     <dependency>
       <groupId>com.onelogin</groupId>

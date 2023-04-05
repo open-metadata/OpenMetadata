@@ -256,6 +256,11 @@ public final class Entity {
     return entityRepository.getFields(fields);
   }
 
+  public static Fields getFields(String entityType, List<String> fields) {
+    EntityRepository<?> entityRepository = Entity.getEntityRepository(entityType);
+    return entityRepository.getFields(String.join(",", fields));
+  }
+
   public static <T> T getEntity(EntityReference ref, String fields, Include include) throws IOException {
     return ref.getId() != null
         ? getEntity(ref.getType(), ref.getId(), fields, include)

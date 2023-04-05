@@ -80,6 +80,8 @@ class PatchPath(str, Enum):
     SYNONYMS = "/synonyms/{index}"
     TABLE_CONSTRAINTS = "/tableConstraints"
     TAGS = "/tags/{tag_index}"
+    RESPONSE = "/response"
+    STATUS = "/status"
 
 
 class PatchValue(str, Enum):
