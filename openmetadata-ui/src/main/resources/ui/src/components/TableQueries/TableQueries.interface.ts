@@ -63,7 +63,8 @@ export interface QueryFiltersProps {
 }
 
 export type QuerySearchParams = QueryFiltersType & {
-  page: string;
+  queryFrom: string;
+  after: string;
   tableId: string;
   query: string;
 };

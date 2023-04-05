@@ -38,10 +38,20 @@ import Qs from 'qs';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useLocation } from 'react-router-dom';
-import { getQueryById, patchQueries, updateQueryVote } from 'rest/queryAPI';
+import {
+  getQueriesList,
+  getQueryById,
+  ListQueriesParams,
+  patchQueries,
+  updateQueryVote,
+} from 'rest/queryAPI';
 import { searchQuery } from 'rest/searchAPI';
 import { DEFAULT_ENTITY_PERMISSION } from 'utils/PermissionsUtils';
-import { createQueryFilter, parseSearchParams } from 'utils/Query/QueryUtils';
+import {
+  createQueryFilter,
+  parseSearchParams,
+  stringifySearchParams,
+} from 'utils/Query/QueryUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder';
 import Loader from '../Loader/Loader';
@@ -65,10 +75,13 @@ const TableQueries: FC<TableQueriesProp> = ({
   const { searchParams, selectedFilters } = useMemo(() => {
     const searchData = parseSearchParams(location.search);
 
-    const selectedFilters = {
-      user: searchData.user || [],
-      team: searchData.team || [],
-    };
+    const selectedFilters =
+      searchData.user || searchData.team
+        ? {
+            user: searchData.user || [],
+            team: searchData.team || [],
+          }
+        : undefined;
 
     return {
       searchParams: searchData,
@@ -87,12 +100,18 @@ const TableQueries: FC<TableQueriesProp> = ({
     DEFAULT_ENTITY_PERMISSION
   );
   const [currentPage, setCurrentPage] = useState(
-    Number(searchParams.page) || INITIAL_PAGING_VALUE
+    Number(searchParams.queryFrom) || INITIAL_PAGING_VALUE
   );
-  const [appliedFilter, setAppliedFilter] =
-    useState<QueryFiltersType>(selectedFilters);
+  const [appliedFilter, setAppliedFilter] = useState<
+    QueryFiltersType | undefined
+  >(selectedFilters);
 
   const { getEntityPermission } = usePermissionProvider();
+
+  const isNumberBasedPaging = useMemo(
+    () => Boolean(appliedFilter?.team.length || appliedFilter?.user.length),
+    [appliedFilter]
+  );
 
   const fetchResourcePermission = async () => {
     if (isUndefined(selectedQuery)) {
@@ -165,6 +184,29 @@ const TableQueries: FC<TableQueriesProp> = ({
       showErrorToast(error as AxiosError);
     }
   };
+  const fetchTableQuery = async (params?: ListQueriesParams) => {
+    setIsLoading((pre) => ({ ...pre, query: true }));
+    try {
+      const queries = await getQueriesList({
+        ...params,
+        limit: PAGE_SIZE,
+        entityId: tableId,
+        fields: 'owner,votes,tags,queryUsedIn',
+      });
+      if (queries.data.length === 0) {
+        setIsError((pre) => ({ ...pre, page: true }));
+      } else {
+        setTableQueries(queries);
+        setSelectedQuery(queries.data[0]);
+      }
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+      setIsError((pre) => ({ ...pre, page: true }));
+    } finally {
+      setIsLoading((pre) => ({ ...pre, query: false }));
+    }
+  };
+
   const fetchFilterData = async (value?: QueryFiltersType, page?: number) => {
     setIsLoading((pre) => ({ ...pre, query: true }));
     const allFilter = flatMap(value);
@@ -196,15 +238,6 @@ const TableQueries: FC<TableQueriesProp> = ({
         : queries[0];
 
       setSelectedQuery(selectedQueryData);
-      history.push({
-        search: Qs.stringify({
-          ...searchParams,
-          ...value,
-          page: pageNumber,
-          tableId,
-          query: selectedQueryData.id,
-        }),
-      });
       if (queries.length === 0) {
         setIsError((pre) => ({ ...pre, search: true }));
       }
@@ -216,10 +249,22 @@ const TableQueries: FC<TableQueriesProp> = ({
   };
 
   const pagingHandler = (cursorType: string | number) => {
+    const updatedParams = { ...searchParams };
     if (isNumber(cursorType)) {
       setCurrentPage(cursorType);
       fetchFilterData(appliedFilter, cursorType);
+      updatedParams.queryFrom = `${cursorType}`;
+    } else {
+      const { paging } = tableQueries;
+      fetchTableQuery({ [cursorType]: paging[cursorType] });
+      if (cursorType === 'after') {
+        updatedParams.queryFrom = `${currentPage}`;
+        updatedParams.after = paging[cursorType];
+      }
     }
+    history.push({
+      search: stringifySearchParams(updatedParams),
+    });
   };
 
   const handleSelectedQuery = (query: Query) => {
@@ -238,11 +283,12 @@ const TableQueries: FC<TableQueriesProp> = ({
   useEffect(() => {
     setIsLoading((pre) => ({ ...pre, page: true }));
     if (tableId && !isTableDeleted) {
-      fetchFilterData(selectedFilters, Number(searchParams.page)).finally(
-        () => {
-          setIsLoading((pre) => ({ ...pre, page: false }));
-        }
-      );
+      const initialFetch = selectedFilters
+        ? fetchFilterData(selectedFilters, Number(searchParams.queryFrom))
+        : fetchTableQuery({ after: searchParams.after });
+      initialFetch.finally(() => {
+        setIsLoading((pre) => ({ ...pre, page: false }));
+      });
     } else {
       setIsLoading((pre) => ({ ...pre, page: false }));
     }
@@ -265,6 +311,30 @@ const TableQueries: FC<TableQueriesProp> = ({
     );
   }
 
+  const queryTabBody = isError.search ? (
+    <Col className="flex-center font-medium" data-testid="no-queries" span={24}>
+      <ErrorPlaceHolder
+        heading={t('label.query-lowercase-plural')}
+        type={ERROR_PLACEHOLDER_TYPE.VIEW}
+      />
+    </Col>
+  ) : (
+    tableQueries.data.map((query) => (
+      <Col key={query.id} span={24}>
+        <QueryCard
+          isExpanded={false}
+          permission={queryPermissions}
+          query={query}
+          selectedId={selectedQuery?.id}
+          tableId={tableId}
+          onQuerySelection={handleSelectedQuery}
+          onQueryUpdate={handleQueryUpdate}
+          onUpdateVote={updateVote}
+        />
+      </Col>
+    ))
+  );
+
   return (
     <Row className="h-full" id="tablequeries">
       <Col span={18}>
@@ -276,39 +346,13 @@ const TableQueries: FC<TableQueriesProp> = ({
             <QueryFilters onFilterChange={onOwnerFilterChange} />
           </Col>
 
-          {isLoading.query ? (
-            <Loader />
-          ) : isError.search ? (
-            <Col
-              className="flex-center font-medium"
-              data-testid="no-queries"
-              span={24}>
-              <ErrorPlaceHolder
-                heading={t('label.query-lowercase-plural')}
-                type={ERROR_PLACEHOLDER_TYPE.VIEW}
-              />
-            </Col>
-          ) : (
-            tableQueries.data.map((query) => (
-              <Col key={query.id} span={24}>
-                <QueryCard
-                  isExpanded={false}
-                  permission={queryPermissions}
-                  query={query}
-                  selectedId={selectedQuery?.id}
-                  tableId={tableId}
-                  onQuerySelection={handleSelectedQuery}
-                  onQueryUpdate={handleQueryUpdate}
-                  onUpdateVote={updateVote}
-                />
-              </Col>
-            ))
-          )}
+          {isLoading.query ? <Loader /> : queryTabBody}
+
           <Col span={24}>
             {tableQueries.paging.total > PAGE_SIZE && (
               <NextPrevious
-                isNumberBased
                 currentPage={currentPage}
+                isNumberBased={isNumberBasedPaging}
                 pageSize={PAGE_SIZE}
                 paging={tableQueries.paging}
                 pagingHandler={pagingHandler}

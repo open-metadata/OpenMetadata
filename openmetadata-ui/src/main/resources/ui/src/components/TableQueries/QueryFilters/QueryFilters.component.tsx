@@ -15,12 +15,14 @@ import { Space, Typography } from 'antd';
 import SearchDropdown from 'components/SearchDropdown/SearchDropdown';
 import { SearchDropdownOption } from 'components/SearchDropdown/SearchDropdown.interface';
 import { WILD_CARD_CHAR } from 'constants/char.constants';
+import { INITIAL_PAGING_VALUE } from 'constants/constants';
 import { QUERY_PAGE_FILTER } from 'constants/Query.constant';
 import { PROMISE_STATE } from 'enums/common.enum';
 import { debounce, isEmpty } from 'lodash';
+import Qs from 'qs';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useLocation } from 'react-router-dom';
+import { useHistory, useLocation } from 'react-router-dom';
 import {
   getSearchedTeams,
   getSearchedUsers,
@@ -33,8 +35,9 @@ import { QueryFiltersProps, QueryFiltersType } from '../TableQueries.interface';
 const QueryFilters = ({ onFilterChange }: QueryFiltersProps) => {
   const { t } = useTranslation();
   const location = useLocation();
+  const history = useHistory();
 
-  const selectedFilters = useMemo(() => {
+  const { selectedFilters, searchData } = useMemo(() => {
     const searchData = parseSearchParams(location.search);
 
     const filters = {
@@ -42,7 +45,7 @@ const QueryFilters = ({ onFilterChange }: QueryFiltersProps) => {
       team: searchData.team || [],
     } as QueryFiltersType;
 
-    return filters;
+    return { selectedFilters: filters, searchData };
   }, [location]);
 
   const [initialOwnerFilter, setInitialOwnerFilter] =
@@ -59,7 +62,9 @@ const QueryFilters = ({ onFilterChange }: QueryFiltersProps) => {
   ) => {
     setSelectedFilter((pre) => {
       const updatedFilter = { ...pre, [searchKey]: value };
-
+      history.push({
+        search: Qs.stringify({ ...searchData, ...updatedFilter }),
+      });
       onFilterChange(updatedFilter);
 
       return updatedFilter;
@@ -111,13 +116,13 @@ const QueryFilters = ({ onFilterChange }: QueryFiltersProps) => {
     }
   };
 
-  const debounceOnUserSearch = debounce(onUserSearch, 400);
-  const debounceOnTeamSearch = debounce(onTeamSearch, 400);
+  const debounceOnUserSearch = debounce(onUserSearch, 500);
+  const debounceOnTeamSearch = debounce(onTeamSearch, 500);
 
   const getInitialUserAndTeam = () => {
     const promise = [
-      getSearchedUsers(WILD_CARD_CHAR, 1),
-      getSearchedTeams(WILD_CARD_CHAR, 1),
+      getSearchedUsers(WILD_CARD_CHAR, INITIAL_PAGING_VALUE),
+      getSearchedTeams(WILD_CARD_CHAR, INITIAL_PAGING_VALUE),
     ];
     Promise.allSettled(promise)
       .then((res) => {
