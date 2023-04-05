@@ -429,7 +429,6 @@ export const editOwnerforCreatedService = (
     'searchOwner'
   );
   cy.get('.user-team-select-popover [data-testid="searchbar"]')
-    .eq(1)
     .should('be.visible')
     .and('exist')
     .trigger('click')
