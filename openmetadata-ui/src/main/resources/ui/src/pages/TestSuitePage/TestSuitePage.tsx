@@ -175,26 +175,24 @@ const TestSuitePage = () => {
         width: 50,
         render: (_, record) => {
           return (
-            <Row align="middle">
-              <Tooltip
-                placement="bottomLeft"
-                title={
-                  hasDeleteAccess ? t('label.delete') : NO_PERMISSION_FOR_ACTION
-                }>
-                <Button
-                  className="flex-center"
-                  data-testid={`delete-${record.name}`}
-                  disabled={!hasDeleteAccess}
-                  icon={<IconDelete width={16} />}
-                  type="text"
-                  onClick={(e) => {
-                    // preventing expand/collapse on click of delete button
-                    e.stopPropagation();
-                    setSelectedTestSuite(record);
-                  }}
-                />
-              </Tooltip>
-            </Row>
+            <Tooltip
+              placement="bottomLeft"
+              title={
+                hasDeleteAccess ? t('label.delete') : NO_PERMISSION_FOR_ACTION
+              }>
+              <Button
+                className="flex-center"
+                data-testid={`delete-${record.name}`}
+                disabled={!hasDeleteAccess}
+                icon={<IconDelete width={16} />}
+                type="text"
+                onClick={(e) => {
+                  // preventing expand/collapse on click of delete button
+                  e.stopPropagation();
+                  setSelectedTestSuite(record);
+                }}
+              />
+            </Tooltip>
           );
         },
       },
@@ -322,7 +320,6 @@ const TestSuitePage = () => {
           entityId={selectedTestSuite?.id || ''}
           entityName={selectedTestSuite?.name || ''}
           entityType="testSuite"
-          prepareType={false}
           visible={!isUndefined(selectedTestSuite)}
           onCancel={() => {
             setSelectedTestSuite(undefined);
