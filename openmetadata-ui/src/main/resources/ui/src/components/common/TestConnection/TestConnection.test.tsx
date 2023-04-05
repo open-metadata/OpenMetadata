@@ -54,7 +54,9 @@ jest.mock('utils/ServiceUtils', () => ({
 jest.mock('./TestConnectionModal/TestConnectionModal', () =>
   jest
     .fn()
-    .mockReturnValue(<div data-testid="test-connection-modal">Modal</div>)
+    .mockImplementation(({ isOpen }) =>
+      isOpen ? <div data-testid="test-connection-modal">Modal</div> : null
+    )
 );
 
 jest.mock('rest/workflowAPI', () => ({
@@ -309,10 +311,36 @@ describe('Test Connection Component', () => {
     ).toBeInTheDocument();
   });
 
+  it('Should not show the connection status modal if test connection definition API fails', async () => {
+    (getTestConnectionDefinitionByName as jest.Mock).mockImplementationOnce(
+      () => Promise.reject()
+    );
+
+    await act(async () => {
+      render(<TestConnection {...mockProps} />);
+    });
+
+    const testConnectionButton = screen.getByTestId('test-connection-btn');
+
+    await act(async () => {
+      userEvent.click(testConnectionButton);
+    });
+
+    expect(getTestConnectionDefinitionByName).toHaveBeenCalledWith('Mysql');
+
+    expect(
+      screen.queryByTestId('test-connection-modal')
+    ).not.toBeInTheDocument();
+
+    // add workflow API should not get called
+    expect(addWorkflow).not.toHaveBeenCalled();
+  });
+
   it('Test connection button should be disabled is airflow is not available', async () => {
     (useAirflowStatus as jest.Mock).mockImplementationOnce(() => ({
       isAirflowAvailable: false,
     }));
+
     await act(async () => {
       render(<TestConnection {...mockProps} />);
     });
