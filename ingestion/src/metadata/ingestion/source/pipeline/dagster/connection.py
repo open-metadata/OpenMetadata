@@ -32,7 +32,7 @@ def get_connection(connection: DagsterConnection) -> DagsterGraphQLClient:
     """
     Create connection
     """
-    url = connection.host[:-1] if connection.host.endswith("/") else connection.host
+    url = connection.host
     dagster_connection = DagsterGraphQLClient(
         url,
         transport=RequestsHTTPTransport(
