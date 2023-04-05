@@ -38,10 +38,10 @@ public class ElasticSearchIndexFactory {
         return new MlModelIndex((MlModel) entity);
       case Entity.TAG:
         return new TagIndex((Tag) entity);
-      case Entity.CONTAINER:
-        return new ContainerIndex((Container) entity);
       case Entity.QUERY:
         return new QueryIndex((Query) entity);
+      case Entity.CONTAINER:
+        return new ContainerIndex((Container) entity);
       default:
         LOG.warn("Ignoring Entity Type {}", entityType);
     }
