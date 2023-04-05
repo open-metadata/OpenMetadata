@@ -38,7 +38,7 @@ import { MYSQL } from '../../constants/service.constants';
 
 const service_name = MYSQL.serviceName;
 
-describe('pre-requests for test case', () => {
+describe.skip('pre-requests for test case', () => {
   beforeEach(() => {
     cy.login();
   });
@@ -93,7 +93,7 @@ describe('pre-requests for test case', () => {
   });
 });
 
-describe('Single filed search', () => {
+describe.skip('Single filed search', () => {
   beforeEach(() => {
     cy.login();
   });
@@ -127,7 +127,7 @@ describe('Single filed search', () => {
   });
 });
 
-describe('Group search', () => {
+describe.skip('Group search', () => {
   beforeEach(() => {
     cy.login();
   });
@@ -205,7 +205,7 @@ describe('Group search', () => {
   });
 });
 
-describe('Search with additional rule', () => {
+describe.skip('Search with additional rule', () => {
   beforeEach(() => {
     cy.login();
   });

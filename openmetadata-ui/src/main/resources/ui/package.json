@@ -38,7 +38,7 @@
     "core-js": "^3.10.1",
     "cronstrue": "^1.122.0",
     "crypto-random-string-with-promisify-polyfill": "^5.0.0",
-    "cypress": "^10.7.0",
+    "cypress": "12.9.0",
     "dagre": "^0.8.5",
     "diff": "^5.0.0",
     "fast-json-patch": "^3.1.1",

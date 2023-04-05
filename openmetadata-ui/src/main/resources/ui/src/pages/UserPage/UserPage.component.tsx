@@ -16,7 +16,6 @@ import { useAuthContext } from 'components/authentication/auth-provider/AuthProv
 import PageContainerV1 from 'components/containers/PageContainerV1';
 import Loader from 'components/Loader/Loader';
 import Users from 'components/Users/Users.component';
-import { UserDetails } from 'components/Users/Users.interface';
 import { compare, Operation } from 'fast-json-patch';
 import { isEmpty, isEqual } from 'lodash';
 import { observer } from 'mobx-react';
@@ -280,7 +279,7 @@ const UserPage = () => {
     updateThreadData(threadId, postId, isThread, data, setEntityThread);
   };
 
-  const updateUserDetails = async (data: UserDetails) => {
+  const updateUserDetails = async (data: Partial<User>) => {
     const updatedDetails = { ...userData, ...data };
     const jsonPatch = compare(userData, updatedDetails);
 

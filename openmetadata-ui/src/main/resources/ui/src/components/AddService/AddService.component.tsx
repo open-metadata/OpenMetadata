@@ -29,7 +29,7 @@ import { delimiterRegex, nameWithSpace } from '../../constants/regex.constants';
 import { FormSubmitType } from '../../enums/form.enum';
 import { ServiceCategory } from '../../enums/service.enum';
 import { PipelineType } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
-import { ConfigData, DataObj } from '../../interface/service.interface';
+import { ConfigData } from '../../interface/service.interface';
 import { getCurrentUserId, isUrlFriendlyName } from '../../utils/CommonUtils';
 import { getAddServicePath, getSettingPath } from '../../utils/RouterUtils';
 import {
@@ -305,7 +305,7 @@ const AddService = ({
             isIngestionDeployed={isIngestionDeployed}
             pipelineType={PipelineType.Metadata}
             serviceCategory={serviceCategory}
-            serviceData={newServiceData as DataObj}
+            serviceData={newServiceData}
             setActiveIngestionStep={(step) => setActiveIngestionStep(step)}
             showDeployButton={showDeployButton}
             status={FormSubmitType.ADD}
