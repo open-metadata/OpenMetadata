@@ -56,7 +56,7 @@ export const handleIngestionRetry = (
 
   interceptURL(
     'GET',
-    '/api/v1/services/ingestionPipelines?fields=owner,pipelineStatuses&service=*',
+    '/api/v1/services/ingestionPipelines?*',
     'ingestionPipelines'
   );
   interceptURL(
@@ -232,8 +232,10 @@ export const testServiceCreationAndIngestion = (
     .click();
 
   verifyResponseStatusCode('@createWorkflow', 201);
-  // added extra buffer time as triggerWorkflow API takes time to provide result
-  verifyResponseStatusCode('@triggerWorkflow', 200, { responseTimeout: 50000 });
+  // added extra buffer time as triggerWorkflow API can take up to 2minute to provide result
+  verifyResponseStatusCode('@triggerWorkflow', 200, {
+    responseTimeout: 120000,
+  });
   verifyResponseStatusCode('@getWorkflow', 200);
 
   cy.contains('Connection test was successful').should('exist');

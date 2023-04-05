@@ -19,8 +19,9 @@ on:
     branches:
       - main 
       - '0.[0-9]+.[0-9]+'
-    paths:
-      - 'openmetadata-ui/**'
+      - '1.[0-9]+[0-9]+'
+    paths-ignore:
+      - 'openmetadata-docs/**'
   pull_request_target:
     types: [labeled, opened, synchronize, reopened]
     paths:

@@ -231,6 +231,11 @@
       <version>${awssdk.version}</version>
     </dependency>
 
+    <dependency>
+      <groupId>io.dropwizard.modules</groupId>
+      <artifactId>dropwizard-web</artifactId>
+    </dependency>
+
     <!-- Dependencies for cloudwatch monitoring -->
     <dependency>
       <groupId>software.amazon.awssdk</groupId>
