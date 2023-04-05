@@ -269,14 +269,13 @@ export const getGlobalSettingsMenuWithPermission = (
         {
           label: i18next.t('label.search'),
           isProtected: Boolean(isAdminUser),
-          key: 'eventPublishers.elasticsearch',
-          icon: (
-            <ElasticSearchIcon className="tw-w-4 tw-mt-1.5 side-panel-icons" />
-          ),
+          key: 'openMetadata.search',
+          icon: <ElasticSearchIcon className="w-4 side-panel-icons" />,
         },
         {
           label: i18next.t('label.data-insight'),
           isProtected: Boolean(isAdminUser),
+          key: 'openMetadata.dataInsight',
           icon: <DataInsightIcon className="w-4 side-panel-icons" />,
         },
       ],
