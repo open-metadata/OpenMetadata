@@ -81,7 +81,7 @@ export const NAVBAR_DETAILS = {
   tags: {
     testid: `[data-testid="governance"]`,
     subMenu: '[data-testid="appbar-item-tags"]',
-    url: `${BASE_URL}/tags`,
+    url: `${BASE_URL}/tags/`,
   },
   settings: {
     testid: '[data-testid="appbar-item-settings"]',

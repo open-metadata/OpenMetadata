@@ -23,6 +23,7 @@ import javax.validation.constraints.NotNull;
 import lombok.Getter;
 import lombok.Setter;
 import org.openmetadata.api.configuration.ApplicationConfiguration;
+import org.openmetadata.api.configuration.ChangeEventConfiguration;
 import org.openmetadata.schema.api.configuration.events.EventHandlerConfiguration;
 import org.openmetadata.schema.api.configuration.pipelineServiceClient.PipelineServiceClientConfiguration;
 import org.openmetadata.schema.api.fernet.FernetConfiguration;
@@ -94,6 +95,9 @@ public class OpenMetadataApplicationConfig extends Configuration {
 
   @JsonProperty("email")
   private SmtpSettings smtpSettings;
+
+  @JsonProperty("changeEventConfig")
+  private ChangeEventConfiguration changeEventConfiguration;
 
   @Override
   public String toString() {

@@ -81,6 +81,7 @@ import org.openmetadata.service.monitoring.EventMonitor;
 import org.openmetadata.service.monitoring.EventMonitorFactory;
 import org.openmetadata.service.monitoring.EventMonitorPublisher;
 import org.openmetadata.service.resources.CollectionRegistry;
+import org.openmetadata.service.resources.databases.DatasourceConfig;
 import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
@@ -117,7 +118,8 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
           InvocationTargetException, IOException, ConfigurationException, CertificateException, KeyStoreException,
           NoSuchAlgorithmException {
     validateConfiguration(catalogConfig);
-
+    
+    ChangeEventConfig.initialize(catalogConfig);
     final Jdbi jdbi = createAndSetupJDBI(environment, catalogConfig.getDataSourceFactory());
 
     // Init Settings Cache
@@ -149,6 +151,9 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
 
     // Register Authenticator
     registerAuthenticator(catalogConfig);
+
+    // init for dataSourceFactory
+    DatasourceConfig.initialize(catalogConfig);
 
     // Unregister dropwizard default exception mappers
     ((DefaultServerFactory) catalogConfig.getServerFactory()).setRegisterDefaultExceptionMappers(false);
