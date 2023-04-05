@@ -22,6 +22,7 @@ import {
   StatusType,
   WorkflowStatus,
 } from 'generated/api/automations/createWorkflow';
+import { useAirflowStatus } from 'hooks/useAirflowStatus';
 import { ConfigData } from 'interface/service.interface';
 import React from 'react';
 import {
@@ -53,7 +54,9 @@ jest.mock('utils/ServiceUtils', () => ({
 jest.mock('./TestConnectionModal/TestConnectionModal', () =>
   jest
     .fn()
-    .mockReturnValue(<div data-testid="test-connection-modal">Modal</div>)
+    .mockImplementation(({ isOpen }) =>
+      isOpen ? <div data-testid="test-connection-modal">Modal</div> : null
+    )
 );
 
 jest.mock('rest/workflowAPI', () => ({
@@ -70,6 +73,12 @@ jest.mock('rest/workflowAPI', () => ({
   deleteWorkflowById: jest
     .fn()
     .mockImplementation(() => Promise.resolve(WORKFLOW_DETAILS)),
+}));
+
+jest.mock('hooks/useAirflowStatus', () => ({
+  useAirflowStatus: jest
+    .fn()
+    .mockImplementation(() => ({ isAirflowAvailable: true })),
 }));
 
 describe('Test Connection Component', () => {
@@ -300,5 +309,57 @@ describe('Test Connection Component', () => {
     expect(
       screen.getByText('message.test-connection-taking-too-long')
     ).toBeInTheDocument();
+  });
+
+  it('Should not show the connection status modal if test connection definition API fails', async () => {
+    (getTestConnectionDefinitionByName as jest.Mock).mockImplementationOnce(
+      () => Promise.reject()
+    );
+
+    await act(async () => {
+      render(<TestConnection {...mockProps} />);
+    });
+
+    const testConnectionButton = screen.getByTestId('test-connection-btn');
+
+    await act(async () => {
+      userEvent.click(testConnectionButton);
+    });
+
+    expect(getTestConnectionDefinitionByName).toHaveBeenCalledWith('Mysql');
+
+    expect(
+      screen.queryByTestId('test-connection-modal')
+    ).not.toBeInTheDocument();
+
+    // add workflow API should not get called
+    expect(addWorkflow).not.toHaveBeenCalled();
+  });
+
+  it('Test connection button should be disabled is airflow is not available', async () => {
+    (useAirflowStatus as jest.Mock).mockImplementationOnce(() => ({
+      isAirflowAvailable: false,
+    }));
+
+    await act(async () => {
+      render(<TestConnection {...mockProps} />);
+    });
+
+    const testConnectionButton = screen.getByTestId('test-connection-btn');
+
+    expect(testConnectionButton).toBeDisabled();
+  });
+
+  it('Test connection button with showDetails false should be disabled is airflow is not available', async () => {
+    (useAirflowStatus as jest.Mock).mockImplementationOnce(() => ({
+      isAirflowAvailable: false,
+    }));
+    await act(async () => {
+      render(<TestConnection {...mockProps} showDetails={false} />);
+    });
+
+    const testConnectionButton = screen.getByTestId('test-connection-button');
+
+    expect(testConnectionButton).toBeDisabled();
   });
 });
