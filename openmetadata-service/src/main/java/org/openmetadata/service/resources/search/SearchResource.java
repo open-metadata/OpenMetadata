@@ -18,6 +18,8 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.Entity.FIELD_DESCRIPTION;
 import static org.openmetadata.service.Entity.FIELD_DISPLAY_NAME;
 import static org.openmetadata.service.Entity.FIELD_NAME;
+import static org.openmetadata.service.elasticsearch.ElasticSearchIndexDefinition.ELASTIC_SEARCH_ENTITY_FQN_STREAM;
+import static org.openmetadata.service.elasticsearch.ElasticSearchIndexDefinition.ELASTIC_SEARCH_EXTENSION;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -78,12 +80,14 @@ import org.elasticsearch.search.suggest.SuggestBuilders;
 import org.elasticsearch.search.suggest.completion.CompletionSuggestionBuilder;
 import org.elasticsearch.search.suggest.completion.context.CategoryQueryContext;
 import org.openmetadata.schema.api.CreateEventPublisherJob;
+import org.openmetadata.schema.system.EventPublisherJob;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.elasticsearch.ElasticSearchIndexDefinition;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.util.ElasticSearchClientUtils;
+import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ReIndexingHandler;
 
 @Slf4j
@@ -419,7 +423,6 @@ public class SearchResource {
   @Operation(
       operationId = "reindexEntities",
       summary = "Reindex entities",
-      tags = "search",
       description = "Reindex Elastic Search Entities",
       responses = {
         @ApiResponse(responseCode = "200", description = "Success"),
@@ -435,6 +438,32 @@ public class SearchResource {
             ReIndexingHandler.getInstance()
                 .createReindexingJob(securityContext.getUserPrincipal().getName(), createRequest))
         .build();
+  }
+
+  @GET
+  @Path("/reindex/stream/status")
+  @Operation(
+      operationId = "getStreamJobCurrentStatus",
+      summary = "Get Stream Job Current Status",
+      description = "Reindex all job last status",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "Success"),
+        @ApiResponse(responseCode = "404", description = "Run model {runMode} is not found")
+      })
+  public Response reindexAllJobLastStatus(
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @PathParam("runMode") String runMode)
+      throws IOException {
+    // Only admins  can issue a reindex request
+    authorizer.authorizeAdmin(securityContext);
+    // Check if there is a running job for reindex for requested entity
+    String record;
+    record =
+        dao.entityExtensionTimeSeriesDao()
+            .getLatestExtension(ELASTIC_SEARCH_ENTITY_FQN_STREAM, ELASTIC_SEARCH_EXTENSION);
+    if (record != null) {
+      return Response.status(Response.Status.OK).entity(JsonUtils.readValue(record, EventPublisherJob.class)).build();
+    }
+    return Response.status(Response.Status.NOT_FOUND).entity("No Last Run.").build();
   }
 
   @GET

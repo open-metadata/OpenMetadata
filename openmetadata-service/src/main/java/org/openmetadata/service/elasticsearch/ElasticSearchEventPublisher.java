@@ -885,6 +885,7 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
       FailureDetails failureDetails = new FailureDetails().withLastFailedAt(0L);
       EventPublisherJob streamJob =
           new EventPublisherJob()
+              .withId(UUID.randomUUID())
               .withName("Elastic Search Stream")
               .withPublisherType(CreateEventPublisherJob.PublisherType.ELASTIC_SEARCH)
               .withRunMode(CreateEventPublisherJob.RunMode.STREAM)

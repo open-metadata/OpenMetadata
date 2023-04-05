@@ -35,11 +35,6 @@
       "type": "integer",
       "default": 100
     },
-    "flushIntervalInSec": {
-      "description": "Maximum time to wait before sending request to ES in seconds(Default 30)",
-      "type": "integer",
-      "default": 30
-    },
     "searchIndexMappingLanguage": {
       "description": "Recreate Indexes with updated Language",
       "$ref": "../configuration/elasticSearchConfiguration.json#/definitions/searchIndexMappingLanguage"

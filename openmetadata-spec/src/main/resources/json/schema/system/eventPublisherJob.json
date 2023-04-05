@@ -124,7 +124,7 @@
     },
     "failure": {
       "description": "List of Failures in the Job",
-      "type": "array",
+      "type": "object",
       "properties": {
         "sourceError": {
           "type": "object",

@@ -20,6 +20,7 @@ import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.getS
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.getTotalRequestToProcess;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.isDataInsightIndex;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -46,6 +47,7 @@ import org.openmetadata.service.exception.ProcessorException;
 import org.openmetadata.service.exception.ReaderException;
 import org.openmetadata.service.exception.WriterException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.socket.WebSocketManager;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ReIndexingHandler;
 import org.openmetadata.service.util.ResultList;
@@ -147,6 +149,15 @@ public class SearchIndexWorkflow implements Runnable {
               currentTime);
         } finally {
           updateStats(success, failed, reader.getStats(), entitiesProcessor.getStats(), writer.getStats());
+          try {
+            WebSocketManager.getInstance()
+                .sendToOne(
+                    jobData.getStartedBy(),
+                    WebSocketManager.JOB_STATUS_BROADCAST_CHANNEL,
+                    JsonUtils.pojoToJson(jobData));
+          } catch (JsonProcessingException ex) {
+            LOG.error("Failed to send updated stats with WebSocker", ex);
+          }
         }
       }
     }
@@ -193,6 +204,15 @@ public class SearchIndexWorkflow implements Runnable {
         } finally {
           updateStats(
               success, failed, dataInsightReader.getStats(), dataInsightProcessor.getStats(), writer.getStats());
+          try {
+            WebSocketManager.getInstance()
+                .sendToOne(
+                    jobData.getStartedBy(),
+                    WebSocketManager.JOB_STATUS_BROADCAST_CHANNEL,
+                    JsonUtils.pojoToJson(jobData));
+          } catch (JsonProcessingException ex) {
+            LOG.error("Failed to send updated stats with WebSocker", ex);
+          }
         }
       }
     }
