@@ -128,21 +128,19 @@ class ProfilerProtocol(ABC):
                 profile_sample=entity_config.profileSample,
                 profile_sample_type=entity_config.profileSampleType,
             )
-        if hasattr(entity.tableProfilerConfig, "profileSample") and hasattr(
-            entity.tableProfilerConfig, "profileSampleType"
-        ):
-            return ProfileSampleConfig(
-                profile_sample=entity.tableProfilerConfig.profileSample,
-                profile_sample_type=entity.tableProfilerConfig.profileSampleType,
-            )
-
         if source_config.profileSample:
             return ProfileSampleConfig(
                 profile_sample=source_config.profileSample,
                 profile_sample_type=source_config.profileSampleType,
             )
-
-        return None
+        try:
+            return ProfileSampleConfig(
+                profile_sample=entity.tableProfilerConfig.profileSample,
+                profile_sample_type=entity.tableProfilerConfig.profileSampleType,
+            )
+        except AttributeError:
+            # Exception Triggered if profileSample attribute not available in tableProfilerConfig
+            return None
 
     @staticmethod
     def get_profile_query(

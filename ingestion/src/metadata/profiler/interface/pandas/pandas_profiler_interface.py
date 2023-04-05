@@ -160,13 +160,12 @@ class PandasProfilerInterface(ProfilerProtocol, PandasInterfaceMixin):
         import pandas as pd  # pylint: disable=import-outside-toplevel
 
         try:
-            row = []
+            row_dict = {}
             for metric in metrics:
                 metric_resp = metric(column).df_fn(self.dfs)
-                row.append(None if pd.isnull(metric_resp) else metric_resp)
-            row_dict = {}
-            for index, column_metric in enumerate(metrics):
-                row_dict[column_metric.name()] = row[index]
+                row_dict[metric.name()] = (
+                    None if pd.isnull(metric_resp) else metric_resp
+                )
             return row_dict
         except Exception as exc:
             logger.debug(
