@@ -104,7 +104,9 @@ const NavBar = ({
   const { Option } = Select;
   const searchRef = useRef<InputRef>(null);
   const [searchIcon, setSearchIcon] = useState<string>('icon-searchv1');
-  const [cancelIcon, setCancelIcon] = useState<string>('close-circle-outlined');
+  const [cancelIcon, setCancelIcon] = useState<string>(
+    Icons.CLOSE_CIRCLE_OUTLINED
+  );
   const [suggestionSearch, setSuggestionSearch] = useState<string>('');
   const [hasTaskNotification, setHasTaskNotification] =
     useState<boolean>(false);
@@ -478,7 +480,7 @@ const NavBar = ({
               value={searchValue}
               onBlur={() => {
                 setSearchIcon('icon-searchv1');
-                setCancelIcon('close-circle-outlined');
+                setCancelIcon(Icons.CLOSE_CIRCLE_OUTLINED);
               }}
               onChange={(e) => {
                 const { value } = e.target;
@@ -487,7 +489,7 @@ const NavBar = ({
               }}
               onFocus={() => {
                 setSearchIcon('icon-searchv1color');
-                setCancelIcon('close-circle-outlined-color');
+                setCancelIcon(Icons.CLOSE_CIRCLE_OUTLINED_COLOR);
               }}
               onKeyDown={handleKeyDown}
             />
