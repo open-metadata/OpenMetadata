@@ -46,7 +46,12 @@ VERSIONS = {
 }
 
 COMMONS = {
-    "datalake": {VERSIONS["boto3"], VERSIONS["pandas"], VERSIONS["pyarrow"]},
+    "datalake": {
+        VERSIONS["boto3"],
+        VERSIONS["pandas"],
+        VERSIONS["pyarrow"],
+        "python-snappy~=0.6.1",
+    },
     "hive": {
         "presto-types-parser>=0.0.2",
         "pyhive~=0.6",

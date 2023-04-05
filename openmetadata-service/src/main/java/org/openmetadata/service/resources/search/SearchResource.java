@@ -628,7 +628,7 @@ public class SearchResource {
             .field(DISPLAY_NAME, 10.0f)
             .field(FIELD_DISPLAY_NAME_NGRAM)
             .field(QUERY, 10.0f)
-            .field(QUERY_NGRAM, 10.0f)
+            .field(QUERY_NGRAM)
             .field(DESCRIPTION, 3.0f)
             .defaultOperator(Operator.AND)
             .fuzziness(Fuzziness.AUTO);
@@ -674,10 +674,12 @@ public class SearchResource {
   private SearchSourceBuilder buildUserSearchBuilder(String query, int from, int size) {
     QueryStringQueryBuilder queryBuilder =
         QueryBuilders.queryStringQuery(query)
-            .field(DISPLAY_NAME, 5.0f)
-            .field(DISPLAY_NAME_KEYWORD, 3.0f)
+            .field(DISPLAY_NAME, 3.0f)
+            .field(DISPLAY_NAME_KEYWORD, 5.0f)
+            .field(FIELD_DISPLAY_NAME_NGRAM)
             .field(FIELD_NAME, 2.0f)
             .field(NAME_KEYWORD, 3.0f)
+            .defaultOperator(Operator.AND)
             .fuzziness(Fuzziness.AUTO);
     return searchBuilder(queryBuilder, null, from, size);
   }
@@ -685,10 +687,12 @@ public class SearchResource {
   private SearchSourceBuilder buildTeamSearchBuilder(String query, int from, int size) {
     QueryStringQueryBuilder queryBuilder =
         QueryBuilders.queryStringQuery(query)
-            .field(DISPLAY_NAME, 5.0f)
-            .field(DISPLAY_NAME_KEYWORD, 3.0f)
+            .field(DISPLAY_NAME, 3.0f)
+            .field(DISPLAY_NAME_KEYWORD, 5.0f)
+            .field(FIELD_DISPLAY_NAME_NGRAM)
             .field(FIELD_NAME, 2.0f)
             .field(NAME_KEYWORD, 3.0f)
+            .defaultOperator(Operator.AND)
             .fuzziness(Fuzziness.AUTO);
     return searchBuilder(queryBuilder, null, from, size);
   }
@@ -714,9 +718,12 @@ public class SearchResource {
     highlightGlossaryName.highlighterType(UNIFIED);
     HighlightBuilder.Field highlightDescription = new HighlightBuilder.Field(FIELD_DESCRIPTION);
     highlightDescription.highlighterType(UNIFIED);
+    HighlightBuilder.Field highlightSynonym = new HighlightBuilder.Field("synonyms");
+    highlightDescription.highlighterType(UNIFIED);
     HighlightBuilder hb = new HighlightBuilder();
     hb.field(highlightDescription);
     hb.field(highlightGlossaryName);
+    hb.field(highlightSynonym);
     hb.preTags("<span class=\"text-highlighter\">");
     hb.postTags("</span>");
     SearchSourceBuilder searchSourceBuilder =

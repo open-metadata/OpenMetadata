@@ -14,7 +14,8 @@
 package org.openmetadata.service.resources.services.ingestionpipelines;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
-import static org.openmetadata.service.Entity.*;
+import static org.openmetadata.service.Entity.FIELD_OWNER;
+import static org.openmetadata.service.Entity.FIELD_PIPELINE_STATUS;
 
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Hidden;
@@ -152,6 +153,11 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
               schema = @Schema(type = "string", example = "snowflakeWestCoast"))
           @QueryParam("service")
           String serviceParam,
+      @Parameter(
+              description = "Filter airflow pipelines by pipeline Type",
+              schema = @Schema(type = "string", example = "elasticSearchReindex"))
+          @QueryParam("pipelineType")
+          String pipelineType,
       @Parameter(description = "Limit the number ingestion returned. (1 to 1000000, " + "default = 10)")
           @DefaultValue("10")
           @Min(0)
@@ -171,7 +177,8 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
           @DefaultValue("non-deleted")
           Include include)
       throws IOException {
-    ListFilter filter = new ListFilter(include).addQueryParam("service", serviceParam);
+    ListFilter filter =
+        new ListFilter(include).addQueryParam("service", serviceParam).addQueryParam("pipelineType", pipelineType);
     ResultList<IngestionPipeline> ingestionPipelines =
         super.listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
 

@@ -257,7 +257,8 @@ const BotListV1 = ({
           </Space>
 
           <Tooltip
-            title={isAdminUser ? addBotLabel : t('message.admin-only-action')}>
+            placement="topLeft"
+            title={!isAdminUser && t('message.admin-only-action')}>
             <Button
               data-testid="add-bot"
               disabled={!isAdminUser}

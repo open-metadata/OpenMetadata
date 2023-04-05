@@ -63,19 +63,19 @@ export const SelectableList = ({
     });
   }, [setSelectedItemInternal, selectedItems]);
 
-  const sortUniqueListFromSelectedList = (
-    items: Map<string, EntityReference>,
-    listOptions: EntityReference[]
-  ) => {
-    if (!items.size) {
-      return listOptions;
-    }
+  const sortUniqueListFromSelectedList = useCallback(
+    (items: Map<string, EntityReference>, listOptions: EntityReference[]) => {
+      if (!items.size) {
+        return listOptions;
+      }
 
-    return [
-      ...items.values(),
-      ...listOptions.filter((option) => !items.has(option.id)),
-    ];
-  };
+      return [
+        ...items.values(),
+        ...listOptions.filter((option) => !items.has(option.id)),
+      ];
+    },
+    [selectedItemsInternal]
+  );
 
   const fetchListOptions = useCallback(async () => {
     setFetching(true);
@@ -92,7 +92,7 @@ export const SelectableList = ({
     } finally {
       setFetching(false);
     }
-  }, [selectedItemsInternal]);
+  }, [selectedItemsInternal, sortUniqueListFromSelectedList]);
 
   useEffect(() => {
     fetchListOptions();
@@ -110,7 +110,8 @@ export const SelectableList = ({
     if (
       e.currentTarget.scrollHeight - e.currentTarget.scrollTop ===
         ADD_USER_CONTAINER_HEIGHT &&
-      pagingInfo.after
+      pagingInfo.after &&
+      uniqueOptions.length !== pagingInfo.total
     ) {
       const { data, paging } = await fetchOptions(searchText, pagingInfo.after);
 

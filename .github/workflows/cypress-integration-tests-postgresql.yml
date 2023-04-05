@@ -19,11 +19,11 @@ on:
     branches:
       - main 
       - '0.[0-9]+.[0-9]+'
-    path:
+    paths:
       - 'openmetadata-ui/**'
   pull_request_target:
     types: [labeled, opened, synchronize, reopened]
-    path:
+    paths:
       - 'openmetadata-ui/**'
       - 'openmetadata-spec/**'
 

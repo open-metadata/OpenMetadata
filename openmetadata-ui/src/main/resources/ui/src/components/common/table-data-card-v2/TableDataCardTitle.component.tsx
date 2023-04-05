@@ -57,7 +57,7 @@ const TableDataCardTitle = ({
         ? dataTestId
         : `${getPartialNameFromTableFQN(source.fullyQualifiedName ?? '', [
             FqnPart.Service,
-          ])}-${getNameFromFQN(source.fullyQualifiedName ?? '')}`,
+          ])}-${source.name}`,
       displayName:
         source.type === 'tag'
           ? toString(getNameFromFQN(source.fullyQualifiedName ?? ''))
