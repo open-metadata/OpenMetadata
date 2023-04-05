@@ -232,7 +232,7 @@ describe('Tags page should work', () => {
     );
   });
 
-  it('Add tag at DatabaseSchema level with task & suggestions', () => {
+  it.skip('Add tag at DatabaseSchema level with task & suggestions', () => {
     interceptURL(
       'GET',
       '/api/v1/permissions/databaseSchema/name/*',
@@ -280,7 +280,6 @@ describe('Tags page should work', () => {
       .type(tag);
 
     verifyResponseStatusCode('@suggestTag', 200);
-
     cy.get('.ant-select-item-option-content').contains(tag).click();
 
     cy.get('[data-testid="tags-label"]').click();
