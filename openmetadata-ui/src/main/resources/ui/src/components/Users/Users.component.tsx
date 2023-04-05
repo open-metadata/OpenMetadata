@@ -23,6 +23,7 @@ import {
 } from 'antd';
 import { ReactComponent as IconTeamsGrey } from 'assets/svg/teams-grey.svg';
 import { AxiosError } from 'axios';
+import TeamsSelectable from 'components/TeamsSelectable/TeamsSelectable';
 import { capitalize, isEmpty, isEqual, toLower } from 'lodash';
 import { observer } from 'mobx-react';
 import React, {
@@ -37,7 +38,6 @@ import { useTranslation } from 'react-i18next';
 import { useHistory, useLocation } from 'react-router-dom';
 import { changePassword } from 'rest/auth-API';
 import { getRoles } from 'rest/rolesAPIV1';
-import { getTeams } from 'rest/teamsAPI';
 import { getEntityName } from 'utils/EntityUtils';
 import {
   getUserPath,
@@ -59,7 +59,6 @@ import {
 } from '../../generated/auth/changePasswordRequest';
 import { ThreadType } from '../../generated/entity/feed/thread';
 import { Role } from '../../generated/entity/teams/role';
-import { Team } from '../../generated/entity/teams/team';
 import { EntityReference } from '../../generated/entity/teams/user';
 import { Paging } from '../../generated/type/paging';
 import { useInfiniteScroll } from '../../hooks/useInfiniteScroll';
@@ -130,7 +129,6 @@ const Users = ({
   const [isTeamsEdit, setIsTeamsEdit] = useState(false);
   const [selectedRoles, setSelectedRoles] = useState<Array<string>>([]);
   const [selectedTeams, setSelectedTeams] = useState<Array<string>>([]);
-  const [teams, setTeams] = useState<Array<Team>>([]);
   const [roles, setRoles] = useState<Array<Role>>([]);
   const history = useHistory();
   const [showFilterList, setShowFilterList] = useState(false);
@@ -140,7 +138,6 @@ const Users = ({
   const isTaskType = isEqual(threadType, ThreadType.Task);
   const [isLoading, setIsLoading] = useState(false);
   const [isRolesLoading, setIsRolesLoading] = useState<boolean>(false);
-  const [isTeamsLoading, setIsTeamsLoading] = useState<boolean>(false);
 
   const { authConfig } = useAuthContext();
   const { t } = useTranslation();
@@ -163,25 +160,6 @@ const Users = ({
     },
     [threadType, fetchFeedHandler]
   );
-
-  const fetchTeams = async () => {
-    setIsTeamsLoading(true);
-    try {
-      const response = await getTeams(['users']);
-      if (response.data) {
-        setTeams(response.data);
-      } else {
-        throw t('server.unexpected-response');
-      }
-    } catch (error) {
-      showErrorToast(
-        error as AxiosError,
-        t('server.entity-fetch-error', { entity: t('label.team') })
-      );
-    } finally {
-      setIsTeamsLoading(false);
-    }
-  };
 
   const onDisplayNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setDisplayName(e.target.value);
@@ -237,9 +215,7 @@ const Users = ({
   const handleTeamsChange = () => {
     updateUserDetails({
       teams: selectedTeams.map((teamId) => {
-        const team = teams.find((t) => t.id === teamId);
-
-        return { id: teamId, type: 'team', name: team?.name || '' };
+        return { id: teamId, type: 'team' };
       }),
     });
 
@@ -471,22 +447,10 @@ const Users = ({
           <div className="tw-mb-4">
             {isTeamsEdit ? (
               <Space className="tw-w-full" direction="vertical">
-                <Select
-                  allowClear
-                  showSearch
-                  aria-label={t('label.select-field', {
-                    field: t('label.team-plural-lowercase'),
-                  })}
-                  className="w-full"
-                  loading={isTeamsLoading}
-                  mode="multiple"
-                  options={teams?.map((team) => ({
-                    label: getEntityName(team as unknown as EntityReference),
-                    value: team.id,
-                  }))}
-                  placeholder={t('label.team-plural')}
-                  value={!isTeamsLoading ? selectedTeams : []}
-                  onChange={handleOnTeamsChange}
+                <TeamsSelectable
+                  filterJoinable
+                  selectedTeams={selectedTeams}
+                  onSelectionChange={handleOnTeamsChange}
                 />
                 <div className="tw-flex tw-justify-end" data-testid="buttons">
                   <Button
@@ -874,12 +838,6 @@ const Users = ({
       fetchRoles();
     }
   }, [isRolesEdit, roles]);
-
-  useEffect(() => {
-    if (isTeamsEdit && isEmpty(teams)) {
-      fetchTeams();
-    }
-  }, [isTeamsEdit, teams]);
 
   const getEntityData = useCallback(
     (tabNumber: number) => {

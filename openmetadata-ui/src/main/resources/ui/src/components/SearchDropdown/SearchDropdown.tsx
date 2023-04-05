@@ -26,7 +26,7 @@ import {
 } from 'antd';
 import classNames from 'classnames';
 import { debounce, isEmpty, isUndefined } from 'lodash';
-import React, { ChangeEvent, FC, useEffect, useMemo, useState } from 'react';
+import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as DropDown } from '../../assets/svg/DropDown.svg';
 import {
@@ -112,16 +112,13 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
     setSelectedOptions([]);
   };
 
-  const debouncedSearch = debounce((value: string) => {
+  // handle search
+  const handleSearch = (value: string) => {
     setSearchText(value);
     onSearch(value, searchKey);
-  }, 500);
-
-  // handle search
-  const handleSearch = (e: ChangeEvent<HTMLInputElement>) => {
-    const { value } = e.target;
-    debouncedSearch(value);
   };
+
+  const debouncedOnSearch = debounce(handleSearch, 500);
 
   // Handle dropdown close
   const handleDropdownClose = () => {
@@ -156,11 +153,15 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
           <Space direction="vertical" size={0}>
             <div className="p-t-sm p-x-sm">
               <Input
+                autoFocus
                 data-testid="search-input"
                 placeholder={`${t('label.search-entity', {
                   entity: label,
                 })}...`}
-                onChange={handleSearch}
+                onChange={(e) => {
+                  const { value } = e.target;
+                  debouncedOnSearch(value);
+                }}
               />
             </div>
             {showClearAllBtn && (
