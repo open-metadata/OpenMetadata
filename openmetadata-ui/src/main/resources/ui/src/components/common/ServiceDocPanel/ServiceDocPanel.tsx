@@ -10,28 +10,27 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Col, Row } from 'antd';
+import { Col, Row } from 'antd';
 import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
 import Loader from 'components/Loader/Loader';
 import React, { FC, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { fetchMarkdownFile } from 'rest/miscAPI';
 import { SupportedLocales } from 'utils/i18next/i18nextUtil';
+import './ServiceDocPanel.less';
 
 interface ServiceRequirementsProp {
   serviceName: string;
   serviceType: string;
-  onBack: () => void;
-  onNext: () => void;
+  isPipelineDeployed?: boolean;
+  activeField?: string;
 }
 
 const ServiceRequirements: FC<ServiceRequirementsProp> = ({
   serviceType,
   serviceName,
-  onBack,
-  onNext,
 }) => {
-  const { t, i18n } = useTranslation();
+  const { i18n } = useTranslation();
 
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
@@ -84,23 +83,6 @@ const ServiceRequirements: FC<ServiceRequirementsProp> = ({
           markdown={markdownContent}
           maxLength={markdownContent.length}
         />
-      </Col>
-      <Col className="d-flex justify-end mt-12" span={24}>
-        <Button
-          className="m-r-xs"
-          data-testid="previous-button"
-          type="link"
-          onClick={onBack}>
-          {t('label.back')}
-        </Button>
-
-        <Button
-          className="font-medium p-x-md p-y-xxs h-auto rounded-6"
-          data-testid="next-button"
-          type="primary"
-          onClick={onNext}>
-          {t('label.next')}
-        </Button>
       </Col>
     </Row>
   );

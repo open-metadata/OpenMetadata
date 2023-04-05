@@ -179,23 +179,21 @@ const AddServicePage = () => {
 
   return (
     <PageContainerV1>
-      <div className="self-center">
-        <AddService
-          addIngestion={addIngestion}
-          handleAddIngestion={handleAddIngestion}
-          ingestionAction={ingestionAction}
-          ingestionProgress={ingestionProgress}
-          isIngestionCreated={isIngestionCreated}
-          isIngestionDeployed={isIngestionDeployed}
-          newServiceData={newServiceData}
-          serviceCategory={serviceCategory as ServiceCategory}
-          showDeployButton={showIngestionButton}
-          slashedBreadcrumb={slashedBreadcrumb}
-          onAddIngestionSave={onAddIngestionSave}
-          onAddServiceSave={onAddServiceSave}
-          onIngestionDeploy={onIngestionDeploy}
-        />
-      </div>
+      <AddService
+        addIngestion={addIngestion}
+        handleAddIngestion={handleAddIngestion}
+        ingestionAction={ingestionAction}
+        ingestionProgress={ingestionProgress}
+        isIngestionCreated={isIngestionCreated}
+        isIngestionDeployed={isIngestionDeployed}
+        newServiceData={newServiceData}
+        serviceCategory={serviceCategory as ServiceCategory}
+        showDeployButton={showIngestionButton}
+        slashedBreadcrumb={slashedBreadcrumb}
+        onAddIngestionSave={onAddIngestionSave}
+        onAddServiceSave={onAddServiceSave}
+        onIngestionDeploy={onIngestionDeploy}
+      />
     </PageContainerV1>
   );
 };

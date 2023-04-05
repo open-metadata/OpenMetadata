@@ -281,20 +281,16 @@ export const STEPS_FOR_ADD_SERVICE: Array<StepperStepType> = [
     step: 1,
   },
   {
-    name: i18n.t('label.requirement-plural'),
-    step: 2,
-  },
-  {
     name: i18n.t('label.configure-entity', {
       entity: i18n.t('label.service'),
     }),
-    step: 3,
+    step: 2,
   },
   {
     name: i18n.t('label.connection-entity', {
       entity: i18n.t('label.detail-plural'),
     }),
-    step: 4,
+    step: 3,
   },
 ];
 

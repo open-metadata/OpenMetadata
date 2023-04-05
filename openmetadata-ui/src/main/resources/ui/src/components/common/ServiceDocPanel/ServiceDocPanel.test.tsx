@@ -12,7 +12,7 @@
  */
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
-import ServiceRequirements from './ServiceRequirements';
+import ServiceRequirements from './ServiceDocPanel';
 
 jest.mock('components/Loader/Loader', () =>
   jest.fn().mockReturnValue(<div data-testid="loader">Loader</div>)
