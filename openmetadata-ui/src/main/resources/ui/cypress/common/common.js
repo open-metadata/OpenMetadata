@@ -412,11 +412,7 @@ export const editOwnerforCreatedService = (
   verifyResponseStatusCode('@getSelectedService', 200);
   verifyResponseStatusCode('@waitForIngestion', 200);
   verifyResponseStatusCode('@airflow', 200);
-  interceptURL(
-    'GET',
-    '/api/v1/search/query?q=*%20AND%20teamType:Group&from=0&size=15&index=team_search_index',
-    'waitForTeams'
-  );
+  interceptURL('GET', '/api/v1/users?limit=15', 'waitForUsers');
 
   // Click on edit owner button
   cy.get('[data-testid="edit-owner"]')
@@ -425,13 +421,7 @@ export const editOwnerforCreatedService = (
     .trigger('mouseover')
     .click();
 
-  verifyResponseStatusCode('@waitForTeams', 200);
-
-  cy.get('.user-team-select-popover')
-    .contains('Users')
-    .should('exist')
-    .should('be.visible')
-    .click();
+  verifyResponseStatusCode('@waitForUsers', 200);
 
   interceptURL(
     'GET',
