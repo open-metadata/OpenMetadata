@@ -11,6 +11,8 @@
  *  limitations under the License.
  */
 
+// / <reference types="cypress" />
+
 import {
   addNewTagToEntity,
   descriptionBox,
@@ -225,7 +227,7 @@ describe('Tags page should work', () => {
     );
   });
 
-  it.skip('Add tag at DatabaseSchema level with task & suggestions', () => {
+  it('Add tag at DatabaseSchema level with task & suggestions', () => {
     interceptURL(
       'GET',
       '/api/v1/permissions/databaseSchema/name/*',
