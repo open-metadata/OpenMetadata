@@ -40,6 +40,7 @@ def get_connection(connection: DagsterConnection) -> DagsterGraphQLClient:
             headers={"Dagster-Cloud-Api-Token": connection.token.get_secret_value()}
             if connection.token
             else None,
+            timeout=connection.timeout,
         ),
     )
 
