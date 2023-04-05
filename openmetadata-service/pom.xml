@@ -419,11 +419,6 @@
     <dependency>
       <groupId>com.onelogin</groupId>
       <artifactId>java-saml</artifactId>
-      <version>2.9.0</version>
-    </dependency>
-    <dependency>
-      <groupId>com.onelogin</groupId>
-      <artifactId>java-saml</artifactId>
       <version>${java.saml}</version>
     </dependency>
   </dependencies>
