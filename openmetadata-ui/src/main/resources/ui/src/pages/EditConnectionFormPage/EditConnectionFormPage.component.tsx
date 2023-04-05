@@ -11,9 +11,10 @@
  *  limitations under the License.
  */
 
-import { Space, Typography } from 'antd';
+import { Card, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
+import ServiceRightPanel from 'components/common/ServiceRightPanel/ServiceRightPanel';
 import TitleBreadcrumb from 'components/common/title-breadcrumb/title-breadcrumb.component';
 import { TitleBreadcrumbProps } from 'components/common/title-breadcrumb/title-breadcrumb.interface';
 import PageContainerV1 from 'components/containers/PageContainerV1';
@@ -26,13 +27,12 @@ import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router-dom';
 import { getServiceByFQN, updateService } from 'rest/serviceAPI';
+import { getEntityName } from 'utils/EntityUtils';
 import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
-import { addServiceGuide } from '../../constants/service-guide.constant';
-import { OPENMETADATA } from '../../constants/Services.constant';
+import { OPEN_METADATA } from '../../constants/Services.constant';
 import { ServiceCategory } from '../../enums/service.enum';
 import { ConfigData, ServicesType } from '../../interface/service.interface';
-import jsonData from '../../jsons/en';
-import { getEntityMissingError, getEntityName } from '../../utils/CommonUtils';
+import { getEntityMissingError } from '../../utils/CommonUtils';
 import { getPathByServiceFQN, getSettingPath } from '../../utils/RouterUtils';
 import {
   getServiceRouteFromServiceType,
@@ -42,28 +42,19 @@ import { showErrorToast } from '../../utils/ToastUtils';
 
 function EditConnectionFormPage() {
   const { t } = useTranslation();
-  const { serviceFQN, serviceCategory } = useParams() as Record<string, string>;
-  const [isLoading, setIsloading] = useState(true);
+  const { serviceFQN, serviceCategory } = useParams<{
+    serviceFQN: string;
+    serviceCategory: ServiceCategory;
+  }>();
+  const [isLoading, setIsLoading] = useState(true);
   const [isError, setIsError] = useState(false);
   const [serviceDetails, setServiceDetails] = useState<ServicesType>();
   const [slashedBreadcrumb, setSlashedBreadcrumb] = useState<
     TitleBreadcrumbProps['titleLinks']
   >([]);
+  const [activeField, setActiveField] = useState<string>('');
 
-  const fetchRightPanel = () => {
-    const guide = addServiceGuide.find((sGuide) => sGuide.step === 3);
-
-    return (
-      guide && (
-        <>
-          <Typography.Title level={5}>{guide.title}</Typography.Title>
-          <div className="mb-5">{guide.description}</div>
-        </>
-      )
-    );
-  };
-
-  const handleConfigUpdate = (updatedData: ConfigData) => {
+  const handleConfigUpdate = async (updatedData: ConfigData) => {
     const configData = {
       name: serviceDetails?.name,
       serviceType: serviceDetails?.serviceType,
@@ -74,88 +65,96 @@ function EditConnectionFormPage() {
       },
     } as ServicesUpdateRequest;
 
-    return new Promise<void>((resolve, reject) => {
-      updateService(serviceCategory, serviceDetails?.id ?? '', configData)
-        .then((res) => {
-          if (res) {
-            setServiceDetails({
-              ...res,
-              owner: res?.owner ?? serviceDetails?.owner,
-            });
-          } else {
-            showErrorToast(
-              `${jsonData['api-error-messages']['update-service-config-error']}`
-            );
-          }
-
-          resolve();
-        })
-        .catch((error: AxiosError) => {
-          reject();
-          showErrorToast(
-            error,
-            `${jsonData['api-error-messages']['update-service-config-error']}`
-          );
-        });
-    });
+    try {
+      const response = await updateService(
+        serviceCategory,
+        serviceDetails?.id ?? '',
+        configData
+      );
+      setServiceDetails({
+        ...response,
+        owner: response?.owner ?? serviceDetails?.owner,
+      });
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
   };
 
+  const fetchServiceDetail = async () => {
+    setIsLoading(true);
+    try {
+      const response = await getServiceByFQN(serviceCategory, serviceFQN, [
+        'owner',
+      ]);
+      setServiceDetails(response);
+      setSlashedBreadcrumb([
+        {
+          name: startCase(serviceCategory),
+          url: getSettingPath(
+            GlobalSettingsMenuCategory.SERVICES,
+            getServiceRouteFromServiceType(serviceCategory as ServiceTypes)
+          ),
+        },
+        {
+          name: getEntityName(response),
+          imgSrc: serviceTypeLogo(response.serviceType),
+          url: getPathByServiceFQN(serviceCategory, serviceFQN),
+        },
+        {
+          name: t('label.edit-entity', { entity: t('label.connection') }),
+          url: '',
+          activeTitle: true,
+        },
+      ]);
+    } catch (err) {
+      const error = err as AxiosError;
+      if (error.response?.status === 404) {
+        setIsError(true);
+      } else {
+        showErrorToast(error);
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleFieldFocus = (fieldName: string) => setActiveField(fieldName);
+
   useEffect(() => {
-    setIsloading(true);
-    getServiceByFQN(serviceCategory, serviceFQN, ['owner'])
-      .then((resService) => {
-        if (resService) {
-          setServiceDetails(resService);
-          setSlashedBreadcrumb([
-            {
-              name: startCase(serviceCategory),
-              url: getSettingPath(
-                GlobalSettingsMenuCategory.SERVICES,
-                getServiceRouteFromServiceType(serviceCategory as ServiceTypes)
-              ),
-            },
-            {
-              name: getEntityName(resService),
-              imgSrc: serviceTypeLogo(resService.serviceType),
-              url: getPathByServiceFQN(serviceCategory, serviceFQN),
-            },
-            {
-              name: t('label.edit-entity', { entity: t('label.connection') }),
-              url: '',
-              activeTitle: true,
-            },
-          ]);
-        } else {
-          showErrorToast(jsonData['api-error-messages']['fetch-service-error']);
-        }
-      })
-      .catch((error: AxiosError) => {
-        if (error.response?.status === 404) {
-          setIsError(true);
-        } else {
-          showErrorToast(
-            error,
-            jsonData['api-error-messages']['fetch-service-error']
-          );
-        }
-      })
-      .finally(() => {
-        setIsloading(false);
-      });
+    fetchServiceDetail();
   }, [serviceFQN, serviceCategory]);
 
-  const renderPage = () => {
-    return isError ? (
+  if (isLoading) {
+    return <Loader />;
+  }
+
+  if (isError && !isLoading) {
+    return (
       <ErrorPlaceHolder>
         {getEntityMissingError(serviceCategory, serviceFQN)}
       </ErrorPlaceHolder>
-    ) : (
-      <PageLayoutV1
-        center
-        pageTitle={t('label.edit-entity', { entity: t('label.connection') })}>
-        <Space direction="vertical" size="middle">
-          <TitleBreadcrumb titleLinks={slashedBreadcrumb} />
-          <div className="form-container">
+    );
+  }
+
+  return (
+    <PageContainerV1>
+      <div className="self-center">
+        <PageLayoutV1
+          className="tw-max-w-full-hd tw-h-full tw-pt-4"
+          header={<TitleBreadcrumb titleLinks={slashedBreadcrumb} />}
+          pageTitle={t('label.edit-entity', { entity: t('label.connection') })}
+          rightPanel={
+            <ServiceRightPanel
+              isUpdating
+              activeField={activeField}
+              activeStep={3}
+              isIngestion={false}
+              selectedService={serviceDetails?.serviceType ?? ''}
+              selectedServiceCategory={serviceCategory}
+              serviceName={serviceFQN}
+            />
+          }>
+          <Card className="p-lg">
             <Typography.Title level={5}>
               {t('message.edit-service-entity-connection', {
                 entity: serviceFQN,
@@ -165,24 +164,16 @@ function EditConnectionFormPage() {
               data={serviceDetails as ServicesData}
               disableTestConnection={
                 ServiceCategory.METADATA_SERVICES === serviceCategory &&
-                OPENMETADATA === serviceFQN
+                OPEN_METADATA === serviceFQN
               }
               handleUpdate={handleConfigUpdate}
-              serviceCategory={serviceCategory as ServiceCategory}
+              serviceCategory={serviceCategory}
               serviceFQN={serviceFQN}
               serviceType={serviceDetails?.serviceType || ''}
+              onFocus={handleFieldFocus}
             />
-          </div>
-        </Space>
-        <div className="m-t-xlg p-x-lg w-800">{fetchRightPanel()}</div>
-      </PageLayoutV1>
-    );
-  };
-
-  return (
-    <PageContainerV1>
-      <div className="self-center">
-        <>{isLoading ? <Loader /> : renderPage()}</>
+          </Card>
+        </PageLayoutV1>
       </div>
     </PageContainerV1>
   );

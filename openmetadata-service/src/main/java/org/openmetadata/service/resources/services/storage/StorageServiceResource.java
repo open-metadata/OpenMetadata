@@ -15,12 +15,12 @@ package org.openmetadata.service.resources.services.storage;
 
 import static org.openmetadata.service.Entity.FIELD_OWNER;
 
-import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import java.io.IOException;
 import java.util.UUID;
 import javax.validation.Valid;
@@ -57,7 +57,7 @@ import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
 
 @Path("/v1/services/storageServices")
-@Api(value = "Storage service collection", tags = "Services -> Storage service collection")
+@Tag(name = "Storage Services")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "storageServices")
@@ -86,7 +86,6 @@ public class StorageServiceResource extends EntityResource<StorageService, Stora
   @Operation(
       operationId = "listStorageService",
       summary = "List storage services",
-      tags = "storageServices",
       description =
           "Get a list of storage services. Use cursor-based pagination to limit the number "
               + "entries in the list using `limit` and `before` or `after` query params.",
@@ -133,7 +132,6 @@ public class StorageServiceResource extends EntityResource<StorageService, Stora
   @Operation(
       operationId = "getStorageServiceByID",
       summary = "Get a storage service by Id",
-      tags = "storageServices",
       description = "Get a storage service by `Id`.",
       responses = {
         @ApiResponse(
@@ -167,7 +165,6 @@ public class StorageServiceResource extends EntityResource<StorageService, Stora
   @Operation(
       operationId = "getStorageServiceByFQN",
       summary = "Get storage service by name",
-      tags = "storageServices",
       description = "Get a storage service by the service `name`.",
       responses = {
         @ApiResponse(
@@ -202,7 +199,6 @@ public class StorageServiceResource extends EntityResource<StorageService, Stora
   @Operation(
       operationId = "listAllStorageServiceVersion",
       summary = "List storage service versions",
-      tags = "storageServices",
       description = "Get a list of all the versions of a storage service identified by `Id`",
       responses = {
         @ApiResponse(
@@ -223,7 +219,6 @@ public class StorageServiceResource extends EntityResource<StorageService, Stora
   @Operation(
       operationId = "getSpecificStorageServiceVersion",
       summary = "Get a version of the storage service",
-      tags = "storageServices",
       description = "Get a version of the storage service by given `Id`",
       responses = {
         @ApiResponse(
@@ -252,7 +247,6 @@ public class StorageServiceResource extends EntityResource<StorageService, Stora
   @Operation(
       operationId = "createStorageService",
       summary = "Create storage service",
-      tags = "storageServices",
       description = "Create a new storage service.",
       responses = {
         @ApiResponse(
@@ -273,7 +267,6 @@ public class StorageServiceResource extends EntityResource<StorageService, Stora
   @Operation(
       operationId = "createOrUpdateStorageService",
       summary = "Update storage service",
-      tags = "storageServices",
       description = "Update an existing storage service identified by `Id`.",
       responses = {
         @ApiResponse(
@@ -295,7 +288,6 @@ public class StorageServiceResource extends EntityResource<StorageService, Stora
   @Operation(
       operationId = "deleteStorageService",
       summary = "Delete a storage service",
-      tags = "storageServices",
       description = "Delete a storage services. If storages (and tables) belong the service, it can't be " + "deleted.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
@@ -322,7 +314,6 @@ public class StorageServiceResource extends EntityResource<StorageService, Stora
   @Operation(
       operationId = "deleteStorageServiceByName",
       summary = "Delete a storage service",
-      tags = "storageServices",
       description =
           "Delete a storage services by `name`. If storages (and tables) belong the service, it can't be " + "deleted.",
       responses = {
@@ -347,7 +338,6 @@ public class StorageServiceResource extends EntityResource<StorageService, Stora
   @Operation(
       operationId = "restore",
       summary = "Restore a soft deleted storage service",
-      tags = "storageServices",
       description = "Restore a soft deleted storage service.",
       responses = {
         @ApiResponse(

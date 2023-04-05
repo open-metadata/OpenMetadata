@@ -1,0 +1,1 @@
+Le nom d'utilsateur pour se connecter à la base de données Redshift. Cet utilisateur doit pouvoir exécuter, à minima, des requêtes `SELECT` sur la table `SVV_TABLE_INFO`.

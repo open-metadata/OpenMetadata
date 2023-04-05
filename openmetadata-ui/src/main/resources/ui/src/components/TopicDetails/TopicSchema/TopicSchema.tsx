@@ -32,8 +32,8 @@ import { cloneDeep, isEmpty, isUndefined } from 'lodash';
 import { EntityTags, TagOption } from 'Models';
 import React, { FC, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Field } from '../../../generated/entity/data/topic';
-import { getEntityName } from '../../../utils/CommonUtils';
+import { getEntityName } from 'utils/EntityUtils';
+import { DataTypeTopic, Field } from '../../../generated/entity/data/topic';
 import SVGIcons from '../../../utils/SvgUtils';
 import { getTableExpandableConfig } from '../../../utils/TableUtils';
 import { fetchTagsAndGlossaryTerms } from '../../../utils/TagsUtils';
@@ -84,26 +84,22 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
     }
   };
 
-  const handleFieldTagsChange = async (selectedTags: EntityTags[] = []) => {
-    if (!isUndefined(editFieldTags)) {
-      const newSelectedTags: TagOption[] = selectedTags.map((tag) => ({
-        fqn: tag.tagFQN,
-        source: tag.source,
-      }));
+  const handleFieldTagsChange = async (
+    selectedTags: EntityTags[] = [],
+    field: Field
+  ) => {
+    const selectedField = isUndefined(editFieldTags) ? field : editFieldTags;
+    const newSelectedTags: TagOption[] = selectedTags.map((tag) => ({
+      fqn: tag.tagFQN,
+      source: tag.source,
+    }));
 
-      const schema = cloneDeep(messageSchema);
+    const schema = cloneDeep(messageSchema);
 
-      updateFieldTags(
-        schema?.schemaFields,
-        editFieldTags?.name,
-        newSelectedTags
-      );
+    updateFieldTags(schema?.schemaFields, selectedField?.name, newSelectedTags);
 
-      await onUpdate(schema);
-      setEditFieldTags(undefined);
-    } else {
-      setEditFieldTags(undefined);
-    }
+    await onUpdate(schema);
+    setEditFieldTags(undefined);
   };
 
   const handleAddTagClick = (record: Field) => {
@@ -200,7 +196,7 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
               tagList={tagList}
               type="label"
               onCancel={() => setEditFieldTags(undefined)}
-              onSelectionChange={handleFieldTagsChange}
+              onSelectionChange={(tags) => handleFieldTagsChange(tags, record)}
             />
           </Space>
         )}
@@ -231,8 +227,10 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
         key: 'dataType',
         ellipsis: true,
         width: 220,
-        render: (dataType: Field['dataType']) => (
-          <Typography.Text>{dataType}</Typography.Text>
+        render: (dataType: DataTypeTopic, record: Field) => (
+          <Typography.Text>
+            {record.dataTypeDisplay || dataType}
+          </Typography.Text>
         ),
       },
       {

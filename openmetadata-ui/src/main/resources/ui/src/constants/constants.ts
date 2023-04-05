@@ -12,9 +12,11 @@
  */
 
 import { COOKIE_VERSION } from 'components/Modals/WhatsNewModal/whatsNewData';
+import { SearchIndex } from 'enums/search.enum';
 import { t } from 'i18next';
 import { isUndefined } from 'lodash';
 import Qs from 'qs';
+import { getPartialNameFromFQN } from 'utils/CommonUtils';
 import { getSettingPath } from '../utils/RouterUtils';
 import { getEncodedFqn } from '../utils/StringsUtils';
 import { FQN_SEPARATOR_CHAR } from './char.constants';
@@ -78,11 +80,13 @@ export const imageTypes = {
 };
 export const NO_DATA_PLACEHOLDER = '---';
 export const ELLIPSES = '...';
+export const SINGLE_DOT = '•';
 
 export const TOUR_SEARCH_TERM = 'dim_a';
 export const ERROR404 = t('label.no-data-found');
 export const ERROR500 = t('message.something-went-wrong');
-const PLACEHOLDER_ROUTE_TABLE_FQN = ':datasetFQN';
+export const PLACEHOLDER_ROUTE_TABLE_FQN = ':datasetFQN';
+
 const PLACEHOLDER_ROUTE_TOPIC_FQN = ':topicFQN';
 const PLACEHOLDER_ROUTE_PIPELINE_FQN = ':pipelineFQN';
 const PLACEHOLDER_ROUTE_DASHBOARD_FQN = ':dashboardFQN';
@@ -99,6 +103,7 @@ export const PLACEHOLDER_ROUTE_TEAM_AND_USER = ':teamAndUser';
 export const PLAEHOLDER_ROUTE_VERSION = ':version';
 export const PLACEHOLDER_ROUTE_ENTITY_TYPE = ':entityType';
 export const PLACEHOLDER_ROUTE_ENTITY_FQN = ':entityFQN';
+export const PLACEHOLDER_ROUTE_QUERY_ID = ':queryId';
 export const PLACEHOLDER_WEBHOOK_NAME = ':webhookName';
 export const PLACEHOLDER_GLOSSARY_NAME = ':glossaryName';
 export const PLACEHOLDER_GLOSSARY_TERMS_FQN = ':glossaryTermsFQN';
@@ -119,7 +124,6 @@ export const INGESTION_NAME = ':ingestionName';
 export const LOG_ENTITY_NAME = ':logEntityName';
 export const KPI_NAME = ':kpiName';
 export const PLACEHOLDER_ACTION = ':action';
-export const PLACEHOLDER_CONTAINER_NAME = ':containerName';
 
 export const pagingObject = { after: '', before: '', total: 0 };
 
@@ -134,6 +138,17 @@ export const tiers = [
   { key: `Tier${FQN_SEPARATOR_CHAR}Tier3`, doc_count: 0 },
   { key: `Tier${FQN_SEPARATOR_CHAR}Tier4`, doc_count: 0 },
   { key: `Tier${FQN_SEPARATOR_CHAR}Tier5`, doc_count: 0 },
+];
+
+export const globalSearchOptions = [
+  { value: undefined, label: t('label.all') },
+  { value: SearchIndex.TABLE, label: t('label.table') },
+  { value: SearchIndex.TOPIC, label: t('label.topic') },
+  { value: SearchIndex.DASHBOARD, label: t('label.dashboard') },
+  { value: SearchIndex.PIPELINE, label: t('label.pipeline') },
+  { value: SearchIndex.MLMODEL, label: t('label.ml-model') },
+  { value: SearchIndex.GLOSSARY, label: t('label.glossary') },
+  { value: SearchIndex.TAG, label: t('label.tag') },
 ];
 
 export const versionTypes = [
@@ -156,6 +171,7 @@ export const visibleFilters = [
 export const ROUTES = {
   HOME: '/',
   CALLBACK: '/callback',
+  SAML_CALLBACK: '/saml/callback',
   SILENT_CALLBACK: '/silent-callback',
   NOT_FOUND: '/404',
   MY_DATA: '/my-data',
@@ -227,6 +243,7 @@ export const ROUTES = {
   PROFILER_DASHBOARD_WITH_TAB: `/profiler-dashboard/${PLACEHOLDER_DASHBOARD_TYPE}/${PLACEHOLDER_ENTITY_TYPE_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
   ADD_DATA_QUALITY_TEST_CASE: `/data-quality-test/${PLACEHOLDER_DASHBOARD_TYPE}/${PLACEHOLDER_ENTITY_TYPE_FQN}`,
   LINEAGE_FULL_SCREEN_VIEW: `/lineage-view/${PLACEHOLDER_ROUTE_ENTITY_TYPE}/${PLACEHOLDER_ROUTE_ENTITY_FQN}`,
+  QUERY_FULL_SCREEN_VIEW: `/query-view/${PLACEHOLDER_ROUTE_TABLE_FQN}/${PLACEHOLDER_ROUTE_QUERY_ID}`,
 
   // Tasks Routes
   REQUEST_DESCRIPTION: `/request-description/${PLACEHOLDER_ROUTE_ENTITY_TYPE}/${PLACEHOLDER_ROUTE_ENTITY_FQN}`,
@@ -257,8 +274,8 @@ export const ROUTES = {
   ADD_KPI: `/data-insights/kpi/add-kpi`,
   EDIT_KPI: `/data-insights/kpi/edit-kpi/${KPI_NAME}`,
 
-  CONTAINER_DETAILS: `/container/${PLACEHOLDER_CONTAINER_NAME}`,
-  CONTAINER_DETAILS_WITH_TAB: `/container/${PLACEHOLDER_CONTAINER_NAME}/${PLACEHOLDER_ROUTE_TAB}`,
+  CONTAINER_DETAILS: `/container/${PLACEHOLDER_ROUTE_ENTITY_FQN}`,
+  CONTAINER_DETAILS_WITH_TAB: `/container/${PLACEHOLDER_ROUTE_ENTITY_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
 };
 
 export const SOCKET_EVENTS = {
@@ -275,6 +292,14 @@ export const IN_PAGE_SEARCH_ROUTES: Record<string, Array<string>> = {
 export const getTableDetailsPath = (tableFQN: string, columnName?: string) => {
   let path = ROUTES.TABLE_DETAILS;
   path = path.replace(PLACEHOLDER_ROUTE_TABLE_FQN, tableFQN);
+
+  return `${path}${columnName ? `.${columnName}` : ''}`;
+};
+
+export const getTagsDetailsPath = (entityFQN: string, columnName?: string) => {
+  let path = ROUTES.TAG_DETAILS;
+  const classification = getPartialNameFromFQN(entityFQN, ['service']);
+  path = path.replace(PLACEHOLDER_TAG_NAME, classification);
 
   return `${path}${columnName ? `.${columnName}` : ''}`;
 };
@@ -537,10 +562,16 @@ export const ENTITY_PATH: Record<string, string> = {
   pipelines: 'pipeline',
   mlmodels: 'mlmodel',
   containers: 'container',
+  tag: 'tag',
+  glossary: 'glossary',
 };
 
 export const VALIDATE_MESSAGES = {
   required: t('message.field-text-is-required', {
     fieldText: '${label}',
   }),
+};
+
+export const ERROR_MESSAGE = {
+  alreadyExist: 'already exists',
 };

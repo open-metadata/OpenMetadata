@@ -23,6 +23,9 @@ from pydantic import ValidationError
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createContainer import CreateContainerRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
+from metadata.generated.schema.api.data.createDashboardDataModel import (
+    CreateDashboardDataModelRequest,
+)
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
 from metadata.generated.schema.api.data.createDatabaseSchema import (
     CreateDatabaseSchemaRequest,
@@ -46,6 +49,7 @@ from metadata.generated.schema.api.tests.createTestCase import CreateTestCaseReq
 from metadata.generated.schema.api.tests.createTestSuite import CreateTestSuiteRequest
 from metadata.generated.schema.entity.data.container import Container
 from metadata.generated.schema.entity.data.dashboard import Dashboard
+from metadata.generated.schema.entity.data.dashboardDataModel import DashboardDataModel
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.location import Location
@@ -90,7 +94,7 @@ from metadata.generated.schema.type.entityLineage import EntitiesEdge, LineageDe
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.schema import Topic
 from metadata.ingestion.api.common import Entity
-from metadata.ingestion.api.source import InvalidSourceException, Source, SourceStatus
+from metadata.ingestion.api.source import InvalidSourceException, Source
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
 from metadata.ingestion.models.profile_data import OMetaTableProfileSampleData
 from metadata.ingestion.models.tests_data import (
@@ -158,6 +162,10 @@ def get_lineage_entity_ref(edge, metadata_config) -> EntityReference:
         dashboard = metadata.get_by_name(entity=Dashboard, fqn=edge_fqn)
         if dashboard:
             return EntityReference(id=dashboard.id, type="dashboard")
+    if edge["type"] == "dashboardDataModel":
+        data_model = metadata.get_by_name(entity=DashboardDataModel, fqn=edge_fqn)
+        if data_model:
+            return EntityReference(id=data_model.id, type="dashboardDataModel")
     return None
 
 
@@ -168,22 +176,6 @@ def get_table_key(row: Dict[str, Any]) -> Union[TableKey, None]:
     :return:
     """
     return TableKey(schema=row["schema"], table_name=row["table_name"])
-
-
-class SampleDataSourceStatus(SourceStatus):
-    success: List[str] = []
-    failures: List[str] = []
-    warnings: List[str] = []
-
-    def scanned(  # pylint: disable=arguments-differ
-        self, entity_type: str, entity_name: str
-    ) -> None:
-        self.success.append(entity_name)
-        logger.info(f"{entity_type} Scanned: {entity_name}")
-
-    def filtered(self, entity_type: str, entity_name: str, err: str) -> None:
-        self.warnings.append(entity_name)
-        logger.warning(f"Dropped {entity_type} {entity_type} due to {err}")
 
 
 class SampleDataSource(
@@ -197,7 +189,6 @@ class SampleDataSource(
     def __init__(self, config: WorkflowSource, metadata_config: OpenMetadataConnection):
         # pylint: disable=too-many-statements
         super().__init__()
-        self.status = SampleDataSourceStatus()
         self.config = config
         self.service_connection = config.serviceConnection.__root__.config
         self.metadata_config = metadata_config
@@ -341,6 +332,13 @@ class SampleDataSource(
         self.charts = json.load(
             open(  # pylint: disable=consider-using-with
                 sample_data_folder + "/dashboards/charts.json",
+                "r",
+                encoding="utf-8",
+            )
+        )
+        self.data_models = json.load(
+            open(  # pylint: disable=consider-using-with
+                sample_data_folder + "/dashboards/dashboardDataModels.json",
                 "r",
                 encoding="utf-8",
             )
@@ -495,6 +493,7 @@ class SampleDataSource(
         yield from self.ingest_tables()
         yield from self.ingest_topics()
         yield from self.ingest_charts()
+        yield from self.ingest_data_models()
         yield from self.ingest_dashboards()
         yield from self.ingest_pipelines()
         yield from self.ingest_lineage()
@@ -599,8 +598,7 @@ class SampleDataSource(
                 tableConstraints=table.get("tableConstraints"),
                 tableType=table["tableType"],
             )
-
-            self.status.scanned("table", table_request.name.__root__)
+            self.status.scanned(f"Table Scanned: {table_request.name.__root__}")
             yield table_request
 
             location = CreateLocationRequest(
@@ -609,7 +607,7 @@ class SampleDataSource(
                     id=self.glue_storage_service.id, type="storageService"
                 ),
             )
-            self.status.scanned("location", location.name)
+            self.status.scanned(f"Location Scanned: {location.name}")
             yield location
 
             table_fqn = fqn.build(
@@ -687,7 +685,7 @@ class SampleDataSource(
                 tags=table["tags"],
             )
 
-            self.status.scanned("table", table_and_db.name)
+            self.status.scanned(f"Table Scanned: {table_and_db.name}")
             yield table_and_db
 
     def ingest_topics(self) -> Iterable[CreateTopicRequest]:
@@ -724,7 +722,7 @@ class SampleDataSource(
                     schemaFields=schema_fields,
                 )
 
-            self.status.scanned("topic", create_topic.name.__root__)
+            self.status.scanned(f"Topic Scanned: {create_topic.name.__root__}")
             yield create_topic
 
     def ingest_charts(self) -> Iterable[CreateChartRequest]:
@@ -734,15 +732,38 @@ class SampleDataSource(
                     name=chart["name"],
                     displayName=chart["displayName"],
                     description=chart["description"],
-                    chartType=get_standard_chart_type(chart["chartType"]).value,
+                    chartType=get_standard_chart_type(chart["chartType"]),
                     chartUrl=chart["chartUrl"],
                     service=self.dashboard_service.fullyQualifiedName,
                 )
-                self.status.scanned("chart", chart_ev.name)
+                self.status.scanned(f"Chart Scanned: {chart_ev.name.__root__}")
                 yield chart_ev
             except ValidationError as err:
                 logger.debug(traceback.format_exc())
                 logger.warning(f"Unexpected exception ingesting chart [{chart}]: {err}")
+
+    def ingest_data_models(self) -> Iterable[CreateDashboardDataModelRequest]:
+        for data_model in self.data_models["datamodels"]:
+            try:
+                data_model_ev = CreateDashboardDataModelRequest(
+                    name=data_model["name"],
+                    displayName=data_model["displayName"],
+                    description=data_model["description"],
+                    columns=data_model["columns"],
+                    dataModelType=data_model["dataModelType"],
+                    sql=data_model["sql"],
+                    serviceType=data_model["serviceType"],
+                    service=self.dashboard_service.fullyQualifiedName,
+                )
+                self.status.scanned(
+                    f"Data Model Scanned: {data_model_ev.name.__root__}"
+                )
+                yield data_model_ev
+            except ValidationError as err:
+                logger.debug(traceback.format_exc())
+                logger.warning(
+                    f"Unexpected exception ingesting chart [{data_model}]: {err}"
+                )
 
     def ingest_dashboards(self) -> Iterable[CreateDashboardRequest]:
         for dashboard in self.dashboards["dashboards"]:
@@ -752,9 +773,10 @@ class SampleDataSource(
                 description=dashboard["description"],
                 dashboardUrl=dashboard["dashboardUrl"],
                 charts=dashboard["charts"],
+                dataModels=dashboard.get("dataModels", None),
                 service=self.dashboard_service.fullyQualifiedName,
             )
-            self.status.scanned("dashboard", dashboard_ev.name.__root__)
+            self.status.scanned(f"Dashboard Scanned: {dashboard_ev.name.__root__}")
             yield dashboard_ev
 
     def ingest_pipelines(self) -> Iterable[Pipeline]:
@@ -776,8 +798,10 @@ class SampleDataSource(
             edge_entity_ref = get_lineage_entity_ref(
                 edge["edge_meta"], self.metadata_config
             )
-            lineage_details = LineageDetails(
-                pipeline=edge_entity_ref, sqlQuery=edge.get("sql_query")
+            lineage_details = (
+                LineageDetails(pipeline=edge_entity_ref, sqlQuery=edge.get("sql_query"))
+                if edge_entity_ref
+                else None
             )
             lineage = AddLineageRequest(
                 edge=EntitiesEdge(
@@ -1054,9 +1078,6 @@ class SampleDataSource(
 
     def close(self):
         pass
-
-    def get_status(self):
-        return self.status
 
     def test_connection(self) -> None:
         pass

@@ -151,6 +151,32 @@ authenticationConfiguration:
   callbackUrl: ${AUTHENTICATION_CALLBACK_URL:-""}
   jwtPrincipalClaims: ${AUTHENTICATION_JWT_PRINCIPAL_CLAIMS:-[email,preferred_username,sub]}
   enableSelfSignup : ${AUTHENTICATION_ENABLE_SELF_SIGNUP:-true}
+  samlConfiguration:
+    debugMode: ${SAML_DEBUG_MODE:-false}
+    idp:
+      entityId: ${SAML_IDP_ENTITY_ID:-""}
+      ssoLoginUrl: ${SAML_IDP_SSO_LOGIN_URL:-""}
+      idpX509Certificate: ${SAML_IDP_CERTIFICATE:-""}
+      authorityUrl: ${SAML_AUTHORITY_URL:-"http://localhost:8585/api/v1/saml/login"}
+      nameId: ${SAML_IDP_NAME_ID:-"urn:oasis:names:tc:SAML:2.0:nameid-format:emailAddress"}
+    sp:
+      entityId: ${SAML_SP_ENTITY_ID:-"http://localhost:8585/api/v1/saml/metadata"}
+      acs: ${SAML_SP_ACS:-"http://localhost:8585/api/v1/saml/acs"}
+      spX509Certificate: ${SAML_SP_CERTIFICATE:-""}
+      callback: ${SAML_SP_CALLBACK:-"http://localhost:8585/saml/callback"}
+    security:
+      strictMode: ${SAML_STRICT_MODE:-false}
+      tokenValidity: ${SAML_SP_TOKEN_VALIDITY:-"3600"}
+      sendEncryptedNameId: ${SAML_SEND_ENCRYPTED_NAME_ID:-false}
+      sendSignedAuthRequest: ${SAML_SEND_SIGNED_AUTH_REQUEST:-false}
+      signSpMetadata: ${SAML_SIGNED_SP_METADATA:-false}
+      wantMessagesSigned: ${SAML_WANT_MESSAGE_SIGNED:-false}
+      wantAssertionsSigned: ${SAML_WANT_ASSERTION_SIGNED:-false}
+      wantAssertionEncrypted: ${SAML_WANT_ASSERTION_ENCRYPTED:-false}
+      wantNameIdEncrypted: ${SAML_WANT_NAME_ID_ENCRYPTED:-false}
+      keyStoreFilePath: ${SAML_KEYSTORE_FILE_PATH:-""}
+      keyStoreAlias: ${SAML_KEYSTORE_ALIAS:-""}
+      keyStorePassword: ${SAML_KEYSTORE_PASSWORD:-""}
   ldapConfiguration:
     host: ${AUTHENTICATION_LDAP_HOST:-}
     port: ${AUTHENTICATION_LDAP_PORT:-}
@@ -199,6 +225,8 @@ elasticsearch:
 eventMonitoringConfiguration:
   eventMonitor: ${EVENT_MONITOR:-prometheus}  # Possible values are "prometheus", "cloudwatch"
   batchSize: ${EVENT_MONITOR_BATCH_SIZE:-10}
+  pathPattern: ${EVENT_MONITOR_PATH_PATTERN:-["/api/v1/tables/*", "/api/v1/health-check"]}
+  latency: ${EVENT_MONITOR_LATENCY:-[]} # For value p99=0.99, p90=0.90, p50=0.50 etc.
   # it will use the default auth provider for AWS services if parameters are not set
   # parameters:
   #   region: ${OM_MONITOR_REGION:-""}
@@ -277,4 +305,19 @@ applicationConfig:
     maxLoginFailAttempts: ${OM_MAX_FAILED_LOGIN_ATTEMPTS:-3}
     accessBlockTime: ${OM_LOGIN_ACCESS_BLOCK_TIME:-600}
     jwtTokenExpiryTime: ${OM_JWT_EXPIRY_TIME:-3600}
+
+
+web:
+  uriPath: /api
+  hsts:
+    enabled: true
+  frame-options:
+    enabled: true
+  content-type-options:
+    enabled: true
+  xss-protection:
+    enabled: true
+
+changeEventConfig:
+  omUri: ${OM_URI:- "http://localhost:8585"} #openmetadata in om uri for eg http://localhost:8585
 

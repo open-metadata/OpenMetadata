@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { LoadingState } from 'Models';
+import { LoadingState, ServicesUpdateRequest } from 'Models';
 import { FilterPatternEnum } from '../../enums/filterPattern.enum';
 import { FormSubmitType } from '../../enums/form.enum';
 import { ServiceCategory } from '../../enums/service.enum';
@@ -27,7 +27,7 @@ import {
   PipelineType,
 } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { DbtPipelineClass } from '../../generated/metadataIngestion/dbtPipeline';
-import { DataObj } from '../../interface/service.interface';
+
 import {
   DBT_SOURCES,
   GCS_CONFIG,
@@ -41,7 +41,7 @@ export interface AddIngestionProps {
   status: FormSubmitType;
   data?: IngestionPipeline;
   serviceCategory: ServiceCategory;
-  serviceData: DataObj;
+  serviceData: ServicesUpdateRequest;
   showSuccessScreen?: boolean;
   showDeployButton?: boolean;
   setActiveIngestionStep: (step: number) => void;
@@ -87,12 +87,17 @@ export type ScheduleIntervalProps = {
 
 // Todo: Need to refactor below type, as per schema change #9575
 export type ModifiedDbtConfig = DbtConfig &
-  Pick<DbtPipelineClass, 'dbtUpdateDescriptions' | 'dbtClassificationName'>;
+  Pick<
+    DbtPipelineClass,
+    'dbtUpdateDescriptions' | 'dbtClassificationName' | 'includeTags'
+  >;
 
 export interface AddIngestionState {
   chartFilterPattern: FilterPattern;
+  database?: string;
   dashboardFilterPattern: FilterPattern;
   databaseFilterPattern: FilterPattern;
+  isDatabaseFilterDisabled: boolean;
   databaseServiceNames: string[];
   dbtClassificationName: string;
   dbtUpdateDescriptions: boolean;
@@ -108,6 +113,10 @@ export interface AddIngestionState {
   ingestSampleData: boolean;
   markAllDeletedTables: boolean | undefined;
   markDeletedTables: boolean | undefined;
+  markDeletedDashboards?: boolean;
+  markDeletedTopics?: boolean;
+  markDeletedMlModels?: boolean;
+  markDeletedPipelines?: boolean;
   metadataToESConfig: ConfigClass | undefined;
   mlModelFilterPattern: FilterPattern;
   pipelineFilterPattern: FilterPattern;
@@ -135,6 +144,7 @@ export interface AddIngestionState {
   useFqnFilter: boolean;
   processPii: boolean;
   overrideOwner: boolean;
+  confidence?: number;
 }
 
 export enum ShowFilter {

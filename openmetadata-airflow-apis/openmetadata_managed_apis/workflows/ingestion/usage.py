@@ -12,7 +12,6 @@
 Metadata DAG function builder
 """
 import tempfile
-from pathlib import Path
 
 from airflow import DAG
 from openmetadata_managed_apis.workflows.ingestion.common import (
@@ -76,10 +75,6 @@ def build_usage_workflow_config(
             workflow_config = build_usage_config_from_file(ingestion_pipeline, tmp_file)
 
     else:
-        # If dir does not exist, create it
-        if not Path(location).parent.is_dir():
-            Path(location).parent.mkdir(parents=True, exist_ok=True)
-
         workflow_config = build_usage_config_from_file(ingestion_pipeline, location)
 
     return workflow_config

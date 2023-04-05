@@ -112,10 +112,7 @@ const DeleteWidgetModal = ({
       return `glossaries`;
     } else if (entityType === EntityType.POLICY) {
       return 'policies';
-    } else if (
-      entityType === EntityType.TEST_SUITE ||
-      entityType === EntityType.KPI
-    ) {
+    } else if (entityType === EntityType.KPI) {
       return entityType;
     } else {
       return `${entityType}s`;
@@ -237,6 +234,7 @@ const DeleteWidgetModal = ({
       confirmLoading={isLoading}
       data-testid="delete-modal"
       footer={Footer()}
+      maskClosable={false}
       okText={t('label.delete')}
       open={visible}
       title={`${t('label.delete')} ${entityName}`}

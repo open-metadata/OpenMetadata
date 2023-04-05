@@ -17,6 +17,7 @@ import { EntityFieldThreads } from '../../../interface/feed.interface';
 
 export interface DescriptionProps {
   className?: string;
+  header?: string;
   entityName?: string;
   owner?: Table['owner'];
   hasEditAccess?: boolean;

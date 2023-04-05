@@ -15,12 +15,19 @@ import { getByTestId, render } from '@testing-library/react';
 import React from 'react';
 import DBTCommonFields from './DBTCommonFields.component';
 
+const mockHandleEnableDebugLogCheck = jest.fn();
+const mockIncludeTagsClick = jest.fn();
+
 const mockProps = {
   dbtUpdateDescriptions: false,
+  includeTags: true,
   descriptionId: 'test-id',
   dbtClassificationName: 'DBT',
   handleUpdateDescriptions: jest.fn(),
+  handleIncludeTagsClick: mockIncludeTagsClick,
   handleUpdateDBTClassification: jest.fn(),
+  enableDebugLog: false,
+  handleEnableDebugLogCheck: mockHandleEnableDebugLogCheck,
 };
 
 describe('DBTCommonFields', () => {

@@ -8,7 +8,6 @@ import static javax.ws.rs.core.Response.Status.OK;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.schema.type.MetadataOperation.EDIT_TESTS;
-import static org.openmetadata.schema.type.MetadataOperation.VIEW_TESTS;
 import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.permissionNotAllowed;
 import static org.openmetadata.service.security.SecurityUtil.authHeaders;
@@ -26,7 +25,6 @@ import java.io.IOException;
 import java.text.ParseException;
 import java.util.*;
 import javax.ws.rs.client.WebTarget;
-import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.MethodOrderer;
@@ -67,7 +65,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
         Entity.TEST_CASE,
         org.openmetadata.schema.tests.TestCase.class,
         TestCaseResource.TestCaseList.class,
-        "testCase",
+        "testCases",
         TestCaseResource.FIELDS);
   }
 
@@ -128,26 +126,6 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     entity = patchEntityAndCheckAuthorization(entity, USER_WITH_DATA_STEWARD_ROLE.getName(), EDIT_TESTS, true);
     entity = patchEntityAndCheckAuthorization(entity, USER_WITH_DATA_CONSUMER_ROLE.getName(), EDIT_TESTS, true);
     patchEntityAndCheckAuthorization(entity, USER2.getName(), EDIT_TESTS, true);
-  }
-
-  @Override
-  @Test
-  @SneakyThrows
-  protected void testTeamOnlyPolicy(TestInfo test) {
-    // Testcase's are authorized based on the ownership of the entity to which testcases are attached to
-    // Change the TABLE1 ownership to Team21 and then change it back to USER1
-    // Set the owner for the entity
-    TableResourceTest tableResourceTest = new TableResourceTest();
-    String originalJson = JsonUtils.pojoToJson(TEST_TABLE1);
-    TEST_TABLE1.setOwner(TEAM21.getEntityReference());
-    TEST_TABLE1 = tableResourceTest.patchEntity(TEST_TABLE1.getId(), originalJson, TEST_TABLE1, ADMIN_AUTH_HEADERS);
-
-    super.testTeamOnlyPolicy(test, VIEW_TESTS);
-
-    // Revert the ownership back
-    originalJson = JsonUtils.pojoToJson(TEST_TABLE1);
-    TEST_TABLE1.setOwner(USER1_REF);
-    TEST_TABLE1 = tableResourceTest.patchEntity(TEST_TABLE1.getId(), originalJson, TEST_TABLE1, ADMIN_AUTH_HEADERS);
   }
 
   @Test

@@ -36,6 +36,7 @@ import { ProfilerDetailsCardProps } from '../profilerDashboard.interface';
 import ProfilerLatestValue from './ProfilerLatestValue';
 
 const ProfilerDetailsCard: React.FC<ProfilerDetailsCardProps> = ({
+  showYAxisCategory = false,
   chartCollection,
   tickFormatter,
   name,
@@ -83,9 +84,10 @@ const ProfilerDetailsCard: React.FC<ProfilerDetailsCardProps> = ({
                   tickFormatter={(props) =>
                     axisTickFormatter(props, tickFormatter)
                   }
+                  type={showYAxisCategory ? 'category' : 'number'}
                 />
                 <Tooltip
-                  formatter={(value: number) =>
+                  formatter={(value: number | string) =>
                     tooltipFormatter(value, tickFormatter)
                   }
                 />

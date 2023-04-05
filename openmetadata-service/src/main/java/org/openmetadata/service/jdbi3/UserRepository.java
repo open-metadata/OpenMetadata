@@ -13,7 +13,6 @@
 
 package org.openmetadata.service.jdbi3;
 
-import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.csv.CsvUtil.addEntityReferences;
@@ -113,7 +112,7 @@ public class UserRepository extends EntityRepository<User> {
     List<EntityReference> teams = user.getTeams();
 
     // Don't store roles, teams and href as JSON. Build it on the fly based on relationships
-    user.withRoles(null).withTeams(null).withHref(null).withInheritedRoles(null);
+    user.withRoles(null).withTeams(null).withInheritedRoles(null);
 
     SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
     if (secretsManager != null && Boolean.TRUE.equals(user.getIsBot())) {
@@ -121,6 +120,9 @@ public class UserRepository extends EntityRepository<User> {
     }
 
     store(user, update);
+    if (update) {
+      SubjectCache.getInstance().invalidateUser(user.getName());
+    }
 
     // Restore the relationships
     user.withRoles(roles).withTeams(teams);
@@ -141,6 +143,12 @@ public class UserRepository extends EntityRepository<User> {
   @Override
   protected void postDelete(User entity) {
     SubjectCache.getInstance().invalidateUser(entity.getName());
+  }
+
+  @Override
+  protected void cleanup(User user) throws IOException {
+    super.cleanup(user);
+    SubjectCache.getInstance().invalidateUser(user.getName());
   }
 
   @Override
@@ -401,7 +409,7 @@ public class UserRepository extends EntityRepository<User> {
           continue; // Team is same as the team to which CSV is being imported, then it is in the same hierarchy
         }
         // Else the parent should already exist
-        if (!SubjectCache.getInstance().isInTeam(team.getName(), listOf(teamRef))) {
+        if (!SubjectCache.getInstance().isInTeam(team.getName(), teamRef)) {
           importFailure(printer, invalidTeam(6, team.getName(), user, teamRef.getName()), record);
           processRecord = false;
         }

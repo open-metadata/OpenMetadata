@@ -12,31 +12,50 @@
 """
 Source connection handler
 """
-from redash_toolbelt import Redash
 
+from typing import Optional
+
+from metadata.generated.schema.entity.automations.workflow import (
+    Workflow as AutomationWorkflow,
+)
 from metadata.generated.schema.entity.services.connections.dashboard.redashConnection import (
     RedashConnection,
 )
-from metadata.ingestion.connections.test_connections import SourceConnectionException
+from metadata.ingestion.connections.test_connections import (
+    SourceConnectionException,
+    test_connection_steps,
+)
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.source.dashboard.redash.client import RedashApiClient
 
 
-def get_connection(connection: RedashConnection) -> Redash:
+def get_connection(connection: RedashConnection) -> RedashApiClient:
     """
     Create connection
     """
     try:
-        return Redash(connection.hostPort, connection.apiKey.get_secret_value())
+        return RedashApiClient(connection)
     except Exception as exc:
         msg = f"Unknown error connecting with {connection}: {exc}."
         raise SourceConnectionException(msg) from exc
 
 
-def test_connection(client: Redash, _) -> None:
+def test_connection(
+    metadata: OpenMetadata,
+    client: RedashApiClient,
+    service_connection: RedashConnection,
+    automation_workflow: Optional[AutomationWorkflow] = None,
+) -> None:
     """
-    Test connection
+    Test connection. This can be executed either as part
+    of a metadata workflow or during an Automation Workflow
     """
-    try:
-        client.dashboards()
-    except Exception as exc:
-        msg = f"Unknown error connecting with {client}: {exc}."
-        raise SourceConnectionException(msg)
+
+    test_fn = {"GetDashboards": client.dashboards}
+
+    test_connection_steps(
+        metadata=metadata,
+        test_fn=test_fn,
+        service_fqn=service_connection.type.value,
+        automation_workflow=automation_workflow,
+    )

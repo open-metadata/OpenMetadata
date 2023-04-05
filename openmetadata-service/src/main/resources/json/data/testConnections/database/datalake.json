@@ -1,0 +1,17 @@
+{
+    "name": "Datalake",
+    "fullyQualifiedName": "Datalake",
+    "displayName": "Datalake Test Connection",
+    "description": "This Test Connection validates the access against the database and basic metadata extraction of schemas and tables.",
+    "steps": [
+      {
+        "name": "ListBuckets",
+        "description": "List all the buckets available to the user.",
+        "errorMessage": "Failed to fetch buckets, please validate the credentials if the user has access to list buckets",
+        "shortCircuit": true,
+        "mandatory": true
+      }
+    ]
+  }
+  
+  

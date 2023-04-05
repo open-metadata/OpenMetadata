@@ -134,12 +134,11 @@ EXPECTED_AVRO_COL_1 = [
             Column(
                 name="options",
                 dataType="ARRAY",
-                dataTypeDisplay="array<record>",
+                dataTypeDisplay="ARRAY<record>",
                 arrayDataType="RECORD",
                 children=[
                     Column(
                         name="lvl2_record",
-                        dataTypeDisplay="record",
                         dataType="RECORD",
                         children=[
                             Column(
@@ -151,12 +150,11 @@ EXPECTED_AVRO_COL_1 = [
                                 name="item2_lvl2",
                                 dataType="ARRAY",
                                 arrayDataType="RECORD",
-                                dataTypeDisplay="array<record>",
+                                dataTypeDisplay="ARRAY<record>",
                                 children=[
                                     Column(
                                         name="lvl3_record",
                                         dataType="RECORD",
-                                        dataTypeDisplay="record",
                                         children=[
                                             Column(
                                                 name="item1_lvl3",
@@ -332,7 +330,7 @@ class DatalakeUnitTest(TestCase):
         assert actual_df_1.compare(exp_df_list).empty
         assert actual_df_2.compare(exp_df_obj).empty
 
-    def x_test_avro_file_parse(self):  # disabling this test as failing with CI
+    def test_avro_file_parse(self):  # disabling this test as failing with CI
         columns = read_from_avro(AVRO_SCHEMA_FILE)
         Column.__eq__ = custom_column_compare
 

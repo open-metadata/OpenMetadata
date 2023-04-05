@@ -13,7 +13,6 @@
 
 package org.openmetadata.service.resources.services.mlmodel;
 
-import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -22,6 +21,7 @@ import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
@@ -69,7 +69,7 @@ import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
 
 @Path("/v1/services/mlmodelServices")
-@Api(value = "MlModel service collection", tags = "Services -> MlModel service collection")
+@Tag(name = "ML Model Services")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "mlmodelServices")
@@ -100,7 +100,6 @@ public class MlModelServiceResource
   @Operation(
       operationId = "listMlModelService",
       summary = "List ML model services",
-      tags = "mlModelServices",
       description =
           "Get a list of mlModel services. Use cursor-based pagination to limit the number "
               + "entries in the list using `limit` and `before` or `after` query params.",
@@ -149,7 +148,6 @@ public class MlModelServiceResource
   @Operation(
       operationId = "getMlModelServiceByID",
       summary = "Get an ML model service by Id",
-      tags = "mlModelServices",
       description = "Get a mlModel service by `Id`.",
       responses = {
         @ApiResponse(
@@ -184,7 +182,6 @@ public class MlModelServiceResource
   @Operation(
       operationId = "getMlModelServiceByFQN",
       summary = "Get an ML model service by name",
-      tags = "mlModelServices",
       description = "Get a mlModel service by the service `name`.",
       responses = {
         @ApiResponse(
@@ -220,7 +217,6 @@ public class MlModelServiceResource
   @Operation(
       operationId = "addTestConnectionResult",
       summary = "Add test connection result",
-      tags = "mlModelServices",
       description = "Add test connection result to the service.",
       responses = {
         @ApiResponse(
@@ -246,7 +242,6 @@ public class MlModelServiceResource
   @Operation(
       operationId = "listAllMlModelServiceVersion",
       summary = "List ML model service versions",
-      tags = "mlModelServices",
       description = "Get a list of all the versions of a mlModel service identified by `Id`",
       responses = {
         @ApiResponse(
@@ -282,7 +277,6 @@ public class MlModelServiceResource
   @Operation(
       operationId = "getSpecificMlModelService",
       summary = "Get a version of the ML model service",
-      tags = "mlModelServices",
       description = "Get a version of the mlModel service by given `Id`",
       responses = {
         @ApiResponse(
@@ -312,7 +306,6 @@ public class MlModelServiceResource
   @Operation(
       operationId = "createMlModelService",
       summary = "Create an ML model service",
-      tags = "mlModelServices",
       description = "Create a new mlModel service.",
       responses = {
         @ApiResponse(
@@ -335,7 +328,6 @@ public class MlModelServiceResource
   @Operation(
       operationId = "createOrUpdateMlModelService",
       summary = "Update ML model service",
-      tags = "mlModelServices",
       description = "Create a new mlModel service or update an existing mlModel service identified by `Id`.",
       responses = {
         @ApiResponse(
@@ -359,7 +351,6 @@ public class MlModelServiceResource
   @Operation(
       operationId = "patchMlModelService",
       summary = "Update an ML model service",
-      tags = "mlModelServices",
       description = "Update an existing MlModelService service using JsonPatch.",
       externalDocs = @ExternalDocumentation(description = "JsonPatch RFC", url = "https://tools.ietf.org/html/rfc6902"))
   @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
@@ -385,7 +376,6 @@ public class MlModelServiceResource
   @Operation(
       operationId = "deleteMlModelService",
       summary = "Delete an ML model service by Id",
-      tags = "mlModelServices",
       description =
           "Delete a mlModel services. If mlModels (and tasks) belong to the service, it can't be " + "deleted.",
       responses = {
@@ -413,7 +403,6 @@ public class MlModelServiceResource
   @Operation(
       operationId = "deleteMlModelServiceByName",
       summary = "Delete an ML model service by name",
-      tags = "mlModelServices",
       description =
           "Delete a mlModel services by `name`. If mlModels (and tasks) belong to the service, it can't be "
               + "deleted.",
@@ -439,7 +428,6 @@ public class MlModelServiceResource
   @Operation(
       operationId = "restore",
       summary = "Restore a soft deleted ML model service",
-      tags = "mlModelServices",
       description = "Restore a soft deleted Ml model service.",
       responses = {
         @ApiResponse(

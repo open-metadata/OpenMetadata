@@ -18,16 +18,19 @@ package org.openmetadata.service.elasticsearch;
 import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
 import static org.openmetadata.service.Entity.FIELD_FOLLOWERS;
 import static org.openmetadata.service.Entity.FIELD_USAGE_SUMMARY;
-import static org.openmetadata.service.resources.elasticsearch.BuildSearchIndexResource.ELASTIC_SEARCH_ENTITY_FQN_STREAM;
-import static org.openmetadata.service.resources.elasticsearch.BuildSearchIndexResource.ELASTIC_SEARCH_EXTENSION;
+import static org.openmetadata.service.Entity.QUERY;
+import static org.openmetadata.service.elasticsearch.ElasticSearchIndexDefinition.ELASTIC_SEARCH_ENTITY_FQN_STREAM;
+import static org.openmetadata.service.elasticsearch.ElasticSearchIndexDefinition.ELASTIC_SEARCH_EXTENSION;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
 import java.io.IOException;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -60,6 +63,7 @@ import org.elasticsearch.search.builder.SearchSourceBuilder;
 import org.openmetadata.schema.api.CreateEventPublisherJob;
 import org.openmetadata.schema.entity.classification.Classification;
 import org.openmetadata.schema.entity.classification.Tag;
+import org.openmetadata.schema.entity.data.Container;
 import org.openmetadata.schema.entity.data.Dashboard;
 import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
@@ -67,6 +71,7 @@ import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.MlModel;
 import org.openmetadata.schema.entity.data.Pipeline;
+import org.openmetadata.schema.entity.data.Query;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.data.Topic;
 import org.openmetadata.schema.entity.services.DashboardService;
@@ -74,12 +79,14 @@ import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.services.MessagingService;
 import org.openmetadata.schema.entity.services.MlModelService;
 import org.openmetadata.schema.entity.services.PipelineService;
+import org.openmetadata.schema.entity.services.StorageService;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
-import org.openmetadata.schema.settings.EventPublisherJob;
-import org.openmetadata.schema.settings.EventPublisherJob.Status;
-import org.openmetadata.schema.settings.FailureDetails;
+import org.openmetadata.schema.system.EventPublisherJob;
+import org.openmetadata.schema.system.EventPublisherJob.Status;
+import org.openmetadata.schema.system.Failure;
+import org.openmetadata.schema.system.FailureDetails;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
@@ -92,8 +99,7 @@ import org.openmetadata.service.elasticsearch.ElasticSearchIndexDefinition.Elast
 import org.openmetadata.service.events.AbstractEventPublisher;
 import org.openmetadata.service.events.errors.EventPublisherException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
-import org.openmetadata.service.resources.elasticsearch.BuildSearchIndexResource;
-import org.openmetadata.service.resources.events.EventResource.ChangeEventList;
+import org.openmetadata.service.resources.events.EventResource.EventList;
 import org.openmetadata.service.util.ElasticSearchClientUtils;
 import org.openmetadata.service.util.JsonUtils;
 
@@ -121,7 +127,7 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
   }
 
   @Override
-  public void publish(ChangeEventList events) throws EventPublisherException, JsonProcessingException {
+  public void publish(EventList events) throws EventPublisherException, JsonProcessingException {
     for (ChangeEvent event : events.getData()) {
       String entityType = event.getEntityType();
       String contextInfo =
@@ -175,6 +181,15 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
             break;
           case Entity.MLMODEL:
             updateMlModel(event);
+            break;
+          case Entity.STORAGE_SERVICE:
+            updateStorageService(event);
+            break;
+          case Entity.CONTAINER:
+            updateContainer(event);
+            break;
+          case Entity.QUERY:
+            updateQuery(event);
             break;
           case Entity.TAG:
             updateTag(event);
@@ -272,6 +287,18 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
         UsageDetails usageSummary = (UsageDetails) fieldChange.getNewValue();
         fieldAddParams.put(fieldChange.getName(), JsonUtils.getMap(usageSummary));
         scriptTxt.append("ctx._source.usageSummary = params.usageSummary;");
+      }
+      if (event.getEntityType().equals(QUERY) && fieldChange.getName().equalsIgnoreCase("queryUsedIn")) {
+        fieldAddParams.put(
+            fieldChange.getName(),
+            JsonUtils.convertValue(
+                fieldChange.getNewValue(), new TypeReference<List<LinkedHashMap<String, String>>>() {}));
+        scriptTxt.append("ctx._source.queryUsedIn = params.queryUsedIn;");
+      }
+      if (fieldChange.getName().equalsIgnoreCase("votes")) {
+        Map<String, Object> doc = JsonUtils.getMap(event.getEntity());
+        fieldAddParams.put(fieldChange.getName(), doc.get("votes"));
+        scriptTxt.append("ctx._source.votes = params.votes;");
       }
     }
 
@@ -550,6 +577,72 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
     }
   }
 
+  private void updateContainer(ChangeEvent event) throws IOException {
+    UpdateRequest updateRequest =
+        new UpdateRequest(ElasticSearchIndexType.CONTAINER_SEARCH_INDEX.indexName, event.getEntityId().toString());
+    ContainerIndex containerIndex;
+
+    switch (event.getEventType()) {
+      case ENTITY_CREATED:
+        containerIndex = new ContainerIndex((Container) event.getEntity());
+        updateRequest.doc(JsonUtils.pojoToJson(containerIndex.buildESDoc()), XContentType.JSON);
+        updateRequest.docAsUpsert(true);
+        updateElasticSearch(updateRequest);
+        break;
+      case ENTITY_UPDATED:
+        if (Objects.equals(event.getCurrentVersion(), event.getPreviousVersion())) {
+          updateRequest = applyChangeEvent(event);
+        } else {
+          containerIndex = new ContainerIndex((Container) event.getEntity());
+          scriptedUpsert(containerIndex.buildESDoc(), updateRequest);
+        }
+        updateElasticSearch(updateRequest);
+        break;
+      case ENTITY_SOFT_DELETED:
+        softDeleteEntity(updateRequest);
+        updateElasticSearch(updateRequest);
+        break;
+      case ENTITY_DELETED:
+        DeleteRequest deleteRequest =
+            new DeleteRequest(ElasticSearchIndexType.CONTAINER_SEARCH_INDEX.indexName, event.getEntityId().toString());
+        deleteEntityFromElasticSearch(deleteRequest);
+        break;
+    }
+  }
+
+  private void updateQuery(ChangeEvent event) throws IOException {
+    UpdateRequest updateRequest =
+        new UpdateRequest(ElasticSearchIndexType.QUERY_SEARCH_INDEX.indexName, event.getEntityId().toString());
+    QueryIndex queryIndex;
+
+    switch (event.getEventType()) {
+      case ENTITY_CREATED:
+        queryIndex = new QueryIndex((Query) event.getEntity());
+        updateRequest.doc(JsonUtils.pojoToJson(queryIndex.buildESDoc()), XContentType.JSON);
+        updateRequest.docAsUpsert(true);
+        updateElasticSearch(updateRequest);
+        break;
+      case ENTITY_UPDATED:
+        if (Objects.equals(event.getCurrentVersion(), event.getPreviousVersion())) {
+          updateRequest = applyChangeEvent(event);
+        } else {
+          queryIndex = new QueryIndex((Query) event.getEntity());
+          scriptedUpsert(queryIndex.buildESDoc(), updateRequest);
+        }
+        updateElasticSearch(updateRequest);
+        break;
+      case ENTITY_SOFT_DELETED:
+        softDeleteEntity(updateRequest);
+        updateElasticSearch(updateRequest);
+        break;
+      case ENTITY_DELETED:
+        DeleteRequest deleteRequest =
+            new DeleteRequest(ElasticSearchIndexType.QUERY_SEARCH_INDEX.indexName, event.getEntityId().toString());
+        deleteEntityFromElasticSearch(deleteRequest);
+        break;
+    }
+  }
+
   private void updateTag(ChangeEvent event) throws IOException {
     UpdateRequest updateRequest =
         new UpdateRequest(ElasticSearchIndexType.TAG_SEARCH_INDEX.indexName, event.getEntityId().toString());
@@ -695,6 +788,15 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
     }
   }
 
+  private void updateStorageService(ChangeEvent event) throws IOException {
+    if (event.getEventType() == EventType.ENTITY_DELETED) {
+      StorageService storageService = (StorageService) event.getEntity();
+      DeleteByQueryRequest request = new DeleteByQueryRequest(ElasticSearchIndexType.CONTAINER_SEARCH_INDEX.indexName);
+      request.setQuery(new TermQueryBuilder(SERVICE_NAME, storageService.getName()));
+      deleteEntityFromElasticSearchByQuery(request);
+    }
+  }
+
   private void updateMessagingService(ChangeEvent event) throws IOException {
     if (event.getEventType() == EventType.ENTITY_DELETED) {
       MessagingService messagingService = (MessagingService) event.getEntity();
@@ -778,26 +880,12 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
 
   public void registerElasticSearchJobs() {
     try {
-      dao.entityExtensionTimeSeriesDao()
-          .delete(
-              BuildSearchIndexResource.ELASTIC_SEARCH_ENTITY_FQN_BATCH,
-              BuildSearchIndexResource.ELASTIC_SEARCH_EXTENSION);
-      dao.entityExtensionTimeSeriesDao()
-          .delete(ELASTIC_SEARCH_ENTITY_FQN_STREAM, BuildSearchIndexResource.ELASTIC_SEARCH_EXTENSION);
+      dao.entityExtensionTimeSeriesDao().delete(ELASTIC_SEARCH_ENTITY_FQN_STREAM, ELASTIC_SEARCH_EXTENSION);
       long startTime = Date.from(LocalDateTime.now().atZone(ZoneId.systemDefault()).toInstant()).getTime();
-      FailureDetails failureDetails = new FailureDetails().withLastFailedAt(0L).withLastFailedReason("No Failures");
-      EventPublisherJob batchJob =
-          new EventPublisherJob()
-              .withName("Elastic Search Batch")
-              .withPublisherType(CreateEventPublisherJob.PublisherType.ELASTIC_SEARCH)
-              .withRunMode(CreateEventPublisherJob.RunMode.BATCH)
-              .withStatus(EventPublisherJob.Status.IDLE)
-              .withTimestamp(startTime)
-              .withStartedBy(ADMIN_USER_NAME)
-              .withStartTime(startTime)
-              .withFailureDetails(failureDetails);
+      FailureDetails failureDetails = new FailureDetails().withLastFailedAt(0L);
       EventPublisherJob streamJob =
           new EventPublisherJob()
+              .withId(UUID.randomUUID())
               .withName("Elastic Search Stream")
               .withPublisherType(CreateEventPublisherJob.PublisherType.ELASTIC_SEARCH)
               .withRunMode(CreateEventPublisherJob.RunMode.STREAM)
@@ -805,17 +893,11 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
               .withTimestamp(startTime)
               .withStartedBy(ADMIN_USER_NAME)
               .withStartTime(startTime)
-              .withFailureDetails(failureDetails);
-      dao.entityExtensionTimeSeriesDao()
-          .insert(
-              BuildSearchIndexResource.ELASTIC_SEARCH_ENTITY_FQN_BATCH,
-              BuildSearchIndexResource.ELASTIC_SEARCH_EXTENSION,
-              "eventPublisherJob",
-              JsonUtils.pojoToJson(batchJob));
+              .withFailure(new Failure().withSinkError(failureDetails));
       dao.entityExtensionTimeSeriesDao()
           .insert(
               ELASTIC_SEARCH_ENTITY_FQN_STREAM,
-              BuildSearchIndexResource.ELASTIC_SEARCH_EXTENSION,
+              ELASTIC_SEARCH_EXTENSION,
               "eventPublisherJob",
               JsonUtils.pojoToJson(streamJob));
     } catch (Exception e) {
@@ -832,8 +914,13 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
       long originalLastUpdate = lastRecord.getTimestamp();
       lastRecord.setStatus(status);
       lastRecord.setTimestamp(updateTime);
-      lastRecord.setFailureDetails(
-          new FailureDetails().withContext(context).withLastFailedAt(updateTime).withLastFailedReason(failureMessage));
+      lastRecord.setFailure(
+          new Failure()
+              .withSinkError(
+                  new FailureDetails()
+                      .withContext(context)
+                      .withLastFailedAt(updateTime)
+                      .withLastFailedReason(failureMessage)));
 
       dao.entityExtensionTimeSeriesDao()
           .update(

@@ -40,6 +40,7 @@ import React, {
   Fragment,
   FunctionComponent,
   RefObject,
+  useCallback,
   useEffect,
   useMemo,
   useRef,
@@ -85,12 +86,11 @@ import { Paging } from '../../generated/type/paging';
 import { useInfiniteScroll } from '../../hooks/useInfiniteScroll';
 import { EntityFieldThreadCount } from '../../interface/feed.interface';
 import jsonData from '../../jsons/en';
-import { getEntityName } from '../../utils/CommonUtils';
 import {
   databaseDetailsTabs,
   getCurrentDatabaseDetailsTab,
 } from '../../utils/DatabaseDetailsUtils';
-import { getEntityFeedLink } from '../../utils/EntityUtils';
+import { getEntityFeedLink, getEntityName } from '../../utils/EntityUtils';
 import {
   deletePost,
   getEntityFieldThreadCounts,
@@ -410,61 +410,38 @@ const DatabaseDetails: FunctionComponent = () => {
     setCurrentPage(activePage ?? 1);
   };
 
-  const handleUpdateOwner = (owner: Database['owner']) => {
-    const updatedData = {
-      ...database,
-      owner: { ...database?.owner, ...owner },
-    };
+  const handleUpdateOwner = useCallback(
+    (owner: Database['owner']) => {
+      const updatedData = {
+        ...database,
+        owner: owner ? { ...database?.owner, ...owner } : undefined,
+      };
 
-    return new Promise<void>((_, reject) => {
-      saveUpdatedDatabaseData(updatedData as Database)
-        .then((res) => {
-          if (res) {
-            setDatabase(res);
+      return new Promise<void>((_, reject) => {
+        saveUpdatedDatabaseData(updatedData as Database)
+          .then((res) => {
+            if (res) {
+              setDatabase(res);
+              reject();
+            } else {
+              reject();
+
+              throw jsonData['api-error-messages'][
+                'unexpected-server-response'
+              ];
+            }
+          })
+          .catch((err: AxiosError) => {
+            showErrorToast(
+              err,
+              jsonData['api-error-messages']['update-database-error']
+            );
             reject();
-          } else {
-            reject();
-
-            throw jsonData['api-error-messages']['unexpected-server-response'];
-          }
-        })
-        .catch((err: AxiosError) => {
-          showErrorToast(
-            err,
-            jsonData['api-error-messages']['update-database-error']
-          );
-          reject();
-        });
-    });
-  };
-
-  const handleRemoveOwner = () => {
-    const updatedData = {
-      ...database,
-      owner: undefined,
-    };
-
-    return new Promise<void>((resolve, reject) => {
-      saveUpdatedDatabaseData(updatedData as Database)
-        .then((res) => {
-          if (res) {
-            setDatabase(res);
-            resolve();
-          } else {
-            reject();
-
-            throw jsonData['api-error-messages']['unexpected-server-response'];
-          }
-        })
-        .catch((err: AxiosError) => {
-          showErrorToast(
-            err,
-            jsonData['api-error-messages']['update-database-error']
-          );
-          reject();
-        });
-    });
-  };
+          });
+      });
+    },
+    [database, database?.owner]
+  );
 
   const fetchActivityFeed = (after?: string) => {
     setIsentityThreadLoading(true);
@@ -578,7 +555,7 @@ const DatabaseDetails: FunctionComponent = () => {
         getExplorePath({
           search: appState.inPageSearchText,
           extraParameters: {
-            postFilter: {
+            facetFilter: {
               serviceType: [serviceType],
               'database.name.keyword': [databaseName],
             },
@@ -628,14 +605,14 @@ const DatabaseDetails: FunctionComponent = () => {
         title: t('label.schema-name'),
         dataIndex: 'name',
         key: 'name',
-        render: (text: string, record: DatabaseSchema) => (
+        render: (_, record: DatabaseSchema) => (
           <Link
             to={
               record.fullyQualifiedName
                 ? getDatabaseSchemaDetailsPath(record.fullyQualifiedName)
                 : ''
             }>
-            {text}
+            {getEntityName(record)}
           </Link>
         ),
       },
@@ -715,7 +692,6 @@ const DatabaseDetails: FunctionComponent = () => {
                           <EntitySummaryDetails
                             currentOwner={database?.owner}
                             data={info}
-                            removeOwner={handleRemoveOwner}
                             updateOwner={
                               databasePermission.EditOwner ||
                               databasePermission.EditAll

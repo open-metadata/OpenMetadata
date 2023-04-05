@@ -14,9 +14,12 @@
 import amazonS3 from 'assets/img/service-icon-amazon-s3.svg';
 import gcs from 'assets/img/service-icon-gcs.png';
 import msAzure from 'assets/img/service-icon-ms-azure.png';
-import { ObjectStoreServiceType } from 'generated/entity/services/objectstoreService';
+import { PipelineType } from 'generated/api/services/ingestionPipelines/createIngestionPipeline';
+import { WorkflowStatus } from 'generated/entity/automations/workflow';
+import { ObjectStoreServiceType } from 'generated/entity/data/container';
+import { ServiceType } from 'generated/entity/services/serviceType';
 import { map, startCase } from 'lodash';
-import { ServiceTypes } from 'Models';
+import { ServiceTypes, StepperStepType } from 'Models';
 import i18n from 'utils/i18next/LocalUtil';
 import addPlaceHolder from '../assets/img/add-placeholder.svg';
 import airbyte from '../assets/img/Airbyte.png';
@@ -86,6 +89,13 @@ import { MetadataServiceType } from '../generated/entity/services/metadataServic
 import { MlModelServiceType } from '../generated/entity/services/mlmodelService';
 import { PipelineServiceType } from '../generated/entity/services/pipelineService';
 import { customServiceComparator } from '../utils/StringsUtils';
+import {
+  addDBTIngestionGuide,
+  addLineageIngestionGuide,
+  addMetadataIngestionGuide,
+  addProfilerIngestionGuide,
+  addUsageIngestionGuide,
+} from './service-guide.constant';
 
 export const NoDataFoundPlaceHolder = noDataFound;
 export const AddPlaceHolder = addPlaceHolder;
@@ -179,7 +189,7 @@ export const serviceTypes: Record<ServiceTypes, Array<string>> = {
   metadataServices: (Object.values(MetadataServiceType) as string[]).sort(
     customServiceComparator
   ),
-  objectstoreServices: (Object.values(ObjectStoreServiceType) as string[]).sort(
+  objectStoreServices: (Object.values(ObjectStoreServiceType) as string[]).sort(
     customServiceComparator
   ),
 };
@@ -190,7 +200,7 @@ export const arrServiceTypes: Array<ServiceTypes> = [
   'dashboardServices',
   'pipelineServices',
   'mlmodelServices',
-  'objectstoreServices',
+  'objectStoreServices',
 ];
 
 export const SERVICE_CATEGORY: { [key: string]: ServiceCategory } = {
@@ -210,7 +220,7 @@ export const SERVICE_CATEGORY_TYPE = {
   pipelineServices: 'pipelines',
   mlmodelServices: 'mlModels',
   metadataServices: 'metadata',
-  objectstoreServices: 'objectStores',
+  objectStoreServices: 'objectStores',
 };
 
 export const servicesDisplayName: { [key: string]: string } = {
@@ -232,7 +242,7 @@ export const servicesDisplayName: { [key: string]: string } = {
   metadataServices: i18n.t('label.entity-service', {
     entity: i18n.t('label.metadata'),
   }),
-  objectstoreServices: i18n.t('label.entity-service', {
+  objectStoreServices: i18n.t('label.entity-service', {
     entity: i18n.t('label.object-store'),
   }),
 };
@@ -255,10 +265,72 @@ export const COMMON_UI_SCHEMA = {
   },
 };
 
-export const OPENMETADATA = 'OpenMetadata';
+export const OPEN_METADATA = 'OpenMetadata';
 export const JWT_CONFIG = 'openMetadataJWTClientConfig';
 
 export const SERVICE_CATEGORY_OPTIONS = map(ServiceCategory, (value) => ({
   label: startCase(value),
   value,
 }));
+
+export const STEPS_FOR_ADD_SERVICE: Array<StepperStepType> = [
+  {
+    name: i18n.t('label.select-field', {
+      field: i18n.t('label.service-type'),
+    }),
+    step: 1,
+  },
+  {
+    name: i18n.t('label.requirement-plural'),
+    step: 2,
+  },
+  {
+    name: i18n.t('label.configure-entity', {
+      entity: i18n.t('label.service'),
+    }),
+    step: 3,
+  },
+  {
+    name: i18n.t('label.connection-entity', {
+      entity: i18n.t('label.detail-plural'),
+    }),
+    step: 4,
+  },
+];
+
+export const SERVICE_DEFAULT_ERROR_MAP = {
+  serviceType: false,
+  name: false,
+  duplicateName: false,
+  nameWithSpace: false,
+  delimit: false,
+  specialChar: false,
+  nameLength: false,
+  allowChar: false,
+  isError: false,
+};
+// 2 minutes
+export const FETCHING_EXPIRY_TIME = 2 * 60 * 1000;
+export const FETCH_INTERVAL = 2000;
+export const WORKFLOW_COMPLETE_STATUS = [
+  WorkflowStatus.Failed,
+  WorkflowStatus.Successful,
+];
+
+export const INGESTION_GUIDE_MAP = {
+  [PipelineType.Usage]: addUsageIngestionGuide,
+  [PipelineType.Lineage]: addLineageIngestionGuide,
+  [PipelineType.Profiler]: addProfilerIngestionGuide,
+  [PipelineType.Dbt]: addDBTIngestionGuide,
+  [PipelineType.Metadata]: addMetadataIngestionGuide,
+};
+
+export const SERVICE_TYPE_MAP = {
+  [ServiceCategory.DASHBOARD_SERVICES]: ServiceType.Dashboard,
+  [ServiceCategory.DATABASE_SERVICES]: ServiceType.Database,
+  [ServiceCategory.MESSAGING_SERVICES]: ServiceType.Messaging,
+  [ServiceCategory.ML_MODEL_SERVICES]: ServiceType.MlModel,
+  [ServiceCategory.METADATA_SERVICES]: ServiceType.Metadata,
+  [ServiceCategory.OBJECT_STORE_SERVICES]: ServiceType.ObjectStore,
+  [ServiceCategory.PIPELINE_SERVICES]: ServiceType.Pipeline,
+};

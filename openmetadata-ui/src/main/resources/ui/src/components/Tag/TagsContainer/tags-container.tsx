@@ -12,22 +12,23 @@
  */
 
 import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
-import { Button, Select, Space, Tooltip } from 'antd';
+import { Button, Select, Space, Tooltip, Typography } from 'antd';
 import classNames from 'classnames';
 import Tags from 'components/Tag/Tags/tags';
 import { isEmpty } from 'lodash';
 import { EntityTags, TagOption } from 'Models';
 import React, {
-  Fragment,
   FunctionComponent,
   useCallback,
   useEffect,
   useMemo,
   useState,
 } from 'react';
+import { useTranslation } from 'react-i18next';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { TagSource } from '../../../generated/type/tagLabel';
 import { withLoader } from '../../../hoc/withLoader';
+import Fqn from '../../../utils/Fqn';
 import { TagsContainerProps } from './tags-container.interface';
 
 const TagsContainer: FunctionComponent<TagsContainerProps> = ({
@@ -39,18 +40,32 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
   onSelectionChange,
   className,
   containerClass,
-  buttonContainerClass,
   showTags = true,
   showAddTagButton = false,
 }: TagsContainerProps) => {
+  const { t } = useTranslation();
   const [tags, setTags] = useState<Array<EntityTags>>(selectedTags);
 
   const tagOptions = useMemo(() => {
     const newTags = (tagList as TagOption[])
       .filter((tag) => !tag.fqn?.startsWith(`Tier${FQN_SEPARATOR_CHAR}Tier`)) // To filter out Tier tags
       .map((tag) => {
+        const parts = Fqn.split(tag.fqn);
+        const lastPartOfTag = parts.slice(-1).join(FQN_SEPARATOR_CHAR);
+        parts.pop();
+
         return {
           label: tag.fqn,
+          displayName: (
+            <Space className="w-full" direction="vertical" size={0}>
+              <Typography.Paragraph
+                ellipsis
+                className="text-grey-muted m-0 p-0">
+                {parts.join(FQN_SEPARATOR_CHAR)}
+              </Typography.Paragraph>
+              <Typography.Text ellipsis>{lastPartOfTag}</Typography.Text>
+            </Space>
+          ),
           value: tag.fqn,
         };
       });
@@ -130,69 +145,67 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
       align="center"
       className={classNames('w-full', containerClass)}
       data-testid="tag-container"
-      size={16}>
-      <div className="tw-flex tw-flex-wrap">
-        {showTags && !editable && (
-          <Fragment>
-            {showAddTagButton && (
-              <span className="tw-text-primary">
-                <Tags
-                  className="tw-font-semibold"
-                  startWith="+ "
-                  tag="Tags"
-                  type="border"
-                />
-              </span>
-            )}
-            {tags.map(getTagsElement)}
-          </Fragment>
-        )}
-        {editable ? (
+      size={8}>
+      {showTags && !editable && (
+        <Space wrap size={0}>
+          {showAddTagButton && (
+            <span className="tw-text-primary">
+              <Tags
+                className="tw-font-semibold"
+                startWith="+ "
+                tag="Tags"
+                type="border"
+              />
+            </span>
+          )}
+          {tags.map(getTagsElement)}
+        </Space>
+      )}
+      {editable ? (
+        <>
           <Select
             autoFocus
             className={classNames('w-min-10', className)}
             data-testid="tag-selector"
             defaultValue={selectedTagsInternal}
             mode="multiple"
+            optionLabelProp="label"
+            placeholder={t('label.select-field', {
+              field: t('label.tag-plural'),
+            })}
             onChange={handleTagSelection}>
-            {tagOptions.map(({ label, value }) => (
+            {tagOptions.map(({ label, value, displayName }) => (
               <Select.Option key={label} value={value}>
                 <Tooltip
                   destroyTooltipOnHide
                   placement="topLeft"
                   title={label}
                   trigger="hover">
-                  {label}
+                  {displayName}
                 </Tooltip>
               </Select.Option>
             ))}
           </Select>
-        ) : (
-          children
-        )}
-      </div>
-      {editable && (
-        <Space
-          className={classNames('', buttonContainerClass)}
-          data-testid="buttons"
-          size={4}>
-          <Button
-            className="h-8"
-            data-testid="cancelAssociatedTag"
-            size="small"
-            type="primary"
-            onMouseDown={handleCancel}>
-            <CloseOutlined />
-          </Button>
-          <Button
-            className="h-8"
-            data-testid="saveAssociatedTag"
-            size="small"
-            type="primary"
-            onMouseDown={handleSave}>
-            <CheckOutlined />
-          </Button>
-        </Space>
+          <>
+            <Button
+              className="w-6 p-x-05"
+              data-testid="cancelAssociatedTag"
+              icon={<CloseOutlined size={12} />}
+              size="small"
+              onClick={handleCancel}
+            />
+            <Button
+              className="w-6 p-x-05"
+              data-testid="saveAssociatedTag"
+              icon={<CheckOutlined size={12} />}
+              size="small"
+              type="primary"
+              onClick={handleSave}
+            />
+          </>
+        </>
+      ) : (
+        children
       )}
     </Space>
   );

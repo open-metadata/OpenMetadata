@@ -18,6 +18,7 @@ import Loader from 'components/Loader/Loader';
 import { isEmpty } from 'lodash';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { getTypeByFQN } from 'rest/metadataTypeAPI';
+import { getEntityName } from 'utils/EntityUtils';
 import { CustomProperty, Type } from '../../../generated/entity/type';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import ErrorPlaceHolder from '../error-with-placeholder/ErrorPlaceHolder';
@@ -63,6 +64,7 @@ export const CustomPropertyTable: FC<CustomPropertyProps> = ({
         dataIndex: 'name',
         key: 'name',
         width: '50%',
+        render: (_, record) => getEntityName(record),
       },
       {
         title: 'Value',

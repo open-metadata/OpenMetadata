@@ -3,7 +3,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Dashboard",
   "$comment": "@om-entity-type",
-  "description": "This schema defines the Dashboard entity. Dashboards are computed from data and visually present data, metrics, and KPIs. They are updated in real-time and allow interactive data exploration.",
+  "description": "This schema defines the Dashboard entity. Dashboards are computed from data and visually present data, metrics, and KPIs. They are typically updated in real-time and allow interactive data exploration.",
   "type": "object",
   "javaType": "org.openmetadata.schema.entity.data.Dashboard",
   "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
@@ -46,10 +46,12 @@
     },
     "charts": {
       "description": "All the charts included in this Dashboard.",
-      "type": "array",
-      "items": {
-        "$ref": "../../type/entityReference.json"
-      },
+      "$ref": "../../type/entityReference.json#/definitions/entityReferenceList",
+      "default": null
+    },
+    "dataModels": {
+      "description": "List of data models used by this dashboard or the charts contained on it.",
+      "$ref": "../../type/entityReference.json#/definitions/entityReferenceList",
       "default": null
     },
     "href": {

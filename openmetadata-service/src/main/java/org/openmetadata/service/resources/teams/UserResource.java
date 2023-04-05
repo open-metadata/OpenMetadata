@@ -13,6 +13,7 @@
 
 package org.openmetadata.service.resources.teams;
 
+import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.CONFLICT;
 import static javax.ws.rs.core.Response.Status.OK;
 import static org.openmetadata.schema.api.teams.CreateUser.CreatePasswordType.ADMIN_CREATE;
@@ -20,12 +21,12 @@ import static org.openmetadata.schema.auth.ChangePasswordRequest.RequestType.SEL
 import static org.openmetadata.schema.entity.teams.AuthenticationMechanism.AuthType.BASIC;
 import static org.openmetadata.schema.entity.teams.AuthenticationMechanism.AuthType.JWT;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.EMAIL_SENDING_ISSUE;
+import static org.openmetadata.service.security.jwt.JWTTokenGenerator.getExpiryDate;
 
 import at.favre.lib.crypto.bcrypt.BCrypt;
 import freemarker.template.TemplateException;
 import io.dropwizard.jersey.PATCH;
 import io.dropwizard.jersey.errors.ErrorMessage;
-import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -35,6 +36,7 @@ import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import java.io.IOException;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
@@ -42,6 +44,7 @@ import java.util.Base64;
 import java.util.Date;
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import javax.json.JsonObject;
 import javax.json.JsonPatch;
 import javax.json.JsonValue;
@@ -67,12 +70,15 @@ import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.jetbrains.annotations.Nullable;
+import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.TokenInterface;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.auth.BasicAuthMechanism;
 import org.openmetadata.schema.auth.ChangePasswordRequest;
+import org.openmetadata.schema.auth.CreatePersonalToken;
 import org.openmetadata.schema.auth.EmailRequest;
 import org.openmetadata.schema.auth.GenerateTokenRequest;
 import org.openmetadata.schema.auth.JWTAuthMechanism;
@@ -80,10 +86,14 @@ import org.openmetadata.schema.auth.JWTTokenExpiry;
 import org.openmetadata.schema.auth.LoginRequest;
 import org.openmetadata.schema.auth.LogoutRequest;
 import org.openmetadata.schema.auth.PasswordResetRequest;
+import org.openmetadata.schema.auth.PersonalAccessToken;
 import org.openmetadata.schema.auth.RegistrationRequest;
+import org.openmetadata.schema.auth.RevokePersonalTokenRequest;
 import org.openmetadata.schema.auth.RevokeTokenRequest;
 import org.openmetadata.schema.auth.SSOAuthMechanism;
+import org.openmetadata.schema.auth.ServiceTokenType;
 import org.openmetadata.schema.auth.TokenRefreshRequest;
+import org.openmetadata.schema.auth.TokenType;
 import org.openmetadata.schema.email.SmtpSettings;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
 import org.openmetadata.schema.entity.teams.User;
@@ -96,7 +106,9 @@ import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.auth.JwtResponse;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
+import org.openmetadata.service.exception.CustomExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.ListFilter;
@@ -112,6 +124,7 @@ import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.auth.AuthenticatorHandler;
 import org.openmetadata.service.security.auth.BotTokenCache;
+import org.openmetadata.service.security.auth.UserTokenCache;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
@@ -124,11 +137,15 @@ import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.PasswordUtil;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
+import org.openmetadata.service.util.TokenUtil;
 import org.openmetadata.service.util.UserUtil;
 
 @Slf4j
 @Path("/v1/users")
-@Api(value = "User collection", tags = "User collection")
+@Tag(
+    name = "Users",
+    description =
+        "A `User` represents a user of OpenMetadata. A user can be part of 0 or more teams. A special type of user called Bot is used for automation. A user can be an owner of zero or more data assets. A user can also follow zero or more data assets.")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "users", order = 3) // Initialize user resource before bot resource (at default order 9)
@@ -156,6 +173,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
     jwtTokenGenerator = JWTTokenGenerator.getInstance();
     allowedFields.remove(USER_PROTECTED_FIELDS);
     tokenRepository = new TokenRepository(dao);
+    UserTokenCache.initialize(dao);
     authHandler = authenticatorHandler;
   }
 
@@ -164,13 +182,19 @@ public class UserResource extends EntityResource<User, UserRepository> {
     this.authenticationConfiguration = config.getAuthenticationConfiguration();
     SmtpSettings smtpSettings = config.getSmtpSettings();
     this.isEmailServiceEnabled = smtpSettings != null && smtpSettings.getEnableSmtpServer();
-    this.dao.initializeUsers(config);
+    // Keep this before initializeUsers, else getUpdater() will fail
     SubjectCache.initialize();
+    this.dao.initializeUsers(config);
   }
 
   public static class UserList extends ResultList<User> {
     @SuppressWarnings("unused") // Used for deserialization
     public UserList() {}
+  }
+
+  public static class PersonalAccessTokenList extends ResultList<PersonalAccessToken> {
+    @SuppressWarnings("unused") // Used for deserialization
+    public PersonalAccessTokenList() {}
   }
 
   static final String FIELDS = "profile,roles,teams,follows,owns";
@@ -180,7 +204,6 @@ public class UserResource extends EntityResource<User, UserRepository> {
   @Operation(
       operationId = "listUsers",
       summary = "List users",
-      tags = "users",
       description =
           "Get a list of users. Use `fields` "
               + "parameter to get only necessary fields. Use cursor-based pagination to limit the number "
@@ -244,7 +267,6 @@ public class UserResource extends EntityResource<User, UserRepository> {
   @Operation(
       operationId = "listAllUserVersion",
       summary = "List user versions",
-      tags = "users",
       description = "Get a list of all the versions of a user identified by `id`",
       responses = {
         @ApiResponse(
@@ -265,7 +287,6 @@ public class UserResource extends EntityResource<User, UserRepository> {
   @Operation(
       operationId = "generateRandomPwd",
       summary = "Generate a random password",
-      tags = "users",
       description = "Generate a random password",
       responses = {@ApiResponse(responseCode = "200", description = "Random pwd")})
   public Response generateRandomPassword(@Context UriInfo uriInfo, @Context SecurityContext securityContext) {
@@ -279,7 +300,6 @@ public class UserResource extends EntityResource<User, UserRepository> {
   @Operation(
       operationId = "getUserByID",
       summary = "Get a user",
-      tags = "users",
       description = "Get a user by `id`",
       responses = {
         @ApiResponse(
@@ -315,7 +335,6 @@ public class UserResource extends EntityResource<User, UserRepository> {
   @Operation(
       operationId = "getUserByFQN",
       summary = "Get a user by name",
-      tags = "users",
       description = "Get a user by `name`.",
       responses = {
         @ApiResponse(
@@ -351,7 +370,6 @@ public class UserResource extends EntityResource<User, UserRepository> {
   @Operation(
       operationId = "getCurrentLoggedInUser",
       summary = "Get current logged in user",
-      tags = "users",
       description = "Get the user who is authenticated and is currently logged in.",
       responses = {
         @ApiResponse(
@@ -381,7 +399,6 @@ public class UserResource extends EntityResource<User, UserRepository> {
   @Operation(
       operationId = "getCurrentLoggedInUserGroupTeams",
       summary = "Get group type of teams for current logged in user",
-      tags = "users",
       description = "Get the group type of teams of user who is authenticated and is currently logged in.",
       responses = {
         @ApiResponse(
@@ -404,7 +421,6 @@ public class UserResource extends EntityResource<User, UserRepository> {
   @Operation(
       operationId = "logoutUser",
       summary = "Logout a User(Only called for saml and basic Auth)",
-      tags = "users",
       description = "Logout a User(Only called for saml and basic Auth)",
       responses = {
         @ApiResponse(responseCode = "200", description = "The user "),
@@ -431,7 +447,6 @@ public class UserResource extends EntityResource<User, UserRepository> {
   @Operation(
       operationId = "getSpecificUserVersion",
       summary = "Get a version of the user",
-      tags = "users",
       description = "Get a version of the user by given `id`",
       responses = {
         @ApiResponse(
@@ -459,7 +474,6 @@ public class UserResource extends EntityResource<User, UserRepository> {
   @Operation(
       operationId = "createUser",
       summary = "Create a user",
-      tags = "users",
       description = "Create a new user.",
       responses = {
         @ApiResponse(
@@ -521,7 +535,6 @@ public class UserResource extends EntityResource<User, UserRepository> {
   @PUT
   @Operation(
       summary = "Update user",
-      tags = "users",
       description = "Create or Update a user.",
       responses = {
         @ApiResponse(
@@ -560,7 +573,6 @@ public class UserResource extends EntityResource<User, UserRepository> {
   @Operation(
       operationId = "generateJWTTokenForBotUser",
       summary = "Generate JWT Token for a Bot User",
-      tags = "users",
       description = "Generate JWT Token for a Bot User.",
       responses = {
         @ApiResponse(
@@ -594,7 +606,6 @@ public class UserResource extends EntityResource<User, UserRepository> {
   @Operation(
       operationId = "revokeJWTTokenForBotUser",
       summary = "Revoke JWT Token for a Bot User",
-      tags = "users",
       description = "Revoke JWT Token for a Bot User.",
       responses = {
         @ApiResponse(
@@ -628,7 +639,6 @@ public class UserResource extends EntityResource<User, UserRepository> {
   @Operation(
       operationId = "getJWTTokenForBotUser",
       summary = "Get JWT Token for a Bot User",
-      tags = "users",
       description = "Get JWT Token for a Bot User.",
       responses = {
         @ApiResponse(
@@ -664,7 +674,6 @@ public class UserResource extends EntityResource<User, UserRepository> {
   @Operation(
       operationId = "getAuthenticationMechanismBotUser",
       summary = "Get Authentication Mechanism for a Bot User",
-      tags = "users",
       description = "Get Authentication Mechanism for a Bot User.",
       responses = {
         @ApiResponse(
@@ -697,7 +706,6 @@ public class UserResource extends EntityResource<User, UserRepository> {
   @Operation(
       operationId = "patchUser",
       summary = "Update a user",
-      tags = "users",
       description = "Update an existing user using JsonPatch.",
       externalDocs = @ExternalDocumentation(description = "JsonPatch RFC", url = "https://tools.ietf.org/html/rfc6902"))
   public Response patch(
@@ -750,7 +758,6 @@ public class UserResource extends EntityResource<User, UserRepository> {
   @Operation(
       operationId = "deleteUser",
       summary = "Delete a user",
-      tags = "users",
       description = "Users can't be deleted but are soft-deleted.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
@@ -775,7 +782,6 @@ public class UserResource extends EntityResource<User, UserRepository> {
   @Operation(
       operationId = "deleteUserByName",
       summary = "Delete a user",
-      tags = "users",
       description = "Users can't be deleted but are soft-deleted.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
@@ -798,7 +804,6 @@ public class UserResource extends EntityResource<User, UserRepository> {
   @Operation(
       operationId = "restore",
       summary = "Restore a soft deleted User.",
-      tags = "users",
       description = "Restore a soft deleted User.",
       responses = {
         @ApiResponse(
@@ -817,7 +822,6 @@ public class UserResource extends EntityResource<User, UserRepository> {
   @Operation(
       operationId = "registerUser",
       summary = "Register User",
-      tags = "users",
       description = "Register a new User",
       responses = {
         @ApiResponse(responseCode = "200", description = "The user "),
@@ -836,7 +840,6 @@ public class UserResource extends EntityResource<User, UserRepository> {
   @Operation(
       operationId = "confirmUserEmail",
       summary = "Confirm User Email",
-      tags = "users",
       description = "Confirm User Email",
       responses = {
         @ApiResponse(responseCode = "200", description = "The user "),
@@ -857,7 +860,6 @@ public class UserResource extends EntityResource<User, UserRepository> {
   @Operation(
       operationId = "resendRegistrationToken",
       summary = "Resend Registration Token",
-      tags = "users",
       description = "Resend Registration Token",
       responses = {
         @ApiResponse(responseCode = "200", description = "The user "),
@@ -884,7 +886,6 @@ public class UserResource extends EntityResource<User, UserRepository> {
   @Operation(
       operationId = "generatePasswordResetLink",
       summary = "Generate Password Reset Link",
-      tags = "users",
       description = "Generate Password Reset Link",
       responses = {
         @ApiResponse(responseCode = "200", description = "The user "),
@@ -918,7 +919,6 @@ public class UserResource extends EntityResource<User, UserRepository> {
   @Operation(
       operationId = "resetUserPassword",
       summary = "Reset Password For User",
-      tags = "users",
       description = "Reset User Password",
       responses = {
         @ApiResponse(
@@ -937,7 +937,6 @@ public class UserResource extends EntityResource<User, UserRepository> {
   @Operation(
       operationId = "changeUserPassword",
       summary = "Change Password For User",
-      tags = "users",
       description = "Create a new user.",
       responses = {
         @ApiResponse(
@@ -963,7 +962,6 @@ public class UserResource extends EntityResource<User, UserRepository> {
   @Operation(
       operationId = "checkEmailInUse",
       summary = "Check if a mail is already in use",
-      tags = "users",
       description = "Check if a mail is already in use",
       responses = {
         @ApiResponse(
@@ -982,7 +980,6 @@ public class UserResource extends EntityResource<User, UserRepository> {
   @Operation(
       operationId = "checkEmailIsVerified",
       summary = "Check if a mail is verified",
-      tags = "users",
       description = "Check if a mail is already in use",
       responses = {
         @ApiResponse(
@@ -1001,20 +998,23 @@ public class UserResource extends EntityResource<User, UserRepository> {
   @Operation(
       operationId = "loginUserWithPwd",
       summary = "Login User with email (plain-text) and Password (encoded in base 64)",
-      tags = "users",
       description = "Login User with email(plain-text) and Password (encoded in base 64)",
       responses = {
         @ApiResponse(
             responseCode = "200",
             description = "Returns the Jwt Token Response ",
-            content =
-                @Content(mediaType = "application/json", schema = @Schema(implementation = JWTTokenExpiry.class))),
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = JwtResponse.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response loginUserWithPassword(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid LoginRequest loginRequest)
       throws IOException, TemplateException {
-    byte[] decodedBytes = Base64.getDecoder().decode(loginRequest.getPassword());
+    byte[] decodedBytes;
+    try {
+      decodedBytes = Base64.getDecoder().decode(loginRequest.getPassword());
+    } catch (Exception ex) {
+      throw new IllegalArgumentException("Password need to be encoded in Base-64.");
+    }
     loginRequest.withPassword(new String(decodedBytes));
     return Response.status(Response.Status.OK).entity(authHandler.loginUser(loginRequest)).build();
   }
@@ -1024,14 +1024,12 @@ public class UserResource extends EntityResource<User, UserRepository> {
   @Operation(
       operationId = "refreshToken",
       summary = "Provide access token to User with refresh token",
-      tags = "users",
       description = "Provide access token to User with refresh token",
       responses = {
         @ApiResponse(
             responseCode = "200",
             description = "The user ",
-            content =
-                @Content(mediaType = "application/json", schema = @Schema(implementation = JWTTokenExpiry.class))),
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = JwtResponse.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response refreshToken(
@@ -1041,12 +1039,124 @@ public class UserResource extends EntityResource<User, UserRepository> {
   }
 
   @GET
+  @Path("/security/token")
+  @Operation(
+      operationId = "getPersonalAccessToken",
+      summary = "Get personal access token to User",
+      description = "Get a personal access token",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "List Of Personal Access Tokens ",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = PersonalAccessTokenList.class))),
+        @ApiResponse(responseCode = "400", description = "Bad request")
+      })
+  public Response getPersonalAccessToken(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "User Name of the User for which to get. (Default = `false`)") @QueryParam("username")
+          String userName)
+      throws IOException {
+    if (userName != null) {
+      authorizer.authorizeAdmin(securityContext);
+    } else {
+      userName = securityContext.getUserPrincipal().getName();
+    }
+    User user = dao.getByName(null, userName, getFields("id"), Include.NON_DELETED);
+    List<TokenInterface> tokens =
+        tokenRepository.findByUserIdAndType(user.getId().toString(), TokenType.PERSONAL_ACCESS_TOKEN.value());
+    return Response.status(Response.Status.OK).entity(new ResultList<>(tokens)).build();
+  }
+
+  @PUT
+  @Path("/security/token/revoke")
+  @Operation(
+      operationId = "revokePersonalAccessToken",
+      summary = "Revoke personal access token to User",
+      description = "Revoke personal access token",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "The Personal access token ",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = PersonalAccessTokenList.class))),
+        @ApiResponse(responseCode = "400", description = "Bad request")
+      })
+  public Response revokePersonalAccessToken(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Username in case admin is revoking. (Default = `false`)") @QueryParam("username")
+          String userName,
+      @Parameter(description = "Remove All tokens of the user. (Default = `false`)")
+          @QueryParam("removeAll")
+          @DefaultValue("false")
+          boolean removeAll,
+      @Valid RevokePersonalTokenRequest request)
+      throws IOException {
+    if (!CommonUtil.nullOrEmpty(userName)) {
+      authorizer.authorizeAdmin(securityContext);
+    } else {
+      userName = securityContext.getUserPrincipal().getName();
+    }
+    User user = dao.getByName(null, userName, getFields("id"), Include.NON_DELETED);
+    if (removeAll) {
+      tokenRepository.deleteTokenByUserAndType(user.getId().toString(), TokenType.PERSONAL_ACCESS_TOKEN.value());
+    } else {
+      List<String> ids = request.getTokenIds().stream().map(UUID::toString).collect(Collectors.toList());
+      tokenRepository.deleteAllToken(ids);
+    }
+    UserTokenCache.getInstance().invalidateToken(user.getName());
+    List<TokenInterface> tokens =
+        tokenRepository.findByUserIdAndType(user.getId().toString(), TokenType.PERSONAL_ACCESS_TOKEN.value());
+    return Response.status(Response.Status.OK).entity(new ResultList<>(tokens)).build();
+  }
+
+  @PUT
+  @Path("/security/token")
+  @Operation(
+      operationId = "createPersonalAccessToken",
+      summary = "Provide access token to User",
+      description = "Provide access token to User",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "The user ",
+            content =
+                @Content(mediaType = "application/json", schema = @Schema(implementation = PersonalAccessToken.class))),
+        @ApiResponse(responseCode = "400", description = "Bad request")
+      })
+  public Response createAccessToken(
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreatePersonalToken tokenRequest)
+      throws IOException {
+    String userName = securityContext.getUserPrincipal().getName();
+    User user = dao.getByName(null, userName, getFields("email,isBot"), Include.NON_DELETED);
+    if (!user.getIsBot()) {
+      // Create Personal Access Token
+      JWTAuthMechanism authMechanism =
+          JWTTokenGenerator.getInstance()
+              .getJwtAuthMechanism(
+                  userName,
+                  user.getEmail(),
+                  false,
+                  ServiceTokenType.PERSONAL_ACCESS,
+                  getExpiryDate(tokenRequest.getJWTTokenExpiry()),
+                  null);
+      PersonalAccessToken personalAccessToken = TokenUtil.getPersonalAccessToken(tokenRequest, user, authMechanism);
+      tokenRepository.insertToken(personalAccessToken);
+      return Response.status(Response.Status.OK).entity(personalAccessToken).build();
+    }
+    throw new CustomExceptionMessage(BAD_REQUEST, "Bots cannot have a Personal Access Token.");
+  }
+
+  @GET
   @Path("/documentation/csv")
   @Valid
-  @Operation(
-      operationId = "getCsvDocumentation",
-      summary = "Get CSV documentation for user import/export",
-      tags = "users")
+  @Operation(operationId = "getCsvDocumentation", summary = "Get CSV documentation for user import/export")
   public String getUserCsvDocumentation(@Context SecurityContext securityContext, @PathParam("name") String name)
       throws IOException {
     return JsonUtils.pojoToJson(UserCsv.DOCUMENTATION);
@@ -1059,7 +1169,6 @@ public class UserResource extends EntityResource<User, UserRepository> {
   @Operation(
       operationId = "exportUsers",
       summary = "Export users in a team in CSV format",
-      tags = "users",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -1085,7 +1194,6 @@ public class UserResource extends EntityResource<User, UserRepository> {
   @Operation(
       operationId = "importTeams",
       summary = "Import from CSV to create, and update teams.",
-      tags = "users",
       responses = {
         @ApiResponse(
             responseCode = "200",

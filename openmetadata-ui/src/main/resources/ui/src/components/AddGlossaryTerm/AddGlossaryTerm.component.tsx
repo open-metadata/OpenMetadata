@@ -11,14 +11,18 @@
  *  limitations under the License.
  */
 
-import { CheckOutlined, PlusOutlined } from '@ant-design/icons';
-import { Space, Switch } from 'antd';
+import { PlusOutlined } from '@ant-design/icons';
+import { Button, Space, Switch } from 'antd';
 import classNames from 'classnames';
+import { UserSelectableList } from 'components/common/UserSelectableList/UserSelectableList.component';
+import { UserTag } from 'components/common/UserTag/UserTag.component';
+import { UserTagSize } from 'components/common/UserTag/UserTag.interface';
 import Tags from 'components/Tag/Tags/tags';
 import { t } from 'i18next';
 import { cloneDeep, isEmpty, isUndefined } from 'lodash';
 import { EntityTags } from 'Models';
 import React, { useEffect, useRef, useState } from 'react';
+import { getEntityName } from 'utils/EntityUtils';
 import { allowedNameRegEx } from '../../constants/regex.constants';
 import { PageLayoutType } from '../../enums/layout.enum';
 import { CreateGlossaryTerm } from '../../generated/api/data/createGlossaryTerm';
@@ -30,14 +34,11 @@ import { EntityReference } from '../../generated/type/entityReference';
 import { errorMsg, isValidUrl, requiredField } from '../../utils/CommonUtils';
 import SVGIcons from '../../utils/SvgUtils';
 import { AddTags } from '../AddTags/add-tags.component';
-import { Button } from '../buttons/Button/Button';
 import RichTextEditor from '../common/rich-text-editor/RichTextEditor';
 import { EditorContentRef } from '../common/rich-text-editor/RichTextEditor.interface';
 import TitleBreadcrumb from '../common/title-breadcrumb/title-breadcrumb.component';
 import PageLayout from '../containers/PageLayout';
-import Loader from '../Loader/Loader';
 import RelatedTermsModal from '../Modals/RelatedTermsModal/RelatedTermsModal';
-import ReviewerModal from '../Modals/ReviewerModal/ReviewerModal.component';
 import { AddGlossaryTermProps } from './AddGlossaryTerm.interface';
 
 const Field = ({
@@ -57,7 +58,7 @@ const AddGlossaryTerm = ({
   onSave,
   onCancel,
   slashedBreadcrumb,
-  saveState = 'initial',
+  isLoading,
 }: AddGlossaryTermProps) => {
   const markdownRef = useRef<EditorContentRef>();
 
@@ -70,7 +71,7 @@ const AddGlossaryTerm = ({
 
   const [name, setName] = useState('');
   const [description] = useState<string>('');
-  const [showReviewerModal, setShowReviewerModal] = useState(false);
+
   const [showRelatedTermsModal, setShowRelatedTermsModal] = useState(false);
   const [reviewer, setReviewer] = useState<Array<EntityReference>>([]);
   const [tags, setTags] = useState<EntityTags[]>([]);
@@ -98,19 +99,11 @@ const AddGlossaryTerm = ({
     onRelatedTermsModalCancel();
   };
 
-  const onReviewerModalCancel = () => {
-    setShowReviewerModal(false);
-  };
-
   const handleReviewerSave = (reviewer: Array<EntityReference>) => {
     setReviewer(reviewer);
-    onReviewerModalCancel();
   };
 
-  const handleReviewerRemove = (
-    _event: React.MouseEvent<HTMLElement, MouseEvent>,
-    removedTag: string
-  ) => {
+  const handleReviewerRemove = (removedTag: string) => {
     setReviewer((pre) => pre.filter((option) => option.name !== removedTag));
   };
 
@@ -236,44 +229,6 @@ const AddGlossaryTerm = ({
 
       onSave(data);
     }
-  };
-
-  const getSaveButton = () => {
-    return allowAccess ? (
-      <>
-        {saveState === 'waiting' ? (
-          <Button
-            disabled
-            className="tw-w-16 tw-h-10 disabled:tw-opacity-100"
-            size="regular"
-            theme="primary"
-            variant="contained">
-            <Loader size="small" type="white" />
-          </Button>
-        ) : saveState === 'success' ? (
-          <Button
-            disabled
-            className="tw-w-16 tw-h-10 disabled:tw-opacity-100"
-            size="regular"
-            theme="primary"
-            variant="contained">
-            <CheckOutlined />
-          </Button>
-        ) : (
-          <Button
-            className={classNames('tw-w-16 tw-h-10', {
-              'tw-opacity-40': !allowAccess,
-            })}
-            data-testid="save-glossary-term"
-            size="regular"
-            theme="primary"
-            variant="contained"
-            onClick={handleSave}>
-            {t('label.save')}
-          </Button>
-        )}
-      </>
-    ) : null;
   };
 
   const fetchRightPanel = () => {
@@ -414,12 +369,11 @@ const AddGlossaryTerm = ({
                 <Button
                   className="tw-h-5 tw-px-2"
                   data-testid="add-reference"
-                  size="x-small"
-                  theme="primary"
-                  variant="contained"
-                  onClick={addReferenceFields}>
-                  <PlusOutlined />
-                </Button>
+                  icon={<PlusOutlined />}
+                  size="small"
+                  type="primary"
+                  onClick={addReferenceFields}
+                />
               </Space>
             </Field>
 
@@ -485,12 +439,11 @@ const AddGlossaryTerm = ({
               <Button
                 className="tw-h-5 tw-px-2"
                 data-testid="add-related-terms"
-                size="x-small"
-                theme="primary"
-                variant="contained"
-                onClick={() => setShowRelatedTermsModal(true)}>
-                <PlusOutlined />
-              </Button>
+                icon={<PlusOutlined />}
+                size="small"
+                type="primary"
+                onClick={() => setShowRelatedTermsModal(true)}
+              />
             </div>
             <div className="tw-my-4">
               {Boolean(relatedTerms.length) &&
@@ -514,44 +467,53 @@ const AddGlossaryTerm = ({
               <p className="w-form-label tw-mr-3">
                 {t('label.reviewer-plural')}
               </p>
-              <Button
-                className="tw-h-5 tw-px-2"
-                data-testid="add-reviewers"
-                size="x-small"
-                theme="primary"
-                variant="contained"
-                onClick={() => setShowReviewerModal(true)}>
-                <PlusOutlined />
-              </Button>
+              <UserSelectableList
+                hasPermission
+                popoverProps={{ placement: 'topLeft' }}
+                selectedUsers={reviewer ?? []}
+                onUpdate={handleReviewerSave}>
+                <Button
+                  className="tw-h-5 tw-px-2"
+                  data-testid="add-reviewers"
+                  icon={<PlusOutlined />}
+                  size="small"
+                  type="primary"
+                />
+              </UserSelectableList>
             </div>
-            <div className="tw-my-4">
+            <Space wrap className="tw-my-4" size={[8, 8]}>
               {Boolean(reviewer.length) &&
                 reviewer.map((d, index) => {
                   return (
-                    <Tags
-                      editable
-                      isRemovable
-                      className="tw-bg-gray-200"
+                    <UserTag
+                      bordered
+                      closable
+                      id={d.id}
                       key={index}
-                      removeTag={handleReviewerRemove}
-                      tag={d.name ?? ''}
-                      type="contained"
+                      name={getEntityName(d)}
+                      size={UserTagSize.small}
+                      onRemove={() => d.name && handleReviewerRemove(d.name)}
                     />
                   );
                 })}
-            </div>
+            </Space>
           </Field>
 
           <Field className="tw-flex tw-justify-end">
             <Button
               data-testid="cancel-glossary-term"
-              size="regular"
-              theme="primary"
-              variant="text"
+              type="link"
               onClick={onCancel}>
               {t('label.cancel')}
             </Button>
-            {getSaveButton()}
+            <Button
+              data-testid="save-glossary-term"
+              disabled={!allowAccess}
+              loading={isLoading}
+              type="primary"
+              onClick={handleSave}>
+              {t('label.save')}
+            </Button>
           </Field>
         </div>
 
@@ -563,16 +525,6 @@ const AddGlossaryTerm = ({
           visible={showRelatedTermsModal}
           onCancel={onRelatedTermsModalCancel}
           onSave={handleRelatedTermsSave}
-        />
-
-        <ReviewerModal
-          header={t('label.add-entity', {
-            entity: t('label.reviewer-plural'),
-          })}
-          reviewer={reviewer}
-          visible={showReviewerModal}
-          onCancel={onReviewerModalCancel}
-          onSave={handleReviewerSave}
         />
       </div>
     </PageLayout>

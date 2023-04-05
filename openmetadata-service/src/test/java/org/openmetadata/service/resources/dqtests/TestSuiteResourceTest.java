@@ -23,6 +23,7 @@ import org.openmetadata.schema.api.tests.CreateTestSuite;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.util.ResultList;
@@ -34,7 +35,7 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
         Entity.TEST_SUITE,
         TestSuite.class,
         TestSuiteResource.TestSuiteList.class,
-        "testSuite",
+        "testSuites",
         TestSuiteResource.FIELDS);
     supportsEmptyDescription = false;
   }
@@ -94,7 +95,7 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
         NOT_FOUND,
         "testSuite instance for " + testSuite1.getId() + " not found");
     Map<String, String> queryParams = new HashMap<>();
-    queryParams.put("include", "all");
+    queryParams.put("include", Include.ALL.value());
     TestSuite deletedTestSuite = getEntity(testSuite1.getId(), queryParams, null, ADMIN_AUTH_HEADERS);
     assertEquals(testSuite1.getId(), deletedTestSuite.getId());
     assertEquals(deletedTestSuite.getDeleted(), true);
@@ -102,7 +103,7 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
 
   public ResultList<TestSuite> getTestSuites(Integer limit, String fields, Map<String, String> authHeaders)
       throws HttpResponseException {
-    WebTarget target = getResource("testSuite");
+    WebTarget target = getResource("testSuites");
     target = limit != null ? target.queryParam("limit", limit) : target;
     target = target.queryParam("fields", fields);
     return TestUtils.get(target, TestSuiteResource.TestSuiteList.class, authHeaders);

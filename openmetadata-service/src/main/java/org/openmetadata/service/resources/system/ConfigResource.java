@@ -13,16 +13,19 @@
 
 package org.openmetadata.service.resources.system;
 
-import io.swagger.annotations.Api;
+import io.swagger.v3.oas.annotations.Hidden;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import javax.ws.rs.GET;
 import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
 import javax.ws.rs.core.MediaType;
 import org.openmetadata.api.configuration.ApplicationConfiguration;
+import org.openmetadata.catalog.security.client.SamlSSOClientConfig;
+import org.openmetadata.catalog.type.IdentityProviderConfig;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
@@ -32,7 +35,8 @@ import org.openmetadata.service.security.jwt.JWKSResponse;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 
 @Path("/v1/system/config")
-@Api(value = "System configuration APIs")
+@Tag(name = "System", description = "APIs related to System configuration and settings.")
+@Hidden
 @Produces(MediaType.APPLICATION_JSON)
 @Collection(name = "config")
 public class ConfigResource {
@@ -52,7 +56,6 @@ public class ConfigResource {
   @Operation(
       operationId = "getAuthConfiguration",
       summary = "Get auth configuration",
-      tags = "system",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -66,6 +69,17 @@ public class ConfigResource {
     AuthenticationConfiguration authenticationConfiguration = new AuthenticationConfiguration();
     if (openMetadataApplicationConfig.getAuthenticationConfiguration() != null) {
       authenticationConfiguration = openMetadataApplicationConfig.getAuthenticationConfiguration();
+      // Remove Ldap Configuration
+      authenticationConfiguration.setLdapConfiguration(null);
+
+      if (authenticationConfiguration.getSamlConfiguration() != null) {
+        // Remove Saml Fields
+        SamlSSOClientConfig ssoClientConfig = new SamlSSOClientConfig();
+        ssoClientConfig.setIdp(
+            new IdentityProviderConfig()
+                .withAuthorityUrl(authenticationConfiguration.getSamlConfiguration().getIdp().getAuthorityUrl()));
+        authenticationConfiguration.setSamlConfiguration(ssoClientConfig);
+      }
     }
     return authenticationConfiguration;
   }
@@ -75,7 +89,6 @@ public class ConfigResource {
   @Operation(
       operationId = "getAuthorizerConfig",
       summary = "Get authorizer configuration",
-      tags = "system",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -98,7 +111,6 @@ public class ConfigResource {
   @Operation(
       operationId = "getApplicationConfiguration",
       summary = "Get application configuration",
-      tags = "system",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -117,7 +129,6 @@ public class ConfigResource {
   @Operation(
       operationId = "getAirflowConfiguration",
       summary = "Get airflow configuration",
-      tags = "system",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -141,7 +152,6 @@ public class ConfigResource {
   @Operation(
       operationId = "getJWKSResponse",
       summary = "Get JWKS public key",
-      tags = "system",
       responses = {
         @ApiResponse(
             responseCode = "200",

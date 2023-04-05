@@ -1,40 +1,37 @@
 {
   "settings": {
-    "analysis": {
-      "normalizer": {
-        "lowercase_normalizer": {
-          "type": "custom",
-          "char_filter": [],
-          "filter": [
-            "lowercase"
-          ]
-        }
+   "analysis": {
+    "normalizer": {
+      "lowercase_normalizer": {
+        "type": "custom",
+        "char_filter": [],
+        "filter": [
+          "lowercase"
+        ]
+      }
+    },
+    "analyzer": {
+      "om_analyzer": {
+        "tokenizer": "letter",
+        "filter": [
+          "lowercase",
+          "om_stemmer"
+        ]
       },
-      "analyzer": {
-        "om_analyzer": {
-          "tokenizer": "letter",
-          "filter": [
-            "lowercase",
-            "om_stemmer"
-          ]
-        },
-        "om_ngram": {
-          "tokenizer": "ngram",
-          "min_gram": 1,
-          "max_gram": 2,
-          "filter": [
-            "lowercase"
-          ]
-        }
-      },
-      "filter": {
-        "om_stemmer": {
-          "type": "stemmer",
-          "name": "english"
-        }
+      "om_ngram": {
+        "tokenizer": "ngram",
+        "min_gram": 2,
+        "max_gram": 3
+      }
+    },
+    "filter": {
+      "om_stemmer": {
+        "type": "stemmer",
+        "name": "english"
       }
     }
-  },
+  }
+},
   "mappings": {
     "properties": {
       "id": {

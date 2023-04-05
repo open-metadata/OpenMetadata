@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate.
+ *  Copyright 2023 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -13,15 +13,21 @@
 
 import { DefaultOptionType } from 'antd/lib/select';
 import { SORT_ORDER } from 'enums/common.enum';
+import { Tag } from 'generated/entity/classification/tag';
+import { Container } from 'generated/entity/data/container';
+import { Database } from 'generated/entity/data/database';
+import { DatabaseSchema } from 'generated/entity/data/databaseSchema';
+import { Glossary } from 'generated/entity/data/glossary';
+import { QueryFilterInterface } from 'pages/explore/ExplorePage.interface';
 import { SearchIndex } from '../../enums/search.enum';
 import { Dashboard } from '../../generated/entity/data/dashboard';
 import { Mlmodel } from '../../generated/entity/data/mlmodel';
 import { Pipeline } from '../../generated/entity/data/pipeline';
 import { Table } from '../../generated/entity/data/table';
 import { Topic } from '../../generated/entity/data/topic';
-import { SearchResponse } from '../../interface/search.interface';
-import { FilterObject } from '../AdvancedSearch/AdvancedSearch.interface';
+import { Aggregations, SearchResponse } from '../../interface/search.interface';
 import { SearchDropdownOption } from '../SearchDropdown/SearchDropdown.interface';
+import { FilterObject } from './AdvanceSearchProvider/AdvanceSearchProvider.interface';
 
 export type UrlParams = {
   searchQuery: string;
@@ -33,28 +39,34 @@ export type ExploreSearchIndex =
   | SearchIndex.PIPELINE
   | SearchIndex.DASHBOARD
   | SearchIndex.MLMODEL
-  | SearchIndex.TOPIC;
+  | SearchIndex.TOPIC
+  | SearchIndex.CONTAINER
+  | SearchIndex.GLOSSARY
+  | SearchIndex.TAG;
 
 export type ExploreSearchIndexKey =
   | 'TABLE'
   | 'PIPELINE'
   | 'DASHBOARD'
   | 'MLMODEL'
-  | 'TOPIC';
+  | 'TOPIC'
+  | 'CONTAINER';
 
 export type SearchHitCounts = Record<ExploreSearchIndex, number>;
 
 export interface ExploreProps {
+  aggregations?: Aggregations;
+
   tabCounts?: SearchHitCounts;
 
   searchResults?: SearchResponse<ExploreSearchIndex>;
 
-  onChangeAdvancedSearchQueryFilter: (
-    queryFilter: Record<string, unknown> | undefined
+  onChangeAdvancedSearchQuickFilters: (
+    queryFilter: QueryFilterInterface | undefined
   ) => void;
 
-  postFilter?: FilterObject;
-  onChangePostFilter: (filter: FilterObject) => void;
+  facetFilters?: FilterObject;
+  onChangeFacetFilters: (filter: FilterObject) => void;
 
   searchIndex: ExploreSearchIndex;
   onChangeSearchIndex: (searchIndex: ExploreSearchIndex) => void;
@@ -72,6 +84,8 @@ export interface ExploreProps {
   onChangePage?: (page: number) => void;
 
   loading?: boolean;
+
+  quickFilters?: QueryFilterInterface;
   isElasticSearchIssue?: boolean;
 }
 
@@ -97,9 +111,20 @@ export interface SearchInputProps {
   handleClear: () => void;
 }
 
-export type EntityDetailsType = Table | Topic | Dashboard | Pipeline | Mlmodel;
+// Type for all the explore tab entities
+export type EntityUnion =
+  | Table
+  | Topic
+  | Dashboard
+  | Pipeline
+  | Mlmodel
+  | Container
+  | DatabaseSchema
+  | Database
+  | Glossary
+  | Tag;
 
 export interface EntityDetailsObjectInterface {
-  details: EntityDetailsType;
+  details: EntityUnion;
   entityType: string;
 }

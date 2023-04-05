@@ -13,7 +13,6 @@
 
 package org.openmetadata.service.resources.databases;
 
-import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -22,6 +21,7 @@ import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import java.io.IOException;
 import java.util.UUID;
 import javax.json.JsonPatch;
@@ -57,7 +57,6 @@ import org.openmetadata.schema.type.DataModel;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
-import org.openmetadata.schema.type.SQLQuery;
 import org.openmetadata.schema.type.SystemProfile;
 import org.openmetadata.schema.type.TableData;
 import org.openmetadata.schema.type.TableJoins;
@@ -75,7 +74,7 @@ import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.ResultList;
 
 @Path("/v1/tables")
-@Api(value = "Tables collection", tags = "Tables collection")
+@Tag(name = "Tables", description = "`Table` organizes data in rows and columns and is defined in a `Database Schema`.")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "tables")
@@ -134,7 +133,6 @@ public class TableResource extends EntityResource<Table, TableRepository> {
   @Operation(
       operationId = "listTables",
       summary = "List tables",
-      tags = "tables",
       description =
           "Get a list of tables, optionally filtered by `database` it belongs to. Use `fields` "
               + "parameter to get only necessary fields. Use cursor-based pagination to limit the number "
@@ -186,7 +184,6 @@ public class TableResource extends EntityResource<Table, TableRepository> {
   @Operation(
       operationId = "getTableByID",
       summary = "Get a table by Id",
-      tags = "tables",
       description = "Get a table by `Id`",
       responses = {
         @ApiResponse(
@@ -219,7 +216,6 @@ public class TableResource extends EntityResource<Table, TableRepository> {
   @Operation(
       operationId = "getTableByFQN",
       summary = "Get a table by fully qualified name",
-      tags = "tables",
       description = "Get a table by fully qualified table name.",
       responses = {
         @ApiResponse(
@@ -253,7 +249,6 @@ public class TableResource extends EntityResource<Table, TableRepository> {
   @Operation(
       operationId = "listAllTableVersion",
       summary = "List table versions",
-      tags = "tables",
       description = "Get a list of all the versions of a table identified by `Id`",
       responses = {
         @ApiResponse(
@@ -274,7 +269,6 @@ public class TableResource extends EntityResource<Table, TableRepository> {
   @Operation(
       operationId = "getSpecificDatabaseVersion",
       summary = "Get a version of the table",
-      tags = "tables",
       description = "Get a version of the table by given `Id`",
       responses = {
         @ApiResponse(
@@ -302,7 +296,6 @@ public class TableResource extends EntityResource<Table, TableRepository> {
   @Operation(
       operationId = "createTable",
       summary = "Create a table",
-      tags = "tables",
       description = "Create a new table under an existing `database`.",
       responses = {
         @ApiResponse(
@@ -321,7 +314,6 @@ public class TableResource extends EntityResource<Table, TableRepository> {
   @Operation(
       operationId = "createOrUpdateTable",
       summary = "Create or update a table",
-      tags = "tables",
       description = "Create a table, if it does not exist. If a table already exists, update the table.",
       responses = {
         @ApiResponse(
@@ -342,7 +334,6 @@ public class TableResource extends EntityResource<Table, TableRepository> {
   @Operation(
       operationId = "patchTable",
       summary = "Update a table",
-      tags = "tables",
       description = "Update an existing table using JsonPatch.",
       externalDocs = @ExternalDocumentation(description = "JsonPatch RFC", url = "https://tools.ietf.org/html/rfc6902"))
   @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
@@ -368,7 +359,6 @@ public class TableResource extends EntityResource<Table, TableRepository> {
   @Operation(
       operationId = "deleteTable",
       summary = "Delete a table by Id",
-      tags = "tables",
       description = "Delete a table by `Id`.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
@@ -395,7 +385,6 @@ public class TableResource extends EntityResource<Table, TableRepository> {
   @Operation(
       operationId = "deleteTable",
       summary = "Delete a table by fully qualified name",
-      tags = "tables",
       description = "Delete a table by `fullyQualifiedName`.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
@@ -418,7 +407,6 @@ public class TableResource extends EntityResource<Table, TableRepository> {
   @Operation(
       operationId = "restore",
       summary = "Restore a soft deleted table",
-      tags = "tables",
       description = "Restore a soft deleted table.",
       responses = {
         @ApiResponse(
@@ -437,7 +425,6 @@ public class TableResource extends EntityResource<Table, TableRepository> {
   @Operation(
       operationId = "addFollowerToTable",
       summary = "Add a follower",
-      tags = "tables",
       description = "Add a user identified by `userId` as followed of this table",
       responses = {
         @ApiResponse(
@@ -463,7 +450,6 @@ public class TableResource extends EntityResource<Table, TableRepository> {
       description =
           "Add information about other tables that this table is joined with. Join information can only"
               + " be added for the last 30 days starting today.",
-      tags = "tables",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -490,7 +476,6 @@ public class TableResource extends EntityResource<Table, TableRepository> {
   @Operation(
       operationId = "addSampleData",
       summary = "Add sample data",
-      tags = "tables",
       description = "Add sample data to the table.",
       responses = {
         @ApiResponse(
@@ -515,7 +500,6 @@ public class TableResource extends EntityResource<Table, TableRepository> {
   @Operation(
       operationId = "getSampleData",
       summary = "Get sample data",
-      tags = "tables",
       description = "Get sample data from the table.",
       responses = {
         @ApiResponse(
@@ -539,7 +523,6 @@ public class TableResource extends EntityResource<Table, TableRepository> {
   @Operation(
       operationId = "deleteSampleData",
       summary = "Delete sample data",
-      tags = "tables",
       description = "Delete sample data from the table.",
       responses = {
         @ApiResponse(
@@ -564,7 +547,6 @@ public class TableResource extends EntityResource<Table, TableRepository> {
   @Operation(
       operationId = "addDataProfilerConfig",
       summary = "Add table profile config",
-      tags = "tables",
       description = "Add table profile config to the table.",
       responses = {
         @ApiResponse(
@@ -589,7 +571,6 @@ public class TableResource extends EntityResource<Table, TableRepository> {
   @Operation(
       operationId = "getDataProfilerConfig",
       summary = "Get table profile config",
-      tags = "tables",
       description = "Get table profile config to the table.",
       responses = {
         @ApiResponse(
@@ -613,7 +594,6 @@ public class TableResource extends EntityResource<Table, TableRepository> {
   @Operation(
       operationId = "delete DataProfilerConfig",
       summary = "Delete table profiler config",
-      tags = "tables",
       description = "delete table profile config to the table.",
       responses = {
         @ApiResponse(
@@ -637,7 +617,6 @@ public class TableResource extends EntityResource<Table, TableRepository> {
   @Operation(
       operationId = "Get the latest table and column profile",
       summary = "Get the latest table profile",
-      tags = "tables",
       description = "Get the latest table and column profile ",
       responses = {
         @ApiResponse(
@@ -661,7 +640,6 @@ public class TableResource extends EntityResource<Table, TableRepository> {
   @Operation(
       operationId = "list Profiles",
       summary = "List of table profiles",
-      tags = "tables",
       description =
           "Get a list of all the table profiles for the given table fqn, optionally filtered by `extension`, `startTs` and `endTs` of the profile. "
               + "Use cursor-based pagination to limit the number of "
@@ -699,7 +677,6 @@ public class TableResource extends EntityResource<Table, TableRepository> {
   @Operation(
       operationId = "list column Profiles",
       summary = "List of column profiles",
-      tags = "tables",
       description =
           "Get a list of all the column profiles for the given table fqn, optionally filtered by `extension`, `startTs` and `endTs` of the profile. "
               + "Use cursor-based pagination to limit the number of "
@@ -737,7 +714,6 @@ public class TableResource extends EntityResource<Table, TableRepository> {
   @Operation(
       operationId = "list system Profiles",
       summary = "List of system profiles",
-      tags = "tables",
       description =
           "Get a list of all the system profiles for the given table fqn, filtered by `extension`, `startTs` and `endTs` of the profile. "
               + "Use cursor-based pagination to limit the number of "
@@ -773,7 +749,6 @@ public class TableResource extends EntityResource<Table, TableRepository> {
   @Operation(
       operationId = "addDataProfiler",
       summary = "Add table profile data",
-      tags = "tables",
       description = "Add table profile data to the table.",
       responses = {
         @ApiResponse(
@@ -798,7 +773,6 @@ public class TableResource extends EntityResource<Table, TableRepository> {
   @Operation(
       operationId = "deleteDataProfiler",
       summary = "Delete table profile data",
-      tags = "tables",
       description = "Delete table profile data to the table.",
       responses = {
         @ApiResponse(
@@ -829,7 +803,6 @@ public class TableResource extends EntityResource<Table, TableRepository> {
   @Operation(
       operationId = "addLocationToTable",
       summary = "Add a location",
-      tags = "tables",
       description = "Add a location identified by `locationId` to this table",
       responses = {
         @ApiResponse(
@@ -850,92 +823,10 @@ public class TableResource extends EntityResource<Table, TableRepository> {
   }
 
   @PUT
-  @Path("/{id}/tableQuery")
-  @Operation(
-      operationId = "addTableQuery",
-      summary = "Add table query data",
-      tags = "tables",
-      description = "Add table query data to the table.",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "OK",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Table.class)))
-      })
-  public Table addQuery(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the table", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
-      @Valid SQLQuery sqlQuery)
-      throws IOException {
-    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.EDIT_ALL);
-    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
-    Table table = dao.addQuery(id, sqlQuery);
-    return addHref(uriInfo, table);
-  }
-
-  @GET
-  @Path("/{id}/tableQuery")
-  @Operation(
-      operationId = "getTableQuery",
-      summary = "Get table query data",
-      tags = "tables",
-      description = "Get table query data from the table.",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "OK",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Table.class)))
-      })
-  public Table getQuery(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the table", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
-      @Valid SQLQuery sqlQuery)
-      throws IOException {
-    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.VIEW_QUERIES);
-    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
-    Table table = dao.getQueries(id);
-    return addHref(uriInfo, table);
-  }
-
-  @GET
-  @Path("/{id}/getTableQueries")
-  @Operation(
-      operationId = "getTableQueryList",
-      summary = "Get table query data",
-      tags = "tables",
-      description = "Get table query data from the table.",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "OK",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Table.class)))
-      })
-  public ResultList<SQLQuery> getTableQueryList(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the table", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
-      @Valid SQLQuery sqlQuery,
-      @DefaultValue("10") @Min(0) @Max(1000000) @QueryParam("limit") int limitParam,
-      @Parameter(description = "Returns list of users before this cursor", schema = @Schema(type = "string"))
-          @QueryParam("before")
-          String before,
-      @Parameter(description = "Returns list of users after this cursor", schema = @Schema(type = "string"))
-          @QueryParam("after")
-          String after)
-      throws IOException {
-    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.VIEW_QUERIES);
-    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
-    return dao.getQueriesForPagination(id, limitParam, before, after);
-  }
-
-  @PUT
   @Path("/{id}/dataModel")
   @Operation(
       operationId = "addDataModel",
       summary = "Add data modeling information to a table",
-      tags = "tables",
       description = "Add data modeling (such as DBT model) information on how the table was created to the table.",
       responses = {
         @ApiResponse(
@@ -960,7 +851,6 @@ public class TableResource extends EntityResource<Table, TableRepository> {
   @Operation(
       operationId = "addCustomMetric",
       summary = "Add column custom metrics",
-      tags = "tables",
       description = "Add column custom metrics.",
       responses = {
         @ApiResponse(
@@ -986,7 +876,6 @@ public class TableResource extends EntityResource<Table, TableRepository> {
   @Operation(
       operationId = "deleteCustomMetric",
       summary = "Delete custom metric from a column",
-      tags = "tables",
       description = "Delete a custom metric from a column.",
       responses = {
         @ApiResponse(
@@ -1014,7 +903,6 @@ public class TableResource extends EntityResource<Table, TableRepository> {
   @Operation(
       operationId = "deleteFollower",
       summary = "Remove a follower",
-      tags = "tables",
       description = "Remove the user identified `userId` as a follower of the table.",
       responses = {
         @ApiResponse(
@@ -1038,7 +926,6 @@ public class TableResource extends EntityResource<Table, TableRepository> {
   @Operation(
       operationId = "deleteLocation",
       summary = "Remove the location",
-      tags = "tables",
       description = "Remove the location",
       responses = {
         @ApiResponse(
@@ -1062,7 +949,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
     DatabaseUtil.validateConstraints(table.getColumns(), table.getTableConstraints());
     DatabaseUtil.validateTablePartition(table.getColumns(), table.getTablePartition());
     DatabaseUtil.validateViewDefinition(table.getTableType(), table.getViewDefinition());
-    DatabaseUtil.validateColumns(table);
+    DatabaseUtil.validateColumns(table.getColumns());
     return table;
   }
 

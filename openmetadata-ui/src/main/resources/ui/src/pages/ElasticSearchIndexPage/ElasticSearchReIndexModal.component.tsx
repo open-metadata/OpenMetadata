@@ -11,13 +11,14 @@
  *  limitations under the License.
  */
 
-import { Checkbox, Col, Form, Input, Modal, Row, Select } from 'antd';
-import React, { useState } from 'react';
+import { Form, Input, Modal, Select, TreeSelect } from 'antd';
+import React from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-  ELASTIC_SEARCH_INDEX_ENTITIES,
   ELASTIC_SEARCH_INITIAL_VALUES,
+  ENTITY_TREE_OPTIONS,
   RECREATE_INDEX_OPTIONS,
+  RE_INDEX_LANG_OPTIONS,
 } from '../../constants/elasticsearch.constant';
 import { CreateEventPublisherJob } from '../../generated/api/createEventPublisherJob';
 
@@ -35,15 +36,13 @@ const ReIndexAllModal = ({
   confirmLoading,
 }: ReIndexAllModalInterface) => {
   const { t } = useTranslation();
-  const [entities, setEntities] = useState<string[]>(
-    ELASTIC_SEARCH_INITIAL_VALUES.entities
-  );
 
   return (
     <Modal
       centered
       closable={false}
       confirmLoading={confirmLoading}
+      maskClosable={false}
       okButtonProps={{
         form: 're-index-form',
         type: 'primary',
@@ -56,11 +55,11 @@ const ReIndexAllModal = ({
       onCancel={onCancel}>
       <Form
         id="re-index-form"
+        initialValues={ELASTIC_SEARCH_INITIAL_VALUES}
         layout="vertical"
         name="elastic-search-re-index"
         onFinish={onSave}>
         <Form.Item
-          initialValue
           label={t('label.recreate-index-plural')}
           name="recreateIndex">
           <Select
@@ -68,24 +67,15 @@ const ReIndexAllModal = ({
             options={RECREATE_INDEX_OPTIONS}
           />
         </Form.Item>
-
-        <Form.Item
-          initialValue={entities}
-          label={t('label.entity-plural')}
-          name="entities">
-          <Checkbox.Group
-            onChange={(values) => setEntities(values as string[])}>
-            <Row gutter={[16, 16]}>
-              {ELASTIC_SEARCH_INDEX_ENTITIES.map((option) => (
-                <Col key={option.value} span={8}>
-                  <Checkbox value={option.value}>{option.label}</Checkbox>
-                </Col>
-              ))}
-            </Row>
-          </Checkbox.Group>
+        <Form.Item label={t('label.entity-plural')} name="entities">
+          <TreeSelect
+            treeCheckable
+            treeDefaultExpandAll
+            showCheckedStrategy={TreeSelect.SHOW_PARENT}
+            treeData={ENTITY_TREE_OPTIONS}
+          />
         </Form.Item>
         <Form.Item
-          initialValue={ELASTIC_SEARCH_INITIAL_VALUES.flushIntervalInSec}
           label={t('label.flush-interval-secs')}
           name="flushIntervalInSec">
           <Input
@@ -96,16 +86,18 @@ const ReIndexAllModal = ({
           />
         </Form.Item>
 
-        <Form.Item
-          initialValue={ELASTIC_SEARCH_INITIAL_VALUES.batchSize}
-          label={`${t('label.batch-size')}:`}
-          name="batchSize">
+        <Form.Item label={`${t('label.batch-size')}:`} name="batchSize">
           <Input
             data-testid="batch-size"
             placeholder={t('label.enter-entity', {
               entity: t('label.batch-size'),
             })}
           />
+        </Form.Item>
+        <Form.Item
+          label={`${t('label.language')}:`}
+          name="searchIndexMappingLanguage">
+          <Select options={RE_INDEX_LANG_OPTIONS} />
         </Form.Item>
       </Form>
     </Modal>

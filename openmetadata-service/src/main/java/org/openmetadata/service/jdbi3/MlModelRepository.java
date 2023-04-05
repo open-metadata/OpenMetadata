@@ -13,6 +13,7 @@
 
 package org.openmetadata.service.jdbi3;
 
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.Entity.DASHBOARD;
 import static org.openmetadata.service.Entity.FIELD_FOLLOWERS;
@@ -26,6 +27,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.data.MlModel;
 import org.openmetadata.schema.entity.services.MlModelService;
 import org.openmetadata.schema.type.EntityReference;
@@ -127,7 +129,6 @@ public class MlModelRepository extends EntityRepository<MlModel> {
   @Override
   public void prepare(MlModel mlModel) throws IOException {
     populateService(mlModel);
-    setFullyQualifiedName(mlModel);
     if (!nullOrEmpty(mlModel.getMlFeatures())) {
       validateReferences(mlModel.getMlFeatures());
     }
@@ -140,19 +141,12 @@ public class MlModelRepository extends EntityRepository<MlModel> {
 
   @Override
   public void storeEntity(MlModel mlModel, boolean update) throws IOException {
-    // Relationships and fields such as href are derived and not stored as part of json
-    EntityReference owner = mlModel.getOwner();
-    List<TagLabel> tags = mlModel.getTags();
+    // Relationships and fields such as service are derived and not stored as part of json
     EntityReference dashboard = mlModel.getDashboard();
     EntityReference service = mlModel.getService();
-
-    // Don't store owner, dashboard, href and tags as JSON. Build it on the fly based on relationships
-    mlModel.withService(null).withOwner(null).withDashboard(null).withHref(null).withTags(null);
-
+    mlModel.withService(null).withDashboard(null);
     store(mlModel, update);
-
-    // Restore the relationships
-    mlModel.withService(service).withOwner(owner).withDashboard(dashboard).withTags(tags);
+    mlModel.withService(service).withDashboard(dashboard);
   }
 
   @Override
@@ -209,6 +203,20 @@ public class MlModelRepository extends EntityRepository<MlModel> {
   @Override
   public EntityUpdater getUpdater(MlModel original, MlModel updated, Operation operation) {
     return new MlModelUpdater(original, updated, operation);
+  }
+
+  @Override
+  public List<TagLabel> getAllTags(EntityInterface entity) {
+    List<TagLabel> allTags = new ArrayList<>();
+    MlModel mlModel = (MlModel) entity;
+    EntityUtil.mergeTags(allTags, mlModel.getTags());
+    for (MlFeature feature : listOrEmpty(mlModel.getMlFeatures())) {
+      EntityUtil.mergeTags(allTags, feature.getTags());
+      for (MlFeatureSource source : listOrEmpty(feature.getFeatureSources())) {
+        EntityUtil.mergeTags(allTags, source.getTags());
+      }
+    }
+    return allTags;
   }
 
   private void populateService(MlModel mlModel) throws IOException {

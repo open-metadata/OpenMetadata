@@ -1,0 +1,21 @@
+{
+    "name": "S3",
+    "fullyQualifiedName": "S3",
+    "displayName": "S3 Test Connection",
+    "description": "This Test Connection validates the access against the object store and basic metadata extraction of objects.",
+    "steps": [
+      {
+        "name": "ListBuckets",
+        "description": "List all the buckets available to the user.",
+        "errorMessage": "Failed to fetch buckets, please validate the credentials if the user has access to list buckets",
+        "shortCircuit": true,
+        "mandatory": true
+      },
+      {
+        "name": "GetMetrics",
+        "description": "Get Cloudwatch AWS/S3 metrics.",
+        "errorMessage": "Failed to fetch Cloudwatch AWS/S3 metrics, please validate if user has access to fetch these credentials",
+        "mandatory": false
+      }
+    ]
+  }

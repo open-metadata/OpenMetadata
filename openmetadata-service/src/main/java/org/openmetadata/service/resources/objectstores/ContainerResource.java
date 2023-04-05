@@ -1,6 +1,5 @@
 package org.openmetadata.service.resources.objectstores;
 
-import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -9,6 +8,7 @@ import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import java.io.IOException;
 import java.util.UUID;
 import javax.json.JsonPatch;
@@ -48,7 +48,12 @@ import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
 
 @Path("/v1/containers")
-@Api(value = "Containers collection", tags = "Containers collection")
+@Tag(
+    name = "Containers",
+    description =
+        "A Container is an abstraction for any path(including the top level eg. bucket in S3) storing "
+            + "data in an Object store such as S3, GCP, Azure. It maps a tree-like structure, where each Container "
+            + "can have a parent and a list of sub-folders, and it can be structured - where it contains structured data, or unstructured where no schema for its data is defined.")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "containers")
@@ -87,7 +92,6 @@ public class ContainerResource extends EntityResource<Container, ContainerReposi
   @Operation(
       operationId = "listContainers",
       summary = "List Containers",
-      tags = "containers",
       description =
           "Get a list of containers, optionally filtered by `service` it belongs to. Use `fields` "
               + "parameter to get only necessary fields. Use cursor-based pagination to limit the number "
@@ -112,8 +116,14 @@ public class ContainerResource extends EntityResource<Container, ContainerReposi
       @Parameter(
               description = "Filter Containers by Object Store Service name",
               schema = @Schema(type = "string", example = "s3West"))
-          @QueryParam("objectStoreService")
-          String objectStoreServiceParam,
+          @QueryParam("service")
+          String service,
+      @Parameter(
+              description = "Filter by Containers at the root level. E.g., without parent",
+              schema = @Schema(type = "boolean", example = "true"))
+          @QueryParam("root")
+          @DefaultValue("false")
+          Boolean root,
       @Parameter(description = "Limit the number containers returned. (1 to 1000000, " + "default = 10)")
           @DefaultValue("10")
           @Min(0)
@@ -133,7 +143,10 @@ public class ContainerResource extends EntityResource<Container, ContainerReposi
           @DefaultValue("non-deleted")
           Include include)
       throws IOException {
-    ListFilter filter = new ListFilter(include).addQueryParam("objectStoreService", objectStoreServiceParam);
+    ListFilter filter = new ListFilter(include).addQueryParam("service", service);
+    if (root != null) {
+      filter.addQueryParam("root", root.toString());
+    }
     return super.listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
 
@@ -142,7 +155,6 @@ public class ContainerResource extends EntityResource<Container, ContainerReposi
   @Operation(
       operationId = "getContainerByID",
       summary = "Get an Object Store Container",
-      tags = "containers",
       description = "Get an Object Store container by `id`.",
       responses = {
         @ApiResponse(
@@ -175,7 +187,6 @@ public class ContainerResource extends EntityResource<Container, ContainerReposi
   @Operation(
       operationId = "getContainerByFQN",
       summary = "Get an Container by name",
-      tags = "containers",
       description = "Get an Container by fully qualified name.",
       responses = {
         @ApiResponse(
@@ -207,7 +218,6 @@ public class ContainerResource extends EntityResource<Container, ContainerReposi
   @Operation(
       operationId = "createContainer",
       summary = "Create a Container",
-      tags = "containers",
       description = "Create a new Container.",
       responses = {
         @ApiResponse(
@@ -228,7 +238,6 @@ public class ContainerResource extends EntityResource<Container, ContainerReposi
   @Operation(
       operationId = "patchContainer",
       summary = "Update a Container",
-      tags = "containers",
       description = "Update an existing Container using JsonPatch.",
       externalDocs = @ExternalDocumentation(description = "JsonPatch RFC", url = "https://tools.ietf.org/html/rfc6902"))
   @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
@@ -253,7 +262,6 @@ public class ContainerResource extends EntityResource<Container, ContainerReposi
   @Operation(
       operationId = "createOrUpdateContainer",
       summary = "Create or update a Container",
-      tags = "containers",
       description = "Create a new Container, if it does not exist or update an existing container.",
       responses = {
         @ApiResponse(
@@ -274,7 +282,6 @@ public class ContainerResource extends EntityResource<Container, ContainerReposi
   @Operation(
       operationId = "addFollower",
       summary = "Add a follower",
-      tags = "containers",
       description = "Add a user identified by `userId` as follower of this container",
       responses = {
         @ApiResponse(
@@ -297,7 +304,6 @@ public class ContainerResource extends EntityResource<Container, ContainerReposi
   @Operation(
       operationId = "deleteFollower",
       summary = "Remove a follower",
-      tags = "containers",
       description = "Remove the user identified `userId` as a follower of the container.",
       responses = {
         @ApiResponse(
@@ -323,7 +329,6 @@ public class ContainerResource extends EntityResource<Container, ContainerReposi
   @Operation(
       operationId = "listAllContainerVersion",
       summary = "List Container versions",
-      tags = "containers",
       description = "Get a list of all the versions of a container identified by `id`",
       responses = {
         @ApiResponse(
@@ -344,7 +349,6 @@ public class ContainerResource extends EntityResource<Container, ContainerReposi
   @Operation(
       operationId = "getSpecificContainerVersion",
       summary = "Get a version of the Container",
-      tags = "containers",
       description = "Get a version of the Container by given `id`",
       responses = {
         @ApiResponse(
@@ -373,7 +377,6 @@ public class ContainerResource extends EntityResource<Container, ContainerReposi
   @Operation(
       operationId = "deleteContainer",
       summary = "Delete a Container",
-      tags = "containers",
       description = "Delete a Container by `id`.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
@@ -396,7 +399,6 @@ public class ContainerResource extends EntityResource<Container, ContainerReposi
   @Operation(
       operationId = "deleteContainerByFQN",
       summary = "Delete a Container by fully qualified name",
-      tags = "containers",
       description = "Delete a Container by `fullyQualifiedName`.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
@@ -419,7 +421,6 @@ public class ContainerResource extends EntityResource<Container, ContainerReposi
   @Operation(
       operationId = "restore",
       summary = "Restore a soft deleted Container.",
-      tags = "containers",
       description = "Restore a soft deleted Container.",
       responses = {
         @ApiResponse(

@@ -106,6 +106,9 @@
 .no-border {
   border: none;
 }
+.border {
+  border: @global-border;
+}
 .border-1 {
   border-width: 1px;
 }
@@ -114,6 +117,14 @@
 }
 .border-l-2 {
   border-left: 2px;
+}
+.border-t-0 {
+  border-top-width: 0px;
+}
+.border-t-1 {
+  border-top-width: 1px;
+  border-style: solid;
+  border-color: @border-color;
 }
 .border-main {
   border-color: @border-color;
@@ -140,6 +151,9 @@
 
 .rounded-6 {
   border-radius: 6px;
+}
+.rounded-12 {
+  border-radius: 12px;
 }
 
 .break-word {
@@ -172,6 +186,7 @@
 .activeCategory {
   border-left: 2px solid @primary;
   background: @primary-light;
+  padding-left: 10px;
   font-weight: 600;
 }
 
@@ -323,4 +338,8 @@
 
 .rotate--90 {
   transform: rotate(-90deg);
+}
+
+.whitespace-nowrap {
+  white-space: nowrap;
 }

@@ -20,6 +20,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { getBots } from 'rest/botsAPI';
+import { getEntityName } from 'utils/EntityUtils';
 import {
   getBotsPath,
   INITIAL_PAGING_VALUE,
@@ -32,7 +33,6 @@ import { Bot, ProviderType } from '../../generated/entity/bot';
 import { Include } from '../../generated/type/include';
 import { Paging } from '../../generated/type/paging';
 import { useAuth } from '../../hooks/authHooks';
-import { getEntityName } from '../../utils/CommonUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import DeleteWidgetModal from '../common/DeleteWidget/DeleteWidgetModal';
@@ -257,7 +257,8 @@ const BotListV1 = ({
           </Space>
 
           <Tooltip
-            title={isAdminUser ? addBotLabel : t('message.admin-only-action')}>
+            placement="topLeft"
+            title={!isAdminUser && t('message.admin-only-action')}>
             <Button
               data-testid="add-bot"
               disabled={!isAdminUser}

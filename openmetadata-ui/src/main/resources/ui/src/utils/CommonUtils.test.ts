@@ -24,9 +24,31 @@ import {
   mockTableNameWithSpecialChar5,
 } from './CommonUtils.mock';
 
+import { AxiosError } from 'axios';
+import { ERROR_MESSAGE } from 'constants/constants';
 import { cloneDeep } from 'lodash';
-import { getNameFromFQN, sortTagsCaseInsensitive } from './CommonUtils';
+import {
+  digitFormatter,
+  getIsErrorMatch,
+  getNameFromFQN,
+  sortTagsCaseInsensitive,
+} from './CommonUtils';
 import { mockFQN, mockTags, sortedMockTags } from './CommonUtils.mock';
+
+const AXIOS_ERROR_MESSAGE = {
+  isAxiosError: true,
+  name: '',
+  message: '',
+  toJSON: () => ({}),
+  config: {},
+  response: {
+    data: { message: 'Entity already exists' },
+    status: 409,
+    statusText: 'Conflict',
+    headers: {},
+    config: {},
+  },
+};
 
 describe('Tests for CommonUtils', () => {
   describe('Tests for sortTagsCaseInsensitive function', () => {
@@ -87,6 +109,81 @@ describe('Tests for CommonUtils', () => {
       const containsDoubleQuotes = result.search('"');
 
       expect(containsDoubleQuotes > 0).toBe(false);
+    });
+
+    // digitFormatter test
+    it('digitFormatter formatter should format number 1000 to 1k', () => {
+      const values = [
+        { value: 1000, result: '1K' },
+        { value: 10000, result: '10K' },
+        { value: 10200, result: '10.2K' },
+        { value: 1000000, result: '1M' },
+        { value: 100000000, result: '100M' },
+        { value: 1000000000, result: '1B' },
+        { value: 1500000000, result: '1.5B' },
+        { value: 1000000000000, result: '1T' },
+        { value: 1100000000000, result: '1.1T' },
+      ];
+
+      values.map(({ value, result }) => {
+        expect(digitFormatter(value)).toEqual(result);
+      });
+    });
+
+    describe('Tests for sortTagsCaseInsensitive function', () => {
+      it('GetErrorMessage match function should return true if match found', () => {
+        const result = getIsErrorMatch(
+          AXIOS_ERROR_MESSAGE as AxiosError,
+          ERROR_MESSAGE.alreadyExist
+        );
+
+        expect(result).toBe(true);
+      });
+
+      it('GetErrorMessage match function should return true if match found if axios message is in responseMessage', () => {
+        const result = getIsErrorMatch(
+          {
+            ...AXIOS_ERROR_MESSAGE,
+            response: { data: { responseMessage: 'Entity already exists' } },
+          } as AxiosError,
+          ERROR_MESSAGE.alreadyExist
+        );
+
+        expect(result).toBe(true);
+      });
+
+      it('GetErrorMessage function should return false if if axios message is in data', () => {
+        const result = getIsErrorMatch(
+          {
+            ...AXIOS_ERROR_MESSAGE,
+            response: { data: 'Entity already exists' },
+          } as AxiosError,
+          ERROR_MESSAGE.alreadyExist
+        );
+
+        expect(result).toBe(true);
+      });
+
+      it('GetErrorMessage function should return false if message is in random key  in data', () => {
+        const result = getIsErrorMatch(
+          {
+            ...AXIOS_ERROR_MESSAGE,
+            response: { data: { mess: 'Entity already exists' } },
+          } as AxiosError,
+          ERROR_MESSAGE.alreadyExist
+        );
+
+        expect(result).toBe(false);
+      });
+
+      it('GetErrorMessage function should return false if match not found', () => {
+        const result = getIsErrorMatch(
+          AXIOS_ERROR_MESSAGE as AxiosError,
+          'exit'
+        );
+
+        expect(result).toBe(false);
+      });
     });
   });
 });

@@ -5,7 +5,7 @@
   <parent>
     <artifactId>platform</artifactId>
     <groupId>org.open-metadata</groupId>
-    <version>1.0.0-SNAPSHOT</version>
+    <version>1.0.0-alpha</version>
   </parent>
   <modelVersion>4.0.0</modelVersion>
   <artifactId>openmetadata-service</artifactId>
@@ -19,6 +19,7 @@
     <org.testcontainers.version>1.17.6</org.testcontainers.version>
     <awssdk.version>2.19.26</awssdk.version>
     <expiring.map.version>0.5.10</expiring.map.version>
+    <java.saml>2.9.0</java.saml>
   </properties>
 
   <dependencyManagement>
@@ -230,6 +231,11 @@
       <version>${awssdk.version}</version>
     </dependency>
 
+    <dependency>
+      <groupId>io.dropwizard.modules</groupId>
+      <artifactId>dropwizard-web</artifactId>
+    </dependency>
+
     <!-- Dependencies for cloudwatch monitoring -->
     <dependency>
       <groupId>software.amazon.awssdk</groupId>
@@ -414,6 +420,11 @@
       <groupId>org.apache.commons</groupId>
       <artifactId>commons-csv</artifactId>
       <version>1.9.0</version>
+    </dependency>
+    <dependency>
+      <groupId>com.onelogin</groupId>
+      <artifactId>java-saml</artifactId>
+      <version>${java.saml}</version>
     </dependency>
   </dependencies>
 

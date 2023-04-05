@@ -35,7 +35,6 @@ from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.lineage.parser import LineageParser
 from metadata.ingestion.lineage.sql_lineage import search_table_entities
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
-from metadata.ingestion.source.database.common_db_source import SQLSourceStatus
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_chart
 from metadata.utils.helpers import get_standard_chart_type, replace_special_with
@@ -53,7 +52,6 @@ class MetabaseSource(DashboardServiceSource):
 
     config: WorkflowSource
     metadata_config: OpenMetadataConnection
-    status: SQLSourceStatus
 
     def __init__(
         self,
@@ -105,7 +103,7 @@ class MetabaseSource(DashboardServiceSource):
             f"/dashboard/{dashboard_details['id']}-"
             f"{replace_special_with(raw=dashboard_details['name'].lower(), replacement='-')}"
         )
-        yield CreateDashboardRequest(
+        dashboard_request = CreateDashboardRequest(
             name=dashboard_details["id"],
             dashboardUrl=dashboard_url,
             displayName=dashboard_details.get("name"),
@@ -121,6 +119,8 @@ class MetabaseSource(DashboardServiceSource):
             ],
             service=self.context.dashboard_service.fullyQualifiedName.__root__,
         )
+        yield dashboard_request
+        self.register_record(dashboard_request=dashboard_request)
 
     def yield_dashboard_chart(
         self, dashboard_details: dict

@@ -17,12 +17,14 @@ from unittest.mock import patch
 from uuid import UUID
 
 from pytest import mark
+from sqlalchemy import Column as SQAColumn
+from sqlalchemy.sql.sqltypes import INTEGER, String
 
 from metadata.generated.schema.entity.data.table import Column, DataType, Table
 from metadata.generated.schema.entity.services.databaseService import (
     DatabaseServiceType,
 )
-from metadata.profiler.orm.converter import ometa_to_sqa_orm
+from metadata.profiler.orm.converter import get_columns, ometa_to_sqa_orm
 
 
 @patch("metadata.profiler.orm.converter.get_orm_schema", return_value="schema")
@@ -125,3 +127,62 @@ def test_metadata_column(mock_schema, mock_database):
     assert orm_table.__table_args__["schema"] == "schema"
     for name, _ in column_definition:
         assert hasattr(orm_table, name)
+
+
+def test_get_columns_regular():
+    """Test get columns function reads columns correctly"""
+    regular_columns = [
+        Column(
+            name="col1",
+            dataType=DataType.STRING,
+        ),
+        Column(
+            name="col2",
+            dataType=DataType.INT,
+        ),
+    ]
+
+    cols = get_columns(regular_columns, DatabaseServiceType.BigQuery)
+    col1 = cols["col1"]
+    col2 = cols["col2"]
+    assert len(cols) == 2
+    assert col1.name == "col1"
+    assert isinstance(col1.type, String)
+    assert col2.name == "col2"
+    assert isinstance(col2.type, INTEGER)
+
+
+def test_get_columns_struct():
+    """Test get columns function reads columns correctly for struct"""
+    struct_columns = [
+        Column(
+            name="col1",
+            dataType=DataType.STRING,
+        ),
+        Column(
+            name="col2",
+            dataType=DataType.STRUCT,
+            children=[
+                Column(
+                    name="structCol1",
+                    dataType=DataType.STRING,
+                ),
+                Column(
+                    name="structCol2",
+                    dataType=DataType.STRUCT,
+                    children=[
+                        Column(
+                            name="nestedStructCol1",
+                            dataType=DataType.STRING,
+                        ),
+                    ],
+                ),
+            ],
+        ),
+    ]
+
+    cols = get_columns(struct_columns, DatabaseServiceType.BigQuery)
+    assert len(cols) == 5
+    assert "col2.structCol1" in cols
+    assert "col2.structCol2" in cols
+    assert "col2.structCol2.nestedStructCol1" in cols

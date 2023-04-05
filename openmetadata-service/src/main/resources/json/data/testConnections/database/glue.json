@@ -1,0 +1,23 @@
+{
+    "name": "Glue",
+    "fullyQualifiedName": "Glue",
+    "displayName": "Glue Test Connection",
+    "description": "This Test Connection validates the access against the database and basic metadata extraction of schemas and tables.",
+    "steps": [
+      {
+        "name": "GetDatabases",
+        "description": "List all the databases available to the user.",
+        "errorMessage": "Failed to fetch databases, please validate the credentials & validate if user has access to fetch databases",
+        "shortCircuit": true,
+        "mandatory": true
+      },
+      {
+        "name": "GetTables",
+        "description": "From a given schema, list the tables belonging to that schema. If no schema is specified, we'll list the tables of a random schema.",
+        "errorMessage": "Failed to fetch tables, please validate if the user has enough access to fetch tables.",
+        "mandatory": true
+      }
+    ]
+  }
+  
+  

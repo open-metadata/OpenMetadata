@@ -33,6 +33,12 @@ Airflow `2.3.3` from Release `0.12`.
 
 The ingestion using Airflow version 2.3.3 as a source package has been tested against Airflow 2.3.3 and Airflow 2.2.5.
 
+<Note>
+
+Note that we only support officially supported Airflow versions. You can check the version list [here](https://airflow.apache.org/docs/apache-airflow/stable/installation/supported-versions.html).
+
+</Note>
+
 ## Metadata Ingestion
 
 All connectors are defined as JSON Schemas.
@@ -89,6 +95,8 @@ source:
   sourceConfig:
     config:
       type: PipelineMetadata
+      # markDeletedPipelines: True
+      # includeTags: True
       # includeLineage: true
       # pipelineFilterPattern:
       #   includes:
@@ -128,6 +136,8 @@ The `sourceConfig` is defined [here](https://github.com/open-metadata/OpenMetada
 
 - `dbServiceNames`: Database Service Name for the creation of lineage, if the source supports it.
 - `pipelineFilterPattern` and `chartFilterPattern`: Note that the `pipelineFilterPattern` and `chartFilterPattern` both support regex as include or exclude. E.g.,
+- `includeTags`: Set the Include tags toggle to control whether or not to include tags as part of metadata ingestion.
+- `markDeletedPipelines`: Set the Mark Deleted Pipelines toggle to flag pipelines as soft-deleted if they are not present anymore in the source system.
 
 ```yaml
 pipelineFilterPattern:

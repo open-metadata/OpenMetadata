@@ -26,7 +26,7 @@
     based on Open Metadata Standards/APIs, supporting connectors to a wide range of data services,
     OpenMetadata enables end-to-end metadata management, giving you the freedom to unlock the value of your data assets.
   </description>
-  <version>1.0.0-SNAPSHOT</version>
+  <version>1.0.0-alpha</version>
   <url>https://github.com/open-metadata/OpenMetadata</url>
   <modules>
     <module>openmetadata-spec</module>
@@ -114,7 +114,7 @@
     <spring-security-kerberos-core.version>1.0.1.RELEASE</spring-security-kerberos-core.version>
     <httpclient.version>4.5.14</httpclient.version>
     <!-- Upgrading to spring version 6.x requires Java 17 -->
-    <spring.version>5.3.24</spring.version>
+    <spring.version>5.3.26</spring.version>
     <log4j.version>2.19.0</log4j.version>
     <org.junit.jupiter.version>5.9.2</org.junit.jupiter.version>
     <dropwizard-health.version>1.7.2</dropwizard-health.version>
@@ -148,6 +148,7 @@
     <dropwizardkafka.version>1.8.0</dropwizardkafka.version>
     <maven-release-plugin.version>2.5.3</maven-release-plugin.version>
     <unboundsdk.version>6.0.7</unboundsdk.version>
+    <dropwizard-web.version>1.5.1</dropwizard-web.version>
   </properties>
   <dependencyManagement>
     <dependencies>
@@ -231,6 +232,11 @@
         <groupId>org.jdbi</groupId>
         <artifactId>jdbi3-core</artifactId>
         <version>${jdbi3.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>io.dropwizard.modules</groupId>
+        <artifactId>dropwizard-web</artifactId>
+        <version>${dropwizard-web.version}</version>
       </dependency>
       <dependency>
         <groupId>commons-cli</groupId>
@@ -553,7 +559,9 @@
     <profile>	<!-- run SCA -->
       <id>static-code-analysis</id>
       <activation>
-        <activeByDefault>true</activeByDefault>
+        <property>
+          <name>!skipCodeAnalysis</name>
+        </property>
       </activation>
       <build>
         <plugins>

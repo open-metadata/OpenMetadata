@@ -23,10 +23,10 @@ import {
 } from 'components/common/CronEditor/CronEditor.constant';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import Loader from 'components/Loader/Loader';
-import { Container } from 'generated/entity/data/container';
 import { t } from 'i18next';
 import {
   capitalize,
+  get,
   isEmpty,
   isNil,
   isNull,
@@ -64,27 +64,12 @@ import {
 import { SIZE } from '../enums/common.enum';
 import { EntityType, FqnPart, TabSpecificField } from '../enums/entity.enum';
 import { FilterPatternEnum } from '../enums/filterPattern.enum';
-import { Field } from '../generated/api/data/createTopic';
-import { Kpi } from '../generated/dataInsight/kpi/kpi';
-import { Bot } from '../generated/entity/bot';
-import { Classification } from '../generated/entity/classification/classification';
-import { Dashboard } from '../generated/entity/data/dashboard';
-import { Database } from '../generated/entity/data/database';
-import { GlossaryTerm } from '../generated/entity/data/glossaryTerm';
-import { Pipeline } from '../generated/entity/data/pipeline';
-import { Column, Table } from '../generated/entity/data/table';
-import { Topic } from '../generated/entity/data/topic';
-import { Webhook } from '../generated/entity/events/webhook';
 import { ThreadTaskStatus, ThreadType } from '../generated/entity/feed/thread';
-import { Policy } from '../generated/entity/policies/policy';
 import { PipelineType } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
-import { Role } from '../generated/entity/teams/role';
-import { Team } from '../generated/entity/teams/team';
-import { EntityReference, User } from '../generated/entity/teams/user';
+import { EntityReference } from '../generated/entity/teams/user';
 import { Paging } from '../generated/type/paging';
 import { TagLabel } from '../generated/type/tagLabel';
 import { EntityFieldThreadCount } from '../interface/feed.interface';
-import { ServicesType } from '../interface/service.interface';
 import jsonData from '../jsons/en';
 import { getEntityFeedLink, getTitleCase } from './EntityUtils';
 import Fqn from './Fqn';
@@ -236,7 +221,7 @@ export const getCountBadge = (
   return (
     <span
       className={classNames(
-        'tw-py-px tw-px-1 tw-mx-1 tw-border tw-rounded tw-text-xs tw-min-w-badgeCount tw-text-center',
+        'tw-py-px p-x-xss m-x-xss tw-border tw-rounded tw-text-xs tw-min-w-badgeCount text-center',
         clsBG,
         className
       )}>
@@ -549,51 +534,6 @@ export const getEntityPlaceHolder = (value: string, isDeleted?: boolean) => {
   }
 };
 
-/**
- * Take entity reference as input and return name for entity
- * @param entity - entity reference
- * @returns - entity name
- */
-export const getEntityName = (
-  entity?:
-    | EntityReference
-    | ServicesType
-    | User
-    | Topic
-    | Database
-    | Dashboard
-    | Table
-    | Pipeline
-    | Team
-    | Policy
-    | Role
-    | GlossaryTerm
-    | Webhook
-    | Bot
-    | Kpi
-    | Classification
-    | Field
-    | Container
-    | Column
-) => {
-  return entity?.displayName || entity?.name || '';
-};
-
-export const getEntityId = (
-  entity?:
-    | EntityReference
-    | ServicesType
-    | User
-    | Topic
-    | Database
-    | Dashboard
-    | Table
-    | Pipeline
-    | Team
-    | Policy
-    | Role
-) => entity?.id || '';
-
 export const getEntityDeleteMessage = (entity: string, dependents: string) => {
   if (dependents) {
     return t('message.permanently-delete-metadata-and-dependents', {
@@ -725,6 +665,14 @@ export const formTwoDigitNmber = (number: number) => {
   });
 };
 
+export const digitFormatter = (value: number) => {
+  // convert 1000 to 1k
+  return Intl.NumberFormat('en', {
+    notation: 'compact',
+    maximumFractionDigits: 1,
+  }).format(value);
+};
+
 export const getTeamsUser = (
   data?: ExtraInfo
 ): Record<string, string | undefined> | undefined => {
@@ -815,9 +763,6 @@ export const refreshPage = () => window.location.reload();
 // return array of id as  strings
 export const getEntityIdArray = (entities: EntityReference[]): string[] =>
   entities.map((item) => item.id);
-
-export const getEntityFqnArray = (entities: EntityReference[]): string[] =>
-  entities.map((item) => item.fullyQualifiedName!);
 
 export const getTierFromEntityInfo = (entity: FormattedTableData) => {
   return (
@@ -962,3 +907,21 @@ export const reducerWithoutAction = <S, A>(state: S, action: A) => {
  * @returns base64 encoded text
  */
 export const getBase64EncodedString = (text: string): string => btoa(text);
+
+export const getIsErrorMatch = (error: AxiosError, key: string): boolean => {
+  let errorMessage = '';
+
+  if (error) {
+    errorMessage = get(error, 'response.data.message', '');
+    if (!errorMessage) {
+      // if error text is undefined or null or empty, try responseMessage in data
+      errorMessage = get(error, 'response.data.responseMessage', '');
+    }
+    if (!errorMessage) {
+      errorMessage = get(error, 'response.data', '');
+      errorMessage = typeof errorMessage === 'string' ? errorMessage : '';
+    }
+  }
+
+  return errorMessage.includes(key);
+};

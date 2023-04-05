@@ -14,6 +14,7 @@
 package org.openmetadata.service.security;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.service.security.jwt.JWTTokenGenerator.TOKEN_TYPE;
 
 import com.auth0.jwk.Jwk;
 import com.auth0.jwk.JwkProvider;
@@ -45,8 +46,10 @@ import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.auth.LogoutRequest;
 import org.openmetadata.schema.auth.SSOAuthMechanism;
+import org.openmetadata.schema.auth.ServiceTokenType;
 import org.openmetadata.service.security.auth.BotTokenCache;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
+import org.openmetadata.service.security.auth.UserTokenCache;
 import org.openmetadata.service.security.saml.JwtTokenCacheManager;
 
 @Slf4j
@@ -117,7 +120,8 @@ public class JwtFilter implements ContainerRequestFilter {
     LOG.debug("Token from header:{}", tokenFromHeader);
 
     // the case where OMD generated the Token for the Client
-    if (SSOAuthMechanism.SsoServiceType.BASIC.toString().equals(providerType)) {
+    if (SSOAuthMechanism.SsoServiceType.BASIC.toString().equals(providerType)
+        || SSOAuthMechanism.SsoServiceType.SAML.toString().equals(providerType)) {
       validateTokenIsNotUsedAfterLogout(tokenFromHeader);
     }
 
@@ -131,6 +135,12 @@ public class JwtFilter implements ContainerRequestFilter {
     // validate bot token
     if (claims.containsKey(BOT_CLAIM) && Boolean.TRUE.equals(claims.get(BOT_CLAIM).asBoolean())) {
       validateBotToken(tokenFromHeader, userName);
+    }
+
+    // validate access token
+    if (claims.containsKey(TOKEN_TYPE)
+        && ServiceTokenType.PERSONAL_ACCESS.equals(ServiceTokenType.fromValue(claims.get(TOKEN_TYPE).asString()))) {
+      validatePersonalAccessToken(tokenFromHeader, userName);
     }
 
     // Setting Security Context
@@ -229,6 +239,13 @@ public class JwtFilter implements ContainerRequestFilter {
 
   private void validateBotToken(String tokenFromHeader, String userName) {
     if (tokenFromHeader.equals(BotTokenCache.getInstance().getToken(userName))) {
+      return;
+    }
+    throw new AuthenticationException("Not Authorized! Invalid Token");
+  }
+
+  private void validatePersonalAccessToken(String tokenFromHeader, String userName) {
+    if (UserTokenCache.getInstance().getToken(userName).contains(tokenFromHeader)) {
       return;
     }
     throw new AuthenticationException("Not Authorized! Invalid Token");

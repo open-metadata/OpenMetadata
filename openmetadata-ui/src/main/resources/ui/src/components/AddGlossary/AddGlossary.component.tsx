@@ -13,8 +13,8 @@
 
 import { PlusOutlined } from '@ant-design/icons';
 import { Button, Space, Switch, Typography } from 'antd';
+import { UserSelectableList } from 'components/common/UserSelectableList/UserSelectableList.component';
 import Tags from 'components/Tag/Tags/tags';
-import { LOADING_STATE } from 'enums/common.enum';
 import { cloneDeep, toString } from 'lodash';
 import { EntityTags } from 'Models';
 import React, { useRef, useState } from 'react';
@@ -30,7 +30,6 @@ import RichTextEditor from '../common/rich-text-editor/RichTextEditor';
 import { EditorContentRef } from '../common/rich-text-editor/RichTextEditor.interface';
 import TitleBreadcrumb from '../common/title-breadcrumb/title-breadcrumb.component';
 import PageLayout from '../containers/PageLayout';
-import ReviewerModal from '../Modals/ReviewerModal/ReviewerModal.component';
 import { AddGlossaryError, AddGlossaryProps } from './AddGlossary.interface';
 
 const Field = ({ children }: { children: React.ReactNode }) => {
@@ -40,7 +39,7 @@ const Field = ({ children }: { children: React.ReactNode }) => {
 const AddGlossary = ({
   header,
   allowAccess = true,
-  saveState = 'initial',
+  isLoading,
   slashedBreadcrumb,
   onCancel,
   onSave,
@@ -56,7 +55,7 @@ const AddGlossary = ({
 
   const [name, setName] = useState('');
   const [description] = useState<string>('');
-  const [showReviewerModal, setShowReviewerModal] = useState(false);
+
   const [tags, setTags] = useState<EntityTags[]>([]);
   const [mutuallyExclusive, setMutuallyExclusive] = useState(false);
   const [reviewer, setReviewer] = useState<Array<EntityReference>>([]);
@@ -65,13 +64,8 @@ const AddGlossary = ({
     return markdownRef.current?.getEditorContent() || '';
   };
 
-  const onReviewerModalCancel = () => {
-    setShowReviewerModal(false);
-  };
-
-  const handleReviewerSave = (reviewer: Array<EntityReference>) => {
+  const handleReviewerSave = (reviewer: EntityReference[]) => {
     setReviewer(reviewer);
-    onReviewerModalCancel();
   };
 
   const handleValidation = (
@@ -235,13 +229,14 @@ const AddGlossary = ({
               <span className="w-form-label tw-mr-3">
                 {`${t('label.reviewer-plural')}:`}
               </span>
-              <Button
-                data-testid="add-reviewers"
-                size="small"
-                type="primary"
-                onClick={() => setShowReviewerModal(true)}>
-                <PlusOutlined style={{ color: 'white' }} />
-              </Button>
+              <UserSelectableList
+                hasPermission
+                selectedUsers={reviewer ?? []}
+                onUpdate={handleReviewerSave}>
+                <Button data-testid="add-reviewers" size="small" type="primary">
+                  <PlusOutlined style={{ color: 'white' }} />
+                </Button>
+              </UserSelectableList>
             </div>
             <div className="tw-my-4" data-testid="reviewers-container">
               {Boolean(reviewer.length) &&
@@ -272,22 +267,13 @@ const AddGlossary = ({
             <Button
               data-testid="save-glossary"
               disabled={!allowAccess}
-              loading={saveState === LOADING_STATE.WAITING}
+              loading={isLoading}
               type="primary"
               onClick={handleSave}>
               {t('label.save')}
             </Button>
           </div>
         </div>
-        <ReviewerModal
-          header={t('label.add-entity', {
-            entity: t('label.reviewer'),
-          })}
-          reviewer={reviewer}
-          visible={showReviewerModal}
-          onCancel={onReviewerModalCancel}
-          onSave={handleReviewerSave}
-        />
       </div>
     </PageLayout>
   );

@@ -30,6 +30,7 @@ import { useHistory, useParams } from 'react-router-dom';
 import { getRoleByName, patchRole } from 'rest/rolesAPIV1';
 import { getTeamByName, patchTeamDetail } from 'rest/teamsAPI';
 import { getUserByName, updateUserDetail } from 'rest/userAPI';
+import { getEntityName } from 'utils/EntityUtils';
 import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
@@ -37,7 +38,6 @@ import {
 import { EntityType } from '../../../enums/entity.enum';
 import { Role } from '../../../generated/entity/teams/role';
 import { EntityReference } from '../../../generated/type/entityReference';
-import { getEntityName } from '../../../utils/CommonUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import { getSettingPath } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
@@ -359,6 +359,7 @@ const RolesDetailPage = () => {
           centered
           closable={false}
           confirmLoading={isLoadingOnSave}
+          maskClosable={false}
           okText={t('label.confirm')}
           open={!isUndefined(selectedEntity.record)}
           title={`${t('label.remove-entity', {

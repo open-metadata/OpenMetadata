@@ -31,20 +31,9 @@ from metadata.generated.schema.type.tagLabel import TagLabel
 from metadata.generated.schema.type.usageDetails import UsageDetails
 
 
-class ESEntityReference(BaseModel):
-    """JsonSchema generated pydantic contains many unnecessary fields its not one-to-one representation of JsonSchema
-    Example all the "__root__" fields. This will not index into ES elegantly hence we are creating special class
-    for EntityReference
-    """
-
-    id: str
-    name: str
-    displayName: str
-    description: str = ""
-    type: str
-    fullyQualifiedName: str
-    deleted: bool
-    href: str
+class ESSuggest(BaseModel):
+    input: str
+    weight: int
 
 
 class TableESDocument(BaseModel):
@@ -72,11 +61,11 @@ class TableESDocument(BaseModel):
     tags: List[TagLabel]
     tier: Optional[TagLabel] = None
     followers: List[str]
-    suggest: List[dict]
-    column_suggest: List[dict]
-    database_suggest: List[dict]
-    schema_suggest: List[dict]
-    service_suggest: List[dict]
+    suggest: List[ESSuggest]
+    column_suggest: List[ESSuggest]
+    database_suggest: List[ESSuggest]
+    schema_suggest: List[ESSuggest]
+    service_suggest: List[ESSuggest]
     doc_as_upsert: bool = True
 
 
@@ -95,14 +84,15 @@ class TopicESDocument(BaseModel):
     href: Optional[str]
     deleted: bool
     service: EntityReference
+    serviceType: str
     schemaText: Optional[str] = None
     schemaType: Optional[schema.SchemaType] = None
     cleanupPolicies: List[str] = None
     replicationFactor: Optional[int] = None
     maximumMessageSize: Optional[int] = None
     retentionSize: Optional[int] = None
-    suggest: List[dict]
-    service_suggest: List[dict]
+    suggest: List[ESSuggest]
+    service_suggest: List[ESSuggest]
     tags: List[TagLabel]
     tier: Optional[TagLabel] = None
     owner: EntityReference = None
@@ -133,9 +123,10 @@ class DashboardESDocument(BaseModel):
     deleted: bool
     tags: List[TagLabel]
     tier: Optional[TagLabel] = None
-    suggest: List[dict]
-    chart_suggest: List[dict]
-    service_suggest: List[dict]
+    suggest: List[ESSuggest]
+    chart_suggest: List[ESSuggest]
+    data_model_suggest: List[ESSuggest]
+    service_suggest: List[ESSuggest]
     doc_as_upsert: bool = True
 
 
@@ -161,9 +152,9 @@ class PipelineESDocument(BaseModel):
     tier: Optional[TagLabel] = None
     service: EntityReference
     serviceType: str
-    suggest: List[dict]
-    task_suggest: List[dict]
-    service_suggest: List[dict]
+    suggest: List[ESSuggest]
+    task_suggest: List[ESSuggest]
+    service_suggest: List[ESSuggest]
     doc_as_upsert: bool = True
 
 
@@ -189,13 +180,73 @@ class MlModelESDocument(BaseModel):
     usageSummary: UsageDetails = None
     tags: List[TagLabel]
     tier: Optional[TagLabel] = None
-    owner: ESEntityReference = None
+    owner: EntityReference = None
     followers: List[str]
     href: Optional[str]
     deleted: bool
-    suggest: List[dict]
-    service_suggest: List[dict] = None
+    suggest: List[ESSuggest]
+    service_suggest: List[ESSuggest] = None
+    service: EntityReference
     doc_as_upsert: bool = True
+
+
+class ContainerESDocument(BaseModel):
+    """ElasticSearch Mapping doc for Containers"""
+
+    entityType: str = "container"
+    id: str
+    name: str
+    displayName: str
+    fullyQualifiedName: str
+    description: Optional[str] = None
+    version: float
+    updatedAt: Optional[int]
+    updatedBy: Optional[str]
+    tags: List[TagLabel]
+    tier: Optional[TagLabel] = None
+    owner: EntityReference = None
+    followers: List[str]
+    href: Optional[str]
+    deleted: bool
+    suggest: List[ESSuggest]
+    service_suggest: List[ESSuggest] = None
+    service: EntityReference
+    doc_as_upsert: bool = True
+    parent: Optional[dict] = None
+    dataModel: Optional[dict] = None
+    children: Optional[List[dict]] = None
+    prefix: Optional[str] = None
+    numberOfObjects: Optional[int] = None
+    size: Optional[int] = None
+    fileFormats: Optional[List[str]] = None
+
+
+class QueryESDocument(BaseModel):
+    """ElasticSearch Mapping doc for Containers"""
+
+    entityType: str = "query"
+    id: str
+    name: str
+    displayName: str
+    fullyQualifiedName: str
+    description: Optional[str] = None
+    version: float
+    updatedAt: Optional[int]
+    updatedBy: Optional[str]
+    tags: List[TagLabel]
+    tier: Optional[TagLabel] = None
+    owner: EntityReference = None
+    followers: List[str]
+    href: Optional[str]
+    deleted: bool
+    suggest: List[ESSuggest]
+    service_suggest: List[ESSuggest] = None
+    doc_as_upsert: bool = True
+    duration: Optional[float] = None
+    users: Optional[List[dict]] = None
+    votes: Optional[dict] = None
+    query: str
+    queryDate: float
 
 
 class UserESDocument(BaseModel):
@@ -217,7 +268,7 @@ class UserESDocument(BaseModel):
     roles: EntityReferenceList
     inheritedRoles: EntityReferenceList
     deleted: bool
-    suggest: List[dict]
+    suggest: List[ESSuggest]
     doc_as_upsert: bool = True
 
 
@@ -235,7 +286,7 @@ class TeamESDocument(BaseModel):
     updatedAt: Optional[int]
     updatedBy: Optional[str]
     href: Optional[str]
-    suggest: List[dict]
+    suggest: List[ESSuggest]
     users: EntityReferenceList
     defaultRoles: EntityReferenceList
     parents: EntityReferenceList
@@ -265,7 +316,7 @@ class GlossaryTermESDocument(BaseModel):
     usageCount: Optional[int]
     tags: List[TagLabel]
     status: str
-    suggest: List[dict]
+    suggest: List[ESSuggest]
     deleted: bool
     doc_as_upsert: bool = True
 
@@ -282,7 +333,7 @@ class TagESDocument(BaseModel):
     updatedAt: Optional[int]
     updatedBy: Optional[str]
     href: Optional[str]
-    suggest: List[dict]
+    suggest: List[ESSuggest]
     deleted: bool
     deprecated: bool
     doc_as_upsert: bool = True

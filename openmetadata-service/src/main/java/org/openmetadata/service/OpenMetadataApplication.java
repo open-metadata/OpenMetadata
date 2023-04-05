@@ -13,6 +13,8 @@
 
 package org.openmetadata.service;
 
+import static org.openmetadata.service.util.MicrometerBundleSingleton.webAnalyticEvents;
+
 import io.dropwizard.Application;
 import io.dropwizard.configuration.EnvironmentVariableSubstitutor;
 import io.dropwizard.configuration.SubstitutingSourceProvider;
@@ -27,13 +29,17 @@ import io.dropwizard.lifecycle.Managed;
 import io.dropwizard.server.DefaultServerFactory;
 import io.dropwizard.setup.Bootstrap;
 import io.dropwizard.setup.Environment;
+import io.dropwizard.web.WebBundle;
+import io.dropwizard.web.conf.WebConfiguration;
 import io.federecio.dropwizard.swagger.SwaggerBundle;
 import io.federecio.dropwizard.swagger.SwaggerBundleConfiguration;
-import io.github.maksymdolgykh.dropwizard.micrometer.MicrometerHttpFilter;
 import io.socket.engineio.server.EngineIoServerOptions;
 import io.socket.engineio.server.JettyWebSocketHandler;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
+import java.security.KeyStoreException;
+import java.security.NoSuchAlgorithmException;
+import java.security.cert.CertificateException;
 import java.time.temporal.ChronoUnit;
 import java.util.EnumSet;
 import java.util.Optional;
@@ -41,6 +47,7 @@ import javax.naming.ConfigurationException;
 import javax.servlet.DispatcherType;
 import javax.servlet.FilterRegistration;
 import javax.servlet.ServletException;
+import javax.servlet.ServletRegistration;
 import javax.ws.rs.container.ContainerRequestFilter;
 import javax.ws.rs.container.ContainerResponseFilter;
 import javax.ws.rs.core.Response;
@@ -60,6 +67,7 @@ import org.jdbi.v3.core.statement.StatementContext;
 import org.jdbi.v3.sqlobject.SqlObjects;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
+import org.openmetadata.schema.auth.SSOAuthMechanism;
 import org.openmetadata.service.elasticsearch.ElasticSearchEventPublisher;
 import org.openmetadata.service.events.EventFilter;
 import org.openmetadata.service.events.EventPubSub;
@@ -75,6 +83,8 @@ import org.openmetadata.service.monitoring.EventMonitor;
 import org.openmetadata.service.monitoring.EventMonitorFactory;
 import org.openmetadata.service.monitoring.EventMonitorPublisher;
 import org.openmetadata.service.resources.CollectionRegistry;
+import org.openmetadata.service.resources.databases.DatasourceConfig;
+import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.secrets.SecretsManagerUpdateService;
@@ -87,29 +97,36 @@ import org.openmetadata.service.security.auth.BasicAuthenticator;
 import org.openmetadata.service.security.auth.LdapAuthenticator;
 import org.openmetadata.service.security.auth.NoopAuthenticator;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
+import org.openmetadata.service.security.saml.OMMicrometerHttpFilter;
+import org.openmetadata.service.security.saml.SamlAssertionConsumerServlet;
+import org.openmetadata.service.security.saml.SamlLoginServlet;
+import org.openmetadata.service.security.saml.SamlMetadataServlet;
+import org.openmetadata.service.security.saml.SamlSettingsHolder;
 import org.openmetadata.service.socket.FeedServlet;
 import org.openmetadata.service.socket.OpenMetadataAssetServlet;
 import org.openmetadata.service.socket.SocketAddressFilter;
 import org.openmetadata.service.socket.WebSocketManager;
-import org.openmetadata.service.util.EmailUtil;
 import org.openmetadata.service.util.MicrometerBundleSingleton;
+import org.openmetadata.service.workflows.searchIndex.SearchIndexEvent;
 
 /** Main catalog application */
 @Slf4j
 public class OpenMetadataApplication extends Application<OpenMetadataApplicationConfig> {
   private Authorizer authorizer;
-
   private AuthenticatorHandler authenticatorHandler;
 
   @Override
   public void run(OpenMetadataApplicationConfig catalogConfig, Environment environment)
       throws ClassNotFoundException, IllegalAccessException, InstantiationException, NoSuchMethodException,
-          InvocationTargetException, IOException, ConfigurationException {
+          InvocationTargetException, IOException, ConfigurationException, CertificateException, KeyStoreException,
+          NoSuchAlgorithmException {
     validateConfiguration(catalogConfig);
 
-    // init email Util for handling
-    EmailUtil.initialize(catalogConfig);
+    ChangeEventConfig.initialize(catalogConfig);
     final Jdbi jdbi = createAndSetupJDBI(environment, catalogConfig.getDataSourceFactory());
+
+    // Init Settings Cache
+    SettingsCache.initialize(jdbi.onDemand(CollectionDAO.class), catalogConfig);
 
     // init Secret Manager
     final SecretsManager secretsManager =
@@ -118,7 +135,6 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
 
     // init Entity Masker
     EntityMaskerFactory.createEntityMasker(catalogConfig.getSecurityConfiguration());
-
     // Configure the Fernet instance
     Fernet.getInstance().setFernetKey(catalogConfig);
 
@@ -137,6 +153,9 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
 
     // Register Authenticator
     registerAuthenticator(catalogConfig);
+
+    // init for dataSourceFactory
+    DatasourceConfig.initialize(catalogConfig);
 
     // Unregister dropwizard default exception mappers
     ((DefaultServerFactory) catalogConfig.getServerFactory()).setRegisterDefaultExceptionMappers(false);
@@ -174,16 +193,38 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     // authenticationHandler Handles auth related activities
     authenticatorHandler.init(catalogConfig, jdbi);
 
+    webAnalyticEvents = MicrometerBundleSingleton.latencyTimer(catalogConfig.getEventMonitorConfiguration());
     FilterRegistration.Dynamic micrometerFilter =
-        environment.servlets().addFilter("MicrometerHttpFilter", new MicrometerHttpFilter());
-    micrometerFilter.addMappingForUrlPatterns(EnumSet.allOf(DispatcherType.class), true, "/*");
-
+        environment.servlets().addFilter("OMMicrometerHttpFilter", new OMMicrometerHttpFilter());
+    micrometerFilter.addMappingForUrlPatterns(
+        EnumSet.allOf(DispatcherType.class), true, catalogConfig.getEventMonitorConfiguration().getPathPattern());
     initializeWebsockets(catalogConfig, environment);
+    registerSamlHandlers(catalogConfig, environment);
 
     // Handle Asset Using Servlet
     OpenMetadataAssetServlet assetServlet = new OpenMetadataAssetServlet("/assets", "/", "index.html");
     String pathPattern = "/" + '*';
     environment.servlets().addServlet("static", assetServlet).addMapping(pathPattern);
+  }
+
+  private void registerSamlHandlers(OpenMetadataApplicationConfig catalogConfig, Environment environment)
+      throws IOException, CertificateException, KeyStoreException, NoSuchAlgorithmException {
+    if (catalogConfig.getAuthenticationConfiguration() != null
+        && catalogConfig
+            .getAuthenticationConfiguration()
+            .getProvider()
+            .equals(SSOAuthMechanism.SsoServiceType.SAML.toString())) {
+      SamlSettingsHolder.getInstance().initDefaultSettings(catalogConfig);
+      ServletRegistration.Dynamic samlRedirectServlet =
+          environment.servlets().addServlet("saml_login", new SamlLoginServlet());
+      samlRedirectServlet.addMapping("/api/v1/saml/login");
+      ServletRegistration.Dynamic samlReceiverServlet =
+          environment.servlets().addServlet("saml_acs", new SamlAssertionConsumerServlet());
+      samlReceiverServlet.addMapping("/api/v1/saml/acs");
+      ServletRegistration.Dynamic samlMetadataServlet =
+          environment.servlets().addServlet("saml_metadata", new SamlMetadataServlet());
+      samlMetadataServlet.addMapping("/api/v1/saml/metadata");
+    }
   }
 
   private Jdbi createAndSetupJDBI(Environment environment, DataSourceFactory dbFactory) {
@@ -235,6 +276,13 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
           }
         });
     bootstrap.addBundle(MicrometerBundleSingleton.getInstance());
+    bootstrap.addBundle(
+        new WebBundle<>() {
+          @Override
+          public WebConfiguration getWebConfiguration(final OpenMetadataApplicationConfig configuration) {
+            return configuration.getWebConfiguration();
+          }
+        });
     super.initialize(bootstrap);
   }
 
@@ -261,6 +309,10 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
       throw new ConfigurationException(
           "'botPrincipals' configuration is deprecated. Please remove it from "
               + "'openmetadata.yaml and restart the server");
+    }
+    if (catalogConfig.getPipelineServiceClientConfiguration().getAuthConfig() != null) {
+      LOG.warn(
+          "'authProvider' and 'authConfig' from the 'pipelineServiceClientConfiguration' option are deprecated and will be removed in future releases.");
     }
   }
 
@@ -311,6 +363,8 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     if (catalogConfig.getEventHandlerConfiguration() != null) {
       ContainerResponseFilter eventFilter = new EventFilter(catalogConfig, jdbi);
       environment.jersey().register(eventFilter);
+      ContainerResponseFilter reindexingJobs = new SearchIndexEvent();
+      environment.jersey().register(reindexingJobs);
     }
   }
 

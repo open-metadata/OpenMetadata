@@ -39,11 +39,8 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.connections import get_connection, get_test_connection_fn
-from metadata.ingestion.source.database.database_service import (
-    DatabaseServiceSource,
-    SQLSourceStatus,
-)
+from metadata.ingestion.source.connections import get_connection
+from metadata.ingestion.source.database.database_service import DatabaseServiceSource
 from metadata.utils import fqn
 from metadata.utils.constants import DEFAULT_DATABASE
 from metadata.utils.filters import filter_by_table
@@ -59,16 +56,16 @@ class DomodatabaseSource(DatabaseServiceSource):
     """
 
     def __init__(self, config: WorkflowSource, metadata_config: OpenMetadataConnection):
+        super().__init__()
         self.config = config
         self.source_config: DatabaseServiceMetadataPipeline = (
             self.config.sourceConfig.config
         )
         self.metadata = OpenMetadata(metadata_config)
         self.service_connection = self.config.serviceConnection.__root__.config
-        self.status = SQLSourceStatus()
         self.domo_client = get_connection(self.service_connection)
+        self.connection_obj = self.domo_client
         self.client = DomoClient(self.service_connection)
-        super().__init__()
         self.test_connection()
 
     @classmethod
@@ -133,11 +130,10 @@ class DomodatabaseSource(DatabaseServiceSource):
                     continue
                 yield table_id, TableType.Regular
         except Exception as exc:
+            error = f"Unexpected exception for schema name [{schema_name}]: {exc}"
             logger.debug(traceback.format_exc())
-            logger.warning(
-                f"Unexpected exception for schema name [{schema_name}]: {exc}"
-            )
-            self.status.failures.append(f"{self.config.serviceName}.{table_id}")
+            logger.warning(error)
+            self.status.failed(schema_name, error, traceback.format_exc())
 
     def yield_table(
         self, table_name_and_type: Tuple[str, str]
@@ -159,9 +155,10 @@ class DomodatabaseSource(DatabaseServiceSource):
             yield table_request
             self.register_record(table_request=table_request)
         except Exception as exc:
+            error = f"Unexpected exception for table [{table_id}]: {exc}"
             logger.debug(traceback.format_exc())
-            logger.warning(f"Unexpected exception for table [{table_id}]: {exc}")
-            self.status.failures.append(f"{self.config.serviceName}.{table_id}")
+            logger.warning(error)
+            self.status.failed(table_id, error, traceback.format_exc())
 
     def get_columns(self, table_object):
         row_order = 1
@@ -177,10 +174,6 @@ class DomodatabaseSource(DatabaseServiceSource):
             )
             row_order += 1
         return columns
-
-    def test_connection(self) -> None:
-        test_connection_fn = get_test_connection_fn(self.service_connection)
-        test_connection_fn(self.domo_client, self.service_connection)
 
     def yield_tag(self, schema_name: str) -> Iterable[OMetaTagAndClassification]:
         pass
