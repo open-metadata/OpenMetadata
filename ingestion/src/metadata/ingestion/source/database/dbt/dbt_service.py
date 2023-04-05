@@ -152,10 +152,13 @@ class DbtServiceSource(TopologyRunnerMixin, Source, ABC):
         # and the presence of other nodes can hinder the ingestion process from progressing any further.
         # Therefore, we are only retaining the essential data for further processing.
         required_manifest_keys = ["nodes", "sources", "metadata"]
-        for key, _ in manifest_dict.items():
-            if key.lower() in required_manifest_keys:
-                continue
-            manifest_dict[key] = {}
+        manifest_dict.update(
+            {
+                key: {}
+                for key in manifest_dict
+                if key.lower() not in required_manifest_keys
+            }
+        )
 
     def get_dbt_files(self) -> DbtFiles:
         dbt_files = get_dbt_details(
