@@ -7,6 +7,7 @@
       {
         "name": "GetTables",
         "description": "List all the tables(datasets) available to the user.",
+        "errorMessage": "Failed to fetch datasets, please validate the credentials & validate if user has access to fetch datasets",
         "mandatory": true
       }
     ]
