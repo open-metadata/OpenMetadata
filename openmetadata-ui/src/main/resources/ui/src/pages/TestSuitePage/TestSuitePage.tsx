@@ -109,9 +109,9 @@ const TestSuitePage = () => {
     () =>
       isAdminUser ||
       isAuthDisabled ||
-      permissions.testSuite.Delete ||
-      permissions.testSuite.All,
-    [isAdminUser, isAuthDisabled, Permissions]
+      permissions?.testSuite.Delete ||
+      permissions?.testSuite.All,
+    [isAdminUser, isAuthDisabled, permissions]
   );
   const columns = useMemo(() => {
     const col: ColumnsType<TestSuite> = [

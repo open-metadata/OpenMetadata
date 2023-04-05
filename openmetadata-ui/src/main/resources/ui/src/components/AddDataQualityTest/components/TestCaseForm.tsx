@@ -99,9 +99,9 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
   };
 
   const getSelectedTestDefinition = () => {
-    const testType = initialValue?.testSuite
-      ? initialValue?.testSuite
-      : selectedTestType;
+    const testType = isEmpty(initialValue?.testSuite)
+      ? selectedTestType
+      : initialValue?.testSuite;
 
     return testDefinitions.find(
       (definition) => definition.fullyQualifiedName === testType
