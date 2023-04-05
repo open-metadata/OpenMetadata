@@ -25,10 +25,8 @@ from metadata.ingestion.source.dashboard.tableau.models import (
     TableauChart,
     TableauDashboard,
     TableauSheets,
-    Workbook,
 )
 from metadata.ingestion.source.dashboard.tableau.queries import (
-    TABLEAU_LINEAGE_GRAPHQL_QUERY,
     TABLEAU_SHEET_QUERY_BY_ID,
 )
 from metadata.utils.logger import ometa_logger
@@ -88,18 +86,6 @@ class TableauClient:
                 self.query_views_for_site,
                 content_id=self.site_id,
                 parameter_dict=TABLEAU_GET_VIEWS_PARAM_DICT,
-            )
-        ]
-
-    def get_workbook_with_datasources(self) -> List[Workbook]:
-        # Fetch Datasource information for lineage
-        graphql_query_result = self._client.metadata_graphql_query(
-            query=TABLEAU_LINEAGE_GRAPHQL_QUERY
-        )
-        return [
-            Workbook(**workbook)
-            for workbook in json.loads(graphql_query_result.text)["data"].get(
-                "workbooks"
             )
         ]
 

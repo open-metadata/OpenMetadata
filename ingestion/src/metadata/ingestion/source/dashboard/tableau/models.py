@@ -29,6 +29,12 @@ class TableauBaseModel(BaseModel):
     id: str
     name: Optional[str]
 
+    def __hash__(self):
+        return hash(self.id)
+
+    def __eq__(self, other):
+        return isinstance(other, type(self)) and self.id == other.id
+
 
 class ChartUrl:
     workbook_name: str
@@ -105,7 +111,7 @@ class CustomSQLTable(TableauBaseModel):
     https://help.tableau.com/current/api/metadata_api/en-us/reference/customsqltable.doc.html
     """
 
-    query: str
+    query: Optional[str]
 
 
 class DatabaseTable(TableauBaseModel):
@@ -115,8 +121,8 @@ class DatabaseTable(TableauBaseModel):
     """
 
     schema_: str = Field(..., alias="schema")
-    upstreamDatabases: List[TableauBaseModel]
-    referencedByQueries: List[CustomSQLTable]
+    upstreamDatabases: Optional[List[TableauBaseModel]]
+    referencedByQueries: Optional[List[CustomSQLTable]]
 
 
 class Workbook(TableauBaseModel):
@@ -171,7 +177,8 @@ class DatasourceField(TableauBaseModel):
     https://help.tableau.com/current/api/metadata_api/en-us/reference/datasourcefield.doc.html
     """
 
-    remoteField: ColumnField
+    remoteField: Optional[ColumnField]
+    upstreamTables: List[DatabaseTable] = []
 
 
 class Sheet(TableauBaseModel):
