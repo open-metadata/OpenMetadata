@@ -87,7 +87,31 @@ def _(elements, compiler, **kwargs):
     col, _, percentile = [
         compiler.process(element, **kwargs) for element in elements.clauses
     ]
-    return "appx_median(%s)" % col
+    """ Median compution for Impala uses the appx_median function.  
+    OM uses this median function to also compute first and third quartiles.  
+    These calculations are not supported with a simple function inside Impala.
+    The if statement returns null when we are not looking for the .5 precentile
+    In Impala to get the first quartile a full SQL statement like this is necessary:
+        with ntiles as
+        (
+        select filesize, ntile(4) over (order by filesize) as quarter
+        from hdfs_files
+        )
+        , quarters as
+        (
+        select 1 as grp, max(filesize) as quartile_value, quarter
+            from ntiles
+        group by quarter
+        )
+        select max(case when quarter = 1 then quartile_value end) as first_q
+        , max(case when quarter = 2 then quartile_value end) as second_q
+        , max(case when quarter = 3 then quartile_value end) as third_q
+        , max(case when quarter = 4 then quartile_value end) as fourth_q
+        from quarters
+        group by grp
+        ;
+    """
+    return "if(%s = .5, appx_median(%s), null)" % (percentile, col)
 
 
 @compiles(MedianFn, Dialects.MySQL)
