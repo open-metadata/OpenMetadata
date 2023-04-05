@@ -44,6 +44,7 @@ export interface IngestionProps {
   pipelineNameColWidth?: number;
   pipelineType?: PipelineType;
   displayAddIngestionButton?: boolean;
+  containerClassName?: string;
   deleteIngestion: (id: string, displayName: string) => Promise<void>;
   deployIngestion: (id: string) => Promise<void>;
   handleEnableDisableIngestion: (id: string) => void;

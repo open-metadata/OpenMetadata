@@ -13,6 +13,7 @@
 
 import { ExclamationCircleOutlined } from '@ant-design/icons';
 import { AxiosError } from 'axios';
+import classNames from 'classnames';
 import { isEmpty, lowerCase } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -47,6 +48,7 @@ const Ingestion: React.FC<IngestionProps> = ({
   displayAddIngestionButton = true,
   handleIngestionDataChange,
   pipelineNameColWidth,
+  containerClassName,
 }: IngestionProps) => {
   const { t } = useTranslation();
   const { getEntityPermissionByFqn } = usePermissionProvider();
@@ -153,7 +155,9 @@ const Ingestion: React.FC<IngestionProps> = ({
 
   const getIngestionTab = () => {
     return (
-      <div className="mt-4" data-testid="ingestion-details-container">
+      <div
+        className={classNames('mt-4', containerClassName ?? '')}
+        data-testid="ingestion-details-container">
         <div className="d-flex">
           {!isRequiredDetailsAvailable && (
             <div className="tw-rounded tw-bg-error-lite tw-text-error tw-font-medium tw-px-4 tw-py-1 tw-mb-4 tw-flex tw-items-center tw-gap-1">

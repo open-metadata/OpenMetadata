@@ -44,6 +44,7 @@ function SettingsIngestion({
   handleIngestionDataChange,
   handleIngestionPipelinesChange,
   handleServiceDetailsChange,
+  containerClassName,
 }: SettingsIngestionProps) {
   const { t } = useTranslation();
   const { permissions } = usePermissionProvider();
@@ -267,6 +268,7 @@ function SettingsIngestion({
     <Ingestion
       isRequiredDetailsAvailable
       airflowEndpoint={airflowEndpoint ?? ''}
+      containerClassName={containerClassName}
       deleteIngestion={deleteIngestionById}
       deployIngestion={deployIngestion}
       displayAddIngestionButton={

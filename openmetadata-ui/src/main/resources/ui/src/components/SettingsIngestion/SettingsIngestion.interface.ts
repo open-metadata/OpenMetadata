@@ -17,6 +17,7 @@ import { ServicesType } from 'interface/service.interface';
 
 export interface SettingsIngestionProps {
   pipelineType: PipelineType;
+  containerClassName?: string;
   handleServiceDetailsChange?: (details: ServicesType) => void;
   handleIngestionPipelinesChange?: (pipeline: Array<IngestionPipeline>) => void;
   handleIngestionDataChange?: (data: Array<IngestionPipeline>) => void;
