@@ -171,11 +171,19 @@ class EntityReportDataProcessor(DataProcessor):
         refined_data = defaultdict(lambda: defaultdict(dict))
         for entity in self.fetch_data():
             data_blob_for_entity = {}
-            team = (
-                self._get_team(entity.owner)
-                if not isinstance(entity, User)
-                else self._get_team(entity.teams)
-            )
+            try:
+                team = (
+                    self._get_team(entity.owner)
+                    if not isinstance(entity, User)
+                    else self._get_team(entity.teams)
+                )
+            except Exception:
+                logger.debug(traceback.format_exc())
+                self.processor_status.failed(
+                    entity.name.__root__, "Error retrieving team"
+                )
+                continue
+
             try:
                 entity_tier = get_entity_tier_from_tags(entity.tags)
             except AttributeError:
@@ -229,6 +237,8 @@ class EntityReportDataProcessor(DataProcessor):
                 refined_data[entity.__class__.__name__][str(team)][
                     str(entity_tier)
                 ].update(data_blob_for_entity_counter)
+
+            self.processor_status.scanned(entity.name.__root__)
 
         return refined_data
 
