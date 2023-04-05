@@ -38,8 +38,15 @@ describe('Create a team and add that team as a owner of the entity', () => {
    * Only team of type group can own the entities
    */
   it('Add a group team type and assign it as a owner of the entity', () => {
-    cy.get('[data-testid="appbar-item-settings"]').should('be.visible').click();
+    interceptURL(
+      'GET',
+      `/api/v1/search/query?q=*${teamName}***teamType:Group&from=0&size=15&index=team_search_index`,
+      'waitForTeams'
+    );
+    interceptURL('PATCH', '/api/v1/tables/*', 'validateOwner');
     interceptURL('GET', '/api/v1/users*', 'getTeams');
+
+    cy.get('[data-testid="appbar-item-settings"]').should('be.visible').click();
 
     // Clicking on teams
     cy.get('[data-testid="settings-left-panel"]')
@@ -68,21 +75,12 @@ describe('Create a team and add that team as a owner of the entity', () => {
       TEAM_DETAILS.entity
     );
 
-    interceptURL(
-      'GET',
-      '/api/v1/search/query?q=*%20AND%20teamType:Group&from=0&size=15&index=team_search_index',
-      'waitForTeams'
-    );
-
     cy.get('[data-testid="edit-owner"]').should('be.visible').click();
-
-    verifyResponseStatusCode('@waitForTeams', 200);
-
-    interceptURL('PATCH', '/api/v1/tables/*', 'validateOwner');
-
     cy.get('.user-team-select-popover  [data-testid="searchbar"]')
       .should('be.visible')
       .type(TEAM_DETAILS.name);
+
+    verifyResponseStatusCode('@waitForTeams', 200);
 
     // Selecting the team
     cy.get(`[title="${TEAM_DETAILS.name}"]`)

@@ -3,8 +3,8 @@ package org.openmetadata.service.resources.dataInsight;
 import static javax.ws.rs.core.Response.Status.OK;
 
 import com.google.inject.Inject;
-import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
+import io.swagger.v3.oas.annotations.Hidden;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -12,6 +12,7 @@ import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import java.io.IOException;
 import java.text.ParseException;
 import java.util.List;
@@ -53,6 +54,7 @@ import org.openmetadata.schema.dataInsight.DataInsightChartResult;
 import org.openmetadata.schema.type.DataReportIndex;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.dataInsight.DataInsightAggregatorFactory;
@@ -63,16 +65,18 @@ import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.util.ElasticSearchClientUtils;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
 
 @Slf4j
-@Path("/v1/dataInsight")
-@Api(value = "Data Insight collection", tags = "Data Insight collection")
+@Path("/v1/analytics/dataInsights/charts")
+@Tag(name = "Data Insights", description = "APIs related to Data Insights data and charts.")
+@Hidden
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(name = "dataInsight")
+@Collection(name = "analytics")
 public class DataInsightChartResource extends EntityResource<DataInsightChart, DataInsightChartRepository> {
   private RestHighLevelClient client;
   public static final String COLLECTION_PATH = DataInsightChartRepository.COLLECTION_PATH;
@@ -129,7 +133,6 @@ public class DataInsightChartResource extends EntityResource<DataInsightChart, D
   @Operation(
       operationId = "listDataInsightChart",
       summary = "List data insight charts",
-      tags = "dataInsight",
       description = "Get a list of data insight charts",
       responses = {
         @ApiResponse(
@@ -180,7 +183,6 @@ public class DataInsightChartResource extends EntityResource<DataInsightChart, D
   @Operation(
       operationId = "listDataInsightChartVersion",
       summary = "List data insight chart versions",
-      tags = "dataInsight",
       description = "Get a list of all the versions of a data insight chart identified by `id`",
       responses = {
         @ApiResponse(
@@ -202,7 +204,6 @@ public class DataInsightChartResource extends EntityResource<DataInsightChart, D
   @Operation(
       operationId = "listDataInsightChartId",
       summary = "Get a data insight chart by Id",
-      tags = "dataInsight",
       description = "Get a Data Insight Chart by `Id`.",
       responses = {
         @ApiResponse(
@@ -237,7 +238,6 @@ public class DataInsightChartResource extends EntityResource<DataInsightChart, D
   @Operation(
       operationId = "getDataInsightChartByName",
       summary = "Get a data insight chart by fully qualified name",
-      tags = "dataInsight",
       description = "Get a data insight chart by `fullyQualifiedName`.",
       responses = {
         @ApiResponse(
@@ -273,7 +273,6 @@ public class DataInsightChartResource extends EntityResource<DataInsightChart, D
   @Operation(
       operationId = "getSpecificDataInsightChartVersion",
       summary = "Get a version of the data insight chart",
-      tags = "dataInsight",
       description = "Get a version of the data insight by given `Id`",
       responses = {
         @ApiResponse(
@@ -303,7 +302,6 @@ public class DataInsightChartResource extends EntityResource<DataInsightChart, D
   @Operation(
       operationId = "createDataInsightChart",
       summary = "Create a data insight chart",
-      tags = "dataInsight",
       description = "Create a data insight chart.",
       responses = {
         @ApiResponse(
@@ -325,7 +323,6 @@ public class DataInsightChartResource extends EntityResource<DataInsightChart, D
   @Operation(
       operationId = "patchDataInsightChart",
       summary = "Update a data insight chart",
-      tags = "dataInsight",
       description = "Update an existing data insight chart using JsonPatch.",
       externalDocs = @ExternalDocumentation(description = "JsonPatch RFC", url = "https://tools.ietf.org/html/rfc6902"))
   @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
@@ -351,7 +348,6 @@ public class DataInsightChartResource extends EntityResource<DataInsightChart, D
   @Operation(
       operationId = "createOrUpdateDataInsightChart",
       summary = "Update data insight chart",
-      tags = "dataInsight",
       description = "Create a data insight chart, if it does not exist or update an existing data insight chart.",
       responses = {
         @ApiResponse(
@@ -372,7 +368,6 @@ public class DataInsightChartResource extends EntityResource<DataInsightChart, D
   @Operation(
       operationId = "deleteDataInsightChart",
       summary = "Delete a data insight chart by Id",
-      tags = "dataInsight",
       description = "Delete a data insight chart by `Id`.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
@@ -396,7 +391,6 @@ public class DataInsightChartResource extends EntityResource<DataInsightChart, D
   @Operation(
       operationId = "deleteDataInsightChartByName",
       summary = "Delete a data insight chart by fully qualified name",
-      tags = "dataInsight",
       description = "Delete a data insight chart by `fullyQualifiedName`.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
@@ -421,7 +415,6 @@ public class DataInsightChartResource extends EntityResource<DataInsightChart, D
   @Operation(
       operationId = "restore",
       summary = "Restore a soft deleted data insight chart",
-      tags = "dataInsight",
       description = "Restore a soft deleted data insight chart.",
       responses = {
         @ApiResponse(
@@ -441,7 +434,6 @@ public class DataInsightChartResource extends EntityResource<DataInsightChart, D
   @Operation(
       operationId = "getDataInsightChartResults",
       summary = "Get aggregated data for a data insight chart",
-      tags = "dataInsight",
       description = "Get aggregated data for a data insight chart.",
       responses = {
         @ApiResponse(
@@ -490,6 +482,9 @@ public class DataInsightChartResource extends EntityResource<DataInsightChart, D
           @QueryParam("endTs")
           Long endTs)
       throws IOException, ParseException {
+
+    OperationContext operationContext = new OperationContext(Entity.DATA_INSIGHT_CHART, MetadataOperation.VIEW_ALL);
+    authorizer.authorize(securityContext, operationContext, getResourceContext());
 
     SearchSourceBuilder searchSourceBuilder =
         dao.buildQueryFilter(startTs, endTs, tier, team, dataInsightChartName.value());

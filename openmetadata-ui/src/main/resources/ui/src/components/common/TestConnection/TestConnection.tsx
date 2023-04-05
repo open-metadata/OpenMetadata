@@ -51,6 +51,8 @@ import {
   FETCH_INTERVAL,
   WORKFLOW_COMPLETE_STATUS,
 } from 'constants/Services.constant';
+import { useAirflowStatus } from 'hooks/useAirflowStatus';
+import { showErrorToast } from 'utils/ToastUtils';
 import './test-connection.style.less';
 
 const TestConnection: FC<TestConnectionProps> = ({
@@ -62,6 +64,7 @@ const TestConnection: FC<TestConnectionProps> = ({
   showDetails = true,
 }) => {
   const { t } = useTranslation();
+  const { isAirflowAvailable } = useAirflowStatus();
 
   const initialMessage = t(
     'message.test-your-connection-before-creating-service'
@@ -114,7 +117,10 @@ const TestConnection: FC<TestConnectionProps> = ({
   }, [connectionType]);
 
   const isTestConnectionDisabled =
-    isTestingConnection || isTestingDisabled || !allowTestConn;
+    isTestingConnection ||
+    isTestingDisabled ||
+    !allowTestConn ||
+    !isAirflowAvailable;
 
   // data fetch handlers
 
@@ -123,8 +129,9 @@ const TestConnection: FC<TestConnectionProps> = ({
       const response = await getTestConnectionDefinitionByName(connectionType);
 
       setTestConnectionStep(response.steps);
+      setDialogOpen(true);
     } catch (error) {
-      // we will not throw error for this API
+      throw t('message.test-connection-cannot-be-triggered');
     }
   };
 
@@ -182,8 +189,6 @@ const TestConnection: FC<TestConnectionProps> = ({
 
       // fetch the connection steps for current connectionType
       await fetchConnectionDefinition();
-
-      setDialogOpen(true);
 
       // create the workflow
       const response = await addWorkflow(createWorkflowData);
@@ -263,6 +268,7 @@ const TestConnection: FC<TestConnectionProps> = ({
       setIsTestingConnection(false);
       setMessage(failureMessage);
       setTestStatus(StatusType.Failed);
+      showErrorToast(error as AxiosError);
     }
   };
 

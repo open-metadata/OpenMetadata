@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { LoadingState } from 'Models';
+import { LoadingState, ServicesUpdateRequest } from 'Models';
 import { FilterPatternEnum } from '../../enums/filterPattern.enum';
 import { FormSubmitType } from '../../enums/form.enum';
 import { ServiceCategory } from '../../enums/service.enum';
@@ -27,7 +27,7 @@ import {
   PipelineType,
 } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { DbtPipelineClass } from '../../generated/metadataIngestion/dbtPipeline';
-import { DataObj } from '../../interface/service.interface';
+
 import {
   DBT_SOURCES,
   GCS_CONFIG,
@@ -41,7 +41,7 @@ export interface AddIngestionProps {
   status: FormSubmitType;
   data?: IngestionPipeline;
   serviceCategory: ServiceCategory;
-  serviceData: DataObj;
+  serviceData: ServicesUpdateRequest;
   showSuccessScreen?: boolean;
   showDeployButton?: boolean;
   setActiveIngestionStep: (step: number) => void;
@@ -94,8 +94,10 @@ export type ModifiedDbtConfig = DbtConfig &
 
 export interface AddIngestionState {
   chartFilterPattern: FilterPattern;
+  database?: string;
   dashboardFilterPattern: FilterPattern;
   databaseFilterPattern: FilterPattern;
+  isDatabaseFilterDisabled: boolean;
   databaseServiceNames: string[];
   dbtClassificationName: string;
   dbtUpdateDescriptions: boolean;
