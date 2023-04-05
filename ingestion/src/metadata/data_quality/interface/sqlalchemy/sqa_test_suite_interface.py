@@ -68,6 +68,7 @@ class SQATestSuiteInterface(SQAInterfaceMixin, TestSuiteProtocol):
             get_connection(self.service_connection_config)
         )
         self.set_session_tag(self.session)
+        self.set_catalog(self.session)
 
         self._table = self._convert_table_to_orm_object(sqa_metadata_obj)
 

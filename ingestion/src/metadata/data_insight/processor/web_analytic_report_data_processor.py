@@ -195,6 +195,8 @@ class WebAnalyticEntityViewReportDataProcessor(DataProcessor):
             else:
                 refined_data[split_url[1]]["views"] += 1
 
+            self.processor_status.scanned(ENTITIES[entity_type].__name__)
+
     def refine(self):
         """Aggregates data. It will return a dictionary of the following shape
 
@@ -324,6 +326,8 @@ class WebAnalyticUserActivityReportDataProcessor(DataProcessor):
 
                 if timestamp > user_data["lastSession"]:
                     user_data["lastSession"] = timestamp
+
+            self.processor_status.scanned(user_id)
 
     def fetch_data(self) -> Iterable[WebAnalyticEventData]:
         if CACHED_EVENTS:
