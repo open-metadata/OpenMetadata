@@ -16,7 +16,6 @@ package org.openmetadata.service.workflows.searchIndex;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.getSuccessFromBulkResponse;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.getUpdatedStats;
 
-import java.io.IOException;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.elasticsearch.action.bulk.BulkRequest;
@@ -53,7 +52,7 @@ public class EsSearchIndexWriter implements Sink<BulkRequest, BulkResponse> {
       updateStats(currentSuccess, currentFailed);
 
       return response;
-    } catch (IOException e) {
+    } catch (Exception e) {
       LOG.debug(
           "[EsSearchIndexWriter] Batch Stats :- Submitted : {} Success: {} Failed: {}",
           data.numberOfActions(),

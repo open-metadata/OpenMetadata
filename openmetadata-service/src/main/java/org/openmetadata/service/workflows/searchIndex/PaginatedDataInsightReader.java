@@ -41,6 +41,7 @@ public class PaginatedDataInsightReader implements Source<ResultList<ReportData>
     this.dao = dao;
     this.entityType = entityType;
     this.batchSize = batchSize;
+    stats.setTotalRecords(dao.entityExtensionTimeSeriesDao().listCount(entityType));
   }
 
   @Override
@@ -76,7 +77,12 @@ public class PaginatedDataInsightReader implements Source<ResultList<ReportData>
       updateStats(result.getData().size(), result.getErrors().size());
     } catch (Exception ex) {
       LOG.debug("[DataInsightReader] Batch Stats :- Submitted : {} Success: {} Failed: {}", batchSize, 0, batchSize);
-      updateStats(0, batchSize);
+      if (stats.getTotalRecords() - stats.getProcessedRecords() <= batchSize) {
+        isDone = true;
+        updateStats(0, stats.getTotalRecords() - stats.getProcessedRecords());
+      } else {
+        updateStats(0, batchSize);
+      }
       throw new ReaderException("[EntitiesReader] Batch encountered Exception. Failing Completely.", ex);
     }
 
@@ -104,7 +110,7 @@ public class PaginatedDataInsightReader implements Source<ResultList<ReportData>
     for (CollectionDAO.ReportDataRow reportDataRow : reportDataRowList) {
       reportDataList.add(reportDataRow.getReportData());
     }
-    return new ResultList<>(reportDataList, beforeCursor, afterCursor, total);
+    return new ResultList<>(reportDataList, new ArrayList<>(), beforeCursor, afterCursor, total);
   }
 
   @Override

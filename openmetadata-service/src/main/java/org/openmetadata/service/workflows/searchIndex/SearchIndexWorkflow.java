@@ -18,6 +18,7 @@ import static org.openmetadata.service.util.ReIndexingHandler.REINDEXING_JOB_EXT
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.ENTITY_TYPE_KEY;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.getSuccessFromBulkResponse;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.getTotalRequestToProcess;
+import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.getUpdatedStats;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.isDataInsightIndex;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -91,22 +92,32 @@ public class SearchIndexWorkflow implements Runnable {
 
   @SneakyThrows
   public void run() {
-    LOG.info("Executing Reindexing Job with JobData : {}", jobData);
-
-    // Update Job Status
-    jobData.setStatus(EventPublisherJob.Status.RUNNING);
-
-    // Run ReIndexing
-    entitiesReIndexer();
-    dataInsightReindexer();
-
-    // Mark Job as Completed
-    updateJobStatus();
-    jobData.setEndTime(System.currentTimeMillis());
-
-    // store job details in Database
-    updateRecordToDb();
-    ReIndexingHandler.getInstance().removeCompletedJob(jobData.getId());
+    try {
+      LOG.info("Executing Reindexing Job with JobData : {}", jobData);
+      // Update Job Status
+      jobData.setStatus(EventPublisherJob.Status.RUNNING);
+      // Run ReIndexing
+      entitiesReIndexer();
+      dataInsightReindexer();
+      // Mark Job as Completed
+      updateJobStatus();
+      jobData.setEndTime(System.currentTimeMillis());
+    } catch (Exception ex) {
+      String error =
+          String.format(
+              "Reindexing Job Has Encountered an Exception. \n Job Data: %s, \n  Stack : %s ",
+              jobData.toString(), ExceptionUtils.getStackTrace(ex));
+      LOG.error(error);
+      jobData.setStatus(EventPublisherJob.Status.FAILED);
+      handleJobError("Failure in Job: Check Stack", error, System.currentTimeMillis());
+    } finally {
+      // store job details in Database
+      updateRecordToDb();
+      // Send update
+      sendUpdates();
+      // Remove list from active jobs
+      ReIndexingHandler.getInstance().removeCompletedJob(jobData.getId());
+    }
   }
 
   private void entitiesReIndexer() {
@@ -123,41 +134,43 @@ public class SearchIndexWorkflow implements Runnable {
         try {
           resultList = reader.readNext(null);
           requestToProcess = resultList.getData().size() + resultList.getErrors().size();
-          // process data to build Reindex Request
-          BulkRequest requests = entitiesProcessor.process(resultList, contextData);
-          // write the data to ElasticSearch
-          BulkResponse response = writer.write(requests, contextData);
-          // update Status
-          handleErrors(resultList, response, currentTime);
-          // Update stats
-          success = getSuccessFromBulkResponse(response);
-          failed = requestToProcess - success;
+          if (resultList.getData().size() > 0) {
+            // process data to build Reindex Request
+            BulkRequest requests = entitiesProcessor.process(resultList, contextData);
+            // write the data to ElasticSearch
+            BulkResponse response = writer.write(requests, contextData);
+            // update Status
+            handleErrors(resultList, response, currentTime);
+            // Update stats
+            success = getSuccessFromBulkResponse(response);
+            failed = requestToProcess - success;
+          } else {
+            failed = 0;
+          }
         } catch (ReaderException rx) {
           handleReaderError(
               rx.getMessage(),
-              String.format("Cause: %s \n Stack: %s", rx.getCause(), ExceptionUtils.getStackTrace(rx)),
+              String.format(
+                  "EntityType: %s \n Cause: %s \n Stack: %s",
+                  reader.getEntityType(), rx.getCause(), ExceptionUtils.getStackTrace(rx)),
               currentTime);
         } catch (ProcessorException px) {
           handleProcessorError(
               px.getMessage(),
-              String.format("Cause: %s \n Stack: %s", px.getCause(), ExceptionUtils.getStackTrace(px)),
+              String.format(
+                  "EntityType: %s \n Cause: %s \n Stack: %s",
+                  reader.getEntityType(), px.getCause(), ExceptionUtils.getStackTrace(px)),
               currentTime);
         } catch (WriterException wx) {
           handleEsError(
               wx.getMessage(),
-              String.format("Cause: %s \n Stack: %s", wx.getCause(), ExceptionUtils.getStackTrace(wx)),
+              String.format(
+                  "EntityType: %s \n Cause: %s \n Stack: %s",
+                  reader.getEntityType(), wx.getCause(), ExceptionUtils.getStackTrace(wx)),
               currentTime);
         } finally {
           updateStats(success, failed, reader.getStats(), entitiesProcessor.getStats(), writer.getStats());
-          try {
-            WebSocketManager.getInstance()
-                .sendToOne(
-                    jobData.getStartedBy(),
-                    WebSocketManager.JOB_STATUS_BROADCAST_CHANNEL,
-                    JsonUtils.pojoToJson(jobData));
-          } catch (JsonProcessingException ex) {
-            LOG.error("Failed to send updated stats with WebSocker", ex);
-          }
+          sendUpdates();
         }
       }
     }
@@ -177,44 +190,57 @@ public class SearchIndexWorkflow implements Runnable {
         try {
           resultList = dataInsightReader.readNext(null);
           requestToProcess = resultList.getData().size() + resultList.getErrors().size();
-          // process data to build Reindex Request
-          BulkRequest requests = dataInsightProcessor.process(resultList, contextData);
-          // write the data to ElasticSearch
-          BulkResponse response = writer.write(requests, contextData);
-          // update Status
-          handleErrors(resultList, response, currentTime);
-          // Update stats
-          success = getSuccessFromBulkResponse(response);
-          failed = requestToProcess - success;
+          if (resultList.getData().size() > 0) {
+            // process data to build Reindex Request
+            BulkRequest requests = dataInsightProcessor.process(resultList, contextData);
+            // write the data to ElasticSearch
+            // write the data to ElasticSearch
+            BulkResponse response = writer.write(requests, contextData);
+            // update Status
+            handleErrors(resultList, response, currentTime);
+            // Update stats
+            success = getSuccessFromBulkResponse(response);
+            failed = requestToProcess - success;
+          } else {
+            failed = 0;
+          }
         } catch (ReaderException rx) {
           handleReaderError(
               rx.getMessage(),
-              String.format("Cause: %s \n Stack: %s", rx.getCause(), ExceptionUtils.getStackTrace(rx)),
+              String.format(
+                  "EntityType: %s \n Cause: %s \n Stack: %s",
+                  dataInsightReader.getEntityType(), rx.getCause(), ExceptionUtils.getStackTrace(rx)),
               currentTime);
         } catch (ProcessorException px) {
           handleProcessorError(
               px.getMessage(),
-              String.format("Cause: %s \n Stack: %s", px.getCause(), ExceptionUtils.getStackTrace(px)),
+              String.format(
+                  "EntityType: %s \n Cause: %s \n Stack: %s",
+                  dataInsightReader.getEntityType(), px.getCause(), ExceptionUtils.getStackTrace(px)),
               currentTime);
         } catch (WriterException wx) {
           handleEsError(
               wx.getMessage(),
-              String.format("Cause: %s \n Stack: %s", wx.getCause(), ExceptionUtils.getStackTrace(wx)),
+              String.format(
+                  "EntityType: %s \n Cause: %s \n Stack: %s",
+                  dataInsightReader.getEntityType(), wx.getCause(), ExceptionUtils.getStackTrace(wx)),
               currentTime);
         } finally {
           updateStats(
               success, failed, dataInsightReader.getStats(), dataInsightProcessor.getStats(), writer.getStats());
-          try {
-            WebSocketManager.getInstance()
-                .sendToOne(
-                    jobData.getStartedBy(),
-                    WebSocketManager.JOB_STATUS_BROADCAST_CHANNEL,
-                    JsonUtils.pojoToJson(jobData));
-          } catch (JsonProcessingException ex) {
-            LOG.error("Failed to send updated stats with WebSocker", ex);
-          }
+          sendUpdates();
         }
       }
+    }
+  }
+
+  private void sendUpdates() {
+    try {
+      WebSocketManager.getInstance()
+          .sendToOne(
+              jobData.getStartedBy(), WebSocketManager.JOB_STATUS_BROADCAST_CHANNEL, JsonUtils.pojoToJson(jobData));
+    } catch (JsonProcessingException ex) {
+      LOG.error("Failed to send updated stats with WebSocket", ex);
     }
   }
 
@@ -226,21 +252,19 @@ public class SearchIndexWorkflow implements Runnable {
     // Total Stats
     StepStats stats = jobData.getStats().getJobStats();
     if (stats == null) {
-      stats = new StepStats().withTotalRecords(getTotalRequestToProcess(jobData.getEntities()));
+      stats = new StepStats().withTotalRecords(getTotalRequestToProcess(jobData.getEntities(), dao));
     }
-    stats.setTotalSuccessRecords(stats.getTotalSuccessRecords() + currentSuccess);
-    stats.setTotalFailedRecords(stats.getTotalFailedRecords() + currentFailed);
+    getUpdatedStats(stats, currentSuccess, currentFailed);
 
+    // Update for the Job
     jobDataStats.setJobStats(stats);
-
     // Reader Stats
     jobDataStats.setSourceStats(reader);
-
     // Processor
     jobDataStats.setProcessorStats(processor);
-
     // Writer
     jobDataStats.setSinkStats(writer);
+
     jobData.setStats(jobDataStats);
   }
 
@@ -289,7 +313,14 @@ public class SearchIndexWorkflow implements Runnable {
   private void handleEsError(String context, String reason, long time) {
     Failure failures = getFailure();
     FailureDetails writerFailure = getFailureDetails(context, reason, time);
-    failures.setProcessorError(writerFailure);
+    failures.setSinkError(writerFailure);
+    jobData.setFailure(failures);
+  }
+
+  private void handleJobError(String context, String reason, long time) {
+    Failure failures = getFailure();
+    FailureDetails jobFailure = getFailureDetails(context, reason, time);
+    failures.setJobError(jobFailure);
     jobData.setFailure(failures);
   }
 

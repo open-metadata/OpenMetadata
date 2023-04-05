@@ -43,6 +43,7 @@ public class PaginatedEntitiesReader implements Source<ResultList<? extends Enti
     this.entityType = entityType;
     this.batchSize = batchSize;
     this.fields = fields;
+    this.stats.setTotalRecords(Entity.getEntityRepository(entityType).dao.listTotalCount());
   }
 
   @Override
@@ -62,7 +63,7 @@ public class PaginatedEntitiesReader implements Source<ResultList<? extends Enti
   private ResultList<? extends EntityInterface> read(String cursor) throws ReaderException {
     LOG.debug("[EntitiesReader] Fetching a Batch of Size: {} ", batchSize);
     EntityRepository<?> entityRepository = Entity.getEntityRepository(entityType);
-    ResultList<? extends EntityInterface> result;
+    ResultList<? extends EntityInterface> result = null;
     try {
       result =
           entityRepository.listAfterWithSkipFailure(
@@ -82,7 +83,12 @@ public class PaginatedEntitiesReader implements Source<ResultList<? extends Enti
 
     } catch (IOException e) {
       LOG.debug("[EntitiesReader] Batch Stats :- Submitted : {} Success: {} Failed: {}", batchSize, 0, batchSize);
-      updateStats(0, batchSize);
+      if (stats.getTotalRecords() - stats.getProcessedRecords() <= batchSize) {
+        isDone = true;
+        updateStats(0, stats.getTotalRecords() - stats.getProcessedRecords());
+      } else {
+        updateStats(0, batchSize);
+      }
       throw new ReaderException("[EntitiesReader] Batch encountered Exception. Failing Completely.", e);
     }
 
