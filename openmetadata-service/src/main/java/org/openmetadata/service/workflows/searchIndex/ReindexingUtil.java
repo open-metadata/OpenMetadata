@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-package org.openmetadata.service.jobs.reindexing;
+package org.openmetadata.service.workflows.searchIndex;
 
 import java.util.Set;
 import org.elasticsearch.action.bulk.BulkItemResponse;

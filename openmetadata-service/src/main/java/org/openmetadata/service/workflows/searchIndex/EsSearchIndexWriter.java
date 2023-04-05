@@ -11,10 +11,10 @@
  *  limitations under the License.
  */
 
-package org.openmetadata.service.jobs.reindexing;
+package org.openmetadata.service.workflows.searchIndex;
 
-import static org.openmetadata.service.jobs.reindexing.ReindexingUtil.getSuccessFromBulkResponse;
-import static org.openmetadata.service.jobs.reindexing.ReindexingUtil.getUpdatedStats;
+import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.getSuccessFromBulkResponse;
+import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.getUpdatedStats;
 
 import java.io.IOException;
 import java.util.Map;
@@ -25,20 +25,20 @@ import org.elasticsearch.client.RequestOptions;
 import org.elasticsearch.client.RestHighLevelClient;
 import org.openmetadata.schema.system.StepStats;
 import org.openmetadata.service.exception.WriterException;
-import org.openmetadata.service.jobs.interfaces.Sink;
+import org.openmetadata.service.workflows.interfaces.Sink;
 
 @Slf4j
-public class EsReindexingWriter implements Sink<BulkRequest, BulkResponse> {
+public class EsSearchIndexWriter implements Sink<BulkRequest, BulkResponse> {
   private final StepStats stats = new StepStats();
   private final RestHighLevelClient client;
 
-  EsReindexingWriter(RestHighLevelClient client) {
+  EsSearchIndexWriter(RestHighLevelClient client) {
     this.client = client;
   }
 
   @Override
   public BulkResponse write(BulkRequest data, Map<String, Object> contextData) throws WriterException {
-    LOG.debug("[EsReindexingWriter] Processing a Batch of Size: {}", data.numberOfActions());
+    LOG.debug("[EsSearchIndexWriter] Processing a Batch of Size: {}", data.numberOfActions());
     try {
       BulkResponse response = client.bulk(data, RequestOptions.DEFAULT);
       int currentSuccess = getSuccessFromBulkResponse(response);
@@ -46,7 +46,7 @@ public class EsReindexingWriter implements Sink<BulkRequest, BulkResponse> {
 
       // Update Stats
       LOG.debug(
-          "[EsReindexingWriter] Batch Stats :- Submitted : {} Success: {} Failed: {}",
+          "[EsSearchIndexWriter] Batch Stats :- Submitted : {} Success: {} Failed: {}",
           data.numberOfActions(),
           currentSuccess,
           currentFailed);
@@ -55,12 +55,12 @@ public class EsReindexingWriter implements Sink<BulkRequest, BulkResponse> {
       return response;
     } catch (IOException e) {
       LOG.debug(
-          "[EsReindexingWriter] Batch Stats :- Submitted : {} Success: {} Failed: {}",
+          "[EsSearchIndexWriter] Batch Stats :- Submitted : {} Success: {} Failed: {}",
           data.numberOfActions(),
           0,
           data.numberOfActions());
       updateStats(0, data.numberOfActions());
-      throw new WriterException("[EsReindexingWriter] Batch encountered Exception. Failing Completely", e);
+      throw new WriterException("[EsSearchIndexWriter] Batch encountered Exception. Failing Completely", e);
     }
   }
 

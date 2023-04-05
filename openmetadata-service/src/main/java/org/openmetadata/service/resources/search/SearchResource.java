@@ -85,11 +85,11 @@ import org.openmetadata.schema.api.CreateEventPublisherJob;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.elasticsearch.ElasticSearchIndexDefinition;
 import org.openmetadata.service.jdbi3.CollectionDAO;
-import org.openmetadata.service.jobs.reindexing.ReindexingJob;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.util.ElasticSearchClientUtils;
 import org.openmetadata.service.util.ReIndexingHandler;
+import org.openmetadata.service.workflows.searchIndex.SearchIndexWorkflow;
 
 @Slf4j
 @Path("/v1/search")
@@ -114,7 +114,7 @@ public class SearchResource {
   private final Authorizer authorizer;
   private final ExecutorService threadScheduler;
 
-  private final ConcurrentHashMap<UUID, ReindexingJob> REINDEXING_JOBS_MAP = new ConcurrentHashMap<>();
+  private final ConcurrentHashMap<UUID, SearchIndexWorkflow> REINDEXING_JOBS_MAP = new ConcurrentHashMap<>();
 
   static {
     SearchModule searchModule = new SearchModule(Settings.EMPTY, false, List.of());

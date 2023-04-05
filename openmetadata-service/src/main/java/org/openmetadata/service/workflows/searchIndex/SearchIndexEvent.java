@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-package org.openmetadata.service.jobs.reindexing;
+package org.openmetadata.service.workflows.searchIndex;
 
 import static org.openmetadata.schema.api.CreateEventPublisherJob.PublisherType.ELASTIC_SEARCH;
 
@@ -32,7 +32,7 @@ import org.openmetadata.service.util.ReIndexingHandler;
 
 @Reindex
 @Slf4j
-public class ReindexingEvent implements ContainerResponseFilter {
+public class SearchIndexEvent implements ContainerResponseFilter {
   @Override
   public void filter(ContainerRequestContext containerRequestContext, ContainerResponseContext containerResponseContext)
       throws IOException {
@@ -59,7 +59,7 @@ public class ReindexingEvent implements ContainerResponseFilter {
       // TODO: Once automation bots are in place update here
       ReIndexingHandler.getInstance().createReindexingJob("system", jobRequest);
     } else {
-      LOG.error("[ReindexAutomation] Reindexing invoked but with wrong info : {}", annotationFromResource);
+      LOG.error("[SearchIndexEvent] Reindexing invoked but with wrong info : {}", annotationFromResource);
     }
   }
 }

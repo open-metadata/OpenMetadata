@@ -11,10 +11,10 @@
  *  limitations under the License.
  */
 
-package org.openmetadata.service.jobs.reindexing;
+package org.openmetadata.service.workflows.searchIndex;
 
-import static org.openmetadata.service.jobs.reindexing.ReindexingUtil.ENTITY_TYPE_KEY;
-import static org.openmetadata.service.jobs.reindexing.ReindexingUtil.getUpdatedStats;
+import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.ENTITY_TYPE_KEY;
+import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.getUpdatedStats;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import java.util.List;
@@ -30,9 +30,9 @@ import org.openmetadata.schema.system.StepStats;
 import org.openmetadata.service.elasticsearch.ElasticSearchIndexDefinition;
 import org.openmetadata.service.elasticsearch.ElasticSearchIndexFactory;
 import org.openmetadata.service.exception.ProcessorException;
-import org.openmetadata.service.jobs.interfaces.Processor;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
+import org.openmetadata.service.workflows.interfaces.Processor;
 
 @Slf4j
 public class EsEntitiesProcessor implements Processor<ResultList<? extends EntityInterface>, BulkRequest> {

@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 
-package org.openmetadata.service.jobs.reindexing;
+package org.openmetadata.service.workflows.searchIndex;
 
-import static org.openmetadata.service.jobs.reindexing.ReindexingUtil.getUpdatedStats;
+import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.getUpdatedStats;
 
 import java.io.IOException;
 import java.util.List;
@@ -27,8 +27,8 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.ReaderException;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
-import org.openmetadata.service.jobs.interfaces.Source;
 import org.openmetadata.service.util.ResultList;
+import org.openmetadata.service.workflows.interfaces.Source;
 
 @Slf4j
 public class PaginatedEntitiesReader implements Source<ResultList<? extends EntityInterface>> {

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-package org.openmetadata.service.jobs.interfaces;
+package org.openmetadata.service.workflows.interfaces;
 
 import org.openmetadata.schema.system.StepStats;
 

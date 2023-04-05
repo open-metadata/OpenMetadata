@@ -11,14 +11,14 @@
  *  limitations under the License.
  */
 
-package org.openmetadata.service.jobs.reindexing;
+package org.openmetadata.service.workflows.searchIndex;
 
 import static org.openmetadata.service.elasticsearch.ElasticSearchIndexDefinition.getIndexFields;
-import static org.openmetadata.service.jobs.reindexing.ReindexingUtil.ENTITY_TYPE_KEY;
-import static org.openmetadata.service.jobs.reindexing.ReindexingUtil.getSuccessFromBulkResponse;
-import static org.openmetadata.service.jobs.reindexing.ReindexingUtil.getTotalRequestToProcess;
-import static org.openmetadata.service.jobs.reindexing.ReindexingUtil.isDataInsightIndex;
 import static org.openmetadata.service.util.ReIndexingHandler.REINDEXING_JOB_EXTENSION;
+import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.ENTITY_TYPE_KEY;
+import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.getSuccessFromBulkResponse;
+import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.getTotalRequestToProcess;
+import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.isDataInsightIndex;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -51,17 +51,17 @@ import org.openmetadata.service.util.ReIndexingHandler;
 import org.openmetadata.service.util.ResultList;
 
 @Slf4j
-public class ReindexingJob implements Runnable {
+public class SearchIndexWorkflow implements Runnable {
   private final List<PaginatedEntitiesReader> entitiesReaders = new ArrayList<>();
   private final List<PaginatedDataInsightReader> dataInsightReaders = new ArrayList<>();
   private final EsEntitiesProcessor entitiesProcessor;
   private final EsDataInsightProcessor dataInsightProcessor;
-  private final EsReindexingWriter writer;
+  private final EsSearchIndexWriter writer;
   private final ElasticSearchIndexDefinition elasticSearchIndexDefinition;
   @Getter private final EventPublisherJob jobData;
   private final CollectionDAO dao;
 
-  public ReindexingJob(
+  public SearchIndexWorkflow(
       CollectionDAO dao,
       ElasticSearchIndexDefinition elasticSearchIndexDefinition,
       RestHighLevelClient client,
@@ -83,7 +83,7 @@ public class ReindexingJob implements Runnable {
             });
     this.entitiesProcessor = new EsEntitiesProcessor();
     this.dataInsightProcessor = new EsDataInsightProcessor();
-    this.writer = new EsReindexingWriter(client);
+    this.writer = new EsSearchIndexWriter(client);
     this.elasticSearchIndexDefinition = elasticSearchIndexDefinition;
   }
 

@@ -38,7 +38,7 @@ import org.openmetadata.schema.system.Failure;
 import org.openmetadata.schema.system.Stats;
 import org.openmetadata.service.elasticsearch.ElasticSearchIndexDefinition;
 import org.openmetadata.service.jdbi3.CollectionDAO;
-import org.openmetadata.service.jobs.reindexing.ReindexingJob;
+import org.openmetadata.service.workflows.searchIndex.SearchIndexWorkflow;
 
 @Slf4j
 public class ReIndexingHandler {
@@ -49,7 +49,7 @@ public class ReIndexingHandler {
   private static RestHighLevelClient client;
   private static ElasticSearchIndexDefinition esIndexDefinition;
   private static ExecutorService threadScheduler;
-  private final Map<UUID, ReindexingJob> REINDEXING_JOB_MAP = new LinkedHashMap<>();
+  private final Map<UUID, SearchIndexWorkflow> REINDEXING_JOB_MAP = new LinkedHashMap<>();
   private static BlockingQueue<Runnable> taskQueue;
 
   private ReIndexingHandler() {}
@@ -88,9 +88,9 @@ public class ReIndexingHandler {
       throw new RuntimeException("Thread unavailable to run the jobs. There are pending jobs.");
     } else {
       EventPublisherJob jobData = getReindexJob(startedBy, createReindexingJob);
-      List<ReindexingJob> activeJobs = new ArrayList<>(REINDEXING_JOB_MAP.values());
+      List<SearchIndexWorkflow> activeJobs = new ArrayList<>(REINDEXING_JOB_MAP.values());
       Set<String> entityList = jobData.getEntities();
-      for (ReindexingJob job : activeJobs) {
+      for (SearchIndexWorkflow job : activeJobs) {
         EventPublisherJob runningJob = job.getJobData();
         runningJob.getEntities().forEach(entityList::remove);
       }
@@ -106,7 +106,7 @@ public class ReIndexingHandler {
                 "eventPublisherJob",
                 JsonUtils.pojoToJson(jobData));
         // Create Job
-        ReindexingJob job = new ReindexingJob(dao, esIndexDefinition, client, jobData);
+        SearchIndexWorkflow job = new SearchIndexWorkflow(dao, esIndexDefinition, client, jobData);
         threadScheduler.submit(job);
         REINDEXING_JOB_MAP.put(jobData.getId(), job);
         return jobData;
@@ -130,7 +130,7 @@ public class ReIndexingHandler {
   }
 
   public EventPublisherJob getJob(UUID jobId) throws IOException {
-    ReindexingJob job = REINDEXING_JOB_MAP.get(jobId);
+    SearchIndexWorkflow job = REINDEXING_JOB_MAP.get(jobId);
     if (job == null) {
       String recordString =
           dao.entityExtensionTimeSeriesDao().getLatestExtension(jobId.toString(), REINDEXING_JOB_EXTENSION);
@@ -140,7 +140,7 @@ public class ReIndexingHandler {
   }
 
   public EventPublisherJob getLatestJob() throws IOException {
-    List<ReindexingJob> activeJobs = new ArrayList<>(REINDEXING_JOB_MAP.values());
+    List<SearchIndexWorkflow> activeJobs = new ArrayList<>(REINDEXING_JOB_MAP.values());
     if (activeJobs.size() > 0) {
       return activeJobs.get(activeJobs.size() - 1).getJobData();
     } else {
@@ -151,9 +151,9 @@ public class ReIndexingHandler {
 
   public List<EventPublisherJob> getAllJobs() throws IOException {
     List<EventPublisherJob> result = new ArrayList<>();
-    List<ReindexingJob> activeReindexingJob = new ArrayList<>(REINDEXING_JOB_MAP.values());
+    List<SearchIndexWorkflow> activeReindexingJob = new ArrayList<>(REINDEXING_JOB_MAP.values());
     List<EventPublisherJob> activeEventPubJob =
-        activeReindexingJob.stream().map(ReindexingJob::getJobData).collect(Collectors.toList());
+        activeReindexingJob.stream().map(SearchIndexWorkflow::getJobData).collect(Collectors.toList());
     List<EventPublisherJob> jobsFromDatabase =
         JsonUtils.readObjects(
             dao.entityExtensionTimeSeriesDao().getAllByExtension(REINDEXING_JOB_EXTENSION), EventPublisherJob.class);

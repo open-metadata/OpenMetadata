@@ -1,6 +1,6 @@
 package org.openmetadata.service.elasticsearch;
 
-import static org.openmetadata.service.jobs.reindexing.ReindexingUtil.isDataInsightIndex;
+import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.isDataInsightIndex;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import java.io.IOException;

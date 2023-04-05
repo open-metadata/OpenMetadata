@@ -75,7 +75,6 @@ import org.openmetadata.service.exception.JsonMappingExceptionMapper;
 import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareAnnotationSqlLocator;
-import org.openmetadata.service.jobs.reindexing.ReindexingEvent;
 import org.openmetadata.service.migration.Migration;
 import org.openmetadata.service.migration.MigrationConfiguration;
 import org.openmetadata.service.monitoring.EventMonitor;
@@ -105,6 +104,7 @@ import org.openmetadata.service.socket.SocketAddressFilter;
 import org.openmetadata.service.socket.WebSocketManager;
 import org.openmetadata.service.util.EmailUtil;
 import org.openmetadata.service.util.MicrometerBundleSingleton;
+import org.openmetadata.service.workflows.searchIndex.SearchIndexEvent;
 
 /** Main catalog application */
 @Slf4j
@@ -348,7 +348,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     if (catalogConfig.getEventHandlerConfiguration() != null) {
       ContainerResponseFilter eventFilter = new EventFilter(catalogConfig, jdbi);
       environment.jersey().register(eventFilter);
-      ContainerResponseFilter reindexingJobs = new ReindexingEvent();
+      ContainerResponseFilter reindexingJobs = new SearchIndexEvent();
       environment.jersey().register(reindexingJobs);
     }
   }

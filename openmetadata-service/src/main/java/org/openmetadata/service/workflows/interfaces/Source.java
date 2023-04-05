@@ -11,11 +11,13 @@
  *  limitations under the License.
  */
 
-package org.openmetadata.service.jobs.interfaces;
+package org.openmetadata.service.workflows.interfaces;
 
 import java.util.Map;
-import org.openmetadata.service.exception.WriterException;
+import org.openmetadata.service.exception.ReaderException;
 
-public interface Sink<I, O> extends Stats {
-  O write(I data, Map<String, Object> contextData) throws WriterException;
+public interface Source<R> extends Stats {
+  R readNext(Map<String, Object> contextData) throws ReaderException;
+
+  void reset();
 }
