@@ -209,7 +209,11 @@ function IngestionListTable({
       )}
     </div>
   ) : (
-    getErrorPlaceHolder(isRequiredDetailsAvailable, ingestionData.length)
+    getErrorPlaceHolder(
+      isRequiredDetailsAvailable,
+      ingestionData.length,
+      serviceName
+    )
   );
 }
 

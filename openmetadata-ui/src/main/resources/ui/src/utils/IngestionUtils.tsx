@@ -30,6 +30,7 @@ import { ServicesType } from '../interface/service.interface';
 import { Typography } from 'antd';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import { WORKFLOWS_METADATA_DOCS } from 'constants/docs.constants';
+import { OPEN_METADATA } from 'constants/Services.constant';
 import {
   INGESTION_ACTION_TYPE,
   PIPELINE_TYPE_LOCALIZATION,
@@ -186,18 +187,23 @@ export const getIngestionTypes = (
 
 export const getErrorPlaceHolder = (
   isRequiredDetailsAvailable: boolean,
-  ingestionDataLength: number
+  ingestionDataLength: number,
+  serviceName?: string
 ) => {
   if (isRequiredDetailsAvailable && ingestionDataLength === 0) {
     return (
       <ErrorPlaceHolder>
         <Typography.Text>{t('message.no-ingestion-available')}</Typography.Text>
-        <Typography.Text>
-          {t('message.no-ingestion-description')}
-        </Typography.Text>
-        <Typography.Link href={WORKFLOWS_METADATA_DOCS} target="_blank">
-          {t('label.metadata-ingestion')}
-        </Typography.Link>
+        {serviceName !== OPEN_METADATA && (
+          <>
+            <Typography.Text>
+              {t('message.no-ingestion-description')}
+            </Typography.Text>
+            <Typography.Link href={WORKFLOWS_METADATA_DOCS} target="_blank">
+              {t('label.metadata-ingestion')}
+            </Typography.Link>
+          </>
+        )}
       </ErrorPlaceHolder>
     );
   }
