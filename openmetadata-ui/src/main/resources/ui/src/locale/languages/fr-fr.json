@@ -1172,6 +1172,7 @@
     "successfully-completed-the-tour": "Vous avez fini la visite avec succès.",
     "team-moved-success": "Team moved successfully!",
     "team-no-asset": "Votre equipe n'a pas de resources de données",
+    "test-connection-cannot-be-triggered": "Test connection cannot be triggered.",
     "test-connection-taking-too-long": "The test connection is taking too long. Please try again.",
     "test-your-connection-before-creating-service": "Test your connections before creating the service",
     "testing-your-connection-may-take-two-minutes": "Testing your connections may take up-to 2 minutes",

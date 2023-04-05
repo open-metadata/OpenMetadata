@@ -1172,6 +1172,7 @@
     "successfully-completed-the-tour": "You’ve successfully completed the tour.",
     "team-moved-success": "Team moved successfully!",
     "team-no-asset": "Your team does not have any assets.",
+    "test-connection-cannot-be-triggered": "Test connection cannot be triggered.",
     "test-connection-taking-too-long": "The test connection is taking too long. Please try again.",
     "test-your-connection-before-creating-service": "Test your connections before creating the service",
     "testing-your-connection-may-take-two-minutes": "Testing your connections may take up-to 2 minutes",
