@@ -19,6 +19,14 @@ import EntityPageInfo from 'components/common/entityPageInfo/EntityPageInfo';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import PageContainerV1 from 'components/containers/PageContainerV1';
 import ModelTab from 'components/DataModels/ModelTab/ModelTab.component';
+import EntityLineageComponent from 'components/EntityLineage/EntityLineage.component';
+import {
+  Edge,
+  EdgeData,
+  LeafNodes,
+  LineagePos,
+  LoadingNodeState,
+} from 'components/EntityLineage/EntityLineage.interface';
 import Loader from 'components/Loader/Loader';
 import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
 import {
@@ -34,6 +42,7 @@ import { ServiceCategory } from 'enums/service.enum';
 import { OwnerType } from 'enums/user.enum';
 import { compare } from 'fast-json-patch';
 import { DashboardDataModel } from 'generated/entity/data/dashboardDataModel';
+import { EntityLineage, EntityReference } from 'generated/type/entityLineage';
 import { LabelType, State, TagSource } from 'generated/type/tagLabel';
 import { isUndefined, omitBy } from 'lodash';
 import { EntityTags, ExtraInfo } from 'Models';
@@ -46,6 +55,8 @@ import {
   patchDataModelDetails,
   removeDataModelFollower,
 } from 'rest/dataModelsAPI';
+import { getLineageByFQN } from 'rest/lineageAPI';
+import { addLineage, deleteLineageEdge } from 'rest/miscAPI';
 import {
   getCurrentUserId,
   getEntityMissingError,
@@ -53,8 +64,9 @@ import {
   getOwnerValue,
 } from 'utils/CommonUtils';
 import { getDataModelsDetailPath } from 'utils/DataModelsUtils';
-import { getEntityName } from 'utils/EntityUtils';
+import { getEntityLineage, getEntityName } from 'utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from 'utils/PermissionsUtils';
+import { getLineageViewPath } from 'utils/RouterUtils';
 import { serviceTypeLogo } from 'utils/ServiceUtils';
 import { getTagsWithoutTier, getTierTags } from 'utils/TableUtils';
 import { showErrorToast } from 'utils/ToastUtils';
@@ -80,11 +92,21 @@ const DataModelsPage = () => {
     useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
   const [dataModelData, setDataModelData] = useState<DashboardDataModel>();
 
+  const [isLineageLoading, setIsLineageLoading] = useState<boolean>(false);
+  const [entityLineage, setEntityLineage] = useState<EntityLineage>(
+    {} as EntityLineage
+  );
+  const [leafNodes, setLeafNodes] = useState<LeafNodes>({} as LeafNodes);
+  const [isNodeLoading, setNodeLoading] = useState<LoadingNodeState>({
+    id: undefined,
+    state: false,
+  });
+
   const fetchResourcePermission = async (dashboardDataModelFQN: string) => {
     setIsLoading(true);
     try {
       const entityPermission = await getEntityPermissionByFqn(
-        ResourceEntity.CONTAINER,
+        ResourceEntity.DASHBOARD_DATA_MODEL,
         dashboardDataModelFQN
       );
       setDataModelPermissions(entityPermission);
@@ -99,12 +121,29 @@ const DataModelsPage = () => {
     }
   };
 
+  const fetchLineageData = async (dashboardDataModelFQN: string) => {
+    setIsLineageLoading(true);
+    try {
+      const response = await getLineageByFQN(
+        dashboardDataModelFQN,
+        EntityType.DASHBOARD_DATA_MODEL
+      );
+
+      setEntityLineage(response);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    } finally {
+      setIsLineageLoading(false);
+    }
+  };
+
   const {
     hasViewPermission,
     hasEditDescriptionPermission,
     hasEditOwnerPermission,
     hasEditTagsPermission,
     hasEditTierPermission,
+    hasEditLineagePermission,
   } = useMemo(() => {
     return {
       hasViewPermission:
@@ -374,6 +413,86 @@ const DataModelsPage = () => {
     }
   };
 
+  // Lineage handlers
+  const handleAddLineage = async (edge: Edge) => {
+    try {
+      await addLineage(edge);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  };
+
+  const handleRemoveLineage = async (data: EdgeData) => {
+    try {
+      await deleteLineageEdge(
+        data.fromEntity,
+        data.fromId,
+        data.toEntity,
+        data.toId
+      );
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  };
+
+  const handleSetLeafNode = (val: EntityLineage, pos: LineagePos) => {
+    if (pos === 'to' && val.downstreamEdges?.length === 0) {
+      setLeafNodes((prev) => ({
+        ...prev,
+        downStreamNode: [...(prev.downStreamNode ?? []), val.entity.id],
+      }));
+    }
+    if (pos === 'from' && val.upstreamEdges?.length === 0) {
+      setLeafNodes((prev) => ({
+        ...prev,
+        upStreamNode: [...(prev.upStreamNode ?? []), val.entity.id],
+      }));
+    }
+  };
+
+  const handleLoadLineageNode = async (
+    node: EntityReference,
+    pos: LineagePos
+  ) => {
+    setNodeLoading({ id: node.id, state: true });
+
+    try {
+      const response = await getLineageByFQN(
+        node.fullyQualifiedName ?? '',
+        node.type
+      );
+      handleSetLeafNode(response, pos);
+      setEntityLineage(getEntityLineage(entityLineage, response, pos));
+      setTimeout(() => {
+        setNodeLoading((prev) => ({ ...prev, state: false }));
+      }, 500);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  };
+
+  const handleFullScreenClick = () =>
+    history.push(
+      getLineageViewPath(EntityType.DASHBOARD_DATA_MODEL, dashboardDataModelFQN)
+    );
+
+  const fetchTabSpecificData = () => {
+    switch (tab) {
+      case DATA_MODELS_DETAILS_TABS.LINEAGE: {
+        fetchLineageData(dashboardDataModelFQN);
+
+        break;
+      }
+
+      default:
+        break;
+    }
+  };
+
+  useEffect(() => {
+    fetchTabSpecificData();
+  }, [tab, dashboardDataModelFQN]);
+
   useEffect(() => {
     if (hasViewPermission) {
       fetchDataModelDetails(dashboardDataModelFQN);
@@ -441,7 +560,7 @@ const DataModelsPage = () => {
                   description={description}
                   entityFqn={dashboardDataModelFQN}
                   entityName={entityName}
-                  entityType={EntityType.CONTAINER}
+                  entityType={EntityType.DASHBOARD_DATA_MODEL}
                   hasEditAccess={hasEditDescriptionPermission}
                   isEdit={isEditDescription}
                   isReadOnly={deleted}
@@ -459,6 +578,35 @@ const DataModelsPage = () => {
                   onUpdate={handleUpdateDataModel}
                 />
               </Space>
+            </Card>
+          </Tabs.TabPane>
+
+          <Tabs.TabPane
+            key={DATA_MODELS_DETAILS_TABS.LINEAGE}
+            tab={
+              <span data-testid={DATA_MODELS_DETAILS_TABS.LINEAGE}>
+                {t('label.lineage')}
+              </span>
+            }>
+            <Card
+              className="h-full card-body-full"
+              data-testid="lineage-details">
+              <EntityLineageComponent
+                addLineageHandler={handleAddLineage}
+                deleted={deleted}
+                entityLineage={entityLineage}
+                entityLineageHandler={(lineage: EntityLineage) =>
+                  setEntityLineage(lineage)
+                }
+                entityType={EntityType.DASHBOARD_DATA_MODEL}
+                hasEditAccess={hasEditLineagePermission}
+                isLoading={isLineageLoading}
+                isNodeLoading={isNodeLoading}
+                lineageLeafNodes={leafNodes}
+                loadNodeHandler={handleLoadLineageNode}
+                removeLineageHandler={handleRemoveLineage}
+                onFullScreenClick={handleFullScreenClick}
+              />
             </Card>
           </Tabs.TabPane>
         </Tabs>

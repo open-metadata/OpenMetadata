@@ -326,6 +326,10 @@ export const getEntityIcon = (indexType: string) => {
     case EntityType.CONTAINER:
       return <ContainerIcon />;
 
+    case SearchIndex.DASHBOARD_DATA_MODEL:
+    case EntityType.DASHBOARD_DATA_MODEL:
+      return <ContainerIcon />;
+
     case SearchIndex.TABLE:
     case EntityType.TABLE:
     default:
