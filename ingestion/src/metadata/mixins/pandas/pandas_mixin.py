@@ -13,14 +13,13 @@
 Interfaces with database for all database engine
 supporting sqlalchemy abstraction layer
 """
-from metadata.data_quality.validations.table.pandas.tableRowInsertedCountToBeBetween import (
-    TableRowInsertedCountToBeBetweenValidator,
-)
-from metadata.generated.schema.entity.data.table import PartitionIntervalType
 import math
 import random
 from typing import cast
 
+from metadata.data_quality.validations.table.pandas.tableRowInsertedCountToBeBetween import (
+    TableRowInsertedCountToBeBetweenValidator,
+)
 from metadata.generated.schema.entity.data.table import (
     PartitionIntervalType,
     PartitionProfilerConfig,

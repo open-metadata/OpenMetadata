@@ -35,7 +35,6 @@ from metadata.ingestion.source.database.datalake.metadata import (
 )
 from metadata.mixins.pandas.pandas_mixin import PandasInterfaceMixin
 from metadata.profiler.interface.profiler_protocol import ProfilerProtocol
-from metadata.ingestion.source.database.datalake.metadata import DatalakeSource
 from metadata.profiler.metrics.core import MetricTypes
 from metadata.profiler.metrics.registry import Metrics
 from metadata.profiler.processor.datalake_sampler import DatalakeSampler
