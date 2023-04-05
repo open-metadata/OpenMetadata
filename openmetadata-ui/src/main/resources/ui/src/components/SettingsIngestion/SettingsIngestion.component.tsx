@@ -83,7 +83,8 @@ function SettingsIngestion({
       const res = await getIngestionPipelines(
         ['pipelineStatuses'],
         serviceFQN,
-        paging
+        paging,
+        pipelineType
       );
 
       if (res.data) {
