@@ -82,7 +82,12 @@ const CardListItem: FunctionComponent<Props> = ({
     if (isSelected || (isSelected && isActive)) {
       return (
         <Space align="center">
-          <Button danger size="small" type="primary" onClick={onRemove}>
+          <Button
+            danger
+            data-testid="remove-tier"
+            size="small"
+            type="primary"
+            onClick={onRemove}>
             {t('label.remove')}
           </Button>
           <CheckCircleOutlined className="tw-text-h4" />

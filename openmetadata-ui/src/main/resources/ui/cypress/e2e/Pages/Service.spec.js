@@ -124,7 +124,6 @@ describe('Services page should work properly', () => {
 
     interceptURL('PATCH', '/api/v1/services/databaseServices/*', 'removeOwner');
     cy.get('[data-testid="selectable-list"]')
-      .eq(1)
       .contains(service.Owner)
       .should('be.visible');
 
