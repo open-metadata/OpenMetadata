@@ -40,6 +40,15 @@ def _(element, compiler, **kw):
     proc = compiler.process(element.clauses, **kw)
     return f"if(isNaN(avg({proc})), null, avg({proc}))"
 
+@compiles(avg, Dialects.MSSQL)
+def _(element, compiler, **kw):
+    """
+    Cast to decimal to get around potential integer overflow error - 
+    Error 8115: Arithmetic overflow error converting expression to data type int.
+    """
+    proc = compiler.process(element.clauses, **kw)
+    return f"avg(cast({proc} as decimal))"
+
 
 class Mean(StaticMetric):
     """
