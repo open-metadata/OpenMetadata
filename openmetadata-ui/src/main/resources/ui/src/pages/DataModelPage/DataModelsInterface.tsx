@@ -16,3 +16,10 @@ export interface DataModelTableProps {
   data: Array<ServicePageData>;
   isLoading: boolean;
 }
+
+export enum DATA_MODELS_DETAILS_TABS {
+  MODEL = 'model',
+  ACTIVITY = 'activityFeed',
+  SQL = 'sql',
+  LINEAGE = 'lineage',
+}

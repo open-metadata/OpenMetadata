@@ -13,7 +13,7 @@
 
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
-import { PagingWithoutTotal, RestoreRequestType } from 'Models';
+import { PagingResponse, PagingWithoutTotal, RestoreRequestType } from 'Models';
 import { ServicePageData } from 'pages/service';
 import { Dashboard } from '../generated/entity/data/dashboard';
 import { EntityHistory } from '../generated/type/entityHistory';
@@ -135,16 +135,16 @@ export const getDataModels = async (
   fields: string,
   paging?: PagingWithoutTotal
 ) => {
-  const response = await APIClient.get<{
-    data: ServicePageData[];
-    paging: Paging;
-  }>(`/dashboard/datamodels`, {
-    params: {
-      service,
-      fields,
-      ...paging,
-    },
-  });
+  const response = await APIClient.get<PagingResponse<ServicePageData[]>>(
+    `/dashboard/datamodels`,
+    {
+      params: {
+        service,
+        fields,
+        ...paging,
+      },
+    }
+  );
 
   return response.data;
 };

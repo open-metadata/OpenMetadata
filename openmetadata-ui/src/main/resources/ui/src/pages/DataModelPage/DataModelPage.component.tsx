@@ -60,13 +60,7 @@ import { DEFAULT_ENTITY_PERMISSION } from 'utils/PermissionsUtils';
 import { serviceTypeLogo } from 'utils/ServiceUtils';
 import { getTagsWithoutTier, getTierTags } from 'utils/TableUtils';
 import { showErrorToast } from 'utils/ToastUtils';
-
-enum DATA_MODELS_DETAILS_TABS {
-  MODEL = 'model',
-  ACTIVITY = 'activityFeed',
-  SQL = 'sql',
-  LINEAGE = 'lineage',
-}
+import { DATA_MODELS_DETAILS_TABS } from './DataModelsInterface';
 
 const DataModelsPage = () => {
   const history = useHistory();
@@ -82,24 +76,11 @@ const DataModelsPage = () => {
     useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
   const [dataModelData, setDataModelData] = useState<DashboardDataModel>();
 
-  const fetchResourcePermission = async (dashboardDataModelFQN: string) => {
-    setIsLoading(true);
-    try {
-      const entityPermission = await getEntityPermissionByFqn(
-        ResourceEntity.CONTAINER,
-        dashboardDataModelFQN
-      );
-      setDataModelPermissions(entityPermission);
-    } catch (error) {
-      showErrorToast(
-        t('server.fetch-entity-permissions-error', {
-          entity: t('label.asset-lowercase'),
-        })
-      );
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  // get current user details
+  const currentUser = useMemo(
+    () => AppState.getCurrentUserDetails(),
+    [AppState.userDetails, AppState.nonSecureUserDetails]
+  );
 
   const {
     hasViewPermission,
@@ -176,11 +157,24 @@ const DataModelsPage = () => {
     ];
   }, [dataModelData, dashboardDataModelFQN, entityName]);
 
-  // get current user details
-  const currentUser = useMemo(
-    () => AppState.getCurrentUserDetails(),
-    [AppState.userDetails, AppState.nonSecureUserDetails]
-  );
+  const fetchResourcePermission = async (dashboardDataModelFQN: string) => {
+    setIsLoading(true);
+    try {
+      const entityPermission = await getEntityPermissionByFqn(
+        ResourceEntity.CONTAINER,
+        dashboardDataModelFQN
+      );
+      setDataModelPermissions(entityPermission);
+    } catch (error) {
+      showErrorToast(
+        t('server.fetch-entity-permissions-error', {
+          entity: t('label.asset-lowercase'),
+        })
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const handleUpdateDataModelData = (updatedData: DashboardDataModel) => {
     const jsonPatch = compare(omitBy(dataModelData, isUndefined), updatedData);
