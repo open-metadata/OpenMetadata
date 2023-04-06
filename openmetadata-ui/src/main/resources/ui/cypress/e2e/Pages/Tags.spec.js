@@ -397,7 +397,9 @@ describe('Tags page should work', () => {
       .contains(`#${NEW_TAG_CATEGORY.name}.${NEW_TAG.renameTag}`)
       .should('be.visible');
 
-    cy.get('[data-testid="filter-container-TestCategory.test"]')
+    cy.get(
+      `[data-testid="filter-container-${NEW_TAG_CATEGORY.name}.${NEW_TAG.name}"]`
+    )
       .should('be.visible')
       .find('[data-testid="checkbox"]')
       .should('be.visible')
