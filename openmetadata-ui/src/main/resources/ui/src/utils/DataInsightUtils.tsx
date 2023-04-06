@@ -580,29 +580,30 @@ export const getEntitiesChartSummary = (
 export const getWebChartSummary = (
   chartResults: (DataInsightChartResult | undefined)[]
 ) => {
-  const updatedSummary = WEB_SUMMARY_LIST.map((summary) => {
-    // grab the current chart type
+  const updatedSummary = [];
+
+  for (const summary of WEB_SUMMARY_LIST) {
     const chartData = chartResults.find(
       (chart) => chart?.chartType === summary.id
     );
-    // return default summary if chart data is undefined else calculate the latest count for chartType
-    if (isUndefined(chartData)) {
-      return summary;
-    } else {
-      if (chartData.chartType === DataInsightChartType.DailyActiveUsers) {
-        const latestData = last(chartData.data);
 
-        return { ...summary, latest: latestData?.activeUsers ?? 0 };
-      } else {
-        const { total } = getGraphDataByEntityType(
-          chartData.data ?? [],
-          chartData.chartType
-        );
+    if (!chartData) {
+      updatedSummary.push(summary);
 
-        return { ...summary, latest: total };
-      }
+      continue;
     }
-  });
+
+    const { chartType, data } = chartData;
+    const total = data?.reduce((result, current) => {
+      if (chartType === DataInsightChartType.DailyActiveUsers) {
+        return result + (current.activeUsers ?? 0);
+      } else {
+        return result + (current.pageViews ?? 0);
+      }
+    }, 0);
+
+    updatedSummary.push({ ...summary, latest: total ?? 0 });
+  }
 
   return updatedSummary;
 };
