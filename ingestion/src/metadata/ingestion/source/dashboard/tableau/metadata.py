@@ -291,7 +291,6 @@ class TableauSource(DashboardServiceSource):
     def yield_dashboard_lineage(
         self, dashboard_details: TableauDashboard
     ) -> Optional[Iterable[AddLineageRequest]]:
-
         yield from self.yield_datamodel_dashboard_lineage() or []
 
         for db_service_name in self.source_config.dbServiceNames or []:

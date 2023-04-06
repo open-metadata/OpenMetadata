@@ -86,7 +86,7 @@ class PandasInterfaceMixin:
         """
         returns sampled ometa dataframes
         """
-        from pandas import DataFrame # pylint: disable=import-outside-toplevel
+        from pandas import DataFrame  # pylint: disable=import-outside-toplevel
 
         data = ometa_to_dataframe(
             config_source=service_connection_config.configSource,
