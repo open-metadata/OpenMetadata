@@ -1,9 +1,6 @@
 # Postgres
 
 In this section, we provide guides and references to use the PostgreSQL connector.
-
-## Setup Guide
-
 ### Step 1 : Requirements
 
 To run the Ingestion via the UI you'll need to use the OpenMetadata Ingestion Container, which comes shipped with
