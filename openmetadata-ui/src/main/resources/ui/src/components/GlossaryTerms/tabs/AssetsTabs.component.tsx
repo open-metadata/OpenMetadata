@@ -13,21 +13,19 @@
 
 import { Radio } from 'antd';
 import { AssetsUnion } from 'components/Assets/AssetsSelectionModal/AssetSelectionModal.interface';
+import TableDataCardV2 from 'components/common/table-data-card-v2/TableDataCardV2';
 import Loader from 'components/Loader/Loader';
 import { EntityType } from 'enums/entity.enum';
+import { SearchIndex } from 'enums/search.enum';
 import { t } from 'i18next';
 import { groupBy, map, startCase } from 'lodash';
 import { AssetsDataType } from 'Models';
 import React, { useEffect, useMemo, useState } from 'react';
 import { PAGE_SIZE } from '../../../constants/constants';
 import { Paging } from '../../../generated/type/paging';
-import {
-  getCountBadge,
-  getTierFromEntityInfo,
-} from '../../../utils/CommonUtils';
+import { getCountBadge } from '../../../utils/CommonUtils';
 import ErrorPlaceHolder from '../../common/error-with-placeholder/ErrorPlaceHolder';
 import NextPrevious from '../../common/next-previous/NextPrevious';
-import TableDataCard from '../../common/table-data-card/TableDataCard';
 
 interface Props {
   assetData: AssetsDataType;
@@ -89,21 +87,10 @@ const AssetsTabs = ({ assetData, onAssetPaginate, currentPage }: Props) => {
         <>
           {data.map((entity, index) => (
             <div className="m-b-sm" key={index}>
-              <TableDataCard
-                database={entity.database}
-                databaseSchema={entity.databaseSchema}
-                deleted={entity.deleted}
-                description={entity.description}
-                fullyQualifiedName={entity.fullyQualifiedName}
-                id={`tabledatacard${index}`}
-                indexType={entity.index}
-                name={entity.name}
-                owner={entity.owner}
-                service={entity.service}
-                serviceType={entity.serviceType || '--'}
-                tags={entity.tags}
-                tier={getTierFromEntityInfo(entity)}
-                usage={entity.weeklyPercentileRank}
+              <TableDataCardV2
+                id={entity.id}
+                searchIndex={entity.index as SearchIndex}
+                source={entity}
               />
             </div>
           ))}

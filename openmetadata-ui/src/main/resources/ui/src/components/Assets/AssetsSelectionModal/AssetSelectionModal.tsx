@@ -249,6 +249,8 @@ export const AssetSelectionModal = ({
       <Space className="w-full h-full" direction="vertical" size={16}>
         <Searchbar
           removeMargin
+          showClearSearch
+          showLoadingStatus
           placeholder={t('label.search-entity', {
             entity: t('label.asset-plural'),
           })}
@@ -258,15 +260,18 @@ export const AssetSelectionModal = ({
             fetchEntities(s);
           }}
         />
-        <Select
-          defaultValue="all"
-          options={map(itemCount, (_, key) => ({
-            label: startCase(key),
-            value: key,
-          }))}
-          style={{ minWidth: 120 }}
-          onChange={setActiveFilter}
-        />
+        <div className="text-right">
+          <Select
+            bordered={false}
+            defaultValue="all"
+            options={map(itemCount, (_, key) => ({
+              label: startCase(key),
+              value: key,
+            }))}
+            style={{ minWidth: 120 }}
+            onChange={setActiveFilter}
+          />
+        </div>
         <List loading={{ spinning: isLoading, indicator: <Loader /> }}>
           <VirtualList
             data={filteredData}

@@ -22,7 +22,7 @@ import { AssetsDataType } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { searchData } from 'rest/miscAPI';
-import { formatDataResponse, SearchEntityHits } from 'utils/APIUtils';
+import { SearchEntityHits } from 'utils/APIUtils';
 import { GlossaryTerm } from '../../generated/entity/data/glossaryTerm';
 import jsonData from '../../jsons/en';
 import { getCountBadge } from '../../utils/CommonUtils';
@@ -81,7 +81,7 @@ const GlossaryTermsV1 = ({
         const hits = res?.data?.hits?.hits as SearchEntityHits;
         const isData = hits?.length > 0;
         setAssetData(() => {
-          const data = isData ? formatDataResponse(hits) : [];
+          const data = isData ? hits : [];
           const total = isData ? res.data.hits.total.value : 0;
 
           return {

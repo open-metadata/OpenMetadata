@@ -12,11 +12,12 @@
  */
 
 import { Input } from 'antd';
+import { ReactComponent as ClearIcon } from 'assets/svg/close-circle-outlined.svg';
 import classNames from 'classnames';
 import { debounce } from 'lodash';
 import { LoadingState } from 'Models';
 import PropTypes from 'prop-types';
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { ChangeEvent, useCallback, useEffect, useState } from 'react';
 import SVGIcons, { Icons } from '../../../utils/SvgUtils';
 import Loader from '../../Loader/Loader';
 
@@ -28,6 +29,7 @@ type Props = {
   label?: string;
   removeMargin?: boolean;
   showLoadingStatus?: boolean;
+  showClearSearch?: boolean;
 };
 
 const Searchbar = ({
@@ -38,6 +40,7 @@ const Searchbar = ({
   label,
   removeMargin = false,
   showLoadingStatus = false,
+  showClearSearch = false,
 }: Props) => {
   const [userSearch, setUserSearch] = useState('');
   const [searchIcon, setSearchIcon] = useState<string>(Icons.SEARCHV1);
@@ -94,6 +97,15 @@ const Searchbar = ({
         {showLoadingStatus && loadingState === 'waiting' && (
           <div className="tw-absolute tw-block tw-z-1 tw-w-4 tw-h-4 tw-top-2 tw-right-2.5 tw-text-center tw-pointer-events-none">
             <Loader size="small" type="default" />
+          </div>
+        )}
+        {showClearSearch && searchValue && (
+          <div
+            className="tw-absolute tw-block tw-z-1 tw-w-4 tw-h-4 tw-top-2 tw-right-2.5 tw-text-center cursor-pointer"
+            onClick={() =>
+              handleChange({ target: { value: '' } } as ChangeEvent)
+            }>
+            <ClearIcon height={16} />
           </div>
         )}
       </div>

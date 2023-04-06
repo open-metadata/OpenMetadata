@@ -105,7 +105,7 @@ declare module 'Models' {
 
   export interface AssetsDataType {
     isLoading?: boolean;
-    data: FormattedTableData[];
+    data: SearchEntityHits[];
     total: number;
     currPage: number;
   }

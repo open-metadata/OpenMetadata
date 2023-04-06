@@ -16,6 +16,7 @@ import { Tooltip } from 'antd';
 import { ExpandableConfig } from 'antd/lib/table/interface';
 import { ReactComponent as ContainerIcon } from 'assets/svg/ic-object-store.svg';
 import classNames from 'classnames';
+import { SourceType } from 'components/searched-data/SearchedData.interface';
 import { t } from 'i18next';
 import { upperCase } from 'lodash';
 import { EntityTags } from 'Models';
@@ -29,12 +30,10 @@ import { ReactComponent as RightArrowIcon } from '../assets/svg/ic-right-arrow.s
 import { ReactComponent as IconKey } from '../assets/svg/icon-key.svg';
 import { ReactComponent as IconNotNull } from '../assets/svg/icon-notnull.svg';
 import { ReactComponent as IconUnique } from '../assets/svg/icon-unique.svg';
-import { ReactComponent as IconPendingBadge } from '../assets/svg/pending-badge.svg';
-import { ReactComponent as IconSuccessBadge } from '../assets/svg/success-badge.svg';
-
-import { SourceType } from 'components/searched-data/SearchedData.interface';
 import { ReactComponent as MlModelIcon } from '../assets/svg/mlmodal.svg';
+import { ReactComponent as IconPendingBadge } from '../assets/svg/pending-badge.svg';
 import { ReactComponent as PipelineIcon } from '../assets/svg/pipeline-grey.svg';
+import { ReactComponent as IconSuccessBadge } from '../assets/svg/success-badge.svg';
 import { ReactComponent as TableIcon } from '../assets/svg/table-grey.svg';
 import { ReactComponent as TopicIcon } from '../assets/svg/topic-grey.svg';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
@@ -275,7 +274,7 @@ export const getServiceIcon = (source: SourceType) => {
     return (
       <img
         alt="service-icon"
-        className="inline h-5 p-r-xs"
+        className="inline h-8 p-r-xs"
         src={serviceTypeLogo(source.serviceType || '')}
       />
     );
@@ -285,7 +284,7 @@ export const getServiceIcon = (source: SourceType) => {
 export const getEntityHeaderLabel = (source: SourceType) => {
   let headingText = '';
   if ('databaseSchema' in source && 'database' in source) {
-    headingText = `${source.database?.name}${FQN_SEPARATOR_CHAR}${source.databaseSchema?.name}`;
+    headingText = `${source.database?.name} / ${source.databaseSchema?.name}`;
   } else if (
     source.entityType === EntityType.GLOSSARY_TERM ||
     source.entityType === EntityType.TAG
@@ -297,7 +296,7 @@ export const getEntityHeaderLabel = (source: SourceType) => {
 
   return headingText ? (
     <span
-      className="tw-text-grey-muted tw-text-xs tw-mb-0.5"
+      className="text-grey-muted text-xs m-b-sm d-inline-block"
       data-testid="database-schema">
       {headingText}
     </span>
