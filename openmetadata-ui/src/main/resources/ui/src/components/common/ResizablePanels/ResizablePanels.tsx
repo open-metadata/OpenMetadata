@@ -72,9 +72,11 @@ const ResizablePanels: React.FC<ResizablePanelsProps> = ({
           onStopResize={(args) => {
             secondPanel.onStopResize?.(args.component.props.flex);
           }}>
-          <PanelContainer overlay={secondPanel.overlay}>
-            {secondPanel.children}
-          </PanelContainer>
+          {!hideSecondPanel && (
+            <PanelContainer overlay={secondPanel.overlay}>
+              {secondPanel.children}
+            </PanelContainer>
+          )}
         </ReflexElement>
       </ReflexContainer>
     </>
