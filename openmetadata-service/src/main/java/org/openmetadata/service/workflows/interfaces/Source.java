@@ -14,10 +14,10 @@
 package org.openmetadata.service.workflows.interfaces;
 
 import java.util.Map;
-import org.openmetadata.service.exception.ReaderException;
+import org.openmetadata.service.exception.SourceException;
 
 public interface Source<R> extends Stats {
-  R readNext(Map<String, Object> contextData) throws ReaderException;
+  R readNext(Map<String, Object> contextData) throws SourceException;
 
   void reset();
 }
