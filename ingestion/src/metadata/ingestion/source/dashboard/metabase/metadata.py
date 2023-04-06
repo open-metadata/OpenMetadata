@@ -33,11 +33,11 @@ from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.lineage.parser import LineageParser
 from metadata.ingestion.lineage.sql_lineage import search_table_entities
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
+from metadata.ingestion.source.dashboard.metabase.models import Dashboard
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_chart
 from metadata.utils.helpers import get_standard_chart_type, replace_special_with
 from metadata.utils.logger import ingestion_logger
-from metadata.ingestion.source.dashboard.metabase.models import Dashboard
 
 logger = ingestion_logger()
 

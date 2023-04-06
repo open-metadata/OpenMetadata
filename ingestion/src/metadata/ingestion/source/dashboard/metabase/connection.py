@@ -12,7 +12,7 @@
 """
 Source connection handler
 """
-from typing import Any, Dict, Optional
+from typing import Optional
 
 import requests
 
@@ -24,7 +24,6 @@ from metadata.generated.schema.entity.services.connections.dashboard.metabaseCon
 )
 from metadata.ingestion.connections.test_connections import test_connection_steps
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-
 from metadata.ingestion.source.dashboard.metabase.client import MetabaseClient
 
 
@@ -32,10 +31,11 @@ def get_connection(connection: MetabaseConnection) -> MetabaseClient:
     """
     Create connection
     """
-    return MetabaseClient(username=connection.username,
-                          password=connection.password,
-                          host_port=connection.hostPort,
-                          )
+    return MetabaseClient(
+        username=connection.username,
+        password=connection.password,
+        host_port=connection.hostPort,
+    )
 
 
 def test_connection(

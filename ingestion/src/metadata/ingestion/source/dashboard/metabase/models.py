@@ -12,6 +12,7 @@
 Metabase Models
 """
 from typing import List
+
 from pydantic import BaseModel
 
 
@@ -19,6 +20,7 @@ class User(BaseModel):
     """
     Model for creator in Dashboard Model
     """
+
     email: str
     first_name: str
     last_login: str
@@ -34,6 +36,7 @@ class LastEditInfo(BaseModel):
     """
     Model for last_edited_info in Dashboard Model
     """
+
     id: int
     email: str
     first_name: str
@@ -45,6 +48,7 @@ class Dashboard(BaseModel):
     """
     Model for Dashboard in Metabase
     """
+
     description: str
     archived: bool
     collection_position: None
@@ -55,7 +59,7 @@ class Dashboard(BaseModel):
     name: str
     caveats: None
     creator_id: int
-    updated_at: str # datetime?
+    updated_at: str  # datetime?
     made_public_by_id: None
     embedding_params: None
     cache_ttl: None

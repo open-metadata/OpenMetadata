@@ -12,7 +12,7 @@
 REST Auth & Client for Metabase
 """
 import json
-from typing import Any, Dict, List, Optional
+from typing import List, Optional
 
 import requests
 
@@ -34,7 +34,7 @@ class MetabaseClient:
         self,
         username: Optional[str] = None,
         password: Optional[str] = None,
-        host_port: Optional[str] = None
+        host_port: Optional[str] = None,
     ):
         self.username = username
         self.password = password
@@ -52,11 +52,10 @@ class MetabaseClient:
             session_id = self.resp.json()["id"]
             metabase_session = {"X-Metabase-Session": session_id}
             self.metabase_session = metabase_session
-        
+
         except Exception as exc:
             msg = f"Unknown error in connection: {exc}."
             raise SourceConnectionException(msg) from exc
-
 
     def req_get(self, path: str) -> requests.Response:
         """Send get request method
