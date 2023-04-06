@@ -13,7 +13,6 @@
 
 import { Menu, MenuProps } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
-import { camelCase } from 'lodash';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
@@ -45,7 +44,8 @@ const GlobalSettingLeftPanel = () => {
         (acc: ItemType[], curr: MenuList) => {
           const menuItem = getGlobalSettingMenuItem({
             label: curr.category,
-            key: camelCase(curr.category),
+            key: curr.key,
+            category: curr.category,
             children: curr.items,
             type: 'group',
             isBeta: curr.isBeta,

@@ -7,16 +7,20 @@
       {
         "name": "CheckAccess",
         "description": "Validate that the API or DB is accessible with the given credentials",
+        "errorMessage": "Failed to connect to superset, please validate the credentials",
+        "shortCircuit": true,
         "mandatory": true
       },
       {
         "name": "GetDashboards",
         "description": "List all the dashboards available to the user",
+        "errorMessage": "Failed to fetch dashboards, please validate if user has access to fetch dashboards",
         "mandatory": true
       },
       {
         "name": "GetCharts",
         "description": "List all the charts available to the user",
+        "errorMessage": "Failed to fetch charts, please validate if user has access to fetch charts",
         "mandatory": true
       }
     ]

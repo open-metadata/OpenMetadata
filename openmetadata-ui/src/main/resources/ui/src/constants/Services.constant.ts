@@ -245,6 +245,9 @@ export const servicesDisplayName: { [key: string]: string } = {
   objectStoreServices: i18n.t('label.entity-service', {
     entity: i18n.t('label.object-store'),
   }),
+  dashboardDataModel: i18n.t('label.entity-service', {
+    entity: i18n.t('label.data-model'),
+  }),
 };
 
 export const DEF_UI_SCHEMA = {

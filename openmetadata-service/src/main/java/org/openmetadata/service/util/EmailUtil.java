@@ -31,9 +31,10 @@ import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.email.SmtpSettings;
 import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.tests.type.TestCaseResult;
-import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.events.subscription.emailAlert.EmailMessage;
+import org.openmetadata.service.resources.settings.SettingsCache;
 import org.simplejavamail.api.email.Email;
 import org.simplejavamail.api.email.EmailPopulatingBuilder;
 import org.simplejavamail.api.mailer.Mailer;
@@ -76,61 +77,55 @@ public class EmailUtil {
   public static final String TASK_NOTIFICATION_TEMPLATE = "taskAssignment.ftl";
   public static final String TEST_NOTIFICATION_TEMPLATE = "testResultStatus.ftl";
   private static EmailUtil INSTANCE;
-  private static SmtpSettings DEFAULT_SMTP_SETTINGS;
+  private static SmtpSettings STORED_SMTP_SETTINGS;
   private static Mailer MAILER;
   private static Configuration TEMPLATE_CONFIGURATION;
-  private static volatile boolean INITIALIZED = false;
 
-  public static void initialize(OpenMetadataApplicationConfig config) {
-    if (!INITIALIZED) {
-      if (config.getSmtpSettings() != null && config.getSmtpSettings().getEnableSmtpServer()) {
-        try {
-          DEFAULT_SMTP_SETTINGS = config.getSmtpSettings();
-          MAILER = createMailer(DEFAULT_SMTP_SETTINGS);
-          TEMPLATE_CONFIGURATION = new Configuration(VERSION_2_3_28);
-          LOG.info("Email Util cache is initialized");
-        } catch (Exception ex) {
-          LOG.warn("[MAILER] Smtp Configurations are missing : Reason {} ", ex.getMessage(), ex);
-        }
-      } else {
-        DEFAULT_SMTP_SETTINGS = new SmtpSettings();
-      }
-      INSTANCE = new EmailUtil();
-      INITIALIZED = true;
-    } else {
-      INITIALIZED = false;
-      LOG.info("Email Util is already initialized");
+  private EmailUtil() {
+    try {
+      STORED_SMTP_SETTINGS = getSmtpSettings();
+      MAILER = createMailer(STORED_SMTP_SETTINGS);
+      TEMPLATE_CONFIGURATION = new Configuration(VERSION_2_3_28);
+      LOG.info("Email Util cache is initialized");
+    } catch (Exception ex) {
+      LOG.warn("[MAILER] Smtp Configurations are missing : Reason {} ", ex.getMessage(), ex);
     }
   }
 
   private static Mailer createMailer(SmtpSettings smtpServerSettings) {
-    TransportStrategy strategy;
-    switch (smtpServerSettings.getTransportationStrategy()) {
-      case SMPTS:
-        strategy = SMTPS;
-        break;
-      case SMTP_TLS:
-        strategy = SMTP_TLS;
-        break;
-      default:
-        strategy = SMTP;
-        break;
+    if (smtpServerSettings.getEnableSmtpServer()) {
+      TransportStrategy strategy;
+      switch (smtpServerSettings.getTransportationStrategy()) {
+        case SMPTS:
+          strategy = SMTPS;
+          break;
+        case SMTP_TLS:
+          strategy = SMTP_TLS;
+          break;
+        default:
+          strategy = SMTP;
+          break;
+      }
+      return MailerBuilder.withSMTPServer(
+              smtpServerSettings.getServerEndpoint(),
+              smtpServerSettings.getServerPort(),
+              smtpServerSettings.getUsername(),
+              smtpServerSettings.getPassword())
+          .withTransportStrategy(strategy)
+          .buildMailer();
     }
-    return MailerBuilder.withSMTPServer(
-            smtpServerSettings.getServerEndpoint(),
-            smtpServerSettings.getServerPort(),
-            smtpServerSettings.getUsername(),
-            smtpServerSettings.getPassword())
-        .withTransportStrategy(strategy)
-        .buildMailer();
+    return null;
   }
 
   public static EmailUtil getInstance() {
+    if (INSTANCE == null) {
+      INSTANCE = new EmailUtil();
+    }
     return INSTANCE;
   }
 
   public void sendAccountStatus(User user, String action, String status) throws IOException, TemplateException {
-    if (DEFAULT_SMTP_SETTINGS.getEnableSmtpServer()) {
+    if (getSmtpSettings().getEnableSmtpServer()) {
       Map<String, String> templatePopulator = new HashMap<>();
       templatePopulator.put(ENTITY, getEmailingEntity());
       templatePopulator.put(SUPPORT_URL, getSupportUrl());
@@ -147,7 +142,7 @@ public class EmailUtil {
   }
 
   public void sendEmailVerification(String emailVerificationLink, User user) throws IOException, TemplateException {
-    if (DEFAULT_SMTP_SETTINGS.getEnableSmtpServer()) {
+    if (getSmtpSettings().getEnableSmtpServer()) {
       Map<String, String> templatePopulator = new HashMap<>();
       templatePopulator.put(ENTITY, getEmailingEntity());
       templatePopulator.put(SUPPORT_URL, getSupportUrl());
@@ -165,7 +160,7 @@ public class EmailUtil {
 
   public void sendPasswordResetLink(String passwordResetLink, User user, String subject, String templateFilePath)
       throws IOException, TemplateException {
-    if (DEFAULT_SMTP_SETTINGS.getEnableSmtpServer()) {
+    if (getSmtpSettings().getEnableSmtpServer()) {
       Map<String, String> templatePopulator = new HashMap<>();
       templatePopulator.put(ENTITY, getEmailingEntity());
       templatePopulator.put(SUPPORT_URL, getSupportUrl());
@@ -180,7 +175,7 @@ public class EmailUtil {
   public void sendTaskAssignmentNotificationToUser(
       String assigneeName, String email, String taskLink, Thread thread, String subject, String templateFilePath)
       throws IOException, TemplateException {
-    if (DEFAULT_SMTP_SETTINGS.getEnableSmtpServer()) {
+    if (getSmtpSettings().getEnableSmtpServer()) {
       Map<String, String> templatePopulator = new HashMap<>();
       templatePopulator.put("assignee", assigneeName);
       templatePopulator.put("createdBy", thread.getCreatedBy());
@@ -203,7 +198,7 @@ public class EmailUtil {
       String subject,
       String templateFilePath)
       throws IOException, TemplateException {
-    if (DEFAULT_SMTP_SETTINGS.getEnableSmtpServer()) {
+    if (getSmtpSettings().getEnableSmtpServer()) {
       Map<String, String> templatePopulator = new HashMap<>();
       templatePopulator.put("receiverName", email.split("@")[0]);
       templatePopulator.put("testResultName", testCaseName);
@@ -219,11 +214,11 @@ public class EmailUtil {
   public void sendMail(
       String subject, Map<String, String> model, String to, String baseTemplatePackage, String templatePath)
       throws IOException, TemplateException {
-    if (DEFAULT_SMTP_SETTINGS.getEnableSmtpServer()) {
+    if (getSmtpSettings().getEnableSmtpServer()) {
       EmailPopulatingBuilder emailBuilder = EmailBuilder.startingBlank();
       emailBuilder.withSubject(subject);
       emailBuilder.to(to);
-      emailBuilder.from(DEFAULT_SMTP_SETTINGS.getSenderMail());
+      emailBuilder.from(getSmtpSettings().getSenderMail());
 
       TEMPLATE_CONFIGURATION.setClassForTemplateLoading(getClass(), baseTemplatePackage);
       Template template = TEMPLATE_CONFIGURATION.getTemplate(templatePath);
@@ -238,17 +233,17 @@ public class EmailUtil {
   }
 
   public void sendMail(Email email) {
-    if (MAILER != null && DEFAULT_SMTP_SETTINGS.getEnableSmtpServer()) {
+    if (MAILER != null && getSmtpSettings().getEnableSmtpServer()) {
       MAILER.sendMail(email, true);
     }
   }
 
   public String buildBaseUrl(URI uri) {
     try {
-      if (CommonUtil.nullOrEmpty(DEFAULT_SMTP_SETTINGS.getOpenMetadataUrl())) {
+      if (CommonUtil.nullOrEmpty(getSmtpSettings().getOpenMetadataUrl())) {
         return String.format("%s://%s", uri.getScheme(), uri.getHost());
       } else {
-        URI serverUrl = new URI(DEFAULT_SMTP_SETTINGS.getOpenMetadataUrl());
+        URI serverUrl = new URI(getSmtpSettings().getOpenMetadataUrl());
         return String.format("%s://%s", serverUrl.getScheme(), serverUrl.getHost());
       }
     } catch (Exception ex) {
@@ -257,7 +252,7 @@ public class EmailUtil {
   }
 
   public static void sendInviteMailToAdmin(User user, String pwd) {
-    if (DEFAULT_SMTP_SETTINGS.getEnableSmtpServer()) {
+    if (getSmtpSettings().getEnableSmtpServer()) {
       Map<String, String> templatePopulator = new HashMap<>();
       templatePopulator.put(EmailUtil.ENTITY, EmailUtil.getInstance().getEmailingEntity());
       templatePopulator.put(EmailUtil.SUPPORT_URL, EmailUtil.getInstance().getSupportUrl());
@@ -279,7 +274,7 @@ public class EmailUtil {
   }
 
   public static void sendChangeEventMail(String receiverMail, EmailMessage emailMessaged) {
-    if (DEFAULT_SMTP_SETTINGS.getEnableSmtpServer()) {
+    if (getSmtpSettings().getEnableSmtpServer()) {
       Map<String, String> templatePopulator = new HashMap<>();
       templatePopulator.put(EmailUtil.USERNAME, receiverMail.split("@")[0]);
       templatePopulator.put("updatedBy", emailMessaged.getUpdatedBy());
@@ -309,42 +304,52 @@ public class EmailUtil {
   }
 
   private String getEmailVerificationSubject() {
-    return String.format(EMAIL_VERIFICATION_SUBJECT, DEFAULT_SMTP_SETTINGS.getEmailingEntity());
+    return String.format(EMAIL_VERIFICATION_SUBJECT, getSmtpSettings().getEmailingEntity());
   }
 
   public String getPasswordResetSubject() {
-    return String.format(PASSWORD_RESET_SUBJECT, DEFAULT_SMTP_SETTINGS.getEmailingEntity());
+    return String.format(PASSWORD_RESET_SUBJECT, getSmtpSettings().getEmailingEntity());
   }
 
   private String getAccountStatusChangeSubject() {
-    return String.format(ACCOUNT_STATUS_SUBJECT, DEFAULT_SMTP_SETTINGS.getEmailingEntity());
+    return String.format(ACCOUNT_STATUS_SUBJECT, getSmtpSettings().getEmailingEntity());
   }
 
   public String getEmailInviteSubject() {
-    return String.format(INVITE_SUBJECT, DEFAULT_SMTP_SETTINGS.getEmailingEntity());
+    return String.format(INVITE_SUBJECT, getSmtpSettings().getEmailingEntity());
   }
 
   public String getChangeEventTemplate() {
-    return String.format(CHANGE_EVENT_UPDATE, DEFAULT_SMTP_SETTINGS.getEmailingEntity());
+    return String.format(CHANGE_EVENT_UPDATE, getSmtpSettings().getEmailingEntity());
   }
 
   public String getTaskAssignmentSubject() {
-    return String.format(TASK_SUBJECT, DEFAULT_SMTP_SETTINGS.getEmailingEntity());
+    return String.format(TASK_SUBJECT, getSmtpSettings().getEmailingEntity());
   }
 
   public String getTestResultSubject() {
-    return String.format(TEST_SUBJECT, DEFAULT_SMTP_SETTINGS.getEmailingEntity());
+    return String.format(TEST_SUBJECT, getSmtpSettings().getEmailingEntity());
   }
 
   public String getEmailingEntity() {
-    return DEFAULT_SMTP_SETTINGS.getEmailingEntity();
+    return getSmtpSettings().getEmailingEntity();
   }
 
   public String getSupportUrl() {
-    return DEFAULT_SMTP_SETTINGS.getSupportUrl();
+    return getSmtpSettings().getSupportUrl();
   }
 
   public String getOMUrl() {
-    return DEFAULT_SMTP_SETTINGS.getOpenMetadataUrl();
+    return getSmtpSettings().getOpenMetadataUrl();
+  }
+
+  private static SmtpSettings getSmtpSettings() {
+    SmtpSettings emailConfig =
+        SettingsCache.getInstance().getSetting(SettingsType.EMAIL_CONFIGURATION, SmtpSettings.class);
+    if (!emailConfig.equals(STORED_SMTP_SETTINGS)) {
+      STORED_SMTP_SETTINGS = emailConfig;
+      MAILER = createMailer(emailConfig);
+    }
+    return emailConfig;
   }
 }
