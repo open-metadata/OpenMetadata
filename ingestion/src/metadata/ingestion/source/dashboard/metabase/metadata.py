@@ -55,7 +55,7 @@ class MetabaseSource(DashboardServiceSource):
         config: WorkflowSource,
         metadata_config: OpenMetadataConnection,
     ):
-        """Metadata init method"""
+        super().__init__(config, metadata_config)
 
     @classmethod
     def create(cls, config_dict, metadata_config: OpenMetadataConnection):
