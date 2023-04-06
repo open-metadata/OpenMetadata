@@ -215,12 +215,12 @@ export const NEW_ADMIN = {
 };
 
 export const NEW_TAG_CATEGORY = {
-  name: 'TestCategory',
-  description: 'This is the TestCategory',
+  name: 'CypressClassification',
+  description: 'This is the CypressClassification',
 };
 export const NEW_TAG = {
-  name: 'test',
-  description: 'This is the Test tag',
+  name: 'CypressTag',
+  description: 'This is the CypressTag',
 };
 
 export const NEW_GLOSSARY = {
