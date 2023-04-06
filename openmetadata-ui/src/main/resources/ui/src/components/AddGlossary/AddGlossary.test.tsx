@@ -12,7 +12,6 @@
  */
 
 import { fireEvent, getByTestId, render } from '@testing-library/react';
-import { LoadingState } from 'Models';
 import React, { forwardRef } from 'react';
 import AddGlossary from './AddGlossary.component';
 
@@ -51,7 +50,7 @@ const mockOnSave = jest.fn();
 const mockProps = {
   header: 'Header',
   allowAccess: true,
-  saveState: 'initial' as LoadingState,
+  isLoading: false,
   onCancel: mockOnCancel,
   onSave: mockOnSave,
   slashedBreadcrumb: [],

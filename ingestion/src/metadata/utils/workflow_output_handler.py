@@ -278,18 +278,18 @@ def print_data_insight_status(workflow) -> None:
     print_workflow_summary(
         workflow,
         processor=True,
-        processor_status=workflow.data_processor.get_status(),
+        processor_status=workflow.status,
     )
 
-    if workflow.data_processor.get_status().source_start_time:
+    if workflow.source.get_status().source_start_time:
         log_ansi_encoded_string(
-            message=f"Workflow finished in time {pretty_print_time_duration(time.time()-workflow.data_processor.get_status().source_start_time)} ",  # pylint: disable=line-too-long
+            message=f"Workflow finished in time {pretty_print_time_duration(time.time()-workflow.source.get_status().source_start_time)} ",  # pylint: disable=line-too-long
         )
 
     if workflow.result_status() == 1:
         log_ansi_encoded_string(message=WORKFLOW_FAILURE_MESSAGE)
     elif (
-        workflow.data_processor.get_status().warnings
+        workflow.source.get_status().warnings
         or workflow.status.warnings
         or (hasattr(workflow, "sink") and workflow.sink.get_status().warnings)
     ):

@@ -22,6 +22,7 @@ import React, { FC, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { getEntityName } from 'utils/EntityUtils';
+import { ReactComponent as IconDelete } from '../../../assets/svg/ic-delete.svg';
 import {
   NO_PERMISSION_FOR_ACTION,
   NO_PERMISSION_TO_VIEW,
@@ -38,7 +39,6 @@ import {
   getPolicyWithFqnPath,
   getRoleWithFqnPath,
 } from '../../../utils/RouterUtils';
-import SVGIcons, { Icons } from '../../../utils/SvgUtils';
 
 interface PolicyListProps {
   policies: Policy[];
@@ -154,23 +154,20 @@ const PoliciesList: FC<PolicyListProps> = ({ policies, fetchPolicies }) => {
         title: t('label.action-plural'),
         dataIndex: 'actions',
         width: '80px',
+        align: 'center',
         key: 'actions',
         render: (_, record) => {
           return (
             <Tooltip
               placement="left"
-              title={
-                deletePolicyPermission
-                  ? t('label.delete')
-                  : NO_PERMISSION_FOR_ACTION
-              }>
+              title={!deletePolicyPermission && NO_PERMISSION_FOR_ACTION}>
               <Button
                 data-testid={`delete-action-${getEntityName(record)}`}
                 disabled={!deletePolicyPermission}
+                icon={<IconDelete name={t('label.delete')} width="16px" />}
                 type="text"
-                onClick={() => setSelectedPolicy(record)}>
-                <SVGIcons alt="delete" icon={Icons.DELETE} width="18px" />
-              </Button>
+                onClick={() => setSelectedPolicy(record)}
+              />
             </Tooltip>
           );
         },
