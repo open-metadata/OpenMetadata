@@ -28,6 +28,7 @@ import React, { FC, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   addWorkflow,
+  deleteWorkflowById,
   getTestConnectionDefinitionByName,
   getWorkflowById,
   triggerWorkflowById,
@@ -50,6 +51,8 @@ import {
   FETCH_INTERVAL,
   WORKFLOW_COMPLETE_STATUS,
 } from 'constants/Services.constant';
+import { useAirflowStatus } from 'hooks/useAirflowStatus';
+import { showErrorToast } from 'utils/ToastUtils';
 import './test-connection.style.less';
 
 const TestConnection: FC<TestConnectionProps> = ({
@@ -61,6 +64,7 @@ const TestConnection: FC<TestConnectionProps> = ({
   showDetails = true,
 }) => {
   const { t } = useTranslation();
+  const { isAirflowAvailable } = useAirflowStatus();
 
   const initialMessage = t(
     'message.test-your-connection-before-creating-service'
@@ -113,7 +117,10 @@ const TestConnection: FC<TestConnectionProps> = ({
   }, [connectionType]);
 
   const isTestConnectionDisabled =
-    isTestingConnection || isTestingDisabled || !allowTestConn;
+    isTestingConnection ||
+    isTestingDisabled ||
+    !allowTestConn ||
+    !isAirflowAvailable;
 
   // data fetch handlers
 
@@ -122,8 +129,9 @@ const TestConnection: FC<TestConnectionProps> = ({
       const response = await getTestConnectionDefinitionByName(connectionType);
 
       setTestConnectionStep(response.steps);
+      setDialogOpen(true);
     } catch (error) {
-      // we will not throw error for this API
+      throw t('message.test-connection-cannot-be-triggered');
     }
   };
 
@@ -149,6 +157,15 @@ const TestConnection: FC<TestConnectionProps> = ({
     setTestStatus(undefined);
   };
 
+  const handleDeleteWorkflow = async (workflowId: string) => {
+    try {
+      const response = await deleteWorkflowById(workflowId, true);
+      setCurrentWorkflow(response);
+    } catch (error) {
+      // do not throw error for this API
+    }
+  };
+
   // handlers
   const handleTestConnection = async () => {
     setIsTestingConnection(true);
@@ -172,8 +189,6 @@ const TestConnection: FC<TestConnectionProps> = ({
 
       // fetch the connection steps for current connectionType
       await fetchConnectionDefinition();
-
-      setDialogOpen(true);
 
       // create the workflow
       const response = await addWorkflow(createWorkflowData);
@@ -223,6 +238,9 @@ const TestConnection: FC<TestConnectionProps> = ({
 
           // set testing connection to false
           setIsTestingConnection(false);
+
+          // delete the workflow once it's finished
+          await handleDeleteWorkflow(workflowResponse.id);
         }, FETCH_INTERVAL)
       );
 
@@ -250,6 +268,7 @@ const TestConnection: FC<TestConnectionProps> = ({
       setIsTestingConnection(false);
       setMessage(failureMessage);
       setTestStatus(StatusType.Failed);
+      showErrorToast(error as AxiosError);
     }
   };
 
@@ -271,14 +290,15 @@ const TestConnection: FC<TestConnectionProps> = ({
             {testStatus === StatusType.Failed && (
               <FailIcon data-testid="fail-badge" height={24} width={24} />
             )}
-            <Space data-testid="messag-text" size={2}>
+            <Space wrap data-testid="messag-text" size={2}>
               {message}{' '}
-              {testStatus && (
+              {(testStatus || isTestingConnection) && (
                 <Transi18next
                   i18nKey="message.click-text-to-view-details"
                   renderElement={
                     <Button
                       className="p-0 test-connection-message-btn"
+                      data-testid="test-connection-details-btn"
                       type="link"
                       onClick={() => setDialogOpen(true)}
                     />

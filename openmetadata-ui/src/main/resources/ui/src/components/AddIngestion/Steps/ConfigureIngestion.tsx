@@ -53,6 +53,8 @@ const ConfigureIngestion = ({
     chartFilterPattern,
     dashboardFilterPattern,
     databaseFilterPattern,
+    containerFilterPattern,
+    showContainerFilter,
     databaseServiceNames,
     description,
     enableDebugLog,
@@ -96,6 +98,8 @@ const ConfigureIngestion = ({
       chartFilterPattern: data.chartFilterPattern,
       dashboardFilterPattern: data.dashboardFilterPattern,
       databaseFilterPattern: data.databaseFilterPattern,
+      containerFilterPattern: data.containerFilterPattern,
+      showContainerFilter: data.showContainerFilter,
       databaseServiceNames: data.databaseServiceNames,
       description: data.description,
       enableDebugLog: data.enableDebugLog,
@@ -591,8 +595,15 @@ const ConfigureIngestion = ({
             handleShowFilter(value, ShowFilter.showDatabaseFilter)
           }
           includePattern={databaseFilterPattern?.includes ?? []}
+          includePatternExtraInfo={
+            data.database
+              ? t('message.include-database-filter-extra-information')
+              : undefined
+          }
+          isDisabled={data.isDatabaseFilterDisabled}
           type={FilterPatternEnum.DATABASE}
         />
+
         <FilterPattern
           checked={showSchemaFilter}
           excludePattern={schemaFilterPattern?.excludes ?? []}
@@ -772,6 +783,21 @@ const ConfigureIngestion = ({
               markDeletedMlModels
             )}
           </Fragment>
+        );
+
+      case ServiceCategory.OBJECT_STORE_SERVICES:
+        return (
+          <FilterPattern
+            checked={showContainerFilter}
+            excludePattern={containerFilterPattern?.excludes ?? []}
+            getExcludeValue={getExcludeValue}
+            getIncludeValue={getIncludeValue}
+            handleChecked={(value) =>
+              handleShowFilter(value, ShowFilter.showContainerFilter)
+            }
+            includePattern={containerFilterPattern?.includes ?? []}
+            type={FilterPatternEnum.CONTAINER}
+          />
         );
       default:
         return <></>;

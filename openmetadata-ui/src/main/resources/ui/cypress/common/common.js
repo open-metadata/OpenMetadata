@@ -41,8 +41,8 @@ export const interceptURL = (method, url, alias, callback) => {
 };
 
 // waiting for response and validating the response status code
-export const verifyResponseStatusCode = (alias, responseCode) => {
-  cy.wait(alias).its('response.statusCode').should('eq', responseCode);
+export const verifyResponseStatusCode = (alias, responseCode, option) => {
+  cy.wait(alias, option).its('response.statusCode').should('eq', responseCode);
 };
 
 export const handleIngestionRetry = (
@@ -56,8 +56,18 @@ export const handleIngestionRetry = (
 
   interceptURL(
     'GET',
-    '/api/v1/services/ingestionPipelines?fields=owner,pipelineStatuses&service=*',
+    '/api/v1/services/ingestionPipelines?*',
+    'ingestionPipelines'
+  );
+  interceptURL(
+    'GET',
+    '/api/v1/services/ingestionPipelines/*/pipelineStatus?startTs=*&endTs=*',
     'pipelineStatuses'
+  );
+  interceptURL(
+    'GET',
+    '/api/v1/permissions/ingestionPipeline/name/*',
+    'ingestionPermissions'
   );
   interceptURL('GET', '/api/v1/services/*/name/*', 'serviceDetails');
 
@@ -72,9 +82,18 @@ export const handleIngestionRetry = (
     // click on the tab only for the first time
     if (retryCount === 0) {
       // Wait for pipeline status to be loaded
-      verifyResponseStatusCode('@pipelineStatuses', 200);
-      cy.wait(1000); // adding manual wait for ingestion button to attach to DOM
+      if (ingestionType === 'metadata') {
+        verifyResponseStatusCode('@ingestionPipelines', 200);
+      }
+
       cy.get('[data-testid="Ingestions"]').click();
+
+      if (ingestionType === 'metadata') {
+        verifyResponseStatusCode('@pipelineStatuses', 200, {
+          responseTimeout: 50000,
+        });
+        verifyResponseStatusCode('@ingestionPermissions', 200);
+      }
     }
     if (isDatabaseService(type) && testIngestionButton) {
       cy.get('[data-testid="add-new-ingestion-button"]').should('be.visible');
@@ -82,12 +101,16 @@ export const handleIngestionRetry = (
   };
   const checkSuccessState = () => {
     testIngestionsTab();
+
+    if (retryCount !== 0) {
+      verifyResponseStatusCode('@ingestionPipelines', 200);
+      verifyResponseStatusCode('@pipelineStatuses', 200, {
+        responseTimeout: 50000,
+      });
+      verifyResponseStatusCode('@ingestionPermissions', 200);
+    }
+
     retryCount++;
-    cy.get('body').then(($body) => {
-      if ($body.find('.ant-skeleton-input').length) {
-        cy.wait(1000);
-      }
-    });
 
     if (ingestionType === 'metadata') {
       cy.get(`[data-row-key*="${ingestionType}"]`)
@@ -158,13 +181,15 @@ export const testServiceCreationAndIngestion = (
 
   // Enter service name in step 3
   cy.get('[data-testid="service-name"]').should('exist').type(serviceName);
+  interceptURL('GET', '/api/v1/services/ingestionPipelines/ip', 'ipApi');
   interceptURL(
     'GET',
     'api/v1/services/ingestionPipelines/*',
-    'getIngestionPipelineStatus'
+    'ingestionPipelineStatus'
   );
   cy.get('[data-testid="next-button"]').should('exist').click();
-  verifyResponseStatusCode('@getIngestionPipelineStatus', 200);
+  verifyResponseStatusCode('@ingestionPipelineStatus', 200);
+  verifyResponseStatusCode('@ipApi', 204);
 
   // Connection Details in step 4
   cy.get('[data-testid="add-new-service-container"]')
@@ -177,25 +202,22 @@ export const testServiceCreationAndIngestion = (
 
   connectionInput();
 
-  // check for the ip-address widget
-  cy.get('[data-testid="ip-address"]').should('exist');
-
   // Test the connection
   interceptURL(
     'GET',
-    '/api/v1/services/testConnectionDefinition/name/*',
+    '/api/v1/services/testConnectionDefinitions/name/*',
     'testConnectionStepDefinition'
   );
 
-  interceptURL('POST', '/api/v1/automations/workflow', 'createWorkflow');
+  interceptURL('POST', '/api/v1/automations/workflows', 'createWorkflow');
 
   interceptURL(
     'POST',
-    '/api/v1/automations/workflow/trigger/*',
+    '/api/v1/automations/workflows/trigger/*',
     'triggerWorkflow'
   );
 
-  interceptURL('GET', '/api/v1/automations/workflow/*', 'getWorkflow');
+  interceptURL('GET', '/api/v1/automations/workflows/*', 'getWorkflow');
 
   cy.get('[data-testid="test-connection-btn"]').should('exist');
   cy.get('[data-testid="test-connection-btn"]').click();
@@ -209,7 +231,10 @@ export const testServiceCreationAndIngestion = (
     .click();
 
   verifyResponseStatusCode('@createWorkflow', 201);
-  verifyResponseStatusCode('@triggerWorkflow', 200);
+  // added extra buffer time as triggerWorkflow API can take up to 2minute to provide result
+  verifyResponseStatusCode('@triggerWorkflow', 200, {
+    responseTimeout: 120000,
+  });
   verifyResponseStatusCode('@getWorkflow', 200);
 
   cy.contains('Connection test was successful').should('exist');
@@ -483,8 +508,8 @@ export const visitEntityDetailsPage = (term, serviceName, entity) => {
   // searching term in search box
   cy.get('[data-testid="searchBox"]').scrollIntoView().should('be.visible');
   cy.get('[data-testid="searchBox"]').type(term);
-  cy.get('[data-testid="suggestion-overlay"]').should('exist');
   verifyResponseStatusCode('@searchQuery', 200);
+  cy.get('[data-testid="suggestion-overlay"]').should('exist');
   cy.get('body').then(($body) => {
     // checking if requested term is available in search suggestion
     if (
@@ -876,8 +901,6 @@ export const updateOwner = () => {
       interceptURL('GET', '/api/v1/users?limit=15', 'getUsers');
       // Clicking on edit owner button
       cy.get('[data-testid="add-user"]').should('be.visible').click();
-
-      verifyResponseStatusCode('@getUsers', 200);
 
       cy.get('[data-testid="selectable-list"]')
         .find(`[title="${text.trim()}"]`)

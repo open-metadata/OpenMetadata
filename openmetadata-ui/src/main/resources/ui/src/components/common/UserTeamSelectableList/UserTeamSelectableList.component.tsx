@@ -54,7 +54,7 @@ export const UserTeamSelectableList = ({
           searchText,
           1,
           PAGE_SIZE_MEDIUM,
-          '',
+          'isBot:false',
           '',
           '',
           SearchIndex.USER
@@ -79,7 +79,9 @@ export const UserTeamSelectableList = ({
             ? {
                 after,
               }
-            : undefined
+            : undefined,
+          undefined,
+          false
         );
         const filterData = getEntityReferenceListFromEntities(
           data,
@@ -144,7 +146,7 @@ export const UserTeamSelectableList = ({
           data: filterData,
           paging: {
             total: data.hits.total.value,
-            after: toString(currentTeamPage + 1),
+            after: toString(Number(currentTeamPage) + 1),
           },
         };
       } catch (error) {
@@ -183,6 +185,7 @@ export const UserTeamSelectableList = ({
 
   return (
     <Popover
+      destroyTooltipOnHide
       content={
         <Tabs
           centered

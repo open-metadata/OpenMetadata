@@ -139,6 +139,9 @@ CREATE TABLE IF NOT EXISTS dashboard_data_model_entity (
     UNIQUE (fullyQualifiedName)
 );
 
+UPDATE dbservice_entity
+SET json = jsonb_set(json::jsonb #- '{connection,config,database}', '{connection,config,databaseName}', json#> '{connection,config,database}', true)
+WHERE servicetype = 'Druid' and json #>'{connection,config,database}' is not null;
 
 -- We were using the same jsonSchema for Pipeline Services and Ingestion Pipeline status
 -- Also, we relied on the extension to store the run id

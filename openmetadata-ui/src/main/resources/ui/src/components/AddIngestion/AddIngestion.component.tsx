@@ -12,6 +12,7 @@
  */
 
 import { LOADING_STATE } from 'enums/common.enum';
+import { Connection } from 'generated/api/services/createDatabaseService';
 import { isEmpty, isUndefined, omit, trim } from 'lodash';
 import React, {
   Reducer,
@@ -131,9 +132,12 @@ const AddIngestion = ({
     () => getSourceTypeFromConfig(configData as DbtConfig | undefined),
     [configData]
   );
+  const { database, ingestAllDatabases } = serviceData.connection
+    .config as Connection;
 
   const initialState: AddIngestionState = useMemo(
     () => ({
+      database,
       saveState: 'initial',
       showDeployModal: false,
       ingestionName:
@@ -147,13 +151,19 @@ const AddIngestion = ({
         data?.airflowConfig.scheduleInterval ??
         getIngestionFrequency(pipelineType),
       showDashboardFilter: !isUndefined(sourceConfig?.dashboardFilterPattern),
-      showDatabaseFilter: !isUndefined(sourceConfig?.databaseFilterPattern),
+      showDatabaseFilter: Boolean(
+        database || sourceConfig?.databaseFilterPattern
+      ),
+      isDatabaseFilterDisabled: ingestAllDatabases
+        ? !ingestAllDatabases
+        : Boolean(database),
       showSchemaFilter: !isUndefined(sourceConfig?.schemaFilterPattern),
       showTableFilter: !isUndefined(sourceConfig?.tableFilterPattern),
       showTopicFilter: !isUndefined(sourceConfig?.topicFilterPattern),
       showChartFilter: !isUndefined(sourceConfig?.chartFilterPattern),
       showPipelineFilter: !isUndefined(sourceConfig?.pipelineFilterPattern),
       showMlModelFilter: !isUndefined(sourceConfig?.mlModelFilterPattern),
+      showContainerFilter: !isUndefined(sourceConfig?.containerFilterPattern),
       dbtConfigSource: configData as ModifiedDbtConfig,
       gcsConfigType: showDBTConfig ? sourceTypeData.gcsType : undefined,
       chartFilterPattern:
@@ -164,8 +174,14 @@ const AddIngestion = ({
         : undefined,
       dashboardFilterPattern:
         sourceConfig?.dashboardFilterPattern ?? INITIAL_FILTER_PATTERN,
-      databaseFilterPattern:
-        sourceConfig?.databaseFilterPattern ?? INITIAL_FILTER_PATTERN,
+      containerFilterPattern:
+        sourceConfig?.containerFilterPattern ?? INITIAL_FILTER_PATTERN,
+      databaseFilterPattern: isUndefined(database)
+        ? sourceConfig?.databaseFilterPattern ?? INITIAL_FILTER_PATTERN
+        : {
+            includes: [database],
+            excludes: [],
+          },
       markAllDeletedTables: isDatabaseService
         ? Boolean(sourceConfig?.markAllDeletedTables ?? false)
         : undefined,
@@ -318,6 +334,7 @@ const AddIngestion = ({
       includeLineage,
       includeTags,
       includeView,
+      showContainerFilter,
       ingestSampleData,
       markAllDeletedTables,
       markDeletedTables,
@@ -326,6 +343,7 @@ const AddIngestion = ({
       markDeletedMlModels,
       markDeletedPipelines,
       mlModelFilterPattern,
+      containerFilterPattern,
       pipelineFilterPattern,
       schemaFilterPattern,
       showChartFilter,
@@ -415,6 +433,16 @@ const AddIngestion = ({
           markDeletedMlModels,
         };
       }
+      case ServiceCategory.OBJECT_STORE_SERVICES: {
+        return {
+          containerFilterPattern: getFilterPatternData(
+            containerFilterPattern,
+            showContainerFilter
+          ),
+          type: ConfigType.ObjectStoreMetadata,
+        };
+      }
+
       default: {
         return {};
       }

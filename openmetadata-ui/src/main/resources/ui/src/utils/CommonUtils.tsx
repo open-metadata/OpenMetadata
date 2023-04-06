@@ -26,6 +26,7 @@ import Loader from 'components/Loader/Loader';
 import { t } from 'i18next';
 import {
   capitalize,
+  get,
   isEmpty,
   isNil,
   isNull,
@@ -220,7 +221,7 @@ export const getCountBadge = (
   return (
     <span
       className={classNames(
-        'tw-py-px tw-px-1 tw-mx-1 tw-border tw-rounded tw-text-xs tw-min-w-badgeCount tw-text-center',
+        'tw-py-px p-x-xss m-x-xss tw-border tw-rounded tw-text-xs tw-min-w-badgeCount text-center',
         clsBG,
         className
       )}>
@@ -763,9 +764,6 @@ export const refreshPage = () => window.location.reload();
 export const getEntityIdArray = (entities: EntityReference[]): string[] =>
   entities.map((item) => item.id);
 
-export const getEntityFqnArray = (entities: EntityReference[]): string[] =>
-  entities.map((item) => item.fullyQualifiedName!);
-
 export const getTierFromEntityInfo = (entity: FormattedTableData) => {
   return (
     entity.tier?.tagFQN ||
@@ -886,6 +884,8 @@ export const getFilterTypes = (
       return 'schemaFilterPattern' as keyof AddIngestionState;
     case FilterPatternEnum.TABLE:
       return 'tableFilterPattern' as keyof AddIngestionState;
+    case FilterPatternEnum.CONTAINER:
+      return 'containerFilterPattern' as keyof AddIngestionState;
     default:
       return 'topicFilterPattern' as keyof AddIngestionState;
   }
@@ -909,3 +909,21 @@ export const reducerWithoutAction = <S, A>(state: S, action: A) => {
  * @returns base64 encoded text
  */
 export const getBase64EncodedString = (text: string): string => btoa(text);
+
+export const getIsErrorMatch = (error: AxiosError, key: string): boolean => {
+  let errorMessage = '';
+
+  if (error) {
+    errorMessage = get(error, 'response.data.message', '');
+    if (!errorMessage) {
+      // if error text is undefined or null or empty, try responseMessage in data
+      errorMessage = get(error, 'response.data.responseMessage', '');
+    }
+    if (!errorMessage) {
+      errorMessage = get(error, 'response.data', '');
+      errorMessage = typeof errorMessage === 'string' ? errorMessage : '';
+    }
+  }
+
+  return errorMessage.includes(key);
+};

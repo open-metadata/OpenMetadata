@@ -65,6 +65,7 @@ export enum ResourceEntity {
   OBJECT_STORE_SERVICE = 'objectStoreService',
   CONTAINER = 'container',
   QUERY = 'query',
+  DASHBOARD_DATA_MODEL = 'dashboardDataModel',
 }
 
 export interface PermissionContextType {

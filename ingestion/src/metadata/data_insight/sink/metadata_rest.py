@@ -66,8 +66,8 @@ class MetadataRestSink(Sink[Entity]):
         try:
             if isinstance(record, ReportData):
                 self.metadata.add_data_insight_report_data(record)
-                logger.info(
-                    "Successfully ingested data insight for"
+                logger.debug(
+                    "Successfully ingested data insight for "
                     f"{record.data.__class__.__name__ if record.data else 'Unknown'}"
                 )
                 self.status.records_written(
@@ -75,7 +75,7 @@ class MetadataRestSink(Sink[Entity]):
                 )
             if isinstance(record, KpiResult):
                 self.metadata.add_kpi_result(fqn=record.kpiFqn.__root__, record=record)
-                logger.info(f"Successfully ingested KPI for {record.kpiFqn}")
+                logger.debug(f"Successfully ingested KPI for {record.kpiFqn}")
                 self.status.records_written(f"Data Insight: {record.kpiFqn}")
 
         except APIError as err:
