@@ -113,7 +113,7 @@ class NifiSource(PipelineServiceSource):
                 Task(
                     name=processor.id_,
                     displayName=processor.name,
-                    taskUrl=processor.uri.replace(self.service_connection.hostPort, ""),
+                    taskUrl=processor.uri,
                     taskType=processor.type_,
                     downstreamTasks=self._get_downstream_tasks_from(
                         source_id=processor.id_,
@@ -140,9 +140,7 @@ class NifiSource(PipelineServiceSource):
         pipeline_request = CreatePipelineRequest(
             name=pipeline_details.id_,
             displayName=pipeline_details.name,
-            pipelineUrl=pipeline_details.uri.replace(
-                self.service_connection.hostPort, ""
-            ),
+            pipelineUrl=pipeline_details.uri,
             tasks=self._get_tasks_from_details(pipeline_details),
             service=self.context.pipeline_service.fullyQualifiedName.__root__,
         )
