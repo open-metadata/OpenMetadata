@@ -13,23 +13,44 @@
 GraphQL queries used during ingestion
 """
 
-TABLEAU_LINEAGE_GRAPHQL_QUERY = """
-{
-  workbooks {
-    id
-    luid
+TABLEAU_SHEET_QUERY_BY_ID = """
+query SheetQuery {{
+  sheets(filter: {{luid: "{id}" }} ) {{
     name
-    upstreamTables{
+    id
+    worksheetFields {{ 
       name
-      schema
-      upstreamDatabases{
-        name
-      }
-      referencedByQueries{
-        name
-        query
-      }
-    }
-  }
-}
+      id
+      dataType
+    }}
+    datasourceFields {{
+      __typename
+      name
+      id
+      ... on DatasourceField {{
+        upstreamTables {{  
+          upstreamDatabases {{ 
+            id
+            name
+          }}
+          referencedByQueries {{
+            id
+            name
+            query
+          }}
+          id
+          name
+          schema
+        }}
+        remoteField {{
+          id
+          __typename
+          ... on ColumnField {{
+            dataType
+          }}
+        }}
+      }}
+    }}
+  }}
+}}
 """

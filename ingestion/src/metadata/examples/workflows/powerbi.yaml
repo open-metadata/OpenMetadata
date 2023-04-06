@@ -9,6 +9,7 @@ source:
       scope:
         - https://analysis.windows.net/powerbi/api/.default
       pagination_entity_per_page: 100
+      # useAdminApis: true or false
       type: PowerBI
   sourceConfig:
     config:

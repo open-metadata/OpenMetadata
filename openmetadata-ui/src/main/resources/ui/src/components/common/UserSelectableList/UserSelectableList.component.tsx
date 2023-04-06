@@ -100,6 +100,7 @@ export const UserSelectableList = ({
 
   return (
     <Popover
+      destroyTooltipOnHide
       content={
         <SelectableList
           fetchOptions={fetchOptions}

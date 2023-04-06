@@ -15,7 +15,6 @@ import { PlusOutlined } from '@ant-design/icons';
 import { Button, Space, Switch, Typography } from 'antd';
 import { UserSelectableList } from 'components/common/UserSelectableList/UserSelectableList.component';
 import Tags from 'components/Tag/Tags/tags';
-import { LOADING_STATE } from 'enums/common.enum';
 import { cloneDeep, toString } from 'lodash';
 import { EntityTags } from 'Models';
 import React, { useRef, useState } from 'react';
@@ -40,7 +39,7 @@ const Field = ({ children }: { children: React.ReactNode }) => {
 const AddGlossary = ({
   header,
   allowAccess = true,
-  saveState = 'initial',
+  isLoading,
   slashedBreadcrumb,
   onCancel,
   onSave,
@@ -296,7 +295,7 @@ const AddGlossary = ({
             <Button
               data-testid="save-glossary"
               disabled={!allowAccess}
-              loading={saveState === LOADING_STATE.WAITING}
+              loading={isLoading}
               type="primary"
               onClick={handleSave}>
               {t('label.save')}

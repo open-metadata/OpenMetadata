@@ -11,13 +11,12 @@
  *  limitations under the License.
  */
 
-import { LoadingState } from 'Models';
 import { CreateGlossary } from '../../generated/api/data/createGlossary';
 import { TitleBreadcrumbProps } from '../common/title-breadcrumb/title-breadcrumb.interface';
 
 export interface AddGlossaryProps {
   header: string;
-  saveState?: LoadingState;
+  isLoading: boolean;
   allowAccess?: boolean;
   isTagLoading?: boolean;
   tagList?: string[];

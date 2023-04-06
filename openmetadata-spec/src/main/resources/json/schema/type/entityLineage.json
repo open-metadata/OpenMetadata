@@ -2,7 +2,7 @@
   "$id": "https://open-metadata.org/schema/type/entityLineage.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Entity Lineage",
-  "description": "This schema defines the type used for lineage of an entity.",
+  "description": "The `Lineage` for a given data asset, has information of the input datasets used and the ETL pipeline that created it.",
   "type": "object",
   "javaType": "org.openmetadata.schema.type.EntityLineage",
   "definitions": {

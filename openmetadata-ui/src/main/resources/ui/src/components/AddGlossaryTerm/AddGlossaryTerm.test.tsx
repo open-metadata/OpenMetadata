@@ -12,7 +12,6 @@
  */
 
 import { fireEvent, getByTestId, render } from '@testing-library/react';
-import { LoadingState } from 'Models';
 import React, { forwardRef } from 'react';
 import {
   mockedGlossaries,
@@ -64,7 +63,7 @@ const mockProps = {
   allowAccess: true,
   glossaryData: mockedGlossaries[0],
   parentGlossaryData: mockedGlossaryTerms[0],
-  saveState: 'initial' as LoadingState,
+  isLoading: false,
   onCancel: mockOnCancel,
   onSave: mockOnSave,
   slashedBreadcrumb: [],

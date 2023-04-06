@@ -31,6 +31,11 @@ from metadata.generated.schema.type.tagLabel import TagLabel
 from metadata.generated.schema.type.usageDetails import UsageDetails
 
 
+class ESSuggest(BaseModel):
+    input: str
+    weight: int
+
+
 class TableESDocument(BaseModel):
     """ElasticSearch Mapping doc"""
 
@@ -56,11 +61,11 @@ class TableESDocument(BaseModel):
     tags: List[TagLabel]
     tier: Optional[TagLabel] = None
     followers: List[str]
-    suggest: List[dict]
-    column_suggest: List[dict]
-    database_suggest: List[dict]
-    schema_suggest: List[dict]
-    service_suggest: List[dict]
+    suggest: List[ESSuggest]
+    column_suggest: List[ESSuggest]
+    database_suggest: List[ESSuggest]
+    schema_suggest: List[ESSuggest]
+    service_suggest: List[ESSuggest]
     doc_as_upsert: bool = True
 
 
@@ -86,8 +91,8 @@ class TopicESDocument(BaseModel):
     replicationFactor: Optional[int] = None
     maximumMessageSize: Optional[int] = None
     retentionSize: Optional[int] = None
-    suggest: List[dict]
-    service_suggest: List[dict]
+    suggest: List[ESSuggest]
+    service_suggest: List[ESSuggest]
     tags: List[TagLabel]
     tier: Optional[TagLabel] = None
     owner: EntityReference = None
@@ -118,10 +123,10 @@ class DashboardESDocument(BaseModel):
     deleted: bool
     tags: List[TagLabel]
     tier: Optional[TagLabel] = None
-    suggest: List[dict]
-    chart_suggest: List[dict]
-    data_model_suggest: List[dict]
-    service_suggest: List[dict]
+    suggest: List[ESSuggest]
+    chart_suggest: List[ESSuggest]
+    data_model_suggest: List[ESSuggest]
+    service_suggest: List[ESSuggest]
     doc_as_upsert: bool = True
 
 
@@ -147,9 +152,9 @@ class PipelineESDocument(BaseModel):
     tier: Optional[TagLabel] = None
     service: EntityReference
     serviceType: str
-    suggest: List[dict]
-    task_suggest: List[dict]
-    service_suggest: List[dict]
+    suggest: List[ESSuggest]
+    task_suggest: List[ESSuggest]
+    service_suggest: List[ESSuggest]
     doc_as_upsert: bool = True
 
 
@@ -179,8 +184,8 @@ class MlModelESDocument(BaseModel):
     followers: List[str]
     href: Optional[str]
     deleted: bool
-    suggest: List[dict]
-    service_suggest: List[dict] = None
+    suggest: List[ESSuggest]
+    service_suggest: List[ESSuggest] = None
     service: EntityReference
     doc_as_upsert: bool = True
 
@@ -203,8 +208,8 @@ class ContainerESDocument(BaseModel):
     followers: List[str]
     href: Optional[str]
     deleted: bool
-    suggest: List[dict]
-    service_suggest: List[dict] = None
+    suggest: List[ESSuggest]
+    service_suggest: List[ESSuggest] = None
     service: EntityReference
     doc_as_upsert: bool = True
     parent: Optional[dict] = None
@@ -212,7 +217,7 @@ class ContainerESDocument(BaseModel):
     children: Optional[List[dict]] = None
     prefix: Optional[str] = None
     numberOfObjects: Optional[int] = None
-    size: Optional[int] = None
+    size: Optional[float] = None
     fileFormats: Optional[List[str]] = None
 
 
@@ -234,8 +239,8 @@ class QueryESDocument(BaseModel):
     followers: List[str]
     href: Optional[str]
     deleted: bool
-    suggest: List[dict]
-    service_suggest: List[dict] = None
+    suggest: List[ESSuggest]
+    service_suggest: List[ESSuggest] = None
     doc_as_upsert: bool = True
     duration: Optional[float] = None
     users: Optional[List[dict]] = None
@@ -263,7 +268,7 @@ class UserESDocument(BaseModel):
     roles: EntityReferenceList
     inheritedRoles: EntityReferenceList
     deleted: bool
-    suggest: List[dict]
+    suggest: List[ESSuggest]
     doc_as_upsert: bool = True
 
 
@@ -281,7 +286,7 @@ class TeamESDocument(BaseModel):
     updatedAt: Optional[int]
     updatedBy: Optional[str]
     href: Optional[str]
-    suggest: List[dict]
+    suggest: List[ESSuggest]
     users: EntityReferenceList
     defaultRoles: EntityReferenceList
     parents: EntityReferenceList
@@ -311,7 +316,7 @@ class GlossaryTermESDocument(BaseModel):
     usageCount: Optional[int]
     tags: List[TagLabel]
     status: str
-    suggest: List[dict]
+    suggest: List[ESSuggest]
     deleted: bool
     doc_as_upsert: bool = True
 
@@ -328,7 +333,7 @@ class TagESDocument(BaseModel):
     updatedAt: Optional[int]
     updatedBy: Optional[str]
     href: Optional[str]
-    suggest: List[dict]
+    suggest: List[ESSuggest]
     deleted: bool
     deprecated: bool
     doc_as_upsert: bool = True

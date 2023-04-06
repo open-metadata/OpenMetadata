@@ -29,6 +29,8 @@ import io.dropwizard.lifecycle.Managed;
 import io.dropwizard.server.DefaultServerFactory;
 import io.dropwizard.setup.Bootstrap;
 import io.dropwizard.setup.Environment;
+import io.dropwizard.web.WebBundle;
+import io.dropwizard.web.conf.WebConfiguration;
 import io.federecio.dropwizard.swagger.SwaggerBundle;
 import io.federecio.dropwizard.swagger.SwaggerBundleConfiguration;
 import io.socket.engineio.server.EngineIoServerOptions;
@@ -81,6 +83,8 @@ import org.openmetadata.service.monitoring.EventMonitor;
 import org.openmetadata.service.monitoring.EventMonitorFactory;
 import org.openmetadata.service.monitoring.EventMonitorPublisher;
 import org.openmetadata.service.resources.CollectionRegistry;
+import org.openmetadata.service.resources.databases.DatasourceConfig;
+import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.secrets.SecretsManagerUpdateService;
@@ -102,8 +106,8 @@ import org.openmetadata.service.socket.FeedServlet;
 import org.openmetadata.service.socket.OpenMetadataAssetServlet;
 import org.openmetadata.service.socket.SocketAddressFilter;
 import org.openmetadata.service.socket.WebSocketManager;
-import org.openmetadata.service.util.EmailUtil;
 import org.openmetadata.service.util.MicrometerBundleSingleton;
+import org.openmetadata.service.workflows.searchIndex.SearchIndexEvent;
 
 /** Main catalog application */
 @Slf4j
@@ -118,9 +122,11 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
           NoSuchAlgorithmException {
     validateConfiguration(catalogConfig);
 
-    // init email Util for handling
-    EmailUtil.initialize(catalogConfig);
+    ChangeEventConfig.initialize(catalogConfig);
     final Jdbi jdbi = createAndSetupJDBI(environment, catalogConfig.getDataSourceFactory());
+
+    // Init Settings Cache
+    SettingsCache.initialize(jdbi.onDemand(CollectionDAO.class), catalogConfig);
 
     // init Secret Manager
     final SecretsManager secretsManager =
@@ -129,7 +135,6 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
 
     // init Entity Masker
     EntityMaskerFactory.createEntityMasker(catalogConfig.getSecurityConfiguration());
-
     // Configure the Fernet instance
     Fernet.getInstance().setFernetKey(catalogConfig);
 
@@ -148,6 +153,9 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
 
     // Register Authenticator
     registerAuthenticator(catalogConfig);
+
+    // init for dataSourceFactory
+    DatasourceConfig.initialize(catalogConfig);
 
     // Unregister dropwizard default exception mappers
     ((DefaultServerFactory) catalogConfig.getServerFactory()).setRegisterDefaultExceptionMappers(false);
@@ -268,6 +276,13 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
           }
         });
     bootstrap.addBundle(MicrometerBundleSingleton.getInstance());
+    bootstrap.addBundle(
+        new WebBundle<>() {
+          @Override
+          public WebConfiguration getWebConfiguration(final OpenMetadataApplicationConfig configuration) {
+            return configuration.getWebConfiguration();
+          }
+        });
     super.initialize(bootstrap);
   }
 
@@ -348,6 +363,8 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     if (catalogConfig.getEventHandlerConfiguration() != null) {
       ContainerResponseFilter eventFilter = new EventFilter(catalogConfig, jdbi);
       environment.jersey().register(eventFilter);
+      ContainerResponseFilter reindexingJobs = new SearchIndexEvent();
+      environment.jersey().register(reindexingJobs);
     }
   }
 
