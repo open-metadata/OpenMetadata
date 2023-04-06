@@ -17,6 +17,8 @@ import { EntityReference } from 'generated/type/entityReference';
 import { getURLWithQueryFields } from 'utils/APIUtils';
 import APIClient from './index';
 
+const URL = '/dashboard/datamodels';
+
 const configOptionsForPatch = {
   headers: { 'Content-type': 'application/json-patch+json' },
 };
@@ -30,7 +32,7 @@ export const getDataModelsByName = async (
   fields: string | string[]
 ) => {
   const response = await APIClient.get<DashboardDataModel>(
-    `/dashboard/datamodels/name/${name}?fields=${fields}`
+    `${URL}/name/${name}?fields=${fields}`
   );
 
   return response.data;
@@ -54,7 +56,7 @@ export const patchDataModelDetails = async (id: string, data: Operation[]) => {
   const response = await APIClient.patch<
     Operation[],
     AxiosResponse<DashboardDataModel>
-  >(`/dashboard/datamodels/${id}`, data, configOptionsForPatch);
+  >(`${URL}/${id}`, data, configOptionsForPatch);
 
   return response.data;
 };
@@ -65,7 +67,7 @@ export const addDataModelFollower = async (id: string, userId: string) => {
     AxiosResponse<{
       changeDescription: { fieldsAdded: { newValue: EntityReference[] }[] };
     }>
-  >(`/dashboard/datamodels/${id}/followers`, userId, configOptions);
+  >(`${URL}/${id}/followers`, userId, configOptions);
 
   return response.data;
 };
@@ -76,7 +78,7 @@ export const removeDataModelFollower = async (id: string, userId: string) => {
     AxiosResponse<{
       changeDescription: { fieldsDeleted: { oldValue: EntityReference[] }[] };
     }>
-  >(`/dashboard/datamodels/${id}/followers/${userId}`, configOptions);
+  >(`${URL}/${id}/followers/${userId}`, configOptions);
 
   return response.data;
 };

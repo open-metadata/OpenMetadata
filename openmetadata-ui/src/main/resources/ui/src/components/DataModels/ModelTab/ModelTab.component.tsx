@@ -20,7 +20,7 @@ import TagsViewer from 'components/Tag/TagsViewer/tags-viewer';
 import { Column } from 'generated/entity/data/dashboardDataModel';
 import { cloneDeep, isEmpty, isUndefined } from 'lodash';
 import { EntityTags, TagOption } from 'Models';
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   updateDataModelColumnDescription,
@@ -37,8 +37,6 @@ const ModelTab = ({
   hasEditTagsPermission,
   onUpdate,
 }: ModelTabProps) => {
-  console.log(hasEditTagsPermission);
-
   const { t } = useTranslation();
   const [editColumnDescription, setEditColumnDescription] = useState<Column>();
   const [editContainerColumnTags, setEditContainerColumnTags] =
@@ -48,7 +46,7 @@ const ModelTab = ({
   const [isTagLoading, setIsTagLoading] = useState<boolean>(false);
   const [tagFetchFailed, setTagFetchFailed] = useState<boolean>(false);
 
-  const fetchTags = async () => {
+  const fetchTags = useCallback(async () => {
     setIsTagLoading(true);
     try {
       const tagsAndTerms = await fetchTagsAndGlossaryTerms();
@@ -59,122 +57,136 @@ const ModelTab = ({
     } finally {
       setIsTagLoading(false);
     }
-  };
+  }, [fetchTagsAndGlossaryTerms]);
 
-  const handleFieldTagsChange = async (
-    selectedTags: EntityTags[] = [],
-    selectedColumn: Column
-  ) => {
-    const newSelectedTags: TagOption[] = selectedTags.map((tag) => ({
-      fqn: tag.tagFQN,
-      source: tag.source,
-    }));
+  const handleFieldTagsChange = useCallback(
+    async (selectedTags: EntityTags[] = [], selectedColumn: Column) => {
+      const newSelectedTags: TagOption[] = selectedTags.map((tag) => ({
+        fqn: tag.tagFQN,
+        source: tag.source,
+      }));
 
-    const dataModelData = cloneDeep(data);
+      const dataModelData = cloneDeep(data);
 
-    updateDataModelColumnTags(
-      dataModelData,
-      editContainerColumnTags?.name ?? selectedColumn.name,
-      newSelectedTags
+      updateDataModelColumnTags(
+        dataModelData,
+        editContainerColumnTags?.name ?? selectedColumn.name,
+        newSelectedTags
+      );
+
+      await onUpdate(dataModelData);
+
+      setEditContainerColumnTags(undefined);
+    },
+    [data, updateDataModelColumnTags]
+  );
+
+  const handleColumnDescriptionChange = useCallback(
+    async (updatedDescription: string) => {
+      if (!isUndefined(editColumnDescription)) {
+        const dataModelColumns = cloneDeep(data);
+        updateDataModelColumnDescription(
+          dataModelColumns,
+          editColumnDescription?.name,
+          updatedDescription
+        );
+        await onUpdate(dataModelColumns);
+      }
+      setEditColumnDescription(undefined);
+    },
+    [editColumnDescription, data]
+  );
+
+  const handleAddTagClick = useCallback(
+    (record: Column) => {
+      if (isUndefined(editContainerColumnTags)) {
+        setEditContainerColumnTags(record);
+        // Fetch tags and terms only once
+        if (tagList.length === 0 || tagFetchFailed) {
+          fetchTags();
+        }
+      }
+    },
+    [editContainerColumnTags, tagList, tagFetchFailed]
+  );
+
+  const renderColumnDescription: CellRendered<Column, 'description'> =
+    useCallback(
+      (description, record, index) => {
+        return (
+          <Space
+            className="custom-group w-full"
+            data-testid="description"
+            id={`field-description-${index}`}
+            size={4}>
+            <>
+              {description ? (
+                <RichTextEditorPreviewer markdown={description} />
+              ) : (
+                <Typography.Text className="tw-no-description">
+                  {t('label.no-entity', {
+                    entity: t('label.description'),
+                  })}
+                </Typography.Text>
+              )}
+            </>
+            {isReadOnly && !hasEditDescriptionPermission ? null : (
+              <Button
+                className="p-0 opacity-0 group-hover-opacity-100"
+                data-testid="edit-button"
+                icon={<EditIcon width="16px" />}
+                type="text"
+                onClick={() => setEditColumnDescription(record)}
+              />
+            )}
+          </Space>
+        );
+      },
+      [isReadOnly, hasEditDescriptionPermission]
     );
 
-    await onUpdate(dataModelData);
+  const renderColumnTags: CellRendered<Column, 'tags'> = useCallback(
+    (tags, record: Column) => {
+      const isSelectedField = editContainerColumnTags?.name === record.name;
+      const isUpdatingTags = isSelectedField || !isEmpty(tags);
 
-    setEditContainerColumnTags(undefined);
-  };
-
-  const handleColumnDescriptionChange = async (updatedDescription: string) => {
-    if (!isUndefined(editColumnDescription)) {
-      const dataModelColumns = cloneDeep(data);
-      updateDataModelColumnDescription(
-        dataModelColumns,
-        editColumnDescription?.name,
-        updatedDescription
-      );
-      await onUpdate(dataModelColumns);
-    }
-    setEditColumnDescription(undefined);
-  };
-
-  const handleAddTagClick = (record: Column) => {
-    if (isUndefined(editContainerColumnTags)) {
-      setEditContainerColumnTags(record);
-      // Fetch tags and terms only once
-      if (tagList.length === 0 || tagFetchFailed) {
-        fetchTags();
-      }
-    }
-  };
-
-  const renderColumnDescription: CellRendered<Column, 'description'> = (
-    description,
-    record,
-    index
-  ) => {
-    return (
-      <Space
-        className="custom-group w-full"
-        data-testid="description"
-        id={`field-description-${index}`}
-        size={4}>
+      return (
         <>
-          {description ? (
-            <RichTextEditorPreviewer markdown={description} />
+          {isReadOnly ? (
+            <TagsViewer sizeCap={-1} tags={tags || []} />
           ) : (
-            <Typography.Text className="tw-no-description">
-              {t('label.no-entity', {
-                entity: t('label.description'),
-              })}
-            </Typography.Text>
+            <Space
+              align={isUpdatingTags ? 'start' : 'center'}
+              className="justify-between"
+              data-testid="tags-wrapper"
+              direction={isUpdatingTags ? 'vertical' : 'horizontal'}
+              onClick={() => handleAddTagClick(record)}>
+              <TagsContainer
+                editable={isSelectedField}
+                isLoading={isTagLoading && isSelectedField}
+                selectedTags={tags || []}
+                showAddTagButton={hasEditTagsPermission}
+                size="small"
+                tagList={tagList}
+                type="label"
+                onCancel={() => setEditContainerColumnTags(undefined)}
+                onSelectionChange={(tags) =>
+                  handleFieldTagsChange(tags, record)
+                }
+              />
+            </Space>
           )}
         </>
-        {isReadOnly && !hasEditDescriptionPermission ? null : (
-          <Button
-            className="p-0 opacity-0 group-hover-opacity-100"
-            data-testid="edit-button"
-            icon={<EditIcon width="16px" />}
-            type="text"
-            onClick={() => setEditColumnDescription(record)}
-          />
-        )}
-      </Space>
-    );
-  };
-
-  const renderColumnTags: CellRendered<Column, 'tags'> = (
-    tags,
-    record: Column
-  ) => {
-    const isSelectedField = editContainerColumnTags?.name === record.name;
-    const isUpdatingTags = isSelectedField || !isEmpty(tags);
-
-    return (
-      <>
-        {isReadOnly ? (
-          <TagsViewer sizeCap={-1} tags={tags || []} />
-        ) : (
-          <Space
-            align={isUpdatingTags ? 'start' : 'center'}
-            className="justify-between"
-            data-testid="tags-wrapper"
-            direction={isUpdatingTags ? 'vertical' : 'horizontal'}
-            onClick={() => handleAddTagClick(record)}>
-            <TagsContainer
-              editable={isSelectedField}
-              isLoading={isTagLoading && isSelectedField}
-              selectedTags={tags || []}
-              showAddTagButton={hasEditTagsPermission}
-              size="small"
-              tagList={tagList}
-              type="label"
-              onCancel={() => setEditContainerColumnTags(undefined)}
-              onSelectionChange={(tags) => handleFieldTagsChange(tags, record)}
-            />
-          </Space>
-        )}
-      </>
-    );
-  };
+      );
+    },
+    [
+      editContainerColumnTags,
+      isReadOnly,
+      isTagLoading,
+      tagList,
+      hasEditTagsPermission,
+    ]
+  );
 
   const tableColumn: ColumnsType<Column> = useMemo(
     () => [

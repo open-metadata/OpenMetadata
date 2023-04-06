@@ -75,13 +75,7 @@ import { DEFAULT_ENTITY_PERMISSION } from 'utils/PermissionsUtils';
 import { serviceTypeLogo } from 'utils/ServiceUtils';
 import { getTagsWithoutTier, getTierTags } from 'utils/TableUtils';
 import { showErrorToast } from 'utils/ToastUtils';
-
-enum DATA_MODELS_DETAILS_TABS {
-  MODEL = 'model',
-  ACTIVITY = 'activityFeed',
-  SQL = 'sql',
-  LINEAGE = 'lineage',
-}
+import { DATA_MODELS_DETAILS_TABS } from './DataModelsInterface';
 
 const DataModelsPage = () => {
   const history = useHistory();
@@ -108,8 +102,6 @@ const DataModelsPage = () => {
     EntityFieldThreadCount[]
   >([]);
 
-  console.log(entityFieldThreadCount);
-
   const [entityFieldTaskCount, setEntityFieldTaskCount] = useState<
     EntityFieldThreadCount[]
   >([]);
@@ -119,60 +111,6 @@ const DataModelsPage = () => {
     () => AppState.getCurrentUserDetails(),
     [AppState.userDetails, AppState.nonSecureUserDetails]
   );
-
-  const fetchResourcePermission = async (dashboardDataModelFQN: string) => {
-    setIsLoading(true);
-    try {
-      const entityPermission = await getEntityPermissionByFqn(
-        ResourceEntity.CONTAINER,
-        dashboardDataModelFQN
-      );
-      setDataModelPermissions(entityPermission);
-    } catch (error) {
-      showErrorToast(
-        t('server.fetch-entity-permissions-error', {
-          entity: t('label.asset-lowercase'),
-        })
-      );
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const getFeedData = (
-    after?: string,
-    feedFilter?: FeedFilter,
-    threadType?: ThreadType
-  ) => {
-    setIsEntityThreadLoading(true);
-    !after && setEntityThread([]);
-    getAllFeeds(
-      getEntityFeedLink(EntityType.DASHBOARD_DATA_MODEL, dashboardDataModelFQN),
-      after,
-      threadType,
-      feedFilter,
-      undefined,
-      currentUser?.id
-    )
-      .then((res) => {
-        const { data, paging: pagingObj } = res;
-        if (data) {
-          setPaging(pagingObj);
-          setEntityThread((prevData) => [...prevData, ...data]);
-        } else {
-          showErrorToast(
-            jsonData['api-error-messages']['fetch-entity-feed-error']
-          );
-        }
-      })
-      .catch((err: AxiosError) => {
-        showErrorToast(
-          err,
-          jsonData['api-error-messages']['fetch-entity-feed-error']
-        );
-      })
-      .finally(() => setIsEntityThreadLoading(false));
-  };
 
   const {
     hasViewPermission,
@@ -249,6 +187,41 @@ const DataModelsPage = () => {
     ];
   }, [dataModelData, dashboardDataModelFQN, entityName]);
 
+  const getFeedData = (
+    after?: string,
+    feedFilter?: FeedFilter,
+    threadType?: ThreadType
+  ) => {
+    setIsEntityThreadLoading(true);
+    !after && setEntityThread([]);
+    getAllFeeds(
+      getEntityFeedLink(EntityType.DASHBOARD_DATA_MODEL, dashboardDataModelFQN),
+      after,
+      threadType,
+      feedFilter,
+      undefined,
+      currentUser?.id
+    )
+      .then((res) => {
+        const { data, paging: pagingObj } = res;
+        if (data) {
+          setPaging(pagingObj);
+          setEntityThread((prevData) => [...prevData, ...data]);
+        } else {
+          showErrorToast(
+            jsonData['api-error-messages']['fetch-entity-feed-error']
+          );
+        }
+      })
+      .catch((err: AxiosError) => {
+        showErrorToast(
+          err,
+          jsonData['api-error-messages']['fetch-entity-feed-error']
+        );
+      })
+      .finally(() => setIsEntityThreadLoading(false));
+  };
+
   const getEntityFeedCount = () => {
     getFeedCounts(
       EntityType.DASHBOARD_DATA_MODEL,
@@ -316,6 +289,24 @@ const DataModelsPage = () => {
     },
     [paging]
   );
+  const fetchResourcePermission = async (dashboardDataModelFQN: string) => {
+    setIsLoading(true);
+    try {
+      const entityPermission = await getEntityPermissionByFqn(
+        ResourceEntity.CONTAINER,
+        dashboardDataModelFQN
+      );
+      setDataModelPermissions(entityPermission);
+    } catch (error) {
+      showErrorToast(
+        t('server.fetch-entity-permissions-error', {
+          entity: t('label.asset-lowercase'),
+        })
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const createThread = (data: CreateThread) => {
     postThread(data)
@@ -538,7 +529,7 @@ const DataModelsPage = () => {
     }
   };
 
-  const fetchTabSpecificData = () => {
+  useEffect(() => {
     switch (tab) {
       case DATA_MODELS_DETAILS_TABS.ACTIVITY: {
         getFeedData();
@@ -549,10 +540,6 @@ const DataModelsPage = () => {
       default:
         break;
     }
-  };
-
-  useEffect(() => {
-    fetchTabSpecificData();
   }, [tab, dashboardDataModelFQN]);
 
   useEffect(() => {
