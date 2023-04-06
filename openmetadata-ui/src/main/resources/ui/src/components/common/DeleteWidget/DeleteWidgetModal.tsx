@@ -114,6 +114,8 @@ const DeleteWidgetModal = ({
       return 'policies';
     } else if (entityType === EntityType.KPI) {
       return entityType;
+    } else if (entityType === EntityType.DASHBOARD_DATA_MODEL) {
+      return `dashboard/datamodels`;
     } else {
       return `${entityType}s`;
     }

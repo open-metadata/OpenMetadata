@@ -11,6 +11,8 @@
  *  limitations under the License.
  */
 
+// / <reference types="cypress" />
+
 import {
   addNewTagToEntity,
   descriptionBox,
@@ -54,6 +56,11 @@ describe('Tags page should work', () => {
       'getTagList'
     );
     interceptURL('GET', `/api/v1/permissions/classification/*`, 'permissions');
+    interceptURL(
+      'GET',
+      `/api/v1/search/suggest?q=*&index=tag_search_index*glossary_search_index`,
+      'suggestTag'
+    );
     interceptURL('GET', '/api/v1/tags*', 'getTags');
 
     cy.get('[data-testid="governance"]')
@@ -272,8 +279,7 @@ describe('Tags page should work', () => {
       .click()
       .type(tag);
 
-    verifyResponseStatusCode('@searchQuery', 200);
-
+    verifyResponseStatusCode('@suggestTag', 200);
     cy.get('.ant-select-item-option-content').contains(tag).click();
 
     cy.get('[data-testid="tags-label"]').click();
@@ -345,7 +351,9 @@ describe('Tags page should work', () => {
       .contains(`#${NEW_TAG_CATEGORY.name}.${NEW_TAG.name}`)
       .should('be.visible');
 
-    cy.get('[data-testid="filter-container-TestCategory.test"]')
+    cy.get(
+      `[data-testid="filter-container-${NEW_TAG_CATEGORY.name}.${NEW_TAG.name}"]`
+    )
       .should('be.visible')
       .find('[data-testid="checkbox"]')
       .should('be.visible')

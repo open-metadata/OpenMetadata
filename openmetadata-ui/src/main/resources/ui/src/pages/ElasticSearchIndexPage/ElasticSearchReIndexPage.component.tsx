@@ -17,7 +17,11 @@ import { AxiosError } from 'axios';
 import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
 import PageHeader from 'components/header/PageHeader.component';
 import { useWebSocketConnector } from 'components/web-scoket/web-scoket.provider';
-import { isEmpty, startCase } from 'lodash';
+import {
+  ELASTIC_SEARCH_INDEX_ENTITIES,
+  ELASTIC_SEARCH_INITIAL_VALUES,
+} from 'constants/elasticsearch.constant';
+import { isEmpty, isEqual, startCase } from 'lodash';
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -29,7 +33,7 @@ import { CreateEventPublisherJob } from '../../generated/api/createEventPublishe
 import {
   EventPublisherJob,
   RunMode,
-} from '../../generated/settings/eventPublisherJob';
+} from '../../generated/system/eventPublisherJob';
 import { useAuth } from '../../hooks/authHooks';
 import jsonData from '../../jsons/en';
 import {
@@ -87,6 +91,9 @@ const ElasticSearchIndexPage = () => {
       setConfirmLoading(true);
       await reIndexByPublisher({
         ...data,
+        entities: isEqual(data.entities, ELASTIC_SEARCH_INITIAL_VALUES.entities)
+          ? ELASTIC_SEARCH_INDEX_ENTITIES.map((e) => e.value)
+          : data.entities ?? [],
         runMode: RunMode.Batch,
       } as CreateEventPublisherJob);
 
@@ -213,30 +220,44 @@ const ElasticSearchIndexPage = () => {
                             <Space size={8}>
                               <Badge
                                 className="request-badge running"
-                                count={batchJobData?.stats?.total}
+                                count={
+                                  batchJobData?.stats?.jobStats?.totalRecords
+                                }
                                 overflowCount={99999999}
                                 title={`${t('label.total-index-sent')}: ${
-                                  batchJobData?.stats?.total
+                                  batchJobData?.stats?.jobStats?.totalRecords
                                 }`}
                               />
 
                               <Badge
                                 className="request-badge success"
-                                count={batchJobData?.stats?.success}
+                                count={
+                                  batchJobData?.stats?.jobStats
+                                    ?.totalSuccessRecords
+                                }
                                 overflowCount={99999999}
                                 title={`${t('label.entity-index', {
                                   entity: t('label.success'),
-                                })}: ${batchJobData?.stats?.success}`}
+                                })}: ${
+                                  batchJobData?.stats?.jobStats
+                                    ?.totalSuccessRecords
+                                }`}
                               />
 
                               <Badge
                                 showZero
                                 className="request-badge failed"
-                                count={batchJobData?.stats?.failed}
+                                count={
+                                  batchJobData?.stats?.jobStats
+                                    ?.totalFailedRecords
+                                }
                                 overflowCount={99999999}
                                 title={`${t('label.entity-index', {
                                   entity: t('label.failed'),
-                                })}: ${batchJobData?.stats?.failed}`}
+                                })}: ${
+                                  batchJobData?.stats?.jobStats
+                                    ?.totalFailedRecords
+                                }`}
                               />
                             </Space>
                           ) : (
@@ -263,9 +284,10 @@ const ElasticSearchIndexPage = () => {
                           'label.last-failed-at'
                         )}:`}</span>
                         <p className="m-l-xs">
-                          {batchJobData?.failureDetails?.lastFailedAt
+                          {batchJobData?.failure?.sourceError
                             ? getDateTimeByTimeStampWithZone(
-                                batchJobData?.failureDetails?.lastFailedAt
+                                batchJobData?.failure?.sourceError
+                                  ?.lastFailedAt ?? 0
                               )
                             : '--'}
                         </p>
@@ -277,10 +299,10 @@ const ElasticSearchIndexPage = () => {
                       'label.failure-context'
                     )}:`}</span>
                     <span className="m-l-xs">
-                      {batchJobData?.failureDetails?.context ? (
+                      {batchJobData?.failure?.sourceError?.context ? (
                         <RichTextEditorPreviewer
                           enableSeeMoreVariant={Boolean(batchJobData)}
-                          markdown={batchJobData?.failureDetails?.context}
+                          markdown={batchJobData?.failure?.sourceError?.context}
                         />
                       ) : (
                         '--'
@@ -292,11 +314,11 @@ const ElasticSearchIndexPage = () => {
                       'label.last-error'
                     )}:`}</span>
                     <span className="m-l-xs">
-                      {batchJobData?.failureDetails?.lastFailedReason ? (
+                      {batchJobData?.failure?.sourceError?.lastFailedReason ? (
                         <RichTextEditorPreviewer
                           enableSeeMoreVariant={Boolean(batchJobData)}
                           markdown={
-                            batchJobData?.failureDetails?.lastFailedReason
+                            batchJobData?.failure?.sourceError?.lastFailedReason
                           }
                         />
                       ) : (
@@ -374,9 +396,9 @@ const ElasticSearchIndexPage = () => {
                           'label.last-failed-at'
                         )}:`}</span>
                         <p className="m-l-xs">
-                          {streamJobData?.failureDetails?.lastFailedAt
+                          {streamJobData?.failure?.sinkError?.lastFailedAt
                             ? getDateTimeByTimeStampWithZone(
-                                streamJobData?.failureDetails?.lastFailedAt
+                                streamJobData?.failure?.sinkError?.lastFailedAt
                               )
                             : '--'}
                         </p>
@@ -388,10 +410,10 @@ const ElasticSearchIndexPage = () => {
                       'label.failure-context'
                     )}:`}</span>
                     <span className="m-l-xs">
-                      {streamJobData?.failureDetails?.context ? (
+                      {streamJobData?.failure?.sinkError?.context ? (
                         <RichTextEditorPreviewer
                           enableSeeMoreVariant={Boolean(streamJobData)}
-                          markdown={streamJobData?.failureDetails?.context}
+                          markdown={streamJobData?.failure?.sinkError?.context}
                         />
                       ) : (
                         '--'
@@ -403,11 +425,12 @@ const ElasticSearchIndexPage = () => {
                       'label.last-error'
                     )}:`}</span>
                     <span className="m-l-xs">
-                      {streamJobData?.failureDetails?.lastFailedReason ? (
+                      {streamJobData?.failure ? (
                         <RichTextEditorPreviewer
                           enableSeeMoreVariant={Boolean(streamJobData)}
                           markdown={
-                            streamJobData?.failureDetails?.lastFailedReason
+                            streamJobData?.failure?.sourceError
+                              ?.lastFailedReason ?? ''
                           }
                         />
                       ) : (

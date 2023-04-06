@@ -40,6 +40,7 @@ import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.data.Topic;
 import org.openmetadata.schema.entity.policies.accessControl.Rule;
 import org.openmetadata.schema.entity.type.CustomProperty;
+import org.openmetadata.schema.system.FailureDetails;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.Column;
@@ -84,6 +85,8 @@ public final class EntityUtil {
   public static final Comparator<ChangeEvent> compareChangeEvent = Comparator.comparing(ChangeEvent::getTimestamp);
   public static final Comparator<GlossaryTerm> compareGlossaryTerm = Comparator.comparing(GlossaryTerm::getName);
   public static final Comparator<CustomProperty> compareCustomProperty = Comparator.comparing(CustomProperty::getName);
+  public static final Comparator<FailureDetails> compareLastFailedAt =
+      Comparator.comparing(FailureDetails::getLastFailedAt);
 
   //
   // Matchers used for matching two items in a list
@@ -272,7 +275,7 @@ public final class EntityUtil {
 
   @RequiredArgsConstructor
   public static class Fields {
-    public static final Fields EMPTY_FIELDS = new Fields(null, null);
+    public static final Fields EMPTY_FIELDS = new Fields(null, "");
     @Getter private final List<String> fieldList;
 
     public Fields(List<String> allowedFields, String fieldsParam) {
@@ -286,6 +289,19 @@ public final class EntityUtil {
           throw new IllegalArgumentException(CatalogExceptionMessage.invalidField(field));
         }
       }
+    }
+
+    public Fields(List<String> allowedFields, List<String> fieldsParam) {
+      if (CommonUtil.nullOrEmpty(fieldsParam)) {
+        fieldList = new ArrayList<>();
+        return;
+      }
+      for (String field : fieldsParam) {
+        if (!allowedFields.contains(field)) {
+          throw new IllegalArgumentException(CatalogExceptionMessage.invalidField(field));
+        }
+      }
+      fieldList = fieldsParam;
     }
 
     @Override
