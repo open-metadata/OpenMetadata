@@ -31,7 +31,7 @@ class TableCustomSQLQueryValidator(
 
     def _run_results(self, sql_expression: str):
         """compute result of the test case"""
-        return sum(
+        return sum(  # pylint: disable=consider-using-generator
             [
                 len(runner.query(sql_expression))
                 for runner in self.runner
