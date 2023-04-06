@@ -15,7 +15,7 @@ supporting sqlalchemy abstraction layer
 """
 import math
 import random
-from typing import cast
+from typing import List, cast
 
 from metadata.data_quality.validations.table.pandas.tableRowInsertedCountToBeBetween import (
     TableRowInsertedCountToBeBetweenValidator,
@@ -86,12 +86,15 @@ class PandasInterfaceMixin:
         """
         returns sampled ometa dataframes
         """
+        from pandas import DataFrame # pylint: disable=import-outside-toplevel
 
         data = ometa_to_dataframe(
             config_source=service_connection_config.configSource,
             client=client,
             table=table,
         )
+        if isinstance(data, DataFrame):
+            data: List[DataFrame] = [data]
 
         if data:
             random.shuffle(data)
@@ -122,13 +125,4 @@ class PandasInterfaceMixin:
                         )
                         for df in data
                     ]
-            else:
-                # randomize the samples
-                return [
-                    df.sample(
-                        frac=1,
-                        random_state=random.randint(0, 100),
-                    )
-                    for df in data
-                ]
             return data

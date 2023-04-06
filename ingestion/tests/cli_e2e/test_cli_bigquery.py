@@ -19,7 +19,6 @@ from .test_cli_db_base_common import CliCommonDB
 
 
 class BigqueryCliTest(CliCommonDB.TestSuite, SQACommonMethods):
-
     create_table_query: str = """
         CREATE TABLE `open-metadata-beta.exclude_me`.orders (
             id int,

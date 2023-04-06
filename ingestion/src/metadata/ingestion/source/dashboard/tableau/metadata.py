@@ -82,7 +82,6 @@ class TableauSource(DashboardServiceSource):
         config: WorkflowSource,
         metadata_config: OpenMetadataConnection,
     ):
-
         super().__init__(config, metadata_config)
         self.workbooks: List[
             TableauDashboard

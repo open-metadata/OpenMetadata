@@ -31,12 +31,10 @@ class TableCustomSQLQueryValidator(
 
     def _run_results(self, sql_expression: str):
         """compute result of the test case"""
-        import pandas as pd  # pylint: disable=import-outside-toplevel
-        try:
-            return [len(runner.query(sql_expression)) for runner in self.runner if len(runner.query(sql_expression))]
-        except MemoryError:
-            logger.error(
-                "Unable to compute due to memory constraints."
-                "We recommend using a smaller sample size or partitionning for the query."
-            )
-            return []
+        return sum(
+            [
+                len(runner.query(sql_expression))
+                for runner in self.runner
+                if len(runner.query(sql_expression))
+            ]
+        )

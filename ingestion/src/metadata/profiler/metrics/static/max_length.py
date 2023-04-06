@@ -63,7 +63,6 @@ class MaxLength(StaticMetric):
 
         length_vectorize_func = vectorize(len)
         if self._is_concatenable():
-
             return max(
                 length_vectorize_func(df[self.col.name].dropna().astype(str)).max()
                 for df in dfs

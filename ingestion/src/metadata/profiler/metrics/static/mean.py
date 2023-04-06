@@ -28,6 +28,7 @@ from metadata.utils.logger import profiler_logger
 
 logger = profiler_logger()
 
+
 # pylint: disable=invalid-name
 class avg(GenericFunction):
     name = "avg"

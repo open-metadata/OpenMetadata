@@ -74,14 +74,7 @@ class TableRowInsertedCountToBeBetweenValidator(
             range_interval (int): range interval
         """
         threshold_date = self._get_threshold_date(range_type, range_interval)
-        try:
-            return sum(
-                len(runner.query(f"{column_name} >= {threshold_date}"))
-                for runner in self.runner
-            )
-        except MemoryError:
-            logger.error(
-                "Unable to compute due to memory constraints."
-                "We recommend using a smaller sample size or partitionning for the query."
-            )
-            return 0
+        return sum(
+            len(runner.query(f"{column_name} >= {threshold_date}"))
+            for runner in self.runner
+        )
