@@ -122,6 +122,7 @@ const GlossaryTabs = ({
           <AssetsTabs
             assetData={assetData}
             currentPage={assetData.currPage}
+            permissions={permissions}
             onAssetPaginate={handleAssetPagination}
           />
         ),

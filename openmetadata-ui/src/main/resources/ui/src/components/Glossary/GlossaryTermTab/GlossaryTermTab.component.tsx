@@ -128,24 +128,34 @@ const GlossaryTermTab = ({
         key: 'new-term',
         render: (_, record) => (
           <div className="d-flex items-center">
-            <Button
-              className="add-new-term-btn text-grey-muted flex-center"
-              data-testid="add-classification"
-              icon={<PlusOutlinedIcon color={DE_ACTIVE_COLOR} width="14px" />}
-              size="small"
-              type="text"
-              onClick={() => {
-                handleAddGlossaryTermClick(record.fullyQualifiedName || '');
-              }}
-            />
-            <Button
-              className="cursor-pointer flex-center"
-              data-testid="edit-button"
-              icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
-              size="small"
-              type="text"
-              onClick={() => console.debug('edit')}
-            />
+            <Tooltip
+              title={t('label.add-entity', {
+                entity: t('label.glossary-term'),
+              })}>
+              <Button
+                className="add-new-term-btn text-grey-muted flex-center"
+                data-testid="add-classification"
+                icon={<PlusOutlinedIcon color={DE_ACTIVE_COLOR} width="14px" />}
+                size="small"
+                type="text"
+                onClick={() => {
+                  handleAddGlossaryTermClick(record.fullyQualifiedName || '');
+                }}
+              />
+            </Tooltip>
+            <Tooltip
+              title={t('label.edit-entity', {
+                entity: t('label.glossary-term'),
+              })}>
+              <Button
+                className="cursor-pointer flex-center"
+                data-testid="edit-button"
+                icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
+                size="small"
+                type="text"
+                onClick={() => console.debug('edit')}
+              />
+            </Tooltip>
           </div>
         ),
       });
@@ -298,7 +308,7 @@ const GlossaryTermTab = ({
       <Col span={24}>
         <div className="d-flex justify-end">
           <Button
-            className="tw-text-primary tw-rounded m-b-lg"
+            className="tw-text-primary tw-rounded m-b-sm"
             size="small"
             type="text"
             onClick={toggleExpandAll}>

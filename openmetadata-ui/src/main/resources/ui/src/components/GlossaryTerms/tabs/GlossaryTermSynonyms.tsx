@@ -57,11 +57,6 @@ const GlossaryTermSynonyms = ({
           }}
         />
       )}
-      {!permissions.EditAll && synonyms.length === 0 && (
-        <Typography.Text type="secondary">
-          {t('message.no-reference-available')}
-        </Typography.Text>
-      )}
     </div>
   );
 

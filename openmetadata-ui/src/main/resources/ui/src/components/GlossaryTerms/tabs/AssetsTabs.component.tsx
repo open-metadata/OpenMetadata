@@ -11,7 +11,12 @@
  *  limitations under the License.
  */
 
+import { Button, Tooltip } from 'antd';
 import Loader from 'components/Loader/Loader';
+import { OperationPermission } from 'components/PermissionProvider/PermissionProvider.interface';
+import { GLOSSARIES_DOCS } from 'constants/docs.constants';
+import { NO_PERMISSION_FOR_ACTION } from 'constants/HelperTextUtil';
+import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { t } from 'i18next';
 import { AssetsDataType } from 'Models';
 import React from 'react';
@@ -26,9 +31,15 @@ interface Props {
   assetData: AssetsDataType;
   currentPage: number;
   onAssetPaginate: (num: string | number, activePage?: number) => void;
+  permissions: OperationPermission;
 }
 
-const AssetsTabs = ({ assetData, onAssetPaginate, currentPage }: Props) => {
+const AssetsTabs = ({
+  assetData,
+  onAssetPaginate,
+  currentPage,
+  permissions,
+}: Props) => {
   if (assetData.isLoading) {
     return <Loader />;
   }
@@ -69,7 +80,34 @@ const AssetsTabs = ({ assetData, onAssetPaginate, currentPage }: Props) => {
           )}
         </>
       ) : (
-        <ErrorPlaceHolder>{t('message.no-asset-available')}</ErrorPlaceHolder>
+        <div className="m-t-xlg">
+          <ErrorPlaceHolder
+            buttons={
+              <div className="tw-text-lg tw-text-center">
+                <Tooltip
+                  title={
+                    permissions.Create
+                      ? t('label.add-entity', {
+                          entity: t('label.asset-lowercase'),
+                        })
+                      : NO_PERMISSION_FOR_ACTION
+                  }>
+                  <Button
+                    ghost
+                    data-testid="add-new-asset-button"
+                    type="primary">
+                    {t('label.add-entity', {
+                      entity: t('label.asset'),
+                    })}
+                  </Button>
+                </Tooltip>
+              </div>
+            }
+            doc={GLOSSARIES_DOCS}
+            heading={t('label.asset')}
+            type={ERROR_PLACEHOLDER_TYPE.ADD}
+          />
+        </div>
       )}
     </div>
   );

@@ -189,7 +189,7 @@ const GlossaryHeaderButtons = ({
                     </Col>
                     <Col className="p-t-xss">
                       <Typography.Paragraph className="text-grey-muted text-xs m-b-0 line-height-16">
-                        {t('label.export-glossary-terms')}
+                        {t('message.export-glossary-help')}
                       </Typography.Paragraph>
                     </Col>
                   </Row>
@@ -222,7 +222,7 @@ const GlossaryHeaderButtons = ({
                     </Col>
                     <Col className="p-t-xss">
                       <Typography.Paragraph className="text-grey-muted text-xs m-b-0 line-height-16">
-                        {t('label.import-glossary-term-plural')}
+                        {t('message.import-glossary-help')}
                       </Typography.Paragraph>
                     </Col>
                   </Row>
