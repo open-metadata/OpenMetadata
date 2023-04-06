@@ -18,6 +18,7 @@ from sqlalchemy import case, column
 
 from metadata.profiler.metrics.core import StaticMetric, _label
 from metadata.profiler.orm.functions.sum import SumFn
+from metadata.profiler.orm.registry import is_concatenable
 
 
 class RegexCount(StaticMetric):
@@ -41,6 +42,9 @@ class RegexCount(StaticMetric):
     def metric_type(self):
         return int
 
+    def _is_concatenable(self):
+        return is_concatenable(self.col.type)
+
     @_label
     def fn(self):
         """sqlalchemy function"""
@@ -59,10 +63,13 @@ class RegexCount(StaticMetric):
             raise AttributeError(
                 "Regex Count requires an expression to be set: add_props(expression=...)(Metrics.REGEX_COUNT)"
             )
-
-        return sum(
-            df[self.col.name][
-                df[self.col.name].astype(str).str.contains(self.expression)
-            ].count()
-            for df in dfs
+        if self._is_concatenable():
+            return sum(
+                df[self.col.name][
+                    df[self.col.name].astype(str).str.contains(self.expression)
+                ].count()
+                for df in dfs
+            )
+        raise TypeError(
+            f"Don't know how to process type {self.col.type} when computing RegExp Match Count"
         )

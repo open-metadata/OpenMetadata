@@ -112,7 +112,7 @@ class ColumnTypeParseTest(TestCase):
 
 
 def test_check_datalake_type():
-    import pandas as pd # pylint: disable=import-outside-toplevel
+    import pandas as pd  # pylint: disable=import-outside-toplevel
 
     assert_col_type_dict = {
         "column1": DataType.INT.value,
