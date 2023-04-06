@@ -189,7 +189,7 @@ export const testServiceCreationAndIngestion = (
   interceptURL('GET', '/api/v1/services/ingestionPipelines/ip', 'ipApi');
   cy.get('[data-testid="next-button"]').should('exist').click();
   verifyResponseStatusCode('@getIngestionPipelineStatus', 200);
-  verifyResponseStatusCode('@ipApi', 200);
+  verifyResponseStatusCode('@ipApi', 204);
 
   // Connection Details in step 4
   cy.get('[data-testid="add-new-service-container"]')
