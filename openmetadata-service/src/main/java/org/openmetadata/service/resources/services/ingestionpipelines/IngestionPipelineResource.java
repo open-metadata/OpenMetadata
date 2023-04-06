@@ -727,6 +727,32 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
     return dao.getPipelineStatus(fqn, runId);
   }
 
+  @DELETE
+  @Path("/{id}/pipelineStatus")
+  @Operation(
+      operationId = "deletePipelineStatus",
+      summary = "Delete Pipeline Status",
+      tags = "ingestionPipelines",
+      description = "Delete the Pipeline Status for this Ingestion Pipeline.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Successfully deleted the Statuses",
+            content =
+                @Content(mediaType = "application/json", schema = @Schema(implementation = IngestionPipeline.class)))
+      })
+  public IngestionPipeline deletePipelineStatus(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the Ingestion Pipeline", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id)
+      throws IOException {
+    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.DELETE);
+    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
+    IngestionPipeline ingestionPipeline = dao.deletePipelineStatus(id);
+    return addHref(uriInfo, ingestionPipeline);
+  }
+
   private IngestionPipeline getIngestionPipeline(CreateIngestionPipeline create, String user) throws IOException {
     OpenMetadataConnection openMetadataServerConnection =
         new OpenMetadataConnectionBuilder(openMetadataApplicationConfig).build();
