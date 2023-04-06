@@ -45,4 +45,5 @@ export interface RenameFormProps {
   isClassification?: boolean;
   data?: Classification[];
   isLoading: boolean;
+  isSystemTag?: boolean;
 }

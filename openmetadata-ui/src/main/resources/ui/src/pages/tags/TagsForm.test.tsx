@@ -39,6 +39,7 @@ const MOCK_PROPS = {
   isClassification: false,
   disableName: false,
   isLoading: false,
+  isSystemTag: false,
 };
 
 describe('TagForm component', () => {

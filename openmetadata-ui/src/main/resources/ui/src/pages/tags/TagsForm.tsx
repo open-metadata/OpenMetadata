@@ -14,12 +14,10 @@
 import { Form, Input, Modal, Space, Switch, Typography } from 'antd';
 import RichTextEditor from 'components/common/rich-text-editor/RichTextEditor';
 import { VALIDATION_MESSAGES } from 'constants/constants';
-import { delimiterRegex } from 'constants/regex.constants';
 import { DEFAULT_FORM_VALUE } from 'constants/Tags.constant';
-import { isUndefined, toLower } from 'lodash';
 import React, { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { isUrlFriendlyName } from 'utils/CommonUtils';
+import { tagsNameValidator } from 'utils/TagsUtils';
 import { RenameFormProps } from './TagsPage.interface';
 
 const TagsForm = ({
@@ -32,6 +30,7 @@ const TagsForm = ({
   data,
   isClassification = false,
   isLoading,
+  isSystemTag,
 }: RenameFormProps) => {
   const { t } = useTranslation();
   const [form] = Form.useForm();
@@ -87,46 +86,16 @@ const TagsForm = ({
               whitespace: true,
             },
             {
-              validator: (_, value) => {
-                if (delimiterRegex.test(value)) {
-                  return Promise.reject(
-                    t('message.entity-delimiters-not-allowed', {
-                      entity: t('label.name'),
-                    })
-                  );
-                }
-                if (isClassification) {
-                  if (!isUrlFriendlyName(value)) {
-                    return Promise.reject(
-                      t('message.special-character-not-allowed')
-                    );
-                  } else if (
-                    !isUndefined(
-                      data?.find(
-                        (item) => toLower(item.name) === toLower(value)
-                      )
-                    )
-                  ) {
-                    return Promise.reject(
-                      t('message.entity-already-exists', {
-                        entity: t('label.name'),
-                      })
-                    );
-                  }
-                }
-
-                return Promise.resolve();
-              },
+              validator: tagsNameValidator(isClassification, data),
             },
           ]}>
-          <Input placeholder={t('label.name')} />
+          <Input disabled={isSystemTag} placeholder={t('label.name')} />
         </Form.Item>
 
         <Form.Item
           data-testid="displayName"
           label={t('label.display-name')}
-          name="displayName"
-          rules={[{ required: true }]}>
+          name="displayName">
           <Input placeholder={t('label.display-name')} />
         </Form.Item>
 

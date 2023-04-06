@@ -952,6 +952,7 @@ const TagsPage = () => {
               }
               initialValues={editTag}
               isLoading={isButtonLoading}
+              isSystemTag={editTag?.provider === ProviderType.System}
               visible={isTagModal}
               onCancel={onCancel}
               onSubmit={(data) => {
