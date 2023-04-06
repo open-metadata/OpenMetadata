@@ -192,8 +192,7 @@ class LookerSource(DashboardServiceSource):
                 dataModelType=DataModelType.LookMlExplore.value,
                 serviceType=DashboardServiceType.Looker.value,
                 columns=get_column_from_model(model),
-                # TODO: Pick up SQL query from the file from git
-                sql=None,
+                sql=self._get_explore_sql(model),
             )
             yield explore_datamodel
             self.status.scanned(f"Data Model Scanned: {model.name}")
@@ -227,6 +226,22 @@ class LookerSource(DashboardServiceSource):
                 name=model.name, error=error, stack_trace=traceback.format_exc()
             )
 
+    def _get_explore_sql(self, explore: LookmlModelExplore) -> Optional[str]:
+        """
+        If github creds are sent, we can pick the explore
+        file definition and add it here
+        """
+        # Only look to parse if creds are in
+        if self.service_connection.githubCredentials:
+            try:
+                # This will only parse if the file has not been parsed yet
+                self.parser.parse_file(Includes(explore.source_file))
+                return self.parser.parsed_files.get(Includes(explore.source_file))
+            except Exception as err:
+                logger.warning(f"Exception getting the model sql: {err}")
+
+        return None
+
     def _process_view(self, view_name: ViewName, explore: LookmlModelExplore):
         """
         For each view referenced in the JOIN of the explore,
@@ -250,7 +265,7 @@ class LookerSource(DashboardServiceSource):
                 dataModelType=DataModelType.LookMlView.value,
                 serviceType=DashboardServiceType.Looker.value,
                 columns=get_column_from_model(view),
-                sql=view.definition,
+                sql=self.parser.parsed_files.get(Includes(view.source_file)),
             )
             self.status.scanned(f"Data Model Scanned: {view.name}")
 

@@ -36,7 +36,7 @@ class LookMlView(BaseModel):
     dimensions: List[LookMlField] = Field(
         [], description="Dimensions to ingest as cols"
     )
-    definition: Optional[str] = Field(None, description="lkml file content")
+    source_file: Optional[Includes] = Field(None, description="lkml file path")
 
 
 class LkmlFile(BaseModel):

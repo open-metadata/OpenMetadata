@@ -56,9 +56,12 @@ class LkmlParser:
         self._views_cache: Dict[ViewName, LookMlView] = {}
         self._visited_files: Dict[Includes, List[Includes]] = {}
 
+        # To store the raw string of the lkml explores
+        self.parsed_files: Dict[Includes, str] = {}
+
         self.reader = reader
 
-    def _parse_file(self, path: Includes) -> List[Includes]:
+    def parse_file(self, path: Includes) -> List[Includes]:
         """
         Internal parser. Parse the file and cache the views
 
@@ -78,11 +81,12 @@ class LkmlParser:
         try:
             file = self.reader.read(path)
             lkml_file = LkmlFile.parse_obj(lkml.load(file))
+            self.parsed_files[path] = file
 
             # Cache everything
             self._visited_files[path] = lkml_file.includes
             for view in lkml_file.views:
-                view.definition = file
+                view.source_file = path
                 self._views_cache[view.name] = view
 
             return lkml_file.includes
@@ -118,7 +122,7 @@ class LkmlParser:
         if cached_view:
             return cached_view
 
-        for include in self._parse_file(path) or []:
+        for include in self.parse_file(path) or []:
             cached_view = self.get_view_from_cache(view_name)
             if cached_view:
                 return cached_view
