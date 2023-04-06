@@ -84,10 +84,28 @@ def _(elements, compiler, **kwargs):
 
 @compiles(MedianFn, Dialects.MySQL)
 def _(elements, compiler, **kwargs):  # pylint: disable=unused-argument
-    """Median computation for MySQL currently not supported
-    Needs to be tackled in https://github.com/open-metadata/OpenMetadata/issues/6340
-    """
-    return "NULL"
+    """Median computation for MySQL"""
+    col = compiler.process(elements.clauses.clauses[0])
+    table = elements.clauses.clauses[1].value
+    percentile = elements.clauses.clauses[2].value
+
+    return """
+    (SELECT
+        {col}
+    FROM (
+        SELECT
+            t.{col}, 
+            @row_num := @row_num + 1 AS row_num
+        FROM 
+            {table} t,
+            (SELECT @row_num:=0) counter 
+        ORDER BY {col}
+        ) temp
+    WHERE temp.row_num = ROUND({percentile} * @row_num)
+    )
+    """.format(
+        col=col, table=table, percentile=percentile
+    )
 
 
 @compiles(MedianFn, Dialects.SQLite)
