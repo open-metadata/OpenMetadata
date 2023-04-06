@@ -21,7 +21,7 @@ import { PROMISE_STATE } from 'enums/common.enum';
 import { debounce, isEmpty } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useLocation } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
 import {
   getSearchedTeams,
   getSearchedUsers,
@@ -34,9 +34,8 @@ import { QueryFiltersProps, QueryFiltersType } from '../TableQueries.interface';
 const QueryFilters = ({ onFilterChange }: QueryFiltersProps) => {
   const { t } = useTranslation();
   const location = useLocation();
-  const history = useHistory();
 
-  const { selectedFilters, searchData } = useMemo(() => {
+  const selectedFilters = useMemo(() => {
     const searchData = parseSearchParams(location.search);
 
     const filters = {
@@ -44,7 +43,7 @@ const QueryFilters = ({ onFilterChange }: QueryFiltersProps) => {
       team: searchData.team || [],
     } as QueryFiltersType;
 
-    return { selectedFilters: filters, searchData };
+    return filters;
   }, [location]);
 
   const [initialOwnerFilter, setInitialOwnerFilter] =
