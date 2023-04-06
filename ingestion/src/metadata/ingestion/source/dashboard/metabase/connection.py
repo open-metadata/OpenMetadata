@@ -14,8 +14,6 @@ Source connection handler
 """
 from typing import Optional
 
-import requests
-
 from metadata.generated.schema.entity.automations.workflow import (
     Workflow as AutomationWorkflow,
 )

@@ -15,10 +15,6 @@ import json
 from typing import List, Optional
 
 import requests
-
-from metadata.generated.schema.entity.services.connections.dashboard.metabaseConnection import (
-    MetabaseConnection,
-)
 from metadata.ingestion.connections.test_connections import SourceConnectionException
 from metadata.utils.logger import ingestion_logger
 
@@ -98,8 +94,7 @@ class MetabaseClient:
         resp_database = self.req_get(f"/api/database/{database_id}")
         if resp_database.status_code == 200:
             return resp_database.json()
-        else:
-            return None
+        return None
 
     def get_table(self, table_id: str) -> Optional[dict]:
         """
@@ -108,5 +103,4 @@ class MetabaseClient:
         resp_table = self.req_get(f"/api/table/{table_id}")
         if resp_table.status_code == 200:
             return resp_table.json()
-        else:
-            return None
+        return None

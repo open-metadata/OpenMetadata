@@ -55,7 +55,7 @@ class MetabaseSource(DashboardServiceSource):
         config: WorkflowSource,
         metadata_config: OpenMetadataConnection,
     ):
-        super().__init__(config, metadata_config)
+        """Metadata init method"""
 
     @classmethod
     def create(cls, config_dict, metadata_config: OpenMetadataConnection):
@@ -212,7 +212,7 @@ class MetabaseSource(DashboardServiceSource):
         database = self.client.get_database(chart_details["database_id"])
 
         if database is None:
-            return None
+            return
 
         query = (
             chart_details.get("dataset_query", {}).get("native", {}).get("query", "")
@@ -263,7 +263,7 @@ class MetabaseSource(DashboardServiceSource):
         table = self.client.get_table(chart_details["table_id"])
 
         if table is None:
-            return None
+            return
 
         database_name = table.get("db", {}).get("details", {}).get("db", None)
         if database_name:
