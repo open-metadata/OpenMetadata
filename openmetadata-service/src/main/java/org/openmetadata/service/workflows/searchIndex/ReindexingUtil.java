@@ -19,15 +19,16 @@ import org.elasticsearch.action.bulk.BulkResponse;
 import org.openmetadata.schema.system.StepStats;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.elasticsearch.ElasticSearchIndexDefinition;
+import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.EntityRepository;
 
 public class ReindexingUtil {
   public static final String ENTITY_TYPE_KEY = "entityType";
 
   public static void getUpdatedStats(StepStats stats, int currentSuccess, int currentFailed) {
-    stats.setTotalRecords(stats.getTotalRecords() + currentSuccess + currentFailed);
-    stats.setTotalSuccessRecords(stats.getTotalSuccessRecords() + currentSuccess);
-    stats.setTotalFailedRecords(stats.getTotalFailedRecords() + currentFailed);
+    stats.setProcessedRecords(stats.getProcessedRecords() + currentSuccess + currentFailed);
+    stats.setSuccessRecords(stats.getSuccessRecords() + currentSuccess);
+    stats.setFailedRecords(stats.getFailedRecords() + currentFailed);
   }
 
   public static boolean isDataInsightIndex(String entityType) {
@@ -36,11 +37,15 @@ public class ReindexingUtil {
         || entityType.equalsIgnoreCase(ElasticSearchIndexDefinition.WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA);
   }
 
-  public static int getTotalRequestToProcess(Set<String> entities) {
+  public static int getTotalRequestToProcess(Set<String> entities, CollectionDAO dao) {
     int total = 0;
     for (String entityType : entities) {
-      EntityRepository<?> repository = Entity.getEntityRepository(entityType);
-      total += repository.dao.listTotalCount();
+      if (!isDataInsightIndex(entityType)) {
+        EntityRepository<?> repository = Entity.getEntityRepository(entityType);
+        total += repository.dao.listTotalCount();
+      } else {
+        total += dao.entityExtensionTimeSeriesDao().listCount(entityType);
+      }
     }
     return total;
   }
@@ -51,7 +56,6 @@ public class ReindexingUtil {
       if (!bulkItemResponse.isFailed()) {
         success++;
       }
-      ;
     }
     return success;
   }
