@@ -34,53 +34,49 @@ $$
 
 ## Connection Details
 
-### Classification Name
+### Classification Name $(id="classificationName")
 
 By default, the Postgres policy tags in OpenMetadata are classified under the name "PostgresPolicyTags". However, you can create a custom classification name of your choice for these tags. Once you have ingested Postgres data, the custom classification name will be visible in the Classifications list on the Tags page.
 
-### Connection Arguments
+### Connection Arguments $(id="connectionArguments")
 
 Additional connection arguments such as security or protocol configs that can be sent to service during connection.
 
-### Connection Options
+### Connection Options $(id="connectionOptions")
 
 Additional connection options to build the URL that can be sent to service during the connection.
 
-### Database
+### Database $(id="database")
 
 Initial Postgres database to connect to. If you want to ingest all databases, set `ingestAllDatabases` to true.
 
-### Host and Port
+### Host and Port $(id="hostPort")
 
 Host and port of the Postgres service.
 Example: `localhost:5432`
 
-### Ingest All Databases
+### Ingest All Databases $(id="ingestAllDatabases")
 
 If ticked, the workflow will be able to ingest all database in the cluster. If not ticked, the workflow will only ingest tables from the database set above.
 
-### Password
+### Password $(id="password")
 
 Password to connect to Postgres.
 
 
 Make sure [database](#database) name is correct
 
-### Connection Scheme
+### Connection Scheme $(id="scheme")
 
 SQLAlchemy driver scheme options.
 
-### SSL Mode
+### SSL Mode $(id="sslMode")
 
 SSL Mode to connect to postgres database. E.g, prefer, verify-ca etc.
 
 [Host and Port](#host-and-port) should be valid
 
-### supportsDatabase
-
-The source service supports the database concept in its hierarchy
-
-### Username
+### Username $(id="username")
 
 Username to connect to Postgres. This user should have privileges to read all the metadata in Postgres.
 

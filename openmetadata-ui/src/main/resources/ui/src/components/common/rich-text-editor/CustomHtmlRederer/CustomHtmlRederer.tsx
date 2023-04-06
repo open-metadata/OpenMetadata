@@ -24,11 +24,16 @@ import {
   MdNode,
 } from '@toast-ui/editor';
 import { ReactComponent as CopyIcon } from 'assets/svg/icon-copy.svg';
+import { markdownTextAndIdRegex } from 'constants/regex.constants';
 import { t } from 'i18next';
 import React from 'react';
 import ReactDOMServer from 'react-dom/server';
 import { MarkdownToHTMLConverter } from 'utils/FeedUtils';
-import { HTMLToken, OpenTagToken } from './CustomHtmlRederer.interface';
+import {
+  HTMLToken,
+  OpenTagToken,
+  TextToken,
+} from './CustomHtmlRederer.interface';
 
 const getHTMLTokens = (node: MdNode): HTMLToken[] => {
   const blockNode = node as CodeBlockMdNode;
@@ -155,11 +160,19 @@ export const customHTMLRenderer: CustomHTMLRenderer = {
      * and make it lowercase for bookmarking
      * @example (Postgres) will be postgres
      */
-    const id = childrenText
+    let id = childrenText
       .replace(/[^\w\s-]/g, '')
       .replace(/\s+/g, '-')
       .toLowerCase();
 
+    const match = childrenText.match(markdownTextAndIdRegex);
+
+    // if id regex matched then override the id with matched ID
+    if (match) {
+      id = match[2];
+    }
+
+    // if it is a opening tag
     if (entering) {
       originResult.attributes = {
         ...attributes,
@@ -168,5 +181,24 @@ export const customHTMLRenderer: CustomHTMLRenderer = {
     }
 
     return originResult;
+  },
+  text(node) {
+    let nodeText = '';
+    const nodeLiteral = node.literal ?? '';
+
+    // check if node literal has id and text
+    const match = nodeLiteral.match(markdownTextAndIdRegex);
+
+    // get the text only (without $(id="some_value"))
+    if (match) {
+      nodeText = match[1];
+    } else {
+      nodeText = nodeLiteral;
+    }
+
+    return {
+      type: 'text',
+      content: nodeText,
+    } as TextToken;
   },
 };
