@@ -27,6 +27,7 @@ import TestConnection from 'components/common/TestConnection/TestConnection';
 import TitleBreadcrumb from 'components/common/title-breadcrumb/title-breadcrumb.component';
 import { TitleBreadcrumbProps } from 'components/common/title-breadcrumb/title-breadcrumb.interface';
 import PageContainerV1 from 'components/containers/PageContainerV1';
+import DataModelTable from 'components/DataModels/DataModelsTable';
 import Ingestion from 'components/Ingestion/Ingestion.component';
 import Loader from 'components/Loader/Loader';
 import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
@@ -36,6 +37,7 @@ import TagsViewer from 'components/Tag/TagsViewer/tags-viewer';
 import { EntityType } from 'enums/entity.enum';
 import { compare } from 'fast-json-patch';
 import { Container } from 'generated/entity/data/container';
+import { DashboardDataModel } from 'generated/entity/data/dashboardDataModel';
 import { isEmpty, isNil, isUndefined, startCase, toLower } from 'lodash';
 import {
   ExtraInfo,
@@ -46,7 +48,7 @@ import {
 import React, { FunctionComponent, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useHistory, useParams } from 'react-router-dom';
-import { getDashboards } from 'rest/dashboardAPI';
+import { getDashboards, getDataModels } from 'rest/dashboardAPI';
 import { getDatabases } from 'rest/databaseAPI';
 import {
   deleteIngestionPipelineById,
@@ -121,7 +123,8 @@ export type ServicePageData =
   | Dashboard
   | Mlmodel
   | Pipeline
-  | Container;
+  | Container
+  | DashboardDataModel;
 
 const ServicePage: FunctionComponent = () => {
   const { t } = useTranslation();
@@ -140,6 +143,8 @@ const ServicePage: FunctionComponent = () => {
   const [description, setDescription] = useState('');
   const [serviceDetails, setServiceDetails] = useState<ServicesType>();
   const [data, setData] = useState<Array<ServicePageData>>([]);
+  const [dataModel, setDataModel] = useState<Array<ServicePageData>>([]);
+  const [dataModelPaging, setDataModelPaging] = useState<Paging>(pagingObject);
   const [isLoading, setIsLoading] = useState(true);
   const [paging, setPaging] = useState<Paging>(pagingObject);
   const [activeTab, setActiveTab] = useState(
@@ -187,7 +192,8 @@ const ServicePage: FunctionComponent = () => {
         serviceName,
         paging.total,
         ingestions,
-        servicePermission
+        servicePermission,
+        dataModelPaging.total
       ),
     [serviceName, paging, ingestions, servicePermission]
   );
@@ -449,6 +455,23 @@ const ServicePage: FunctionComponent = () => {
     }
   };
 
+  const fetchDashboardsDataModel = async (paging?: PagingWithoutTotal) => {
+    setIsLoading(true);
+    try {
+      const { data, paging: resPaging } = await getDataModels(
+        serviceFQN,
+        'owner,tags,followers',
+        paging
+      );
+      setDataModel(data);
+      setDataModelPaging(resPaging);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const fetchPipeLines = async (paging?: PagingWithoutTotal) => {
     setIsLoading(true);
     try {
@@ -517,6 +540,7 @@ const ServicePage: FunctionComponent = () => {
       }
       case ServiceCategory.DASHBOARD_SERVICES: {
         fetchDashboards(paging);
+        fetchDashboardsDataModel(paging);
 
         break;
       }
@@ -872,6 +896,9 @@ const ServicePage: FunctionComponent = () => {
     }
   };
 
+  const getDataModalTab = () => (
+    <DataModelTable data={dataModel} isLoading={isLoading} />
+  );
   useEffect(() => {
     if (
       servicePageTabs(getCountLabel(serviceName))[activeTab - 1].path !== tab
@@ -1133,6 +1160,7 @@ const ServicePage: FunctionComponent = () => {
                       </div>
                     ))}
 
+                  {activeTab === 4 && getDataModalTab()}
                   {activeTab === 2 && getIngestionTab()}
 
                   {activeTab === 3 && (

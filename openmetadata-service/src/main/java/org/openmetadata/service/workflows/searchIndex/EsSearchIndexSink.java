@@ -16,7 +16,6 @@ package org.openmetadata.service.workflows.searchIndex;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.getSuccessFromBulkResponse;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.getUpdatedStats;
 
-import java.io.IOException;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.elasticsearch.action.bulk.BulkRequest;
@@ -24,21 +23,21 @@ import org.elasticsearch.action.bulk.BulkResponse;
 import org.elasticsearch.client.RequestOptions;
 import org.elasticsearch.client.RestHighLevelClient;
 import org.openmetadata.schema.system.StepStats;
-import org.openmetadata.service.exception.WriterException;
+import org.openmetadata.service.exception.SinkException;
 import org.openmetadata.service.workflows.interfaces.Sink;
 
 @Slf4j
-public class EsSearchIndexWriter implements Sink<BulkRequest, BulkResponse> {
+public class EsSearchIndexSink implements Sink<BulkRequest, BulkResponse> {
   private final StepStats stats = new StepStats();
   private final RestHighLevelClient client;
 
-  EsSearchIndexWriter(RestHighLevelClient client) {
+  EsSearchIndexSink(RestHighLevelClient client) {
     this.client = client;
   }
 
   @Override
-  public BulkResponse write(BulkRequest data, Map<String, Object> contextData) throws WriterException {
-    LOG.debug("[EsSearchIndexWriter] Processing a Batch of Size: {}", data.numberOfActions());
+  public BulkResponse write(BulkRequest data, Map<String, Object> contextData) throws SinkException {
+    LOG.debug("[EsSearchIndexSink] Processing a Batch of Size: {}", data.numberOfActions());
     try {
       BulkResponse response = client.bulk(data, RequestOptions.DEFAULT);
       int currentSuccess = getSuccessFromBulkResponse(response);
@@ -46,21 +45,21 @@ public class EsSearchIndexWriter implements Sink<BulkRequest, BulkResponse> {
 
       // Update Stats
       LOG.debug(
-          "[EsSearchIndexWriter] Batch Stats :- Submitted : {} Success: {} Failed: {}",
+          "[EsSearchIndexSink] Batch Stats :- Submitted : {} Success: {} Failed: {}",
           data.numberOfActions(),
           currentSuccess,
           currentFailed);
       updateStats(currentSuccess, currentFailed);
 
       return response;
-    } catch (IOException e) {
+    } catch (Exception e) {
       LOG.debug(
-          "[EsSearchIndexWriter] Batch Stats :- Submitted : {} Success: {} Failed: {}",
+          "[EsSearchIndexSink] Batch Stats :- Submitted : {} Success: {} Failed: {}",
           data.numberOfActions(),
           0,
           data.numberOfActions());
       updateStats(0, data.numberOfActions());
-      throw new WriterException("[EsSearchIndexWriter] Batch encountered Exception. Failing Completely", e);
+      throw new SinkException("[EsSearchIndexSink] Batch encountered Exception. Failing Completely", e);
     }
   }
 
