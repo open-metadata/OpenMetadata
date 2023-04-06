@@ -96,6 +96,7 @@ const GlossaryTermTab = ({
         title: t('label.term-plural'),
         dataIndex: 'name',
         key: 'name',
+        className: 'glossary-name-column',
         render: (_, record) => (
           <Link
             className="hover:tw-underline tw-cursor-pointer help-text"
@@ -334,6 +335,7 @@ const GlossaryTermTab = ({
               pagination={false}
               rowKey="fullyQualifiedName"
               size="small"
+              tableLayout="auto"
               onRow={onTableRow}
             />
           </DndProvider>

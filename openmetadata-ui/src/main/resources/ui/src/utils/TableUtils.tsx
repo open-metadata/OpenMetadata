@@ -22,7 +22,6 @@ import { upperCase } from 'lodash';
 import { EntityTags } from 'Models';
 import React from 'react';
 import { ReactComponent as DashboardIcon } from '../assets/svg/dashboard-grey.svg';
-import { ReactComponent as DragIcon } from '../assets/svg/drag.svg';
 import { ReactComponent as IconFailBadge } from '../assets/svg/fail-badge.svg';
 import { ReactComponent as IconForeignKey } from '../assets/svg/foriegnKey.svg';
 import { ReactComponent as IconDown } from '../assets/svg/ic-arrow-down.svg';
@@ -438,10 +437,18 @@ export function getTableExpandableConfig<T>(
   const expandableConfig: ExpandableConfig<T> = {
     expandIcon: ({ expanded, onExpand, expandable, record }) =>
       expandable ? (
-        <div className="d-inline-flex items-center">
-          {isDraggable && <Icon className="drag-icon" component={DragIcon} />}
+        <div className="d-inline-block items-center">
+          {isDraggable && (
+            <SVGIcons
+              alt="icon"
+              className="m-r-xs drag-icon"
+              height={8}
+              icon={Icons.DRAG}
+              width={8}
+            />
+          )}
           <Icon
-            className="mr-1"
+            className="m-r-xs"
             component={expanded ? IconDown : IconRight}
             data-testid="expand-icon"
             style={{ fontSize: '10px', color: TEXT_BODY_COLOR }}
@@ -451,7 +458,13 @@ export function getTableExpandableConfig<T>(
       ) : (
         isDraggable && (
           <>
-            <Icon className="drag-icon" component={DragIcon} />
+            <SVGIcons
+              alt="icon"
+              className="m-r-xs"
+              height={8}
+              icon={Icons.DRAG}
+              width={8}
+            />
             <div className="expand-cell-empty-icon-container" />
           </>
         )
