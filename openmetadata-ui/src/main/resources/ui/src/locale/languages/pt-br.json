@@ -728,6 +728,7 @@
     "source-column": "Coluna de Origem",
     "source-plural": "Fontes",
     "specific-data-asset-plural": "Ativos de Dados Específicos",
+    "sql-uppercase": "SQL",
     "sql-uppercase-query": "Consulta SQL",
     "sso-uppercase": "SSO",
     "stage-file-location": "Localização de Arquivo de Estágio",

@@ -21,6 +21,7 @@ import { upperCase } from 'lodash';
 import { EntityTags } from 'Models';
 import React from 'react';
 import { ReactComponent as DashboardIcon } from '../assets/svg/dashboard-grey.svg';
+import { ReactComponent as IconDataModel } from '../assets/svg/data-model.svg';
 import { ReactComponent as DragIcon } from '../assets/svg/drag.svg';
 import { ReactComponent as DropDownIcon } from '../assets/svg/DropDown.svg';
 import { ReactComponent as IconFailBadge } from '../assets/svg/fail-badge.svg';
@@ -329,6 +330,10 @@ export const getEntityIcon = (indexType: string) => {
     case SearchIndex.CONTAINER:
     case EntityType.CONTAINER:
       return <ContainerIcon />;
+
+    case SearchIndex.DASHBOARD_DATA_MODEL:
+    case EntityType.DASHBOARD_DATA_MODEL:
+      return <IconDataModel />;
 
     case SearchIndex.TABLE:
     case EntityType.TABLE:
