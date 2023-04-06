@@ -13,9 +13,10 @@
 
 import { Button, Space, Tag, Tooltip, Typography } from 'antd';
 import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
+import { ReactComponent as ExternalLinkIcon } from 'assets/svg/external-links.svg';
 import { ReactComponent as PlusIcon } from 'assets/svg/plus-primary.svg';
 import TagButton from 'components/TagButton/TagButton.component';
-import { DE_ACTIVE_COLOR } from 'constants/constants';
+import { DE_ACTIVE_COLOR, TEXT_BODY_COLOR } from 'constants/constants';
 import { NO_PERMISSION_FOR_ACTION } from 'constants/HelperTextUtil';
 import { t } from 'i18next';
 import { cloneDeep, isEqual } from 'lodash';
@@ -115,7 +116,10 @@ const GlossaryTermReferences = ({
                   href={ref?.endpoint}
                   rel="noopener noreferrer"
                   target="_blank">
-                  <Typography.Text>{ref?.name}</Typography.Text>
+                  <Space align="center" size={4}>
+                    <ExternalLinkIcon color={TEXT_BODY_COLOR} width="12px" />
+                    <Typography.Text>{ref?.name}</Typography.Text>
+                  </Space>
                 </a>
               </Tag>
             ))}
