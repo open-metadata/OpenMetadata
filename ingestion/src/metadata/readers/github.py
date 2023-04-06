@@ -87,7 +87,7 @@ class GitHubReader(Reader):
                     self.credentials.repositoryOwner,
                     self.credentials.repositoryName,
                     UrlParts.CONTENTS.value,
-                    path
+                    path,
                 ),
                 timeout=30,
             )
