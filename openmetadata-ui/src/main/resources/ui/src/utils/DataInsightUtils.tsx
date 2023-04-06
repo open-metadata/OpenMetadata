@@ -583,11 +583,12 @@ export const getWebChartSummary = (
   const updatedSummary = [];
 
   for (const summary of WEB_SUMMARY_LIST) {
+    // grab the current chart type
     const chartData = chartResults.find(
       (chart) => chart?.chartType === summary.id
     );
-
-    if (!chartData) {
+    // return default summary if chart data is undefined else calculate the latest count for chartType
+    if (isUndefined(chartData)) {
       updatedSummary.push(summary);
 
       continue;
