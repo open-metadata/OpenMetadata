@@ -133,7 +133,7 @@
   },
   "required": [
     "name",
-    "modelType",
+    "dataModelType",
     "columns"
   ],
   "additionalProperties": false
