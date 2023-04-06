@@ -19,7 +19,6 @@ import { INITIAL_PAGING_VALUE } from 'constants/constants';
 import { QUERY_PAGE_FILTER } from 'constants/Query.constant';
 import { PROMISE_STATE } from 'enums/common.enum';
 import { debounce, isEmpty } from 'lodash';
-import Qs from 'qs';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useLocation } from 'react-router-dom';
@@ -62,9 +61,6 @@ const QueryFilters = ({ onFilterChange }: QueryFiltersProps) => {
   ) => {
     setSelectedFilter((pre) => {
       const updatedFilter = { ...pre, [searchKey]: value };
-      history.push({
-        search: Qs.stringify({ ...searchData, ...updatedFilter }),
-      });
       onFilterChange(updatedFilter);
 
       return updatedFilter;

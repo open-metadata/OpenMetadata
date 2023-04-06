@@ -62,11 +62,13 @@ export interface QueryFiltersProps {
   onFilterChange: (value: QueryFiltersType) => void;
 }
 
-export type QuerySearchParams = QueryFiltersType & {
-  queryFrom: string;
-  after: string;
-  tableId: string;
-  query: string;
+export type QuerySearchParams = {
+  queryFrom?: number;
+  after?: string;
+  tableId?: string;
+  query?: string;
+  user?: SearchDropdownOption[];
+  team?: SearchDropdownOption[];
 };
 
 export type QuerySearchShouldFilterType = {

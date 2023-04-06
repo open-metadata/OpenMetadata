@@ -184,7 +184,10 @@ const TableQueries: FC<TableQueriesProp> = ({
       showErrorToast(error as AxiosError);
     }
   };
-  const fetchTableQuery = async (params?: ListQueriesParams) => {
+  const fetchTableQuery = async (
+    params?: ListQueriesParams,
+    activePage?: number
+  ) => {
     setIsLoading((pre) => ({ ...pre, query: true }));
     try {
       const queries = await getQueriesList({
@@ -197,7 +200,20 @@ const TableQueries: FC<TableQueriesProp> = ({
         setIsError((pre) => ({ ...pre, page: true }));
       } else {
         setTableQueries(queries);
-        setSelectedQuery(queries.data[0]);
+        const selectedQueryData = searchParams.query
+          ? queries.data.find((query) => query.id === searchParams.query) ||
+            queries.data[0]
+          : queries.data[0];
+        setSelectedQuery(selectedQueryData);
+
+        history.push({
+          search: stringifySearchParams({
+            tableId,
+            after: params?.after,
+            query: selectedQueryData.id,
+            queryFrom: activePage,
+          }),
+        });
       }
     } catch (error) {
       showErrorToast(error as AxiosError);
@@ -238,6 +254,15 @@ const TableQueries: FC<TableQueriesProp> = ({
         : queries[0];
 
       setSelectedQuery(selectedQueryData);
+
+      history.push({
+        search: stringifySearchParams({
+          ...value,
+          tableId,
+          query: selectedQueryData.id,
+          queryFrom: pageNumber,
+        }),
+      });
       if (queries.length === 0) {
         setIsError((pre) => ({ ...pre, search: true }));
       }
@@ -248,23 +273,15 @@ const TableQueries: FC<TableQueriesProp> = ({
     }
   };
 
-  const pagingHandler = (cursorType: string | number) => {
-    const updatedParams = { ...searchParams };
+  const pagingHandler = (cursorType: string | number, activePage?: number) => {
+    const { paging } = tableQueries;
     if (isNumber(cursorType)) {
       setCurrentPage(cursorType);
       fetchFilterData(appliedFilter, cursorType);
-      updatedParams.queryFrom = `${cursorType}`;
     } else {
-      const { paging } = tableQueries;
-      fetchTableQuery({ [cursorType]: paging[cursorType] });
-      if (cursorType === 'after') {
-        updatedParams.queryFrom = `${currentPage}`;
-        updatedParams.after = paging[cursorType];
-      }
+      fetchTableQuery({ [cursorType]: paging[cursorType] }, activePage);
+      activePage && setCurrentPage(activePage);
     }
-    history.push({
-      search: stringifySearchParams(updatedParams),
-    });
   };
 
   const handleSelectedQuery = (query: Query) => {
@@ -285,7 +302,7 @@ const TableQueries: FC<TableQueriesProp> = ({
     if (tableId && !isTableDeleted) {
       const initialFetch = selectedFilters
         ? fetchFilterData(selectedFilters, Number(searchParams.queryFrom))
-        : fetchTableQuery({ after: searchParams.after });
+        : fetchTableQuery({ after: searchParams?.after });
       initialFetch.finally(() => {
         setIsLoading((pre) => ({ ...pre, page: false }));
       });
@@ -295,9 +312,15 @@ const TableQueries: FC<TableQueriesProp> = ({
   }, [tableId]);
 
   const onOwnerFilterChange = (value: QueryFiltersType) => {
+    const { team, user } = value;
+
     setIsError((pre) => ({ ...pre, search: false }));
     setAppliedFilter(value);
-    fetchFilterData(value, INITIAL_PAGING_VALUE);
+    if (team.length || user.length) {
+      fetchFilterData(value, INITIAL_PAGING_VALUE);
+    } else {
+      fetchTableQuery();
+    }
   };
 
   if (isLoading.page) {
