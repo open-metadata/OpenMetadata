@@ -75,7 +75,7 @@ class UniqueCount(QueryMetric):
             counter = Counter()
             for df in dfs:
                 counter.update(df[self.col.name].dropna().to_list())
-            return len([i for i in counter if counter[i] == 1])
+            return len([key for key, value in counter.items() if value == 1])
         except Exception as err:
             logger.debug(
                 f"Don't know how to process type {self.col.type}"

@@ -116,7 +116,6 @@ class ProfilerProtocol(ABC):
         source_config: DatabaseServiceProfilerPipeline,
     ) -> Optional[ProfileSampleConfig]:
         """_summary_
-
         Args:
             entity (Table): table entity object
             entity_config (Optional[TableConfig]): table config object from yaml/json file
@@ -128,19 +127,25 @@ class ProfilerProtocol(ABC):
                 profile_sample=entity_config.profileSample,
                 profile_sample_type=entity_config.profileSampleType,
             )
+
+        try:
+            profile_sample = entity.tableProfilerConfig.profileSample
+        except AttributeError:
+            pass
+        else:
+            if profile_sample:
+                return ProfileSampleConfig(
+                    profile_sample=entity.tableProfilerConfig.profileSample,
+                    profile_sample_type=entity.tableProfilerConfig.profileSampleType,
+                )
+
         if source_config.profileSample:
             return ProfileSampleConfig(
                 profile_sample=source_config.profileSample,
                 profile_sample_type=source_config.profileSampleType,
             )
-        try:
-            return ProfileSampleConfig(
-                profile_sample=entity.tableProfilerConfig.profileSample,
-                profile_sample_type=entity.tableProfilerConfig.profileSampleType,
-            )
-        except AttributeError:
-            # Exception Triggered if profileSample attribute not available in tableProfilerConfig
-            return None
+
+        return None
 
     @staticmethod
     def get_profile_query(
