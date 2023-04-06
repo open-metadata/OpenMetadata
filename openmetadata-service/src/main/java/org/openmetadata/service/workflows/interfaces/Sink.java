@@ -14,8 +14,8 @@
 package org.openmetadata.service.workflows.interfaces;
 
 import java.util.Map;
-import org.openmetadata.service.exception.WriterException;
+import org.openmetadata.service.exception.SinkException;
 
 public interface Sink<I, O> extends Stats {
-  O write(I data, Map<String, Object> contextData) throws WriterException;
+  O write(I data, Map<String, Object> contextData) throws SinkException;
 }

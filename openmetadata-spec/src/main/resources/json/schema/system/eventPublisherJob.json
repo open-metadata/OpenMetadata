@@ -34,12 +34,17 @@
           "type": "integer",
           "default": 0
         },
-        "totalSuccessRecords": {
+        "processedRecords": {
+          "description": "Records that are processed in",
+          "type": "integer",
+          "default": 0
+        },
+        "successRecords": {
           "description": "Count of Total Successfully Records",
           "type": "integer",
           "default": 0
         },
-        "totalFailedRecords": {
+        "failedRecords": {
           "description": "Count of Total Failed Records",
           "type": "integer",
           "default": 0
@@ -137,6 +142,11 @@
           "default": null
         },
         "sinkError" : {
+          "type": "object",
+          "$ref": "#/definitions/failureDetails",
+          "default": null
+        },
+        "jobError" : {
           "type": "object",
           "$ref": "#/definitions/failureDetails",
           "default": null
