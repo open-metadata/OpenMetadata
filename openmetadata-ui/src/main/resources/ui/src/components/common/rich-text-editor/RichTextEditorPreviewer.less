@@ -53,6 +53,30 @@
       font-weight: 600;
     }
 
+    @keyframes bg-pulsing-animation {
+      0% {
+        background-color: #fff3dc; /* Starting background color */
+      }
+      50% {
+        background-color: #ffebc4; /* Midpoint background color */
+      }
+      100% {
+        background-color: #fff3dc; /* Ending background color */
+      }
+    }
+
+    h1[data-highlighted='true'],
+    h2[data-highlighted='true'],
+    h3[data-highlighted='true'],
+    h4[data-highlighted='true'],
+    h5[data-highlighted='true'],
+    h6[data-highlighted='true'] {
+      background: #fff3dc;
+      padding: 24px 0px !important;
+      animation: bg-pulsing-animation 1s infinite;
+      transition: ease-in-out;
+    }
+
     a {
       color: @primary-color;
       text-decoration: none;

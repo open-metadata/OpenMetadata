@@ -63,9 +63,6 @@ If ticked, the workflow will be able to ingest all database in the cluster. If n
 
 Password to connect to Postgres.
 
-
-Make sure [database](#database) name is correct
-
 ### Connection Scheme $(id="scheme")
 
 SQLAlchemy driver scheme options.
@@ -74,10 +71,6 @@ SQLAlchemy driver scheme options.
 
 SSL Mode to connect to postgres database. E.g, prefer, verify-ca etc.
 
-[Host and Port](#host-and-port) should be valid
-
 ### Username $(id="username")
 
 Username to connect to Postgres. This user should have privileges to read all the metadata in Postgres.
-
-Ensure [Password](#password) is correct

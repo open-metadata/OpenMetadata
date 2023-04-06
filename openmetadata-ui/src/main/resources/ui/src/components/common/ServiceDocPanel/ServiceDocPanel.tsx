@@ -13,28 +13,55 @@
 import { Col, Row } from 'antd';
 import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
 import Loader from 'components/Loader/Loader';
-import React, { FC, useEffect, useState } from 'react';
+import { oneofOrEndsWithNumberRegex } from 'constants/regex.constants';
+import { first, last } from 'lodash';
+import React, { FC, useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { fetchMarkdownFile } from 'rest/miscAPI';
 import { SupportedLocales } from 'utils/i18next/i18nextUtil';
 import './ServiceDocPanel.less';
 
-interface ServiceRequirementsProp {
+interface ServiceDocPanelProp {
   serviceName: string;
   serviceType: string;
   isPipelineDeployed?: boolean;
   activeField?: string;
 }
 
-const ServiceRequirements: FC<ServiceRequirementsProp> = ({
+const ServiceDocPanel: FC<ServiceDocPanelProp> = ({
   serviceType,
   serviceName,
+  activeField,
 }) => {
   const { i18n } = useTranslation();
 
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
   const [markdownContent, setMarkdownContent] = useState<string>('');
+
+  const getActiveFieldName = useCallback(
+    (activeFieldValue?: ServiceDocPanelProp['activeField']) => {
+      if (!activeFieldValue) {
+        return;
+      }
+
+      /**
+       * active field is like root/fieldName
+       * so we need to split and get the fieldName
+       */
+      const fieldNameArr = activeFieldValue.split('/');
+
+      const fieldName = last(fieldNameArr) ?? '';
+
+      // check if activeField is select or list field
+      if (oneofOrEndsWithNumberRegex.test(fieldName)) {
+        return first(fieldName.split('_'));
+      } else {
+        return fieldName;
+      }
+    },
+    []
+  );
 
   const fetchRequirement = async () => {
     setIsLoading(true);
@@ -71,6 +98,24 @@ const ServiceRequirements: FC<ServiceRequirementsProp> = ({
     fetchRequirement();
   }, [serviceName, serviceType]);
 
+  useEffect(() => {
+    const fieldName = getActiveFieldName(activeField);
+    if (fieldName) {
+      const element = document.getElementById(fieldName);
+      if (element) {
+        element.scrollIntoView({
+          block: 'center',
+          behavior: 'smooth',
+          inline: 'center',
+        });
+        element.setAttribute('data-highlighted', 'true');
+        setTimeout(() => {
+          element.setAttribute('data-highlighted', 'false');
+        }, 2000);
+      }
+    }
+  }, [activeField, getActiveFieldName]);
+
   if (isLoading) {
     return <Loader />;
   }
@@ -88,4 +133,4 @@ const ServiceRequirements: FC<ServiceRequirementsProp> = ({
   );
 };
 
-export default ServiceRequirements;
+export default ServiceDocPanel;

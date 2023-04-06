@@ -177,6 +177,7 @@ export const customHTMLRenderer: CustomHTMLRenderer = {
       originResult.attributes = {
         ...attributes,
         id,
+        'data-highlighted': 'false',
       };
     }
 
