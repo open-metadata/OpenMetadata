@@ -333,7 +333,6 @@ const PipelineDetailsPage = () => {
           {pipelinePermissions.ViewAll || pipelinePermissions.ViewBasic ? (
             <PipelineDetails
               descriptionUpdateHandler={descriptionUpdateHandler}
-              entityName={displayName}
               followPipelineHandler={followPipeline}
               followers={followers}
               paging={paging}

@@ -132,8 +132,9 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
   );
 
   const {
+    tier,
+    tableTags,
     owner,
-    tags,
     tableType,
     version,
     followers = [],
@@ -142,16 +143,17 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
     description,
     usageSummary,
     joins,
-    name: entityName,
-  } = tableDetails;
+    entityName,
+  } = useMemo(() => {
+    const { tags } = tableDetails;
 
-  const { tier, tableTags } = useMemo(
-    () => ({
+    return {
+      ...tableDetails,
       tier: getTierTags(tags ?? []),
       tableTags: getTagsWithoutTier(tags || []),
-    }),
-    [tags]
-  );
+      entityName: getEntityName(tableDetails),
+    };
+  }, [tableDetails]);
 
   const { getEntityPermission } = usePermissionProvider();
 

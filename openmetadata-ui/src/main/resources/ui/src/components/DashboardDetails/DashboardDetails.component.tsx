@@ -133,7 +133,7 @@ const DashboardDetails = ({
     owner,
     serviceType,
     description,
-    name: entityName,
+    entityName,
     followers = [],
     deleted,
     version,
@@ -144,6 +144,7 @@ const DashboardDetails = ({
       ...dashboardDetails,
       tier: getTierTags(tags),
       dashboardTags: getTagsWithoutTier(tags),
+      entityName: getEntityName(dashboardDetails),
     };
   }, [dashboardDetails]);
 

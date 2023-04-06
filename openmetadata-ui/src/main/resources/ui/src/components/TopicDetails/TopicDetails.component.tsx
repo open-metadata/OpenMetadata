@@ -114,7 +114,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
     owner,
     description,
     followers = [],
-    name: entityName,
+    entityName,
     deleted,
     version,
     tier,
@@ -124,6 +124,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
       ...topicDetails,
       tier: getTierTags(topicDetails.tags ?? []),
       topicTags: getTagsWithoutTier(topicDetails.tags ?? []),
+      entityName: getEntityName(topicDetails),
     };
   }, [topicDetails]);
 
