@@ -42,6 +42,7 @@ export enum EntityType {
   ALERT = 'alert',
   CONTAINER = 'container',
   TAG = 'tag',
+  DASHBOARD_DATA_MODEL = 'dashboardDataModel',
 }
 
 export enum AssetsType {
