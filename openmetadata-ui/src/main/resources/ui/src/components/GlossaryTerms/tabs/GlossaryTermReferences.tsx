@@ -12,12 +12,14 @@
  */
 
 import { Button, Space, Tag, Tooltip, Typography } from 'antd';
+import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
+import { ReactComponent as PlusIcon } from 'assets/svg/plus-primary.svg';
+import TagButton from 'components/TagButton/TagButton.component';
+import { DE_ACTIVE_COLOR } from 'constants/constants';
 import { NO_PERMISSION_FOR_ACTION } from 'constants/HelperTextUtil';
 import { t } from 'i18next';
 import { cloneDeep, isEqual } from 'lodash';
 import React, { useEffect, useState } from 'react';
-import SVGIcons, { Icons } from 'utils/SvgUtils';
-import { ReactComponent as IconLink } from '../../../assets/svg/link.svg';
 import {
   GlossaryTerm,
   TermReference,
@@ -69,11 +71,6 @@ const GlossaryTermReferences = ({
     handleReferencesSave(values);
   };
 
-  const handleRemove = (index: number) => {
-    const newRefs = references.filter((_, i) => i !== index);
-    handleReferencesSave(newRefs, true);
-  };
-
   useEffect(() => {
     setReferences(glossaryTerm.references ? glossaryTerm.references : []);
   }, [glossaryTerm.references]);
@@ -82,63 +79,57 @@ const GlossaryTermReferences = ({
     <div data-testid="references-container">
       <Space className="w-full" direction="vertical">
         <Space
-          className="w-full justify-between"
+          className="w-full"
           data-testid={`section-${t('label.reference-plural')}`}>
           <div className="flex-center">
-            <IconLink
-              className="tw-align-middle"
-              height={16}
-              name="link"
-              width={16}
-            />
-            <Typography.Text className="text-grey-muted tw-ml-2">
+            <Typography.Text className="glossary-subheading">
               {t('label.reference-plural')}
             </Typography.Text>
+            {references.length > 0 && permissions.EditAll && (
+              <Tooltip
+                title={
+                  permissions.EditAll
+                    ? t('label.edit')
+                    : NO_PERMISSION_FOR_ACTION
+                }>
+                <Button
+                  className="cursor-pointer m--t-xss m-l-xss"
+                  data-testid="edit-button"
+                  disabled={!permissions.EditAll}
+                  icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
+                  size="small"
+                  type="text"
+                  onClick={() => setIsViewMode(false)}
+                />
+              </Tooltip>
+            )}
           </div>
-          <Tooltip
-            title={
-              permissions.EditAll ? t('label.edit') : NO_PERMISSION_FOR_ACTION
-            }>
-            <Button
-              className="cursor-pointer m--t-xss"
-              data-testid="edit-button"
-              disabled={!permissions.EditAll}
-              icon={<SVGIcons alt="edit" icon={Icons.EDIT} width="16px" />}
-              size="small"
-              type="text"
-              onClick={() => setIsViewMode(false)}
-            />
-          </Tooltip>
         </Space>
         <>
-          {references.length > 0 ? (
-            <div className="d-flex flex-wrap">
-              {references.map((ref, i) => (
-                <Tag
-                  closable
-                  className="term-reference-tag tw-bg-white"
-                  key={ref.name}
-                  onClose={() => handleRemove(i)}>
-                  <a
-                    className=""
-                    data-testid="owner-link"
-                    href={ref?.endpoint}
-                    rel="noopener noreferrer"
-                    target="_blank">
-                    <Typography.Text
-                      ellipsis={{ tooltip: ref?.name }}
-                      style={{ maxWidth: 200 }}>
-                      {ref?.name}
-                    </Typography.Text>
-                  </a>
-                </Tag>
-              ))}
-            </div>
-          ) : (
-            <Typography.Text type="secondary">
-              {t('message.no-reference-available')}
-            </Typography.Text>
-          )}
+          <div className="d-flex flex-wrap">
+            {references.map((ref) => (
+              <Tag className="term-reference-tag tw-bg-white" key={ref.name}>
+                <a
+                  className=""
+                  data-testid="owner-link"
+                  href={ref?.endpoint}
+                  rel="noopener noreferrer"
+                  target="_blank">
+                  <Typography.Text>{ref?.name}</Typography.Text>
+                </a>
+              </Tag>
+            ))}
+            {permissions.EditAll && references.length === 0 && (
+              <TagButton
+                className="tw-text-primary"
+                icon={<PlusIcon height={16} name="plus" width={16} />}
+                label={t('label.add')}
+                onClick={() => {
+                  setIsViewMode(false);
+                }}
+              />
+            )}
+          </div>
         </>
       </Space>
 

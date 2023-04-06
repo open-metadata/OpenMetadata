@@ -22,7 +22,6 @@ import EntityNameModal from 'components/Modals/EntityNameModal/EntityNameModal.c
 import { OperationPermission } from 'components/PermissionProvider/PermissionProvider.interface';
 import VersionButton from 'components/VersionButton/VersionButton.component';
 import { FQN_SEPARATOR_CHAR } from 'constants/char.constants';
-import { NO_PERMISSION_FOR_ACTION } from 'constants/HelperTextUtil';
 import { EntityReference, Glossary } from 'generated/entity/data/glossary';
 import { GlossaryTerm } from 'generated/entity/data/glossaryTerm';
 import { EntityHistory } from 'generated/type/entityHistory';
@@ -299,35 +298,42 @@ const GlossaryHeaderButtons = ({
     },
   ];
 
+  const createButtons = useMemo(() => {
+    if (permission.Create) {
+      return isGlossary ? (
+        <Button
+          className="m-r-xs"
+          data-testid="add-new-tag-button-header"
+          size="middle"
+          type="primary"
+          onClick={handleAddGlossaryTermClick}>
+          {t('label.add-entity', { entity: t('label.term-lowercase') })}
+        </Button>
+      ) : (
+        <Dropdown
+          className="m-r-xs"
+          menu={{
+            items: addButtonContent,
+          }}
+          placement="bottomRight"
+          trigger={['click']}>
+          <Button type="primary">
+            <Space>
+              {t('label.add')}
+              <DownOutlined />
+            </Space>
+          </Button>
+        </Dropdown>
+      );
+    }
+
+    return null;
+  }, [isGlossary, permission, addButtonContent]);
+
   return (
     <>
       <div>
-        {isGlossary ? (
-          <Button
-            className="m-r-xs"
-            data-testid="add-new-tag-button-header"
-            size="middle"
-            type="primary"
-            onClick={handleAddGlossaryTermClick}>
-            {t('label.add-entity', { entity: t('label.term-lowercase') })}
-          </Button>
-        ) : (
-          <Dropdown
-            className="m-r-xs"
-            menu={{
-              items: addButtonContent,
-            }}
-            placement="bottomRight"
-            trigger={['click']}>
-            <Button type="primary">
-              <Space>
-                {t('label.add')}
-                <DownOutlined />
-              </Space>
-            </Button>
-          </Dropdown>
-        )}
-
+        {createButtons}
         {selectedData && selectedData.version && (
           <VersionButton
             className="m-r-xs tw-px-1.5"
@@ -337,37 +343,27 @@ const GlossaryHeaderButtons = ({
           />
         )}
 
-        <Dropdown
-          align={{ targetOffset: [-12, 0] }}
-          disabled={!permission.Delete}
-          menu={{
-            items: manageButtonContent,
-          }}
-          open={showActions}
-          overlayStyle={{ width: '350px' }}
-          placement="bottomRight"
-          trigger={['click']}
-          onOpenChange={setShowActions}>
-          <Tooltip
-            placement="right"
-            title={
-              permission.Delete
-                ? isGlossary
-                  ? t('label.manage-entity', { entity: t('label.glossary') })
-                  : t('label.manage-entity', {
-                      entity: t('label.glossary-term'),
-                    })
-                : NO_PERMISSION_FOR_ACTION
-            }>
-            <Button
-              className="glossary-manage-dropdown-button tw-px-1.5"
-              data-testid="manage-button"
-              disabled={!permission.Delete}
-              onClick={() => setShowActions(true)}>
-              <IconDropdown className="anticon self-center manage-dropdown-icon" />
-            </Button>
-          </Tooltip>
-        </Dropdown>
+        {permission.Delete && (
+          <Dropdown
+            align={{ targetOffset: [-12, 0] }}
+            menu={{
+              items: manageButtonContent,
+            }}
+            open={showActions}
+            overlayStyle={{ width: '350px' }}
+            placement="bottomRight"
+            trigger={['click']}
+            onOpenChange={setShowActions}>
+            <Tooltip placement="right">
+              <Button
+                className="glossary-manage-dropdown-button tw-px-1.5"
+                data-testid="manage-button"
+                onClick={() => setShowActions(true)}>
+                <IconDropdown className="anticon self-center manage-dropdown-icon" />
+              </Button>
+            </Tooltip>
+          </Dropdown>
+        )}
       </div>
       {selectedData && (
         <EntityDeleteModal

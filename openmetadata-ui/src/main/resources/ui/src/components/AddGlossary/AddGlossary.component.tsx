@@ -52,9 +52,11 @@ const AddGlossary = ({
     name: false,
     invalidName: false,
     description: false,
+    displayName: false,
   });
 
   const [name, setName] = useState('');
+  const [displayName, setDisplayName] = useState('');
   const [description] = useState<string>('');
 
   const [tags, setTags] = useState<EntityTags[]>([]);
@@ -77,7 +79,7 @@ const AddGlossary = ({
     }
     const value = event.target.value;
     const eleName = event.target.name;
-    let { name, invalidName } = cloneDeep(showErrorMsg);
+    let { name, invalidName, displayName } = cloneDeep(showErrorMsg);
 
     switch (eleName) {
       case 'name': {
@@ -87,9 +89,15 @@ const AddGlossary = ({
 
         break;
       }
+      case 'display-name': {
+        setDisplayName(value);
+        displayName = false;
+
+        break;
+      }
     }
     setShowErrorMsg((prev) => {
-      return { ...prev, name, invalidName };
+      return { ...prev, name, invalidName, displayName };
     });
   };
 
@@ -103,6 +111,7 @@ const AddGlossary = ({
   const validateForm = () => {
     const errMsg = {
       name: !name.trim(),
+      displayName: !displayName.trim(),
       invalidName: allowedNameRegEx.test(name),
       description: !getDescription()?.trim(),
     };
@@ -115,7 +124,7 @@ const AddGlossary = ({
     if (validateForm()) {
       const data: CreateGlossary = {
         name: name.trim(),
-        displayName: name.trim(),
+        displayName: displayName.trim(),
         description: getDescription(),
         reviewers:
           reviewer.map((d) => toString(d.fullyQualifiedName)).filter(Boolean) ??
@@ -178,6 +187,25 @@ const AddGlossary = ({
               : showErrorMsg.invalidName
               ? ADD_GLOSSARY_ERROR[AddGlossaryError.NAME_INVALID]
               : null}
+          </Field>
+          <Field>
+            <label className="tw-block tw-form-label" htmlFor="display-name">
+              {requiredField(`${t('label.display-name')}:`)}
+            </label>
+
+            <input
+              className="tw-form-inputs tw-form-inputs-padding"
+              data-testid="display-name"
+              id="display-name"
+              name="display-name"
+              placeholder={t('label.display-name')}
+              type="text"
+              value={displayName}
+              onChange={handleValidation}
+            />
+
+            {showErrorMsg.displayName &&
+              ADD_GLOSSARY_ERROR[AddGlossaryError.DISPLAY_NAME_REQUIRED]}
           </Field>
           <Field>
             <label

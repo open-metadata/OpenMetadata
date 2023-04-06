@@ -12,7 +12,11 @@
  */
 import { Button, Popover, Space, Tabs, Tooltip, Typography } from 'antd';
 import { WILD_CARD_CHAR } from 'constants/char.constants';
-import { PAGE_SIZE_MEDIUM, pagingObject } from 'constants/constants';
+import {
+  DE_ACTIVE_COLOR,
+  PAGE_SIZE_MEDIUM,
+  pagingObject,
+} from 'constants/constants';
 import { NO_PERMISSION_FOR_ACTION } from 'constants/HelperTextUtil';
 import { EntityType } from 'enums/entity.enum';
 import { SearchIndex } from 'enums/search.enum';
@@ -255,9 +259,10 @@ export const UserTeamSelectableList = ({
             icon={
               <SVGIcons
                 alt="edit"
+                color={DE_ACTIVE_COLOR}
+                height="14px"
                 icon={Icons.EDIT}
                 title="Edit"
-                width="16px"
               />
             }
             size="small"

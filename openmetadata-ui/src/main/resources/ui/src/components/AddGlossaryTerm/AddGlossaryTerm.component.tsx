@@ -66,12 +66,14 @@ const AddGlossaryTerm = ({
 
   const [showErrorMsg, setShowErrorMsg] = useState<{ [key: string]: boolean }>({
     name: false,
+    displayName: false,
     invalidName: false,
     invalidReferences: false,
     description: false,
   });
 
   const [name, setName] = useState('');
+  const [displayName, setDisplayName] = useState('');
   const [description] = useState<string>('');
 
   const [showRelatedTermsModal, setShowRelatedTermsModal] = useState(false);
@@ -126,13 +128,19 @@ const AddGlossaryTerm = ({
     }
     const value = event.target.value;
     const eleName = event.target.name;
-    let { name, invalidName } = cloneDeep(showErrorMsg);
+    let { name, invalidName, displayName } = cloneDeep(showErrorMsg);
 
     switch (eleName) {
       case 'name': {
         setName(value);
         name = false;
         invalidName = false;
+
+        break;
+      }
+      case 'display-name': {
+        setDisplayName(value);
+        displayName = false;
 
         break;
       }
@@ -144,7 +152,7 @@ const AddGlossaryTerm = ({
       }
     }
     setShowErrorMsg((prev) => {
-      return { ...prev, name, invalidName };
+      return { ...prev, name, invalidName, displayName };
     });
   };
 
@@ -187,6 +195,7 @@ const AddGlossaryTerm = ({
   const validateForm = (refs: TermReference[]) => {
     const errMsg = {
       name: !name.trim(),
+      displayName: !displayName.trim(),
       invalidName: allowedNameRegEx.test(name),
       invalidReferences: !isValidReferences(refs),
       description: !getDescription()?.trim(),
@@ -215,7 +224,7 @@ const AddGlossaryTerm = ({
       const updatedName = name.trim();
       const data: CreateGlossaryTerm = {
         name: updatedName,
-        displayName: updatedName,
+        displayName: displayName.trim(),
         description: getDescription(),
         reviewers: updatedReviewers.length > 0 ? updatedReviewers : undefined,
         relatedTerms: relatedTerms.length > 0 ? updatedTerms : undefined,
@@ -330,7 +339,31 @@ const AddGlossaryTerm = ({
                 )
               : null}
           </Field>
+          <Field>
+            <label className="tw-block tw-form-label" htmlFor="display-name">
+              {requiredField(`${t('label.display-name')}:`)}
+            </label>
 
+            <input
+              className="tw-form-inputs tw-form-inputs-padding"
+              data-testid="display-name"
+              id="display-name"
+              name="display-name"
+              placeholder={t('label.display-name')}
+              type="text"
+              value={displayName}
+              onChange={handleValidation}
+            />
+
+            {showErrorMsg.displayName &&
+              errorMsg(
+                t('message.field-text-is-required', {
+                  fieldText: `${t('label.glossary-term')} ${t(
+                    'label.display-name'
+                  )}`,
+                })
+              )}
+          </Field>
           <Field>
             <label
               className="tw-block tw-form-label tw-mb-0"

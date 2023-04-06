@@ -44,7 +44,6 @@ import { checkPermission } from 'utils/PermissionsUtils';
 import { getGlossaryPath, getGlossaryTermsPath } from 'utils/RouterUtils';
 import { showErrorToast, showSuccessToast } from 'utils/ToastUtils';
 import GlossaryLeftPanel from '../GlossaryLeftPanel/GlossaryLeftPanel.component';
-import GlossaryRightPanel from '../GlossaryRightPanel/GlossaryRightPanel.component';
 
 const GlossaryPage = () => {
   const { t } = useTranslation();
@@ -262,18 +261,7 @@ const GlossaryPage = () => {
     <PageContainerV1>
       <PageLayoutV1
         leftPanel={<GlossaryLeftPanel glossaries={glossaries} />}
-        pageTitle={t('label.glossary')}
-        rightPanel={
-          selectedData && (
-            <GlossaryRightPanel
-              entityDetails={selectedData as Glossary}
-              isGlossary={isGlossaryActive}
-              onGlossaryTermUpdate={handleGlossaryTermUpdate}
-              onGlossaryUpdate={updateGlossary}
-            />
-          )
-        }
-        rightPanelWidth={400}>
+        pageTitle={t('label.glossary')}>
         {isRightPanelLoading ? (
           // Loader for right panel data
           <Loader />

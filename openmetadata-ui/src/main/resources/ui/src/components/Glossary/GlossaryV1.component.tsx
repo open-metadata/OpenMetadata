@@ -15,7 +15,7 @@ import { AxiosError } from 'axios';
 import Loader from 'components/Loader/Loader';
 import { API_RES_MAX_SIZE } from 'constants/constants';
 import { isEmpty } from 'lodash';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
 import { getGlossaryTerms, ListGlossaryTermsParams } from 'rest/glossaryAPI';
 import { Glossary } from '../../generated/entity/data/glossary';
@@ -126,13 +126,17 @@ const GlossaryV1 = ({
     setIsDelete(false);
   };
 
+  const loadGlossaryTerms = useCallback(() => {
+    fetchGlossaryTerm(
+      isGlossaryActive
+        ? { glossary: selectedData.id }
+        : { parent: selectedData.id }
+    );
+  }, [selectedData, isGlossaryActive]);
+
   useEffect(() => {
     if (selectedData) {
-      fetchGlossaryTerm(
-        isGlossaryActive
-          ? { glossary: selectedData.id }
-          : { parent: selectedData.id }
-      );
+      loadGlossaryTerms();
       if (isGlossaryActive) {
         fetchGlossaryPermission();
       } else {
@@ -154,6 +158,7 @@ const GlossaryV1 = ({
             glossaryTerms={glossaryTerms}
             handleGlossaryDelete={onGlossaryDelete}
             permissions={glossaryPermission}
+            refreshGlossaryTerms={loadGlossaryTerms}
             updateGlossary={updateGlossary}
           />
         ) : (
@@ -163,6 +168,7 @@ const GlossaryV1 = ({
             handleGlossaryTermDelete={onGlossaryTermDelete}
             handleGlossaryTermUpdate={onGlossaryTermUpdate}
             permissions={glossaryTermPermission}
+            refreshGlossaryTerms={loadGlossaryTerms}
           />
         ))}
 

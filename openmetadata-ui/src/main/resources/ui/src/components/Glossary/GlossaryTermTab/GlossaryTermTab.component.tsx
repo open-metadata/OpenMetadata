@@ -11,8 +11,20 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Modal, Row, Table, TableProps, Tooltip } from 'antd';
+import {
+  Button,
+  Col,
+  Modal,
+  Row,
+  Space,
+  Table,
+  TableProps,
+  Tooltip,
+} from 'antd';
 import { ColumnsType, ExpandableConfig } from 'antd/lib/table/interface';
+import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
+import { ReactComponent as UpDownArrowIcon } from 'assets/svg/ic-up-down-arrow.svg';
+import { ReactComponent as PlusOutlinedIcon } from 'assets/svg/plus-outlined.svg';
 import { AxiosError } from 'axios';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
@@ -20,7 +32,7 @@ import Loader from 'components/Loader/Loader';
 import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from 'components/PermissionProvider/PermissionProvider.interface';
 import { FQN_SEPARATOR_CHAR } from 'constants/char.constants';
-import { API_RES_MAX_SIZE } from 'constants/constants';
+import { DE_ACTIVE_COLOR } from 'constants/constants';
 import { GLOSSARIES_DOCS } from 'constants/docs.constants';
 import { NO_PERMISSION_FOR_ACTION } from 'constants/HelperTextUtil';
 import { TABLE_CONSTANTS } from 'constants/Teams.constants';
@@ -33,22 +45,14 @@ import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import { useTranslation } from 'react-i18next';
 import { Link, useHistory, useParams } from 'react-router-dom';
-import {
-  getGlossaryTerms,
-  ListGlossaryTermsParams,
-  patchGlossaryTerm,
-} from 'rest/glossaryAPI';
+import { patchGlossaryTerm } from 'rest/glossaryAPI';
 import { Transi18next } from 'utils/CommonUtils';
 import { getEntityName } from 'utils/EntityUtils';
-import {
-  createGlossaryTermTree,
-  getRootLevelGlossaryTerm,
-} from 'utils/GlossaryUtils';
+import { buildTree } from 'utils/GlossaryUtils';
 import { checkPermission } from 'utils/PermissionsUtils';
 import { getAddGlossaryTermsPath, getGlossaryPath } from 'utils/RouterUtils';
 import { getTableExpandableConfig } from 'utils/TableUtils';
 import { showErrorToast } from 'utils/ToastUtils';
-import { ReactComponent as PlusIcon } from '../../../assets/svg/plus-primary.svg';
 import {
   DraggableBodyRowProps,
   GlossaryTermTabProps,
@@ -57,10 +61,9 @@ import {
 } from './GlossaryTermTab.interface';
 
 const GlossaryTermTab = ({
-  glossaryId,
-  glossaryTermId,
   selectedGlossaryFqn,
   childGlossaryTerms = [],
+  refreshGlossaryTerms,
 }: GlossaryTermTabProps) => {
   const { t } = useTranslation();
   const { permissions } = usePermissionProvider();
@@ -71,6 +74,7 @@ const GlossaryTermTab = ({
   const [glossaryTerms, setGlossaryTerms] = useState<ModifiedGlossaryTerm[]>(
     []
   );
+  const [expandedRowKeys, setExpandedRowKeys] = useState<string[]>([]);
   const [movedGlossaryTerm, setMovedGlossaryTerm] =
     useState<MoveGlossaryTermType>();
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
@@ -92,10 +96,9 @@ const GlossaryTermTab = ({
         title: t('label.term-plural'),
         dataIndex: 'name',
         key: 'name',
-        width: 250,
         render: (_, record) => (
           <Link
-            className="hover:tw-underline tw-cursor-pointer"
+            className="hover:tw-underline tw-cursor-pointer help-text"
             to={getGlossaryPath(record.fullyQualifiedName || record.name)}>
             {getEntityName(record)}
           </Link>
@@ -110,7 +113,7 @@ const GlossaryTermTab = ({
             <RichTextEditorPreviewer
               enableSeeMoreVariant
               markdown={description}
-              maxLength={200}
+              maxLength={120}
             />
           ) : (
             <span className="tw-no-description">
@@ -118,23 +121,35 @@ const GlossaryTermTab = ({
             </span>
           ),
       },
-      {
+    ];
+    if (createGlossaryTermPermission) {
+      data.push({
         title: t('label.action-plural'),
         key: 'new-term',
         render: (_, record) => (
-          <Button
-            className="text-primary d-flex items-center add-new-term-btn"
-            data-testid="add-classification"
-            icon={<PlusIcon className="anticon" />}
-            size="small"
-            onClick={() => {
-              handleAddGlossaryTermClick(record.fullyQualifiedName || '');
-            }}>
-            <div className="tw-ml-1">{t('label.add')}</div>
-          </Button>
+          <div className="d-flex items-center">
+            <Button
+              className="add-new-term-btn text-grey-muted flex-center"
+              data-testid="add-classification"
+              icon={<PlusOutlinedIcon color={DE_ACTIVE_COLOR} width="14px" />}
+              size="small"
+              type="text"
+              onClick={() => {
+                handleAddGlossaryTermClick(record.fullyQualifiedName || '');
+              }}
+            />
+            <Button
+              className="cursor-pointer flex-center"
+              data-testid="edit-button"
+              icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
+              size="small"
+              type="text"
+              onClick={() => console.debug('edit')}
+            />
+          </div>
         ),
-      },
-    ];
+      });
+    }
 
     return data;
   }, [glossaryTerms]);
@@ -153,48 +168,19 @@ const GlossaryTermTab = ({
     }
   };
 
-  const fetchGlossaryTerm = async (
-    params?: ListGlossaryTermsParams,
-    updateChild = false,
-    isLoading = true
-  ) => {
-    setIsLoading(isLoading);
-    try {
-      const { data } = await getGlossaryTerms({
-        ...params,
-        limit: API_RES_MAX_SIZE,
-        fields: 'tags,children',
-      });
-
-      const updatedData = getRootLevelGlossaryTerm(data, params);
-
-      if (updateChild) {
-        const updatedGlossaryTermTree = createGlossaryTermTree(
-          glossaryTerms,
-          updatedData,
-          params?.parent
-        );
-        setGlossaryTerms(updatedGlossaryTermTree);
-      } else {
-        setGlossaryTerms(updatedData as ModifiedGlossaryTerm[]);
-      }
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   const expandableConfig: ExpandableConfig<ModifiedGlossaryTerm> = useMemo(
     () => ({
       ...getTableExpandableConfig<ModifiedGlossaryTerm>(true),
-      onExpand: (isOpen, record) => {
-        if (isOpen) {
-          fetchGlossaryTerm({ parent: record.id }, true, false);
-        }
+      expandedRowKeys,
+      onExpand: (expanded, record) => {
+        setExpandedRowKeys(
+          expanded
+            ? [...expandedRowKeys, record.fullyQualifiedName || '']
+            : expandedRowKeys.filter((key) => key !== record.fullyQualifiedName)
+        );
       },
     }),
-    [fetchGlossaryTerm]
+    [expandedRowKeys]
   );
 
   const handleMoveRow = useCallback(
@@ -225,11 +211,7 @@ const GlossaryTermTab = ({
 
       try {
         await patchGlossaryTerm(movedGlossaryTerm.from?.id || '', jsonPatch);
-        await fetchGlossaryTerm(
-          { glossary: glossaryId, parent: glossaryTermId },
-          false,
-          false
-        );
+        refreshGlossaryTerms && refreshGlossaryTerms();
       } catch (error) {
         showErrorToast(error as AxiosError);
       } finally {
@@ -252,13 +234,23 @@ const GlossaryTermTab = ({
     return attr as DraggableBodyRowProps;
   };
 
+  const toggleExpandAll = () => {
+    if (expandedRowKeys.length === childGlossaryTerms.length) {
+      setExpandedRowKeys([]);
+    } else {
+      setExpandedRowKeys(
+        childGlossaryTerms.map((item) => item.fullyQualifiedName || '')
+      );
+    }
+  };
+
   useEffect(() => {
     if (childGlossaryTerms) {
-      const updatedData = getRootLevelGlossaryTerm(childGlossaryTerms, {
-        glossary: glossaryId,
-        parent: glossaryTermId,
-      });
-      setGlossaryTerms(updatedData as ModifiedGlossaryTerm[]);
+      const data = buildTree(childGlossaryTerms);
+      setGlossaryTerms(data as ModifiedGlossaryTerm[]);
+      setExpandedRowKeys(
+        childGlossaryTerms.map((item) => item.fullyQualifiedName || '')
+      );
     }
     setIsLoading(false);
   }, [childGlossaryTerms]);
@@ -304,6 +296,21 @@ const GlossaryTermTab = ({
   return (
     <Row gutter={[0, 16]}>
       <Col span={24}>
+        <div className="d-flex justify-end">
+          <Button
+            className="tw-text-primary tw-rounded m-b-lg"
+            size="small"
+            type="text"
+            onClick={toggleExpandAll}>
+            <Space align="center" size={4}>
+              <UpDownArrowIcon color={DE_ACTIVE_COLOR} height="14px" />
+              {expandedRowKeys.length === childGlossaryTerms.length
+                ? t('label.collapse-all')
+                : t('label.expand-all')}
+            </Space>
+          </Button>
+        </div>
+
         {glossaryTerms.length > 0 ? (
           <DndProvider backend={HTML5Backend}>
             <Table
@@ -315,7 +322,7 @@ const GlossaryTermTab = ({
               expandable={expandableConfig}
               loading={isTableLoading}
               pagination={false}
-              rowKey="name"
+              rowKey="fullyQualifiedName"
               size="small"
               onRow={onTableRow}
             />

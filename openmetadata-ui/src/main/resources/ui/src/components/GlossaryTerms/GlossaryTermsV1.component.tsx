@@ -11,24 +11,20 @@
  *  limitations under the License.
  */
 
-import { Col, Row, Tabs } from 'antd';
+import { Col, Row } from 'antd';
 import { AxiosError } from 'axios';
 import GlossaryHeader from 'components/Glossary/GlossaryHeader/GlossaryHeader.component';
-import GlossaryTermTab from 'components/Glossary/GlossaryTermTab/GlossaryTermTab.component';
-import { getGlossaryTermDetailsPath, PAGE_SIZE } from 'constants/constants';
+import GlossaryTabs from 'components/GlossaryTabs/GlossaryTabs.component';
+import { PAGE_SIZE } from 'constants/constants';
 import { myDataSearchIndex } from 'constants/Mydata.constants';
-import { t } from 'i18next';
 import { AssetsDataType } from 'Models';
-import React, { useEffect, useMemo, useState } from 'react';
-import { useHistory, useParams } from 'react-router-dom';
+import React, { useEffect, useState } from 'react';
 import { searchData } from 'rest/miscAPI';
 import { formatDataResponse, SearchEntityHits } from 'utils/APIUtils';
 import { GlossaryTerm } from '../../generated/entity/data/glossaryTerm';
 import jsonData from '../../jsons/en';
-import { getCountBadge } from '../../utils/CommonUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { OperationPermission } from '../PermissionProvider/PermissionProvider.interface';
-import AssetsTabs from './tabs/AssetsTabs.component';
 
 type Props = {
   permissions: OperationPermission;
@@ -36,6 +32,7 @@ type Props = {
   childGlossaryTerms: GlossaryTerm[];
   handleGlossaryTermUpdate: (data: GlossaryTerm) => Promise<void>;
   handleGlossaryTermDelete: (id: string) => void;
+  refreshGlossaryTerms: () => void;
 };
 
 const GlossaryTermsV1 = ({
@@ -44,23 +41,14 @@ const GlossaryTermsV1 = ({
   handleGlossaryTermUpdate,
   handleGlossaryTermDelete,
   permissions,
+  refreshGlossaryTerms,
 }: Props) => {
-  const { glossaryName: glossaryFqn, tab } =
-    useParams<{ glossaryName: string; tab: string }>();
-  const history = useHistory();
-
   const [assetData, setAssetData] = useState<AssetsDataType>({
     isLoading: true,
     data: [],
     total: 0,
     currPage: 1,
   });
-
-  const activeTabHandler = (tab: string) => {
-    history.push({
-      pathname: getGlossaryTermDetailsPath(glossaryFqn, tab),
-    });
-  };
 
   const fetchGlossaryTermAssets = async (fqn: string, currentPage = 1) => {
     setAssetData((pre) => ({
@@ -103,17 +91,6 @@ const GlossaryTermsV1 = ({
     }
   };
 
-  const handleAssetPagination = (page: number | string) => {
-    fetchGlossaryTermAssets(
-      glossaryTerm.fullyQualifiedName || glossaryTerm.name,
-      page as number
-    );
-  };
-
-  const activeTab = useMemo(() => {
-    return tab ?? 'terms';
-  }, [tab]);
-
   useEffect(() => {
     fetchGlossaryTermAssets(
       glossaryTerm.fullyQualifiedName || glossaryTerm.name
@@ -121,7 +98,7 @@ const GlossaryTermsV1 = ({
   }, [glossaryTerm.fullyQualifiedName]);
 
   return (
-    <Row data-testid="glossary-term" gutter={[0, 16]}>
+    <Row data-testid="glossary-term" gutter={[0, 8]}>
       <Col span={24}>
         <GlossaryHeader
           isGlossary={false}
@@ -137,51 +114,14 @@ const GlossaryTermsV1 = ({
       </Col>
 
       <Col span={24}>
-        <Tabs
-          destroyInactiveTabPane
-          activeKey={activeTab}
-          items={[
-            {
-              label: (
-                <div data-testid="assets">
-                  {t('label.glossary-term-plural')}
-                  <span className="p-l-xs ">
-                    {getCountBadge(
-                      childGlossaryTerms.length,
-                      '',
-                      activeTab === 'terms'
-                    )}
-                  </span>
-                </div>
-              ),
-              key: 'terms',
-              children: (
-                <GlossaryTermTab
-                  childGlossaryTerms={childGlossaryTerms}
-                  glossaryTermId={glossaryTerm.id}
-                />
-              ),
-            },
-            {
-              label: (
-                <div data-testid="assets">
-                  {t('label.asset-plural')}
-                  <span className="p-l-xs ">
-                    {getCountBadge(assetData.total, '', activeTab === 'assets')}
-                  </span>
-                </div>
-              ),
-              key: 'assets',
-              children: (
-                <AssetsTabs
-                  assetData={assetData}
-                  currentPage={assetData.currPage}
-                  onAssetPaginate={handleAssetPagination}
-                />
-              ),
-            },
-          ]}
-          onChange={activeTabHandler}
+        <GlossaryTabs
+          assetData={assetData}
+          childGlossaryTerms={childGlossaryTerms}
+          isGlossary={false}
+          permissions={permissions}
+          refreshGlossaryTerms={refreshGlossaryTerms}
+          selectedData={glossaryTerm}
+          onUpdate={(data) => handleGlossaryTermUpdate(data as GlossaryTerm)}
         />
       </Col>
     </Row>

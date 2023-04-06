@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Menu, MenuProps, Row, Tooltip, Typography } from 'antd';
+import { Button, Col, Menu, MenuProps, Row, Typography } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { ReactComponent as IconFolder } from 'assets/svg/folder.svg';
 import { ReactComponent as PlusIcon } from 'assets/svg/plus-primary.svg';
@@ -55,7 +55,7 @@ const GlossaryLeftPanel = ({ glossaries }: GlossaryLeftPanelProps) => {
         {
           key: glossary.name,
           label: glossary.name,
-          icon: <IconFolder />,
+          icon: <IconFolder height={16} width={16} />,
         },
       ];
     }, [] as ItemType[]);
@@ -77,24 +77,20 @@ const GlossaryLeftPanel = ({ glossaries }: GlossaryLeftPanelProps) => {
               {t('label.glossary')}
             </Typography.Text>
           </Col>
-          <Col className="p-x-sm" span={24}>
-            <Tooltip
-              title={
-                createGlossaryPermission
-                  ? t('label.add-entity', { entity: t('label.glossary') })
-                  : t('message.no-permission-for-action')
-              }>
+
+          {createGlossaryPermission && (
+            <Col className="p-x-sm" span={24}>
               <Button
                 block
                 className="text-primary"
                 data-testid="add-glossary"
-                disabled={!createGlossaryPermission}
                 icon={<PlusIcon className="anticon" />}
                 onClick={handleAddGlossaryClick}>
                 {t('label.add-entity', { entity: t('label.glossary') })}
               </Button>
-            </Tooltip>
-          </Col>
+            </Col>
+          )}
+
           <Col span={24}>
             {menuItems.length ? (
               <Menu

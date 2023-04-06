@@ -61,27 +61,4 @@ describe('GlossaryHeader component', () => {
 
     expect(screen.getByText('glossaryTest')).toBeInTheDocument();
   });
-
-  it('should render no owner if owner is not present', () => {
-    render(
-      <GlossaryHeader
-        isGlossary
-        permissions={DEFAULT_ENTITY_PERMISSION}
-        selectedData={
-          {
-            displayName: 'glossaryTest',
-            reviewers: [
-              { displayName: 'reviewer1' },
-              { displayName: 'reviewer2' },
-            ],
-          } as Glossary
-        }
-        onDelete={mockOnDelete}
-        onUpdate={mockOnUpdate}
-      />
-    );
-
-    expect(screen.getByText('label.no-entity')).toBeInTheDocument();
-    expect(screen.getByText('Description')).toBeInTheDocument();
-  });
 });

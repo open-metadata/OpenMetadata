@@ -105,11 +105,15 @@ describe('Test AddGlossaryTerm component', () => {
     const { container } = render(<AddGlossaryTerm {...mockProps} />);
 
     const nameInput = getByTestId(container, 'name');
+    const displayNameInput = getByTestId(container, 'display-name');
     const saveButton = getByTestId(container, 'save-glossary-term');
 
     expect(saveButton).toBeInTheDocument();
 
     fireEvent.change(nameInput, { target: { value: 'Test Glossary Term' } });
+    fireEvent.change(displayNameInput, {
+      target: { value: 'Test Glossary Display Name' },
+    });
 
     fireEvent.click(
       saveButton,
