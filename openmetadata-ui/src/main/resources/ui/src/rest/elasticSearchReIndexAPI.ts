@@ -18,7 +18,7 @@ import {
   EventPublisherJob,
   PublisherType,
   RunMode,
-} from '../generated/settings/eventPublisherJob';
+} from '../generated/system/eventPublisherJob';
 
 export const getAllReIndexStatus = async (mode: RunMode) => {
   const res = await axiosClient.get<EventPublisherJob>(

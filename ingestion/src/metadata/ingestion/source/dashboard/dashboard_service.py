@@ -13,7 +13,7 @@ Base class for ingesting dashboard services
 """
 import traceback
 from abc import ABC, abstractmethod
-from typing import Any, Iterable, List, Optional, Set
+from typing import Any, Iterable, List, Optional, Set, Union
 
 from pydantic import BaseModel
 
@@ -45,7 +45,7 @@ from metadata.generated.schema.type.entityLineage import EntitiesEdge
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.usageRequest import UsageRequest
 from metadata.ingestion.api.source import Source
-from metadata.ingestion.api.topology_runner import TopologyRunnerMixin
+from metadata.ingestion.api.topology_runner import C, TopologyRunnerMixin
 from metadata.ingestion.models.delete_entity import (
     DeleteEntity,
     delete_entity_from_source,
@@ -78,7 +78,7 @@ class DashboardUsage(BaseModel):
 class DashboardServiceTopology(ServiceTopology):
     """
     Defines the hierarchy in Dashboard Services.
-    service -> dashboard -> charts.
+    service -> data models -> dashboard -> charts.
 
     We could have a topology validator. We can only consume
     data that has been produced by any parent node.
@@ -119,9 +119,12 @@ class DashboardServiceTopology(ServiceTopology):
             ),
             NodeStage(
                 type_=DashboardDataModel,
-                context="dataModel",
+                context="dataModels",
                 processor="yield_datamodel",
                 consumer=["dashboard_service"],
+                nullable=True,
+                cache_all=True,
+                clear_cache=True,
             ),
             NodeStage(
                 type_=Dashboard,
@@ -155,6 +158,7 @@ class DashboardServiceTopology(ServiceTopology):
     )
 
 
+# pylint: disable=too-many-public-methods
 class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
     """
     Base class for Database Services.
@@ -347,16 +351,23 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
 
     @staticmethod
     def _get_add_lineage_request(
-        to_entity: Dashboard, from_entity: Table
+        to_entity: Union[Dashboard, DashboardDataModel],
+        from_entity: Union[Table, DashboardDataModel],
     ) -> Optional[AddLineageRequest]:
         if from_entity and to_entity:
             return AddLineageRequest(
                 edge=EntitiesEdge(
                     fromEntity=EntityReference(
-                        id=from_entity.id.__root__, type="table"
+                        id=from_entity.id.__root__,
+                        type="table"
+                        if isinstance(from_entity, Table)
+                        else "dashboardDataModel",
                     ),
                     toEntity=EntityReference(
-                        id=to_entity.id.__root__, type="dashboard"
+                        id=to_entity.id.__root__,
+                        type="dashboard"
+                        if isinstance(to_entity, Dashboard)
+                        else "dashboardDataModel",
                     ),
                 )
             )
@@ -396,3 +407,25 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
 
     def prepare(self):
         pass
+
+    def fqn_from_context(self, stage: NodeStage, entity_request: C) -> str:
+        """
+        We are overriding this method since CreateDashboardDataModelRequest needs to add an extra value to the context
+        names.
+
+        Read the context
+        :param stage: Topology node being processed
+        :param entity_request: Request sent to the sink
+        :return: Entity FQN derived from context
+        """
+        context_names = [
+            self.context.__dict__[dependency].name.__root__
+            for dependency in stage.consumer or []  # root nodes do not have consumers
+        ]
+
+        if isinstance(entity_request, CreateDashboardDataModelRequest):
+            context_names.append("model")
+
+        return fqn._build(  # pylint: disable=protected-access
+            *context_names, entity_request.name.__root__
+        )
