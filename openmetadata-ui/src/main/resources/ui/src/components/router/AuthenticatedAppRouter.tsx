@@ -126,6 +126,11 @@ const DatabaseSchemaPageComponent = withSuspenseFallback(
     () => import('pages/DatabaseSchemaPage/DatabaseSchemaPage.component')
   )
 );
+
+const DataModelDetailsPage = withSuspenseFallback(
+  React.lazy(() => import('pages/DataModelPage/DataModelPage.component'))
+);
+
 const DatasetDetailsPage = withSuspenseFallback(
   React.lazy(
     () => import('pages/DatasetDetailsPage/DatasetDetailsPage.component')
@@ -349,6 +354,16 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         exact
         component={DashboardDetailsPage}
         path={ROUTES.DASHBOARD_DETAILS_WITH_TAB}
+      />
+      <Route
+        exact
+        component={DataModelDetailsPage}
+        path={ROUTES.DATA_MODEL_DETAILS}
+      />
+      <Route
+        exact
+        component={DataModelDetailsPage}
+        path={ROUTES.DATA_MODEL_DETAILS_WITH_TAB}
       />
       <Route
         exact
