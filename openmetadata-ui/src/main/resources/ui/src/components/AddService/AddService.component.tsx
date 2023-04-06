@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Card } from 'antd';
+import { Card, Space } from 'antd';
 import ResizablePanels from 'components/common/ResizablePanels/ResizablePanels';
 import {
   SERVICE_DEFAULT_ERROR_MAP,
@@ -30,7 +30,11 @@ import { FormSubmitType } from '../../enums/form.enum';
 import { ServiceCategory } from '../../enums/service.enum';
 import { PipelineType } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { ConfigData } from '../../interface/service.interface';
-import { getCurrentUserId, isUrlFriendlyName } from '../../utils/CommonUtils';
+import {
+  getCurrentUserId,
+  getServiceLogo,
+  isUrlFriendlyName,
+} from '../../utils/CommonUtils';
 import { getAddServicePath, getSettingPath } from '../../utils/RouterUtils';
 import {
   getServiceCreatedLabel,
@@ -214,9 +218,19 @@ const AddService = ({
 
   const addNewServiceElement = (
     <div data-testid="add-new-service-container">
-      <h6 className="tw-heading tw-text-base" data-testid="header">
-        {t('label.add-new-entity', { entity: t('label.service') })}
-      </h6>
+      {selectServiceType ? (
+        <Space>
+          {getServiceLogo(selectServiceType || '', 'h-8')}{' '}
+          <h6 className="tw-heading tw-text-base" data-testid="header">
+            {`${selectServiceType} ${t('label.service')}`}
+          </h6>
+        </Space>
+      ) : (
+        <h6 className="tw-heading tw-text-base" data-testid="header">
+          {t('label.add-new-entity', { entity: t('label.service') })}
+        </h6>
+      )}
+
       <IngestionStepper
         activeStep={activeServiceStep}
         steps={STEPS_FOR_ADD_SERVICE}
