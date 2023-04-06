@@ -17,6 +17,7 @@ import { t } from 'i18next';
 import { isUndefined } from 'lodash';
 import Qs from 'qs';
 import { getPartialNameFromFQN } from 'utils/CommonUtils';
+import i18n from 'utils/i18next/LocalUtil';
 import { getSettingPath } from '../utils/RouterUtils';
 import { getEncodedFqn } from '../utils/StringsUtils';
 import { FQN_SEPARATOR_CHAR } from './char.constants';
@@ -586,6 +587,27 @@ export const VALIDATE_MESSAGES = {
   required: t('message.field-text-is-required', {
     fieldText: '${label}',
   }),
+};
+
+export const VALIDATION_MESSAGES = {
+  required: i18n.t('message.field-text-is-required', {
+    fieldText: '${label}',
+  }),
+  types: {
+    email: i18n.t('message.entity-is-not-valid', {
+      entity: '${label}',
+    }),
+  },
+  whitespace: i18n.t('message.field-text-is-required', {
+    fieldText: '${label}',
+  }),
+  string: {
+    range: i18n.t('message.entity-size-in-between', {
+      entity: '${label}',
+      min: '${min}',
+      max: '${max}',
+    }),
+  },
 };
 
 export const ERROR_MESSAGE = {

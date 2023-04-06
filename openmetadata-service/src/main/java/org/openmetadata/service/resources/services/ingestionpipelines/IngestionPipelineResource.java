@@ -526,8 +526,7 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
             content = @Content(mediaType = "application/json"))
       })
   public Response getHostIp(@Context UriInfo uriInfo, @Context SecurityContext securityContext) {
-    Map<String, String> hostIp = pipelineServiceClient.getHostIp();
-    return Response.ok(hostIp, MediaType.APPLICATION_JSON_TYPE).build();
+    return pipelineServiceClient.getHostIp();
   }
 
   @GET
