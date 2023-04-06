@@ -87,7 +87,9 @@ LOOKER_TYPE_MAP = {
 }
 
 
-def get_column_from_model(model: Union[LookmlModelExplore, LookMlView]) -> List[Column]:
+def get_columns_from_model(
+    model: Union[LookmlModelExplore, LookMlView]
+) -> List[Column]:
     """
     Obtain the column (measures and dimensions) from the models
     """
@@ -97,6 +99,7 @@ def get_column_from_model(model: Union[LookmlModelExplore, LookMlView]) -> List[
         columns.append(
             Column(
                 name=field.name,
+                displayName=getattr(field, "label_short", field.label),
                 dataType=LOOKER_TYPE_MAP.get(field.type, DataType.UNKNOWN),
                 dataTypeDisplay=field.type,
                 description=field.description,

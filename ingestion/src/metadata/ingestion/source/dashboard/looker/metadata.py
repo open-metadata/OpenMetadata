@@ -69,7 +69,7 @@ from metadata.ingestion.source.dashboard.dashboard_service import (
     DashboardServiceSource,
     DashboardUsage,
 )
-from metadata.ingestion.source.dashboard.looker.columns import get_column_from_model
+from metadata.ingestion.source.dashboard.looker.columns import get_columns_from_model
 from metadata.ingestion.source.dashboard.looker.models import (
     Includes,
     LookMlView,
@@ -191,7 +191,7 @@ class LookerSource(DashboardServiceSource):
                 service=self.context.dashboard_service.fullyQualifiedName.__root__,
                 dataModelType=DataModelType.LookMlExplore.value,
                 serviceType=DashboardServiceType.Looker.value,
-                columns=get_column_from_model(model),
+                columns=get_columns_from_model(model),
                 sql=self._get_explore_sql(model),
             )
             yield explore_datamodel
@@ -264,7 +264,7 @@ class LookerSource(DashboardServiceSource):
                 service=self.context.dashboard_service.fullyQualifiedName.__root__,
                 dataModelType=DataModelType.LookMlView.value,
                 serviceType=DashboardServiceType.Looker.value,
-                columns=get_column_from_model(view),
+                columns=get_columns_from_model(view),
                 sql=self.parser.parsed_files.get(Includes(view.source_file)),
             )
             self.status.scanned(f"Data Model Scanned: {view.name}")
