@@ -240,7 +240,8 @@ def test_connection_steps(
 
     if not test_connection_definition:
         raise SourceConnectionException(
-            f"Test connection definition for {service_fqn} not found please validate the token."
+            f"Test connection definition for {service_fqn} not found please review the Server Configuration of the "
+            f"Workflow configuration. Check that the Security Configuration has been set up correctly."
         )
 
     steps = [
@@ -275,7 +276,7 @@ def test_connection_db_common(
     automation_workflow: Optional[AutomationWorkflow] = None,
     queries: dict = None,
     timeout_seconds: int = 3 * 60,
-) -> TestConnectionResult:
+) -> None:
 
     """
     Test connection. This can be executed either as part
@@ -288,7 +289,7 @@ def test_connection_db_common(
     service_connection: Service connection object of data source
     automation_workflow: Automation Workflow object expected when
                          test connection is hit via UI/Airflow
-    queries: expected when some queries has to be executed as part of
+    queries: expected when some queries have to be executed as part of
              test connection
     expected format for queries would be <TestConnectionStep>:<Query>
     queries = {
@@ -335,7 +336,7 @@ def test_connection_db_schema_sources(
     service_connection: Service connection object of data source
     automation_workflow: Automation Workflow object expected when
                          test connection is hit via UI/Airflow
-    queries: expected when some queries has to be executed as part of
+    queries: expected when some queries have to be executed as part of
              test connection
     expected format for queries would be <TestConnectionStep>:<Query>
     queries = {

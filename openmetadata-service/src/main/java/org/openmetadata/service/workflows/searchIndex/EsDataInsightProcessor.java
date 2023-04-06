@@ -41,7 +41,7 @@ public class EsDataInsightProcessor implements Processor<ResultList<ReportData>,
   public BulkRequest process(ResultList<ReportData> input, Map<String, Object> contextData) throws ProcessorException {
     String entityType = (String) contextData.get(ENTITY_TYPE_KEY);
     if (CommonUtil.nullOrEmpty(entityType)) {
-      throw new IllegalArgumentException("[EsEntitiesProcessor] entityType cannot be null or empty.");
+      throw new IllegalArgumentException("[EsDataInsightProcessor] entityType cannot be null or empty.");
     }
 
     LOG.debug(
