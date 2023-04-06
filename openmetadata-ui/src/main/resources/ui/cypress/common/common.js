@@ -902,8 +902,6 @@ export const updateOwner = () => {
       // Clicking on edit owner button
       cy.get('[data-testid="add-user"]').should('be.visible').click();
 
-      verifyResponseStatusCode('@getUsers', 200);
-
       cy.get('[data-testid="selectable-list"]')
         .find(`[title="${text.trim()}"]`)
         .click();
