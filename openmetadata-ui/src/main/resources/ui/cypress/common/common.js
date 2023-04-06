@@ -181,14 +181,14 @@ export const testServiceCreationAndIngestion = (
 
   // Enter service name in step 3
   cy.get('[data-testid="service-name"]').should('exist').type(serviceName);
+  interceptURL('GET', '/api/v1/services/ingestionPipelines/ip', 'ipApi');
   interceptURL(
     'GET',
     'api/v1/services/ingestionPipelines/*',
-    'getIngestionPipelineStatus'
+    'ingestionPipelineStatus'
   );
-  interceptURL('GET', '/api/v1/services/ingestionPipelines/ip', 'ipApi');
   cy.get('[data-testid="next-button"]').should('exist').click();
-  verifyResponseStatusCode('@getIngestionPipelineStatus', 200);
+  verifyResponseStatusCode('@ingestionPipelineStatus', 200);
   verifyResponseStatusCode('@ipApi', 204);
 
   // Connection Details in step 4
