@@ -83,12 +83,9 @@ def _(elements, compiler, **kwargs):
 
 @compiles(MedianFn, Dialects.Impala)
 def _(elements, compiler, **kwargs):
-    """Median computation for Impala"""
-    col, _, percentile = [
-        compiler.process(element, **kwargs) for element in elements.clauses
-    ]
-    """ Median compution for Impala uses the appx_median function.  
-    OM uses this median function to also compute first and third quartiles.  
+    """Median computation for Impala
+    Median compution for Impala uses the appx_median function.
+    OM uses this median function to also compute first and third quartiles.
     These calculations are not supported with a simple function inside Impala.
     The if statement returns null when we are not looking for the .5 precentile
     In Impala to get the first quartile a full SQL statement like this is necessary:
@@ -111,6 +108,9 @@ def _(elements, compiler, **kwargs):
         group by grp
         ;
     """
+    col, _, percentile = [
+        compiler.process(element, **kwargs) for element in elements.clauses
+    ]
     return "if(%s = .5, appx_median(%s), null)" % (percentile, col)
 
 

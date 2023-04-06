@@ -256,6 +256,7 @@ def get_impala_table_comment(
 def get_impala_columns(
     self, connection, table_name, schema=None, **kwargs
 ):  # pylint: disable=unused-argument
+    # pylint: disable=too-many-locals
     """
     Extracted from the Impala Dialect. We'll tune the implementation.
 
