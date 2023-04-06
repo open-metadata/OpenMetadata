@@ -141,15 +141,36 @@ class DbtServiceSource(TopologyRunnerMixin, Source, ABC):
     topology = DbtServiceTopology()
     context = create_source_context(topology)
 
+    def remove_manifest_non_required_keys(self, manifest_dict: dict):
+        """
+        Method to remove the non required keys from manifest file
+        """
+        # To ensure smooth ingestion of data,
+        # we are selectively processing the metadata, nodes, and sources from the manifest file
+        # while trimming out any other irrelevant data that might be present.
+        # This step is necessary as the manifest file may not always adhere to the schema definition
+        # and the presence of other nodes can hinder the ingestion process from progressing any further.
+        # Therefore, we are only retaining the essential data for further processing.
+        required_manifest_keys = ["nodes", "sources", "metadata"]
+        manifest_dict.update(
+            {
+                key: {}
+                for key in manifest_dict
+                if key.lower() not in required_manifest_keys
+            }
+        )
+
     def get_dbt_files(self) -> DbtFiles:
         dbt_files = get_dbt_details(
             self.source_config.dbtConfigSource  # pylint: disable=no-member
         )
-
         self.context.dbt_files = dbt_files
         yield dbt_files
 
     def get_dbt_objects(self) -> DbtObjects:
+        self.remove_manifest_non_required_keys(
+            manifest_dict=self.context.dbt_files.dbt_manifest
+        )
         dbt_objects = DbtObjects(
             dbt_catalog=parse_catalog(self.context.dbt_files.dbt_catalog)
             if self.context.dbt_files.dbt_catalog

@@ -70,13 +70,7 @@ import { getLineageViewPath } from 'utils/RouterUtils';
 import { serviceTypeLogo } from 'utils/ServiceUtils';
 import { getTagsWithoutTier, getTierTags } from 'utils/TableUtils';
 import { showErrorToast } from 'utils/ToastUtils';
-
-enum DATA_MODELS_DETAILS_TABS {
-  MODEL = 'model',
-  ACTIVITY = 'activityFeed',
-  SQL = 'sql',
-  LINEAGE = 'lineage',
-}
+import { DATA_MODELS_DETAILS_TABS } from './DataModelsInterface';
 
 const DataModelsPage = () => {
   const history = useHistory();
@@ -102,40 +96,11 @@ const DataModelsPage = () => {
     state: false,
   });
 
-  const fetchResourcePermission = async (dashboardDataModelFQN: string) => {
-    setIsLoading(true);
-    try {
-      const entityPermission = await getEntityPermissionByFqn(
-        ResourceEntity.DASHBOARD_DATA_MODEL,
-        dashboardDataModelFQN
-      );
-      setDataModelPermissions(entityPermission);
-    } catch (error) {
-      showErrorToast(
-        t('server.fetch-entity-permissions-error', {
-          entity: t('label.asset-lowercase'),
-        })
-      );
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const fetchLineageData = async (dashboardDataModelFQN: string) => {
-    setIsLineageLoading(true);
-    try {
-      const response = await getLineageByFQN(
-        dashboardDataModelFQN,
-        EntityType.DASHBOARD_DATA_MODEL
-      );
-
-      setEntityLineage(response);
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    } finally {
-      setIsLineageLoading(false);
-    }
-  };
+  // get current user details
+  const currentUser = useMemo(
+    () => AppState.getCurrentUserDetails(),
+    [AppState.userDetails, AppState.nonSecureUserDetails]
+  );
 
   const {
     hasViewPermission,
@@ -213,11 +178,56 @@ const DataModelsPage = () => {
     ];
   }, [dataModelData, dashboardDataModelFQN, entityName]);
 
-  // get current user details
-  const currentUser = useMemo(
-    () => AppState.getCurrentUserDetails(),
-    [AppState.userDetails, AppState.nonSecureUserDetails]
-  );
+  const fetchResourcePermission = async (dashboardDataModelFQN: string) => {
+    setIsLoading(true);
+    try {
+      const entityPermission = await getEntityPermissionByFqn(
+        ResourceEntity.CONTAINER,
+        dashboardDataModelFQN
+      );
+      setDataModelPermissions(entityPermission);
+    } catch (error) {
+      showErrorToast(
+        t('server.fetch-entity-permissions-error', {
+          entity: t('label.asset-lowercase'),
+        })
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const fetchDataModelDetails = async (dashboardDataModelFQN: string) => {
+    setIsLoading(true);
+    try {
+      const response = await getDataModelsByName(
+        dashboardDataModelFQN,
+        'owner,tags,followers'
+      );
+      setDataModelData(response);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+      setHasError(true);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const fetchLineageData = async (dashboardDataModelFQN: string) => {
+    setIsLineageLoading(true);
+    try {
+      const response = await getLineageByFQN(
+        dashboardDataModelFQN,
+        EntityType.DASHBOARD_DATA_MODEL
+      );
+
+      setEntityLineage(response);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    } finally {
+      setIsLineageLoading(false);
+    }
+  };
 
   const handleUpdateDataModelData = (updatedData: DashboardDataModel) => {
     const jsonPatch = compare(omitBy(dataModelData, isUndefined), updatedData);
@@ -248,22 +258,6 @@ const DataModelsPage = () => {
       }));
     } catch (error) {
       showErrorToast(error as AxiosError);
-    }
-  };
-
-  const fetchDataModelDetails = async (dashboardDataModelFQN: string) => {
-    setIsLoading(true);
-    try {
-      const response = await getDataModelsByName(
-        dashboardDataModelFQN,
-        'owner,tags,followers'
-      );
-      setDataModelData(response);
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-      setHasError(true);
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -476,7 +470,7 @@ const DataModelsPage = () => {
       getLineageViewPath(EntityType.DASHBOARD_DATA_MODEL, dashboardDataModelFQN)
     );
 
-  const fetchTabSpecificData = () => {
+  useEffect(() => {
     switch (tab) {
       case DATA_MODELS_DETAILS_TABS.LINEAGE: {
         fetchLineageData(dashboardDataModelFQN);
@@ -487,10 +481,6 @@ const DataModelsPage = () => {
       default:
         break;
     }
-  };
-
-  useEffect(() => {
-    fetchTabSpecificData();
   }, [tab, dashboardDataModelFQN]);
 
   useEffect(() => {
