@@ -50,13 +50,6 @@ class MetabaseSource(DashboardServiceSource):
     config: WorkflowSource
     metadata_config: OpenMetadataConnection
 
-    def __init__(
-        self,
-        config: WorkflowSource,
-        metadata_config: OpenMetadataConnection,
-    ):
-        super().__init__(config, metadata_config)
-
     @classmethod
     def create(cls, config_dict, metadata_config: OpenMetadataConnection):
         config = WorkflowSource.parse_obj(config_dict)
