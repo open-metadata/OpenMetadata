@@ -11,11 +11,12 @@
  *  limitations under the License.
  */
 
-package org.openmetadata.service.workflows.interfaces;
+package org.openmetadata.service.exception;
 
-import java.util.Map;
-import org.openmetadata.service.exception.SinkException;
+import java.io.IOException;
 
-public interface Sink<I, O> extends Stats {
-  O write(I data, Map<String, Object> contextData) throws SinkException;
+public class SinkException extends IOException {
+  public SinkException(String msg, Throwable throwable) {
+    super(msg, throwable);
+  }
 }

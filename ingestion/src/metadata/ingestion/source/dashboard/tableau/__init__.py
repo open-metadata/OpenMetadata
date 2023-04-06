@@ -13,6 +13,9 @@
 Module constants
 """
 
+# Available fields information:
+# https://help.tableau.com/current/api/rest_api/en-us/REST/rest_api_concepts_fields.htm#query_workbooks_site
+# We can also get project.description as folder
 TABLEAU_GET_WORKBOOKS_PARAM_DICT = {
     "fields": "fields=_default_,owner.email,description"
 }
