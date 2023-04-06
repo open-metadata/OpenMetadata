@@ -12,6 +12,7 @@
  */
 
 import { Container } from 'generated/entity/data/container';
+import { DashboardDataModel } from 'generated/entity/data/dashboardDataModel';
 import { Query } from 'generated/entity/data/query';
 import { SearchIndex } from '../enums/search.enum';
 import { Tag } from '../generated/entity/classification/tag';
@@ -71,6 +72,10 @@ export interface TeamSearchSource extends SearchSourceBase, Team {} // extends E
 
 export interface ContainerSearchSource extends SearchSourceBase, Container {} // extends EntityInterface
 
+export interface dashboardDataModelSearchSource
+  extends SearchSourceBase,
+    DashboardDataModel {} // extends EntityInterface
+
 export interface TagClassSearchSource extends SearchSourceBase, Tag {
   id: string; // Tag is generated with the `id` field as optional, which is should not
 } // extends EntityInterface
@@ -101,6 +106,7 @@ export type SearchIndexSearchSourceMapping = {
   [SearchIndex.TAG]: TagClassSearchSource;
   [SearchIndex.CONTAINER]: ContainerSearchSource;
   [SearchIndex.QUERY]: QuerySearchSource;
+  [SearchIndex.DASHBOARD_DATA_MODEL]: dashboardDataModelSearchSource;
 };
 
 export type SearchRequest<
