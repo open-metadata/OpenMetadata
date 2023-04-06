@@ -729,6 +729,7 @@
     "source-column": "カラムのソース",
     "source-plural": "ソース",
     "specific-data-asset-plural": "Specific Data Assets",
+    "sql-uppercase": "SQL",
     "sql-uppercase-query": "SQL Query",
     "sso-uppercase": "SSO",
     "stage-file-location": "Stage File Location",
