@@ -21,4 +21,5 @@ export enum FilterPatternEnum {
   FQN = 'fqn',
   PIPELINE = 'pipeline',
   MLMODEL = 'mlModel',
+  CONTAINER = 'container',
 }
