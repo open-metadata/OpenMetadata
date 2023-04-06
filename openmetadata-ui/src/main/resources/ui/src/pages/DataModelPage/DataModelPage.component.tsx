@@ -25,10 +25,12 @@ import {
   OperationPermission,
   ResourceEntity,
 } from 'components/PermissionProvider/PermissionProvider.interface';
+import SchemaEditor from 'components/schema-editor/SchemaEditor';
 import { FQN_SEPARATOR_CHAR } from 'constants/char.constants';
 import { getServiceDetailsPath } from 'constants/constants';
 import { ENTITY_CARD_CLASS } from 'constants/entity.constants';
 import { NO_PERMISSION_TO_VIEW } from 'constants/HelperTextUtil';
+import { CSMode } from 'enums/codemirror.enum';
 import { EntityInfo, EntityType } from 'enums/entity.enum';
 import { ServiceCategory } from 'enums/service.enum';
 import { OwnerType } from 'enums/user.enum';
@@ -455,6 +457,28 @@ const DataModelsPage = () => {
               </Space>
             </Card>
           </Tabs.TabPane>
+
+          {dataModelData?.sql && (
+            <Tabs.TabPane
+              key={DATA_MODELS_DETAILS_TABS.SQL}
+              tab={
+                <span data-testid={DATA_MODELS_DETAILS_TABS.SQL}>
+                  {t('label.sql-uppercase')}
+                </span>
+              }>
+              <Card className={ENTITY_CARD_CLASS}>
+                <SchemaEditor
+                  editorClass="custom-code-mirror-theme full-screen-editor-height"
+                  mode={{ name: CSMode.SQL }}
+                  options={{
+                    styleActiveLine: false,
+                    readOnly: 'nocursor',
+                  }}
+                  value={dataModelData.sql}
+                />
+              </Card>
+            </Tabs.TabPane>
+          )}
         </Tabs>
       </div>
     </PageContainerV1>

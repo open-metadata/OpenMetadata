@@ -727,6 +727,7 @@
     "source-column": "Source Column",
     "source-plural": "Sources",
     "specific-data-asset-plural": "Specific Data Assets",
+    "sql-uppercase": "SQL",
     "sql-uppercase-query": "SQL Query",
     "sso-uppercase": "SSO",
     "stage-file-location": "Stage File Location",
