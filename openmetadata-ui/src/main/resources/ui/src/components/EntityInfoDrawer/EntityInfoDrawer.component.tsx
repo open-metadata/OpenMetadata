@@ -27,6 +27,7 @@ import { EntityDetailUnion } from 'Models';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getDashboardByFqn } from 'rest/dashboardAPI';
+import { getDataModelsByName } from 'rest/dataModelsAPI';
 import { getMlModelByFQN } from 'rest/mlModelAPI';
 import { getContainerByName } from 'rest/objectStoreAPI';
 import { getPipelineByFqn } from 'rest/pipelineAPI';
@@ -114,6 +115,15 @@ const EntityInfoDrawer = ({
           response = await getContainerByName(
             encodedFqn,
             'dataModel,owner,tags'
+          );
+
+          break;
+        }
+
+        case EntityType.DASHBOARD_DATA_MODEL: {
+          response = await getDataModelsByName(
+            encodedFqn,
+            'owner,tags,followers'
           );
 
           break;

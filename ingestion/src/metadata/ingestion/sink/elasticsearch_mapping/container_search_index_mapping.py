@@ -239,7 +239,7 @@ CONTAINER_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
         "type": "integer"
       },
       "size": {
-        "type": "integer"
+        "type": "long"
       },
       "fileFormats": {
         "type": "keyword"
