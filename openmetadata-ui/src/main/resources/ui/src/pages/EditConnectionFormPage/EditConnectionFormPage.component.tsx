@@ -164,7 +164,7 @@ function EditConnectionFormPage() {
   return (
     <PageContainerV1>
       <ResizablePanels
-        firstPanel={{ children: firstPanelChildren, minWidth: 700 }}
+        firstPanel={{ children: firstPanelChildren, minWidth: 700, flex: 0.7 }}
         hideSecondPanel={!serviceDetails?.serviceType ?? ''}
         pageTitle={t('label.edit-entity', { entity: t('label.connection') })}
         secondPanel={{

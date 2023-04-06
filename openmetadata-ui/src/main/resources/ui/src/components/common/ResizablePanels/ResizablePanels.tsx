@@ -36,7 +36,11 @@ const ResizablePanels: React.FC<ResizablePanelsProps> = ({
           className={classNames(firstPanel.className, {
             'full-width': hideSecondPanel,
           })}
-          minSize={firstPanel.minWidth}>
+          flex={firstPanel.flex}
+          minSize={firstPanel.minWidth}
+          onStopResize={(args) => {
+            firstPanel.onStopResize?.(args.component.props.flex);
+          }}>
           <PanelContainer overlay={firstPanel.overlay}>
             {firstPanel.children}
           </PanelContainer>
@@ -63,7 +67,11 @@ const ResizablePanels: React.FC<ResizablePanelsProps> = ({
           className={classNames(secondPanel.className, {
             hidden: hideSecondPanel,
           })}
-          minSize={secondPanel.minWidth}>
+          flex={secondPanel.flex}
+          minSize={secondPanel.minWidth}
+          onStopResize={(args) => {
+            secondPanel.onStopResize?.(args.component.props.flex);
+          }}>
           <PanelContainer overlay={secondPanel.overlay}>
             {secondPanel.children}
           </PanelContainer>

@@ -196,10 +196,13 @@ body.reflex-row-resize {
   align-items: flex-start;
 }
 
-.rotated-header {
-  // this causes header to be rotated clockwise by default
+h2.rotated-header {
   writing-mode: vertical-lr;
   white-space: nowrap;
+  font-weight: 600;
+  font-size: 20px;
+  line-height: 26px;
+  color: #37352f;
 }
 
 .counter-clockwise {
@@ -238,12 +241,10 @@ body.reflex-row-resize {
 }
 
 .full-width {
-  // Overwrite the flex-grow set by the react-reflex to stretch a container to full width
   flex-grow: 1 !important;
 }
 
 .splitter {
-  // !important is necessary to override the default reflex styles
   border: 0 !important;
   background-color: transparent !important;
 }

@@ -319,8 +319,8 @@ const AddService = ({
 
   return (
     <ResizablePanels
-      firstPanel={{ children: firstPanelChildren, minWidth: 700 }}
-      hideSecondPanel={!(selectServiceType && activeServiceStep >= 2)}
+      firstPanel={{ children: firstPanelChildren, minWidth: 700, flex: 0.7 }}
+      hideSecondPanel={!(selectServiceType && activeServiceStep === 3)}
       pageTitle={t('label.add-entity', { entity: t('label.service') })}
       secondPanel={{
         children: (
