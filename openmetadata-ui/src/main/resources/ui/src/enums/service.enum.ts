@@ -19,7 +19,6 @@ export enum ServiceCategory {
   ML_MODEL_SERVICES = 'mlmodelServices',
   METADATA_SERVICES = 'metadataServices',
   OBJECT_STORE_SERVICES = 'objectStoreServices',
-  DASHBOARD_DATA_MODEL = 'dashboardDataModel',
 }
 
 export enum IngestionType {

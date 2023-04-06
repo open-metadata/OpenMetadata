@@ -269,10 +269,6 @@ export const getBreadCrumbList = (
       ];
     }
 
-    case EntityType.DASHBOARD_DATA_MODEL: {
-      return [service(ServiceCategory.DASHBOARD_DATA_MODEL)];
-    }
-
     default:
       return [];
   }

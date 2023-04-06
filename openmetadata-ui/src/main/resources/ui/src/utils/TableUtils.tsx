@@ -261,7 +261,6 @@ export const getEntityLink = (
       return getTagsDetailsPath(fullyQualifiedName);
 
     case EntityType.DASHBOARD_DATA_MODEL:
-    case SearchIndex.DASHBOARD_DATA_MODEL:
       return getDataModelDetailsPath(fullyQualifiedName);
 
     case SearchIndex.TABLE:

@@ -187,40 +187,42 @@ const DataModelsPage = () => {
     ];
   }, [dataModelData, dashboardDataModelFQN, entityName]);
 
-  const getFeedData = (
-    after?: string,
-    feedFilter?: FeedFilter,
-    threadType?: ThreadType
-  ) => {
-    setIsEntityThreadLoading(true);
-    !after && setEntityThread([]);
-    getAllFeeds(
-      getEntityFeedLink(EntityType.DASHBOARD_DATA_MODEL, dashboardDataModelFQN),
-      after,
-      threadType,
-      feedFilter,
-      undefined,
-      currentUser?.id
-    )
-      .then((res) => {
-        const { data, paging: pagingObj } = res;
-        if (data) {
-          setPaging(pagingObj);
-          setEntityThread((prevData) => [...prevData, ...data]);
-        } else {
-          showErrorToast(
-            jsonData['api-error-messages']['fetch-entity-feed-error']
-          );
-        }
-      })
-      .catch((err: AxiosError) => {
-        showErrorToast(
-          err,
-          jsonData['api-error-messages']['fetch-entity-feed-error']
+  const getFeedData = useCallback(
+    async (
+      after?: string,
+      feedFilter?: FeedFilter,
+      threadType?: ThreadType
+    ) => {
+      setIsEntityThreadLoading(true);
+      !after && setEntityThread([]);
+
+      try {
+        const { data, paging: pagingObj } = await getAllFeeds(
+          getEntityFeedLink(
+            EntityType.DASHBOARD_DATA_MODEL,
+            dashboardDataModelFQN
+          ),
+          after,
+          threadType,
+          feedFilter,
+          undefined,
+          currentUser?.id
         );
-      })
-      .finally(() => setIsEntityThreadLoading(false));
-  };
+        setPaging(pagingObj);
+        setEntityThread((prevData) => [...prevData, ...data]);
+      } catch (err) {
+        showErrorToast(
+          err as AxiosError,
+          t('server.entity-fetch-error', {
+            entity: t('label.feed-plural'),
+          })
+        );
+      } finally {
+        setIsEntityThreadLoading(false);
+      }
+    },
+    [dashboardDataModelFQN]
+  );
 
   const getEntityFeedCount = () => {
     getFeedCounts(
@@ -530,15 +532,8 @@ const DataModelsPage = () => {
   };
 
   useEffect(() => {
-    switch (tab) {
-      case DATA_MODELS_DETAILS_TABS.ACTIVITY: {
-        getFeedData();
-
-        break;
-      }
-
-      default:
-        break;
+    if (tab === DATA_MODELS_DETAILS_TABS.ACTIVITY) {
+      getFeedData();
     }
   }, [tab, dashboardDataModelFQN]);
 
