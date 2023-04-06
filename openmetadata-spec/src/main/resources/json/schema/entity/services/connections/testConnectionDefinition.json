@@ -20,10 +20,19 @@
           "description": "What is the goal of the step",
           "type": "string"
         },
+        "errorMessage": {
+          "description": "In case of error this message should be displayed on UI, We define this message manually on test connection definition",
+          "type": "string"
+        },
         "mandatory": {
           "description": "Is this step mandatory to be passed?",
           "type": "boolean",
           "default": true
+        },
+        "shortCircuit": {
+          "description": "This field if set to true, indicates that the step is important enough to break the process in case of failure.",
+          "type": "boolean",
+          "default": false
         }
       },
       "additionalProperties": false,

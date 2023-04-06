@@ -20,6 +20,7 @@ from datetime import datetime, timedelta
 import sqlalchemy as sqa
 from sqlalchemy.orm import Session, declarative_base
 
+from metadata.data_quality.api.workflow import TestSuiteWorkflow
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
 from metadata.generated.schema.api.data.createDatabaseSchema import (
     CreateDatabaseSchemaRequest,
@@ -45,7 +46,6 @@ from metadata.generated.schema.entity.services.databaseService import (
 )
 from metadata.generated.schema.tests.testCase import TestCase
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.test_suite.api.workflow import TestSuiteWorkflow
 
 test_suite_config = {
     "source": {
