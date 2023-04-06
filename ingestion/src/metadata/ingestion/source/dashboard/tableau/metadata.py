@@ -27,9 +27,6 @@ from metadata.generated.schema.api.data.createDashboardDataModel import (
 )
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.chart import Chart
-from metadata.generated.schema.entity.data.dashboard import (
-    Dashboard as LineageDashboard,
-)
 from metadata.generated.schema.entity.data.dashboardDataModel import (
     DashboardDataModel,
     DataModelType,
@@ -90,9 +87,7 @@ class TableauSource(DashboardServiceSource):
         self.workbooks: List[
             TableauDashboard
         ] = []  # We will populate this in `prepare`
-        self.tags: Set[
-            TableauTag
-        ] = set()  # To create the tags before yielding final entities
+        self.tags: Set[TableauTag] = set()
         self.sheets: Set[Sheet] = set()
 
     def prepare(self):
@@ -100,17 +95,19 @@ class TableauSource(DashboardServiceSource):
         Restructure the API response to
         """
         try:
+            # get workbooks which are considered Dashboards in OM
             self.workbooks = self.client.get_workbooks()
 
+            # get views which are considered charts in OM
             charts = self.client.get_charts()
 
-            # Add all the charts (views) from the API to each workbook
+            # add all the charts (views) from the API to each workbook
             for workbook in self.workbooks:
                 workbook.charts = [
                     chart for chart in charts if chart.workbook.id == workbook.id
                 ]
 
-            # Collecting all view & workbook tags
+            # collect all the tags from charts and workbooks before yielding final entities
             if self.source_config.includeTags:
                 for container in [self.workbooks, charts]:
                     for elem in container:
@@ -199,41 +196,6 @@ class TableauSource(DashboardServiceSource):
                     logger.debug(traceback.format_exc())
                     logger.error(f"Error ingesting tag [{tag}]: {err}")
 
-    @staticmethod
-    def get_column_info(sheet: Sheet) -> Optional[List[Column]]:
-        """
-        Args:
-            sheet: Sheet
-        Returns:
-            Columns details for Data Model
-        """
-        datasource_columns = []
-        for column in sheet.datasourceFields:
-            parsed_string = {
-                "dataTypeDisplay": column.remoteField.dataType.value
-                if column.remoteField
-                else DataType.UNKNOWN.value,
-                "dataType": ColumnTypeParser.get_column_type(
-                    column.remoteField.dataType if column.remoteField else None
-                ),
-                "name": column.id,
-                "displayName": column.name,
-            }
-            datasource_columns.append(Column(**parsed_string))
-
-        for column in sheet.worksheetFields:
-            parsed_string = {
-                "dataTypeDisplay": column.dataType.value,
-                "dataType": ColumnTypeParser.get_column_type(
-                    column.dataType if column.dataType else None
-                ),
-                "name": column.id,
-                "displayName": column.name,
-            }
-            datasource_columns.append(Column(**parsed_string))
-
-        return datasource_columns
-
     def yield_datamodel(
         self, dashboard_details: TableauDashboard
     ) -> Iterable[CreateDashboardDataModelRequest]:
@@ -281,6 +243,12 @@ class TableauSource(DashboardServiceSource):
     ) -> Iterable[CreateDashboardRequest]:
         """
         Method to Get Dashboard Entity
+        In OM a Dashboard will be a Workbook.
+        The Charts of the Dashboard will all the Views associated to it.
+        The Data Models of the Dashboard will be all the Sheet associated to its.
+
+        'self.context.dataModels' and 'self.context.charts' are created due to the 'cache_all' option defined in the
+        topology. And they are cleared after processing each Dashboard because of the 'clear_cache' option.
         """
         try:
             workbook_url = urlparse(dashboard_details.webpageUrl).fragment
@@ -448,6 +416,41 @@ class TableauSource(DashboardServiceSource):
             entity=Table,
             fqn=table_fqn,
         )
+
+    @staticmethod
+    def get_column_info(sheet: Sheet) -> Optional[List[Column]]:
+        """
+        Args:
+            sheet: Sheet
+        Returns:
+            Columns details for Data Model
+        """
+        datasource_columns = []
+        for column in sheet.datasourceFields:
+            parsed_string = {
+                "dataTypeDisplay": column.remoteField.dataType.value
+                if column.remoteField
+                else DataType.UNKNOWN.value,
+                "dataType": ColumnTypeParser.get_column_type(
+                    column.remoteField.dataType if column.remoteField else None
+                ),
+                "name": column.id,
+                "displayName": column.name,
+            }
+            datasource_columns.append(Column(**parsed_string))
+
+        for column in sheet.worksheetFields:
+            parsed_string = {
+                "dataTypeDisplay": column.dataType.value,
+                "dataType": ColumnTypeParser.get_column_type(
+                    column.dataType if column.dataType else None
+                ),
+                "name": column.id,
+                "displayName": column.name,
+            }
+            datasource_columns.append(Column(**parsed_string))
+
+        return datasource_columns
 
     @staticmethod
     def get_database_tables(sheet: Sheet) -> Set[DatabaseTable]:

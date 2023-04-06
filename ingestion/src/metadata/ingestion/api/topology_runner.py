@@ -17,9 +17,6 @@ from typing import Any, Generic, Iterable, List, TypeVar
 
 from pydantic import BaseModel
 
-from metadata.generated.schema.api.data.createDashboardDataModel import (
-    CreateDashboardDataModelRequest,
-)
 from metadata.ingestion.api.common import Entity
 from metadata.ingestion.models.topology import (
     NodeStage,
@@ -170,7 +167,6 @@ class TopologyRunnerMixin(Generic[C]):
             self.context.__dict__[dependency].name.__root__
             for dependency in stage.consumer or []  # root nodes do not have consumers
         ]
-
         return fqn._build(  # pylint: disable=protected-access
             *context_names, entity_request.name.__root__
         )

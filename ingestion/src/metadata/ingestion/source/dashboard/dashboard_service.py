@@ -78,7 +78,7 @@ class DashboardUsage(BaseModel):
 class DashboardServiceTopology(ServiceTopology):
     """
     Defines the hierarchy in Dashboard Services.
-    service -> dashboard -> charts.
+    service -> data models -> dashboard -> charts.
 
     We could have a topology validator. We can only consume
     data that has been produced by any parent node.
@@ -158,6 +158,7 @@ class DashboardServiceTopology(ServiceTopology):
     )
 
 
+# pylint: disable=too-many-public-methods
 class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
     """
     Base class for Database Services.
