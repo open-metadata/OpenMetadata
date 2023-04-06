@@ -418,40 +418,34 @@ public class SearchResource {
     return Response.status(OK).entity(response).build();
   }
 
-  @POST
-  @Path("/reindex")
+  @GET
+  @Path("/reindex/latest")
   @Operation(
-      operationId = "reindexEntities",
-      summary = "Reindex entities",
-      description = "Reindex Elastic Search Entities",
+      operationId = "getLatestReindexBatchJob",
+      summary = "Get Latest Reindexing Batch Job",
+      description = "Fetches the Latest Reindexing Job",
       responses = {
         @ApiResponse(responseCode = "200", description = "Success"),
-        @ApiResponse(responseCode = "404", description = "Bot for instance {id} is not found")
+        @ApiResponse(responseCode = "404", description = "No Job Found")
       })
-  public Response reindexEntities(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Valid CreateEventPublisherJob createRequest) {
+  public Response reindexLatestJob(@Context UriInfo uriInfo, @Context SecurityContext securityContext)
+      throws IOException {
+    // Only admins  can issue a reindex request
     authorizer.authorizeAdmin(securityContext);
-    return Response.status(Response.Status.CREATED)
-        .entity(
-            ReIndexingHandler.getInstance()
-                .createReindexingJob(securityContext.getUserPrincipal().getName(), createRequest))
-        .build();
+    return Response.status(Response.Status.OK).entity(ReIndexingHandler.getInstance().getLatestJob()).build();
   }
 
   @GET
   @Path("/reindex/stream/status")
   @Operation(
-      operationId = "getStreamJobCurrentStatus",
-      summary = "Get Stream Job Current Status",
-      description = "Reindex all job last status",
+      operationId = "getStreamJobStatus",
+      summary = "Get Stream Job Latest Status",
+      description = "Stream Job Status",
       responses = {
         @ApiResponse(responseCode = "200", description = "Success"),
-        @ApiResponse(responseCode = "404", description = "Run model {runMode} is not found")
+        @ApiResponse(responseCode = "404", description = "Status not found")
       })
-  public Response reindexAllJobLastStatus(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @PathParam("runMode") String runMode)
+  public Response reindexAllJobLastStatus(@Context UriInfo uriInfo, @Context SecurityContext securityContext)
       throws IOException {
     // Only admins  can issue a reindex request
     authorizer.authorizeAdmin(securityContext);
@@ -467,29 +461,10 @@ public class SearchResource {
   }
 
   @GET
-  @Path("/reindex/latest")
-  @Operation(
-      operationId = "getReindexLatestJob",
-      summary = "Get last reindex job status",
-      tags = "search",
-      description = "Last Reindex job last status",
-      responses = {
-        @ApiResponse(responseCode = "200", description = "Success"),
-        @ApiResponse(responseCode = "404", description = "Run model {runMode} is not found")
-      })
-  public Response reindexLatestJob(@Context UriInfo uriInfo, @Context SecurityContext securityContext)
-      throws IOException {
-    // Only admins  can issue a reindex request
-    authorizer.authorizeAdmin(securityContext);
-    return Response.status(Response.Status.OK).entity(ReIndexingHandler.getInstance().getLatestJob()).build();
-  }
-
-  @GET
   @Path("/reindex/{jobId}")
   @Operation(
-      operationId = "getReindexJobId",
-      summary = "Get reindex job with Id",
-      tags = "search",
+      operationId = "getBatchReindexBatchJobWithId",
+      summary = "Get Batch Reindexing Job with Id",
       description = "Get reindex job with Id",
       responses = {
         @ApiResponse(responseCode = "200", description = "Success"),
@@ -508,10 +483,10 @@ public class SearchResource {
   @GET
   @Path("/reindex")
   @Operation(
-      operationId = "getAllReindexJob",
-      summary = "Get all reindex job",
+      operationId = "getAllReindexBatchJobs",
+      summary = "Get all reindex batch jobs",
       tags = "search",
-      description = "Get all reindex",
+      description = "Get all reindex batch jobs",
       responses = {
         @ApiResponse(responseCode = "200", description = "Success"),
         @ApiResponse(responseCode = "404", description = "Not found")
@@ -521,6 +496,28 @@ public class SearchResource {
     // Only admins  can issue a reindex request
     authorizer.authorizeAdmin(securityContext);
     return Response.status(Response.Status.OK).entity(ReIndexingHandler.getInstance().getAllJobs()).build();
+  }
+
+  @POST
+  @Path("/reindex")
+  @Operation(
+      operationId = "runBatchReindexing",
+      summary = "Run Batch Reindexing",
+      description = "Reindex Elastic Search Reindexing Entities",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "Success"),
+        @ApiResponse(responseCode = "404", description = "Bot for instance {id} is not found")
+      })
+  public Response reindexEntities(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Valid CreateEventPublisherJob createRequest) {
+    authorizer.authorizeAdmin(securityContext);
+    return Response.status(Response.Status.CREATED)
+        .entity(
+            ReIndexingHandler.getInstance()
+                .createReindexingJob(securityContext.getUserPrincipal().getName(), createRequest))
+        .build();
   }
 
   private SearchSourceBuilder buildAggregateSearchBuilder(String query, int from, int size) {
