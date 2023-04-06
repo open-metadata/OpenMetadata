@@ -45,8 +45,8 @@ import org.openmetadata.schema.system.Stats;
 import org.openmetadata.schema.system.StepStats;
 import org.openmetadata.service.elasticsearch.ElasticSearchIndexDefinition;
 import org.openmetadata.service.exception.ProcessorException;
-import org.openmetadata.service.exception.ReaderException;
-import org.openmetadata.service.exception.WriterException;
+import org.openmetadata.service.exception.SinkException;
+import org.openmetadata.service.exception.SourceException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.socket.WebSocketManager;
 import org.openmetadata.service.util.JsonUtils;
@@ -55,11 +55,11 @@ import org.openmetadata.service.util.ResultList;
 
 @Slf4j
 public class SearchIndexWorkflow implements Runnable {
-  private final List<PaginatedEntitiesReader> entitiesReaders = new ArrayList<>();
-  private final List<PaginatedDataInsightReader> dataInsightReaders = new ArrayList<>();
+  private final List<PaginatedEntitiesSource> paginatedEntitiesSources = new ArrayList<>();
+  private final List<PaginatedDataInsightSource> paginatedDataInsightSources = new ArrayList<>();
   private final EsEntitiesProcessor entitiesProcessor;
   private final EsDataInsightProcessor dataInsightProcessor;
-  private final EsSearchIndexWriter writer;
+  private final EsSearchIndexSink searchIndexSink;
   private final ElasticSearchIndexDefinition elasticSearchIndexDefinition;
   @Getter private final EventPublisherJob jobData;
   private final CollectionDAO dao;
@@ -79,14 +79,15 @@ public class SearchIndexWorkflow implements Runnable {
                 List<String> fields =
                     new ArrayList<>(
                         Objects.requireNonNull(getIndexFields(entityType, jobData.getSearchIndexMappingLanguage())));
-                entitiesReaders.add(new PaginatedEntitiesReader(entityType, jobData.getBatchSize(), fields));
+                paginatedEntitiesSources.add(new PaginatedEntitiesSource(entityType, jobData.getBatchSize(), fields));
               } else {
-                dataInsightReaders.add(new PaginatedDataInsightReader(dao, entityType, jobData.getBatchSize()));
+                paginatedDataInsightSources.add(
+                    new PaginatedDataInsightSource(dao, entityType, jobData.getBatchSize()));
               }
             });
     this.entitiesProcessor = new EsEntitiesProcessor();
     this.dataInsightProcessor = new EsDataInsightProcessor();
-    this.writer = new EsSearchIndexWriter(client);
+    this.searchIndexSink = new EsSearchIndexSink(client);
     this.elasticSearchIndexDefinition = elasticSearchIndexDefinition;
   }
 
@@ -97,8 +98,8 @@ public class SearchIndexWorkflow implements Runnable {
       // Update Job Status
       jobData.setStatus(EventPublisherJob.Status.RUNNING);
       // Run ReIndexing
-      entitiesReIndexer();
-      dataInsightReindexer();
+      entitiesReIndex();
+      dataInsightReindex();
       // Mark Job as Completed
       updateJobStatus();
       jobData.setEndTime(System.currentTimeMillis());
@@ -120,25 +121,25 @@ public class SearchIndexWorkflow implements Runnable {
     }
   }
 
-  private void entitiesReIndexer() {
+  private void entitiesReIndex() {
     Map<String, Object> contextData = new HashMap<>();
-    for (PaginatedEntitiesReader reader : entitiesReaders) {
-      reCreateIndexes(reader.getEntityType());
-      contextData.put(ENTITY_TYPE_KEY, reader.getEntityType());
+    for (PaginatedEntitiesSource paginatedEntitiesSource : paginatedEntitiesSources) {
+      reCreateIndexes(paginatedEntitiesSource.getEntityType());
+      contextData.put(ENTITY_TYPE_KEY, paginatedEntitiesSource.getEntityType());
       ResultList<? extends EntityInterface> resultList;
-      while (!reader.isDone()) {
+      while (!paginatedEntitiesSource.isDone()) {
         long currentTime = System.currentTimeMillis();
         int requestToProcess = jobData.getBatchSize();
         int failed = requestToProcess;
         int success = 0;
         try {
-          resultList = reader.readNext(null);
+          resultList = paginatedEntitiesSource.readNext(null);
           requestToProcess = resultList.getData().size() + resultList.getErrors().size();
           if (resultList.getData().size() > 0) {
             // process data to build Reindex Request
             BulkRequest requests = entitiesProcessor.process(resultList, contextData);
             // write the data to ElasticSearch
-            BulkResponse response = writer.write(requests, contextData);
+            BulkResponse response = searchIndexSink.write(requests, contextData);
             // update Status
             handleErrors(resultList, response, currentTime);
             // Update stats
@@ -147,55 +148,60 @@ public class SearchIndexWorkflow implements Runnable {
           } else {
             failed = 0;
           }
-        } catch (ReaderException rx) {
-          handleReaderError(
+        } catch (SourceException rx) {
+          handleSourceError(
               rx.getMessage(),
               String.format(
                   "EntityType: %s \n Cause: %s \n Stack: %s",
-                  reader.getEntityType(), rx.getCause(), ExceptionUtils.getStackTrace(rx)),
+                  paginatedEntitiesSource.getEntityType(), rx.getCause(), ExceptionUtils.getStackTrace(rx)),
               currentTime);
         } catch (ProcessorException px) {
           handleProcessorError(
               px.getMessage(),
               String.format(
                   "EntityType: %s \n Cause: %s \n Stack: %s",
-                  reader.getEntityType(), px.getCause(), ExceptionUtils.getStackTrace(px)),
+                  paginatedEntitiesSource.getEntityType(), px.getCause(), ExceptionUtils.getStackTrace(px)),
               currentTime);
-        } catch (WriterException wx) {
-          handleEsError(
+        } catch (SinkException wx) {
+          handleEsSinkError(
               wx.getMessage(),
               String.format(
                   "EntityType: %s \n Cause: %s \n Stack: %s",
-                  reader.getEntityType(), wx.getCause(), ExceptionUtils.getStackTrace(wx)),
+                  paginatedEntitiesSource.getEntityType(), wx.getCause(), ExceptionUtils.getStackTrace(wx)),
               currentTime);
         } finally {
-          updateStats(success, failed, reader.getStats(), entitiesProcessor.getStats(), writer.getStats());
+          updateStats(
+              success,
+              failed,
+              paginatedEntitiesSource.getStats(),
+              entitiesProcessor.getStats(),
+              searchIndexSink.getStats());
           sendUpdates();
         }
       }
     }
   }
 
-  private void dataInsightReindexer() {
+  private void dataInsightReindex() {
     Map<String, Object> contextData = new HashMap<>();
-    for (PaginatedDataInsightReader dataInsightReader : dataInsightReaders) {
-      reCreateIndexes(dataInsightReader.getEntityType());
-      contextData.put(ENTITY_TYPE_KEY, dataInsightReader.getEntityType());
+    for (PaginatedDataInsightSource paginatedDataInsightSource : paginatedDataInsightSources) {
+      reCreateIndexes(paginatedDataInsightSource.getEntityType());
+      contextData.put(ENTITY_TYPE_KEY, paginatedDataInsightSource.getEntityType());
       ResultList<ReportData> resultList;
-      while (!dataInsightReader.isDone()) {
+      while (!paginatedDataInsightSource.isDone()) {
         long currentTime = System.currentTimeMillis();
         int requestToProcess = jobData.getBatchSize();
         int failed = requestToProcess;
         int success = 0;
         try {
-          resultList = dataInsightReader.readNext(null);
+          resultList = paginatedDataInsightSource.readNext(null);
           requestToProcess = resultList.getData().size() + resultList.getErrors().size();
           if (resultList.getData().size() > 0) {
             // process data to build Reindex Request
             BulkRequest requests = dataInsightProcessor.process(resultList, contextData);
             // write the data to ElasticSearch
             // write the data to ElasticSearch
-            BulkResponse response = writer.write(requests, contextData);
+            BulkResponse response = searchIndexSink.write(requests, contextData);
             // update Status
             handleErrors(resultList, response, currentTime);
             // Update stats
@@ -204,30 +210,34 @@ public class SearchIndexWorkflow implements Runnable {
           } else {
             failed = 0;
           }
-        } catch (ReaderException rx) {
-          handleReaderError(
+        } catch (SourceException rx) {
+          handleSourceError(
               rx.getMessage(),
               String.format(
                   "EntityType: %s \n Cause: %s \n Stack: %s",
-                  dataInsightReader.getEntityType(), rx.getCause(), ExceptionUtils.getStackTrace(rx)),
+                  paginatedDataInsightSource.getEntityType(), rx.getCause(), ExceptionUtils.getStackTrace(rx)),
               currentTime);
         } catch (ProcessorException px) {
           handleProcessorError(
               px.getMessage(),
               String.format(
                   "EntityType: %s \n Cause: %s \n Stack: %s",
-                  dataInsightReader.getEntityType(), px.getCause(), ExceptionUtils.getStackTrace(px)),
+                  paginatedDataInsightSource.getEntityType(), px.getCause(), ExceptionUtils.getStackTrace(px)),
               currentTime);
-        } catch (WriterException wx) {
-          handleEsError(
+        } catch (SinkException wx) {
+          handleEsSinkError(
               wx.getMessage(),
               String.format(
                   "EntityType: %s \n Cause: %s \n Stack: %s",
-                  dataInsightReader.getEntityType(), wx.getCause(), ExceptionUtils.getStackTrace(wx)),
+                  paginatedDataInsightSource.getEntityType(), wx.getCause(), ExceptionUtils.getStackTrace(wx)),
               currentTime);
         } finally {
           updateStats(
-              success, failed, dataInsightReader.getStats(), dataInsightProcessor.getStats(), writer.getStats());
+              success,
+              failed,
+              paginatedDataInsightSource.getStats(),
+              dataInsightProcessor.getStats(),
+              searchIndexSink.getStats());
           sendUpdates();
         }
       }
@@ -292,11 +302,11 @@ public class SearchIndexWorkflow implements Runnable {
   }
 
   private void handleErrors(ResultList<?> data, BulkResponse response, long time) {
-    handleReaderError(data, time);
-    handleEsErrors(response, time);
+    handleSourceError(data, time);
+    handleEsSinkErrors(response, time);
   }
 
-  private void handleReaderError(String context, String reason, long time) {
+  private void handleSourceError(String context, String reason, long time) {
     Failure failures = getFailure();
     FailureDetails readerFailures = getFailureDetails(context, reason, time);
     failures.setSourceError(readerFailures);
@@ -310,7 +320,7 @@ public class SearchIndexWorkflow implements Runnable {
     jobData.setFailure(failures);
   }
 
-  private void handleEsError(String context, String reason, long time) {
+  private void handleEsSinkError(String context, String reason, long time) {
     Failure failures = getFailure();
     FailureDetails writerFailure = getFailureDetails(context, reason, time);
     failures.setSinkError(writerFailure);
@@ -325,10 +335,10 @@ public class SearchIndexWorkflow implements Runnable {
   }
 
   @SneakyThrows
-  private void handleReaderError(ResultList<?> data, long time) {
+  private void handleSourceError(ResultList<?> data, long time) {
     if (data.getErrors().size() > 0) {
-      handleReaderError(
-          "ReaderContext: Encountered Error While Reading Data",
+      handleSourceError(
+          "SourceContext: Encountered Error While Reading Data",
           String.format(
               "Following Entities were not fetched Successfully : %s", JsonUtils.pojoToJson(data.getErrors())),
           time);
@@ -336,7 +346,7 @@ public class SearchIndexWorkflow implements Runnable {
   }
 
   @SneakyThrows
-  private void handleEsErrors(BulkResponse response, long time) {
+  private void handleEsSinkErrors(BulkResponse response, long time) {
     List<FailureDetails> details = new ArrayList<>();
     for (BulkItemResponse bulkItemResponse : response) {
       if (bulkItemResponse.isFailed()) {
@@ -356,7 +366,7 @@ public class SearchIndexWorkflow implements Runnable {
       }
     }
     if (details.size() > 0) {
-      handleEsError(
+      handleEsSinkError(
           "[EsWriter] BulkResponseItems",
           String.format("[BulkItemResponse] Got Following Error Responses: \n %s ", JsonUtils.pojoToJson(details)),
           time);

@@ -22,14 +22,14 @@ import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.analytics.ReportData;
 import org.openmetadata.schema.system.StepStats;
-import org.openmetadata.service.exception.ReaderException;
+import org.openmetadata.service.exception.SourceException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.workflows.interfaces.Source;
 
 @Slf4j
-public class PaginatedDataInsightReader implements Source<ResultList<ReportData>> {
+public class PaginatedDataInsightSource implements Source<ResultList<ReportData>> {
   private final CollectionDAO dao;
   @Getter private final String entityType;
   @Getter private final int batchSize;
@@ -37,7 +37,7 @@ public class PaginatedDataInsightReader implements Source<ResultList<ReportData>
   private String cursor = null;
   @Getter private boolean isDone = false;
 
-  public PaginatedDataInsightReader(CollectionDAO dao, String entityType, int batchSize) {
+  public PaginatedDataInsightSource(CollectionDAO dao, String entityType, int batchSize) {
     this.dao = dao;
     this.entityType = entityType;
     this.batchSize = batchSize;
@@ -45,7 +45,7 @@ public class PaginatedDataInsightReader implements Source<ResultList<ReportData>
   }
 
   @Override
-  public ResultList<ReportData> readNext(Map<String, Object> contextData) throws ReaderException {
+  public ResultList<ReportData> readNext(Map<String, Object> contextData) throws SourceException {
     if (!isDone) {
       ResultList<ReportData> data = read(cursor);
       cursor = data.getPaging().getAfter();
@@ -64,7 +64,7 @@ public class PaginatedDataInsightReader implements Source<ResultList<ReportData>
     isDone = false;
   }
 
-  private ResultList<ReportData> read(String afterCursor) throws ReaderException {
+  private ResultList<ReportData> read(String afterCursor) throws SourceException {
     LOG.debug("[DataInsightReader] Fetching a Batch of Size: {} ", batchSize);
     ResultList<ReportData> result;
     try {
@@ -83,7 +83,7 @@ public class PaginatedDataInsightReader implements Source<ResultList<ReportData>
       } else {
         updateStats(0, batchSize);
       }
-      throw new ReaderException("[EntitiesReader] Batch encountered Exception. Failing Completely.", ex);
+      throw new SourceException("[EntitiesReader] Batch encountered Exception. Failing Completely.", ex);
     }
 
     return result;
