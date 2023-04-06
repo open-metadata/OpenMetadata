@@ -15,6 +15,7 @@ import traceback
 from pathlib import Path
 
 from metadata.readers.base import Reader, ReadException
+from metadata.utils.constants import UTF_8
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -33,7 +34,7 @@ class LocalReader(Reader):
         simple local reader
         """
         try:
-            with open(self.base_path / path) as file:
+            with open(self.base_path / path, encoding=UTF_8) as file:
                 return file.read()
 
         except Exception as err:

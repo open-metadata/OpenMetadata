@@ -61,7 +61,7 @@ class LkmlParser:
 
         self.reader = reader
 
-    def parse_file(self, path: Includes) -> List[Includes]:
+    def parse_file(self, path: Includes) -> Optional[List[Includes]]:
         """
         Internal parser. Parse the file and cache the views
 
@@ -101,6 +101,8 @@ class LkmlParser:
         except Exception as err:
             logger.debug(traceback.format_exc())
             logger.error(f"Unknown error building the .lkml file from [{path}]: {err}")
+
+        return None
 
     def get_view_from_cache(self, view_name: ViewName) -> Optional[LookMlView]:
         """

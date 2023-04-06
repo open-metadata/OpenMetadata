@@ -87,8 +87,9 @@ class GitHubReader(Reader):
                     self.credentials.repositoryOwner,
                     self.credentials.repositoryName,
                     UrlParts.CONTENTS.value,
-                    path,
-                )
+                    path
+                ),
+                timeout=30,
             )
             if res.status_code == 200:
                 return self._decode_content(res.json())
