@@ -14,6 +14,7 @@ import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { DashboardDataModel } from 'generated/entity/data/dashboardDataModel';
 import { EntityReference } from 'generated/type/entityReference';
+import { getURLWithQueryFields } from 'utils/APIUtils';
 import APIClient from './index';
 
 const URL = '/dashboard/datamodels';
@@ -33,6 +34,20 @@ export const getDataModelsByName = async (
   const response = await APIClient.get<DashboardDataModel>(
     `${URL}/name/${name}?fields=${fields}`
   );
+
+  return response.data;
+};
+
+export const getDataModelDetailsByFQN = async (
+  databaseSchemaName: string,
+  arrQueryFields?: string | string[]
+) => {
+  const url = `${getURLWithQueryFields(
+    `/dashboard/datamodels/name/${databaseSchemaName}`,
+    arrQueryFields
+  )}`;
+
+  const response = await APIClient.get<DashboardDataModel>(url);
 
   return response.data;
 };
