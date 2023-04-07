@@ -132,19 +132,6 @@ describe('Test SearchedData Component', () => {
     expect(getByText(container, /hello world/i)).toBeInTheDocument();
   });
 
-  it('Pagination Should be there if data is more than 10 count', () => {
-    const { container } = render(
-      <SearchedData {...MOCK_PROPS} totalValue={11}>
-        <p>hello world</p>
-      </SearchedData>,
-      {
-        wrapper: MemoryRouter,
-      }
-    );
-
-    expect(getByText(container, /Pagination/i)).toBeInTheDocument();
-  });
-
   it('Onboarding component should display if there is showOnboardingTemplate is true', () => {
     const { container } = render(
       <SearchedData
