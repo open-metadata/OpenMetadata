@@ -28,7 +28,6 @@ export interface AddGlossaryProps {
 
 export enum AddGlossaryError {
   NAME_REQUIRED = 'name required',
-  DISPLAY_NAME_REQUIRED = 'display name required',
   NAME_INVALID = 'name invalid',
   DESCRIPTION_REQUIRED = 'description required',
 }

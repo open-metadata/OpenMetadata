@@ -753,21 +753,16 @@ const ServicePage: FunctionComponent = () => {
     if (description !== updatedHTML && !isUndefined(serviceDetails)) {
       const { id } = serviceDetails;
 
-      const updatedServiceDetails = {
-        connection: serviceDetails?.connection,
-        name: serviceDetails.name,
-        serviceType: serviceDetails.serviceType,
+      const updatedData: ServicesType = {
+        ...serviceDetails,
         description: updatedHTML,
-        owner: serviceDetails.owner,
-      } as ServicesUpdateRequest;
+      };
+
+      const jsonPatch = compare(serviceDetails, updatedData);
 
       try {
-        const response = await updateService(
-          serviceName,
-          id,
-          updatedServiceDetails
-        );
-        setDescription(updatedHTML);
+        const response = await updateOwnerService(serviceName, id, jsonPatch);
+        setDescription(response.description ?? '');
         setServiceDetails(response);
       } catch (error) {
         showErrorToast(error as AxiosError);

@@ -281,7 +281,7 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
               tags={getTags()}
               tier={{} as TagLabel}
               titleLinks={slashedPipelineName}
-              version={version}
+              version={Number(version)}
               versionHandler={backHandler}
             />
             <div className="tw-mt-1 tw-flex tw-flex-col tw-flex-grow ">

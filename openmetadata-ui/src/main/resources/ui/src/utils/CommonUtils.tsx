@@ -705,7 +705,7 @@ export const getHostNameFromURL = (url: string) => {
   }
 };
 
-export const getOwnerValue = (owner: EntityReference) => {
+export const getOwnerValue = (owner?: EntityReference) => {
   switch (owner?.type) {
     case 'team':
       return getTeamAndUserDetailsPath(owner?.name || '');
@@ -884,6 +884,8 @@ export const getFilterTypes = (
       return 'schemaFilterPattern' as keyof AddIngestionState;
     case FilterPatternEnum.TABLE:
       return 'tableFilterPattern' as keyof AddIngestionState;
+    case FilterPatternEnum.CONTAINER:
+      return 'containerFilterPattern' as keyof AddIngestionState;
     default:
       return 'topicFilterPattern' as keyof AddIngestionState;
   }

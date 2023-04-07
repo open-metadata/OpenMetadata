@@ -22,11 +22,6 @@ export const ADD_GLOSSARY_ERROR = {
       field: `${t('label.glossary')} ${t('label.name-lowercase')}`,
     }) + '.'
   ),
-  [AddGlossaryError.DISPLAY_NAME_REQUIRED]: errorMsg(
-    t('label.field-required', {
-      field: `${t('label.glossary')} ${t('label.display-name-lowercase')}`,
-    }) + '.'
-  ),
   [AddGlossaryError.NAME_INVALID]: errorMsg(
     t('label.field-invalid', {
       field: `${t('label.glossary')} ${t('label.name-lowercase')}`,
