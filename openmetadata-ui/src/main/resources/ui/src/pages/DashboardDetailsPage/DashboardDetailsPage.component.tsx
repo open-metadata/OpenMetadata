@@ -19,8 +19,7 @@ import Loader from 'components/Loader/Loader';
 import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from 'components/PermissionProvider/PermissionProvider.interface';
 import { compare, Operation } from 'fast-json-patch';
-import { isUndefined, omitBy } from 'lodash';
-import { EntityTags } from 'Models';
+import { isUndefined, omitBy, toString } from 'lodash';
 import React, { useEffect, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
 import { updateChart } from 'rest/chartAPI';
@@ -47,9 +46,7 @@ import { Chart } from '../../generated/entity/data/chart';
 import { Dashboard } from '../../generated/entity/data/dashboard';
 import { Post, Thread, ThreadType } from '../../generated/entity/feed/thread';
 import { Connection } from '../../generated/entity/services/dashboardService';
-import { EntityReference } from '../../generated/type/entityReference';
 import { Paging } from '../../generated/type/paging';
-import { TagLabel } from '../../generated/type/tagLabel';
 import { EntityFieldThreadCount } from '../../interface/feed.interface';
 import jsonData from '../../jsons/en';
 import {
@@ -69,7 +66,6 @@ import { getEntityFeedLink, getEntityName } from '../../utils/EntityUtils';
 import { deletePost, updateThreadData } from '../../utils/FeedUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { serviceTypeLogo } from '../../utils/ServiceUtils';
-import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
 export type ChartType = {
@@ -84,25 +80,17 @@ const DashboardDetailsPage = () => {
   const [dashboardDetails, setDashboardDetails] = useState<Dashboard>(
     {} as Dashboard
   );
-  const [dashboardId, setDashboardId] = useState<string>('');
   const [isLoading, setLoading] = useState<boolean>(false);
-  const [description, setDescription] = useState<string>('');
-  const [followers, setFollowers] = useState<Array<EntityReference>>([]);
-  const [owner, setOwner] = useState<EntityReference>();
-  const [tier, setTier] = useState<TagLabel>();
-  const [tags, setTags] = useState<Array<EntityTags>>([]);
   const [activeTab, setActiveTab] = useState<number>(
     getCurrentDashboardTab(tab)
   );
   const [charts, setCharts] = useState<ChartType[]>([]);
   const [dashboardUrl, setDashboardUrl] = useState<string>('');
-  const [displayName, setDisplayName] = useState<string>('');
-  const [serviceType, setServiceType] = useState<string>('');
+
   const [slashedDashboardName, setSlashedDashboardName] = useState<
     TitleBreadcrumbProps['titleLinks']
   >([]);
-  const [currentVersion, setCurrentVersion] = useState<string>();
-  const [deleted, setDeleted] = useState<boolean>(false);
+
   const [isError, setIsError] = useState(false);
 
   const [entityThread, setEntityThread] = useState<Thread[]>([]);
@@ -120,6 +108,8 @@ const DashboardDetailsPage = () => {
   const [dashboardPermissions, setDashboardPermissions] = useState(
     DEFAULT_ENTITY_PERMISSION
   );
+
+  const { id: dashboardId, version } = dashboardDetails;
 
   const fetchResourcePermission = async (entityFqn: string) => {
     setLoading(true);
@@ -236,31 +226,13 @@ const DashboardDetailsPage = () => {
         if (res) {
           const {
             id,
-            deleted,
-            description,
-            followers,
             fullyQualifiedName,
             service,
-            tags,
-            owner,
-            displayName,
-            name,
             charts: ChartIds,
             dashboardUrl,
             serviceType,
-            version,
           } = res;
-          setDisplayName(displayName || name);
           setDashboardDetails(res);
-          setCurrentVersion(version + '');
-          setDashboardId(id);
-          setDescription(description ?? '');
-          setFollowers(followers ?? []);
-          setOwner(owner);
-          setTier(getTierTags(tags ?? []));
-          setTags(getTagsWithoutTier(tags ?? []));
-          setServiceType(serviceType ?? '');
-          setDeleted(Boolean(deleted));
           setSlashedDashboardName([
             {
               name: service.name ?? '',
@@ -352,10 +324,8 @@ const DashboardDetailsPage = () => {
     try {
       const response = await saveUpdatedDashboardData(updatedDashboard);
       if (response) {
-        const { description, version } = response;
-        setCurrentVersion(version + '');
         setDashboardDetails(response);
-        setDescription(description + '');
+
         getEntityFeedCount();
       } else {
         throw jsonData['api-error-messages']['unexpected-server-response'];
@@ -371,7 +341,10 @@ const DashboardDetailsPage = () => {
         if (res) {
           const { newValue } = res.changeDescription.fieldsAdded[0];
 
-          setFollowers([...followers, ...newValue]);
+          setDashboardDetails((prev) => ({
+            ...prev,
+            followers: [...(prev.followers ?? []), ...newValue],
+          }));
         } else {
           throw jsonData['api-error-messages']['unexpected-server-response'];
         }
@@ -390,9 +363,13 @@ const DashboardDetailsPage = () => {
         if (res) {
           const { oldValue } = res.changeDescription.fieldsDeleted[0];
 
-          setFollowers(
-            followers.filter((follower) => follower.id !== oldValue[0].id)
-          );
+          setDashboardDetails((prev) => ({
+            ...prev,
+            followers:
+              prev.followers?.filter(
+                (follower) => follower.id !== oldValue[0].id
+              ) ?? [],
+          }));
         } else {
           throw jsonData['api-error-messages']['unexpected-server-response'];
         }
@@ -410,9 +387,6 @@ const DashboardDetailsPage = () => {
       .then((res) => {
         if (res) {
           setDashboardDetails(res);
-          setTier(getTierTags(res.tags ?? []));
-          setCurrentVersion(res.version + '');
-          setTags(getTagsWithoutTier(res.tags ?? []));
           getEntityFeedCount();
         } else {
           throw jsonData['api-error-messages']['unexpected-server-response'];
@@ -434,9 +408,6 @@ const DashboardDetailsPage = () => {
         .then((res) => {
           if (res) {
             setDashboardDetails({ ...res, tags: res.tags ?? [] });
-            setCurrentVersion(res.version + '');
-            setOwner(res.owner);
-            setTier(getTierTags(res.tags ?? []));
             getEntityFeedCount();
             resolve();
           } else {
@@ -505,13 +476,10 @@ const DashboardDetailsPage = () => {
   };
 
   const versionHandler = () => {
-    history.push(
-      getVersionPath(
-        EntityType.DASHBOARD,
-        dashboardFQN,
-        currentVersion as string
-      )
-    );
+    version &&
+      history.push(
+        getVersionPath(EntityType.DASHBOARD, dashboardFQN, toString(version))
+      );
   };
 
   const postFeedHandler = (value: string, id: string) => {
@@ -586,11 +554,7 @@ const DashboardDetailsPage = () => {
       const data = await saveUpdatedDashboardData(updatedDashboard);
 
       if (data) {
-        const { version, owner: ownerValue, tags } = data;
-        setCurrentVersion(version + '');
         setDashboardDetails(data);
-        setOwner(ownerValue);
-        setTier(getTierTags(tags ?? []));
       } else {
         throw jsonData['api-error-messages']['update-entity-error'];
       }
@@ -643,33 +607,24 @@ const DashboardDetailsPage = () => {
               createThread={createThread}
               dashboardDetails={dashboardDetails}
               dashboardFQN={dashboardFQN}
-              dashboardTags={tags}
               dashboardUrl={dashboardUrl}
               deletePostHandler={deletePostHandler}
-              deleted={deleted}
-              description={description}
               descriptionUpdateHandler={descriptionUpdateHandler}
               entityFieldTaskCount={entityFieldTaskCount}
               entityFieldThreadCount={entityFieldThreadCount}
-              entityName={displayName}
               entityThread={entityThread}
               feedCount={feedCount}
               fetchFeedHandler={getFeedData}
               followDashboardHandler={followDashboard}
-              followers={followers}
               isentityThreadLoading={isentityThreadLoading}
-              owner={owner as EntityReference}
               paging={paging}
               postFeedHandler={postFeedHandler}
-              serviceType={serviceType}
               setActiveTabHandler={activeTabHandler}
               settingsUpdateHandler={settingsUpdateHandler}
               slashedDashboardName={slashedDashboardName}
               tagUpdateHandler={onTagUpdate}
-              tier={tier as TagLabel}
               unfollowDashboardHandler={unfollowDashboard}
               updateThreadHandler={updateThreadHandler}
-              version={currentVersion as string}
               versionHandler={versionHandler}
               onExtensionUpdate={handleExtentionUpdate}
             />

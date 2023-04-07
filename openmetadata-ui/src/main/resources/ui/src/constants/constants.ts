@@ -236,6 +236,7 @@ export const ROUTES = {
   GLOSSARY_DETAILS: `/glossary/${PLACEHOLDER_GLOSSARY_NAME}`,
   GLOSSARY_DETAILS_WITH_ACTION: `/glossary/${PLACEHOLDER_GLOSSARY_NAME}/action/${PLACEHOLDER_ACTION}`,
   ADD_GLOSSARY_TERMS: `/glossary/${PLACEHOLDER_GLOSSARY_NAME}/add-term`,
+  GLOSSARY_DETAILS_WITH_TAB: `/glossary/${PLACEHOLDER_GLOSSARY_NAME}/${PLACEHOLDER_ROUTE_TAB}`,
   GLOSSARY_TERMS: `/glossary/${PLACEHOLDER_GLOSSARY_NAME}/term/${PLACEHOLDER_GLOSSARY_TERMS_FQN}`,
   ADD_GLOSSARY_TERMS_CHILD: `/glossary/${PLACEHOLDER_GLOSSARY_NAME}/term/${PLACEHOLDER_GLOSSARY_TERMS_FQN}/add-term`,
   BOTS_PROFILE: `/bots/${PLACEHOLDER_BOTS_NAME}`,
@@ -469,6 +470,20 @@ export const getPipelineDetailsPath = (pipelineFQN: string, tab?: string) => {
 export const getMlModelDetailsPath = (mlModelFQN: string, tab?: string) => {
   let path = tab ? ROUTES.MLMODEL_DETAILS_WITH_TAB : ROUTES.MLMODEL_DETAILS;
   path = path.replace(PLACEHOLDER_ROUTE_MLMODEL_FQN, mlModelFQN);
+
+  if (tab) {
+    path = path.replace(PLACEHOLDER_ROUTE_TAB, tab);
+  }
+
+  return path;
+};
+
+export const getGlossaryTermDetailsPath = (
+  glossaryFQN: string,
+  tab?: string
+) => {
+  let path = tab ? ROUTES.GLOSSARY_DETAILS_WITH_TAB : ROUTES.GLOSSARY_DETAILS;
+  path = path.replace(PLACEHOLDER_GLOSSARY_NAME, glossaryFQN);
 
   if (tab) {
     path = path.replace(PLACEHOLDER_ROUTE_TAB, tab);

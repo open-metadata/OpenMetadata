@@ -18,14 +18,14 @@ import { ReactComponent as IconDropdown } from 'assets/svg/menu.svg';
 import { AxiosError } from 'axios';
 import { AssetSelectionModal } from 'components/Assets/AssetsSelectionModal/AssetSelectionModal';
 import EntityDeleteModal from 'components/Modals/EntityDeleteModal/EntityDeleteModal';
+import EntityNameModal from 'components/Modals/EntityNameModal/EntityNameModal.component';
 import { OperationPermission } from 'components/PermissionProvider/PermissionProvider.interface';
 import VersionButton from 'components/VersionButton/VersionButton.component';
 import { FQN_SEPARATOR_CHAR } from 'constants/char.constants';
-import { NO_PERMISSION_FOR_ACTION } from 'constants/HelperTextUtil';
-import { Glossary } from 'generated/entity/data/glossary';
+import { EntityReference, Glossary } from 'generated/entity/data/glossary';
 import { GlossaryTerm } from 'generated/entity/data/glossaryTerm';
 import { EntityHistory } from 'generated/type/entityHistory';
-import { toString } from 'lodash';
+import { cloneDeep, toString } from 'lodash';
 import { LoadingState } from 'Models';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -52,6 +52,7 @@ interface GlossaryHeaderButtonsProps {
   permission: OperationPermission;
   onEntityDelete: (id: string) => void;
   onAssetsUpdate?: () => void;
+  onUpdate: (data: GlossaryTerm | Glossary) => void;
 }
 
 const GlossaryHeaderButtons = ({
@@ -61,6 +62,7 @@ const GlossaryHeaderButtons = ({
   permission,
   onEntityDelete,
   onAssetsUpdate,
+  onUpdate,
 }: GlossaryHeaderButtonsProps) => {
   const { t } = useTranslation();
   const { action, glossaryName: glossaryFqn } =
@@ -70,6 +72,11 @@ const GlossaryHeaderButtons = ({
   const [isDelete, setIsDelete] = useState<boolean>(false);
   const [, setVersionList] = useState<EntityHistory>({} as EntityHistory);
   const [showAddAssets, setShowAddAssets] = useState(false);
+  const [isNameEditing, setIsNameEditing] = useState<boolean>(false);
+
+  const editDisplayNamePermission = useMemo(() => {
+    return permission.EditAll || permission.EditDisplayName;
+  }, [permission]);
 
   const isExportAction = useMemo(
     () => action === GlossaryAction.EXPORT,
@@ -127,6 +134,21 @@ const GlossaryHeaderButtons = ({
     setShowAddAssets(true);
   };
 
+  const onNameSave = (obj: { name: string; displayName: string }) => {
+    const { name, displayName } = obj;
+    let updatedDetails = cloneDeep(selectedData);
+
+    updatedDetails = {
+      ...selectedData,
+      name: name?.trim() || selectedData.name,
+      displayName: displayName?.trim(),
+    };
+
+    onUpdate(updatedDetails);
+
+    setIsNameEditing(false);
+  };
+
   const addButtonContent = [
     {
       label: t('label.glossary-term'),
@@ -167,7 +189,7 @@ const GlossaryHeaderButtons = ({
                     </Col>
                     <Col className="p-t-xss">
                       <Typography.Paragraph className="text-grey-muted text-xs m-b-0 line-height-16">
-                        {t('label.export-glossary-terms')}
+                        {t('message.export-glossary-help')}
                       </Typography.Paragraph>
                     </Col>
                   </Row>
@@ -200,7 +222,7 @@ const GlossaryHeaderButtons = ({
                     </Col>
                     <Col className="p-t-xss">
                       <Typography.Paragraph className="text-grey-muted text-xs m-b-0 line-height-16">
-                        {t('label.import-glossary-term-plural')}
+                        {t('message.import-glossary-help')}
                       </Typography.Paragraph>
                     </Col>
                   </Row>
@@ -208,6 +230,41 @@ const GlossaryHeaderButtons = ({
               </Row>
             ),
             key: 'import-button',
+          },
+        ]
+      : []),
+    ...(editDisplayNamePermission
+      ? [
+          {
+            label: (
+              <Row
+                className="tw-cursor-pointer"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsNameEditing(true);
+                  setShowActions(false);
+                }}>
+                <Col span={3}>
+                  <SVGIcons alt="Edit" icon={Icons.EDIT} />
+                </Col>
+                <Col
+                  className="tw-text-left"
+                  data-testid="edit-button"
+                  span={21}>
+                  <p className="tw-font-medium" data-testid="edit-button-title">
+                    {t('label.rename')}
+                  </p>
+                  <p className="tw-text-grey-muted tw-text-xs">
+                    {t('message.rename-glossary-entity', {
+                      entity: isGlossary
+                        ? t('label.glossary')
+                        : t('label.glossary-term'),
+                    })}
+                  </p>
+                </Col>
+              </Row>
+            ),
+            key: 'rename-button',
           },
         ]
       : []),
@@ -241,35 +298,42 @@ const GlossaryHeaderButtons = ({
     },
   ];
 
+  const createButtons = useMemo(() => {
+    if (permission.Create) {
+      return isGlossary ? (
+        <Button
+          className="m-r-xs"
+          data-testid="add-new-tag-button-header"
+          size="middle"
+          type="primary"
+          onClick={handleAddGlossaryTermClick}>
+          {t('label.add-entity', { entity: t('label.term-lowercase') })}
+        </Button>
+      ) : (
+        <Dropdown
+          className="m-r-xs"
+          menu={{
+            items: addButtonContent,
+          }}
+          placement="bottomRight"
+          trigger={['click']}>
+          <Button type="primary">
+            <Space>
+              {t('label.add')}
+              <DownOutlined />
+            </Space>
+          </Button>
+        </Dropdown>
+      );
+    }
+
+    return null;
+  }, [isGlossary, permission, addButtonContent]);
+
   return (
     <>
       <div>
-        {isGlossary ? (
-          <Button
-            className="m-r-xs"
-            data-testid="add-new-tag-button-header"
-            size="middle"
-            type="primary"
-            onClick={handleAddGlossaryTermClick}>
-            {t('label.add-entity', { entity: t('label.term-lowercase') })}
-          </Button>
-        ) : (
-          <Dropdown
-            className="m-r-xs"
-            menu={{
-              items: addButtonContent,
-            }}
-            placement="bottomRight"
-            trigger={['click']}>
-            <Button type="primary">
-              <Space>
-                {t('label.add')}
-                <DownOutlined />
-              </Space>
-            </Button>
-          </Dropdown>
-        )}
-
+        {createButtons}
         {selectedData && selectedData.version && (
           <VersionButton
             className="m-r-xs tw-px-1.5"
@@ -279,37 +343,27 @@ const GlossaryHeaderButtons = ({
           />
         )}
 
-        <Dropdown
-          align={{ targetOffset: [-12, 0] }}
-          disabled={!permission.Delete}
-          menu={{
-            items: manageButtonContent,
-          }}
-          open={showActions}
-          overlayStyle={{ width: '350px' }}
-          placement="bottomRight"
-          trigger={['click']}
-          onOpenChange={setShowActions}>
-          <Tooltip
-            placement="right"
-            title={
-              permission.Delete
-                ? isGlossary
-                  ? t('label.manage-entity', { entity: t('label.glossary') })
-                  : t('label.manage-entity', {
-                      entity: t('label.glossary-term'),
-                    })
-                : NO_PERMISSION_FOR_ACTION
-            }>
-            <Button
-              className="glossary-manage-dropdown-button tw-px-1.5"
-              data-testid="manage-button"
-              disabled={!permission.Delete}
-              onClick={() => setShowActions(true)}>
-              <IconDropdown className="anticon self-center manage-dropdown-icon" />
-            </Button>
-          </Tooltip>
-        </Dropdown>
+        {permission.Delete && (
+          <Dropdown
+            align={{ targetOffset: [-12, 0] }}
+            menu={{
+              items: manageButtonContent,
+            }}
+            open={showActions}
+            overlayStyle={{ width: '350px' }}
+            placement="bottomRight"
+            trigger={['click']}
+            onOpenChange={setShowActions}>
+            <Tooltip placement="right">
+              <Button
+                className="glossary-manage-dropdown-button tw-px-1.5"
+                data-testid="manage-button"
+                onClick={() => setShowActions(true)}>
+                <IconDropdown className="anticon self-center manage-dropdown-icon" />
+              </Button>
+            </Tooltip>
+          </Dropdown>
+        )}
       </div>
       {selectedData && (
         <EntityDeleteModal
@@ -338,6 +392,12 @@ const GlossaryHeaderButtons = ({
           onSave={onAssetsUpdate}
         />
       )}
+      <EntityNameModal
+        entity={selectedData as EntityReference}
+        visible={isNameEditing}
+        onCancel={() => setIsNameEditing(false)}
+        onSave={onNameSave}
+      />
     </>
   );
 };

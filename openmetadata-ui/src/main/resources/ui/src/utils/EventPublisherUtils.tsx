@@ -11,26 +11,30 @@
  *  limitations under the License.
  */
 
+import Loader from 'components/Loader/Loader';
 import { Status } from 'generated/system/eventPublisherJob';
 import { t } from 'i18next';
-import { Icons } from './SvgUtils';
+import React from 'react';
+import { ReactComponent as IconFailBadge } from '../assets/svg/fail-badge.svg';
+import { ReactComponent as IconTaskOpen } from '../assets/svg/in-progress.svg';
+import { ReactComponent as IconSuccessBadge } from '../assets/svg/success-badge.svg';
 
-export const getStatusResultBadgeIcon = (status: string) => {
+export const getStatusResultBadgeIcon = (status?: string) => {
   switch (status) {
-    case Status.Running:
-    case Status.Started:
-    case Status.Active:
-      return Icons.TASK_OPEN;
-
     case Status.Completed:
-      return Icons.SUCCESS_BADGE;
+      return <IconSuccessBadge height={14} width={14} />;
 
     case Status.Failed:
     case Status.ActiveWithError:
-      return Icons.FAIL_BADGE;
+      return <IconFailBadge height={14} width={14} />;
 
+    case Status.Running:
+    case Status.Started:
+      return <Loader size="x-small" />;
+
+    case Status.Active:
     default:
-      return '';
+      return <IconTaskOpen height={14} width={14} />;
   }
 };
 

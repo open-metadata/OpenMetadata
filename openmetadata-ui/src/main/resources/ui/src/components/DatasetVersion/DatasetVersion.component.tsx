@@ -13,8 +13,7 @@
 
 import classNames from 'classnames';
 import PageContainer from 'components/containers/PageContainer';
-
-import { cloneDeep, isEqual, isUndefined } from 'lodash';
+import { cloneDeep, isEqual, isUndefined, toString } from 'lodash';
 import { ExtraInfo } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -429,7 +428,7 @@ const DatasetVersion: React.FC<DatasetVersionProp> = ({
 
         <EntityVersionTimeLine
           show
-          currentVersion={version}
+          currentVersion={toString(version)}
           versionHandler={versionHandler}
           versionList={versionList}
           onBack={backHandler}

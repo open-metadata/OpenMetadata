@@ -14,10 +14,9 @@
 import { GlossaryTerm } from 'generated/entity/data/glossaryTerm';
 
 export interface GlossaryTermTabProps {
-  glossaryId?: string;
-  glossaryTermId?: string;
   selectedGlossaryFqn?: string;
   childGlossaryTerms: GlossaryTerm[];
+  refreshGlossaryTerms: () => void;
 }
 
 export type ModifiedGlossaryTerm = Omit<GlossaryTerm, 'children'> & {
