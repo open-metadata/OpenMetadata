@@ -216,10 +216,13 @@ export const NEW_ADMIN = {
 
 export const NEW_TAG_CATEGORY = {
   name: 'CypressClassification',
+  displayName: 'CypressClassification',
   description: 'This is the CypressClassification',
 };
 export const NEW_TAG = {
   name: 'CypressTag',
+  displayName: 'CypressTag',
+  renamedName: 'CypressTag-1',
   description: 'This is the CypressTag',
 };
 
