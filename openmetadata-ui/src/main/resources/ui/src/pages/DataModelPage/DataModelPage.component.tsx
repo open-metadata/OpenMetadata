@@ -46,7 +46,7 @@ import { Paging } from 'generated/type/paging';
 import { LabelType, State, TagSource } from 'generated/type/tagLabel';
 import { EntityFieldThreadCount } from 'interface/feed.interface';
 import jsonData from 'jsons/en';
-import { isUndefined, omitBy, toString } from 'lodash';
+import { isUndefined, omitBy } from 'lodash';
 import { EntityTags, ExtraInfo } from 'Models';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -599,7 +599,7 @@ const DataModelsPage = () => {
           titleLinks={breadcrumbTitles}
           updateOwner={hasEditOwnerPermission ? handleUpdateOwner : undefined}
           updateTier={hasEditTierPermission ? handleUpdateTier : undefined}
-          version={toString(version)}
+          version={version}
           onThreadLinkSelect={onThreadLinkSelect}
         />
         <Tabs activeKey={tab} className="h-full" onChange={handleTabChange}>

@@ -18,7 +18,7 @@ import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import Tags from 'components/Tag/Tags/tags';
 import { t } from 'i18next';
-import { cloneDeep, isEmpty, isUndefined } from 'lodash';
+import { cloneDeep, isEmpty, isUndefined, toString } from 'lodash';
 import { EntityTags, ExtraInfo, TagOption } from 'Models';
 import React, { Fragment, useCallback, useEffect, useState } from 'react';
 import { useHistory } from 'react-router-dom';
@@ -74,7 +74,7 @@ interface Props {
   entityId?: string;
   entityType?: string;
   entityFqn?: string;
-  version?: string;
+  version?: number;
   canDelete?: boolean;
   isVersionSelected?: boolean;
   entityFieldThreads?: EntityFieldThreads[];
@@ -418,10 +418,10 @@ const EntityPageInfo = ({
                     </p>
                   }
                   trigger="hover">
-                  {getVersionButton(version)}
+                  {getVersionButton(toString(version))}
                 </Tooltip>
               ) : (
-                <>{getVersionButton(version)}</>
+                <>{getVersionButton(toString(version))}</>
               )}
             </>
           ) : null}

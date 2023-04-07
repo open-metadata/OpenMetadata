@@ -183,6 +183,14 @@ export const UserTeamSelectableList = ({
     }
   }, [popupVisible]);
 
+  useEffect(() => {
+    if (owner?.type === EntityType.USER) {
+      setActiveTab('users');
+    } else {
+      setActiveTab('teams');
+    }
+  }, [owner]);
+
   return (
     <Popover
       destroyTooltipOnHide
