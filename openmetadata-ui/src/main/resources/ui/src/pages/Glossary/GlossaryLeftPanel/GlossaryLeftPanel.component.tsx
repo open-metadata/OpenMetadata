@@ -84,9 +84,11 @@ const GlossaryLeftPanel = ({ glossaries }: GlossaryLeftPanelProps) => {
                 block
                 className="text-primary"
                 data-testid="add-glossary"
-                icon={<PlusIcon className="anticon" />}
                 onClick={handleAddGlossaryClick}>
-                {t('label.add-entity', { entity: t('label.glossary') })}
+                <div className="flex-center">
+                  <PlusIcon className="anticon m-r-xss" />
+                  {t('label.add-entity', { entity: t('label.glossary') })}
+                </div>
               </Button>
             </Col>
           )}
