@@ -51,6 +51,7 @@ export enum AssetsType {
   DASHBOARD = 'dashboard',
   PIPELINE = 'pipeline',
   MLMODEL = 'mlmodel',
+  DASHBOARD_DATA_MODEL = 'dashboardDataModel',
 }
 
 export enum ChangeType {

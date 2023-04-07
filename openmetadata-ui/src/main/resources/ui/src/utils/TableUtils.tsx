@@ -43,6 +43,7 @@ import {
   getDashboardDetailsPath,
   getDatabaseDetailsPath,
   getDatabaseSchemaDetailsPath,
+  getDataModelDetailsPath,
   getEditWebhookPath,
   getMlModelPath,
   getPipelineDetailsPath,
@@ -259,6 +260,9 @@ export const getEntityLink = (
       return getContainerDetailPath(fullyQualifiedName);
     case SearchIndex.TAG:
       return getTagsDetailsPath(fullyQualifiedName);
+
+    case EntityType.DASHBOARD_DATA_MODEL:
+      return getDataModelDetailsPath(fullyQualifiedName);
 
     case SearchIndex.TABLE:
     case EntityType.TABLE:

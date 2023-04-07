@@ -25,7 +25,8 @@ import { isEmpty, isEqual, startCase } from 'lodash';
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-  getAllReIndexStatus,
+  getBatchJobReIndexStatus,
+  getStreamJobReIndexStatus,
   reIndexByPublisher,
 } from 'rest/elasticSearchReIndexAPI';
 import { SOCKET_EVENTS } from '../../constants/constants';
@@ -40,7 +41,6 @@ import {
   getEventPublisherStatusText,
   getStatusResultBadgeIcon,
 } from '../../utils/EventPublisherUtils';
-import SVGIcons from '../../utils/SvgUtils';
 import { getDateTimeByTimeStampWithZone } from '../../utils/TimeUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import './ElasticSearchReIndex.style.less';
@@ -63,7 +63,7 @@ const ElasticSearchIndexPage = () => {
   const fetchBatchReIndexedData = async () => {
     try {
       setBatchLoading(true);
-      const response = await getAllReIndexStatus(RunMode.Batch);
+      const response = await getBatchJobReIndexStatus();
 
       setBatchJobData(response);
     } catch {
@@ -76,7 +76,7 @@ const ElasticSearchIndexPage = () => {
   const fetchStreamReIndexedData = async () => {
     try {
       setStreamLoading(true);
-      const response = await getAllReIndexStatus(RunMode.Stream);
+      const response = await getStreamJobReIndexStatus();
 
       setStreamJobData(response);
     } catch {
@@ -191,24 +191,15 @@ const ElasticSearchIndexPage = () => {
                         <span className="text-grey-muted">{`${t(
                           'label.status'
                         )}:`}</span>
-                        <span className="m-l-xs">
-                          <Space size={8}>
-                            {batchJobData?.status && (
-                              <SVGIcons
-                                alt="result"
-                                className="w-4"
-                                icon={getStatusResultBadgeIcon(
-                                  batchJobData?.status
-                                )}
-                              />
-                            )}
-                            <span>
-                              {getEventPublisherStatusText(
-                                batchJobData?.status
-                              ) || '--'}
-                            </span>
-                          </Space>
-                        </span>
+
+                        <Space align="center" className="m-l-xs" size={8}>
+                          {getStatusResultBadgeIcon(batchJobData?.status)}
+                          <span>
+                            {getEventPublisherStatusText(
+                              batchJobData?.status
+                            ) || '--'}
+                          </span>
+                        </Space>
                       </div>
                       <Divider type="vertical" />
                       <div className="flex">
@@ -232,15 +223,13 @@ const ElasticSearchIndexPage = () => {
                               <Badge
                                 className="request-badge success"
                                 count={
-                                  batchJobData?.stats?.jobStats
-                                    ?.totalSuccessRecords
+                                  batchJobData?.stats?.jobStats?.successRecords
                                 }
                                 overflowCount={99999999}
                                 title={`${t('label.entity-index', {
                                   entity: t('label.success'),
                                 })}: ${
-                                  batchJobData?.stats?.jobStats
-                                    ?.totalSuccessRecords
+                                  batchJobData?.stats?.jobStats?.successRecords
                                 }`}
                               />
 
@@ -248,15 +237,13 @@ const ElasticSearchIndexPage = () => {
                                 showZero
                                 className="request-badge failed"
                                 count={
-                                  batchJobData?.stats?.jobStats
-                                    ?.totalFailedRecords
+                                  batchJobData?.stats?.jobStats?.failedRecords
                                 }
                                 overflowCount={99999999}
                                 title={`${t('label.entity-index', {
                                   entity: t('label.failed'),
                                 })}: ${
-                                  batchJobData?.stats?.jobStats
-                                    ?.totalFailedRecords
+                                  batchJobData?.stats?.jobStats?.failedRecords
                                 }`}
                               />
                             </Space>
@@ -346,7 +333,7 @@ const ElasticSearchIndexPage = () => {
                 title={t('label.elasticsearch')}>
                 <Row gutter={[16, 8]}>
                   <Col span={24}>
-                    <Space direction="horizontal" size={16}>
+                    <Space direction="horizontal" size={0}>
                       <div className="flex">
                         <span className="text-grey-muted">{`${t(
                           'label.mode'
@@ -355,30 +342,21 @@ const ElasticSearchIndexPage = () => {
                           {startCase(streamJobData?.runMode) || '--'}
                         </span>
                       </div>
+                      <Divider type="vertical" />
                       <div className="flex">
                         <span className="text-grey-muted">{`${t(
                           'label.status'
                         )}:`}</span>
-                        <span className="m-l-xs">
-                          <Space size={8}>
-                            {streamJobData?.status && (
-                              <SVGIcons
-                                alt="result"
-                                className="w-4"
-                                icon={getStatusResultBadgeIcon(
-                                  streamJobData?.status
-                                )}
-                              />
-                            )}
-                            <span>
-                              {getEventPublisherStatusText(
-                                streamJobData?.status
-                              ) || '--'}
-                            </span>
-                          </Space>
-                        </span>
+                        <Space align="center" className="m-l-xs" size={8}>
+                          {getStatusResultBadgeIcon(streamJobData?.status)}
+                          <span>
+                            {getEventPublisherStatusText(
+                              streamJobData?.status
+                            ) || '--'}
+                          </span>
+                        </Space>
                       </div>
-
+                      <Divider type="vertical" />
                       <div className="flex">
                         <span className="text-grey-muted">{`${t(
                           'label.last-updated'
@@ -391,6 +369,7 @@ const ElasticSearchIndexPage = () => {
                             : '--'}
                         </span>
                       </div>
+                      <Divider type="vertical" />
                       <div className="flex">
                         <span className="text-grey-muted">{`${t(
                           'label.last-failed-at'
