@@ -29,6 +29,13 @@
   margin: auto;
 }
 
+.loader.loader-x-sm {
+  width: 14px;
+  height: 14px;
+  border-width: 1.5px;
+  margin: auto;
+}
+
 .loader.loader-success {
   border-left-color: #51c41a;
 }
