@@ -413,7 +413,7 @@ export const editOwnerforCreatedService = (
   verifyResponseStatusCode('@getSelectedService', 200);
   verifyResponseStatusCode('@waitForIngestion', 200);
   verifyResponseStatusCode('@airflow', 200);
-  interceptURL('GET', '/api/v1/users?limit=15', 'waitForUsers');
+  interceptURL('GET', '/api/v1/users?&isBot=false&limit=15', 'waitForUsers');
 
   // Click on edit owner button
   cy.get('[data-testid="edit-owner"]')
@@ -1059,7 +1059,9 @@ export const updateDescriptionForIngestedTables = (
   verifyResponseStatusCode('@getSelectedService', 200);
   verifyResponseStatusCode('@pipelineStatuses', 200);
   verifyResponseStatusCode('@airflow', 200);
+
   cy.get('[data-testid="Ingestions"]').should('be.visible').click();
+
   interceptURL(
     'POST',
     '/api/v1/services/ingestionPipelines/trigger/*',
