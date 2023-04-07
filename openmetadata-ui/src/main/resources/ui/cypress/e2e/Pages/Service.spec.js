@@ -108,7 +108,7 @@ describe('Services page should work properly', () => {
       'getService'
     );
 
-    interceptURL('GET', '/api/v1/users?limit=15', 'waitForUsers');
+    interceptURL('GET', '/api/v1/users?&isBot=false&limit=15', 'waitForUsers');
 
     cy.get(`[data-testid="service-name-${service.name}"]`)
       .should('be.visible')

@@ -221,7 +221,7 @@ describe('Entity Details Page', () => {
   const removeOwnerAndTier = (value) => {
     visitEntityDetailsPage(value.term, value.serviceName, value.entity);
 
-    interceptURL('GET', '/api/v1/users?limit=15', 'waitForUsers');
+    interceptURL('GET', '/api/v1/users?&isBot=false&limit=15', 'waitForUsers');
 
     cy.get('[data-testid="edit-owner"]').should('be.visible').click();
 
