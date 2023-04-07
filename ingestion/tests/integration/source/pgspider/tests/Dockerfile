@@ -1,18 +1,4 @@
 FROM centos:centos7
-### This is temporary proxy, you may need to update it
-ARG proxy="proxy=http://username:password@ip_address:port_number"
-
-RUN echo $proxy >> /etc/yum.conf
-
-### This is temporary proxy, you may need to update it
-ENV http_proxy http://username:password@ip_address:port_number
-ENV https_proxy http://username:password@ip_address:port_number
-ENV ftp_proxy http://username:password@ip_address:port_number
-
-### This is temporary proxy, you may need to update it
-RUN export ftp_proxy=http://username:password@ip_address:port_number
-RUN export http_proxy=http://username:password@ip_address:port_number
-RUN export https_proxy=http://username:password@ip_address:port_number
 
 RUN (cd /lib/systemd/system/sysinit.target.wants/; for i in *; do [ $i == \
 systemd-tmpfiles-setup.service ] || rm -f $i; done); \
@@ -75,7 +61,7 @@ RUN chown pgspider /home/pgspider/postgresql-15.0
 RUN git config --global http.sslVerify false
 WORKDIR /home/pgspider
 ### this is temporary link, need to update it to clone PGSpider
-RUN export no_proxy=github.com && git clone -b master https://github.com/pgspider
+RUN git clone -b master https://github.com/pgspider/pgspider
 
 WORKDIR /home/pgspider/PGSpider
 RUN ./configure --prefix=$(pwd)/install

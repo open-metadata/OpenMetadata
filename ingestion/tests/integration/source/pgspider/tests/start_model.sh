@@ -6,7 +6,7 @@ export LC_ALL="en_US.UTF-8"
 
 ###build fdws
 
-CONTRIB_DIR=/home/pgspider/PGSpider/contrib
+CONTRIB_DIR=/home/pgspider/pgspider/contrib
 
 cd $CONTRIB_DIR/file_fdw
 make clean && make && make install
