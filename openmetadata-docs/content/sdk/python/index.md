@@ -165,9 +165,14 @@ OpenMetadata is the class holding the connection to the API and handling the req
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
+    AuthProvider
+)
+from metadata.generated.schema.security.client.openMetadataJWTClientConfig import (
+    OpenMetadataJWTClientConfig
 )
 
-server_config = OpenMetadataConnection(hostPort="http://localhost:8585/api")
+security_config = OpenMetadataJWTClientConfig(jwtToken="eyJraWQiOiJHYjM4OWEtOWY3Ni1nZGpzLWE5MmotMDI0MmJrOTQzNTYiLCJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJpbmdlc3Rpb24tYm90IiwiaXNCb3QiOnRydWUsImlzcyI6Im9wZW4tbWV0YWRhdGEub3JnIiwiaWF0IjoxNjcxNzMwMTEzLCJlbWFpbCI6ImluZ2VzdGlvbi1ib3RAb3Blbm1ldGFkYXRhLm9yZyJ9.KmoEq1WJHz5LDdmUZ_nmNT0X7lpuBmc4OUL4wnMcNfJOERiIzeSJQQ8AnM5p-ctw5byVHV3KnoTfZfU2DGcWYNsVrpTXuxqnDYM6CkC8fXxoTmk9U9AyAy_0N8zEuDVsUF2Vviw4fcnx_AXl0wYDJknDTv3FeJWxjuJjEBmQmonhvIJ9wm1e2QNx5xDfOPtnmitj7y__b3DPdxuTSdQcrMOciwKnd8kmgEscbsKfaG30iNgCUGWDmRaHuRX4QOhcvQ45WIFpkUFggsKLPCLGWZ_Vb0khv3R8mV0RMZAaIZ6a8fZVpi6Juad_nyhiUlkS4pwXywuFJeUJI4sm70KAew")
+server_config = OpenMetadataConnection(hostPort="http://localhost:8585/api", securityConfig=security_config, authProvider=AuthProvider.openmetadata)
 metadata = OpenMetadata(server_config)
 ```
 
