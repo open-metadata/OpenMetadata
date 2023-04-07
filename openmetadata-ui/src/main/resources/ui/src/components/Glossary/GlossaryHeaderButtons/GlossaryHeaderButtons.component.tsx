@@ -60,8 +60,16 @@ const GlossaryHeaderButtons = ({
   onUpdate,
 }: GlossaryHeaderButtonsProps) => {
   const { t } = useTranslation();
-  const { action, glossaryName: glossaryFqn } =
-    useParams<{ action: GlossaryAction; glossaryName: string }>();
+  const {
+    action,
+    glossaryName: glossaryFqn,
+    version,
+  } = useParams<{
+    action: GlossaryAction;
+    glossaryName: string;
+    version: string;
+  }>();
+
   const history = useHistory();
   const [showActions, setShowActions] = useState(false);
   const [isDelete, setIsDelete] = useState<boolean>(false);
@@ -330,7 +338,7 @@ const GlossaryHeaderButtons = ({
         {selectedData && selectedData.version && (
           <VersionButton
             className="m-r-xs tw-px-1.5"
-            selected={false}
+            selected={Boolean(version)}
             version={toString(selectedData.version)}
             onClick={handleVersionClick}
           />

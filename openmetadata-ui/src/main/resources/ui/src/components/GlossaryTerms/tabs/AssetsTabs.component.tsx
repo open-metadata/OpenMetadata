@@ -84,23 +84,25 @@ const AssetsTabs = ({
           <ErrorPlaceHolder
             buttons={
               <div className="tw-text-lg tw-text-center">
-                <Tooltip
-                  title={
-                    permissions.Create
-                      ? t('label.add-entity', {
-                          entity: t('label.asset-lowercase'),
-                        })
-                      : NO_PERMISSION_FOR_ACTION
-                  }>
-                  <Button
-                    ghost
-                    data-testid="add-new-asset-button"
-                    type="primary">
-                    {t('label.add-entity', {
-                      entity: t('label.asset'),
-                    })}
-                  </Button>
-                </Tooltip>
+                {permissions.Create && (
+                  <Tooltip
+                    title={
+                      permissions.Create
+                        ? t('label.add-entity', {
+                            entity: t('label.asset-lowercase'),
+                          })
+                        : NO_PERMISSION_FOR_ACTION
+                    }>
+                    <Button
+                      ghost
+                      data-testid="add-new-asset-button"
+                      type="primary">
+                      {t('label.add-entity', {
+                        entity: t('label.asset'),
+                      })}
+                    </Button>
+                  </Tooltip>
+                )}
               </div>
             }
             doc={GLOSSARIES_DOCS}
