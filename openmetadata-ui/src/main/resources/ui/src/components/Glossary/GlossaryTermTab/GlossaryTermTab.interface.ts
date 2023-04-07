@@ -11,12 +11,14 @@
  *  limitations under the License.
  */
 
+import { OperationPermission } from 'components/PermissionProvider/PermissionProvider.interface';
 import { GlossaryTerm } from 'generated/entity/data/glossaryTerm';
 
 export interface GlossaryTermTabProps {
   selectedGlossaryFqn?: string;
   childGlossaryTerms: GlossaryTerm[];
   refreshGlossaryTerms: () => void;
+  permissions: OperationPermission;
 }
 
 export type ModifiedGlossaryTerm = Omit<GlossaryTerm, 'children'> & {

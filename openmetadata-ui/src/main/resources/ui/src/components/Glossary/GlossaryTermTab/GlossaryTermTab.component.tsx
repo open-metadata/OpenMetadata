@@ -29,8 +29,6 @@ import { AxiosError } from 'axios';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
 import Loader from 'components/Loader/Loader';
-import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
-import { ResourceEntity } from 'components/PermissionProvider/PermissionProvider.interface';
 import { FQN_SEPARATOR_CHAR } from 'constants/char.constants';
 import { DE_ACTIVE_COLOR } from 'constants/constants';
 import { GLOSSARIES_DOCS } from 'constants/docs.constants';
@@ -39,7 +37,6 @@ import { TABLE_CONSTANTS } from 'constants/Teams.constants';
 import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { compare } from 'fast-json-patch';
 import { GlossaryTerm } from 'generated/entity/data/glossaryTerm';
-import { Operation } from 'generated/entity/policies/policy';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
@@ -49,7 +46,6 @@ import { patchGlossaryTerm } from 'rest/glossaryAPI';
 import { Transi18next } from 'utils/CommonUtils';
 import { getEntityName } from 'utils/EntityUtils';
 import { buildTree } from 'utils/GlossaryUtils';
-import { checkPermission } from 'utils/PermissionsUtils';
 import { getAddGlossaryTermsPath, getGlossaryPath } from 'utils/RouterUtils';
 import { getTableExpandableConfig } from 'utils/TableUtils';
 import { showErrorToast } from 'utils/ToastUtils';
@@ -64,9 +60,9 @@ const GlossaryTermTab = ({
   selectedGlossaryFqn,
   childGlossaryTerms = [],
   refreshGlossaryTerms,
+  permissions,
 }: GlossaryTermTabProps) => {
   const { t } = useTranslation();
-  const { permissions } = usePermissionProvider();
   const history = useHistory();
 
   const { glossaryName } = useParams<{ glossaryName: string }>();
@@ -79,17 +75,6 @@ const GlossaryTermTab = ({
     useState<MoveGlossaryTermType>();
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [isTableLoading, setIsTableLoading] = useState(false);
-
-  const createGlossaryTermPermission = useMemo(
-    () =>
-      checkPermission(
-        Operation.Create,
-        ResourceEntity.GLOSSARY_TERM,
-        permissions
-      ),
-    [permissions]
-  );
-
   const columns = useMemo(() => {
     const data: ColumnsType<ModifiedGlossaryTerm> = [
       {
@@ -123,7 +108,7 @@ const GlossaryTermTab = ({
           ),
       },
     ];
-    if (createGlossaryTermPermission) {
+    if (permissions.Create) {
       data.push({
         title: t('label.action-plural'),
         key: 'new-term',
@@ -278,7 +263,7 @@ const GlossaryTermTab = ({
             <div className="tw-text-lg tw-text-center">
               <Tooltip
                 title={
-                  createGlossaryTermPermission
+                  permissions.Create
                     ? t('label.add-entity', {
                         entity: t('label.term-lowercase'),
                       })
