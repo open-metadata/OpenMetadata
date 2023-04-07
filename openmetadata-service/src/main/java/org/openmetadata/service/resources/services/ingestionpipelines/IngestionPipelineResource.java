@@ -526,8 +526,7 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
             content = @Content(mediaType = "application/json"))
       })
   public Response getHostIp(@Context UriInfo uriInfo, @Context SecurityContext securityContext) {
-    Map<String, String> hostIp = pipelineServiceClient.getHostIp();
-    return Response.ok(hostIp, MediaType.APPLICATION_JSON_TYPE).build();
+    return pipelineServiceClient.getHostIp();
   }
 
   @GET
@@ -726,6 +725,32 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
     OperationContext operationContext = new OperationContext(entityType, MetadataOperation.EDIT_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(fqn));
     return dao.getPipelineStatus(fqn, runId);
+  }
+
+  @DELETE
+  @Path("/{id}/pipelineStatus")
+  @Operation(
+      operationId = "deletePipelineStatus",
+      summary = "Delete Pipeline Status",
+      tags = "ingestionPipelines",
+      description = "Delete the Pipeline Status for this Ingestion Pipeline.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Successfully deleted the Statuses",
+            content =
+                @Content(mediaType = "application/json", schema = @Schema(implementation = IngestionPipeline.class)))
+      })
+  public IngestionPipeline deletePipelineStatus(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the Ingestion Pipeline", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id)
+      throws IOException {
+    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.DELETE);
+    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
+    IngestionPipeline ingestionPipeline = dao.deletePipelineStatus(id);
+    return addHref(uriInfo, ingestionPipeline);
   }
 
   private IngestionPipeline getIngestionPipeline(CreateIngestionPipeline create, String user) throws IOException {

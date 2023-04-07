@@ -78,11 +78,11 @@ function TableSummary({
   const fetchAllTests = async () => {
     try {
       const { data } = await getListTestCase({
-        fields: 'testCaseResult,entityLink,testDefinition,testSuite',
+        fields: 'testCaseResult',
         entityLink: generateEntityLink(entityDetails?.fullyQualifiedName || ''),
         includeAllTests: true,
         limit: API_RES_MAX_SIZE,
-        include: Include.Deleted,
+        include: Include.NonDeleted,
       });
       const tableTests: TableTestsType = {
         tests: [],
