@@ -578,7 +578,7 @@ export const addNewTagToEntity = (entityObj, term) => {
     .contains(term);
 
   cy.get('[data-testid="tag-container"]')
-    .contains('Tags')
+    .contains('Add')
     .should('be.visible')
     .click();
 
