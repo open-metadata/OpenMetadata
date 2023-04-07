@@ -11,11 +11,10 @@
  *  limitations under the License.
  */
 
-import { Button, Tooltip } from 'antd';
+import { Button } from 'antd';
 import Loader from 'components/Loader/Loader';
 import { OperationPermission } from 'components/PermissionProvider/PermissionProvider.interface';
 import { GLOSSARIES_DOCS } from 'constants/docs.constants';
-import { NO_PERMISSION_FOR_ACTION } from 'constants/HelperTextUtil';
 import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { t } from 'i18next';
 import { AssetsDataType } from 'Models';
@@ -85,23 +84,14 @@ const AssetsTabs = ({
             buttons={
               <div className="tw-text-lg tw-text-center">
                 {permissions.Create && (
-                  <Tooltip
-                    title={
-                      permissions.Create
-                        ? t('label.add-entity', {
-                            entity: t('label.asset-lowercase'),
-                          })
-                        : NO_PERMISSION_FOR_ACTION
-                    }>
-                    <Button
-                      ghost
-                      data-testid="add-new-asset-button"
-                      type="primary">
-                      {t('label.add-entity', {
-                        entity: t('label.asset'),
-                      })}
-                    </Button>
-                  </Tooltip>
+                  <Button
+                    ghost
+                    data-testid="add-new-asset-button"
+                    type="primary">
+                    {t('label.add-entity', {
+                      entity: t('label.asset'),
+                    })}
+                  </Button>
                 )}
               </div>
             }
