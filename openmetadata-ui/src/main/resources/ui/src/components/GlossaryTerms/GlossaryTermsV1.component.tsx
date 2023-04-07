@@ -98,7 +98,7 @@ const GlossaryTermsV1 = ({
   }, [glossaryTerm.fullyQualifiedName]);
 
   return (
-    <Row data-testid="glossary-term" gutter={[0, 16]}>
+    <Row data-testid="glossary-term" gutter={[0, 8]}>
       <Col span={24}>
         <GlossaryHeader
           isGlossary={false}
