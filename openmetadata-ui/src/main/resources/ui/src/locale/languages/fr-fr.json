@@ -1143,6 +1143,7 @@
     "redirecting-to-home-page": "Redirecting to the home page",
     "remove-edge-between-source-and-target": "Are you sure you want to remove the edge between \"{{sourceDisplayName}} and {{targetDisplayName}}\"?.",
     "remove-lineage-edge": "Remove lineage edge",
+    "rename-glossary-entity": "Rename the Name and Display Name for the {{entity}}.",
     "request-description": "Demander une description",
     "request-update-description": "Mettre à jour la demande de description",
     "reset-link-has-been-sent": "Reset link has been sent to your email",

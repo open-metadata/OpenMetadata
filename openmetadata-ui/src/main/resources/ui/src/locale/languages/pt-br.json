@@ -1143,6 +1143,7 @@
     "redirecting-to-home-page": "Redirecionando para a página inicial",
     "remove-edge-between-source-and-target": "Tem certeza de que deseja remover a conexão entre \"{{sourceDisplayName}} e {{targetDisplayName}}\"?",
     "remove-lineage-edge": "Remover conexão de linhagem",
+    "rename-glossary-entity": "Rename the Name and Display Name for the {{entity}}.",
     "request-description": "Descrição da solicitação",
     "request-update-description": "Atualizar descrição da solicitação",
     "reset-link-has-been-sent": "O link de redefinição foi enviado para o seu e-mail",
