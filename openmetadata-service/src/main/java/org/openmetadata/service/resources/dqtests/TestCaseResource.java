@@ -60,7 +60,7 @@ import org.openmetadata.service.util.RestUtil.PutResponse;
 import org.openmetadata.service.util.ResultList;
 
 @Slf4j
-@Path("/v1/testCases")
+@Path("/v1/dataQuality/testCases")
 @Tag(
     name = "Test Cases",
     description =
@@ -70,7 +70,7 @@ import org.openmetadata.service.util.ResultList;
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "TestCases")
 public class TestCaseResource extends EntityResource<TestCase, TestCaseRepository> {
-  public static final String COLLECTION_PATH = "/v1/testCases";
+  public static final String COLLECTION_PATH = "/v1/dataQuality/testCases";
 
   static final String FIELDS = "owner,testSuite,testDefinition";
 

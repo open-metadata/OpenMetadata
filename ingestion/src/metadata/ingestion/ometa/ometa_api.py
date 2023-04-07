@@ -457,19 +457,19 @@ class OpenMetadata(
                 Union[TestDefinition, self.get_create_entity_type(TestDefinition)]
             ),
         ):
-            return "/testDefinitions"
+            return "/dataQuality/testDefinitions"
 
         if issubclass(
             entity,
             get_args(Union[TestSuite, self.get_create_entity_type(TestSuite)]),
         ):
-            return "/testSuites"
+            return "/dataQuality/testSuites"
 
         if issubclass(
             entity,
             get_args(Union[TestCase, self.get_create_entity_type(TestCase)]),
         ):
-            return "/testCases"
+            return "/dataQuality/testCases"
 
         if issubclass(entity, WebAnalyticEventData):
             return "/analytics/web/events/collect"
