@@ -64,7 +64,6 @@ const AddGlossaryTerm = ({
 
   const [showErrorMsg, setShowErrorMsg] = useState<{ [key: string]: boolean }>({
     name: false,
-    displayName: false,
     invalidName: false,
     invalidReferences: false,
     description: false,
@@ -126,19 +125,13 @@ const AddGlossaryTerm = ({
     }
     const value = event.target.value;
     const eleName = event.target.name;
-    let { name, invalidName, displayName } = cloneDeep(showErrorMsg);
+    let { name, invalidName } = cloneDeep(showErrorMsg);
 
     switch (eleName) {
       case 'name': {
         setName(value);
         name = false;
         invalidName = false;
-
-        break;
-      }
-      case 'display-name': {
-        setDisplayName(value);
-        displayName = false;
 
         break;
       }
@@ -150,7 +143,7 @@ const AddGlossaryTerm = ({
       }
     }
     setShowErrorMsg((prev) => {
-      return { ...prev, name, invalidName, displayName };
+      return { ...prev, name, invalidName };
     });
   };
 
@@ -193,7 +186,6 @@ const AddGlossaryTerm = ({
   const validateForm = (refs: TermReference[]) => {
     const errMsg = {
       name: !name.trim(),
-      displayName: !displayName.trim(),
       invalidName: allowedNameRegEx.test(name),
       invalidReferences: !isValidReferences(refs),
       description: !getDescription()?.trim(),
@@ -222,7 +214,7 @@ const AddGlossaryTerm = ({
       const updatedName = name.trim();
       const data: CreateGlossaryTerm = {
         name: updatedName,
-        displayName: displayName.trim(),
+        displayName: (displayName || updatedName).trim(),
         description: getDescription(),
         reviewers: updatedReviewers.length > 0 ? updatedReviewers : undefined,
         relatedTerms: relatedTerms.length > 0 ? updatedTerms : undefined,
@@ -301,7 +293,7 @@ const AddGlossaryTerm = ({
           </Field>
           <Field>
             <label className="tw-block tw-form-label" htmlFor="display-name">
-              {requiredField(`${t('label.display-name')}:`)}
+              {`${t('label.display-name')}:`}
             </label>
 
             <input
@@ -312,17 +304,8 @@ const AddGlossaryTerm = ({
               placeholder={t('label.display-name')}
               type="text"
               value={displayName}
-              onChange={handleValidation}
+              onChange={(e) => setDisplayName(e.target.value)}
             />
-
-            {showErrorMsg.displayName &&
-              errorMsg(
-                t('message.field-text-is-required', {
-                  fieldText: `${t('label.glossary-term')} ${t(
-                    'label.display-name'
-                  )}`,
-                })
-              )}
           </Field>
           <Field>
             <label

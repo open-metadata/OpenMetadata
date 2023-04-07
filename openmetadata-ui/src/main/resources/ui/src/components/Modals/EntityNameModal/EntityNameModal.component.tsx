@@ -68,11 +68,6 @@ const EntityNameModal: React.FC<Props> = ({
       }>
       <Form form={form} layout="vertical" onFinish={handleSave}>
         <Form.Item
-          extra={
-            <Typography.Text className="help-text p-x-xs m-t-xs tw-text-xs tw-text-grey-muted">
-              {t('message.edit-glossary-name-help')}
-            </Typography.Text>
-          }
           label={`${t('label.name')}:`}
           name="name"
           rules={[
@@ -90,11 +85,6 @@ const EntityNameModal: React.FC<Props> = ({
           />
         </Form.Item>
         <Form.Item
-          extra={
-            <Typography.Text className="help-text p-x-xs tw-text-xs tw-text-grey-muted">
-              {t('message.edit-glossary-display-name-help')}
-            </Typography.Text>
-          }
           label={`${t('label.display-name')}:`}
           name="displayName"
           rules={[

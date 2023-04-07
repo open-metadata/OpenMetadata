@@ -51,7 +51,6 @@ const AddGlossary = ({
     name: false,
     invalidName: false,
     description: false,
-    displayName: false,
   });
 
   const [name, setName] = useState('');
@@ -78,7 +77,7 @@ const AddGlossary = ({
     }
     const value = event.target.value;
     const eleName = event.target.name;
-    let { name, invalidName, displayName } = cloneDeep(showErrorMsg);
+    let { name, invalidName } = cloneDeep(showErrorMsg);
 
     switch (eleName) {
       case 'name': {
@@ -88,15 +87,9 @@ const AddGlossary = ({
 
         break;
       }
-      case 'display-name': {
-        setDisplayName(value);
-        displayName = false;
-
-        break;
-      }
     }
     setShowErrorMsg((prev) => {
-      return { ...prev, name, invalidName, displayName };
+      return { ...prev, name, invalidName };
     });
   };
 
@@ -110,7 +103,6 @@ const AddGlossary = ({
   const validateForm = () => {
     const errMsg = {
       name: !name.trim(),
-      displayName: !displayName.trim(),
       invalidName: allowedNameRegEx.test(name),
       description: !getDescription()?.trim(),
     };
@@ -123,7 +115,7 @@ const AddGlossary = ({
     if (validateForm()) {
       const data: CreateGlossary = {
         name: name.trim(),
-        displayName: displayName.trim(),
+        displayName: (displayName || name).trim(),
         description: getDescription(),
         reviewers:
           reviewer.map((d) => toString(d.fullyQualifiedName)).filter(Boolean) ??
@@ -189,7 +181,7 @@ const AddGlossary = ({
           </Field>
           <Field>
             <label className="tw-block tw-form-label" htmlFor="display-name">
-              {requiredField(`${t('label.display-name')}:`)}
+              {`${t('label.display-name')}:`}
             </label>
 
             <input
@@ -200,11 +192,8 @@ const AddGlossary = ({
               placeholder={t('label.display-name')}
               type="text"
               value={displayName}
-              onChange={handleValidation}
+              onChange={(e) => setDisplayName(e.target.value)}
             />
-
-            {showErrorMsg.displayName &&
-              ADD_GLOSSARY_ERROR[AddGlossaryError.DISPLAY_NAME_REQUIRED]}
           </Field>
           <Field>
             <label
