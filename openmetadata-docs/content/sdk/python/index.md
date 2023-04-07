@@ -161,6 +161,8 @@ This will help us showcase how we can reuse the same syntax with the three diffe
 ### 1. Initialize OpenMetadata
 OpenMetadata is the class holding the connection to the API and handling the requests. We can instantiate this by passing the proper configuration to reach the server API:
 
+Please make sure you get a the ingestion-bot or another bot JWT token. You can access bots page by going to Settings page.
+
 ```python
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
