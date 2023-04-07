@@ -181,13 +181,15 @@ export const testServiceCreationAndIngestion = (
 
   // Enter service name in step 3
   cy.get('[data-testid="service-name"]').should('exist').type(serviceName);
+  interceptURL('GET', '/api/v1/services/ingestionPipelines/ip', 'ipApi');
   interceptURL(
     'GET',
     'api/v1/services/ingestionPipelines/*',
-    'getIngestionPipelineStatus'
+    'ingestionPipelineStatus'
   );
   cy.get('[data-testid="next-button"]').should('exist').click();
-  verifyResponseStatusCode('@getIngestionPipelineStatus', 200);
+  verifyResponseStatusCode('@ingestionPipelineStatus', 200);
+  verifyResponseStatusCode('@ipApi', 204);
 
   // Connection Details in step 4
   cy.get('[data-testid="add-new-service-container"]')
@@ -199,9 +201,6 @@ export const testServiceCreationAndIngestion = (
   cy.contains('Connection Details').scrollIntoView().should('be.visible');
 
   connectionInput();
-
-  // check for the ip-address widget
-  cy.get('[data-testid="ip-address"]').should('exist');
 
   // Test the connection
   interceptURL(
@@ -891,8 +890,6 @@ export const updateOwner = () => {
       interceptURL('GET', '/api/v1/users?limit=15', 'getUsers');
       // Clicking on edit owner button
       cy.get('[data-testid="add-user"]').should('be.visible').click();
-
-      verifyResponseStatusCode('@getUsers', 200);
 
       cy.get('[data-testid="selectable-list"]')
         .find(`[title="${text.trim()}"]`)

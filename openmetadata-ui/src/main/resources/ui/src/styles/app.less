@@ -343,3 +343,20 @@
 .whitespace-nowrap {
   white-space: nowrap;
 }
+
+// Multiple label in a field with required
+
+.multiple-label-field label {
+  align-items: flex-start;
+}
+.multiple-label-field
+  .ant-form-item-label
+  > label.ant-form-item-required:not(.ant-form-item-required-mark-optional)::before {
+  line-height: 24px;
+}
+
+// Switch Inline Field
+
+.switch-field .ant-form-item {
+  margin: 0;
+}

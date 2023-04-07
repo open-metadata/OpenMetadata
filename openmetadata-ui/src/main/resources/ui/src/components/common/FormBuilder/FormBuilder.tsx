@@ -67,12 +67,16 @@ const FormBuilder: FunctionComponent<Props> = ({
     formatFormDataForRender(formData ?? {})
   );
 
-  const [hostIp, setHostIp] = useState<string>('[fetching]');
+  const [hostIp, setHostIp] = useState<string>();
 
   const fetchHostIp = async () => {
     try {
-      const data = await getPipelineServiceHostIp();
-      setHostIp(data?.ip || '[unknown]');
+      const { status, data } = await getPipelineServiceHostIp();
+      if (status === 200) {
+        setHostIp(data?.ip || '[unknown]');
+      } else {
+        setHostIp(undefined);
+      }
     } catch (error) {
       setHostIp('[error - unknown]');
     }
@@ -136,7 +140,7 @@ const FormBuilder: FunctionComponent<Props> = ({
           {t('message.no-config-available')}
         </div>
       )}
-      {!isEmpty(schema) && isAirflowAvailable && (
+      {!isEmpty(schema) && isAirflowAvailable && hostIp && (
         <div
           className="tw-flex tw-justify-between tw-bg-white tw-border tw-border-main tw-shadow tw-rounded tw-p-3 tw-mt-4"
           data-testid="ip-address">

@@ -46,7 +46,7 @@ import { Container } from 'generated/entity/data/container';
 import { EntityLineage } from 'generated/type/entityLineage';
 import { EntityReference } from 'generated/type/entityReference';
 import { LabelType, State, TagSource } from 'generated/type/tagLabel';
-import { isUndefined, omitBy } from 'lodash';
+import { isUndefined, omitBy, toString } from 'lodash';
 import { observer } from 'mobx-react';
 import { EntityTags, ExtraInfo } from 'Models';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
@@ -275,7 +275,7 @@ const ContainerPage = () => {
     },
     {
       key: EntityInfo.NUMBER_OF_OBJECTS,
-      value: numberOfObjects,
+      value: toString(numberOfObjects),
       showLabel: true,
     },
     {
