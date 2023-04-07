@@ -77,8 +77,9 @@ const ElasticSearchIndexPage = () => {
   const stopBatchReIndexedJob = async () => {
     try {
       const response = await stopBatchJobReIndex(batchJobData?.id);
-    } catch {
-      showErrorToast(jsonData['api-error-messages']['fetch-re-index-all']);
+      showSuccessToast(jsonData['api-success-messages']['stop-re-index']);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
     }
   };
 
