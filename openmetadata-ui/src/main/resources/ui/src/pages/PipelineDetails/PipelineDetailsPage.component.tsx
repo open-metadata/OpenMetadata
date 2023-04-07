@@ -66,7 +66,6 @@ const PipelineDetailsPage = () => {
   const [isLoading, setLoading] = useState<boolean>(true);
   const [followers, setFollowers] = useState<Array<EntityReference>>([]);
 
-  const [displayName, setDisplayName] = useState<string>('');
   const [slashedPipelineName, setSlashedPipelineName] = useState<
     TitleBreadcrumbProps['titleLinks']
   >([]);
@@ -122,15 +121,8 @@ const PipelineDetailsPage = () => {
     getPipelineByFqn(pipelineFQN, defaultFields)
       .then((res) => {
         if (res) {
-          const {
-            id,
-            fullyQualifiedName,
-            service,
-            serviceType,
-            displayName,
-            name,
-          } = res;
-          setDisplayName(displayName || name);
+          const { id, fullyQualifiedName, service, serviceType } = res;
+
           setPipelineDetails(res);
           const serviceName = service.name ?? '';
           setSlashedPipelineName([
@@ -333,7 +325,6 @@ const PipelineDetailsPage = () => {
           {pipelinePermissions.ViewAll || pipelinePermissions.ViewBasic ? (
             <PipelineDetails
               descriptionUpdateHandler={descriptionUpdateHandler}
-              entityName={displayName}
               followPipelineHandler={followPipeline}
               followers={followers}
               paging={paging}

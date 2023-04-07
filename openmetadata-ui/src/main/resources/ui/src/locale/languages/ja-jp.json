@@ -1252,6 +1252,7 @@
     "entity-details-fetch-error": "{{entityType}} {{entityName}}から詳細を取得中にエラーが発生しました",
     "entity-fetch-error": "{{entity}}の取得中にエラーが発生しました",
     "entity-fetch-version-error": "{{entity}} バージョン {{version}}の取得中にエラーが発生しました",
+    "entity-unfollow-error": "Error while unfollowing {{entity}}",
     "entity-updating-error": "{{entity}}の更新中にエラーが発生しました",
     "error-selected-node-name-details": "{{selectedNodeName}}の詳細を取得中にエラーが発生しました",
     "error-while-renewing-id-token-with-message": "Error while renewing id token from Auth0 SSO: {{message}}",

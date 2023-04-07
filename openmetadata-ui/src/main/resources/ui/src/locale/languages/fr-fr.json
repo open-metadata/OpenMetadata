@@ -1252,6 +1252,7 @@
     "entity-details-fetch-error": "Error while fetching details for {{entityType}} {{entityName}}",
     "entity-fetch-error": "Une erreur est survenue lors de la récupération de {{entity}}",
     "entity-fetch-version-error": "Error while fetching {{entity}} versions {{version}}",
+    "entity-unfollow-error": "Error while unfollowing {{entity}}",
     "entity-updating-error": "Erreur lors de la mise à jour de {{entity}}",
     "error-selected-node-name-details": "Error while getting {{selectedNodeName}} details",
     "error-while-renewing-id-token-with-message": "Error while renewing id token from Auth0 SSO: {{message}}",
