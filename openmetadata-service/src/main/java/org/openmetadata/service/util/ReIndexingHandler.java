@@ -40,6 +40,7 @@ import org.openmetadata.schema.system.Failure;
 import org.openmetadata.schema.system.Stats;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.elasticsearch.ElasticSearchIndexDefinition;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.workflows.searchIndex.ReindexingUtil;
 import org.openmetadata.service.workflows.searchIndex.SearchIndexWorkflow;
@@ -130,6 +131,15 @@ public class ReIndexingHandler {
             (entry) ->
                 entry.getValue().getJobData().getStatus() != EventPublisherJob.Status.STARTED
                     && entry.getValue().getJobData().getStatus() != EventPublisherJob.Status.RUNNING);
+  }
+
+  public EventPublisherJob stopRunningJob(UUID jobId) {
+    SearchIndexWorkflow job = REINDEXING_JOB_MAP.get(jobId);
+    if (job != null) {
+      job.stopJob();
+      return job.getJobData();
+    }
+    throw new EntityNotFoundException(String.format("Job With Given Id %s is not running.", jobId));
   }
 
   private void validateJob(CreateEventPublisherJob job) {
