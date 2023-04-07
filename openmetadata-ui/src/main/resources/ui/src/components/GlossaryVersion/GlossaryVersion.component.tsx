@@ -86,7 +86,7 @@ const GlossaryVersion = ({ isGlossary = false }: GlossaryVersionProps) => {
   return (
     <PageContainer>
       <div className="version-data p-l-lg p-r-xss">
-        <Space className="w-full">
+        <Space className="w-full" direction="vertical">
           <GlossaryV1
             isVersionsView
             deleteStatus={LOADING_STATE.INITIAL}
