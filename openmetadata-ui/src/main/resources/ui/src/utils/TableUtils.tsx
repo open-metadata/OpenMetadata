@@ -22,6 +22,7 @@ import { upperCase } from 'lodash';
 import { EntityTags } from 'Models';
 import React from 'react';
 import { ReactComponent as DashboardIcon } from '../assets/svg/dashboard-grey.svg';
+import { ReactComponent as IconDataModel } from '../assets/svg/data-model.svg';
 import { ReactComponent as IconFailBadge } from '../assets/svg/fail-badge.svg';
 import { ReactComponent as IconForeignKey } from '../assets/svg/foriegnKey.svg';
 import { ReactComponent as IconDown } from '../assets/svg/ic-arrow-down.svg';
@@ -40,6 +41,7 @@ import {
   getDashboardDetailsPath,
   getDatabaseDetailsPath,
   getDatabaseSchemaDetailsPath,
+  getDataModelDetailsPath,
   getEditWebhookPath,
   getMlModelPath,
   getPipelineDetailsPath,
@@ -258,6 +260,9 @@ export const getEntityLink = (
     case SearchIndex.TAG:
       return getTagsDetailsPath(fullyQualifiedName);
 
+    case EntityType.DASHBOARD_DATA_MODEL:
+      return getDataModelDetailsPath(fullyQualifiedName);
+
     case SearchIndex.TABLE:
     case EntityType.TABLE:
     default:
@@ -324,6 +329,10 @@ export const getEntityIcon = (indexType: string) => {
     case SearchIndex.CONTAINER:
     case EntityType.CONTAINER:
       return <ContainerIcon />;
+
+    case SearchIndex.DASHBOARD_DATA_MODEL:
+    case EntityType.DASHBOARD_DATA_MODEL:
+      return <IconDataModel />;
 
     case SearchIndex.TABLE:
     case EntityType.TABLE:

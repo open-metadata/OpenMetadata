@@ -10,36 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-@trigger-btn-hover-bg: #efefef;
-@update-btn-hover-bg: #e2e2e2;
 
-.user-select-popover {
-  min-width: 275px;
-  .ant-popover-inner-content {
-    padding: 0;
-  }
-
-  .page-search-bar {
-    padding: 0;
-  }
-
-  .dropdown-control-bar {
-    padding: 8px;
-  }
-
-  .update-btn {
-    background-color: @trigger-btn-hover-bg;
-    border-color: @trigger-btn-hover-bg;
-  }
-
-  .update-btn:hover {
-    background-color: @update-btn-hover-bg;
-    border-color: @update-btn-hover-bg;
-    color: inherit;
-  }
-
-  .ant-list-header,
-  .ant-list-footer {
-    padding: 12px;
-  }
-}
+export const DEFAULT_FORM_VALUE = {
+  name: '',
+  displayName: '',
+  description: '',
+};

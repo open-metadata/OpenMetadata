@@ -15,6 +15,7 @@ import {
   PLACEHOLDER_ROUTE_TAB,
   ROUTES,
 } from 'constants/constants';
+import { TabSpecificField } from 'enums/entity.enum';
 import { Column } from 'generated/entity/data/dashboardDataModel';
 import { LabelType, State, TagLabel } from 'generated/type/tagLabel';
 import { isEmpty } from 'lodash';
@@ -112,3 +113,6 @@ export const updateDataModelColumnTags = (
     }
   });
 };
+
+export const defaultFields = `${TabSpecificField.TAGS}, ${TabSpecificField.OWNER},
+${TabSpecificField.FOLLOWERS}`;
