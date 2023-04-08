@@ -446,7 +446,12 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         component={AddGlossaryTermPage}
         path={ROUTES.ADD_GLOSSARY_TERMS}
       />
-
+      <AdminProtectedRoute
+        exact
+        component={GlossaryPage}
+        hasPermission={glossaryPermission}
+        path={ROUTES.GLOSSARY_DETAILS_WITH_TAB}
+      />
       <AdminProtectedRoute
         exact
         component={CreateUserPage}
