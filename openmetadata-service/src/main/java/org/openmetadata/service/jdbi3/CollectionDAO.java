@@ -3320,6 +3320,102 @@ public interface CollectionDAO {
         @Bind("endTs") long endTs,
         @Define("orderBy") OrderBy orderBy);
 
+    default void updateExtensionByKey(String key, String value, String entityFQN, String extension, String json) {
+
+      String mysqlCond = String.format("AND JSON_UNQUOTE(JSON_EXTRACT(json, '$.%s')) = :value", key);
+      String psqlCond = String.format("AND json->>'%s' = :value", key);
+
+      updateExtensionByKeyInternal(value, entityFQN, extension, json, mysqlCond, psqlCond);
+    }
+
+    default String getExtensionByKey(String key, String value, String entityFQN, String extension) {
+
+      String mysqlCond = String.format("AND JSON_UNQUOTE(JSON_EXTRACT(json, '$.%s')) = :value", key);
+      String psqlCond = String.format("AND json->>'%s' = :value", key);
+
+      return getExtensionByKeyInternal(value, entityFQN, extension, mysqlCond, psqlCond);
+    }
+
+    default String getLatestExtensionByKey(String key, String value, String entityFQN, String extension) {
+
+      String mysqlCond = String.format("AND JSON_UNQUOTE(JSON_EXTRACT(json, '$.%s')) = :value", key);
+      String psqlCond = String.format("AND json->>'%s' = :value", key);
+
+      return getLatestExtensionByKeyInternal(value, entityFQN, extension, mysqlCond, psqlCond);
+    }
+
+    /*
+     * Support updating data filtering by top-level keys in the JSON
+     */
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE entity_extension_time_series SET json = :json "
+                + "WHERE entityFQN = :entityFQN "
+                + "AND extension = :extension "
+                + "<mysqlCond>",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE entity_extension_time_series SET json = (:json :: jsonb) "
+                + "WHERE entityFQN = :entityFQN "
+                + "AND extension = :extension "
+                + "<psqlCond>",
+        connectionType = POSTGRES)
+    void updateExtensionByKeyInternal(
+        @Bind("value") String value,
+        @Bind("entityFQN") String entityFQN,
+        @Bind("extension") String extension,
+        @Bind("json") String json,
+        @Define("mysqlCond") String mysqlCond,
+        @Define("psqlCond") String psqlCond);
+
+    /*
+     * Support selecting data filtering by top-level keys in the JSON
+     */
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT json from entity_extension_time_series "
+                + "WHERE entityFQN = :entityFQN "
+                + "AND extension = :extension "
+                + "<mysqlCond>",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT json from entity_extension_time_series "
+                + "WHERE entityFQN = :entityFQN "
+                + "AND extension = :extension "
+                + "<psqlCond>",
+        connectionType = POSTGRES)
+    String getExtensionByKeyInternal(
+        @Bind("value") String value,
+        @Bind("entityFQN") String entityFQN,
+        @Bind("extension") String extension,
+        @Define("mysqlCond") String mysqlCond,
+        @Define("psqlCond") String psqlCond);
+
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT json from entity_extension_time_series "
+                + "WHERE entityFQN = :entityFQN "
+                + "AND extension = :extension "
+                + "<mysqlCond> "
+                + "ORDER BY timestamp DESC LIMIT 1",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT json from entity_extension_time_series "
+                + "WHERE entityFQN = :entityFQN "
+                + "AND extension = :extension "
+                + "<psqlCond> "
+                + "ORDER BY timestamp DESC LIMIT 1",
+        connectionType = POSTGRES)
+    String getLatestExtensionByKeyInternal(
+        @Bind("value") String value,
+        @Bind("entityFQN") String entityFQN,
+        @Bind("extension") String extension,
+        @Define("mysqlCond") String mysqlCond,
+        @Define("psqlCond") String psqlCond);
+
     class ReportDataMapper implements RowMapper<ReportDataRow> {
       @Override
       public ReportDataRow map(ResultSet rs, StatementContext ctx) throws SQLException {

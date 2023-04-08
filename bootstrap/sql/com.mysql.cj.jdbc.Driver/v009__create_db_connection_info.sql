@@ -142,3 +142,9 @@ SET json = JSON_INSERT(
     )
 where serviceType = 'Druid'
   and JSON_EXTRACT(json, '$.connection.config.database') is not null;
+
+-- We were using the same jsonSchema for Pipeline Services and Ingestion Pipeline status
+-- Also, we relied on the extension to store the run id
+UPDATE entity_extension_time_series
+SET jsonSchema = 'ingestionPipelineStatus', extension = 'ingestionPipeline.pipelineStatus'
+WHERE jsonSchema = 'pipelineStatus' AND extension <> 'pipeline.PipelineStatus';

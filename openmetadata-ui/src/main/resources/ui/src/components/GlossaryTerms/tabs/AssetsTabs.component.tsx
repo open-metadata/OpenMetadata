@@ -11,10 +11,13 @@
  *  limitations under the License.
  */
 
-import { Radio } from 'antd';
+import { Button, Radio } from 'antd';
 import { AssetsUnion } from 'components/Assets/AssetsSelectionModal/AssetSelectionModal.interface';
 import TableDataCardV2 from 'components/common/table-data-card-v2/TableDataCardV2';
 import Loader from 'components/Loader/Loader';
+import { OperationPermission } from 'components/PermissionProvider/PermissionProvider.interface';
+import { GLOSSARIES_DOCS } from 'constants/docs.constants';
+import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { EntityType } from 'enums/entity.enum';
 import { SearchIndex } from 'enums/search.enum';
 import { t } from 'i18next';
@@ -31,9 +34,15 @@ interface Props {
   assetData: AssetsDataType;
   currentPage: number;
   onAssetPaginate: (num: string | number, activePage?: number) => void;
+  permissions: OperationPermission;
 }
 
-const AssetsTabs = ({ assetData, onAssetPaginate, currentPage }: Props) => {
+const AssetsTabs = ({
+  assetData,
+  onAssetPaginate,
+  currentPage,
+  permissions,
+}: Props) => {
   const [itemCount, setItemCount] = useState<Record<AssetsUnion, number>>({
     table: 0,
     pipeline: 0,
@@ -106,7 +115,27 @@ const AssetsTabs = ({ assetData, onAssetPaginate, currentPage }: Props) => {
           )}
         </>
       ) : (
-        <ErrorPlaceHolder>{t('message.no-asset-available')}</ErrorPlaceHolder>
+        <div className="m-t-xlg">
+          <ErrorPlaceHolder
+            buttons={
+              <div className="tw-text-lg tw-text-center">
+                {permissions.Create && (
+                  <Button
+                    ghost
+                    data-testid="add-new-asset-button"
+                    type="primary">
+                    {t('label.add-entity', {
+                      entity: t('label.asset'),
+                    })}
+                  </Button>
+                )}
+              </div>
+            }
+            doc={GLOSSARIES_DOCS}
+            heading={t('label.asset')}
+            type={ERROR_PLACEHOLDER_TYPE.ADD}
+          />
+        </div>
       )}
     </div>
   );
