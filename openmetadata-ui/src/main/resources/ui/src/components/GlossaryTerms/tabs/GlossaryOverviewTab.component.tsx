@@ -67,80 +67,78 @@ const GlossaryOverviewTab = ({
   };
 
   return (
-    <>
-      <Row gutter={16}>
-        <Col data-testid="updated-by-container" span={18}>
-          <Card>
-            <Row gutter={[0, 32]}>
-              <Col span={24}>
-                <DescriptionV1
-                  description={selectedData?.description || ''}
-                  entityName={selectedData?.displayName ?? selectedData?.name}
-                  hasEditAccess={
-                    permissions.EditDescription || permissions.EditAll
-                  }
-                  isEdit={isDescriptionEditable}
-                  onCancel={() => setIsDescriptionEditable(false)}
-                  onDescriptionEdit={() => setIsDescriptionEditable(true)}
-                  onDescriptionUpdate={onDescriptionUpdate}
-                />
-              </Col>
-              <Col span={24}>
-                <Row gutter={[0, 48]}>
-                  {!isGlossary && (
-                    <>
-                      <Col span={12}>
-                        <Space className="w-full" direction="vertical">
-                          <GlossaryTermSynonyms
-                            glossaryTerm={selectedData as GlossaryTerm}
-                            permissions={permissions}
-                            onGlossaryTermUpdate={onUpdate}
-                          />
-                        </Space>
-                      </Col>
-                      <Col span={12}>
-                        <Space className="w-full" direction="vertical">
-                          <RelatedTerms
-                            glossaryTerm={selectedData as GlossaryTerm}
-                            permissions={permissions}
-                            onGlossaryTermUpdate={onUpdate}
-                          />
-                        </Space>
-                      </Col>
-                      <Col span={12}>
-                        <GlossaryTermReferences
+    <Row className="glossary-overview-tab" gutter={[16, 16]}>
+      <Col data-testid="updated-by-container" span={18}>
+        <Card>
+          <Row gutter={[0, 32]}>
+            <Col span={24}>
+              <DescriptionV1
+                description={selectedData?.description || ''}
+                entityName={selectedData?.displayName ?? selectedData?.name}
+                hasEditAccess={
+                  permissions.EditDescription || permissions.EditAll
+                }
+                isEdit={isDescriptionEditable}
+                onCancel={() => setIsDescriptionEditable(false)}
+                onDescriptionEdit={() => setIsDescriptionEditable(true)}
+                onDescriptionUpdate={onDescriptionUpdate}
+              />
+            </Col>
+            <Col span={24}>
+              <Row gutter={[0, 48]}>
+                {!isGlossary && (
+                  <>
+                    <Col span={12}>
+                      <Space className="w-full" direction="vertical">
+                        <GlossaryTermSynonyms
                           glossaryTerm={selectedData as GlossaryTerm}
                           permissions={permissions}
                           onGlossaryTermUpdate={onUpdate}
                         />
-                      </Col>
-                    </>
-                  )}
-
-                  <Col span={12}>
-                    <Space className="w-full" direction="vertical">
-                      <TagsInput
-                        editable={hasEditTagsPermissions}
-                        tags={selectedData.tags}
-                        onTagsUpdate={handleTagsUpdate}
+                      </Space>
+                    </Col>
+                    <Col span={12}>
+                      <Space className="w-full" direction="vertical">
+                        <RelatedTerms
+                          glossaryTerm={selectedData as GlossaryTerm}
+                          permissions={permissions}
+                          onGlossaryTermUpdate={onUpdate}
+                        />
+                      </Space>
+                    </Col>
+                    <Col span={12}>
+                      <GlossaryTermReferences
+                        glossaryTerm={selectedData as GlossaryTerm}
+                        permissions={permissions}
+                        onGlossaryTermUpdate={onUpdate}
                       />
-                    </Space>
-                  </Col>
-                </Row>
-              </Col>
-            </Row>
-          </Card>
-        </Col>
-        <Col span={6}>
-          <GlossaryDetailsRightPanel
-            isGlossary={false}
-            permissions={permissions}
-            selectedData={selectedData}
-            onUpdate={onUpdate}
-          />
-        </Col>
-      </Row>
-    </>
+                    </Col>
+                  </>
+                )}
+
+                <Col span={12}>
+                  <Space className="w-full" direction="vertical">
+                    <TagsInput
+                      editable={hasEditTagsPermissions}
+                      tags={selectedData.tags}
+                      onTagsUpdate={handleTagsUpdate}
+                    />
+                  </Space>
+                </Col>
+              </Row>
+            </Col>
+          </Row>
+        </Card>
+      </Col>
+      <Col span={6}>
+        <GlossaryDetailsRightPanel
+          isGlossary={false}
+          permissions={permissions}
+          selectedData={selectedData}
+          onUpdate={onUpdate}
+        />
+      </Col>
+    </Row>
   );
 };
 

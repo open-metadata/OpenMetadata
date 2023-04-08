@@ -12,7 +12,7 @@
  */
 
 import { act, render, screen } from '@testing-library/react';
-import { mockedGlossaryTerms } from 'mocks/Glossary.mock';
+import { mockedGlossaryTerms, MOCK_PERMISSIONS } from 'mocks/Glossary.mock';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { getGlossaryTerms } from 'rest/glossaryAPI';
@@ -41,6 +41,7 @@ describe('Test GlossaryTermTab component', () => {
       render(
         <GlossaryTermTab
           childGlossaryTerms={[]}
+          permissions={MOCK_PERMISSIONS}
           refreshGlossaryTerms={jest.fn()}
         />,
         {
