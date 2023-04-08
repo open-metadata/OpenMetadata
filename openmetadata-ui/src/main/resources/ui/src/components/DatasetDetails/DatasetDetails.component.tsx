@@ -14,6 +14,7 @@
 import { Card, Col, Row, Skeleton, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
+import PageLayoutV1 from 'components/containers/PageLayoutV1';
 import { isEqual, isNil, isUndefined } from 'lodash';
 import { EntityTags, ExtraInfo } from 'Models';
 import React, {
@@ -606,7 +607,10 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
     <Loader />
   ) : (
     <PageContainerV1>
-      <div className="entity-details-container">
+      <PageLayoutV1
+        pageTitle={t('label.entity-details', {
+          entity: getEntityName(tableDetails),
+        })}>
         <EntityPageInfo
           canDelete={tablePermissions.Delete}
           currentOwner={tableDetails.owner}
@@ -634,6 +638,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
               ? onRemoveTier
               : undefined
           }
+          serviceType={tableDetails.serviceType ?? ''}
           tags={tableTags}
           tagsHandler={onTagUpdate}
           tier={tier}
@@ -838,7 +843,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
             />
           ) : null}
         </div>
-      </div>
+      </PageLayoutV1>
     </PageContainerV1>
   );
 };

@@ -76,7 +76,6 @@ import {
 import { getEntityFeedLink, getEntityName } from '../../utils/EntityUtils';
 import { deletePost, updateThreadData } from '../../utils/FeedUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
-import { serviceTypeLogo } from '../../utils/ServiceUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
 const DatasetDetailsPage: FunctionComponent = () => {
@@ -234,7 +233,6 @@ const DatasetDetailsPage: FunctionComponent = () => {
                     ServiceCategory.DATABASE_SERVICES
                   )
                 : '',
-              imgSrc: serviceType ? serviceTypeLogo(serviceType) : undefined,
             },
             {
               name: getPartialNameFromTableFQN(databaseFullyQualifiedName, [
@@ -250,11 +248,6 @@ const DatasetDetailsPage: FunctionComponent = () => {
               url: getDatabaseSchemaDetailsPath(
                 databaseSchemaFullyQualifiedName
               ),
-            },
-            {
-              name: getEntityName(res),
-              url: '',
-              activeTitle: true,
             },
           ]);
 

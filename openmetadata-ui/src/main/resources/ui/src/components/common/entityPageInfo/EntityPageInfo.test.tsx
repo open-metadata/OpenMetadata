@@ -114,6 +114,7 @@ const mockEntityInfoProp = {
   versionHandler,
   entityFieldThreads: [],
   onThreadLinkSelect,
+  serviceType: '',
 };
 
 jest.mock('../../../utils/EntityUtils', () => ({

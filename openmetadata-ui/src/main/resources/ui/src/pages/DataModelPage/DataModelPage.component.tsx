@@ -74,7 +74,6 @@ import {
   updateThreadData,
 } from 'utils/FeedUtils';
 import { DEFAULT_ENTITY_PERMISSION } from 'utils/PermissionsUtils';
-import { serviceTypeLogo } from 'utils/ServiceUtils';
 import { getTagsWithoutTier, getTierTags } from 'utils/TableUtils';
 import { showErrorToast } from 'utils/ToastUtils';
 import { DATA_MODELS_DETAILS_TABS } from './DataModelsInterface';
@@ -167,7 +166,6 @@ const DataModelsPage = () => {
   }, [dataModelData]);
 
   const breadcrumbTitles = useMemo(() => {
-    const serviceType = dataModelData?.serviceType;
     const service = dataModelData?.service;
     const serviceName = service?.name;
 
@@ -180,12 +178,6 @@ const DataModelsPage = () => {
               ServiceCategory.DASHBOARD_SERVICES
             )
           : '',
-        imgSrc: serviceType ? serviceTypeLogo(serviceType) : undefined,
-      },
-      {
-        name: entityName,
-        url: '',
-        activeTitle: true,
       },
     ];
   }, [dataModelData, dashboardDataModelFQN, entityName]);
@@ -593,6 +585,7 @@ const DataModelsPage = () => {
           isFollowing={isUserFollowing}
           isTagEditable={hasEditTagsPermission}
           removeTier={hasEditTierPermission ? handleRemoveTier : undefined}
+          serviceType={dataModelData?.serviceType ?? ''}
           tags={tags}
           tagsHandler={handleUpdateTags}
           tier={tier}

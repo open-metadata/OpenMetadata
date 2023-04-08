@@ -319,11 +319,6 @@ const DatabaseSchemaPage: FunctionComponent = () => {
               ),
               url: getDatabaseDetailsPath(database.fullyQualifiedName ?? ''),
             },
-            {
-              name: getEntityName(res),
-              url: '',
-              activeTitle: true,
-            },
           ]);
         } else {
           throw jsonData['api-error-messages']['unexpected-server-response'];
@@ -798,6 +793,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
                           databaseSchemaPermission.EditAll ||
                           databaseSchemaPermission.EditTags
                         }
+                        serviceType={databaseSchema?.serviceType ?? ''}
                         tags={tags}
                         tagsHandler={onTagUpdate}
                         tier={tier}

@@ -31,7 +31,7 @@ const EntityHeaderTitle = ({ icon, name, displayName }: props) => {
             {name}
           </Typography.Text>
           <Typography.Text
-            className="m-b-0 entity-header-display-name text-lg font-bold"
+            className="m-b-0 entity-header-display-name"
             data-testid="entity-header-display-name">
             {displayName}
           </Typography.Text>

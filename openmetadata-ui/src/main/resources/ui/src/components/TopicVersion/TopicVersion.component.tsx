@@ -273,6 +273,7 @@ const TopicVersion: FC<TopicVersionProp> = ({
               entityName={currentVersionData.name ?? ''}
               extraInfo={getExtraInfo()}
               followersList={[]}
+              serviceType={currentVersionData.serviceType ?? ''}
               tags={getTags()}
               tier={{} as TagLabel}
               titleLinks={slashedTopicName}

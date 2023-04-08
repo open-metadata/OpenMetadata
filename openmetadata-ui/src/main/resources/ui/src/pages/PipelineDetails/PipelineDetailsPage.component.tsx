@@ -51,7 +51,6 @@ import {
   defaultFields,
   getFormattedPipelineDetails,
 } from '../../utils/PipelineDetailsUtils';
-import { serviceTypeLogo } from '../../utils/ServiceUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
 const PipelineDetailsPage = () => {
@@ -134,12 +133,6 @@ const PipelineDetailsPage = () => {
                     ServiceCategory.PIPELINE_SERVICES
                   )
                 : '',
-              imgSrc: serviceType ? serviceTypeLogo(serviceType) : undefined,
-            },
-            {
-              name: getEntityName(res),
-              url: '',
-              activeTitle: true,
             },
           ]);
 

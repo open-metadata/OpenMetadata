@@ -81,11 +81,12 @@ const TableDataCardTitle = ({
   }
 
   return (
-    <Typography.Title
-      ellipsis
-      className="m-b-0 text-base"
-      level={5}
-      title={displayName}>
+    <div>
+      <Typography.Paragraph
+        className="text-secondary-muted m-b-0"
+        style={{ color: '#6B7280', fontSize: '12px', lineHeight: '15px' }}>
+        {source.name}
+      </Typography.Paragraph>
       <Link
         className={classNames(
           'table-data-card-title-container w-fit-content w-max-90',
@@ -93,10 +94,27 @@ const TableDataCardTitle = ({
             'button-hover': isPanel,
           }
         )}
-        to={getEntityLink(searchIndex, source.fullyQualifiedName ?? '')}>
-        {title}
+        data-testid={testId}
+        id={`${id ?? testId}-title`}
+        to={
+          isTourRoute
+            ? ''
+            : getEntityLink(searchIndex, source.fullyQualifiedName ?? '')
+        }>
+        <Typography.Text
+          ellipsis
+          className="m-b-0 text-base"
+          style={{
+            fontSize: '18px',
+            lineHeight: '22px',
+            fontWeight: 700,
+          }}
+          title={displayName}
+          onClick={isTourRoute ? handleLinkClick : undefined}>
+          {stringToHTML(displayName)}
+        </Typography.Text>
       </Link>
-    </Typography.Title>
+    </div>
   );
 };
 
