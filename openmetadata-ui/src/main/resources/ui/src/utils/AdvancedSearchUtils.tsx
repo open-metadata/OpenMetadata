@@ -97,6 +97,9 @@ export const getAdvancedField = (field: string) => {
     case 'charts.displayName.keyword':
       return AdvancedFields.CHART;
 
+    case 'dataModels.displayName.keyword':
+      return AdvancedFields.DATA_MODEL;
+
     case 'tasks.displayName.keyword':
       return AdvancedFields.TASK;
 
@@ -255,6 +258,19 @@ export const getChartsOptions = (
   return getDisplayNameFromEntity(option.text, chartRef);
 };
 
+export const getDataModelOptions = (
+  option: SuggestOption<SearchIndex, ExploreSearchSource>
+) => {
+  const chartRef = (
+    option as SuggestOption<SearchIndex.DASHBOARD, DashboardSearchSource>
+  )._source.dataModels?.find(
+    (dataModel) =>
+      dataModel.displayName === option.text || dataModel.name === option.text
+  );
+
+  return getDisplayNameFromEntity(option.text, chartRef);
+};
+
 export const getTasksOptions = (
   option: SuggestOption<SearchIndex, ExploreSearchSource>
 ) => {
@@ -340,6 +356,9 @@ export const getOptionTextFromKey = (
   switch (key) {
     case 'charts.displayName.keyword': {
       return getChartsOptions(option);
+    }
+    case 'dataModels.displayName.keyword': {
+      return getDataModelOptions(option);
     }
     case 'tasks.displayName.keyword': {
       return getTasksOptions(option);

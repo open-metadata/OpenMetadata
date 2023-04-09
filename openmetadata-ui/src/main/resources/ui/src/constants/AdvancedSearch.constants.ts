@@ -62,6 +62,10 @@ export const TABLE_DROPDOWN_ITEMS = [
 
 export const DASHBOARD_DROPDOWN_ITEMS = [
   {
+    label: t('label.data-model'),
+    key: 'dataModels.displayName.keyword',
+  },
+  {
     label: t('label.chart'),
     key: 'charts.displayName.keyword',
   },
