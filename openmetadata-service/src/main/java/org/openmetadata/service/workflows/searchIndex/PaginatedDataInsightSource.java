@@ -24,6 +24,7 @@ import org.openmetadata.schema.analytics.ReportData;
 import org.openmetadata.schema.system.StepStats;
 import org.openmetadata.service.exception.SourceException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.workflows.interfaces.Source;
@@ -93,7 +94,7 @@ public class PaginatedDataInsightSource implements Source<ResultList<ReportData>
     int reportDataCount = dao.entityExtensionTimeSeriesDao().listCount(entityFQN);
     List<CollectionDAO.ReportDataRow> reportDataList =
         dao.entityExtensionTimeSeriesDao()
-            .getAfterExtension(entityFQN, limit + 1, after == null ? "0" : RestUtil.decodeCursor(after));
+            .getAfterExtension(EntityUtil.getCheckSum(entityFQN), limit + 1, after == null ? "0" : RestUtil.decodeCursor(after));
     return getAfterExtensionList(reportDataList, after, limit, reportDataCount);
   }
 

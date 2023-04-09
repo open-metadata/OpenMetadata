@@ -10,6 +10,8 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.databases.DatasourceConfig;
+import org.openmetadata.service.util.EntityUtil;
+import org.openmetadata.service.util.FullyQualifiedName;
 
 public class ListFilter {
   @Getter private final Include include;
@@ -97,15 +99,15 @@ public class ListFilter {
 
   private String getTestCaseCondition() {
     String condition1 = "";
-    String entityFQN = getQueryParam("entityFQN");
+    String entityFQNHash = getQueryParam("entityFQNHash");
     boolean includeAllTests = Boolean.parseBoolean(getQueryParam("includeAllTests"));
-    if (entityFQN != null) {
+    if (entityFQNHash != null) {
       condition1 =
           includeAllTests
               ? String.format(
-                  "entityFQN LIKE '%s%s%%' OR entityFQN = '%s'",
-                  escape(entityFQN), Entity.SEPARATOR, escapeApostrophe(entityFQN))
-              : String.format("entityFQN = '%s'", escapeApostrophe(entityFQN));
+                  "entityFQNHash LIKE '%s%s%%' OR entityFQNHash = '%s'",
+                  escape(entityFQNHash), Entity.SEPARATOR, escapeApostrophe(entityFQNHash))
+              : String.format("entityFQNHash = '%s'", escapeApostrophe(entityFQNHash));
     }
 
     String condition2 = "";
@@ -120,10 +122,9 @@ public class ListFilter {
   }
 
   private String getFqnPrefixCondition(String tableName, String fqnPrefix) {
-    fqnPrefix = escape(fqnPrefix);
     return tableName == null
-        ? String.format("fullyQualifiedName LIKE '%s%s%%'", fqnPrefix, Entity.SEPARATOR)
-        : String.format("%s.fullyQualifiedName LIKE '%s%s%%'", tableName, fqnPrefix, Entity.SEPARATOR);
+        ? String.format("fqnHash LIKE '%s%s%%'",  FullyQualifiedName.buildHash(fqnPrefix), Entity.SEPARATOR)
+        : String.format("%s.fqnHash LIKE '%s%s%%'", tableName,  FullyQualifiedName.buildHash(fqnPrefix), Entity.SEPARATOR);
   }
 
   private String getWebhookTypePrefixCondition(String tableName, String typePrefix) {

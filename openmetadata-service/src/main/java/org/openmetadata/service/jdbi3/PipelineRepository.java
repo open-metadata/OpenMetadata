@@ -77,10 +77,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
   }
 
   private PipelineStatus getPipelineStatus(Pipeline pipeline) throws IOException {
-    return JsonUtils.readValue(
-        daoCollection
-            .entityExtensionTimeSeriesDao()
-            .getLatestExtension(pipeline.getFullyQualifiedName(), PIPELINE_STATUS_EXTENSION),
+    return JsonUtils.readValue(getLatestExtensionFromTimeseries(pipeline.getFullyQualifiedName(), PIPELINE_STATUS_EXTENSION),
         PipelineStatus.class);
   }
 
@@ -95,29 +92,10 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
       validateTask(pipeline, taskStatus.getName());
     }
 
-    PipelineStatus storedPipelineStatus =
-        JsonUtils.readValue(
-            daoCollection
-                .entityExtensionTimeSeriesDao()
-                .getExtensionAtTimestamp(fqn, PIPELINE_STATUS_EXTENSION, pipelineStatus.getTimestamp()),
-            PipelineStatus.class);
-    if (storedPipelineStatus != null) {
-      daoCollection
-          .entityExtensionTimeSeriesDao()
-          .update(
-              pipeline.getFullyQualifiedName(),
-              PIPELINE_STATUS_EXTENSION,
-              JsonUtils.pojoToJson(pipelineStatus),
-              pipelineStatus.getTimestamp());
-    } else {
-      daoCollection
-          .entityExtensionTimeSeriesDao()
-          .insert(
-              pipeline.getFullyQualifiedName(),
-              PIPELINE_STATUS_EXTENSION,
-              "pipelineStatus",
-              JsonUtils.pojoToJson(pipelineStatus));
-    }
+    String storedPipelineStatus = getExtensionAtTimestamp(fqn, PIPELINE_STATUS_EXTENSION, pipelineStatus.getTimestamp());
+    storeTimeSeries(pipeline.getFullyQualifiedName(), PIPELINE_STATUS_EXTENSION, "pipelineStatus",
+        JsonUtils.pojoToJson(pipelineStatus), pipelineStatus.getTimestamp(), storedPipelineStatus != null);
+
     return pipeline.withPipelineStatus(pipelineStatus);
   }
 
@@ -127,13 +105,9 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
     Pipeline pipeline = dao.findEntityByName(fqn);
     pipeline.setService(getContainer(pipeline.getId()));
     PipelineStatus storedPipelineStatus =
-        JsonUtils.readValue(
-            daoCollection
-                .entityExtensionTimeSeriesDao()
-                .getExtensionAtTimestamp(fqn, PIPELINE_STATUS_EXTENSION, timestamp),
-            PipelineStatus.class);
+        JsonUtils.readValue(getExtensionAtTimestamp(fqn, PIPELINE_STATUS_EXTENSION, timestamp), PipelineStatus.class);
     if (storedPipelineStatus != null) {
-      daoCollection.entityExtensionTimeSeriesDao().deleteAtTimestamp(fqn, PIPELINE_STATUS_EXTENSION, timestamp);
+      deleteExtensionAtTimestamp(fqn, PIPELINE_STATUS_EXTENSION, timestamp);
       pipeline.setPipelineStatus(storedPipelineStatus);
       return pipeline;
     }
@@ -144,12 +118,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
   public ResultList<PipelineStatus> getPipelineStatuses(String fqn, Long starTs, Long endTs) throws IOException {
     List<PipelineStatus> pipelineStatuses;
     pipelineStatuses =
-        JsonUtils.readObjects(
-            daoCollection
-                .entityExtensionTimeSeriesDao()
-                .listBetweenTimestamps(fqn, PIPELINE_STATUS_EXTENSION, starTs, endTs),
-            PipelineStatus.class);
-
+        JsonUtils.readObjects(getResultsFromAndToTimestamps(fqn, PIPELINE_STATUS_EXTENSION, starTs, endTs), PipelineStatus.class);
     return new ResultList<>(pipelineStatuses, starTs.toString(), endTs.toString(), pipelineStatuses.size());
   }
 

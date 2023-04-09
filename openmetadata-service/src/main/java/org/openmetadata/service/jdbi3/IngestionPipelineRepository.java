@@ -39,6 +39,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.services.ingestionpipelines.IngestionPipelineResource;
 import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
+import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
@@ -169,7 +170,7 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
       throws IOException {
     // Validate the request content
     IngestionPipeline ingestionPipeline = dao.findEntityByName(fqn);
-
+    String fqnHash = FullyQualifiedName.buildHash(ingestionPipeline.getFullyQualifiedName());
     PipelineStatus storedPipelineStatus =
         JsonUtils.readValue(
             daoCollection
@@ -177,7 +178,7 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
                 .getLatestExtensionByKey(
                     RUN_ID_EXTENSION_KEY,
                     pipelineStatus.getRunId(),
-                    ingestionPipeline.getFullyQualifiedName(),
+                    fqnHash,
                     PIPELINE_STATUS_EXTENSION),
             PipelineStatus.class);
     if (storedPipelineStatus != null) {
@@ -186,14 +187,14 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
           .updateExtensionByKey(
               RUN_ID_EXTENSION_KEY,
               pipelineStatus.getRunId(),
-              ingestionPipeline.getFullyQualifiedName(),
+              fqnHash,
               PIPELINE_STATUS_EXTENSION,
               JsonUtils.pojoToJson(pipelineStatus));
     } else {
       daoCollection
           .entityExtensionTimeSeriesDao()
           .insert(
-              ingestionPipeline.getFullyQualifiedName(),
+              fqnHash,
               PIPELINE_STATUS_EXTENSION,
               PIPELINE_STATUS_JSON_SCHEMA,
               JsonUtils.pojoToJson(pipelineStatus));
@@ -211,9 +212,7 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
     IngestionPipeline ingestionPipeline = dao.findEntityByName(ingestionPipelineFQN);
     List<PipelineStatus> pipelineStatusList =
         JsonUtils.readObjects(
-            daoCollection
-                .entityExtensionTimeSeriesDao()
-                .listBetweenTimestampsByFQN(
+           getResultsFromAndToTimestamps(
                     ingestionPipeline.getFullyQualifiedName(), PIPELINE_STATUS_JSON_SCHEMA, startTs, endTs),
             PipelineStatus.class);
     List<PipelineStatus> allPipelineStatusList = pipelineServiceClient.getQueuedPipelineStatus(ingestionPipeline);
@@ -224,9 +223,7 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
 
   public PipelineStatus getLatestPipelineStatus(IngestionPipeline ingestionPipeline) throws IOException {
     return JsonUtils.readValue(
-        daoCollection
-            .entityExtensionTimeSeriesDao()
-            .getLatestExtensionByFQN(ingestionPipeline.getFullyQualifiedName(), PIPELINE_STATUS_JSON_SCHEMA),
+          getLatestExtensionFromTimeseries(ingestionPipeline.getFullyQualifiedName(), PIPELINE_STATUS_JSON_SCHEMA),
         PipelineStatus.class);
   }
 
@@ -238,7 +235,7 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
             .getExtensionByKey(
                 RUN_ID_EXTENSION_KEY,
                 pipelineStatusRunId.toString(),
-                ingestionPipeline.getFullyQualifiedName(),
+                FullyQualifiedName.buildHash(ingestionPipeline.getFullyQualifiedName()),
                 PIPELINE_STATUS_EXTENSION),
         PipelineStatus.class);
   }

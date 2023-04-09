@@ -39,6 +39,7 @@ import org.openmetadata.schema.type.IndexMappingLanguage;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.JsonUtils;
 
 @Slf4j
@@ -290,7 +291,8 @@ public class ElasticSearchIndexDefinition {
     try {
       long updateTime = Date.from(LocalDateTime.now().atZone(ZoneId.systemDefault()).toInstant()).getTime();
       String recordString =
-          dao.entityExtensionTimeSeriesDao().getExtension(ELASTIC_SEARCH_ENTITY_FQN_STREAM, ELASTIC_SEARCH_EXTENSION);
+          dao.entityExtensionTimeSeriesDao().getExtension(EntityUtil.getCheckSum(ELASTIC_SEARCH_ENTITY_FQN_STREAM),
+              ELASTIC_SEARCH_EXTENSION);
       EventPublisherJob lastRecord = JsonUtils.readValue(recordString, EventPublisherJob.class);
       long originalLastUpdate = lastRecord.getTimestamp();
       lastRecord.setStatus(Status.ACTIVE_WITH_ERROR);
@@ -305,7 +307,7 @@ public class ElasticSearchIndexDefinition {
 
       dao.entityExtensionTimeSeriesDao()
           .update(
-              ELASTIC_SEARCH_ENTITY_FQN_STREAM,
+              EntityUtil.getCheckSum(ELASTIC_SEARCH_ENTITY_FQN_STREAM),
               ELASTIC_SEARCH_EXTENSION,
               JsonUtils.pojoToJson(lastRecord),
               originalLastUpdate);

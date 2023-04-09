@@ -102,6 +102,7 @@ public interface EntityInterface {
 
   void setHref(URI href);
 
+
   default void setTags(List<TagLabel> tags) {
     /* no-op implementation to be overridden */
   }

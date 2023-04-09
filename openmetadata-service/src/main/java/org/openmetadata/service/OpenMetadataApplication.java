@@ -233,21 +233,21 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
         new SqlLogger() {
           @Override
           public void logBeforeExecution(StatementContext context) {
-            LOG.debug("sql {}, parameters {}", context.getRenderedSql(), context.getBinding());
+            LOG.info("sql {}, parameters {}", context.getRenderedSql(), context.getBinding());
           }
 
           @Override
           public void logAfterExecution(StatementContext context) {
-            LOG.debug(
+            LOG.info(
                 "sql {}, parameters {}, timeTaken {} ms",
                 context.getRenderedSql(),
                 context.getBinding(),
                 context.getElapsedTime(ChronoUnit.MILLIS));
           }
         };
-    if (LOG.isDebugEnabled()) {
-      jdbi.setSqlLogger(sqlLogger);
-    }
+
+    jdbi.setSqlLogger(sqlLogger);
+
     // Set the Database type for choosing correct queries from annotations
     jdbi.getConfig(SqlObjects.class).setSqlLocator(new ConnectionAwareAnnotationSqlLocator(dbFactory.getDriverClass()));
 

@@ -52,6 +52,19 @@ public class FullyQualifiedName {
     return String.join(Entity.SEPARATOR, list);
   }
 
+  public static String buildHash(String... strings) {
+    List<String> list = new ArrayList<>();
+    for (String string : strings) {
+      list.add(EntityUtil.getCheckSum(quoteName(string)));
+    }
+    return String.join(Entity.SEPARATOR, list);
+  }
+
+  public static String buildHash(String fullyQualifiedName) {
+    String[] split = split(fullyQualifiedName);
+    return buildHash(split);
+  }
+
   public static String[] split(String string) {
     SplitListener listener = new SplitListener();
     walk(string, listener);

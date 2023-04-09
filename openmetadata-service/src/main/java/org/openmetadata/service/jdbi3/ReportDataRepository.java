@@ -7,6 +7,7 @@ import javax.ws.rs.core.Response;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.analytics.ReportData;
 import org.openmetadata.schema.analytics.ReportData.ReportDataType;
+import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
 
@@ -26,7 +27,7 @@ public class ReportDataRepository {
     daoCollection
         .entityExtensionTimeSeriesDao()
         .insert(
-            reportData.getReportDataType().value(),
+            EntityUtil.getCheckSum(reportData.getReportDataType().value()),
             REPORT_DATA_EXTENSION,
             "reportData",
             JsonUtils.pojoToJson(reportData));
@@ -41,7 +42,7 @@ public class ReportDataRepository {
         JsonUtils.readObjects(
             daoCollection
                 .entityExtensionTimeSeriesDao()
-                .listBetweenTimestamps(reportDataType.value(), REPORT_DATA_EXTENSION, startTs, endTs),
+                .listBetweenTimestamps(EntityUtil.getCheckSum(reportDataType.value()), REPORT_DATA_EXTENSION, startTs, endTs),
             ReportData.class);
 
     return new ResultList<>(reportData, String.valueOf(startTs), String.valueOf(endTs), reportData.size());

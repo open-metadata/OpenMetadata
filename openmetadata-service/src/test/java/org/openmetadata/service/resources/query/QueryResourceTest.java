@@ -33,8 +33,8 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.databases.TableResourceTest;
+import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.JsonUtils;
-import org.openmetadata.service.util.QueryUtil;
 import org.openmetadata.service.util.TestUtils;
 
 @Slf4j
@@ -63,7 +63,7 @@ public class QueryResourceTest extends EntityResourceTest<Query, CreateQuery> {
     Table createdTable = tableResourceTest.createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
     TABLE_REF = createdTable.getEntityReference();
     QUERY = "select * from sales";
-    QUERY_CHECKSUM = QueryUtil.getCheckSum(QUERY);
+    QUERY_CHECKSUM = EntityUtil.getCheckSum(QUERY);
   }
 
   @Override

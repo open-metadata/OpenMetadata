@@ -22,7 +22,6 @@ import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.query.QueryResource;
 import org.openmetadata.service.util.EntityUtil;
-import org.openmetadata.service.util.QueryUtil;
 import org.openmetadata.service.util.RestUtil;
 
 public class QueryRepository extends EntityRepository<Query> {
@@ -73,7 +72,7 @@ public class QueryRepository extends EntityRepository<Query> {
   @SneakyThrows
   public void prepare(Query entity) throws IOException {
     if (CommonUtil.nullOrEmpty(entity.getName())) {
-      String checkSum = QueryUtil.getCheckSum(entity.getQuery());
+      String checkSum = EntityUtil.getCheckSum(entity.getQuery());
       entity.setChecksum(checkSum);
       entity.setName(checkSum);
     }
@@ -184,7 +183,7 @@ public class QueryRepository extends EntityRepository<Query> {
           "users", USER, original.getUsers(), updated.getUsers(), Relationship.USES, Entity.QUERY, original.getId());
       if (operation.isPatch() && !original.getQuery().equals(updated.getQuery())) {
         recordChange("query", original.getQuery(), updated.getQuery());
-        String checkSum = QueryUtil.getCheckSum(updated.getQuery());
+        String checkSum = EntityUtil.getCheckSum(updated.getQuery());
         recordChange("name", original.getName(), checkSum);
         recordChange("checkSum", original.getChecksum(), checkSum);
       }

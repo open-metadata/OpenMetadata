@@ -120,20 +120,20 @@ WHERE name = 'OpenMetadata' AND JSON_EXTRACT(json, '$.connection.config.authProv
 ALTER TABLE user_tokens MODIFY COLUMN expiryDate BIGINT UNSIGNED GENERATED ALWAYS AS (json ->> '$.expiryDate');
 
 DELETE FROM alert_entity;
-drop table alert_action_def;
+DROP TABLE alert_action_def;
 
 ALTER TABLE alert_entity RENAME TO event_subscription_entity;
 
 -- create data model table
 CREATE TABLE IF NOT EXISTS dashboard_data_model_entity (
     id VARCHAR(36) GENERATED ALWAYS AS (json ->> '$.id') STORED NOT NULL,
-    fullyQualifiedName VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.fullyQualifiedName') NOT NULL,
+    fqnHash VARCHAR(256)  NOT NULL,
     json JSON NOT NULL,
     updatedAt BIGINT UNSIGNED GENERATED ALWAYS AS (json ->> '$.updatedAt') NOT NULL,
     updatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.updatedBy') NOT NULL,
     deleted BOOLEAN GENERATED ALWAYS AS (json -> '$.deleted'),
     PRIMARY KEY (id),
-    UNIQUE (fullyQualifiedName)
+    UNIQUE (fqnHash)
 );
 
 UPDATE dbservice_entity
@@ -151,58 +151,74 @@ SET jsonSchema = 'ingestionPipelineStatus', extension = 'ingestionPipeline.pipel
 WHERE jsonSchema = 'pipelineStatus' AND extension <> 'pipeline.PipelineStatus';
 
 
---- add fullyQualifiedName hash and remove existing columns
+-- add fullyQualifiedName hash and remove existing columns
 
-ALTER TABLE database_entity DROP COLUMN fullyQualifiedName;
-ALTER TABLE database_entity ADD COLUMN fqnHash VARCHAR(256) NOT NULL default "";
+-- update the OM system tables
 
-ALTER TABLE database_schema_entity DROP COLUMN fullyQualifiedName;
-ALTER TABLE database_schema_entity ADD COLUMN fqnHash VARCHAR(256) NOT NULL default "";
+ALTER TABLE field_relationship ADD COLUMN fromFQNHash VARCHAR(256), ADD COLUMN toFQNHash VARCHAR(256),
+DROP INDEX from_index, DROP INDEX to_index, ADD INDEX from_fqnhash_index(fromFQNHash, relation), ADD INDEX to_fqnhash_index(toFQNHash, relation);
+ALTER TABLE entity_extension_time_series DROP COLUMN entityFQN, ADD COLUMN entityFQNHash VARCHAR (256) NOT NULL;
 
-ALTER TABLE table_entity DROP COLUMN fullyQualifiedName;
-ALTER TABLE table_entity ADD COLUMN fqnHash VARCHAR(256) NOT NULL default "";
+ALTER TABLE type_entity DROP COLUMN name, ADD COLUMN nameHash VARCHAR(256) NOT NULL, ADD UNIQUE (nameHash);
 
-ALTER TABLE metric_entity DROP COLUMN fullyQualifiedName;
-ALTER TABLE metric_entity ADD COLUMN fqnHash VARCHAR(256) NOT NULL default "";
+ALTER TABLE event_subscription_entity DROP COLUMN name, ADD COLUMN nameHash VARCHAR(256) NOT NULL, ADD UNIQUE (nameHash);
 
-ALTER TABLE report_entity DROP COLUMN fullyQualifiedName;
-ALTER TABLE report_entity ADD COLUMN fqnHash VARCHAR(256) NOT NULL default "";
+ALTER TABLE test_definition DROP COLUMN name, ADD COLUMN nameHash VARCHAR(256) NOT NULL, ADD UNIQUE (nameHash);
+ALTER TABLE test_suite DROP COLUMN name, ADD COLUMN nameHash VARCHAR(256) NOT NULL, ADD UNIQUE (nameHash);
+ALTER TABLE test_case DROP COLUMN fullyQualifiedName, ADD COLUMN fqnHash VARCHAR(256) NOT NULL, ADD UNIQUE (fqnHash);
 
-ALTER TABLE dashboard_entity DROP COLUMN fullyQualifiedName;
-ALTER TABLE dashboard_entity ADD COLUMN fqnHash VARCHAR(256) NOT NULL default "";
+ALTER TABLE web_analytic_event DROP COLUMN fullyQualifiedName, ADD COLUMN fqnHash VARCHAR(256) NOT NULL, ADD UNIQUE (fqnHash);
+ALTER TABLE data_insight_chart DROP COLUMN fullyQualifiedName, ADD COLUMN fqnHash VARCHAR(256) NOT NULL, ADD UNIQUE (fqnHash);
 
-ALTER TABLE mlmodel_entity DROP COLUMN fullyQualifiedName;
-ALTER TABLE mlmodel_entity ADD COLUMN fqnHash VARCHAR(256) NOT NULL default "";
+ALTER TABLE kpi_entity DROP COLUMN name, ADD COLUMN nameHash VARCHAR(256) NOT NULL, ADD UNIQUE (nameHash);
 
-ALTER TABLE pipeline_entity DROP COLUMN fullyQualifiedName;
-ALTER TABLE pipeline_entity ADD COLUMN fqnHash VARCHAR(256) NOT NULL default "";
+ALTER TABLE classification DROP COLUMN name, ADD COLUMN nameHash VARCHAR(256) NOT NULL, ADD UNIQUE (nameHash);;
+ALTER TABLE glossary_term_entity DROP COLUMN fullyQualifiedName, ADD COLUMN fqnHash VARCHAR(256) NOT NULL, ADD UNIQUE (fqnHash);
+ALTER TABLE tag DROP COLUMN fullyQualifiedName, ADD COLUMN fqnHash VARCHAR(256) NOT NULL, ADD UNIQUE (fqnHash);
+ALTER TABLE tag_usage DROP index `source`, DROP COLUMN targetFQN, ADD COLUMN tagFQNHash VARCHAR(256), ADD COLUMN targetFQNHash VARCHAR(256), ADD UNIQUE KEY `tag_usage_key` (source, tagFQNHash, targetFQNHash);
 
-ALTER TABLE topic_entity DROP COLUMN fullyQualifiedName;
-ALTER TABLE topic_entity ADD COLUMN fqnHash VARCHAR(256) NOT NULL default "";
+ALTER TABLE policy_entity DROP COLUMN fullyQualifiedName,  ADD COLUMN fqnHash VARCHAR(256) NOT NULL, ADD UNIQUE (fqnHash);
+ALTER TABLE role_entity DROP COLUMN name,  ADD COLUMN nameHash VARCHAR(256) NOT NULL, ADD UNIQUE (nameHash);
 
-ALTER TABLE chart_entity DROP COLUMN fullyQualifiedName;
-ALTER TABLE chart_entity ADD COLUMN fqnHash VARCHAR(256) NOT NULL default "";
+ALTER TABLE automations_workflow DROP COLUMN name,  ADD COLUMN nameHash VARCHAR(256) NOT NULL, ADD UNIQUE (nameHash);
+ALTER TABLE test_connection_definition DROP COLUMN name,  ADD COLUMN nameHash VARCHAR(256) NOT NULL, ADD UNIQUE (nameHash);
 
-ALTER TABLE location_entity DROP COLUMN fullyQualifiedName;
-ALTER TABLE location_entity ADD COLUMN fqnHash VARCHAR(256) NOT NULL default "";
 
-ALTER TABLE policy_entity DROP COLUMN fullyQualifiedName;
-ALTER TABLE policy_entity ADD COLUMN fqnHash VARCHAR(256) NOT NULL default "";
+-- update services
+ALTER TABLE dbservice_entity DROP COLUMN name, ADD COLUMN nameHash VARCHAR(256) NOT NULL, ADD UNIQUE (nameHash);
+ALTER TABLE messaging_service_entity DROP COLUMN name, ADD COLUMN nameHash VARCHAR(256) NOT NULL, ADD UNIQUE (nameHash);
+ALTER TABLE dashboard_service_entity DROP COLUMN name, ADD COLUMN nameHash VARCHAR(256) NOT NULL, ADD UNIQUE (nameHash);
+ALTER TABLE pipeline_service_entity DROP COLUMN name, ADD COLUMN nameHash VARCHAR(256) NOT NULL, ADD UNIQUE (nameHash);
+ALTER TABLE storage_service_entity DROP COLUMN name, ADD COLUMN nameHash VARCHAR(256) NOT NULL, ADD UNIQUE (nameHash);
+ALTER TABLE metadata_service_entity DROP COLUMN name, ADD COLUMN nameHash VARCHAR(256) NOT NULL, ADD UNIQUE (nameHash);
+ALTER TABLE mlmodel_service_entity DROP COLUMN name, ADD COLUMN nameHash VARCHAR(256) NOT NULL, ADD UNIQUE (nameHash);
+ALTER TABLE objectstore_service_entity DROP COLUMN name, ADD COLUMN nameHash VARCHAR(256) NOT NULL, ADD UNIQUE (nameHash);
 
-ALTER TABLE ingestion_pipeline_entity DROP COLUMN fullyQualifiedName;
-ALTER TABLE ingestion_pipeline_entity ADD COLUMN fqnHash VARCHAR(256) NOT NULL default "";
 
-ALTER TABLE tag DROP COLUMN fullyQualifiedName;
-ALTER TABLE tag ADD COLUMN fqnHash VARCHAR(256) NOT NULL default "";
 
-ALTER TABLE glossary_term_entity DROP COLUMN fullyQualifiedName;
-ALTER TABLE glossary_term_entity ADD COLUMN fqnHash VARCHAR(256) NOT NULL default "";
+-- all entity tables
+ALTER TABLE database_entity DROP COLUMN fullyQualifiedName, ADD COLUMN fqnHash VARCHAR(256) NOT NULL, ADD UNIQUE (fqnHash);
+ALTER TABLE database_schema_entity DROP COLUMN fullyQualifiedName, ADD COLUMN fqnHash VARCHAR(256) NOT NULL, ADD UNIQUE (fqnHash);
+ALTER TABLE table_entity DROP COLUMN fullyQualifiedName,  ADD COLUMN fqnHash VARCHAR(256) NOT NULL, ADD UNIQUE (fqnHash);
+ALTER TABLE metric_entity DROP COLUMN fullyQualifiedName, ADD COLUMN fqnHash VARCHAR(256) NOT NULL, ADD UNIQUE (fqnHash);
+ALTER TABLE report_entity DROP COLUMN fullyQualifiedName, ADD COLUMN fqnHash VARCHAR(256) NOT NULL, ADD UNIQUE (fqnHash);
+ALTER TABLE dashboard_entity DROP COLUMN fullyQualifiedName, ADD COLUMN fqnHash VARCHAR(256) NOT NULL, ADD UNIQUE (fqnHash);
+ALTER TABLE chart_entity DROP COLUMN fullyQualifiedName, ADD COLUMN fqnHash VARCHAR(256) NOT NULL, ADD UNIQUE (fqnHash);
+ALTER TABLE ml_model_entity DROP COLUMN fullyQualifiedName, ADD COLUMN fqnHash VARCHAR(256) NOT NULL, ADD UNIQUE (fqnHash);
+ALTER TABLE pipeline_entity DROP COLUMN fullyQualifiedName, ADD COLUMN fqnHash VARCHAR(256) NOT NULL, ADD UNIQUE (fqnHash);
+ALTER TABLE topic_entity DROP COLUMN fullyQualifiedName,  ADD COLUMN fqnHash VARCHAR(256) NOT NULL, ADD UNIQUE (fqnHash);
+ALTER TABLE location_entity DROP COLUMN fullyQualifiedName,  ADD COLUMN fqnHash VARCHAR(256) NOT NULL, ADD UNIQUE (fqnHash);
+ALTER TABLE ingestion_pipeline_entity DROP COLUMN fullyQualifiedName, ADD COLUMN fqnHash VARCHAR(256) NOT NULL, ADD UNIQUE (fqnHash);
+ALTER TABLE objectstore_container_entity DROP COLUMN fullyQualifiedName, ADD COLUMN fqnHash VARCHAR(256) NOT NULL, ADD UNIQUE (fqnHash);
+ALTER TABLE query_entity DROP COLUMN name, ADD COLUMN nameHash VARCHAR(256) NOT NULL, ADD UNIQUE (nameHash);
+ALTER TABLE team_entity DROP COLUMN name, ADD COLUMN nameHash VARCHAR(256) NOT NULL, ADD UNIQUE (nameHash);
+ALTER TABLE user_entity DROP COLUMN name, ADD COLUMN nameHash VARCHAR(256) NOT NULL, ADD UNIQUE (nameHash);
+ALTER TABLE bot_entity DROP COLUMN name, ADD COLUMN nameHash VARCHAR(256) NOT NULL, ADD UNIQUE (nameHash);
+ALTER TABLE glossary_entity DROP COLUMN name, ADD COLUMN nameHash VARCHAR(256) NOT NULL, ADD UNIQUE (nameHash);
 
-ALTER TABLE web_analytic_event DROP COLUMN fullyQualifiedName;
-ALTER TABLE web_analytic_event ADD COLUMN fqnHash VARCHAR(256) NOT NULL default "";
 
-ALTER TABLE data_insight_chart DROP COLUMN fullyQualifiedName;
-ALTER TABLE data_insight_chart ADD COLUMN fqnHash VARCHAR(256) NOT NULL default "";
 
-ALTER TABLE objectstore_container_entity DROP COLUMN fullyQualifiedName;
-ALTER TABLE objectstore_container_entity ADD COLUMN fqnHash VARCHAR(256) NOT NULL default "";
+
+
+
+

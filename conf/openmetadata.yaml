@@ -91,7 +91,7 @@ server:
 logging:
   level: ${LOG_LEVEL:-INFO}
   loggers:
-    io.swagger: ERROR
+    io.swagger: DEBUG
   appenders:
     - type: console
       threshold: TRACE
