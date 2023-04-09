@@ -272,6 +272,7 @@
     "enter-property-value": "Ingrese el valor de la propiedad",
     "enter-type-password": "Ingrese la contraseña de {{type}}",
     "entity-count": "Cantidad de {{entity}}",
+    "entity-detail-plural": "{{entity}} details",
     "entity-hyphen-value": "{{entity}} - {{value}}",
     "entity-index": "Índice de {{entity}}",
     "entity-name": "Nombre de {{entity}}",

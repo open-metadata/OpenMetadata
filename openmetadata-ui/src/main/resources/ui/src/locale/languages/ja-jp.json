@@ -272,6 +272,7 @@
     "enter-property-value": "プロパティの値を入力",
     "enter-type-password": "{{type}} のパスワードを入力",
     "entity-count": "{{entity}}の数",
+    "entity-detail-plural": "{{entity}} details",
     "entity-hyphen-value": "{{entity}} - {{value}}",
     "entity-index": "{{entity}} インデックス",
     "entity-name": "{{entity}} 名",

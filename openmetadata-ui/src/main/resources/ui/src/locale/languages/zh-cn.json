@@ -272,6 +272,7 @@
     "enter-property-value": "输入属性值",
     "enter-type-password": "输入 {{type}} 密码",
     "entity-count": "{{entity}} Count",
+    "entity-detail-plural": "{{entity}} details",
     "entity-hyphen-value": "{{entity}} - {{value}}",
     "entity-index": "{{entity}} index",
     "entity-name": "{{entity}} Name",

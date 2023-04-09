@@ -608,7 +608,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
   ) : (
     <PageContainerV1>
       <PageLayoutV1
-        pageTitle={t('label.entity-details', {
+        pageTitle={t('label.entity-detail-plural', {
           entity: getEntityName(tableDetails),
         })}>
         <EntityPageInfo
