@@ -212,7 +212,8 @@ const GlobalSettingRouter = () => {
         hasPermission={false}
         path={getSettingPath(
           GlobalSettingsMenuCategory.OPEN_METADATA,
-          GlobalSettingOptions.SEARCH
+          GlobalSettingOptions.SEARCH,
+          true
         )}
       />
 

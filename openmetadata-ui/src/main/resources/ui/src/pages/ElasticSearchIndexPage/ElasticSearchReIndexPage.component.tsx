@@ -15,31 +15,65 @@ import { Col, Row, Tabs, TabsProps } from 'antd';
 import PageHeader from 'components/header/PageHeader.component';
 import SettingsIngestion from 'components/SettingsIngestion/SettingsIngestion.component';
 import TriggerReIndexing from 'components/TriggerReIndexing/TriggerReIndexing.component';
+import {
+  GlobalSettingOptions,
+  GlobalSettingsMenuCategory,
+} from 'constants/GlobalSettings.constants';
+import { ELASTIC_SEARCH_RE_INDEX_PAGE_TABS } from 'enums/ElasticSearch.enum';
 import { PipelineType } from 'generated/api/services/ingestionPipelines/createIngestionPipeline';
-import React from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useHistory, useParams } from 'react-router-dom';
+import { getSettingsPathWithFqn } from 'utils/RouterUtils';
 import './ElasticSearchReIndex.style.less';
 
 const ElasticSearchIndexPage = () => {
   const { t } = useTranslation();
+  const history = useHistory();
+  const { fqn } = useParams<{ fqn: string }>();
+  const [activeTabKey, setActiveTabKey] = useState<string>('1');
 
-  const tabItems: TabsProps['items'] = [
-    {
-      key: '1',
-      label: t('label.on-demand'),
-      children: <TriggerReIndexing />,
-    },
-    {
-      key: '2',
-      label: t('label.schedule'),
-      children: (
-        <SettingsIngestion
-          containerClassName="m-t-0"
-          pipelineType={PipelineType.ElasticSearchReindex}
-        />
-      ),
-    },
-  ];
+  const tabItems: TabsProps['items'] = useMemo(
+    () => [
+      {
+        key: '1',
+        label: t('label.on-demand'),
+        children: <TriggerReIndexing />,
+      },
+      {
+        key: '2',
+        label: t('label.schedule'),
+        children: (
+          <SettingsIngestion
+            containerClassName="m-t-0"
+            pipelineType={PipelineType.ElasticSearchReindex}
+          />
+        ),
+      },
+    ],
+    []
+  );
+
+  const handleTabClick = useCallback((activeKey: string) => {
+    const tabName =
+      activeKey === '1'
+        ? ELASTIC_SEARCH_RE_INDEX_PAGE_TABS.ON_DEMAND
+        : ELASTIC_SEARCH_RE_INDEX_PAGE_TABS.SCHEDULE;
+
+    history.replace(
+      getSettingsPathWithFqn(
+        GlobalSettingsMenuCategory.OPEN_METADATA,
+        GlobalSettingOptions.SEARCH,
+        tabName
+      )
+    );
+  }, []);
+
+  useEffect(() => {
+    const tabNumber =
+      fqn === ELASTIC_SEARCH_RE_INDEX_PAGE_TABS.ON_DEMAND ? '1' : '2';
+    setActiveTabKey(tabNumber);
+  }, [fqn]);
 
   return (
     <Row align="middle" gutter={[16, 16]}>
@@ -52,7 +86,11 @@ const ElasticSearchIndexPage = () => {
         />
       </Col>
       <Col span={24}>
-        <Tabs defaultActiveKey="1" items={tabItems} />
+        <Tabs
+          activeKey={activeTabKey}
+          items={tabItems}
+          onTabClick={handleTabClick}
+        />
       </Col>
     </Row>
   );
