@@ -12,7 +12,8 @@
  */
 
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Button, Card, Col, Row, Typography } from 'antd';
+import { Button, Card, Col, Row, Skeleton, Typography } from 'antd';
+import { AxiosError } from 'axios';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import EditEmailConfigModal from 'components/EditEmailConfigModal/EditEmailConfigModal.component';
 import PageHeader from 'components/header/PageHeader.component';
@@ -27,6 +28,7 @@ import {
   updateSettingsConfig,
 } from 'rest/emailConfigAPI';
 import { getEmailConfigFieldLabels } from 'utils/EmailConfigUtils';
+import { showErrorToast } from 'utils/ToastUtils';
 import { ReactComponent as IconEdit } from '../../assets/svg/ic-edit.svg';
 
 function EmailConfigSettingsPage() {
@@ -34,26 +36,52 @@ function EmailConfigSettingsPage() {
 
   const [emailConfigValues, setEmailConfigValues] = useState<SMTPSettings>();
   const [showEditModal, setShowEditModal] = useState<boolean>(false);
+  const [loading, setLoading] = useState<boolean>(false);
 
   const toggleEditMode = () => setShowEditModal((value) => !value);
 
   const fetchEmailConfigValues = useCallback(async () => {
-    const { data } = await getSettingsConfigFromConfigType(
-      SettingType.EmailConfiguration
-    );
+    try {
+      setLoading(true);
 
-    setEmailConfigValues(data.config_value as SMTPSettings);
+      const { data } = await getSettingsConfigFromConfigType(
+        SettingType.EmailConfiguration
+      );
+
+      setEmailConfigValues(data.config_value as SMTPSettings);
+    } catch (error) {
+      showErrorToast(
+        error as AxiosError,
+        t('server.entity-fetch-error', {
+          entity: t('label.email-configuration-lowercase'),
+        })
+      );
+    } finally {
+      setLoading(false);
+    }
   }, [setEmailConfigValues]);
 
   const updateEmailConfigValues = useCallback(
     async (configValues: SMTPSettings) => {
-      const settingsConfigData: Settings = {
-        config_type: SettingType.EmailConfiguration,
-        config_value: configValues,
-      };
-      const { data } = await updateSettingsConfig(settingsConfigData);
+      try {
+        setLoading(true);
+        const settingsConfigData: Settings = {
+          config_type: SettingType.EmailConfiguration,
+          config_value: configValues,
+        };
+        const { data } = await updateSettingsConfig(settingsConfigData);
 
-      setEmailConfigValues(data.config_value as SMTPSettings);
+        setEmailConfigValues(data.config_value as SMTPSettings);
+      } catch (error) {
+        showErrorToast(
+          error as AxiosError,
+          t('server.entity-updating-error', {
+            entity: t('label.email-configuration-lowercase'),
+          })
+        );
+      } finally {
+        setLoading(false);
+      }
     },
     [setEmailConfigValues]
   );
@@ -63,7 +91,9 @@ function EmailConfigSettingsPage() {
       return null;
     }
 
-    return Object.keys(emailConfigValues).map((configValue) => {
+    const emailConfigFieldsArray = Object.keys(emailConfigValues).sort();
+
+    return emailConfigFieldsArray.map((configValue) => {
       const title = getEmailConfigFieldLabels(configValue);
       const emailConfigValue =
         emailConfigValues[configValue as keyof SMTPSettings];
@@ -92,7 +122,7 @@ function EmailConfigSettingsPage() {
   }, [emailConfigValues]);
 
   const configValuesContainer = useMemo(() => {
-    if (isUndefined(emailConfigValues)) {
+    if (isUndefined(emailConfigValues) && !loading) {
       return (
         <ErrorPlaceHolder
           classes="mt-24"
@@ -104,15 +134,21 @@ function EmailConfigSettingsPage() {
 
     return (
       <Card>
-        <Typography.Title level={5}>
-          {t('label.email-configuration')}
-        </Typography.Title>
-        <Row align="middle" className="m-t-md" gutter={[16, 16]}>
-          {configValues}
-        </Row>
+        {loading ? (
+          <Skeleton title paragraph={{ rows: 8 }} />
+        ) : (
+          <>
+            <Typography.Title level={5}>
+              {t('label.email-configuration')}
+            </Typography.Title>
+            <Row align="middle" className="m-t-md" gutter={[16, 16]}>
+              {configValues}
+            </Row>
+          </>
+        )}
       </Card>
     );
-  }, [emailConfigValues, configValues]);
+  }, [loading, emailConfigValues, configValues]);
 
   useEffect(() => {
     fetchEmailConfigValues();
