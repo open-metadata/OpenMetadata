@@ -42,6 +42,11 @@ const ElasticSearchIndexPage = () => {
       },
       {
         key: '2',
+        label: t('label.live'),
+        children: <TriggerReIndexing />,
+      },
+      {
+        key: '3',
         label: t('label.schedule'),
         children: (
           <SettingsIngestion
@@ -55,10 +60,22 @@ const ElasticSearchIndexPage = () => {
   );
 
   const handleTabClick = useCallback((activeKey: string) => {
-    const tabName =
-      activeKey === '1'
-        ? ELASTIC_SEARCH_RE_INDEX_PAGE_TABS.ON_DEMAND
-        : ELASTIC_SEARCH_RE_INDEX_PAGE_TABS.SCHEDULE;
+    let tabName: string;
+    switch (activeKey) {
+      case '2':
+        tabName = ELASTIC_SEARCH_RE_INDEX_PAGE_TABS.LIVE;
+
+        break;
+      case '3':
+        tabName = ELASTIC_SEARCH_RE_INDEX_PAGE_TABS.SCHEDULE;
+
+        break;
+      case '1':
+      default:
+        tabName = ELASTIC_SEARCH_RE_INDEX_PAGE_TABS.ON_DEMAND;
+
+        break;
+    }
 
     history.replace(
       getSettingsPathWithFqn(
@@ -70,9 +87,25 @@ const ElasticSearchIndexPage = () => {
   }, []);
 
   useEffect(() => {
-    const tabNumber =
-      fqn === ELASTIC_SEARCH_RE_INDEX_PAGE_TABS.ON_DEMAND ? '1' : '2';
-    setActiveTabKey(tabNumber);
+    if (fqn) {
+      let tabNumber: string;
+      switch (fqn) {
+        case ELASTIC_SEARCH_RE_INDEX_PAGE_TABS.LIVE:
+          tabNumber = '2';
+
+          break;
+        case ELASTIC_SEARCH_RE_INDEX_PAGE_TABS.SCHEDULE:
+          tabNumber = '3';
+
+          break;
+        case ELASTIC_SEARCH_RE_INDEX_PAGE_TABS.ON_DEMAND:
+        default:
+          tabNumber = '1';
+
+          break;
+      }
+      setActiveTabKey(tabNumber);
+    }
   }, [fqn]);
 
   return (

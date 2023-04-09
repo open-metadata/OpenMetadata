@@ -13,5 +13,6 @@
 
 export enum ELASTIC_SEARCH_RE_INDEX_PAGE_TABS {
   ON_DEMAND = 'on_demand',
+  LIVE = 'live',
   SCHEDULE = 'schedule',
 }
