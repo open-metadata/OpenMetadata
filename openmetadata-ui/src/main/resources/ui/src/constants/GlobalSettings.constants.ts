@@ -44,6 +44,7 @@ export enum GlobalSettingOptions {
   ACTIVITY_FEED = 'activityFeeds',
   SEARCH = 'search',
   DATA_INSIGHT = 'dataInsight',
+  EMAIL = 'email',
   ALERTS = 'alerts',
   ALERT = 'alert',
   ADD_ALERTS = 'add-alerts',

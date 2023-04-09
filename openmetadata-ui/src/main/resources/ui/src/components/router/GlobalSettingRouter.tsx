@@ -102,6 +102,13 @@ const DataInsightsSettingsPage = withSuspenseFallback(
   )
 );
 
+const EmailConfigSettingsPage = withSuspenseFallback(
+  React.lazy(
+    () =>
+      import('pages/EmailConfigSettingsPage/EmailConfigSettingsPage.component')
+  )
+);
+
 const GlobalSettingRouter = () => {
   const { permissions } = usePermissionProvider();
 
@@ -216,6 +223,16 @@ const GlobalSettingRouter = () => {
         path={getSettingPath(
           GlobalSettingsMenuCategory.OPEN_METADATA,
           GlobalSettingOptions.DATA_INSIGHT
+        )}
+      />
+
+      <AdminProtectedRoute
+        exact
+        component={EmailConfigSettingsPage}
+        hasPermission={false}
+        path={getSettingPath(
+          GlobalSettingsMenuCategory.OPEN_METADATA,
+          GlobalSettingOptions.EMAIL
         )}
       />
 
