@@ -31,11 +31,12 @@ import { Typography } from 'antd';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import { WORKFLOWS_METADATA_DOCS } from 'constants/docs.constants';
 import { OPEN_METADATA } from 'constants/Services.constant';
+import { ELASTIC_SEARCH_RE_INDEX_PAGE_TABS } from 'enums/ElasticSearch.enum';
 import {
   INGESTION_ACTION_TYPE,
   PIPELINE_TYPE_LOCALIZATION,
 } from '../constants/Ingestions.constant';
-import { getSettingPath } from './RouterUtils';
+import { getSettingPath, getSettingsPathWithFqn } from './RouterUtils';
 import {
   getServiceRouteFromServiceType,
   serviceTypeLogo,
@@ -72,9 +73,10 @@ export const getSettingsPathFromPipelineType = (pipelineType: string) => {
     }
     case PipelineType.ElasticSearchReindex:
     default: {
-      return getSettingPath(
+      return getSettingsPathWithFqn(
         GlobalSettingsMenuCategory.OPEN_METADATA,
-        GlobalSettingOptions.SEARCH
+        GlobalSettingOptions.SEARCH,
+        ELASTIC_SEARCH_RE_INDEX_PAGE_TABS.SCHEDULE
       );
     }
   }
