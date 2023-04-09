@@ -224,6 +224,7 @@
     "deleted-lowercase": "deleted",
     "deleting-lowercase": "deleting",
     "deploy": "Déployer",
+    "deploy-search-index-pipeline": "Deploy Search Index Pipeline",
     "deployed": "Déployé",
     "description": "Description",
     "description-lowercase": "description",

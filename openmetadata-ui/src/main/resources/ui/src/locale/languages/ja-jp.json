@@ -224,6 +224,7 @@
     "deleted-lowercase": "削除済",
     "deleting-lowercase": "削除中",
     "deploy": "デプロイ",
+    "deploy-search-index-pipeline": "Deploy Search Index Pipeline",
     "deployed": "デプロイされた",
     "description": "説明",
     "description-lowercase": "説明",

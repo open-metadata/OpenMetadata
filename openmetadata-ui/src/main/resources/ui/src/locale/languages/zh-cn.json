@@ -224,6 +224,7 @@
     "deleted-lowercase": "被删除",
     "deleting-lowercase": "deleting",
     "deploy": "部署",
+    "deploy-search-index-pipeline": "Deploy Search Index Pipeline",
     "deployed": "已部署",
     "description": "描述",
     "description-lowercase": "描述",
