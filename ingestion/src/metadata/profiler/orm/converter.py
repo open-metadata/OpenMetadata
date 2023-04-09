@@ -105,6 +105,21 @@ def check_snowflake_case_sensitive(table_service_type, table_or_col) -> Optional
     return None
 
 
+def check_if_should_quote_column_name(table_service_type) -> Optional[bool]:
+    """Check whether column name should be quoted when passed into the sql command build up.
+    This is important when a column name is the same as a reserve word and causes a sql error.
+
+    Args:
+        table_service_type: the main sql engine to determine if we should always quote.
+    Return: True or False
+    """
+
+    if table_service_type == databaseService.DatabaseServiceType.Hive:
+        return True
+
+    return None
+
+
 def build_orm_col(
     idx: int, col: Column, table_service_type, parent: Optional[str] = None
 ) -> sqlalchemy.Column:
@@ -119,7 +134,6 @@ def build_orm_col(
     As this is only used for INSERT/UPDATE/DELETE,
     there is no impact for our read-only purposes.
     """
-
     if parent:
         name = f"{parent}.{col.name.__root__}"
     else:
@@ -129,7 +143,8 @@ def build_orm_col(
         name=str(name),
         type_=map_types(col, table_service_type),
         primary_key=not bool(idx),  # The first col seen is used as PK
-        quote=check_snowflake_case_sensitive(table_service_type, col.name.__root__),
+        quote=check_if_should_quote_column_name(table_service_type)
+        or check_snowflake_case_sensitive(table_service_type, col.name.__root__),
         key=str(
             col.name.__root__
         ).lower(),  # Add lowercase column name as key for snowflake case sensitive columns

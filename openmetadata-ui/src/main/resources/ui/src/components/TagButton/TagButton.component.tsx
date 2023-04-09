@@ -36,7 +36,7 @@ const TagButton: React.FC<TagButtonProps> = ({
   removeTag,
 }) => {
   const buttonClassNames = classNames(
-    'tag-button-container tw-inline-flex text-xs font-medium rounded-4 whitespace-nowrap tw-bg-white tw-border tw-items-center tw-mr-1 tw-mt-1 tw-font-semibold',
+    'tag-button-container tw-inline-flex text-xs font-medium rounded-4 whitespace-nowrap tw-bg-white tw-border tw-items-center tw-mr-2 tw-mt-1 tw-font-semibold',
     { 'tw-pl-2': isRemovable },
     { 'tw-px-2': !isRemovable },
     className
@@ -47,7 +47,7 @@ const TagButton: React.FC<TagButtonProps> = ({
       <Space
         align="center"
         className="d-flex items-center cursor-pointer"
-        size={2}>
+        size={4}>
         {icon}
         <span className="text-xs font-medium">{label}</span>
       </Space>

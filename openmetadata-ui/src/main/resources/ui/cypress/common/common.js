@@ -413,11 +413,7 @@ export const editOwnerforCreatedService = (
   verifyResponseStatusCode('@getSelectedService', 200);
   verifyResponseStatusCode('@waitForIngestion', 200);
   verifyResponseStatusCode('@airflow', 200);
-  interceptURL(
-    'GET',
-    '/api/v1/search/query?q=*%20AND%20teamType:Group&from=0&size=15&index=team_search_index',
-    'waitForTeams'
-  );
+  interceptURL('GET', '/api/v1/users?&isBot=false&limit=15', 'waitForUsers');
 
   // Click on edit owner button
   cy.get('[data-testid="edit-owner"]')
@@ -426,13 +422,7 @@ export const editOwnerforCreatedService = (
     .trigger('mouseover')
     .click();
 
-  verifyResponseStatusCode('@waitForTeams', 200);
-
-  cy.get('.user-team-select-popover')
-    .contains('Users')
-    .should('exist')
-    .should('be.visible')
-    .click();
+  verifyResponseStatusCode('@waitForUsers', 200);
 
   interceptURL(
     'GET',
@@ -440,7 +430,6 @@ export const editOwnerforCreatedService = (
     'searchOwner'
   );
   cy.get('.user-team-select-popover [data-testid="searchbar"]')
-    .eq(1)
     .should('be.visible')
     .and('exist')
     .trigger('click')
@@ -577,7 +566,7 @@ export const addNewTagToEntity = (entityObj, term) => {
     .contains(term);
 
   cy.get('[data-testid="tag-container"]')
-    .contains('Tags')
+    .contains('Add')
     .should('be.visible')
     .click();
 
@@ -902,8 +891,6 @@ export const updateOwner = () => {
       // Clicking on edit owner button
       cy.get('[data-testid="add-user"]').should('be.visible').click();
 
-      verifyResponseStatusCode('@getUsers', 200);
-
       cy.get('[data-testid="selectable-list"]')
         .find(`[title="${text.trim()}"]`)
         .click();
@@ -1072,7 +1059,9 @@ export const updateDescriptionForIngestedTables = (
   verifyResponseStatusCode('@getSelectedService', 200);
   verifyResponseStatusCode('@pipelineStatuses', 200);
   verifyResponseStatusCode('@airflow', 200);
+
   cy.get('[data-testid="Ingestions"]').should('be.visible').click();
+
   interceptURL(
     'POST',
     '/api/v1/services/ingestionPipelines/trigger/*',
