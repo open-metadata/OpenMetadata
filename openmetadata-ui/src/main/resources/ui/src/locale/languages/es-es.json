@@ -433,6 +433,7 @@
     "lineage-lowercase": "lineaje",
     "list": "Lista",
     "list-entity": "Lista de {{entity}}",
+    "live": "Live",
     "load-more": "Cargar más",
     "loading": "Cargando",
     "local-config-source": "Origen de configuración local",
