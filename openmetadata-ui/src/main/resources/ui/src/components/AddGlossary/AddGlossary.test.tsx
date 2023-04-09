@@ -12,7 +12,6 @@
  */
 
 import { fireEvent, getByTestId, render } from '@testing-library/react';
-import { LoadingState } from 'Models';
 import React, { forwardRef } from 'react';
 import AddGlossary from './AddGlossary.component';
 
@@ -51,7 +50,7 @@ const mockOnSave = jest.fn();
 const mockProps = {
   header: 'Header',
   allowAccess: true,
-  saveState: 'initial' as LoadingState,
+  isLoading: false,
   onCancel: mockOnCancel,
   onSave: mockOnSave,
   slashedBreadcrumb: [],
@@ -91,11 +90,15 @@ describe('Test AddGlossary component', () => {
     const { container } = render(<AddGlossary {...mockProps} />);
 
     const nameInput = getByTestId(container, 'name');
+    const displayNameInput = getByTestId(container, 'display-name');
     const saveButton = getByTestId(container, 'save-glossary');
 
     expect(saveButton).toBeInTheDocument();
 
     fireEvent.change(nameInput, { target: { value: 'Test Glossary' } });
+    fireEvent.change(displayNameInput, {
+      target: { value: 'Test Glossary Display Name' },
+    });
 
     fireEvent.click(
       saveButton,

@@ -66,14 +66,6 @@ jest.mock('components/Glossary/GlossaryV1.component', () => {
   ));
 });
 
-jest.mock('../GlossaryRightPanel/GlossaryRightPanel.component', () => {
-  return jest
-    .fn()
-    .mockImplementation(() => (
-      <div data-testid="glossary-right-panel-container">Right Panel</div>
-    ));
-});
-
 jest.mock('../GlossaryLeftPanel/GlossaryLeftPanel.component', () => {
   return jest
     .fn()

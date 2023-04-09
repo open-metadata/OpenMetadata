@@ -26,6 +26,7 @@ import Loader from 'components/Loader/Loader';
 import { t } from 'i18next';
 import {
   capitalize,
+  get,
   isEmpty,
   isNil,
   isNull,
@@ -704,7 +705,7 @@ export const getHostNameFromURL = (url: string) => {
   }
 };
 
-export const getOwnerValue = (owner: EntityReference) => {
+export const getOwnerValue = (owner?: EntityReference) => {
   switch (owner?.type) {
     case 'team':
       return getTeamAndUserDetailsPath(owner?.name || '');
@@ -883,6 +884,8 @@ export const getFilterTypes = (
       return 'schemaFilterPattern' as keyof AddIngestionState;
     case FilterPatternEnum.TABLE:
       return 'tableFilterPattern' as keyof AddIngestionState;
+    case FilterPatternEnum.CONTAINER:
+      return 'containerFilterPattern' as keyof AddIngestionState;
     default:
       return 'topicFilterPattern' as keyof AddIngestionState;
   }
@@ -906,3 +909,21 @@ export const reducerWithoutAction = <S, A>(state: S, action: A) => {
  * @returns base64 encoded text
  */
 export const getBase64EncodedString = (text: string): string => btoa(text);
+
+export const getIsErrorMatch = (error: AxiosError, key: string): boolean => {
+  let errorMessage = '';
+
+  if (error) {
+    errorMessage = get(error, 'response.data.message', '');
+    if (!errorMessage) {
+      // if error text is undefined or null or empty, try responseMessage in data
+      errorMessage = get(error, 'response.data.responseMessage', '');
+    }
+    if (!errorMessage) {
+      errorMessage = get(error, 'response.data', '');
+      errorMessage = typeof errorMessage === 'string' ? errorMessage : '';
+    }
+  }
+
+  return errorMessage.includes(key);
+};

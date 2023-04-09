@@ -181,6 +181,7 @@ const AddIngestion = ({
       showChartFilter: !isUndefined(sourceConfig?.chartFilterPattern),
       showPipelineFilter: !isUndefined(sourceConfig?.pipelineFilterPattern),
       showMlModelFilter: !isUndefined(sourceConfig?.mlModelFilterPattern),
+      showContainerFilter: !isUndefined(sourceConfig?.containerFilterPattern),
       dbtConfigSource: configData as ModifiedDbtConfig,
       gcsConfigType: showDBTConfig ? sourceTypeData.gcsType : undefined,
       chartFilterPattern:
@@ -191,6 +192,8 @@ const AddIngestion = ({
         : undefined,
       dashboardFilterPattern:
         sourceConfig?.dashboardFilterPattern ?? INITIAL_FILTER_PATTERN,
+      containerFilterPattern:
+        sourceConfig?.containerFilterPattern ?? INITIAL_FILTER_PATTERN,
       databaseFilterPattern: isUndefined(database)
         ? sourceConfig?.databaseFilterPattern ?? INITIAL_FILTER_PATTERN
         : {
@@ -349,6 +352,7 @@ const AddIngestion = ({
       includeLineage,
       includeTags,
       includeView,
+      showContainerFilter,
       ingestSampleData,
       markAllDeletedTables,
       markDeletedTables,
@@ -357,6 +361,7 @@ const AddIngestion = ({
       markDeletedMlModels,
       markDeletedPipelines,
       mlModelFilterPattern,
+      containerFilterPattern,
       pipelineFilterPattern,
       schemaFilterPattern,
       showChartFilter,
@@ -446,6 +451,16 @@ const AddIngestion = ({
           markDeletedMlModels,
         };
       }
+      case ServiceCategory.OBJECT_STORE_SERVICES: {
+        return {
+          containerFilterPattern: getFilterPatternData(
+            containerFilterPattern,
+            showContainerFilter
+          ),
+          type: ConfigType.ObjectStoreMetadata,
+        };
+      }
+
       default: {
         return {};
       }

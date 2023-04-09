@@ -89,6 +89,12 @@ const UserPage = withSuspenseFallback(
   React.lazy(() => import('pages/UserPage/UserPage.component'))
 );
 
+const GlossaryVersionPage = withSuspenseFallback(
+  React.lazy(
+    () => import('../../components/GlossaryVersion/GlossaryVersion.component')
+  )
+);
+
 const AddGlossaryPage = withSuspenseFallback(
   React.lazy(() => import('pages/AddGlossary/AddGlossaryPage.component'))
 );
@@ -126,6 +132,11 @@ const DatabaseSchemaPageComponent = withSuspenseFallback(
     () => import('pages/DatabaseSchemaPage/DatabaseSchemaPage.component')
   )
 );
+
+const DataModelDetailsPage = withSuspenseFallback(
+  React.lazy(() => import('pages/DataModelPage/DataModelPage.component'))
+);
+
 const DatasetDetailsPage = withSuspenseFallback(
   React.lazy(
     () => import('pages/DatasetDetailsPage/DatasetDetailsPage.component')
@@ -352,6 +363,31 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
       />
       <Route
         exact
+        component={DataModelDetailsPage}
+        path={ROUTES.DATA_MODEL_DETAILS}
+      />
+      <Route
+        exact
+        component={DataModelDetailsPage}
+        path={ROUTES.DATA_MODEL_DETAILS_WITH_TAB}
+      />
+      <Route
+        exact
+        component={() => <GlossaryVersionPage isGlossary />}
+        path={ROUTES.GLOSSARY_VERSION}
+      />
+      <Route
+        exact
+        component={GlossaryVersionPage}
+        path={ROUTES.GLOSSARY_TERMS_VERSION}
+      />
+      <Route
+        exact
+        component={GlossaryVersionPage}
+        path={ROUTES.GLOSSARY_TERMS_VERSION_TAB}
+      />
+      <Route
+        exact
         component={PipelineDetailsPage}
         path={ROUTES.PIPELINE_DETAILS}
       />
@@ -431,7 +467,12 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         component={AddGlossaryTermPage}
         path={ROUTES.ADD_GLOSSARY_TERMS}
       />
-
+      <AdminProtectedRoute
+        exact
+        component={GlossaryPage}
+        hasPermission={glossaryPermission}
+        path={ROUTES.GLOSSARY_DETAILS_WITH_TAB}
+      />
       <AdminProtectedRoute
         exact
         component={CreateUserPage}

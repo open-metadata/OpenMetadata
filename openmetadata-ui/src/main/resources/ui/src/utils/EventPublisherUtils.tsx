@@ -11,36 +11,39 @@
  *  limitations under the License.
  */
 
+import Loader from 'components/Loader/Loader';
+import { Status } from 'generated/system/eventPublisherJob';
 import { t } from 'i18next';
-import { Status } from '../generated/settings/eventPublisherJob';
-import { Icons } from './SvgUtils';
+import React from 'react';
+import { ReactComponent as IconFailBadge } from '../assets/svg/fail-badge.svg';
+import { ReactComponent as IconTaskOpen } from '../assets/svg/in-progress.svg';
+import { ReactComponent as IconSuccessBadge } from '../assets/svg/success-badge.svg';
 
-export const getStatusResultBadgeIcon = (status: string) => {
+export const getStatusResultBadgeIcon = (status?: string) => {
   switch (status) {
-    case Status.Idle:
-      return Icons.TASK_OPEN;
-    case Status.Starting:
-    case Status.Active:
     case Status.Completed:
-      return Icons.SUCCESS_BADGE;
+      return <IconSuccessBadge height={14} width={14} />;
 
+    case Status.Failed:
     case Status.ActiveWithError:
-      return Icons.FAIL_BADGE;
+      return <IconFailBadge height={14} width={14} />;
 
-    case Status.Retry:
-      return Icons.PENDING_BADGE;
+    case Status.Running:
+    case Status.Started:
+      return <Loader size="x-small" />;
 
+    case Status.Active:
     default:
-      return '';
+      return <IconTaskOpen height={14} width={14} />;
   }
 };
 
 export const getEventPublisherStatusText = (status?: string) => {
   switch (status) {
-    case Status.Starting:
-      return t('label.starting');
-    case Status.Idle:
-      return t('label.idle');
+    case Status.Failed:
+      return t('label.failed');
+    case Status.Running:
+      return t('label.running');
     case Status.Completed:
       return t('label.completed');
     case Status.Active:
@@ -49,8 +52,8 @@ export const getEventPublisherStatusText = (status?: string) => {
     case Status.ActiveWithError:
       return t('label.active-with-error');
 
-    case Status.Retry:
-      return t('label.retry');
+    case Status.Started:
+      return t('label.started');
 
     default:
       return status || '';

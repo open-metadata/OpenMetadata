@@ -216,7 +216,7 @@ class AmundsenSource(Source[Entity]):
                         name=table_entity.name,
                         tableType=table_entity.tableType,
                         description=table_entity.description,
-                        databaseSchema=table_entity.databaseSchema,
+                        databaseSchema=table_entity.databaseSchema.fullyQualifiedName,
                         tags=table_entity.tags,
                         columns=table_entity.columns,
                         owner=user_entity_ref,

@@ -893,7 +893,8 @@ export const getServicePageTabs = (
   serviceName: ServiceTypes,
   instanceCount: number,
   ingestions: IngestionPipeline[],
-  servicePermission: OperationPermission
+  servicePermission: OperationPermission,
+  dataModelCount: number
 ) => {
   const tabs = [];
 
@@ -903,6 +904,15 @@ export const getServicePageTabs = (
       isProtected: false,
       position: 1,
       count: instanceCount,
+    });
+  }
+
+  if (serviceName === ServiceCategory.DASHBOARD_SERVICES) {
+    tabs.push({
+      name: t('label.data-model'),
+      isProtected: false,
+      position: 4,
+      count: dataModelCount,
     });
   }
 

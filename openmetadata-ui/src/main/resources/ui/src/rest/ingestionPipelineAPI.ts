@@ -164,7 +164,7 @@ export const getPipelineServiceHostIp = async () => {
     '/services/ingestionPipelines/ip'
   );
 
-  return response.data;
+  return response;
 };
 
 export const getIngestionPipelineLogById = (id: string, after?: string) => {

@@ -17,13 +17,18 @@ import { CreateEventPublisherJob } from '../generated/api/createEventPublisherJo
 import {
   EventPublisherJob,
   PublisherType,
-  RunMode,
-} from '../generated/settings/eventPublisherJob';
+} from '../generated/system/eventPublisherJob';
 
-export const getAllReIndexStatus = async (mode: RunMode) => {
+export const getStreamJobReIndexStatus = async () => {
   const res = await axiosClient.get<EventPublisherJob>(
-    `/indexResource/reindex/status/${mode}`
+    `/search/reindex/stream/status`
   );
+
+  return res.data;
+};
+
+export const getBatchJobReIndexStatus = async () => {
+  const res = await axiosClient.get<EventPublisherJob>(`search/reindex/latest`);
 
   return res.data;
 };
@@ -37,7 +42,7 @@ export const reIndexByPublisher = async (data: CreateEventPublisherJob) => {
   const res = await axiosClient.post<
     CreateEventPublisherJob,
     AxiosResponse<EventPublisherJob>
-  >('/indexResource/reindex', payload);
+  >('/search/reindex', payload);
 
   return res.data;
 };
