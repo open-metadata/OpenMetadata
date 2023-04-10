@@ -343,3 +343,12 @@ def format_large_string_numbers(number: Union[float, int]) -> str:
     constant_k = 1000.0
     magnitude = int(floor(log(abs(number), constant_k)))
     return f"{number / constant_k**magnitude:.2f}{units[magnitude]}"
+
+
+def clean_uri(uri: str) -> str:
+    """
+    if uri is like http://localhost:9000/
+    then remove the end / and
+    make it http://localhost:9000
+    """
+    return uri[:-1] if uri.endswith("/") else uri

@@ -15,7 +15,13 @@ import { Card } from 'antd';
 import { AxiosError } from 'axios';
 import { ENTITY_CARD_CLASS } from 'constants/entity.constants';
 import { EntityTags, ExtraInfo } from 'Models';
-import React, { RefObject, useCallback, useEffect, useState } from 'react';
+import React, {
+  RefObject,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { restoreTopic } from 'rest/topicsAPI';
 import { getEntityName } from 'utils/EntityUtils';
@@ -26,7 +32,6 @@ import { EntityInfo, EntityType } from '../../enums/entity.enum';
 import { OwnerType } from '../../enums/user.enum';
 import { Topic } from '../../generated/entity/data/topic';
 import { ThreadType } from '../../generated/entity/feed/thread';
-import { EntityReference } from '../../generated/type/entityReference';
 import { Paging } from '../../generated/type/paging';
 import { LabelType, State } from '../../generated/type/tagLabel';
 import { useInfiniteScroll } from '../../hooks/useInfiniteScroll';
@@ -39,7 +44,7 @@ import {
 import { getEntityFieldThreadCounts } from '../../utils/FeedUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { bytesToSize } from '../../utils/StringsUtils';
-import { getTagsWithoutTier } from '../../utils/TableUtils';
+import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { getConfigObject } from '../../utils/TopicDetailsUtils';
 import ActivityFeedList from '../ActivityFeed/ActivityFeedList/ActivityFeedList';
@@ -64,18 +69,7 @@ import TopicSchemaFields from './TopicSchema/TopicSchema';
 
 const TopicDetails: React.FC<TopicDetailsProps> = ({
   topicDetails,
-  partitions,
-  cleanupPolicies,
-  maximumMessageSize,
-  replicationFactor,
-  retentionSize,
-  topicTags,
   activeTab,
-  entityName,
-  owner,
-  description,
-  tier,
-  followers,
   slashedTopicName,
   setActiveTabHandler,
   settingsUpdateHandler,
@@ -83,9 +77,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
   unfollowTopicHandler,
   descriptionUpdateHandler,
   tagUpdateHandler,
-  version,
   versionHandler,
-  deleted,
   entityThread,
   isentityThreadLoading,
   postFeedHandler,
@@ -96,16 +88,12 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
   deletePostHandler,
   paging,
   fetchFeedHandler,
-  isSampleDataLoading,
-  sampleData,
   updateThreadHandler,
   entityFieldTaskCount,
   onExtensionUpdate,
 }: TopicDetailsProps) => {
   const { t } = useTranslation();
   const [isEdit, setIsEdit] = useState(false);
-  const [followersCount, setFollowersCount] = useState(0);
-  const [isFollowing, setIsFollowing] = useState(false);
   const [threadLink, setThreadLink] = useState<string>('');
   const [elementRef, isInView] = useInfiniteScroll(observerOptions);
   const [threadType, setThreadType] = useState<ThreadType>(
@@ -117,6 +105,35 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
   );
 
   const { getEntityPermission } = usePermissionProvider();
+  const {
+    partitions,
+    replicationFactor,
+    maximumMessageSize,
+    retentionSize,
+    cleanupPolicies,
+    owner,
+    description,
+    followers = [],
+    entityName,
+    deleted,
+    version,
+    tier,
+    topicTags,
+  } = useMemo(() => {
+    return {
+      ...topicDetails,
+      tier: getTierTags(topicDetails.tags ?? []),
+      topicTags: getTagsWithoutTier(topicDetails.tags ?? []),
+      entityName: getEntityName(topicDetails),
+    };
+  }, [topicDetails]);
+
+  const { isFollowing, followersCount } = useMemo(() => {
+    return {
+      isFollowing: followers?.some(({ id }) => id === getCurrentUserId()),
+      followersCount: followers?.length ?? 0,
+    };
+  }, [followers]);
 
   const fetchResourcePermission = useCallback(async () => {
     try {
@@ -138,13 +155,6 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
     }
   }, [topicDetails.id]);
 
-  const setFollowersData = (followers: Array<EntityReference>) => {
-    setIsFollowing(
-      followers.some(({ id }: { id: string }) => id === getCurrentUserId())
-    );
-    setFollowersCount(followers?.length);
-  };
-
   const getConfigDetails = () => {
     return [
       {
@@ -157,17 +167,19 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
       },
       {
         key: EntityInfo.RETENTION_SIZE,
-        value: `${bytesToSize(retentionSize)}  ${t('label.retention-size')}`,
+        value: `${bytesToSize(retentionSize ?? 0)}  ${t(
+          'label.retention-size'
+        )}`,
       },
       {
         key: EntityInfo.CLEAN_UP_POLICIES,
-        value: `${cleanupPolicies.join(', ')} ${t(
+        value: `${(cleanupPolicies ?? []).join(', ')} ${t(
           'label.clean-up-policy-plural-lowercase'
         )}`,
       },
       {
         key: EntityInfo.MAX_MESSAGE_SIZE,
-        value: `${bytesToSize(maximumMessageSize)} ${t(
+        value: `${bytesToSize(maximumMessageSize ?? 0)} ${t(
           'label.maximum-size-lowercase'
         )} `,
       },
@@ -351,15 +363,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
   };
 
   const followTopic = () => {
-    if (isFollowing) {
-      setFollowersCount((preValu) => preValu - 1);
-      setIsFollowing(false);
-      unfollowTopicHandler();
-    } else {
-      setFollowersCount((preValu) => preValu + 1);
-      setIsFollowing(true);
-      followTopicHandler();
-    }
+    isFollowing ? unfollowTopicHandler() : followTopicHandler();
   };
 
   const onTagUpdate = (selectedTags?: Array<EntityTags>) => {
@@ -408,10 +412,6 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
   };
 
   useEffect(() => {
-    setFollowersData(followers);
-  }, [followers]);
-
-  useEffect(() => {
     fetchMoreThread(isInView as boolean, paging, isentityThreadLoading);
   }, [paging, isentityThreadLoading, isInView]);
 
@@ -454,7 +454,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
           }
           tags={topicTags}
           tagsHandler={onTagUpdate}
-          tier={tier ?? ''}
+          tier={tier}
           titleLinks={slashedTopicName}
           updateOwner={
             topicPermissions.EditAll || topicPermissions.EditOwner
@@ -546,10 +546,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
           )}
           {activeTab === 3 && (
             <Card className={ENTITY_CARD_CLASS} data-testid="sample-data">
-              <SampleDataTopic
-                isLoading={isSampleDataLoading}
-                sampleData={sampleData}
-              />
+              <SampleDataTopic topicFQN={topicFQN} />
             </Card>
           )}
           {activeTab === 4 && (

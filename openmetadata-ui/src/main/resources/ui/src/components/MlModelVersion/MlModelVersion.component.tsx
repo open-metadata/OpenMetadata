@@ -276,7 +276,7 @@ const MlModelVersion: FC<MlModelVersionProp> = ({
               tags={getTags()}
               tier={{} as TagLabel}
               titleLinks={slashedMlModelName}
-              version={version}
+              version={Number(version)}
               versionHandler={backHandler}
             />
             <div className="m-t-xss">
