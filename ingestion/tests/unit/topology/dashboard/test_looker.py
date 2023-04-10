@@ -287,7 +287,7 @@ class LookerUnitTest(TestCase):
                 displayName="title1",
                 description="description",
                 charts=[],
-                dashboardUrl="/dashboards/1",
+                dashboardUrl="https://my-looker.com/dashboards/1",
                 service=self.looker.context.dashboard_service.fullyQualifiedName.__root__,
                 owner=None,
             )
@@ -419,7 +419,7 @@ class LookerUnitTest(TestCase):
             displayName="chart_title1",
             description="subtitle; Some body text; Some note",
             chartType=ChartType.Line,
-            chartUrl="/dashboard_elements/chart_id1",
+            chartUrl="https://my-looker.com/dashboard_elements/chart_id1",
             service=self.looker.context.dashboard_service.fullyQualifiedName.__root__,
         )
 
