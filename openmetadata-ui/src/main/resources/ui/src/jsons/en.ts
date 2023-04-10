@@ -189,6 +189,7 @@ const jsonData = {
     'account-verify-success': 'Email verified successfully!',
     'update-password-success': 'Password updated successfully!',
     'fetch-re-index-all': 'Re-index started',
+    'stop-re-index': 'Re-indexing Stopped',
   },
   'form-error-messages': {
     'empty-email': 'Email is required.',
