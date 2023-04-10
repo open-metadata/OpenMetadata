@@ -11,6 +11,7 @@
 """
 Test nifi using the topology
 """
+# pylint: disable=line-too-long
 import json
 from pathlib import Path
 from unittest import TestCase
@@ -34,17 +35,18 @@ from metadata.ingestion.source.pipeline.nifi.metadata import (
     NifiProcessorConnections,
     NifiSource,
 )
+from metadata.utils.constants import UTF_8
 
 mock_file_path = (
     Path(__file__).parent.parent.parent / "resources/datasets/nifi_process_group.json"
 )
-with open(mock_file_path) as file:
+with open(mock_file_path, encoding=UTF_8) as file:
     mock_data: dict = json.load(file)
 
 resources_mock_file_path = (
     Path(__file__).parent.parent.parent / "resources/datasets/nifi_resources.json"
 )
-with open(mock_file_path) as file:
+with open(mock_file_path, encoding=UTF_8) as file:
     resources_mock_data: dict = json.load(file)
 
 mock_nifi_config = {
@@ -108,19 +110,28 @@ EXPECTED_NIFI_DETAILS = NifiPipelineDetails(
 EXPECTED_CREATED_PIPELINES = CreatePipelineRequest(
     name="d3d6b945-0182-1000-d7e4-d81b8f79f310",
     displayName="NiFi Flow",
-    pipelineUrl="/nifi-api/flow/process-groups/d3d6b945-0182-1000-d7e4-d81b8f79f310",
+    pipelineUrl=(
+        "https://localhost:8443/nifi-api/flow/"
+        "process-groups/d3d6b945-0182-1000-d7e4-d81b8f79f310"
+    ),
     tasks=[
         Task(
             name="d3f023ac-0182-1000-8bbe-e2b00347fff8",
             displayName="FetchFile",
-            taskUrl="/nifi-api/processors/d3f023ac-0182-1000-8bbe-e2b00347fff8",
+            taskUrl=(
+                "https://localhost:8443/nifi-api/"
+                "processors/d3f023ac-0182-1000-8bbe-e2b00347fff8"
+            ),
             taskType="org.apache.nifi.processors.standard.FetchFile",
             downstreamTasks=[],
         ),
         Task(
             name="d3f1304d-0182-1000-f0f5-9a6927976941",
             displayName="ListFile",
-            taskUrl="/nifi-api/processors/d3f1304d-0182-1000-f0f5-9a6927976941",
+            taskUrl=(
+                "https://localhost:8443/nifi-api/"
+                "processors/d3f1304d-0182-1000-f0f5-9a6927976941"
+            ),
             taskType="org.apache.nifi.processors.standard.ListFile",
             downstreamTasks=["d3f023ac-0182-1000-8bbe-e2b00347fff8"],
         ),
@@ -141,19 +152,28 @@ MOCK_PIPELINE = Pipeline(
     name="d3d6b945-0182-1000-d7e4-d81b8f79f310",
     fullyQualifiedName="nifi_source.d3d6b945-0182-1000-d7e4-d81b8f79f310",
     displayName="NiFi Flow",
-    pipelineUrl="/nifi-api/flow/process-groups/d3d6b945-0182-1000-d7e4-d81b8f79f310",
+    pipelineUrl=(
+        "https://localhost:8443/nifi-api/flow/"
+        "process-groups/d3d6b945-0182-1000-d7e4-d81b8f79f310"
+    ),
     tasks=[
         Task(
             name="d3f023ac-0182-1000-8bbe-e2b00347fff8",
             displayName="FetchFile",
-            taskUrl="/nifi-api/processors/d3f023ac-0182-1000-8bbe-e2b00347fff8",
+            taskUrl=(
+                "https://localhost:8443/nifi-api/processors/"
+                "d3f023ac-0182-1000-8bbe-e2b00347fff8"
+            ),
             taskType="org.apache.nifi.processors.standard.FetchFile",
             downstreamTasks=[],
         ),
         Task(
             name="d3f1304d-0182-1000-f0f5-9a6927976941",
             displayName="ListFile",
-            taskUrl="/nifi-api/processors/d3f1304d-0182-1000-f0f5-9a6927976941",
+            taskUrl=(
+                "https://localhost:8443/nifi-api/processors/"
+                "d3f1304d-0182-1000-f0f5-9a6927976941"
+            ),
             taskType="org.apache.nifi.processors.standard.ListFile",
             downstreamTasks=["d3f023ac-0182-1000-8bbe-e2b00347fff8"],
         ),
@@ -165,6 +185,10 @@ MOCK_PIPELINE = Pipeline(
 
 
 class NifiUnitTest(TestCase):
+    """
+    Nifi unit tests
+    """
+
     @patch(
         "metadata.ingestion.source.pipeline.pipeline_service.PipelineServiceSource.test_connection"
     )
