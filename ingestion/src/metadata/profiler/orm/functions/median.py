@@ -121,8 +121,6 @@ def _(elements, compiler, **kwargs):  # pylint: disable=unused-argument
     table = elements.clauses.clauses[1].value
     percentile = elements.clauses.clauses[2].value
 
-
-
     return """
     (SELECT
         {col}
