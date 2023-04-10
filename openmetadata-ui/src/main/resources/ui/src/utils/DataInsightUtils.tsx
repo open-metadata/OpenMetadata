@@ -26,6 +26,7 @@ import {
   omit,
   round,
   sortBy,
+  sumBy,
   toNumber,
 } from 'lodash';
 import moment from 'moment';
@@ -595,15 +596,14 @@ export const getWebChartSummary = (
     }
 
     const { chartType, data } = chartData;
-    const total = data?.reduce((result, current) => {
-      if (chartType === DataInsightChartType.DailyActiveUsers) {
-        return result + (current.activeUsers ?? 0);
-      } else {
-        return result + (current.pageViews ?? 0);
-      }
-    }, 0);
+    let total = 0;
+    if (chartType === DataInsightChartType.DailyActiveUsers) {
+      total = sumBy(data, 'activeUsers');
+    } else {
+      total = sumBy(data, 'pageViews');
+    }
 
-    updatedSummary.push({ ...summary, latest: total ?? 0 });
+    updatedSummary.push({ ...summary, latest: total });
   }
 
   return updatedSummary;
