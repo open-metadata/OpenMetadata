@@ -16,7 +16,17 @@ import { Button, Checkbox, MenuProps, Space, Typography } from 'antd';
 import ProfilePicture from 'components/common/ProfilePicture/ProfilePicture';
 import { SearchDropdownOption } from 'components/SearchDropdown/SearchDropdown.interface';
 import i18next from 'i18next';
-import { isArray, isUndefined } from 'lodash';
+import {
+  ContainerSearchSource,
+  DashboardSearchSource,
+  ExploreSearchSource,
+  MlmodelSearchSource,
+  PipelineSearchSource,
+  SuggestOption,
+  TableSearchSource,
+  TopicSearchSource,
+} from 'interface/search.interface';
+import { isArray, isEmpty, isUndefined } from 'lodash';
 import React from 'react';
 import { RenderSettings } from 'react-awesome-query-builder';
 import {
@@ -29,23 +39,9 @@ import {
   TABLE_DROPDOWN_ITEMS,
   TOPIC_DROPDOWN_ITEMS,
 } from '../constants/AdvancedSearch.constants';
-
-import { EntityReference as ChartEntityReference } from 'generated/entity/data/dashboard';
-import { Column } from 'generated/entity/data/table';
-import { Field } from 'generated/entity/data/topic';
-import {
-  ContainerSearchSource,
-  DashboardSearchSource,
-  ExploreSearchSource,
-  MlmodelSearchSource,
-  PipelineSearchSource,
-  SuggestOption,
-  TableSearchSource,
-  TopicSearchSource,
-} from 'interface/search.interface';
 import { AdvancedFields } from '../enums/AdvancedSearch.enum';
 import { SearchIndex } from '../enums/search.enum';
-import { Task } from '../generated/entity/data/pipeline';
+import { getEntityName } from './EntityUtils';
 import SVGIcons, { Icons } from './SvgUtils';
 
 export const getDropDownItems = (index: string) => {
@@ -239,13 +235,6 @@ export const getSelectedOptionLabelString = (
   }
 };
 
-export const getDisplayNameFromEntity = (
-  text: string,
-  entity?: ChartEntityReference | Task | Column | Field
-) => {
-  return entity ? entity.displayName ?? entity.name ?? text : text;
-};
-
 export const getChartsOptions = (
   option: SuggestOption<SearchIndex, ExploreSearchSource>
 ) => {
@@ -255,7 +244,9 @@ export const getChartsOptions = (
     (chart) => chart.displayName === option.text || chart.name === option.text
   );
 
-  return getDisplayNameFromEntity(option.text, chartRef);
+  const entityName = getEntityName(chartRef);
+
+  return isEmpty(entityName) ? option.text : entityName;
 };
 
 export const getDataModelOptions = (
@@ -268,7 +259,9 @@ export const getDataModelOptions = (
       dataModel.displayName === option.text || dataModel.name === option.text
   );
 
-  return getDisplayNameFromEntity(option.text, chartRef);
+  const entityName = getEntityName(chartRef);
+
+  return isEmpty(entityName) ? option.text : entityName;
 };
 
 export const getTasksOptions = (
@@ -280,7 +273,9 @@ export const getTasksOptions = (
     (task) => task.displayName === option.text || task.name === option.text
   );
 
-  return getDisplayNameFromEntity(option.text, taskRef);
+  const entityName = getEntityName(taskRef);
+
+  return isEmpty(entityName) ? option.text : entityName;
 };
 
 export const getColumnsOptions = (
@@ -295,7 +290,9 @@ export const getColumnsOptions = (
         column.displayName === option.text || column.name === option.text
     );
 
-    return getDisplayNameFromEntity(option.text, columnRef);
+    const entityName = getEntityName(columnRef);
+
+    return isEmpty(entityName) ? option.text : entityName;
   } else {
     const dataModel = (
       option as SuggestOption<SearchIndex.CONTAINER, ContainerSearchSource>
@@ -307,7 +304,9 @@ export const getColumnsOptions = (
         )
       : undefined;
 
-    return getDisplayNameFromEntity(option.text, columnRef);
+    const entityName = getEntityName(columnRef);
+
+    return isEmpty(entityName) ? option.text : entityName;
   }
 };
 
@@ -325,7 +324,9 @@ export const getSchemaFieldOptions = (
       )
     : undefined;
 
-  return getDisplayNameFromEntity(option.text, schemaRef);
+  const entityName = getEntityName(schemaRef);
+
+  return isEmpty(entityName) ? option.text : entityName;
 };
 
 export const getServiceOptions = (
