@@ -38,7 +38,7 @@ import { MYSQL } from '../../constants/service.constants';
 
 const service_name = MYSQL.serviceName;
 
-describe.skip('pre-requests for test case', () => {
+describe('pre-requests for test case', () => {
   beforeEach(() => {
     cy.login();
   });
