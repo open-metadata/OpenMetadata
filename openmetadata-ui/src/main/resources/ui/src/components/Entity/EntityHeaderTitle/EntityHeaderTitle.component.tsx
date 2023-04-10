@@ -30,21 +30,15 @@ const EntityHeaderTitle = ({ icon, name, displayName, link = '#' }: props) => {
           <Typography.Text
             className="m-b-0 tw-text-xs tw-text-grey-muted"
             data-testid="entity-header-name">
-            {name}
+            {displayName ?? name}
           </Typography.Text>
           <Link
             className="m-b-0 entity-header-display-name"
             component={Typography.Link}
             data-testid="entity-header-display-name"
             to={link}>
-            {displayName}
+            {displayName ?? name}
           </Link>
-
-          {/* <Typography.Text
-            className="m-b-0 entity-header-display-name"
-            data-testid="entity-header-display-name">
-            {link ? <Link to={link}> {displayName}</Link> : displayName}
-          </Typography.Text> */}
         </div>
       </Space>
     </Space>

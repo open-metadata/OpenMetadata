@@ -13,9 +13,10 @@
 
 import classNames from 'classnames';
 import { ELASTICSEARCH_ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
-import { isUndefined, toString } from 'lodash';
+import { isUndefined } from 'lodash';
 import PropTypes from 'prop-types';
 import React from 'react';
+import { getEntityName } from 'utils/EntityUtils';
 import { PAGE_SIZE } from '../../constants/constants';
 import { MAX_RESULT_HITS } from '../../constants/explore.constants';
 import { Paging } from '../../generated/type/paging';
@@ -65,7 +66,7 @@ const SearchedData: React.FC<SearchedDataProps> = ({
         });
       }
 
-      let name = toString(table.displayName);
+      let name = getEntityName(table);
       if (!isUndefined(highlight)) {
         name = highlight?.name?.join(' ') || name;
       }

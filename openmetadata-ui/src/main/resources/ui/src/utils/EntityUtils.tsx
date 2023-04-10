@@ -24,7 +24,9 @@ import {
 import { ResourceEntity } from 'components/PermissionProvider/PermissionProvider.interface';
 import { SearchedDataProps } from 'components/searched-data/SearchedData.interface';
 import { ExplorePageTabs } from 'enums/Explore.enum';
+import { Tag } from 'generated/entity/classification/tag';
 import { Container } from 'generated/entity/data/container';
+import { GlossaryTerm } from 'generated/entity/data/glossaryTerm';
 import { Mlmodel } from 'generated/entity/data/mlmodel';
 import { Topic } from 'generated/entity/data/topic';
 import i18next from 'i18next';
@@ -39,6 +41,7 @@ import {
   getDatabaseSchemaDetailsPath,
   getServiceDetailsPath,
   getTableDetailsPath,
+  getTagsDetailsPath,
 } from '../constants/constants';
 import { AssetsType, EntityType, FqnPart } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
@@ -61,6 +64,7 @@ import {
   getPartialNameFromTableFQN,
   getTableFQNFromColumnFQN,
 } from './CommonUtils';
+import { getGlossaryPath } from './RouterUtils';
 import {
   getDataTypeString,
   getTierFromTableTags,
@@ -902,6 +906,25 @@ export const getEntityBreadcrumbs = (
   switch (entityType) {
     case EntityType.TABLE:
       return getBreadcrumbForTable(entity as Table, includeCurrent);
+    case EntityType.GLOSSARY:
+      return [
+        {
+          name: getEntityName((entity as GlossaryTerm).glossary),
+          url: getGlossaryPath(
+            (entity as GlossaryTerm).glossary.fullyQualifiedName
+          ),
+        },
+      ];
+    case EntityType.TAG:
+      return [
+        {
+          name: getEntityName((entity as Tag).classification),
+          url: getTagsDetailsPath(
+            (entity as Tag).classification?.fullyQualifiedName ?? ''
+          ),
+        },
+      ];
+
     case EntityType.TOPIC:
     case EntityType.DASHBOARD:
     case EntityType.PIPELINE:
