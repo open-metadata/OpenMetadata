@@ -46,7 +46,7 @@ from metadata.ingestion.connections.session import create_and_bind_session
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
 from metadata.ingestion.source.pipeline.airflow.lineage_parser import get_xlets_from_dag
 from metadata.ingestion.source.pipeline.pipeline_service import PipelineServiceSource
-from metadata.utils.helpers import datetime_to_ts
+from metadata.utils.helpers import clean_uri, datetime_to_ts
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -277,7 +277,7 @@ class AirflowSource(PipelineServiceSource):
         return pipeline_details.dag_id
 
     @staticmethod
-    def get_tasks_from_dag(dag: SerializedDAG) -> List[Task]:
+    def get_tasks_from_dag(dag: SerializedDAG, host_port: str) -> List[Task]:
         """
         Obtain the tasks from a SerializedDAG
         :param dag: SerializedDAG
@@ -287,8 +287,10 @@ class AirflowSource(PipelineServiceSource):
             Task(
                 name=task.task_id,
                 description=task.doc_md,
-                # Just the suffix
-                taskUrl=f"/taskinstance/list/?flt1_dag_id_equals={dag.dag_id}&_flt_3_task_id={task.task_id}",
+                taskUrl=(
+                    f"{clean_uri(host_port)}/taskinstance/list/"
+                    f"?flt1_dag_id_equals={dag.dag_id}&_flt_3_task_id={task.task_id}"
+                ),
                 downstreamTasks=list(task.downstream_task_ids),
                 taskType=task.task_type,
                 startDate=task.start_date.isoformat() if task.start_date else None,
@@ -304,7 +306,6 @@ class AirflowSource(PipelineServiceSource):
         :param data: from SQA query
         :return: SerializedDAG
         """
-
         if isinstance(data, dict):
             return SerializedDAG.from_dict(data)
 
@@ -324,11 +325,11 @@ class AirflowSource(PipelineServiceSource):
             pipeline_request = CreatePipelineRequest(
                 name=pipeline_details.dag_id,
                 description=dag.description,
-                pipelineUrl=f"/tree?dag_id={dag.dag_id}",  # Just the suffix
+                pipelineUrl=f"{clean_uri(self.service_connection.hostPort)}/tree?dag_id={dag.dag_id}",
                 concurrency=dag.concurrency,
                 pipelineLocation=pipeline_details.fileloc,
                 startDate=dag.start_date.isoformat() if dag.start_date else None,
-                tasks=self.get_tasks_from_dag(dag),
+                tasks=self.get_tasks_from_dag(dag, self.service_connection.hostPort),
                 service=self.context.pipeline_service.fullyQualifiedName.__root__,
             )
             yield pipeline_request

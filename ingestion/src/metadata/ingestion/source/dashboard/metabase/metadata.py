@@ -36,7 +36,11 @@ from metadata.ingestion.source.dashboard.dashboard_service import DashboardServi
 from metadata.ingestion.source.dashboard.metabase.models import Dashboard
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_chart
-from metadata.utils.helpers import get_standard_chart_type, replace_special_with
+from metadata.utils.helpers import (
+    clean_uri,
+    get_standard_chart_type,
+    replace_special_with,
+)
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -85,7 +89,8 @@ class MetabaseSource(DashboardServiceSource):
         Method to Get Dashboard Entity
         """
         dashboard_url = (
-            f"/dashboard/{dashboard_details['id']}-"
+            f"{clean_uri(self.service_connection.hostPort)}/dashboard/"
+            f"{dashboard_details['id']}-"
             f"{replace_special_with(raw=dashboard_details['name'].lower(), replacement='-')}"
         )
         dashboard_request = CreateDashboardRequest(
@@ -124,17 +129,18 @@ class MetabaseSource(DashboardServiceSource):
                 if "id" not in chart_details:
                     continue
                 chart_url = (
-                    f"/question/{chart_details['id']}-"
+                    f"{clean_uri(self.service_connection.hostPort)}/question/"
+                    f"{chart_details['id']}-"
                     f"{replace_special_with(raw=chart_details['name'].lower(), replacement='-')}"
                 )
 
-                if "name" not in chart_details:
-                    continue
                 if filter_by_chart(
-                    self.source_config.chartFilterPattern, chart_details["name"]
+                    self.source_config.chartFilterPattern,
+                    chart_details.get("name", chart_details["id"]),
                 ):
                     self.status.filter(
-                        chart_details["name"], "Chart Pattern not allowed"
+                        chart_details.get("name", chart_details["id"]),
+                        "Chart Pattern not allowed",
                     )
                     continue
                 yield CreateChartRequest(
@@ -147,7 +153,7 @@ class MetabaseSource(DashboardServiceSource):
                     chartUrl=chart_url,
                     service=self.context.dashboard_service.fullyQualifiedName.__root__,
                 )
-                self.status.scanned(chart_details["name"])
+                self.status.scanned(chart_details.get("name", chart_details["id"]))
             except Exception as exc:  # pylint: disable=broad-except
                 logger.debug(traceback.format_exc())
                 logger.warning(f"Error creating chart [{chart}]: {exc}")

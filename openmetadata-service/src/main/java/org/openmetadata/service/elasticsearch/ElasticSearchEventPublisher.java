@@ -705,7 +705,9 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
           }
           currentHits += response.getHits().getHits().length;
         } while (currentHits < totalHits);
-        client.bulk(request, RequestOptions.DEFAULT);
+        if (request.numberOfActions() > 0) {
+          client.bulk(request, RequestOptions.DEFAULT);
+        }
     }
   }
 
