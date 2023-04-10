@@ -46,6 +46,9 @@ PD_AVRO_FIELD_MAP = {
 AVRO_SCHEMA = "avro.schema"
 
 
+COMPLEX_COLUMN_SEPARATOR = "_##"
+
+
 def read_from_avro(
     avro_text: bytes,
 ) -> Union[DatalakeColumnWrapper, List[pd.DataFrame]]:
@@ -103,7 +106,5 @@ def read_from_json(
         ]
 
     if isinstance(data, list):
-        return [pd.DataFrame.from_dict(data[:sample_size])]
-    return [
-        pd.DataFrame.from_dict({key: pd.Series(value) for key, value in data.items()})
-    ]
+        return [pd.json_normalize(data[:sample_size], sep=COMPLEX_COLUMN_SEPARATOR)]
+    return [pd.json_normalize(data, sep=COMPLEX_COLUMN_SEPARATOR)]

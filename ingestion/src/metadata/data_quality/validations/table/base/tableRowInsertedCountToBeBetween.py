@@ -64,7 +64,7 @@ class BaseTableRowInsertedCountToBeBetweenValidator(BaseTestValidator):
             res = self._run_results(column_name, range_type, range_interval)
 
         except Exception as exc:
-            msg = f"Error computing {self.test_case.name} for {self.runner.table.__tablename__}: {exc}"  # type: ignore
+            msg = f"Error computing {self.test_case.name}: {exc}"  # type: ignore
             logger.debug(traceback.format_exc())
             logger.warning(msg)
             return self.get_test_case_result_object(
