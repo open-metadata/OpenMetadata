@@ -54,6 +54,7 @@ const AddGlossary = ({
   });
 
   const [name, setName] = useState('');
+  const [displayName, setDisplayName] = useState('');
   const [description] = useState<string>('');
 
   const [tags, setTags] = useState<EntityTags[]>([]);
@@ -114,7 +115,7 @@ const AddGlossary = ({
     if (validateForm()) {
       const data: CreateGlossary = {
         name: name.trim(),
-        displayName: name.trim(),
+        displayName: (displayName || name).trim(),
         description: getDescription(),
         reviewers:
           reviewer.map((d) => toString(d.fullyQualifiedName)).filter(Boolean) ??
@@ -177,6 +178,22 @@ const AddGlossary = ({
               : showErrorMsg.invalidName
               ? ADD_GLOSSARY_ERROR[AddGlossaryError.NAME_INVALID]
               : null}
+          </Field>
+          <Field>
+            <label className="tw-block tw-form-label" htmlFor="display-name">
+              {`${t('label.display-name')}:`}
+            </label>
+
+            <input
+              className="tw-form-inputs tw-form-inputs-padding"
+              data-testid="display-name"
+              id="display-name"
+              name="display-name"
+              placeholder={t('label.display-name')}
+              type="text"
+              value={displayName}
+              onChange={(e) => setDisplayName(e.target.value)}
+            />
           </Field>
           <Field>
             <label

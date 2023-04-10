@@ -112,9 +112,12 @@ describe('Services page should work properly', () => {
   it('Remove owner from service', () => {
     interceptURL(
       'GET',
-      '/api/v1/search/query?q=*teamType:Group&from=0&size=15&index=team_search_index',
-      'editOwner'
+      '/api/v1/system/config/pipeline-service-client',
+      'getService'
     );
+
+    interceptURL('GET', '/api/v1/users?&isBot=false&limit=15', 'waitForUsers');
+
     cy.get(`[data-testid="service-name-${service.name}"]`)
       .should('be.visible')
       .click();
@@ -126,17 +129,10 @@ describe('Services page should work properly', () => {
       .should('exist')
       .should('be.visible')
       .click();
-    verifyResponseStatusCode('@editOwner', 200);
-
-    cy.get('.select-owner-tabs')
-      .contains('Users')
-      .should('exist')
-      .should('be.visible')
-      .click();
+    verifyResponseStatusCode('@waitForUsers', 200);
 
     interceptURL('PATCH', '/api/v1/services/databaseServices/*', 'removeOwner');
     cy.get('[data-testid="selectable-list"]')
-      .eq(1)
       .contains(service.Owner)
       .should('be.visible');
 

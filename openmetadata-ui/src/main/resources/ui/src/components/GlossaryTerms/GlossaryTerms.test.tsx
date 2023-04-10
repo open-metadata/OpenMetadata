@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import React from 'react';
 import {
   mockedAssetData,
@@ -66,6 +66,7 @@ jest.mock('react-router-dom', () => ({
   useHistory: jest.fn(),
   useParams: jest.fn().mockReturnValue({
     glossaryName: 'GlossaryName',
+    tab: 'terms',
   }),
 }));
 
@@ -123,39 +124,23 @@ const mockProps = {
   onAssetPaginate: jest.fn(),
   onRelatedTermClick: jest.fn(),
   handleGlossaryTermDelete: jest.fn(),
+  refreshGlossaryTerms: jest.fn(),
 };
 
 describe('Test Glossary-term component', () => {
   it('Should render Glossary-term component', async () => {
-    await act(async () => {
-      render(<GlossaryTerms {...mockProps} childGlossaryTerms={[]} />);
-    });
+    render(<GlossaryTerms {...mockProps} childGlossaryTerms={[]} />);
 
     const glossaryTerm = screen.getByTestId('glossary-term');
     const tabs = await screen.findAllByRole('tab');
 
-    expect(
-      await screen.findByText('GlossaryHeader.component')
-    ).toBeInTheDocument();
     expect(await screen.findByText('GlossaryTermTab')).toBeInTheDocument();
     expect(glossaryTerm).toBeInTheDocument();
-    expect(tabs).toHaveLength(2);
+    expect(tabs).toHaveLength(3);
     expect(tabs.map((tab) => tab.textContent)).toStrictEqual([
+      'label.overview',
       'label.glossary-term-plural0',
       'label.asset-plural1', // 1 added as its count for assets
     ]);
-  });
-
-  it('onClick of assets tab, it should render properly', async () => {
-    await act(async () => {
-      render(<GlossaryTerms {...mockProps} childGlossaryTerms={[]} />);
-    });
-    const tabs = await screen.findAllByRole('tab');
-    await act(async () => {
-      fireEvent.click(tabs[1]);
-    });
-
-    expect(tabs[1].textContent).toStrictEqual('label.asset-plural1');
-    expect(await screen.findByText('AssetsTabs')).toBeInTheDocument();
   });
 });

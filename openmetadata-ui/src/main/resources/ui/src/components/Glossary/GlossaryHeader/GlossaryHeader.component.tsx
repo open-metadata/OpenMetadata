@@ -10,27 +10,20 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Col, Row, Space, Tooltip, Typography } from 'antd';
-import DescriptionV1 from 'components/common/description/DescriptionV1';
-import ProfilePicture from 'components/common/ProfilePicture/ProfilePicture';
+import { Col, Row } from 'antd';
+import { ReactComponent as IconFolder } from 'assets/svg/folder.svg';
+import { ReactComponent as IconFlatDoc } from 'assets/svg/ic-flat-doc.svg';
 import TitleBreadcrumb from 'components/common/title-breadcrumb/title-breadcrumb.component';
 import { TitleBreadcrumbProps } from 'components/common/title-breadcrumb/title-breadcrumb.interface';
-import { UserTeamSelectableList } from 'components/common/UserTeamSelectableList/UserTeamSelectableList.component';
-import EntityDisplayNameModal from 'components/Modals/EntityDisplayNameModal/EntityDisplayNameModal.component';
-import EntityNameModal from 'components/Modals/EntityNameModal/EntityNameModal.component';
+import EntityHeaderTitle from 'components/EntityHeaderTitle/EntityHeaderTitle.component';
 import { OperationPermission } from 'components/PermissionProvider/PermissionProvider.interface';
 import { FQN_SEPARATOR_CHAR } from 'constants/char.constants';
-import { getUserPath } from 'constants/constants';
-import { NO_PERMISSION_FOR_ACTION } from 'constants/HelperTextUtil';
+import { DE_ACTIVE_COLOR } from 'constants/constants';
 import { Glossary } from 'generated/entity/data/glossary';
 import { GlossaryTerm } from 'generated/entity/data/glossaryTerm';
-import { cloneDeep } from 'lodash';
-import React, { useEffect, useMemo, useState } from 'react';
-import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
+import React, { useEffect, useState } from 'react';
 import { getEntityName } from 'utils/EntityUtils';
 import { getGlossaryPath } from 'utils/RouterUtils';
-import SVGIcons, { Icons } from 'utils/SvgUtils';
 import GlossaryHeaderButtons from '../GlossaryHeaderButtons/GlossaryHeaderButtons.component';
 
 export interface GlossaryHeaderProps {
@@ -51,98 +44,44 @@ const GlossaryHeader = ({
   isGlossary,
   onAssetsUpdate,
 }: GlossaryHeaderProps) => {
-  const { t } = useTranslation();
-
-  const [isNameEditing, setIsNameEditing] = useState<boolean>(false);
-  const [isDisplayNameEditing, setIsDisplayNameEditing] =
-    useState<boolean>(false);
-  const [isDescriptionEditable, setIsDescriptionEditable] =
-    useState<boolean>(false);
   const [breadcrumb, setBreadcrumb] = useState<
     TitleBreadcrumbProps['titleLinks']
   >([]);
-
-  const editDisplayNamePermission = useMemo(() => {
-    return permissions.EditAll || permissions.EditDisplayName;
-  }, [permissions]);
-
-  const onDisplayNameSave = (displayName: string) => {
-    let updatedDetails = cloneDeep(selectedData);
-
-    updatedDetails = {
-      ...selectedData,
-      displayName: displayName?.trim(),
-    };
-
-    onUpdate(updatedDetails);
-
-    setIsDisplayNameEditing(false);
-  };
-
-  const onNameSave = (name: string) => {
-    let updatedDetails = cloneDeep(selectedData);
-
-    updatedDetails = {
-      ...selectedData,
-      name: name?.trim() || selectedData.name,
-    };
-
-    onUpdate(updatedDetails);
-
-    setIsNameEditing(false);
-  };
 
   /**
    * To create breadcrumb from the fqn
    * @param fqn fqn of glossary or glossary term
    */
   const handleBreadcrumb = (fqn: string) => {
-    if (fqn) {
-      const arr = fqn.split(FQN_SEPARATOR_CHAR);
-      const dataFQN: Array<string> = [];
-      const newData = arr.map((d, i) => {
+    if (!fqn) {
+      return;
+    }
+
+    const arr = fqn.split(FQN_SEPARATOR_CHAR);
+    const dataFQN: Array<string> = [];
+    const newData = [
+      {
+        name: 'Glossaries',
+        url: getGlossaryPath(arr[0]),
+        activeTitle: false,
+      },
+      ...arr.slice(0, -1).map((d) => {
         dataFQN.push(d);
-        const isLink = i < arr.length - 1;
 
         return {
           name: d,
-          url: isLink ? getGlossaryPath(dataFQN.join(FQN_SEPARATOR_CHAR)) : '',
-          activeTitle: !isLink,
+          url: getGlossaryPath(dataFQN.join(FQN_SEPARATOR_CHAR)),
+          activeTitle: false,
         };
-      });
-      setBreadcrumb(newData);
-    }
-  };
+      }),
+    ];
 
-  const onDescriptionUpdate = async (updatedHTML: string) => {
-    if (selectedData.description !== updatedHTML) {
-      const updatedTableDetails = {
-        ...selectedData,
-        description: updatedHTML,
-      };
-      onUpdate(updatedTableDetails);
-      setIsDescriptionEditable(false);
-    } else {
-      setIsDescriptionEditable(false);
-    }
-  };
-
-  const handleUpdatedOwner = (newOwner: Glossary['owner']) => {
-    if (newOwner) {
-      const updatedData = {
-        ...selectedData,
-        owner: newOwner,
-      };
-      onUpdate(updatedData);
-    }
+    setBreadcrumb(newData);
   };
 
   useEffect(() => {
     const { fullyQualifiedName, name } = selectedData;
-
-    if (!isGlossary) {
-      handleBreadcrumb(fullyQualifiedName ? fullyQualifiedName : name);
-    }
+    handleBreadcrumb(fullyQualifiedName ? fullyQualifiedName : name);
   }, [selectedData]);
 
   return (
@@ -151,68 +90,33 @@ const GlossaryHeader = ({
         <Col span={24}>
           <Row justify="space-between">
             <Col span={12}>
-              {!isGlossary && (
-                <div
-                  className="tw-text-link tw-text-base glossary-breadcrumb"
-                  data-testid="category-name">
-                  <TitleBreadcrumb titleLinks={breadcrumb} />
-                </div>
-              )}
+              <div
+                className="tw-text-link tw-text-base glossary-breadcrumb m-b-sm"
+                data-testid="category-name">
+                <TitleBreadcrumb titleLinks={breadcrumb} />
+              </div>
 
-              <Space direction="vertical" size={0}>
-                <Space>
-                  <Typography.Text
-                    className="text-grey-muted"
-                    data-testid="glossary-name">
-                    {selectedData.name}
-                  </Typography.Text>
-                  <Tooltip
-                    title={
-                      editDisplayNamePermission
-                        ? t('label.edit-entity', { entity: t('label.name') })
-                        : NO_PERMISSION_FOR_ACTION
-                    }>
-                    <Button
-                      className="glossary-header-edit-btn"
-                      data-testid="edit-name"
-                      disabled={!editDisplayNamePermission}
-                      icon={
-                        <SVGIcons alt="icon-tag" icon={Icons.EDIT} width="16" />
-                      }
-                      size="small"
-                      type="text"
-                      onClick={() => setIsNameEditing(true)}
+              <EntityHeaderTitle
+                displayName={getEntityName(selectedData)}
+                icon={
+                  isGlossary ? (
+                    <IconFolder
+                      color={DE_ACTIVE_COLOR}
+                      height={36}
+                      name="folder"
+                      width={32}
                     />
-                  </Tooltip>
-                </Space>
-                <Space direction="horizontal">
-                  <Typography.Title
-                    className="m-b-0"
-                    data-testid="glossary-display-name"
-                    level={5}>
-                    {getEntityName(selectedData)}
-                  </Typography.Title>
-                  <Tooltip
-                    title={
-                      editDisplayNamePermission
-                        ? t('label.edit-entity', {
-                            entity: t('label.display-name'),
-                          })
-                        : NO_PERMISSION_FOR_ACTION
-                    }>
-                    <Button
-                      className="glossary-header-edit-btn"
-                      disabled={!editDisplayNamePermission}
-                      icon={
-                        <SVGIcons alt="icon-tag" icon={Icons.EDIT} width="16" />
-                      }
-                      size="small"
-                      type="text"
-                      onClick={() => setIsDisplayNameEditing(true)}
+                  ) : (
+                    <IconFlatDoc
+                      color={DE_ACTIVE_COLOR}
+                      height={36}
+                      name="doc"
+                      width={32}
                     />
-                  </Tooltip>
-                </Space>
-              </Space>
+                  )
+                }
+                name={selectedData.name}
+              />
             </Col>
             <Col span={12}>
               <div style={{ textAlign: 'right' }}>
@@ -223,72 +127,13 @@ const GlossaryHeader = ({
                   selectedData={selectedData}
                   onAssetsUpdate={onAssetsUpdate}
                   onEntityDelete={onDelete}
+                  onUpdate={onUpdate}
                 />
               </div>
             </Col>
           </Row>
         </Col>
-        <Col span={24}>
-          <Space className="flex-wrap" direction="horizontal">
-            <div className="flex items-center">
-              <Typography.Text className="text-grey-muted m-r-xs">
-                {`${t('label.owner')}:`}
-              </Typography.Text>
-
-              {selectedData.owner && getEntityName(selectedData.owner) ? (
-                <Space className="m-r-xss" size={4}>
-                  <ProfilePicture
-                    displayName={getEntityName(selectedData.owner)}
-                    id={selectedData.owner?.id || ''}
-                    name={selectedData.owner?.name || ''}
-                    textClass="text-xs"
-                    width="20"
-                  />
-                  <Link to={getUserPath(selectedData.owner.name ?? '')}>
-                    {getEntityName(selectedData.owner)}
-                  </Link>
-                </Space>
-              ) : (
-                <span className="text-grey-muted">
-                  {t('label.no-entity', {
-                    entity: t('label.owner-lowercase'),
-                  })}
-                </span>
-              )}
-              <div className="tw-relative">
-                <UserTeamSelectableList
-                  hasPermission={permissions.EditOwner || permissions.EditAll}
-                  owner={selectedData.owner}
-                  onUpdate={handleUpdatedOwner}
-                />
-              </div>
-            </div>
-          </Space>
-        </Col>
-        <Col data-testid="updated-by-container" span={24}>
-          <DescriptionV1
-            description={selectedData?.description || ''}
-            entityName={selectedData?.displayName ?? selectedData?.name}
-            hasEditAccess={permissions.EditDescription || permissions.EditAll}
-            isEdit={isDescriptionEditable}
-            onCancel={() => setIsDescriptionEditable(false)}
-            onDescriptionEdit={() => setIsDescriptionEditable(true)}
-            onDescriptionUpdate={onDescriptionUpdate}
-          />
-        </Col>
       </Row>
-      <EntityNameModal
-        name={selectedData.name}
-        visible={isNameEditing}
-        onCancel={() => setIsNameEditing(false)}
-        onSave={onNameSave}
-      />
-      <EntityDisplayNameModal
-        displayName={selectedData.displayName || ''}
-        visible={isDisplayNameEditing}
-        onCancel={() => setIsDisplayNameEditing(false)}
-        onSave={onDisplayNameSave}
-      />
     </>
   );
 };
