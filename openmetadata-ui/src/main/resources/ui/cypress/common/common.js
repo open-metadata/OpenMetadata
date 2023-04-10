@@ -176,13 +176,15 @@ export const testServiceCreationAndIngestion = (
 
   // Enter service name in step 2
   cy.get('[data-testid="service-name"]').should('exist').type(serviceName);
+  interceptURL('GET', '/api/v1/services/ingestionPipelines/ip', 'ipApi');
   interceptURL(
     'GET',
     'api/v1/services/ingestionPipelines/*',
-    'getIngestionPipelineStatus'
+    'ingestionPipelineStatus'
   );
   cy.get('[data-testid="next-button"]').should('exist').click();
-  verifyResponseStatusCode('@getIngestionPipelineStatus', 200);
+  verifyResponseStatusCode('@ingestionPipelineStatus', 200);
+  verifyResponseStatusCode('@ipApi', 204);
 
   // Connection Details in step 3
   cy.get('[data-testid="add-new-service-container"]')
@@ -194,9 +196,6 @@ export const testServiceCreationAndIngestion = (
   cy.contains('Connection Details').scrollIntoView().should('be.visible');
 
   connectionInput();
-
-  // check for the ip-address widget
-  cy.get('[data-testid="ip-address"]').should('exist');
 
   // Test the connection
   interceptURL(
@@ -409,11 +408,7 @@ export const editOwnerforCreatedService = (
   verifyResponseStatusCode('@getSelectedService', 200);
   verifyResponseStatusCode('@waitForIngestion', 200);
   verifyResponseStatusCode('@airflow', 200);
-  interceptURL(
-    'GET',
-    '/api/v1/search/query?q=*%20AND%20teamType:Group&from=0&size=15&index=team_search_index',
-    'waitForTeams'
-  );
+  interceptURL('GET', '/api/v1/users?&isBot=false&limit=15', 'waitForUsers');
 
   // Click on edit owner button
   cy.get('[data-testid="edit-owner"]')
@@ -422,13 +417,7 @@ export const editOwnerforCreatedService = (
     .trigger('mouseover')
     .click();
 
-  verifyResponseStatusCode('@waitForTeams', 200);
-
-  cy.get('.user-team-select-popover')
-    .contains('Users')
-    .should('exist')
-    .should('be.visible')
-    .click();
+  verifyResponseStatusCode('@waitForUsers', 200);
 
   interceptURL(
     'GET',
@@ -436,7 +425,6 @@ export const editOwnerforCreatedService = (
     'searchOwner'
   );
   cy.get('.user-team-select-popover [data-testid="searchbar"]')
-    .eq(1)
     .should('be.visible')
     .and('exist')
     .trigger('click')
@@ -573,7 +561,7 @@ export const addNewTagToEntity = (entityObj, term) => {
     .contains(term);
 
   cy.get('[data-testid="tag-container"]')
-    .contains('Tags')
+    .contains('Add')
     .should('be.visible')
     .click();
 
@@ -898,8 +886,6 @@ export const updateOwner = () => {
       // Clicking on edit owner button
       cy.get('[data-testid="add-user"]').should('be.visible').click();
 
-      verifyResponseStatusCode('@getUsers', 200);
-
       cy.get('[data-testid="selectable-list"]')
         .find(`[title="${text.trim()}"]`)
         .click();
@@ -1068,7 +1054,9 @@ export const updateDescriptionForIngestedTables = (
   verifyResponseStatusCode('@getSelectedService', 200);
   verifyResponseStatusCode('@pipelineStatuses', 200);
   verifyResponseStatusCode('@airflow', 200);
+
   cy.get('[data-testid="Ingestions"]').should('be.visible').click();
+
   interceptURL(
     'POST',
     '/api/v1/services/ingestionPipelines/trigger/*',

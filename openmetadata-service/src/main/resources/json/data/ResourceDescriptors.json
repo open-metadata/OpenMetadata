@@ -550,20 +550,6 @@
     ]
   },
   {
-    "name": "dataModel",
-    "operations": [
-      "Create",
-      "Delete",
-      "ViewAll",
-      "EditAll",
-      "EditDescription",
-      "EditDisplayName",
-      "EditTags",
-      "EditOwner",
-      "EditLineage"
-    ]
-  },
-  {
     "name": "dashboardDataModel",
     "operations": [
       "Create",

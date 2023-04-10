@@ -28,6 +28,10 @@ class TableCustomSQLQueryValidator(BaseTableCustomSQLQueryValidator, SQAValidato
 
     def _run_results(self, sql_expression):
         """compute result of the test case"""
-        return self.runner._session.execute(  # pylint: disable=protected-access
-            text(sql_expression)
-        ).all()
+        try:
+            return self.runner._session.execute(  # pylint: disable=protected-access
+                text(sql_expression)
+            ).all()
+        except Exception as exc:
+            self.runner._session.rollback()  # pylint: disable=protected-access
+            raise exc
