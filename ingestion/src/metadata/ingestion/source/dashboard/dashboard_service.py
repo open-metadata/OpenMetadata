@@ -290,6 +290,10 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
 
         We will look for the data in all the services
         we have informed.
+
+        TODO: This we'll need to not make it dependant
+          on the dbServiceNames since our lineage will now be
+          model -> dashboard
         """
         for db_service_name in self.source_config.dbServiceNames or []:
             yield from self.yield_dashboard_lineage_details(

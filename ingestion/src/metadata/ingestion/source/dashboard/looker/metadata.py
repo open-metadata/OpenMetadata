@@ -258,7 +258,7 @@ class LookerSource(DashboardServiceSource):
 
         if view:
             yield CreateDashboardDataModelRequest(
-                name=build_datamodel_name(explore.project_name, view.name),
+                name=build_datamodel_name(explore.model_name, view.name),
                 displayName=view.name,
                 description=view.description,
                 service=self.context.dashboard_service.fullyQualifiedName.__root__,
@@ -279,7 +279,7 @@ class LookerSource(DashboardServiceSource):
         """
         try:
             # TODO: column-level lineage parsing the explore columns with the format `view_name.col`
-            # Now the context has the newly created
+            # Now the context has the newly created view
             yield AddLineageRequest(
                 edge=EntitiesEdge(
                     fromEntity=EntityReference(
@@ -295,6 +295,7 @@ class LookerSource(DashboardServiceSource):
             if view.sql_table_name:
                 source_table_name = self._clean_table_name(view.sql_table_name)
 
+                # View to the source is only there if we are informing the dbServiceNames
                 for db_service_name in self.source_config.dbServiceNames or []:
                     yield self.build_lineage_request(
                         source=source_table_name,
@@ -433,8 +434,22 @@ class LookerSource(DashboardServiceSource):
 
         return dashboard_sources
 
+    def get_explore(self, explore_name: str) -> Optional[DashboardDataModel]:
+        """
+        Get the dashboard model from cache or API
+        """
+        return self._explores_cache.get(explore_name) or self.metadata.get_by_name(
+            entity=DashboardDataModel,
+            fqn=fqn.build(
+                self.metadata,
+                entity_type=DashboardDataModel,
+                service_name=self.context.dashboard_service.fullyQualifiedName.__root__,
+                data_model_name=explore_name,
+            ),
+        )
+
     def yield_dashboard_lineage_details(
-        self, dashboard_details: LookerDashboard, db_service_name: str
+        self, dashboard_details: LookerDashboard, _: str
     ) -> Optional[Iterable[AddLineageRequest]]:
         """
         Get lineage between charts and data sources.
@@ -448,18 +463,20 @@ class LookerSource(DashboardServiceSource):
         try:
             source_explore_list = self.get_dashboard_sources(dashboard_details)
             for explore_name in source_explore_list:
-                yield AddLineageRequest(
-                    edge=EntitiesEdge(
-                        fromEntity=EntityReference(
-                            id=self._explores_cache[explore_name].id.__root__,
-                            type="dashboardDataModel",
-                        ),
-                        toEntity=EntityReference(
-                            id=self.context.dashboard.id.__root__,
-                            type="dashboard",
-                        ),
+                cached_explore = self.get_explore(explore_name)
+                if cached_explore:
+                    yield AddLineageRequest(
+                        edge=EntitiesEdge(
+                            fromEntity=EntityReference(
+                                id=cached_explore.id.__root__,
+                                type="dashboardDataModel",
+                            ),
+                            toEntity=EntityReference(
+                                id=self.context.dashboard.id.__root__,
+                                type="dashboard",
+                            ),
+                        )
                     )
-                )
 
         except Exception as exc:
             error = f"Unexpected exception yielding lineage from [{self.context.dashboard.displayName}]: {exc}"
