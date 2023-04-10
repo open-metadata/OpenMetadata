@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Card, Space } from 'antd';
+import { Card, Space, Typography } from 'antd';
 import ResizablePanels from 'components/common/ResizablePanels/ResizablePanels';
 import {
   SERVICE_DEFAULT_ERROR_MAP,
@@ -220,15 +220,15 @@ const AddService = ({
     <div data-testid="add-new-service-container">
       {selectServiceType ? (
         <Space>
-          {getServiceLogo(selectServiceType || '', 'h-8')}{' '}
-          <h6 className="tw-heading tw-text-base" data-testid="header">
+          {getServiceLogo(selectServiceType || '', 'h-6')}{' '}
+          <Typography className="text-base" data-testid="header">
             {`${selectServiceType} ${t('label.service')}`}
-          </h6>
+          </Typography>
         </Space>
       ) : (
-        <h6 className="tw-heading tw-text-base" data-testid="header">
+        <Typography className="text-base" data-testid="header">
           {t('label.add-new-entity', { entity: t('label.service') })}
-        </h6>
+        </Typography>
       )}
 
       <IngestionStepper
