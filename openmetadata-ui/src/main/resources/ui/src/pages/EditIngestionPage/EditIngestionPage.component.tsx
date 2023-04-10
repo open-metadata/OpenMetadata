@@ -11,14 +11,15 @@
  *  limitations under the License.
  */
 
-import { Space } from 'antd';
+import { Card } from 'antd';
 import { AxiosError } from 'axios';
 import AddIngestion from 'components/AddIngestion/AddIngestion.component';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
+import ResizablePanels from 'components/common/ResizablePanels/ResizablePanels';
+import ServiceDocPanel from 'components/common/ServiceDocPanel/ServiceDocPanel';
 import TitleBreadcrumb from 'components/common/title-breadcrumb/title-breadcrumb.component';
 import { TitleBreadcrumbProps } from 'components/common/title-breadcrumb/title-breadcrumb.interface';
 import PageContainerV1 from 'components/containers/PageContainerV1';
-import PageLayoutV1 from 'components/containers/PageLayoutV1';
 import Loader from 'components/Loader/Loader';
 import { startCase } from 'lodash';
 import { ServicesUpdateRequest, ServiceTypes } from 'Models';
@@ -54,15 +55,15 @@ import { getEntityMissingError } from '../../utils/CommonUtils';
 import { getIngestionHeadingName } from '../../utils/IngestionUtils';
 import { getSettingPath } from '../../utils/RouterUtils';
 import {
-  getServiceIngestionStepGuide,
   getServiceRouteFromServiceType,
+  getServiceType,
   serviceTypeLogo,
 } from '../../utils/ServiceUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
 const EditIngestionPage = () => {
   const { t } = useTranslation();
-  const { isAirflowAvailable, fetchAirflowStatus } = useAirflowStatus();
+  const { fetchAirflowStatus } = useAirflowStatus();
   const { ingestionFQN, ingestionType, serviceFQN, serviceCategory } =
     useParams<{ [key: string]: string }>();
   const history = useHistory();
@@ -218,15 +219,6 @@ const EditIngestionPage = () => {
     );
   };
 
-  const isDeployed = () => {
-    const ingestion =
-      ingestionType === PipelineType.Metadata
-        ? activeIngestionStep >= 3
-        : activeIngestionStep >= 2;
-
-    return ingestion && !showIngestionButton;
-  };
-
   useEffect(() => {
     setSlashedBreadcrumb([
       {
@@ -259,66 +251,43 @@ const EditIngestionPage = () => {
     }
   }, [ingestionType]);
 
-  const renderEditIngestionPage = () => {
-    if (isLoading) {
-      return <Loader />;
-    } else if (errorMsg) {
-      return <ErrorPlaceHolder>{errorMsg}</ErrorPlaceHolder>;
-    } else {
-      return (
-        <div className="self-center">
-          <PageLayoutV1
-            center
-            pageTitle={t('label.edit-entity', {
-              entity: t('label.ingestion'),
-            })}>
-            <Space direction="vertical" size="middle">
-              <TitleBreadcrumb titleLinks={slashedBreadcrumb} />
-              <div className="form-container">
-                <AddIngestion
-                  activeIngestionStep={activeIngestionStep}
-                  data={ingestionData}
-                  handleCancelClick={goToService}
-                  handleViewServiceClick={goToService}
-                  heading={getIngestionHeadingName(
-                    ingestionType,
-                    INGESTION_ACTION_TYPE.EDIT
-                  )}
-                  ingestionAction={ingestionAction}
-                  ingestionProgress={ingestionProgress}
-                  isIngestionCreated={isIngestionCreated}
-                  isIngestionDeployed={isIngestionDeployed}
-                  pipelineType={ingestionType as PipelineType}
-                  serviceCategory={serviceCategory as ServiceCategory}
-                  serviceData={serviceData as DataObj}
-                  setActiveIngestionStep={(step) =>
-                    setActiveIngestionStep(step)
-                  }
-                  showDeployButton={showIngestionButton}
-                  status={FormSubmitType.EDIT}
-                  onIngestionDeploy={onIngestionDeploy}
-                  onSuccessSave={goToService}
-                  onUpdateIngestion={onEditIngestionSave}
-                />
-              </div>
-            </Space>
-            <div className="m-t-xlg p-x-lg w-800" data-testid="right-panel">
-              {getServiceIngestionStepGuide(
-                activeIngestionStep,
-                true,
-                ingestionData?.name || '',
-                '',
-                ingestionType as PipelineType,
-                isDeployed(),
-                true,
-                isAirflowAvailable
-              )}
-            </div>
-          </PageLayoutV1>
-        </div>
-      );
-    }
-  };
+  const firstPanelChildren = (
+    <div className="max-width-md w-9/10 service-form-container">
+      <TitleBreadcrumb titleLinks={slashedBreadcrumb} />
+      <Card className="p-lg m-t-md">
+        <AddIngestion
+          activeIngestionStep={activeIngestionStep}
+          data={ingestionData}
+          handleCancelClick={goToService}
+          handleViewServiceClick={goToService}
+          heading={getIngestionHeadingName(
+            ingestionType,
+            INGESTION_ACTION_TYPE.EDIT
+          )}
+          ingestionAction={ingestionAction}
+          ingestionProgress={ingestionProgress}
+          isIngestionCreated={isIngestionCreated}
+          isIngestionDeployed={isIngestionDeployed}
+          pipelineType={ingestionType as PipelineType}
+          serviceCategory={serviceCategory as ServiceCategory}
+          serviceData={serviceData as DataObj}
+          setActiveIngestionStep={(step) => setActiveIngestionStep(step)}
+          showDeployButton={showIngestionButton}
+          status={FormSubmitType.EDIT}
+          onIngestionDeploy={onIngestionDeploy}
+          onSuccessSave={goToService}
+          onUpdateIngestion={onEditIngestionSave}
+        />
+      </Card>
+    </div>
+  );
+
+  const secondPanelChildren = (
+    <ServiceDocPanel
+      serviceName={serviceData?.serviceType ?? ''}
+      serviceType={getServiceType(serviceCategory as ServiceCategory)}
+    />
+  );
 
   useEffect(() => {
     fetchAirflowStatus().finally(() => {
@@ -326,7 +295,33 @@ const EditIngestionPage = () => {
     });
   }, [serviceCategory, serviceFQN]);
 
-  return <PageContainerV1>{renderEditIngestionPage()}</PageContainerV1>;
+  if (isLoading) {
+    return <Loader />;
+  }
+  if (errorMsg) {
+    return <ErrorPlaceHolder>{errorMsg}</ErrorPlaceHolder>;
+  }
+
+  return (
+    <PageContainerV1>
+      <ResizablePanels
+        firstPanel={{ children: firstPanelChildren, minWidth: 700, flex: 0.7 }}
+        pageTitle={t('label.edit-entity', {
+          entity: t('label.ingestion'),
+        })}
+        secondPanel={{
+          children: secondPanelChildren,
+          className: 'service-doc-panel',
+          minWidth: 60,
+          overlay: {
+            displayThreshold: 200,
+            header: t('label.setup-guide'),
+            rotation: 'counter-clockwise',
+          },
+        }}
+      />
+    </PageContainerV1>
+  );
 };
 
 export default EditIngestionPage;
