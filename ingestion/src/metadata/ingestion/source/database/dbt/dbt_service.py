@@ -42,18 +42,15 @@ logger = ingestion_logger()
 
 class DbtServiceTopology(ServiceTopology):
     """
-    Defines the hierarchy in Database Services.
-    service -> db -> schema -> table.
-
-    We could have a topology validator. We can only consume
-    data that has been produced by any parent node.
+    Defines the hierarchy in dbt Services.
+    dbt files -> dbt tags -> data models -> descriptions -> lineage -> tests.
     """
 
     root = TopologyNode(
         producer="get_dbt_files",
         stages=[
             NodeStage(
-                type_=OMetaTagAndClassification,
+                type_=DbtFiles,
                 processor="validate_dbt_files",
                 ack_sink=False,
                 nullable=True,

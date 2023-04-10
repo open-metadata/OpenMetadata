@@ -15,7 +15,6 @@ import { Button, Col, Dropdown, Row, Space, Tooltip, Typography } from 'antd';
 import { ReactComponent as ExportIcon } from 'assets/svg/ic-export.svg';
 import { ReactComponent as ImportIcon } from 'assets/svg/ic-import.svg';
 import { ReactComponent as IconDropdown } from 'assets/svg/menu.svg';
-import { AxiosError } from 'axios';
 import { AssetSelectionModal } from 'components/Assets/AssetsSelectionModal/AssetSelectionModal';
 import EntityDeleteModal from 'components/Modals/EntityDeleteModal/EntityDeleteModal';
 import EntityNameModal from 'components/Modals/EntityNameModal/EntityNameModal.component';
@@ -24,24 +23,20 @@ import VersionButton from 'components/VersionButton/VersionButton.component';
 import { FQN_SEPARATOR_CHAR } from 'constants/char.constants';
 import { EntityReference, Glossary } from 'generated/entity/data/glossary';
 import { GlossaryTerm } from 'generated/entity/data/glossaryTerm';
-import { EntityHistory } from 'generated/type/entityHistory';
 import { cloneDeep, toString } from 'lodash';
 import { LoadingState } from 'Models';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
-import {
-  getGlossaryTermsVersions,
-  getGlossaryVersions,
-} from 'rest/glossaryAPI';
 import { getEntityDeleteMessage } from 'utils/CommonUtils';
 import {
   getAddGlossaryTermsPath,
   getGlossaryPath,
   getGlossaryPathWithAction,
+  getGlossaryTermsVersionsPath,
+  getGlossaryVersionsPath,
 } from 'utils/RouterUtils';
 import SVGIcons, { Icons } from 'utils/SvgUtils';
-import { showErrorToast } from 'utils/ToastUtils';
 import ExportGlossaryModal from '../ExportGlossaryModal/ExportGlossaryModal';
 import { GlossaryAction } from '../GlossaryV1.interfaces';
 
@@ -65,12 +60,19 @@ const GlossaryHeaderButtons = ({
   onUpdate,
 }: GlossaryHeaderButtonsProps) => {
   const { t } = useTranslation();
-  const { action, glossaryName: glossaryFqn } =
-    useParams<{ action: GlossaryAction; glossaryName: string }>();
+  const {
+    action,
+    glossaryName: glossaryFqn,
+    version,
+  } = useParams<{
+    action: GlossaryAction;
+    glossaryName: string;
+    version: string;
+  }>();
+
   const history = useHistory();
   const [showActions, setShowActions] = useState(false);
   const [isDelete, setIsDelete] = useState<boolean>(false);
-  const [, setVersionList] = useState<EntityHistory>({} as EntityHistory);
   const [showAddAssets, setShowAddAssets] = useState(false);
   const [isNameEditing, setIsNameEditing] = useState<boolean>(false);
 
@@ -110,15 +112,14 @@ const GlossaryHeaderButtons = ({
     );
 
   const handleVersionClick = async () => {
-    const { id } = selectedData;
-    try {
-      const res = isGlossary
-        ? await getGlossaryVersions(id)
-        : await getGlossaryTermsVersions(id);
-      setVersionList(res);
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    }
+    const path = isGlossary
+      ? getGlossaryVersionsPath(selectedData.id, toString(selectedData.version))
+      : getGlossaryTermsVersionsPath(
+          selectedData.id,
+          toString(selectedData.version)
+        );
+
+    history.push(path);
   };
 
   const handleCancelGlossaryExport = () =>
@@ -337,7 +338,7 @@ const GlossaryHeaderButtons = ({
         {selectedData && selectedData.version && (
           <VersionButton
             className="m-r-xs tw-px-1.5"
-            selected={false}
+            selected={Boolean(version)}
             version={toString(selectedData.version)}
             onClick={handleVersionClick}
           />

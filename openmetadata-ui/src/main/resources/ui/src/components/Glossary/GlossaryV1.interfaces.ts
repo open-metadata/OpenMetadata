@@ -23,6 +23,7 @@ export type GlossaryV1Props = {
   onGlossaryTermUpdate: (value: GlossaryTerm) => Promise<void>;
   onGlossaryDelete: (id: string) => void;
   onGlossaryTermDelete: (id: string) => void;
+  isVersionsView: boolean;
 };
 
 export enum GlossaryAction {

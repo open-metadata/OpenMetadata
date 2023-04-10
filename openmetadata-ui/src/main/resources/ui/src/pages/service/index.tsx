@@ -868,7 +868,7 @@ const ServicePage: FunctionComponent = () => {
   const getIngestionTab = () => {
     if (!isAirflowAvailable) {
       return <ErrorPlaceHolderIngestion />;
-    } else if (isUndefined(airflowEndpoint)) {
+    } else if (isUndefined(airflowEndpoint) || isUndefined(serviceDetails)) {
       return <Loader />;
     } else {
       return (
@@ -885,7 +885,7 @@ const ServicePage: FunctionComponent = () => {
             pagingHandler={ingestionPagingHandler}
             permissions={servicePermission}
             serviceCategory={serviceName as ServiceCategory}
-            serviceDetails={serviceDetails as ServicesType}
+            serviceDetails={serviceDetails}
             serviceList={serviceList}
             serviceName={serviceFQN}
             triggerIngestion={triggerIngestionById}

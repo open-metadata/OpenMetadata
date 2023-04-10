@@ -271,6 +271,7 @@ const GlossaryPage = () => {
               <GlossaryV1
                 deleteStatus={deleteStatus}
                 isGlossaryActive={isGlossaryActive}
+                isVersionsView={false}
                 selectedData={selectedData as Glossary}
                 updateGlossary={updateGlossary}
                 onGlossaryDelete={handleGlossaryDelete}

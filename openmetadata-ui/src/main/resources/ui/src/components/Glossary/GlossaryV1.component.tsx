@@ -15,6 +15,7 @@ import { AxiosError } from 'axios';
 import Loader from 'components/Loader/Loader';
 import { API_RES_MAX_SIZE } from 'constants/constants';
 import { isEmpty } from 'lodash';
+import { VERSION_VIEW_GLOSSARY_PERMISSION } from 'mocks/Glossary.mock';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
 import { getGlossaryTerms, ListGlossaryTermsParams } from 'rest/glossaryAPI';
@@ -46,6 +47,7 @@ const GlossaryV1 = ({
   updateGlossary,
   onGlossaryDelete,
   onGlossaryTermDelete,
+  isVersionsView,
 }: GlossaryV1Props) => {
   const { action } =
     useParams<{ action: GlossaryAction; glossaryName: string }>();
@@ -138,12 +140,16 @@ const GlossaryV1 = ({
     if (selectedData) {
       loadGlossaryTerms();
       if (isGlossaryActive) {
-        fetchGlossaryPermission();
+        isVersionsView
+          ? setGlossaryPermission(VERSION_VIEW_GLOSSARY_PERMISSION)
+          : fetchGlossaryPermission();
       } else {
-        fetchGlossaryTermPermission();
+        isVersionsView
+          ? setGlossaryTermPermission(VERSION_VIEW_GLOSSARY_PERMISSION)
+          : fetchGlossaryTermPermission();
       }
     }
-  }, [selectedData, isGlossaryActive]);
+  }, [selectedData, isGlossaryActive, isVersionsView]);
 
   return isImportAction ? (
     <ImportGlossary glossaryName={selectedData.name} />
