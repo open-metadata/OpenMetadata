@@ -189,7 +189,7 @@ export const testServiceCreationAndIngestion = (
   );
   cy.get('[data-testid="next-button"]').should('exist').click();
   verifyResponseStatusCode('@ingestionPipelineStatus', 200);
-  cy.wait('@ipApi');
+  verifyResponseStatusCode('@ipApi', 204);
 
   // Connection Details in step 4
   cy.get('[data-testid="add-new-service-container"]')
