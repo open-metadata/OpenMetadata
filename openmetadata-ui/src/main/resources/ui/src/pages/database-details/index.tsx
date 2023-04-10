@@ -23,9 +23,9 @@ import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlac
 import NextPrevious from 'components/common/next-previous/NextPrevious';
 import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
 import TabsPane from 'components/common/TabsPane/TabsPane';
-import TitleBreadcrumb from 'components/common/title-breadcrumb/title-breadcrumb.component';
 import { TitleBreadcrumbProps } from 'components/common/title-breadcrumb/title-breadcrumb.interface';
 import PageContainerV1 from 'components/containers/PageContainerV1';
+import { EntityHeader } from 'components/Entity/EntityHeader/EntityHeader.component';
 import Loader from 'components/Loader/Loader';
 import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
 import {
@@ -314,12 +314,6 @@ const DatabaseDetails: FunctionComponent = () => {
                     ServiceCategory.DATABASE_SERVICES
                   )
                 : '',
-              imgSrc: serviceType ? serviceTypeLogo(serviceType) : undefined,
-            },
-            {
-              name: getEntityName(res),
-              url: '',
-              activeTitle: true,
             },
           ]);
           fetchDatabaseSchemasAndDBTModels();
@@ -672,20 +666,34 @@ const DatabaseDetails: FunctionComponent = () => {
                   />
                 ) : (
                   <>
-                    <Col span={24}>
+                    {database && (
+                      <EntityHeader
+                        breadcrumb={slashedDatabaseName}
+                        entityData={database}
+                        extra={
+                          <ManageButton
+                            isRecursiveDelete
+                            allowSoftDelete={false}
+                            canDelete={databasePermission.Delete}
+                            entityFQN={databaseFQN}
+                            entityId={databaseId}
+                            entityName={databaseName}
+                            entityType={EntityType.DATABASE}
+                          />
+                        }
+                        icon={
+                          <img
+                            className="h-8"
+                            src={serviceTypeLogo(serviceType ?? '')}
+                          />
+                        }
+                      />
+                    )}
+                    {/* <Col span={24}>
                       <Space align="center" className="justify-between w-full">
                         <TitleBreadcrumb titleLinks={slashedDatabaseName} />
-                        <ManageButton
-                          isRecursiveDelete
-                          allowSoftDelete={false}
-                          canDelete={databasePermission.Delete}
-                          entityFQN={databaseFQN}
-                          entityId={databaseId}
-                          entityName={databaseName}
-                          entityType={EntityType.DATABASE}
-                        />
                       </Space>
-                    </Col>
+                    </Col> */}
                     <Col span={24}>
                       {extraInfo.map((info, index) => (
                         <Space key={index}>

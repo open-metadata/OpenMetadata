@@ -17,11 +17,16 @@ import {
   LeafNodes,
   LineagePos,
 } from 'components/EntityLineage/EntityLineage.interface';
-import { EntityUnion } from 'components/Explore/explore.interface';
+import {
+  EntityUnion,
+  EntityWithServices,
+} from 'components/Explore/explore.interface';
 import { ResourceEntity } from 'components/PermissionProvider/PermissionProvider.interface';
+import { SearchedDataProps } from 'components/searched-data/SearchedData.interface';
 import { ExplorePageTabs } from 'enums/Explore.enum';
 import { Container } from 'generated/entity/data/container';
 import { Mlmodel } from 'generated/entity/data/mlmodel';
+import { Topic } from 'generated/entity/data/topic';
 import i18next from 'i18next';
 import { get, isEmpty, isNil, isUndefined, lowerCase, startCase } from 'lodash';
 import { Bucket, EntityDetailUnion } from 'Models';
@@ -821,4 +826,91 @@ export const getEntityReferenceListFromEntities = <
   }
 
   return entities.map((entity) => getEntityReferenceFromEntity(entity, type));
+};
+
+export const getBreadcrumbForTable = (
+  entity: Table,
+  includeCurrent = false
+) => {
+  const { service, database, databaseSchema } = entity;
+
+  return [
+    {
+      name: getEntityName(service),
+      url: service?.name
+        ? getServiceDetailsPath(
+            service?.name,
+            ServiceCategory.DATABASE_SERVICES
+          )
+        : '',
+    },
+    {
+      name: getEntityName(database),
+      url: getDatabaseDetailsPath(database?.fullyQualifiedName ?? ''),
+    },
+    {
+      name: getEntityName(databaseSchema),
+      url: getDatabaseSchemaDetailsPath(
+        databaseSchema?.fullyQualifiedName ?? ''
+      ),
+    },
+    ...(includeCurrent
+      ? [
+          {
+            name: getEntityName(entity),
+            url: '#',
+          },
+        ]
+      : []),
+  ];
+};
+
+export const getBreadcrumbForEntitiesWithServiceOnly = (
+  entity: EntityWithServices,
+  includeCurrent = false
+) => {
+  const { service } = entity;
+
+  return [
+    {
+      name: getEntityName(service),
+      url: service?.name
+        ? getServiceDetailsPath(
+            service?.name,
+            service.type === 'objectStoreService'
+              ? ServiceCategory.OBJECT_STORE_SERVICES
+              : service.type
+          )
+        : '',
+    },
+    ...(includeCurrent
+      ? [
+          {
+            name: getEntityName(entity),
+            url: '#',
+          },
+        ]
+      : []),
+  ];
+};
+
+export const getEntityBreadcrumbs = (
+  entity: SearchedDataProps['data'][number]['_source'],
+  entityType?: EntityType,
+  includeCurrent = false
+) => {
+  switch (entityType) {
+    case EntityType.TABLE:
+      return getBreadcrumbForTable(entity as Table, includeCurrent);
+    case EntityType.TOPIC:
+    case EntityType.DASHBOARD:
+    case EntityType.PIPELINE:
+    case EntityType.MLMODEL:
+    case EntityType.CONTAINER:
+    default:
+      return getBreadcrumbForEntitiesWithServiceOnly(
+        entity as Topic,
+        includeCurrent
+      );
+  }
 };

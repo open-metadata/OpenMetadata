@@ -18,7 +18,6 @@ import { EntityUnion } from 'components/Explore/explore.interface';
 import { SourceType } from 'components/searched-data/SearchedData.interface';
 import SummaryPanelSkeleton from 'components/Skeleton/SummaryPanelSkeleton/SummaryPanelSkeleton.component';
 import { SearchIndex } from 'enums/search.enum';
-import { get } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { searchData } from 'rest/miscAPI';
@@ -50,14 +49,11 @@ function TagsSummary({ entityDetails, isLoading }: TagsSummaryProps) {
 
   const usageItems = useMemo(() => {
     return selectedData.map((entity, index) => {
-      const searchIndex = get(entity, 'entityType');
-
       return (
         <>
           <div className="mb-2">
             <TableDataCardV2
               id={`tabledatacardtest${index}`}
-              searchIndex={searchIndex}
               source={entity as SourceType}
             />
           </div>

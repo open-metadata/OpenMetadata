@@ -13,12 +13,12 @@
 import { Button, List, Modal, Radio, Space } from 'antd';
 import Searchbar from 'components/common/searchbar/Searchbar';
 import TableDataCardV2 from 'components/common/table-data-card-v2/TableDataCardV2';
-import { EntityUnion } from 'components/Explore/explore.interface';
 import Loader from 'components/Loader/Loader';
 import { PAGE_SIZE_MEDIUM } from 'constants/constants';
 import { EntityType } from 'enums/entity.enum';
 import { SearchIndex } from 'enums/search.enum';
 import { compare } from 'fast-json-patch';
+import { ExploreSearchSource } from 'interface/search.interface';
 import { cloneDeep, groupBy, map, startCase } from 'lodash';
 import { EntityDetailUnion } from 'Models';
 import VirtualList from 'rc-virtual-list';
@@ -134,7 +134,7 @@ export const AssetSelectionModal = ({
     }
   };
 
-  const handleCardClick = (details: EntityUnion) => {
+  const handleCardClick = (details: ExploreSearchSource) => {
     const id = details.id;
     if (!id) {
       return;
@@ -278,7 +278,7 @@ export const AssetSelectionModal = ({
             height={500}
             itemKey="id"
             onScroll={onScroll}>
-            {({ _index: index, _source: item }) => (
+            {({ _source: item }) => (
               <TableDataCardV2
                 showCheckboxes
                 checked={selectedItems?.has(item.id)}
@@ -286,7 +286,6 @@ export const AssetSelectionModal = ({
                 handleSummaryPanelDisplay={handleCardClick}
                 id={`tabledatacard-${item.id}`}
                 key={item.id}
-                searchIndex={index}
                 source={{ ...item, tags: [] }}
               />
             )}

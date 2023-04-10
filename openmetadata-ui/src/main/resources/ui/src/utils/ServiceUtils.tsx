@@ -68,6 +68,7 @@ import {
   MARIADB,
   METABASE,
   MLFLOW,
+  ML_MODEL_DEFAULT,
   MODE,
   MSSQL,
   MYSQL,
@@ -298,6 +299,10 @@ export const serviceTypeLogo = (type: string) => {
         logo = PIPELINE_DEFAULT;
       } else if (serviceTypes.databaseServices.includes(type)) {
         logo = DATABASE_DEFAULT;
+      } else if (serviceTypes.mlmodelServices.includes(type)) {
+        logo = ML_MODEL_DEFAULT;
+      } else if (serviceTypes.objectStoreServices.includes(type)) {
+        logo = DEFAULT_SERVICE;
       } else {
         logo = DEFAULT_SERVICE;
       }

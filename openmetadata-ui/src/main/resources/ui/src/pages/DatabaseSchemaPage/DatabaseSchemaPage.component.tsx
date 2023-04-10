@@ -109,10 +109,7 @@ import {
 } from '../../utils/FeedUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { getSettingPath } from '../../utils/RouterUtils';
-import {
-  getServiceRouteFromServiceType,
-  serviceTypeLogo,
-} from '../../utils/ServiceUtils';
+import { getServiceRouteFromServiceType } from '../../utils/ServiceUtils';
 import { getErrorText } from '../../utils/StringsUtils';
 import {
   getEntityLink,
@@ -282,7 +279,6 @@ const DatabaseSchemaPage: FunctionComponent = () => {
             id = '',
             name,
             service,
-            serviceType,
             database,
             tags,
           } = res;
@@ -310,7 +306,6 @@ const DatabaseSchemaPage: FunctionComponent = () => {
                     ServiceCategory.DATABASE_SERVICES
                   )
                 : '',
-              imgSrc: serviceType ? serviceTypeLogo(serviceType) : undefined,
             },
             {
               name: getPartialNameFromTableFQN(

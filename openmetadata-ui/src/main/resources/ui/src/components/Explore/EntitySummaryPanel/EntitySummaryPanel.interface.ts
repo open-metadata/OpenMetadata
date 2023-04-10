@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 
-import { EntityDetailsObjectInterface } from '../explore.interface';
+import { ExploreSearchSource } from 'interface/search.interface';
 
 export interface EntitySummaryPanelProps {
-  entityDetails: EntityDetailsObjectInterface;
+  entityDetails: ExploreSearchSource;
   handleClosePanel: () => void;
 }

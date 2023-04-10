@@ -24,10 +24,11 @@ import ProfilePicture from 'components/common/ProfilePicture/ProfilePicture';
 import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
 import TabsPane from 'components/common/TabsPane/TabsPane';
 import TestConnection from 'components/common/TestConnection/TestConnection';
-import TitleBreadcrumb from 'components/common/title-breadcrumb/title-breadcrumb.component';
 import { TitleBreadcrumbProps } from 'components/common/title-breadcrumb/title-breadcrumb.interface';
 import PageContainerV1 from 'components/containers/PageContainerV1';
+import PageLayoutV1 from 'components/containers/PageLayoutV1';
 import DataModelTable from 'components/DataModels/DataModelsTable';
+import { EntityHeader } from 'components/Entity/EntityHeader/EntityHeader.component';
 import Ingestion from 'components/Ingestion/Ingestion.component';
 import Loader from 'components/Loader/Loader';
 import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
@@ -688,7 +689,7 @@ const ServicePage: FunctionComponent = () => {
       getServiceByFQN(serviceName, serviceFQN, 'owner')
         .then((resService) => {
           if (resService) {
-            const { description, serviceType } = resService;
+            const { description } = resService;
             setServiceDetails(resService);
             setConnectionDetails(
               resService.connection?.config as DashboardConnection
@@ -701,12 +702,6 @@ const ServicePage: FunctionComponent = () => {
                   GlobalSettingsMenuCategory.SERVICES,
                   getServiceRouteFromServiceType(serviceName)
                 ),
-              },
-              {
-                name: getEntityName(resService),
-                url: '',
-                imgSrc: serviceType ? serviceTypeLogo(serviceType) : undefined,
-                activeTitle: true,
               },
             ]);
             getOtherDetails();
@@ -1010,69 +1005,53 @@ const ServicePage: FunctionComponent = () => {
           {getEntityMissingError(serviceName as string, serviceFQN)}
         </ErrorPlaceHolder>
       ) : (
-        <>
+        <PageLayoutV1
+          pageTitle={t('label.entity-detail-plural', {
+            entity: getEntityName(serviceDetails),
+          })}>
           {servicePermission.ViewAll || servicePermission.ViewBasic ? (
-            <Row
-              className="p-x-md p-t-lg"
-              data-testid="service-page"
-              gutter={[0, 12]}>
-              <Col span={24}>
-                <Space align="center" className="justify-between w-full">
-                  <TitleBreadcrumb titleLinks={slashedTableName} />
-                  {serviceDetails?.serviceType !==
-                    MetadataServiceType.OpenMetadata && (
-                    <Tooltip
-                      placement="topRight"
-                      title={
-                        !servicePermission.Delete &&
-                        t('message.no-permission-for-action')
-                      }>
-                      <Button
-                        ghost
-                        data-testid="service-delete"
-                        disabled={!servicePermission.Delete}
-                        icon={
-                          <IcDeleteColored
-                            className="anticon"
-                            height={14}
-                            viewBox="0 0 24 24"
-                            width={14}
-                          />
-                        }
-                        size="small"
-                        type="primary"
-                        onClick={handleDelete}>
-                        {t('label.delete')}
-                      </Button>
-                    </Tooltip>
-                  )}
-                  <DeleteWidgetModal
-                    isRecursiveDelete
-                    afterDeleteAction={() =>
-                      history.push(
-                        getSettingPath(
-                          GlobalSettingsMenuCategory.SERVICES,
-                          SERVICE_CATEGORY_TYPE[
-                            serviceCategory as keyof typeof SERVICE_CATEGORY_TYPE
-                          ]
-                        )
-                      )
-                    }
-                    allowSoftDelete={false}
-                    deleteMessage={getDeleteEntityMessage(
-                      serviceName || '',
-                      paging.total,
-                      schemaCount,
-                      tableCount
-                    )}
-                    entityId={serviceDetails?.id}
-                    entityName={serviceDetails?.name || ''}
-                    entityType={serviceName?.slice(0, -1)}
-                    visible={deleteWidgetVisible}
-                    onCancel={() => setDeleteWidgetVisible(false)}
-                  />
-                </Space>
-              </Col>
+            <Row data-testid="service-page" gutter={[0, 12]}>
+              {serviceDetails && (
+                <EntityHeader
+                  breadcrumb={slashedTableName}
+                  entityData={serviceDetails}
+                  extra={
+                    serviceDetails?.serviceType !==
+                      MetadataServiceType.OpenMetadata && (
+                      <Tooltip
+                        placement="topRight"
+                        title={
+                          !servicePermission.Delete &&
+                          t('message.no-permission-for-action')
+                        }>
+                        <Button
+                          ghost
+                          data-testid="service-delete"
+                          disabled={!servicePermission.Delete}
+                          icon={
+                            <IcDeleteColored
+                              className="anticon"
+                              height={14}
+                              viewBox="0 0 24 24"
+                              width={14}
+                            />
+                          }
+                          size="small"
+                          type="primary"
+                          onClick={handleDelete}>
+                          {t('label.delete')}
+                        </Button>
+                      </Tooltip>
+                    )
+                  }
+                  icon={
+                    <img
+                      className="h-8"
+                      src={serviceTypeLogo(serviceDetails.serviceType)}
+                    />
+                  }
+                />
+              )}
               <Col span={24}>
                 <Space>
                   {extraInfo.map((info, index) => (
@@ -1222,7 +1201,33 @@ const ServicePage: FunctionComponent = () => {
               {t('message.no-permission-to-view')}
             </ErrorPlaceHolder>
           )}
-        </>
+
+          <DeleteWidgetModal
+            isRecursiveDelete
+            afterDeleteAction={() =>
+              history.push(
+                getSettingPath(
+                  GlobalSettingsMenuCategory.SERVICES,
+                  SERVICE_CATEGORY_TYPE[
+                    serviceCategory as keyof typeof SERVICE_CATEGORY_TYPE
+                  ]
+                )
+              )
+            }
+            allowSoftDelete={false}
+            deleteMessage={getDeleteEntityMessage(
+              serviceName || '',
+              paging.total,
+              schemaCount,
+              tableCount
+            )}
+            entityId={serviceDetails?.id}
+            entityName={serviceDetails?.name || ''}
+            entityType={serviceName?.slice(0, -1)}
+            visible={deleteWidgetVisible}
+            onCancel={() => setDeleteWidgetVisible(false)}
+          />
+        </PageLayoutV1>
       )}
     </PageContainerV1>
   );

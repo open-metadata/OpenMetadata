@@ -12,14 +12,16 @@
  */
 import { Space, Typography } from 'antd';
 import React from 'react';
+import { Link } from 'react-router-dom';
 
 interface props {
   icon: React.ReactNode;
   name: string;
   displayName: string;
+  link?: string;
 }
 
-const EntityHeaderTitle = ({ icon, name, displayName }: props) => {
+const EntityHeaderTitle = ({ icon, name, displayName, link = '#' }: props) => {
   return (
     <Space direction="vertical" size={0}>
       <Space align="center" size={8}>
@@ -30,11 +32,19 @@ const EntityHeaderTitle = ({ icon, name, displayName }: props) => {
             data-testid="entity-header-name">
             {name}
           </Typography.Text>
-          <Typography.Text
+          <Link
+            className="m-b-0 entity-header-display-name"
+            component={Typography.Link}
+            data-testid="entity-header-display-name"
+            to={link}>
+            {displayName}
+          </Link>
+
+          {/* <Typography.Text
             className="m-b-0 entity-header-display-name"
             data-testid="entity-header-display-name">
-            {displayName}
-          </Typography.Text>
+            {link ? <Link to={link}> {displayName}</Link> : displayName}
+          </Typography.Text> */}
         </div>
       </Space>
     </Space>

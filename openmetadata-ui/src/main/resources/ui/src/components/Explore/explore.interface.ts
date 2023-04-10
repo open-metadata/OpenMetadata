@@ -25,7 +25,11 @@ import { Mlmodel } from '../../generated/entity/data/mlmodel';
 import { Pipeline } from '../../generated/entity/data/pipeline';
 import { Table } from '../../generated/entity/data/table';
 import { Topic } from '../../generated/entity/data/topic';
-import { Aggregations, SearchResponse } from '../../interface/search.interface';
+import {
+  Aggregations,
+  ExploreSearchSource,
+  SearchResponse,
+} from '../../interface/search.interface';
 import { SearchDropdownOption } from '../SearchDropdown/SearchDropdown.interface';
 import { FilterObject } from './AdvanceSearchProvider/AdvanceSearchProvider.interface';
 
@@ -124,7 +128,14 @@ export type EntityUnion =
   | Glossary
   | Tag;
 
+export type EntityWithServices =
+  | Topic
+  | Dashboard
+  | Pipeline
+  | Mlmodel
+  | Container;
+
 export interface EntityDetailsObjectInterface {
-  details: EntityUnion;
+  details: ExploreSearchSource;
   entityType: string;
 }

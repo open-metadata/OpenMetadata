@@ -11,37 +11,32 @@
  *  limitations under the License.
  */
 
-import { ExclamationCircleOutlined } from '@ant-design/icons';
 import { Checkbox } from 'antd';
 import classNames from 'classnames';
-import { EntityUnion } from 'components/Explore/explore.interface';
+import { EntityHeader } from 'components/Entity/EntityHeader/EntityHeader.component';
+import { ExploreSearchSource } from 'interface/search.interface';
 import { isString, startCase, uniqueId } from 'lodash';
 import { ExtraInfo } from 'Models';
 import React, { forwardRef, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useLocation, useParams } from 'react-router-dom';
-import { getEntityId, getEntityName } from 'utils/EntityUtils';
-import AppState from '../../../AppState';
+import { useParams } from 'react-router-dom';
+import {
+  getEntityBreadcrumbs,
+  getEntityId,
+  getEntityName,
+} from 'utils/EntityUtils';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
-import { ROUTES } from '../../../constants/constants';
 import { EntityType } from '../../../enums/entity.enum';
-import { SearchIndex } from '../../../enums/search.enum';
-import { CurrentTourPageType } from '../../../enums/tour.enum';
 import { OwnerType } from '../../../enums/user.enum';
 import { EntityReference } from '../../../generated/entity/type';
 import {
   getEntityPlaceHolder,
   getOwnerValue,
 } from '../../../utils/CommonUtils';
-import {
-  getEntityHeaderLabel,
-  getServiceIcon,
-  getUsagePercentile,
-} from '../../../utils/TableUtils';
+import { getServiceIcon, getUsagePercentile } from '../../../utils/TableUtils';
 import { SearchedDataProps } from '../../searched-data/SearchedData.interface';
 import '../table-data-card/TableDataCard.style.css';
 import TableDataCardBody from '../table-data-card/TableDataCardBody';
-import TableDataCardTitle from './TableDataCardTitle.component';
 import './TableDataCardV2.less';
 
 export interface TableDataCardPropsV2 {
@@ -52,9 +47,8 @@ export interface TableDataCardPropsV2 {
     key: string;
     value: number;
   }[];
-  searchIndex: SearchIndex | EntityType;
   handleSummaryPanelDisplay?: (
-    details: EntityUnion,
+    details: ExploreSearchSource,
     entityType: string
   ) => void;
   checked?: boolean;
@@ -71,7 +65,6 @@ const TableDataCardV2: React.FC<TableDataCardPropsV2> = forwardRef<
       className,
       source,
       matches,
-      searchIndex,
       handleSummaryPanelDisplay,
       showCheckboxes,
       checked,
@@ -79,7 +72,6 @@ const TableDataCardV2: React.FC<TableDataCardPropsV2> = forwardRef<
     ref
   ) => {
     const { t } = useTranslation();
-    const location = useLocation();
     const { tab } = useParams<{ tab: string }>();
 
     const otherDetails = useMemo(() => {
@@ -136,20 +128,14 @@ const TableDataCardV2: React.FC<TableDataCardPropsV2> = forwardRef<
       return _otherDetails;
     }, [source]);
 
-    const handleLinkClick = (e: React.MouseEvent) => {
-      e.stopPropagation();
-      if (location.pathname.includes(ROUTES.TOUR)) {
-        AppState.currentTourPage = CurrentTourPageType.DATASET_PAGE;
-      }
-    };
-
-    const headerLabel = useMemo(() => {
-      return getEntityHeaderLabel(source);
-    }, [source]);
-
     const serviceIcon = useMemo(() => {
       return getServiceIcon(source);
     }, [source]);
+
+    const breadcrumbs = useMemo(
+      () => getEntityBreadcrumbs(source, source.entityType as EntityType),
+      [source]
+    );
 
     return (
       <div
@@ -163,34 +149,19 @@ const TableDataCardV2: React.FC<TableDataCardPropsV2> = forwardRef<
         ref={ref}
         onClick={() => {
           handleSummaryPanelDisplay &&
-            handleSummaryPanelDisplay(source as EntityUnion, tab);
+            handleSummaryPanelDisplay(source as ExploreSearchSource, tab);
         }}>
-        <div>
-          {headerLabel}
-          <div className="tw-flex tw-items-center">
-            {serviceIcon}
-            <TableDataCardTitle
-              handleLinkClick={handleLinkClick}
-              id={id}
-              searchIndex={searchIndex}
-              source={source}
-            />
-
-            {source.deleted && (
-              <>
-                <div
-                  className="tw-rounded tw-bg-error-lite tw-text-error tw-text-xs tw-font-medium tw-h-5 tw-px-1.5 tw-py-0.5 tw-ml-2"
-                  data-testid="deleted">
-                  <ExclamationCircleOutlined className="tw-mr-1" />
-                  {t('label.deleted')}
-                </div>
-              </>
-            )}
-            {showCheckboxes && (
+        <EntityHeader
+          titleIsLink
+          breadcrumb={breadcrumbs}
+          entityData={source}
+          extra={
+            showCheckboxes && (
               <Checkbox checked={checked} className="m-l-auto" />
-            )}
-          </div>
-        </div>
+            )
+          }
+          icon={serviceIcon}
+        />
         <div className="tw-pt-3">
           <TableDataCardBody
             description={source.description || ''}

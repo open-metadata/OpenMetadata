@@ -14,7 +14,6 @@
 import { render } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
-import { SearchIndex } from '../../../enums/search.enum';
 import TableDataCardV2 from './TableDataCardV2';
 
 jest.mock('../../../utils/TableUtils', () => ({
@@ -48,7 +47,6 @@ describe('Test TableDataCard Component', () => {
       <TableDataCardV2
         handleSummaryPanelDisplay={mockHandleSummaryPanelDisplay}
         id="1"
-        searchIndex={SearchIndex.TABLE}
         source={{
           id: '1',
           name: 'Name1',
@@ -66,7 +64,6 @@ describe('Test TableDataCard Component', () => {
       <TableDataCardV2
         handleSummaryPanelDisplay={mockHandleSummaryPanelDisplay}
         id="1"
-        searchIndex={SearchIndex.TABLE}
         source={{
           id: '2',
           name: 'Name2',

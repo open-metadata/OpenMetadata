@@ -202,6 +202,8 @@ function TableSummary({
     }
   }, [entityDetails]);
 
+  console.log(tableDetails);
+
   return (
     <SummaryPanelSkeleton loading={isLoading || isEmpty(tableDetails)}>
       <>

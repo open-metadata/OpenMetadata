@@ -15,6 +15,7 @@ import { Row } from 'antd';
 import Col from 'antd/es/grid/col';
 import TitleBreadcrumb from 'components/common/title-breadcrumb/title-breadcrumb.component';
 import { TitleBreadcrumbProps } from 'components/common/title-breadcrumb/title-breadcrumb.interface';
+import { getTableDetailsPath } from 'constants/constants';
 import React, { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getEntityName } from 'utils/EntityUtils';
@@ -26,9 +27,11 @@ interface Props {
   entityData: {
     displayName?: string;
     name: string;
+    fullyQualifiedName?: string;
+    deleted?: boolean;
   };
   icon: ReactNode;
-  deleted?: boolean;
+  titleIsLink?: boolean;
 }
 
 export const EntityHeader = ({
@@ -36,12 +39,12 @@ export const EntityHeader = ({
   entityData,
   extra,
   icon,
-  deleted = false,
+  titleIsLink = false,
 }: Props) => {
   const { t } = useTranslation();
 
   return (
-    <Row justify="space-between">
+    <Row className="w-full" gutter={12} justify="space-between">
       <Col>
         <div
           className="tw-text-link tw-text-base glossary-breadcrumb m-b-xss"
@@ -52,9 +55,14 @@ export const EntityHeader = ({
         <EntityHeaderTitle
           displayName={getEntityName(entityData)}
           icon={icon}
+          link={
+            titleIsLink && entityData.fullyQualifiedName
+              ? getTableDetailsPath(entityData.fullyQualifiedName)
+              : undefined
+          }
           name={entityData.name}
         />
-        {deleted && (
+        {entityData.deleted && (
           <div className="deleted-badge-button" data-testid="deleted-badge">
             <ExclamationCircleOutlined className="m-r-sm" />
             {t('label.deleted')}

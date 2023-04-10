@@ -21,6 +21,7 @@ import SearchedData from 'components/searched-data/SearchedData';
 import { SORT_ORDER } from 'enums/common.enum';
 import { EntityType } from 'enums/entity.enum';
 import unique from 'fork-ts-checker-webpack-plugin/lib/utils/array/unique';
+import { ExploreSearchSource } from 'interface/search.interface';
 import {
   isEmpty,
   isNil,
@@ -51,8 +52,6 @@ import { useAdvanceSearch } from './AdvanceSearchProvider/AdvanceSearchProvider.
 import AppliedFilterText from './AppliedFilterText/AppliedFilterText';
 import EntitySummaryPanel from './EntitySummaryPanel/EntitySummaryPanel.component';
 import {
-  EntityDetailsObjectInterface,
-  EntityUnion,
   ExploreProps,
   ExploreQuickFilterField,
   ExploreSearchIndex,
@@ -90,8 +89,7 @@ const Explore: React.FC<ExploreProps> = ({
     ExploreQuickFilterField[]
   >([] as ExploreQuickFilterField[]);
   const [showSummaryPanel, setShowSummaryPanel] = useState(false);
-  const [entityDetails, setEntityDetails] =
-    useState<{ details: EntityUnion; entityType: string }>();
+  const [entityDetails, setEntityDetails] = useState<ExploreSearchSource>();
 
   const { toggleModal, sqlQuery } = useAdvanceSearch();
 
@@ -168,9 +166,10 @@ const Explore: React.FC<ExploreProps> = ({
   };
 
   const handleSummaryPanelDisplay = useCallback(
-    (details: EntityUnion, entityType: string) => {
+    (details: ExploreSearchSource, entityType: string) => {
       setShowSummaryPanel(true);
-      setEntityDetails({ details, entityType });
+      console.log(entityType);
+      setEntityDetails(details);
     },
     []
   );
@@ -260,10 +259,7 @@ const Explore: React.FC<ExploreProps> = ({
       searchResults?.hits?.hits[0] &&
       searchResults?.hits?.hits[0]._index === searchIndex
     ) {
-      handleSummaryPanelDisplay(
-        searchResults?.hits?.hits[0]._source as EntityUnion,
-        tab
-      );
+      handleSummaryPanelDisplay(searchResults?.hits?.hits[0]._source, tab);
     } else {
       setShowSummaryPanel(false);
       setEntityDetails(undefined);
@@ -364,7 +360,7 @@ const Explore: React.FC<ExploreProps> = ({
                       onChangePage(Number.parseInt(value));
                     }
                   }}
-                  selectedEntityId={entityDetails?.details.id || ''}
+                  selectedEntityId={entityDetails?.id || ''}
                   totalValue={searchResults?.hits.total.value ?? 0}
                 />
               ) : (
@@ -373,12 +369,10 @@ const Explore: React.FC<ExploreProps> = ({
             </Col>
           </Row>
         </Col>
-        {showSummaryPanel && (
+        {showSummaryPanel && entityDetails && (
           <Col flex="400px">
             <EntitySummaryPanel
-              entityDetails={
-                entityDetails || ({} as EntityDetailsObjectInterface)
-              }
+              entityDetails={entityDetails}
               handleClosePanel={handleClosePanel}
             />
           </Col>

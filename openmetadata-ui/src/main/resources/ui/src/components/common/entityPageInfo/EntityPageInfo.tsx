@@ -390,10 +390,10 @@ const EntityPageInfo = ({
       direction="vertical">
       <EntityHeader
         breadcrumb={titleLinks}
-        deleted={deleted}
         entityData={{
           displayName: entityName,
           name: entityName,
+          deleted,
         }}
         extra={
           <Space align="center" id="version-and-follow-section">

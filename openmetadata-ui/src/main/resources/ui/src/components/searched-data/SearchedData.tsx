@@ -51,7 +51,7 @@ const SearchedData: React.FC<SearchedDataProps> = ({
   handleSummaryPanelDisplay,
 }) => {
   const highlightSearchResult = () => {
-    return data.map(({ _source: table, highlight, _index }, index) => {
+    return data.map(({ _source: table, highlight }, index) => {
       let tDesc = table.description ?? '';
       const highLightedTexts = highlight?.description || [];
 
@@ -102,7 +102,6 @@ const SearchedData: React.FC<SearchedDataProps> = ({
             handleSummaryPanelDisplay={handleSummaryPanelDisplay}
             id={`tabledatacard${index}`}
             matches={matches}
-            searchIndex={_index}
             source={{ ...table, name, description: tDesc }}
           />
         </div>
