@@ -15,30 +15,26 @@ import Icon from '@ant-design/icons/lib/components/Icon';
 import { Button, Card, Col, Row, Skeleton, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
-import EditEmailConfigModal from 'components/EditEmailConfigModal/EditEmailConfigModal.component';
 import PageHeader from 'components/header/PageHeader.component';
+import { ROUTES } from 'constants/constants';
 import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { SMTPSettings } from 'generated/email/smtpSettings';
-import { Settings, SettingType } from 'generated/settings/settings';
+import { SettingType } from 'generated/settings/settings';
 import { isBoolean, isEmpty, isNumber, isUndefined } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import {
-  getSettingsConfigFromConfigType,
-  updateSettingsConfig,
-} from 'rest/emailConfigAPI';
+import { useHistory } from 'react-router-dom';
+import { getSettingsConfigFromConfigType } from 'rest/emailConfigAPI';
 import { getEmailConfigFieldLabels } from 'utils/EmailConfigUtils';
 import { showErrorToast } from 'utils/ToastUtils';
 import { ReactComponent as IconEdit } from '../../assets/svg/ic-edit.svg';
 
 function EmailConfigSettingsPage() {
   const { t } = useTranslation();
+  const history = useHistory();
 
   const [emailConfigValues, setEmailConfigValues] = useState<SMTPSettings>();
-  const [showEditModal, setShowEditModal] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(false);
-
-  const toggleEditMode = () => setShowEditModal((value) => !value);
 
   const fetchEmailConfigValues = useCallback(async () => {
     try {
@@ -61,30 +57,9 @@ function EmailConfigSettingsPage() {
     }
   }, [setEmailConfigValues]);
 
-  const updateEmailConfigValues = useCallback(
-    async (configValues: SMTPSettings) => {
-      try {
-        setLoading(true);
-        const settingsConfigData: Settings = {
-          config_type: SettingType.EmailConfiguration,
-          config_value: configValues,
-        };
-        const { data } = await updateSettingsConfig(settingsConfigData);
-
-        setEmailConfigValues(data.config_value as SMTPSettings);
-      } catch (error) {
-        showErrorToast(
-          error as AxiosError,
-          t('server.entity-updating-error', {
-            entity: t('label.email-configuration-lowercase'),
-          })
-        );
-      } finally {
-        setLoading(false);
-      }
-    },
-    [setEmailConfigValues]
-  );
+  const handleEditClick = () => {
+    history.push(ROUTES.SETTINGS_EDIT_EMAIL_CONFIG);
+  };
 
   const configValues = useMemo(() => {
     if (isUndefined(emailConfigValues)) {
@@ -173,7 +148,7 @@ function EmailConfigSettingsPage() {
                   <Icon component={IconEdit} size={12} />
                 )
               }
-              onClick={toggleEditMode}>
+              onClick={handleEditClick}>
               {isUndefined(emailConfigValues)
                 ? t('label.add')
                 : t('label.edit')}
@@ -182,13 +157,6 @@ function EmailConfigSettingsPage() {
         </Row>
       </Col>
       <Col span={24}>{configValuesContainer}</Col>
-
-      <EditEmailConfigModal
-        emailConfigValues={emailConfigValues}
-        showModal={showEditModal}
-        onCancel={toggleEditMode}
-        onSubmit={updateEmailConfigValues}
-      />
     </Row>
   );
 }
