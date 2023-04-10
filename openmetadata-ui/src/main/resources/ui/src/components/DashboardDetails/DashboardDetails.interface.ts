@@ -12,15 +12,12 @@
  */
 
 import { Operation } from 'fast-json-patch';
-import { EntityTags } from 'Models';
 import { FeedFilter } from '../../enums/mydata.enum';
 import { CreateThread } from '../../generated/api/feed/createThread';
 import { Chart } from '../../generated/entity/data/chart';
 import { Dashboard } from '../../generated/entity/data/dashboard';
 import { Thread, ThreadType } from '../../generated/entity/feed/thread';
-import { EntityReference } from '../../generated/type/entityReference';
 import { Paging } from '../../generated/type/paging';
-import { TagLabel } from '../../generated/type/tagLabel';
 import {
   EntityFieldThreadCount,
   ThreadUpdatedFunc,
@@ -33,21 +30,12 @@ export interface ChartType extends Chart {
 
 export interface DashboardDetailsProps {
   dashboardFQN: string;
-  version: string;
   charts: Array<ChartType>;
-  serviceType: string;
   dashboardUrl: string;
   dashboardDetails: Dashboard;
-  entityName: string;
   activeTab: number;
-  owner: EntityReference;
-  description: string;
-  tier: TagLabel;
-  followers: Array<EntityReference>;
-  dashboardTags: Array<EntityTags>;
   slashedDashboardName: TitleBreadcrumbProps['titleLinks'];
   entityThread: Thread[];
-  deleted?: boolean;
   isentityThreadLoading: boolean;
   feedCount: number;
   entityFieldThreadCount: EntityFieldThreadCount[];

@@ -567,7 +567,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
               ? onTierUpdate
               : undefined
           }
-          version={version}
+          version={Number(version)}
           versionHandler={versionHandler}
           onRestoreEntity={handleRestoreMlmodel}
           onThreadLinkSelect={handleThreadLinkSelect}

@@ -44,7 +44,6 @@ import { checkPermission } from 'utils/PermissionsUtils';
 import { getGlossaryPath, getGlossaryTermsPath } from 'utils/RouterUtils';
 import { showErrorToast, showSuccessToast } from 'utils/ToastUtils';
 import GlossaryLeftPanel from '../GlossaryLeftPanel/GlossaryLeftPanel.component';
-import GlossaryRightPanel from '../GlossaryRightPanel/GlossaryRightPanel.component';
 
 const GlossaryPage = () => {
   const { t } = useTranslation();
@@ -272,6 +271,7 @@ const GlossaryPage = () => {
               <GlossaryV1
                 deleteStatus={deleteStatus}
                 isGlossaryActive={isGlossaryActive}
+                isVersionsView={false}
                 selectedData={selectedData as Glossary}
                 updateGlossary={updateGlossary}
                 onGlossaryDelete={handleGlossaryDelete}
@@ -279,16 +279,6 @@ const GlossaryPage = () => {
                 onGlossaryTermUpdate={handleGlossaryTermUpdate}
               />
             </Col>
-            {selectedData && (
-              <Col flex="400px">
-                <GlossaryRightPanel
-                  entityDetails={selectedData as Glossary}
-                  isGlossary={isGlossaryActive}
-                  onGlossaryTermUpdate={handleGlossaryTermUpdate}
-                  onGlossaryUpdate={updateGlossary}
-                />
-              </Col>
-            )}
           </Row>
         )}
       </PageLayoutV1>
