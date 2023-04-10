@@ -121,19 +121,21 @@ def _(elements, compiler, **kwargs):  # pylint: disable=unused-argument
     table = elements.clauses.clauses[1].value
     percentile = elements.clauses.clauses[2].value
 
+
+
     return """
     (SELECT
         {col}
     FROM (
         SELECT
             t.{col}, 
-            @row_num := @row_num + 1 AS row_num
+            ROW_NUMBER() OVER () AS row_num
         FROM 
             {table} t,
-            (SELECT @row_num:=0) counter 
+            (SELECT @counter := COUNT(*) FROM {table}) t_count 
         ORDER BY {col}
         ) temp
-    WHERE temp.row_num = ROUND({percentile} * @row_num)
+    WHERE temp.row_num = ROUND({percentile} * @counter)
     )
     """.format(
         col=col, table=table, percentile=percentile
