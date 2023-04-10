@@ -516,11 +516,9 @@ public class TableRepository extends EntityRepository<Table> {
       stored.setTags(modelColumn.getTags());
     }
     applyTags(table.getColumns());
-    dao.update(table.getId(), JsonUtils.pojoToJson(table));
-
+    dao.update(table.getId(), FullyQualifiedName.buildHash(table.getFullyQualifiedName()), JsonUtils.pojoToJson(table));
     setFieldsInternal(table, new Fields(List.of(FIELD_OWNER), FIELD_OWNER));
     setFieldsInternal(table, new Fields(List.of(FIELD_TAGS), FIELD_TAGS));
-
     return table;
   }
 

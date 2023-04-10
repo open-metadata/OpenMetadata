@@ -845,7 +845,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     entity.setTags(null);
 
     if (update) {
-      dao.update(entity.getId(), JsonUtils.pojoToJson(entity));
+      dao.update(entity.getId(), getFullyQualifiedNameHash(entity), JsonUtils.pojoToJson(entity));
       LOG.info("Updated {}:{}:{}", entityType, entity.getId(), entity.getFullyQualifiedName());
     } else {
       dao.insert(entity, getFullyQualifiedNameHash(entity));
@@ -1119,7 +1119,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     LOG.info("Restoring the {} {}", entityType, id);
     T entity = dao.findEntityById(id, DELETED);
     entity.setDeleted(false);
-    dao.update(entity.getId(), JsonUtils.pojoToJson(entity));
+    dao.update(entity.getId(), getFullyQualifiedNameHash(entity), JsonUtils.pojoToJson(entity));
     return entity;
   }
 

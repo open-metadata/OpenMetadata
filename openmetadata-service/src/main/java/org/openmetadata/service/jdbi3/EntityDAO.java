@@ -60,11 +60,11 @@ public interface EntityDAO<T extends EntityInterface> {
   @ConnectionAwareSqlUpdate(value = "INSERT INTO <table> (<nameColumn>, json) VALUES (:nameColumnHash, :json :: jsonb)", connectionType = POSTGRES)
   void insert(@Define("table") String table, @Define("nameColumn") String nameColumn, @Bind("nameColumnHash") String nameColumnHash, @Bind("json") String json);
 
-  @ConnectionAwareSqlUpdate(value = "UPDATE <table> SET  json = :json WHERE id = :id", connectionType = MYSQL)
+  @ConnectionAwareSqlUpdate(value = "UPDATE <table> SET  json = :json, <nameColumn> = :nameColumnHash WHERE id = :id", connectionType = MYSQL)
   @ConnectionAwareSqlUpdate(
-      value = "UPDATE <table> SET  json = (:json :: jsonb) WHERE id = :id",
+      value = "UPDATE <table> SET  json = (:json :: jsonb), <nameColumn> = :nameColumnHash WHERE id = :id",
       connectionType = POSTGRES)
-  void update(@Define("table") String table, @Bind("id") String id, @Bind("json") String json);
+  void update(@Define("table") String table, @Define("nameColumn") String nameColumn, @Bind("nameColumnHash") String nameColumnHash, @Bind("id") String id, @Bind("json") String json);
 
   default void updateFqn(String oldPrefix, String newPrefix) {
     LOG.info("Updating FQN for {} from {} to {}", getTableName(), oldPrefix, newPrefix);
@@ -160,12 +160,13 @@ public interface EntityDAO<T extends EntityInterface> {
     insert(getTableName(), getNameHashColumn(), fqnHash, JsonUtils.pojoToJson(entity));
   }
 
-  default void update(UUID id, String json) {
-    update(getTableName(), id.toString(), json);
+  default void update(UUID id, String fqnHash, String json) {
+    update(getTableName(), getNameHashColumn(), fqnHash, id.toString(), json);
   }
 
   default void update(EntityInterface entity) throws JsonProcessingException {
-    update(getTableName(), entity.getId().toString(), JsonUtils.pojoToJson(entity));
+    update(getTableName(), getNameHashColumn(), FullyQualifiedName.buildHash(entity.getFullyQualifiedName()),
+        entity.getId().toString(), JsonUtils.pojoToJson(entity));
   }
 
   default String getCondition(Include include) {
