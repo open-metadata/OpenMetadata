@@ -420,6 +420,9 @@ class DatalakeUnitTest(TestCase):
         assert list(self.datalake_source.fetch_gcs_bucket_names()) == EXPECTED_SCHEMA
 
     def test_json_file_parse(self):
+        """
+        Test json data files
+        """
         import pandas as pd  # pylint: disable=import-outside-toplevel
 
         sample_dict = {"name": "John", "age": 16, "sex": "M"}

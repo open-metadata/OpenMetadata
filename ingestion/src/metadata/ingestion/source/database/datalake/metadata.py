@@ -608,13 +608,14 @@ class DatalakeSource(DatabaseServiceSource):
         )
         """
         try:
+            # pylint: disable=bad-str-strip-call
             column_name = str(column).strip(COMPLEX_COLUMN_SEPARATOR)
             col_hierarchy = tuple(column_name.split(COMPLEX_COLUMN_SEPARATOR))
             parent_col: Optional[Column] = None
             root_col: Optional[Column] = None
-            for i, col_name in enumerate(col_hierarchy[:-1]):
-                if complex_col_dict.get(col_hierarchy[: i + 1]):
-                    parent_col = complex_col_dict.get(col_hierarchy[: i + 1])
+            for index, col_name in enumerate(col_hierarchy[:-1]):
+                if complex_col_dict.get(col_hierarchy[: index + 1]):
+                    parent_col = complex_col_dict.get(col_hierarchy[: index + 1])
                 else:
                     intermediate_column = Column(
                         name=col_name[:64],
@@ -626,7 +627,7 @@ class DatalakeSource(DatabaseServiceSource):
                         parent_col.children.append(intermediate_column)
                         root_col = parent_col
                     parent_col = intermediate_column
-                    complex_col_dict[col_hierarchy[: i + 1]] = parent_col
+                    complex_col_dict[col_hierarchy[: index + 1]] = parent_col
 
             # use String by default
             data_type = DataType.STRING.value
