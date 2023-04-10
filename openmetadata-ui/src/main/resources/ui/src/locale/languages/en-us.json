@@ -884,7 +884,8 @@
     "weekly-usage": "Weekly Usage",
     "whats-new": "What's New",
     "yes": "Yes",
-    "your-entity": "Your {{entity}}"
+    "your-entity": "Your {{entity}}",
+    "query-used-in": "Query Used In"
   },
   "message": {
     "access-to-collaborate": "Allow open access for anyone to join the team, view data, and collaborate.",

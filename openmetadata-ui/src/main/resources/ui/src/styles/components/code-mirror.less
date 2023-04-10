@@ -15,6 +15,19 @@
 .table-query-editor > .CodeMirror {
   height: auto !important;
 }
+.custom-query-editor {
+  border: @global-border;
+  border-radius: @border-radius-base;
+  .CodeMirror {
+    border-radius: @border-radius-base;
+    height: 200px;
+  }
+}
+.query-editor-h-200 {
+  .CodeMirror {
+    height: 200px;
+  }
+}
 .full-screen-editor-height > .CodeMirror {
   height: calc(100vh - 250px) !important;
 }
