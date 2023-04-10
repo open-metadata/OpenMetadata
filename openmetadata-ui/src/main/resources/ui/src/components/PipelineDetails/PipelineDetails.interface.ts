@@ -12,7 +12,6 @@
  */
 
 import { Operation } from 'fast-json-patch';
-
 import { Pipeline } from '../../generated/entity/data/pipeline';
 import { EntityReference } from '../../generated/type/entityReference';
 import { Paging } from '../../generated/type/paging';
@@ -20,7 +19,6 @@ import { TitleBreadcrumbProps } from '../common/title-breadcrumb/title-breadcrum
 
 export interface PipeLineDetailsProp {
   pipelineFQN: string;
-  entityName: string;
   pipelineDetails: Pipeline;
   followers: Array<EntityReference>;
   slashedPipelineName: TitleBreadcrumbProps['titleLinks'];

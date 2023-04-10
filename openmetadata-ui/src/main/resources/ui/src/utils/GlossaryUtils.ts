@@ -114,6 +114,32 @@ export const getRootLevelGlossaryTerm = (
   }, [] as GlossaryTerm[]);
 };
 
+export const buildTree = (data: GlossaryTerm[]): GlossaryTerm[] => {
+  const nodes: Record<string, GlossaryTerm> = {};
+  const tree: GlossaryTerm[] = [];
+
+  data.forEach((obj) => {
+    if (obj.fullyQualifiedName) {
+      nodes[obj.fullyQualifiedName] = {
+        ...obj,
+        children: [],
+      };
+      const parentNode =
+        obj.parent &&
+        obj.parent.fullyQualifiedName &&
+        nodes[obj.parent.fullyQualifiedName];
+      parentNode &&
+        nodes[obj.fullyQualifiedName] &&
+        parentNode.children?.push(
+          nodes[obj.fullyQualifiedName] as unknown as EntityReference
+        );
+      parentNode ? null : tree.push(nodes[obj.fullyQualifiedName]);
+    }
+  });
+
+  return tree;
+};
+
 // update glossaryTerm tree with newly fetch child term
 export const createGlossaryTermTree = (
   glossaryTerms: ModifiedGlossaryTerm[],

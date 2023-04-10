@@ -33,6 +33,7 @@ ENTITY_TYPE
     | 'testDefinition'
     | 'testSuite'
     | 'testCase'
+    | 'dashboardDataModel'
     ;
 ENTITY_FIELD
     : 'columns'

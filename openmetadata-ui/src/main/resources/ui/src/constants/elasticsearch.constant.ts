@@ -77,7 +77,6 @@ export const ELASTIC_SEARCH_INDEX_ENTITIES = [
 export const ELASTIC_SEARCH_INITIAL_VALUES = {
   entities: ['all'],
   batchSize: 100,
-  flushIntervalInSec: 30,
   recreateIndex: true,
   searchIndexMappingLanguage: SearchIndexMappingLanguage.En,
 };
