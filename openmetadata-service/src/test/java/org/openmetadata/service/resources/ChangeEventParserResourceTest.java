@@ -70,8 +70,7 @@ class ChangeEventParserResourceTest extends OpenMetadataApplicationTest {
     deleteTag.withName("tags").withOldValue("tag1");
     changeDescription.withFieldsAdded(List.of(addTag)).withFieldsDeleted(List.of(deleteTag)).withPreviousVersion(1.0);
 
-    Map<EntityLink, String> messages =
-        ChangeEventParser.getFormattedMessages(PublishTo.FEED, changeDescription, TABLE);
+    Map<EntityLink, String> messages = ChangeEventParser.getFormattedMessages(PublishTo.FEED, changeDescription, TABLE);
     assertEquals(1, messages.size());
 
     TagLabel tag1 = new TagLabel();
@@ -99,8 +98,7 @@ class ChangeEventParserResourceTest extends OpenMetadataApplicationTest {
     entityReference.withId(UUID.randomUUID()).withName("user1").withDisplayName("User One");
     fieldAdded(changeDescription, FIELD_OWNER, JsonUtils.pojoToJson(entityReference));
 
-    Map<EntityLink, String> messages =
-        ChangeEventParser.getFormattedMessages(PublishTo.FEED, changeDescription, TABLE);
+    Map<EntityLink, String> messages = ChangeEventParser.getFormattedMessages(PublishTo.FEED, changeDescription, TABLE);
     assertEquals(1, messages.size());
 
     assertEquals("Added **owner**: **User One**", messages.values().iterator().next());
@@ -112,12 +110,11 @@ class ChangeEventParserResourceTest extends OpenMetadataApplicationTest {
     ChangeDescription changeDescription = new ChangeDescription();
     fieldUpdated(changeDescription, "description", "old description", "new description");
 
-    Map<EntityLink, String> messages =
-        ChangeEventParser.getFormattedMessages(PublishTo.FEED, changeDescription, TABLE);
+    Map<EntityLink, String> messages = ChangeEventParser.getFormattedMessages(PublishTo.FEED, changeDescription, TABLE);
     assertEquals(1, messages.size());
 
     assertEquals(
-        "Updated **description** : <span class=\"diff-removed\">old</span> "
+        "Updated **description**: <span class=\"diff-removed\">old</span> "
             + "<span class=\"diff-added\">new</span> description",
         messages.values().iterator().next());
 
@@ -145,7 +142,7 @@ class ChangeEventParserResourceTest extends OpenMetadataApplicationTest {
         ChangeEventParser.getFormattedMessages(PublishTo.SLACK, changeDescription, TABLE);
     assertEquals(1, messages.size());
 
-    assertEquals("Updated *description* : ~old~ *new* description", messages.values().iterator().next());
+    assertEquals("Updated *description*: ~old~ *new* description", messages.values().iterator().next());
 
     // test if it updates correctly with one add and one delete change
     changeDescription = new ChangeDescription().withPreviousVersion(1.0);
@@ -175,8 +172,7 @@ class ChangeEventParserResourceTest extends OpenMetadataApplicationTest {
         "columns",
         "[{\"name\":\"lo_order\",\"displayName\":\"lo_order\",\"dataType\":\"INT\",\"dataLength\":1,\"dataTypeDisplay\":\"int\",\"fullyQualifiedName\":\"local_mysql.sample_db.lineorder.lo_order\",\"constraint\":\"NOT_NULL\"}]");
 
-    Map<EntityLink, String> messages =
-        ChangeEventParser.getFormattedMessages(PublishTo.FEED, changeDescription, TABLE);
+    Map<EntityLink, String> messages = ChangeEventParser.getFormattedMessages(PublishTo.FEED, changeDescription, TABLE);
     assertEquals(1, messages.size());
 
     assertEquals(
@@ -216,7 +212,7 @@ class ChangeEventParserResourceTest extends OpenMetadataApplicationTest {
     assertEquals(1, messages.size());
 
     assertEquals(
-        "Updated **columns** : lo_orderpriority <span class=\"diff-added\">, newColumn</span>",
+        "Updated **columns**: lo_orderpriority <span class=\"diff-added\">, newColumn</span>",
         messages.values().iterator().next());
   }
 
@@ -279,6 +275,6 @@ class ChangeEventParserResourceTest extends OpenMetadataApplicationTest {
     messages = ChangeEventParser.getFormattedMessages(PublishTo.SLACK, changeDescription, TABLE);
     assertEquals(1, messages.size());
 
-    assertEquals("Updated *columns* : lo_orderpriority *, newColumn*", messages.values().iterator().next());
+    assertEquals("Updated *columns*: lo_orderpriority *, newColumn*", messages.values().iterator().next());
   }
 }

@@ -44,7 +44,6 @@ import org.apache.commons.lang.StringUtils;
 import org.bitbucket.cowwoc.diffmatchpatch.DiffMatchPatch;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.EntityInterface;
-import org.openmetadata.schema.dataInsight.kpi.Kpi;
 import org.openmetadata.schema.dataInsight.type.KpiResult;
 import org.openmetadata.schema.dataInsight.type.KpiTarget;
 import org.openmetadata.schema.entity.data.Query;
@@ -74,8 +73,6 @@ public final class ChangeEventParser {
   public static final String FEED_SPAN_CLOSE = "</span>";
   public static final String FEED_LINE_BREAK = " <br/> ";
   public static final String SLACK_LINE_BREAK = "\n";
-
-  private static volatile boolean INITIALIZED = false;
 
   private ChangeEventParser() {}
 
@@ -204,8 +201,7 @@ public final class ChangeEventParser {
           "<%s/%s/%s|%s>",
           ChangeEventConfig.getInstance().getOmUri(), entityType, fqn.trim().replaceAll(" ", "%20"), fqn.trim());
     } else if (publishTo == PublishTo.TEAMS) {
-      return String.format(
-          "[%s](/%s/%s)", fqn.trim(), ChangeEventConfig.getInstance().getOmUri(), entityType, fqn.trim());
+      return String.format("[%s](/%s/%s)", fqn.trim(), ChangeEventConfig.getInstance().getOmUri(), entityType);
     } else if (publishTo == PublishTo.EMAIL) {
       return String.format(
           "<a href = '%s/%s/%s'>%s</a>",
@@ -220,7 +216,7 @@ public final class ChangeEventParser {
     slackMessage.setUsername(event.getUserName());
     if (event.getEntity() != null) {
       String eventType;
-      if ((EntityInterface) event.getEntity() instanceof TestCase) {
+      if (event.getEntity() instanceof TestCase) {
         eventType = "testSuite";
       } else {
         eventType = event.getEntityType();
@@ -331,7 +327,7 @@ public final class ChangeEventParser {
   }
 
   public static Map<EntityLink, String> getFormattedMessages(
-          PublishTo publishTo, ChangeDescription changeDescription, EntityInterface entity) {
+      PublishTo publishTo, ChangeDescription changeDescription, EntityInterface entity) {
     // Store a map of entityLink -> message
     Map<EntityLink, String> messages;
 
@@ -342,13 +338,13 @@ public final class ChangeEventParser {
     // there is a possibility to merge them as one update message.
     List<FieldChange> fieldsAdded = changeDescription.getFieldsAdded();
     List<FieldChange> fieldsDeleted = changeDescription.getFieldsDeleted();
-    messages.putAll(mergeAddtionsDeletion(publishTo, entity, fieldsAdded, fieldsDeleted));
+    messages.putAll(mergeAdditionsDeletion(publishTo, entity, fieldsAdded, fieldsDeleted));
 
     return messages;
   }
 
   private static Map<EntityLink, String> getFormattedMessagesForAllFieldChange(
-          PublishTo publishTo, EntityInterface entity, List<FieldChange> fields, ChangeType changeType) {
+      PublishTo publishTo, EntityInterface entity, List<FieldChange> fields, ChangeType changeType) {
     Map<EntityLink, String> messages = new HashMap<>();
 
     for (FieldChange field : fields) {
@@ -367,14 +363,13 @@ public final class ChangeEventParser {
         oldFieldValue = getFieldValue(field.getOldValue());
       }
       if (link.getEntityType().equals(TEST_CASE) && link.getFieldName().equals("testCaseResult")) {
-        String message = handleTestCaseResult(publishTo, entity, link, field.getOldValue(), field.getNewValue());
+        String message = handleTestCaseResult(publishTo, entity, field.getNewValue());
         messages.put(link, message);
       } else if (link.getEntityType().equals(KPI) && link.getFieldName().equals("kpiResult")) {
-        String message = handleKpiResult(publishTo, entity, link, field.getOldValue(), field.getNewValue());
+        String message = handleKpiResult(publishTo, entity, field.getNewValue());
         messages.put(link, message);
       } else if (link.getEntityType().equals(INGESTION_PIPELINE) && link.getFieldName().equals("pipelineStatus")) {
-        String message =
-            handleIngestionPipelineResult(publishTo, entity, link, field.getOldValue(), field.getNewValue());
+        String message = handleIngestionPipelineResult(publishTo, entity, field.getNewValue());
         messages.put(link, message);
       } else if (!fieldName.equals("failureDetails")) {
         String message = createMessageForField(publishTo, link, changeType, fieldName, oldFieldValue, newFieldValue);
@@ -441,15 +436,15 @@ public final class ChangeEventParser {
     String fieldName = "queryUsage";
     String newVal = getFieldValueForQuery(newValue, entity, publishTo);
     String oldVal = getFieldValueForQuery(oldValue, entity, publishTo);
-    String message = createMessageForField(publishTo, link, changeType, fieldName, oldVal, newVal);
-    return message;
+    return createMessageForField(publishTo, link, changeType, fieldName, oldVal, newVal);
   }
 
   private static String getFieldValueForQuery(Object fieldValue, EntityInterface entity, PublishTo publishTo) {
     Query query = (Query) entity;
     StringBuilder field = new StringBuilder();
+    @SuppressWarnings("unchecked")
     List<EntityReference> queryUsedIn = (List<EntityReference>) fieldValue;
-    field.append("for ").append("'" + query.getQuery() + "'").append(", ").append(getLineBreak(publishTo));
+    field.append("for ").append("'").append(query.getQuery()).append("'").append(", ").append(getLineBreak(publishTo));
     field.append("Query Used in :- ");
     int i = 1;
     for (EntityReference queryUsage : queryUsedIn) {
@@ -468,7 +463,7 @@ public final class ChangeEventParser {
           "<%s/%s/%s|%s>",
           ChangeEventConfig.getInstance().getOmUri(), entityType, fqn.trim().replaceAll(" ", "%20"), fqn.trim());
     } else if (publishTo == PublishTo.TEAMS) {
-      return String.format("[%s](/%s/%s)", fqn, ChangeEventConfig.getInstance().getOmUri(), entityType, fqn.trim());
+      return String.format("[%s](/%s/%s)", fqn, ChangeEventConfig.getInstance().getOmUri(), entityType);
     } else if (publishTo == PublishTo.EMAIL) {
       return String.format(
           "<a href = '%s/%s/%s'>%s</a>",
@@ -478,8 +473,8 @@ public final class ChangeEventParser {
   }
 
   /** Tries to merge additions and deletions into updates and returns a map of formatted messages. */
-  private static Map<EntityLink, String> mergeAddtionsDeletion(
-          PublishTo publishTo, EntityInterface entity, List<FieldChange> addedFields, List<FieldChange> deletedFields) {
+  private static Map<EntityLink, String> mergeAdditionsDeletion(
+      PublishTo publishTo, EntityInterface entity, List<FieldChange> addedFields, List<FieldChange> deletedFields) {
     // Major schema version changes such as renaming a column from colA to colB
     // will be recorded as "Removed column colA" and "Added column colB"
     // This method will try to detect such changes and combine those events into one update.
@@ -593,7 +588,7 @@ public final class ChangeEventParser {
   }
 
   private static String getPlainTextUpdateMessage(
-          PublishTo publishTo, String updatedField, String oldValue, String newValue) {
+      PublishTo publishTo, String updatedField, String oldValue, String newValue) {
     // Get diff of old value and new value
     String diff = getPlaintextDiff(publishTo, oldValue, newValue);
     if (nullOrEmpty(diff)) {
@@ -605,7 +600,7 @@ public final class ChangeEventParser {
   }
 
   private static String getObjectUpdateMessage(
-          PublishTo publishTo, String updatedField, JsonObject oldJson, JsonObject newJson) {
+      PublishTo publishTo, String updatedField, JsonObject oldJson, JsonObject newJson) {
     List<String> labels = new ArrayList<>();
     Set<String> keys = newJson.keySet();
     // check if each key's value is the same
@@ -675,8 +670,7 @@ public final class ChangeEventParser {
     return getPlainTextUpdateMessage(publishTo, updatedField, oldValue.toString(), newValue.toString());
   }
 
-  public static String handleTestCaseResult(
-          PublishTo publishTo, EntityInterface entity, EntityLink link, Object oldValue, Object newValue) {
+  public static String handleTestCaseResult(PublishTo publishTo, EntityInterface entity, Object newValue) {
     String testCaseName = entity.getName();
     TestCaseResult result = (TestCaseResult) newValue;
     TestCase testCaseEntity = (TestCase) entity;
@@ -700,8 +694,7 @@ public final class ChangeEventParser {
     }
   }
 
-  public static String handleIngestionPipelineResult(
-          PublishTo publishTo, EntityInterface entity, EntityLink link, Object oldValue, Object newValue) {
+  public static String handleIngestionPipelineResult(PublishTo publishTo, EntityInterface entity, Object newValue) {
     String ingestionPipelineName = entity.getName();
     PipelineStatus status = (PipelineStatus) newValue;
     if (status != null) {
@@ -714,11 +707,9 @@ public final class ChangeEventParser {
     }
   }
 
-  public static String handleKpiResult(
-          PublishTo publishTo, EntityInterface entity, EntityLink link, Object oldValue, Object newValue) {
+  public static String handleKpiResult(PublishTo publishTo, EntityInterface entity, Object newValue) {
     String kpiName = entity.getName();
     KpiResult result = (KpiResult) newValue;
-    Kpi kpiEntity = (Kpi) entity;
     if (result != null) {
       String format =
           String.format(

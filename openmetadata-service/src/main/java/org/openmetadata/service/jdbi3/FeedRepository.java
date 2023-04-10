@@ -469,9 +469,7 @@ public class FeedRepository {
         tags = JsonUtils.readObjects(task.getNewValue(), TagLabel.class);
         String newValue = getTagFQNs(tags);
         message =
-            String.format(
-                "Resolved the Task with Tag(s) - %s",
-                getPlaintextDiff(PublishTo.FEED, oldValue, newValue));
+            String.format("Resolved the Task with Tag(s) - %s", getPlaintextDiff(PublishTo.FEED, oldValue, newValue));
       } else {
         message = "Resolved the Task.";
       }
