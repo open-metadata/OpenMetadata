@@ -96,7 +96,7 @@ class PandasInterfaceMixin:
         if isinstance(data, DataFrame):
             data: List[DataFrame] = [data]
 
-        if data:
+        if data and isinstance(data, list):
             random.shuffle(data)
 
             # sampling data based on profiler config (if any)
@@ -126,3 +126,4 @@ class PandasInterfaceMixin:
                         for df in data
                     ]
             return data
+        return []

@@ -234,12 +234,14 @@ class PandasProfilerInterface(ProfilerProtocol, PandasInterfaceMixin):
         """Run metrics in processor worker"""
         logger.debug(f"Running profiler for {table}")
         try:
-            row = self._get_metrics(
-                metric_type.value,
-                metrics,
-                session=self.client,
-                column=column,
-            )
+            row = None
+            if self.dfs:
+                row = self._get_metrics(
+                    metric_type.value,
+                    metrics,
+                    session=self.client,
+                    column=column,
+                )
         except Exception as exc:
             name = f"{column if column is not None else table}"
             error = f"{name} metric_type.value: {exc}"
@@ -319,20 +321,20 @@ class PandasProfilerInterface(ProfilerProtocol, PandasInterfaceMixin):
         ]
         for metric_result in metric_list:
             profile, column, metric_type = metric_result
-
-            if metric_type == MetricTypes.Table.value:
-                profile_results["table"].update(profile)
-            if metric_type == MetricTypes.System.value:
-                profile_results["system"] = profile
-            else:
-                if profile:
-                    profile_results["columns"][column].update(
-                        {
-                            "name": column,
-                            "timestamp": datetime.now(tz=timezone.utc).timestamp(),
-                            **profile,
-                        }
-                    )
+            if profile:
+                if metric_type == MetricTypes.Table.value:
+                    profile_results["table"].update(profile)
+                if metric_type == MetricTypes.System.value:
+                    profile_results["system"] = profile
+                else:
+                    if profile:
+                        profile_results["columns"][column].update(
+                            {
+                                "name": column,
+                                "timestamp": datetime.now(tz=timezone.utc).timestamp(),
+                                **profile,
+                            }
+                        )
         return profile_results
 
     @property

@@ -65,3 +65,26 @@ def test_return_ometa_dataframes_sampled(test_connection):
 
         assert resp == method_resp_file
         assert type(resp) == list
+
+
+
+@patch(
+    "metadata.ingestion.source.database.database_service.DatabaseServiceSource.test_connection"
+)
+def test_return_ometa_dataframes_sampled_fail(test_connection):
+    with patch(
+        "metadata.mixins.pandas.pandas_mixin.ometa_to_dataframe",
+        return_value=None,
+    ):
+        mock_datalake_config
+        config = OpenMetadataWorkflowConfig.parse_obj(mock_datalake_config)
+        datalake_source = DatalakeSource.create(
+            mock_datalake_config["source"],
+            config.workflowConfig.openMetadataServerConfig,
+        )
+        resp = PandasInterfaceMixin().return_ometa_dataframes_sampled(
+            datalake_source.service_connection, None, None, None
+        )
+
+        assert resp == []
+        assert type(resp) == list
