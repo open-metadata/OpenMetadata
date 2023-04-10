@@ -14,7 +14,7 @@
 import classNames from 'classnames';
 import React from 'react';
 
-interface ToggleSwitchV1Props {
+export interface ToggleSwitchV1Props {
   checked: boolean;
   handleCheck: () => void;
   testId?: string;

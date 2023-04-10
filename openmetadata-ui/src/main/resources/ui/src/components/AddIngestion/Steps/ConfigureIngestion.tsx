@@ -15,6 +15,7 @@ import { Button, Form, InputNumber, Select, Typography } from 'antd';
 import { isNil } from 'lodash';
 import React, { Fragment, useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
+import { FieldProp, FieldTypes, generateFormFields } from 'utils/formUtils';
 import { PROFILE_SAMPLE_OPTIONS } from '../../../constants/profiler.constant';
 import { FilterPatternEnum } from '../../../enums/filterPattern.enum';
 import { FormSubmitType } from '../../../enums/form.enum';
@@ -804,6 +805,169 @@ const ConfigureIngestion = ({
     }
   };
 
+  const metadataFields: FieldProp[] = [
+    {
+      name: 'name',
+      label: t('label.name'),
+      type: FieldTypes.TEXT,
+      required: true,
+      props: {
+        disabled: formType === FormSubmitType.EDIT,
+        value: ingestionName,
+        onChange: handleIngestionName,
+        'data-testid': 'name',
+      },
+      id: 'name',
+      helperText: t('message.ingestion-pipeline-name-message'),
+      hasSeparator: true,
+    },
+    {
+      name: 'databaseFilterPattern',
+      label: null,
+      type: FieldTypes.FILTER_PATTERN,
+      required: false,
+      props: {
+        checked: showDatabaseFilter,
+        excludePattern: databaseFilterPattern?.excludes ?? [],
+        getExcludeValue: getExcludeValue,
+        getIncludeValue: getIncludeValue,
+        handleChecked: (value: boolean) =>
+          handleShowFilter(value, ShowFilter.showDatabaseFilter),
+        includePattern: databaseFilterPattern?.includes ?? [],
+        includePatternExtraInfo: data.database
+          ? t('message.include-database-filter-extra-information')
+          : undefined,
+        isDisabled: data.isDatabaseFilterDisabled,
+        type: FilterPatternEnum.DATABASE,
+      },
+      id: 'databaseFilterPattern',
+    },
+    {
+      name: 'schemaFilterPattern',
+      label: null,
+      type: FieldTypes.FILTER_PATTERN,
+      required: false,
+      props: {
+        checked: showSchemaFilter,
+        excludePattern: schemaFilterPattern?.excludes ?? [],
+        getExcludeValue: getExcludeValue,
+        getIncludeValue: getIncludeValue,
+        handleChecked: (value: boolean) =>
+          handleShowFilter(value, ShowFilter.showSchemaFilter),
+        includePattern: schemaFilterPattern?.includes ?? [],
+        type: FilterPatternEnum.SCHEMA,
+      },
+      id: 'schemaFilterPattern',
+    },
+    {
+      name: 'tableFilterPattern',
+      label: null,
+      type: FieldTypes.FILTER_PATTERN,
+      required: false,
+      props: {
+        checked: showTableFilter,
+        excludePattern: tableFilterPattern?.excludes ?? [],
+        getExcludeValue: getExcludeValue,
+        getIncludeValue: getIncludeValue,
+        handleChecked: (value: boolean) =>
+          handleShowFilter(value, ShowFilter.showTableFilter),
+        includePattern: tableFilterPattern?.includes ?? [],
+        type: FilterPatternEnum.TABLE,
+      },
+      id: 'tableFilterPattern',
+      hasSeparator: true,
+    },
+    {
+      name: 'useFqnForFiltering',
+      label: t('label.use-fqn-for-filtering'),
+      type: FieldTypes.SWITCH,
+      required: false,
+      props: {
+        checked: useFqnFilter,
+        handleCheck: handleFqnFilter,
+      },
+      id: 'useFqnForFiltering',
+      hasSeparator: true,
+      helperText: t('message.use-fqn-for-filtering-message'),
+    },
+    {
+      name: 'includeViews',
+      label: t('label.include-entity', { entity: t('label.view-plural') }),
+      type: FieldTypes.SWITCH,
+      required: false,
+      props: {
+        checked: includeView,
+        handleCheck: handleIncludeViewToggle,
+        testId: 'include-views',
+      },
+      id: 'includeViews',
+      hasSeparator: true,
+      helperText: t('message.include-assets-message', {
+        assets: t('label.view-plural'),
+      }),
+    },
+    {
+      name: 'includeTags',
+      label: t('label.include-entity', { entity: t('label.tag-plural') }),
+      type: FieldTypes.SWITCH,
+      required: false,
+      props: {
+        checked: includeTags,
+        handleCheck: handleIncludeTags,
+        testId: 'include-tags',
+      },
+      id: 'includeTags',
+      hasSeparator: true,
+      helperText: t('message.include-assets-message'),
+    },
+    {
+      name: 'loggerLevel',
+      label: t('label.enable-debug-log'),
+      type: FieldTypes.SWITCH,
+      required: false,
+      props: {
+        checked: enableDebugLog,
+        handleCheck: handleEnableDebugLogCheck,
+        testId: 'enable-debug-log',
+      },
+      id: 'loggerLevel',
+      hasSeparator: true,
+      helperText: t('message.enable-debug-logging'),
+    },
+    {
+      name: 'markDeletedTables',
+      label: t('label.mark-deleted-table-plural'),
+      type: FieldTypes.SWITCH,
+      required: false,
+      props: {
+        checked: markDeletedTables,
+        handleCheck: handleMarkDeletedTables,
+        testId: 'mark-deleted',
+      },
+      id: 'markDeletedTables',
+      hasSeparator: true,
+      helperText: t('message.mark-deleted-table-message'),
+    },
+    ...(!isNil(markAllDeletedTables)
+      ? [
+          {
+            name: 'markAllDeletedTables',
+            label: t('label.mark-all-deleted-table-plural'),
+            type: FieldTypes.SWITCH,
+            required: false,
+            props: {
+              checked: markAllDeletedTables,
+              handleCheck: handleMarkAllDeletedTables,
+              testId: 'mark-deleted-filter-only',
+            },
+            id: 'markAllDeletedTables',
+            hasSeparator: true,
+            helperText: t('message.mark-all-deleted-table-message'),
+          },
+        ]
+      : []),
+  ];
+
   const getMetadataFields = () => {
     return (
       <>
@@ -1019,7 +1183,9 @@ const ConfigureIngestion = ({
       }
       case PipelineType.Metadata:
       default: {
-        return getMetadataFields();
+        return serviceCategory === ServiceCategory.DATABASE_SERVICES
+          ? generateFormFields(metadataFields)
+          : getMetadataFields();
       }
     }
   };
