@@ -23,9 +23,10 @@ import { ExtraInfo } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getEntityName } from 'utils/EntityUtils';
+import { bytesToSize } from 'utils/StringsUtils';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { EntityField } from '../../constants/Feeds.constants';
-import { FqnPart } from '../../enums/entity.enum';
+import { EntityInfo, FqnPart } from '../../enums/entity.enum';
 import { OwnerType } from '../../enums/user.enum';
 import { TagLabel } from '../../generated/type/tagLabel';
 import { getPartialNameFromTableFQN } from '../../utils/CommonUtils';
@@ -71,6 +72,7 @@ const ContainerVersion: React.FC<ContainerVersionProp> = ({
   };
 
   const getExtraInfo = () => {
+    const containerData = currentVersionData as Container;
     const ownerDiff = getDiffByFieldName('owner', changeDescription);
 
     const oldOwner = JSON.parse(
@@ -134,6 +136,16 @@ const ContainerVersion: React.FC<ContainerVersionProp> = ({
             : tier?.tagFQN
             ? tier?.tagFQN.split(FQN_SEPARATOR_CHAR)[1]
             : '',
+      },
+      {
+        key: EntityInfo.NUMBER_OF_OBJECTS,
+        value: toString(containerData.numberOfObjects),
+        showLabel: true,
+      },
+      {
+        key: EntityInfo.SIZE,
+        value: bytesToSize(containerData.size ?? 0),
+        showLabel: true,
       },
     ];
 
