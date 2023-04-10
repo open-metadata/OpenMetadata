@@ -57,7 +57,7 @@ mock_dbt_config = {
                 "r3TXfzzSPjHt8Go0FMMP66weoKMgW2PbXlhVKwEuXUHyakLLzewm9UMeQaEiRzhiTMU3UkLXcKbYEJJvfNFcLwSl9W8JCO_l0Yj3u"
                 "d-qt_nQYEZwqW6u5nfdQllN133iikV4fM5QZsMCnm8Rq1mvLR0y9bmJiD7fwM1tmJ791TUWqmKaTnP49U493VanKpUAfzIiOiIbhg"
             },
-        }
+        },
     },
 }
 
@@ -448,7 +448,7 @@ class DbtUnitTest(TestCase):
         return dbt_files, dbt_objects
 
     def check_dbt_validate(self, dbt_files, expected_records):
-        with self.assertLogs(level='DEBUG') as captured:
+        with self.assertLogs(level="DEBUG") as captured:
             self.dbt_source_obj.validate_dbt_files(dbt_files=dbt_files)
         self.assertEqual(len(captured.records), expected_records)
         for record in captured.records:
