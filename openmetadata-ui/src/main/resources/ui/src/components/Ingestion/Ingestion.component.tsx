@@ -207,6 +207,7 @@ const Ingestion: React.FC<IngestionProps> = ({
           paging={paging}
           permissions={permissions}
           pipelineNameColWidth={pipelineNameColWidth}
+          pipelineType={pipelineType}
           serviceCategory={serviceCategory}
           serviceName={serviceName}
           servicePermission={servicePermission}

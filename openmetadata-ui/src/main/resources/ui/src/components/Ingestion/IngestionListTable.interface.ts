@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { PipelineType } from 'generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { ServiceCategory } from '../../enums/service.enum';
 import { IngestionPipeline } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { Paging } from '../../generated/type/paging';
@@ -27,6 +28,7 @@ export interface IngestionListTableProps {
   isRequiredDetailsAvailable: boolean;
   paging: Paging;
   permissions: OperationPermission;
+  pipelineType?: PipelineType;
   pipelineNameColWidth?: number;
   serviceCategory: ServiceCategory;
   serviceName: string;

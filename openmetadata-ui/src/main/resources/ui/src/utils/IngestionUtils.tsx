@@ -29,8 +29,11 @@ import { ServicesType } from '../interface/service.interface';
 
 import { Typography } from 'antd';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
-import { WORKFLOWS_METADATA_DOCS } from 'constants/docs.constants';
-import { OPEN_METADATA } from 'constants/Services.constant';
+import {
+  DATA_INSIGHTS_PIPELINE_DOCS,
+  ELASTIC_SEARCH_RE_INDEX_PIPELINE_DOCS,
+  WORKFLOWS_METADATA_DOCS,
+} from 'constants/docs.constants';
 import { ELASTIC_SEARCH_RE_INDEX_PAGE_TABS } from 'enums/ElasticSearch.enum';
 import {
   INGESTION_ACTION_TYPE,
@@ -187,25 +190,56 @@ export const getIngestionTypes = (
   ];
 };
 
+const getPipelineExtraInfo = (pipelineType?: PipelineType) => {
+  switch (pipelineType) {
+    case PipelineType.DataInsight:
+      return (
+        <>
+          <Typography.Text>
+            {t('message.data-insight-pipeline-description')}
+          </Typography.Text>
+          <Typography.Link href={DATA_INSIGHTS_PIPELINE_DOCS} target="_blank">
+            {t('label.data-insight-ingestion')}
+          </Typography.Link>
+        </>
+      );
+    case PipelineType.ElasticSearchReindex:
+      return (
+        <>
+          <Typography.Text>
+            {t('message.elastic-search-re-index-pipeline-description')}
+          </Typography.Text>
+          <Typography.Link
+            href={ELASTIC_SEARCH_RE_INDEX_PIPELINE_DOCS}
+            target="_blank">
+            {t('label.search-index-ingestion')}
+          </Typography.Link>
+        </>
+      );
+    default:
+      return (
+        <>
+          <Typography.Text>
+            {t('message.no-ingestion-description')}
+          </Typography.Text>
+          <Typography.Link href={WORKFLOWS_METADATA_DOCS} target="_blank">
+            {t('label.metadata-ingestion')}
+          </Typography.Link>
+        </>
+      );
+  }
+};
+
 export const getErrorPlaceHolder = (
   isRequiredDetailsAvailable: boolean,
   ingestionDataLength: number,
-  serviceName?: string
+  pipelineType?: PipelineType
 ) => {
   if (isRequiredDetailsAvailable && ingestionDataLength === 0) {
     return (
       <ErrorPlaceHolder>
         <Typography.Text>{t('message.no-ingestion-available')}</Typography.Text>
-        {serviceName !== OPEN_METADATA && (
-          <>
-            <Typography.Text>
-              {t('message.no-ingestion-description')}
-            </Typography.Text>
-            <Typography.Link href={WORKFLOWS_METADATA_DOCS} target="_blank">
-              {t('label.metadata-ingestion')}
-            </Typography.Link>
-          </>
-        )}
+        {getPipelineExtraInfo(pipelineType)}
       </ErrorPlaceHolder>
     );
   }

@@ -45,6 +45,7 @@ function IngestionListTable({
   deleteSelection,
   permissions,
   pipelineNameColWidth,
+  pipelineType,
 }: IngestionListTableProps) {
   const { t } = useTranslation();
   const [ingestionCurrentPage, setIngestionCurrentPage] = useState(1);
@@ -212,7 +213,7 @@ function IngestionListTable({
     getErrorPlaceHolder(
       isRequiredDetailsAvailable,
       ingestionData.length,
-      serviceName
+      pipelineType
     )
   );
 }
