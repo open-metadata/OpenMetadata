@@ -1,1 +1,0 @@
-This is the type of the account, for a service account the value of this field is `service_account`. To fetch this key, look for the value associated with the "type" key in the service account key file.

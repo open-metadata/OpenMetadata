@@ -1,1 +1,0 @@
-This is a unique identifier for the service account. To fetch this key, look for the value associated with the "client_id" key in the service account file.

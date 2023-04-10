@@ -1,1 +1,0 @@
-Hôte et port de la base de données Oracle.

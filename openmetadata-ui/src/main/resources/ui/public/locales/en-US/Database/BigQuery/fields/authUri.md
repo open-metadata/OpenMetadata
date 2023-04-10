@@ -1,1 +1,0 @@
-This is the URI for the authorization server. To fetch this key, look for the value associated with the "auth_uri" key in the service account key file.

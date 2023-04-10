@@ -1,1 +1,0 @@
-Connection URI In case of pyodbc

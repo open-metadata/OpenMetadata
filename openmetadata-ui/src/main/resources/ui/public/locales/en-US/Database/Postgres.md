@@ -22,7 +22,6 @@ As a summary:
 
 Then, when extracting usage and lineage data, the query log duration will have no impact, only the query limit.
 
-
 - For usage and lineage grant your user `pg_read_all_stats` permission.
 
 $$note

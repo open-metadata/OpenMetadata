@@ -1,1 +1,0 @@
-Mode SSL pour se connecter a la base de données Redshift (e.g. `prefer`, `verify-ca`, etc.)

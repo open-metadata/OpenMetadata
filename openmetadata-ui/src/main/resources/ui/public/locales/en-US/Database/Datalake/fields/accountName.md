@@ -1,1 +1,0 @@
-Account Name of your storage account

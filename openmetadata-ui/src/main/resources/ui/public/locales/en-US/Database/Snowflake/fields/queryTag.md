@@ -1,1 +1,0 @@
-Session query tag used to monitor usage on snowflake. To use a query tag snowflake user should have enough privileges to alter the session
