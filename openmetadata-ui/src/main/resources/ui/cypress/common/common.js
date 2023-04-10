@@ -1055,9 +1055,9 @@ export const updateDescriptionForIngestedTables = (
     .should('be.visible')
     .click();
 
-  verifyResponseStatusCode('@getSelectedService', 200);
-  verifyResponseStatusCode('@pipelineStatuses', 200);
-  verifyResponseStatusCode('@airflow', 200);
+  verifyResponseStatusCode('@serviceDetails', 200);
+  verifyResponseStatusCode('@ingestionPipelines', 200);
+  verifyResponseStatusCode('@pipelineServiceClient', 200);
   cy.get('[data-testid="Ingestions"]').should('be.visible').click();
 
   interceptURL(
