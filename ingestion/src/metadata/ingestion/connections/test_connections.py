@@ -74,8 +74,8 @@ class TestConnectionStep(BaseModel):
 
     function: Callable
     name: str
-    error_message: str
-    description: Optional[str] = None
+    error_message: Optional[str]
+    description: Optional[str]
     mandatory: bool = True
     short_circuit: bool = False
 
