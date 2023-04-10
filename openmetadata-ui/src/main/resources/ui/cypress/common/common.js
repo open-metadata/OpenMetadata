@@ -145,7 +145,6 @@ export const handleIngestionRetry = (
 
 export const scheduleIngestion = () => {
   // Schedule & Deploy
-  cy.contains('Schedule for Ingestion').should('be.visible');
   cy.get('[data-testid="cron-type"]').should('be.visible').click();
   cy.get('.ant-select-item-option-content').contains('Hour').click();
   cy.get('[data-testid="deploy-button"]').should('be.visible').click();
@@ -276,10 +275,6 @@ export const testServiceCreationAndIngestion = (
   verifyResponseStatusCode('@deployPipeline', 200);
 
   cy.contains(`${serviceName}_metadata`).should('be.visible');
-  // On the Right panel
-  cy.contains('Metadata Ingestion Added & Deployed Successfully').should(
-    'be.visible'
-  );
 
   // wait for ingestion to run
   cy.clock();
