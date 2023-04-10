@@ -26,6 +26,7 @@ import {
   getBatchJobReIndexStatus,
   getStreamJobReIndexStatus,
   reIndexByPublisher,
+  stopBatchJobReIndex,
 } from 'rest/elasticSearchReIndexAPI';
 import { SOCKET_EVENTS } from '../../constants/constants';
 import { CreateEventPublisherJob } from '../../generated/api/createEventPublisherJob';
@@ -66,12 +67,26 @@ function TriggerReIndexing() {
       const response = await getBatchJobReIndexStatus();
 
       setBatchJobData(response);
-    } catch {
-      showErrorToast(t('server.fetch-re-index-data-error'));
+    } catch (error) {
+      showErrorToast(
+        error as AxiosError,
+        t('server.fetch-re-index-data-error')
+      );
     } finally {
       setBatchLoading(false);
     }
   }, [setBatchJobData, setBatchLoading]);
+
+  const stopBatchReIndexedJob = useCallback(async () => {
+    if (batchJobData) {
+      try {
+        await stopBatchJobReIndex(batchJobData?.id);
+        showSuccessToast(t('server.re-indexing-stopped'));
+      } catch (error) {
+        showErrorToast(error as AxiosError, t('server.stop-re-indexing-error'));
+      }
+    }
+  }, [batchJobData]);
 
   const fetchStreamReIndexedData = useCallback(async () => {
     try {
@@ -79,8 +94,11 @@ function TriggerReIndexing() {
       const response = await getStreamJobReIndexStatus();
 
       setStreamJobData(response);
-    } catch {
-      showErrorToast(t('server.fetch-re-index-data-error'));
+    } catch (error) {
+      showErrorToast(
+        error as AxiosError,
+        t('server.fetch-re-index-data-error')
+      );
     } finally {
       setStreamLoading(false);
     }
@@ -139,7 +157,8 @@ function TriggerReIndexing() {
             fetchBatchReIndexedData,
             batchJobData,
             batchJobData?.failure?.sourceError,
-            handleModalVisibility
+            handleModalVisibility,
+            stopBatchReIndexedJob
           )
         : getJobDetailsCard(
             streamLoading,

@@ -30,6 +30,8 @@ import { getDateTimeByTimeStampWithZone } from './TimeUtils';
 
 export const getStatusResultBadgeIcon = (status?: string) => {
   switch (status) {
+    case Status.Stopped:
+      return <IconTaskOpen height={14} width={14} />;
     case Status.Completed:
       return <IconSuccessBadge height={14} width={14} />;
 
@@ -49,6 +51,8 @@ export const getStatusResultBadgeIcon = (status?: string) => {
 
 export const getEventPublisherStatusText = (status?: string) => {
   switch (status) {
+    case Status.Stopped:
+      return t('label.stopped');
     case Status.Failed:
       return t('label.failed');
     case Status.Running:
@@ -74,7 +78,8 @@ export const getJobDetailsCard = (
   fetchJobData: () => Promise<void>,
   jobData?: EventPublisherJob,
   error?: SourceError,
-  handleModalVisibility?: (state: boolean) => void
+  handleModalVisibility?: (state: boolean) => void,
+  stopBatchReIndexedJob?: () => void
 ) => {
   return (
     <Card
@@ -89,13 +94,22 @@ export const getJobDetailsCard = (
             onClick={fetchJobData}
           />
           {handleModalVisibility && (
-            <Button
-              data-testid="elastic-search-re-index-all"
-              size="small"
-              type="primary"
-              onClick={() => handleModalVisibility(true)}>
-              {t('label.re-index-all')}
-            </Button>
+            <>
+              <Button
+                data-testid="elastic-search-stop-batch-re-index"
+                size="small"
+                type="primary"
+                onClick={stopBatchReIndexedJob}>
+                {t('label.stop-re-index-all')}
+              </Button>
+              <Button
+                data-testid="elastic-search-re-index-all"
+                size="small"
+                type="primary"
+                onClick={() => handleModalVisibility(true)}>
+                {t('label.re-index-all')}
+              </Button>
+            </>
           )}
         </Space>
       }
