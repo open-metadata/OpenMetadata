@@ -78,7 +78,7 @@ const DataModelDetails = ({
   const [isEditDescription, setIsEditDescription] = useState<boolean>(false);
   const [threadLink, setThreadLink] = useState<string>('');
 
-  const getLoader = useMemo(
+  const loader = useMemo(
     () => (isEntityThreadLoading ? <Loader /> : null),
     [isEntityThreadLoading]
   );
@@ -320,7 +320,7 @@ const DataModelDetails = ({
                   </div>
                 </Col>
               </Row>
-              {getLoader}
+              {loader}
             </Card>
           </Tabs.TabPane>
           {dataModelData?.sql && (
