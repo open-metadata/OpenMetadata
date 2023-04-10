@@ -234,6 +234,9 @@ const ContainerPage = withSuspenseFallback(
 const QueryPage = withSuspenseFallback(
   React.lazy(() => import('pages/QueryPage/QueryPage.component'))
 );
+const AddQueryPage = withSuspenseFallback(
+  React.lazy(() => import('pages/AddQueryPage/AddQueryPage.component'))
+);
 
 const AuthenticatedAppRouter: FunctionComponent = () => {
   const { permissions } = usePermissionProvider();
@@ -286,6 +289,7 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
       <Route exact component={ServicePage} path={ROUTES.SERVICE_WITH_TAB} />
       <Route exact component={AddServicePage} path={ROUTES.ADD_SERVICE} />
       <Route exact component={QueryPage} path={ROUTES.QUERY_FULL_SCREEN_VIEW} />
+      <Route exact component={AddQueryPage} path={ROUTES.ADD_QUERY} />
       <AdminProtectedRoute
         exact
         component={AddIngestionPage}
