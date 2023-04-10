@@ -28,6 +28,7 @@ import {
   getBatchJobReIndexStatus,
   getStreamJobReIndexStatus,
   reIndexByPublisher,
+  stopBatchJobReIndex,
 } from 'rest/elasticSearchReIndexAPI';
 import { SOCKET_EVENTS } from '../../constants/constants';
 import { CreateEventPublisherJob } from '../../generated/api/createEventPublisherJob';
@@ -70,6 +71,15 @@ const ElasticSearchIndexPage = () => {
       showErrorToast(jsonData['api-error-messages']['fetch-re-index-all']);
     } finally {
       setBatchLoading(false);
+    }
+  };
+
+  const stopBatchReIndexedJob = async () => {
+    try {
+      const response = await stopBatchJobReIndex(batchJobData?.id);
+      showSuccessToast(jsonData['api-success-messages']['stop-re-index']);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
     }
   };
 
@@ -162,6 +172,14 @@ const ElasticSearchIndexPage = () => {
                       title={t('label.refresh-log')}
                       onClick={fetchBatchReIndexedData}
                     />
+                    <Button
+                      data-testid="elastic-search-stop-batch-re-index"
+                      disabled={!isAdminUser}
+                      size="small"
+                      type="primary"
+                      onClick={stopBatchReIndexedJob}>
+                      {t('label.stop-re-index-all')}
+                    </Button>
                     <Button
                       data-testid="elastic-search-re-index-all"
                       disabled={!isAdminUser}

@@ -36,6 +36,7 @@ import javax.validation.Valid;
 import javax.ws.rs.DefaultValue;
 import javax.ws.rs.GET;
 import javax.ws.rs.POST;
+import javax.ws.rs.PUT;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
@@ -518,6 +519,24 @@ public class SearchResource {
             ReIndexingHandler.getInstance()
                 .createReindexingJob(securityContext.getUserPrincipal().getName(), createRequest))
         .build();
+  }
+
+  @PUT
+  @Path("/reindex/stop/{jobId}")
+  @Operation(
+      operationId = "stopAJobWithId",
+      summary = "Stop Reindex Job",
+      description = "Stop a Reindex Job",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "Success"),
+        @ApiResponse(responseCode = "404", description = "Bot for instance {id} is not found")
+      })
+  public Response stopReindexJob(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "jobId Id", schema = @Schema(type = "UUID")) @PathParam("jobId") UUID id) {
+    authorizer.authorizeAdmin(securityContext);
+    return Response.status(Response.Status.OK).entity(ReIndexingHandler.getInstance().stopRunningJob(id)).build();
   }
 
   private SearchSourceBuilder buildAggregateSearchBuilder(String query, int from, int size) {
