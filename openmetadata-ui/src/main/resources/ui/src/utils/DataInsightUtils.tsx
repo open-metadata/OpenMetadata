@@ -596,14 +596,16 @@ export const getWebChartSummary = (
     }
 
     const { chartType, data } = chartData;
-    let total = 0;
-    if (chartType === DataInsightChartType.DailyActiveUsers) {
-      total = sumBy(data, 'activeUsers');
-    } else {
-      total = sumBy(data, 'pageViews');
-    }
 
-    updatedSummary.push({ ...summary, latest: total });
+    updatedSummary.push({
+      ...summary,
+      latest: sumBy(
+        data,
+        chartType === DataInsightChartType.DailyActiveUsers
+          ? 'activeUsers'
+          : 'pageViews'
+      ),
+    });
   }
 
   return updatedSummary;
