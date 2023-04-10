@@ -40,7 +40,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        job: [0, 1, 2]
+        job: [0, 1]
     environment: test
     steps:
 
