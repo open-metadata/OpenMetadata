@@ -1007,8 +1007,18 @@ export const updateDescriptionForIngestedTables = (
 ) => {
   interceptURL(
     'GET',
-    '/api/v1/services/ingestionPipelines?fields=owner,pipelineStatuses&service=*',
-    'pipelineStatuses'
+    `/api/v1/services/ingestionPipelines?fields=*&service=${serviceName}`,
+    'ingestionPipelines'
+  );
+  interceptURL(
+    'GET',
+    `/api/v1/*?service=${serviceName}&fields=*`,
+    'serviceDetails'
+  );
+  interceptURL(
+    'GET',
+    `/api/v1/system/config/pipeline-service-client`,
+    'pipelineServiceClient'
   );
   // Navigate to ingested table
   visitEntityDetailsPage(tableName, serviceName, entity);
@@ -1029,27 +1039,15 @@ export const updateDescriptionForIngestedTables = (
   // Services page
   cy.get('.ant-menu-title-content').contains(type).should('be.visible').click();
 
-  interceptURL(
-    'GET',
-    `/api/v1/services/ingestionPipelines?fields=owner,pipelineStatuses&service=${serviceName}`,
-    'getSelectedService'
-  );
-  interceptURL(
-    'GET',
-    '/api/v1/system/config/pipeline-service-client',
-    'airflow'
-  );
-
   // click on created service
   cy.get(`[data-testid="service-name-${serviceName}"]`)
     .should('exist')
     .should('be.visible')
     .click();
 
-  verifyResponseStatusCode('@getSelectedService', 200);
-  verifyResponseStatusCode('@pipelineStatuses', 200);
-  verifyResponseStatusCode('@airflow', 200);
-
+  verifyResponseStatusCode('@serviceDetails', 200);
+  verifyResponseStatusCode('@ingestionPipelines', 200);
+  verifyResponseStatusCode('@pipelineServiceClient', 200);
   cy.get('[data-testid="Ingestions"]').should('be.visible').click();
 
   interceptURL(
