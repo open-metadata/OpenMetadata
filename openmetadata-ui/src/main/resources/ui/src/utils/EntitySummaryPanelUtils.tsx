@@ -39,7 +39,11 @@ export const getFormattedEntityData = (
     case SummaryEntityType.COLUMN: {
       return (entityInfo as Column[]).map((column) => ({
         name: column.name,
-        title: <Text className="entity-title">{column.name}</Text>,
+        title: (
+          <Text className="entity-title">
+            {column.displayName || column.name}
+          </Text>
+        ),
         type: column.dataType,
         tags: column.tags,
         description: column.description,
