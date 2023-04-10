@@ -45,6 +45,7 @@ mock_dbt_config = {
     },
     "sink": {"type": "metadata-rest", "config": {}},
     "workflowConfig": {
+        "loggerLevel": "DEBUG",
         "openMetadataServerConfig": {
             "hostPort": "http://localhost:8585/api",
             "authProvider": "openmetadata",
@@ -447,7 +448,7 @@ class DbtUnitTest(TestCase):
         return dbt_files, dbt_objects
 
     def check_dbt_validate(self, dbt_files, expected_records):
-        with self.assertLogs() as captured:
+        with self.assertLogs(level='DEBUG') as captured:
             self.dbt_source_obj.validate_dbt_files(dbt_files=dbt_files)
         self.assertEqual(len(captured.records), expected_records)
         for record in captured.records:
