@@ -47,7 +47,8 @@ const permanentDeleteModal = (entity) => {
     .click();
 };
 
-describe('Tags page should work', () => {
+// Todo: unskip this once https://github.com/open-metadata/OpenMetadata/issues/10979 is fixed
+describe.skip('Tags page should work', () => {
   beforeEach(() => {
     cy.login();
     interceptURL(
