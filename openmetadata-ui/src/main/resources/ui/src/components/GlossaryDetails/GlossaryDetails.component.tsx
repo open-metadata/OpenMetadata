@@ -85,6 +85,7 @@ const GlossaryDetails = ({
               />
               <GlossaryTermTab
                 childGlossaryTerms={glossaryTerms}
+                permissions={permissions}
                 refreshGlossaryTerms={refreshGlossaryTerms}
                 selectedGlossaryFqn={
                   glossary.fullyQualifiedName || glossary.name

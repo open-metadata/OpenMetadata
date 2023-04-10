@@ -21,6 +21,7 @@ import { t } from 'i18next';
 import { AssetsDataType } from 'Models';
 import React, { useMemo } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
+import { getGlossaryTermsVersionsPath } from 'utils/RouterUtils';
 import { GlossaryTerm } from '../../generated/entity/data/glossaryTerm';
 import { getCountBadge } from '../../utils/CommonUtils';
 
@@ -45,13 +46,18 @@ const GlossaryTabs = ({
   permissions,
   refreshGlossaryTerms,
 }: Props) => {
-  const { glossaryName: glossaryFqn, tab } =
-    useParams<{ glossaryName: string; tab: string }>();
+  const {
+    glossaryName: glossaryFqn,
+    tab,
+    version,
+  } = useParams<{ glossaryName: string; tab: string; version: string }>();
   const history = useHistory();
 
   const activeTabHandler = (tab: string) => {
     history.push({
-      pathname: getGlossaryTermDetailsPath(glossaryFqn, tab),
+      pathname: version
+        ? getGlossaryTermsVersionsPath(glossaryFqn, version, tab)
+        : getGlossaryTermDetailsPath(glossaryFqn, tab),
     });
   };
 
@@ -98,6 +104,7 @@ const GlossaryTabs = ({
         children: (
           <GlossaryTermTab
             childGlossaryTerms={childGlossaryTerms}
+            permissions={permissions}
             refreshGlossaryTerms={refreshGlossaryTerms}
             selectedGlossaryFqn={
               selectedData.fullyQualifiedName || selectedData.name

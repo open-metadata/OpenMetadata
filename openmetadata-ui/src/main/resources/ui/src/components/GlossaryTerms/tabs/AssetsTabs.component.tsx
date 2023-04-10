@@ -11,11 +11,10 @@
  *  limitations under the License.
  */
 
-import { Button, Tooltip } from 'antd';
+import { Button } from 'antd';
 import Loader from 'components/Loader/Loader';
 import { OperationPermission } from 'components/PermissionProvider/PermissionProvider.interface';
 import { GLOSSARIES_DOCS } from 'constants/docs.constants';
-import { NO_PERMISSION_FOR_ACTION } from 'constants/HelperTextUtil';
 import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { t } from 'i18next';
 import { AssetsDataType } from 'Models';
@@ -84,14 +83,7 @@ const AssetsTabs = ({
           <ErrorPlaceHolder
             buttons={
               <div className="tw-text-lg tw-text-center">
-                <Tooltip
-                  title={
-                    permissions.Create
-                      ? t('label.add-entity', {
-                          entity: t('label.asset-lowercase'),
-                        })
-                      : NO_PERMISSION_FOR_ACTION
-                  }>
+                {permissions.Create && (
                   <Button
                     ghost
                     data-testid="add-new-asset-button"
@@ -100,7 +92,7 @@ const AssetsTabs = ({
                       entity: t('label.asset'),
                     })}
                   </Button>
-                </Tooltip>
+                )}
               </div>
             }
             doc={GLOSSARIES_DOCS}
