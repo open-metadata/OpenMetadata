@@ -29,10 +29,6 @@ export default defineConfig({
       return plugins(on, config);
     },
     baseUrl: 'http://localhost:8585',
-    specPattern: [
-      'cypress/e2e/AddNewService/postgres.spec.js',
-      'cypress/e2e/AddNewService/redshiftWithDBT.spec.js',
-      'cypress/e2e/Features/TeamsHierarchy.spec.js',
-    ],
+    specPattern: 'cypress/e2e/**/*.{js,jsx,ts,tsx}',
   },
 });
