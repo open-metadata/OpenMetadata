@@ -79,7 +79,6 @@ class SupersetSourceMixin(DashboardServiceSource):
         return dashboard
 
     def _get_user_by_email(self, email: str) -> EntityReference:
-
         if email:
             user = self.metadata.get_user_by_email(email)
             if user:
@@ -89,7 +88,7 @@ class SupersetSourceMixin(DashboardServiceSource):
 
     def get_owner_details(self, dashboard_details: dict) -> EntityReference:
         for owner in dashboard_details.get("owners", []):
-            user = self._get_user_by_email(owner["email"])
+            user = self._get_user_by_email(owner.get("email"))
             if user:
                 return user
         if dashboard_details.get("email"):

@@ -38,7 +38,6 @@ def _(element, compiler, **kw):
 @compiles(ConcatFn, Dialects.SQLite)
 @compiles(ConcatFn, Dialects.Vertica)
 def _(element, compiler, **kw):
-
     if len(element.clauses) < 2:
         raise ValueError("We need to concat at least two elements")
 

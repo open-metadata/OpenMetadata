@@ -14,7 +14,6 @@ Table Column Count Metric definition
 """
 # pylint: disable=duplicate-code
 
-from typing import cast
 
 import sqlalchemy
 from sqlalchemy import inspect, literal
@@ -84,9 +83,5 @@ class ColumnNames(StaticMetric):
         col_names = ",".join(inspect(self.table).c.keys())
         return ColunNameFn(literal(col_names, type_=sqlalchemy.types.String))
 
-    def df_fn(self, df=None):
-        from pandas import DataFrame  # pylint: disable=import-outside-toplevel
-
-        df = cast(DataFrame, df)
-
-        return df.columns.values.tolist()
+    def df_fn(self, dfs=None):
+        return dfs[0].columns.values.tolist()

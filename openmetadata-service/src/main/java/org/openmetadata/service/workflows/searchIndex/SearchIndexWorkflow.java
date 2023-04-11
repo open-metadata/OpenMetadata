@@ -63,6 +63,7 @@ public class SearchIndexWorkflow implements Runnable {
   private final ElasticSearchIndexDefinition elasticSearchIndexDefinition;
   @Getter private final EventPublisherJob jobData;
   private final CollectionDAO dao;
+  private volatile boolean stopped = false;
 
   public SearchIndexWorkflow(
       CollectionDAO dao,
@@ -127,7 +128,7 @@ public class SearchIndexWorkflow implements Runnable {
       reCreateIndexes(paginatedEntitiesSource.getEntityType());
       contextData.put(ENTITY_TYPE_KEY, paginatedEntitiesSource.getEntityType());
       ResultList<? extends EntityInterface> resultList;
-      while (!paginatedEntitiesSource.isDone()) {
+      while (!stopped && !paginatedEntitiesSource.isDone()) {
         long currentTime = System.currentTimeMillis();
         int requestToProcess = jobData.getBatchSize();
         int failed = requestToProcess;
@@ -188,7 +189,7 @@ public class SearchIndexWorkflow implements Runnable {
       reCreateIndexes(paginatedDataInsightSource.getEntityType());
       contextData.put(ENTITY_TYPE_KEY, paginatedDataInsightSource.getEntityType());
       ResultList<ReportData> resultList;
-      while (!paginatedDataInsightSource.isDone()) {
+      while (!stopped && !paginatedDataInsightSource.isDone()) {
         long currentTime = System.currentTimeMillis();
         int requestToProcess = jobData.getBatchSize();
         int failed = requestToProcess;
@@ -374,12 +375,16 @@ public class SearchIndexWorkflow implements Runnable {
   }
 
   private void updateJobStatus() {
-    if (jobData.getFailure().getSinkError() != null
-        || jobData.getFailure().getSourceError() != null
-        || jobData.getFailure().getProcessorError() != null) {
-      jobData.setStatus(EventPublisherJob.Status.FAILED);
+    if (stopped) {
+      jobData.setStatus(EventPublisherJob.Status.STOPPED);
     } else {
-      jobData.setStatus(EventPublisherJob.Status.COMPLETED);
+      if (jobData.getFailure().getSinkError() != null
+          || jobData.getFailure().getSourceError() != null
+          || jobData.getFailure().getProcessorError() != null) {
+        jobData.setStatus(EventPublisherJob.Status.FAILED);
+      } else {
+        jobData.setStatus(EventPublisherJob.Status.COMPLETED);
+      }
     }
   }
 
@@ -389,5 +394,9 @@ public class SearchIndexWorkflow implements Runnable {
 
   private FailureDetails getFailureDetails(String context, String reason, long time) {
     return new FailureDetails().withContext(context).withLastFailedReason(reason).withLastFailedAt(time);
+  }
+
+  public void stopJob() {
+    stopped = true;
   }
 }

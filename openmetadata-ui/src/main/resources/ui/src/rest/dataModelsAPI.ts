@@ -27,6 +27,17 @@ const configOptions = {
   headers: { 'Content-type': 'application/json' },
 };
 
+export const getDataModelDetails = async (
+  id: string,
+  arrQueryFields: string | string[]
+) => {
+  const url = getURLWithQueryFields(`${URL}/${id}`, arrQueryFields);
+
+  const response = await APIClient.get<DashboardDataModel>(url);
+
+  return response.data;
+};
+
 export const getDataModelsByName = async (
   name: string,
   fields: string | string[]

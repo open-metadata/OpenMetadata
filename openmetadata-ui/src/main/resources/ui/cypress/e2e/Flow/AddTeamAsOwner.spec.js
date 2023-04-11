@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
+// / <reference types="cypress" />
 import {
   addTeam,
   interceptURL,
@@ -31,6 +31,12 @@ const TEAM_DETAILS = {
 describe('Create a team and add that team as a owner of the entity', () => {
   beforeEach(() => {
     cy.login();
+    interceptURL(
+      'GET',
+      `/api/v1/search/query?q=*${teamName}***teamType:Group&from=0&size=15&index=team_search_index`,
+      'waitForTeams'
+    );
+    interceptURL('PATCH', `/api/v1/tables/*`, 'updateTable');
   });
 
   /**
@@ -38,12 +44,6 @@ describe('Create a team and add that team as a owner of the entity', () => {
    * Only team of type group can own the entities
    */
   it('Add a group team type and assign it as a owner of the entity', () => {
-    interceptURL(
-      'GET',
-      `/api/v1/search/query?q=*${teamName}***teamType:Group&from=0&size=15&index=team_search_index`,
-      'waitForTeams'
-    );
-    interceptURL('PATCH', '/api/v1/tables/*', 'validateOwner');
     interceptURL('GET', '/api/v1/users*', 'getTeams');
 
     cy.get('[data-testid="appbar-item-settings"]').should('be.visible').click();
@@ -68,7 +68,9 @@ describe('Create a team and add that team as a owner of the entity', () => {
     cy.get('table')
       .find('.ant-table-row')
       .should('contain', TEAM_DETAILS.description);
+  });
 
+  it('Add newly created group type team as owner, and remove it', () => {
     visitEntityDetailsPage(
       TEAM_DETAILS.term,
       TEAM_DETAILS.serviceName,
@@ -88,7 +90,7 @@ describe('Create a team and add that team as a owner of the entity', () => {
       .should('be.visible')
       .click();
 
-    verifyResponseStatusCode('@validateOwner', 200);
+    verifyResponseStatusCode('@updateTable', 200);
 
     cy.get('[data-testid="owner-link"]')
       .scrollIntoView()
@@ -96,5 +98,27 @@ describe('Create a team and add that team as a owner of the entity', () => {
       .then((text) => {
         expect(text).equal(TEAM_DETAILS.name);
       });
+  });
+
+  it('Remove newly created group type team as owner', () => {
+    visitEntityDetailsPage(
+      TEAM_DETAILS.term,
+      TEAM_DETAILS.serviceName,
+      TEAM_DETAILS.entity
+    );
+
+    cy.get('[data-testid="edit-owner"]').should('be.visible').click();
+    cy.get('.user-team-select-popover  [data-testid="searchbar"]')
+      .should('be.visible')
+      .type(TEAM_DETAILS.name);
+
+    verifyResponseStatusCode('@waitForTeams', 200);
+
+    cy.get('[data-testid="remove-owner"]').should('be.visible').click();
+    verifyResponseStatusCode('@updateTable', 200);
+    cy.get('[data-testid="entity-summary-details"]').should(
+      'contain',
+      'No Owner'
+    );
   });
 });

@@ -21,6 +21,8 @@ import { ReactComponent as IconSuccessBadge } from '../assets/svg/success-badge.
 
 export const getStatusResultBadgeIcon = (status?: string) => {
   switch (status) {
+    case Status.Stopped:
+      return <IconTaskOpen height={14} width={14} />;
     case Status.Completed:
       return <IconSuccessBadge height={14} width={14} />;
 
@@ -40,6 +42,8 @@ export const getStatusResultBadgeIcon = (status?: string) => {
 
 export const getEventPublisherStatusText = (status?: string) => {
   switch (status) {
+    case Status.Stopped:
+      return t('label.stopped');
     case Status.Failed:
       return t('label.failed');
     case Status.Running:
