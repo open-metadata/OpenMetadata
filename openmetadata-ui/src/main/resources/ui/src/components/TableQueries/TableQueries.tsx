@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Col, Row } from 'antd';
+import { Button, Col, Row, Space } from 'antd';
 import { AxiosError } from 'axios';
 import NextPrevious from 'components/common/next-previous/NextPrevious';
 import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
@@ -37,7 +37,7 @@ import { PagingResponse } from 'Models';
 import Qs from 'qs';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useLocation } from 'react-router-dom';
+import { useHistory, useLocation, useParams } from 'react-router-dom';
 import {
   getQueriesList,
   getQueryById,
@@ -63,6 +63,8 @@ import {
   TableQueriesProp,
 } from './TableQueries.interface';
 import TableQueryRightPanel from './TableQueryRightPanel/TableQueryRightPanel.component';
+import { getAddQueryPath } from 'utils/RouterUtils';
+import { USAGE_DOCS } from 'constants/docs.constants';
 
 const TableQueries: FC<TableQueriesProp> = ({
   isTableDeleted,
@@ -70,6 +72,7 @@ const TableQueries: FC<TableQueriesProp> = ({
 }: TableQueriesProp) => {
   const { t } = useTranslation();
   const location = useLocation();
+  const { datasetFQN } = useParams<{ datasetFQN: string }>();
   const history = useHistory();
 
   const { searchParams, selectedFilters } = useMemo(() => {
@@ -323,19 +326,37 @@ const TableQueries: FC<TableQueriesProp> = ({
     }
   };
 
+  const handleAddQueryClick = () => {
+    history.push(getAddQueryPath(datasetFQN));
+  };
+
+  const addButton = (
+    <Button type="primary" onClick={handleAddQueryClick}>
+      {t('label.add-entity', { entity: t('label.query') })}
+    </Button>
+  );
+
   if (isLoading.page) {
     return <Loader />;
   }
   if (isError.page) {
     return (
-      <div className="flex-center font-medium" data-testid="no-queries">
-        <ErrorPlaceHolder heading={t('label.query-lowercase-plural')} />
+      <div className="flex-center font-medium h-full" data-testid="no-queries">
+        <ErrorPlaceHolder
+          heading={t('label.query-lowercase-plural')}
+          type={ERROR_PLACEHOLDER_TYPE.ADD}
+          buttons={addButton}
+          doc={USAGE_DOCS}
+        />
       </div>
     );
   }
 
   const queryTabBody = isError.search ? (
-    <Col className="flex-center font-medium" data-testid="no-queries" span={24}>
+    <Col
+      className="flex-center font-medium h-full"
+      data-testid="no-queries"
+      span={24}>
       <ErrorPlaceHolder
         heading={t('label.query-lowercase-plural')}
         type={ERROR_PLACEHOLDER_TYPE.VIEW}
@@ -366,7 +387,12 @@ const TableQueries: FC<TableQueriesProp> = ({
           data-testid="queries-container"
           gutter={[8, 16]}>
           <Col span={24}>
-            <QueryFilters onFilterChange={onOwnerFilterChange} />
+            <Space className="justify-between w-full">
+              <QueryFilters onFilterChange={onOwnerFilterChange} />
+              <Button type="primary" onClick={handleAddQueryClick}>
+                {t('label.add-entity', { entity: t('label.query') })}
+              </Button>
+            </Space>
           </Col>
 
           {isLoading.query ? <Loader /> : queryTabBody}

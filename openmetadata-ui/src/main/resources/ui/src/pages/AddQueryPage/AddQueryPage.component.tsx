@@ -10,29 +10,40 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Card, Form, Input, Select, Space, Typography } from 'antd';
+import { Button, Card, Form, Input, Select, Space, Typography } from 'antd';
 import { useForm } from 'antd/es/form/Form';
+import { DefaultOptionType } from 'antd/lib/select';
 import { AxiosError } from 'axios';
+import { AsyncSelect } from 'components/AsyncSelect/AsyncSelect';
 import RichTextEditor from 'components/common/rich-text-editor/RichTextEditor';
 import TitleBreadcrumb from 'components/common/title-breadcrumb/title-breadcrumb.component';
 import { TitleBreadcrumbProps } from 'components/common/title-breadcrumb/title-breadcrumb.interface';
 import PageContainerV1 from 'components/containers/PageContainerV1';
 import PageLayoutV1 from 'components/containers/PageLayoutV1';
 import SchemaEditor from 'components/schema-editor/SchemaEditor';
+import { PAGE_SIZE_BASE } from 'constants/constants';
+import { INITIAL_PAGING_VALUE } from 'constants/constants';
+import { PAGE_SIZE_MEDIUM } from 'constants/constants';
 import {
   getServiceDetailsPath,
   getDatabaseDetailsPath,
   getDatabaseSchemaDetailsPath,
   getTableTabPath,
+  PAGE_SIZE,
 } from 'constants/constants';
 import { CSMode } from 'enums/codemirror.enum';
+import { SORT_ORDER } from 'enums/common.enum';
 import { FqnPart } from 'enums/entity.enum';
+import { SearchIndex } from 'enums/search.enum';
 import { ServiceCategory } from 'enums/service.enum';
 import { CreateQuery } from 'generated/api/data/createQuery';
 import { Table } from 'generated/entity/data/table';
-import React, { useEffect, useState } from 'react';
+import { debounce, get, uniq, uniqBy } from 'lodash';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router-dom';
+import { searchData } from 'rest/miscAPI';
+import { searchQuery } from 'rest/searchAPI';
 import { getTableDetailsByFQN } from 'rest/tableAPI';
 import { getPartialNameFromTableFQN } from 'utils/CommonUtils';
 import { getEntityName } from 'utils/EntityUtils';
@@ -49,6 +60,7 @@ const AddQueryPage = () => {
   const [description, setDescription] = useState<string>('');
   const [sqlQuery, setSqlQuery] = useState<string>('');
   const [table, setTable] = useState<Table>();
+  const [initialOptions, setInitialOptions] = useState<DefaultOptionType[]>();
 
   const fetchEntityDetails = async () => {
     try {
@@ -97,13 +109,60 @@ const AddQueryPage = () => {
     }
   };
 
+  const fetchTableEntity = async (
+    searchValue = ''
+  ): Promise<DefaultOptionType[]> => {
+    try {
+      const { data } = await searchData(
+        searchValue,
+        INITIAL_PAGING_VALUE,
+        PAGE_SIZE_MEDIUM,
+        '',
+        '',
+        '',
+        SearchIndex.TABLE
+      );
+      const options = data.hits.hits.map((value) => ({
+        label: getEntityName(value._source),
+        value: value._source.id,
+      }));
+      return table
+        ? uniqBy(
+            [...options, { value: table.id, label: getEntityName(table) }],
+            'value'
+          )
+        : options;
+    } catch (error) {
+      return [];
+    }
+  };
+
   useEffect(() => {
     if (datasetFQN) {
       fetchEntityDetails();
     }
   }, [datasetFQN]);
 
+  const getInitialOptions = async () => {
+    try {
+      const option = await fetchTableEntity();
+      form.setFieldValue('queryUsedIn', [table?.id]);
+      setInitialOptions(option);
+    } catch (error) {
+      setInitialOptions([]);
+    }
+  };
+
+  useEffect(() => {
+    if (table) {
+      getInitialOptions();
+    }
+  }, [table]);
+
   const handleSubmit = () => {};
+  const handleCancelClick = () => {
+    history.back();
+  };
 
   return (
     <PageContainerV1>
@@ -119,13 +178,13 @@ const AddQueryPage = () => {
               {t('label.add-new-entity', { entity: t('label.query') })}
             </Typography.Paragraph>
             <Form<CreateQuery>
-              initialValues={{
-                queryUsedIn: [table?.id],
-              }}
               form={form}
               data-testid="query-form"
               id="query-form"
               layout="vertical"
+              initialValues={{
+                queryUsedIn: table ? [table.id] : undefined,
+              }}
               onFinish={handleSubmit}>
               <Form.Item
                 label={`${t('label.name')}:`}
@@ -182,10 +241,22 @@ const AddQueryPage = () => {
               <Form.Item
                 label={`${t('label.query-used-in')}:`}
                 name="queryUsedIn">
-                <Select
+                <AsyncSelect
+                  options={initialOptions}
+                  api={fetchTableEntity}
                   mode="multiple"
-                  options={[{ label: table?.name, key: table?.id }]}
+                  placeholder={t('label.please-select-entity', {
+                    entity: t('label.query-used-in'),
+                  })}
                 />
+              </Form.Item>
+              <Form.Item>
+                <Space className="w-full justify-end" size={16}>
+                  <Button type="default" onClick={handleCancelClick}>
+                    {t('label.cancel')}
+                  </Button>
+                  <Button type="primary">{t('label.save')}</Button>
+                </Space>
               </Form.Item>
             </Form>
           </Card>

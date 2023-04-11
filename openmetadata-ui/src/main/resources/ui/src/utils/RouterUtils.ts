@@ -462,6 +462,13 @@ export const getQueryPath = (entityFqn: string, queryId: string) => {
 
   return path;
 };
+export const getAddQueryPath = (entityFqn: string) => {
+  let path = ROUTES.ADD_QUERY;
+
+  path = path.replace(PLACEHOLDER_ROUTE_TABLE_FQN, entityFqn);
+
+  return path;
+};
 
 export const getGlossaryVersionsPath = (
   glossaryName: string,
