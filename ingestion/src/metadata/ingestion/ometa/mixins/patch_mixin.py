@@ -15,16 +15,24 @@ To be used by OpenMetadata class
 """
 import json
 import traceback
-from typing import Dict, Generic, List, Optional, Type, TypeVar, Union
+from typing import Dict, List, Optional, Type, TypeVar, Union
 
 from pydantic import BaseModel
 
+from metadata.generated.schema.entity.automations.workflow import (
+    Workflow as AutomationWorkflow,
+)
+from metadata.generated.schema.entity.automations.workflow import WorkflowStatus
 from metadata.generated.schema.entity.data.table import Table, TableConstraint
+from metadata.generated.schema.entity.services.connections.testConnectionResult import (
+    TestConnectionResult,
+)
 from metadata.generated.schema.type import basic
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.tagLabel import LabelType, State, TagSource
 from metadata.ingestion.ometa.client import REST
-from metadata.ingestion.ometa.patch import (
+from metadata.ingestion.ometa.mixins.patch_mixin_utils import (
+    OMetaPatchMixinBase,
     PatchField,
     PatchOperation,
     PatchPath,
@@ -41,7 +49,7 @@ T = TypeVar("T", bound=BaseModel)
 OWNER_TYPES: List[str] = ["user", "team"]
 
 
-class OMetaPatchMixin(Generic[T]):
+class OMetaPatchMixin(OMetaPatchMixinBase):
     """
     OpenMetadata API methods related to Tables.
 
@@ -49,33 +57,6 @@ class OMetaPatchMixin(Generic[T]):
     """
 
     client: REST
-
-    def _fetch_entity_if_exists(
-        self, entity: Type[T], entity_id: Union[str, basic.Uuid]
-    ) -> Optional[T]:
-        """
-        Validates if we can update a description or not. Will return
-        the instance if it can be updated. None otherwise.
-
-        Args
-            entity (T): Entity Type
-            entity_id: ID
-            description: new description to add
-            force: if True, we will patch any existing description. Otherwise, we will maintain
-                the existing data.
-        Returns
-            instance to update
-        """
-
-        instance = self.get_by_id(entity=entity, entity_id=entity_id, fields=["*"])
-
-        if not instance:
-            logger.warning(
-                f"Cannot find an instance of '{entity.__class__.__name__}' with id [{str(entity_id)}]."
-            )
-            return None
-
-        return instance
 
     def patch_description(
         self,
@@ -488,3 +469,40 @@ class OMetaPatchMixin(Generic[T]):
             )
 
         return None
+
+    def patch_automation_workflow_response(
+        self,
+        automation_workflow: AutomationWorkflow,
+        test_connection_result: TestConnectionResult,
+        workflow_status: WorkflowStatus,
+    ) -> None:
+        """
+        Given an AutomationWorkflow, JSON PATCH the status and response.
+        """
+        result_data: Dict = {
+            PatchField.PATH: PatchPath.RESPONSE,
+            PatchField.VALUE: test_connection_result.dict(),
+            PatchField.OPERATION: PatchOperation.ADD,
+        }
+
+        # for deserializing into json convert enum object to string
+        result_data[PatchField.VALUE]["status"] = result_data[PatchField.VALUE][
+            "status"
+        ].value
+
+        status_data: Dict = {
+            PatchField.PATH: PatchPath.STATUS,
+            PatchField.OPERATION: PatchOperation.ADD,
+            PatchField.VALUE: workflow_status.value,
+        }
+
+        try:
+            self.client.patch(
+                path=f"{self.get_suffix(AutomationWorkflow)}/{model_str(automation_workflow.id)}",
+                data=json.dumps([result_data, status_data]),
+            )
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.error(
+                f"Error trying to PATCH status for automation workflow [{model_str(automation_workflow)}]: {exc}"
+            )

@@ -14,6 +14,7 @@
 import { RedocStandalone } from '@deuex-solutions/redoc';
 import PageContainerV1 from 'components/containers/PageContainerV1';
 import React from 'react';
+import './swagger.less';
 
 const SwaggerPage = () => {
   // return (<RedocStandalone
@@ -21,7 +22,10 @@ const SwaggerPage = () => {
   // />);
   return (
     <PageContainerV1>
-      <div className="container-fluid" data-testid="fluid-container">
+      <div
+        className="container-fluid"
+        data-testid="fluid-container"
+        id="doc-container">
         <RedocStandalone
           options={{ enableConsole: true }}
           specUrl="./swagger.json"

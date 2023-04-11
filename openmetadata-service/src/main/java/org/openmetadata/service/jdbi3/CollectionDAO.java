@@ -57,6 +57,7 @@ import org.openmetadata.schema.auth.RefreshToken;
 import org.openmetadata.schema.auth.TokenType;
 import org.openmetadata.schema.dataInsight.DataInsightChart;
 import org.openmetadata.schema.dataInsight.kpi.Kpi;
+import org.openmetadata.schema.email.SmtpSettings;
 import org.openmetadata.schema.entity.Bot;
 import org.openmetadata.schema.entity.Type;
 import org.openmetadata.schema.entity.automations.Workflow;
@@ -3255,6 +3256,14 @@ public interface CollectionDAO {
             + "ORDER BY timestamp DESC LIMIT 1")
     String getLatestExtension(@Bind("entityFQN") String entityFQN, @Bind("extension") String extension);
 
+    @SqlQuery(
+        "SELECT json FROM entity_extension_time_series WHERE extension = :extension "
+            + "ORDER BY timestamp DESC LIMIT 1")
+    String getLatestByExtension(@Bind("extension") String extension);
+
+    @SqlQuery("SELECT json FROM entity_extension_time_series WHERE extension = :extension " + "ORDER BY timestamp DESC")
+    List<String> getAllByExtension(@Bind("extension") String extension);
+
     @RegisterRowMapper(ExtensionMapper.class)
     @SqlQuery(
         "SELECT extension, json FROM entity_extension WHERE id = :id AND extension "
@@ -3310,6 +3319,102 @@ public interface CollectionDAO {
         @Bind("startTs") Long startTs,
         @Bind("endTs") long endTs,
         @Define("orderBy") OrderBy orderBy);
+
+    default void updateExtensionByKey(String key, String value, String entityFQN, String extension, String json) {
+
+      String mysqlCond = String.format("AND JSON_UNQUOTE(JSON_EXTRACT(json, '$.%s')) = :value", key);
+      String psqlCond = String.format("AND json->>'%s' = :value", key);
+
+      updateExtensionByKeyInternal(value, entityFQN, extension, json, mysqlCond, psqlCond);
+    }
+
+    default String getExtensionByKey(String key, String value, String entityFQN, String extension) {
+
+      String mysqlCond = String.format("AND JSON_UNQUOTE(JSON_EXTRACT(json, '$.%s')) = :value", key);
+      String psqlCond = String.format("AND json->>'%s' = :value", key);
+
+      return getExtensionByKeyInternal(value, entityFQN, extension, mysqlCond, psqlCond);
+    }
+
+    default String getLatestExtensionByKey(String key, String value, String entityFQN, String extension) {
+
+      String mysqlCond = String.format("AND JSON_UNQUOTE(JSON_EXTRACT(json, '$.%s')) = :value", key);
+      String psqlCond = String.format("AND json->>'%s' = :value", key);
+
+      return getLatestExtensionByKeyInternal(value, entityFQN, extension, mysqlCond, psqlCond);
+    }
+
+    /*
+     * Support updating data filtering by top-level keys in the JSON
+     */
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE entity_extension_time_series SET json = :json "
+                + "WHERE entityFQN = :entityFQN "
+                + "AND extension = :extension "
+                + "<mysqlCond>",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE entity_extension_time_series SET json = (:json :: jsonb) "
+                + "WHERE entityFQN = :entityFQN "
+                + "AND extension = :extension "
+                + "<psqlCond>",
+        connectionType = POSTGRES)
+    void updateExtensionByKeyInternal(
+        @Bind("value") String value,
+        @Bind("entityFQN") String entityFQN,
+        @Bind("extension") String extension,
+        @Bind("json") String json,
+        @Define("mysqlCond") String mysqlCond,
+        @Define("psqlCond") String psqlCond);
+
+    /*
+     * Support selecting data filtering by top-level keys in the JSON
+     */
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT json from entity_extension_time_series "
+                + "WHERE entityFQN = :entityFQN "
+                + "AND extension = :extension "
+                + "<mysqlCond>",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT json from entity_extension_time_series "
+                + "WHERE entityFQN = :entityFQN "
+                + "AND extension = :extension "
+                + "<psqlCond>",
+        connectionType = POSTGRES)
+    String getExtensionByKeyInternal(
+        @Bind("value") String value,
+        @Bind("entityFQN") String entityFQN,
+        @Bind("extension") String extension,
+        @Define("mysqlCond") String mysqlCond,
+        @Define("psqlCond") String psqlCond);
+
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT json from entity_extension_time_series "
+                + "WHERE entityFQN = :entityFQN "
+                + "AND extension = :extension "
+                + "<mysqlCond> "
+                + "ORDER BY timestamp DESC LIMIT 1",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT json from entity_extension_time_series "
+                + "WHERE entityFQN = :entityFQN "
+                + "AND extension = :extension "
+                + "<psqlCond> "
+                + "ORDER BY timestamp DESC LIMIT 1",
+        connectionType = POSTGRES)
+    String getLatestExtensionByKeyInternal(
+        @Bind("value") String value,
+        @Bind("entityFQN") String entityFQN,
+        @Bind("extension") String extension,
+        @Define("mysqlCond") String mysqlCond,
+        @Define("psqlCond") String psqlCond);
 
     class ReportDataMapper implements RowMapper<ReportDataRow> {
       @Override
@@ -3453,6 +3558,9 @@ public interface CollectionDAO {
             break;
           case TEST_RESULT_NOTIFICATION_CONFIGURATION:
             value = JsonUtils.readValue(json, TestResultNotificationConfiguration.class);
+            break;
+          case EMAIL_CONFIGURATION:
+            value = JsonUtils.readValue(json, SmtpSettings.class);
             break;
           default:
             throw new IllegalArgumentException("Invalid Settings Type " + configType);

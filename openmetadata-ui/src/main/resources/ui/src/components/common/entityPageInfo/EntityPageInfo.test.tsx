@@ -110,7 +110,7 @@ const mockEntityInfoProp = {
   entityFqn: 'bigquery_gcp.shopify.raw_product_catalog',
   entityName: 'raw_product_catalog',
   entityType: 'table',
-  version: '0.3',
+  version: 0.3,
   versionHandler,
   entityFieldThreads: [],
   onThreadLinkSelect,
@@ -220,7 +220,7 @@ describe('Test EntityPageInfo component', () => {
     );
 
     expect(versionValue).toBeInTheDocument();
-    expect(versionValue).toHaveTextContent(mockEntityInfoProp.version);
+    expect(versionValue).toHaveTextContent(mockEntityInfoProp.version + '');
 
     const deleteBadge = queryByTestId(entityPageInfoContainer, 'deleted-badge');
 

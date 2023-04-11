@@ -1,6 +1,5 @@
 package org.openmetadata.service.resources.services.objectstore;
 
-import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -9,6 +8,7 @@ import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
@@ -59,7 +59,9 @@ import org.openmetadata.service.util.ResultList;
 
 @Slf4j
 @Path("/v1/services/objectStoreServices")
-@Api(value = "Object store service collection", tags = "Services -> Object store service collection")
+@Tag(
+    name = "Object Store Services",
+    description = "APIs related `Object Store Service` entities, such as S3, GCS or " + "AZURE.")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "objectstoreServices")
@@ -90,7 +92,6 @@ public class ObjectStoreServiceResource
   @Operation(
       operationId = "listObjectStoreServices",
       summary = "List object store services",
-      tags = "objectStoreServices",
       description = "Get a list of object store services.",
       responses = {
         @ApiResponse(
@@ -145,7 +146,6 @@ public class ObjectStoreServiceResource
   @Operation(
       operationId = "getObjectStoreServiceByID",
       summary = "Get an object store service",
-      tags = "objectStoreServices",
       description = "Get an object store service by `id`.",
       responses = {
         @ApiResponse(
@@ -180,7 +180,6 @@ public class ObjectStoreServiceResource
   @Operation(
       operationId = "getObjectStoreServiceByFQN",
       summary = "Get object store service by name",
-      tags = "objectStoreServices",
       description = "Get a object store service by the service `name`.",
       responses = {
         @ApiResponse(
@@ -215,7 +214,6 @@ public class ObjectStoreServiceResource
   @Operation(
       operationId = "addTestConnectionResult",
       summary = "Add test connection result",
-      tags = "objectStoreServices",
       description = "Add test connection result to the service.",
       responses = {
         @ApiResponse(
@@ -241,7 +239,6 @@ public class ObjectStoreServiceResource
   @Operation(
       operationId = "listAllObjectStoreServiceVersion",
       summary = "List object store service versions",
-      tags = "objectStoreServices",
       description = "Get a list of all the versions of an object store service identified by `id`",
       responses = {
         @ApiResponse(
@@ -278,7 +275,6 @@ public class ObjectStoreServiceResource
   @Operation(
       operationId = "getSpecificObjectStoreServiceVersion",
       summary = "Get a version of the object store service",
-      tags = "objectStoreServices",
       description = "Get a version of the object store service by given `id`",
       responses = {
         @ApiResponse(
@@ -308,7 +304,6 @@ public class ObjectStoreServiceResource
   @Operation(
       operationId = "createObjectStoreService",
       summary = "Create object store service",
-      tags = "objectStoreServices",
       description = "Create a new object store service.",
       responses = {
         @ApiResponse(
@@ -331,7 +326,6 @@ public class ObjectStoreServiceResource
   @Operation(
       operationId = "createOrUpdateObjectStoreService",
       summary = "Update object store service",
-      tags = "objectStoreServices",
       description = "Update an existing or create a new object store service.",
       responses = {
         @ApiResponse(
@@ -355,7 +349,6 @@ public class ObjectStoreServiceResource
   @Operation(
       operationId = "patchObjectStoreService",
       summary = "Update an object store service",
-      tags = "objectStoreServices",
       description = "Update an existing object store service using JsonPatch.",
       externalDocs = @ExternalDocumentation(description = "JsonPatch RFC", url = "https://tools.ietf.org/html/rfc6902"))
   @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
@@ -381,7 +374,6 @@ public class ObjectStoreServiceResource
   @Operation(
       operationId = "deleteObjectStoreService",
       summary = "Delete an object store service",
-      tags = "objectStoreServices",
       description = "Delete an object store services. If containers belong the service, it can't be " + "deleted.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
@@ -411,7 +403,6 @@ public class ObjectStoreServiceResource
   @Operation(
       operationId = "deleteObjectStoreServiceByFQN",
       summary = "Delete an ObjectStoreService by fully qualified name",
-      tags = "containers",
       description = "Delete an ObjectStoreService by `fullyQualifiedName`.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
@@ -435,7 +426,6 @@ public class ObjectStoreServiceResource
   @Operation(
       operationId = "restore",
       summary = "Restore a soft deleted ObjectStoreService.",
-      tags = "objectStoreServices",
       description = "Restore a soft deleted ObjectStoreService.",
       responses = {
         @ApiResponse(

@@ -19,13 +19,13 @@ on:
     branches:
       - main 
       - '0.[0-9]+.[0-9]+'
-    path:
-      - 'openmetadata-ui/**'
+      - '1.[0-9]+[0-9]+'
+    paths-ignore:
+      - 'openmetadata-docs/**'
   pull_request_target:
     types: [labeled, opened, synchronize, reopened]
-    path:
-      - 'openmetadata-ui/**'
-      - 'openmetadata-spec/**'
+    paths-ignore:
+      - 'openmetadata-docs/**'
 
 permissions:
   contents: read
@@ -39,7 +39,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        job: [0, 1]
+        job: [0, 1, 2]
     environment: test
     steps:
 

@@ -14,6 +14,7 @@
 Unit tests for datalake source
 """
 
+from copy import deepcopy
 from types import SimpleNamespace
 from unittest import TestCase
 from unittest.mock import patch
@@ -124,6 +125,115 @@ EXAMPLE_JSON_TEST_2 = """
 {"name":"John","age":16,"sex":"M"}
 """
 
+EXAMPLE_JSON_TEST_3 = """
+{
+    "name":"John",
+    "age":16,
+    "sex":"M",
+    "address":{
+        "city":"Mumbai",
+        "state":"Maharashtra",
+        "country":"India",
+        "coordinates":{
+            "lat":123,
+            "lon":123
+        }
+    }
+}
+"""
+
+EXAMPLE_JSON_TEST_4 = """
+[
+    {"name":"John","age":16,"sex":"M"},
+    {
+        "name":"John",
+        "age":16,
+        "sex":"M",
+        "address":{
+            "city":"Mumbai",
+            "state":"Maharashtra",
+            "country":"India",
+            "coordinates":{
+                "lat":123,
+                "lon":123
+            }
+        }
+    }
+]
+"""
+
+EXAMPLE_JSON_COL_3 = [
+    Column(
+        name="name",
+        dataType="STRING",
+        dataTypeDisplay="STRING",
+    ),
+    Column(
+        name="age",
+        dataType="INT",
+        dataTypeDisplay="INT",
+    ),
+    Column(
+        name="sex",
+        dataType="STRING",
+        dataTypeDisplay="STRING",
+    ),
+    Column(
+        name="address",
+        dataType="RECORD",
+        dataTypeDisplay="RECORD",
+        children=[
+            Column(
+                name="city",
+                dataType="STRING",
+                dataTypeDisplay="STRING",
+            ),
+            Column(
+                name="state",
+                dataType="STRING",
+                dataTypeDisplay="STRING",
+            ),
+            Column(
+                name="country",
+                dataType="STRING",
+                dataTypeDisplay="STRING",
+            ),
+            Column(
+                name="coordinates",
+                dataType="RECORD",
+                dataTypeDisplay="RECORD",
+                children=[
+                    Column(
+                        name="lat",
+                        dataType="INT",
+                        dataTypeDisplay="INT",
+                    ),
+                    Column(
+                        name="lon",
+                        dataType="INT",
+                        dataTypeDisplay="INT",
+                    ),
+                ],
+            ),
+        ],
+    ),
+]
+
+
+EXAMPLE_JSON_COL_4 = deepcopy(EXAMPLE_JSON_COL_3)
+EXAMPLE_JSON_COL_4[3].children[3].children = [
+    Column(
+        name="lat",
+        dataType="FLOAT",
+        dataTypeDisplay="FLOAT",
+    ),
+    Column(
+        name="lon",
+        dataType="FLOAT",
+        dataTypeDisplay="FLOAT",
+    ),
+]
+
 EXPECTED_AVRO_COL_1 = [
     Column(
         name="level",
@@ -134,12 +244,11 @@ EXPECTED_AVRO_COL_1 = [
             Column(
                 name="options",
                 dataType="ARRAY",
-                dataTypeDisplay="array<record>",
+                dataTypeDisplay="ARRAY<record>",
                 arrayDataType="RECORD",
                 children=[
                     Column(
                         name="lvl2_record",
-                        dataTypeDisplay="record",
                         dataType="RECORD",
                         children=[
                             Column(
@@ -151,12 +260,11 @@ EXPECTED_AVRO_COL_1 = [
                                 name="item2_lvl2",
                                 dataType="ARRAY",
                                 arrayDataType="RECORD",
-                                dataTypeDisplay="array<record>",
+                                dataTypeDisplay="ARRAY<record>",
                                 children=[
                                     Column(
                                         name="lvl3_record",
                                         dataType="RECORD",
-                                        dataTypeDisplay="record",
                                         children=[
                                             Column(
                                                 name="item1_lvl3",
@@ -312,19 +420,20 @@ class DatalakeUnitTest(TestCase):
         assert list(self.datalake_source.fetch_gcs_bucket_names()) == EXPECTED_SCHEMA
 
     def test_json_file_parse(self):
+        """
+        Test json data files
+        """
         import pandas as pd  # pylint: disable=import-outside-toplevel
 
         sample_dict = {"name": "John", "age": 16, "sex": "M"}
 
-        exp_df_list = pd.DataFrame.from_dict(
+        exp_df_list = pd.json_normalize(
             [
                 {"name": "John", "age": 16, "sex": "M"},
                 {"name": "Milan", "age": 19, "sex": "M"},
             ]
         )
-        exp_df_obj = pd.DataFrame.from_dict(
-            {key: pd.Series(value) for key, value in sample_dict.items()}
-        )
+        exp_df_obj = pd.json_normalize(sample_dict)
 
         actual_df_1 = read_from_json(key="file.json", json_text=EXAMPLE_JSON_TEST_1)[0]
         actual_df_2 = read_from_json(key="file.json", json_text=EXAMPLE_JSON_TEST_2)[0]
@@ -332,7 +441,15 @@ class DatalakeUnitTest(TestCase):
         assert actual_df_1.compare(exp_df_list).empty
         assert actual_df_2.compare(exp_df_obj).empty
 
-    def test_avro_file_parse(self):  # disabling this test as failing with CI
+        actual_df_3 = read_from_json(key="file.json", json_text=EXAMPLE_JSON_TEST_3)[0]
+        actual_cols_3 = DatalakeSource.get_columns(actual_df_3)
+        self.assertEqual(actual_cols_3, EXAMPLE_JSON_COL_3)
+
+        actual_df_4 = read_from_json(key="file.json", json_text=EXAMPLE_JSON_TEST_4)[0]
+        actual_cols_4 = DatalakeSource.get_columns(actual_df_4)
+        self.assertEqual(actual_cols_4, EXAMPLE_JSON_COL_4)
+
+    def test_avro_file_parse(self):
         columns = read_from_avro(AVRO_SCHEMA_FILE)
         Column.__eq__ = custom_column_compare
 

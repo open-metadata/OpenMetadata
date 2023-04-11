@@ -46,7 +46,12 @@ VERSIONS = {
 }
 
 COMMONS = {
-    "datalake": {VERSIONS["boto3"], VERSIONS["pandas"], VERSIONS["pyarrow"]},
+    "datalake": {
+        VERSIONS["boto3"],
+        VERSIONS["pandas"],
+        VERSIONS["pyarrow"],
+        "python-snappy~=0.6.1",
+    },
     "hive": {
         "presto-types-parser>=0.0.2",
         "pyhive~=0.6",
@@ -98,7 +103,7 @@ base_requirements = {
     "requests-aws4auth~=1.1",  # Only depends on requests as external package. Leaving as base.
     "setuptools~=65.6.3",
     "sqlalchemy>=1.4.0,<2",
-    "openmetadata-sqllineage==1.0.2",
+    "openmetadata-sqllineage>=1.0.3",
     "tabulate==0.9.0",
     "typing-compat~=0.1.0",  # compatibility requirements for 3.7
     "typing-inspect",
@@ -175,7 +180,7 @@ plugins: Dict[str, Set[str]] = {
     "kafka": {*COMMONS["kafka"]},
     "kinesis": {VERSIONS["boto3"]},
     "ldap-users": {"ldap3==2.9.1"},
-    "looker": {"looker-sdk>=22.20.0"},
+    "looker": {"looker-sdk>=22.20.0", "lkml~=1.3"},
     "mlflow": {"mlflow-skinny~=1.30", "alembic~=1.10.2"},
     "mssql": {"sqlalchemy-pytds~=0.3"},
     "mssql-odbc": {VERSIONS["pyodbc"]},

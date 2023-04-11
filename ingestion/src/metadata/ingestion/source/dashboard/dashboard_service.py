@@ -13,15 +13,19 @@ Base class for ingesting dashboard services
 """
 import traceback
 from abc import ABC, abstractmethod
-from typing import Any, Iterable, List, Optional, Set
+from typing import Any, Iterable, List, Optional, Set, Union
 
 from pydantic import BaseModel
 
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
+from metadata.generated.schema.api.data.createDashboardDataModel import (
+    CreateDashboardDataModelRequest,
+)
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.chart import Chart
 from metadata.generated.schema.entity.data.dashboard import Dashboard
+from metadata.generated.schema.entity.data.dashboardDataModel import DashboardDataModel
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
@@ -41,7 +45,7 @@ from metadata.generated.schema.type.entityLineage import EntitiesEdge
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.usageRequest import UsageRequest
 from metadata.ingestion.api.source import Source
-from metadata.ingestion.api.topology_runner import TopologyRunnerMixin
+from metadata.ingestion.api.topology_runner import C, TopologyRunnerMixin
 from metadata.ingestion.models.delete_entity import (
     DeleteEntity,
     delete_entity_from_source,
@@ -74,7 +78,7 @@ class DashboardUsage(BaseModel):
 class DashboardServiceTopology(ServiceTopology):
     """
     Defines the hierarchy in Dashboard Services.
-    service -> dashboard -> charts.
+    service -> data models -> dashboard -> charts.
 
     We could have a topology validator. We can only consume
     data that has been produced by any parent node.
@@ -98,8 +102,25 @@ class DashboardServiceTopology(ServiceTopology):
                 nullable=True,
             ),
         ],
-        children=["dashboard"],
+        children=["bulk_data_model", "dashboard"],
         post_process=["mark_dashboards_as_deleted"],
+    )
+    # Dashboard Services have very different approaches when
+    # when dealing with data models. Tableau has the models
+    # tightly coupled with dashboards, while Looker
+    # handles them as independent entities.
+    # When configuring a new source, we will either implement
+    # the yield_bulk_datamodel or yield_datamodel functions.
+    bulk_data_model = TopologyNode(
+        producer="list_datamodels",
+        stages=[
+            NodeStage(
+                type_=DashboardDataModel,
+                context="dataModel",
+                processor="yield_bulk_datamodel",
+                consumer=["dashboard_service"],
+            )
+        ],
     )
     dashboard = TopologyNode(
         producer="get_dashboard",
@@ -108,6 +129,15 @@ class DashboardServiceTopology(ServiceTopology):
                 type_=Chart,
                 context="charts",
                 processor="yield_dashboard_chart",
+                consumer=["dashboard_service"],
+                nullable=True,
+                cache_all=True,
+                clear_cache=True,
+            ),
+            NodeStage(
+                type_=DashboardDataModel,
+                context="dataModels",
+                processor="yield_datamodel",
                 consumer=["dashboard_service"],
                 nullable=True,
                 cache_all=True,
@@ -145,6 +175,7 @@ class DashboardServiceTopology(ServiceTopology):
     )
 
 
+# pylint: disable=too-many-public-methods
 class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
     """
     Base class for Database Services.
@@ -224,6 +255,33 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
         Get Dashboard Details
         """
 
+    def list_datamodels(self) -> Iterable[Any]:
+        """
+        Optional Node producer for processing datamodels in bulk
+        before the dashboards
+        """
+        return []
+
+    def yield_datamodel(self, _) -> Optional[Iterable[CreateDashboardDataModelRequest]]:
+        """
+        Method to fetch DataModel linked to Dashboard
+        """
+
+        logger.debug(
+            f"DataModel is not supported for {self.service_connection.type.name}"
+        )
+
+    def yield_bulk_datamodel(
+        self, _
+    ) -> Optional[Iterable[CreateDashboardDataModelRequest]]:
+        """
+        Method to fetch DataModels in bulk
+        """
+
+        logger.debug(
+            f"DataModel is not supported for {self.service_connection.type.name}"
+        )
+
     def yield_dashboard_lineage(
         self, dashboard_details: Any
     ) -> Optional[Iterable[AddLineageRequest]]:
@@ -232,6 +290,10 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
 
         We will look for the data in all the services
         we have informed.
+
+        TODO: This we'll need to not make it dependant
+          on the dbServiceNames since our lineage will now be
+          model -> dashboard
         """
         for db_service_name in self.source_config.dbServiceNames or []:
             yield from self.yield_dashboard_lineage_details(
@@ -328,16 +390,23 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
 
     @staticmethod
     def _get_add_lineage_request(
-        to_entity: Dashboard, from_entity: Table
+        to_entity: Union[Dashboard, DashboardDataModel],
+        from_entity: Union[Table, DashboardDataModel],
     ) -> Optional[AddLineageRequest]:
         if from_entity and to_entity:
             return AddLineageRequest(
                 edge=EntitiesEdge(
                     fromEntity=EntityReference(
-                        id=from_entity.id.__root__, type="table"
+                        id=from_entity.id.__root__,
+                        type="table"
+                        if isinstance(from_entity, Table)
+                        else "dashboardDataModel",
                     ),
                     toEntity=EntityReference(
-                        id=to_entity.id.__root__, type="dashboard"
+                        id=to_entity.id.__root__,
+                        type="dashboard"
+                        if isinstance(to_entity, Dashboard)
+                        else "dashboardDataModel",
                     ),
                 )
             )
@@ -377,3 +446,25 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
 
     def prepare(self):
         pass
+
+    def fqn_from_context(self, stage: NodeStage, entity_request: C) -> str:
+        """
+        We are overriding this method since CreateDashboardDataModelRequest needs to add an extra value to the context
+        names.
+
+        Read the context
+        :param stage: Topology node being processed
+        :param entity_request: Request sent to the sink
+        :return: Entity FQN derived from context
+        """
+        context_names = [
+            self.context.__dict__[dependency].name.__root__
+            for dependency in stage.consumer or []  # root nodes do not have consumers
+        ]
+
+        if isinstance(entity_request, CreateDashboardDataModelRequest):
+            context_names.append("model")
+
+        return fqn._build(  # pylint: disable=protected-access
+            *context_names, entity_request.name.__root__
+        )

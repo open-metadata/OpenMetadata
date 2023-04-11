@@ -17,6 +17,7 @@ import { t } from 'i18next';
 import { isUndefined } from 'lodash';
 import Qs from 'qs';
 import { getPartialNameFromFQN } from 'utils/CommonUtils';
+import i18n from 'utils/i18next/LocalUtil';
 import { getSettingPath } from '../utils/RouterUtils';
 import { getEncodedFqn } from '../utils/StringsUtils';
 import { FQN_SEPARATOR_CHAR } from './char.constants';
@@ -100,7 +101,7 @@ export const PLACEHOLDER_ROUTE_SERVICE_CAT = ':serviceCategory';
 export const PLACEHOLDER_ROUTE_TAB = ':tab';
 export const PLACEHOLDER_ROUTE_FQN = ':fqn';
 export const PLACEHOLDER_ROUTE_TEAM_AND_USER = ':teamAndUser';
-export const PLAEHOLDER_ROUTE_VERSION = ':version';
+export const PLACEHOLDER_ROUTE_VERSION = ':version';
 export const PLACEHOLDER_ROUTE_ENTITY_TYPE = ':entityType';
 export const PLACEHOLDER_ROUTE_ENTITY_FQN = ':entityFQN';
 export const PLACEHOLDER_ROUTE_QUERY_ID = ':queryId';
@@ -124,6 +125,7 @@ export const INGESTION_NAME = ':ingestionName';
 export const LOG_ENTITY_NAME = ':logEntityName';
 export const KPI_NAME = ':kpiName';
 export const PLACEHOLDER_ACTION = ':action';
+export const PLACEHOLDER_ROUTE_DATA_MODEL_FQN = ':dashboardDataModelFQN';
 
 export const pagingObject = { after: '', before: '', total: 0 };
 
@@ -207,11 +209,13 @@ export const ROUTES = {
   ACCOUNT_ACTIVATION: '/users/registrationConfirmation',
   TABLE_DETAILS: `/table/${PLACEHOLDER_ROUTE_TABLE_FQN}`,
   TABLE_DETAILS_WITH_TAB: `/table/${PLACEHOLDER_ROUTE_TABLE_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
-  ENTITY_VERSION: `/${PLACEHOLDER_ROUTE_ENTITY_TYPE}/${PLACEHOLDER_ROUTE_ENTITY_FQN}/versions/${PLAEHOLDER_ROUTE_VERSION}`,
+  ENTITY_VERSION: `/${PLACEHOLDER_ROUTE_ENTITY_TYPE}/${PLACEHOLDER_ROUTE_ENTITY_FQN}/versions/${PLACEHOLDER_ROUTE_VERSION}`,
   TOPIC_DETAILS: `/topic/${PLACEHOLDER_ROUTE_TOPIC_FQN}`,
   TOPIC_DETAILS_WITH_TAB: `/topic/${PLACEHOLDER_ROUTE_TOPIC_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
   DASHBOARD_DETAILS: `/dashboard/${PLACEHOLDER_ROUTE_DASHBOARD_FQN}`,
   DASHBOARD_DETAILS_WITH_TAB: `/dashboard/${PLACEHOLDER_ROUTE_DASHBOARD_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
+  DATA_MODEL_DETAILS: `/dashboardDataModel/${PLACEHOLDER_ROUTE_DATA_MODEL_FQN}`,
+  DATA_MODEL_DETAILS_WITH_TAB: `/dashboardDataModel/${PLACEHOLDER_ROUTE_DATA_MODEL_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
   DATABASE_DETAILS: `/database/${PLACEHOLDER_ROUTE_DATABASE_FQN}`,
   SCHEMA_DETAILS: `/databaseSchema/${PLACEHOLDER_ROUTE_DATABASE_SCHEMA_FQN}`,
   DATABASE_DETAILS_WITH_TAB: `/database/${PLACEHOLDER_ROUTE_DATABASE_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
@@ -232,7 +236,11 @@ export const ROUTES = {
   GLOSSARY_DETAILS: `/glossary/${PLACEHOLDER_GLOSSARY_NAME}`,
   GLOSSARY_DETAILS_WITH_ACTION: `/glossary/${PLACEHOLDER_GLOSSARY_NAME}/action/${PLACEHOLDER_ACTION}`,
   ADD_GLOSSARY_TERMS: `/glossary/${PLACEHOLDER_GLOSSARY_NAME}/add-term`,
-  GLOSSARY_TERMS: `/glossary/${PLACEHOLDER_GLOSSARY_NAME}/term/${PLACEHOLDER_GLOSSARY_TERMS_FQN}`,
+  GLOSSARY_DETAILS_WITH_TAB: `/glossary/${PLACEHOLDER_GLOSSARY_NAME}/${PLACEHOLDER_ROUTE_TAB}`,
+  GLOSSARY_VERSION: `/glossary/${PLACEHOLDER_GLOSSARY_NAME}/versions/${PLACEHOLDER_ROUTE_VERSION}`,
+  GLOSSARY_TERMS: `/glossary/${PLACEHOLDER_GLOSSARY_NAME}/term/${PLACEHOLDER_GLOSSARY_TERMS_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
+  GLOSSARY_TERMS_VERSION: `/glossary-term/${PLACEHOLDER_GLOSSARY_NAME}/versions/${PLACEHOLDER_ROUTE_VERSION}`,
+  GLOSSARY_TERMS_VERSION_TAB: `/glossary-term/${PLACEHOLDER_GLOSSARY_NAME}/versions/${PLACEHOLDER_ROUTE_VERSION}/${PLACEHOLDER_ROUTE_TAB}`,
   ADD_GLOSSARY_TERMS_CHILD: `/glossary/${PLACEHOLDER_GLOSSARY_NAME}/term/${PLACEHOLDER_GLOSSARY_TERMS_FQN}/add-term`,
   BOTS_PROFILE: `/bots/${PLACEHOLDER_BOTS_NAME}`,
   MLMODEL_DETAILS: `/mlmodel/${PLACEHOLDER_ROUTE_MLMODEL_FQN}`,
@@ -313,7 +321,7 @@ export const getVersionPath = (
   path = path
     .replace(PLACEHOLDER_ROUTE_ENTITY_TYPE, entityType)
     .replace(PLACEHOLDER_ROUTE_ENTITY_FQN, fqn)
-    .replace(PLAEHOLDER_ROUTE_VERSION, version);
+    .replace(PLACEHOLDER_ROUTE_VERSION, version);
 
   return path;
 };
@@ -438,6 +446,19 @@ export const getDashboardDetailsPath = (dashboardFQN: string, tab?: string) => {
   return path;
 };
 
+export const getDataModelDetailsPath = (dataModelFQN: string, tab?: string) => {
+  let path = tab
+    ? ROUTES.DATA_MODEL_DETAILS_WITH_TAB
+    : ROUTES.DATA_MODEL_DETAILS;
+  path = path.replace(PLACEHOLDER_ROUTE_DATA_MODEL_FQN, dataModelFQN);
+
+  if (tab) {
+    path = path.replace(PLACEHOLDER_ROUTE_TAB, tab);
+  }
+
+  return path;
+};
+
 export const getPipelineDetailsPath = (pipelineFQN: string, tab?: string) => {
   let path = tab ? ROUTES.PIPELINE_DETAILS_WITH_TAB : ROUTES.PIPELINE_DETAILS;
   path = path.replace(PLACEHOLDER_ROUTE_PIPELINE_FQN, pipelineFQN);
@@ -452,6 +473,20 @@ export const getPipelineDetailsPath = (pipelineFQN: string, tab?: string) => {
 export const getMlModelDetailsPath = (mlModelFQN: string, tab?: string) => {
   let path = tab ? ROUTES.MLMODEL_DETAILS_WITH_TAB : ROUTES.MLMODEL_DETAILS;
   path = path.replace(PLACEHOLDER_ROUTE_MLMODEL_FQN, mlModelFQN);
+
+  if (tab) {
+    path = path.replace(PLACEHOLDER_ROUTE_TAB, tab);
+  }
+
+  return path;
+};
+
+export const getGlossaryTermDetailsPath = (
+  glossaryFQN: string,
+  tab?: string
+) => {
+  let path = tab ? ROUTES.GLOSSARY_DETAILS_WITH_TAB : ROUTES.GLOSSARY_DETAILS;
+  path = path.replace(PLACEHOLDER_GLOSSARY_NAME, glossaryFQN);
 
   if (tab) {
     path = path.replace(PLACEHOLDER_ROUTE_TAB, tab);
@@ -570,4 +605,29 @@ export const VALIDATE_MESSAGES = {
   required: t('message.field-text-is-required', {
     fieldText: '${label}',
   }),
+};
+
+export const VALIDATION_MESSAGES = {
+  required: i18n.t('message.field-text-is-required', {
+    fieldText: '${label}',
+  }),
+  types: {
+    email: i18n.t('message.entity-is-not-valid', {
+      entity: '${label}',
+    }),
+  },
+  whitespace: i18n.t('message.field-text-is-required', {
+    fieldText: '${label}',
+  }),
+  string: {
+    range: i18n.t('message.entity-size-in-between', {
+      entity: '${label}',
+      min: '${min}',
+      max: '${max}',
+    }),
+  },
+};
+
+export const ERROR_MESSAGE = {
+  alreadyExist: 'already exists',
 };

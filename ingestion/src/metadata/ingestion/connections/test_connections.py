@@ -74,8 +74,10 @@ class TestConnectionStep(BaseModel):
 
     function: Callable
     name: str
-    description: Optional[str] = None
+    error_message: Optional[str]
+    description: Optional[str]
     mandatory: bool = True
+    short_circuit: bool = False
 
 
 class TestConnectionIngestionResult(BaseModel):
@@ -105,7 +107,7 @@ def _test_connection_steps(
 def _test_connection_steps_automation_workflow(
     metadata: OpenMetadata,
     steps: List[TestConnectionStep],
-    automation_workflow: Optional[AutomationWorkflow],
+    automation_workflow: AutomationWorkflow,
 ) -> None:
     """
     Run the test connection as part of the automation workflow
@@ -127,25 +129,25 @@ def _test_connection_steps_automation_workflow(
                     )
                 )
             except Exception as err:
+                logger.debug(traceback.format_exc())
+                logger.warning(f"{step.name}-{err}")
                 test_connection_result.steps.append(
                     TestConnectionStepResult(
                         name=step.name,
                         mandatory=step.mandatory,
                         passed=False,
-                        message=str(err),
+                        message=step.error_message,
+                        errorLog=str(err),
                     )
                 )
+                if step.short_circuit:
+                    # break the workflow if the step is a short circuit step
+                    break
 
             test_connection_result.lastUpdatedAt = datetime.now().timestamp()
-            updated_workflow = CreateWorkflowRequest(
-                name=automation_workflow.name,
-                description=automation_workflow.description,
-                workflowType=automation_workflow.workflowType,
-                request=automation_workflow.request,
-                response=test_connection_result,
-                status=WorkflowStatus.Running,
+            metadata.patch_automation_workflow_response(
+                automation_workflow, test_connection_result, WorkflowStatus.Running
             )
-            metadata.create_or_update(updated_workflow)
 
         test_connection_result.lastUpdatedAt = datetime.now().timestamp()
 
@@ -155,15 +157,8 @@ def _test_connection_steps_automation_workflow(
             else StatusType.Successful
         )
 
-        metadata.create_or_update(
-            CreateWorkflowRequest(
-                name=automation_workflow.name,
-                description=automation_workflow.description,
-                workflowType=automation_workflow.workflowType,
-                request=automation_workflow.request,
-                response=test_connection_result,
-                status=WorkflowStatus.Successful,
-            )
+        metadata.patch_automation_workflow_response(
+            automation_workflow, test_connection_result, WorkflowStatus.Successful
         )
 
     except Exception as err:
@@ -210,6 +205,10 @@ def _test_connection_steps_during_ingestion(steps: List[TestConnectionStep]) -> 
                     f"Failed due to: {exc}"
                 )
 
+            if step.short_circuit:
+                # break the workflow if the step is a short circuit step
+                break
+
     logger.info("Test connection results:")
     logger.info(test_connection_result)
 
@@ -241,7 +240,8 @@ def test_connection_steps(
 
     if not test_connection_definition:
         raise SourceConnectionException(
-            f"Test connection definition for {service_fqn} not found please validate the token."
+            f"Test connection definition for {service_fqn} not found please review the Server Configuration of the "
+            f"Workflow configuration. Check that the Security Configuration has been set up correctly."
         )
 
     steps = [
@@ -250,6 +250,8 @@ def test_connection_steps(
             description=step.description,
             mandatory=step.mandatory,
             function=test_fn[step.name],
+            error_message=step.errorMessage,
+            short_circuit=step.shortCircuit,
         )
         for step in test_connection_definition.steps
     ]
@@ -274,7 +276,7 @@ def test_connection_db_common(
     automation_workflow: Optional[AutomationWorkflow] = None,
     queries: dict = None,
     timeout_seconds: int = 3 * 60,
-) -> TestConnectionResult:
+) -> None:
 
     """
     Test connection. This can be executed either as part
@@ -287,7 +289,7 @@ def test_connection_db_common(
     service_connection: Service connection object of data source
     automation_workflow: Automation Workflow object expected when
                          test connection is hit via UI/Airflow
-    queries: expected when some queries has to be executed as part of
+    queries: expected when some queries have to be executed as part of
              test connection
     expected format for queries would be <TestConnectionStep>:<Query>
     queries = {
@@ -334,7 +336,7 @@ def test_connection_db_schema_sources(
     service_connection: Service connection object of data source
     automation_workflow: Automation Workflow object expected when
                          test connection is hit via UI/Airflow
-    queries: expected when some queries has to be executed as part of
+    queries: expected when some queries have to be executed as part of
              test connection
     expected format for queries would be <TestConnectionStep>:<Query>
     queries = {

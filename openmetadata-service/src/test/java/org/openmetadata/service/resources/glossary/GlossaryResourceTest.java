@@ -314,7 +314,16 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
         copyGlossaryTerm(updatedTerm, termToMove);
       }
     }
+
+    // Move a parent term g1.t1 to its child g1.t1.t11 should be disallowed
+    assertResponse(
+        () -> glossaryTermResourceTest.moveGlossaryTerm(g.getEntityReference(), t11.getEntityReference(), t1),
+        Status.BAD_REQUEST,
+        CatalogExceptionMessage.invalidGlossaryTermMove(t1.getFullyQualifiedName(), t11.getFullyQualifiedName()));
   }
+
+  @Test
+  void patch_moveGlossaryTermParentToChild() {}
 
   @Test
   void testCsvDocumentation() throws HttpResponseException {
@@ -328,7 +337,7 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
 
     // Create glossaryTerm with invalid parent
     String resultsHeader = recordToString(EntityCsv.getResultHeaders(GlossaryCsv.HEADERS));
-    String record = "invalidParent,g1,dsp1,dsc1,h1;h2;h3,,term1;http://term1,Tier.Tier1";
+    String record = "invalidParent,g1,dsp1,dsc1,h1;h2;h3,,term1;http://term1,Tier.Tier1,,,";
     String csv = createCsv(GlossaryCsv.HEADERS, listOf(record), null);
     CsvImportResult result = importCsv(glossaryName, csv, false);
     assertSummary(result, CsvImportResult.Status.FAILURE, 2, 1, 1);
@@ -336,7 +345,7 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
     assertRows(result, expectedRows);
 
     // Create glossaryTerm with invalid tags field
-    record = ",g1,dsp1,dsc1,h1;h2;h3,,term1;http://term1,Tag.invalidTag";
+    record = ",g1,dsp1,dsc1,h1;h2;h3,,term1;http://term1,Tag.invalidTag,,,";
     csv = createCsv(GlossaryCsv.HEADERS, listOf(record), null);
     result = importCsv(glossaryName, csv, false);
     assertSummary(result, CsvImportResult.Status.FAILURE, 2, 1, 1);
@@ -347,24 +356,35 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
   @Test
   void testGlossaryImportExport() throws IOException {
     Glossary glossary = createEntity(createRequest("importExportTest"), ADMIN_AUTH_HEADERS);
+    String user1 = USER1.getName();
+    String user2 = USER2.getName();
+    String team1 = TEAM1.getName();
 
-    // CSV Header "parent" "name" "displayName" "description" "synonyms" "relatedTerms" "references" "tags"
+    // CSV Header "parent" "name" "displayName" "description" "synonyms" "relatedTerms" "references" "tags",
+    // "reviewers", "owner", "status"
     // Create two records
     List<String> createRecords =
         listOf(
-            ",g1,dsp1,\"dsc1,1\",h1;h2;h3,,term1;http://term1,Tier.Tier1",
-            ",g2,dsp2,dsc3,h1;h3;h3,,term2;https://term2,Tier.Tier2",
-            "importExportTest.g1,g11,dsp2,dsc11,h1;h3;h3,,,");
+            String.format(
+                ",g1,dsp1,\"dsc1,1\",h1;h2;h3,,term1;http://term1,Tier.Tier1,%s;%s,user;%s,%s",
+                user1, user2, user1, "Approved"),
+            String.format(
+                ",g2,dsp2,dsc3,h1;h3;h3,,term2;https://term2,Tier.Tier2,%s,user;%s,%s", user1, user2, "Draft"),
+            String.format("importExportTest.g1,g11,dsp2,dsc11,h1;h3;h3,,,,%s,team;%s,%s", user1, team1, "Deprecated"));
 
     // Update terms with change in description
     List<String> updateRecords =
         listOf(
-            ",g1,dsp1,new-dsc1,h1;h2;h3,,term1;http://term1,Tier.Tier1",
-            ",g2,dsp2,new-dsc3,h1;h3;h3,,term2;https://term2,Tier.Tier2",
-            "importExportTest.g1,g11,dsp2,new-dsc11,h1;h3;h3,,,");
+            String.format(
+                ",g1,dsp1,new-dsc1,h1;h2;h3,,term1;http://term1,Tier.Tier1,%s;%s,user;%s,%s",
+                user1, user2, user1, "Approved"),
+            String.format(
+                ",g2,dsp2,new-dsc3,h1;h3;h3,,term2;https://term2,Tier.Tier2,%s,user;%s,%s", user1, user2, "Draft"),
+            String.format(
+                "importExportTest.g1,g11,dsp2,new-dsc11,h1;h3;h3,,,,%s,team;%s,%s", user1, team1, "Deprecated"));
 
     // Add new row to existing rows
-    List<String> newRecords = listOf(",g3,dsp0,dsc0,h1;h2;h3,,term0;http://term0,Tier.Tier3");
+    List<String> newRecords = listOf(",g3,dsp0,dsc0,h1;h2;h3,,term0;http://term0,Tier.Tier3,,,Draft");
     testImportExport(glossary.getName(), GlossaryCsv.HEADERS, createRecords, updateRecords, newRecords);
   }
 

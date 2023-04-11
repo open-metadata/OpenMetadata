@@ -93,7 +93,6 @@ import TasksDAGView from '../TasksDAGView/TasksDAGView';
 import { PipeLineDetailsProp } from './PipelineDetails.interface';
 
 const PipelineDetails = ({
-  entityName,
   slashedPipelineName,
   pipelineDetails,
   descriptionUpdateHandler,
@@ -119,6 +118,7 @@ const PipelineDetails = ({
     version,
     pipelineStatus,
     tags,
+    entityName,
   } = useMemo(() => {
     return {
       deleted: pipelineDetails.deleted,
@@ -129,6 +129,7 @@ const PipelineDetails = ({
       pipelineStatus: pipelineDetails.pipelineStatus,
       tier: getTierTags(pipelineDetails.tags ?? []),
       tags: getTagsWithoutTier(pipelineDetails.tags ?? []),
+      entityName: getEntityName(pipelineDetails),
     };
   }, [pipelineDetails]);
 
@@ -776,7 +777,7 @@ const PipelineDetails = ({
               ? onTierUpdate
               : undefined
           }
-          version={version + ''}
+          version={version}
           versionHandler={versionHandler}
           onRestoreEntity={handleRestorePipeline}
           onThreadLinkSelect={onThreadLinkSelect}

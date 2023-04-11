@@ -225,15 +225,11 @@ describe('Entity Details Page', () => {
   const removeOwnerAndTier = (value) => {
     visitEntityDetailsPage(value.term, value.serviceName, value.entity);
 
-    interceptURL(
-      'GET',
-      '/api/v1/search/query?q=*%20AND%20teamType:Group&from=0&size=15&index=team_search_index',
-      'waitForTeams'
-    );
+    interceptURL('GET', '/api/v1/users?&isBot=false&limit=15', 'waitForUsers');
 
     cy.get('[data-testid="edit-owner"]').should('be.visible').click();
 
-    verifyResponseStatusCode('@waitForTeams', 200);
+    verifyResponseStatusCode('@waitForUsers', 200);
 
     cy.get('.user-team-select-popover')
       .contains('Users')

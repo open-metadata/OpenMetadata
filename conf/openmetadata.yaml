@@ -244,6 +244,7 @@ pipelineServiceClientConfiguration:
   className: ${PIPELINE_SERVICE_CLIENT_CLASS_NAME:-"org.openmetadata.service.clients.pipeline.airflow.AirflowRESTClient"}
   apiEndpoint: ${PIPELINE_SERVICE_CLIENT_ENDPOINT:-http://localhost:8080}
   metadataApiEndpoint: ${SERVER_HOST_API_URL:-http://localhost:8585/api}
+  ingestionIpInfoEnabled: ${PIPELINE_SERVICE_IP_INFO_ENABLED:-false}
   hostIp: ${PIPELINE_SERVICE_CLIENT_HOST_IP:-""}
   verifySSL: ${PIPELINE_SERVICE_CLIENT_VERIFY_SSL:-"no-ssl"} # Possible values are "no-ssl", "ignore", "validate"
   sslConfig:
@@ -305,4 +306,19 @@ applicationConfig:
     maxLoginFailAttempts: ${OM_MAX_FAILED_LOGIN_ATTEMPTS:-3}
     accessBlockTime: ${OM_LOGIN_ACCESS_BLOCK_TIME:-600}
     jwtTokenExpiryTime: ${OM_JWT_EXPIRY_TIME:-3600}
+
+
+web:
+  uriPath: /api
+  hsts:
+    enabled: true
+  frame-options:
+    enabled: true
+  content-type-options:
+    enabled: true
+  xss-protection:
+    enabled: true
+
+changeEventConfig:
+  omUri: ${OM_URI:- "http://localhost:8585"} #openmetadata in om uri for eg http://localhost:8585
 
