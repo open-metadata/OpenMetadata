@@ -44,10 +44,6 @@ PD_AVRO_FIELD_MAP = {
 }
 
 AVRO_SCHEMA = "avro.schema"
-
-class InvalidAvroBinaryEncoding(Exception):
-    """For invalid numbers of bytes read."""
-
 COMPLEX_COLUMN_SEPARATOR = "_##"
 
 

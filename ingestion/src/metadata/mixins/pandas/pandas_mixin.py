@@ -80,7 +80,7 @@ class PandasInterfaceMixin:
             for df in dfs
         ]
 
-    def return_ometa_dataframes_sampled(  # pylint: disable=inconsistent-return-statements
+    def return_ometa_dataframes_sampled(
         self, service_connection_config, client, table, profile_sample_config
     ):
         """

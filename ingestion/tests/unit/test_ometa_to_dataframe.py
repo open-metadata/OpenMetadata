@@ -67,7 +67,6 @@ def test_return_ometa_dataframes_sampled(test_connection):
         assert type(resp) == list
 
 
-
 @patch(
     "metadata.ingestion.source.database.database_service.DatabaseServiceSource.test_connection"
 )

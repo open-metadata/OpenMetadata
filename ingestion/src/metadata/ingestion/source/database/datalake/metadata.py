@@ -665,6 +665,25 @@ class DatalakeSource(DatabaseServiceSource):
             logger.warning(f"Unexpected exception parsing column [{column}]: {exc}")
 
     @staticmethod
+    def fetch_col_types(data_frame, column_name):
+        data_type = DATALAKE_DATA_TYPES.get(
+            data_frame[column_name].dtypes.name, DataType.STRING.value
+        )
+        if data_type == DataType.FLOAT.value:
+            try:
+                if data_frame[column_name].dropna().any():
+                    if isinstance(data_frame[column_name].iloc[0], dict):
+                        return DataType.JSON.value
+                    if isinstance(data_frame[column_name].iloc[0], str):
+                        return DataType.STRING.value
+            except Exception as err:
+                logger.warning(
+                    f"Failed to disinguish data type for column {column_name}, Falling back to {data_type}, exc: {err}"
+                )
+                logger.debug(traceback.format_exc())
+        return data_type
+
+    @staticmethod
     def get_columns(data_frame):
         """
         method to process column details
@@ -689,8 +708,8 @@ class DatalakeSource(DatabaseServiceSource):
                     data_type = DataType.STRING.value
                     try:
                         if hasattr(data_frame[column], "dtypes"):
-                            data_type = DATALAKE_DATA_TYPES.get(
-                                data_frame[column].dtypes.name, DataType.STRING.value
+                            data_type = DatalakeSource.fetch_col_types(
+                                data_frame, column_name=column
                             )
 
                         parsed_string = {
