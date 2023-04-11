@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Card, Form, Input, Select, Space, Typography } from 'antd';
+import { Button, Card, Form, FormProps, Input, Space, Typography } from 'antd';
 import { useForm } from 'antd/es/form/Form';
 import { DefaultOptionType } from 'antd/lib/select';
 import { AxiosError } from 'axios';
@@ -21,39 +21,40 @@ import { TitleBreadcrumbProps } from 'components/common/title-breadcrumb/title-b
 import PageContainerV1 from 'components/containers/PageContainerV1';
 import PageLayoutV1 from 'components/containers/PageLayoutV1';
 import SchemaEditor from 'components/schema-editor/SchemaEditor';
-import { PAGE_SIZE_BASE } from 'constants/constants';
-import { INITIAL_PAGING_VALUE } from 'constants/constants';
-import { PAGE_SIZE_MEDIUM } from 'constants/constants';
 import {
-  getServiceDetailsPath,
   getDatabaseDetailsPath,
   getDatabaseSchemaDetailsPath,
+  getServiceDetailsPath,
   getTableTabPath,
-  PAGE_SIZE,
+  INITIAL_PAGING_VALUE,
+  PAGE_SIZE_MEDIUM,
 } from 'constants/constants';
 import { CSMode } from 'enums/codemirror.enum';
-import { SORT_ORDER } from 'enums/common.enum';
-import { FqnPart } from 'enums/entity.enum';
+import { EntityType, FqnPart } from 'enums/entity.enum';
 import { SearchIndex } from 'enums/search.enum';
 import { ServiceCategory } from 'enums/service.enum';
+import { OwnerType } from 'enums/user.enum';
 import { CreateQuery } from 'generated/api/data/createQuery';
 import { Table } from 'generated/entity/data/table';
-import { debounce, get, uniq, uniqBy } from 'lodash';
-import React, { useEffect, useMemo, useState } from 'react';
+import { isEmpty, uniqBy } from 'lodash';
+import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router-dom';
 import { searchData } from 'rest/miscAPI';
-import { searchQuery } from 'rest/searchAPI';
+import { postQuery } from 'rest/queryAPI';
 import { getTableDetailsByFQN } from 'rest/tableAPI';
-import { getPartialNameFromTableFQN } from 'utils/CommonUtils';
+import {
+  getCurrentUserId,
+  getPartialNameFromTableFQN,
+} from 'utils/CommonUtils';
 import { getEntityName } from 'utils/EntityUtils';
 import { serviceTypeLogo } from 'utils/ServiceUtils';
-import { showErrorToast } from 'utils/ToastUtils';
+import { showErrorToast, showSuccessToast } from 'utils/ToastUtils';
 
 const AddQueryPage = () => {
   const { t } = useTranslation();
   const { datasetFQN } = useParams<{ datasetFQN: string }>();
-  const [form] = useForm<CreateQuery>();
+  const [form] = useForm();
   const [titleBreadcrumb, setTitleBreadcrumb] = useState<
     TitleBreadcrumbProps['titleLinks']
   >([]);
@@ -61,6 +62,7 @@ const AddQueryPage = () => {
   const [sqlQuery, setSqlQuery] = useState<string>('');
   const [table, setTable] = useState<Table>();
   const [initialOptions, setInitialOptions] = useState<DefaultOptionType[]>();
+  const [isSaving, setIsSaving] = useState(false);
 
   const fetchEntityDetails = async () => {
     try {
@@ -126,6 +128,7 @@ const AddQueryPage = () => {
         label: getEntityName(value._source),
         value: value._source.id,
       }));
+
       return table
         ? uniqBy(
             [...options, { value: table.id, label: getEntityName(table) }],
@@ -159,9 +162,37 @@ const AddQueryPage = () => {
     }
   }, [table]);
 
-  const handleSubmit = () => {};
   const handleCancelClick = () => {
     history.back();
+  };
+
+  const handleSubmit: FormProps['onFinish'] = async (values) => {
+    const updatedValues: CreateQuery = {
+      ...values,
+      description: isEmpty(description) ? undefined : description,
+      owner: {
+        id: getCurrentUserId(),
+        type: OwnerType.USER,
+      },
+      queryUsedIn: values.queryUsedIn
+        ? values.queryUsedIn.map((id: string) => ({
+            id,
+            type: EntityType.TABLE,
+          }))
+        : undefined,
+    };
+
+    try {
+      await postQuery(updatedValues);
+      showSuccessToast(
+        t('server.create-entity-success', { entity: t('label.query') })
+      );
+      setIsSaving(false);
+      handleCancelClick();
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -177,14 +208,14 @@ const AddQueryPage = () => {
               data-testid="form-title">
               {t('label.add-new-entity', { entity: t('label.query') })}
             </Typography.Paragraph>
-            <Form<CreateQuery>
-              form={form}
+            <Form
               data-testid="query-form"
+              form={form}
               id="query-form"
-              layout="vertical"
               initialValues={{
                 queryUsedIn: table ? [table.id] : undefined,
               }}
+              layout="vertical"
               onFinish={handleSubmit}>
               <Form.Item
                 label={`${t('label.name')}:`}
@@ -199,7 +230,9 @@ const AddQueryPage = () => {
                 ]}>
                 <Input
                   data-testid="name"
-                  placeholder={t('label.role-name')}
+                  placeholder={t('label.enter-entity', {
+                    entity: t('label.name'),
+                  })}
                   type="text"
                 />
               </Form.Item>
@@ -208,15 +241,24 @@ const AddQueryPage = () => {
                 name="displayName">
                 <Input
                   data-testid="display-name"
-                  placeholder={t('label.role-name')}
+                  placeholder={t('label.enter-entity', {
+                    entity: t('label.display-name'),
+                  })}
                   type="text"
                 />
               </Form.Item>
               <Form.Item
-                required
                 data-testid="sql-editor-container"
                 label={t('label.sql-uppercase-query')}
-                name="query">
+                name="query"
+                rules={[
+                  {
+                    required: true,
+                    message: t('label.field-required', {
+                      field: t('label.sql-uppercase-query'),
+                    }),
+                  },
+                ]}>
                 <SchemaEditor
                   className="custom-query-editor query-editor-h-200 custom-code-mirror-theme"
                   mode={{ name: CSMode.SQL }}
@@ -242,9 +284,9 @@ const AddQueryPage = () => {
                 label={`${t('label.query-used-in')}:`}
                 name="queryUsedIn">
                 <AsyncSelect
-                  options={initialOptions}
                   api={fetchTableEntity}
                   mode="multiple"
+                  options={initialOptions}
                   placeholder={t('label.please-select-entity', {
                     entity: t('label.query-used-in'),
                   })}
@@ -255,7 +297,9 @@ const AddQueryPage = () => {
                   <Button type="default" onClick={handleCancelClick}>
                     {t('label.cancel')}
                   </Button>
-                  <Button type="primary">{t('label.save')}</Button>
+                  <Button htmlType="submit" loading={isSaving} type="primary">
+                    {t('label.save')}
+                  </Button>
                 </Space>
               </Form.Item>
             </Form>

@@ -607,6 +607,7 @@
     "query-lowercase": "query",
     "query-lowercase-plural": "queries",
     "query-plural": "Queries",
+    "query-used-in": "Query Used In",
     "range": "Range",
     "re-deploy": "Re Deploy",
     "re-enter-new-password": "Re-enter New Password",
@@ -884,8 +885,7 @@
     "weekly-usage": "Weekly Usage",
     "whats-new": "What's New",
     "yes": "Yes",
-    "your-entity": "Your {{entity}}",
-    "query-used-in": "Query Used In"
+    "your-entity": "Your {{entity}}"
   },
   "message": {
     "access-to-collaborate": "Allow open access for anyone to join the team, view data, and collaborate.",

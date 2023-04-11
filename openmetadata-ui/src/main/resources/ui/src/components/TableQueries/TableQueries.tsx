@@ -24,6 +24,7 @@ import {
   PAGE_SIZE,
   pagingObject,
 } from 'constants/constants';
+import { USAGE_DOCS } from 'constants/docs.constants';
 import {
   QUERY_PAGE_ERROR_STATE,
   QUERY_PAGE_LOADING_STATE,
@@ -52,6 +53,7 @@ import {
   parseSearchParams,
   stringifySearchParams,
 } from 'utils/Query/QueryUtils';
+import { getAddQueryPath } from 'utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder';
 import Loader from '../Loader/Loader';
@@ -63,8 +65,6 @@ import {
   TableQueriesProp,
 } from './TableQueries.interface';
 import TableQueryRightPanel from './TableQueryRightPanel/TableQueryRightPanel.component';
-import { getAddQueryPath } from 'utils/RouterUtils';
-import { USAGE_DOCS } from 'constants/docs.constants';
 
 const TableQueries: FC<TableQueriesProp> = ({
   isTableDeleted,
@@ -343,10 +343,10 @@ const TableQueries: FC<TableQueriesProp> = ({
     return (
       <div className="flex-center font-medium h-full" data-testid="no-queries">
         <ErrorPlaceHolder
-          heading={t('label.query-lowercase-plural')}
-          type={ERROR_PLACEHOLDER_TYPE.ADD}
           buttons={addButton}
           doc={USAGE_DOCS}
+          heading={t('label.query-lowercase-plural')}
+          type={ERROR_PLACEHOLDER_TYPE.ADD}
         />
       </div>
     );
