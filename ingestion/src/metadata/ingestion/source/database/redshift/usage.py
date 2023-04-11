@@ -19,7 +19,6 @@ from metadata.ingestion.source.database.usage_source import UsageSource
 
 
 class RedshiftUsageSource(RedshiftQueryParserSource, UsageSource):
-
     filters = """
         AND querytxt NOT ILIKE 'fetch %%'
         AND querytxt NOT ILIKE 'padb_fetch_sample: %%'

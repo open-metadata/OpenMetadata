@@ -277,7 +277,6 @@ def test_connection_db_common(
     queries: dict = None,
     timeout_seconds: int = 3 * 60,
 ) -> None:
-
     """
     Test connection. This can be executed either as part
     of a metadata workflow or during an Automation Workflow
