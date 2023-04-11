@@ -11,22 +11,20 @@
  *  limitations under the License.
  */
 
-import { Button } from 'antd';
+import { Button, Dropdown, Space } from 'antd';
 import classNames from 'classnames';
-import { startCase } from 'lodash';
-import React, { useMemo, useState } from 'react';
-import { useTranslation } from 'react-i18next';
+import React, { useCallback, useMemo } from 'react';
 import { useHistory } from 'react-router-dom';
 import {
+  getIngestionButtonText,
   getIngestionTypes,
+  getMenuItems,
   getSupportedPipelineTypes,
 } from 'utils/IngestionUtils';
-import { PIPELINE_TYPE_LOCALIZATION } from '../../constants/Ingestions.constant';
+import { ReactComponent as DropdownIcon } from '../../assets/svg/DropDown.svg';
 import { MetadataServiceType } from '../../generated/api/services/createMetadataService';
 import { PipelineType } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { getAddIngestionPath } from '../../utils/RouterUtils';
-import { dropdownIcon as DropdownIcon } from '../../utils/svgconstant';
-import DropDownList from '../dropdown/DropDownList';
 import { AddIngestionButtonProps } from './AddIngestionButton.interface';
 
 function AddIngestionButton({
@@ -38,9 +36,7 @@ function AddIngestionButton({
   ingestionList,
   permissions,
 }: AddIngestionButtonProps) {
-  const { t } = useTranslation();
   const history = useHistory();
-  const [showActions, setShowActions] = useState(false);
 
   const isOpenMetadataService = useMemo(
     () =>
@@ -54,12 +50,12 @@ function AddIngestionButton({
     [serviceDetails]
   );
 
-  const handleAddIngestionClick = (type?: PipelineType) => {
-    setShowActions(false);
-    if (type) {
+  const handleAddIngestionClick = useCallback(
+    (type: PipelineType) => {
       history.push(getAddIngestionPath(serviceCategory, serviceName, type));
-    }
-  };
+    },
+    [serviceCategory, serviceName]
+  );
 
   const isDataSightIngestionExists = useMemo(
     () =>
@@ -80,7 +76,7 @@ function AddIngestionButton({
     [pipelineType, supportedPipelineTypes, isOpenMetadataService, ingestionList]
   );
 
-  // Check if service has atleast one metadata pipeline available or not
+  // Check if service has at least one metadata pipeline available or not
   const hasMetadata = useMemo(
     () =>
       ingestionList.find(
@@ -92,80 +88,36 @@ function AddIngestionButton({
     return null;
   }
 
-  // if service has metadata then show all available option
-  if (hasMetadata) {
-    return (
-      <>
-        <Button
-          className={classNames('h-8 rounded-4 m-b-xs d-flex items-center')}
-          data-testid="add-new-ingestion-button"
-          disabled={!permissions.Create}
-          size="small"
-          type="primary"
-          onClick={() => setShowActions((pre) => !pre)}>
-          {t('label.add-entity', { entity: t('label.ingestion-lowercase') })}
-          {showActions ? (
-            <DropdownIcon
-              style={{
-                transform: 'rotate(180deg)',
-                verticalAlign: 'middle',
-                color: '#fff',
-              }}
-            />
-          ) : (
-            <DropdownIcon
-              style={{
-                color: '#fff',
-                verticalAlign: 'middle',
-              }}
-            />
-          )}
-        </Button>
-        {showActions && (
-          <DropDownList
-            horzPosRight
-            dropDownList={types.map((type) => ({
-              name: t('label.add-workflow-ingestion', {
-                workflow: t(`label.${PIPELINE_TYPE_LOCALIZATION[type]}`),
-              }),
-              disabled:
-                type === PipelineType.DataInsight
-                  ? isDataSightIngestionExists
-                  : false,
-              value: type,
-            }))}
-            onSelect={(_e, value) =>
-              handleAddIngestionClick(value as PipelineType)
-            }
-          />
-        )}
-      </>
-    );
-  }
-
-  /**
-   * If service does not have any metadata pipeline then
-   * show only option for metadata ingestion
-   */
   return (
-    <Button
-      className={classNames('h-8 rounded-4 m-b-xs')}
-      data-testid="add-new-ingestion-button"
-      size="small"
-      type="primary"
-      onClick={() =>
-        handleAddIngestionClick(
-          pipelineType ? pipelineType : PipelineType.Metadata
-        )
-      }>
-      {pipelineType === PipelineType.ElasticSearchReindex
-        ? t('label.deploy-search-index-pipeline')
-        : t('label.add-workflow-ingestion', {
-            workflow: startCase(
-              pipelineType ? pipelineType : PipelineType.Metadata
-            ),
-          })}
-    </Button>
+    <Dropdown
+      menu={{
+        items: getMenuItems(types, isDataSightIngestionExists),
+        onClick: (item) => {
+          handleAddIngestionClick(item.key as PipelineType);
+        },
+      }}
+      placement="bottomRight"
+      trigger={['click']}>
+      <Button
+        className={classNames('h-8 rounded-4 m-b-xs')}
+        data-testid="add-new-ingestion-button"
+        disabled={!permissions.Create}
+        size="small"
+        type="primary"
+        onClick={
+          hasMetadata
+            ? undefined
+            : () =>
+                handleAddIngestionClick(
+                  pipelineType ? pipelineType : PipelineType.Metadata
+                )
+        }>
+        <Space>
+          {getIngestionButtonText(hasMetadata, pipelineType)}
+          {hasMetadata && <DropdownIcon height={14} width={14} />}
+        </Space>
+      </Button>
+    </Dropdown>
   );
 }
 

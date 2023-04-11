@@ -246,3 +246,37 @@ export const getErrorPlaceHolder = (
 
   return null;
 };
+
+export const getMenuItems = (
+  types: PipelineType[],
+  isDataSightIngestionExists: boolean
+) => {
+  return types.map((type) => ({
+    label: t('label.add-workflow-ingestion', {
+      workflow: t(`label.${PIPELINE_TYPE_LOCALIZATION[type]}`),
+    }),
+    key: type,
+    disabled:
+      type === PipelineType.DataInsight ? isDataSightIngestionExists : false,
+    ['data-testid']: 'list-item',
+  }));
+};
+
+export const getIngestionButtonText = (
+  hasMetadata?: IngestionPipeline,
+  pipelineType?: PipelineType
+) => {
+  if (hasMetadata) {
+    return t('label.add-entity', {
+      entity: t('label.ingestion-lowercase'),
+    });
+  } else {
+    return pipelineType === PipelineType.ElasticSearchReindex
+      ? t('label.deploy-search-index-pipeline')
+      : t('label.add-workflow-ingestion', {
+          workflow: startCase(
+            pipelineType ? pipelineType : PipelineType.Metadata
+          ),
+        });
+  }
+};
