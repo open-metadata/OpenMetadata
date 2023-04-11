@@ -58,9 +58,14 @@ jest.mock('rest/queryAPI', () => ({
     ),
 }));
 jest.mock('components/PermissionProvider/PermissionProvider', () => ({
-  usePermissionProvider: jest
-    .fn()
-    .mockImplementation(() => ({ getEntityPermission: jest.fn() })),
+  usePermissionProvider: jest.fn().mockImplementation(() => ({
+    getEntityPermission: jest.fn(),
+    permissions: {
+      query: {
+        Create: true,
+      },
+    },
+  })),
 }));
 jest.mock('rest/miscAPI', () => ({
   getSearchedUsers: jest
@@ -78,10 +83,12 @@ describe('Test TableQueries Component', () => {
       'TableQueryRightPanel.component'
     );
     const queryFilters = await screen.findByText('QueryFilters.component');
+    const addQueryBtn = await screen.findByTestId('add-query-btn');
 
     expect(queriesContainer).toBeInTheDocument();
     expect(rightPanel).toBeInTheDocument();
     expect(queryFilters).toBeInTheDocument();
+    expect(addQueryBtn).toBeInTheDocument();
   });
 
   it('All the query should render', async () => {

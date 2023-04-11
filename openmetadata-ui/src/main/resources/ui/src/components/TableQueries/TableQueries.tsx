@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Row, Space } from 'antd';
+import { Button, Col, Row, Space, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
 import NextPrevious from 'components/common/next-previous/NextPrevious';
 import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
@@ -25,6 +25,7 @@ import {
   pagingObject,
 } from 'constants/constants';
 import { USAGE_DOCS } from 'constants/docs.constants';
+import { NO_PERMISSION_FOR_ACTION } from 'constants/HelperTextUtil';
 import {
   QUERY_PAGE_ERROR_STATE,
   QUERY_PAGE_LOADING_STATE,
@@ -109,7 +110,7 @@ const TableQueries: FC<TableQueriesProp> = ({
     QueryFiltersType | undefined
   >(selectedFilters);
 
-  const { getEntityPermission } = usePermissionProvider();
+  const { getEntityPermission, permissions } = usePermissionProvider();
 
   const isNumberBasedPaging = useMemo(
     () => Boolean(appliedFilter?.team.length || appliedFilter?.user.length),
@@ -331,9 +332,17 @@ const TableQueries: FC<TableQueriesProp> = ({
   };
 
   const addButton = (
-    <Button type="primary" onClick={handleAddQueryClick}>
-      {t('label.add-entity', { entity: t('label.query') })}
-    </Button>
+    <Tooltip
+      placement="top"
+      title={!permissions?.query.Create && NO_PERMISSION_FOR_ACTION}>
+      <Button
+        data-testid="add-query-btn"
+        disabled={!permissions?.query.Create}
+        type="primary"
+        onClick={handleAddQueryClick}>
+        {t('label.add-entity', { entity: t('label.query') })}
+      </Button>
+    </Tooltip>
   );
 
   if (isLoading.page) {
@@ -389,9 +398,7 @@ const TableQueries: FC<TableQueriesProp> = ({
           <Col span={24}>
             <Space className="justify-between w-full">
               <QueryFilters onFilterChange={onOwnerFilterChange} />
-              <Button type="primary" onClick={handleAddQueryClick}>
-                {t('label.add-entity', { entity: t('label.query') })}
-              </Button>
+              {addButton}
             </Space>
           </Col>
 

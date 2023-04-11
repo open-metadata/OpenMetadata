@@ -10,8 +10,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Card, Form, FormProps, Input, Space, Typography } from 'antd';
-import { useForm } from 'antd/es/form/Form';
+import {
+  Button,
+  Card,
+  Form,
+  FormProps,
+  Input,
+  Space,
+  Tooltip,
+  Typography,
+} from 'antd';
 import { DefaultOptionType } from 'antd/lib/select';
 import { AxiosError } from 'axios';
 import { AsyncSelect } from 'components/AsyncSelect/AsyncSelect';
@@ -20,6 +28,7 @@ import TitleBreadcrumb from 'components/common/title-breadcrumb/title-breadcrumb
 import { TitleBreadcrumbProps } from 'components/common/title-breadcrumb/title-breadcrumb.interface';
 import PageContainerV1 from 'components/containers/PageContainerV1';
 import PageLayoutV1 from 'components/containers/PageLayoutV1';
+import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
 import SchemaEditor from 'components/schema-editor/SchemaEditor';
 import {
   getDatabaseDetailsPath,
@@ -29,6 +38,7 @@ import {
   INITIAL_PAGING_VALUE,
   PAGE_SIZE_MEDIUM,
 } from 'constants/constants';
+import { NO_PERMISSION_FOR_ACTION } from 'constants/HelperTextUtil';
 import { CSMode } from 'enums/codemirror.enum';
 import { EntityType, FqnPart } from 'enums/entity.enum';
 import { SearchIndex } from 'enums/search.enum';
@@ -54,7 +64,8 @@ import { showErrorToast, showSuccessToast } from 'utils/ToastUtils';
 const AddQueryPage = () => {
   const { t } = useTranslation();
   const { datasetFQN } = useParams<{ datasetFQN: string }>();
-  const [form] = useForm();
+  const { permissions } = usePermissionProvider();
+  const [form] = Form.useForm();
   const [titleBreadcrumb, setTitleBreadcrumb] = useState<
     TitleBreadcrumbProps['titleLinks']
   >([]);
@@ -296,12 +307,26 @@ const AddQueryPage = () => {
               </Form.Item>
               <Form.Item>
                 <Space className="w-full justify-end" size={16}>
-                  <Button type="default" onClick={handleCancelClick}>
+                  <Button
+                    data-testid="cancel-btn"
+                    type="default"
+                    onClick={handleCancelClick}>
                     {t('label.cancel')}
                   </Button>
-                  <Button htmlType="submit" loading={isSaving} type="primary">
-                    {t('label.save')}
-                  </Button>
+                  <Tooltip
+                    placement="top"
+                    title={
+                      !permissions.query.Create && NO_PERMISSION_FOR_ACTION
+                    }>
+                    <Button
+                      data-testid="save-btn"
+                      disabled={!permissions.query.Create}
+                      htmlType="submit"
+                      loading={isSaving}
+                      type="primary">
+                      {t('label.save')}
+                    </Button>
+                  </Tooltip>
                 </Space>
               </Form.Item>
             </Form>
