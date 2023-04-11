@@ -53,9 +53,8 @@ class TestStringMethods(unittest.TestCase):
     def test_return_ometa_dataframes_sampled(self, test_connection):
         with patch(
             "metadata.mixins.pandas.pandas_mixin.ometa_to_dataframe",
-            return_value=resp_parquet_file,
+            return_value=[resp_parquet_file],
         ):
-            mock_datalake_config
             config = OpenMetadataWorkflowConfig.parse_obj(mock_datalake_config)
             datalake_source = DatalakeSource.create(
                 mock_datalake_config["source"],
@@ -76,17 +75,20 @@ class TestStringMethods(unittest.TestCase):
             "metadata.mixins.pandas.pandas_mixin.ometa_to_dataframe",
             return_value=None,
         ):
-            config = OpenMetadataWorkflowConfig.parse_obj(mock_datalake_config)
-            datalake_source = DatalakeSource.create(
-                mock_datalake_config["source"],
-                config.workflowConfig.openMetadataServerConfig,
-            )
-            resp = PandasInterfaceMixin().return_ometa_dataframes_sampled(
-                service_connection_config=datalake_source.service_connection,
-                client=None,
-                table=Table(
-                    id="1dabab2c-0d15-41ca-a834-7c0421d9c951", name="test", columns=[]
-                ),
-                profile_sample_config=None,
-            )
-            self.assertEqual(resp, None)
+            with self.assertRaises(TypeError) as context:
+                config = OpenMetadataWorkflowConfig.parse_obj(mock_datalake_config)
+                datalake_source = DatalakeSource.create(
+                    mock_datalake_config["source"],
+                    config.workflowConfig.openMetadataServerConfig,
+                )
+                resp = PandasInterfaceMixin().return_ometa_dataframes_sampled(
+                    service_connection_config=datalake_source.service_connection,
+                    client=None,
+                    table=Table(
+                        id="1dabab2c-0d15-41ca-a834-7c0421d9c951",
+                        name="test",
+                        columns=[],
+                    ),
+                    profile_sample_config=None,
+                )
+            self.assertEqual(context.exception.args[0], "Couldn't fetch test")
