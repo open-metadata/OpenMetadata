@@ -99,12 +99,6 @@ class DatabaseServiceTopology(ServiceTopology):
                 overwrite=False,
                 must_return=True,
             ),
-            NodeStage(
-                type_=StorageService,
-                context="storage_service",
-                processor="yield_storage_service",
-                nullable=True,
-            ),
         ],
         children=["database"],
         post_process=["yield_view_lineage", "yield_table_constraints"],
