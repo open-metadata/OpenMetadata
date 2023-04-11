@@ -31,6 +31,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
 from metadata.ingestion.source.pipeline.pipeline_service import PipelineServiceSource
+from metadata.utils.helpers import clean_uri
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -113,7 +114,7 @@ class NifiSource(PipelineServiceSource):
                 Task(
                     name=processor.id_,
                     displayName=processor.name,
-                    taskUrl=processor.uri.replace(self.service_connection.hostPort, ""),
+                    taskUrl=f"{clean_uri(self.service_connection.hostPort)}{processor.uri}",
                     taskType=processor.type_,
                     downstreamTasks=self._get_downstream_tasks_from(
                         source_id=processor.id_,
@@ -140,9 +141,7 @@ class NifiSource(PipelineServiceSource):
         pipeline_request = CreatePipelineRequest(
             name=pipeline_details.id_,
             displayName=pipeline_details.name,
-            pipelineUrl=pipeline_details.uri.replace(
-                self.service_connection.hostPort, ""
-            ),
+            pipelineUrl=f"{clean_uri(self.service_connection.hostPort)}{pipeline_details.uri}",
             tasks=self._get_tasks_from_details(pipeline_details),
             service=self.context.pipeline_service.fullyQualifiedName.__root__,
         )

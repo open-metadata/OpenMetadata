@@ -48,3 +48,6 @@ export const parseSearchParams = (param: string) => {
     // need to typecast into QuerySearchParams as Qs.parse returns as "Qs.ParsedQs" Type object
   ) as unknown as QuerySearchParams;
 };
+export const stringifySearchParams = (param: QuerySearchParams) => {
+  return Qs.stringify(param);
+};

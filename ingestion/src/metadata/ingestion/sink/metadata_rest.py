@@ -167,6 +167,9 @@ class MetadataRestSink(Sink[Entity]):
             logger.debug(
                 f"Successfully ingested DataModel for {table.fullyQualifiedName.__root__}"
             )
+            self.status.records_written(
+                f"DataModel: {table.fullyQualifiedName.__root__}"
+            )
         else:
             logger.warning("Unable to ingest datamodel")
 
