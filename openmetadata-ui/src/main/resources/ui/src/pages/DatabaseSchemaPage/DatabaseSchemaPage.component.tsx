@@ -33,6 +33,7 @@ import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichText
 import TabsPane from 'components/common/TabsPane/TabsPane';
 import { TitleBreadcrumbProps } from 'components/common/title-breadcrumb/title-breadcrumb.interface';
 import PageContainerV1 from 'components/containers/PageContainerV1';
+import PageLayoutV1 from 'components/containers/PageLayoutV1';
 import Loader from 'components/Loader/Loader';
 import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
 import {
@@ -753,10 +754,10 @@ const DatabaseSchemaPage: FunctionComponent = () => {
           {databaseSchemaPermission.ViewAll ||
           databaseSchemaPermission.ViewBasic ? (
             <PageContainerV1>
-              <Row
-                className="p-x-md p-t-lg"
-                data-testid="page-container"
-                gutter={[0, 12]}>
+              <PageLayoutV1
+                pageTitle={t('label.entity-detail-plural', {
+                  entity: getEntityName(databaseSchema),
+                })}>
                 {IsSchemaDetailsLoading ? (
                   <Skeleton
                     active
@@ -882,7 +883,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
                     />
                   ) : null}
                 </Col>
-              </Row>
+              </PageLayoutV1>
             </PageContainerV1>
           ) : (
             <ErrorPlaceHolder>

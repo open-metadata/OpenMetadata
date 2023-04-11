@@ -13,15 +13,14 @@
 import { Space, Typography } from 'antd';
 import React from 'react';
 import { Link } from 'react-router-dom';
+import { EntityHeaderTitleProps } from './EntityHeaderTitle.interface';
 
-interface props {
-  icon: React.ReactNode;
-  name: string;
-  displayName: string;
-  link?: string;
-}
-
-const EntityHeaderTitle = ({ icon, name, displayName, link = '#' }: props) => {
+const EntityHeaderTitle = ({
+  icon,
+  name,
+  displayName,
+  link,
+}: EntityHeaderTitleProps) => {
   return (
     <Space direction="vertical" size={0}>
       <Space align="center" size={8}>
@@ -30,15 +29,22 @@ const EntityHeaderTitle = ({ icon, name, displayName, link = '#' }: props) => {
           <Typography.Text
             className="m-b-0 tw-text-xs tw-text-grey-muted"
             data-testid="entity-header-name">
-            {displayName ?? name}
+            {name}
           </Typography.Text>
-          <Link
-            className="m-b-0 entity-header-display-name"
-            component={Typography.Link}
-            data-testid="entity-header-display-name"
-            to={link}>
-            {displayName ?? name}
-          </Link>
+          {link ? (
+            <Link
+              className="m-b-0 entity-header-display-name"
+              data-testid="entity-header-display-name"
+              to={link}>
+              <Typography.Text>{displayName ?? name}</Typography.Text>
+            </Link>
+          ) : (
+            <Typography.Text
+              className="m-b-0 entity-header-display-name"
+              data-testid="entity-header-display-name">
+              {displayName ?? name}
+            </Typography.Text>
+          )}
         </div>
       </Space>
     </Space>
