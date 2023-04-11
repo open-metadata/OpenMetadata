@@ -175,18 +175,6 @@
     ]
   },
   {
-    "name" : "location",
-    "operations" : [
-      "Create",
-      "Delete",
-      "ViewAll",
-      "EditAll",
-      "EditDescription",
-      "EditDisplayName",
-      "EditCustomFields"
-    ]
-  },
-  {
     "name" : "messagingService",
     "operations" : [
       "Create",

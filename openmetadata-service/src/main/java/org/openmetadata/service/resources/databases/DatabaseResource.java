@@ -316,19 +316,6 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
   }
 
   @DELETE
-  @Path("/{id}/location")
-  @Operation(operationId = "deleteLocation", summary = "Remove the location", description = "Remove the location")
-  public Database deleteLocation(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the database", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
-      throws IOException {
-    dao.deleteLocation(id);
-    Database database = dao.get(uriInfo, id, Fields.EMPTY_FIELDS);
-    return addHref(uriInfo, database);
-  }
-
-  @DELETE
   @Path("/{id}")
   @Operation(
       operationId = "deleteDatabase",

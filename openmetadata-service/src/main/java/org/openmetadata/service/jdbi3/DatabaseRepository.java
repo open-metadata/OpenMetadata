@@ -13,8 +13,6 @@
 
 package org.openmetadata.service.jdbi3;
 
-import static org.openmetadata.service.Entity.LOCATION;
-
 import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
@@ -49,11 +47,6 @@ public class DatabaseRepository extends EntityRepository<Database> {
   @Override
   public void setFullyQualifiedName(Database database) {
     database.setFullyQualifiedName(FullyQualifiedName.build(database.getService().getName(), database.getName()));
-  }
-
-  @Transaction
-  public void deleteLocation(UUID databaseId) {
-    deleteFrom(databaseId, Entity.DATABASE, Relationship.HAS, Entity.LOCATION);
   }
 
   @Override
@@ -93,7 +86,7 @@ public class DatabaseRepository extends EntityRepository<Database> {
     database.setDatabaseSchemas(fields.contains("databaseSchemas") ? getSchemas(database) : null);
     database.setUsageSummary(
         fields.contains("usageSummary") ? EntityUtil.getLatestUsage(daoCollection.usageDAO(), database.getId()) : null);
-    return database.withLocation(fields.contains("location") ? getLocation(database) : null);
+    return database;
   }
 
   @Override
@@ -104,10 +97,6 @@ public class DatabaseRepository extends EntityRepository<Database> {
         .withName(original.getName())
         .withService(original.getService())
         .withId(original.getId());
-  }
-
-  private EntityReference getLocation(Database database) throws IOException {
-    return database == null ? null : getToEntityRef(database.getId(), Relationship.HAS, LOCATION, false);
   }
 
   private void populateService(Database database) throws IOException {
