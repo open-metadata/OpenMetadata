@@ -632,13 +632,12 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
 
   const getColumnsForNode = async (type: string, id: string) => {
     const fields = ['columns'];
-    switch (type) {
-      case EntityType.DASHBOARD_DATA_MODEL:
-        return await getDataModelDetails(id, fields);
 
-      default:
-        return await getTableDetails(id, fields);
+    if (type === EntityType.DASHBOARD_DATA_MODEL) {
+      return await getDataModelDetails(id, fields);
     }
+
+    return await getTableDetails(id, fields);
   };
 
   /**
