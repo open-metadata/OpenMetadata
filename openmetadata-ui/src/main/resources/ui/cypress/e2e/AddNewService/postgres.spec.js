@@ -115,22 +115,36 @@ describe('Postgres Ingestion', () => {
       .click();
 
     verifyResponseStatusCode('@getServices', 200);
-    cy.intercept('/api/v1/services/ingestionPipelines?*').as('ingestionData');
+    interceptURL(
+      'GET',
+      '/api/v1/services/ingestionPipelines?*',
+      'ingestionData'
+    );
     interceptURL(
       'GET',
       '/api/v1/system/config/pipeline-service-client',
       'airflow'
     );
+    interceptURL(
+      'GET',
+      '/api/v1/permissions/ingestionPipeline/name/*',
+      'ingestionPermissions'
+    );
+    interceptURL('GET', '/api/v1/services/*/name/*', 'serviceDetails');
     cy.get(`[data-testid="service-name-${serviceName}"]`)
       .should('exist')
       .click();
-    cy.get('[data-testid="tabs"]').should('exist');
-    cy.wait('@ingestionData');
+    verifyResponseStatusCode('@ingestionData', 200, {
+      responseTimeout: 50000,
+    });
+    verifyResponseStatusCode('@serviceDetails', 200);
     verifyResponseStatusCode('@airflow', 200);
+    cy.get('[data-testid="tabs"]').should('exist');
     cy.get('[data-testid="Ingestions"]')
       .scrollIntoView()
       .should('be.visible')
       .click();
+    verifyResponseStatusCode('@ingestionPermissions', 200);
     cy.get('[data-testid="ingestion-details-container"]').should('exist');
     cy.get('[data-testid="add-new-ingestion-button"]')
       .should('be.visible')
