@@ -69,16 +69,15 @@ class Median(StaticMetric):
             # the entire set. Median of Medians could be used
             # though it would required set to be sorted before hand
             try:
-                df = (
-                    pd.concat(dfs) if isinstance(dfs, list) else dfs
-                )  # workaround should be removed once #10351 is fixed
+                df = pd.concat(dfs)
             except MemoryError:
                 logger.error(
                     f"Unable to compute Median for {self.col.name} due to memory constraints."
                     f"We recommend using a smaller sample size or partitionning."
                 )
                 return None
-            return df[self.col.name].median()
+            median = df[self.col.name].median()
+            return None if pd.isnull(median) else median
         logger.debug(
             f"Don't know how to process type {self.col.type} when computing Median"
         )
