@@ -607,6 +607,7 @@
     "query-lowercase": "query",
     "query-lowercase-plural": "queries",
     "query-plural": "Requêtes",
+    "query-used-in": "Query Used In",
     "range": "Range",
     "re-deploy": "Re-Déployer",
     "re-enter-new-password": "Re-enter New Password",

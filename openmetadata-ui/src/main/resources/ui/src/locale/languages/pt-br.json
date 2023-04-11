@@ -607,6 +607,7 @@
     "query-lowercase": "consulta",
     "query-lowercase-plural": "queries",
     "query-plural": "Consultas",
+    "query-used-in": "Query Used In",
     "range": "Range",
     "re-deploy": "Reimplementar",
     "re-enter-new-password": "Digite novamente a nova senha",
