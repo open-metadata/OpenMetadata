@@ -23,9 +23,12 @@ import { Task } from '../generated/entity/data/pipeline';
 import { Column, TableConstraint } from '../generated/entity/data/table';
 import { Field } from '../generated/entity/data/topic';
 import { getEntityName } from './EntityUtils';
+import { EntityNameProps } from './EntityUtils.interface';
 import SVGIcons from './SvgUtils';
 
 const { Text } = Typography;
+
+const getTitleName = (data: EntityNameProps) => getEntityName(data) || '---';
 
 export const getFormattedEntityData = (
   entityType: SummaryEntityType,
@@ -39,7 +42,7 @@ export const getFormattedEntityData = (
     case SummaryEntityType.COLUMN: {
       return (entityInfo as Column[]).map((column) => ({
         name: column.name,
-        title: <Text className="entity-title">{getEntityName(column)}</Text>,
+        title: <Text className="entity-title">{getTitleName(column)}</Text>,
         type: column.dataType,
         tags: column.tags,
         description: column.description,
@@ -58,7 +61,7 @@ export const getFormattedEntityData = (
           <Link target="_blank" to={{ pathname: chart.chartUrl }}>
             <Space className="m-b-xs">
               <Text className="entity-title text-primary font-medium">
-                {getEntityName(chart)}
+                {getTitleName(chart)}
               </Text>
               <SVGIcons alt="external-link" icon="external-link" width="12px" />
             </Space>
@@ -76,7 +79,7 @@ export const getFormattedEntityData = (
           <Link target="_blank" to={{ pathname: task.taskUrl }}>
             <Space className="m-b-xs">
               <Text className="entity-title text-primary font-medium">
-                {task.name}
+                {getTitleName(task)}
               </Text>
               <SVGIcons alt="external-link" icon="external-link" width="12px" />
             </Space>
@@ -91,7 +94,7 @@ export const getFormattedEntityData = (
       return (entityInfo as MlFeature[]).map((feature) => ({
         algorithm: feature.featureAlgorithm,
         name: feature.name || '--',
-        title: <Text className="entity-title">{feature.name}</Text>,
+        title: <Text className="entity-title">{getTitleName(feature)}</Text>,
         type: feature.dataType,
         tags: feature.tags,
         description: feature.description,
@@ -100,7 +103,7 @@ export const getFormattedEntityData = (
     case SummaryEntityType.SCHEMAFIELD: {
       return (entityInfo as Field[]).map((field) => ({
         name: field.name,
-        title: <Text className="entity-title">{field.name}</Text>,
+        title: <Text className="entity-title"> {getTitleName(field)}</Text>,
         type: field.dataType,
         description: field.description,
         tags: field.tags,

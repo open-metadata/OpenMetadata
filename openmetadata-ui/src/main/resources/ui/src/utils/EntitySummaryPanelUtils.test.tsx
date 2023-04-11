@@ -22,6 +22,10 @@ import {
   mockInvalidDataResponse,
 } from './mocks/EntitySummaryPanelUtils.mock';
 
+jest.mock('./EntityUtils', () => ({
+  ...jest.requireActual('./EntityUtils'),
+}));
+
 describe('EntitySummaryPanelUtils tests', () => {
   it('getFormattedEntityData should return formatted data properly for table columns data without nesting', () => {
     const resultFormattedData = getFormattedEntityData(
