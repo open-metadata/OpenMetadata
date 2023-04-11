@@ -439,7 +439,7 @@ const AddIngestion = ({
             containerFilterPattern,
             showContainerFilter
           ),
-          type: ConfigType.ObjectStoreMetadata,
+          type: ConfigType.StorageMetadata,
         };
       }
 

@@ -17,7 +17,7 @@
 
 import { InfoCircleOutlined } from '@ant-design/icons';
 import { Card, Tooltip } from 'antd';
-import { ObjectStoreServiceType } from 'generated/entity/services/objectstoreService';
+import { StorageServiceType } from 'generated/entity/services/storageService';
 import { get, isEmpty, isNull, isObject } from 'lodash';
 import React, { ReactNode, useEffect, useState } from 'react';
 import { getStorageServiceConfig } from 'utils/ObjectStoreServiceUtils';
@@ -218,7 +218,7 @@ const ServiceConnectionDetails = ({
         break;
       case EntityType.STORAGE_SERVICE:
         setSchema(
-          getStorageServiceConfig(serviceFQN as ObjectStoreServiceType).schema
+          getStorageServiceConfig(serviceFQN as StorageServiceType).schema
         );
     }
   }, [serviceCategory, serviceFQN]);

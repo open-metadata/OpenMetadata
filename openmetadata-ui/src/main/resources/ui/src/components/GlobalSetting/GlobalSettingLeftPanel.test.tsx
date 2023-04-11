@@ -60,7 +60,7 @@ describe('GlobalSettingLeftPanel', () => {
     );
 
     expect(screen.getByText('label.service-plural')).toBeInTheDocument();
-    expect(screen.getByText('label.object-store-plural')).toBeInTheDocument();
+    expect(screen.getByText('label.storage-plural')).toBeInTheDocument();
   });
 
   it('Should change the location path on user click', () => {
