@@ -13,12 +13,14 @@
 
 import { AxiosError } from 'axios';
 import { TitleBreadcrumbProps } from 'components/common/title-breadcrumb/title-breadcrumb.interface';
+import ContainerVersion from 'components/ContainerVersion/ContainerVersion.component';
 import DashboardVersion from 'components/DashboardVersion/DashboardVersion.component';
 import DatasetVersion from 'components/DatasetVersion/DatasetVersion.component';
 import Loader from 'components/Loader/Loader';
 import MlModelVersion from 'components/MlModelVersion/MlModelVersion.component';
 import PipelineVersion from 'components/PipelineVersion/PipelineVersion.component';
 import TopicVersion from 'components/TopicVersion/TopicVersion.component';
+import { Container } from 'generated/entity/data/container';
 import { Mlmodel } from 'generated/entity/data/mlmodel';
 import React, { FunctionComponent, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -34,6 +36,11 @@ import {
   getMlModelVersions,
 } from 'rest/mlModelAPI';
 import {
+  getContainerByName,
+  getContainerVersion,
+  getContainerVersions,
+} from 'rest/objectStoreAPI';
+import {
   getPipelineByFqn,
   getPipelineVersion,
   getPipelineVersions,
@@ -48,6 +55,7 @@ import {
   getTopicVersion,
   getTopicVersions,
 } from 'rest/topicsAPI';
+import { getContainerDetailPath } from 'utils/ContainerDetailUtils';
 import { getEntityName } from 'utils/EntityUtils';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import {
@@ -78,7 +86,13 @@ import { serviceTypeLogo } from '../../utils/ServiceUtils';
 import { getTierTags } from '../../utils/TableUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
-export type VersionData = Table | Topic | Dashboard | Pipeline | Mlmodel;
+export type VersionData =
+  | Table
+  | Topic
+  | Dashboard
+  | Pipeline
+  | Mlmodel
+  | Container;
 
 const EntityVersionPage: FunctionComponent = () => {
   const { t } = useTranslation();
@@ -131,6 +145,11 @@ const EntityVersionPage: FunctionComponent = () => {
 
         break;
 
+      case EntityType.CONTAINER:
+        history.push(getContainerDetailPath(entityFQN));
+
+        break;
+
       default:
         break;
     }
@@ -152,7 +171,7 @@ const EntityVersionPage: FunctionComponent = () => {
     setSlashedEntityName(titleBreadCrumb);
   };
 
-  const fetchEntityVersions = () => {
+  const fetchEntityVersions = async () => {
     setIsloading(true);
     switch (entityType) {
       case EntityType.TABLE: {
@@ -467,12 +486,58 @@ const EntityVersionPage: FunctionComponent = () => {
         break;
       }
 
+      case EntityType.CONTAINER: {
+        try {
+          const response = await getContainerByName(
+            getPartialNameFromFQN(
+              entityFQN,
+              ['service', 'database'],
+              FQN_SEPARATOR_CHAR
+            ),
+            'dataModel,owner,tags'
+          );
+          const { id, owner, tags = [], service, serviceType } = response;
+          const serviceName = service.name ?? '';
+          setEntityState(tags, owner, response, [
+            {
+              name: serviceName,
+              url: serviceName
+                ? getServiceDetailsPath(
+                    serviceName,
+                    ServiceCategory.ML_MODEL_SERVICES
+                  )
+                : '',
+              imgSrc: serviceType ? serviceTypeLogo(serviceType) : undefined,
+            },
+            {
+              name: getEntityName(response),
+              url: '',
+              activeTitle: true,
+            },
+          ]);
+          const versions = await getContainerVersions(id);
+          setVersionList(versions);
+        } catch (err) {
+          showErrorToast(
+            err as AxiosError,
+            t('server.entity-fetch-version-error', {
+              entity: entityFQN,
+              version: '',
+            })
+          );
+        } finally {
+          setIsloading(false);
+        }
+
+        break;
+      }
+
       default:
         break;
     }
   };
 
-  const fetchCurrentVersion = () => {
+  const fetchCurrentVersion = async () => {
     setIsVersionLoading(true);
     switch (entityType) {
       case EntityType.TABLE: {
@@ -785,6 +850,51 @@ const EntityVersionPage: FunctionComponent = () => {
 
         break;
       }
+      case EntityType.CONTAINER: {
+        try {
+          const response = await getContainerByName(
+            getPartialNameFromFQN(
+              entityFQN,
+              ['service', 'database'],
+              FQN_SEPARATOR_CHAR
+            ),
+            'dataModel,owner,tags'
+          );
+          const { id, service, serviceType } = response;
+          const currentVersion = await getContainerVersion(id, version);
+          const { owner, tags = [] } = currentVersion;
+          const serviceName = service?.name ?? '';
+          setEntityState(tags, owner, currentVersion, [
+            {
+              name: serviceName,
+              url: serviceName
+                ? getServiceDetailsPath(
+                    serviceName,
+                    ServiceCategory.ML_MODEL_SERVICES
+                  )
+                : '',
+              imgSrc: serviceType ? serviceTypeLogo(serviceType) : undefined,
+            },
+            {
+              name: getEntityName(response),
+              url: '',
+              activeTitle: true,
+            },
+          ]);
+        } catch (err) {
+          showErrorToast(
+            err as AxiosError,
+            t('server.entity-fetch-version-error', {
+              entity: entityFQN,
+              version: '',
+            })
+          );
+        } finally {
+          setIsVersionLoading(false);
+        }
+
+        break;
+      }
 
       default:
         break;
@@ -804,7 +914,7 @@ const EntityVersionPage: FunctionComponent = () => {
             owner={owner}
             slashedTableName={slashedEntityName}
             tier={tier as TagLabel}
-            version={version}
+            version={Number(version)}
             versionHandler={versionHandler}
             versionList={versionList}
           />
@@ -876,6 +986,23 @@ const EntityVersionPage: FunctionComponent = () => {
             tier={tier as TagLabel}
             topicFQN={entityFQN}
             version={version}
+            versionHandler={versionHandler}
+            versionList={versionList}
+          />
+        );
+      }
+      case EntityType.CONTAINER: {
+        return (
+          <ContainerVersion
+            backHandler={backHandler}
+            breadCrumbList={slashedEntityName}
+            containerFQN={entityFQN}
+            currentVersionData={currentVersionData}
+            deleted={currentVersionData.deleted}
+            isVersionLoading={isVersionLoading}
+            owner={owner}
+            tier={tier as TagLabel}
+            version={Number(version)}
             versionHandler={versionHandler}
             versionList={versionList}
           />
