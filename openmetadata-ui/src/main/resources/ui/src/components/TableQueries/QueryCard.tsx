@@ -169,7 +169,7 @@ const QueryCard: FC<QueryCardProp> = ({
             />
           </div>
           <Row align="middle" className="p-y-xs border-t-1">
-            <Col className="p-y-xs p-l-md" span={16}>
+            <Col className="p-y-0.5 p-l-md" span={16}>
               <QueryUsedByOtherTable query={query} tableId={tableId} />
             </Col>
             <Col span={8}>
@@ -181,6 +181,7 @@ const QueryCard: FC<QueryCardProp> = ({
                   <Button
                     data-testid="cancel-query-btn"
                     key="cancel"
+                    size="small"
                     onClick={() => setIsEditMode(false)}>
                     {t('label.cancel')}
                   </Button>
@@ -189,6 +190,7 @@ const QueryCard: FC<QueryCardProp> = ({
                     data-testid="save-query-btn"
                     key="save"
                     loading={sqlQuery.isLoading}
+                    size="small"
                     type="primary"
                     onClick={updateSqlQuery}>
                     {t('label.save')}
