@@ -106,7 +106,6 @@ class LineageSource(QueryParserSource, ABC):
         connection_type = str(self.service_connection.type.value)
         dialect = ConnectionTypeDialectMapper.dialect_of(connection_type)
         for table_query in self.get_table_query():
-
             lineages = get_lineage_by_query(
                 self.metadata,
                 query=table_query.query,

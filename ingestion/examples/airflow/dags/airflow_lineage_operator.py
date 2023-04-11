@@ -77,7 +77,6 @@ with DAG(
     catchup=False,
     tags=["example"],
 ) as dag:
-
     # t1, t2 and t3 are examples of tasks created by instantiating operators
     t1 = BashOperator(
         task_id="print_date",

@@ -57,7 +57,6 @@ class FileSink(Sink[Entity]):
         return cls(config)
 
     def write_record(self, record: ProfilerResponse) -> None:
-
         if self.wrote_something:
             self.file.write("\n")
 
