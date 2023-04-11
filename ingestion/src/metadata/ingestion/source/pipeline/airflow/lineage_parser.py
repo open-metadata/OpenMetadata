@@ -62,9 +62,14 @@ we'll join the keys and get [
 ]
 and we'll treat this as independent sets of lineage
 """
+import traceback
 from typing import Dict, List, Optional, Set
 
 from pydantic import BaseModel
+
+from metadata.utils.logger import ingestion_logger
+
+logger = ingestion_logger()
 
 INLETS_ATTR = "_inlets"
 OUTLETS_ATTR = "_outlets"
@@ -134,12 +139,29 @@ def get_xlets_from_dag(dag: "DAG") -> List[XLets]:
 
     # First, grab all the inlets and outlets from all tasks grouped by keys
     for task in dag.tasks:
-        _inlets.update(
-            get_xlets_from_operator(operator=task, xlet_mode=INLETS_ATTR) or []
-        )
-        _outlets.update(
-            get_xlets_from_operator(operator=task, xlet_mode=OUTLETS_ATTR) or []
-        )
+        try:
+            _inlets.update(
+                get_xlets_from_operator(operator=task, xlet_mode=INLETS_ATTR) or []
+            )
+            _outlets.update(
+                get_xlets_from_operator(operator=task, xlet_mode=OUTLETS_ATTR) or []
+            )
+        except AttributeError:
+            inlets = "inlets"
+            outlets = "outlets"
+            _inlets.update(
+                get_xlets_from_operator(operator=task, xlet_mode=inlets) or []
+            )
+            _outlets.update(
+                get_xlets_from_operator(operator=task, xlet_mode=outlets) or []
+            )
+
+        except Exception as exc:
+            error_msg = (
+                f"Error while getting inlets and outlets for task - {task} - {exc}"
+            )
+            logger.error(error_msg)
+            logger.debug(traceback.format_exc())
 
     # We expect to have the same keys in both inlets and outlets dicts
     # We will then iterate over the inlet keys to build the list of XLets

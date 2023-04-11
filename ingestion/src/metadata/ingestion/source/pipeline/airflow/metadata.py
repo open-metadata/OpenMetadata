@@ -45,6 +45,10 @@ from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.connections.session import create_and_bind_session
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
 from metadata.ingestion.source.pipeline.airflow.lineage_parser import get_xlets_from_dag
+from metadata.ingestion.source.pipeline.airflow.models import (
+    AirflowDag,
+    AirflowDagDetials,
+)
 from metadata.ingestion.source.pipeline.pipeline_service import PipelineServiceSource
 from metadata.utils.helpers import clean_uri, datetime_to_ts
 from metadata.utils.logger import ingestion_logger
@@ -277,7 +281,7 @@ class AirflowSource(PipelineServiceSource):
         return pipeline_details.dag_id
 
     @staticmethod
-    def get_tasks_from_dag(dag: SerializedDAG, host_port: str) -> List[Task]:
+    def get_tasks_from_dag(dag: AirflowDagDetials, host_port: str) -> List[Task]:
         """
         Obtain the tasks from a SerializedDAG
         :param dag: SerializedDAG
@@ -292,7 +296,6 @@ class AirflowSource(PipelineServiceSource):
                     f"?flt1_dag_id_equals={dag.dag_id}&_flt_3_task_id={task.task_id}"
                 ),
                 downstreamTasks=list(task.downstream_task_ids),
-                taskType=task.task_type,
                 startDate=task.start_date.isoformat() if task.start_date else None,
                 endDate=task.end_date.isoformat() if task.end_date else None,
             )
@@ -321,12 +324,26 @@ class AirflowSource(PipelineServiceSource):
         """
 
         try:
-            dag: SerializedDAG = self._build_dag(pipeline_details.data)
+            dag_details = self.connection.execute(
+                "SELECT dag.dag_id , dag.fileloc ,serialized_dag.data , dag.max_active_runs , dag.description FROM "
+                "serialized_dag INNER JOIN dag ON serialized_dag.dag_id = dag.dag_id "
+                f"WHERE serialized_dag.dag_id='{pipeline_details.dag_id}'"
+            ).all()[0]
+            dag = AirflowDagDetials(
+                dag_id=pipeline_details.dag_id,
+                fileloc=dag_details.fileloc,
+                data=AirflowDag(**dag_details.data),
+                max_active_runs=dag_details.max_active_runs,
+                description=dag_details.description,
+                start_date=dag_details.data["dag"]["start_date"],
+                tasks=dag_details.data["dag"]["tasks"],
+            )
+
             pipeline_request = CreatePipelineRequest(
                 name=pipeline_details.dag_id,
                 description=dag.description,
                 pipelineUrl=f"{clean_uri(self.service_connection.hostPort)}/tree?dag_id={dag.dag_id}",
-                concurrency=dag.concurrency,
+                concurrency=dag.max_active_runs,
                 pipelineLocation=pipeline_details.fileloc,
                 startDate=dag.start_date.isoformat() if dag.start_date else None,
                 tasks=self.get_tasks_from_dag(dag, self.service_connection.hostPort),
@@ -403,14 +420,28 @@ class AirflowSource(PipelineServiceSource):
         :param pipeline_details: SerializedDAG from airflow metadata DB
         :return: Lineage from inlets and outlets
         """
-        dag: SerializedDAG = self._build_dag(pipeline_details.data)
+        dag_details = self.connection.execute(
+            "SELECT dag.dag_id , dag.fileloc ,serialized_dag.data , dag.max_active_runs , dag.description FROM "
+            "serialized_dag INNER JOIN dag ON serialized_dag.dag_id = dag.dag_id "
+            f"WHERE serialized_dag.dag_id='{pipeline_details.dag_id}'"
+        ).all()[0]
+
+        dag = AirflowDagDetials(
+            dag_id=pipeline_details.dag_id,
+            fileloc=dag_details.fileloc,
+            data=AirflowDag(**dag_details.data),
+            max_active_runs=dag_details.max_active_runs,
+            description=dag_details.description,
+            start_date=dag_details.data["dag"]["start_date"],
+            tasks=dag_details.data["dag"]["tasks"],
+        )
         lineage_details = LineageDetails(
             pipeline=EntityReference(
                 id=self.context.pipeline.id.__root__, type="pipeline"
             )
         )
 
-        xlets = get_xlets_from_dag(dag=dag)
+        xlets = get_xlets_from_dag(dag=dag) if dag else []
         for xlet in xlets:
             for from_fqn in xlet.inlets or []:
                 from_entity = self.metadata.get_by_name(entity=Table, fqn=from_fqn)
