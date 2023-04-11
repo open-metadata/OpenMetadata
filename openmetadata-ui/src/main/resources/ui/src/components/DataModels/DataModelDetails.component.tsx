@@ -21,7 +21,7 @@ import EntityLineageComponent from 'components/EntityLineage/EntityLineage.compo
 import Loader from 'components/Loader/Loader';
 import SchemaEditor from 'components/schema-editor/SchemaEditor';
 import { FQN_SEPARATOR_CHAR } from 'constants/char.constants';
-import { getServiceDetailsPath } from 'constants/constants';
+import { getServiceDetailsPath, getVersionPath } from 'constants/constants';
 import { EntityField } from 'constants/Feeds.constants';
 import { observerOptions } from 'constants/Mydata.constants';
 import { CSMode } from 'enums/codemirror.enum';
@@ -30,10 +30,12 @@ import { ServiceCategory } from 'enums/service.enum';
 import { OwnerType } from 'enums/user.enum';
 import { Paging } from 'generated/type/paging';
 import { useInfiniteScroll } from 'hooks/useInfiniteScroll';
+import { toString } from 'lodash';
 import { ExtraInfo } from 'Models';
 import { DATA_MODELS_DETAILS_TABS } from 'pages/DataModelPage/DataModelsInterface';
 import React, { RefObject, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useHistory } from 'react-router-dom';
 import {
   getCountBadge,
   getCurrentUserId,
@@ -74,6 +76,7 @@ const DataModelDetails = ({
   handleFeedFilterChange,
 }: DataModelDetailsProps) => {
   const { t } = useTranslation();
+  const history = useHistory();
   const [elementRef, isInView] = useInfiniteScroll(observerOptions);
   const [isEditDescription, setIsEditDescription] = useState<boolean>(false);
   const [threadLink, setThreadLink] = useState<string>('');
@@ -181,6 +184,16 @@ const DataModelDetails = ({
     },
   ];
 
+  const versionHandler = () => {
+    history.push(
+      getVersionPath(
+        EntityType.DASHBOARD_DATA_MODEL,
+        dashboardDataModelFQN,
+        toString(version)
+      )
+    );
+  };
+
   const onThreadLinkSelect = (link: string) => {
     setThreadLink(link);
   };
@@ -241,6 +254,7 @@ const DataModelDetails = ({
           updateOwner={hasEditOwnerPermission ? handleUpdateOwner : undefined}
           updateTier={hasEditTierPermission ? handleUpdateTier : undefined}
           version={version}
+          versionHandler={versionHandler}
           onThreadLinkSelect={onThreadLinkSelect}
         />
         <Tabs
@@ -302,22 +316,20 @@ const DataModelDetails = ({
                 )}
               </span>
             }>
-            <Card>
-              <Row justify="center">
-                <Col span={18}>
-                  <div id="activityfeed">
-                    <ActivityFeedList
-                      isEntityFeed
-                      withSidePanel
-                      deletePostHandler={deletePostHandler}
-                      entityName={entityName}
-                      feedList={entityThread}
-                      isFeedLoading={isEntityThreadLoading}
-                      postFeedHandler={postFeedHandler}
-                      updateThreadHandler={updateThreadHandler}
-                      onFeedFiltersUpdate={handleFeedFilterChange}
-                    />
-                  </div>
+            <Card className="h-min-full">
+              <Row>
+                <Col data-testid="activityfeed" offset={3} span={18}>
+                  <ActivityFeedList
+                    isEntityFeed
+                    withSidePanel
+                    deletePostHandler={deletePostHandler}
+                    entityName={entityName}
+                    feedList={entityThread}
+                    isFeedLoading={isEntityThreadLoading}
+                    postFeedHandler={postFeedHandler}
+                    updateThreadHandler={updateThreadHandler}
+                    onFeedFiltersUpdate={handleFeedFilterChange}
+                  />
                 </Col>
               </Row>
               {loader}

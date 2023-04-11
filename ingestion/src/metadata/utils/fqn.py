@@ -275,7 +275,6 @@ def _(
     schema_name: str,
     model_name: str,
 ) -> str:
-
     return _build(service_name, database_name, schema_name, model_name)
 
 

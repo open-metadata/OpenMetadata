@@ -12,7 +12,7 @@
 """
 Unique Count Metric definition
 """
-from typing import Optional, cast
+from typing import Optional
 
 from sqlalchemy import column, func
 from sqlalchemy.orm import DeclarativeMeta, Session
@@ -65,19 +65,20 @@ class UniqueCount(QueryMetric):
         only_once_cte = only_once.cte("only_once")
         return session.query(func.count().label(self.name())).select_from(only_once_cte)
 
-    def df_fn(self, df=None):
+    def df_fn(self, dfs=None):
         """
         Build the Unique Count metric
         """
-        from pandas import DataFrame  # pylint: disable=import-outside-toplevel
-
-        df = cast(DataFrame, df)
+        from collections import Counter  # pylint: disable=import-outside-toplevel
 
         try:
-            return df[self.col.name].nunique()
+            counter = Counter()
+            for df in dfs:
+                counter.update(df[self.col.name].dropna().to_list())
+            return len([key for key, value in counter.items() if value == 1])
         except Exception as err:
             logger.debug(
                 f"Don't know how to process type {self.col.type}"
-                f"when computing Distinct Count.\n Error: {err}"
+                f"when computing Unique Count.\n Error: {err}"
             )
             return 0

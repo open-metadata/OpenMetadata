@@ -63,7 +63,6 @@ def get_table_names_reflection(self, schema=None, **kw):
 
 
 def get_table_names(self, connection, schema, **kw):
-
     if kw.get("include_temp_tables"):
         cursor = connection.execute(SNOWFLAKE_GET_TABLE_NAMES.format(schema))
         result = [self.normalize_name(row[0]) for row in cursor]

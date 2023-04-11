@@ -78,7 +78,6 @@ from metadata.generated.schema.security.client.openMetadataJWTClientConfig impor
 
 
 class TestAirflowOps(TestCase):
-
     dagbag: DagBag
     dag: DAG
 

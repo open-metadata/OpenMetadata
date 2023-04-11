@@ -13,7 +13,6 @@
 Interfaces with database for all database engine
 supporting sqlalchemy abstraction layer
 """
-
 import traceback
 from collections import defaultdict
 from datetime import datetime, timezone
@@ -21,7 +20,10 @@ from typing import Dict, List
 
 from sqlalchemy import Column
 
-from metadata.generated.schema.entity.data.table import DataType, TableData
+from metadata.generated.schema.entity.data.table import (
+    PartitionProfilerConfig,
+    TableData,
+)
 from metadata.generated.schema.entity.services.connections.database.datalakeConnection import (
     DatalakeConnection,
 )
@@ -29,7 +31,7 @@ from metadata.ingestion.api.processor import ProfilerProcessorStatus
 from metadata.ingestion.source.connections import get_connection
 from metadata.ingestion.source.database.datalake.metadata import (
     DATALAKE_DATA_TYPES,
-    ometa_to_dataframe,
+    DatalakeSource,
 )
 from metadata.mixins.pandas.pandas_mixin import PandasInterfaceMixin
 from metadata.profiler.interface.profiler_protocol import ProfilerProtocol
@@ -69,7 +71,7 @@ class PandasProfilerInterface(ProfilerProtocol, PandasInterfaceMixin):
         self.ometa_client = ometa_client
         self.source_config = source_config
         self.service_connection_config = service_connection_config
-        self.client = get_connection(self.service_connection_config).client
+        self.client = self.get_connection_client()
         self.processor_status = ProfilerProcessorStatus()
         self.processor_status.entity = (
             self.table_entity.fullyQualifiedName.__root__
@@ -78,15 +80,16 @@ class PandasProfilerInterface(ProfilerProtocol, PandasInterfaceMixin):
         )
         self.profile_sample_config = profile_sample_config
         self.profile_query = sample_query
-        self.table_partition_config = table_partition_config
+        self.table_partition_config: PartitionProfilerConfig = table_partition_config
         self._table = entity
-        self.dfs = ometa_to_dataframe(
-            config_source=self.service_connection_config.configSource,
+        self.dfs = self.return_ometa_dataframes_sampled(
+            service_connection_config=self.service_connection_config,
             client=self.client,
             table=self.table,
+            profile_sample_config=self.profile_sample_config,
         )
         if self.dfs and self.table_partition_config:
-            self.dfs = [self.get_partitioned_df(df) for df in self.dfs]
+            self.dfs = self.get_partitioned_df(self.dfs)
 
     @valuedispatch
     def _get_metrics(self, *args, **kwargs):
@@ -101,7 +104,6 @@ class PandasProfilerInterface(ProfilerProtocol, PandasInterfaceMixin):
         self,
         metric_type: str,
         metrics: List[Metrics],
-        dfs: List,
         *args,
         **kwargs,
     ):
@@ -116,21 +118,11 @@ class PandasProfilerInterface(ProfilerProtocol, PandasInterfaceMixin):
         import pandas as pd  # pylint: disable=import-outside-toplevel
 
         try:
-            row = []
+            row_dict = {}
+            df_list = [df.where(pd.notnull(df), None) for df in self.dfs]
             for metric in metrics:
-                for df in dfs:
-                    row.append(
-                        metric().df_fn(df.astype(object).where(pd.notnull(df), None))
-                    )
-            if row:
-                if isinstance(row, list):
-                    row_dict = {}
-                    for index, table_metric in enumerate(metrics):
-                        row_dict[table_metric.name()] = row[index]
-                    return row_dict
-                return dict(row)
-            return None
-
+                row_dict[metric.name()] = metric().df_fn(df_list)
+            return row_dict
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning(f"Error trying to compute profile for {exc}")
@@ -143,7 +135,6 @@ class PandasProfilerInterface(ProfilerProtocol, PandasInterfaceMixin):
         metric_type: str,
         metrics: List[Metrics],
         column,
-        dfs,
         *args,
         **kwargs,
     ):
@@ -159,17 +150,12 @@ class PandasProfilerInterface(ProfilerProtocol, PandasInterfaceMixin):
         import pandas as pd  # pylint: disable=import-outside-toplevel
 
         try:
-            row = []
-            for metric in metrics:
-                for df in dfs:
-                    row.append(
-                        metric(column).df_fn(
-                            df.astype(object).where(pd.notnull(df), None)
-                        )
-                    )
             row_dict = {}
-            for index, column_metric in enumerate(metrics):
-                row_dict[column_metric.name()] = row[index]
+            for metric in metrics:
+                metric_resp = metric(column).df_fn(self.dfs)
+                row_dict[metric.name()] = (
+                    None if pd.isnull(metric_resp) else metric_resp
+                )
             return row_dict
         except Exception as exc:
             logger.debug(
@@ -184,7 +170,6 @@ class PandasProfilerInterface(ProfilerProtocol, PandasInterfaceMixin):
         metric_type: str,
         metrics: Metrics,
         column,
-        dfs,
         *args,
         **kwargs,
     ):
@@ -198,8 +183,7 @@ class PandasProfilerInterface(ProfilerProtocol, PandasInterfaceMixin):
             dictionnary of results
         """
         col_metric = None
-        for df in dfs:
-            col_metric = metrics(column).df_fn(df)
+        col_metric = metrics(column).df_fn(self.dfs)
         if not col_metric:
             return None
         return {metrics.name(): col_metric}
@@ -250,13 +234,14 @@ class PandasProfilerInterface(ProfilerProtocol, PandasInterfaceMixin):
         """Run metrics in processor worker"""
         logger.debug(f"Running profiler for {table}")
         try:
-            row = self._get_metrics(
-                metric_type.value,
-                metrics,
-                session=self.client,
-                dfs=self.dfs,
-                column=column,
-            )
+            row = None
+            if self.dfs:
+                row = self._get_metrics(
+                    metric_type.value,
+                    metrics,
+                    session=self.client,
+                    column=column,
+                )
         except Exception as exc:
             name = f"{column if column is not None else table}"
             error = f"{name} metric_type.value: {exc}"
@@ -336,20 +321,20 @@ class PandasProfilerInterface(ProfilerProtocol, PandasInterfaceMixin):
         ]
         for metric_result in metric_list:
             profile, column, metric_type = metric_result
-
-            if metric_type == MetricTypes.Table.value:
-                profile_results["table"].update(profile)
-            if metric_type == MetricTypes.System.value:
-                profile_results["system"] = profile
-            else:
-                if profile:
-                    profile_results["columns"][column].update(
-                        {
-                            "name": column,
-                            "timestamp": datetime.now(tz=timezone.utc).timestamp(),
-                            **profile,
-                        }
-                    )
+            if profile:
+                if metric_type == MetricTypes.Table.value:
+                    profile_results["table"].update(profile)
+                if metric_type == MetricTypes.System.value:
+                    profile_results["system"] = profile
+                else:
+                    if profile:
+                        profile_results["columns"][column].update(
+                            {
+                                "name": column,
+                                "timestamp": datetime.now(tz=timezone.utc).timestamp(),
+                                **profile,
+                            }
+                        )
         return profile_results
 
     @property
@@ -363,15 +348,14 @@ class PandasProfilerInterface(ProfilerProtocol, PandasInterfaceMixin):
             return [
                 SQALikeColumn(
                     column_name,
-                    Type(
-                        DATALAKE_DATA_TYPES.get(
-                            df[column_name].dtypes.name, DataType.STRING.value
-                        )
-                    ),
+                    Type(DatalakeSource.fetch_col_types(df, column_name)),
                 )
                 for column_name in df.columns
             ]
         return []
+
+    def get_connection_client(self):
+        return get_connection(self.service_connection_config).client
 
     def close(self):
         """Nothing to close with pandas"""

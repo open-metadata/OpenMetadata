@@ -73,7 +73,6 @@ class PostgresQueryParserSource(QueryParserSource, ABC):
         )
 
     def get_table_query(self) -> Iterable[TableQuery]:
-
         try:
             if self.config.sourceConfig.config.queryLogFilePath:
                 table_query_list = []
@@ -82,7 +81,6 @@ class PostgresQueryParserSource(QueryParserSource, ABC):
                     "r",
                     encoding="utf-8",
                 ) as query_log_file:
-
                     for record in csv.DictReader(query_log_file):
                         query_dict = dict(record)
 

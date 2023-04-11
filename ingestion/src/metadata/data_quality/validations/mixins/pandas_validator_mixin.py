@@ -26,8 +26,9 @@ from metadata.utils.sqa_like_column import SQALikeColumn, Type
 class PandasValidatorMixin:
     """Validator mixin for Pandas based test cases"""
 
-    def get_column_name(self, entity_link: str, df) -> SQALikeColumn:
-        column = df[get_decoded_column(entity_link)]
+    def get_column_name(self, entity_link: str, dfs) -> SQALikeColumn:
+        # we'll use the first dataframe chunk to get the column name.
+        column = dfs[0][get_decoded_column(entity_link)]
         _type = DATALAKE_DATA_TYPES.get(column.dtypes.name, DataType.STRING.value)
         sqa_like_column = SQALikeColumn(
             name=column.name,

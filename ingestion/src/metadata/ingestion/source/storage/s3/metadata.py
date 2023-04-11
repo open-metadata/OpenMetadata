@@ -167,7 +167,6 @@ class S3Source(StorageServiceSource):
     def yield_create_container_requests(
         self, container_details: S3ContainerDetails
     ) -> Iterable[CreateContainerRequest]:
-
         yield CreateContainerRequest(
             name=container_details.name,
             prefix=container_details.prefix,
