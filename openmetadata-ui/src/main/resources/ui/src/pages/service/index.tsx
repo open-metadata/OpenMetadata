@@ -209,7 +209,7 @@ const ServicePage: FunctionComponent = () => {
         servicePermission,
         dataModelPaging.total
       ),
-    [serviceName, paging, ingestions, servicePermission]
+    [serviceName, paging, ingestions, servicePermission, dataModelPaging]
   );
 
   const extraInfo: Array<ExtraInfo> = [

@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate.
+ *  Copyright 2023 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -12,14 +12,13 @@
  */
 
 import { Col, Divider, Row, Typography } from 'antd';
-import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import SummaryTagsDescription from 'components/common/SummaryTagsDescription/SummaryTagsDescription.component';
 import SummaryPanelSkeleton from 'components/Skeleton/SummaryPanelSkeleton/SummaryPanelSkeleton.component';
 import { ExplorePageTabs } from 'enums/Explore.enum';
-import { TagLabel } from 'generated/type/tagLabel';
-import { ChartType } from 'pages/DashboardDetailsPage/DashboardDetailsPage.component';
-import React, { useEffect, useMemo, useState } from 'react';
+import { DashboardDataModel } from 'generated/entity/data/dashboardDataModel';
+import { isEmpty } from 'lodash';
+import { default as React, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import {
@@ -28,79 +27,46 @@ import {
 } from 'utils/EntityUtils';
 import SVGIcons from 'utils/SvgUtils';
 import { SummaryEntityType } from '../../../../enums/EntitySummary.enum';
-import { Dashboard } from '../../../../generated/entity/data/dashboard';
-import { fetchCharts } from '../../../../utils/DashboardDetailsUtils';
 import { getFormattedEntityData } from '../../../../utils/EntitySummaryPanelUtils';
-import { showErrorToast } from '../../../../utils/ToastUtils';
 import SummaryList from '../SummaryList/SummaryList.component';
 import { BasicEntityInfo } from '../SummaryList/SummaryList.interface';
+import { DataModelSummaryProps } from './DataModelSummary.interface';
 
-interface DashboardSummaryProps {
-  entityDetails: Dashboard;
-  componentType?: string;
-  tags?: TagLabel[];
-  isLoading?: boolean;
-}
-
-function DashboardSummary({
+const DataModelSummary = ({
   entityDetails,
   componentType = DRAWER_NAVIGATION_OPTIONS.explore,
   tags,
   isLoading,
-}: DashboardSummaryProps) {
+}: DataModelSummaryProps) => {
   const { t } = useTranslation();
-  const [charts, setCharts] = useState<ChartType[]>();
-
-  const fetchChartsDetails = async () => {
-    try {
-      const chartDetails = await fetchCharts(entityDetails.charts);
-
-      const updatedCharts = chartDetails.map((chartItem) => ({
-        ...chartItem,
-        chartUrl: chartItem.chartUrl,
-      }));
-
-      setCharts(updatedCharts);
-    } catch (err) {
-      showErrorToast(
-        err as AxiosError,
-        t('server.entity-fetch-error', {
-          entity: t('label.dashboard-detail-plural-lowercase'),
-        })
-      );
-    }
-  };
-
-  const entityInfo = useMemo(
-    () => getEntityOverview(ExplorePageTabs.DASHBOARDS, entityDetails),
-    [entityDetails]
-  );
-
-  useEffect(() => {
-    fetchChartsDetails();
-  }, [entityDetails]);
-
-  const formattedChartsData: BasicEntityInfo[] = useMemo(
-    () => getFormattedEntityData(SummaryEntityType.CHART, charts),
-    [charts]
-  );
-
-  const formattedDataModelData: BasicEntityInfo[] = useMemo(
-    () =>
-      getFormattedEntityData(
-        SummaryEntityType.COLUMN,
-        entityDetails.dataModels
-      ),
-    [charts]
-  );
+  const { columns } = entityDetails;
+  const [dataModelDetails, setDataModelDetails] =
+    useState<DashboardDataModel>(entityDetails);
 
   const isExplore = useMemo(
     () => componentType === DRAWER_NAVIGATION_OPTIONS.explore,
     [componentType]
   );
 
+  const entityInfo = useMemo(
+    () =>
+      getEntityOverview(ExplorePageTabs.DASHBOARD_DATA_MODEL, dataModelDetails),
+    [dataModelDetails]
+  );
+
+  const formattedColumnsData: BasicEntityInfo[] = useMemo(
+    () => getFormattedEntityData(SummaryEntityType.COLUMN, columns),
+    [columns, dataModelDetails]
+  );
+
+  useEffect(() => {
+    if (!isEmpty(entityDetails)) {
+      setDataModelDetails(entityDetails);
+    }
+  }, [entityDetails]);
+
   return (
-    <SummaryPanelSkeleton loading={Boolean(isLoading)}>
+    <SummaryPanelSkeleton loading={isLoading || isEmpty(dataModelDetails)}>
       <>
         <Row className="m-md" gutter={[0, 4]}>
           <Col span={24}>
@@ -122,17 +88,13 @@ function DashboardSummary({
                           </Typography.Text>
                         </Col>
                       ) : null}
-                      <Col data-testid="dashboard-url-value" span={16}>
+                      <Col data-testid={`${info.name}-value`} span={16}>
                         {info.isLink ? (
                           <Link
                             component={Typography.Link}
                             target={info.isExternal ? '_blank' : '_self'}
                             to={{ pathname: info.url }}>
-                            <Typography.Link
-                              className="text-primary"
-                              data-testid="dashboard-link-name">
-                              {info.value}
-                            </Typography.Link>
+                            {info.value}
                             {info.isExternal ? (
                               <SVGIcons
                                 alt="external-link"
@@ -158,6 +120,7 @@ function DashboardSummary({
             </Row>
           </Col>
         </Row>
+
         <Divider className="m-y-xs" />
 
         {!isExplore ? (
@@ -170,36 +133,26 @@ function DashboardSummary({
           </>
         ) : null}
 
-        <Row className="m-md" gutter={[0, 16]}>
-          <Col span={24}>
-            <Typography.Text
-              className="text-base text-grey-muted"
-              data-testid="charts-header">
-              {t('label.chart-plural')}
-            </Typography.Text>
-          </Col>
-          <Col span={24}>
-            <SummaryList formattedEntityData={formattedChartsData} />
-          </Col>
-        </Row>
-
         <Divider className="m-y-xs" />
 
         <Row className="m-md" gutter={[0, 16]}>
           <Col span={24}>
             <Typography.Text
               className="text-base text-grey-muted"
-              data-testid="data-model-header">
-              {t('label.data-model-plural')}
+              data-testid="column-header">
+              {t('label.column-plural')}
             </Typography.Text>
           </Col>
           <Col span={24}>
-            <SummaryList formattedEntityData={formattedDataModelData} />
+            <SummaryList
+              entityType={SummaryEntityType.COLUMN}
+              formattedEntityData={formattedColumnsData}
+            />
           </Col>
         </Row>
       </>
     </SummaryPanelSkeleton>
   );
-}
+};
 
-export default DashboardSummary;
+export default DataModelSummary;

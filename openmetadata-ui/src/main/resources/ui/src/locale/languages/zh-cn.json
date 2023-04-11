@@ -183,6 +183,8 @@
     "data-insight-top-viewed-entity-summary": "查看次数最多的数据资产",
     "data-insight-total-entity-summary": "所有数据资产",
     "data-model": "Data Model",
+    "data-model-plural": "Data Models",
+    "data-model-type": "Data Model Type",
     "data-quality-test": "Data Quality Test",
     "data-type": "Data Type",
     "database": "数据库",
