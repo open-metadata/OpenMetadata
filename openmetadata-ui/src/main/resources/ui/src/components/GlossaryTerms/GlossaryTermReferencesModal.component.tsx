@@ -130,9 +130,7 @@ const GlossaryTermReferencesModal = ({
                   icon={<PlusIcon className="anticon" />}
                   size="small"
                   onClick={() => add()}>
-                  {t('label.add-entity', {
-                    entity: t('label.reference-plural'),
-                  })}
+                  {t('label.add')}
                 </Button>
               </Form.Item>
             </>

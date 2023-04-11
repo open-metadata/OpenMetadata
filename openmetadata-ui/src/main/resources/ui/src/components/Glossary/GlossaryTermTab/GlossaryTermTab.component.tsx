@@ -26,6 +26,7 @@ import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
 import { ReactComponent as DownUpArrowIcon } from 'assets/svg/ic-down-up-arrow.svg';
 import { ReactComponent as UpDownArrowIcon } from 'assets/svg/ic-up-down-arrow.svg';
 import { ReactComponent as PlusOutlinedIcon } from 'assets/svg/plus-outlined.svg';
+import { ReactComponent as PlusIcon } from 'assets/svg/plus-primary.svg';
 import { AxiosError } from 'axios';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
@@ -267,9 +268,10 @@ const GlossaryTermTab = ({
                   data-testid="add-new-tag-button"
                   type="primary"
                   onClick={() => handleAddGlossaryTermClick(glossaryName)}>
-                  {t('label.add-entity', {
-                    entity: t('label.glossary-term'),
-                  })}
+                  <div className="d-flex items-center">
+                    <PlusIcon className="anticon" />
+                    <span className="m-l-0">{t('label.add')}</span>
+                  </div>
                 </Button>
               )}
             </div>

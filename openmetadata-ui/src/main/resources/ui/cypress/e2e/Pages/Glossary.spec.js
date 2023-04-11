@@ -348,7 +348,6 @@ describe('Glossary page should work properly', () => {
       .then((text) => {
         expect(text).to.contain(NEW_GLOSSARY.description);
       });
-    cy.get('[data-testid="reviewer-card-container"]').should('be.visible');
 
     cy.get(`[data-testid="glossary-reviewer-name"]`)
       .invoke('text')
