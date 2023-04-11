@@ -15,6 +15,7 @@ supporting sqlalchemy abstraction layer
 """
 import math
 import random
+import traceback
 from typing import List, cast
 
 from metadata.data_quality.validations.table.pandas.tableRowInsertedCountToBeBetween import (
@@ -80,7 +81,7 @@ class PandasInterfaceMixin:
             for df in dfs
         ]
 
-    def return_ometa_dataframes_sampled(
+    def return_ometa_dataframes_sampled(  # pylint: disable=inconsistent-return-statements
         self, service_connection_config, client, table, profile_sample_config
     ):
         """
@@ -88,42 +89,49 @@ class PandasInterfaceMixin:
         """
         from pandas import DataFrame  # pylint: disable=import-outside-toplevel
 
-        data = ometa_to_dataframe(
-            config_source=service_connection_config.configSource,
-            client=client,
-            table=table,
-        )
-        if isinstance(data, DataFrame):
-            data: List[DataFrame] = [data]
+        try:
+            data = ometa_to_dataframe(
+                config_source=service_connection_config.configSource,
+                client=client,
+                table=table,
+            )
+            if isinstance(data, DataFrame):
+                data: List[DataFrame] = [data]
+            if not isinstance(data, list):
+                raise TypeError(f"Couldn't fetch {table.name.__root__}")
+            if data and isinstance(data, list):
+                random.shuffle(data)
 
-        if data and isinstance(data, list):
-            random.shuffle(data)
-
-            # sampling data based on profiler config (if any)
-            if hasattr(profile_sample_config, "profile_sample"):
-                if (
-                    profile_sample_config.profile_sample_type
-                    == ProfileSampleType.PERCENTAGE
-                ):
-                    return [
-                        df.sample(
-                            frac=profile_sample_config.profile_sample / 100,
-                            random_state=random.randint(0, 100),
-                            replace=True,
+                # sampling data based on profiler config (if any)
+                if hasattr(profile_sample_config, "profile_sample"):
+                    if (
+                        profile_sample_config.profile_sample_type
+                        == ProfileSampleType.PERCENTAGE
+                    ):
+                        return [
+                            df.sample(
+                                frac=profile_sample_config.profile_sample / 100,
+                                random_state=random.randint(0, 100),
+                                replace=True,
+                            )
+                            for df in data
+                        ]
+                    if (
+                        profile_sample_config.profile_sample_type
+                        == ProfileSampleType.ROWS
+                    ):
+                        sample_rows_per_chunk: int = math.floor(
+                            profile_sample_config.profile_sample / len(data)
                         )
-                        for df in data
-                    ]
-                if profile_sample_config.profile_sample_type == ProfileSampleType.ROWS:
-                    sample_rows_per_chunk: int = math.floor(
-                        profile_sample_config.profile_sample / len(data)
-                    )
-                    return [
-                        df.sample(
-                            n=sample_rows_per_chunk,
-                            random_state=random.randint(0, 100),
-                            replace=True,
-                        )
-                        for df in data
-                    ]
-            return data
-        return []
+                        return [
+                            df.sample(
+                                n=sample_rows_per_chunk,
+                                random_state=random.randint(0, 100),
+                                replace=True,
+                            )
+                            for df in data
+                        ]
+                return data
+        except TypeError as err:
+            logger.debug(traceback.format_exc())
+            logger.error(err)
