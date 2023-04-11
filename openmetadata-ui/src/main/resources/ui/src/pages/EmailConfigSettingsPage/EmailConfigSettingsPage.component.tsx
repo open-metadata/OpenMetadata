@@ -27,7 +27,7 @@ import { useHistory } from 'react-router-dom';
 import { getSettingsConfigFromConfigType } from 'rest/emailConfigAPI';
 import { getEmailConfigFieldLabels } from 'utils/EmailConfigUtils';
 import { showErrorToast } from 'utils/ToastUtils';
-import { ReactComponent as IconEdit } from '../../assets/svg/ic-edit.svg';
+import { ReactComponent as IconEdit } from '../../assets/svg/edit-new.svg';
 
 function EmailConfigSettingsPage() {
   const { t } = useTranslation();
