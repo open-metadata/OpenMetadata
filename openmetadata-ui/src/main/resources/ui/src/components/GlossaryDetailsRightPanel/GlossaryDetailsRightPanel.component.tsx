@@ -132,11 +132,12 @@ const GlossaryDetailsRightPanel = ({
             )}
           </Space>
         </Space>
-        <Space className="d-flex" direction="vertical">
+        <Space
+          className="d-flex"
+          data-testid="reviewer-card-container"
+          direction="vertical">
           <Space size={0}>
-            <Typography.Text
-              className="m-b-xs tw-text-base font-medium"
-              data-testid="glossary-display-name">
+            <Typography.Text className="m-b-xs tw-text-base font-medium">
               {t('label.reviewer-plural')}
             </Typography.Text>
             {hasEditReviewerAccess &&
@@ -158,7 +159,7 @@ const GlossaryDetailsRightPanel = ({
           </Space>
           <Space>
             {selectedData.reviewers && selectedData.reviewers.length > 0 && (
-              <Space wrap size={6}>
+              <Space wrap data-testid="glossary-reviewer-name" size={6}>
                 {selectedData.reviewers.map((reviewer) => (
                   <Space className="m-r-xss" key={reviewer.id} size={4}>
                     <ProfilePicture
@@ -195,15 +196,11 @@ const GlossaryDetailsRightPanel = ({
         </Space>
 
         {isGlossary && (
-          <Space className="d-flex" direction="vertical">
-            <Space data-testid="glossary-tags-name">
-              <TagsInput
-                editable={permissions.EditAll || permissions.EditTags}
-                tags={selectedData.tags}
-                onTagsUpdate={handleTagsUpdate}
-              />
-            </Space>
-          </Space>
+          <TagsInput
+            editable={permissions.EditAll || permissions.EditTags}
+            tags={selectedData.tags}
+            onTagsUpdate={handleTagsUpdate}
+          />
         )}
       </Space>
     </Card>

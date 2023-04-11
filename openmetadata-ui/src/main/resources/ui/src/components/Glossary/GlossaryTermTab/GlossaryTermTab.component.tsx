@@ -32,7 +32,6 @@ import Loader from 'components/Loader/Loader';
 import { FQN_SEPARATOR_CHAR } from 'constants/char.constants';
 import { DE_ACTIVE_COLOR } from 'constants/constants';
 import { GLOSSARIES_DOCS } from 'constants/docs.constants';
-import { NO_PERMISSION_FOR_ACTION } from 'constants/HelperTextUtil';
 import { TABLE_CONSTANTS } from 'constants/Teams.constants';
 import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { compare } from 'fast-json-patch';
@@ -261,14 +260,7 @@ const GlossaryTermTab = ({
         <ErrorPlaceHolder
           buttons={
             <div className="tw-text-lg tw-text-center">
-              <Tooltip
-                title={
-                  permissions.Create
-                    ? t('label.add-entity', {
-                        entity: t('label.term-lowercase'),
-                      })
-                    : NO_PERMISSION_FOR_ACTION
-                }>
+              {permissions.Create && (
                 <Button
                   ghost
                   data-testid="add-new-tag-button"
@@ -278,7 +270,7 @@ const GlossaryTermTab = ({
                     entity: t('label.glossary-term'),
                   })}
                 </Button>
-              </Tooltip>
+              )}
             </div>
           }
           doc={GLOSSARIES_DOCS}

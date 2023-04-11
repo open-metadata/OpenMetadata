@@ -89,22 +89,18 @@ const GlossaryOverviewTab = ({
                 {!isGlossary && (
                   <>
                     <Col span={12}>
-                      <Space className="w-full" direction="vertical">
-                        <GlossaryTermSynonyms
-                          glossaryTerm={selectedData as GlossaryTerm}
-                          permissions={permissions}
-                          onGlossaryTermUpdate={onUpdate}
-                        />
-                      </Space>
+                      <GlossaryTermSynonyms
+                        glossaryTerm={selectedData as GlossaryTerm}
+                        permissions={permissions}
+                        onGlossaryTermUpdate={onUpdate}
+                      />
                     </Col>
                     <Col span={12}>
-                      <Space className="w-full" direction="vertical">
-                        <RelatedTerms
-                          glossaryTerm={selectedData as GlossaryTerm}
-                          permissions={permissions}
-                          onGlossaryTermUpdate={onUpdate}
-                        />
-                      </Space>
+                      <RelatedTerms
+                        glossaryTerm={selectedData as GlossaryTerm}
+                        permissions={permissions}
+                        onGlossaryTermUpdate={onUpdate}
+                      />
                     </Col>
                     <Col span={12}>
                       <GlossaryTermReferences

@@ -29,6 +29,7 @@ import {
   getGlossaryVersionsList,
 } from 'rest/glossaryAPI';
 import {
+  getGlossaryPath,
   getGlossaryTermsVersionsPath,
   getGlossaryVersionsPath,
 } from 'utils/RouterUtils';
@@ -78,6 +79,11 @@ const GlossaryVersion = ({ isGlossary = false }: GlossaryVersionProps) => {
     history.push(path);
   };
 
+  const onBackHandler = () => {
+    const path = getGlossaryPath(selectedData?.fullyQualifiedName);
+    history.push(path);
+  };
+
   useEffect(() => {
     fetchVersionsInfo();
     fetchActiveVersion();
@@ -104,7 +110,7 @@ const GlossaryVersion = ({ isGlossary = false }: GlossaryVersionProps) => {
         currentVersion={version}
         versionHandler={onVersionHandler}
         versionList={versionList}
-        onBack={mockFn}
+        onBack={onBackHandler}
       />
     </PageContainer>
   );

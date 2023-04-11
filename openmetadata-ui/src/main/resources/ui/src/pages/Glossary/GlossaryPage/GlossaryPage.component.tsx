@@ -43,6 +43,7 @@ import {
 import { checkPermission } from 'utils/PermissionsUtils';
 import { getGlossaryPath, getGlossaryTermsPath } from 'utils/RouterUtils';
 import { showErrorToast, showSuccessToast } from 'utils/ToastUtils';
+import Fqn from '../../../utils/Fqn';
 import GlossaryLeftPanel from '../GlossaryLeftPanel/GlossaryLeftPanel.component';
 
 const GlossaryPage = () => {
@@ -63,7 +64,7 @@ const GlossaryPage = () => {
     setIsRightPanelLoading(true);
     setSelectedData(undefined);
     if (glossaryFqn) {
-      return glossaryFqn.split(FQN_SEPARATOR_CHAR).length === 1;
+      return Fqn.split(glossaryFqn).length === 1;
     }
 
     return true;

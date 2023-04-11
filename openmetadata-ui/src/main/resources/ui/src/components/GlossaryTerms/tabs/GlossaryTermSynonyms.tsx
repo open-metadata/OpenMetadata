@@ -12,7 +12,7 @@
  */
 
 import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
-import { Button, Select, Space, Tooltip, Typography } from 'antd';
+import { Button, Select, Tooltip, Typography } from 'antd';
 import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
 import TagButton from 'components/TagButton/TagButton.component';
 import { DE_ACTIVE_COLOR } from 'constants/constants';
@@ -86,65 +86,64 @@ const GlossaryTermSynonyms = ({
   }, [glossaryTerm]);
 
   return (
-    <div className="flex" data-testid="synonyms-container">
-      <Space direction="vertical">
-        <div className="d-flex items-center">
-          <Typography.Text className="glossary-subheading">
-            {t('label.synonym-plural')}
-          </Typography.Text>
-          {permissions.EditAll && synonyms.length > 0 && (
-            <Tooltip
-              title={
-                permissions.EditAll ? t('label.edit') : NO_PERMISSION_FOR_ACTION
-              }>
-              <Button
-                className="cursor-pointer m--t-xss m-l-xss"
-                data-testid="edit-button"
-                disabled={!permissions.EditAll}
-                icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
-                size="small"
-                type="text"
-                onClick={() => setIsViewMode(false)}
-              />
-            </Tooltip>
-          )}
-        </div>
-
-        {isViewMode ? (
-          getSynonyms()
-        ) : (
-          <Space align="center" className="w-full" size={8}>
-            <Select
-              className="w-min-15"
-              id="synonyms-select"
-              mode="tags"
-              placeholder={t('label.add-entity', {
-                entity: t('label.synonym-plural'),
-              })}
-              style={{ width: '100%' }}
-              value={synonyms}
-              onChange={(value) => setSynonyms(value)}
+    <div
+      className="flex flex-col gap-2 m-r-xs"
+      data-testid="synonyms-container">
+      <div className="d-flex items-center">
+        <Typography.Text className="glossary-subheading">
+          {t('label.synonym-plural')}
+        </Typography.Text>
+        {permissions.EditAll && synonyms.length > 0 && (
+          <Tooltip
+            title={
+              permissions.EditAll ? t('label.edit') : NO_PERMISSION_FOR_ACTION
+            }>
+            <Button
+              className="cursor-pointer m--t-xss m-l-xss"
+              data-testid="edit-button"
+              disabled={!permissions.EditAll}
+              icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
+              size="small"
+              type="text"
+              onClick={() => setIsViewMode(false)}
             />
-            <>
-              <Button
-                className="w-6 p-x-05"
-                data-testid="cancelAssociatedTag"
-                icon={<CloseOutlined size={12} />}
-                size="small"
-                onClick={handleCancel}
-              />
-              <Button
-                className="w-6 p-x-05"
-                data-testid="saveAssociatedTag"
-                icon={<CheckOutlined size={12} />}
-                size="small"
-                type="primary"
-                onClick={() => handleSynonymsSave(synonyms)}
-              />
-            </>
-          </Space>
+          </Tooltip>
         )}
-      </Space>
+      </div>
+
+      {isViewMode ? (
+        getSynonyms()
+      ) : (
+        <div className="d-flex items-center gap-2">
+          <Select
+            className="glossary-select"
+            id="synonyms-select"
+            mode="tags"
+            placeholder={t('label.add-entity', {
+              entity: t('label.synonym-plural'),
+            })}
+            value={synonyms}
+            onChange={(value) => setSynonyms(value)}
+          />
+          <>
+            <Button
+              className="w-6 p-x-05"
+              data-testid="cancel-synonym-btn"
+              icon={<CloseOutlined size={12} />}
+              size="small"
+              onClick={handleCancel}
+            />
+            <Button
+              className="w-6 p-x-05"
+              data-testid="save-synonym-btn"
+              icon={<CheckOutlined size={12} />}
+              size="small"
+              type="primary"
+              onClick={() => handleSynonymsSave(synonyms)}
+            />
+          </>
+        </div>
+      )}
     </div>
   );
 };

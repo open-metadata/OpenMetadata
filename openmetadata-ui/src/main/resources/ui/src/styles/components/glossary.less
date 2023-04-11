@@ -79,10 +79,17 @@
 }
 
 .term-reference-tag {
+  height: 24px;
   .ant-tag-close-icon {
     padding-left: 0.5rem;
     padding-right: 0.5rem;
     color: @primary-color;
+  }
+  span {
+    white-space: nowrap;
+    max-width: 150px;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 }
 
@@ -95,6 +102,12 @@
 
 .tag-button-container {
   height: 24px;
+  span {
+    white-space: nowrap;
+    max-width: 150px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
 }
 
 .glossary-overview-tab {
@@ -104,4 +117,8 @@
 .glossary-subheading {
   font-size: 16px;
   font-weight: 500;
+}
+
+.glossary-select {
+  width: 75%;
 }
