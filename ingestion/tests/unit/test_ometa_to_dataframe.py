@@ -10,13 +10,14 @@
 #  limitations under the License.
 
 """Test Ometa Dataframe utility tests"""
-
+import unittest
 from unittest.mock import patch
 
 import pyarrow.parquet as pq
 import pytest
 from pandas import DataFrame
 
+from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.connections.database.datalakeConnection import (
     DatalakeConnection,
 )
@@ -37,53 +38,55 @@ resp_parquet_file = (
 method_resp_file = [resp_parquet_file]
 
 
-def test_dl_column_parser():
-    with patch(
-        "metadata.utils.gcs_utils.read_parquet_from_gcs", return_value=method_resp_file
-    ) as exec_mock_method:
-        resp = exec_mock_method("key", "string")
-        assert type(resp) == list
+class TestStringMethods(unittest.TestCase):
+    def test_dl_column_parser(self):
+        with patch(
+            "metadata.utils.gcs_utils.read_parquet_from_gcs",
+            return_value=method_resp_file,
+        ) as exec_mock_method:
+            resp = exec_mock_method("key", "string")
+            assert type(resp) == list
 
+    @patch(
+        "metadata.ingestion.source.database.database_service.DatabaseServiceSource.test_connection"
+    )
+    def test_return_ometa_dataframes_sampled(self, test_connection):
+        with patch(
+            "metadata.mixins.pandas.pandas_mixin.ometa_to_dataframe",
+            return_value=resp_parquet_file,
+        ):
+            mock_datalake_config
+            config = OpenMetadataWorkflowConfig.parse_obj(mock_datalake_config)
+            datalake_source = DatalakeSource.create(
+                mock_datalake_config["source"],
+                config.workflowConfig.openMetadataServerConfig,
+            )
+            resp = PandasInterfaceMixin().return_ometa_dataframes_sampled(
+                datalake_source.service_connection, None, None, None
+            )
 
-@patch(
-    "metadata.ingestion.source.database.database_service.DatabaseServiceSource.test_connection"
-)
-def test_return_ometa_dataframes_sampled(test_connection):
-    with patch(
-        "metadata.mixins.pandas.pandas_mixin.ometa_to_dataframe",
-        return_value=resp_parquet_file,
-    ):
-        mock_datalake_config
-        config = OpenMetadataWorkflowConfig.parse_obj(mock_datalake_config)
-        datalake_source = DatalakeSource.create(
-            mock_datalake_config["source"],
-            config.workflowConfig.openMetadataServerConfig,
-        )
-        resp = PandasInterfaceMixin().return_ometa_dataframes_sampled(
-            datalake_source.service_connection, None, None, None
-        )
+            assert resp == method_resp_file
+            assert type(resp) == list
 
-        assert resp == method_resp_file
-        assert type(resp) == list
-
-
-@patch(
-    "metadata.ingestion.source.database.database_service.DatabaseServiceSource.test_connection"
-)
-def test_return_ometa_dataframes_sampled_fail(test_connection):
-    with patch(
-        "metadata.mixins.pandas.pandas_mixin.ometa_to_dataframe",
-        return_value=None,
-    ):
-        mock_datalake_config
-        config = OpenMetadataWorkflowConfig.parse_obj(mock_datalake_config)
-        datalake_source = DatalakeSource.create(
-            mock_datalake_config["source"],
-            config.workflowConfig.openMetadataServerConfig,
-        )
-        resp = PandasInterfaceMixin().return_ometa_dataframes_sampled(
-            datalake_source.service_connection, None, None, None
-        )
-
-        assert resp == []
-        assert type(resp) == list
+    @patch(
+        "metadata.ingestion.source.database.database_service.DatabaseServiceSource.test_connection"
+    )
+    def test_return_ometa_dataframes_sampled_fail(self, test_connection):
+        with patch(
+            "metadata.mixins.pandas.pandas_mixin.ometa_to_dataframe",
+            return_value=None,
+        ):
+            config = OpenMetadataWorkflowConfig.parse_obj(mock_datalake_config)
+            datalake_source = DatalakeSource.create(
+                mock_datalake_config["source"],
+                config.workflowConfig.openMetadataServerConfig,
+            )
+            resp = PandasInterfaceMixin().return_ometa_dataframes_sampled(
+                service_connection_config=datalake_source.service_connection,
+                client=None,
+                table=Table(
+                    id="1dabab2c-0d15-41ca-a834-7c0421d9c951", name="test", columns=[]
+                ),
+                profile_sample_config=None,
+            )
+            self.assertEqual(resp, None)
