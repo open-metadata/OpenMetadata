@@ -2,7 +2,7 @@
     "name": "S3",
     "fullyQualifiedName": "S3",
     "displayName": "S3 Test Connection",
-    "description": "This Test Connection validates the access against the object store and basic metadata extraction of objects.",
+    "description": "This Test Connection validates the access against the storage service and basic metadata extraction of objects.",
     "steps": [
       {
         "name": "ListBuckets",
