@@ -138,3 +138,7 @@ WHERE jsonSchema = 'pipelineStatus' AND extension <> 'pipeline.PipelineStatus';
 
 -- We are refactoring the storage service with containers. We'll remove the locations
 DROP TABLE location_entity;
+
+UPDATE dbservice_entity
+SET json = JSON_REMOVE(json, '$.connection.config.storageServiceName')
+WHERE serviceType = 'Glue';
