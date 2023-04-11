@@ -1351,7 +1351,7 @@ public interface CollectionDAO {
             "SELECT json FROM thread_entity WHERE updatedAt < :after "
                 + "AND (:type IS NULL OR type = :type) AND <mysqlCond> "
                 + "AND MD5(id) in (SELECT fromFQNHash FROM field_relationship WHERE "
-                + "(:fqnPrefixHash IS NULL OR toFQN LIKE CONCAT(:fqnPrefixHash, '.%') OR toFQN=:fqnPrefixHash) AND fromType='THREAD' AND "
+                + "(:fqnPrefixHash IS NULL OR toFQN LIKE CONCAT(:fqnPrefixHash, '.%') OR toFQNHash=:fqnPrefixHash) AND fromType='THREAD' AND "
                 + "(:toType IS NULL OR toType LIKE CONCAT(:toType, '.%') OR toType=:toType) AND relation= :relation) "
                 + "ORDER BY createdAt DESC "
                 + "LIMIT :limit",
@@ -1361,7 +1361,7 @@ public interface CollectionDAO {
             "SELECT json FROM thread_entity WHERE updatedAt < :after "
                 + "AND (:type IS NULL OR type = :type) AND <postgresCond> "
                 + "AND MD5(id) in (SELECT fromFQNHash FROM field_relationship WHERE "
-                + "(:fqnPrefixHash IS NULL OR toFQNHash LIKE CONCAT(:fqnPrefixHash, '.%') OR toFQN=:fqnPrefixHash) AND fromType='THREAD' AND "
+                + "(:fqnPrefixHash IS NULL OR toFQNHash LIKE CONCAT(:fqnPrefixHash, '.%') OR toFQNHash=:fqnPrefixHash) AND fromType='THREAD' AND "
                 + "(:toType IS NULL OR toType LIKE CONCAT(:toType, '.%') OR toType=:toType) AND relation= :relation) "
                 + "ORDER BY createdAt DESC "
                 + "LIMIT :limit",
@@ -1446,7 +1446,7 @@ public interface CollectionDAO {
             "SELECT count(id) FROM thread_entity WHERE <mysqlCond> "
                 + "AND (:type IS NULL OR type = :type) "
                 + "AND MD5(id) in (SELECT fromFQNHash FROM field_relationship WHERE "
-                + "(:fqnPrefixHash IS NULL OR toFQN LIKE CONCAT(:fqnPrefixHash, '.%') OR toFQN=:fqnPrefixHash) AND fromType='THREAD' AND "
+                + "(:fqnPrefixHash IS NULL OR toFQNHash LIKE CONCAT(:fqnPrefixHash, '.%') OR toFQNHash=:fqnPrefixHash) AND fromType='THREAD' AND "
                 + "(:toType IS NULL OR toType LIKE CONCAT(:toType, '.%') OR toType=:toType) AND relation= :relation)",
         connectionType = MYSQL)
     @ConnectionAwareSqlQuery(
@@ -1454,7 +1454,7 @@ public interface CollectionDAO {
             "SELECT count(id) FROM thread_entity WHERE <postgresCond> "
                 + "AND (:type IS NULL OR type = :type) "
                 + "AND MD5(id) in (SELECT fromFQNHash FROM field_relationship WHERE "
-                + "(:fqnPrefixHash IS NULL OR toFQN LIKE CONCAT(:fqnPrefixHash, '.%') OR toFQN=:fqnPrefixHash) AND fromType='THREAD' AND "
+                + "(:fqnPrefixHash IS NULL OR toFQNHash LIKE CONCAT(:fqnPrefixHash, '.%') OR toFQNHash=:fqnPrefixHash) AND fromType='THREAD' AND "
                 + "(:toType IS NULL OR toType LIKE CONCAT(:toType, '.%') OR toType=:toType) AND relation= :relation)",
         connectionType = POSTGRES)
     int listCountAnnouncementsByEntityLink(
@@ -1470,9 +1470,9 @@ public interface CollectionDAO {
             + "AND (:status IS NULL OR taskStatus = :status) "
             + "AND (:type IS NULL OR type = :type) "
             + "AND MD5(id) in (SELECT fromFQNHash FROM field_relationship WHERE "
-            + "(:fqnPrefixHash IS NULL OR toFQN LIKE CONCAT(:fqnPrefixHash, '.%') OR toFQN=:fqnPrefixHash) AND fromType='THREAD' AND "
+            + "(:fqnPrefixHash IS NULL OR toFQN LIKE CONCAT(:fqnPrefixHash, '.%') OR toFQNHash=:fqnPrefixHash) AND fromType='THREAD' AND "
             + "(:toType IS NULL OR toType LIKE CONCAT(:toType, '.%') OR toType=:toType) AND relation= :relation) "
-            + "AND (:userName IS NULL OR id in (SELECT toFQN FROM field_relationship WHERE "
+            + "AND (:userName IS NULL OR id in (SELECT toFQNHash FROM field_relationship WHERE "
             + " ((fromType='user' AND fromFQNHash= :userName) OR"
             + " (fromType='team' AND fromFQNHash IN (<teamNames>))) AND toType='THREAD' AND relation= :filterRelation) )")
     int listCountThreadsByEntityLink(

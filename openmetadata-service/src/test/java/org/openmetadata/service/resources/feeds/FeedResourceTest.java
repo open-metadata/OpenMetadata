@@ -170,10 +170,10 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
     TABLE_DESCRIPTION_LINK = String.format("<#E::table::%s::description>", TABLE.getFullyQualifiedName());
 
     USER = TableResourceTest.USER1;
-    USER_LINK = String.format("<#E::user::%s>", USER.getName());
+    USER_LINK = String.format("<#E::user::%s>", USER.getFullyQualifiedName());
 
     TEAM = TableResourceTest.TEAM1;
-    TEAM_LINK = String.format("<#E::team::%s>", TEAM.getName());
+    TEAM_LINK = String.format("<#E::team::%s>", TEAM.getFullyQualifiedName());
 
     CreateThread createThread = create();
     THREAD = createAndCheck(createThread, ADMIN_AUTH_HEADERS);
@@ -694,7 +694,7 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
 
   private static Stream<Arguments> provideStringsForListThreads() {
     return Stream.of(
-        Arguments.of(String.format("<#E::%s::%s>", Entity.USER, USER.getName())),
+        Arguments.of(String.format("<#E::%s::%s>", Entity.USER, USER.getFullyQualifiedName())),
         Arguments.of(String.format("<#E::%s::%s>", Entity.TABLE, TABLE.getFullyQualifiedName())));
   }
 
