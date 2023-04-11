@@ -183,6 +183,8 @@
     "data-insight-top-viewed-entity-summary": "Recursos de dados mais visualizados",
     "data-insight-total-entity-summary": "Total de recursos de dados",
     "data-model": "Data Model",
+    "data-model-plural": "Data Models",
+    "data-model-type": "Data Model Type",
     "data-quality-test": "Teste de qualidade de dados",
     "data-type": "Tipo de dado",
     "database": "Banco de dados",

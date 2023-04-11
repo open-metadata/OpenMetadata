@@ -26,6 +26,7 @@ import {
   updateDataModelColumnDescription,
   updateDataModelColumnTags,
 } from 'utils/DataModelsUtils';
+import { getEntityName } from 'utils/EntityUtils';
 import { fetchTagsAndGlossaryTerms } from 'utils/TagsUtils';
 import { ReactComponent as EditIcon } from '../../../assets/svg/ic-edit.svg';
 import { ModelTabProps } from './ModelTab.interface';
@@ -195,6 +196,9 @@ const ModelTab = ({
         dataIndex: 'name',
         key: 'name',
         width: 250,
+        render: (_, record) => (
+          <Typography.Text>{getEntityName(record)}</Typography.Text>
+        ),
       },
       {
         title: t('label.type'),

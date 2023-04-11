@@ -183,6 +183,8 @@
     "data-insight-top-viewed-entity-summary": "Activos de datos más vistos",
     "data-insight-total-entity-summary": "Total de activos de datos",
     "data-model": "Data Model",
+    "data-model-plural": "Data Models",
+    "data-model-type": "Data Model Type",
     "data-quality-test": "Prueba de calidad de datos",
     "data-type": "Tipo de datos",
     "database": "Base de datos",
