@@ -70,6 +70,7 @@
     "auto-tag-pii-uppercase": "Etiqueta de información personal identificable automática",
     "automatically-generate": "Generar automáticamente",
     "average-session": "Tiempo promedio de sesión",
+    "awaiting-status": "Awaiting-status",
     "aws-access-key-id": "ID de clave de acceso de AWS",
     "aws-region": "Región de AWS",
     "aws-secret-access-key": "Clave de acceso secreta de AWS",

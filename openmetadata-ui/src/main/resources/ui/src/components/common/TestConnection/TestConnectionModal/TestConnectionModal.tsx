@@ -10,15 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Divider, Modal, Space, Typography } from 'antd';
-import { ReactComponent as FailIcon } from 'assets/svg/fail-badge.svg';
-import { ReactComponent as SuccessIcon } from 'assets/svg/success-badge.svg';
-import Loader from 'components/Loader/Loader';
+import { Modal, Space } from 'antd';
 import { TestConnectionStepResult } from 'generated/entity/automations/workflow';
 import { TestConnectionStep } from 'generated/entity/services/connections/testConnectionDefinition';
-import React, { FC, Fragment } from 'react';
+import React, { FC } from 'react';
 import { useTranslation } from 'react-i18next';
-import { requiredField } from 'utils/CommonUtils';
+import ConnectionStepCard from '../ConnectionStepCard/ConnectionStepCard';
 
 interface TestConnectionModalProps {
   isOpen: boolean;
@@ -57,44 +54,20 @@ const TestConnectionModal: FC<TestConnectionModalProps> = ({
       width={748}
       onCancel={onCancel}
       onOk={onConfirm}>
-      {testConnectionStep.map((step, index) => {
-        const showDivider = testConnectionStep.length - 1 !== index;
-        const currentStepResult = getConnectionStepResult(step);
-        const hasPassed = currentStepResult?.passed;
+      <Space className="p-x-md" direction="vertical" size={16}>
+        {testConnectionStep.map((step) => {
+          const currentStepResult = getConnectionStepResult(step);
 
-        return (
-          <Fragment key={step.name}>
-            <Space align="start" className="px-4" size={16}>
-              <div className="mt-2px">
-                {hasPassed ? (
-                  <SuccessIcon
-                    data-testid="success-badge"
-                    height={24}
-                    width={24}
-                  />
-                ) : isTestingConnection ? (
-                  <Loader size="small" />
-                ) : (
-                  <FailIcon data-testid="fail-badge" height={24} width={24} />
-                )}
-              </div>
-              <Space direction="vertical" size={0}>
-                <Space size={1}>
-                  <Typography.Text className="text-body">
-                    {step.mandatory
-                      ? requiredField(step.name, true)
-                      : step.name}
-                  </Typography.Text>
-                </Space>
-                <Typography.Text className="text-grey-muted">
-                  {currentStepResult?.message ?? step.description}
-                </Typography.Text>
-              </Space>
-            </Space>
-            {showDivider && <Divider />}
-          </Fragment>
-        );
-      })}
+          return (
+            <ConnectionStepCard
+              isTestingConnection={isTestingConnection}
+              key={step.name}
+              testConnectionStep={step}
+              testConnectionStepResult={currentStepResult}
+            />
+          );
+        })}
+      </Space>
     </Modal>
   );
 };
