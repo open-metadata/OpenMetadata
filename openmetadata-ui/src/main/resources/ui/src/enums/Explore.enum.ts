@@ -25,4 +25,5 @@ export enum ExplorePageTabs {
   CONTAINERS = 'containers',
   GLOSSARY = 'glossary',
   TAG = 'tag',
+  DASHBOARD_DATA_MODEL = 'dashboardDataModel',
 }

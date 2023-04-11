@@ -140,4 +140,7 @@ DROP TABLE location_entity;
 
 UPDATE dbservice_entity
 SET json = json::jsonb #- '{connection,config,storageServiceName}'
-WHERE servicetype = 'Glue'
+WHERE servicetype = 'Glue';
+
+UPDATE chart_entity
+SET json = json::jsonb #- '{tables}';

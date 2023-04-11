@@ -142,3 +142,6 @@ DROP TABLE location_entity;
 UPDATE dbservice_entity
 SET json = JSON_REMOVE(json, '$.connection.config.storageServiceName')
 WHERE serviceType = 'Glue';
+
+UPDATE chart_entity
+SET json = JSON_REMOVE(json, '$.tables');

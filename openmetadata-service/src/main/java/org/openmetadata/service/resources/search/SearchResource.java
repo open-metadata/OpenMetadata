@@ -102,6 +102,7 @@ public class SearchResource {
   private static final Integer MAX_RESULT_HITS = 10000;
   private static final String NAME_KEYWORD = "name.keyword";
   private static final String DISPLAY_NAME = "displayName";
+  private static final String FIELD_NAME_NGRAM = "name.ngram";
   private static final String DISPLAY_NAME_KEYWORD = "displayName.keyword";
   private static final String FIELD_DISPLAY_NAME_NGRAM = "displayName.ngram";
   private static final String QUERY = "query";
@@ -551,6 +552,7 @@ public class SearchResource {
             .field(FIELD_DISPLAY_NAME, 15.0f)
             .field(FIELD_DISPLAY_NAME_NGRAM)
             .field(FIELD_NAME, 15.0f)
+            .field(FIELD_NAME_NGRAM)
             .field(DISPLAY_NAME_KEYWORD, 25.0f)
             .field(NAME_KEYWORD, 25.0f)
             .field(FIELD_DESCRIPTION, 1.0f)
@@ -605,6 +607,7 @@ public class SearchResource {
             .field(FIELD_DISPLAY_NAME, 15.0f)
             .field(FIELD_DISPLAY_NAME_NGRAM)
             .field(FIELD_NAME, 15.0f)
+            .field(FIELD_NAME_NGRAM)
             .field(DISPLAY_NAME_KEYWORD, 25.0f)
             .field(NAME_KEYWORD, 25.0f)
             .field(FIELD_DESCRIPTION, 1.0f)
@@ -634,6 +637,7 @@ public class SearchResource {
             .field(FIELD_DISPLAY_NAME, 15.0f)
             .field(FIELD_DISPLAY_NAME_NGRAM)
             .field(FIELD_NAME, 15.0f)
+            .field(FIELD_NAME_NGRAM)
             .field(DISPLAY_NAME_KEYWORD, 25.0f)
             .field(NAME_KEYWORD, 25.0f)
             .field(FIELD_DESCRIPTION, 1.0f)
@@ -839,6 +843,8 @@ public class SearchResource {
   private SearchSourceBuilder buildGlossaryTermSearchBuilder(String query, int from, int size) {
     QueryStringQueryBuilder queryBuilder =
         QueryBuilders.queryStringQuery(query)
+            .field(FIELD_DISPLAY_NAME, 10.0f)
+            .field(FIELD_DISPLAY_NAME_NGRAM, 1.0f)
             .field(FIELD_NAME, 10.0f)
             .field(NAME_KEYWORD, 10.0f)
             .field(DISPLAY_NAME_KEYWORD, 10.0f)
@@ -855,6 +861,8 @@ public class SearchResource {
 
     HighlightBuilder.Field highlightGlossaryName = new HighlightBuilder.Field(FIELD_NAME);
     highlightGlossaryName.highlighterType(UNIFIED);
+    HighlightBuilder.Field highlightGlossaryDisplayName = new HighlightBuilder.Field(FIELD_DISPLAY_NAME);
+    highlightGlossaryDisplayName.highlighterType(UNIFIED);
     HighlightBuilder.Field highlightDescription = new HighlightBuilder.Field(FIELD_DESCRIPTION);
     highlightDescription.highlighterType(UNIFIED);
     HighlightBuilder.Field highlightSynonym = new HighlightBuilder.Field("synonyms");
@@ -862,7 +870,9 @@ public class SearchResource {
     HighlightBuilder hb = new HighlightBuilder();
     hb.field(highlightDescription);
     hb.field(highlightGlossaryName);
+    hb.field(highlightGlossaryDisplayName);
     hb.field(highlightSynonym);
+
     hb.preTags("<span class=\"text-highlighter\">");
     hb.postTags("</span>");
     SearchSourceBuilder searchSourceBuilder =
@@ -877,15 +887,20 @@ public class SearchResource {
     QueryStringQueryBuilder queryBuilder =
         QueryBuilders.queryStringQuery(query)
             .field(FIELD_NAME, 10.0f)
+            .field(FIELD_DISPLAY_NAME, 10.0f)
+            .field(FIELD_DISPLAY_NAME_NGRAM, 1.0f)
             .field(DESCRIPTION, 3.0f)
             .defaultOperator(Operator.AND)
             .fuzziness(Fuzziness.AUTO);
 
     HighlightBuilder.Field highlightTagName = new HighlightBuilder.Field(FIELD_NAME);
     highlightTagName.highlighterType(UNIFIED);
+    HighlightBuilder.Field highlightTagDisplayName = new HighlightBuilder.Field(FIELD_DISPLAY_NAME);
+    highlightTagDisplayName.highlighterType(UNIFIED);
     HighlightBuilder.Field highlightDescription = new HighlightBuilder.Field(FIELD_DESCRIPTION);
     highlightDescription.highlighterType(UNIFIED);
     HighlightBuilder hb = new HighlightBuilder();
+    hb.field(highlightTagDisplayName);
     hb.field(highlightDescription);
     hb.field(highlightTagName);
     hb.preTags("<span class=\"text-highlighter\">");
