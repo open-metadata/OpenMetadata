@@ -17,6 +17,12 @@ from typing import List, Optional
 import requests
 
 from metadata.ingestion.connections.test_connections import SourceConnectionException
+from metadata.ingestion.source.dashboard.metabase.models import (
+    MetabaseDashboardDetails,
+    MetabaseDashboardList,
+    MetabaseDatabase,
+    MetabaseTable,
+)
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -72,21 +78,19 @@ class MetabaseClient:
         """
         resp_dashboards = self.req_get("/api/dashboard")
         if resp_dashboards.status_code == 200:
-            return resp_dashboards.json()
-        return []
-
-    def get_dashboard_name(self, dashboard: dict) -> str:
-        """
-        Get Dashboard Name
-        """
-        return dashboard["name"]
+            return MetabaseDashboardList(dashboards=resp_dashboards.json())
+        logger.warning(f"Failed to fetch the dashboards: {resp_dashboards.text}")
+        return MetabaseDashboardList(dashboards=[])
 
     def get_dashboard_details(self, dashboard_id: str) -> dict:
         """
         Get Dashboard Details
         """
         resp_dashboard = self.req_get(f"/api/dashboard/{dashboard_id}")
-        return resp_dashboard.json()
+        if resp_dashboard.status_code == 200:
+            return MetabaseDashboardDetails(**resp_dashboard.json())
+        logger.warning(f"Failed to fetch the dashboard: {resp_dashboard.text}")
+        return None
 
     def get_database(self, database_id: str) -> Optional[dict]:
         """
@@ -94,7 +98,8 @@ class MetabaseClient:
         """
         resp_database = self.req_get(f"/api/database/{database_id}")
         if resp_database.status_code == 200:
-            return resp_database.json()
+            return MetabaseDatabase(**resp_database.json())
+        logger.warning(f"Failed to fetch the database: {resp_database.text}")
         return None
 
     def get_table(self, table_id: str) -> Optional[dict]:
@@ -103,5 +108,6 @@ class MetabaseClient:
         """
         resp_table = self.req_get(f"/api/table/{table_id}")
         if resp_table.status_code == 200:
-            return resp_table.json()
+            return MetabaseTable(**resp_table.json())
+        logger.warning(f"Failed to fetch the table: {resp_table.text}")
         return None
