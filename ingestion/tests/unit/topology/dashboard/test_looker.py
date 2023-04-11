@@ -184,7 +184,6 @@ class LookerUnitTest(TestCase):
         with patch.object(
             Looker40SDK, "all_dashboards", return_value=MOCK_DASHBOARD_BASE
         ):
-
             self.assertEqual(self.looker.get_dashboards_list(), MOCK_DASHBOARD_BASE)
 
         # Check What happens if we have an exception

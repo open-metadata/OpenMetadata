@@ -101,6 +101,7 @@ CONCATENABLE_SET = {DataType.STRING.value, DataType.TEXT.value}
 
 DATATIME_SET = {DataType.DATETIME.value}
 
+
 # Now, let's define some helper methods to identify
 # the nature of an SQLAlchemy type
 def is_integer(_type) -> bool:

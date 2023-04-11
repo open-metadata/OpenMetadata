@@ -19,6 +19,9 @@ from metadata.data_quality.validations.mixins.pandas_validator_mixin import (
 from metadata.data_quality.validations.table.base.tableCustomSQLQuery import (
     BaseTableCustomSQLQueryValidator,
 )
+from metadata.utils.logger import test_suite_logger
+
+logger = test_suite_logger()
 
 
 class TableCustomSQLQueryValidator(
@@ -28,4 +31,10 @@ class TableCustomSQLQueryValidator(
 
     def _run_results(self, sql_expression: str):
         """compute result of the test case"""
-        return self.runner.query(sql_expression)
+        return sum(  # pylint: disable=consider-using-generator
+            [
+                len(runner.query(sql_expression))
+                for runner in self.runner
+                if len(runner.query(sql_expression))
+            ]
+        )

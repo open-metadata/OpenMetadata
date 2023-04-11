@@ -55,7 +55,6 @@ def get_fn(blueprint: Blueprint) -> Callable:
         json_request = request.get_json(cache=False)
 
         try:
-
             if json_request is None:
                 return ApiResponse.error(
                     status=ApiResponse.STATUS_BAD_REQUEST,
