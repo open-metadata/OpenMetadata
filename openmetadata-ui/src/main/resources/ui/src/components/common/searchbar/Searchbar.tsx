@@ -11,13 +11,14 @@
  *  limitations under the License.
  */
 
-import { Input } from 'antd';
+import Icon from '@ant-design/icons';
+import { Input, InputProps } from 'antd';
 import { ReactComponent as ClearIcon } from 'assets/svg/close-circle-outlined.svg';
 import classNames from 'classnames';
 import { debounce } from 'lodash';
 import { LoadingState } from 'Models';
 import PropTypes from 'prop-types';
-import React, { ChangeEvent, useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import SVGIcons, { Icons } from '../../../utils/SvgUtils';
 import Loader from '../../Loader/Loader';
 
@@ -30,6 +31,7 @@ type Props = {
   removeMargin?: boolean;
   showLoadingStatus?: boolean;
   showClearSearch?: boolean;
+  inputProps?: InputProps;
 };
 
 const Searchbar = ({
@@ -41,6 +43,7 @@ const Searchbar = ({
   removeMargin = false,
   showLoadingStatus = false,
   showClearSearch = false,
+  inputProps,
 }: Props) => {
   const [userSearch, setUserSearch] = useState('');
   const [searchIcon, setSearchIcon] = useState<string>(Icons.SEARCHV1);
@@ -93,6 +96,7 @@ const Searchbar = ({
           onBlur={() => setSearchIcon(Icons.SEARCHV1)}
           onChange={handleChange}
           onFocus={() => setSearchIcon(Icons.SEARCHV1COLOR)}
+          {...inputProps}
         />
         {showLoadingStatus && loadingState === 'waiting' && (
           <div className="tw-absolute tw-block tw-z-1 tw-w-4 tw-h-4 tw-top-2 tw-right-2.5 tw-text-center tw-pointer-events-none">
@@ -100,13 +104,14 @@ const Searchbar = ({
           </div>
         )}
         {showClearSearch && searchValue && (
-          <div
+          <Icon
             className="tw-absolute tw-block tw-z-1 tw-w-4 tw-h-4 tw-top-2 tw-right-2.5 tw-text-center cursor-pointer"
-            onClick={() =>
-              handleChange({ target: { value: '' } } as ChangeEvent)
-            }>
-            <ClearIcon height={16} />
-          </div>
+            component={ClearIcon}
+            onClick={() => {
+              debouncedOnSearch('');
+              setUserSearch('');
+            }}
+          />
         )}
       </div>
     </div>

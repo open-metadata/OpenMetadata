@@ -13,20 +13,20 @@
 import { Button, List, Modal, Select, Space } from 'antd';
 import Searchbar from 'components/common/searchbar/Searchbar';
 import TableDataCardV2 from 'components/common/table-data-card-v2/TableDataCardV2';
-import { EntityUnion } from 'components/Explore/explore.interface';
 import Loader from 'components/Loader/Loader';
+import { SearchedDataProps } from 'components/searched-data/SearchedData.interface';
+import { mapAssetsSearchIndex } from 'constants/Assets.constants';
 import { PAGE_SIZE_MEDIUM } from 'constants/constants';
-import { EntityType } from 'enums/entity.enum';
 import { SearchIndex } from 'enums/search.enum';
 import { compare } from 'fast-json-patch';
-import { cloneDeep, groupBy, map, startCase } from 'lodash';
+import { map, startCase } from 'lodash';
 import { EntityDetailUnion } from 'Models';
 import VirtualList from 'rc-virtual-list';
 import {
   default as React,
   UIEventHandler,
+  useCallback,
   useEffect,
-  useMemo,
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -36,10 +36,8 @@ import {
   getEntityAPIfromSource,
 } from 'utils/Assets/AssetsUtils';
 import { getQueryFilterToExcludeTerm } from 'utils/GlossaryUtils';
-import {
-  AssetFilterKeys,
-  AssetSelectionModalProps,
-} from './AssetSelectionModal.interface';
+import './asset-selection-model.style.less';
+import { AssetSelectionModalProps } from './AssetSelectionModal.interface';
 
 export const AssetSelectionModal = ({
   glossaryFQN,
@@ -49,91 +47,48 @@ export const AssetSelectionModal = ({
 }: AssetSelectionModalProps) => {
   const { t } = useTranslation();
   const [search, setSearch] = useState('');
-  const [items, setItems] = useState<EntityDetailUnion[]>([]);
-  const [itemCount, setItemCount] = useState<Record<AssetFilterKeys, number>>({
-    all: 0,
-    table: 0,
-    pipeline: 0,
-    mlmodel: 0,
-    container: 0,
-    topic: 0,
-    dashboard: 0,
-  });
+  const [items, setItems] = useState<SearchedDataProps['data']>([]);
   const [selectedItems, setSelectedItems] =
     useState<Map<string, EntityDetailUnion>>();
   const [isLoading, setIsLoading] = useState(false);
-  const [activeFilter, setActiveFilter] = useState<AssetFilterKeys>('all');
+  const [activeFilter, setActiveFilter] = useState<SearchIndex>(
+    SearchIndex.TABLE
+  );
   const [pageNumber, setPageNumber] = useState(1);
+
+  const fetchEntities = useCallback(
+    async ({ searchText = '', page = 1, index = activeFilter }) => {
+      try {
+        setIsLoading(true);
+        const res = await searchQuery({
+          pageNumber: page,
+          pageSize: PAGE_SIZE_MEDIUM,
+          searchIndex: index,
+          query: searchText,
+          queryFilter: getQueryFilterToExcludeTerm(glossaryFQN),
+        });
+        const hits = res.hits.hits as SearchedDataProps['data'];
+
+        setItems(page === 1 ? hits : (prevItems) => [...prevItems, ...hits]);
+        setPageNumber(page);
+      } catch (error) {
+        console.error(error);
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [setActiveFilter]
+  );
 
   useEffect(() => {
     if (open) {
-      fetchEntities();
+      fetchEntities({ index: activeFilter, searchText: search });
     }
-  }, [open]);
+  }, [open, activeFilter, search]);
 
-  const fetchEntities = async (searchText = '', page = 1) => {
-    try {
-      setIsLoading(true);
-      const res = await searchQuery({
-        pageNumber: page,
-        pageSize: PAGE_SIZE_MEDIUM,
-        searchIndex: [
-          SearchIndex.TABLE,
-          SearchIndex.PIPELINE,
-          SearchIndex.MLMODEL,
-          SearchIndex.TOPIC,
-          SearchIndex.DASHBOARD,
-          SearchIndex.CONTAINER,
-        ],
-        query: searchText,
-        queryFilter: getQueryFilterToExcludeTerm(glossaryFQN),
-      });
-
-      const groupedArray = groupBy(res.hits.hits, '_source.entityType');
-      const isAppend = page !== 1;
-      const tableCount = groupedArray[EntityType.TABLE]?.length ?? 0;
-      const containerCount = groupedArray[EntityType.CONTAINER]?.length ?? 0;
-      const pipelineCount = groupedArray[EntityType.PIPELINE]?.length ?? 0;
-      const dashboardCount = groupedArray[EntityType.DASHBOARD]?.length ?? 0;
-      const topicCount = groupedArray[EntityType.TOPIC]?.length ?? 0;
-      const mlmodelCount = groupedArray[EntityType.MLMODEL]?.length ?? 0;
-
-      setItemCount((prevCount) => ({
-        ...prevCount,
-        all: res.hits.total.value,
-        ...(isAppend
-          ? {
-              table: prevCount.table + tableCount,
-              pipeline: prevCount.pipeline + pipelineCount,
-              mlmodel: prevCount.mlmodel + mlmodelCount,
-              container: prevCount.container + containerCount,
-              topic: prevCount.topic + topicCount,
-              dashboard: prevCount.dashboard + dashboardCount,
-            }
-          : {
-              table: tableCount,
-              pipeline: pipelineCount,
-              mlmodel: mlmodelCount,
-              container: containerCount,
-              topic: topicCount,
-              dashboard: dashboardCount,
-            }),
-      }));
-      setActiveFilter('all');
-      setItems(
-        page === 1
-          ? res.hits.hits
-          : (prevItems) => [...prevItems, ...res.hits.hits]
-      );
-      setPageNumber(page);
-    } catch (error) {
-      console.error(error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleCardClick = (details: EntityUnion) => {
+  const handleCardClick = (
+    details: SearchedDataProps['data'][number]['_source']
+  ) => {
     const id = details.id;
     if (!id) {
       return;
@@ -156,7 +111,7 @@ export const AssetSelectionModal = ({
 
         selectedItemMap.set(
           id,
-          items.find(({ _source }) => _source.id === id)._source
+          items.find(({ _source }) => _source.id === id)?._source
         );
 
         return selectedItemMap;
@@ -217,17 +172,19 @@ export const AssetSelectionModal = ({
     }
   };
 
-  const onScroll: UIEventHandler<HTMLElement> = (e) => {
-    if (e.currentTarget.scrollHeight - e.currentTarget.scrollTop === 500) {
-      !isLoading && fetchEntities(search, pageNumber + 1);
-    }
-  };
-
-  const filteredData = useMemo(() => {
-    return activeFilter === 'all'
-      ? cloneDeep(items)
-      : items.filter((i) => i._source.entityType === activeFilter);
-  }, [items, activeFilter]);
+  const onScroll: UIEventHandler<HTMLElement> = useCallback(
+    (e) => {
+      if (e.currentTarget.scrollHeight - e.currentTarget.scrollTop === 500) {
+        !isLoading &&
+          fetchEntities({
+            searchText: search,
+            page: pageNumber + 1,
+            index: activeFilter,
+          });
+      }
+    },
+    [activeFilter, search]
+  );
 
   return (
     <Modal
@@ -251,43 +208,43 @@ export const AssetSelectionModal = ({
           removeMargin
           showClearSearch
           showLoadingStatus
+          inputProps={{
+            addonBefore: (
+              <Select
+                bordered={false}
+                options={map(mapAssetsSearchIndex, (value, key) => ({
+                  label: startCase(key),
+                  value: value,
+                }))}
+                style={{ minWidth: '100px' }}
+                value={activeFilter}
+                onChange={setActiveFilter}
+              />
+            ),
+          }}
           placeholder={t('label.search-entity', {
             entity: t('label.asset-plural'),
           })}
           searchValue={search}
-          onSearch={(s) => {
-            setSearch(s);
-            fetchEntities(s);
-          }}
+          onSearch={setSearch}
         />
-        <div className="text-right">
-          <Select
-            bordered={false}
-            defaultValue="all"
-            options={map(itemCount, (_, key) => ({
-              label: startCase(key),
-              value: key,
-            }))}
-            style={{ minWidth: 120 }}
-            onChange={setActiveFilter}
-          />
-        </div>
         <List loading={{ spinning: isLoading, indicator: <Loader /> }}>
           <VirtualList
-            data={filteredData}
+            data={items}
             height={500}
             itemKey="id"
             onScroll={onScroll}>
             {({ _index: index, _source: item }) => (
               <TableDataCardV2
+                openEntityInNewPage
                 showCheckboxes
                 checked={selectedItems?.has(item.id)}
-                className="m-b-xs"
+                className="m-b-sm asset-selection-model-card"
                 handleSummaryPanelDisplay={handleCardClick}
                 id={`tabledatacard-${item.id}`}
                 key={item.id}
                 searchIndex={index}
-                source={{ ...item, tags: [] }}
+                source={item}
               />
             )}
           </VirtualList>

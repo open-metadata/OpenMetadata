@@ -11,9 +11,12 @@
  *  limitations under the License.
  */
 
-import { Typography } from 'antd';
+import { Button, Typography } from 'antd';
+import { ReactComponent as IconExternalLink } from 'assets/svg/external-link.svg';
+import classNames from 'classnames';
 import { toString } from 'lodash';
 import React, { useMemo } from 'react';
+import { Link } from 'react-router-dom';
 import { ROUTES } from '../../../constants/constants';
 import { EntityType, FqnPart } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
@@ -37,6 +40,7 @@ interface TableDataCardTitleProps {
   };
   isPanel?: boolean;
   handleLinkClick?: (e: React.MouseEvent) => void;
+  openEntityInNewPage?: boolean;
 }
 
 const TableDataCardTitle = ({
@@ -46,6 +50,7 @@ const TableDataCardTitle = ({
   source,
   handleLinkClick,
   isPanel = false,
+  openEntityInNewPage = false,
 }: TableDataCardTitleProps) => {
   const isTourRoute = location.pathname.includes(ROUTES.TOUR);
 
@@ -64,49 +69,41 @@ const TableDataCardTitle = ({
     [dataTestId, source]
   );
 
-  //   const title = (
-  //     <Button
-  //       data-testid={testId}
-  //       href={
-  //         isTourRoute
-  //           ? ''
-  //           : getEntityLink(searchIndex, source.fullyQualifiedName ?? '')
-  //       }
-  //       id={`${id ?? testId}-title`}
-  //       type="link"
-  //       onClick={isTourRoute ? handleLinkClick : undefined}>
+  const title = (
+    <Button
+      data-testid={testId}
+      id={`${id ?? testId}-title`}
+      type="link"
+      onClick={isTourRoute ? handleLinkClick : undefined}>
+      {stringToHTML(displayName)}
+      {openEntityInNewPage && (
+        <IconExternalLink className="anticon" height={14} />
+      )}
+    </Button>
+  );
 
-  //     </Button>
-  //   );
-
-  //   if (isTourRoute) {
-  //     return title;
-  //   }
+  if (isTourRoute) {
+    return title;
+  }
 
   return (
-    <div>
-      <Typography.Paragraph
-        className="text-secondary-muted m-b-0"
-        style={{ color: '#6B7280', fontSize: '12px', lineHeight: '15px' }}>
-        {source.name}
-      </Typography.Paragraph>
-      <Typography.Link
-        ellipsis
-        className="m-b-0 text-base"
-        href={
-          isTourRoute
-            ? ''
-            : getEntityLink(searchIndex, source.fullyQualifiedName ?? '')
-        }
-        style={{
-          fontSize: '18px',
-          lineHeight: '22px',
-          fontWeight: 700,
-        }}
-        title={displayName}>
-        {stringToHTML(displayName)}
-      </Typography.Link>
-    </div>
+    <Typography.Title
+      ellipsis
+      className="m-b-0 text-base"
+      level={5}
+      title={displayName}>
+      <Link
+        className={classNames(
+          'table-data-card-title-container w-fit-content w-max-90',
+          {
+            'button-hover': isPanel,
+          }
+        )}
+        target={openEntityInNewPage ? '_blank' : '_self'}
+        to={getEntityLink(searchIndex, source.fullyQualifiedName ?? '')}>
+        {title}
+      </Link>
+    </Typography.Title>
   );
 };
 

@@ -280,7 +280,7 @@ export const getServiceIcon = (source: SourceType) => {
       <img
         alt="service-icon"
         className="inline h-8 p-r-xs"
-        src={serviceTypeLogo(source.serviceType || '')}
+        src={serviceTypeLogo((source.serviceType || source.entityType) ?? '')}
       />
     );
   }

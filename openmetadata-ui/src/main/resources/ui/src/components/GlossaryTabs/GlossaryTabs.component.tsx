@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { Tabs } from 'antd';
+import { EntityDetailsObjectInterface } from 'components/Explore/explore.interface';
 import GlossaryTermTab from 'components/Glossary/GlossaryTermTab/GlossaryTermTab.component';
 import AssetsTabs from 'components/GlossaryTerms/tabs/AssetsTabs.component';
 import GlossaryOverviewTab from 'components/GlossaryTerms/tabs/GlossaryOverviewTab.component';
@@ -34,6 +35,7 @@ type Props = {
   onAssetsUpdate?: (fqn: string, currentPage?: number) => Promise<void>;
   onUpdate: (data: GlossaryTerm | Glossary) => void;
   refreshGlossaryTerms: () => void;
+  onAssetClick?: (asset: EntityDetailsObjectInterface) => void;
 };
 
 const GlossaryTabs = ({
@@ -45,6 +47,7 @@ const GlossaryTabs = ({
   onUpdate,
   permissions,
   refreshGlossaryTerms,
+  onAssetClick,
 }: Props) => {
   const {
     glossaryName: glossaryFqn,
@@ -130,6 +133,7 @@ const GlossaryTabs = ({
             assetData={assetData}
             currentPage={assetData.currPage}
             permissions={permissions}
+            onAssetClick={onAssetClick}
             onAssetPaginate={handleAssetPagination}
           />
         ),

@@ -14,35 +14,35 @@
 import { Button, Radio } from 'antd';
 import { AssetsUnion } from 'components/Assets/AssetsSelectionModal/AssetSelectionModal.interface';
 import TableDataCardV2 from 'components/common/table-data-card-v2/TableDataCardV2';
+import { EntityDetailsObjectInterface } from 'components/Explore/explore.interface';
 import Loader from 'components/Loader/Loader';
 import { OperationPermission } from 'components/PermissionProvider/PermissionProvider.interface';
+import { SearchedDataProps } from 'components/searched-data/SearchedData.interface';
+import { AssetsFilterOptions } from 'constants/Assets.constants';
+import { PAGE_SIZE } from 'constants/constants';
 import { GLOSSARIES_DOCS } from 'constants/docs.constants';
 import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { EntityType } from 'enums/entity.enum';
 import { SearchIndex } from 'enums/search.enum';
 import { t } from 'i18next';
-import { groupBy, map, startCase } from 'lodash';
+import { startCase } from 'lodash';
 import { AssetsDataType } from 'Models';
-import React, { useEffect, useMemo, useState } from 'react';
-import { PAGE_SIZE } from '../../../constants/constants';
-import { Paging } from '../../../generated/type/paging';
+import React, { useEffect, useState } from 'react';
+import { useParams } from 'react-router-dom';
+import { searchData } from 'rest/miscAPI';
+import { showErrorToast } from 'utils/ToastUtils';
 import { getCountBadge } from '../../../utils/CommonUtils';
 import ErrorPlaceHolder from '../../common/error-with-placeholder/ErrorPlaceHolder';
-import NextPrevious from '../../common/next-previous/NextPrevious';
 
 interface Props {
   assetData: AssetsDataType;
   currentPage: number;
   onAssetPaginate: (num: string | number, activePage?: number) => void;
   permissions: OperationPermission;
+  onAssetClick?: (asset: EntityDetailsObjectInterface) => void;
 }
 
-const AssetsTabs = ({
-  assetData,
-  onAssetPaginate,
-  currentPage,
-  permissions,
-}: Props) => {
+const AssetsTabs = ({ permissions, onAssetClick }: Props) => {
   const [itemCount, setItemCount] = useState<Record<AssetsUnion, number>>({
     table: 0,
     pipeline: 0,
@@ -51,59 +51,123 @@ const AssetsTabs = ({
     topic: 0,
     dashboard: 0,
   });
-  const [activeFilter, setActiveFilter] = useState<AssetsUnion>(
-    EntityType.TABLE
+  const [activeFilter, setActiveFilter] = useState<SearchIndex>(
+    SearchIndex.TABLE
   );
+  const { glossaryName } = useParams<{ glossaryName: string }>();
+  const [isLoading, setIsLoading] = useState(true);
+  const [data, setData] = useState<SearchedDataProps['data']>([]);
+
+  const fetchCountsByEntity = () => {
+    Promise.all(
+      [
+        SearchIndex.TABLE,
+        SearchIndex.TOPIC,
+        SearchIndex.DASHBOARD,
+        SearchIndex.PIPELINE,
+        SearchIndex.MLMODEL,
+        SearchIndex.CONTAINER,
+      ].map((index) =>
+        searchData('', 0, 0, `(tags.tagFQN:"${glossaryName}")`, '', '', index)
+      )
+    )
+      .then(
+        ([
+          tableResponse,
+          topicResponse,
+          dashboardResponse,
+          pipelineResponse,
+          mlmodelResponse,
+          containerResponse,
+        ]) => {
+          setItemCount({
+            [EntityType.TOPIC]: topicResponse.data.hits.total.value,
+            [EntityType.TABLE]: tableResponse.data.hits.total.value,
+            [EntityType.DASHBOARD]: dashboardResponse.data.hits.total.value,
+            [EntityType.PIPELINE]: pipelineResponse.data.hits.total.value,
+            [EntityType.MLMODEL]: mlmodelResponse.data.hits.total.value,
+            [EntityType.CONTAINER]: containerResponse.data.hits.total.value,
+          });
+
+          setActiveFilter(
+            tableResponse.data.hits.total.value
+              ? SearchIndex.TABLE
+              : topicResponse.data.hits.total.value
+              ? SearchIndex.TOPIC
+              : SearchIndex.DASHBOARD
+          );
+        }
+      )
+      .catch((err) => {
+        showErrorToast(err);
+      })
+      .finally(() => setIsLoading(false));
+  };
 
   useEffect(() => {
-    const groupedArray = groupBy(assetData.data, 'entityType');
-    setItemCount({
-      table: groupedArray[EntityType.TABLE]?.length ?? 0,
-      pipeline: groupedArray[EntityType.PIPELINE]?.length ?? 0,
-      mlmodel: groupedArray[EntityType.MLMODEL]?.length ?? 0,
-      container: groupedArray[EntityType.CONTAINER]?.length ?? 0,
-      topic: groupedArray[EntityType.TOPIC]?.length ?? 0,
-      dashboard: groupedArray[EntityType.DASHBOARD]?.length ?? 0,
-    });
-  }, [assetData.data]);
+    fetchCountsByEntity();
+  }, []);
 
-  const data = useMemo(
-    () => assetData.data.filter((e) => e.entityType === activeFilter),
-    [activeFilter, assetData]
-  );
+  const fetchAssets = async (index: SearchIndex) => {
+    try {
+      const res = await searchData(
+        '',
+        1,
+        PAGE_SIZE,
+        `(tags.tagFQN:"${glossaryName}")`,
+        '',
+        '',
+        index
+      );
 
-  if (assetData.isLoading) {
+      const hits = res?.data?.hits?.hits;
+
+      setData(hits as SearchedDataProps['data']);
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
+  useEffect(() => {
+    fetchAssets(activeFilter);
+  }, [activeFilter]);
+
+  if (isLoading) {
     return <Loader />;
   }
 
   return (
     <div data-testid="table-container">
       <Radio.Group
-        className="m-b-xs"
+        className="m-b-sm"
         value={activeFilter}
         onChange={(e) => setActiveFilter(e.target.value)}>
-        {map(
-          itemCount,
-          (value, key) =>
-            value > 0 && (
-              <Radio.Button key={key} value={key}>
-                {startCase(key)} {getCountBadge(value)}
-              </Radio.Button>
-            )
-        )}
+        {AssetsFilterOptions.map((option) => {
+          return itemCount[option.label] > 0 ? (
+            <Radio.Button key={option.value} value={option.value}>
+              {startCase(option.label)} {getCountBadge(itemCount[option.label])}
+            </Radio.Button>
+          ) : null;
+        })}
       </Radio.Group>
       {data.length ? (
         <>
-          {data.map((entity, index) => (
-            <div className="m-b-sm" key={index}>
-              <TableDataCardV2
-                id={entity.id}
-                searchIndex={entity.index as SearchIndex}
-                source={entity}
-              />
-            </div>
+          {data.map(({ _source, _index, _id = '' }, index) => (
+            <TableDataCardV2
+              className="m-b-sm cursor-pointer"
+              handleSummaryPanelDisplay={(source) =>
+                onAssetClick &&
+                onAssetClick({
+                  details: source,
+                })
+              }
+              id={_id}
+              key={index}
+              searchIndex={_index as SearchIndex}
+              source={_source}
+            />
           ))}
-          {assetData.total > PAGE_SIZE && assetData.data.length > 0 && (
+          {/* {data.total > PAGE_SIZE && assetData.data.length > 0 && (
             <NextPrevious
               isNumberBased
               currentPage={currentPage}
@@ -112,7 +176,7 @@ const AssetsTabs = ({
               pagingHandler={onAssetPaginate}
               totalCount={assetData.total}
             />
-          )}
+          )} */}
         </>
       ) : (
         <div className="m-t-xlg">

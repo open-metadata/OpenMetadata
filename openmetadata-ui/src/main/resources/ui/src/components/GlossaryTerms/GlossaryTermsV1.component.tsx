@@ -13,6 +13,7 @@
 
 import { Col, Row } from 'antd';
 import { AxiosError } from 'axios';
+import { EntityDetailsObjectInterface } from 'components/Explore/explore.interface';
 import GlossaryHeader from 'components/Glossary/GlossaryHeader/GlossaryHeader.component';
 import GlossaryTabs from 'components/GlossaryTabs/GlossaryTabs.component';
 import { PAGE_SIZE } from 'constants/constants';
@@ -33,6 +34,7 @@ type Props = {
   handleGlossaryTermUpdate: (data: GlossaryTerm) => Promise<void>;
   handleGlossaryTermDelete: (id: string) => void;
   refreshGlossaryTerms: () => void;
+  onAssetClick?: (asset: EntityDetailsObjectInterface) => void;
 };
 
 const GlossaryTermsV1 = ({
@@ -42,6 +44,7 @@ const GlossaryTermsV1 = ({
   handleGlossaryTermDelete,
   permissions,
   refreshGlossaryTerms,
+  onAssetClick,
 }: Props) => {
   const [assetData, setAssetData] = useState<AssetsDataType>({
     isLoading: true,
@@ -122,6 +125,7 @@ const GlossaryTermsV1 = ({
           permissions={permissions}
           refreshGlossaryTerms={refreshGlossaryTerms}
           selectedData={glossaryTerm}
+          onAssetClick={onAssetClick}
           onUpdate={(data) => handleGlossaryTermUpdate(data as GlossaryTerm)}
         />
       </Col>
