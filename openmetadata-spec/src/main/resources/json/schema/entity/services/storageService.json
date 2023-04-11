@@ -37,7 +37,7 @@
           "mask": true,
           "oneOf": [
             {
-              "$ref": "connections/storage/s3StorageConnection.json"
+              "$ref": "connections/storage/s3Connection.json"
             }
           ]
         }

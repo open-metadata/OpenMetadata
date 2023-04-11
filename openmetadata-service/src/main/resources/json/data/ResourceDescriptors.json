@@ -235,18 +235,6 @@
     ]
   },
   {
-    "name" : "storageService",
-    "operations" : [
-      "Create",
-      "Delete",
-      "ViewAll",
-      "EditAll",
-      "EditDescription",
-      "EditDisplayName",
-      "EditCustomFields"
-    ]
-  },
-  {
     "name" : "pipeline",
     "operations" : [
       "Create",

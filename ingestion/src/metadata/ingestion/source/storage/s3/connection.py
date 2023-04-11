@@ -25,8 +25,8 @@ from metadata.clients.aws_client import AWSClient
 from metadata.generated.schema.entity.automations.workflow import (
     Workflow as AutomationWorkflow,
 )
-from metadata.generated.schema.entity.services.connections.storage.s3StorageConnection import (
-    S3StoreConnection,
+from metadata.generated.schema.entity.services.connections.storage.s3Connection import (
+    S3Connection,
 )
 from metadata.ingestion.connections.test_connections import test_connection_steps
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -38,7 +38,7 @@ class S3ObjectStoreClient:
     cloudwatch_client: BaseClient
 
 
-def get_connection(connection: S3StoreConnection) -> S3ObjectStoreClient:
+def get_connection(connection: S3Connection) -> S3ObjectStoreClient:
     """
     Returns 2 clients - the s3 client and the cloudwatch client needed for total nr of objects and total size
     """
@@ -52,7 +52,7 @@ def get_connection(connection: S3StoreConnection) -> S3ObjectStoreClient:
 def test_connection(
     metadata: OpenMetadata,
     client: S3ObjectStoreClient,
-    service_connection: S3StoreConnection,
+    service_connection: S3Connection,
     automation_workflow: Optional[AutomationWorkflow] = None,
 ) -> None:
 

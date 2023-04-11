@@ -27,10 +27,10 @@ from metadata.generated.schema.entity.data.table import Column
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
-from metadata.generated.schema.entity.services.connections.storage.s3StorageConnection import (
-    S3StoreConnection,
+from metadata.generated.schema.entity.services.connections.storage.s3Connection import (
+    S3Connection,
 )
-from metadata.generated.schema.metadataIngestion.objectstore.containerMetadataConfig import (
+from metadata.generated.schema.metadataIngestion.storage.containerMetadataConfig import (
     MetadataEntry,
     StorageContainerConfig,
 )
@@ -115,8 +115,8 @@ class S3Source(StorageServiceSource):
     @classmethod
     def create(cls, config_dict, metadata_config: OpenMetadataConnection):
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
-        connection: S3StoreConnection = config.serviceConnection.__root__.config
-        if not isinstance(connection, S3StoreConnection):
+        connection: S3Connection = config.serviceConnection.__root__.config
+        if not isinstance(connection, S3Connection):
             raise InvalidSourceException(
                 f"Expected S3StoreConnection, but got {connection}"
             )

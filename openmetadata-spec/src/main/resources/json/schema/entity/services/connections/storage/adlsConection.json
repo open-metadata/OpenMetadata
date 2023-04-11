@@ -1,29 +1,29 @@
 {
-  "$id": "https://open-metadata.org/schema/entity/services/connections/storage/gcsStoreConnection.json",
+  "$id": "https://open-metadata.org/schema/entity/services/connections/storage/adlsConnection.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "GCS Store Connection",
-  "description": "GCS Store Connection.",
+  "title": "Azure Store Connection",
+  "description": "Azure Store Connection.",
   "type": "object",
-  "javaType": "org.openmetadata.schema.services.connections.storage.GcsConnection",
+  "javaType": "org.openmetadata.schema.services.connections.storage.AzureConnection",
   "definitions": {
-    "gcsType": {
-      "description": "Gcs service type",
+    "azureType": {
+      "description": "ADLS service type",
       "type": "string",
-      "enum": ["Gcs"],
-      "default": "Gcs"
+      "enum": ["Adls"],
+      "default": "Adls"
     }
   },
   "properties": {
     "type": {
       "title": "Service Type",
       "description": "Service Type",
-      "$ref": "#/definitions/gcsType",
-      "default": "Gcs"
+      "$ref": "#/definitions/azureType",
+      "default": "Adls"
     },
     "credentials": {
-      "title": "GCS Credentials",
-      "description": "GCS Credentials",
-      "$ref": "../../../../security/credentials/gcsCredentials.json"
+      "title": "Azure Credentials",
+      "description": "Azure Credentials",
+      "$ref": "../../../../security/credentials/azureCredentials.json"
     },
     "connectionOptions": {
       "title": "Connection Options",

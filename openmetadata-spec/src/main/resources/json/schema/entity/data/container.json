@@ -65,7 +65,7 @@
     },
     "name": {
       "description": "Name that identifies the container.",
-      "$ref": "../../type/basic.json#/definitions/entityName"
+      "$ref": "#/definitions/entityName"
     },
     "fullyQualifiedName": {
       "description": "Name that uniquely identifies a container in the format 'ServiceName.ContainerName'.",
