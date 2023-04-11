@@ -184,7 +184,6 @@ class LookerUnitTest(TestCase):
         with patch.object(
             Looker40SDK, "all_dashboards", return_value=MOCK_DASHBOARD_BASE
         ):
-
             self.assertEqual(self.looker.get_dashboards_list(), MOCK_DASHBOARD_BASE)
 
         # Check What happens if we have an exception
@@ -247,16 +246,7 @@ class LookerUnitTest(TestCase):
         """
         Check how we pick or not the owner
         """
-
-        # First, validate that we return the user if we have it
-        # in the ref
         ref = EntityReference(id=uuid.uuid4(), type="user")
-        self.looker._owners_ref["user_id"] = ref
-
-        self.assertEqual(self.looker.get_owner_details(MOCK_LOOKER_DASHBOARD), ref)
-
-        # Now check that we are storing the ref properly
-        self.looker._owners_ref = {}
 
         with patch.object(Looker40SDK, "user", return_value=MOCK_USER), patch.object(
             # This does not really return a ref, but for simplicity
@@ -265,8 +255,6 @@ class LookerUnitTest(TestCase):
             return_value=ref,
         ):
             self.assertEqual(self.looker.get_owner_details(MOCK_LOOKER_DASHBOARD), ref)
-            # The call also updates the _owners_ref dict
-            self.assertEqual(self.looker._owners_ref.get("user_id"), ref)
 
         def raise_something_bad():
             raise RuntimeError("Something bad")
@@ -309,51 +297,6 @@ class LookerUnitTest(TestCase):
 
         self.assertEqual(self.looker._clean_table_name("TABLE AS ALIAS"), "table")
 
-    def test_add_sql_table(self):
-        """
-        Check how we get the table name from the explore
-        """
-
-        # Check how we get the table name back
-        with patch.object(
-            Looker40SDK,
-            "lookml_model_explore",
-            return_value=LookmlModelExplore(sql_table_name="MY_TABLE"),
-        ):
-            dashboard_sources = set()
-
-            self.looker._add_sql_table(
-                query=Query(model="model", view="view"),
-                dashboard_sources=dashboard_sources,
-            )
-            self.assertEqual(dashboard_sources, {"my_table"})
-
-        # If there's no name, nothing happens
-        with patch.object(
-            Looker40SDK,
-            "lookml_model_explore",
-            return_value=LookmlModelExplore(sql_table_name=None),
-        ):
-            dashboard_sources = set()
-
-            self.looker._add_sql_table(
-                query=Query(model="model", view="view"),
-                dashboard_sources=dashboard_sources,
-            )
-            self.assertEqual(len(dashboard_sources), 0)
-
-        def something_bad(*_):
-            raise SDKError("something bad")
-
-        # We don't raise on errors, just log
-        with patch.object(
-            Looker40SDK, "lookml_model_explore", side_effect=something_bad
-        ):
-            self.looker._add_sql_table(
-                query=Query(model="model", view="view"),
-                dashboard_sources=dashboard_sources,
-            )
-
     def test_get_dashboard_sources(self):
         """
         Check how we are building the sources
@@ -361,10 +304,13 @@ class LookerUnitTest(TestCase):
         with patch.object(
             Looker40SDK,
             "lookml_model_explore",
-            return_value=LookmlModelExplore(sql_table_name="MY_TABLE"),
+            return_value=LookmlModelExplore(
+                sql_table_name="MY_TABLE", model_name="model2", view_name="view"
+            ),
         ):
             dashboard_sources = self.looker.get_dashboard_sources(MOCK_LOOKER_DASHBOARD)
-            self.assertEqual(dashboard_sources, {"my_table"})
+            # Picks it up from the chart, not here
+            self.assertEqual(dashboard_sources, {"model_view"})
 
     def test_build_lineage_request(self):
         """

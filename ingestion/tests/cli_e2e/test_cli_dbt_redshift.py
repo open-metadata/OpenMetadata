@@ -25,7 +25,6 @@ from .test_cli_dbt_base import PATH_TO_RESOURCES, CliDBTBase
 
 
 class DbtCliTest(CliDBTBase.TestSuite):
-
     engine: Engine
 
     @classmethod

@@ -510,7 +510,6 @@ class SampleDataSource(
         Ingest sample teams
         """
         for team in self.teams["teams"]:
-
             team_to_ingest = CreateTeamRequest(
                 name=team["name"], teamType=team["teamType"]
             )

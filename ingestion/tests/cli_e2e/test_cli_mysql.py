@@ -19,7 +19,6 @@ from .test_cli_db_base_common import CliCommonDB
 
 
 class MysqlCliTest(CliCommonDB.TestSuite, SQACommonMethods):
-
     create_table_query: str = """
         CREATE TABLE persons (
             person_id int,

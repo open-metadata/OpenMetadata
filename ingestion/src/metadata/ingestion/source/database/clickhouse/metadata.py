@@ -78,7 +78,6 @@ ischema_names.update(
 def _get_column_type(
     self, name, spec
 ):  # pylint: disable=protected-access,too-many-branches,too-many-return-statements
-
     if spec.startswith("Array"):
         return self.ischema_names["Array"]
 
