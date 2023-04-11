@@ -10,10 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { InfoCircleOutlined } from '@ant-design/icons';
-import { Form, FormRule, Input, Space, Tooltip } from 'antd';
+import { Form, FormRule, Input, Space } from 'antd';
+import Typography from 'antd/lib/typography/Typography';
 import FilterPattern from 'components/common/FilterPattern/FilterPattern';
 import { FilterPatternProps } from 'components/common/FilterPattern/filterPattern.interface';
+import InfoPopover from 'components/common/InfoPopover/InfoPopover';
 import ToggleSwitchV1, {
   ToggleSwitchV1Props,
 } from 'components/common/toggle-switch/ToggleSwitchV1';
@@ -69,9 +70,11 @@ export const getField = (field: FieldProp) => {
     fieldLabel = (
       <div>
         {fieldLabel}{' '}
-        <Tooltip placement="bottom" title={helperText} trigger="hover">
-          <InfoCircleOutlined className="tw-mx-1" style={{ color: 'C4C4C4' }} />
-        </Tooltip>
+        <InfoPopover
+          content={
+            <Typography className="text-grey-muted">{helperText}</Typography>
+          }
+        />
       </div>
     );
   }

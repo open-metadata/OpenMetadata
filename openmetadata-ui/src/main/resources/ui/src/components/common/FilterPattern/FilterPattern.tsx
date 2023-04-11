@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Checkbox, Col, Input, Row, Typography } from 'antd';
+import { Checkbox, Col, Input, Row, Space, Typography } from 'antd';
 import { t } from 'i18next';
 import { capitalize, toLower } from 'lodash';
 import React from 'react';
@@ -21,6 +21,7 @@ import {
 } from '../../../utils/CommonUtils';
 import SVGIcons, { Icons } from '../../../utils/SvgUtils';
 import { Field } from '../../Field/Field';
+import InfoPopover from '../InfoPopover/InfoPopover';
 import { FilterPatternProps } from './filterPattern.interface';
 
 const FilterPattern = ({
@@ -63,44 +64,55 @@ const FilterPattern = ({
             onChange={(e) => handleChecked(e.target.checked)}
           />
         </Col>
-        <Col className="d-flex flex-col">
+        <Col className="d-flex">
           <label htmlFor={`${type}FilterPatternCheckbox`}>{`${capitalize(
             type
           )} ${t('label.filter-pattern')}`}</label>
-          <Typography.Text
-            className="text-grey-muted m-t-xss"
-            data-testid="filter-pattern-info">
-            {t('message.filter-pattern-info', {
-              filterPattern: type,
-            })}{' '}
-            <Typography.Link
-              href={getFilterPatternDocsLinks(type)}
-              target="_blank">
-              {t('label.read-type', {
-                type: t('label.more-lowercase'),
-              })}{' '}
-              <SVGIcons
-                alt="external-link"
-                className="m-l-xss"
-                icon={Icons.EXTERNAL_LINK}
-                width="14px"
-              />
-            </Typography.Link>
-          </Typography.Text>
+          <InfoPopover
+            content={
+              <Typography.Text
+                className="text-grey-muted m-t-xss"
+                data-testid="filter-pattern-info">
+                {t('message.filter-pattern-info', {
+                  filterPattern: type,
+                })}{' '}
+                <Typography.Link
+                  href={getFilterPatternDocsLinks(type)}
+                  target="_blank">
+                  {t('label.read-type', {
+                    type: t('label.more-lowercase'),
+                  })}{' '}
+                  <SVGIcons
+                    alt="external-link"
+                    className="m-l-xss"
+                    icon={Icons.EXTERNAL_LINK}
+                    width="14px"
+                  />
+                </Typography.Link>
+              </Typography.Text>
+            }
+          />
         </Col>
       </Row>
       {checked && (
         <div data-testid="field-container">
           <Field>
-            <label className="d-flex flex-col">{t('label.include')}:</label>
-            <Typography.Text
-              className="text-grey-muted m-t-xss m-b-xss"
-              data-testid="filter-pattern-include-info">
-              {t('message.filter-pattern-include-exclude-info', {
-                activity: toLower(t('label.include')),
-                filterPattern: type,
-              })}
-            </Typography.Text>
+            <Space size={2}>
+              <label className="d-flex flex-col">{t('label.include')}:</label>
+              <InfoPopover
+                content={
+                  <Typography.Text
+                    className="text-grey-muted m-t-xss m-b-xss"
+                    data-testid="filter-pattern-include-info">
+                    {t('message.filter-pattern-include-exclude-info', {
+                      activity: toLower(t('label.include')),
+                      filterPattern: type,
+                    })}
+                  </Typography.Text>
+                }
+              />
+            </Space>
+
             <Input
               className="m-t-xss"
               data-testid={`filter-pattern-includes-${type}`}
@@ -119,15 +131,21 @@ const FilterPattern = ({
             )}
           </Field>
           <Field>
-            <label className="d-flex flex-col">{t('label.exclude')}:</label>
-            <Typography.Text
-              className="text-grey-muted m-t-xss m-b-xss"
-              data-testid="filter-pattern-exclude-info">
-              {t('message.filter-pattern-include-exclude-info', {
-                activity: toLower(t('label.exclude')),
-                filterPattern: type,
-              })}
-            </Typography.Text>
+            <Space size={2}>
+              <label className="d-flex flex-col">{t('label.exclude')}:</label>
+              <InfoPopover
+                content={
+                  <Typography.Text
+                    className="text-grey-muted m-t-xss m-b-xss"
+                    data-testid="filter-pattern-exclude-info">
+                    {t('message.filter-pattern-include-exclude-info', {
+                      activity: toLower(t('label.exclude')),
+                      filterPattern: type,
+                    })}
+                  </Typography.Text>
+                }
+              />
+            </Space>
             <Input
               className="m-t-xss"
               data-testid={`filter-pattern-excludes-${type}`}
