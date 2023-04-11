@@ -106,6 +106,8 @@ const DeleteWidgetModal = ({
       EntityType.OBJECT_STORE_SERVICE,
     ];
 
+    const dataQuality = [EntityType.TEST_SUITE, EntityType.TEST_CASE];
+
     if (services.includes((entityType || '') as EntityType)) {
       return `services/${entityType}s`;
     } else if (entityType === EntityType.GLOSSARY) {
@@ -116,6 +118,8 @@ const DeleteWidgetModal = ({
       return entityType;
     } else if (entityType === EntityType.DASHBOARD_DATA_MODEL) {
       return `dashboard/datamodels`;
+    } else if (dataQuality.includes(entityType as EntityType)) {
+      return `dataQuality/${entityType}s`;
     } else {
       return `${entityType}s`;
     }
