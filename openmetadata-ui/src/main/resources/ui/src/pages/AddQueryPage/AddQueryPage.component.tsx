@@ -101,7 +101,9 @@ const AddQueryPage = () => {
           url: getTableTabPath(datasetFQN, 'table_queries'),
         },
         {
-          name: 'Add Query',
+          name: t('label.add-entity', {
+            entity: t('label.query'),
+          }),
           url: '',
           activeTitle: true,
         },
