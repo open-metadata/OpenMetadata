@@ -74,18 +74,16 @@ export const handleIngestionRetry = (
   // ingestions page
   let retryCount = count;
   const testIngestionsTab = () => {
-    cy.get('[data-testid="Ingestions"]').should('exist').and('be.visible');
-    cy.get('[data-testid="Ingestions"] >> [data-testid="filter-count"]').should(
-      'have.text',
-      rowIndex
-    );
     // click on the tab only for the first time
     if (retryCount === 0) {
       // Wait for pipeline status to be loaded
       if (ingestionType === 'metadata') {
         verifyResponseStatusCode('@ingestionPipelines', 200);
       }
-
+      cy.get('[data-testid="Ingestions"]').should('exist').and('be.visible');
+      cy.get(
+        '[data-testid="Ingestions"] >> [data-testid="filter-count"]'
+      ).should('have.text', rowIndex);
       cy.get('[data-testid="Ingestions"]').click();
 
       if (ingestionType === 'metadata') {
@@ -112,15 +110,9 @@ export const handleIngestionRetry = (
 
     retryCount++;
 
-    if (ingestionType === 'metadata') {
-      cy.get(`[data-row-key*="${ingestionType}"]`)
-        .find('[data-testid="pipeline-status"]')
-        .as('checkRun');
-    } else {
-      cy.get(`[data-row-key*="${ingestionType}"]`)
-        .find('[data-testid="pipeline-status"]')
-        .as('checkRun');
-    }
+    cy.get(`[data-row-key*="${ingestionType}"]`)
+      .find('[data-testid="pipeline-status"]')
+      .as('checkRun');
     // the latest run should be success
     cy.get('@checkRun').then(($ingestionStatus) => {
       if (
