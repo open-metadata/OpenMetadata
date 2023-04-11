@@ -422,7 +422,7 @@ describe('Data Quality and Profiler should work properly', () => {
   });
 
   it('Delete Column Test Case should work properly', () => {
-    interceptURL('GET', '/api/v1/testCases?*', 'testCase');
+    interceptURL('GET', '/api/v1/dataQuality/testCases?*', 'testCase');
     goToProfilerTab();
     verifyResponseStatusCode('@testCase', 200);
     cy.get('[data-testid="profiler-tab-left-panel"]')
