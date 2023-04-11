@@ -634,20 +634,20 @@ const EntityTable = ({
         render: renderDataTypeDisplay,
       },
       {
-        title: t('label.scale'),
-        dataIndex: 'scale',
-        key: 'scale',
-        accessor: 'scale',
-        width: 80,
-        render: (scale: number) => scale || '--',
-      },
-      {
         title: t('label.precision'),
         dataIndex: 'precision',
         key: 'precision',
         accessor: 'precision',
         width: 80,
         render: (precision: number) => precision || '--',
+      },
+      {
+        title: t('label.scale'),
+        dataIndex: 'scale',
+        key: 'scale',
+        accessor: 'scale',
+        width: 80,
+        render: (scale: number) => scale || '--',
       },
       {
         title: t('label.ordinal-position'),
