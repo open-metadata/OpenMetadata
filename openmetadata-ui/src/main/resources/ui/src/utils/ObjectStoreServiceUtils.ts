@@ -11,15 +11,15 @@
  *  limitations under the License.
  */
 import { COMMON_UI_SCHEMA } from 'constants/Services.constant';
-import { ObjectStoreServiceType } from 'generated/entity/data/container';
-import s3Connection from 'jsons/connectionSchemas/connections/objectstore/s3ObjectStoreConnection.json';
+import { StorageServiceType } from 'generated/entity/data/container';
+import s3Connection from 'jsons/connectionSchemas/connections/storage/s3StorageConnection.json';
 import { cloneDeep } from 'lodash';
 
-export const getObjectStoreConfig = (type: ObjectStoreServiceType) => {
+export const getStorageServiceConfig = (type: StorageServiceType) => {
   let schema = {};
   const uiSchema = { ...COMMON_UI_SCHEMA };
   switch (type) {
-    case ObjectStoreServiceType.S3: {
+    case StorageServiceType.S3: {
       schema = s3Connection;
 
       break;

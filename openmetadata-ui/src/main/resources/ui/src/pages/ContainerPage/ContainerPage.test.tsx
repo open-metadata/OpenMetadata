@@ -13,7 +13,7 @@
 import { act, render, screen } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
-import { getContainerByName } from 'rest/objectStoreAPI';
+import { getContainerByName } from 'rest/storageAPI';
 import ContainerPage from './ContainerPage';
 import { CONTAINER_DATA } from './ContainerPage.mock';
 

@@ -67,9 +67,9 @@ public class ContainerRepository extends EntityRepository<Container> {
   }
 
   private void setDefaultFields(Container container) throws IOException {
-    EntityReference parentObjectStoreServiceRef =
+    EntityReference parentServiceRef =
         getFromEntityRef(container.getId(), Relationship.CONTAINS, STORAGE_SERVICE, true);
-    container.withService(parentObjectStoreServiceRef);
+    container.withService(parentServiceRef);
   }
 
   private List<EntityReference> getChildrenContainers(Container container) throws IOException {

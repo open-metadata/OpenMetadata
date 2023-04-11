@@ -16,7 +16,7 @@ import { ObjectStoreServiceType } from 'generated/entity/data/container';
 import { cloneDeep, isNil } from 'lodash';
 import { LoadingState } from 'Models';
 import React, { Fragment, FunctionComponent } from 'react';
-import { getObjectStoreConfig } from 'utils/ObjectStoreServiceUtils';
+import { getStorageServiceConfig } from 'utils/ObjectStoreServiceUtils';
 import { ServiceCategory } from '../../enums/service.enum';
 import { MetadataServiceType } from '../../generated/api/services/createMetadataService';
 import { MlModelServiceType } from '../../generated/api/services/createMlModelService';
@@ -113,8 +113,10 @@ const ConnectionConfigForm: FunctionComponent<Props> = ({
 
         break;
       }
-      case ServiceCategory.OBJECT_STORE_SERVICES: {
-        connSch = getObjectStoreConfig(serviceType as ObjectStoreServiceType);
+      case ServiceCategory.STORAGE_SERVICES: {
+        connSch = getStorageServiceConfig(
+          serviceType as ObjectStoreServiceType
+        );
 
         break;
       }

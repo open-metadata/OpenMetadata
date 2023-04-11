@@ -74,7 +74,7 @@ public class StorageServiceResourceTest extends EntityResourceTest<StorageServic
 
   @Test
   void post_validService_as_admin_200_ok(TestInfo test) throws IOException {
-    // Create ObjectStore service with different optional fields
+    // Create Storage service with different optional fields
     Map<String, String> authHeaders = ADMIN_AUTH_HEADERS;
     createAndCheckEntity(createRequest(test, 1).withDescription(null), authHeaders);
     createAndCheckEntity(createRequest(test, 2).withDescription("description"), authHeaders);

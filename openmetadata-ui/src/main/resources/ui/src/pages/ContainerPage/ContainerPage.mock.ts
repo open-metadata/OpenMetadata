@@ -30,11 +30,11 @@ export const CONTAINER_DATA = {
   },
   service: {
     id: 'cbc2a5e8-b7d3-4140-9a44-a4b331e5372f',
-    type: 'objectStoreService',
+    type: 'storageService',
     name: 's3_object_store_sample',
     fullyQualifiedName: 's3_object_store_sample',
     deleted: false,
-    href: 'http://localhost:8585/api/v1/services/objectstoreServices/cbc2a5e8-b7d3-4140-9a44-a4b331e5372f',
+    href: 'http://localhost:8585/api/v1/services/storageServices/cbc2a5e8-b7d3-4140-9a44-a4b331e5372f',
   },
   dataModel: {
     isPartitioned: true,

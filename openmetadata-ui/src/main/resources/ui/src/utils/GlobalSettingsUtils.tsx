@@ -174,7 +174,7 @@ export const getGlobalSettingsMenuWithPermission = (
         {
           label: i18next.t('label.object-store-plural'),
           isProtected: userPermissions.hasViewPermissions(
-            ResourceEntity.OBJECT_STORE_SERVICE,
+            ResourceEntity.STORAGE_SERVICE,
             permissions
           ),
           key: 'services.objectStores',

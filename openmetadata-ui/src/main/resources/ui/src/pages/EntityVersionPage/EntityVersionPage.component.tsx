@@ -36,15 +36,15 @@ import {
   getMlModelVersions,
 } from 'rest/mlModelAPI';
 import {
-  getContainerByName,
-  getContainerVersion,
-  getContainerVersions,
-} from 'rest/objectStoreAPI';
-import {
   getPipelineByFqn,
   getPipelineVersion,
   getPipelineVersions,
 } from 'rest/pipelineAPI';
+import {
+  getContainerByName,
+  getContainerVersion,
+  getContainerVersions,
+} from 'rest/storageAPI';
 import {
   getTableDetailsByFQN,
   getTableVersion,

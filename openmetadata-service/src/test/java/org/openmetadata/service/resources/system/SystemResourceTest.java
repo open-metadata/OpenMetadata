@@ -168,7 +168,7 @@ public class SystemResourceTest extends OpenMetadataApplicationTest {
     CreateMlModelService createMlModelService = mlModelServiceResourceTest.createRequest(test);
     mlModelServiceResourceTest.createEntity(createMlModelService, ADMIN_AUTH_HEADERS);
 
-    // Create ObjectStore Service
+    // Create Storage Service
     StorageServiceResourceTest storageServiceResourceTest = new StorageServiceResourceTest();
     CreateStorageService createStorageService = storageServiceResourceTest.createRequest(test);
     storageServiceResourceTest.createEntity(createStorageService, ADMIN_AUTH_HEADERS);

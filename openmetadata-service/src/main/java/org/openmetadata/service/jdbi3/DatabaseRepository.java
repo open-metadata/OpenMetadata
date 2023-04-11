@@ -15,8 +15,6 @@ package org.openmetadata.service.jdbi3;
 
 import java.io.IOException;
 import java.util.List;
-import java.util.UUID;
-import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.type.EntityReference;

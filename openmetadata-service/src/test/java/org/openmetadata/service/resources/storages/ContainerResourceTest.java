@@ -99,13 +99,13 @@ public class ContainerResourceTest extends EntityResourceTest<Container, CreateC
   }
 
   @Test
-  void post_ContainerWithoutObjectStoreService_400(TestInfo test) {
+  void post_ContainerWithoutStorageService_400(TestInfo test) {
     CreateContainer create = createRequest(test).withService(null);
     assertResponse(() -> createAndCheckEntity(create, ADMIN_AUTH_HEADERS), BAD_REQUEST, "[service must not be null]");
   }
 
   @Test
-  void post_ContainerWithInvalidObjectStoreReference_404(TestInfo test) {
+  void post_ContainerWithInvalidStorageReference_404(TestInfo test) {
     String serviceFQN = UUID.randomUUID().toString();
     CreateContainer create = createRequest(test).withService(serviceFQN);
     assertResponse(
