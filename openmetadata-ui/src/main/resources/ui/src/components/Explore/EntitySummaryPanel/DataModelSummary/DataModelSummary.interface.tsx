@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate.
+ *  Copyright 2023 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,16 +11,18 @@
  *  limitations under the License.
  */
 
-export enum SearchIndex {
-  TABLE = 'table_search_index',
-  TOPIC = 'topic_search_index',
-  DASHBOARD = 'dashboard_search_index',
-  PIPELINE = 'pipeline_search_index',
-  USER = 'user_search_index',
-  TEAM = 'team_search_index',
-  GLOSSARY = 'glossary_search_index',
-  MLMODEL = 'mlmodel_search_index',
-  TAG = 'tag_search_index',
-  CONTAINER = 'container_search_index',
-  QUERY = 'query_search_index',
+import { DashboardDataModel } from 'generated/entity/data/dashboardDataModel';
+import { TableType, TagLabel } from '../../../../generated/entity/data/table';
+
+export interface DataModelSummaryProps {
+  entityDetails: DashboardDataModel;
+  componentType?: string;
+  tags?: TagLabel[];
+  isLoading?: boolean;
+}
+
+export interface BasicTableInfo {
+  Type: TableType | string;
+  Queries: string;
+  Columns: string;
 }
