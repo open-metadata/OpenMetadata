@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Space } from 'antd';
 import { AxiosError } from 'axios';
 import PageContainer from 'components/containers/PageContainer';
 import EntityVersionTimeLine from 'components/EntityVersionTimeLine/EntityVersionTimeLine';
@@ -91,19 +90,17 @@ const GlossaryVersion = ({ isGlossary = false }: GlossaryVersionProps) => {
 
   return (
     <PageContainer>
-      <div className="version-data p-l-lg p-r-xss">
-        <Space className="w-full" direction="vertical">
-          <GlossaryV1
-            isVersionsView
-            deleteStatus={LOADING_STATE.INITIAL}
-            isGlossaryActive={isGlossary}
-            selectedData={selectedData as Glossary}
-            updateGlossary={mockFnGlossary}
-            onGlossaryDelete={mockFn}
-            onGlossaryTermDelete={mockFn}
-            onGlossaryTermUpdate={mockFnGlossary}
-          />
-        </Space>
+      <div className="version-data p-l-lg p-r-sm">
+        <GlossaryV1
+          isVersionsView
+          deleteStatus={LOADING_STATE.INITIAL}
+          isGlossaryActive={isGlossary}
+          selectedData={selectedData as Glossary}
+          updateGlossary={mockFnGlossary}
+          onGlossaryDelete={mockFn}
+          onGlossaryTermDelete={mockFn}
+          onGlossaryTermUpdate={mockFnGlossary}
+        />
       </div>
       <EntityVersionTimeLine
         show

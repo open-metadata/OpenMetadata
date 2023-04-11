@@ -38,7 +38,7 @@ const TagButton: React.FC<TagButtonProps> = ({
   dataTestId = label,
 }) => {
   const buttonClassNames = classNames(
-    'tag-button-container tw-inline-flex text-xs font-medium rounded-4 whitespace-nowrap tw-bg-white tw-border tw-items-center tw-mr-2 tw-mt-1 tw-font-semibold',
+    'tag-button-container tw-inline-flex text-xs font-medium rounded-4 whitespace-nowrap tw-bg-white tw-border tw-items-center tw-mr-2 tw-mt-2 tw-font-semibold',
     { 'tw-pl-2': isRemovable },
     { 'tw-px-2': !isRemovable },
     className

@@ -131,9 +131,7 @@ const RelatedTerms = ({
   }, [glossaryTerm]);
 
   return (
-    <div
-      className="flex flex-col gap-2 m-r-xs"
-      data-testid="related-term-container">
+    <div className="flex flex-col gap-3" data-testid="related-term-container">
       <div className="d-flex items-center">
         <Typography.Text className="glossary-subheading">
           {t('label.related-term-plural')}

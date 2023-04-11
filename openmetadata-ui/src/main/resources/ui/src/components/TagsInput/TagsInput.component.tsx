@@ -90,7 +90,7 @@ const TagsInput: React.FC<Props> = ({ tags = [], editable, onTagsUpdate }) => {
 
   return (
     <div className="tags-input-container" data-testid="tags-input-container">
-      <div className="d-flex items-center mb-2">
+      <div className="d-flex items-center">
         <Typography.Text className="glossary-subheading">
           {t('label.tag-plural')}
         </Typography.Text>
@@ -107,10 +107,11 @@ const TagsInput: React.FC<Props> = ({ tags = [], editable, onTagsUpdate }) => {
         )}
       </div>
       <TagsContainer
+        className="glossary-select"
         editable={isEditTags}
         isLoading={tagDetails.isLoading}
         selectedTags={getSelectedTags()}
-        showAddTagButton={tags.length === 0}
+        showAddTagButton={editable && tags.length === 0}
         size="small"
         tagList={tagDetails.options}
         type="label"

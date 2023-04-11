@@ -152,7 +152,7 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
               <Tags
                 className="tw-font-semibold"
                 startWith="+ "
-                tag="Add"
+                tag={t('label.add')}
                 type="border"
               />
             </span>

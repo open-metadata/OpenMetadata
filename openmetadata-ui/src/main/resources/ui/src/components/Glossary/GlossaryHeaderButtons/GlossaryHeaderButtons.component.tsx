@@ -303,7 +303,7 @@ const GlossaryHeaderButtons = ({
     if (permission.Create) {
       return isGlossary ? (
         <Button
-          className="m-r-xs"
+          className="m-l-xs"
           data-testid="add-new-tag-button-header"
           size="middle"
           type="primary"
@@ -312,7 +312,7 @@ const GlossaryHeaderButtons = ({
         </Button>
       ) : (
         <Dropdown
-          className="m-r-xs"
+          className="m-l-xs"
           menu={{
             items: addButtonContent,
           }}
@@ -337,7 +337,7 @@ const GlossaryHeaderButtons = ({
         {createButtons}
         {selectedData && selectedData.version && (
           <VersionButton
-            className="m-r-xs tw-px-1.5"
+            className="m-l-xs tw-px-1.5"
             selected={Boolean(version)}
             version={toString(selectedData.version)}
             onClick={handleVersionClick}
@@ -347,6 +347,7 @@ const GlossaryHeaderButtons = ({
         {permission.Delete && (
           <Dropdown
             align={{ targetOffset: [-12, 0] }}
+            className="m-l-xs"
             menu={{
               items: manageButtonContent,
             }}

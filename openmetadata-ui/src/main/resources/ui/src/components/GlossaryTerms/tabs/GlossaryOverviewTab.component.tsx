@@ -85,7 +85,7 @@ const GlossaryOverviewTab = ({
               />
             </Col>
             <Col span={24}>
-              <Row gutter={[0, 48]}>
+              <Row gutter={[0, 40]}>
                 {!isGlossary && (
                   <>
                     <Col span={12}>

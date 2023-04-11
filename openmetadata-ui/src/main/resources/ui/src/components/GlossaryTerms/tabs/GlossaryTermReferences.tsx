@@ -78,7 +78,7 @@ const GlossaryTermReferences = ({
 
   return (
     <div data-testid="references-container">
-      <Space className="w-full" direction="vertical">
+      <Space className="w-full" direction="vertical" size={4}>
         <Space
           className="w-full"
           data-testid={`section-${t('label.reference-plural')}`}>

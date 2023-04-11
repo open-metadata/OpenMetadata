@@ -23,6 +23,7 @@ import {
 } from 'antd';
 import { ColumnsType, ExpandableConfig } from 'antd/lib/table/interface';
 import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
+import { ReactComponent as DownUpArrowIcon } from 'assets/svg/ic-down-up-arrow.svg';
 import { ReactComponent as UpDownArrowIcon } from 'assets/svg/ic-up-down-arrow.svg';
 import { ReactComponent as PlusOutlinedIcon } from 'assets/svg/plus-outlined.svg';
 import { AxiosError } from 'axios';
@@ -291,7 +292,12 @@ const GlossaryTermTab = ({
             type="text"
             onClick={toggleExpandAll}>
             <Space align="center" size={4}>
-              <UpDownArrowIcon color={DE_ACTIVE_COLOR} height="14px" />
+              {expandedRowKeys.length === childGlossaryTerms.length ? (
+                <DownUpArrowIcon color={DE_ACTIVE_COLOR} height="14px" />
+              ) : (
+                <UpDownArrowIcon color={DE_ACTIVE_COLOR} height="14px" />
+              )}
+
               {expandedRowKeys.length === childGlossaryTerms.length
                 ? t('label.collapse-all')
                 : t('label.expand-all')}
@@ -311,6 +317,7 @@ const GlossaryTermTab = ({
               loading={isTableLoading}
               pagination={false}
               rowKey="fullyQualifiedName"
+              scroll={{ x: true }}
               size="small"
               tableLayout="auto"
               onRow={onTableRow}
