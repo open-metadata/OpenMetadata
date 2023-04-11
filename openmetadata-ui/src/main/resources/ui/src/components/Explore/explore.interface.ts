@@ -15,6 +15,7 @@ import { DefaultOptionType } from 'antd/lib/select';
 import { SORT_ORDER } from 'enums/common.enum';
 import { Tag } from 'generated/entity/classification/tag';
 import { Container } from 'generated/entity/data/container';
+import { DashboardDataModel } from 'generated/entity/data/dashboardDataModel';
 import { Database } from 'generated/entity/data/database';
 import { DatabaseSchema } from 'generated/entity/data/databaseSchema';
 import { Glossary } from 'generated/entity/data/glossary';
@@ -121,7 +122,8 @@ export type EntityUnion =
   | DatabaseSchema
   | Database
   | Glossary
-  | Tag;
+  | Tag
+  | DashboardDataModel;
 
 export interface EntityDetailsObjectInterface {
   details: EntityUnion;

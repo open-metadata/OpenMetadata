@@ -26,6 +26,7 @@ import {
   updateDataModelColumnDescription,
   updateDataModelColumnTags,
 } from 'utils/DataModelsUtils';
+import { getEntityName } from 'utils/EntityUtils';
 import { fetchTagsAndGlossaryTerms } from 'utils/TagsUtils';
 import { ReactComponent as EditIcon } from '../../../assets/svg/ic-edit.svg';
 import { ModelTabProps } from './ModelTab.interface';
@@ -60,7 +61,7 @@ const ModelTab = ({
   }, [fetchTagsAndGlossaryTerms]);
 
   const handleFieldTagsChange = useCallback(
-    async (selectedTags: EntityTags[] = [], selectedColumn: Column) => {
+    async (selectedTags: EntityTags[] = [], columnName: string) => {
       const newSelectedTags: TagOption[] = selectedTags.map((tag) => ({
         fqn: tag.tagFQN,
         source: tag.source,
@@ -68,11 +69,7 @@ const ModelTab = ({
 
       const dataModelData = cloneDeep(data);
 
-      updateDataModelColumnTags(
-        dataModelData,
-        editContainerColumnTags?.name ?? selectedColumn.name,
-        newSelectedTags
-      );
+      updateDataModelColumnTags(dataModelData, columnName, newSelectedTags);
 
       await onUpdate(dataModelData);
 
@@ -171,7 +168,7 @@ const ModelTab = ({
                 type="label"
                 onCancel={() => setEditContainerColumnTags(undefined)}
                 onSelectionChange={(tags) =>
-                  handleFieldTagsChange(tags, record)
+                  handleFieldTagsChange(tags, record.name)
                 }
               />
             </Space>
@@ -195,6 +192,9 @@ const ModelTab = ({
         dataIndex: 'name',
         key: 'name',
         width: 250,
+        render: (_, record) => (
+          <Typography.Text>{getEntityName(record)}</Typography.Text>
+        ),
       },
       {
         title: t('label.type'),
@@ -234,7 +234,7 @@ const ModelTab = ({
         bordered
         className="p-t-xs"
         columns={tableColumn}
-        data-testid="charts-table"
+        data-testid="data-model-column-table"
         dataSource={data}
         pagination={false}
         rowKey="name"

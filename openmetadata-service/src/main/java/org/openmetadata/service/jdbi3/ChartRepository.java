@@ -90,4 +90,21 @@ public class ChartRepository extends EntityRepository<Chart> {
         .withService(original.getService())
         .withId(original.getId());
   }
+
+  @Override
+  public EntityUpdater getUpdater(Chart original, Chart updated, Operation operation) {
+    return new ChartUpdater(original, updated, operation);
+  }
+
+  public class ChartUpdater extends ColumnEntityUpdater {
+    public ChartUpdater(Chart chart, Chart updated, Operation operation) {
+      super(chart, updated, operation);
+    }
+
+    @Override
+    public void entitySpecificUpdate() throws IOException {
+      recordChange("chartType", original.getChartType(), updated.getChartType());
+      recordChange("chartUrl", original.getChartUrl(), updated.getChartUrl());
+    }
+  }
 }
