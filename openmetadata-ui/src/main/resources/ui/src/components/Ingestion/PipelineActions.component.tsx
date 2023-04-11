@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { CheckOutlined } from '@ant-design/icons';
-import { Button } from 'antd';
+import { Button, Divider, Space } from 'antd';
 import { AxiosError } from 'axios';
 import Loader from 'components/Loader/Loader';
 import KillIngestionModal from 'components/Modals/KillIngestionPipelineModal/KillIngestionPipelineModal';
@@ -98,10 +98,6 @@ function PipelineActions({
     handleIsConfirmationModalOpen(true);
   };
 
-  const separator = (
-    <span className="tw-inline-block tw-text-gray-400 tw-self-center">|</span>
-  );
-
   const getDeleteButton = () => {
     if (deleteSelection.id !== record.id) {
       return t('label.delete');
@@ -122,6 +118,7 @@ function PipelineActions({
       return (
         <>
           <Button
+            className="p-x-xss"
             data-testid="run"
             disabled={getIngestionPermission(ingestion.name)}
             type="link"
@@ -130,9 +127,10 @@ function PipelineActions({
             }>
             {getLoadingStatus(currTriggerId, ingestion.id, t('label.run'))}
           </Button>
-          {separator}
+          <Divider className="border-gray" type="vertical" />
 
           <Button
+            className="p-x-xss"
             data-testid="re-deploy-btn"
             disabled={getIngestionPermission(ingestion.name)}
             type="link"
@@ -144,6 +142,7 @@ function PipelineActions({
     } else {
       return (
         <Button
+          className="p-x-xss"
           data-testid="deploy"
           disabled={getIngestionPermission(ingestion.name)}
           type="link"
@@ -156,12 +155,13 @@ function PipelineActions({
 
   return (
     <>
-      <div className="tw-flex">
+      <Space align="center" size={0}>
         {record.enabled ? (
           <>
             {getTriggerDeployButton(record)}
-            {separator}
+            <Divider className="border-gray" type="vertical" />
             <Button
+              className="p-x-xss"
               data-testid="pause"
               disabled={getIngestionPermission(record.name)}
               type="link"
@@ -171,6 +171,7 @@ function PipelineActions({
           </>
         ) : (
           <Button
+            className="p-x-xss"
             data-testid="unpause"
             disabled={getIngestionPermission(record.name)}
             type="link"
@@ -178,24 +179,27 @@ function PipelineActions({
             {t('label.unpause')}
           </Button>
         )}
-        {separator}
+        <Divider className="border-gray" type="vertical" />
         <Button
+          className="p-x-xss"
           data-testid="edit"
           disabled={getIngestionPermission(record.name)}
           type="link"
           onClick={() => handleUpdate(record)}>
           {t('label.edit')}
         </Button>
-        {separator}
+        <Divider className="border-gray" type="vertical" />
         <Button
+          className="p-x-xss"
           data-testid="delete"
           disabled={!servicePermission?.[record.name]?.Delete}
           type="link"
           onClick={() => ConfirmDelete(record.id as string, record.name)}>
           {getDeleteButton()}
         </Button>
-        {separator}
+        <Divider className="border-gray" type="vertical" />
         <Button
+          className="p-x-xss"
           data-testid="kill"
           disabled={getIngestionPermission(record.name)}
           type="link"
@@ -205,8 +209,9 @@ function PipelineActions({
           }}>
           {t('label.kill')}
         </Button>
-        {separator}
+        <Divider className="border-gray" type="vertical" />
         <Button
+          className="p-x-xss"
           data-testid="logs"
           disabled={!isRequiredDetailsAvailable}
           href={getLogsViewerPath(
@@ -220,7 +225,7 @@ function PipelineActions({
           }}>
           {t('label.log-plural')}
         </Button>
-      </div>
+      </Space>
       {isKillModalOpen &&
         selectedPipeline &&
         record.id === selectedPipeline?.id && (
