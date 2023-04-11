@@ -1,0 +1,4 @@
+column1,column2,column3,column4,column5,column6,column7,column8,column9
+1,apple,True,1.23,2022-03-23,2022-03-23,1,cat,foo
+2,banana,False,4.56,2022-03-23,2022-03-24,2,dog,bar
+3,cherry,True,7.89,2022-03-23,2022-03-25,3,bird,baz

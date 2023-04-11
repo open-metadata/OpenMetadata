@@ -61,7 +61,6 @@ class FirstQuartile(StaticMetric):
     def df_fn(self, dfs=None):
         """Dataframe function"""
         # pylint: disable=import-outside-toplevel
-        import numpy as np
         import pandas as pd
 
         df = cast(List[pd.DataFrame], dfs)
@@ -78,7 +77,9 @@ class FirstQuartile(StaticMetric):
                     f"We recommend using a smaller sample size or partitionning."
                 )
                 return None
-            return np.percentile(df[self.col.name], 25)
+            # check if nan
+            first_quartile = df[self.col.name].quantile(0.25, interpolation="midpoint")
+            return None if pd.isnull(first_quartile) else first_quartile
         logger.debug(
             f"Don't know how to process type {self.col.type} when computing First Quartile"
         )

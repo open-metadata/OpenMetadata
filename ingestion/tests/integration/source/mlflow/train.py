@@ -32,7 +32,6 @@ def eval_metrics(actual, pred):
 
 
 if __name__ == "__main__":
-
     mlflow_uri = "http://localhost:5000"
     mlflow.set_tracking_uri(mlflow_uri)
 
@@ -92,7 +91,6 @@ if __name__ == "__main__":
 
         # Model registry does not work with file store
         if tracking_url_type_store != "file":
-
             # Register the model
             # There are other ways to use the Model Registry, which depends on the use case,
             # please refer to the doc for more information:

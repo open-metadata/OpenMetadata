@@ -26,7 +26,6 @@ from .test_cli_db_base import PATH_TO_RESOURCES, CliDBBase
 
 class CliCommonDB:
     class TestSuite(CliDBBase.TestSuite, ABC):
-
         engine: Engine
 
         @classmethod
