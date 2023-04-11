@@ -12,7 +12,7 @@
  */
 import { COMMON_UI_SCHEMA } from 'constants/Services.constant';
 import { StorageServiceType } from 'generated/entity/data/container';
-import s3Connection from 'jsons/connectionSchemas/connections/storage/s3StorageConnection.json';
+import s3Connection from 'jsons/connectionSchemas/connections/storage/s3Connection.json';
 import { cloneDeep } from 'lodash';
 
 export const getStorageServiceConfig = (type: StorageServiceType) => {
