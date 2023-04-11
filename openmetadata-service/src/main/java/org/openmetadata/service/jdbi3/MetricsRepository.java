@@ -17,6 +17,7 @@ import static org.openmetadata.service.Entity.DASHBOARD_SERVICE;
 
 import java.io.IOException;
 import org.openmetadata.schema.entity.data.Metrics;
+import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
@@ -43,6 +44,11 @@ public class MetricsRepository extends EntityRepository<Metrics> {
   @Override
   public void setFullyQualifiedName(Metrics metrics) {
     metrics.setFullyQualifiedName(FullyQualifiedName.add(metrics.getService().getName(), metrics.getName()));
+  }
+
+  @Override
+  public String getFullyQualifiedNameHash(Metrics metrics) {
+    return FullyQualifiedName.buildHash(metrics.getFullyQualifiedName());
   }
 
   @Override

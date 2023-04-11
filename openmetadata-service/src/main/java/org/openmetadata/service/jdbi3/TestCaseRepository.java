@@ -12,6 +12,7 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.UriInfo;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestCaseParameter;
 import org.openmetadata.schema.tests.TestCaseParameterValue;
@@ -56,6 +57,11 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     MessageParser.EntityLink entityLink = MessageParser.EntityLink.parse(test.getEntityLink());
     test.setFullyQualifiedName(FullyQualifiedName.add(entityLink.getFullyQualifiedFieldValue(), test.getName()));
     test.setEntityFQN(entityLink.getFullyQualifiedFieldValue());
+  }
+
+  @Override
+  public String getFullyQualifiedNameHash(TestCase test) {
+    return FullyQualifiedName.buildHash(test.getFullyQualifiedName());
   }
 
   @Override

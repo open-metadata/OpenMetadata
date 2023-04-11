@@ -94,6 +94,7 @@ import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TagLabel.TagSource;
 import org.openmetadata.schema.type.Votes;
 import org.openmetadata.schema.type.csv.CsvImportResult;
+import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.TypeRegistry;
@@ -253,7 +254,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   /** Set fullyQualifiedName of an entity */
   public void setFullyQualifiedName(T entity) {
-    entity.setFullyQualifiedName(entity.getName());
+    entity.setFullyQualifiedName(EntityInterfaceUtil.quoteName(entity.getName()));
   }
 
   /** Set fullyQualifiedNameHash of an entity */
@@ -337,7 +338,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   @Transaction
-  public final T getByName(UriInfo uriInfo, String fqn, Fields fields) throws IOException {
+  public T getByName(UriInfo uriInfo, String fqn, Fields fields) throws IOException {
     return getByName(uriInfo, fqn, fields, NON_DELETED);
   }
 
@@ -384,10 +385,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
       String beforeCursor;
       String afterCursor = null;
-      beforeCursor = after == null ? null : entities.get(0).getFullyQualifiedName();
+      beforeCursor = after == null ? null : entities.get(0).getName();
       if (entities.size() > limitParam) { // If extra result exists, then next page exists - return after cursor
         entities.remove(limitParam);
-        afterCursor = entities.get(limitParam - 1).getFullyQualifiedName();
+        afterCursor = entities.get(limitParam - 1).getName();
       }
       return getResultList(entities, beforeCursor, afterCursor, total);
     } else {
@@ -418,10 +419,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
       String beforeCursor;
       String afterCursor = null;
-      beforeCursor = after == null ? null : entities.get(0).getFullyQualifiedName();
+      beforeCursor = after == null ? null : entities.get(0).getName();
       if (entities.size() > limitParam) { // If extra result exists, then next page exists - return after cursor
         entities.remove(limitParam);
-        afterCursor = entities.get(limitParam - 1).getFullyQualifiedName();
+        afterCursor = entities.get(limitParam - 1).getName();
       }
       return getResultList(entities, errors, beforeCursor, afterCursor, total);
     } else {
@@ -447,9 +448,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
     String afterCursor;
     if (entities.size() > limitParam) { // If extra result exists, then previous page exists - return before cursor
       entities.remove(0);
-      beforeCursor = entities.get(0).getFullyQualifiedName();
+      beforeCursor = entities.get(0).getName();
     }
-    afterCursor = entities.get(entities.size() - 1).getFullyQualifiedName();
+    afterCursor = entities.get(entities.size() - 1).getName();
     return getResultList(entities, beforeCursor, afterCursor, total);
   }
 
@@ -773,7 +774,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     daoCollection.relationshipDAO().deleteAll(id, entityType);
 
     // Delete all the field relationships to other entities
-    daoCollection.fieldRelationshipDAO().deleteAllByPrefix(entityInterface.getFullyQualifiedName());
+    daoCollection.fieldRelationshipDAO().deleteAllByPrefix(FullyQualifiedName.buildHash(entityInterface.getFullyQualifiedName()));
 
     // Delete all the extensions of entity
     daoCollection.entityExtensionDAO().deleteAll(id);

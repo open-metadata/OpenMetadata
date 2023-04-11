@@ -56,6 +56,7 @@ import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
@@ -212,7 +213,7 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
           @DefaultValue("non-deleted")
           Include include)
       throws IOException {
-    return getByNameInternal(uriInfo, securityContext, name, "", include);
+    return getByNameInternal(uriInfo, securityContext, EntityInterfaceUtil.quoteName(name), "", include);
   }
 
   @GET
@@ -365,7 +366,7 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
           boolean hardDelete,
       @Parameter(description = "Name of the bot", schema = @Schema(type = "string")) @PathParam("name") String name)
       throws IOException {
-    return deleteByName(uriInfo, securityContext, name, true, hardDelete);
+    return deleteByName(uriInfo, securityContext, EntityInterfaceUtil.quoteName(name), true, hardDelete);
   }
 
   @PUT

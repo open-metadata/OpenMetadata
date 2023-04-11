@@ -22,6 +22,7 @@ import java.util.List;
 import java.util.UUID;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.entity.data.Location;
+import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.services.StorageService;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Relationship;
@@ -144,6 +145,11 @@ public class LocationRepository extends EntityRepository<Location> {
   @Override
   public void setFullyQualifiedName(Location location) {
     location.setFullyQualifiedName(FullyQualifiedName.add(location.getService().getName(), location.getName()));
+  }
+
+  @Override
+  public String getFullyQualifiedNameHash(Location location) {
+    return FullyQualifiedName.buildHash(location.getFullyQualifiedName());
   }
 
   private StorageService getService(UUID serviceId, String entityType) throws IOException {

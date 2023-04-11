@@ -29,6 +29,7 @@ import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.data.MlModel;
+import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.services.MlModelService;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
@@ -65,6 +66,11 @@ public class MlModelRepository extends EntityRepository<MlModel> {
     if (!nullOrEmpty(mlModel.getMlFeatures())) {
       setMlFeatureFQN(mlModel.getFullyQualifiedName(), mlModel.getMlFeatures());
     }
+  }
+
+  @Override
+  public String getFullyQualifiedNameHash(MlModel mlModel) {
+    return FullyQualifiedName.buildHash(mlModel.getFullyQualifiedName());
   }
 
   @Override

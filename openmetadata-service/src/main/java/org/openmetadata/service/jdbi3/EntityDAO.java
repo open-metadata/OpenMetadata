@@ -47,7 +47,9 @@ public interface EntityDAO<T extends EntityInterface> {
 
   Class<T> getEntityClass();
 
-  String getNameColumn();
+  default String getNameColumn() {
+    return "name";
+  }
 
   String getNameHashColumn();
 
@@ -56,19 +58,19 @@ public interface EntityDAO<T extends EntityInterface> {
   }
 
   /** Common queries for all entities implemented here. Do not override. */
-  @ConnectionAwareSqlUpdate(value = "INSERT INTO <table> (<nameColumn>, json) VALUES (:nameColumnHash, :json)", connectionType = MYSQL)
-  @ConnectionAwareSqlUpdate(value = "INSERT INTO <table> (<nameColumn>, json) VALUES (:nameColumnHash, :json :: jsonb)", connectionType = POSTGRES)
-  void insert(@Define("table") String table, @Define("nameColumn") String nameColumn, @Bind("nameColumnHash") String nameColumnHash, @Bind("json") String json);
+  @ConnectionAwareSqlUpdate(value = "INSERT INTO <table> (<nameColumnHash>, json) VALUES (:nameColumnHashValue, :json)", connectionType = MYSQL)
+  @ConnectionAwareSqlUpdate(value = "INSERT INTO <table> (<nameColumnHash>, json) VALUES (:nameColumnHashValue, :json :: jsonb)", connectionType = POSTGRES)
+  void insert(@Define("table") String table, @Define("nameColumnHash") String nameColumnHash, @Bind("nameColumnHashValue") String nameColumnHashValue, @Bind("json") String json);
 
-  @ConnectionAwareSqlUpdate(value = "UPDATE <table> SET  json = :json, <nameColumn> = :nameColumnHash WHERE id = :id", connectionType = MYSQL)
+  @ConnectionAwareSqlUpdate(value = "UPDATE <table> SET  json = :json, <nameColumnHash> = :nameColumnHashValue WHERE id = :id", connectionType = MYSQL)
   @ConnectionAwareSqlUpdate(
-      value = "UPDATE <table> SET  json = (:json :: jsonb), <nameColumn> = :nameColumnHash WHERE id = :id",
+      value = "UPDATE <table> SET  json = (:json :: jsonb), <nameColumnHash> = :nameColumnHashValue WHERE id = :id",
       connectionType = POSTGRES)
-  void update(@Define("table") String table, @Define("nameColumn") String nameColumn, @Bind("nameColumnHash") String nameColumnHash, @Bind("id") String id, @Bind("json") String json);
+  void update(@Define("table") String table, @Define("nameColumnHash") String nameColumnHash, @Bind("nameColumnHashValue") String nameColumnHashValue, @Bind("id") String id, @Bind("json") String json);
 
   default void updateFqn(String oldPrefix, String newPrefix) {
     LOG.info("Updating FQN for {} from {} to {}", getTableName(), oldPrefix, newPrefix);
-    if (!getNameColumn().equals("fullyQualifiedName")) {
+    if (!getNameHashColumn().equals("fqnHash")) {
       return;
     }
     String mySqlUpdate =
@@ -114,34 +116,33 @@ public interface EntityDAO<T extends EntityInterface> {
 
   @SqlQuery(
       "SELECT json FROM ("
-          + "SELECT JSON_EXTRACT(json, concat('$.',:nameColumn)), json FROM <table> <cond> AND "
-          + "JSON_EXTRACT(json, concat('$.',:nameColumn)) < :before "
+          + "SELECT <nameColumn>, json FROM <table> <cond> AND "
+          + "<nameColumn> < :before "
           + // Pagination by entity fullyQualifiedName or name (when entity does not have fqn)
-          "ORDER BY  JSON_EXTRACT(json, concat('$.',:nameColumn)) DESC "
+          "ORDER BY <nameColumn> DESC "
           + // Pagination ordering by entity fullyQualifiedName or name (when entity does not have fqn)
           "LIMIT :limit"
-          + ") last_rows_subquery ORDER BY JSON_EXTRACT(json, concat('$.',:nameColumn))")
+          + ") last_rows_subquery ORDER BY <nameColumn>")
   List<String> listBefore(
       @Define("table") String table,
-      @Bind("nameColumn") String nameColumn,
+      @Define("nameColumn") String nameColumn,
       @Define("cond") String cond,
       @Bind("limit") int limit,
       @Bind("before") String before);
 
   @SqlQuery(
-      "SELECT json FROM <table> <cond> AND " + "JSON_EXTRACT(json, concat('$.',:nameColumn)) > :after "
-          + "ORDER BY  JSON_EXTRACT(json, concat('$.',:nameColumn)) LIMIT :limit")
+      "SELECT json FROM <table> <cond> AND " + "<nameColumn> > :after " + "ORDER BY <nameColumn> " + "LIMIT :limit")
   List<String> listAfter(
       @Define("table") String table,
-      @Bind("nameColumn") String nameColumn,
+      @Define("nameColumn") String nameColumn,
       @Define("cond") String cond,
       @Bind("limit") int limit,
       @Bind("after") String after);
 
-  @SqlQuery("SELECT json FROM <table> <cond> AND " + "ORDER BY  JSON_EXTRACT(json, concat('$.',:nameColumn)) " + "LIMIT :limit " + "OFFSET :offset")
+  @SqlQuery("SELECT json FROM <table> <cond> AND " + "ORDER BY <nameColumn> " + "LIMIT :limit " + "OFFSET :offset")
   List<String> listAfter(
       @Define("table") String table,
-      @Bind("nameColumn") String nameColumn,
+      @Define("nameColumn") String nameColumn,
       @Define("cond") String cond,
       @Bind("limit") int limit,
       @Bind("offset") int offset);
@@ -149,8 +150,8 @@ public interface EntityDAO<T extends EntityInterface> {
   @SqlQuery("SELECT EXISTS (SELECT * FROM <table> WHERE id = :id)")
   boolean exists(@Define("table") String table, @Bind("id") String id);
 
-  @SqlQuery("SELECT EXISTS (SELECT * FROM <table> WHERE <nameColumn> = :fqn)")
-  boolean existsByName(@Define("table") String table, @Define("nameColumn") String nameColumn, @Bind("fqn") String fqn);
+  @SqlQuery("SELECT EXISTS (SELECT * FROM <table> WHERE <nameColumnHash> = :fqnHash)")
+  boolean existsByName(@Define("table") String table, @Define("nameColumnHash") String nameColumnHash, @Bind("fqnHash") String fqnHash);
 
   @SqlUpdate("DELETE FROM <table> WHERE id = :id")
   int delete(@Define("table") String table, @Bind("id") String id);

@@ -29,6 +29,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.data.Topic;
 import org.openmetadata.schema.entity.services.MessagingService;
 import org.openmetadata.schema.type.EntityReference;
@@ -55,6 +56,11 @@ public class TopicRepository extends EntityRepository<Topic> {
     if (topic.getMessageSchema() != null) {
       setFieldFQN(topic.getFullyQualifiedName(), topic.getMessageSchema().getSchemaFields());
     }
+  }
+
+  @Override
+  public String getFullyQualifiedNameHash(Topic topic) {
+    return FullyQualifiedName.buildHash(topic.getFullyQualifiedName());
   }
 
   public TopicRepository(CollectionDAO dao) {

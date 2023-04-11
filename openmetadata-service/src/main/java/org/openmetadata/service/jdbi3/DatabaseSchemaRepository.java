@@ -21,6 +21,7 @@ import java.util.Collections;
 import java.util.List;
 import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
+import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
@@ -50,6 +51,11 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
   public void setFullyQualifiedName(DatabaseSchema schema) {
     schema.setFullyQualifiedName(
         FullyQualifiedName.add(schema.getDatabase().getFullyQualifiedName(), schema.getName()));
+  }
+
+  @Override
+  public String getFullyQualifiedNameHash(DatabaseSchema schema) {
+    return FullyQualifiedName.buildHash(schema.getFullyQualifiedName());
   }
 
   @Override

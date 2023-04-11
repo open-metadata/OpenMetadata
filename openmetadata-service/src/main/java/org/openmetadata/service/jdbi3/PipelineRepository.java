@@ -27,6 +27,7 @@ import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.data.Pipeline;
 import org.openmetadata.schema.entity.data.PipelineStatus;
+import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.services.PipelineService;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
@@ -63,6 +64,11 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
   public void setFullyQualifiedName(Pipeline pipeline) {
     pipeline.setFullyQualifiedName(FullyQualifiedName.add(pipeline.getService().getName(), pipeline.getName()));
     setTaskFQN(pipeline.getFullyQualifiedName(), pipeline.getTasks());
+  }
+
+  @Override
+  public String getFullyQualifiedNameHash(Pipeline pipeline) {
+    return FullyQualifiedName.buildHash(pipeline.getFullyQualifiedName());
   }
 
   @Override

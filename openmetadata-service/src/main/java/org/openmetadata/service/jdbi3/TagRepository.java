@@ -25,6 +25,7 @@ import java.util.Objects;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.classification.Tag;
+import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.Relationship;
@@ -83,6 +84,11 @@ public class TagRepository extends EntityRepository<Tag> {
     } else {
       tag.setFullyQualifiedName(FullyQualifiedName.add(tag.getParent().getFullyQualifiedName(), tag.getName()));
     }
+  }
+
+  @Override
+  public String getFullyQualifiedNameHash(Tag tag) {
+    return FullyQualifiedName.buildHash(tag.getFullyQualifiedName());
   }
 
 

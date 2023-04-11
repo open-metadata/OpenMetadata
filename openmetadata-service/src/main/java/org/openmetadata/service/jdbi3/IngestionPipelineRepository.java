@@ -22,6 +22,7 @@ import javax.ws.rs.core.UriInfo;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.json.JSONObject;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.services.ingestionPipelines.AirflowConfig;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
@@ -70,6 +71,11 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
   public void setFullyQualifiedName(IngestionPipeline ingestionPipeline) {
     ingestionPipeline.setFullyQualifiedName(
         FullyQualifiedName.add(ingestionPipeline.getService().getName(), ingestionPipeline.getName()));
+  }
+
+  @Override
+  public String getFullyQualifiedNameHash(IngestionPipeline ingestionPipeline) {
+    return FullyQualifiedName.buildHash(ingestionPipeline.getFullyQualifiedName());
   }
 
   @Override

@@ -57,6 +57,7 @@ import org.openmetadata.csv.EntityCsv;
 import org.openmetadata.schema.api.teams.CreateTeam.TeamType;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.TeamHierarchy;
+import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
@@ -64,6 +65,7 @@ import org.openmetadata.schema.type.csv.CsvDocumentation;
 import org.openmetadata.schema.type.csv.CsvErrorType;
 import org.openmetadata.schema.type.csv.CsvHeader;
 import org.openmetadata.schema.type.csv.CsvImportResult;
+import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
@@ -73,6 +75,8 @@ import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
+
+import javax.ws.rs.core.UriInfo;
 
 @Slf4j
 public class TeamRepository extends EntityRepository<Team> {
@@ -101,6 +105,11 @@ public class TeamRepository extends EntityRepository<Team> {
     team.setChildrenCount(fields.contains("childrenCount") ? getChildrenCount(team) : null);
     team.setUserCount(fields.contains("userCount") ? getUserCount(team.getId()) : null);
     return team;
+  }
+
+  @Override
+  public Team getByName(UriInfo uriInfo, String name, Fields fields) throws IOException {
+    return super.getByName(uriInfo, EntityInterfaceUtil.quoteName(name), fields);
   }
 
   @Override

@@ -49,6 +49,7 @@ import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.data.CreateTableProfile;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
+import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.tests.CustomMetric;
 import org.openmetadata.schema.type.Column;
@@ -147,6 +148,12 @@ public class TableRepository extends EntityRepository<Table> {
         FullyQualifiedName.add(table.getDatabaseSchema().getFullyQualifiedName(), table.getName()));
     ColumnUtil.setColumnFQN(table.getFullyQualifiedName(), table.getColumns());
   }
+
+  @Override
+  public String getFullyQualifiedNameHash(Table entity) {
+    return FullyQualifiedName.buildHash(entity.getFullyQualifiedName());
+  }
+
 
   @Transaction
   public Table addJoins(UUID tableId, TableJoins joins) throws IOException {
@@ -697,8 +704,8 @@ public class TableRepository extends EntityRepository<Table> {
                   daoCollection
                       .fieldRelationshipDAO()
                       .find(
-                          fromEntityFQN,
-                          toEntityFQN,
+                          FullyQualifiedName.buildHash(fromEntityFQN),
+                          FullyQualifiedName.buildHash(toEntityFQN),
                           entityRelationType,
                           entityRelationType,
                           Relationship.JOINED_WITH.ordinal()))
@@ -712,6 +719,8 @@ public class TableRepository extends EntityRepository<Table> {
       daoCollection
           .fieldRelationshipDAO()
           .upsert(
+              FullyQualifiedName.buildHash(fromEntityFQN),
+              FullyQualifiedName.buildHash(toEntityFQN),
               fromEntityFQN,
               toEntityFQN,
               entityRelationType,
@@ -767,7 +776,7 @@ public class TableRepository extends EntityRepository<Table> {
     List<Pair<String, List<DailyCount>>> entityRelations =
         daoCollection.fieldRelationshipDAO()
             .listBidirectional(
-                table.getFullyQualifiedName(),
+                FullyQualifiedName.buildHash(table.getFullyQualifiedName()),
                 FIELD_RELATION_TABLE_TYPE,
                 FIELD_RELATION_TABLE_TYPE,
                 Relationship.JOINED_WITH.ordinal())
@@ -789,7 +798,7 @@ public class TableRepository extends EntityRepository<Table> {
     List<Triple<String, String, List<DailyCount>>> entityRelations =
         daoCollection.fieldRelationshipDAO()
             .listBidirectionalByPrefix(
-                table.getFullyQualifiedName(),
+                FullyQualifiedName.buildHash(table.getFullyQualifiedName()),
                 FIELD_RELATION_COLUMN_TYPE,
                 FIELD_RELATION_COLUMN_TYPE,
                 Relationship.JOINED_WITH.ordinal())

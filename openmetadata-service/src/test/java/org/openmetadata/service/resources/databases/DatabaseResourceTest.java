@@ -51,9 +51,9 @@ public class DatabaseResourceTest extends EntityResourceTest<Database, CreateDat
   @Test
   void post_databaseFQN_as_admin_200_OK(TestInfo test) throws IOException {
     // Create database with different optional fields
-    CreateDatabase create = createRequest(test).withService(SNOWFLAKE_REFERENCE.getName());
+    CreateDatabase create = createRequest(test).withService(SNOWFLAKE_REFERENCE.getFullyQualifiedName());
     Database db = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
-    String expectedFQN = FullyQualifiedName.build(SNOWFLAKE_REFERENCE.getName(), create.getName());
+    String expectedFQN = FullyQualifiedName.build(SNOWFLAKE_REFERENCE.getFullyQualifiedName(), create.getName());
     assertEquals(expectedFQN, db.getFullyQualifiedName());
   }
 
@@ -118,7 +118,7 @@ public class DatabaseResourceTest extends EntityResourceTest<Database, CreateDat
 
   @Override
   public CreateDatabase createRequest(String name) {
-    return new CreateDatabase().withName(name).withService(getContainer().getName());
+    return new CreateDatabase().withName(name).withService(getContainer().getFullyQualifiedName());
   }
 
   @Override

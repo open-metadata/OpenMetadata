@@ -184,6 +184,11 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     }
   }
 
+  @Override
+  public String getFullyQualifiedNameHash(GlossaryTerm entity) {
+    return FullyQualifiedName.buildHash(entity.getFullyQualifiedName());
+  }
+
   protected EntityReference getGlossary(GlossaryTerm term) throws IOException {
     return getFromEntityRef(term.getId(), Relationship.CONTAINS, GLOSSARY, true);
   }

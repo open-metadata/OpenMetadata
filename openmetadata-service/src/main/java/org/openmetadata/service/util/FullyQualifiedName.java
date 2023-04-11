@@ -61,8 +61,11 @@ public class FullyQualifiedName {
   }
 
   public static String buildHash(String fullyQualifiedName) {
-    String[] split = split(fullyQualifiedName);
-    return buildHash(split);
+    if (fullyQualifiedName != null && !fullyQualifiedName.isEmpty()) {
+      String[] split = split(fullyQualifiedName);
+      return buildHash(split);
+    }
+    return fullyQualifiedName;
   }
 
   public static String[] split(String string) {

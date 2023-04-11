@@ -23,7 +23,9 @@ import java.util.Collections;
 import java.util.List;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.entity.data.Dashboard;
 import org.openmetadata.schema.entity.data.DashboardDataModel;
+import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.services.DashboardService;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.EntityReference;
@@ -61,6 +63,11 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
     dashboardDataModel.setFullyQualifiedName(
         FullyQualifiedName.add(dashboardDataModel.getService().getName() + ".model", dashboardDataModel.getName()));
     ColumnUtil.setColumnFQN(dashboardDataModel.getFullyQualifiedName(), dashboardDataModel.getColumns());
+  }
+
+  @Override
+  public String getFullyQualifiedNameHash(DashboardDataModel dashboardDataModel) {
+    return FullyQualifiedName.buildHash(dashboardDataModel.getFullyQualifiedName());
   }
 
   @Override

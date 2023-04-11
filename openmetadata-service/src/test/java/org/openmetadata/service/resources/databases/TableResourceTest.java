@@ -159,7 +159,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
 
   public void setupDatabaseSchemas(TestInfo test) throws IOException {
     DatabaseResourceTest databaseResourceTest = new DatabaseResourceTest();
-    CreateDatabase create = databaseResourceTest.createRequest(test).withService(SNOWFLAKE_REFERENCE.getName());
+    CreateDatabase create = databaseResourceTest.createRequest(test).withService(SNOWFLAKE_REFERENCE.getFullyQualifiedName());
     DATABASE = databaseResourceTest.createEntity(create, ADMIN_AUTH_HEADERS);
 
     DatabaseSchemaResourceTest databaseSchemaResourceTest = new DatabaseSchemaResourceTest();
@@ -1923,7 +1923,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     DatabaseResourceTest databaseResourceTest = new DatabaseResourceTest();
     Database database =
         databaseResourceTest.createAndCheckEntity(
-            databaseResourceTest.createRequest(test).withService(service.getName()), ADMIN_AUTH_HEADERS);
+            databaseResourceTest.createRequest(test).withService(service.getFullyQualifiedName()), ADMIN_AUTH_HEADERS);
     CreateTable create = createRequest(test, index);
     return createEntity(create, ADMIN_AUTH_HEADERS).withDatabase(database.getEntityReference());
   }

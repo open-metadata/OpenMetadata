@@ -22,6 +22,7 @@ import javax.ws.rs.core.SecurityContext;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Jdbi;
 import org.openmetadata.schema.type.ResourcePermission;
+import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.PolicyEvaluator;
@@ -105,7 +106,7 @@ public class DefaultAuthorizer implements Authorizer {
   }
 
   public static SubjectContext getSubjectContext(String userName) {
-    return SubjectCache.getInstance().getSubjectContext(userName);
+    return SubjectCache.getInstance().getSubjectContext(EntityInterfaceUtil.quoteName(userName));
   }
 
   private SubjectContext changeSubjectContext(String user, SubjectContext loggedInUser) {

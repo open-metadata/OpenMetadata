@@ -14,6 +14,7 @@ import java.util.Collections;
 import java.util.List;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.data.Container;
+import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.services.ObjectStoreService;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.EntityReference;
@@ -93,6 +94,11 @@ public class ContainerRepository extends EntityRepository<Container> {
     if (container.getDataModel() != null) {
       setColumnFQN(container.getFullyQualifiedName(), container.getDataModel().getColumns());
     }
+  }
+
+  @Override
+  public String getFullyQualifiedNameHash(Container container) {
+    return FullyQualifiedName.buildHash(container.getFullyQualifiedName());
   }
 
   private void setColumnFQN(String parentFQN, List<Column> columns) {

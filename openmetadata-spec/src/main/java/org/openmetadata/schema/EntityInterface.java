@@ -25,6 +25,7 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.Votes;
+import org.openmetadata.schema.utils.EntityInterfaceUtil;
 
 /** Interface to be implemented by all entities to provide a way to access all the common fields. */
 public interface EntityInterface {
@@ -122,7 +123,7 @@ public interface EntityInterface {
     return new EntityReference()
         .withId(getId())
         .withName(getName())
-        .withFullyQualifiedName(getFullyQualifiedName() == null ? getName() : getFullyQualifiedName())
+        .withFullyQualifiedName(getFullyQualifiedName() == null ? EntityInterfaceUtil.quoteName(getName()) : getFullyQualifiedName())
         .withDescription(getDescription())
         .withDisplayName(getDisplayName())
         .withType(CANONICAL_ENTITY_NAME_MAP.get(this.getClass().getSimpleName().toLowerCase(Locale.ROOT)))
