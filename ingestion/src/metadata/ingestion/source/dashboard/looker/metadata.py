@@ -59,7 +59,7 @@ from metadata.ingestion.source.dashboard.dashboard_service import (
 )
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_chart
-from metadata.utils.helpers import get_standard_chart_type
+from metadata.utils.helpers import clean_uri, get_standard_chart_type
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -202,7 +202,7 @@ class LookerSource(DashboardServiceSource):
                 )
                 for chart in self.context.charts
             ],
-            dashboardUrl=f"/dashboards/{dashboard_details.id}",
+            dashboardUrl=f"{clean_uri(self.service_connection.hostPort)}/dashboards/{dashboard_details.id}",
             service=self.context.dashboard_service.fullyQualifiedName.__root__,
         )
         yield dashboard_request
@@ -367,7 +367,7 @@ class LookerSource(DashboardServiceSource):
                     displayName=chart.title or chart.id,
                     description=self.build_chart_description(chart) or None,
                     chartType=get_standard_chart_type(chart.type).value,
-                    chartUrl=f"/dashboard_elements/{chart.id}",
+                    chartUrl=f"{clean_uri(self.service_connection.hostPort)}/dashboard_elements/{chart.id}",
                     service=self.context.dashboard_service.fullyQualifiedName.__root__,
                 )
                 self.status.scanned(chart.id)

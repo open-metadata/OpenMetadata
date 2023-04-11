@@ -222,7 +222,7 @@
         "type": "integer"
       },
       "size": {
-        "type": "integer"
+        "type": "long"
       },
       "fileFormats": {
         "type": "keyword"

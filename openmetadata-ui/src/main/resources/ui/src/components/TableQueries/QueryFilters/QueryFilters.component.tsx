@@ -15,6 +15,7 @@ import { Space, Typography } from 'antd';
 import SearchDropdown from 'components/SearchDropdown/SearchDropdown';
 import { SearchDropdownOption } from 'components/SearchDropdown/SearchDropdown.interface';
 import { WILD_CARD_CHAR } from 'constants/char.constants';
+import { INITIAL_PAGING_VALUE } from 'constants/constants';
 import { QUERY_PAGE_FILTER } from 'constants/Query.constant';
 import { PROMISE_STATE } from 'enums/common.enum';
 import { debounce, isEmpty } from 'lodash';
@@ -59,7 +60,6 @@ const QueryFilters = ({ onFilterChange }: QueryFiltersProps) => {
   ) => {
     setSelectedFilter((pre) => {
       const updatedFilter = { ...pre, [searchKey]: value };
-
       onFilterChange(updatedFilter);
 
       return updatedFilter;
@@ -111,13 +111,13 @@ const QueryFilters = ({ onFilterChange }: QueryFiltersProps) => {
     }
   };
 
-  const debounceOnUserSearch = debounce(onUserSearch, 400);
-  const debounceOnTeamSearch = debounce(onTeamSearch, 400);
+  const debounceOnUserSearch = debounce(onUserSearch, 500);
+  const debounceOnTeamSearch = debounce(onTeamSearch, 500);
 
   const getInitialUserAndTeam = () => {
     const promise = [
-      getSearchedUsers(WILD_CARD_CHAR, 1),
-      getSearchedTeams(WILD_CARD_CHAR, 1),
+      getSearchedUsers(WILD_CARD_CHAR, INITIAL_PAGING_VALUE),
+      getSearchedTeams(WILD_CARD_CHAR, INITIAL_PAGING_VALUE),
     ];
     Promise.allSettled(promise)
       .then((res) => {

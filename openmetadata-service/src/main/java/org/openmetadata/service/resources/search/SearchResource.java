@@ -18,6 +18,8 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.Entity.FIELD_DESCRIPTION;
 import static org.openmetadata.service.Entity.FIELD_DISPLAY_NAME;
 import static org.openmetadata.service.Entity.FIELD_NAME;
+import static org.openmetadata.service.elasticsearch.ElasticSearchIndexDefinition.ELASTIC_SEARCH_ENTITY_FQN_STREAM;
+import static org.openmetadata.service.elasticsearch.ElasticSearchIndexDefinition.ELASTIC_SEARCH_EXTENSION;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -28,10 +30,15 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
+import java.util.UUID;
 import java.util.concurrent.TimeUnit;
+import javax.validation.Valid;
 import javax.ws.rs.DefaultValue;
 import javax.ws.rs.GET;
+import javax.ws.rs.POST;
+import javax.ws.rs.PUT;
 import javax.ws.rs.Path;
+import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
 import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.Context;
@@ -73,9 +80,16 @@ import org.elasticsearch.search.suggest.SuggestBuilder;
 import org.elasticsearch.search.suggest.SuggestBuilders;
 import org.elasticsearch.search.suggest.completion.CompletionSuggestionBuilder;
 import org.elasticsearch.search.suggest.completion.context.CategoryQueryContext;
+import org.openmetadata.schema.api.CreateEventPublisherJob;
+import org.openmetadata.schema.system.EventPublisherJob;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.elasticsearch.ElasticSearchIndexDefinition;
+import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.resources.Collection;
+import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.util.ElasticSearchClientUtils;
+import org.openmetadata.service.util.JsonUtils;
+import org.openmetadata.service.util.ReIndexingHandler;
 
 @Slf4j
 @Path("/v1/search")
@@ -88,26 +102,32 @@ public class SearchResource {
   private static final Integer MAX_RESULT_HITS = 10000;
   private static final String NAME_KEYWORD = "name.keyword";
   private static final String DISPLAY_NAME = "displayName";
+  private static final String FIELD_NAME_NGRAM = "name.ngram";
   private static final String DISPLAY_NAME_KEYWORD = "displayName.keyword";
   private static final String FIELD_DISPLAY_NAME_NGRAM = "displayName.ngram";
   private static final String QUERY = "query";
   private static final String QUERY_NGRAM = "query.ngram";
   private static final String DESCRIPTION = "description";
   private static final String UNIFIED = "unified";
-
   private static final NamedXContentRegistry xContentRegistry;
+  private final CollectionDAO dao;
+  private final Authorizer authorizer;
 
   static {
     SearchModule searchModule = new SearchModule(Settings.EMPTY, false, List.of());
-
     xContentRegistry = new NamedXContentRegistry(searchModule.getNamedXContents());
   }
 
-  public SearchResource() {}
+  public SearchResource(CollectionDAO dao, Authorizer authorizer) {
+    this.dao = dao;
+    this.authorizer = authorizer;
+  }
 
   public void initialize(OpenMetadataApplicationConfig config) {
     if (config.getElasticSearchConfiguration() != null) {
       this.client = ElasticSearchClientUtils.createElasticSearchClient(config.getElasticSearchConfiguration());
+      ElasticSearchIndexDefinition elasticSearchIndexDefinition = new ElasticSearchIndexDefinition(client, dao);
+      ReIndexingHandler.initialize(client, elasticSearchIndexDefinition, dao);
     }
   }
 
@@ -400,6 +420,126 @@ public class SearchResource {
     return Response.status(OK).entity(response).build();
   }
 
+  @GET
+  @Path("/reindex/latest")
+  @Operation(
+      operationId = "getLatestReindexBatchJob",
+      summary = "Get Latest Reindexing Batch Job",
+      description = "Fetches the Latest Reindexing Job",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "Success"),
+        @ApiResponse(responseCode = "404", description = "No Job Found")
+      })
+  public Response reindexLatestJob(@Context UriInfo uriInfo, @Context SecurityContext securityContext)
+      throws IOException {
+    // Only admins  can issue a reindex request
+    authorizer.authorizeAdmin(securityContext);
+    return Response.status(Response.Status.OK).entity(ReIndexingHandler.getInstance().getLatestJob()).build();
+  }
+
+  @GET
+  @Path("/reindex/stream/status")
+  @Operation(
+      operationId = "getStreamJobStatus",
+      summary = "Get Stream Job Latest Status",
+      description = "Stream Job Status",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "Success"),
+        @ApiResponse(responseCode = "404", description = "Status not found")
+      })
+  public Response reindexAllJobLastStatus(@Context UriInfo uriInfo, @Context SecurityContext securityContext)
+      throws IOException {
+    // Only admins  can issue a reindex request
+    authorizer.authorizeAdmin(securityContext);
+    // Check if there is a running job for reindex for requested entity
+    String record;
+    record =
+        dao.entityExtensionTimeSeriesDao()
+            .getLatestExtension(ELASTIC_SEARCH_ENTITY_FQN_STREAM, ELASTIC_SEARCH_EXTENSION);
+    if (record != null) {
+      return Response.status(Response.Status.OK).entity(JsonUtils.readValue(record, EventPublisherJob.class)).build();
+    }
+    return Response.status(Response.Status.NOT_FOUND).entity("No Last Run.").build();
+  }
+
+  @GET
+  @Path("/reindex/{jobId}")
+  @Operation(
+      operationId = "getBatchReindexBatchJobWithId",
+      summary = "Get Batch Reindexing Job with Id",
+      description = "Get reindex job with Id",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "Success"),
+        @ApiResponse(responseCode = "404", description = "Not found")
+      })
+  public Response reindexJobWithId(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "jobId Id", schema = @Schema(type = "UUID")) @PathParam("jobId") UUID id)
+      throws IOException {
+    // Only admins  can issue a reindex request
+    authorizer.authorizeAdmin(securityContext);
+    return Response.status(Response.Status.OK).entity(ReIndexingHandler.getInstance().getJob(id)).build();
+  }
+
+  @GET
+  @Path("/reindex")
+  @Operation(
+      operationId = "getAllReindexBatchJobs",
+      summary = "Get all reindex batch jobs",
+      tags = "search",
+      description = "Get all reindex batch jobs",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "Success"),
+        @ApiResponse(responseCode = "404", description = "Not found")
+      })
+  public Response reindexAllJobs(@Context UriInfo uriInfo, @Context SecurityContext securityContext)
+      throws IOException {
+    // Only admins  can issue a reindex request
+    authorizer.authorizeAdmin(securityContext);
+    return Response.status(Response.Status.OK).entity(ReIndexingHandler.getInstance().getAllJobs()).build();
+  }
+
+  @POST
+  @Path("/reindex")
+  @Operation(
+      operationId = "runBatchReindexing",
+      summary = "Run Batch Reindexing",
+      description = "Reindex Elastic Search Reindexing Entities",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "Success"),
+        @ApiResponse(responseCode = "404", description = "Bot for instance {id} is not found")
+      })
+  public Response reindexEntities(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Valid CreateEventPublisherJob createRequest) {
+    authorizer.authorizeAdmin(securityContext);
+    return Response.status(Response.Status.CREATED)
+        .entity(
+            ReIndexingHandler.getInstance()
+                .createReindexingJob(securityContext.getUserPrincipal().getName(), createRequest))
+        .build();
+  }
+
+  @PUT
+  @Path("/reindex/stop/{jobId}")
+  @Operation(
+      operationId = "stopAJobWithId",
+      summary = "Stop Reindex Job",
+      description = "Stop a Reindex Job",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "Success"),
+        @ApiResponse(responseCode = "404", description = "Bot for instance {id} is not found")
+      })
+  public Response stopReindexJob(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "jobId Id", schema = @Schema(type = "UUID")) @PathParam("jobId") UUID id) {
+    authorizer.authorizeAdmin(securityContext);
+    return Response.status(Response.Status.OK).entity(ReIndexingHandler.getInstance().stopRunningJob(id)).build();
+  }
+
   private SearchSourceBuilder buildAggregateSearchBuilder(String query, int from, int size) {
     QueryStringQueryBuilder queryBuilder = QueryBuilders.queryStringQuery(query).lenient(true);
     SearchSourceBuilder searchSourceBuilder = searchBuilder(queryBuilder, null, from, size);
@@ -412,6 +552,7 @@ public class SearchResource {
             .field(FIELD_DISPLAY_NAME, 15.0f)
             .field(FIELD_DISPLAY_NAME_NGRAM)
             .field(FIELD_NAME, 15.0f)
+            .field(FIELD_NAME_NGRAM)
             .field(DISPLAY_NAME_KEYWORD, 25.0f)
             .field(NAME_KEYWORD, 25.0f)
             .field(FIELD_DESCRIPTION, 1.0f)
@@ -466,6 +607,7 @@ public class SearchResource {
             .field(FIELD_DISPLAY_NAME, 15.0f)
             .field(FIELD_DISPLAY_NAME_NGRAM)
             .field(FIELD_NAME, 15.0f)
+            .field(FIELD_NAME_NGRAM)
             .field(DISPLAY_NAME_KEYWORD, 25.0f)
             .field(NAME_KEYWORD, 25.0f)
             .field(FIELD_DESCRIPTION, 1.0f)
@@ -495,6 +637,7 @@ public class SearchResource {
             .field(FIELD_DISPLAY_NAME, 15.0f)
             .field(FIELD_DISPLAY_NAME_NGRAM)
             .field(FIELD_NAME, 15.0f)
+            .field(FIELD_NAME_NGRAM)
             .field(DISPLAY_NAME_KEYWORD, 25.0f)
             .field(NAME_KEYWORD, 25.0f)
             .field(FIELD_DESCRIPTION, 1.0f)
@@ -628,7 +771,7 @@ public class SearchResource {
             .field(DISPLAY_NAME, 10.0f)
             .field(FIELD_DISPLAY_NAME_NGRAM)
             .field(QUERY, 10.0f)
-            .field(QUERY_NGRAM, 10.0f)
+            .field(QUERY_NGRAM)
             .field(DESCRIPTION, 3.0f)
             .defaultOperator(Operator.AND)
             .fuzziness(Fuzziness.AUTO);
@@ -674,10 +817,12 @@ public class SearchResource {
   private SearchSourceBuilder buildUserSearchBuilder(String query, int from, int size) {
     QueryStringQueryBuilder queryBuilder =
         QueryBuilders.queryStringQuery(query)
-            .field(DISPLAY_NAME, 5.0f)
-            .field(DISPLAY_NAME_KEYWORD, 3.0f)
+            .field(DISPLAY_NAME, 3.0f)
+            .field(DISPLAY_NAME_KEYWORD, 5.0f)
+            .field(FIELD_DISPLAY_NAME_NGRAM)
             .field(FIELD_NAME, 2.0f)
             .field(NAME_KEYWORD, 3.0f)
+            .defaultOperator(Operator.AND)
             .fuzziness(Fuzziness.AUTO);
     return searchBuilder(queryBuilder, null, from, size);
   }
@@ -685,10 +830,12 @@ public class SearchResource {
   private SearchSourceBuilder buildTeamSearchBuilder(String query, int from, int size) {
     QueryStringQueryBuilder queryBuilder =
         QueryBuilders.queryStringQuery(query)
-            .field(DISPLAY_NAME, 5.0f)
-            .field(DISPLAY_NAME_KEYWORD, 3.0f)
+            .field(DISPLAY_NAME, 3.0f)
+            .field(DISPLAY_NAME_KEYWORD, 5.0f)
+            .field(FIELD_DISPLAY_NAME_NGRAM)
             .field(FIELD_NAME, 2.0f)
             .field(NAME_KEYWORD, 3.0f)
+            .defaultOperator(Operator.AND)
             .fuzziness(Fuzziness.AUTO);
     return searchBuilder(queryBuilder, null, from, size);
   }
@@ -696,6 +843,8 @@ public class SearchResource {
   private SearchSourceBuilder buildGlossaryTermSearchBuilder(String query, int from, int size) {
     QueryStringQueryBuilder queryBuilder =
         QueryBuilders.queryStringQuery(query)
+            .field(FIELD_DISPLAY_NAME, 10.0f)
+            .field(FIELD_DISPLAY_NAME_NGRAM, 1.0f)
             .field(FIELD_NAME, 10.0f)
             .field(NAME_KEYWORD, 10.0f)
             .field(DISPLAY_NAME_KEYWORD, 10.0f)
@@ -712,11 +861,18 @@ public class SearchResource {
 
     HighlightBuilder.Field highlightGlossaryName = new HighlightBuilder.Field(FIELD_NAME);
     highlightGlossaryName.highlighterType(UNIFIED);
+    HighlightBuilder.Field highlightGlossaryDisplayName = new HighlightBuilder.Field(FIELD_DISPLAY_NAME);
+    highlightGlossaryDisplayName.highlighterType(UNIFIED);
     HighlightBuilder.Field highlightDescription = new HighlightBuilder.Field(FIELD_DESCRIPTION);
+    highlightDescription.highlighterType(UNIFIED);
+    HighlightBuilder.Field highlightSynonym = new HighlightBuilder.Field("synonyms");
     highlightDescription.highlighterType(UNIFIED);
     HighlightBuilder hb = new HighlightBuilder();
     hb.field(highlightDescription);
     hb.field(highlightGlossaryName);
+    hb.field(highlightGlossaryDisplayName);
+    hb.field(highlightSynonym);
+
     hb.preTags("<span class=\"text-highlighter\">");
     hb.postTags("</span>");
     SearchSourceBuilder searchSourceBuilder =
@@ -731,15 +887,20 @@ public class SearchResource {
     QueryStringQueryBuilder queryBuilder =
         QueryBuilders.queryStringQuery(query)
             .field(FIELD_NAME, 10.0f)
+            .field(FIELD_DISPLAY_NAME, 10.0f)
+            .field(FIELD_DISPLAY_NAME_NGRAM, 1.0f)
             .field(DESCRIPTION, 3.0f)
             .defaultOperator(Operator.AND)
             .fuzziness(Fuzziness.AUTO);
 
     HighlightBuilder.Field highlightTagName = new HighlightBuilder.Field(FIELD_NAME);
     highlightTagName.highlighterType(UNIFIED);
+    HighlightBuilder.Field highlightTagDisplayName = new HighlightBuilder.Field(FIELD_DISPLAY_NAME);
+    highlightTagDisplayName.highlighterType(UNIFIED);
     HighlightBuilder.Field highlightDescription = new HighlightBuilder.Field(FIELD_DESCRIPTION);
     highlightDescription.highlighterType(UNIFIED);
     HighlightBuilder hb = new HighlightBuilder();
+    hb.field(highlightTagDisplayName);
     hb.field(highlightDescription);
     hb.field(highlightTagName);
     hb.preTags("<span class=\"text-highlighter\">");

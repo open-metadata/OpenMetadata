@@ -23,4 +23,5 @@ export enum SearchIndex {
   TAG = 'tag_search_index',
   CONTAINER = 'container_search_index',
   QUERY = 'query_search_index',
+  DASHBOARD_DATA_MODEL = 'dashboard_data_model_search_index',
 }

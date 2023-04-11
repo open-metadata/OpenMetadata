@@ -20,25 +20,21 @@ import {
 import { BASE_URL } from '../../constants/constants';
 
 const roleName = `Role-test-${uuid()}`;
-const userName = `Usercttest${uuid()}`;
+const userName = `usercttest${uuid()}`;
 const userEmail = `${userName}@gmail.com`;
 
 describe('Test Add role and assign it to the user', () => {
   beforeEach(() => {
     cy.login();
-
     interceptURL('GET', '*api/v1/roles*', 'getRoles');
-
+    interceptURL('GET', '/api/v1/users?*', 'usersPage');
     cy.get('[data-testid="appbar-item-settings"]').should('be.visible').click();
-
-    cy.get('[data-menu-id*="roles"]').should('be.visible').click();
-
-    verifyResponseStatusCode('@getRoles', 200);
-
-    cy.url().should('eq', `${BASE_URL}/settings/access/roles`);
   });
 
-  it('Create and Assign role to user', () => {
+  it('Create role', () => {
+    cy.get('[data-menu-id*="roles"]').should('be.visible').click();
+    verifyResponseStatusCode('@getRoles', 200);
+
     cy.get('[data-testid="add-role"]')
       .contains('Add Role')
       .should('be.visible')
@@ -78,9 +74,12 @@ describe('Test Add role and assign it to the user', () => {
     cy.get('[data-testid="description"] > [data-testid="viewer-container"]')
       .should('be.visible')
       .should('contain', 'description');
+  });
 
+  it('Create new user and assign new role to him', () => {
     // Create user and assign newly created role to the user
     cy.get('[data-menu-id*="users"]').should('be.visible').click();
+    verifyResponseStatusCode('@usersPage', 200);
 
     cy.get('[data-testid="add-user"]').contains('Add User').click();
 
@@ -118,18 +117,12 @@ describe('Test Add role and assign it to the user', () => {
       .click();
 
     cy.get('[data-testid="roles-dropdown"]').click();
-
-    cy.wait(1000);
-
-    interceptURL(
-      'GET',
-      '/api/v1/users?fields=profile,teams,roles&&isBot=false&limit=15',
-      'getUserPage'
-    );
-
     cy.get('[data-testid="save-user"]').scrollIntoView().click();
+  });
 
-    verifyResponseStatusCode('@getUserPage', 200);
+  it('Verify assigned role to new user', () => {
+    cy.get('[data-menu-id*="users"]').should('be.visible').click();
+    verifyResponseStatusCode('@usersPage', 200);
 
     interceptURL(
       'GET',
