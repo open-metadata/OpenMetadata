@@ -69,14 +69,6 @@ describe('Test FilterPattern component', () => {
       `${mockFilterPatternProps.type}-filter-pattern-checkbox`
     );
 
-    const includeFilterInfo = await findByTestId(
-      container,
-      'filter-pattern-include-info'
-    );
-    const excludeFilterInfo = await findByTestId(
-      container,
-      'filter-pattern-exclude-info'
-    );
     const includeFilterInput = await findByTestId(
       container,
       'filter-pattern-includes-table'
@@ -86,8 +78,6 @@ describe('Test FilterPattern component', () => {
       'filter-pattern-excludes-table'
     );
 
-    expect(includeFilterInfo).toBeInTheDocument();
-    expect(excludeFilterInfo).toBeInTheDocument();
     expect(filterPatternContainer).toBeInTheDocument();
     expect(checkbox).toBeInTheDocument();
     expect(fieldContainer).toBeInTheDocument();
