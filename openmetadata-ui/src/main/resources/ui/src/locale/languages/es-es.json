@@ -1037,7 +1037,7 @@
     "has-been-created-successfully": "se ha creado exitosamente",
     "import-glossary-help": "Ahorre tiempo y esfuerzo cargando un archivo CSV con varios términos de glosario de una sola vez.",
     "in-this-database": "En esta base de datos",
-    "include-assets-message": "Configuración opcional para cambiar la ingestión de etiquetas.",
+    "include-assets-message": "Configuración opcional para activar la ingesta de {{assets}}.",
     "include-database-filter-extra-information": "Base de datos que se agregó al crear el servicio.",
     "include-lineage-message": "Configuración para desactivar la obtención de linaje desde pipelines.",
     "ingest-sample-data-for-entity": "Extraer datos de muestra de cada {{entity}}.",

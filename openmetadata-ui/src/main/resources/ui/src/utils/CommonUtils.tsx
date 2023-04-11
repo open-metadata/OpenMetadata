@@ -886,6 +886,8 @@ export const getFilterTypes = (
       return 'tableFilterPattern' as keyof AddIngestionState;
     case FilterPatternEnum.CONTAINER:
       return 'containerFilterPattern' as keyof AddIngestionState;
+    case FilterPatternEnum.DASHBOARD_DATAMODEL:
+      return 'dataModelFilterPattern' as keyof AddIngestionState;
     default:
       return 'topicFilterPattern' as keyof AddIngestionState;
   }
