@@ -12,6 +12,7 @@
  */
 
 import { Space, Typography } from 'antd';
+import { NO_DATA_PLACEHOLDER } from 'constants/constants';
 import { isEmpty } from 'lodash';
 import React from 'react';
 import { Link } from 'react-router-dom';
@@ -23,12 +24,17 @@ import { Task } from '../generated/entity/data/pipeline';
 import { Column, TableConstraint } from '../generated/entity/data/table';
 import { Field } from '../generated/entity/data/topic';
 import { getEntityName } from './EntityUtils';
-import { EntityNameProps } from './EntityUtils.interface';
 import SVGIcons from './SvgUtils';
 
 const { Text } = Typography;
 
-const getTitleName = (data: EntityNameProps) => getEntityName(data) || '---';
+export interface EntityNameProps {
+  name?: string;
+  displayName?: string;
+}
+
+const getTitleName = (data: EntityNameProps) =>
+  getEntityName(data) || NO_DATA_PLACEHOLDER;
 
 export const getFormattedEntityData = (
   entityType: SummaryEntityType,
