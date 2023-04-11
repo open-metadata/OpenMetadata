@@ -174,7 +174,7 @@ const AddIngestion = ({
         ? Boolean(sourceConfig?.markDeletedTables ?? true)
         : undefined,
       dataModelFilterPattern:
-        sourceConfig?.dashboardFilterPattern ?? INITIAL_FILTER_PATTERN,
+        sourceConfig?.dataModelFilterPattern ?? INITIAL_FILTER_PATTERN,
       dashboardFilterPattern:
         sourceConfig?.dashboardFilterPattern ?? INITIAL_FILTER_PATTERN,
       containerFilterPattern:
