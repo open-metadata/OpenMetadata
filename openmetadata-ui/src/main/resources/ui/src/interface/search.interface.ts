@@ -109,7 +109,6 @@ export type SearchIndexSearchSourceMapping = {
   [SearchIndex.TAG]: TagClassSearchSource;
   [SearchIndex.CONTAINER]: ContainerSearchSource;
   [SearchIndex.QUERY]: QuerySearchSource;
-  [SearchIndex.DASHBOARD_DATA_MODEL]: DashboardDataModelSearchSource;
 };
 
 export type SearchRequest<

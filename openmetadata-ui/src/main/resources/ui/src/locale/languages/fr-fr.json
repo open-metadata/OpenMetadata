@@ -182,6 +182,8 @@
     "data-insight-top-viewed-entity-summary": "Resources de Données les plus Visitées",
     "data-insight-total-entity-summary": "Total Resources de Données",
     "data-model": "Data Model",
+    "data-model-plural": "Data Models",
+    "data-model-type": "Data Model Type",
     "data-quality-test": "Data Quality Test",
     "data-type": "Type de donnée",
     "database": "Base de Données",
