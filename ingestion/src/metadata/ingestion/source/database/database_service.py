@@ -21,7 +21,6 @@ from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequ
 from metadata.generated.schema.api.data.createDatabaseSchema import (
     CreateDatabaseSchemaRequest,
 )
-from metadata.generated.schema.api.data.createLocation import CreateLocationRequest
 from metadata.generated.schema.api.data.createTable import CreateTableRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.api.services.createStorageService import (
@@ -30,7 +29,6 @@ from metadata.generated.schema.api.services.createStorageService import (
 from metadata.generated.schema.entity.classification.tag import Tag
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
-from metadata.generated.schema.entity.data.location import Location
 from metadata.generated.schema.entity.data.table import (
     Column,
     DataModel,
@@ -49,7 +47,6 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.generated.schema.type.basic import FullyQualifiedEntityName
-from metadata.generated.schema.type.storage import StorageServiceType
 from metadata.generated.schema.type.tagLabel import (
     LabelType,
     State,
@@ -85,15 +82,6 @@ class DataModelLink(BaseModel):
 
     table_entity: Table
     datamodel: DataModel
-
-
-class TableLocationLink(BaseModel):
-    """
-    Model to handle table and location link
-    """
-
-    table_fqn: FullyQualifiedEntityName
-    location_fqn: FullyQualifiedEntityName
 
 
 class DatabaseServiceTopology(ServiceTopology):
@@ -167,19 +155,6 @@ class DatabaseServiceTopology(ServiceTopology):
                 processor="yield_table",
                 consumer=["database_service", "database", "database_schema"],
             ),
-            NodeStage(
-                type_=Location,
-                context="location",
-                processor="yield_location",
-                consumer=["storage_service"],
-                nullable=True,
-            ),
-            NodeStage(
-                type_=TableLocationLink,
-                processor="yield_table_location_link",
-                ack_sink=False,
-                nullable=True,
-            ),
         ],
     )
 
@@ -214,15 +189,6 @@ class DatabaseServiceSource(
         yield self.metadata.get_create_service_from_source(
             entity=DatabaseService, config=config
         )
-
-    def yield_storage_service(self, config: WorkflowSource):
-        if hasattr(self.service_connection, "storageServiceName"):
-            service_json = {
-                "name": self.service_connection.storageServiceName,
-                "serviceType": StorageServiceType.S3,
-            }
-            storage_service = CreateStorageServiceRequest(**service_json)
-            yield storage_service
 
     @abstractmethod
     def get_database_names(self) -> Iterable[str]:
@@ -307,31 +273,11 @@ class DatabaseServiceSource(
         Also, update the self.inspector value to the current db.
         """
 
-    def yield_location(
-        self,
-        table_name_and_type: Tuple[str, TableType],  # pylint: disable=unused-argument
-    ) -> Iterable[CreateLocationRequest]:
-        """
-        From topology.
-        Prepare a location request and pass it to the sink.
-        """
-        return
-
     def get_raw_database_schema_names(self) -> Iterable[str]:
         """
         fetch all schema names without any filtering.
         """
         yield from self.get_database_schema_names()
-
-    def yield_table_location_link(
-        self,
-        table_name_and_type: Tuple[str, TableType],  # pylint: disable=unused-argument
-    ) -> Iterable[TableLocationLink]:
-        """
-        Gets the current location being processed, fetches its data model
-        and sends it ot the sink
-        """
-        return
 
     def get_tag_by_fqn(self, entity_fqn: str) -> Optional[List[TagLabel]]:
         """

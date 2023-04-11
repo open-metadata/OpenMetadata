@@ -482,17 +482,6 @@ public class TableRepository extends EntityRepository<Table> {
   }
 
   @Transaction
-  public Table addLocation(UUID tableId, UUID locationId) throws IOException {
-    Table table = dao.findEntityById(tableId);
-    EntityReference location = daoCollection.locationDAO().findEntityReferenceById(locationId);
-    // A table has only one location.
-    deleteFrom(tableId, TABLE, Relationship.HAS, LOCATION);
-    addRelationship(tableId, locationId, TABLE, LOCATION, Relationship.HAS);
-    setFieldsInternal(table, Fields.EMPTY_FIELDS);
-    return table.withLocation(location);
-  }
-
-  @Transaction
   public Table addCustomMetric(UUID tableId, CustomMetric customMetric) throws IOException {
     // Validate the request content
     Table table = dao.findEntityById(tableId);

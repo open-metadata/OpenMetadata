@@ -1,28 +1,29 @@
 {
-  "$id": "https://open-metadata.org/schema/entity/services/connections/objectstore/s3StoreConnection.json",
+  "$id": "https://open-metadata.org/schema/entity/services/connections/storage/azureStoreConnection.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "S3 Store Connection",
-  "description": "S3 Store Connection.",
+  "title": "Azure Store Connection",
+  "description": "Azure Store Connection.",
   "type": "object",
-  "javaType": "org.openmetadata.schema.services.connections.objectstore.S3Connection",
+  "javaType": "org.openmetadata.schema.services.connections.storage.AzureConnection",
   "definitions": {
-    "s3Type": {
-      "description": "S3 service type",
+    "azureType": {
+      "description": "Azure service type",
       "type": "string",
-      "enum": ["S3"],
-      "default": "S3"
+      "enum": ["Azure"],
+      "default": "Azure"
     }
   },
   "properties": {
     "type": {
       "title": "Service Type",
       "description": "Service Type",
-      "$ref": "#/definitions/s3Type",
-      "default": "S3"
+      "$ref": "#/definitions/azureType",
+      "default": "Azure"
     },
-    "awsConfig": {
-      "title": "AWS Credentials Configuration",
-      "$ref": "../../../../security/credentials/awsCredentials.json"
+    "credentials": {
+      "title": "Azure Credentials",
+      "description": "Azure Credentials",
+      "$ref": "../../../../security/credentials/azureCredentials.json"
     },
     "connectionOptions": {
       "title": "Connection Options",
@@ -39,6 +40,6 @@
   },
   "additionalProperties": false,
   "required": [
-    "awsConfig"
+    "credentials"
   ]
 }

@@ -1,29 +1,28 @@
 {
-  "$id": "https://open-metadata.org/schema/entity/services/connections/objectstore/gcsStoreConnection.json",
+  "$id": "https://open-metadata.org/schema/entity/services/connections/storage/s3StoreConnection.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "GCS Store Connection",
-  "description": "GCS Store Connection.",
+  "title": "S3 Store Connection",
+  "description": "S3 Store Connection.",
   "type": "object",
-  "javaType": "org.openmetadata.schema.services.connections.objectstore.GcsConnection",
+  "javaType": "org.openmetadata.schema.services.connections.storage.S3Connection",
   "definitions": {
-    "gcsType": {
-      "description": "Gcs service type",
+    "s3Type": {
+      "description": "S3 service type",
       "type": "string",
-      "enum": ["Gcs"],
-      "default": "Gcs"
+      "enum": ["S3"],
+      "default": "S3"
     }
   },
   "properties": {
     "type": {
       "title": "Service Type",
       "description": "Service Type",
-      "$ref": "#/definitions/gcsType",
-      "default": "Gcs"
+      "$ref": "#/definitions/s3Type",
+      "default": "S3"
     },
-    "credentials": {
-      "title": "GCS Credentials",
-      "description": "GCS Credentials",
-      "$ref": "../../../../security/credentials/gcsCredentials.json"
+    "awsConfig": {
+      "title": "AWS Credentials Configuration",
+      "$ref": "../../../../security/credentials/awsCredentials.json"
     },
     "connectionOptions": {
       "title": "Connection Options",
@@ -40,6 +39,6 @@
   },
   "additionalProperties": false,
   "required": [
-    "credentials"
+    "awsConfig"
   ]
 }

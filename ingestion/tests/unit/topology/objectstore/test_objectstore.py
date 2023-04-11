@@ -35,7 +35,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.source.database.datalake.metadata import DatalakeSource
-from metadata.ingestion.source.objectstore.s3.metadata import (
+from metadata.ingestion.source.storage.s3.metadata import (
     S3BucketResponse,
     S3ContainerDetails,
     S3Source,

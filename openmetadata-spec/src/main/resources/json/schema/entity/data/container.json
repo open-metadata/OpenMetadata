@@ -10,6 +10,13 @@
     "org.openmetadata.schema.EntityInterface"
   ],
   "definitions": {
+    "entityName": {
+      "description": "Name of a container. Expected to be unique in the same level containers.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^((?!::).)*$"
+    },
     "containerDataModel": {
       "description": "This captures information about how the container's data is modeled, if it has a schema. ",
       "type": "object",
@@ -93,7 +100,7 @@
       "$ref": "../../type/entityReference.json"
     },
     "service": {
-      "description": "Link to the object store service where this container is hosted in.",
+      "description": "Link to the storage service where this container is hosted in.",
       "$ref": "../../type/entityReference.json"
     },
     "parent": {
@@ -134,7 +141,7 @@
     },
     "serviceType": {
       "description": "Service type this table is hosted in.",
-      "$ref": "../services/objectstoreService.json#/definitions/objectStoreServiceType"
+      "$ref": "../services/storageService.json#/definitions/storageServiceType"
     },
     "followers": {
       "description": "Followers of this container.",

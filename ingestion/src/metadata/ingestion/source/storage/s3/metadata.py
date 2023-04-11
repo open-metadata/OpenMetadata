@@ -27,12 +27,12 @@ from metadata.generated.schema.entity.data.table import Column
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
-from metadata.generated.schema.entity.services.connections.objectstore.s3ObjectStoreConnection import (
+from metadata.generated.schema.entity.services.connections.storage.s3StorageConnection import (
     S3StoreConnection,
 )
 from metadata.generated.schema.metadataIngestion.objectstore.containerMetadataConfig import (
     MetadataEntry,
-    ObjectStoreContainerConfig,
+    StorageContainerConfig,
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
@@ -40,9 +40,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.source.database.datalake.metadata import DatalakeSource
 from metadata.ingestion.source.database.datalake.models import DatalakeColumnWrapper
-from metadata.ingestion.source.objectstore.objectstore_service import (
-    ObjectStoreServiceSource,
-)
+from metadata.ingestion.source.storage.storage_service import StorageServiceSource
 from metadata.utils.filters import filter_by_container
 from metadata.utils.logger import ingestion_logger
 
@@ -104,7 +102,7 @@ class S3ContainerDetails(BaseModel):
     )
 
 
-class S3Source(ObjectStoreServiceSource):
+class S3Source(StorageServiceSource):
     """
     Source implementation to ingest S3 buckets data.
     """
@@ -288,9 +286,7 @@ class S3Source(ObjectStoreServiceSource):
             )
         return 0
 
-    def _load_metadata_file(
-        self, bucket_name: str
-    ) -> Optional[ObjectStoreContainerConfig]:
+    def _load_metadata_file(self, bucket_name: str) -> Optional[StorageContainerConfig]:
         """
         Load the metadata template file from the root of the bucket, if it exists
         """
@@ -303,7 +299,7 @@ class S3Source(ObjectStoreServiceSource):
                     Bucket=bucket_name, Key=OPENMETADATA_TEMPLATE_FILE_NAME
                 )
                 content = json.load(response_object["Body"])
-                metadata_config = ObjectStoreContainerConfig.parse_obj(content)
+                metadata_config = StorageContainerConfig.parse_obj(content)
                 return metadata_config
             except Exception as exc:
                 logger.debug(traceback.format_exc())

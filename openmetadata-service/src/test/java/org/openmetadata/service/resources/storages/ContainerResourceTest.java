@@ -1,4 +1,4 @@
-package org.openmetadata.service.resources.objectstores;
+package org.openmetadata.service.resources.storages;
 
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
@@ -41,7 +41,7 @@ import org.openmetadata.schema.type.ContainerFileFormat;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.EntityResourceTest;
-import org.openmetadata.service.resources.objectstores.ContainerResource.ContainerList;
+import org.openmetadata.service.resources.storages.ContainerResource.ContainerList;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;

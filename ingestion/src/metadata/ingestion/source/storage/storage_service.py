@@ -19,12 +19,12 @@ from metadata.generated.schema.entity.data.container import Container
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
-from metadata.generated.schema.entity.services.objectstoreService import (
-    ObjectStoreConnection,
-    ObjectStoreService,
+from metadata.generated.schema.entity.services.storageService import (
+    StorageConnection,
+    StorageService,
 )
-from metadata.generated.schema.metadataIngestion.objectstoreServiceMetadataPipeline import (
-    ObjectStoreServiceMetadataPipeline,
+from metadata.generated.schema.metadataIngestion.storageServiceMetadataPipeline import (
+    StorageServiceMetadataPipeline,
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
@@ -39,19 +39,19 @@ from metadata.ingestion.models.topology import (
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.connections import get_connection, get_test_connection_fn
-from metadata.ingestion.source.objectstore.s3.connection import S3ObjectStoreClient
+from metadata.ingestion.source.storage.s3.connection import S3ObjectStoreClient
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
 
 
-class ObjectStoreServiceTopology(ServiceTopology):
+class StorageServiceTopology(ServiceTopology):
 
     root = TopologyNode(
         producer="get_services",
         stages=[
             NodeStage(
-                type_=ObjectStoreService,
+                type_=StorageService,
                 context="objectstore_service",
                 processor="yield_create_request_objectstore_service",
                 overwrite=False,
@@ -75,19 +75,19 @@ class ObjectStoreServiceTopology(ServiceTopology):
     )
 
 
-class ObjectStoreServiceSource(TopologyRunnerMixin, Source, ABC):
+class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
     """
     Base class for Object Store Services.
     It implements the topology and context.
     """
 
-    source_config: ObjectStoreServiceMetadataPipeline
+    source_config: StorageServiceMetadataPipeline
     config: WorkflowSource
     metadata: OpenMetadata
     # Big union of types we want to fetch dynamically
-    service_connection: ObjectStoreConnection.__fields__["config"].type_
+    service_connection: StorageConnection.__fields__["config"].type_
 
-    topology = ObjectStoreServiceTopology()
+    topology = StorageServiceTopology()
     context = create_source_context(topology)
 
     def __init__(
@@ -100,7 +100,7 @@ class ObjectStoreServiceSource(TopologyRunnerMixin, Source, ABC):
         self.metadata_config = metadata_config
         self.metadata = OpenMetadata(metadata_config)
         self.service_connection = self.config.serviceConnection.__root__.config
-        self.source_config: ObjectStoreServiceMetadataPipeline = (
+        self.source_config: StorageServiceMetadataPipeline = (
             self.config.sourceConfig.config
         )
         self.connection: S3ObjectStoreClient = get_connection(self.service_connection)
@@ -139,5 +139,5 @@ class ObjectStoreServiceSource(TopologyRunnerMixin, Source, ABC):
 
     def yield_create_request_objectstore_service(self, config: WorkflowSource):
         yield self.metadata.get_create_service_from_source(
-            entity=ObjectStoreService, config=config
+            entity=StorageService, config=config
         )

@@ -1,13 +1,13 @@
 {
   "$id": "https://open-metadata.org/schema/metadataIngestion/containerMetadataConfig.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "ObjectStoreContainerConfig",
+  "title": "StorageContainerConfig",
   "description": "Definition of the properties contained by an object store container template config file",
-  "javaType": "org.openmetadata.schema.metadataIngestion.objectstore.ContainerMetadataConfig",
+  "javaType": "org.openmetadata.schema.metadataIngestion.storage.ContainerMetadataConfig",
   "definitions": {
     "metadataEntry": {
       "description": "Config properties for a container found in a user-supplied metadata config",
-      "javaType": "org.openmetadata.schema.metadataIngestion.objectstore.ContainerMetadataEntry",
+      "javaType": "org.openmetadata.schema.metadataIngestion.storage.ContainerMetadataEntry",
       "type": "object",
       "properties": {
         "dataPath": {

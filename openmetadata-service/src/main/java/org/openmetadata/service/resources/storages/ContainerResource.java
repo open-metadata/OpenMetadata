@@ -1,4 +1,4 @@
-package org.openmetadata.service.resources.objectstores;
+package org.openmetadata.service.resources.storages;
 
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
@@ -436,7 +436,7 @@ public class ContainerResource extends EntityResource<Container, ContainerReposi
 
   private Container getContainer(CreateContainer create, String user) throws IOException {
     return copy(new Container(), create, user)
-        .withService(getEntityReference(Entity.OBJECT_STORE_SERVICE, create.getService()))
+        .withService(getEntityReference(Entity.STORAGE_SERVICE, create.getService()))
         .withParent(create.getParent())
         .withDataModel(create.getDataModel())
         .withPrefix(create.getPrefix())

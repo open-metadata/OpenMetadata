@@ -247,7 +247,7 @@
     ]
   },
   {
-    "name" : "objectStoreService",
+    "name" : "storageService",
     "operations" : [
       "Create",
       "Delete",
