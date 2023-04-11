@@ -33,7 +33,11 @@ from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.lineage.parser import LineageParser
 from metadata.ingestion.lineage.sql_lineage import search_table_entities
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
-from metadata.ingestion.source.dashboard.metabase.models import MetabaseDashboard
+from metadata.ingestion.source.dashboard.metabase.models import (
+    MetabaseChart,
+    MetabaseDashboard,
+    MetabaseDashboardDetails,
+)
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_chart
 from metadata.utils.helpers import (
@@ -68,8 +72,7 @@ class MetabaseSource(DashboardServiceSource):
         """
         Get List of all dashboards
         """
-        dashboard_list = self.client.get_dashboards_list()
-        return dashboard_list.dashboards
+        return self.client.get_dashboards_list()
 
     def get_dashboard_name(self, dashboard: MetabaseDashboard) -> str:
         """
@@ -84,7 +87,7 @@ class MetabaseSource(DashboardServiceSource):
         return self.client.get_dashboard_details(dashboard.id)
 
     def yield_dashboard(
-        self, dashboard_details: MetabaseDashboard
+        self, dashboard_details: MetabaseDashboardDetails
     ) -> Iterable[CreateDashboardRequest]:
         """
         Method to Get Dashboard Entity
@@ -113,7 +116,7 @@ class MetabaseSource(DashboardServiceSource):
         self.register_record(dashboard_request=dashboard_request)
 
     def yield_dashboard_chart(
-        self, dashboard_details: dict
+        self, dashboard_details: MetabaseDashboardDetails
     ) -> Optional[Iterable[CreateChartRequest]]:
         """Get chart method
 
@@ -152,7 +155,9 @@ class MetabaseSource(DashboardServiceSource):
                 continue
 
     def yield_dashboard_lineage_details(
-        self, dashboard_details: dict, db_service_name
+        self,
+        dashboard_details: MetabaseDashboardDetails,
+        db_service_name: Optional[str],
     ) -> Optional[Iterable[AddLineageRequest]]:
         """Get lineage method
 
@@ -198,7 +203,7 @@ class MetabaseSource(DashboardServiceSource):
                 logger.error(f"Error creating chart [{chart}]: {exc}")
 
     def _yield_lineage_from_query(
-        self, chart_details: dict, db_service_name: str, dashboard_name: str
+        self, chart_details: MetabaseChart, db_service_name: str, dashboard_name: str
     ) -> Optional[AddLineageRequest]:
         database = self.client.get_database(chart_details.database_id)
 
@@ -247,7 +252,7 @@ class MetabaseSource(DashboardServiceSource):
                 )
 
     def _yield_lineage_from_api(
-        self, chart_details: dict, db_service_name: str, dashboard_name: str
+        self, chart_details: MetabaseChart, db_service_name: str, dashboard_name: str
     ) -> Optional[AddLineageRequest]:
         table = self.client.get_table(chart_details.table_id)
 
