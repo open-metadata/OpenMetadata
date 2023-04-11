@@ -15,7 +15,7 @@ supporting sqlalchemy abstraction layer
 """
 import math
 import random
-from typing import cast
+from typing import List, cast
 
 from metadata.data_quality.validations.table.pandas.tableRowInsertedCountToBeBetween import (
     TableRowInsertedCountToBeBetweenValidator,
@@ -86,16 +86,17 @@ class PandasInterfaceMixin:
         """
         returns sampled ometa dataframes
         """
+        from pandas import DataFrame  # pylint: disable=import-outside-toplevel
+
         data = ometa_to_dataframe(
             config_source=service_connection_config.configSource,
             client=client,
             table=table,
         )
-        if not isinstance(data, list):
-            raise TypeError(f"Couldn't fetch {table.name.__root__}")
-        if data:
+        if isinstance(data, DataFrame):
+            data: List[DataFrame] = [data]
+        if data and isinstance(data, list):
             random.shuffle(data)
-
             # sampling data based on profiler config (if any)
             if hasattr(profile_sample_config, "profile_sample"):
                 if (
@@ -123,3 +124,4 @@ class PandasInterfaceMixin:
                         for df in data
                     ]
             return data
+        raise TypeError(f"Couldn't fetch {table.name.__root__}")
