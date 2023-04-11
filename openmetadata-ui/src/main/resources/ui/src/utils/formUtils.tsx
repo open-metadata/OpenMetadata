@@ -10,14 +10,18 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Form, FormRule, Input, Select, Space } from 'antd';
+import { Form, FormRule, Input, InputNumber, Select, Space } from 'antd';
 import Typography from 'antd/lib/typography/Typography';
 import FilterPattern from 'components/common/FilterPattern/FilterPattern';
 import { FilterPatternProps } from 'components/common/FilterPattern/filterPattern.interface';
 import InfoPopover from 'components/common/InfoPopover/InfoPopover';
+import RichTextEditor from 'components/common/rich-text-editor/RichTextEditor';
+import { RichTextEditorProp } from 'components/common/rich-text-editor/RichTextEditor.interface';
 import ToggleSwitchV1, {
   ToggleSwitchV1Props,
 } from 'components/common/toggle-switch/ToggleSwitchV1';
+import SliderWithInput from 'components/SliderWithInput/SliderWithInput';
+import { SliderWithInputProps } from 'components/SliderWithInput/SliderWithInput.interface';
 import React, { ReactNode } from 'react';
 import { getSeparator } from './CommonUtils';
 import i18n from './i18next/LocalUtil';
@@ -27,6 +31,9 @@ export enum FieldTypes {
   FILTER_PATTERN = 'filter_pattern',
   SWITCH = 'switch',
   SELECT = 'select',
+  NUMBER = 'number',
+  SLIDER_INPUT = 'slider_input',
+  DESCRIPTION = 'description',
 }
 
 export interface FieldProp {
@@ -85,6 +92,10 @@ export const getField = (field: FieldProp) => {
       fieldElement = <Input {...props} placeholder={placeholder} />;
 
       break;
+    case FieldTypes.NUMBER:
+      fieldElement = <InputNumber {...props} placeholder={placeholder} />;
+
+      break;
 
     case FieldTypes.FILTER_PATTERN:
       fieldElement = (
@@ -104,6 +115,18 @@ export const getField = (field: FieldProp) => {
       break;
     case FieldTypes.SELECT:
       fieldElement = <Select {...props} />;
+
+      break;
+    case FieldTypes.SLIDER_INPUT:
+      fieldElement = (
+        <SliderWithInput {...(props as unknown as SliderWithInputProps)} />
+      );
+
+      break;
+    case FieldTypes.DESCRIPTION:
+      fieldElement = (
+        <RichTextEditor {...(props as unknown as RichTextEditorProp)} />
+      );
 
       break;
     default:

@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 
-import { Button, Form, InputNumber, Select, Typography } from 'antd';
-import { isNil } from 'lodash';
-import React, { Fragment, useMemo, useRef } from 'react';
+import { Button, Form } from 'antd';
+import { capitalize, isNil } from 'lodash';
+import React, { useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FieldProp, FieldTypes, generateFormFields } from 'utils/formUtils';
 import { PROFILE_SAMPLE_OPTIONS } from '../../../constants/profiler.constant';
@@ -22,13 +22,8 @@ import { FormSubmitType } from '../../../enums/form.enum';
 import { ServiceCategory } from '../../../enums/service.enum';
 import { ProfileSampleType } from '../../../generated/entity/data/table';
 import { PipelineType } from '../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
-import { getSeparator } from '../../../utils/CommonUtils';
-import FilterPattern from '../../common/FilterPattern/FilterPattern';
-import RichTextEditor from '../../common/rich-text-editor/RichTextEditor';
 import { EditorContentRef } from '../../common/rich-text-editor/RichTextEditor.interface';
-import ToggleSwitchV1 from '../../common/toggle-switch/ToggleSwitchV1';
 import { Field } from '../../Field/Field';
-import SliderWithInput from '../../SliderWithInput/SliderWithInput';
 import {
   AddIngestionState,
   ConfigureIngestionProps,
@@ -227,226 +222,6 @@ const ConfigureIngestion = ({
 
   const handleIngestionName = handleValueChange('ingestionName');
 
-  const getIngestSampleToggle = (label: string, desc: string) => {
-    return (
-      <>
-        <Field>
-          <div className="tw-flex tw-gap-1">
-            <label>{label}</label>
-            <ToggleSwitchV1
-              checked={ingestSampleData}
-              handleCheck={handleIngestSampleToggle}
-              testId="ingest-sample-data"
-            />
-          </div>
-          <p className="tw-text-grey-muted tw-mt-3">{desc}</p>
-        </Field>
-        {getSeparator('')}
-      </>
-    );
-  };
-
-  const getDebugLogToggle = () => {
-    return (
-      <Field>
-        <div className="tw-flex tw-gap-1">
-          <label>{t('label.enable-debug-log')}</label>
-          <ToggleSwitchV1
-            checked={enableDebugLog}
-            handleCheck={handleEnableDebugLogCheck}
-            testId="enable-debug-log"
-          />
-        </div>
-        <p className="tw-text-grey-muted tw-mt-3">
-          {t('message.enable-debug-logging')}
-        </p>
-        {getSeparator('')}
-      </Field>
-    );
-  };
-
-  const getProfileSample = () => {
-    return (
-      <>
-        <Form.Item
-          className="m-t-sm"
-          initialValue={profileSampleType || ProfileSampleType.Percentage}
-          label={t('label.profile-sample-type', {
-            type: t('label.type'),
-          })}
-          name="profileSample">
-          <Select
-            data-testid="profile-sample"
-            options={PROFILE_SAMPLE_OPTIONS}
-            value={profileSampleType}
-            onChange={handleProfileSampleTypeChange}
-          />
-        </Form.Item>
-        <Form.Item
-          className="m-b-xs"
-          label={t('label.profile-sample-type', {
-            type: t('label.value'),
-          })}
-          name="profile-sample-value">
-          {profileSampleType === ProfileSampleType.Percentage && (
-            <>
-              <Typography.Paragraph className="text-grey-muted m-t-0 m-b-xs text-sm">
-                {t('message.profile-sample-percentage-message')}
-              </Typography.Paragraph>
-              <SliderWithInput
-                value={profileSample || 100}
-                onChange={handleProfileSample}
-              />
-            </>
-          )}
-          {profileSampleType === ProfileSampleType.Rows && (
-            <>
-              <Typography.Paragraph className="text-grey-muted m-t-0 m-b-xs text-sm">
-                {t('message.profile-sample-row-count-message')}
-              </Typography.Paragraph>
-              <InputNumber
-                className="w-full"
-                data-testid="metric-number-input"
-                min={0}
-                placeholder={t('label.please-enter-value', {
-                  name: t('label.row-count-lowercase'),
-                })}
-                value={profileSample}
-                onChange={handleProfileSample}
-              />
-            </>
-          )}
-        </Form.Item>
-      </>
-    );
-  };
-
-  const getThreadCount = () => {
-    return (
-      <div>
-        <label>
-          {t('label.entity-count', {
-            entity: t('label.thread'),
-          })}
-        </label>
-        <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-sm">
-          {t('message.thread-count-message')}
-        </p>
-        <input
-          className="tw-form-inputs tw-form-inputs-padding tw-w-24"
-          data-testid="threadCount"
-          id="threadCount"
-          name="threadCount"
-          placeholder="5"
-          type="number"
-          value={threadCount}
-          onChange={handleThreadCount}
-        />
-      </div>
-    );
-  };
-
-  const getTimeoutSeconds = () => {
-    return (
-      <div>
-        <label>{t('label.profiler-timeout-second-plural-label')}</label>
-        <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-sm">
-          {t('message.profiler-timeout-seconds-message')}
-        </p>
-        <input
-          className="tw-form-inputs tw-form-inputs-padding tw-w-24"
-          data-testid="timeoutSeconds"
-          id="timeoutSeconds"
-          name="timeoutSeconds"
-          placeholder="43200"
-          type="number"
-          value={timeoutSeconds}
-          onChange={handleTimeoutSeconds}
-        />
-      </div>
-    );
-  };
-
-  const getProcessPiiTogglesForProfiler = () => {
-    return (
-      <Fragment>
-        <Field>
-          <div className="tw-flex tw-gap-1">
-            <label>{t('label.auto-tag-pii-uppercase')}</label>
-            <ToggleSwitchV1
-              checked={processPii}
-              handleCheck={handleProcessPii}
-              testId="include-lineage"
-            />
-          </div>
-          <p className="tw-text-grey-muted tw-mt-3">
-            {t('message.process-pii-sensitive-column-message-profiler')}
-          </p>
-          {processPii && (
-            <>
-              {getSeparator('')}
-              <Typography.Paragraph className="text-grey-muted m-t-0 m-b-xs text-sm">
-                {t('message.confidence-percentage-message')}
-              </Typography.Paragraph>
-              <SliderWithInput
-                value={confidence || 80}
-                onChange={handleConfidenceScore}
-              />
-            </>
-          )}
-        </Field>
-      </Fragment>
-    );
-  };
-
-  const getFilterPatterns = () => {
-    return (
-      <div>
-        <FilterPattern
-          checked={showDatabaseFilter}
-          excludePattern={databaseFilterPattern?.excludes ?? []}
-          getExcludeValue={getExcludeValue}
-          getIncludeValue={getIncludeValue}
-          handleChecked={(value) =>
-            handleShowFilter(value, ShowFilter.showDatabaseFilter)
-          }
-          includePattern={databaseFilterPattern?.includes ?? []}
-          includePatternExtraInfo={
-            data.database
-              ? t('message.include-database-filter-extra-information')
-              : undefined
-          }
-          isDisabled={data.isDatabaseFilterDisabled}
-          type={FilterPatternEnum.DATABASE}
-        />
-
-        <FilterPattern
-          checked={showSchemaFilter}
-          excludePattern={schemaFilterPattern?.excludes ?? []}
-          getExcludeValue={getExcludeValue}
-          getIncludeValue={getIncludeValue}
-          handleChecked={(value) =>
-            handleShowFilter(value, ShowFilter.showSchemaFilter)
-          }
-          includePattern={schemaFilterPattern?.includes ?? []}
-          type={FilterPatternEnum.SCHEMA}
-        />
-        <FilterPattern
-          checked={showTableFilter}
-          excludePattern={tableFilterPattern?.excludes ?? []}
-          getExcludeValue={getExcludeValue}
-          getIncludeValue={getIncludeValue}
-          handleChecked={(value) =>
-            handleShowFilter(value, ShowFilter.showTableFilter)
-          }
-          includePattern={tableFilterPattern?.includes ?? []}
-          showSeparator={false}
-          type={FilterPatternEnum.TABLE}
-        />
-      </div>
-    );
-  };
-
   const commonMetadataFields: FieldProp[] = [
     {
       name: 'name',
@@ -465,7 +240,7 @@ const ConfigureIngestion = ({
     },
   ];
 
-  const databaseMetadataFields: FieldProp[] = [
+  const databaseServiceFilterPatternFields: FieldProp[] = [
     {
       name: 'databaseFilterPattern',
       label: null,
@@ -522,6 +297,10 @@ const ConfigureIngestion = ({
       id: 'tableFilterPattern',
       hasSeparator: true,
     },
+  ];
+
+  const databaseMetadataFields: FieldProp[] = [
+    ...databaseServiceFilterPatternFields,
     {
       name: 'useFqnForFiltering',
       label: t('label.use-fqn-for-filtering'),
@@ -751,7 +530,7 @@ const ConfigureIngestion = ({
       hasSeparator: true,
     },
     {
-      name: 'ingestSampleData',
+      name: 'generateSampleData',
       label: t('label.ingest-sample-data'),
       type: FieldTypes.SWITCH,
       required: false,
@@ -760,7 +539,7 @@ const ConfigureIngestion = ({
         handleCheck: handleIngestSampleToggle,
         testId: 'ingest-sample-data',
       },
-      id: 'ingestSampleData',
+      id: 'generateSampleData',
       hasSeparator: true,
       helperText: t('message.ingest-sample-data-for-entity', {
         entity: t('label.topic-lowercase'),
@@ -983,178 +762,302 @@ const ConfigureIngestion = ({
   };
 
   const getUsageFields = () => {
-    return (
-      <>
-        <Field>
-          <label
-            className="tw-block tw-form-label tw-mb-1"
-            htmlFor="query-log-duration">
-            {t('label.query-log-duration')}
-          </label>
-          <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-sm">
-            {t('message.query-log-duration-message')}
-          </p>
-          <input
-            className="tw-form-inputs tw-form-inputs-padding"
-            data-testid="query-log-duration"
-            id="query-log-duration"
-            name="query-log-duration"
-            type="number"
-            value={queryLogDuration}
-            onChange={handleQueryLogDuration}
-          />
-          {getSeparator('')}
-        </Field>
-        <Field>
-          <label
-            className="tw-block tw-form-label tw-mb-1"
-            htmlFor="stage-file-location">
-            {t('label.stage-file-location')}
-          </label>
-          <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-sm">
-            {t('message.stage-file-location-message')}
-          </p>
-          <input
-            className="tw-form-inputs tw-form-inputs-padding"
-            data-testid="stage-file-location"
-            id="stage-file-location"
-            name="stage-file-location"
-            type="text"
-            value={stageFileLocation}
-            onChange={handleStageFileLocation}
-          />
-          {getSeparator('')}
-        </Field>
-        <Field>
-          <label
-            className="tw-block tw-form-label tw-mb-1"
-            htmlFor="result-limit">
-            {t('label.result-limit')}
-          </label>
-          <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-sm">
-            {t('message.result-limit-message')}
-          </p>
-          <input
-            className="tw-form-inputs tw-form-inputs-padding"
-            data-testid="result-limit"
-            id="result-limit"
-            name="result-limit"
-            type="number"
-            value={resultLimit}
-            onChange={handleResultLimit}
-          />
-          {getSeparator('')}
-        </Field>
-        {getDebugLogToggle()}
-      </>
-    );
+    const fields: FieldProp[] = [
+      {
+        name: 'queryLogDuration',
+        label: t('label.query-log-duration'),
+        type: FieldTypes.NUMBER,
+        helperText: t('message.query-log-duration-message'),
+        hasSeparator: true,
+        props: {
+          className: 'tw-form-inputs tw-form-inputs-padding',
+          'data-testid': 'query-log-duration',
+          value: queryLogDuration,
+          onChange: handleQueryLogDuration,
+        },
+        id: 'queryLogDuration',
+        required: false,
+      },
+      {
+        name: 'stageFileLocation',
+        label: t('label.stage-file-location'),
+        type: FieldTypes.TEXT,
+        helperText: t('message.stage-file-location-message'),
+        hasSeparator: true,
+        props: {
+          className: 'tw-form-inputs tw-form-inputs-padding',
+          'data-testid': 'stage-file-location',
+          value: stageFileLocation,
+          onChange: handleStageFileLocation,
+        },
+        id: 'stageFileLocation',
+        required: false,
+      },
+      {
+        name: 'resultLimit',
+        label: t('label.result-limit'),
+        type: FieldTypes.NUMBER,
+        helperText: t('message.result-limit-message'),
+        hasSeparator: true,
+        props: {
+          className: 'tw-form-inputs tw-form-inputs-padding',
+          'data-testid': 'result-limit',
+          value: resultLimit,
+          onChange: handleResultLimit,
+        },
+        id: 'resultLimit',
+        required: false,
+      },
+      {
+        name: 'loggerLevel',
+        label: t('label.enable-debug-log'),
+        type: FieldTypes.SWITCH,
+        required: false,
+        props: {
+          checked: enableDebugLog,
+          handleCheck: handleEnableDebugLogCheck,
+          testId: 'enable-debug-log',
+        },
+        id: 'loggerLevel',
+        hasSeparator: true,
+        helperText: t('message.enable-debug-logging'),
+      },
+    ];
+
+    return generateFormFields(fields);
   };
 
   const getLineageFields = () => {
-    return (
-      <>
-        <Field>
-          <label
-            className="tw-block tw-form-label tw-mb-1"
-            htmlFor="query-log-duration">
-            {t('label.query-log-duration')}
-          </label>
-          <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-sm">
-            {t('message.query-log-duration-message')}
-          </p>
-          <input
-            className="tw-form-inputs tw-form-inputs-padding"
-            data-testid="query-log-duration"
-            id="query-log-duration"
-            name="query-log-duration"
-            type="number"
-            value={queryLogDuration}
-            onChange={handleQueryLogDuration}
-          />
-          {getSeparator('')}
-        </Field>
-        <Field>
-          <label
-            className="tw-block tw-form-label tw-mb-1"
-            htmlFor="result-limit">
-            {t('label.result-limit')}
-          </label>
-          <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-sm">
-            {t('message.result-limit-message')}
-          </p>
-          <input
-            className="tw-form-inputs tw-form-inputs-padding"
-            data-testid="result-limit"
-            id="result-limit"
-            name="result-limit"
-            type="number"
-            value={resultLimit}
-            onChange={handleResultLimit}
-          />
-          {getSeparator('')}
-        </Field>
-        {getDebugLogToggle()}
-      </>
-    );
+    const fields: FieldProp[] = [
+      {
+        name: 'queryLogDuration',
+        label: t('label.query-log-duration'),
+        type: FieldTypes.NUMBER,
+        helperText: t('message.query-log-duration-message'),
+        hasSeparator: true,
+        props: {
+          className: 'tw-form-inputs tw-form-inputs-padding',
+          'data-testid': 'query-log-duration',
+          value: queryLogDuration,
+          onChange: handleQueryLogDuration,
+        },
+        id: 'queryLogDuration',
+        required: false,
+      },
+      {
+        name: 'resultLimit',
+        label: t('label.result-limit'),
+        type: FieldTypes.NUMBER,
+        helperText: t('message.result-limit-message'),
+        hasSeparator: true,
+        props: {
+          className: 'tw-form-inputs tw-form-inputs-padding',
+          'data-testid': 'result-limit',
+          value: resultLimit,
+          onChange: handleResultLimit,
+        },
+        id: 'resultLimit',
+        required: false,
+      },
+      {
+        name: 'loggerLevel',
+        label: t('label.enable-debug-log'),
+        type: FieldTypes.SWITCH,
+        required: false,
+        props: {
+          checked: enableDebugLog,
+          handleCheck: handleEnableDebugLogCheck,
+          testId: 'enable-debug-log',
+        },
+        id: 'loggerLevel',
+        hasSeparator: true,
+        helperText: t('message.enable-debug-logging'),
+      },
+    ];
+
+    return generateFormFields(fields);
   };
 
   const getProfilerFields = () => {
-    return (
-      <>
-        <div>
-          <Field>
-            <label className="tw-block tw-form-label tw-mb-1" htmlFor="name">
-              {t('label.name')}
-            </label>
-            <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-sm">
-              {t('message.ingestion-pipeline-name-message')}
-            </p>
-            <input
-              className="tw-form-inputs tw-form-inputs-padding"
-              data-testid="name"
-              id="name"
-              name="name"
-              type="text"
-              value={ingestionName}
-              onChange={handleIngestionName}
-            />
-            {getSeparator('')}
-          </Field>
-        </div>
-        {getFilterPatterns()}
-        {getSeparator('')}
-        {getProfileSample()}
-        {getSeparator('')}
-        {getThreadCount()}
-        {getSeparator('')}
-        {getTimeoutSeconds()}
-        {getSeparator('')}
-        {getIngestSampleToggle(
-          t('label.ingest-sample-data'),
-          t('message.ingest-sample-data-for-entity', {
-            entity: t('label.profile-lowercase'),
-          })
-        )}
-        {getDebugLogToggle()}
-        {getProcessPiiTogglesForProfiler()}
-        <div>
-          <Field>
-            <label className="tw-block tw-form-label tw-mb-1" htmlFor="name">
-              {t('label.description')}
-            </label>
-            <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-sm">
-              {t('message.pipeline-description-message')}
-            </p>
-            <RichTextEditor
-              data-testid="description"
-              initialValue={description}
-              ref={markdownRef}
-            />
-            {getSeparator('')}
-          </Field>
-        </div>
-      </>
-    );
+    const fields: FieldProp[] = [
+      {
+        name: 'name',
+        label: t('label.name'),
+        type: FieldTypes.TEXT,
+        required: true,
+        props: {
+          disabled: formType === FormSubmitType.EDIT,
+          value: ingestionName,
+          onChange: handleIngestionName,
+          'data-testid': 'name',
+        },
+        id: 'name',
+        helperText: t('message.ingestion-pipeline-name-message'),
+        hasSeparator: true,
+      },
+      ...databaseServiceFilterPatternFields,
+      {
+        name: 'profileSampleType',
+        id: 'profileSampleType',
+        label: t('label.profile-sample-type', {
+          type: t('label.type'),
+        }),
+        type: FieldTypes.SELECT,
+        props: {
+          'data-testid': 'profile-sample',
+          options: PROFILE_SAMPLE_OPTIONS,
+          value: profileSampleType,
+          onChange: handleProfileSampleTypeChange,
+        },
+        required: false,
+      },
+      ...(profileSampleType === ProfileSampleType.Percentage
+        ? [
+            {
+              name: 'profileSample',
+              id: 'profileSample',
+              label: capitalize(ProfileSampleType.Percentage),
+              helperText: t('message.profile-sample-percentage-message'),
+              required: false,
+              type: FieldTypes.SLIDER_INPUT,
+              props: {
+                value: profileSample || 100,
+                onChange: handleProfileSample,
+              },
+            },
+          ]
+        : []),
+      ...(profileSampleType === ProfileSampleType.Rows
+        ? [
+            {
+              name: 'profileSample',
+              id: 'profileSample',
+              label: capitalize(ProfileSampleType.Rows),
+              helperText: t('message.profile-sample-row-count-message'),
+              required: false,
+              type: FieldTypes.NUMBER,
+              props: {
+                className: 'w-full',
+                'data-testid': 'metric-number-input',
+                min: 0,
+                placeholder: t('label.please-enter-value', {
+                  name: t('label.row-count-lowercase'),
+                }),
+                value: profileSample,
+                onChange: handleProfileSample,
+              },
+            },
+          ]
+        : []),
+      {
+        name: 'threadCount',
+        id: 'threadCount',
+        helperText: t('message.thread-count-message'),
+        label: t('label.entity-count', {
+          entity: t('label.thread'),
+        }),
+        required: false,
+        type: FieldTypes.NUMBER,
+        props: {
+          className: 'tw-form-inputs tw-form-inputs-padding tw-w-24',
+          'data-testid': 'threadCount',
+          placeholder: '5',
+          value: threadCount,
+          onChange: handleThreadCount,
+        },
+      },
+      {
+        name: 'timeoutSeconds',
+        id: 'timeoutSeconds',
+        helperText: t('message.profiler-timeout-seconds-message'),
+        label: t('label.profiler-timeout-second-plural-label'),
+        required: false,
+        type: FieldTypes.NUMBER,
+        props: {
+          className: 'tw-form-inputs tw-form-inputs-padding tw-w-24',
+          'data-testid': 'timeoutSeconds',
+          placeholder: '43200',
+          value: timeoutSeconds,
+          onChange: handleTimeoutSeconds,
+        },
+      },
+      {
+        name: 'generateSampleData',
+        label: t('label.ingest-sample-data'),
+        type: FieldTypes.SWITCH,
+        required: false,
+        props: {
+          checked: ingestSampleData,
+          handleCheck: handleIngestSampleToggle,
+          testId: 'ingest-sample-data',
+        },
+        id: 'generateSampleData',
+        hasSeparator: true,
+        helperText: t('message.ingest-sample-data-for-entity', {
+          entity: t('label.profile-lowercase'),
+        }),
+      },
+      {
+        name: 'loggerLevel',
+        label: t('label.enable-debug-log'),
+        type: FieldTypes.SWITCH,
+        required: false,
+        props: {
+          checked: enableDebugLog,
+          handleCheck: handleEnableDebugLogCheck,
+          testId: 'enable-debug-log',
+        },
+        id: 'loggerLevel',
+        hasSeparator: true,
+        helperText: t('message.enable-debug-logging'),
+      },
+      {
+        name: 'processPiiSensitive',
+        label: t('label.auto-tag-pii-uppercase'),
+        type: FieldTypes.SWITCH,
+        required: false,
+        props: {
+          checked: processPii,
+          handleCheck: handleProcessPii,
+          testId: 'process-pii',
+        },
+        id: 'processPiiSensitive',
+        hasSeparator: processPii,
+        helperText: t('message.process-pii-sensitive-column-message-profiler'),
+      },
+      ...(processPii
+        ? [
+            {
+              name: 'confidence',
+              id: 'confidence',
+              label: null,
+              helperText: t('message.confidence-percentage-message'),
+              required: false,
+              type: FieldTypes.SLIDER_INPUT,
+              props: {
+                value: confidence || 80,
+                onChange: handleConfidenceScore,
+              },
+            },
+          ]
+        : []),
+      {
+        name: 'description',
+        id: 'description',
+        label: t('label.description'),
+        helperText: t('message.pipeline-description-message'),
+        required: false,
+        hasSeparator: true,
+        props: {
+          'data-testid': 'description',
+          initialValue: description,
+          ref: markdownRef,
+        },
+        type: FieldTypes.DESCRIPTION,
+      },
+    ];
+
+    return generateFormFields(fields);
   };
 
   const getIngestionPipelineFields = () => {
