@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Form, FormRule, Input, Space } from 'antd';
+import { Form, FormRule, Input, Select, Space } from 'antd';
 import Typography from 'antd/lib/typography/Typography';
 import FilterPattern from 'components/common/FilterPattern/FilterPattern';
 import { FilterPatternProps } from 'components/common/FilterPattern/filterPattern.interface';
@@ -26,6 +26,7 @@ export enum FieldTypes {
   TEXT = 'text',
   FILTER_PATTERN = 'filter_pattern',
   SWITCH = 'switch',
+  SELECT = 'select',
 }
 
 export interface FieldProp {
@@ -99,6 +100,10 @@ export const getField = (field: FieldProp) => {
           <ToggleSwitchV1 {...(props as unknown as ToggleSwitchV1Props)} />
         </Space>
       );
+
+      break;
+    case FieldTypes.SELECT:
+      fieldElement = <Select {...props} />;
 
       break;
     default:
