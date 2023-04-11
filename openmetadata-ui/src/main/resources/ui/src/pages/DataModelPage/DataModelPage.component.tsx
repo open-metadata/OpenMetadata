@@ -56,7 +56,10 @@ import {
   getEntityMissingError,
   getFeedCounts,
 } from 'utils/CommonUtils';
-import { getDataModelsDetailPath } from 'utils/DataModelsUtils';
+import {
+  getDataModelsDetailPath,
+  getSortedDataModelColumnTags,
+} from 'utils/DataModelsUtils';
 import { getEntityFeedLink } from 'utils/EntityUtils';
 import { deletePost, updateThreadData } from 'utils/FeedUtils';
 import { DEFAULT_ENTITY_PERMISSION } from 'utils/PermissionsUtils';
@@ -412,7 +415,7 @@ const DataModelsPage = () => {
     }
   };
 
-  const handleUpdateDataModel = async (
+  const handleColumnUpdateDataModel = async (
     updatedDataModel: DashboardDataModel['columns']
   ) => {
     try {
@@ -423,9 +426,10 @@ const DataModelsPage = () => {
 
       setDataModelData((prev) => ({
         ...(prev as DashboardDataModel),
-        columns: newColumns,
+        columns: getSortedDataModelColumnTags(newColumns),
         version,
       }));
+      getEntityFeedCount();
     } catch (error) {
       showErrorToast(error as AxiosError);
     }
@@ -435,7 +439,7 @@ const DataModelsPage = () => {
     if (tab === DATA_MODELS_DETAILS_TABS.ACTIVITY) {
       getFeedData();
     }
-  }, [tab, dashboardDataModelFQN]);
+  }, [tab, feedCount, dashboardDataModelFQN]);
 
   useEffect(() => {
     if (hasViewPermission) {
@@ -482,7 +486,7 @@ const DataModelsPage = () => {
       handleFollowDataModel={handleFollowDataModel}
       handleRemoveTier={handleRemoveTier}
       handleTabChange={handleTabChange}
-      handleUpdateDataModel={handleUpdateDataModel}
+      handleUpdateDataModel={handleColumnUpdateDataModel}
       handleUpdateDescription={handleUpdateDescription}
       handleUpdateOwner={handleUpdateOwner}
       handleUpdateTags={handleUpdateTags}

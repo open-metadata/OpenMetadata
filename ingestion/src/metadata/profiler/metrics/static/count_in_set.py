@@ -63,7 +63,7 @@ class CountInSet(StaticMetric):
             logger.warning(f"Error trying to run countInSet for {self.col.name}: {exc}")
             return None
 
-    def df_fn(self, df):
+    def df_fn(self, dfs=None):
         """pandas function"""
         if not hasattr(self, "values"):
             raise AttributeError(
@@ -71,7 +71,7 @@ class CountInSet(StaticMetric):
             )
 
         try:
-            return df[self.col.name][df[self.col.name].isin(list(self.values))].count()
+            return sum(sum(df[self.col.name].isin(self.values)) for df in dfs)
         except Exception as exc:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())
             logger.warning(f"Error trying to run countInSet for {self.col.name}: {exc}")

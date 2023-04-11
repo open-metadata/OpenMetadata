@@ -80,6 +80,7 @@ ischema_names["geography"] = GEOGRAPHY
 ischema_names.update({"binary varying": sqltypes.VARBINARY})
 ischema_names.update(REDSHIFT_ISCHEMA_NAMES)
 
+
 # pylint: disable=protected-access
 @reflection.cache
 def get_columns(self, connection, table_name, schema=None, **kw):

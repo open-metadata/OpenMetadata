@@ -57,7 +57,7 @@ def get_columns(
     rows = [[col.strip() if col else None for col in row] for row in rows]
     rows = [row for row in rows if row[0] and row[0] != "# col_name"]
     result = []
-    for (col_name, col_type, comment) in rows:
+    for col_name, col_type, comment in rows:
         if col_name == "# Partition Information":
             break
 
