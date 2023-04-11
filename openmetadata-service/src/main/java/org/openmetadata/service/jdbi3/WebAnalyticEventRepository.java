@@ -55,11 +55,12 @@ public class WebAnalyticEventRepository extends EntityRepository<WebAnalyticEven
   public Response addWebAnalyticEventData(WebAnalyticEventData webAnalyticEventData) throws IOException {
     webAnalyticEventData.setEventId(UUID.randomUUID());
     storeTimeSeries(
-            webAnalyticEventData.getEventType().value(),
-            WEB_ANALYTICS_EVENT_DATA_EXTENSION,
-            "webAnalyticEventData",
-            JsonUtils.pojoToJson(webAnalyticEventData),
-            webAnalyticEventData.getTimestamp(), false);
+        webAnalyticEventData.getEventType().value(),
+        WEB_ANALYTICS_EVENT_DATA_EXTENSION,
+        "webAnalyticEventData",
+        JsonUtils.pojoToJson(webAnalyticEventData),
+        webAnalyticEventData.getTimestamp(),
+        false);
     return Response.ok(webAnalyticEventData).build();
   }
 

@@ -25,7 +25,6 @@ import java.util.Objects;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.classification.Tag;
-import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.Relationship;
@@ -91,7 +90,6 @@ public class TagRepository extends EntityRepository<Tag> {
     return FullyQualifiedName.buildHash(tag.getFullyQualifiedName());
   }
 
-
   @Override
   public EntityRepository<Tag>.EntityUpdater getUpdater(Tag original, Tag updated, Operation operation) {
     return new TagUpdater(original, updated, operation);
@@ -111,7 +109,9 @@ public class TagRepository extends EntityRepository<Tag> {
   }
 
   private Integer getUsageCount(Tag tag) {
-    return daoCollection.tagUsageDAO().getTagCount(TagSource.CLASSIFICATION.ordinal(), FullyQualifiedName.buildHash(tag.getFullyQualifiedName()));
+    return daoCollection
+        .tagUsageDAO()
+        .getTagCount(TagSource.CLASSIFICATION.ordinal(), FullyQualifiedName.buildHash(tag.getFullyQualifiedName()));
   }
 
   private List<EntityReference> getChildren(Tag entity) throws IOException {

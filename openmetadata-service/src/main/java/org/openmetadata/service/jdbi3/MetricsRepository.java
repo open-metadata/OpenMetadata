@@ -17,7 +17,6 @@ import static org.openmetadata.service.Entity.DASHBOARD_SERVICE;
 
 import java.io.IOException;
 import org.openmetadata.schema.entity.data.Metrics;
-import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;

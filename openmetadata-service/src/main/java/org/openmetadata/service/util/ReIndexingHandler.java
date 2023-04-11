@@ -157,7 +157,8 @@ public class ReIndexingHandler {
     SearchIndexWorkflow job = REINDEXING_JOB_MAP.get(jobId);
     if (job == null) {
       String recordString =
-          dao.entityExtensionTimeSeriesDao().getLatestExtension(EntityUtil.getCheckSum(jobId.toString()), REINDEXING_JOB_EXTENSION);
+          dao.entityExtensionTimeSeriesDao()
+              .getLatestExtension(EntityUtil.getCheckSum(jobId.toString()), REINDEXING_JOB_EXTENSION);
       return JsonUtils.readValue(recordString, EventPublisherJob.class);
     }
     return REINDEXING_JOB_MAP.get(jobId).getJobData();

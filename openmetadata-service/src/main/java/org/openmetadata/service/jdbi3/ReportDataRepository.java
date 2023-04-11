@@ -42,7 +42,8 @@ public class ReportDataRepository {
         JsonUtils.readObjects(
             daoCollection
                 .entityExtensionTimeSeriesDao()
-                .listBetweenTimestamps(EntityUtil.getCheckSum(reportDataType.value()), REPORT_DATA_EXTENSION, startTs, endTs),
+                .listBetweenTimestamps(
+                    EntityUtil.getCheckSum(reportDataType.value()), REPORT_DATA_EXTENSION, startTs, endTs),
             ReportData.class);
 
     return new ResultList<>(reportData, String.valueOf(startTs), String.valueOf(endTs), reportData.size());

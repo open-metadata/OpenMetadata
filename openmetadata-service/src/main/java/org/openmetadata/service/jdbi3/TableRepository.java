@@ -49,7 +49,6 @@ import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.data.CreateTableProfile;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
-import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.tests.CustomMetric;
 import org.openmetadata.schema.type.Column;
@@ -153,7 +152,6 @@ public class TableRepository extends EntityRepository<Table> {
   public String getFullyQualifiedNameHash(Table entity) {
     return FullyQualifiedName.buildHash(entity.getFullyQualifiedName());
   }
-
 
   @Transaction
   public Table addJoins(UUID tableId, TableJoins joins) throws IOException {
@@ -307,11 +305,18 @@ public class TableRepository extends EntityRepository<Table> {
   public Table addTableProfileData(UUID tableId, CreateTableProfile createTableProfile) throws IOException {
     // Validate the request content
     Table table = dao.findEntityById(tableId);
-    String storedTableProfile = getExtensionAtTimestamp(table.getFullyQualifiedName(), TABLE_PROFILE_EXTENSION,
-                    createTableProfile.getTableProfile().getTimestamp());
-    storeTimeSeries(table.getFullyQualifiedName(), TABLE_PROFILE_EXTENSION, "tableProfile",
-                    JsonUtils.pojoToJson(createTableProfile.getTableProfile()), createTableProfile.getTableProfile().getTimestamp(),
-             storedTableProfile != null);
+    String storedTableProfile =
+        getExtensionAtTimestamp(
+            table.getFullyQualifiedName(),
+            TABLE_PROFILE_EXTENSION,
+            createTableProfile.getTableProfile().getTimestamp());
+    storeTimeSeries(
+        table.getFullyQualifiedName(),
+        TABLE_PROFILE_EXTENSION,
+        "tableProfile",
+        JsonUtils.pojoToJson(createTableProfile.getTableProfile()),
+        createTableProfile.getTableProfile().getTimestamp(),
+        storedTableProfile != null);
 
     for (ColumnProfile columnProfile : createTableProfile.getColumnProfile()) {
       // Validate all the columns
@@ -319,19 +324,31 @@ public class TableRepository extends EntityRepository<Table> {
       if (column == null) {
         throw new IllegalArgumentException("Invalid column name " + columnProfile.getName());
       }
-      String storedColumnProfile = getExtensionAtTimestamp(column.getFullyQualifiedName(),
-          TABLE_COLUMN_PROFILE_EXTENSION, columnProfile.getTimestamp());
-      storeTimeSeries(column.getFullyQualifiedName(),TABLE_COLUMN_PROFILE_EXTENSION, "columnProfile",
-          JsonUtils.pojoToJson(columnProfile), columnProfile.getTimestamp(), storedColumnProfile != null);
-
+      String storedColumnProfile =
+          getExtensionAtTimestamp(
+              column.getFullyQualifiedName(), TABLE_COLUMN_PROFILE_EXTENSION, columnProfile.getTimestamp());
+      storeTimeSeries(
+          column.getFullyQualifiedName(),
+          TABLE_COLUMN_PROFILE_EXTENSION,
+          "columnProfile",
+          JsonUtils.pojoToJson(columnProfile),
+          columnProfile.getTimestamp(),
+          storedColumnProfile != null);
     }
 
     List<SystemProfile> systemProfiles = createTableProfile.getSystemProfile();
     if (systemProfiles != null && !systemProfiles.isEmpty()) {
       for (SystemProfile systemProfile : createTableProfile.getSystemProfile()) {
-        String storedSystemProfile = getExtensionAtTimestamp(table.getFullyQualifiedName(), SYSTEM_PROFILE_EXTENSION, systemProfile.getTimestamp());
-        storeTimeSeries(table.getFullyQualifiedName(), SYSTEM_PROFILE_EXTENSION, "systemProfile",
-            JsonUtils.pojoToJson(systemProfile),systemProfile.getTimestamp(), storedSystemProfile != null);
+        String storedSystemProfile =
+            getExtensionAtTimestamp(
+                table.getFullyQualifiedName(), SYSTEM_PROFILE_EXTENSION, systemProfile.getTimestamp());
+        storeTimeSeries(
+            table.getFullyQualifiedName(),
+            SYSTEM_PROFILE_EXTENSION,
+            "systemProfile",
+            JsonUtils.pojoToJson(systemProfile),
+            systemProfile.getTimestamp(),
+            storedSystemProfile != null);
       }
     }
 
@@ -363,8 +380,8 @@ public class TableRepository extends EntityRepository<Table> {
   public ResultList<TableProfile> getTableProfiles(String fqn, Long startTs, Long endTs) throws IOException {
     List<TableProfile> tableProfiles;
     tableProfiles =
-        JsonUtils.readObjects(getResultsFromAndToTimestamps(fqn, TABLE_PROFILE_EXTENSION, startTs, endTs),
-            TableProfile.class);
+        JsonUtils.readObjects(
+            getResultsFromAndToTimestamps(fqn, TABLE_PROFILE_EXTENSION, startTs, endTs), TableProfile.class);
     return new ResultList<>(tableProfiles, startTs.toString(), endTs.toString(), tableProfiles.size());
   }
 
@@ -373,8 +390,7 @@ public class TableRepository extends EntityRepository<Table> {
     List<ColumnProfile> columnProfiles;
     columnProfiles =
         JsonUtils.readObjects(
-            getResultsFromAndToTimestamps(fqn, TABLE_COLUMN_PROFILE_EXTENSION, startTs, endTs),
-            ColumnProfile.class);
+            getResultsFromAndToTimestamps(fqn, TABLE_COLUMN_PROFILE_EXTENSION, startTs, endTs), ColumnProfile.class);
     return new ResultList<>(columnProfiles, startTs.toString(), endTs.toString(), columnProfiles.size());
   }
 
@@ -383,8 +399,7 @@ public class TableRepository extends EntityRepository<Table> {
     List<SystemProfile> systemProfiles;
     systemProfiles =
         JsonUtils.readObjects(
-            getResultsFromAndToTimestamps(fqn, SYSTEM_PROFILE_EXTENSION, startTs, endTs),
-            SystemProfile.class);
+            getResultsFromAndToTimestamps(fqn, SYSTEM_PROFILE_EXTENSION, startTs, endTs), SystemProfile.class);
     return new ResultList<>(systemProfiles, startTs.toString(), endTs.toString(), systemProfiles.size());
   }
 

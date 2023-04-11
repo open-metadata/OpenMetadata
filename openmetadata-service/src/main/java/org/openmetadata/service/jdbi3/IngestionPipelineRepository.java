@@ -22,7 +22,6 @@ import javax.ws.rs.core.UriInfo;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.json.JSONObject;
 import org.openmetadata.schema.EntityInterface;
-import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.services.ingestionPipelines.AirflowConfig;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
@@ -40,7 +39,6 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.services.ingestionpipelines.IngestionPipelineResource;
 import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
-import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
@@ -182,10 +180,7 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
             daoCollection
                 .entityExtensionTimeSeriesDao()
                 .getLatestExtensionByKey(
-                    RUN_ID_EXTENSION_KEY,
-                    pipelineStatus.getRunId(),
-                    fqnHash,
-                    PIPELINE_STATUS_EXTENSION),
+                    RUN_ID_EXTENSION_KEY, pipelineStatus.getRunId(), fqnHash, PIPELINE_STATUS_EXTENSION),
             PipelineStatus.class);
     if (storedPipelineStatus != null) {
       daoCollection
@@ -200,10 +195,7 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
       daoCollection
           .entityExtensionTimeSeriesDao()
           .insert(
-              fqnHash,
-              PIPELINE_STATUS_EXTENSION,
-              PIPELINE_STATUS_JSON_SCHEMA,
-              JsonUtils.pojoToJson(pipelineStatus));
+              fqnHash, PIPELINE_STATUS_EXTENSION, PIPELINE_STATUS_JSON_SCHEMA, JsonUtils.pojoToJson(pipelineStatus));
     }
     ChangeDescription change =
         addPipelineStatusChangeDescription(ingestionPipeline.getVersion(), pipelineStatus, storedPipelineStatus);
@@ -218,8 +210,8 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
     IngestionPipeline ingestionPipeline = dao.findEntityByName(ingestionPipelineFQN);
     List<PipelineStatus> pipelineStatusList =
         JsonUtils.readObjects(
-           getResultsFromAndToTimestamps(
-                    ingestionPipeline.getFullyQualifiedName(), PIPELINE_STATUS_JSON_SCHEMA, startTs, endTs),
+            getResultsFromAndToTimestamps(
+                ingestionPipeline.getFullyQualifiedName(), PIPELINE_STATUS_JSON_SCHEMA, startTs, endTs),
             PipelineStatus.class);
     List<PipelineStatus> allPipelineStatusList = pipelineServiceClient.getQueuedPipelineStatus(ingestionPipeline);
     allPipelineStatusList.addAll(pipelineStatusList);
@@ -229,7 +221,7 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
 
   public PipelineStatus getLatestPipelineStatus(IngestionPipeline ingestionPipeline) throws IOException {
     return JsonUtils.readValue(
-          getLatestExtensionFromTimeseries(ingestionPipeline.getFullyQualifiedName(), PIPELINE_STATUS_JSON_SCHEMA),
+        getLatestExtensionFromTimeseries(ingestionPipeline.getFullyQualifiedName(), PIPELINE_STATUS_JSON_SCHEMA),
         PipelineStatus.class);
   }
 

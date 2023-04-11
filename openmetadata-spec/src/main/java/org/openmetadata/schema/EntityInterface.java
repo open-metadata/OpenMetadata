@@ -103,7 +103,6 @@ public interface EntityInterface {
 
   void setHref(URI href);
 
-
   default void setTags(List<TagLabel> tags) {
     /* no-op implementation to be overridden */
   }
@@ -123,7 +122,8 @@ public interface EntityInterface {
     return new EntityReference()
         .withId(getId())
         .withName(getName())
-        .withFullyQualifiedName(getFullyQualifiedName() == null ? EntityInterfaceUtil.quoteName(getName()) : getFullyQualifiedName())
+        .withFullyQualifiedName(
+            getFullyQualifiedName() == null ? EntityInterfaceUtil.quoteName(getName()) : getFullyQualifiedName())
         .withDescription(getDescription())
         .withDisplayName(getDisplayName())
         .withType(CANONICAL_ENTITY_NAME_MAP.get(this.getClass().getSimpleName().toLowerCase(Locale.ROOT)))

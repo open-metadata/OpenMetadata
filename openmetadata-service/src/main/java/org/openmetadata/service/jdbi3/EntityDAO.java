@@ -35,7 +35,6 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlUpdate;
-import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
 
@@ -58,15 +57,30 @@ public interface EntityDAO<T extends EntityInterface> {
   }
 
   /** Common queries for all entities implemented here. Do not override. */
-  @ConnectionAwareSqlUpdate(value = "INSERT INTO <table> (<nameColumnHash>, json) VALUES (:nameColumnHashValue, :json)", connectionType = MYSQL)
-  @ConnectionAwareSqlUpdate(value = "INSERT INTO <table> (<nameColumnHash>, json) VALUES (:nameColumnHashValue, :json :: jsonb)", connectionType = POSTGRES)
-  void insert(@Define("table") String table, @Define("nameColumnHash") String nameColumnHash, @Bind("nameColumnHashValue") String nameColumnHashValue, @Bind("json") String json);
+  @ConnectionAwareSqlUpdate(
+      value = "INSERT INTO <table> (<nameColumnHash>, json) VALUES (:nameColumnHashValue, :json)",
+      connectionType = MYSQL)
+  @ConnectionAwareSqlUpdate(
+      value = "INSERT INTO <table> (<nameColumnHash>, json) VALUES (:nameColumnHashValue, :json :: jsonb)",
+      connectionType = POSTGRES)
+  void insert(
+      @Define("table") String table,
+      @Define("nameColumnHash") String nameColumnHash,
+      @Bind("nameColumnHashValue") String nameColumnHashValue,
+      @Bind("json") String json);
 
-  @ConnectionAwareSqlUpdate(value = "UPDATE <table> SET  json = :json, <nameColumnHash> = :nameColumnHashValue WHERE id = :id", connectionType = MYSQL)
+  @ConnectionAwareSqlUpdate(
+      value = "UPDATE <table> SET  json = :json, <nameColumnHash> = :nameColumnHashValue WHERE id = :id",
+      connectionType = MYSQL)
   @ConnectionAwareSqlUpdate(
       value = "UPDATE <table> SET  json = (:json :: jsonb), <nameColumnHash> = :nameColumnHashValue WHERE id = :id",
       connectionType = POSTGRES)
-  void update(@Define("table") String table, @Define("nameColumnHash") String nameColumnHash, @Bind("nameColumnHashValue") String nameColumnHashValue, @Bind("id") String id, @Bind("json") String json);
+  void update(
+      @Define("table") String table,
+      @Define("nameColumnHash") String nameColumnHash,
+      @Bind("nameColumnHashValue") String nameColumnHashValue,
+      @Bind("id") String id,
+      @Bind("json") String json);
 
   default void updateFqn(String oldPrefix, String newPrefix) {
     LOG.info("Updating FQN for {} from {} to {}", getTableName(), oldPrefix, newPrefix);
@@ -79,18 +93,26 @@ public interface EntityDAO<T extends EntityInterface> {
                 + "JSON_REPLACE(json, '$.fullyQualifiedName', REGEXP_REPLACE(JSON_UNQUOTE(JSON_EXTRACT(json, '$.fullyQualifiedName')), '^%s\\.', '%s.')) "
                 + ", fqnHash = REPLACE(fqnHash, '%s.', '%s.') "
                 + "WHERE fqnHash LIKE '%s.%%'",
-            getTableName(), escape(oldPrefix), escapeApostrophe(newPrefix),FullyQualifiedName.buildHash(oldPrefix),
-            FullyQualifiedName.buildHash(newPrefix), FullyQualifiedName.buildHash(oldPrefix));
+            getTableName(),
+            escape(oldPrefix),
+            escapeApostrophe(newPrefix),
+            FullyQualifiedName.buildHash(oldPrefix),
+            FullyQualifiedName.buildHash(newPrefix),
+            FullyQualifiedName.buildHash(oldPrefix));
 
     String postgresUpdate =
         String.format(
             "UPDATE %s SET json = "
                 + "REPLACE(json::text, '\"fullyQualifiedName\": \"%s.', "
                 + "'\"fullyQualifiedName\": \"%s.')::jsonb "
-                +", fqnHash = REPLACE(fqnHash, \"%s.', \"%s.'"
+                + ", fqnHash = REPLACE(fqnHash, \"%s.', \"%s.'"
                 + "WHERE fqnHash LIKE '%s.%%'",
-            getTableName(), escapeApostrophe(oldPrefix), escapeApostrophe(newPrefix), FullyQualifiedName.buildHash(oldPrefix),
-            FullyQualifiedName.buildHash(newPrefix), FullyQualifiedName.buildHash(oldPrefix));
+            getTableName(),
+            escapeApostrophe(oldPrefix),
+            escapeApostrophe(newPrefix),
+            FullyQualifiedName.buildHash(oldPrefix),
+            FullyQualifiedName.buildHash(newPrefix),
+            FullyQualifiedName.buildHash(oldPrefix));
     updateFqnInternal(mySqlUpdate, postgresUpdate);
   }
 
@@ -151,7 +173,8 @@ public interface EntityDAO<T extends EntityInterface> {
   boolean exists(@Define("table") String table, @Bind("id") String id);
 
   @SqlQuery("SELECT EXISTS (SELECT * FROM <table> WHERE <nameColumnHash> = :fqnHash)")
-  boolean existsByName(@Define("table") String table, @Define("nameColumnHash") String nameColumnHash, @Bind("fqnHash") String fqnHash);
+  boolean existsByName(
+      @Define("table") String table, @Define("nameColumnHash") String nameColumnHash, @Bind("fqnHash") String fqnHash);
 
   @SqlUpdate("DELETE FROM <table> WHERE id = :id")
   int delete(@Define("table") String table, @Bind("id") String id);
@@ -166,8 +189,12 @@ public interface EntityDAO<T extends EntityInterface> {
   }
 
   default void update(EntityInterface entity) throws JsonProcessingException {
-    update(getTableName(), getNameHashColumn(), FullyQualifiedName.buildHash(entity.getFullyQualifiedName()),
-        entity.getId().toString(), JsonUtils.pojoToJson(entity));
+    update(
+        getTableName(),
+        getNameHashColumn(),
+        FullyQualifiedName.buildHash(entity.getFullyQualifiedName()),
+        entity.getId().toString(),
+        JsonUtils.pojoToJson(entity));
   }
 
   default String getCondition(Include include) {
@@ -198,7 +225,8 @@ public interface EntityDAO<T extends EntityInterface> {
 
   @SneakyThrows
   default T findEntityByName(String fqn, Include include) {
-    return jsonToEntity(findByName(getTableName(), getNameHashColumn(), FullyQualifiedName.buildHash(fqn), getCondition(include)), fqn);
+    return jsonToEntity(
+        findByName(getTableName(), getNameHashColumn(), FullyQualifiedName.buildHash(fqn), getCondition(include)), fqn);
   }
 
   default T jsonToEntity(String json, String identity) throws IOException {

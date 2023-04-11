@@ -22,7 +22,6 @@ import java.util.List;
 import java.util.UUID;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.entity.data.Location;
-import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.services.StorageService;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Relationship;

@@ -12,7 +12,6 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.UriInfo;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.EntityInterface;
-import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestCaseParameter;
 import org.openmetadata.schema.tests.TestCaseParameterValue;
@@ -143,11 +142,17 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     // Validate the request content
     TestCase testCase = dao.findEntityByName(fqn);
 
-    String storedTestCaseResult = getExtensionAtTimestamp(
-                    testCase.getFullyQualifiedName(), TESTCASE_RESULT_EXTENSION, testCaseResult.getTimestamp());
+    String storedTestCaseResult =
+        getExtensionAtTimestamp(
+            testCase.getFullyQualifiedName(), TESTCASE_RESULT_EXTENSION, testCaseResult.getTimestamp());
 
-    storeTimeSeries(testCase.getFullyQualifiedName(), TESTCASE_RESULT_EXTENSION, "testCaseResult",
-        JsonUtils.pojoToJson(testCaseResult), testCaseResult.getTimestamp(), storedTestCaseResult != null);
+    storeTimeSeries(
+        testCase.getFullyQualifiedName(),
+        TESTCASE_RESULT_EXTENSION,
+        "testCaseResult",
+        JsonUtils.pojoToJson(testCaseResult),
+        testCaseResult.getTimestamp(),
+        storedTestCaseResult != null);
 
     setFieldsInternal(testCase, new EntityUtil.Fields(allowedFields, "testSuite"));
     ChangeDescription change =
@@ -216,8 +221,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     List<TestCaseResult> testCaseResults;
     testCaseResults =
         JsonUtils.readObjects(
-            getResultsFromAndToTimestamps(fqn, TESTCASE_RESULT_EXTENSION, startTs, endTs),
-            TestCaseResult.class);
+            getResultsFromAndToTimestamps(fqn, TESTCASE_RESULT_EXTENSION, startTs, endTs), TestCaseResult.class);
     return new ResultList<>(testCaseResults, String.valueOf(startTs), String.valueOf(endTs), testCaseResults.size());
   }
 

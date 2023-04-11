@@ -27,7 +27,6 @@ import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.data.Pipeline;
 import org.openmetadata.schema.entity.data.PipelineStatus;
-import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.services.PipelineService;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
@@ -83,7 +82,8 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
   }
 
   private PipelineStatus getPipelineStatus(Pipeline pipeline) throws IOException {
-    return JsonUtils.readValue(getLatestExtensionFromTimeseries(pipeline.getFullyQualifiedName(), PIPELINE_STATUS_EXTENSION),
+    return JsonUtils.readValue(
+        getLatestExtensionFromTimeseries(pipeline.getFullyQualifiedName(), PIPELINE_STATUS_EXTENSION),
         PipelineStatus.class);
   }
 
@@ -98,9 +98,15 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
       validateTask(pipeline, taskStatus.getName());
     }
 
-    String storedPipelineStatus = getExtensionAtTimestamp(fqn, PIPELINE_STATUS_EXTENSION, pipelineStatus.getTimestamp());
-    storeTimeSeries(pipeline.getFullyQualifiedName(), PIPELINE_STATUS_EXTENSION, "pipelineStatus",
-        JsonUtils.pojoToJson(pipelineStatus), pipelineStatus.getTimestamp(), storedPipelineStatus != null);
+    String storedPipelineStatus =
+        getExtensionAtTimestamp(fqn, PIPELINE_STATUS_EXTENSION, pipelineStatus.getTimestamp());
+    storeTimeSeries(
+        pipeline.getFullyQualifiedName(),
+        PIPELINE_STATUS_EXTENSION,
+        "pipelineStatus",
+        JsonUtils.pojoToJson(pipelineStatus),
+        pipelineStatus.getTimestamp(),
+        storedPipelineStatus != null);
 
     return pipeline.withPipelineStatus(pipelineStatus);
   }
@@ -124,7 +130,8 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
   public ResultList<PipelineStatus> getPipelineStatuses(String fqn, Long starTs, Long endTs) throws IOException {
     List<PipelineStatus> pipelineStatuses;
     pipelineStatuses =
-        JsonUtils.readObjects(getResultsFromAndToTimestamps(fqn, PIPELINE_STATUS_EXTENSION, starTs, endTs), PipelineStatus.class);
+        JsonUtils.readObjects(
+            getResultsFromAndToTimestamps(fqn, PIPELINE_STATUS_EXTENSION, starTs, endTs), PipelineStatus.class);
     return new ResultList<>(pipelineStatuses, starTs.toString(), endTs.toString(), pipelineStatuses.size());
   }
 

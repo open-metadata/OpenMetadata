@@ -30,7 +30,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
-
 import lombok.Builder;
 import lombok.Getter;
 import org.apache.commons.lang3.tuple.Triple;
@@ -292,7 +291,6 @@ public interface CollectionDAO {
     default String getNameHashColumn() {
       return "fqnHash";
     }
-
   }
 
   interface DashboardServiceDAO extends EntityDAO<DashboardService> {
@@ -327,7 +325,6 @@ public interface CollectionDAO {
     default String getNameHashColumn() {
       return "fqnHash";
     }
-
   }
 
   interface DatabaseSchemaDAO extends EntityDAO<DatabaseSchema> {
@@ -345,7 +342,6 @@ public interface CollectionDAO {
     default String getNameHashColumn() {
       return "fqnHash";
     }
-
   }
 
   interface DatabaseServiceDAO extends EntityDAO<DatabaseService> {
@@ -363,7 +359,6 @@ public interface CollectionDAO {
     default String getNameHashColumn() {
       return "nameHash";
     }
-
   }
 
   interface MetadataServiceDAO extends EntityDAO<MetadataService> {
@@ -381,7 +376,6 @@ public interface CollectionDAO {
     default String getNameHashColumn() {
       return "nameHash";
     }
-
   }
 
   interface TestConnectionDefinitionDAO extends EntityDAO<TestConnectionDefinition> {
@@ -399,7 +393,6 @@ public interface CollectionDAO {
     default String getNameHashColumn() {
       return "nameHash";
     }
-
   }
 
   interface StorageServiceDAO extends EntityDAO<StorageService> {
@@ -417,7 +410,6 @@ public interface CollectionDAO {
     default String getNameHashColumn() {
       return "nameHash";
     }
-
   }
 
   interface ObjectStoreServiceDAO extends EntityDAO<ObjectStoreService> {
@@ -435,7 +427,6 @@ public interface CollectionDAO {
     default String getNameHashColumn() {
       return "nameHash";
     }
-
   }
 
   interface ContainerDAO extends EntityDAO<Container> {
@@ -453,7 +444,6 @@ public interface CollectionDAO {
     default String getNameHashColumn() {
       return "fqnHash";
     }
-
 
     @Override
     default List<String> listBefore(ListFilter filter, int limit, String before) {
@@ -1224,13 +1214,30 @@ public interface CollectionDAO {
           postgresCondition = " extract(epoch from now()) NOT BETWEEN announcementStart AND announcementEnd ";
         }
         return listAnnouncementsByEntityLinkBefore(
-            FullyQualifiedName.buildHash(fqnPrefix), toType, limit, before, type, relation, mysqlCondition, postgresCondition);
+            FullyQualifiedName.buildHash(fqnPrefix),
+            toType,
+            limit,
+            before,
+            type,
+            relation,
+            mysqlCondition,
+            postgresCondition);
       }
       if (userName != null && filterType == FilterType.MENTIONS) {
         filterRelation = MENTIONED_IN.ordinal();
       }
       return listThreadsByEntityLinkBefore(
-          FullyQualifiedName.buildHash(fqnPrefix), toType, limit, before, type, status, resolved, relation, EntityInterfaceUtil.quoteName(userName), teamNames, filterRelation);
+          FullyQualifiedName.buildHash(fqnPrefix),
+          toType,
+          limit,
+          before,
+          type,
+          status,
+          resolved,
+          relation,
+          EntityInterfaceUtil.quoteName(userName),
+          teamNames,
+          filterRelation);
     }
 
     @ConnectionAwareSqlQuery(
@@ -1268,7 +1275,7 @@ public interface CollectionDAO {
             + "AND (:status IS NULL OR taskStatus = :status) "
             + "AND (:type IS NULL OR type = :type) "
             + "AND MD5(id) in (SELECT fromFQNHash FROM field_relationship WHERE "
-            + "(:fqnPrefix IS NULL OR toFQN LIKE CONCAT(:fqnPrefix, '.%') OR toFQN=:fqnPrefix) AND fromType='THREAD' AND "
+            + "(:fqnPrefixHash IS NULL OR toFQN LIKE CONCAT(:fqnPrefixHash, '.%') OR toFQN=:fqnPrefixHash) AND fromType='THREAD' AND "
             + "(:toType IS NULL OR toType LIKE CONCAT(:toType, '.%') OR toType=:toType) AND relation= :relation) "
             + "AND (:userName IS NULL OR id in (SELECT toFQN FROM field_relationship WHERE "
             + " ((fromType='user' AND fromFQNHash= :userName) OR"
@@ -1276,7 +1283,7 @@ public interface CollectionDAO {
             + "ORDER BY createdAt DESC "
             + "LIMIT :limit")
     List<String> listThreadsByEntityLinkBefore(
-        @Bind("fqnPrefix") String fqnPrefix,
+        @Bind("fqnPrefixHash") String fqnPrefixHash,
         @Bind("toType") String toType,
         @Bind("limit") int limit,
         @Bind("before") long before,
@@ -1313,14 +1320,30 @@ public interface CollectionDAO {
           postgresCondition = " extract(epoch from now()) NOT BETWEEN announcementStart AND announcementEnd ";
         }
         return listAnnouncementsByEntityLinkAfter(
-            FullyQualifiedName.buildHash(fqnPrefix), toType, limit, after, type, relation, mysqlCondition, postgresCondition);
+            FullyQualifiedName.buildHash(fqnPrefix),
+            toType,
+            limit,
+            after,
+            type,
+            relation,
+            mysqlCondition,
+            postgresCondition);
       }
       if (userName != null && filterType == FilterType.MENTIONS) {
         filterRelation = MENTIONED_IN.ordinal();
       }
       return listThreadsByEntityLinkAfter(
-          FullyQualifiedName.buildHash(fqnPrefix), toType, limit, after, type, status, resolved, relation,
-          EntityInterfaceUtil.quoteName(userName), teamNames, filterRelation);
+          FullyQualifiedName.buildHash(fqnPrefix),
+          toType,
+          limit,
+          after,
+          type,
+          status,
+          resolved,
+          relation,
+          EntityInterfaceUtil.quoteName(userName),
+          teamNames,
+          filterRelation);
     }
 
     @ConnectionAwareSqlQuery(
@@ -1328,7 +1351,7 @@ public interface CollectionDAO {
             "SELECT json FROM thread_entity WHERE updatedAt < :after "
                 + "AND (:type IS NULL OR type = :type) AND <mysqlCond> "
                 + "AND MD5(id) in (SELECT fromFQNHash FROM field_relationship WHERE "
-                + "(:fqnPrefix IS NULL OR toFQN LIKE CONCAT(:fqnPrefix, '.%') OR toFQN=:fqnPrefix) AND fromType='THREAD' AND "
+                + "(:fqnPrefixHash IS NULL OR toFQN LIKE CONCAT(:fqnPrefixHash, '.%') OR toFQN=:fqnPrefixHash) AND fromType='THREAD' AND "
                 + "(:toType IS NULL OR toType LIKE CONCAT(:toType, '.%') OR toType=:toType) AND relation= :relation) "
                 + "ORDER BY createdAt DESC "
                 + "LIMIT :limit",
@@ -1400,14 +1423,22 @@ public interface CollectionDAO {
           mysqlCondition = " UNIX_TIMESTAMP() NOT BETWEEN announcementStart AND announcementEnd ";
           postgresCondition = " extract(epoch from now()) NOT BETWEEN announcementStart AND announcementEnd ";
         }
-        return listCountAnnouncementsByEntityLink(fqnPrefix, toType, type, relation, mysqlCondition, postgresCondition);
+        return listCountAnnouncementsByEntityLink(
+            FullyQualifiedName.buildHash(fqnPrefix), toType, type, relation, mysqlCondition, postgresCondition);
       }
       if (userName != null && filterType == FilterType.MENTIONS) {
         filterRelation = MENTIONED_IN.ordinal();
       }
       return listCountThreadsByEntityLink(
-          fqnPrefix, toType, type, status, resolved, relation, EntityInterfaceUtil.quoteName(userName),
-          teamNames.stream().map(EntityInterfaceUtil::quoteName).collect(Collectors.toList()), filterRelation);
+          FullyQualifiedName.buildHash(fqnPrefix),
+          toType,
+          type,
+          status,
+          resolved,
+          relation,
+          EntityInterfaceUtil.quoteName(userName),
+          teamNames.stream().map(EntityInterfaceUtil::quoteName).collect(Collectors.toList()),
+          filterRelation);
     }
 
     @ConnectionAwareSqlQuery(
@@ -1415,7 +1446,7 @@ public interface CollectionDAO {
             "SELECT count(id) FROM thread_entity WHERE <mysqlCond> "
                 + "AND (:type IS NULL OR type = :type) "
                 + "AND MD5(id) in (SELECT fromFQNHash FROM field_relationship WHERE "
-                + "(:fqnPrefix IS NULL OR toFQN LIKE CONCAT(:fqnPrefix, '.%') OR toFQN=:fqnPrefix) AND fromType='THREAD' AND "
+                + "(:fqnPrefixHash IS NULL OR toFQN LIKE CONCAT(:fqnPrefixHash, '.%') OR toFQN=:fqnPrefixHash) AND fromType='THREAD' AND "
                 + "(:toType IS NULL OR toType LIKE CONCAT(:toType, '.%') OR toType=:toType) AND relation= :relation)",
         connectionType = MYSQL)
     @ConnectionAwareSqlQuery(
@@ -1423,11 +1454,11 @@ public interface CollectionDAO {
             "SELECT count(id) FROM thread_entity WHERE <postgresCond> "
                 + "AND (:type IS NULL OR type = :type) "
                 + "AND MD5(id) in (SELECT fromFQNHash FROM field_relationship WHERE "
-                + "(:fqnPrefix IS NULL OR toFQN LIKE CONCAT(:fqnPrefix, '.%') OR toFQN=:fqnPrefix) AND fromType='THREAD' AND "
+                + "(:fqnPrefixHash IS NULL OR toFQN LIKE CONCAT(:fqnPrefixHash, '.%') OR toFQN=:fqnPrefixHash) AND fromType='THREAD' AND "
                 + "(:toType IS NULL OR toType LIKE CONCAT(:toType, '.%') OR toType=:toType) AND relation= :relation)",
         connectionType = POSTGRES)
     int listCountAnnouncementsByEntityLink(
-        @Bind("fqnPrefix") String fqnPrefix,
+        @Bind("fqnPrefixHash") String fqnPrefixHash,
         @Bind("toType") String toType,
         @Bind("type") ThreadType type,
         @Bind("relation") int relation,
@@ -1439,13 +1470,13 @@ public interface CollectionDAO {
             + "AND (:status IS NULL OR taskStatus = :status) "
             + "AND (:type IS NULL OR type = :type) "
             + "AND MD5(id) in (SELECT fromFQNHash FROM field_relationship WHERE "
-            + "(:fqnPrefix IS NULL OR toFQN LIKE CONCAT(:fqnPrefix, '.%') OR toFQN=:fqnPrefix) AND fromType='THREAD' AND "
+            + "(:fqnPrefixHash IS NULL OR toFQN LIKE CONCAT(:fqnPrefixHash, '.%') OR toFQN=:fqnPrefixHash) AND fromType='THREAD' AND "
             + "(:toType IS NULL OR toType LIKE CONCAT(:toType, '.%') OR toType=:toType) AND relation= :relation) "
             + "AND (:userName IS NULL OR id in (SELECT toFQN FROM field_relationship WHERE "
             + " ((fromType='user' AND fromFQNHash= :userName) OR"
             + " (fromType='team' AND fromFQNHash IN (<teamNames>))) AND toType='THREAD' AND relation= :filterRelation) )")
     int listCountThreadsByEntityLink(
-        @Bind("fqnPrefix") String fqnPrefix,
+        @Bind("fqnPrefixHash") String fqnPrefixHash,
         @Bind("toType") String toType,
         @Bind("type") ThreadType type,
         @Bind("status") TaskStatus status,
@@ -1463,14 +1494,14 @@ public interface CollectionDAO {
 
     @SqlQuery(
         "SELECT entityLink, COUNT(id) count FROM field_relationship fr INNER JOIN thread_entity te ON fr.fromFQNHash=te.id "
-            + "WHERE (:fqnPrefix IS NULL OR fr.toFQN LIKE CONCAT(:fqnPrefix, '.%') OR fr.toFQN=:fqnPrefix) AND "
+            + "WHERE (:fqnPrefixHash IS NULL OR fr.toFQN LIKE CONCAT(:fqnPrefixHash, '.%') OR fr.toFQN=:fqnPrefixHash) AND "
             + "(:toType IS NULL OR fr.toType like concat(:toType, '.%') OR fr.toType=:toType) AND fr.fromType = :fromType "
             + "AND fr.relation = :relation AND te.resolved= :isResolved AND (:status IS NULL OR te.taskStatus = :status) "
             + "AND (:type IS NULL OR te.type = :type) "
             + "GROUP BY entityLink")
     @RegisterRowMapper(CountFieldMapper.class)
     List<List<String>> listCountByEntityLink(
-        @Bind("fqnPrefix") String fqnPrefix,
+        @Bind("fqnPrefix") String fqnPrefixHash,
         @Bind("fromType") String fromType,
         @Bind("toType") String toType,
         @Bind("relation") int relation,
@@ -1541,7 +1572,7 @@ public interface CollectionDAO {
 
     @SqlQuery(
         "SELECT json FROM thread_entity WHERE updatedAt > :before AND resolved = :resolved AND "
-            + "(type IS NULL OR type = :type) AND MD5(id) in ("
+            + "(:type IS NULL OR type = :type) AND MD5(id) in ("
             + "SELECT toFQNHash FROM field_relationship WHERE "
             + "((fromType='user' AND fromFQNHash= :userName) OR "
             + "(fromType='team' AND fromFQNHash IN (<teamNames>)))  AND toType='THREAD' AND relation= :relation) "
@@ -1558,7 +1589,7 @@ public interface CollectionDAO {
 
     @SqlQuery(
         "SELECT json FROM thread_entity WHERE updatedAt < :after AND resolved = :resolved AND "
-            + "(type IS NULL OR type = :type) AND MD5(id) in ("
+            + "(:type IS NULL OR type = :type) AND MD5(id) in ("
             + "SELECT toFQN FROM field_relationship WHERE "
             + "((fromType='user' AND fromFQNHash= :userName) OR "
             + "(fromType='team' AND fromFQNHash IN (<teamNames>)))  AND toType='THREAD' AND relation= :relation) "
@@ -1574,7 +1605,7 @@ public interface CollectionDAO {
         @Bind("relation") int relation);
 
     @SqlQuery(
-        "SELECT count(id) FROM thread_entity WHERE resolved = :resolved AND (type IS NULL OR type = :type) AND MD5(id) in ("
+        "SELECT count(id) FROM thread_entity WHERE resolved = :resolved AND (:type IS NULL OR type = :type) AND MD5(id) in ("
             + "SELECT toFQNHash FROM field_relationship WHERE "
             + "((fromType='user' AND fromFQNHash= :userName) OR "
             + "(fromType='team' AND fromFQNHash IN (<teamNames>)))  AND toType='THREAD' AND relation= :relation) ")
@@ -1730,7 +1761,6 @@ public interface CollectionDAO {
     default String getNameHashColumn() {
       return "nameHash";
     }
-
   }
 
   interface EventSubscriptionDAO extends EntityDAO<EventSubscription> {
@@ -1768,7 +1798,6 @@ public interface CollectionDAO {
     default String getNameHashColumn() {
       return "fqnHash";
     }
-
   }
 
   interface MessagingServiceDAO extends EntityDAO<MessagingService> {
@@ -1786,7 +1815,6 @@ public interface CollectionDAO {
     default String getNameHashColumn() {
       return "nameHash";
     }
-
   }
 
   interface MetricsDAO extends EntityDAO<Metrics> {
@@ -1804,7 +1832,6 @@ public interface CollectionDAO {
     default String getNameHashColumn() {
       return "fqnHash";
     }
-
   }
 
   interface MlModelDAO extends EntityDAO<MlModel> {
@@ -1822,7 +1849,6 @@ public interface CollectionDAO {
     default String getNameHashColumn() {
       return "fqnHash";
     }
-
   }
 
   interface GlossaryDAO extends EntityDAO<Glossary> {
@@ -1840,7 +1866,6 @@ public interface CollectionDAO {
     default String getNameHashColumn() {
       return "nameHash";
     }
-
   }
 
   interface GlossaryTermDAO extends EntityDAO<GlossaryTerm> {
@@ -1858,7 +1883,6 @@ public interface CollectionDAO {
     default String getNameHashColumn() {
       return "fqnHash";
     }
-
   }
 
   interface IngestionPipelineDAO extends EntityDAO<IngestionPipeline> {
@@ -1898,7 +1922,6 @@ public interface CollectionDAO {
     default String getNameHashColumn() {
       return "nameHash";
     }
-
   }
 
   interface MlModelServiceDAO extends EntityDAO<MlModelService> {
@@ -1916,7 +1939,6 @@ public interface CollectionDAO {
     default String getNameHashColumn() {
       return "nameHash";
     }
-
   }
 
   interface PolicyDAO extends EntityDAO<Policy> {
@@ -1934,7 +1956,6 @@ public interface CollectionDAO {
     default String getNameHashColumn() {
       return "fqnHash";
     }
-
   }
 
   interface ReportDAO extends EntityDAO<Report> {
@@ -1952,7 +1973,6 @@ public interface CollectionDAO {
     default String getNameHashColumn() {
       return "fqnHash";
     }
-
   }
 
   interface TableDAO extends EntityDAO<Table> {
@@ -1970,7 +1990,6 @@ public interface CollectionDAO {
     default String getNameHashColumn() {
       return "fqnHash";
     }
-
   }
 
   interface LocationDAO extends EntityDAO<Location> {
@@ -2149,7 +2168,6 @@ public interface CollectionDAO {
     default String getNameHashColumn() {
       return "fqnHash";
     }
-
   }
 
   interface ClassificationDAO extends EntityDAO<Classification> {
@@ -2167,7 +2185,6 @@ public interface CollectionDAO {
     default String getNameHashColumn() {
       return "nameHash";
     }
-
   }
 
   interface TagDAO extends EntityDAO<Tag> {
@@ -2185,7 +2202,6 @@ public interface CollectionDAO {
     default String getNameHashColumn() {
       return "fqnHash";
     }
-
 
     @SqlUpdate("DELETE FROM tag where fqnHash LIKE CONCAT(:fqnHashPrefix, '.%')")
     void deleteTagsByPrefix(@Bind("fqnHashPrefix") String fqnHashPrefix);
@@ -2218,7 +2234,8 @@ public interface CollectionDAO {
       return tags;
     }
 
-    @SqlQuery("SELECT source, tagFQN,  labelType, state FROM tag_usage WHERE targetFQNHash = :targetFQNHash ORDER BY tagFQN")
+    @SqlQuery(
+        "SELECT source, tagFQN,  labelType, state FROM tag_usage WHERE targetFQNHash = :targetFQNHash ORDER BY tagFQN")
     List<TagLabel> getTagsInternal(@Bind("targetFQNHash") String targetFQNHash);
 
     @SqlQuery(
@@ -2244,18 +2261,32 @@ public interface CollectionDAO {
       String update =
           String.format(
               "UPDATE tag_usage SET tagFQN = REPLACE(tagFQN, '%s.', '%s.'), tagFQNHash = REPLACE(tagFQNHash, '%s.', '%s.') WHERE source = %s AND tagFQNHash LIKE '%s.%%'",
-              escapeApostrophe(oldPrefix), escapeApostrophe(newPrefix),FullyQualifiedName.buildHash(oldPrefix), FullyQualifiedName.buildHash(newPrefix), source, FullyQualifiedName.buildHash(oldPrefix));
+              escapeApostrophe(oldPrefix),
+              escapeApostrophe(newPrefix),
+              FullyQualifiedName.buildHash(oldPrefix),
+              FullyQualifiedName.buildHash(newPrefix),
+              source,
+              FullyQualifiedName.buildHash(oldPrefix));
       updateTagPrefixInternal(update);
     }
 
     default void rename(int source, String oldFQN, String newFQN) {
-      renameInternal(source, FullyQualifiedName.buildHash(oldFQN), newFQN, FullyQualifiedName.buildHash(newFQN)); // First rename tagFQN from oldFQN to newFQN
+      renameInternal(
+          source,
+          FullyQualifiedName.buildHash(oldFQN),
+          newFQN,
+          FullyQualifiedName.buildHash(newFQN)); // First rename tagFQN from oldFQN to newFQN
       updateTagPrefix(source, oldFQN, newFQN); // Rename all the tagFQN prefixes starting with the oldFQN to newFQN
     }
 
     /** Rename the tagFQN */
-    @SqlUpdate("Update tag_usage set tagFQN = :newFQN, tagFQNHash = :newFQNHash WHERE source = :source AND tagFQNHash = :oldFQNHash")
-    void renameInternal(@Bind("source") int source, @Bind("oldFQNHash") String oldFQNHash, @Bind("newFQN") String newFQN, @Bind("newFQNHash") String newFQNHash);
+    @SqlUpdate(
+        "Update tag_usage set tagFQN = :newFQN, tagFQNHash = :newFQNHash WHERE source = :source AND tagFQNHash = :oldFQNHash")
+    void renameInternal(
+        @Bind("source") int source,
+        @Bind("oldFQNHash") String oldFQNHash,
+        @Bind("newFQN") String newFQN,
+        @Bind("newFQNHash") String newFQNHash);
 
     @SqlUpdate("<update>")
     void updateTagPrefixInternal(@Define("update") String update);
@@ -2287,7 +2318,6 @@ public interface CollectionDAO {
     default String getNameHashColumn() {
       return "nameHash";
     }
-
   }
 
   interface TeamDAO extends EntityDAO<Team> {
@@ -2305,7 +2335,6 @@ public interface CollectionDAO {
     default String getNameHashColumn() {
       return "nameHash";
     }
-
 
     @Override
     default int listCount(ListFilter filter) {
@@ -2495,7 +2524,6 @@ public interface CollectionDAO {
     default String getNameHashColumn() {
       return "fqnHash";
     }
-
   }
 
   @RegisterRowMapper(UsageDetailsMapper.class)
@@ -2644,7 +2672,6 @@ public interface CollectionDAO {
     default String getNameHashColumn() {
       return "nameHash";
     }
-
 
     @Override
     default int listCount(ListFilter filter) {
@@ -3161,7 +3188,6 @@ public interface CollectionDAO {
     default String getNameHashColumn() {
       return "nameHash";
     }
-
   }
 
   interface TestCaseDAO extends EntityDAO<TestCase> {
@@ -3179,7 +3205,6 @@ public interface CollectionDAO {
     default String getNameHashColumn() {
       return "fqnHash";
     }
-
   }
 
   interface WebAnalyticEventDAO extends EntityDAO<WebAnalyticEvent> {
@@ -3197,7 +3222,6 @@ public interface CollectionDAO {
     default String getNameHashColumn() {
       return "fqnHash";
     }
-
   }
 
   interface DataInsightChartDAO extends EntityDAO<DataInsightChart> {
@@ -3215,7 +3239,6 @@ public interface CollectionDAO {
     default String getNameHashColumn() {
       return "fqnHash";
     }
-
   }
 
   interface EntityExtensionTimeSeriesDAO {
@@ -3254,7 +3277,8 @@ public interface CollectionDAO {
         @Bind("json") String json,
         @Bind("timestamp") Long timestamp);
 
-    @SqlQuery("SELECT json FROM entity_extension_time_series WHERE entityFQNHash = :entityFQN AND extension = :extension")
+    @SqlQuery(
+        "SELECT json FROM entity_extension_time_series WHERE entityFQNHash = :entityFQN AND extension = :extension")
     String getExtension(@Bind("entityFQNHash") String entityId, @Bind("extension") String extension);
 
     @SqlQuery("SELECT count(*) FROM entity_extension_time_series WHERE EntityFQNHash = :entityFQNHash")
@@ -3295,7 +3319,9 @@ public interface CollectionDAO {
     @SqlQuery(
         "SELECT json FROM entity_extension_time_series WHERE entityFQNHash = :entityFQNHash AND extension = :extension AND timestamp = :timestamp")
     String getExtensionAtTimestamp(
-        @Bind("entityFQNHash") String entityFQNHash, @Bind("extension") String extension, @Bind("timestamp") long timestamp);
+        @Bind("entityFQNHash") String entityFQNHash,
+        @Bind("extension") String extension,
+        @Bind("timestamp") long timestamp);
 
     @SqlQuery(
         "SELECT json FROM entity_extension_time_series WHERE entityFQNHash = :entityFQNHash AND extension = :extension "
@@ -3317,7 +3343,8 @@ public interface CollectionDAO {
             + "ORDER BY extension")
     List<ExtensionRecord> getExtensions(@Bind("id") String id, @Bind("extensionPrefix") String extensionPrefix);
 
-    @SqlUpdate("DELETE FROM entity_extension_time_series WHERE entityFQNHash = :entityFQNHash AND extension = :extension")
+    @SqlUpdate(
+        "DELETE FROM entity_extension_time_series WHERE entityFQNHash = :entityFQNHash AND extension = :extension")
     void delete(@Bind("entityFQNHash") String entityFQNHash, @Bind("extension") String extension);
 
     @SqlUpdate("DELETE FROM entity_extension_time_series WHERE entityFQNHash = :entityFQNHash")
@@ -3326,12 +3353,16 @@ public interface CollectionDAO {
     @SqlUpdate(
         "DELETE FROM entity_extension_time_series WHERE entityFQNHash = :entityFQNHash AND extension = :extension AND timestamp = :timestamp")
     void deleteAtTimestamp(
-        @Bind("entityFQNHash") String entityFQNHash, @Bind("extension") String extension, @Bind("timestamp") Long timestamp);
+        @Bind("entityFQNHash") String entityFQNHash,
+        @Bind("extension") String extension,
+        @Bind("timestamp") Long timestamp);
 
     @SqlUpdate(
         "DELETE FROM entity_extension_time_series WHERE entityFQNHash = :entityFQNHash AND extension = :extension AND timestamp < :timestamp")
     void deleteBeforeTimestamp(
-        @Bind("entityFQNHash") String entityFQNHash, @Bind("extension") String extension, @Bind("timestamp") Long timestamp);
+        @Bind("entityFQNHash") String entityFQNHash,
+        @Bind("extension") String extension,
+        @Bind("timestamp") Long timestamp);
 
     @SqlQuery(
         "SELECT json FROM entity_extension_time_series WHERE entityFQNHash = :entityFQNHash AND jsonSchema = :jsonSchema "
@@ -3700,7 +3731,6 @@ public interface CollectionDAO {
     default String getNameHashColumn() {
       return "nameHash";
     }
-
   }
 
   interface WorkflowDAO extends EntityDAO<Workflow> {
@@ -3718,7 +3748,6 @@ public interface CollectionDAO {
     default String getNameHashColumn() {
       return "nameHash";
     }
-
 
     @Override
     default List<String> listBefore(ListFilter filter, int limit, String before) {
@@ -3842,6 +3871,5 @@ public interface CollectionDAO {
     default String getNameHashColumn() {
       return "fqnHash";
     }
-
   }
 }

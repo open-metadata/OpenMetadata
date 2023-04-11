@@ -79,7 +79,6 @@ import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
-import org.openmetadata.schema.tests.type.TestCaseResult;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.Column;
@@ -774,7 +773,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
     daoCollection.relationshipDAO().deleteAll(id, entityType);
 
     // Delete all the field relationships to other entities
-    daoCollection.fieldRelationshipDAO().deleteAllByPrefix(FullyQualifiedName.buildHash(entityInterface.getFullyQualifiedName()));
+    daoCollection
+        .fieldRelationshipDAO()
+        .deleteAllByPrefix(FullyQualifiedName.buildHash(entityInterface.getFullyQualifiedName()));
 
     // Delete all the extensions of entity
     daoCollection.entityExtensionDAO().deleteAll(id);
@@ -858,51 +859,43 @@ public abstract class EntityRepository<T extends EntityInterface> {
     entity.setTags(tags);
   }
 
-  protected void storeTimeSeries(String fullyQualifiedName, String extension, String jsonSchema,
-                                 String entityJson, Long timestamp, boolean update) throws JsonProcessingException {
+  protected void storeTimeSeries(
+      String fullyQualifiedName, String extension, String jsonSchema, String entityJson, Long timestamp, boolean update)
+      throws JsonProcessingException {
     String fqnHash = FullyQualifiedName.buildHash(fullyQualifiedName);
     if (update) {
-      daoCollection
-          .entityExtensionTimeSeriesDao()
-          .update(
-              fqnHash,
-              extension,
-              entityJson,
-              timestamp);
+      daoCollection.entityExtensionTimeSeriesDao().update(fqnHash, extension, entityJson, timestamp);
     } else {
-      daoCollection
-          .entityExtensionTimeSeriesDao()
-          .insert(
-              fqnHash,
-              extension,
-              jsonSchema,
-              entityJson);
+      daoCollection.entityExtensionTimeSeriesDao().insert(fqnHash, extension, jsonSchema, entityJson);
     }
   }
 
   public String getExtensionAtTimestamp(String fullyQualifiedName, String extension, Long timestamp) {
     String fqnHash = FullyQualifiedName.buildHash(fullyQualifiedName);
-    return  daoCollection.entityExtensionTimeSeriesDao()
-        .getExtensionAtTimestamp(fqnHash, extension, timestamp);
+    return daoCollection.entityExtensionTimeSeriesDao().getExtensionAtTimestamp(fqnHash, extension, timestamp);
   }
 
   public String getLatestExtensionFromTimeseries(String fullyQualifiedName, String extension) {
     String fqnHash = FullyQualifiedName.buildHash(fullyQualifiedName);
-    return  daoCollection.entityExtensionTimeSeriesDao()
-        .getLatestExtension(fqnHash, extension);
-  }
-  public List<String> getResultsFromAndToTimestamps(String fullyQualifiedName, String extension,
-                                                    Long startTs, Long endTs) {
-    return getResultsFromAndToTimestamps(fullyQualifiedName, extension, startTs, endTs,
-        CollectionDAO.EntityExtensionTimeSeriesDAO.OrderBy.DESC);
+    return daoCollection.entityExtensionTimeSeriesDao().getLatestExtension(fqnHash, extension);
   }
 
-  public List<String> getResultsFromAndToTimestamps(String fullyQualifiedName, String extension,
-                                                    Long startTs, Long endTs, CollectionDAO.EntityExtensionTimeSeriesDAO.OrderBy orderBy) {
+  public List<String> getResultsFromAndToTimestamps(
+      String fullyQualifiedName, String extension, Long startTs, Long endTs) {
+    return getResultsFromAndToTimestamps(
+        fullyQualifiedName, extension, startTs, endTs, CollectionDAO.EntityExtensionTimeSeriesDAO.OrderBy.DESC);
+  }
+
+  public List<String> getResultsFromAndToTimestamps(
+      String fullyQualifiedName,
+      String extension,
+      Long startTs,
+      Long endTs,
+      CollectionDAO.EntityExtensionTimeSeriesDAO.OrderBy orderBy) {
     String fqnHash = FullyQualifiedName.buildHash(fullyQualifiedName);
     return daoCollection
-              .entityExtensionTimeSeriesDao()
-              .listBetweenTimestampsByOrder(fqnHash, extension, startTs, endTs, orderBy);
+        .entityExtensionTimeSeriesDao()
+        .listBetweenTimestampsByOrder(fqnHash, extension, startTs, endTs, orderBy);
   }
 
   public void deleteExtensionAtTimestamp(String fullyQualifiedName, String extension, Long timestamp) {
@@ -1833,7 +1826,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
       // Delete tags related to deleted columns
       deletedColumns.forEach(
-          deleted -> daoCollection.tagUsageDAO().deleteTagsByTarget(FullyQualifiedName.buildHash(deleted.getFullyQualifiedName())));
+          deleted ->
+              daoCollection
+                  .tagUsageDAO()
+                  .deleteTagsByTarget(FullyQualifiedName.buildHash(deleted.getFullyQualifiedName())));
 
       // Add tags related to newly added columns
       for (Column added : addedColumns) {

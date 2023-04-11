@@ -130,7 +130,10 @@ public class TypeRepository extends EntityRepository<Type> {
         daoCollection
             .fieldRelationshipDAO()
             .listToByPrefix(
-                FullyQualifiedName.buildHash(getCustomPropertyFQNPrefix(type.getName())), Entity.TYPE, Entity.TYPE, Relationship.HAS.ordinal());
+                FullyQualifiedName.buildHash(getCustomPropertyFQNPrefix(type.getName())),
+                Entity.TYPE,
+                Entity.TYPE,
+                Relationship.HAS.ordinal());
     for (Triple<String, String, String> result : results) {
       CustomProperty property = JsonUtils.readValue(result.getRight(), CustomProperty.class);
       property.setPropertyType(dao.findEntityReferenceByName(result.getMiddle()));

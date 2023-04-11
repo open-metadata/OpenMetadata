@@ -498,9 +498,9 @@ public class QueryResource extends EntityResource<Query, QueryRepository> {
         .withQuery(create.getQuery())
         .withDuration(create.getDuration())
         .withVotes(new Votes().withUpVotes(0).withDownVotes(0))
-        .withUsers(getEntityReferences(USER, create.getUsers().stream()
-            .map(EntityInterfaceUtil::quoteName)
-            .collect(Collectors.toList())))
+        .withUsers(
+            getEntityReferences(
+                USER, create.getUsers().stream().map(EntityInterfaceUtil::quoteName).collect(Collectors.toList())))
         .withQueryUsedIn(EntityUtil.populateEntityReferences(create.getQueryUsedIn()))
         .withQueryDate(create.getQueryDate());
   }

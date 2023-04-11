@@ -102,9 +102,15 @@ public class KpiRepository extends EntityRepository<Kpi> {
     // Validate the request content
     Kpi kpi = dao.findEntityByName(fqn);
 
-    String storedKpiResult = getExtensionAtTimestamp(kpi.getFullyQualifiedName(), KPI_RESULT_EXTENSION, kpiResult.getTimestamp());
-      storeTimeSeries(kpi.getFullyQualifiedName(), KPI_RESULT_EXTENSION, "kpiResult",
-          JsonUtils.pojoToJson(kpiResult), kpiResult.getTimestamp(), storedKpiResult != null);
+    String storedKpiResult =
+        getExtensionAtTimestamp(kpi.getFullyQualifiedName(), KPI_RESULT_EXTENSION, kpiResult.getTimestamp());
+    storeTimeSeries(
+        kpi.getFullyQualifiedName(),
+        KPI_RESULT_EXTENSION,
+        "kpiResult",
+        JsonUtils.pojoToJson(kpiResult),
+        kpiResult.getTimestamp(),
+        storedKpiResult != null);
     ChangeDescription change = addKpiResultChangeDescription(kpi.getVersion(), kpiResult, storedKpiResult);
     ChangeEvent changeEvent = getChangeEvent(withHref(uriInfo, kpi), change, entityType, kpi.getVersion());
 
@@ -116,9 +122,7 @@ public class KpiRepository extends EntityRepository<Kpi> {
     // Validate the request content
     Kpi kpi = dao.findEntityByName(fqn);
     KpiResult storedKpiResult =
-        JsonUtils.readValue(
-            getExtensionAtTimestamp(fqn, KPI_RESULT_EXTENSION, timestamp),
-            KpiResult.class);
+        JsonUtils.readValue(getExtensionAtTimestamp(fqn, KPI_RESULT_EXTENSION, timestamp), KpiResult.class);
     if (storedKpiResult != null) {
       deleteExtensionAtTimestamp(fqn, KPI_RESULT_EXTENSION, timestamp);
       kpi.setKpiResult(storedKpiResult);
@@ -157,8 +161,7 @@ public class KpiRepository extends EntityRepository<Kpi> {
   }
 
   public KpiResult getKpiResult(String fqn) throws IOException {
-    return JsonUtils.readValue(
-        getLatestExtensionFromTimeseries(fqn, KPI_RESULT_EXTENSION), KpiResult.class);
+    return JsonUtils.readValue(getLatestExtensionFromTimeseries(fqn, KPI_RESULT_EXTENSION), KpiResult.class);
   }
 
   public ResultList<KpiResult> getKpiResults(
@@ -167,8 +170,7 @@ public class KpiRepository extends EntityRepository<Kpi> {
     List<KpiResult> kpiResults;
     kpiResults =
         JsonUtils.readObjects(
-            getResultsFromAndToTimestamps(fqn, KPI_RESULT_EXTENSION, startTs, endTs, orderBy),
-            KpiResult.class);
+            getResultsFromAndToTimestamps(fqn, KPI_RESULT_EXTENSION, startTs, endTs, orderBy), KpiResult.class);
     return new ResultList<>(kpiResults, String.valueOf(startTs), String.valueOf(endTs), kpiResults.size());
   }
 
