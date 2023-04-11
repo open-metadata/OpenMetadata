@@ -13,7 +13,6 @@ Mixin class containing Table specific methods
 
 To be used by OpenMetadata class
 """
-import json
 import traceback
 from typing import List, Optional, Type, TypeVar
 

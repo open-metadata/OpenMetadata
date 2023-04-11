@@ -288,6 +288,7 @@ def _(
 ) -> str:
     return _build(service_name, pipeline_name)
 
+
 @fqn_build_registry.add(Column)
 def _(
     _: OpenMetadata,  # ES Search not enabled for Columns
