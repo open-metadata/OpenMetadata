@@ -153,14 +153,13 @@ def get_table_key(row: Dict[str, Any]) -> Union[TableKey, None]:
 
 class SampleDataSource(
     Source[Entity]
-):  # pylint: disable=too-many-instance-attributes,too-many-public-methods,disable=too-many-lines,
+):  # pylint: disable=too-many-instance-attributes,too-many-public-methods
     """
     Loads JSON data and prepares the required
     python objects to be sent to the Sink.
     """
 
     def __init__(self, config: WorkflowSource, metadata_config: OpenMetadataConnection):
-        # pylint: disable=too-many-statements
         super().__init__()
         self.config = config
         self.service_connection = config.serviceConnection.__root__.config
@@ -828,7 +827,7 @@ class SampleDataSource(
                     numberOfObjects=container.get("numberOfObjects"),
                     size=container.get("size"),
                     fileFormats=container.get("fileFormats"),
-                    service=self.object_store_service.fullyQualifiedName,
+                    service=self.storage_service.fullyQualifiedName,
                 )
                 yield container_request
             except Exception as exc:

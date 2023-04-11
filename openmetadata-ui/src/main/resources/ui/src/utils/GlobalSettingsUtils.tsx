@@ -26,7 +26,6 @@ import { ReactComponent as BotIcon } from '../../src/assets/svg/bot-profile.svg'
 import { ReactComponent as DashboardIcon } from '../../src/assets/svg/dashboard-grey.svg';
 import { ReactComponent as ElasticSearchIcon } from '../../src/assets/svg/elasticsearch.svg';
 import { ReactComponent as BellIcon } from '../../src/assets/svg/ic-alert-bell.svg';
-import { ReactComponent as ObjectStoreIcon } from '../../src/assets/svg/ic-object-store.svg';
 import { ReactComponent as RolesIcon } from '../../src/assets/svg/icon-role-grey.svg';
 import { ReactComponent as OMLogo } from '../../src/assets/svg/metadata.svg';
 import { ReactComponent as MlModelIcon } from '../../src/assets/svg/mlmodal.svg';
@@ -36,6 +35,7 @@ import { ReactComponent as TableIcon } from '../../src/assets/svg/table-grey.svg
 import { ReactComponent as TeamsIcon } from '../../src/assets/svg/teams-grey.svg';
 import { ReactComponent as TopicIcon } from '../../src/assets/svg/topic-grey.svg';
 import { ReactComponent as UsersIcon } from '../../src/assets/svg/user.svg';
+import { ReactComponent as StorageIcon } from '../assets/svg/ic-storage.svg';
 import { userPermissions } from '../utils/PermissionsUtils';
 
 export interface MenuListItem {
@@ -177,8 +177,8 @@ export const getGlobalSettingsMenuWithPermission = (
             ResourceEntity.STORAGE_SERVICE,
             permissions
           ),
-          key: 'services.objectStores',
-          icon: <ObjectStoreIcon className="side-panel-icons w-4 h-4" />,
+          key: 'services.storages',
+          icon: <StorageIcon className="side-panel-icons w-4 h-4" />,
           isBeta: Boolean,
         },
       ],
@@ -257,7 +257,7 @@ export const getGlobalSettingsMenuWithPermission = (
             permissions
           ),
           key: 'customAttributes.containers',
-          icon: <ObjectStoreIcon className="side-panel-icons" />,
+          icon: <StorageIcon className="side-panel-icons" />,
         },
       ],
     },

@@ -123,7 +123,7 @@ jest.mock('rest/miscAPI', () => ({
   addLineage: jest.fn().mockImplementation(() => Promise.resolve()),
 }));
 
-jest.mock('rest/objectStoreAPI', () => ({
+jest.mock('rest/storageAPI', () => ({
   addContainerFollower: jest.fn().mockImplementation(() => Promise.resolve()),
   getContainerByName: jest
     .fn()

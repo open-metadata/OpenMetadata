@@ -20,7 +20,7 @@ import { Card, Tooltip } from 'antd';
 import { StorageServiceType } from 'generated/entity/services/storageService';
 import { get, isEmpty, isNull, isObject } from 'lodash';
 import React, { ReactNode, useEffect, useState } from 'react';
-import { getStorageServiceConfig } from 'utils/ObjectStoreServiceUtils';
+import { getStorageServiceConfig } from 'utils/StorageServiceUtils';
 import { DEF_UI_SCHEMA, JWT_CONFIG } from '../../constants/Services.constant';
 import { EntityType } from '../../enums/entity.enum';
 import { DashboardServiceType } from '../../generated/entity/services/dashboardService';

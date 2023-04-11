@@ -26,9 +26,9 @@ from metadata.generated.schema.entity.data.container import (
     FileFormat,
 )
 from metadata.generated.schema.entity.data.table import Column, ColumnName, DataType
-from metadata.generated.schema.metadataIngestion.objectstore.containerMetadataConfig import (
+from metadata.generated.schema.metadataIngestion.storage.containerMetadataConfig import (
     MetadataEntry,
-    ObjectStoreContainerConfig,
+    StorageContainerConfig,
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
@@ -50,7 +50,7 @@ MOCK_OBJECT_STORE_CONFIG = {
         },
         "sourceConfig": {
             "config": {
-                "type": "ObjectStoreMetadata",
+                "type": "StorageMetadata",
                 "containerFilterPattern": {"includes": ["^test_*"]},
             }
         },
@@ -95,13 +95,13 @@ MOCK_S3_OBJECT_FILE_PATHS = {
 }
 
 
-class ObjectStoreUnitTest(TestCase):
+class StorageUnitTest(TestCase):
     """
     Validate how we work with object store metadata
     """
 
     @patch(
-        "metadata.ingestion.source.objectstore.objectstore_service.ObjectStoreServiceSource.test_connection"
+        "metadata.ingestion.source.storage.storage_service.StorageServiceSource.test_connection"
     )
     def __init__(self, method_name: str, test_connection) -> None:
         super().__init__(method_name)
@@ -132,7 +132,7 @@ class ObjectStoreUnitTest(TestCase):
             },
             "sourceConfig": {
                 "config": {
-                    "type": "ObjectStoreMetadata",
+                    "type": "StorageMetadata",
                 }
             },
         }
@@ -156,7 +156,7 @@ class ObjectStoreUnitTest(TestCase):
         self.object_store_source.s3_client.get_object = (
             lambda Bucket, Key: self._compute_mocked_metadata_file_response()
         )
-        container_config: ObjectStoreContainerConfig = (
+        container_config: StorageContainerConfig = (
             self.object_store_source._load_metadata_file(bucket_name="test")
         )
 

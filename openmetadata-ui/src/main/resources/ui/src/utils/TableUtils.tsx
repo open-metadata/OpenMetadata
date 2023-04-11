@@ -14,7 +14,7 @@
 import Icon from '@ant-design/icons';
 import { Tooltip } from 'antd';
 import { ExpandableConfig } from 'antd/lib/table/interface';
-import { ReactComponent as ContainerIcon } from 'assets/svg/ic-object-store.svg';
+import { ReactComponent as ContainerIcon } from 'assets/svg/ic-storage.svg';
 import classNames from 'classnames';
 import { SourceType } from 'components/searched-data/SearchedData.interface';
 import { t } from 'i18next';

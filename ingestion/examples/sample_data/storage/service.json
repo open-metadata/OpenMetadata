@@ -1,6 +1,6 @@
 {
   "type": "s3",
-  "serviceName": "s3_object_store_sample",
+  "serviceName": "s3_storage_sample",
   "serviceConnection": {
     "config": {
       "type": "S3",

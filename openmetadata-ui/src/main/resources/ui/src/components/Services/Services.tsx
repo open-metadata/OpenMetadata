@@ -94,7 +94,7 @@ const Services = ({
       case ServiceCategory.PIPELINE_SERVICES:
         return PAGE_HEADERS.PIPELINES_SERVICES;
       case ServiceCategory.STORAGE_SERVICES:
-        return PAGE_HEADERS.OBJECT_STORE_SERVICES;
+        return PAGE_HEADERS.STORAGE_SERVICES;
       default:
         return PAGE_HEADERS.DATABASES_SERVICES;
     }

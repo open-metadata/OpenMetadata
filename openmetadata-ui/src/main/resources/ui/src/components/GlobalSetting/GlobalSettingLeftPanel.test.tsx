@@ -46,7 +46,7 @@ jest.mock('../PermissionProvider/PermissionProvider', () => ({
 }));
 
 const selectedCategory = 'services';
-const selectedOption = 'objectStores';
+const selectedOption = 'storages';
 const url = `/settings/${selectedCategory}/${selectedOption}`;
 
 describe('GlobalSettingLeftPanel', () => {

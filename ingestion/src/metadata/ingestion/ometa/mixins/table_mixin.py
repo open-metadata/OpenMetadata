@@ -37,7 +37,6 @@ from metadata.ingestion.ometa.client import REST
 from metadata.ingestion.ometa.models import EntityList
 from metadata.ingestion.ometa.utils import model_str
 from metadata.utils.logger import ometa_logger
-from metadata.utils.uuid_encoder import UUIDEncoder
 
 logger = ometa_logger()
 
