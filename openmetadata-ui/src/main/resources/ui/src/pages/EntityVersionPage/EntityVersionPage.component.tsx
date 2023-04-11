@@ -121,8 +121,6 @@ const EntityVersionPage: FunctionComponent = () => {
     string
   >;
 
-  console.log(entityFQN);
-
   const [isLoading, setIsloading] = useState<boolean>(false);
   const [versionList, setVersionList] = useState<EntityHistory>(
     {} as EntityHistory

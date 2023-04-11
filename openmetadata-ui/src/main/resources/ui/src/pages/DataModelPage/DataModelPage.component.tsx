@@ -429,6 +429,7 @@ const DataModelsPage = () => {
         columns: getSortedDataModelColumnTags(newColumns),
         version,
       }));
+      getEntityFeedCount();
     } catch (error) {
       showErrorToast(error as AxiosError);
     }
