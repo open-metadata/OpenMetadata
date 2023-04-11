@@ -124,4 +124,5 @@ export enum EntityInfo {
   MAX_MESSAGE_SIZE = 'Max Message Size',
   SIZE = 'size',
   NUMBER_OF_OBJECTS = 'number-of-object-plural',
+  DATA_MODEL_TYPE = 'data-model-type',
 }
