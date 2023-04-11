@@ -11,6 +11,7 @@
 """
 Airflow source to extract metadata from OM UI
 """
+import json
 import traceback
 from datetime import datetime
 from typing import Any, Iterable, List, Optional, cast
@@ -329,14 +330,21 @@ class AirflowSource(PipelineServiceSource):
                 "serialized_dag INNER JOIN dag ON serialized_dag.dag_id = dag.dag_id "
                 f"WHERE serialized_dag.dag_id='{pipeline_details.dag_id}'"
             ).all()[0]
+
+            dag_data = (
+                json.loads(dag_details.data)
+                if isinstance(dag_details.data, str)
+                else dag_details.data
+            )
+
             dag = AirflowDagDetials(
                 dag_id=pipeline_details.dag_id,
                 fileloc=dag_details.fileloc,
-                data=AirflowDag(**dag_details.data),
+                data=AirflowDag(**dag_data),
                 max_active_runs=dag_details.max_active_runs,
                 description=dag_details.description,
-                start_date=dag_details.data["dag"]["start_date"],
-                tasks=dag_details.data["dag"]["tasks"],
+                start_date=dag_data["dag"]["start_date"],
+                tasks=dag_data["dag"]["tasks"],
             )
 
             pipeline_request = CreatePipelineRequest(
@@ -425,15 +433,19 @@ class AirflowSource(PipelineServiceSource):
             "serialized_dag INNER JOIN dag ON serialized_dag.dag_id = dag.dag_id "
             f"WHERE serialized_dag.dag_id='{pipeline_details.dag_id}'"
         ).all()[0]
-
+        dag_data = (
+            json.loads(dag_details.data)
+            if isinstance(dag_details.data, str)
+            else dag_details.data
+        )
         dag = AirflowDagDetials(
             dag_id=pipeline_details.dag_id,
             fileloc=dag_details.fileloc,
-            data=AirflowDag(**dag_details.data),
+            data=AirflowDag(**dag_data),
             max_active_runs=dag_details.max_active_runs,
             description=dag_details.description,
-            start_date=dag_details.data["dag"]["start_date"],
-            tasks=dag_details.data["dag"]["tasks"],
+            start_date=dag_data["dag"]["start_date"],
+            tasks=dag_data["dag"]["tasks"],
         )
         lineage_details = LineageDetails(
             pipeline=EntityReference(

@@ -117,14 +117,14 @@ def get_xlets_from_operator(
     :param xlet_mode: get inlet or outlet
     :return: list of tables FQN
     """
-    xlet = getattr(operator, xlet_mode)
+    xlet = getattr(operator, xlet_mode) if hasattr(operator, xlet_mode) else None
     xlet_data = parse_xlets(xlet)
 
     if not xlet_data:
-        operator.log.debug(f"Not finding proper {xlet_mode} in task {operator.task_id}")
+        logger.debug(f"Not finding proper {xlet_mode} in task {operator.task_id}")
 
     else:
-        operator.log.info(f"Found {xlet_mode} {xlet_data} in task {operator.task_id}")
+        logger.info(f"Found {xlet_mode} {xlet_data} in task {operator.task_id}")
 
     return xlet_data
 
