@@ -28,6 +28,7 @@ import {
 } from '../../common/advancedSearch';
 import {
   deleteCreatedService,
+  elasticSearchReIndexData,
   interceptURL,
   mySqlConnectionInput,
   testServiceCreationAndIngestion,
@@ -44,6 +45,7 @@ describe('pre-requests for test case', () => {
   });
 
   it('Pre-requisite for advance search', () => {
+    elasticSearchReIndexData();
     addOwner(FIELDS.Owner.searchTerm1, FIELDS.Owner.searchCriteriaFirstGroup);
     addTier(FIELDS.Tiers.searchCriteriaFirstGroup);
     addTag(FIELDS.Tags.createTagName);
@@ -93,7 +95,7 @@ describe('pre-requests for test case', () => {
   });
 });
 
-describe.skip('Single filed search', () => {
+describe('Single filed search', () => {
   beforeEach(() => {
     cy.login();
   });
@@ -127,7 +129,7 @@ describe.skip('Single filed search', () => {
   });
 });
 
-describe.skip('Group search', () => {
+describe('Group search', () => {
   beforeEach(() => {
     cy.login();
   });
@@ -205,7 +207,7 @@ describe.skip('Group search', () => {
   });
 });
 
-describe.skip('Search with additional rule', () => {
+describe('Search with additional rule', () => {
   beforeEach(() => {
     cy.login();
   });
