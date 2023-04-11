@@ -320,7 +320,6 @@ class SnowflakeSource(CommonDbSourceService):
         """
 
         if self.config.serviceConnection.__root__.config.includeTempTables:
-
             return [
                 TableNameAndType(name=table_name)
                 for table_name in self.inspector.get_table_names(

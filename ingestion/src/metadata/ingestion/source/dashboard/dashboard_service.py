@@ -417,7 +417,6 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
         Method to iterate through dashboard lists filter dashboards & yield dashboard details
         """
         for dashboard in self.get_dashboards_list():
-
             dashboard_name = self.get_dashboard_name(dashboard)
             if filter_by_dashboard(
                 self.source_config.dashboardFilterPattern,

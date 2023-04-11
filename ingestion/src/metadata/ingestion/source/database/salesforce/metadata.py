@@ -180,7 +180,6 @@ class SalesforceSource(DatabaseServiceSource):
         """
         table_name, table_type = table_name_and_type
         try:
-
             table_constraints = None
             salesforce_objects = self.client.restful(
                 f"sobjects/{table_name}/describe/",

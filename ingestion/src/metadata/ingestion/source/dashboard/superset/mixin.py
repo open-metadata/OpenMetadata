@@ -79,7 +79,6 @@ class SupersetSourceMixin(DashboardServiceSource):
         return dashboard
 
     def _get_user_by_email(self, email: str) -> EntityReference:
-
         if email:
             user = self.metadata.get_user_by_email(email)
             if user:

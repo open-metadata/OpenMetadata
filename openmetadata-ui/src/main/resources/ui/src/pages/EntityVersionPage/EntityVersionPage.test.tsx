@@ -46,6 +46,10 @@ jest.mock('components/ContainerVersion/ContainerVersion.component', () => {
   return jest.fn().mockReturnValue(<div>ContainerVersion component</div>);
 });
 
+jest.mock('components/DataModelVersion/DataModelVersion.component', () => {
+  return jest.fn().mockReturnValue(<div>DataModelVersion component</div>);
+});
+
 jest.mock('rest/dashboardAPI', () => ({
   getDashboardByFqn: jest.fn().mockImplementation(() => Promise.resolve()),
   getDashboardVersion: jest.fn().mockImplementation(() => Promise.resolve()),
@@ -77,6 +81,16 @@ jest.mock('rest/objectStoreAPI', () => ({
   getContainerByName: jest.fn().mockImplementation(() => Promise.resolve()),
   getContainerVersion: jest.fn().mockImplementation(() => Promise.resolve()),
   getContainerVersions: jest.fn().mockImplementation(() => Promise.resolve()),
+}));
+
+jest.mock('rest/dataModelsAPI', () => ({
+  getDataModelDetailsByFQN: jest
+    .fn()
+    .mockImplementation(() => Promise.resolve()),
+  getDataModelVersion: jest.fn().mockImplementation(() => Promise.resolve()),
+  getDataModelVersionsList: jest
+    .fn()
+    .mockImplementation(() => Promise.resolve()),
 }));
 
 describe('Test EntityVersionPage component', () => {
@@ -192,6 +206,27 @@ describe('Test EntityVersionPage component', () => {
       const ContainerVersion = await findByText(
         container,
         /ContainerVersion component/i
+      );
+
+      expect(ContainerVersion).toBeInTheDocument();
+    });
+  });
+
+  it('Should render the DataModel Version Component', async () => {
+    mockParams = {
+      entityType: 'dashboardDataModel',
+      version: '0.1',
+      entityFQN: 'data_model.sales',
+    };
+
+    await act(async () => {
+      const { container } = render(<EntityVersionPage />, {
+        wrapper: MemoryRouter,
+      });
+
+      const ContainerVersion = await findByText(
+        container,
+        /DataModelVersion component/i
       );
 
       expect(ContainerVersion).toBeInTheDocument();
