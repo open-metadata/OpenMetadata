@@ -52,9 +52,9 @@ export const FIELDS = {
   Owner: {
     name: 'Owner',
     testid: '[title="Owner"]',
-    searchTerm1: 'Colin Ho',
+    searchTerm1: 'Aaron Johnson',
     searchCriteriaFirstGroup: 'Aaron Johnson',
-    responseValueFirstGroup: `"displayName":"Colin Ho"`,
+    responseValueFirstGroup: `"displayName":"Aaron Johnson"`,
     searchCriteriaSecondGroup: 'Aaron Singh',
     owner: true,
     responseValueSecondGroup: 'Aaron Singh',
