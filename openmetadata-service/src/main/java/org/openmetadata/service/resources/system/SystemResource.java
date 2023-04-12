@@ -68,10 +68,10 @@ public class SystemResource {
   @SuppressWarnings("unused") // Method used for reflection
   public void initialize(OpenMetadataApplicationConfig config) throws IOException {
     this.applicationConfig = config;
-    initSettings(config);
+    initSettings();
   }
 
-  private void initSettings(OpenMetadataApplicationConfig applicationConfig) throws IOException {
+  private void initSettings() throws IOException {
     List<String> jsonDataFiles = EntityUtil.getJsonDataResources(".*json/data/settings/settingsData.json$");
     if (jsonDataFiles.size() != 1) {
       LOG.warn("Invalid number of jsonDataFiles {}. Only one expected.", jsonDataFiles.size());
