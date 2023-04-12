@@ -540,7 +540,6 @@ class Profiler(Generic[TMetric]):
         We need to transform it to TableProfile
         """
         try:
-
             # There are columns that we might have skipped from
             # computing metrics, if the type is not supported.
             # Let's filter those out.

@@ -77,7 +77,6 @@ def success_callback(context: Dict[str, str]) -> None:
     :param context: Airflow runtime context
     """
     try:
-
         config = get_lineage_config()
         metadata = OpenMetadata(config.metadata_config)
 

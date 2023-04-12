@@ -32,7 +32,7 @@ class TableColumnToMatchSetValidator(
 
     def _run_results(self):
         """compute result of the test case"""
-        names = list(self.runner.columns)
+        names = list(self.runner[0].columns)
         if not names:
             raise ValueError(
                 f"Column names for test case {self.test_case.name} returned None"

@@ -37,7 +37,7 @@ public class TestConnectionDefinitionRepository extends EntityRepository<TestCon
   }
 
   @Override
-  public void prepare(TestConnectionDefinition entity) throws IOException {
+  public void prepare(TestConnectionDefinition entity) {
     // validate steps
     if (CommonUtil.nullOrEmpty(entity.getSteps())) {
       throw new IllegalArgumentException("Steps must not be empty");
@@ -56,7 +56,7 @@ public class TestConnectionDefinitionRepository extends EntityRepository<TestCon
   }
 
   @Override
-  public void storeRelationships(TestConnectionDefinition entity) throws IOException {
+  public void storeRelationships(TestConnectionDefinition entity) {
     storeOwner(entity, entity.getOwner());
   }
 

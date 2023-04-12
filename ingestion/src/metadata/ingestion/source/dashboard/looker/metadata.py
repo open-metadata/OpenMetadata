@@ -514,7 +514,6 @@ class LookerSource(DashboardServiceSource):
         source_elements = fqn.split_table_name(table_name=source)
 
         for database_name in [source_elements["database"], None]:
-
             from_fqn = fqn.build(
                 self.metadata,
                 entity_type=Table,
@@ -646,7 +645,6 @@ class LookerSource(DashboardServiceSource):
                 str(dashboard.usageSummary.date.__root__) != self.today
                 or not dashboard.usageSummary.dailyStats.count
             ):
-
                 latest_usage = dashboard.usageSummary.dailyStats.count
 
                 new_usage = current_views - latest_usage
