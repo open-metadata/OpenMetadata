@@ -147,37 +147,40 @@ function EditEmailConfigPage() {
 
   return (
     <PageContainerV1>
-      <div className="self-center w-min-60">
-        <PageLayoutV1
-          className="tw-max-w-full-hd tw-h-full p-t-md self-center"
-          header={<TitleBreadcrumb titleLinks={slashedBreadcrumb} />}
-          pageTitle={t('label.add-entity', { entity: t('label.service') })}
-          rightPanel={
-            <ServiceRightPanel
-              isUpdating
-              activeField={activeField}
-              activeStep={0}
-              isIngestion={false}
-              selectedService={EMAIL_CONFIG_SERVICE_CATEGORY}
-              selectedServiceCategory={OPEN_METADATA as ServiceCategory}
-              serviceName=""
+      <PageLayoutV1
+        className="h-full p-t-md self-center w-960"
+        header={
+          <TitleBreadcrumb
+            className="w-960 m-x-auto p-x-md"
+            titleLinks={slashedBreadcrumb}
+          />
+        }
+        pageTitle={t('label.add-entity', { entity: t('label.service') })}
+        rightPanel={
+          <ServiceRightPanel
+            isUpdating
+            activeField={activeField}
+            activeStep={0}
+            isIngestion={false}
+            selectedService={EMAIL_CONFIG_SERVICE_CATEGORY}
+            selectedServiceCategory={OPEN_METADATA as ServiceCategory}
+            serviceName=""
+          />
+        }>
+        <Card className="p-lg">
+          {loading ? (
+            <Skeleton title paragraph={{ rows: 8 }} />
+          ) : (
+            <EmailConfigForm
+              emailConfigValues={emailConfigValues}
+              onBlur={handleBlur}
+              onCancel={handleRedirectionToSettingsPage}
+              onFocus={handleFieldFocus}
+              onSubmit={updateEmailConfigValues}
             />
-          }>
-          <Card className="p-lg">
-            {loading ? (
-              <Skeleton title paragraph={{ rows: 8 }} />
-            ) : (
-              <EmailConfigForm
-                emailConfigValues={emailConfigValues}
-                onBlur={handleBlur}
-                onCancel={handleRedirectionToSettingsPage}
-                onFocus={handleFieldFocus}
-                onSubmit={updateEmailConfigValues}
-              />
-            )}
-          </Card>
-        </PageLayoutV1>
-      </div>
+          )}
+        </Card>
+      </PageLayoutV1>
     </PageContainerV1>
   );
 }
