@@ -67,6 +67,7 @@ const GlossaryV1 = ({
     useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
 
   const [glossaryTerms, setGlossaryTerms] = useState<GlossaryTerm[]>([]);
+  const { id } = selectedData ?? {};
 
   const handleCancelGlossaryExport = () =>
     history.push(getGlossaryPath(selectedData.name));
@@ -131,15 +132,11 @@ const GlossaryV1 = ({
   };
 
   const loadGlossaryTerms = useCallback(() => {
-    fetchGlossaryTerm(
-      isGlossaryActive
-        ? { glossary: selectedData.id }
-        : { parent: selectedData.id }
-    );
-  }, [selectedData, isGlossaryActive]);
+    fetchGlossaryTerm(isGlossaryActive ? { glossary: id } : { parent: id });
+  }, [id, isGlossaryActive]);
 
   useEffect(() => {
-    if (selectedData) {
+    if (id) {
       loadGlossaryTerms();
       if (isGlossaryActive) {
         isVersionsView
@@ -151,7 +148,7 @@ const GlossaryV1 = ({
           : fetchGlossaryTermPermission();
       }
     }
-  }, [selectedData, isGlossaryActive, isVersionsView]);
+  }, [id, isGlossaryActive, isVersionsView]);
 
   return isImportAction ? (
     <ImportGlossary glossaryName={selectedData.name} />

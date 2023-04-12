@@ -141,7 +141,7 @@ declare module 'Models' {
     | 'pipelineServices'
     | 'mlmodelServices'
     | 'metadataServices'
-    | 'objectStoreServices';
+    | 'storageServices';
 
   export type SearchDataFunctionType = {
     queryString: string;
