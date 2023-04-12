@@ -17,6 +17,7 @@ import { oneofOrEndsWithNumberRegex } from 'constants/regex.constants';
 import {
   addServiceGuide,
   addServiceGuideWOAirflow,
+  EMAIL_CONFIG_SERVICE_CATEGORY,
 } from 'constants/service-guide.constant';
 import { INGESTION_GUIDE_MAP } from 'constants/Services.constant';
 import { useAirflowStatus } from 'hooks/useAirflowStatus';
@@ -25,6 +26,7 @@ import React, { FC, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { fetchMarkdownFile } from 'rest/miscAPI';
 import { SupportedLocales } from 'utils/i18next/i18nextUtil';
+import { getEmailConfigStepGuide } from 'utils/ServiceRightPanelUtils';
 import { getFormattedGuideText, getServiceType } from 'utils/ServiceUtils';
 import { RightPanelProps } from './ServiceRightPanel.interface';
 
@@ -47,6 +49,11 @@ const RightPanel: FC<RightPanelProps> = ({
 
   const [activeFieldDocument, setActiveFieldDocument] = useState<string>('');
   const [isLoading, setIsLoading] = useState<boolean>(false);
+
+  const isEmailConfigPage = useMemo(
+    () => selectedService === EMAIL_CONFIG_SERVICE_CATEGORY,
+    [selectedService]
+  );
 
   const activeStepGuide = useMemo(() => {
     let guideTemp;
@@ -110,7 +117,9 @@ const RightPanel: FC<RightPanelProps> = ({
   };
 
   const fetchFieldDocument = async () => {
-    const serviceType = getServiceType(selectedServiceCategory);
+    const serviceType = isEmailConfigPage
+      ? selectedServiceCategory
+      : getServiceType(selectedServiceCategory);
     setIsLoading(true);
     try {
       let response = '';
@@ -151,7 +160,12 @@ const RightPanel: FC<RightPanelProps> = ({
     if (shouldFetchFieldDoc) {
       fetchFieldDocument();
     }
-  }, [selectedService, selectedServiceCategory, activeFieldName]);
+  }, [
+    selectedService,
+    selectedServiceCategory,
+    activeFieldName,
+    isEmailConfigPage,
+  ]);
 
   const activeStepGuideElement = activeStepGuide ? (
     <>
@@ -177,9 +191,21 @@ const RightPanel: FC<RightPanelProps> = ({
     </>
   ) : null;
 
-  const renderElement = showActiveFieldElement
-    ? activeFieldDocumentElement
-    : activeStepGuideElement;
+  const renderElement = useMemo(() => {
+    if (showActiveFieldElement) {
+      return activeFieldDocumentElement;
+    } else {
+      return isEmailConfigPage
+        ? getEmailConfigStepGuide()
+        : activeStepGuideElement;
+    }
+  }, [
+    showActiveFieldElement,
+    activeFieldDocumentElement,
+    activeStepGuideElement,
+    selectedService,
+    isEmailConfigPage,
+  ]);
 
   return (
     <div id="service-right-panel" ref={panelContainerRef}>

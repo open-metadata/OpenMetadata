@@ -11,50 +11,24 @@
  *  limitations under the License.
  */
 
-import { CheckOutlined, ExclamationCircleOutlined } from '@ant-design/icons';
-import { Button, Popover, Table, Tooltip, Typography } from 'antd';
-import { ColumnsType } from 'antd/lib/table';
+import { ExclamationCircleOutlined } from '@ant-design/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import cronstrue from 'cronstrue';
-import { isEmpty, isNil, lowerCase, startCase } from 'lodash';
-import React, { Fragment, useEffect, useMemo, useState } from 'react';
+import { isEmpty, lowerCase } from 'lodash';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
-import { getEntityName } from 'utils/EntityUtils';
-import { PAGE_SIZE } from '../../constants/constants';
-import { WORKFLOWS_METADATA_DOCS } from '../../constants/docs.constants';
-import { PIPELINE_TYPE_LOCALIZATION } from '../../constants/Ingestions.constant';
-import { MetadataServiceType } from '../../generated/api/services/createMetadataService';
-import { Connection } from '../../generated/entity/services/databaseService';
-import {
-  IngestionPipeline,
-  PipelineType,
-} from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
-import { Connection as MetadataConnection } from '../../generated/entity/services/metadataService';
-import { getLoadingStatus } from '../../utils/CommonUtils';
-import {
-  getAddIngestionPath,
-  getEditIngestionPath,
-  getLogsViewerPath,
-} from '../../utils/RouterUtils';
-import { dropdownIcon as DropdownIcon } from '../../utils/svgconstant';
-import SVGIcons, { Icons } from '../../utils/SvgUtils';
-import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
-import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder';
-import NextPrevious from '../common/next-previous/NextPrevious';
+import { IngestionPipeline } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
+import { showErrorToast } from '../../utils/ToastUtils';
 import Searchbar from '../common/searchbar/Searchbar';
-import DropDownList from '../dropdown/DropDownList';
-import Loader from '../Loader/Loader';
 import EntityDeleteModal from '../Modals/EntityDeleteModal/EntityDeleteModal';
-import KillIngestionModal from '../Modals/KillIngestionPipelineModal/KillIngestionPipelineModal';
 import { usePermissionProvider } from '../PermissionProvider/PermissionProvider';
 import {
   IngestionServicePermission,
   ResourceEntity,
 } from '../PermissionProvider/PermissionProvider.interface';
-import { IngestionProps } from './ingestion.interface';
-import { IngestionRecentRuns } from './IngestionRecentRun/IngestionRecentRuns.component';
+import AddIngestionButton from './AddIngestionButton.component';
+import { IngestionProps, SelectedRowDetails } from './ingestion.interface';
+import IngestionListTable from './IngestionListTable.component';
 
 const Ingestion: React.FC<IngestionProps> = ({
   airflowEndpoint,
@@ -67,32 +41,33 @@ const Ingestion: React.FC<IngestionProps> = ({
   triggerIngestion,
   deployIngestion,
   paging,
-  pagingHandler,
   handleEnableDisableIngestion,
-  currentPage,
   onIngestionWorkflowsUpdate,
   permissions,
+  pipelineType,
+  displayAddIngestionButton = true,
+  handleIngestionDataChange,
+  pipelineNameColWidth,
+  containerClassName,
 }: IngestionProps) => {
-  const history = useHistory();
   const { t } = useTranslation();
   const { getEntityPermissionByFqn } = usePermissionProvider();
   const [searchText, setSearchText] = useState('');
-  const [showActions, setShowActions] = useState(false);
-  const [currTriggerId, setCurrTriggerId] = useState({ id: '', state: '' });
-  const [currDeployId, setCurrDeployId] = useState({ id: '', state: '' });
   const [isConfirmationModalOpen, setIsConfirmationModalOpen] = useState(false);
-  const [selectedPipeline, setSelectedPipeline] = useState<IngestionPipeline>();
-  const [deleteSelection, setDeleteSelection] = useState({
+  const [deleteSelection, setDeleteSelection] = useState<SelectedRowDetails>({
     id: '',
     name: '',
     state: '',
   });
-  const [isKillModalOpen, setIsKillModalOpen] = useState<boolean>(false);
-  const isOpenmetadataService = useMemo(
-    () =>
-      serviceDetails.connection?.config?.type ===
-      MetadataServiceType.OpenMetadata,
-    [serviceDetails]
+
+  const handleDeleteSelection = useCallback(
+    (row: SelectedRowDetails) => setDeleteSelection(row),
+    [setDeleteSelection]
+  );
+
+  const handleIsConfirmationModalOpen = useCallback(
+    (value: boolean) => setIsConfirmationModalOpen(value),
+    [setDeleteSelection]
   );
 
   const handleSearchAction = (searchValue: string) => {
@@ -125,85 +100,6 @@ const Ingestion: React.FC<IngestionProps> = ({
     }
   };
 
-  const getEditPermission = (service: string): boolean =>
-    !servicePermission?.[service]?.EditAll;
-
-  const getSupportedPipelineTypes = () => {
-    let pipelineType = [];
-    const config = serviceDetails.connection?.config as Connection;
-    if (config) {
-      config.supportsMetadataExtraction &&
-        pipelineType.push(PipelineType.Metadata);
-      config.supportsUsageExtraction && pipelineType.push(PipelineType.Usage);
-      config.supportsUsageExtraction && pipelineType.push(PipelineType.Lineage);
-      config.supportsProfiler && pipelineType.push(PipelineType.Profiler);
-      config.supportsDBTExtraction && pipelineType.push(PipelineType.Dbt);
-      (config as MetadataConnection).supportsDataInsightExtraction &&
-        pipelineType.push(PipelineType.DataInsight);
-      (config as MetadataConnection)
-        .supportsElasticSearchReindexingExtraction &&
-        pipelineType.push(PipelineType.ElasticSearchReindex);
-    } else {
-      pipelineType = [
-        PipelineType.Metadata,
-        PipelineType.Usage,
-        PipelineType.Lineage,
-        PipelineType.Profiler,
-        PipelineType.Dbt,
-      ];
-    }
-
-    return pipelineType;
-  };
-
-  const getIngestionPipelineTypeOption = (): PipelineType[] => {
-    const pipelineType = getSupportedPipelineTypes();
-    if (isOpenmetadataService || ingestionList.length > 0) {
-      return pipelineType.reduce((prev, curr) => {
-        if (
-          // Prevent adding multiple usage pipeline
-          curr === PipelineType.Usage &&
-          ingestionList.find((d) => d.pipelineType === curr)
-        ) {
-          return prev;
-        } else {
-          return [...prev, curr];
-        }
-      }, [] as PipelineType[]);
-    }
-
-    return [
-      PipelineType.Metadata,
-      PipelineType.Usage,
-      PipelineType.Lineage,
-      PipelineType.Profiler,
-      PipelineType.Dbt,
-    ];
-  };
-
-  const handleTriggerIngestion = (id: string, displayName: string) => {
-    setCurrTriggerId({ id, state: 'waiting' });
-    triggerIngestion(id, displayName)
-      .then(() => {
-        setCurrTriggerId({ id, state: 'success' });
-        setTimeout(() => {
-          setCurrTriggerId({ id: '', state: '' });
-          showSuccessToast(t('message.pipeline-trigger-success-message'));
-        }, 1500);
-      })
-      .catch(() => setCurrTriggerId({ id: '', state: '' }));
-  };
-
-  const handleDeployIngestion = (id: string) => {
-    setCurrDeployId({ id, state: 'waiting' });
-    deployIngestion(id)
-      .then(() => {
-        setCurrDeployId({ id, state: 'success' });
-        setTimeout(() => setCurrDeployId({ id: '', state: '' }), 1500);
-      })
-      .catch(() => setCurrDeployId({ id: '', state: '' }));
-  };
-
   const handleCancelConfirmationModal = () => {
     setIsConfirmationModalOpen(false);
     setDeleteSelection({
@@ -211,17 +107,6 @@ const Ingestion: React.FC<IngestionProps> = ({
       name: '',
       state: '',
     });
-  };
-
-  const handleUpdate = (ingestion: IngestionPipeline) => {
-    history.push(
-      getEditIngestionPath(
-        serviceCategory,
-        serviceName,
-        ingestion.fullyQualifiedName || `${serviceName}.${ingestion.name}`,
-        ingestion.pipelineType
-      )
-    );
   };
 
   const handleDelete = (id: string, displayName: string) => {
@@ -238,130 +123,27 @@ const Ingestion: React.FC<IngestionProps> = ({
       });
   };
 
-  const ConfirmDelete = (id: string, name: string) => {
-    setDeleteSelection({
-      id,
-      name,
-      state: '',
-    });
-    setIsConfirmationModalOpen(true);
-  };
-
-  const handleAddIngestionClick = (type?: PipelineType) => {
-    setShowActions(false);
-    if (type) {
-      history.push(getAddIngestionPath(serviceCategory, serviceName, type));
-    }
-  };
-
-  const isDataSightIngestionExists = useMemo(
-    () =>
-      ingestionData.some(
-        (ingestion) => ingestion.pipelineType === PipelineType.DataInsight
-      ),
-    [ingestionData]
-  );
-
-  const getAddIngestionButton = (type: PipelineType) => {
-    return (
-      <Button
-        className={classNames('h-8 rounded-4 m-b-xs')}
-        data-testid="add-new-ingestion-button"
-        size="small"
-        type="primary"
-        onClick={() => handleAddIngestionClick(type)}>
-        {t('label.add-workflow-ingestion', { workflow: startCase(type) })}
-      </Button>
-    );
-  };
-
-  const getAddIngestionDropdown = (types: PipelineType[]) => {
-    return (
-      <Fragment>
-        <Button
-          className={classNames('h-8 rounded-4 m-b-xs d-flex items-center')}
-          data-testid="add-new-ingestion-button"
-          disabled={!permissions.Create}
-          size="small"
-          type="primary"
-          onClick={() => setShowActions((pre) => !pre)}>
-          {t('label.add-entity', { entity: t('label.ingestion-lowercase') })}
-          {showActions ? (
-            <DropdownIcon
-              style={{
-                transform: 'rotate(180deg)',
-                verticalAlign: 'middle',
-                color: '#fff',
-              }}
-            />
-          ) : (
-            <DropdownIcon
-              style={{
-                color: '#fff',
-                verticalAlign: 'middle',
-              }}
-            />
-          )}
-        </Button>
-        {showActions && (
-          <DropDownList
-            horzPosRight
-            dropDownList={types.map((type) => ({
-              name: t('label.add-workflow-ingestion', {
-                workflow: t(`label.${PIPELINE_TYPE_LOCALIZATION[type]}`),
-              }),
-              disabled:
-                type === PipelineType.DataInsight
-                  ? isDataSightIngestionExists
-                  : false,
-              value: type,
-            }))}
-            onSelect={(_e, value) =>
-              handleAddIngestionClick(value as PipelineType)
-            }
-          />
-        )}
-      </Fragment>
-    );
-  };
-
-  const getAddIngestionElement = () => {
-    const types = getIngestionPipelineTypeOption();
-    let element: JSX.Element | null = null;
-    // Check if service has atleast one metadata pipeline available or not
-    const hasMetadata = ingestionList.find(
-      (ingestion) => ingestion.pipelineType === PipelineType.Metadata
-    );
-
-    if (types.length) {
-      // if service has metedata then show all available option
-      if (isOpenmetadataService || hasMetadata) {
-        element = getAddIngestionDropdown(types);
-      } else {
-        /**
-         * If service does not have any metedata pipeline then
-         * show only option for metadata ingestion
-         */
-        element = getAddIngestionButton(PipelineType.Metadata);
-      }
-    }
-
-    return element;
-  };
-
   const getSearchedIngestions = () => {
     const sText = lowerCase(searchText);
+    const data = sText
+      ? ingestionList.filter(
+          (ing) =>
+            lowerCase(ing.displayName).includes(sText) ||
+            lowerCase(ing.name).includes(sText)
+        )
+      : ingestionList;
 
-    setIngestionData(
-      sText
-        ? ingestionList.filter(
-            (ing) =>
-              lowerCase(ing.displayName).includes(sText) ||
-              lowerCase(ing.name).includes(sText)
-          )
-        : ingestionList
-    );
+    setIngestionData(data);
+    handleIngestionDataChange && handleIngestionDataChange(data);
   };
+
+  const showAddIngestionButton = useMemo(
+    () =>
+      isRequiredDetailsAvailable &&
+      permissions.EditAll &&
+      displayAddIngestionButton,
+    [isRequiredDetailsAvailable, permissions, displayAddIngestionButton]
+  );
 
   useEffect(() => {
     getSearchedIngestions();
@@ -371,249 +153,11 @@ const Ingestion: React.FC<IngestionProps> = ({
     fetchServicePermission();
   }, []);
 
-  const separator = (
-    <span className="tw-inline-block tw-text-gray-400 tw-self-center">|</span>
-  );
-
-  const getIngestionPermission = (name: string): boolean =>
-    !isRequiredDetailsAvailable || getEditPermission(name);
-
-  const getTriggerDeployButton = (ingestion: IngestionPipeline) => {
-    if (ingestion.deployed) {
-      return (
-        <>
-          <Button
-            data-testid="run"
-            disabled={getIngestionPermission(ingestion.name)}
-            type="link"
-            onClick={() =>
-              handleTriggerIngestion(ingestion.id as string, ingestion.name)
-            }>
-            {getLoadingStatus(currTriggerId, ingestion.id, t('label.run'))}
-          </Button>
-          {separator}
-
-          <Button
-            data-testid="re-deploy-btn"
-            disabled={getIngestionPermission(ingestion.name)}
-            type="link"
-            onClick={() => handleDeployIngestion(ingestion.id as string)}>
-            {getLoadingStatus(currDeployId, ingestion.id, t('label.re-deploy'))}
-          </Button>
-        </>
-      );
-    } else {
-      return (
-        <Button
-          data-testid="deploy"
-          disabled={getIngestionPermission(ingestion.name)}
-          type="link"
-          onClick={() => handleDeployIngestion(ingestion.id as string)}>
-          {getLoadingStatus(currDeployId, ingestion.id, t('label.deploy'))}
-        </Button>
-      );
-    }
-  };
-
-  const tableColumn: ColumnsType<IngestionPipeline> = useMemo(
-    () => [
-      {
-        title: t('label.name'),
-        dataIndex: 'name',
-        key: 'name',
-        render: (text, record) =>
-          airflowEndpoint ? (
-            <Tooltip
-              title={
-                permissions.ViewAll || permissions.ViewBasic
-                  ? t('label.view-entity', {
-                      entity: t('label.dag'),
-                    })
-                  : t('message.no-permission-to-view')
-              }>
-              <Button
-                className="tw-mr-2"
-                data-testid="airflow-tree-view"
-                disabled={!(permissions.ViewAll || permissions.ViewBasic)}
-                href={`${airflowEndpoint}/tree?dag_id=${text}`}
-                rel="noopener noreferrer"
-                target="_blank"
-                type="link">
-                {getEntityName(record)}
-                <SVGIcons
-                  alt="external-link"
-                  className="tw-align-middle tw-ml-1"
-                  icon={Icons.EXTERNAL_LINK}
-                  width="16px"
-                />
-              </Button>
-            </Tooltip>
-          ) : (
-            getEntityName(record)
-          ),
-      },
-      {
-        title: t('label.type'),
-        dataIndex: 'pipelineType',
-        key: 'pipelineType',
-      },
-      {
-        title: t('label.schedule'),
-        dataIndex: 'schedule',
-        key: 'schedule',
-        render: (_, record) =>
-          record.airflowConfig?.scheduleInterval ? (
-            <Popover
-              content={
-                <div>
-                  {cronstrue.toString(
-                    record.airflowConfig.scheduleInterval || '',
-                    {
-                      use24HourTimeFormat: true,
-                      verbose: true,
-                    }
-                  )}
-                </div>
-              }
-              placement="bottom"
-              trigger="hover">
-              <span>{record.airflowConfig.scheduleInterval ?? '--'}</span>
-            </Popover>
-          ) : (
-            <span>--</span>
-          ),
-      },
-      {
-        title: t('label.recent-run-plural'),
-        dataIndex: 'recentRuns',
-        key: 'recentRuns',
-        width: 180,
-        render: (_, record) => (
-          <IngestionRecentRuns classNames="align-middle" ingestion={record} />
-        ),
-      },
-      {
-        title: t('label.action-plural'),
-        dataIndex: 'actions',
-        key: 'actions',
-        render: (_, record) => (
-          <div>
-            <div className="tw-flex">
-              {record.enabled ? (
-                <Fragment>
-                  {getTriggerDeployButton(record)}
-                  {separator}
-                  <Button
-                    data-testid="pause"
-                    disabled={getIngestionPermission(record.name)}
-                    type="link"
-                    onClick={() =>
-                      handleEnableDisableIngestion(record.id || '')
-                    }>
-                    {t('label.pause')}
-                  </Button>
-                </Fragment>
-              ) : (
-                <Button
-                  data-testid="unpause"
-                  disabled={getIngestionPermission(record.name)}
-                  type="link"
-                  onClick={() => handleEnableDisableIngestion(record.id || '')}>
-                  {t('label.unpause')}
-                </Button>
-              )}
-              {separator}
-              <Button
-                data-testid="edit"
-                disabled={getIngestionPermission(record.name)}
-                type="link"
-                onClick={() => handleUpdate(record)}>
-                {t('label.edit')}
-              </Button>
-              {separator}
-              <Button
-                data-testid="delete"
-                disabled={!servicePermission?.[record.name]?.Delete}
-                type="link"
-                onClick={() => ConfirmDelete(record.id as string, record.name)}>
-                {deleteSelection.id === record.id ? (
-                  deleteSelection.state === 'success' ? (
-                    <CheckOutlined />
-                  ) : (
-                    <Loader size="small" type="default" />
-                  )
-                ) : (
-                  t('label.delete')
-                )}
-              </Button>
-              {separator}
-              <Button
-                data-testid="kill"
-                disabled={getIngestionPermission(record.name)}
-                type="link"
-                onClick={() => {
-                  setIsKillModalOpen(true);
-                  setSelectedPipeline(record);
-                }}>
-                {t('label.kill')}
-              </Button>
-              {separator}
-              <Button
-                data-testid="logs"
-                disabled={!isRequiredDetailsAvailable}
-                href={getLogsViewerPath(
-                  serviceCategory,
-                  record.service?.name || '',
-                  record?.fullyQualifiedName || record?.name || ''
-                )}
-                type="link"
-                onClick={() => {
-                  setSelectedPipeline(record);
-                }}>
-                {t('label.log-plural')}
-              </Button>
-            </div>
-            {isKillModalOpen &&
-              selectedPipeline &&
-              record.id === selectedPipeline?.id && (
-                <KillIngestionModal
-                  isModalOpen={isKillModalOpen}
-                  pipelinName={selectedPipeline.name}
-                  pipelineId={selectedPipeline.id as string}
-                  onClose={() => {
-                    setIsKillModalOpen(false);
-                    setSelectedPipeline(undefined);
-                  }}
-                  onIngestionWorkflowsUpdate={onIngestionWorkflowsUpdate}
-                />
-              )}
-          </div>
-        ),
-      },
-    ],
-    [
-      permissions,
-      airflowEndpoint,
-      getTriggerDeployButton,
-      isRequiredDetailsAvailable,
-      handleEnableDisableIngestion,
-      ConfirmDelete,
-      handleUpdate,
-      deleteSelection,
-      setIsKillModalOpen,
-      setSelectedPipeline,
-      getLogsViewerPath,
-      serviceCategory,
-      isKillModalOpen,
-      selectedPipeline,
-      onIngestionWorkflowsUpdate,
-      ingestionData,
-    ]
-  );
-
   const getIngestionTab = () => {
     return (
-      <div className="mt-4" data-testid="ingestion-details-container">
+      <div
+        className={classNames('mt-4', containerClassName ?? '')}
+        data-testid="ingestion-details-container">
         <div className="d-flex">
           {!isRequiredDetailsAvailable && (
             <div className="tw-rounded tw-bg-error-lite tw-text-error tw-font-medium tw-px-4 tw-py-1 tw-mb-4 tw-flex tw-items-center tw-gap-1">
@@ -638,50 +182,38 @@ const Ingestion: React.FC<IngestionProps> = ({
             ) : null}
           </div>
           <div className="tw-relative">
-            {isRequiredDetailsAvailable &&
-              permissions.EditAll &&
-              getAddIngestionElement()}
-          </div>
-        </div>
-        {!isEmpty(ingestionData) ? (
-          <div className="tw-mb-6" data-testid="ingestion-table">
-            <Table
-              bordered
-              className="table-shadow"
-              columns={tableColumn}
-              data-testid="schema-table"
-              dataSource={ingestionData}
-              pagination={false}
-              rowKey="name"
-              size="small"
-            />
-
-            {Boolean(!isNil(paging.after) || !isNil(paging.before)) && (
-              <NextPrevious
-                currentPage={currentPage}
-                pageSize={PAGE_SIZE}
-                paging={paging}
-                pagingHandler={pagingHandler}
-                totalCount={paging.total}
+            {showAddIngestionButton && (
+              <AddIngestionButton
+                ingestionData={ingestionData}
+                ingestionList={ingestionList}
+                permissions={permissions}
+                pipelineType={pipelineType}
+                serviceCategory={serviceCategory}
+                serviceDetails={serviceDetails}
+                serviceName={serviceName}
               />
             )}
           </div>
-        ) : (
-          isRequiredDetailsAvailable &&
-          ingestionList.length === 0 && (
-            <ErrorPlaceHolder>
-              <Typography.Text>
-                {t('message.no-ingestion-available')}
-              </Typography.Text>
-              <Typography.Text>
-                {t('message.no-ingestion-description')}
-              </Typography.Text>
-              <Typography.Link href={WORKFLOWS_METADATA_DOCS} target="_blank">
-                {t('label.metadata-ingestion')}
-              </Typography.Link>
-            </ErrorPlaceHolder>
-          )
-        )}
+        </div>
+        <IngestionListTable
+          airflowEndpoint={airflowEndpoint}
+          deleteSelection={deleteSelection}
+          deployIngestion={deployIngestion}
+          handleDeleteSelection={handleDeleteSelection}
+          handleEnableDisableIngestion={handleEnableDisableIngestion}
+          handleIsConfirmationModalOpen={handleIsConfirmationModalOpen}
+          ingestionData={ingestionData}
+          isRequiredDetailsAvailable={isRequiredDetailsAvailable}
+          paging={paging}
+          permissions={permissions}
+          pipelineNameColWidth={pipelineNameColWidth}
+          pipelineType={pipelineType}
+          serviceCategory={serviceCategory}
+          serviceName={serviceName}
+          servicePermission={servicePermission}
+          triggerIngestion={triggerIngestion}
+          onIngestionWorkflowsUpdate={onIngestionWorkflowsUpdate}
+        />
       </div>
     );
   };
