@@ -176,19 +176,29 @@ class LookerSource(DashboardServiceSource):
         """
         Fetch explores with the SDK
         """
-        # First, pick up all the LookML Models
-        all_lookml_models: Sequence[LookmlModel] = self.client.all_lookml_models()
+        if self.source_config.includeDataModels:
+            # First, pick up all the LookML Models
+            all_lookml_models: Sequence[LookmlModel] = self.client.all_lookml_models()
 
-        # Then, fetch the explores for each of them
-        for lookml_model in all_lookml_models:
-            # Each LookML model have a list of explores we'll be ingesting
-            for explore_nav in (
-                cast(Sequence[LookmlModelNavExplore], lookml_model.explores) or []
-            ):
-                explore = self.client.lookml_model_explore(
-                    lookml_model_name=lookml_model.name, explore_name=explore_nav.name
-                )
-                yield explore
+            # Then, fetch the explores for each of them
+            for lookml_model in all_lookml_models:
+                # Each LookML model have a list of explores we'll be ingesting
+                for explore_nav in (
+                    cast(Sequence[LookmlModelNavExplore], lookml_model.explores) or []
+                ):
+                    if filter_by_datamodel(
+                        self.source_config.dataModelFilterPattern, lookml_model.name
+                    ):
+                        self.status.filter(
+                            lookml_model.name, "Data model (Explore) filtered out."
+                        )
+                        continue
+
+                    explore = self.client.lookml_model_explore(
+                        lookml_model_name=lookml_model.name,
+                        explore_name=explore_nav.name,
+                    )
+                    yield explore
 
     def yield_bulk_datamodel(
         self, model: LookmlModelExplore
@@ -197,55 +207,63 @@ class LookerSource(DashboardServiceSource):
         Get the Explore and View information and prepare
         the model creation request
         """
-        if self.source_config.includeDataModels:
-            try:
-                datamodel_name = build_datamodel_name(model.model_name, model.name)
-                if filter_by_datamodel(
-                    self.source_config.dataModelFilterPattern, datamodel_name
-                ):
-                    self.status.filter(datamodel_name, "Data model filtered out.")
-                else:
-                    explore_datamodel = CreateDashboardDataModelRequest(
-                        name=datamodel_name,
-                        displayName=model.name,
-                        description=model.description,
-                        service=self.context.dashboard_service.fullyQualifiedName.__root__,
-                        dataModelType=DataModelType.LookMlExplore.value,
-                        serviceType=DashboardServiceType.Looker.value,
-                        columns=get_columns_from_model(model),
-                        sql=self._get_explore_sql(model),
-                    )
-                    yield explore_datamodel
-                    self.status.scanned(f"Data Model Scanned: {model.name}")
+        try:
+            datamodel_name = build_datamodel_name(model.model_name, model.name)
+            if filter_by_datamodel(
+                self.source_config.dataModelFilterPattern, datamodel_name
+            ):
+                self.status.filter(datamodel_name, "Data model filtered out.")
+            else:
+                explore_datamodel = CreateDashboardDataModelRequest(
+                    name=datamodel_name,
+                    displayName=model.name,
+                    description=model.description,
+                    service=self.context.dashboard_service.fullyQualifiedName.__root__,
+                    dataModelType=DataModelType.LookMlExplore.value,
+                    serviceType=DashboardServiceType.Looker.value,
+                    columns=get_columns_from_model(model),
+                    sql=self._get_explore_sql(model),
+                )
+                yield explore_datamodel
+                self.status.scanned(f"Data Model Scanned: {model.name}")
 
-                    # Maybe use the project_name as key too?
-                    # Save the explores for when we create the lineage with the dashboards and views
-                    self._explores_cache[
-                        explore_datamodel.name.__root__
-                    ] = self.context.dataModel  # This is the newly created explore
+                # Maybe use the project_name as key too?
+                # Save the explores for when we create the lineage with the dashboards and views
+                self._explores_cache[
+                    explore_datamodel.name.__root__
+                ] = self.context.dataModel  # This is the newly created explore
 
-                    # We can get VIEWs from the JOINs to know the dependencies
-                    # We will only try and fetch if we have the credentials
-                    if self.github_credentials:
-                        for view in model.joins:
-                            yield from self._process_view(
-                                view_name=ViewName(view.name), explore=model
+                # We can get VIEWs from the JOINs to know the dependencies
+                # We will only try and fetch if we have the credentials
+                if self.github_credentials:
+                    for view in model.joins:
+
+                        if filter_by_datamodel(
+                            self.source_config.dataModelFilterPattern, view.name
+                        ):
+                            self.status.filter(
+                                view.name, "Data model (View) filtered out."
                             )
+                            continue
 
-            except ValidationError as err:
-                error = f"Validation error yielding Data Model [{model.name}]: {err}"
-                logger.debug(traceback.format_exc())
-                logger.error(error)
-                self.status.failed(
-                    name=model.name, error=error, stack_trace=traceback.format_exc()
-                )
-            except Exception as err:
-                error = f"Wild error yielding Data Model [{model.name}]: {err}"
-                logger.debug(traceback.format_exc())
-                logger.error(error)
-                self.status.failed(
-                    name=model.name, error=error, stack_trace=traceback.format_exc()
-                )
+                        yield from self._process_view(
+                            view_name=ViewName(view.name), explore=model
+                        )
+
+        except ValidationError as err:
+            error = f"Validation error yielding Data Model [{model.name}]: {err}"
+            logger.debug(traceback.format_exc())
+            logger.error(error)
+            self.status.failed(
+                name=model.name, error=error, stack_trace=traceback.format_exc()
+            )
+        except Exception as err:
+            error = f"Wild error yielding Data Model [{model.name}]: {err}"
+            logger.debug(traceback.format_exc())
+            logger.error(error)
+            self.status.failed(
+                name=model.name, error=error, stack_trace=traceback.format_exc()
+            )
 
     def _get_explore_sql(self, explore: LookmlModelExplore) -> Optional[str]:
         """
@@ -393,7 +411,6 @@ class LookerSource(DashboardServiceSource):
         """
         Method to Get Dashboard Entity
         """
-
         dashboard_request = CreateDashboardRequest(
             name=clean_dashboard_name(dashboard_details.id),
             displayName=dashboard_details.title,
