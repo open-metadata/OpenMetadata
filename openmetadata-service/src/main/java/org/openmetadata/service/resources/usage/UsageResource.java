@@ -13,7 +13,6 @@
 
 package org.openmetadata.service.resources.usage;
 
-import com.google.inject.Inject;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -55,7 +54,6 @@ import org.openmetadata.service.util.RestUtil;
 public class UsageResource {
   private final UsageRepository dao;
 
-  @Inject
   public UsageResource(CollectionDAO dao, Authorizer authorizer) {
     Objects.requireNonNull(dao, "UsageRepository must not be null");
     this.dao = new UsageRepository(dao);

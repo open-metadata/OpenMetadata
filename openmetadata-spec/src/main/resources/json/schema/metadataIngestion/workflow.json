@@ -37,7 +37,7 @@
               "$ref": "mlmodelServiceMetadataPipeline.json"
             },
             {
-              "$ref": "objectstoreServiceMetadataPipeline.json"
+              "$ref": "storageServiceMetadataPipeline.json"
             },
             {
               "$ref": "testSuitePipeline.json"

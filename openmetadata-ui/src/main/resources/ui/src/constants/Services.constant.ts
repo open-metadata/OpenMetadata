@@ -16,7 +16,7 @@ import gcs from 'assets/img/service-icon-gcs.png';
 import msAzure from 'assets/img/service-icon-ms-azure.png';
 import { PipelineType } from 'generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { WorkflowStatus } from 'generated/entity/automations/workflow';
-import { ObjectStoreServiceType } from 'generated/entity/data/container';
+import { StorageServiceType } from 'generated/entity/data/container';
 import { ServiceType } from 'generated/entity/services/serviceType';
 import { map, startCase } from 'lodash';
 import { ServiceTypes, StepperStepType } from 'Models';
@@ -189,7 +189,7 @@ export const serviceTypes: Record<ServiceTypes, Array<string>> = {
   metadataServices: (Object.values(MetadataServiceType) as string[]).sort(
     customServiceComparator
   ),
-  objectStoreServices: (Object.values(ObjectStoreServiceType) as string[]).sort(
+  storageServices: (Object.values(StorageServiceType) as string[]).sort(
     customServiceComparator
   ),
 };
@@ -200,7 +200,7 @@ export const arrServiceTypes: Array<ServiceTypes> = [
   'dashboardServices',
   'pipelineServices',
   'mlmodelServices',
-  'objectStoreServices',
+  'storageServices',
 ];
 
 export const SERVICE_CATEGORY: { [key: string]: ServiceCategory } = {
@@ -210,7 +210,7 @@ export const SERVICE_CATEGORY: { [key: string]: ServiceCategory } = {
   pipelines: ServiceCategory.PIPELINE_SERVICES,
   mlModels: ServiceCategory.ML_MODEL_SERVICES,
   metadata: ServiceCategory.METADATA_SERVICES,
-  objectStores: ServiceCategory.OBJECT_STORE_SERVICES,
+  storages: ServiceCategory.STORAGE_SERVICES,
 };
 
 export const SERVICE_CATEGORY_TYPE = {
@@ -220,7 +220,7 @@ export const SERVICE_CATEGORY_TYPE = {
   pipelineServices: 'pipelines',
   mlmodelServices: 'mlModels',
   metadataServices: 'metadata',
-  objectStoreServices: 'objectStores',
+  storageServices: 'storage',
 };
 
 export const servicesDisplayName: { [key: string]: string } = {
@@ -242,8 +242,8 @@ export const servicesDisplayName: { [key: string]: string } = {
   metadataServices: i18n.t('label.entity-service', {
     entity: i18n.t('label.metadata'),
   }),
-  objectStoreServices: i18n.t('label.entity-service', {
-    entity: i18n.t('label.object-store'),
+  storageServices: i18n.t('label.entity-service', {
+    entity: i18n.t('label.storage'),
   }),
   dashboardDataModel: i18n.t('label.entity-service', {
     entity: i18n.t('label.data-model'),
@@ -334,6 +334,6 @@ export const SERVICE_TYPE_MAP = {
   [ServiceCategory.MESSAGING_SERVICES]: ServiceType.Messaging,
   [ServiceCategory.ML_MODEL_SERVICES]: ServiceType.MlModel,
   [ServiceCategory.METADATA_SERVICES]: ServiceType.Metadata,
-  [ServiceCategory.OBJECT_STORE_SERVICES]: ServiceType.ObjectStore,
+  [ServiceCategory.STORAGE_SERVICES]: ServiceType.Storage,
   [ServiceCategory.PIPELINE_SERVICES]: ServiceType.Pipeline,
 };

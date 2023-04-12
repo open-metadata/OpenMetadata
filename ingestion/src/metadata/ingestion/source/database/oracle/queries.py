@@ -23,12 +23,35 @@ where comments is not null and owner not in ('SYSTEM', 'SYS')
 
 
 ORACLE_ALL_VIEW_DEFINITIONS = """
-SELECT 
-	LOWER(view_name) "view_name", 
-	LOWER(owner) "schema",
-	text view_def 
-FROM all_views 
-where text is not null and owner not in ('SYSTEM', 'SYS')
+SELECT
+LOWER(view_name) AS "view_name",
+LOWER(owner) AS "schema",
+DBMS_METADATA.GET_DDL('VIEW', view_name, owner) AS view_def
+FROM all_views
+WHERE owner NOT IN ('SYSTEM', 'SYS')
+"""
+
+ORACLE_ALL_MATERIALIZED_VIEW_DEFINITIONS = """
+SELECT
+LOWER(mview_name) AS "view_name",
+LOWER(owner) AS "schema",
+DBMS_METADATA.GET_DDL('MATERIALIZED_VIEW', mview_name, owner) AS view_def
+FROM all_mviews
+WHERE owner NOT IN ('SYSTEM', 'SYS')
+"""
+
+GET_MATERIALIZED_VIEW_NAMES = """
+SELECT mview_name FROM all_mviews WHERE owner = :owner
+"""
+
+ORACLE_GET_TABLE_NAMES = """
+SELECT table_name FROM all_tables WHERE 
+{tablespace}
+OWNER = :owner  
+AND IOT_NAME IS NULL 
+AND DURATION IS NULL
+AND TABLE_NAME NOT IN 
+(SELECT mview_name FROM all_mviews WHERE owner = :owner)
 """
 
 ORACLE_IDENTITY_TYPE = """\

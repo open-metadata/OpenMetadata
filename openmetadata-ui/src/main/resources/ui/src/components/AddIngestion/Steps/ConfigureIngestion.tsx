@@ -785,7 +785,7 @@ const ConfigureIngestion = ({
           </Fragment>
         );
 
-      case ServiceCategory.OBJECT_STORE_SERVICES:
+      case ServiceCategory.STORAGE_SERVICES:
         return (
           <FilterPattern
             checked={showContainerFilter}

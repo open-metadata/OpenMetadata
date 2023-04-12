@@ -60,6 +60,7 @@ import { Link, useHistory, useParams } from 'react-router-dom';
 import {
   getDatabaseSchemaDetailsByFQN,
   patchDatabaseSchemaDetails,
+  restoreDatabaseSchema,
 } from 'rest/databaseAPI';
 import {
   getAllFeeds,
@@ -119,7 +120,7 @@ import {
   getTagsWithoutTier,
   getTierTags,
 } from '../../utils/TableUtils';
-import { showErrorToast } from '../../utils/ToastUtils';
+import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 
 const DatabaseSchemaPage: FunctionComponent = () => {
   const [slashedTableName, setSlashedTableName] = useState<
@@ -270,11 +271,11 @@ const DatabaseSchemaPage: FunctionComponent = () => {
 
   const getDetailsByFQN = () => {
     setIsSchemaDetailsLoading(true);
-    getDatabaseSchemaDetailsByFQN(databaseSchemaFQN, [
-      'owner',
-      'usageSummary',
-      'tags',
-    ])
+    getDatabaseSchemaDetailsByFQN(
+      databaseSchemaFQN,
+      ['owner', 'usageSummary', 'tags'],
+      'include=all'
+    )
       .then((res) => {
         if (res) {
           const {
@@ -292,6 +293,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
           setDatabaseSchemaName(name);
           setTags(getTagsWithoutTier(tags || []));
           setTier(getTierTags(tags ?? []));
+          setShowDeletedTables(res.deleted ?? false);
           setSlashedTableName([
             {
               name: startCase(ServiceCategory.DATABASE_SERVICES),
@@ -708,6 +710,26 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     [showDeletedTables]
   );
 
+  const handleRestoreDatabaseSchema = useCallback(async () => {
+    try {
+      await restoreDatabaseSchema(databaseSchemaId);
+      showSuccessToast(
+        t('message.restore-entities-success', {
+          entity: t('label.database-schema'),
+        }),
+        2000
+      );
+      getDetailsByFQN();
+    } catch (error) {
+      showErrorToast(
+        error as AxiosError,
+        t('message.restore-entities-error', {
+          entity: t('label.database-schema'),
+        })
+      );
+    }
+  }, [databaseSchemaId]);
+
   useEffect(() => {
     if (TabSpecificField.ACTIVITY_FEED === tab) {
       fetchActivityFeed();
@@ -780,9 +802,9 @@ const DatabaseSchemaPage: FunctionComponent = () => {
                     <Col span={24}>
                       <EntityPageInfo
                         isRecursiveDelete
-                        allowSoftDelete={false}
                         canDelete={databaseSchemaPermission.Delete}
                         currentOwner={databaseSchema?.owner}
+                        deleted={databaseSchema?.deleted}
                         entityFieldThreads={getEntityFieldThreadCounts(
                           EntityField.TAGS,
                           entityFieldThreadCount
@@ -808,6 +830,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
                             ? handleUpdateOwner
                             : undefined
                         }
+                        onRestoreEntity={handleRestoreDatabaseSchema}
                         onThreadLinkSelect={onThreadLinkSelect}
                       />
                     </Col>

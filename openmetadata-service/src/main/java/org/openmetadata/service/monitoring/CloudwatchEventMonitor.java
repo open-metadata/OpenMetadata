@@ -79,8 +79,6 @@ public class CloudwatchEventMonitor extends EventMonitor {
    * We want to control the lifecycle of an Ingestion Pipeline. We will push metrics for: 1. eventType "entityCreated":
    * log when a pipeline was first created. Push the FQN and timestamp 2. eventType "entityUpdated": log when there is a
    * `pipelineStatus` change with the status type 3. eventType "entityDeleted": log when an ingestionPipeline is removed
-   *
-   * @param event ChangeEvent for an IngestionPipeline
    */
   @Override
   protected void pushMetric(ChangeEvent event) {
