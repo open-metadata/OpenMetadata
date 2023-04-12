@@ -213,14 +213,14 @@ const AddService = ({
   const addNewServiceElement = (
     <div data-testid="add-new-service-container">
       {selectServiceType ? (
-        <Space>
+        <Space className="p-b-xs">
           {getServiceLogo(selectServiceType || '', 'h-6')}{' '}
           <Typography className="text-base" data-testid="header">
             {`${selectServiceType} ${t('label.service')}`}
           </Typography>
         </Space>
       ) : (
-        <Typography className="text-base" data-testid="header">
+        <Typography className="text-base p-b-xs" data-testid="header">
           {t('label.add-new-entity', { entity: t('label.service') })}
         </Typography>
       )}
