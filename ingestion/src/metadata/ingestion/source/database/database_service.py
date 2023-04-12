@@ -50,10 +50,7 @@ from metadata.generated.schema.type.tagLabel import (
 )
 from metadata.ingestion.api.source import Source
 from metadata.ingestion.api.topology_runner import TopologyRunnerMixin
-from metadata.ingestion.models.delete_entity import (
-    DeleteEntity,
-    delete_entity_from_source,
-)
+from metadata.ingestion.models.delete_entity import delete_entity_from_source
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.models.table_metadata import OMetaTableConstraints
 from metadata.ingestion.models.topology import (
@@ -340,18 +337,6 @@ class DatabaseServiceSource(
         self.database_source_state.add(table_fqn)
         self.status.scanned(table_fqn)
 
-    def delete_schema_tables(self, schema_fqn: str) -> Iterable[DeleteEntity]:
-        """
-        Returns Deleted tables
-        """
-        yield from delete_entity_from_source(
-            metadata=self.metadata,
-            entity_type=Table,
-            entity_source_state=self.database_source_state,
-            mark_deleted_entity=self.source_config.markDeletedTables,
-            params={"database": schema_fqn},
-        )
-
     def fetch_all_schema_and_delete_tables(self):
         """
         Fetch all schemas and delete tables
@@ -366,9 +351,28 @@ class DatabaseServiceSource(
             entity=DatabaseSchema, params={"database": database_fqn}
         )
         for schema in schema_list:
-            yield from self.delete_schema_tables(schema.fullyQualifiedName.__root__)
+            yield from delete_entity_from_source(
+                metadata=self.metadata,
+                entity_type=Table,
+                entity_source_state=self.database_source_state,
+                mark_deleted_entity=self.source_config.markDeletedTables,
+                params={"database": schema.fullyQualifiedName.__root__},
+            )
 
-    def _get_filtered_schema_names(self, add_to_status: bool = True) -> Iterable[str]:
+        # Delete the schema
+        yield from delete_entity_from_source(
+            metadata=self.metadata,
+            entity_type=DatabaseSchema,
+            entity_source_state=list(
+                self._get_filtered_schema_names(return_fqn=True, add_to_status=False)
+            ),
+            mark_deleted_entity=self.source_config.markDeletedTables,
+            params={"database": database_fqn},
+        )
+
+    def _get_filtered_schema_names(
+        self, return_fqn: bool = False, add_to_status: bool = True
+    ) -> Iterable[str]:
         for schema_name in self.get_raw_database_schema_names():
             schema_fqn = fqn.build(
                 self.metadata,
@@ -384,7 +388,7 @@ class DatabaseServiceSource(
                 if add_to_status:
                     self.status.filter(schema_fqn, "Schema Filtered Out")
                 continue
-            yield schema_name
+            yield schema_fqn if return_fqn else schema_name
 
     def mark_tables_as_deleted(self):
         """
@@ -400,17 +404,18 @@ class DatabaseServiceSource(
 
             # If markAllDeletedTables is False (Default), Only delete tables which are deleted from the datasource
             else:
-                schema_names_list = self._get_filtered_schema_names(add_to_status=False)
-                for schema_name in schema_names_list:
-                    schema_fqn = fqn.build(
-                        self.metadata,
-                        entity_type=DatabaseSchema,
-                        service_name=self.config.serviceName,
-                        database_name=self.context.database.name.__root__,
-                        schema_name=schema_name,
-                    )
+                schema_fqn_list = self._get_filtered_schema_names(
+                    return_fqn=True, add_to_status=False
+                )
 
-                    yield from self.delete_schema_tables(schema_fqn)
+                for schema_fqn in schema_fqn_list:
+                    yield from delete_entity_from_source(
+                        metadata=self.metadata,
+                        entity_type=Table,
+                        entity_source_state=self.database_source_state,
+                        mark_deleted_entity=self.source_config.markDeletedTables,
+                        params={"database": schema_fqn},
+                    )
 
     def test_connection(self) -> None:
         test_connection_fn = get_test_connection_fn(self.service_connection)
