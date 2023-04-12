@@ -293,8 +293,6 @@ const DatasetDetailsPage: FunctionComponent = () => {
     if (!isEmpty(tableDetails)) {
       setIsTableProfileLoading(true);
       try {
-        console.log('count');
-
         const { profile } = await getLatestTableProfileByFqn(
           tableDetails.fullyQualifiedName ?? ''
         );
