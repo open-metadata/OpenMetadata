@@ -24,8 +24,8 @@ import org.openmetadata.schema.api.services.CreateDashboardService;
 import org.openmetadata.schema.api.services.CreateDatabaseService;
 import org.openmetadata.schema.api.services.CreateMessagingService;
 import org.openmetadata.schema.api.services.CreateMlModelService;
-import org.openmetadata.schema.api.services.CreateObjectStoreService;
 import org.openmetadata.schema.api.services.CreatePipelineService;
+import org.openmetadata.schema.api.services.CreateStorageService;
 import org.openmetadata.schema.api.teams.CreateTeam;
 import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.api.tests.CreateTestSuite;
@@ -42,14 +42,14 @@ import org.openmetadata.service.resources.databases.TableResourceTest;
 import org.openmetadata.service.resources.dqtests.TestSuiteResourceTest;
 import org.openmetadata.service.resources.glossary.GlossaryResourceTest;
 import org.openmetadata.service.resources.glossary.GlossaryTermResourceTest;
-import org.openmetadata.service.resources.objectstores.ContainerResourceTest;
 import org.openmetadata.service.resources.pipelines.PipelineResourceTest;
 import org.openmetadata.service.resources.services.DashboardServiceResourceTest;
 import org.openmetadata.service.resources.services.DatabaseServiceResourceTest;
 import org.openmetadata.service.resources.services.MessagingServiceResourceTest;
 import org.openmetadata.service.resources.services.MlModelServiceResourceTest;
-import org.openmetadata.service.resources.services.ObjectStoreServiceResourceTest;
 import org.openmetadata.service.resources.services.PipelineServiceResourceTest;
+import org.openmetadata.service.resources.services.StorageServiceResourceTest;
+import org.openmetadata.service.resources.storages.ContainerResourceTest;
 import org.openmetadata.service.resources.teams.TeamResourceTest;
 import org.openmetadata.service.resources.teams.UserResourceTest;
 import org.openmetadata.service.resources.topics.TopicResourceTest;
@@ -168,10 +168,10 @@ public class SystemResourceTest extends OpenMetadataApplicationTest {
     CreateMlModelService createMlModelService = mlModelServiceResourceTest.createRequest(test);
     mlModelServiceResourceTest.createEntity(createMlModelService, ADMIN_AUTH_HEADERS);
 
-    // Create ObjectStore Service
-    ObjectStoreServiceResourceTest objectStoreServiceResourceTest = new ObjectStoreServiceResourceTest();
-    CreateObjectStoreService createObjectStoreService = objectStoreServiceResourceTest.createRequest(test);
-    objectStoreServiceResourceTest.createEntity(createObjectStoreService, ADMIN_AUTH_HEADERS);
+    // Create Storage Service
+    StorageServiceResourceTest storageServiceResourceTest = new StorageServiceResourceTest();
+    CreateStorageService createStorageService = storageServiceResourceTest.createRequest(test);
+    storageServiceResourceTest.createEntity(createStorageService, ADMIN_AUTH_HEADERS);
 
     // Get count after creating services and ensure it increased by 1
     ServicesCount afterCount = getServicesCount();
@@ -179,7 +179,7 @@ public class SystemResourceTest extends OpenMetadataApplicationTest {
     Assertions.assertEquals(beforeCount.getDashboardServiceCount() + 1, afterCount.getDashboardServiceCount());
     Assertions.assertEquals(beforeCount.getPipelineServiceCount() + 1, afterCount.getPipelineServiceCount());
     Assertions.assertEquals(beforeCount.getMlModelServiceCount() + 1, afterCount.getMlModelServiceCount());
-    Assertions.assertEquals(beforeCount.getObjectStorageServiceCount() + 1, afterCount.getObjectStorageServiceCount());
+    Assertions.assertEquals(beforeCount.getStorageServiceCount() + 1, afterCount.getStorageServiceCount());
   }
 
   @Test

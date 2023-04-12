@@ -61,8 +61,12 @@
     },
     "sslMode": {
       "title": "SSL Mode",
-      "description": "SSL Mode to connect to postgres database. E.g, prefer, verify-ca etc.",
-      "type": "string"
+      "description": "SSL Mode to connect to redshift database.",
+      "enum": ["disable", "allow", "prefer", "require", "verify-ca", "verify-full"],
+      "default": "disable"
+    },
+    "sslConfig": {
+      "$ref": "../../../../security/ssl/verifySSLConfig.json#/definitions/sslConfig"
     },
     "connectionOptions": {
       "title": "Connection Options",

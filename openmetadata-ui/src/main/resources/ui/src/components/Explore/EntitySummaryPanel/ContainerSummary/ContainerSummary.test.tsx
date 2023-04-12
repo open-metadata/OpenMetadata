@@ -17,7 +17,7 @@ import {
   Container,
   DataType,
   FileFormat,
-  ObjectStoreServiceType,
+  StorageServiceType,
 } from 'generated/entity/data/container';
 import React from 'react';
 import ContainerSummary from './ContainerSummary.component';
@@ -31,7 +31,7 @@ jest.mock('../SummaryList/SummaryList.component', () =>
 const mockEntityDetails: Container = {
   id: '63be99e5-8ebf-44b6-8247-0f4faed00798',
   name: 'transactions',
-  fullyQualifiedName: 's3_object_store_sample.transactions',
+  fullyQualifiedName: 's3_storage_sample.transactions',
   displayName: 'Company Transactions',
   description: "Bucket containing all the company's transactions",
   version: 0.1,
@@ -40,11 +40,11 @@ const mockEntityDetails: Container = {
   href: 'http://openmetadata-server:8585/api/v1/containers/63be99e5-8ebf-44b6-8247-0f4faed00798',
   service: {
     id: '7ab99e67-b578-4361-bad2-9076a52b341d',
-    type: 'objectStoreService',
-    name: 's3_object_store_sample',
-    fullyQualifiedName: 's3_object_store_sample',
+    type: 'storageService',
+    name: 's3_storage_sample',
+    fullyQualifiedName: 's3_storage_sample',
     deleted: false,
-    href: 'http://openmetadata-server:8585/api/v1/services/objectstoreServices/7ab99e67-b578-4361-bad2-9076a52b341d',
+    href: 'http://openmetadata-server:8585/api/v1/services/storageServices/7ab99e67-b578-4361-bad2-9076a52b341d',
   },
   dataModel: {
     isPartitioned: true,
@@ -55,8 +55,7 @@ const mockEntityDetails: Container = {
         dataTypeDisplay: 'numeric',
         description:
           'The ID of the executed transaction. This column is the primary key for this table.',
-        fullyQualifiedName:
-          's3_object_store_sample.transactions.transaction_id',
+        fullyQualifiedName: 's3_storage_sample.transactions.transaction_id',
         tags: [],
         constraint: Constraint.PrimaryKey,
         ordinalPosition: 1,
@@ -67,7 +66,7 @@ const mockEntityDetails: Container = {
         dataLength: 100,
         dataTypeDisplay: 'varchar',
         description: 'The merchant for this transaction.',
-        fullyQualifiedName: 's3_object_store_sample.transactions.merchant',
+        fullyQualifiedName: 's3_storage_sample.transactions.merchant',
         tags: [],
         ordinalPosition: 2,
       },
@@ -76,8 +75,7 @@ const mockEntityDetails: Container = {
         dataType: DataType.Timestamp,
         dataTypeDisplay: 'timestamp',
         description: 'The time the transaction took place.',
-        fullyQualifiedName:
-          's3_object_store_sample.transactions.transaction_time',
+        fullyQualifiedName: 's3_storage_sample.transactions.transaction_time',
         tags: [],
         ordinalPosition: 3,
       },
@@ -87,7 +85,7 @@ const mockEntityDetails: Container = {
   numberOfObjects: 50,
   size: 102400,
   fileFormats: [FileFormat.Parquet],
-  serviceType: ObjectStoreServiceType.S3,
+  serviceType: StorageServiceType.S3,
   deleted: false,
   tags: [],
   followers: [],

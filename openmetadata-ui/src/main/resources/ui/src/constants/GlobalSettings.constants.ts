@@ -18,7 +18,7 @@ export enum GlobalSettingsMenuCategory {
   NOTIFICATIONS = 'notifications',
   CUSTOM_ATTRIBUTES = 'customAttributes',
   DATA_QUALITY = 'dataQuality',
-  EVENT_PUBLISHERS = 'eventPublishers',
+  OPEN_METADATA = 'openMetadata',
   INTEGRATIONS = 'integrations',
   MEMBERS = 'members',
   SERVICES = 'services',
@@ -42,12 +42,14 @@ export enum GlobalSettingOptions {
   TABLES = 'tables',
   MSTEAMS = 'msteams',
   ACTIVITY_FEED = 'activityFeeds',
-  ELASTIC_SEARCH = 'elasticSearch',
+  SEARCH = 'search',
+  DATA_INSIGHT = 'dataInsight',
+  EMAIL = 'email',
   ALERTS = 'alerts',
   ALERT = 'alert',
   ADD_ALERTS = 'add-alerts',
   EDIT_ALERTS = 'edit-alert',
-  OBJECT_STORES = 'objectStores',
+  STORAGES = 'storage',
 }
 
 export const GLOBAL_SETTING_PERMISSION_RESOURCES = [
