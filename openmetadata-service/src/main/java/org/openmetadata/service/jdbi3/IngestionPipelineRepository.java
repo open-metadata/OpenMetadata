@@ -68,7 +68,7 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
   @Override
   public void setFullyQualifiedName(IngestionPipeline ingestionPipeline) {
     ingestionPipeline.setFullyQualifiedName(
-        FullyQualifiedName.add(ingestionPipeline.getService().getName(), ingestionPipeline.getName()));
+        FullyQualifiedName.add(ingestionPipeline.getService().getFullyQualifiedName(), ingestionPipeline.getName()));
   }
 
   @Override
@@ -94,7 +94,7 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
 
     daoCollection
         .entityExtensionTimeSeriesDao()
-        .delete(ingestionPipeline.getFullyQualifiedName(), PIPELINE_STATUS_EXTENSION);
+        .delete(FullyQualifiedName.buildHash(ingestionPipeline.getFullyQualifiedName()), PIPELINE_STATUS_EXTENSION);
     setFieldsInternal(ingestionPipeline, Fields.EMPTY_FIELDS);
     return ingestionPipeline;
   }

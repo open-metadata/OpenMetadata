@@ -181,7 +181,7 @@ public class RoleResourceTest extends EntityResourceTest<Role, CreateRole> {
     String updatedBy = getPrincipalName(ADMIN_AUTH_HEADERS);
     role =
         byName
-            ? getEntityByName(role.getName(), null, null, ADMIN_AUTH_HEADERS)
+            ? getEntityByName(role.getFullyQualifiedName(), null, null, ADMIN_AUTH_HEADERS)
             : getEntity(role.getId(), null, ADMIN_AUTH_HEADERS);
     validateRole(role, role.getDescription(), role.getDisplayName(), updatedBy);
     assertListNull(role.getPolicies(), role.getUsers());
@@ -189,7 +189,7 @@ public class RoleResourceTest extends EntityResourceTest<Role, CreateRole> {
     String fields = "policies,teams,users";
     role =
         byName
-            ? getEntityByName(role.getName(), null, fields, ADMIN_AUTH_HEADERS)
+            ? getEntityByName(role.getFullyQualifiedName(), null, fields, ADMIN_AUTH_HEADERS)
             : getEntity(role.getId(), fields, ADMIN_AUTH_HEADERS);
     assertListNotNull(role.getPolicies(), role.getUsers());
     validateRole(role, role.getDescription(), role.getDisplayName(), updatedBy);

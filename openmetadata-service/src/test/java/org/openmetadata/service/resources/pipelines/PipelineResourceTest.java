@@ -57,6 +57,7 @@ import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Status;
 import org.openmetadata.schema.type.StatusType;
 import org.openmetadata.schema.type.Task;
+import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.pipelines.PipelineResource.PipelineList;
@@ -169,7 +170,7 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
 
   @Test
   void post_PipelineWithDifferentService_200_ok(TestInfo test) throws IOException {
-    String[] differentServices = {AIRFLOW_REFERENCE.getName(), GLUE_REFERENCE.getName()};
+    String[] differentServices = {AIRFLOW_REFERENCE.getFullyQualifiedName(), GLUE_REFERENCE.getFullyQualifiedName()};
 
     // Create Pipeline for each service and test APIs
     for (String service : differentServices) {
@@ -199,7 +200,7 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
   @Test
   void put_PipelineUrlUpdate_200(TestInfo test) throws IOException {
     CreatePipeline request =
-        createRequest(test).withService(AIRFLOW_REFERENCE.getName()).withDescription("description");
+        createRequest(test).withService(AIRFLOW_REFERENCE.getFullyQualifiedName()).withDescription("description");
     createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
     String pipelineURL = "https://airflow.open-metadata.org/tree?dag_id=airflow_redshift_usage";
     Integer pipelineConcurrency = 110;
@@ -211,7 +212,7 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
             request.withPipelineUrl(pipelineURL).withConcurrency(pipelineConcurrency).withStartDate(startDate),
             OK,
             ADMIN_AUTH_HEADERS);
-    String expectedFQN = FullyQualifiedName.add(AIRFLOW_REFERENCE.getFullyQualifiedName(), pipeline.getName());
+    String expectedFQN = FullyQualifiedName.add(EntityInterfaceUtil.quoteName(AIRFLOW_REFERENCE.getName()), EntityInterfaceUtil.quoteName(pipeline.getName()));
     assertEquals(pipelineURL, pipeline.getPipelineUrl());
     assertEquals(startDate, pipeline.getStartDate());
     assertEquals(pipelineConcurrency, pipeline.getConcurrency());
@@ -221,7 +222,7 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
   @Test
   void put_PipelineTasksUpdate_200(TestInfo test) throws IOException {
     CreatePipeline request =
-        createRequest(test).withService(AIRFLOW_REFERENCE.getName()).withDescription(null).withTasks(null);
+        createRequest(test).withService(AIRFLOW_REFERENCE.getFullyQualifiedName()).withDescription(null).withTasks(null);
     Pipeline pipeline = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
 
     // Add description and tasks
@@ -258,7 +259,7 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
   void put_PipelineTasksOverride_200(TestInfo test) throws IOException {
     // A PUT operation with a new Task should override the current tasks in the Pipeline
     // This change will always be minor, both with deletes/adds
-    CreatePipeline request = createRequest(test).withService(AIRFLOW_REFERENCE.getName());
+    CreatePipeline request = createRequest(test).withService(AIRFLOW_REFERENCE.getFullyQualifiedName());
     Pipeline pipeline = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
 
     List<Task> newTask =
@@ -277,7 +278,7 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
 
   @Test
   void put_PipelineStatus_200(TestInfo test) throws IOException, ParseException {
-    CreatePipeline request = createRequest(test).withService(AIRFLOW_REFERENCE.getName());
+    CreatePipeline request = createRequest(test).withService(AIRFLOW_REFERENCE.getFullyQualifiedName());
     Pipeline pipeline = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
 
     // PUT one status and validate
@@ -395,7 +396,7 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
 
   @Test
   void put_PipelineInvalidStatus_4xx(TestInfo test) throws IOException, ParseException {
-    CreatePipeline request = createRequest(test).withService(AIRFLOW_REFERENCE.getName());
+    CreatePipeline request = createRequest(test).withService(AIRFLOW_REFERENCE.getFullyQualifiedName());
     Pipeline pipeline = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
 
     SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd");
@@ -419,7 +420,7 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
 
   @Test
   void patch_PipelineTasksUpdate_200_ok(TestInfo test) throws IOException {
-    CreatePipeline request = createRequest(test).withService(AIRFLOW_REFERENCE.getName());
+    CreatePipeline request = createRequest(test).withService(AIRFLOW_REFERENCE.getFullyQualifiedName());
     Pipeline pipeline = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
 
     String origJson = JsonUtils.pojoToJson(pipeline);
@@ -485,7 +486,7 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
   void put_AddRemovePipelineTasksUpdate_200(TestInfo test) throws IOException {
     CreatePipeline request =
         createRequest(test)
-            .withService(AIRFLOW_REFERENCE.getName())
+            .withService(AIRFLOW_REFERENCE.getFullyQualifiedName())
             .withDescription(null)
             .withTasks(null)
             .withConcurrency(null)

@@ -63,7 +63,7 @@ public class QueryResourceTest extends EntityResourceTest<Query, CreateQuery> {
     Table createdTable = tableResourceTest.createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
     TABLE_REF = createdTable.getEntityReference();
     QUERY = "select * from sales";
-    QUERY_CHECKSUM = EntityUtil.getCheckSum(QUERY);
+    QUERY_CHECKSUM = EntityUtil.hash(QUERY);
   }
 
   @Override

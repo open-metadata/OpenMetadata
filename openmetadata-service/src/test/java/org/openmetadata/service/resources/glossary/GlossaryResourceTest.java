@@ -68,6 +68,7 @@ import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TagLabel.TagSource;
 import org.openmetadata.schema.type.csv.CsvImportResult;
+import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.jdbi3.GlossaryRepository.GlossaryCsv;
@@ -359,29 +360,28 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
     String user1 = USER1.getName();
     String user2 = USER2.getName();
     String team1 = TEAM1.getName();
-
     // CSV Header "parent" "name" "displayName" "description" "synonyms" "relatedTerms" "references" "tags",
     // "reviewers", "owner", "status"
     // Create two records
     List<String> createRecords =
         listOf(
             String.format(
-                ",g1,dsp1,\"dsc1,1\",h1;h2;h3,,term1;http://term1,Tier.Tier1,%s;%s,user;%s,%s",
+                ",g1,dsp1,\"dsc1,1\",h1;h2;h3,,term1;http://term1,Tier.Tier1,\"%s\";\"%s\",\"%s\",%s",
                 user1, user2, user1, "Approved"),
             String.format(
-                ",g2,dsp2,dsc3,h1;h3;h3,,term2;https://term2,Tier.Tier2,%s,user;%s,%s", user1, user2, "Draft"),
-            String.format("importExportTest.g1,g11,dsp2,dsc11,h1;h3;h3,,,,%s,team;%s,%s", user1, team1, "Deprecated"));
+                ",g2,dsp2,dsc3,h1;h3;h3,,term2;https://term2,Tier.Tier2,\"%s\",user;\"%s\",%s", user1, user2, "Draft"),
+            String.format("\"importExportTest.g1\",g11,dsp2,dsc11,h1;h3;h3,,,,\"%s\" ,team;\"%s\",%s", user1, team1, "Deprecated"));
 
     // Update terms with change in description
     List<String> updateRecords =
         listOf(
             String.format(
-                ",g1,dsp1,new-dsc1,h1;h2;h3,,term1;http://term1,Tier.Tier1,%s;%s,user;%s,%s",
+                ",g1,dsp1,new-dsc1,h1;h2;h3,,term1;http://term1,Tier.Tier1,\"%s\";\"%s\",user;\"%s\",%s",
                 user1, user2, user1, "Approved"),
             String.format(
-                ",g2,dsp2,new-dsc3,h1;h3;h3,,term2;https://term2,Tier.Tier2,%s,user;%s,%s", user1, user2, "Draft"),
+                ",g2,dsp2,new-dsc3,h1;h3;h3,,term2;https://term2,Tier.Tier2,\"%s\",user;\"%s\",%s", user1, user2, "Draft"),
             String.format(
-                "importExportTest.g1,g11,dsp2,new-dsc11,h1;h3;h3,,,,%s,team;%s,%s", user1, team1, "Deprecated"));
+                "\"importExportTest.g1\",g11,dsp2,new-dsc11,h1;h3;h3,,,,\"%s\",team;\"%s\",%s", user1, team1, "Deprecated"));
 
     // Add new row to existing rows
     List<String> newRecords = listOf(",g3,dsp0,dsc0,h1;h2;h3,,term0;http://term0,Tier.Tier3,,,Draft");
@@ -421,14 +421,14 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
     String fields = "";
     entity =
         byName
-            ? getEntityByName(entity.getName(), fields, ADMIN_AUTH_HEADERS)
+            ? getEntityByName(entity.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
             : getEntity(entity.getId(), fields, ADMIN_AUTH_HEADERS);
     assertListNull(entity.getOwner(), entity.getTags());
 
     fields = "owner,tags";
     entity =
         byName
-            ? getEntityByName(entity.getName(), fields, ADMIN_AUTH_HEADERS)
+            ? getEntityByName(entity.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
             : getEntity(entity.getId(), fields, ADMIN_AUTH_HEADERS);
     // Checks for other owner, tags, and followers is done in the base class
     return entity;
@@ -530,5 +530,12 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
       assertTagPrefixAbsent(table.getTags(), previousTermFqn);
       assertTagPrefixAbsent(table.getColumns().get(0).getTags(), previousTermFqn);
     }
+  }
+
+  private static String quoteName(String name) {
+    if (name != null && !name.contains("\"")) {
+      return name.contains(".") ? "\\\"" + name + "\\\"" : name;
+    }
+    return name;
   }
 }

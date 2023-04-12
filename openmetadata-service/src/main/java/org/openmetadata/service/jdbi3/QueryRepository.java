@@ -72,7 +72,7 @@ public class QueryRepository extends EntityRepository<Query> {
   @SneakyThrows
   public void prepare(Query entity) throws IOException {
     if (CommonUtil.nullOrEmpty(entity.getName())) {
-      String checkSum = EntityUtil.getCheckSum(entity.getQuery());
+      String checkSum = EntityUtil.hash(entity.getQuery());
       entity.setChecksum(checkSum);
       entity.setName(checkSum);
     }
@@ -183,7 +183,7 @@ public class QueryRepository extends EntityRepository<Query> {
           "users", USER, original.getUsers(), updated.getUsers(), Relationship.USES, Entity.QUERY, original.getId());
       if (operation.isPatch() && !original.getQuery().equals(updated.getQuery())) {
         recordChange("query", original.getQuery(), updated.getQuery());
-        String checkSum = EntityUtil.getCheckSum(updated.getQuery());
+        String checkSum = EntityUtil.hash(updated.getQuery());
         recordChange("name", original.getName(), checkSum);
         recordChange("checkSum", original.getChecksum(), checkSum);
       }

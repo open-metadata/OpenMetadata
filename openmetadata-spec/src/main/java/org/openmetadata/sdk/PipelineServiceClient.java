@@ -109,7 +109,9 @@ public abstract class PipelineServiceClient {
   public static String getServerVersion() throws IOException {
     InputStream fileInput = PipelineServiceClient.class.getResourceAsStream("/catalog/VERSION");
     Properties props = new Properties();
-    props.load(fileInput);
+    if (fileInput != null) {
+      props.load(fileInput);
+    }
     return props.getProperty("version", "unknown");
   }
 

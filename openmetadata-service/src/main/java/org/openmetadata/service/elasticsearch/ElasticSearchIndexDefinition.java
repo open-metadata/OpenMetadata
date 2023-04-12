@@ -292,7 +292,7 @@ public class ElasticSearchIndexDefinition {
       long updateTime = Date.from(LocalDateTime.now().atZone(ZoneId.systemDefault()).toInstant()).getTime();
       String recordString =
           dao.entityExtensionTimeSeriesDao()
-              .getExtension(EntityUtil.getCheckSum(ELASTIC_SEARCH_ENTITY_FQN_STREAM), ELASTIC_SEARCH_EXTENSION);
+              .getExtension(EntityUtil.hash(ELASTIC_SEARCH_ENTITY_FQN_STREAM), ELASTIC_SEARCH_EXTENSION);
       EventPublisherJob lastRecord = JsonUtils.readValue(recordString, EventPublisherJob.class);
       long originalLastUpdate = lastRecord.getTimestamp();
       lastRecord.setStatus(Status.ACTIVE_WITH_ERROR);
@@ -307,7 +307,7 @@ public class ElasticSearchIndexDefinition {
 
       dao.entityExtensionTimeSeriesDao()
           .update(
-              EntityUtil.getCheckSum(ELASTIC_SEARCH_ENTITY_FQN_STREAM),
+              EntityUtil.hash(ELASTIC_SEARCH_ENTITY_FQN_STREAM),
               ELASTIC_SEARCH_EXTENSION,
               JsonUtils.pojoToJson(lastRecord),
               originalLastUpdate);

@@ -1470,7 +1470,7 @@ public interface CollectionDAO {
             + "AND (:status IS NULL OR taskStatus = :status) "
             + "AND (:type IS NULL OR type = :type) "
             + "AND MD5(id) in (SELECT fromFQNHash FROM field_relationship WHERE "
-            + "(:fqnPrefixHash IS NULL OR toFQN LIKE CONCAT(:fqnPrefixHash, '.%') OR toFQNHash=:fqnPrefixHash) AND fromType='THREAD' AND "
+            + "(:fqnPrefixHash IS NULL OR toFQNHash LIKE CONCAT(:fqnPrefixHash, '.%') OR toFQNHash=:fqnPrefixHash) AND fromType='THREAD' AND "
             + "(:toType IS NULL OR toType LIKE CONCAT(:toType, '.%') OR toType=:toType) AND relation= :relation) "
             + "AND (:userName IS NULL OR id in (SELECT toFQNHash FROM field_relationship WHERE "
             + " ((fromType='user' AND fromFQNHash= :userName) OR"
@@ -1493,15 +1493,15 @@ public interface CollectionDAO {
     void update(@Bind("id") String id, @Bind("json") String json);
 
     @SqlQuery(
-        "SELECT entityLink, COUNT(id) count FROM field_relationship fr INNER JOIN thread_entity te ON fr.fromFQNHash=te.id "
-            + "WHERE (:fqnPrefixHash IS NULL OR fr.toFQN LIKE CONCAT(:fqnPrefixHash, '.%') OR fr.toFQN=:fqnPrefixHash) AND "
+        "SELECT entityLink, COUNT(id) count FROM field_relationship fr INNER JOIN thread_entity te ON fr.fromFQNHash=MD5(te.id) "
+            + "WHERE (:fqnPrefixHash IS NULL OR fr.toFQNHash LIKE CONCAT(:fqnPrefixHash, '.%') OR fr.toFQNHash=:fqnPrefixHash) AND "
             + "(:toType IS NULL OR fr.toType like concat(:toType, '.%') OR fr.toType=:toType) AND fr.fromType = :fromType "
             + "AND fr.relation = :relation AND te.resolved= :isResolved AND (:status IS NULL OR te.taskStatus = :status) "
             + "AND (:type IS NULL OR te.type = :type) "
             + "GROUP BY entityLink")
     @RegisterRowMapper(CountFieldMapper.class)
     List<List<String>> listCountByEntityLink(
-        @Bind("fqnPrefix") String fqnPrefixHash,
+        @Bind("fqnPrefixHash") String fqnPrefixHash,
         @Bind("fromType") String fromType,
         @Bind("toType") String toType,
         @Bind("relation") int relation,
@@ -1901,10 +1901,6 @@ public interface CollectionDAO {
       return "fqnHash";
     }
 
-    @Override
-    default String getNameColumn() {
-      return "fullyQualifiedName";
-    }
   }
 
   interface PipelineServiceDAO extends EntityDAO<PipelineService> {
@@ -3770,7 +3766,7 @@ public interface CollectionDAO {
         sqlCondition.append(String.format("AND status='%s' ", status));
       }
 
-      return listBefore(getTableName(), getNameColumn(), sqlCondition.toString(), limit, before);
+      return listBefore(getTableName(), getNameHashColumn(), sqlCondition.toString(), limit, before);
     }
 
     @Override
@@ -3794,7 +3790,7 @@ public interface CollectionDAO {
         sqlCondition.append(String.format("AND status='%s' ", status));
       }
 
-      return listAfter(getTableName(), getNameColumn(), sqlCondition.toString(), limit, after);
+      return listAfter(getTableName(), getNameHashColumn(), sqlCondition.toString(), limit, after);
     }
 
     @Override
@@ -3818,7 +3814,7 @@ public interface CollectionDAO {
         sqlCondition.append(String.format("AND status='%s' ", status));
       }
 
-      return listCount(getTableName(), getNameColumn(), sqlCondition.toString());
+      return listCount(getTableName(), getNameHashColumn(), sqlCondition.toString());
     }
 
     @SqlQuery(

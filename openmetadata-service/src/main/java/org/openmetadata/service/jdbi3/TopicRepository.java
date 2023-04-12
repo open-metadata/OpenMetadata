@@ -51,7 +51,7 @@ public class TopicRepository extends EntityRepository<Topic> {
 
   @Override
   public void setFullyQualifiedName(Topic topic) {
-    topic.setFullyQualifiedName(FullyQualifiedName.add(topic.getService().getName(), topic.getName()));
+    topic.setFullyQualifiedName(FullyQualifiedName.add(topic.getService().getFullyQualifiedName(), topic.getName()));
     if (topic.getMessageSchema() != null) {
       setFieldFQN(topic.getFullyQualifiedName(), topic.getMessageSchema().getSchemaFields());
     }

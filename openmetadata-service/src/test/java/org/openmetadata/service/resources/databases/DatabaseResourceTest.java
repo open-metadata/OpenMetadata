@@ -71,7 +71,7 @@ public class DatabaseResourceTest extends EntityResourceTest<Database, CreateDat
 
     // Create database for each service and test APIs
     for (EntityReference service : differentServices) {
-      createAndCheckEntity(createRequest(test).withService(service.getName()), ADMIN_AUTH_HEADERS);
+      createAndCheckEntity(createRequest(test).withService(service.getFullyQualifiedName()), ADMIN_AUTH_HEADERS);
 
       // List databases by filtering on service name and ensure right databases in the response
       Map<String, String> queryParams = new HashMap<>();

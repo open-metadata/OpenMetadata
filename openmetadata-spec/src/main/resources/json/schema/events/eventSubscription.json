@@ -123,8 +123,8 @@
       "$ref": "../type/basic.json#/definitions/entityName"
     },
     "fullyQualifiedName": {
-      "description": "Name that uniquely identifies a Event Subscription.",
-      "$ref": "../type/basic.json#/definitions/entityName"
+      "description": "FullyQualifiedName that uniquely identifies a Event Subscription.",
+      "$ref": "../type/basic.json#/definitions/fullyQualifiedEntityName"
     },
     "displayName": {
       "description": "Display name for this Event Subscription.",

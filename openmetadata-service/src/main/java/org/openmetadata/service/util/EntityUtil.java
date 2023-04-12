@@ -526,7 +526,7 @@ public final class EntityUtil {
   }
 
   @SneakyThrows
-  public static String getCheckSum(String input) {
+  public static String hash(String input) {
     if (input != null) {
       byte[] checksum = MessageDigest.getInstance("MD5").digest(input.getBytes());
       return Hex.encodeHexString(checksum);

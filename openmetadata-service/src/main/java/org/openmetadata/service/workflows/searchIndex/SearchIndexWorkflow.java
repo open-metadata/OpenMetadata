@@ -282,12 +282,12 @@ public class SearchIndexWorkflow implements Runnable {
   public void updateRecordToDb() throws IOException {
     String recordString =
         dao.entityExtensionTimeSeriesDao()
-            .getExtension(EntityUtil.getCheckSum(jobData.getId().toString()), REINDEXING_JOB_EXTENSION);
+            .getExtension(EntityUtil.hash(jobData.getId().toString()), REINDEXING_JOB_EXTENSION);
     EventPublisherJob lastRecord = JsonUtils.readValue(recordString, EventPublisherJob.class);
     long originalLastUpdate = lastRecord.getTimestamp();
     dao.entityExtensionTimeSeriesDao()
         .update(
-            EntityUtil.getCheckSum(jobData.getId().toString()),
+            EntityUtil.hash(jobData.getId().toString()),
             REINDEXING_JOB_EXTENSION,
             JsonUtils.pojoToJson(jobData),
             originalLastUpdate);

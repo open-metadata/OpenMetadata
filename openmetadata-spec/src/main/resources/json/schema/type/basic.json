@@ -100,7 +100,7 @@
       "type": "string",
       "minLength": 1,
       "maxLength": 128,
-      "pattern": "^(?U)[\\w'\\- .&]+$"
+      "pattern": "^((?!::).)*$"
     },
     "fullyQualifiedEntityName": {
       "description": "A unique name that identifies an entity. Example for table 'DatabaseService:Database:Table'.",

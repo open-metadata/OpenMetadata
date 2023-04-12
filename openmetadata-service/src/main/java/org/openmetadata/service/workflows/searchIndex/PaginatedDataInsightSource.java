@@ -95,7 +95,7 @@ public class PaginatedDataInsightSource implements Source<ResultList<ReportData>
     List<CollectionDAO.ReportDataRow> reportDataList =
         dao.entityExtensionTimeSeriesDao()
             .getAfterExtension(
-                EntityUtil.getCheckSum(entityFQN), limit + 1, after == null ? "0" : RestUtil.decodeCursor(after));
+                EntityUtil.hash(entityFQN), limit + 1, after == null ? "0" : RestUtil.decodeCursor(after));
     return getAfterExtensionList(reportDataList, after, limit, reportDataCount);
   }
 
