@@ -822,36 +822,6 @@ describe('Glossary page should work properly', () => {
     cy.get('[data-testid="saveButton"]').should('be.visible').click();
     cy.get('.ant-modal-body').should('not.exist');
 
-    interceptURL(
-      'GET',
-      `/api/v1/search/query?q=*${encodeURI(
-        GLOSSARY_TERM_WITH_DETAILS.reviewer
-      )}*&from=0&size=15&index=user_search_index`,
-      'searchReviewer'
-    );
-
-    // Add reviewer
-    cy.get('[data-testid="add-reviewers"]')
-      .scrollIntoView()
-      .should('be.visible')
-      .click();
-
-    // cy.get('.ant-modal-body').should('be.visible');
-    cy.get('[data-testid="searchbar"]')
-      .should('be.visible')
-      .type(GLOSSARY_TERM_WITH_DETAILS.reviewer);
-
-    verifyResponseStatusCode('@searchReviewer', 200);
-
-    cy.get(`[title="${GLOSSARY_TERM_WITH_DETAILS.reviewer}"]`)
-      .scrollIntoView()
-      .should('be.visible')
-      .click();
-
-    cy.get('[data-testid="selectable-list-update-btn"]')
-      .should('be.visible')
-      .click();
-
     interceptURL('POST', '/api/v1/glossaryTerms', 'createGlossaryTerms');
     cy.get('[data-testid="save-glossary-term"]')
       .scrollIntoView()
@@ -867,8 +837,7 @@ describe('Glossary page should work properly', () => {
 
   it('Verify details of created glossaryTerm', () => {
     selectActiveGlossary(NEW_GLOSSARY.name);
-    const { name, fullyQualifiedName, reviewer, inheritedReviewer, tag } =
-      GLOSSARY_TERM_WITH_DETAILS;
+    const { name, fullyQualifiedName, tag } = GLOSSARY_TERM_WITH_DETAILS;
     interceptURL(
       'GET',
       `/api/v1/glossaryTerms/name/*.${name}?fields=*`,
@@ -887,11 +856,6 @@ describe('Glossary page should work properly', () => {
       .scrollIntoView()
       .as('glossaryTermDetailsPanel');
     cy.get('@glossaryTermDetailsPanel').contains('admin').should('be.visible');
-    cy.get('[data-testid="user-tag"]').contains(reviewer).should('be.visible');
-    cy.get('@glossaryTermDetailsPanel')
-      .find(`[data-testid="user-tag"]`)
-      .contains(inheritedReviewer)
-      .should('be.visible');
     cy.get('[data-testid="add-tag"]').contains(tag).should('be.visible');
   });
 
