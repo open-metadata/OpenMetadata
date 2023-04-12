@@ -127,16 +127,31 @@ export type ServicePageData =
   | Container
   | DashboardDataModel;
 
+const tableComponent = {
+  body: {
+    row: ({ children }: { children: React.ReactNode }) => (
+      <tr data-testid="row">{children}</tr>
+    ),
+  },
+};
+
 const ServicePage: FunctionComponent = () => {
   const { t } = useTranslation();
   const { isAirflowAvailable } = useAirflowStatus();
   const { serviceFQN, serviceType, serviceCategory, tab } =
     useParams() as Record<string, string>;
-  const { getEntityPermissionByFqn } = usePermissionProvider();
-  const history = useHistory();
+
+  const isOpenMetadataService = useMemo(
+    () => serviceFQN === OPEN_METADATA,
+    [serviceFQN]
+  );
+
   const [serviceName, setServiceName] = useState<ServiceTypes>(
     (serviceCategory as ServiceTypes) || getServiceCategoryFromType(serviceType)
   );
+
+  const { getEntityPermissionByFqn } = usePermissionProvider();
+  const history = useHistory();
   const [slashedTableName, setSlashedTableName] = useState<
     TitleBreadcrumbProps['titleLinks']
   >([]);
@@ -144,20 +159,19 @@ const ServicePage: FunctionComponent = () => {
   const [description, setDescription] = useState('');
   const [serviceDetails, setServiceDetails] = useState<ServicesType>();
   const [data, setData] = useState<Array<ServicePageData>>([]);
+  const [isLoading, setIsLoading] = useState(!isOpenMetadataService);
   const [dataModel, setDataModel] = useState<Array<ServicePageData>>([]);
   const [dataModelPaging, setDataModelPaging] = useState<Paging>(pagingObject);
-  const [isLoading, setIsLoading] = useState(true);
   const [paging, setPaging] = useState<Paging>(pagingObject);
   const [activeTab, setActiveTab] = useState(
     getCurrentServiceTab(tab, serviceName)
   );
-  const [isError, setIsError] = useState(false);
+  const [isError, setIsError] = useState(isOpenMetadataService);
   const [ingestions, setIngestions] = useState<IngestionPipeline[]>([]);
   const [serviceList] = useState<Array<DatabaseService>>([]);
   const [ingestionPaging, setIngestionPaging] = useState<Paging>({} as Paging);
 
   const [currentPage, setCurrentPage] = useState(1);
-  const [ingestionCurrentPage, setIngestionCurrentPage] = useState(1);
   const [airflowEndpoint, setAirflowEndpoint] = useState<string>();
   const [connectionDetails, setConnectionDetails] = useState<ConfigData>();
 
@@ -848,18 +862,6 @@ const ServicePage: FunctionComponent = () => {
     setCurrentPage(activePage ?? 1);
   };
 
-  const ingestionPagingHandler = (
-    cursorType: string | number,
-    activePage?: number
-  ) => {
-    const pagingString = `&${cursorType}=${
-      ingestionPaging[cursorType as keyof typeof paging]
-    }`;
-
-    getAllIngestionWorkflows(pagingString);
-    setIngestionCurrentPage(activePage ?? 1);
-  };
-
   const getIngestionTab = () => {
     if (!isAirflowAvailable) {
       return <ErrorPlaceHolderIngestion />;
@@ -871,13 +873,11 @@ const ServicePage: FunctionComponent = () => {
           <Ingestion
             isRequiredDetailsAvailable
             airflowEndpoint={airflowEndpoint}
-            currentPage={ingestionCurrentPage}
             deleteIngestion={deleteIngestionById}
             deployIngestion={deployIngestion}
             handleEnableDisableIngestion={handleEnableDisableIngestion}
             ingestionList={ingestions}
             paging={ingestionPaging}
-            pagingHandler={ingestionPagingHandler}
             permissions={servicePermission}
             serviceCategory={serviceName as ServiceCategory}
             serviceDetails={serviceDetails}
@@ -915,7 +915,9 @@ const ServicePage: FunctionComponent = () => {
   };
 
   useEffect(() => {
-    fetchServicePermission();
+    if (!isOpenMetadataService) {
+      fetchServicePermission();
+    }
   }, [serviceFQN, serviceCategory]);
 
   const tableColumn: ColumnsType<ServicePageData> = useMemo(() => {
@@ -985,7 +987,7 @@ const ServicePage: FunctionComponent = () => {
   }, [serviceName]);
 
   useEffect(() => {
-    if (isAirflowAvailable) {
+    if (isAirflowAvailable && !isOpenMetadataService) {
       getAllIngestionWorkflows();
     }
   }, [isAirflowAvailable]);
@@ -996,11 +998,17 @@ const ServicePage: FunctionComponent = () => {
       serviceFQN === OPEN_METADATA) ||
     isUndefined(connectionDetails);
 
+  if (isLoading) {
+    return (
+      <PageContainerV1>
+        <Loader />
+      </PageContainerV1>
+    );
+  }
+
   return (
     <PageContainerV1>
-      {isLoading ? (
-        <Loader />
-      ) : isError ? (
+      {isError ? (
         <ErrorPlaceHolder>
           {getEntityMissingError(serviceName as string, serviceFQN)}
         </ErrorPlaceHolder>
@@ -1054,8 +1062,8 @@ const ServicePage: FunctionComponent = () => {
               )}
               <Col span={24}>
                 <Space>
-                  {extraInfo.map((info, index) => (
-                    <Space key={index}>
+                  {extraInfo.map((info) => (
+                    <Space key={info.id}>
                       <EntitySummaryDetails
                         currentOwner={serviceDetails?.owner}
                         data={info}
@@ -1106,15 +1114,7 @@ const ServicePage: FunctionComponent = () => {
                           bordered
                           className="mt-4 table-shadow"
                           columns={tableColumn}
-                          components={{
-                            body: {
-                              row: ({
-                                children,
-                              }: {
-                                children: React.ReactNode;
-                              }) => <tr data-testid="row">{children}</tr>,
-                            },
-                          }}
+                          components={tableComponent}
                           data-testid="service-children-table"
                           dataSource={data}
                           loading={{

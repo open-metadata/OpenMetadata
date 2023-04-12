@@ -14,7 +14,6 @@
 import { Checkbox } from 'antd';
 import classNames from 'classnames';
 import { EntityHeader } from 'components/Entity/EntityHeader/EntityHeader.component';
-import { ExploreSearchSource } from 'interface/search.interface';
 import { isString, startCase, uniqueId } from 'lodash';
 import { ExtraInfo } from 'Models';
 import React, { forwardRef, useMemo } from 'react';
@@ -48,11 +47,12 @@ export interface TableDataCardPropsV2 {
     value: number;
   }[];
   handleSummaryPanelDisplay?: (
-    details: ExploreSearchSource,
+    details: SearchedDataProps['data'][number]['_source'],
     entityType: string
   ) => void;
   checked?: boolean;
   showCheckboxes?: boolean;
+  openEntityInNewPage?: boolean;
 }
 
 const TableDataCardV2: React.FC<TableDataCardPropsV2> = forwardRef<
@@ -142,26 +142,30 @@ const TableDataCardV2: React.FC<TableDataCardPropsV2> = forwardRef<
         className={classNames(
           'data-asset-info-card-container',
           'table-data-card-container',
-          className ? className : ''
+          className
         )}
         data-testid="table-data-card"
         id={id}
         ref={ref}
         onClick={() => {
-          handleSummaryPanelDisplay &&
-            handleSummaryPanelDisplay(source as ExploreSearchSource, tab);
+          handleSummaryPanelDisplay && handleSummaryPanelDisplay(source, tab);
         }}>
-        <EntityHeader
-          titleIsLink
-          breadcrumb={breadcrumbs}
-          entityData={source}
-          extra={
-            showCheckboxes && (
-              <Checkbox checked={checked} className="m-l-auto" />
-            )
-          }
-          icon={serviceIcon}
-        />
+        <div>
+          {showCheckboxes && (
+            <Checkbox checked={checked} className="float-right" />
+          )}
+          <EntityHeader
+            titleIsLink
+            breadcrumb={breadcrumbs}
+            entityData={source}
+            extra={
+              showCheckboxes && (
+                <Checkbox checked={checked} className="m-l-auto" />
+              )
+            }
+            icon={serviceIcon}
+          />
+        </div>
         <div className="tw-pt-3">
           <TableDataCardBody
             description={source.description || ''}

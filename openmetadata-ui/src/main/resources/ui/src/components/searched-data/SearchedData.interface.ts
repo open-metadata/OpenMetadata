@@ -81,7 +81,7 @@ export interface SearchedDataProps {
   showOnlyChildren?: boolean;
   isFilterSelected: boolean;
   handleSummaryPanelDisplay?: (
-    details: ExploreSearchSource,
+    details: SearchedDataProps['data'][number]['_source'],
     entityType: string
   ) => void;
 }

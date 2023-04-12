@@ -945,7 +945,7 @@ export const getBreadcrumbForEntitiesWithServiceOnly = (
         ? getServiceDetailsPath(
             service?.name,
             service.type === 'objectStoreService'
-              ? ServiceCategory.OBJECT_STORE_SERVICES
+              ? ServiceCategory.STORAGE_SERVICES
               : service.type
           )
         : '',

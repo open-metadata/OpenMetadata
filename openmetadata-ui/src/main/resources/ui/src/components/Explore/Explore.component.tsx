@@ -18,10 +18,10 @@ import {
 import { Button, Card, Col, Row, Space, Tabs } from 'antd';
 import FacetFilter from 'components/common/facetfilter/FacetFilter';
 import SearchedData from 'components/searched-data/SearchedData';
+import { SearchedDataProps } from 'components/searched-data/SearchedData.interface';
 import { SORT_ORDER } from 'enums/common.enum';
 import { EntityType } from 'enums/entity.enum';
 import unique from 'fork-ts-checker-webpack-plugin/lib/utils/array/unique';
-import { ExploreSearchSource } from 'interface/search.interface';
 import {
   isEmpty,
   isNil,
@@ -89,7 +89,8 @@ const Explore: React.FC<ExploreProps> = ({
     ExploreQuickFilterField[]
   >([] as ExploreQuickFilterField[]);
   const [showSummaryPanel, setShowSummaryPanel] = useState(false);
-  const [entityDetails, setEntityDetails] = useState<ExploreSearchSource>();
+  const [entityDetails, setEntityDetails] =
+    useState<SearchedDataProps['data'][number]['_source']>();
 
   const { toggleModal, sqlQuery } = useAdvanceSearch();
 
@@ -166,9 +167,8 @@ const Explore: React.FC<ExploreProps> = ({
   };
 
   const handleSummaryPanelDisplay = useCallback(
-    (details: ExploreSearchSource, entityType: string) => {
+    (details: SearchedDataProps['data'][number]['_source']) => {
       setShowSummaryPanel(true);
-      console.log(entityType);
       setEntityDetails(details);
     },
     []
@@ -259,7 +259,7 @@ const Explore: React.FC<ExploreProps> = ({
       searchResults?.hits?.hits[0] &&
       searchResults?.hits?.hits[0]._index === searchIndex
     ) {
-      handleSummaryPanelDisplay(searchResults?.hits?.hits[0]._source, tab);
+      handleSummaryPanelDisplay(searchResults?.hits?.hits[0]._source);
     } else {
       setShowSummaryPanel(false);
       setEntityDetails(undefined);
@@ -372,7 +372,7 @@ const Explore: React.FC<ExploreProps> = ({
         {showSummaryPanel && entityDetails && (
           <Col flex="400px">
             <EntitySummaryPanel
-              entityDetails={entityDetails}
+              entityDetails={{ details: entityDetails }}
               handleClosePanel={handleClosePanel}
             />
           </Col>

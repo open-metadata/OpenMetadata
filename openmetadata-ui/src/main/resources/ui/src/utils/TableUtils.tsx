@@ -281,8 +281,8 @@ export const getServiceIcon = (source: SourceType) => {
     return (
       <img
         alt="service-icon"
-        className="inline h-8"
-        src={serviceTypeLogo(source.serviceType || '')}
+        className="inline h-8 p-r-xs"
+        src={serviceTypeLogo((source.serviceType || source.entityType) ?? '')}
       />
     );
   }
@@ -291,7 +291,7 @@ export const getServiceIcon = (source: SourceType) => {
 export const getEntityHeaderLabel = (source: SourceType) => {
   let headingText = '';
   if ('databaseSchema' in source && 'database' in source) {
-    headingText = `${source.database?.name}${FQN_SEPARATOR_CHAR}${source.databaseSchema?.name}`;
+    headingText = `${source.database?.name} / ${source.databaseSchema?.name}`;
   } else if (
     source.entityType === EntityType.GLOSSARY_TERM ||
     source.entityType === EntityType.TAG
@@ -303,7 +303,7 @@ export const getEntityHeaderLabel = (source: SourceType) => {
 
   return headingText ? (
     <span
-      className="tw-text-grey-muted tw-text-xs tw-mb-0.5"
+      className="text-grey-muted text-xs m-b-sm d-inline-block"
       data-testid="database-schema">
       {headingText}
     </span>

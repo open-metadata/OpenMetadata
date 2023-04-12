@@ -14,19 +14,19 @@
 import { CloseOutlined } from '@ant-design/icons';
 import { Drawer } from 'antd';
 import { EntityHeader } from 'components/Entity/EntityHeader/EntityHeader.component';
-import { SearchedDataProps } from 'components/searched-data/SearchedData.interface';
 import { EntityType } from 'enums/entity.enum';
 import { Tag } from 'generated/entity/classification/tag';
 import { Container } from 'generated/entity/data/container';
+import { Dashboard } from 'generated/entity/data/dashboard';
 import { GlossaryTerm } from 'generated/entity/data/glossaryTerm';
+import { Table } from 'generated/entity/data/table';
+import { get } from 'lodash';
 import React, { useMemo } from 'react';
 import { useParams } from 'react-router-dom';
 import { getEntityBreadcrumbs } from 'utils/EntityUtils';
 import { serviceTypeLogo } from 'utils/ServiceUtils';
-import { Dashboard } from '../../../generated/entity/data/dashboard';
 import { Mlmodel } from '../../../generated/entity/data/mlmodel';
 import { Pipeline } from '../../../generated/entity/data/pipeline';
-import { Table } from '../../../generated/entity/data/table';
 import { Topic } from '../../../generated/entity/data/topic';
 import ContainerSummary from './ContainerSummary/ContainerSummary.component';
 import DashboardSummary from './DashboardSummary/DashboardSummary.component';
@@ -46,30 +46,32 @@ export default function EntitySummaryPanel({
   const { tab } = useParams<{ tab: string }>();
 
   const summaryComponent = useMemo(() => {
-    switch (entityDetails.entityType) {
+    const type = get(entityDetails, 'details.entityType') ?? EntityType.TABLE;
+    const entity = entityDetails.details;
+    switch (type) {
       case EntityType.TABLE:
-        return <TableSummary entityDetails={entityDetails as Table} />;
+        return <TableSummary entityDetails={entity as Table} />;
 
       case EntityType.TOPIC:
-        return <TopicSummary entityDetails={entityDetails as Topic} />;
+        return <TopicSummary entityDetails={entity as Topic} />;
 
       case EntityType.DASHBOARD:
-        return <DashboardSummary entityDetails={entityDetails as Dashboard} />;
+        return <DashboardSummary entityDetails={entity as Dashboard} />;
 
       case EntityType.PIPELINE:
-        return <PipelineSummary entityDetails={entityDetails as Pipeline} />;
+        return <PipelineSummary entityDetails={entity as Pipeline} />;
 
       case EntityType.MLMODEL:
-        return <MlModelSummary entityDetails={entityDetails as Mlmodel} />;
+        return <MlModelSummary entityDetails={entity as Mlmodel} />;
 
       case EntityType.CONTAINER:
-        return <ContainerSummary entityDetails={entityDetails as Container} />;
+        return <ContainerSummary entityDetails={entity as Container} />;
+
       case EntityType.GLOSSARY:
-        return (
-          <GlossaryTermSummary entityDetails={entityDetails as GlossaryTerm} />
-        );
+        return <GlossaryTermSummary entityDetails={entity as GlossaryTerm} />;
+
       case EntityType.TAG:
-        return <TagsSummary entityDetails={entityDetails as Tag} />;
+        return <TagsSummary entityDetails={entity as Tag} />;
 
       default:
         return null;
@@ -77,14 +79,11 @@ export default function EntitySummaryPanel({
   }, [tab, entityDetails]);
 
   const icon = useMemo(() => {
-    if ('serviceType' in entityDetails) {
-      console.log(entityDetails.serviceType);
-      console.log(entityDetails.serviceType);
-
+    if ('serviceType' in entityDetails.details) {
       return (
         <img
           className="h-8"
-          src={serviceTypeLogo(entityDetails.serviceType ?? '')}
+          src={serviceTypeLogo(entityDetails.details.serviceType ?? '')}
         />
       );
     }
@@ -110,10 +109,10 @@ export default function EntitySummaryPanel({
       title={
         <EntityHeader
           breadcrumb={getEntityBreadcrumbs(
-            entityDetails as SearchedDataProps['data'][number]['_source'],
-            entityDetails.entityType as EntityType
+            entityDetails.details,
+            entityDetails.details.entityType as EntityType
           )}
-          entityData={entityDetails}
+          entityData={entityDetails.details}
           icon={icon}
         />
       }

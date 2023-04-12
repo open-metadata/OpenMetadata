@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { ReactComponent as ContainerIcon } from 'assets/svg/ic-object-store.svg';
+import { ReactComponent as ContainerIcon } from 'assets/svg/ic-storage.svg';
 import { AxiosError } from 'axios';
 import {
   OperationPermission,
@@ -302,7 +302,7 @@ export const serviceTypeLogo = (type: string) => {
         logo = DATABASE_DEFAULT;
       } else if (serviceTypes.mlmodelServices.includes(type)) {
         logo = ML_MODEL_DEFAULT;
-      } else if (serviceTypes.objectStoreServices.includes(type)) {
+      } else if (serviceTypes.storageServices.includes(type)) {
         logo = ContainerIcon;
       } else {
         logo = DEFAULT_SERVICE;
@@ -561,7 +561,7 @@ export const getServiceIngestionStepGuide = (
       {guide && (
         <>
           <h6 className="tw-heading tw-text-base">{getTitle(guide.title)}</h6>
-          <div className="tw-mb-5">
+          <div className="tw-mb-5 overflow-wrap-anywhere">
             {isIngestion
               ? getFormattedGuideText(
                   guide.description,

@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate.
+ *  Copyright 2023 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,25 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-@import url('../../../styles/variables.less');
-@link-btn-color: #37352f;
 
-.table-data-card-title-container {
-  .ant-btn-link {
-    color: @link-btn-color;
-    font-weight: 600;
-    padding: 0px;
-    font-size: 16px;
-  }
-  .ant-btn-link > span {
-    color: @link-btn-color;
-  }
-}
+import { TransportationStrategy } from 'generated/email/smtpSettings';
 
-.button-hover {
-  .ant-btn-link > span {
-    &:hover {
-      color: @primary-color;
-    }
-  }
-}
+export const TRANSPORTATION_STRATEGY_OPTIONS = Object.values(
+  TransportationStrategy
+).map((strategy) => ({
+  label: strategy,
+  value: strategy,
+}));

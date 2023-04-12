@@ -163,9 +163,9 @@ export const SETTINGS_LEFT_PANEL = {
     testid: '[data-menu-id*="customAttributes.mlModels"]',
     url: `${BASE_URL}/settings/customAttributes/mlModels`,
   },
-  elasticsearch: {
-    testid: '[data-menu-id*="elasticsearch"]',
-    url: `${BASE_URL}/settings/eventPublishers/elasticsearch`,
+  search: {
+    testid: '[data-menu-id*="search"]',
+    url: `${BASE_URL}/settings/openMetadata/search`,
   },
   bots: {
     testid: '[data-menu-id*="bots"]',

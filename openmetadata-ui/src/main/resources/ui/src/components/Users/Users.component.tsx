@@ -23,6 +23,7 @@ import {
 } from 'antd';
 import { ReactComponent as IconTeamsGrey } from 'assets/svg/teams-grey.svg';
 import { AxiosError } from 'axios';
+import TableDataCardV2 from 'components/common/table-data-card-v2/TableDataCardV2';
 import TeamsSelectable from 'components/TeamsSelectable/TeamsSelectable';
 import { capitalize, isEmpty, isEqual, toLower } from 'lodash';
 import { observer } from 'mobx-react';
@@ -63,10 +64,7 @@ import { EntityReference } from '../../generated/entity/teams/user';
 import { Paging } from '../../generated/type/paging';
 import { useInfiniteScroll } from '../../hooks/useInfiniteScroll';
 import jsonData from '../../jsons/en';
-import {
-  getNonDeletedTeams,
-  getTierFromEntityInfo,
-} from '../../utils/CommonUtils';
+import { getNonDeletedTeams } from '../../utils/CommonUtils';
 import {
   getImageWithResolutionAndFallback,
   ImageQuality,
@@ -85,7 +83,6 @@ import Description from '../common/description/Description';
 import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder';
 import NextPrevious from '../common/next-previous/NextPrevious';
 import ProfilePicture from '../common/ProfilePicture/ProfilePicture';
-import TableDataCard from '../common/table-data-card/TableDataCard';
 import TabsPane from '../common/TabsPane/TabsPane';
 import PageLayoutV1 from '../containers/PageLayoutV1';
 import DropDownList from '../dropdown/DropDownList';
@@ -850,25 +847,13 @@ const Users = ({
         <div data-testid="table-container">
           {entityData.data.length ? (
             <>
-              {entityData.data.map((entity, index) => (
-                <div className="m-b-sm" key={`${entity.name}${index}`}>
-                  <TableDataCard
-                    database={entity.database}
-                    databaseSchema={entity.databaseSchema}
-                    deleted={entity.deleted}
-                    description={entity.description}
-                    fullyQualifiedName={entity.fullyQualifiedName}
-                    id={`tabledatacard${index}`}
-                    indexType={entity.index}
-                    name={entity.name}
-                    owner={entity.owner}
-                    service={entity.service}
-                    serviceType={entity.serviceType || '--'}
-                    tags={entity.tags}
-                    tier={getTierFromEntityInfo(entity)}
-                    usage={entity.weeklyPercentileRank}
-                  />
-                </div>
+              {entityData.data.map(({ _source, _id = '' }, index) => (
+                <TableDataCardV2
+                  className="m-b-sm cursor-pointer"
+                  id={_id}
+                  key={index}
+                  source={_source}
+                />
               ))}
               {entityData.total > PAGE_SIZE && entityData.data.length > 0 && (
                 <NextPrevious

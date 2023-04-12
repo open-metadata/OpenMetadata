@@ -13,7 +13,7 @@
 
 import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { ExploreSearchSource } from 'interface/search.interface';
+import { EntityType } from 'enums/entity.enum';
 import React from 'react';
 import EntitySummaryPanel from './EntitySummaryPanel.component';
 import { mockDashboardEntityDetails } from './mocks/DashboardSummary.mock';
@@ -64,16 +64,6 @@ jest.mock('./MlModelSummary/MlModelSummary.component', () =>
     ))
 );
 
-jest.mock(
-  'components/common/table-data-card-v2/TableDataCardTitle.component',
-  () =>
-    jest
-      .fn()
-      .mockImplementation(() => (
-        <div data-testid="table-data-card-title">TableDataCardTitle</div>
-      ))
-);
-
 jest.mock('react-router-dom', () => ({
   useParams: jest.fn().mockImplementation(() => ({ tab: 'table' })),
 }));
@@ -82,7 +72,9 @@ describe('EntitySummaryPanel component tests', () => {
   it('TableSummary should render for table data', async () => {
     render(
       <EntitySummaryPanel
-        entityDetails={mockTableEntityDetails as ExploreSearchSource}
+        entityDetails={{
+          details: { ...mockTableEntityDetails, entityType: EntityType.TABLE },
+        }}
         handleClosePanel={mockHandleClosePanel}
       />
     );
@@ -105,7 +97,9 @@ describe('EntitySummaryPanel component tests', () => {
   it('TopicSummary should render for topics data', async () => {
     render(
       <EntitySummaryPanel
-        entityDetails={mockTopicEntityDetails as ExploreSearchSource}
+        entityDetails={{
+          details: { ...mockTopicEntityDetails, entityType: EntityType.TOPIC },
+        }}
         handleClosePanel={mockHandleClosePanel}
       />
     );
@@ -126,7 +120,12 @@ describe('EntitySummaryPanel component tests', () => {
   it('DashboardSummary should render for dashboard data', async () => {
     render(
       <EntitySummaryPanel
-        entityDetails={mockDashboardEntityDetails as ExploreSearchSource}
+        entityDetails={{
+          details: {
+            ...mockDashboardEntityDetails,
+            entityType: EntityType.DASHBOARD,
+          },
+        }}
         handleClosePanel={mockHandleClosePanel}
       />
     );
@@ -147,7 +146,12 @@ describe('EntitySummaryPanel component tests', () => {
   it('PipelineSummary should render for pipeline data', async () => {
     render(
       <EntitySummaryPanel
-        entityDetails={mockPipelineEntityDetails as ExploreSearchSource}
+        entityDetails={{
+          details: {
+            ...mockPipelineEntityDetails,
+            entityType: EntityType.PIPELINE,
+          },
+        }}
         handleClosePanel={mockHandleClosePanel}
       />
     );
@@ -168,7 +172,12 @@ describe('EntitySummaryPanel component tests', () => {
   it('MlModelSummary should render for mlModel data', async () => {
     render(
       <EntitySummaryPanel
-        entityDetails={mockMlModelEntityDetails as ExploreSearchSource}
+        entityDetails={{
+          details: {
+            ...mockMlModelEntityDetails,
+            entityType: EntityType.MLMODEL,
+          },
+        }}
         handleClosePanel={mockHandleClosePanel}
       />
     );

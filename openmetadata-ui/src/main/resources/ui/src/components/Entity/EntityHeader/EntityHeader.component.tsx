@@ -32,6 +32,7 @@ interface Props {
   };
   icon: ReactNode;
   titleIsLink?: boolean;
+  openEntityInNewPage?: boolean;
 }
 
 export const EntityHeader = ({
@@ -40,6 +41,7 @@ export const EntityHeader = ({
   extra,
   icon,
   titleIsLink = false,
+  openEntityInNewPage,
 }: Props) => {
   const { t } = useTranslation();
 
@@ -61,6 +63,7 @@ export const EntityHeader = ({
               : undefined
           }
           name={entityData.name}
+          openEntityInNewPage={openEntityInNewPage}
         />
         {entityData.deleted && (
           <div className="deleted-badge-button" data-testid="deleted-badge">

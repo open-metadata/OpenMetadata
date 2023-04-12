@@ -12,6 +12,7 @@
  */
 
 import { DefaultOptionType } from 'antd/lib/select';
+import { SearchedDataProps } from 'components/searched-data/SearchedData.interface';
 import { SORT_ORDER } from 'enums/common.enum';
 import { Tag } from 'generated/entity/classification/tag';
 import { Container } from 'generated/entity/data/container';
@@ -26,11 +27,7 @@ import { Mlmodel } from '../../generated/entity/data/mlmodel';
 import { Pipeline } from '../../generated/entity/data/pipeline';
 import { Table } from '../../generated/entity/data/table';
 import { Topic } from '../../generated/entity/data/topic';
-import {
-  Aggregations,
-  ExploreSearchSource,
-  SearchResponse,
-} from '../../interface/search.interface';
+import { Aggregations, SearchResponse } from '../../interface/search.interface';
 import { SearchDropdownOption } from '../SearchDropdown/SearchDropdown.interface';
 import { FilterObject } from './AdvanceSearchProvider/AdvanceSearchProvider.interface';
 
@@ -138,6 +135,5 @@ export type EntityWithServices =
   | Container;
 
 export interface EntityDetailsObjectInterface {
-  details: ExploreSearchSource;
-  entityType: string;
+  details: SearchedDataProps['data'][number]['_source'];
 }

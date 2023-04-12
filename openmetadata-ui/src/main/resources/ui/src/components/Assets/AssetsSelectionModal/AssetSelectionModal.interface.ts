@@ -33,8 +33,6 @@ export type AssetsUnion =
   | EntityType.TOPIC
   | EntityType.CONTAINER;
 
-export type AssetFilterKeys = AssetsUnion | 'all';
-
 export type MapPatchAPIResponse = {
   [EntityType.TABLE]: Table;
   [EntityType.DASHBOARD]: Dashboard;
