@@ -57,8 +57,8 @@ function TriggerReIndexing() {
     [fqn]
   );
 
-  const handleModalVisibility = (state: boolean) => {
-    setIsModalOpen(state);
+  const showReIndexAllModal = () => {
+    setIsModalOpen(true);
   };
 
   const fetchBatchReIndexedData = useCallback(async () => {
@@ -157,7 +157,7 @@ function TriggerReIndexing() {
             fetchBatchReIndexedData,
             batchJobData,
             batchJobData?.failure?.sourceError,
-            handleModalVisibility,
+            showReIndexAllModal,
             stopBatchReIndexedJob
           )
         : getJobDetailsCard(

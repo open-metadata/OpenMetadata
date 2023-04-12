@@ -25,13 +25,14 @@ import { isEmpty, startCase } from 'lodash';
 import React from 'react';
 import { ReactComponent as IconFailBadge } from '../assets/svg/fail-badge.svg';
 import { ReactComponent as IconTaskOpen } from '../assets/svg/in-progress.svg';
+import { ReactComponent as IconTaskStopped } from '../assets/svg/progress-stopped.svg';
 import { ReactComponent as IconSuccessBadge } from '../assets/svg/success-badge.svg';
 import { getDateTimeByTimeStampWithZone } from './TimeUtils';
 
 export const getStatusResultBadgeIcon = (status?: string) => {
   switch (status) {
     case Status.Stopped:
-      return <IconTaskOpen height={14} width={14} />;
+      return <IconTaskStopped height={14} width={14} />;
     case Status.Completed:
       return <IconSuccessBadge height={14} width={14} />;
 
@@ -78,7 +79,7 @@ export const getJobDetailsCard = (
   fetchJobData: () => Promise<void>,
   jobData?: EventPublisherJob,
   error?: SourceError,
-  handleModalVisibility?: (state: boolean) => void,
+  showReIndexAllModal?: () => void,
   stopBatchReIndexedJob?: () => void
 ) => {
   return (
@@ -93,8 +94,8 @@ export const getJobDetailsCard = (
             title={t('label.refresh-log')}
             onClick={fetchJobData}
           />
-          {handleModalVisibility && (
-            <>
+          {showReIndexAllModal &&
+            (jobData?.status === Status.Running ? (
               <Button
                 data-testid="elastic-search-stop-batch-re-index"
                 size="small"
@@ -102,15 +103,15 @@ export const getJobDetailsCard = (
                 onClick={stopBatchReIndexedJob}>
                 {t('label.stop-re-index-all')}
               </Button>
+            ) : (
               <Button
                 data-testid="elastic-search-re-index-all"
                 size="small"
                 type="primary"
-                onClick={() => handleModalVisibility(true)}>
+                onClick={showReIndexAllModal}>
                 {t('label.re-index-all')}
               </Button>
-            </>
-          )}
+            ))}
         </Space>
       }
       loading={loadingState}
@@ -137,7 +138,7 @@ export const getJobDetailsCard = (
               </Space>
             </div>
             <Divider type="vertical" />
-            {handleModalVisibility && (
+            {showReIndexAllModal && (
               <div className="flex">
                 <span className="text-grey-muted">{`${t(
                   'label.index-states'
