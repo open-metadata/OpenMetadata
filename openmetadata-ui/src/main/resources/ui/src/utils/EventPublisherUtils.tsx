@@ -25,7 +25,7 @@ import { isEmpty, startCase } from 'lodash';
 import React from 'react';
 import { ReactComponent as IconFailBadge } from '../assets/svg/fail-badge.svg';
 import { ReactComponent as IconTaskOpen } from '../assets/svg/in-progress.svg';
-import { ReactComponent as IconTaskStopped } from '../assets/svg/progress-stopped.svg';
+import { ReactComponent as IconTaskStopped } from '../assets/svg/pending-badge.svg';
 import { ReactComponent as IconSuccessBadge } from '../assets/svg/success-badge.svg';
 import { getDateTimeByTimeStampWithZone } from './TimeUtils';
 
