@@ -44,7 +44,6 @@ import {
 } from 'utils/CommonUtils';
 import { getEntityName } from 'utils/EntityUtils';
 import { getEntityFieldThreadCounts } from 'utils/FeedUtils';
-import { serviceTypeLogo } from 'utils/ServiceUtils';
 import { getTagsWithoutTier, getTierTags } from 'utils/TableUtils';
 import { DataModelDetailsProps } from './DataModelDetails.interface';
 import ModelTab from './ModelTab/ModelTab.component';
@@ -119,6 +118,7 @@ const DataModelDetails = ({
     followers,
     dataModelType,
     isUserFollowing,
+    serviceType,
   } = useMemo(() => {
     return {
       deleted: dataModelData?.deleted,
@@ -134,11 +134,11 @@ const DataModelDetails = ({
       ),
       followers: dataModelData?.followers ?? [],
       dataModelType: dataModelData?.dataModelType,
+      serviceType: dataModelData?.serviceType,
     };
   }, [dataModelData]);
 
   const breadcrumbTitles = useMemo(() => {
-    const serviceType = dataModelData?.serviceType;
     const service = dataModelData?.service;
     const serviceName = service?.name;
 
@@ -151,12 +151,6 @@ const DataModelDetails = ({
               ServiceCategory.DASHBOARD_SERVICES
             )
           : '',
-        imgSrc: serviceType ? serviceTypeLogo(serviceType) : undefined,
-      },
-      {
-        name: entityName,
-        url: '',
-        activeTitle: true,
       },
     ];
   }, [dataModelData, dashboardDataModelFQN, entityName]);
@@ -247,6 +241,7 @@ const DataModelDetails = ({
           isFollowing={isUserFollowing}
           isTagEditable={hasEditTagsPermission}
           removeTier={hasEditTierPermission ? handleRemoveTier : undefined}
+          serviceType={serviceType ?? ''}
           tags={tags}
           tagsHandler={handleUpdateTags}
           tier={tier}

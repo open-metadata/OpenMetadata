@@ -399,6 +399,7 @@ const ContainerVersion: React.FC<ContainerVersionProp> = ({
               entityName={currentVersionData.name ?? ''}
               extraInfo={getExtraInfo()}
               followersList={[]}
+              serviceType={currentVersionData.serviceType ?? ''}
               tags={getTags()}
               tier={undefined}
               titleLinks={breadCrumbList}

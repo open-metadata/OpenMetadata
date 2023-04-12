@@ -268,6 +268,7 @@ const DataModelVersion: FC<DataModelVersionProp> = ({
               }
               extraInfo={getExtraInfo()}
               followersList={[]}
+              serviceType={currentVersionData.serviceType ?? ''}
               tags={getTags()}
               tier={{} as TagLabel}
               titleLinks={slashedDataModelName}
