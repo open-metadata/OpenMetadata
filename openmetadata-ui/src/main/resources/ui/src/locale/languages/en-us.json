@@ -1038,7 +1038,7 @@
     "has-been-created-successfully": "has been created successfully",
     "import-glossary-help": "Save time & effort by uploading a CSV file with several glossary terms in one go.",
     "in-this-database": "In this Database",
-    "include-assets-message": "Optional configuration to toggle the tags ingestion.",
+    "include-assets-message": "Enable extracting {{assets}} from the data source.",
     "include-database-filter-extra-information": "Database which was added while creating service.",
     "include-lineage-message": "Configuration to turn off fetching lineage from pipelines.",
     "ingest-sample-data-for-entity": "Extract sample data from each {{entity}}.",
