@@ -201,7 +201,6 @@ class MetadataRestSink(Sink[Entity]):
         :param dashboard_usage: dashboard entity and usage request
         """
         try:
-
             self.metadata.publish_dashboard_usage(
                 dashboard=dashboard_usage.dashboard,
                 dashboard_usage_request=dashboard_usage.usage,
@@ -345,7 +344,6 @@ class MetadataRestSink(Sink[Entity]):
 
     def delete_entity(self, record: DeleteEntity):
         try:
-
             self.metadata.delete(
                 entity=type(record.entity),
                 entity_id=record.entity.id,

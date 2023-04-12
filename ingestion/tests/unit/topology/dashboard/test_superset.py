@@ -180,7 +180,6 @@ class SupersetUnitTest(TestCase):
         with patch.object(
             DashboardServiceSource, "test_connection", return_value=False
         ), patch.object(OMetaServerMixin, "validate_versions", return_value=True):
-
             # This already validates that the source can be initialized
             self.superset_api: SupersetSource = SupersetSource.create(
                 MOCK_SUPERSET_API_CONFIG["source"],
@@ -204,7 +203,6 @@ class SupersetUnitTest(TestCase):
         with patch.object(
             DashboardServiceSource, "test_connection", return_value=False
         ), patch.object(OMetaServerMixin, "validate_versions", return_value=True):
-
             # This already validates that the source can be initialized
             self.superset_db: SupersetSource = SupersetSource.create(
                 MOCK_SUPERSET_DB_CONFIG["source"],
@@ -252,7 +250,6 @@ class SupersetUnitTest(TestCase):
         )
 
     def test_api_perpare(self):
-
         pass
 
     def test_api_get_dashboards_list(self):

@@ -151,7 +151,7 @@ const ActivityFeedList: FC<ActivityFeedListProp> = ({
     () =>
       isEntityFeed
         ? filterList.filter((f) => f.value === 'ALL' || f.value === 'MENTIONS')
-        : filterList.slice(),
+        : filterList.slice(1), // Do not show ALL option on my-data
     [isEntityFeed]
   );
 

@@ -2,7 +2,6 @@ package org.openmetadata.service.events.subscription.generic;
 
 import static org.openmetadata.schema.api.events.CreateEventSubscription.SubscriptionType.GENERIC_WEBHOOK;
 
-import java.io.IOException;
 import java.net.UnknownHostException;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
@@ -58,8 +57,7 @@ public class GenericPublisher extends SubscriptionPublisher {
   }
 
   @Override
-  public void sendAlert(EventResource.EventList list)
-      throws IOException, EventPublisherException, InterruptedException {
+  public void sendAlert(EventResource.EventList list) throws EventPublisherException, InterruptedException {
     long attemptTime = System.currentTimeMillis();
     try {
       String json = JsonUtils.pojoToJson(list);

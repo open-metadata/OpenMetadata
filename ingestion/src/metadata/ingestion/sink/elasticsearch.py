@@ -474,7 +474,6 @@ def get_es_followers(record: Entity) -> List[str]:
     Build the ES follower list
     """
     if record.followers:
-
         return [
             follower.id.__root__
             for follower in record.followers.__root__
@@ -532,7 +531,6 @@ def create_record_document(record: Entity, _: OpenMetadata) -> Any:
 
 @create_record_document.register
 def _(record: Table, metadata: OpenMetadata) -> TableESDocument:
-
     tags, tier = get_es_tag_list_and_tier(record)
     suggest = _get_es_suggest(
         input_5=record.fullyQualifiedName.__root__, input_10=record.name.__root__
@@ -629,7 +627,6 @@ def _(record: Topic, _: OpenMetadata) -> TopicESDocument:
 
 @create_record_document.register
 def _(record: Dashboard, _: OpenMetadata) -> DashboardESDocument:
-
     tags, tier = get_es_tag_list_and_tier(record)
     display_name = get_es_display_name(record)
     suggest = _get_es_suggest(
@@ -669,7 +666,6 @@ def _(record: Dashboard, _: OpenMetadata) -> DashboardESDocument:
 
 @create_record_document.register
 def _create_pipeline_es_doc(record: Pipeline, _: OpenMetadata) -> PipelineESDocument:
-
     tags, tier = get_es_tag_list_and_tier(record)
     display_name = get_es_display_name(record)
     suggest = _get_es_suggest(
@@ -710,7 +706,6 @@ def _create_pipeline_es_doc(record: Pipeline, _: OpenMetadata) -> PipelineESDocu
 
 @create_record_document.register
 def _create_ml_model_es_doc(record: MlModel, _: OpenMetadata) -> MlModelESDocument:
-
     tags, tier = get_es_tag_list_and_tier(record)
     display_name = get_es_display_name(record)
     suggest = _get_es_suggest(
@@ -749,7 +744,6 @@ def _create_ml_model_es_doc(record: MlModel, _: OpenMetadata) -> MlModelESDocume
 
 @create_record_document.register
 def _create_container_es_doc(record: Container, _: OpenMetadata) -> ContainerESDocument:
-
     tags, tier = get_es_tag_list_and_tier(record)
     display_name = get_es_display_name(record)
     suggest = _get_es_suggest(
@@ -787,7 +781,6 @@ def _create_container_es_doc(record: Container, _: OpenMetadata) -> ContainerESD
 
 @create_record_document.register
 def _create_query_es_doc(record: Query, _: OpenMetadata) -> QueryESDocument:
-
     tags, tier = get_es_tag_list_and_tier(record)
     display_name = get_es_display_name(record)
     followers = get_es_followers(record)
@@ -820,7 +813,6 @@ def _create_query_es_doc(record: Query, _: OpenMetadata) -> QueryESDocument:
 
 @create_record_document.register
 def _create_user_es_doc(record: User, _: OpenMetadata) -> UserESDocument:
-
     display_name = get_es_display_name(record)
     suggest = _get_es_suggest(input_5=record.name.__root__, input_10=display_name)
 
@@ -846,7 +838,6 @@ def _create_user_es_doc(record: User, _: OpenMetadata) -> UserESDocument:
 
 @create_record_document.register
 def _create_team_es_doc(record: Team, _: OpenMetadata) -> TeamESDocument:
-
     display_name = get_es_display_name(record)
     suggest = _get_es_suggest(input_5=record.name.__root__, input_10=display_name)
 
@@ -874,7 +865,6 @@ def _create_team_es_doc(record: Team, _: OpenMetadata) -> TeamESDocument:
 def _create_glossary_term_es_doc(
     record: GlossaryTerm, _: OpenMetadata
 ) -> GlossaryTermESDocument:
-
     display_name = get_es_display_name(record)
     suggest = _get_es_suggest(input_5=record.name.__root__, input_10=display_name)
 
@@ -905,7 +895,6 @@ def _create_glossary_term_es_doc(
 def _create_tag_es_doc(
     record: Classification, metadata: OpenMetadata
 ) -> List[TagESDocument]:
-
     tag_docs = []
     tag_list = metadata.list_entities(
         entity=Tag, params={"parent": record.name.__root__}

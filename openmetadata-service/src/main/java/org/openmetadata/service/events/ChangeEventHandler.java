@@ -44,6 +44,7 @@ import org.openmetadata.service.jdbi3.FeedRepository;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.socket.WebSocketManager;
 import org.openmetadata.service.util.ChangeEventParser;
+import org.openmetadata.service.util.ChangeEventParser.PublishTo;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.NotificationHandler;
 import org.openmetadata.service.util.RestUtil;
@@ -269,7 +270,7 @@ public class ChangeEventHandler implements EventHandler {
       EntityInterface entity, ChangeDescription changeDescription, String loggedInUserName) {
     List<Thread> threads = new ArrayList<>();
     Map<EntityLink, String> messages =
-        ChangeEventParser.getFormattedMessages(ChangeEventParser.PUBLISH_TO.FEED, changeDescription, entity);
+        ChangeEventParser.getFormattedMessages(PublishTo.FEED, changeDescription, entity);
 
     // Create an automated thread
     for (EntityLink link : messages.keySet()) {

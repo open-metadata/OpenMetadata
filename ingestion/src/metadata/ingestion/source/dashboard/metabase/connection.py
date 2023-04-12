@@ -29,11 +29,7 @@ def get_connection(connection: MetabaseConnection) -> MetabaseClient:
     """
     Create connection
     """
-    return MetabaseClient(
-        username=connection.username,
-        password=connection.password,
-        host_port=connection.hostPort,
-    )
+    return MetabaseClient(connection)
 
 
 def test_connection(

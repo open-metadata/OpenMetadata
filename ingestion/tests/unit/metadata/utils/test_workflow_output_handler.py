@@ -68,7 +68,6 @@ def strip_ansi_codes(s: str):
 
 
 class WorkflowOutputHandlerTests(TestCase):
-
     source, source_status = create_mock(SourceStatus())
     processor, _ = create_mock(ProcessorStatus())
     data_processor, _ = create_mock(SourceStatus())

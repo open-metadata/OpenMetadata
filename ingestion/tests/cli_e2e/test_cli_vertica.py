@@ -26,7 +26,6 @@ from .test_cli_db_base_common import CliCommonDB
 
 
 class VerticaCliTest(CliCommonDB.TestSuite, SQACommonMethods):
-
     create_table_query: str = """
         CREATE TABLE vendor_dimension_new AS 
             SELECT * 

@@ -382,7 +382,6 @@ class DbtSource(DbtServiceSource):  # pylint: disable=too-many-public-methods
             self.context.dbt_tests = {}
             for key, manifest_node in manifest_entities.items():
                 try:
-
                     # If the run_results file is passed then only DBT tests will be processed
                     if (
                         dbt_objects.dbt_run_results
