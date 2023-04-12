@@ -12,6 +12,7 @@
  */
 
 import { Button, Typography } from 'antd';
+import { ReactComponent as IconExternalLink } from 'assets/svg/external-link.svg';
 import classNames from 'classnames';
 import { toString } from 'lodash';
 import React, { useMemo } from 'react';
@@ -39,6 +40,7 @@ interface TableDataCardTitleProps {
   };
   isPanel?: boolean;
   handleLinkClick?: (e: React.MouseEvent) => void;
+  openEntityInNewPage?: boolean;
 }
 
 const TableDataCardTitle = ({
@@ -48,6 +50,7 @@ const TableDataCardTitle = ({
   source,
   handleLinkClick,
   isPanel = false,
+  openEntityInNewPage = false,
 }: TableDataCardTitleProps) => {
   const isTourRoute = location.pathname.includes(ROUTES.TOUR);
 
@@ -73,6 +76,9 @@ const TableDataCardTitle = ({
       type="link"
       onClick={isTourRoute ? handleLinkClick : undefined}>
       {stringToHTML(displayName)}
+      {openEntityInNewPage && (
+        <IconExternalLink className="anticon" height={14} />
+      )}
     </Button>
   );
 
@@ -93,6 +99,7 @@ const TableDataCardTitle = ({
             'button-hover': isPanel,
           }
         )}
+        target={openEntityInNewPage ? '_blank' : '_self'}
         to={getEntityLink(searchIndex, source.fullyQualifiedName ?? '')}>
         {title}
       </Link>

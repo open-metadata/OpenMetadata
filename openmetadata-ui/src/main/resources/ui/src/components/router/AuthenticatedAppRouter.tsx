@@ -12,7 +12,6 @@
  */
 
 import { isEmpty } from 'lodash';
-
 import LineagePage from 'pages/LineagePage/LineagePage';
 import React, { FunctionComponent, useMemo } from 'react';
 import { Redirect, Route, Switch } from 'react-router-dom';
@@ -472,6 +471,12 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         component={GlossaryPage}
         hasPermission={glossaryPermission}
         path={ROUTES.GLOSSARY_DETAILS_WITH_TAB}
+      />
+      <AdminProtectedRoute
+        exact
+        component={GlossaryPage}
+        hasPermission={glossaryTermPermission}
+        path={ROUTES.GLOSSARY_TERMS}
       />
       <AdminProtectedRoute
         exact
