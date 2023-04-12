@@ -13,8 +13,6 @@
 
 package org.openmetadata.service.resources.topics;
 
-import com.google.inject.Inject;
-import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -23,6 +21,7 @@ import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import java.io.IOException;
 import java.util.UUID;
 import javax.json.JsonPatch;
@@ -64,7 +63,11 @@ import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.util.ResultList;
 
 @Path("/v1/topics")
-@Api(value = "Topic data asset collection", tags = "Topic data asset collection")
+@Tag(
+    name = "Topics",
+    description =
+        "A `Topic` is a feed or an event stream in a `Messaging Service` "
+            + "into which publishers publish messages and consumed by consumers.")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "topics")
@@ -79,7 +82,6 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
     return topic;
   }
 
-  @Inject
   public TopicResource(CollectionDAO dao, Authorizer authorizer) {
     super(Topic.class, new TopicRepository(dao), authorizer);
   }
@@ -97,7 +99,6 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
   @Operation(
       operationId = "listTopics",
       summary = "List topics",
-      tags = "topics",
       description =
           "Get a list of topics, optionally filtered by `service` it belongs to. Use `fields` "
               + "parameter to get only necessary fields. Use cursor-based pagination to limit the number "
@@ -149,7 +150,6 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
   @Operation(
       operationId = "listAllTopicVersion",
       summary = "List topic versions",
-      tags = "topics",
       description = "Get a list of all the versions of a topic identified by `id`",
       responses = {
         @ApiResponse(
@@ -169,7 +169,6 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
   @Path("/{id}")
   @Operation(
       summary = "Get a topic by id",
-      tags = "topics",
       description = "Get a topic by `id`.",
       responses = {
         @ApiResponse(
@@ -202,7 +201,6 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
   @Operation(
       operationId = "getTopicByFQN",
       summary = "Get a topic by fully qualified name",
-      tags = "topics",
       description = "Get a topic by fully qualified name.",
       responses = {
         @ApiResponse(
@@ -236,7 +234,6 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
   @Operation(
       operationId = "getSpecificTopicVersion",
       summary = "Get a version of the topic",
-      tags = "topics",
       description = "Get a version of the topic by given `id`",
       responses = {
         @ApiResponse(
@@ -264,7 +261,6 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
   @Operation(
       operationId = "createTopic",
       summary = "Create a topic",
-      tags = "topics",
       description = "Create a topic under an existing `service`.",
       responses = {
         @ApiResponse(
@@ -284,7 +280,6 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
   @Operation(
       operationId = "patchTopic",
       summary = "Update a topic",
-      tags = "topics",
       description = "Update an existing topic using JsonPatch.",
       externalDocs = @ExternalDocumentation(description = "JsonPatch RFC", url = "https://tools.ietf.org/html/rfc6902"))
   @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
@@ -309,7 +304,6 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
   @Operation(
       operationId = "createOrUpdateTopic",
       summary = "Update topic",
-      tags = "topics",
       description = "Create a topic, it it does not exist or update an existing topic.",
       responses = {
         @ApiResponse(
@@ -329,7 +323,6 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
   @Operation(
       operationId = "addSampleData",
       summary = "Add sample data",
-      tags = "topics",
       description = "Add sample data to the topic.",
       responses = {
         @ApiResponse(
@@ -354,7 +347,6 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
   @Operation(
       operationId = "addFollower",
       summary = "Add a follower",
-      tags = "topics",
       description = "Add a user identified by `userId` as followed of this topic",
       responses = {
         @ApiResponse(
@@ -376,7 +368,6 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
   @Path("/{id}/followers/{userId}")
   @Operation(
       summary = "Remove a follower",
-      tags = "topics",
       description = "Remove the user identified `userId` as a follower of the topic.",
       responses = {
         @ApiResponse(
@@ -400,7 +391,6 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
   @Operation(
       operationId = "deleteTopic",
       summary = "Delete a topic by id",
-      tags = "topics",
       description = "Delete a topic by `id`.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
@@ -423,7 +413,6 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
   @Operation(
       operationId = "deleteTopicByFQN",
       summary = "Delete a topic by fully qualified name",
-      tags = "topics",
       description = "Delete a topic by `fullyQualifiedName`.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
@@ -447,7 +436,6 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
   @Operation(
       operationId = "restore",
       summary = "Restore a soft deleted topic",
-      tags = "topics",
       description = "Restore a soft deleted topic.",
       responses = {
         @ApiResponse(

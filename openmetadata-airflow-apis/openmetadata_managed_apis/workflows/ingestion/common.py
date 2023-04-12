@@ -28,6 +28,9 @@ from metadata.generated.schema.entity.services.databaseService import DatabaseSe
 from metadata.generated.schema.entity.services.messagingService import MessagingService
 from metadata.generated.schema.entity.services.metadataService import MetadataService
 from metadata.generated.schema.entity.services.mlmodelService import MlModelService
+from metadata.generated.schema.entity.services.objectstoreService import (
+    ObjectStoreService,
+)
 from metadata.generated.schema.entity.services.pipelineService import PipelineService
 from metadata.generated.schema.tests.testSuite import TestSuite
 from metadata.ingestion.models.encoders import show_secrets_encoder
@@ -167,6 +170,11 @@ def build_source(ingestion_pipeline: IngestionPipeline) -> WorkflowSource:
         elif service_type == "metadataService":
             entity_class = MetadataService
             service: MetadataService = metadata.get_by_name(
+                entity=entity_class, fqn=ingestion_pipeline.service.name
+            )
+        elif service_type == "objectStoreService":
+            entity_class = ObjectStoreService
+            service: ObjectStoreService = metadata.get_by_name(
                 entity=entity_class, fqn=ingestion_pipeline.service.name
             )
         else:
@@ -330,7 +338,6 @@ def build_dag(
     """
 
     with DAG(**build_dag_configs(ingestion_pipeline)) as dag:
-
         # Initialize with random UUID4. Will be used by the callback instead of
         # generating it inside the Workflow itself.
         workflow_config.pipelineRunId = str(uuid.uuid4())

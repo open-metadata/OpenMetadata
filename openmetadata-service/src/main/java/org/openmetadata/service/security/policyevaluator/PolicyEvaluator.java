@@ -128,7 +128,7 @@ public class PolicyEvaluator {
         rule.evaluatePermission(resourcePermissionMap, policyContext);
       }
     }
-    return new ArrayList<>(resourcePermissionMap.values());
+    return PolicyEvaluator.trimResourcePermissions(new ArrayList<>(resourcePermissionMap.values()));
   }
 
   /** Returns a list of operations that a user can perform on all the resources. */
@@ -142,7 +142,7 @@ public class PolicyEvaluator {
         rule.evaluatePermission(resourcePermissionMap, policyContext);
       }
     }
-    return new ArrayList<>(resourcePermissionMap.values());
+    return PolicyEvaluator.trimResourcePermissions(new ArrayList<>(resourcePermissionMap.values()));
   }
 
   /** Returns a list of operations that a user can perform on the given resource/entity type */
@@ -159,7 +159,7 @@ public class PolicyEvaluator {
         rule.evaluatePermission(resourceType, resourcePermission, policyContext);
       }
     }
-    return resourcePermission;
+    return PolicyEvaluator.trimResourcePermission(resourcePermission);
   }
 
   public static ResourcePermission getPermission(
@@ -176,7 +176,7 @@ public class PolicyEvaluator {
         rule.evaluatePermission(subjectContext, resourceContext, resourcePermission, policyContext);
       }
     }
-    return resourcePermission;
+    return PolicyEvaluator.trimResourcePermission(resourcePermission);
   }
 
   /** Get list of resources with all their permissions set to given Access */
@@ -191,7 +191,7 @@ public class PolicyEvaluator {
           new ResourcePermission().withResource(rd.getName()).withPermissions(permissions);
       resourcePermissions.add(resourcePermission);
     }
-    return resourcePermissions;
+    return PolicyEvaluator.trimResourcePermissions(resourcePermissions);
   }
 
   /** Get list of resources with all their permissions set to given Access */
@@ -201,7 +201,8 @@ public class PolicyEvaluator {
     for (MetadataOperation operation : rd.getOperations()) {
       permissions.add(new Permission().withOperation(operation).withAccess(access));
     }
-    return new ResourcePermission().withResource(rd.getName()).withPermissions(permissions);
+    return PolicyEvaluator.trimResourcePermission(
+        new ResourcePermission().withResource(rd.getName()).withPermissions(permissions));
   }
 
   /**
@@ -214,5 +215,46 @@ public class PolicyEvaluator {
     Map<String, ResourcePermission> resourcePermissionMap = new HashMap<>();
     resourcePermissions.forEach(rp -> resourcePermissionMap.put(rp.getResource(), rp));
     return resourcePermissionMap;
+  }
+
+  /** Removes the redundant permissions from the list. */
+  public static List<Permission> trimPermissions(List<Permission> permissions) {
+    boolean viewAllPermission = false;
+    boolean editAllPermission = false;
+    for (Permission p : permissions) {
+      if ((p.getOperation().equals(MetadataOperation.VIEW_ALL)
+          && (p.getAccess().equals(Access.ALLOW) || p.getAccess().equals(Access.DENY)))) {
+        viewAllPermission = true;
+      }
+      if (p.getOperation().equals(MetadataOperation.EDIT_ALL)
+          && (p.getAccess().equals(Access.ALLOW) || p.getAccess().equals(Access.DENY))) {
+        editAllPermission = true;
+      }
+    }
+    Iterator<Permission> permissionIterator = permissions.listIterator();
+    while (permissionIterator.hasNext()) {
+      Permission permission = permissionIterator.next();
+      if (viewAllPermission
+          && permission.getOperation() != MetadataOperation.VIEW_ALL
+          && permission.getOperation().value().startsWith("View")) {
+        permissionIterator.remove();
+      } else if (editAllPermission
+          && permission.getOperation() != MetadataOperation.EDIT_ALL
+          && permission.getOperation().value().startsWith("Edit")) {
+        permissionIterator.remove();
+      }
+    }
+    return permissions;
+  }
+
+  public static ResourcePermission trimResourcePermission(ResourcePermission resourcePermission) {
+    return resourcePermission.withPermissions(trimPermissions(resourcePermission.getPermissions()));
+  }
+
+  public static List<ResourcePermission> trimResourcePermissions(List<ResourcePermission> resourcePermissions) {
+    for (ResourcePermission resourcePermission : resourcePermissions) {
+      trimResourcePermission(resourcePermission);
+    }
+    return resourcePermissions;
   }
 }

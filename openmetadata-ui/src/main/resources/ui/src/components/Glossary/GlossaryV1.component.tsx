@@ -12,9 +12,11 @@
  */
 
 import { AxiosError } from 'axios';
+import Loader from 'components/Loader/Loader';
 import { API_RES_MAX_SIZE } from 'constants/constants';
 import { isEmpty } from 'lodash';
-import React, { useEffect, useMemo, useState } from 'react';
+import { VERSION_VIEW_GLOSSARY_PERMISSION } from 'mocks/Glossary.mock';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
 import { getGlossaryTerms, ListGlossaryTermsParams } from 'rest/glossaryAPI';
 import { Glossary } from '../../generated/entity/data/glossary';
@@ -45,12 +47,14 @@ const GlossaryV1 = ({
   updateGlossary,
   onGlossaryDelete,
   onGlossaryTermDelete,
+  isVersionsView,
 }: GlossaryV1Props) => {
   const { action } =
     useParams<{ action: GlossaryAction; glossaryName: string }>();
   const history = useHistory();
 
   const { getEntityPermission } = usePermissionProvider();
+  const [isLoading, setIsLoading] = useState(true);
 
   const [isDelete, setIsDelete] = useState<boolean>(false);
 
@@ -75,6 +79,7 @@ const GlossaryV1 = ({
   );
 
   const fetchGlossaryTerm = async (params?: ListGlossaryTermsParams) => {
+    setIsLoading(true);
     try {
       const { data } = await getGlossaryTerms({
         ...params,
@@ -84,6 +89,8 @@ const GlossaryV1 = ({
       setGlossaryTerms(data);
     } catch (error) {
       showErrorToast(error as AxiosError);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -121,32 +128,43 @@ const GlossaryV1 = ({
     setIsDelete(false);
   };
 
+  const loadGlossaryTerms = useCallback(() => {
+    fetchGlossaryTerm(
+      isGlossaryActive
+        ? { glossary: selectedData.id }
+        : { parent: selectedData.id }
+    );
+  }, [selectedData, isGlossaryActive]);
+
   useEffect(() => {
     if (selectedData) {
-      fetchGlossaryTerm(
-        isGlossaryActive
-          ? { glossary: selectedData.id }
-          : { parent: selectedData.id }
-      );
+      loadGlossaryTerms();
       if (isGlossaryActive) {
-        fetchGlossaryPermission();
+        isVersionsView
+          ? setGlossaryPermission(VERSION_VIEW_GLOSSARY_PERMISSION)
+          : fetchGlossaryPermission();
       } else {
-        fetchGlossaryTermPermission();
+        isVersionsView
+          ? setGlossaryTermPermission(VERSION_VIEW_GLOSSARY_PERMISSION)
+          : fetchGlossaryTermPermission();
       }
     }
-  }, [selectedData, isGlossaryActive]);
+  }, [selectedData, isGlossaryActive, isVersionsView]);
 
   return isImportAction ? (
     <ImportGlossary glossaryName={selectedData.name} />
   ) : (
     <>
-      {!isEmpty(selectedData) &&
+      {isLoading && <Loader />}
+      {!isLoading &&
+        !isEmpty(selectedData) &&
         (isGlossaryActive ? (
           <GlossaryDetails
             glossary={selectedData as Glossary}
             glossaryTerms={glossaryTerms}
             handleGlossaryDelete={onGlossaryDelete}
             permissions={glossaryPermission}
+            refreshGlossaryTerms={loadGlossaryTerms}
             updateGlossary={updateGlossary}
           />
         ) : (
@@ -156,6 +174,7 @@ const GlossaryV1 = ({
             handleGlossaryTermDelete={onGlossaryTermDelete}
             handleGlossaryTermUpdate={onGlossaryTermUpdate}
             permissions={glossaryTermPermission}
+            refreshGlossaryTerms={loadGlossaryTerms}
           />
         ))}
 

@@ -15,7 +15,6 @@ import { PlusOutlined } from '@ant-design/icons';
 import { Button, Space, Switch, Typography } from 'antd';
 import { UserSelectableList } from 'components/common/UserSelectableList/UserSelectableList.component';
 import Tags from 'components/Tag/Tags/tags';
-import { LOADING_STATE } from 'enums/common.enum';
 import { cloneDeep, toString } from 'lodash';
 import { EntityTags } from 'Models';
 import React, { useRef, useState } from 'react';
@@ -40,7 +39,7 @@ const Field = ({ children }: { children: React.ReactNode }) => {
 const AddGlossary = ({
   header,
   allowAccess = true,
-  saveState = 'initial',
+  isLoading,
   slashedBreadcrumb,
   onCancel,
   onSave,
@@ -55,6 +54,7 @@ const AddGlossary = ({
   });
 
   const [name, setName] = useState('');
+  const [displayName, setDisplayName] = useState('');
   const [description] = useState<string>('');
 
   const [tags, setTags] = useState<EntityTags[]>([]);
@@ -115,7 +115,7 @@ const AddGlossary = ({
     if (validateForm()) {
       const data: CreateGlossary = {
         name: name.trim(),
-        displayName: name.trim(),
+        displayName: (displayName || name).trim(),
         description: getDescription(),
         reviewers:
           reviewer.map((d) => toString(d.fullyQualifiedName)).filter(Boolean) ??
@@ -178,6 +178,22 @@ const AddGlossary = ({
               : showErrorMsg.invalidName
               ? ADD_GLOSSARY_ERROR[AddGlossaryError.NAME_INVALID]
               : null}
+          </Field>
+          <Field>
+            <label className="tw-block tw-form-label" htmlFor="display-name">
+              {`${t('label.display-name')}:`}
+            </label>
+
+            <input
+              className="tw-form-inputs tw-form-inputs-padding"
+              data-testid="display-name"
+              id="display-name"
+              name="display-name"
+              placeholder={t('label.display-name')}
+              type="text"
+              value={displayName}
+              onChange={(e) => setDisplayName(e.target.value)}
+            />
           </Field>
           <Field>
             <label
@@ -268,7 +284,7 @@ const AddGlossary = ({
             <Button
               data-testid="save-glossary"
               disabled={!allowAccess}
-              loading={saveState === LOADING_STATE.WAITING}
+              loading={isLoading}
               type="primary"
               onClick={handleSave}>
               {t('label.save')}

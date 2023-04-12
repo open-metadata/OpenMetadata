@@ -19,6 +19,7 @@ import static org.openmetadata.schema.type.Relationship.CREATED;
 import static org.openmetadata.schema.type.Relationship.IS_ABOUT;
 import static org.openmetadata.schema.type.Relationship.REPLIED_TO;
 import static org.openmetadata.service.Entity.DASHBOARD;
+import static org.openmetadata.service.Entity.DASHBOARD_DATA_MODEL;
 import static org.openmetadata.service.Entity.DATABASE_SCHEMA;
 import static org.openmetadata.service.Entity.FIELD_DESCRIPTION;
 import static org.openmetadata.service.Entity.PIPELINE;
@@ -61,6 +62,7 @@ import org.openmetadata.schema.api.feed.EntityLinkThreadCount;
 import org.openmetadata.schema.api.feed.ResolveTask;
 import org.openmetadata.schema.api.feed.ThreadCount;
 import org.openmetadata.schema.entity.data.Dashboard;
+import org.openmetadata.schema.entity.data.DashboardDataModel;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Pipeline;
 import org.openmetadata.schema.entity.data.Table;
@@ -311,6 +313,50 @@ public class FeedRepository {
           updatedEntityJson = JsonUtils.pojoToJson(dashboard);
           patch = JsonUtils.getJsonPatch(oldJson, updatedEntityJson);
           repository.patch(uriInfo, dashboard.getId(), user, patch);
+          break;
+        case DASHBOARD_DATA_MODEL:
+          DashboardDataModel dashboardDataModel = JsonUtils.readValue(json, DashboardDataModel.class);
+          oldJson = JsonUtils.pojoToJson(dashboardDataModel);
+          if (entityLink.getFieldName() != null) {
+            if (entityLink.getFieldName().equals("columns")) {
+              Optional<Column> col =
+                  dashboardDataModel.getColumns().stream()
+                      .filter(c -> c.getName().equals(entityLink.getArrayFieldName()))
+                      .findFirst();
+              if (col.isPresent()) {
+                Column column = col.get();
+                if (descriptionTasks.contains(taskType)) {
+                  column.setDescription(newValue);
+                } else if (tagTasks.contains(taskType)) {
+                  List<TagLabel> tags = JsonUtils.readObjects(newValue, TagLabel.class);
+                  column.setTags(tags);
+                }
+              } else {
+                throw new IllegalArgumentException(
+                    String.format(
+                        "The Column with name '%s' is not found in the dashboard data model.",
+                        entityLink.getArrayFieldName()));
+              }
+            } else if (descriptionTasks.contains(taskType) && entityLink.getFieldName().equals(FIELD_DESCRIPTION)) {
+              dashboardDataModel.setDescription(newValue);
+            } else if (tagTasks.contains(taskType) && entityLink.getFieldName().equals("tags")) {
+              List<TagLabel> tags = JsonUtils.readObjects(newValue, TagLabel.class);
+              dashboardDataModel.setTags(tags);
+            } else {
+              // Not supported
+              throw new IllegalArgumentException(
+                  String.format(UNSUPPORTED_FIELD_NAME_FOR_TASK, entityLink.getFieldName(), task.getType()));
+            }
+          } else {
+            // Not supported
+            throw new IllegalArgumentException(
+                String.format(
+                    "The Entity link with no field name - %s is not supported for %s task.",
+                    entityLink, task.getType()));
+          }
+          updatedEntityJson = JsonUtils.pojoToJson(dashboardDataModel);
+          patch = JsonUtils.getJsonPatch(oldJson, updatedEntityJson);
+          repository.patch(uriInfo, dashboardDataModel.getId(), user, patch);
           break;
         case PIPELINE:
           Pipeline pipeline = JsonUtils.readValue(json, Pipeline.class);

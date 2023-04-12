@@ -35,15 +35,8 @@ import {
 } from '../../constants/mockTourData.constants';
 import { SearchIndex } from '../../enums/search.enum';
 import { CurrentTourPageType } from '../../enums/tour.enum';
-import {
-  Table,
-  TableJoins,
-  TableType,
-  UsageDetails,
-} from '../../generated/entity/data/table';
-import { EntityReference } from '../../generated/type/entityReference';
+import { Table } from '../../generated/entity/data/table';
 import { Paging } from '../../generated/type/paging';
-import { TagLabel } from '../../generated/type/tagLabel';
 import { useTour } from '../../hooks/useTour';
 import { getSteps } from '../../utils/TourUtils';
 
@@ -180,25 +173,19 @@ const TourPage = () => {
         return (
           <DatasetDetails
             activeTab={datasetActiveTab}
-            columns={mockDatasetData.columns as unknown as Table['columns']}
             columnsUpdateHandler={handleCountChange}
             createThread={handleCountChange}
             datasetFQN={mockDatasetData.datasetFQN}
             deletePostHandler={handleCountChange}
-            description={mockDatasetData.description}
             descriptionUpdateHandler={handleCountChange}
             entityFieldTaskCount={[]}
             entityFieldThreadCount={[]}
-            entityName={mockDatasetData.entityName}
             entityThread={mockFeedData}
             feedCount={0}
             fetchFeedHandler={handleCountChange}
             followTableHandler={handleCountChange}
-            followers={mockDatasetData.followers}
             handleExtensionUpdate={handleCountChange}
             isentityThreadLoading={false}
-            joins={mockDatasetData.joins as unknown as TableJoins}
-            owner={undefined as unknown as EntityReference}
             paging={{} as Paging}
             postFeedHandler={handleCountChange}
             sampleData={mockDatasetData.sampleData}
@@ -209,15 +196,9 @@ const TourPage = () => {
             tableProfile={
               mockDatasetData.tableProfile as unknown as Table['profile']
             }
-            tableTags={mockDatasetData.tableTags}
-            tableType={mockDatasetData.tableType as TableType}
             tagUpdateHandler={handleCountChange}
-            tier={'' as unknown as TagLabel}
             unfollowTableHandler={handleCountChange}
             updateThreadHandler={handleOnClick}
-            usageSummary={
-              mockDatasetData.usageSummary as unknown as UsageDetails
-            }
             versionHandler={handleCountChange}
           />
         );

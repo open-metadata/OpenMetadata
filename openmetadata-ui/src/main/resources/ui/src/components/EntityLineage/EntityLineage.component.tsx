@@ -12,7 +12,9 @@
  */
 
 import { Modal, Space } from 'antd';
+import AppState from 'AppState';
 import { AxiosError } from 'axios';
+import { mockDatasetData } from 'constants/mockTourData.constants';
 import jsonData from 'jsons/en';
 import {
   debounce,
@@ -49,6 +51,7 @@ import ReactFlow, {
   useEdgesState,
   useNodesState,
 } from 'reactflow';
+import { getDataModelDetails } from 'rest/dataModelsAPI';
 import { getLineageByFQN } from 'rest/lineageAPI';
 import { searchData } from 'rest/miscAPI';
 import { getTableDetails } from 'rest/tableAPI';
@@ -222,28 +225,36 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
 
   const fetchLineageData = useCallback(
     async (config: LineageConfig) => {
-      setIsLineageLoading(true);
-      try {
-        const res = await getLineageByFQN(
-          entityFQN,
-          entityType,
-          config.upstreamDepth,
-          config.downstreamDepth
-        );
-        if (res) {
-          setPaginationData({});
-          setEntityLineage(res);
-          setUpdatedLineageData(res);
-        } else {
-          showErrorToast(jsonData['api-error-messages']['fetch-lineage-error']);
+      if (AppState.isTourOpen) {
+        setPaginationData({});
+        setEntityLineage(mockDatasetData.entityLineage);
+        setUpdatedLineageData(mockDatasetData.entityLineage);
+      } else {
+        setIsLineageLoading(true);
+        try {
+          const res = await getLineageByFQN(
+            entityFQN,
+            entityType,
+            config.upstreamDepth,
+            config.downstreamDepth
+          );
+          if (res) {
+            setPaginationData({});
+            setEntityLineage(res);
+            setUpdatedLineageData(res);
+          } else {
+            showErrorToast(
+              jsonData['api-error-messages']['fetch-lineage-error']
+            );
+          }
+        } catch (err) {
+          showErrorToast(
+            err as AxiosError,
+            jsonData['api-error-messages']['fetch-lineage-error']
+          );
+        } finally {
+          setIsLineageLoading(false);
         }
-      } catch (err) {
-        showErrorToast(
-          err as AxiosError,
-          jsonData['api-error-messages']['fetch-lineage-error']
-        );
-      } finally {
-        setIsLineageLoading(false);
       }
     },
     [entityFQN, entityType]
@@ -619,6 +630,16 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
     [nodes, updatedLineageData]
   );
 
+  const getColumnsForNode = async (type: string, id: string) => {
+    const fields = ['columns'];
+
+    if (type === EntityType.DASHBOARD_DATA_MODEL) {
+      return await getDataModelDetails(id, fields);
+    }
+
+    return await getTableDetails(id, fields);
+  };
+
   /**
    * take node and get the columns for that node
    * @param expandNode
@@ -626,11 +647,11 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
   const getTableColumns = async (expandNode?: EntityReference) => {
     if (expandNode) {
       try {
-        const res = await getTableDetails(expandNode.id, ['columns']);
-        const tableId = expandNode.id;
+        const res = await getColumnsForNode(expandNode.type, expandNode.id);
+        const nodeId = expandNode.id;
         const { columns } = res;
-        tableColumnsRef.current[tableId] = columns;
-        updateColumnsToNode(columns, tableId);
+        tableColumnsRef.current[nodeId] = columns;
+        updateColumnsToNode(columns, nodeId);
       } catch (error) {
         showErrorToast(
           error as AxiosError,

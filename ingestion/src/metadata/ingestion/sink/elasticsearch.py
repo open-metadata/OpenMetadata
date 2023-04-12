@@ -19,7 +19,7 @@ import json
 import ssl
 import traceback
 from functools import singledispatch
-from typing import Any, Dict, List, Optional
+from typing import Any, List, Optional
 
 import boto3
 from elasticsearch import Elasticsearch, RequestsHttpConnection
@@ -55,6 +55,7 @@ from metadata.ingestion.api.sink import Sink
 from metadata.ingestion.models.es_documents import (
     ContainerESDocument,
     DashboardESDocument,
+    ESSuggest,
     GlossaryTermESDocument,
     MlModelESDocument,
     PipelineESDocument,
@@ -341,7 +342,11 @@ class ElasticsearchSink(Sink[Entity]):
 
         try:
             self._write_record(record)
-            self.status.records_written(record.name.__root__)
+            self.status.records_written(
+                record.name.__root__
+                if hasattr(record, "name")
+                else type(record).__name__
+            )
 
         except Exception as exc:
             logger.debug(traceback.format_exc())
@@ -469,7 +474,6 @@ def get_es_followers(record: Entity) -> List[str]:
     Build the ES follower list
     """
     if record.followers:
-
         return [
             follower.id.__root__
             for follower in record.followers.__root__
@@ -486,38 +490,20 @@ def get_es_display_name(record: Entity) -> str:
     return record.displayName if record.displayName else record.name.__root__
 
 
-def get_es_fqn_suggest(record: Entity) -> List[Dict[str, Any]]:
-    """
-    Build the ES suggest field
-    """
-
-    return _get_es_suggest(
-        input_5=record.fullyQualifiedName.__root__, input_10=record.name
-    )
-
-
-def get_es_display_name_suggest(record: Entity) -> List[Dict[str, Any]]:
-    """
-    Build the ES suggest field
-    """
-
-    return _get_es_suggest(input_5=get_es_display_name(record), input_10=record.name)
-
-
-def _get_es_suggest(input_5: str, input_10: str) -> List[Dict[str, Any]]:
+def _get_es_suggest(input_5: str, input_10: str) -> List[ESSuggest]:
     """
     Build the ES suggest field
     """
 
     return [
-        {"input": [input_5], "weight": 5},
-        {"input": [input_10], "weight": 10},
+        ESSuggest(input=input_5, weight=5),
+        ESSuggest(input=input_10, weight=10),
     ]
 
 
 def _build_suggest_of(
     entity_list: Optional[EntityReferenceList],
-) -> List[Dict[str, Any]]:
+) -> List[ESSuggest]:
     """
     Build the ES suggest field from a EntityReferenceList
     Args:
@@ -530,7 +516,7 @@ def _build_suggest_of(
         return suggest_list
     for entity in entity_list.__root__:
         entity_display_name = entity.displayName if entity.displayName else entity.name
-        suggest_list.append({"input": [entity_display_name], "weight": 5})
+        suggest_list.append(ESSuggest(input=entity_display_name, weight=5))
     return suggest_list
 
 
@@ -545,9 +531,10 @@ def create_record_document(record: Entity, _: OpenMetadata) -> Any:
 
 @create_record_document.register
 def _(record: Table, metadata: OpenMetadata) -> TableESDocument:
-
     tags, tier = get_es_tag_list_and_tier(record)
-    suggest = get_es_fqn_suggest(record)
+    suggest = _get_es_suggest(
+        input_5=record.fullyQualifiedName.__root__, input_10=record.name.__root__
+    )
     display_name = get_es_display_name(record)
     followers = get_es_followers(record)
 
@@ -588,15 +575,12 @@ def _(record: Table, metadata: OpenMetadata) -> TableESDocument:
         deleted=record.deleted,
         serviceType=str(record.serviceType.name),
         suggest=suggest,
-        service_suggest=[{"input": [record.service.name], "weight": 5}],
-        database_suggest=[{"input": [database_entity.name.__root__], "weight": 5}],
+        service_suggest=[ESSuggest(input=record.service.name, weight=5)],
+        database_suggest=[ESSuggest(input=database_entity.name.__root__, weight=5)],
         schema_suggest=[
-            {
-                "input": [database_schema_entity.name.__root__],
-                "weight": 5,
-            }
+            ESSuggest(input=database_schema_entity.name.__root__, weight=5)
         ],
-        column_suggest=[{"input": [column], "weight": 5} for column in column_names],
+        column_suggest=[ESSuggest(input=column, weight=5) for column in column_names],
         description=record.description.__root__ if record.description else "",
         tier=tier,
         tags=tags,
@@ -607,7 +591,9 @@ def _(record: Table, metadata: OpenMetadata) -> TableESDocument:
 @create_record_document.register
 def _(record: Topic, _: OpenMetadata) -> TopicESDocument:
     tags, tier = get_es_tag_list_and_tier(record)
-    suggest = get_es_fqn_suggest(record)
+    suggest = _get_es_suggest(
+        input_5=record.fullyQualifiedName.__root__, input_10=record.name.__root__
+    )
     display_name = get_es_display_name(record)
     followers = get_es_followers(record)
 
@@ -631,7 +617,7 @@ def _(record: Topic, _: OpenMetadata) -> TopicESDocument:
         maximumMessageSize=record.maximumMessageSize,
         retentionSize=record.retentionSize,
         suggest=suggest,
-        service_suggest=[{"input": [record.service.name], "weight": 5}],
+        service_suggest=[ESSuggest(input=record.service.name, weight=5)],
         tier=tier,
         tags=tags,
         owner=record.owner,
@@ -641,10 +627,11 @@ def _(record: Topic, _: OpenMetadata) -> TopicESDocument:
 
 @create_record_document.register
 def _(record: Dashboard, _: OpenMetadata) -> DashboardESDocument:
-
     tags, tier = get_es_tag_list_and_tier(record)
-    suggest = get_es_fqn_suggest(record)
     display_name = get_es_display_name(record)
+    suggest = _get_es_suggest(
+        input_5=record.fullyQualifiedName.__root__, input_10=display_name
+    )
     followers = get_es_followers(record)
 
     chart_suggest = _build_suggest_of(record.charts)
@@ -673,21 +660,22 @@ def _(record: Dashboard, _: OpenMetadata) -> DashboardESDocument:
         suggest=suggest,
         chart_suggest=chart_suggest,
         data_model_suggest=data_model_suggest,
-        service_suggest=[{"input": [record.service.name], "weight": 5}],
+        service_suggest=[ESSuggest(input=record.service.name, weight=5)],
     )
 
 
 @create_record_document.register
 def _create_pipeline_es_doc(record: Pipeline, _: OpenMetadata) -> PipelineESDocument:
-
     tags, tier = get_es_tag_list_and_tier(record)
-    suggest = get_es_fqn_suggest(record)
     display_name = get_es_display_name(record)
+    suggest = _get_es_suggest(
+        input_5=record.fullyQualifiedName.__root__, input_10=display_name
+    )
     followers = get_es_followers(record)
 
     task_suggest = []
     for task in record.tasks:
-        task_suggest.append({"input": [task.displayName], "weight": 5})
+        task_suggest.append(ESSuggest(input=task.displayName, weight=5))
         if tags in task and len(task.tags) > 0:
             tags.extend(task.tags)
 
@@ -708,7 +696,7 @@ def _create_pipeline_es_doc(record: Pipeline, _: OpenMetadata) -> PipelineESDocu
         serviceType=str(record.serviceType.name),
         suggest=suggest,
         task_suggest=task_suggest,
-        service_suggest=[{"input": [record.service.name], "weight": 5}],
+        service_suggest=[ESSuggest(input=record.service.name, weight=5)],
         tier=tier,
         tags=list(tags),
         owner=record.owner,
@@ -718,10 +706,11 @@ def _create_pipeline_es_doc(record: Pipeline, _: OpenMetadata) -> PipelineESDocu
 
 @create_record_document.register
 def _create_ml_model_es_doc(record: MlModel, _: OpenMetadata) -> MlModelESDocument:
-
     tags, tier = get_es_tag_list_and_tier(record)
-    suggest = get_es_fqn_suggest(record)
     display_name = get_es_display_name(record)
+    suggest = _get_es_suggest(
+        input_5=record.fullyQualifiedName.__root__, input_10=record.name.__root__
+    )
     followers = get_es_followers(record)
 
     return MlModelESDocument(
@@ -749,15 +738,17 @@ def _create_ml_model_es_doc(record: MlModel, _: OpenMetadata) -> MlModelESDocume
         owner=record.owner,
         followers=followers,
         service=record.service,
+        service_suggest=[ESSuggest(input=record.service.name, weight=5)],
     )
 
 
 @create_record_document.register
 def _create_container_es_doc(record: Container, _: OpenMetadata) -> ContainerESDocument:
-
     tags, tier = get_es_tag_list_and_tier(record)
-    suggest = get_es_fqn_suggest(record)
     display_name = get_es_display_name(record)
+    suggest = _get_es_suggest(
+        input_5=record.fullyQualifiedName.__root__, input_10=record.name.__root__
+    )
     followers = get_es_followers(record)
 
     return ContainerESDocument(
@@ -784,14 +775,13 @@ def _create_container_es_doc(record: Container, _: OpenMetadata) -> ContainerESD
         numberOfObjects=record.numberOfObjects,
         size=record.size,
         fileFormats=[file_format.value for file_format in record.fileFormats or []],
+        service_suggest=[ESSuggest(input=record.service.name, weight=5)],
     )
 
 
 @create_record_document.register
 def _create_query_es_doc(record: Query, _: OpenMetadata) -> QueryESDocument:
-
     tags, tier = get_es_tag_list_and_tier(record)
-    suggest = get_es_fqn_suggest(record)
     display_name = get_es_display_name(record)
     followers = get_es_followers(record)
 
@@ -806,7 +796,9 @@ def _create_query_es_doc(record: Query, _: OpenMetadata) -> QueryESDocument:
         updatedBy=record.updatedBy,
         href=record.href.__root__,
         deleted=record.deleted,
-        suggest=suggest,
+        suggest=[
+            ESSuggest(input=record.name.__root__, weight=10),
+        ],
         tier=tier,
         tags=list(tags),
         owner=record.owner,
@@ -821,9 +813,8 @@ def _create_query_es_doc(record: Query, _: OpenMetadata) -> QueryESDocument:
 
 @create_record_document.register
 def _create_user_es_doc(record: User, _: OpenMetadata) -> UserESDocument:
-
     display_name = get_es_display_name(record)
-    suggest = get_es_display_name_suggest(record)
+    suggest = _get_es_suggest(input_5=record.name.__root__, input_10=display_name)
 
     return UserESDocument(
         id=str(record.id.__root__),
@@ -847,9 +838,8 @@ def _create_user_es_doc(record: User, _: OpenMetadata) -> UserESDocument:
 
 @create_record_document.register
 def _create_team_es_doc(record: Team, _: OpenMetadata) -> TeamESDocument:
-
     display_name = get_es_display_name(record)
-    suggest = get_es_display_name_suggest(record)
+    suggest = _get_es_suggest(input_5=record.name.__root__, input_10=display_name)
 
     return TeamESDocument(
         id=str(record.id.__root__),
@@ -875,9 +865,8 @@ def _create_team_es_doc(record: Team, _: OpenMetadata) -> TeamESDocument:
 def _create_glossary_term_es_doc(
     record: GlossaryTerm, _: OpenMetadata
 ) -> GlossaryTermESDocument:
-
     display_name = get_es_display_name(record)
-    suggest = get_es_display_name_suggest(record)
+    suggest = _get_es_suggest(input_5=record.name.__root__, input_10=display_name)
 
     return GlossaryTermESDocument(
         id=str(record.id.__root__),
@@ -906,7 +895,6 @@ def _create_glossary_term_es_doc(
 def _create_tag_es_doc(
     record: Classification, metadata: OpenMetadata
 ) -> List[TagESDocument]:
-
     tag_docs = []
     tag_list = metadata.list_entities(
         entity=Tag, params={"parent": record.name.__root__}
@@ -914,8 +902,8 @@ def _create_tag_es_doc(
 
     for tag in tag_list.entities or []:
         suggest = [
-            {"input": [tag.name.__root__], "weight": 5},
-            {"input": [tag.fullyQualifiedName], "weight": 10},
+            ESSuggest(input=tag.fullyQualifiedName.__root__, weight=5),
+            ESSuggest(input=tag.name.__root__, weight=10),
         ]
 
         tag_doc = TagESDocument(

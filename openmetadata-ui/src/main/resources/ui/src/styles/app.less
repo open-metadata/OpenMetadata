@@ -186,6 +186,7 @@
 .activeCategory {
   border-left: 2px solid @primary;
   background: @primary-light;
+  padding-left: 10px;
   font-weight: 600;
 }
 
@@ -278,7 +279,8 @@
   width: 100%;
   display: flex;
   flex-direction: column;
-  padding: 24px 16px 0px 16px;
+  padding: 16px;
+  padding-bottom: 0;
 }
 
 .description-text {
@@ -286,6 +288,12 @@
   text-overflow: ellipsis;
   display: -webkit-box;
   line-height: 18px;
+}
+
+.entity-header-display-name {
+  font-weight: 700;
+  font-size: 18px;
+  line-height: 22px;
 }
 
 /* Opacity CSS start */
@@ -341,4 +349,32 @@
 
 .whitespace-nowrap {
   white-space: nowrap;
+}
+
+// breadcrumb
+
+.link-title {
+  font-size: 14px !important;
+  color: @text-grey-muted !important;
+}
+.link-title:hover {
+  color: @primary-color !important;
+  text-decoration: none !important;
+}
+
+// Multiple label in a field with required
+
+.multiple-label-field label {
+  align-items: flex-start;
+}
+.multiple-label-field
+  .ant-form-item-label
+  > label.ant-form-item-required:not(.ant-form-item-required-mark-optional)::before {
+  line-height: 24px;
+}
+
+// Switch Inline Field
+
+.switch-field .ant-form-item {
+  margin: 0;
 }

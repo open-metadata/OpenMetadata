@@ -42,6 +42,7 @@ export enum EntityType {
   ALERT = 'alert',
   CONTAINER = 'container',
   TAG = 'tag',
+  DASHBOARD_DATA_MODEL = 'dashboardDataModel',
 }
 
 export enum AssetsType {
@@ -50,6 +51,7 @@ export enum AssetsType {
   DASHBOARD = 'dashboard',
   PIPELINE = 'pipeline',
   MLMODEL = 'mlmodel',
+  DASHBOARD_DATA_MODEL = 'dashboardDataModel',
 }
 
 export enum ChangeType {
@@ -121,4 +123,5 @@ export enum EntityInfo {
   MAX_MESSAGE_SIZE = 'Max Message Size',
   SIZE = 'size',
   NUMBER_OF_OBJECTS = 'number-of-object-plural',
+  DATA_MODEL_TYPE = 'data-model-type',
 }

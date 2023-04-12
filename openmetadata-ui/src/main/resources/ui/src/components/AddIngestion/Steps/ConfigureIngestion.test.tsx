@@ -46,6 +46,7 @@ const mockConfigureIngestion: ConfigureIngestionProps = {
   serviceCategory: ServiceCategory.DATABASE_SERVICES,
   onChange: jest.fn(),
   data: {
+    showDatabaseFilterField: true,
     ingestionName: '',
     databaseFilterPattern: {
       includes: [],

@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { CheckOutlined, PlusOutlined } from '@ant-design/icons';
-import { Space, Switch } from 'antd';
+import { PlusOutlined } from '@ant-design/icons';
+import { Button, Space, Switch } from 'antd';
 import classNames from 'classnames';
 import { UserSelectableList } from 'components/common/UserSelectableList/UserSelectableList.component';
 import { UserTag } from 'components/common/UserTag/UserTag.component';
@@ -34,12 +34,10 @@ import { EntityReference } from '../../generated/type/entityReference';
 import { errorMsg, isValidUrl, requiredField } from '../../utils/CommonUtils';
 import SVGIcons from '../../utils/SvgUtils';
 import { AddTags } from '../AddTags/add-tags.component';
-import { Button } from '../buttons/Button/Button';
 import RichTextEditor from '../common/rich-text-editor/RichTextEditor';
 import { EditorContentRef } from '../common/rich-text-editor/RichTextEditor.interface';
 import TitleBreadcrumb from '../common/title-breadcrumb/title-breadcrumb.component';
 import PageLayout from '../containers/PageLayout';
-import Loader from '../Loader/Loader';
 import RelatedTermsModal from '../Modals/RelatedTermsModal/RelatedTermsModal';
 import { AddGlossaryTermProps } from './AddGlossaryTerm.interface';
 
@@ -60,7 +58,7 @@ const AddGlossaryTerm = ({
   onSave,
   onCancel,
   slashedBreadcrumb,
-  saveState = 'initial',
+  isLoading,
 }: AddGlossaryTermProps) => {
   const markdownRef = useRef<EditorContentRef>();
 
@@ -72,6 +70,7 @@ const AddGlossaryTerm = ({
   });
 
   const [name, setName] = useState('');
+  const [displayName, setDisplayName] = useState('');
   const [description] = useState<string>('');
 
   const [showRelatedTermsModal, setShowRelatedTermsModal] = useState(false);
@@ -215,7 +214,7 @@ const AddGlossaryTerm = ({
       const updatedName = name.trim();
       const data: CreateGlossaryTerm = {
         name: updatedName,
-        displayName: updatedName,
+        displayName: (displayName || updatedName).trim(),
         description: getDescription(),
         reviewers: updatedReviewers.length > 0 ? updatedReviewers : undefined,
         relatedTerms: relatedTerms.length > 0 ? updatedTerms : undefined,
@@ -231,44 +230,6 @@ const AddGlossaryTerm = ({
 
       onSave(data);
     }
-  };
-
-  const getSaveButton = () => {
-    return allowAccess ? (
-      <>
-        {saveState === 'waiting' ? (
-          <Button
-            disabled
-            className="tw-w-16 tw-h-10 disabled:tw-opacity-100"
-            size="regular"
-            theme="primary"
-            variant="contained">
-            <Loader size="small" type="white" />
-          </Button>
-        ) : saveState === 'success' ? (
-          <Button
-            disabled
-            className="tw-w-16 tw-h-10 disabled:tw-opacity-100"
-            size="regular"
-            theme="primary"
-            variant="contained">
-            <CheckOutlined />
-          </Button>
-        ) : (
-          <Button
-            className={classNames('tw-w-16 tw-h-10', {
-              'tw-opacity-40': !allowAccess,
-            })}
-            data-testid="save-glossary-term"
-            size="regular"
-            theme="primary"
-            variant="contained"
-            onClick={handleSave}>
-            {t('label.save')}
-          </Button>
-        )}
-      </>
-    ) : null;
   };
 
   const fetchRightPanel = () => {
@@ -330,7 +291,22 @@ const AddGlossaryTerm = ({
                 )
               : null}
           </Field>
+          <Field>
+            <label className="tw-block tw-form-label" htmlFor="display-name">
+              {`${t('label.display-name')}:`}
+            </label>
 
+            <input
+              className="tw-form-inputs tw-form-inputs-padding"
+              data-testid="display-name"
+              id="display-name"
+              name="display-name"
+              placeholder={t('label.display-name')}
+              type="text"
+              value={displayName}
+              onChange={(e) => setDisplayName(e.target.value)}
+            />
+          </Field>
           <Field>
             <label
               className="tw-block tw-form-label tw-mb-0"
@@ -409,12 +385,11 @@ const AddGlossaryTerm = ({
                 <Button
                   className="tw-h-5 tw-px-2"
                   data-testid="add-reference"
-                  size="x-small"
-                  theme="primary"
-                  variant="contained"
-                  onClick={addReferenceFields}>
-                  <PlusOutlined />
-                </Button>
+                  icon={<PlusOutlined />}
+                  size="small"
+                  type="primary"
+                  onClick={addReferenceFields}
+                />
               </Space>
             </Field>
 
@@ -480,12 +455,11 @@ const AddGlossaryTerm = ({
               <Button
                 className="tw-h-5 tw-px-2"
                 data-testid="add-related-terms"
-                size="x-small"
-                theme="primary"
-                variant="contained"
-                onClick={() => setShowRelatedTermsModal(true)}>
-                <PlusOutlined />
-              </Button>
+                icon={<PlusOutlined />}
+                size="small"
+                type="primary"
+                onClick={() => setShowRelatedTermsModal(true)}
+              />
             </div>
             <div className="tw-my-4">
               {Boolean(relatedTerms.length) &&
@@ -517,11 +491,10 @@ const AddGlossaryTerm = ({
                 <Button
                   className="tw-h-5 tw-px-2"
                   data-testid="add-reviewers"
-                  size="x-small"
-                  theme="primary"
-                  variant="contained">
-                  <PlusOutlined />
-                </Button>
+                  icon={<PlusOutlined />}
+                  size="small"
+                  type="primary"
+                />
               </UserSelectableList>
             </div>
             <Space wrap className="tw-my-4" size={[8, 8]}>
@@ -545,13 +518,18 @@ const AddGlossaryTerm = ({
           <Field className="tw-flex tw-justify-end">
             <Button
               data-testid="cancel-glossary-term"
-              size="regular"
-              theme="primary"
-              variant="text"
+              type="link"
               onClick={onCancel}>
               {t('label.cancel')}
             </Button>
-            {getSaveButton()}
+            <Button
+              data-testid="save-glossary-term"
+              disabled={!allowAccess}
+              loading={isLoading}
+              type="primary"
+              onClick={handleSave}>
+              {t('label.save')}
+            </Button>
           </Field>
         </div>
 

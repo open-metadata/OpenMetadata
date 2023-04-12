@@ -71,17 +71,8 @@ const ReIndexAllModal = ({
           <TreeSelect
             treeCheckable
             treeDefaultExpandAll
+            showCheckedStrategy={TreeSelect.SHOW_PARENT}
             treeData={ENTITY_TREE_OPTIONS}
-          />
-        </Form.Item>
-        <Form.Item
-          label={t('label.flush-interval-secs')}
-          name="flushIntervalInSec">
-          <Input
-            data-testid="flush-interval-in-sec"
-            placeholder={t('label.enter-entity', {
-              entity: t('label.second-plural'),
-            })}
           />
         </Form.Item>
 
