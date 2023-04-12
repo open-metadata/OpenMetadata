@@ -18,9 +18,9 @@ import { EntityType } from 'enums/entity.enum';
 import { Tag } from 'generated/entity/classification/tag';
 import { Container } from 'generated/entity/data/container';
 import { GlossaryTerm } from 'generated/entity/data/glossaryTerm';
+import { get } from 'lodash';
 import React, { useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { ExplorePageTabs } from '../../../enums/Explore.enum';
 import { Dashboard } from '../../../generated/entity/data/dashboard';
 import { Mlmodel } from '../../../generated/entity/data/mlmodel';
 import { Pipeline } from '../../../generated/entity/data/pipeline';
@@ -45,18 +45,19 @@ export default function EntitySummaryPanel({
   const [currentSearchIndex, setCurrentSearchIndex] = useState<EntityType>();
 
   const summaryComponent = useMemo(() => {
-    switch (entityDetails.entityType) {
-      case ExplorePageTabs.TABLES:
+    const type = get(entityDetails, 'details.entityType') ?? EntityType.TABLE;
+    switch (type) {
+      case EntityType.TABLE:
         setCurrentSearchIndex(EntityType.TABLE);
 
         return <TableSummary entityDetails={entityDetails.details as Table} />;
 
-      case ExplorePageTabs.TOPICS:
+      case EntityType.TOPIC:
         setCurrentSearchIndex(EntityType.TOPIC);
 
         return <TopicSummary entityDetails={entityDetails.details as Topic} />;
 
-      case ExplorePageTabs.DASHBOARDS:
+      case EntityType.DASHBOARD:
         setCurrentSearchIndex(EntityType.DASHBOARD);
 
         return (
@@ -65,21 +66,21 @@ export default function EntitySummaryPanel({
           />
         );
 
-      case ExplorePageTabs.PIPELINES:
+      case EntityType.PIPELINE:
         setCurrentSearchIndex(EntityType.PIPELINE);
 
         return (
           <PipelineSummary entityDetails={entityDetails.details as Pipeline} />
         );
 
-      case ExplorePageTabs.MLMODELS:
+      case EntityType.MLMODEL:
         setCurrentSearchIndex(EntityType.MLMODEL);
 
         return (
           <MlModelSummary entityDetails={entityDetails.details as Mlmodel} />
         );
 
-      case ExplorePageTabs.CONTAINERS:
+      case EntityType.CONTAINER:
         setCurrentSearchIndex(EntityType.CONTAINER);
 
         return (
@@ -87,7 +88,7 @@ export default function EntitySummaryPanel({
             entityDetails={entityDetails.details as Container}
           />
         );
-      case ExplorePageTabs.GLOSSARY:
+      case EntityType.GLOSSARY:
         setCurrentSearchIndex(EntityType.GLOSSARY);
 
         return (
@@ -95,7 +96,7 @@ export default function EntitySummaryPanel({
             entityDetails={entityDetails.details as GlossaryTerm}
           />
         );
-      case ExplorePageTabs.TAG:
+      case EntityType.TAG:
         setCurrentSearchIndex(EntityType.TAG);
 
         return <TagsSummary entityDetails={entityDetails.details as Tag} />;

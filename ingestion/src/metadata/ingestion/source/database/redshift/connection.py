@@ -21,6 +21,7 @@ from metadata.generated.schema.entity.automations.workflow import (
 )
 from metadata.generated.schema.entity.services.connections.database.redshiftConnection import (
     RedshiftConnection,
+    SslMode,
 )
 from metadata.ingestion.connections.builders import (
     create_generic_db_connection,
@@ -44,7 +45,11 @@ def get_connection(connection: RedshiftConnection) -> Engine:
     if connection.sslMode:
         if not connection.connectionArguments:
             connection.connectionArguments = init_empty_connection_arguments()
-        connection.connectionArguments.__root__["sslmode"] = connection.sslMode
+        connection.connectionArguments.__root__["sslmode"] = connection.sslMode.value
+        if connection.sslMode in (SslMode.verify_ca, SslMode.verify_full):
+            connection.connectionArguments.__root__[
+                "sslrootcert"
+            ] = connection.sslConfig.__root__.certificatePath
     return create_generic_db_connection(
         connection=connection,
         get_connection_url_fn=get_connection_url_common,

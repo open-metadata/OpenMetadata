@@ -13,7 +13,7 @@
 
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
-import { PagingWithoutTotal } from 'Models';
+import { PagingWithoutTotal, RestoreRequestType } from 'Models';
 import { Database } from '../generated/entity/data/database';
 import { DatabaseSchema } from '../generated/entity/data/databaseSchema';
 import { Paging } from '../generated/type/paging';
@@ -112,14 +112,27 @@ export const getDatabaseSchemas = async (
 };
 export const getDatabaseSchemaDetailsByFQN = async (
   databaseSchemaName: string,
-  arrQueryFields?: string | string[]
+  arrQueryFields?: string | string[],
+  qParams?: string
 ) => {
   const url = `${getURLWithQueryFields(
     `/databaseSchemas/name/${databaseSchemaName}`,
-    arrQueryFields
+    arrQueryFields,
+    qParams
   )}`;
 
   const response = await APIClient.get<DatabaseSchema>(url);
+
+  return response.data;
+};
+
+export const restoreDatabaseSchema = async (id: string) => {
+  const response = await APIClient.put<
+    RestoreRequestType,
+    AxiosResponse<DatabaseSchema>
+  >('/databaseSchemas/restore', {
+    id,
+  });
 
   return response.data;
 };

@@ -151,6 +151,7 @@ export const DATABASE_DEFAULT = databaseDefault;
 export const TOPIC_DEFAULT = topicDefault;
 export const DASHBOARD_DEFAULT = dashboardDefault;
 export const PIPELINE_DEFAULT = pipelineDefault;
+export const ML_MODEL_DEFAULT = mlflow;
 export const NIFI = nifi;
 export const KINESIS = kinesis;
 export const QUICKSIGHT = quicksight;

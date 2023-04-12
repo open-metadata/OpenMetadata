@@ -68,6 +68,7 @@ import {
   MARIADB,
   METABASE,
   MLFLOW,
+  ML_MODEL_DEFAULT,
   MODE,
   MSSQL,
   MYSQL,
@@ -298,6 +299,8 @@ export const serviceTypeLogo = (type: string) => {
         logo = PIPELINE_DEFAULT;
       } else if (serviceTypes.databaseServices.includes(type)) {
         logo = DATABASE_DEFAULT;
+      } else if (serviceTypes.mlmodelServices.includes(type)) {
+        logo = ML_MODEL_DEFAULT;
       } else {
         logo = DEFAULT_SERVICE;
       }
@@ -555,7 +558,7 @@ export const getServiceIngestionStepGuide = (
       {guide && (
         <>
           <h6 className="tw-heading tw-text-base">{getTitle(guide.title)}</h6>
-          <div className="tw-mb-5">
+          <div className="tw-mb-5 overflow-wrap-anywhere">
             {isIngestion
               ? getFormattedGuideText(
                   guide.description,
