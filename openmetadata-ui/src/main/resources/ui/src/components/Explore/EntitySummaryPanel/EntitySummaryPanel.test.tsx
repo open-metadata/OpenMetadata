@@ -108,8 +108,7 @@ describe('EntitySummaryPanel component tests', () => {
     render(
       <EntitySummaryPanel
         entityDetails={{
-          details: mockTopicEntityDetails,
-          entityType: EntityType.TOPIC,
+          details: { ...mockTopicEntityDetails, entityType: EntityType.TOPIC },
         }}
         handleClosePanel={mockHandleClosePanel}
       />
