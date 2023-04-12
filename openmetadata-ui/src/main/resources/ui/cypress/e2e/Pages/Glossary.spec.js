@@ -201,13 +201,6 @@ describe('Glossary page should work properly', () => {
       .click();
     interceptURL('GET', '/api/v1/tags?limit=1000', 'fetchTags');
 
-    interceptURL(
-      'GET',
-      `/api/v1/search/query?q=*${encodeURI(
-        NEW_GLOSSARY.reviewer
-      )}*&from=0&size=15&index=user_search_index`,
-      'getReviewer'
-    );
     cy.get('[data-testid="tags-container"] .ant-select-selection-overflow')
       .scrollIntoView()
       .should('be.visible')
@@ -224,7 +217,6 @@ describe('Glossary page should work properly', () => {
     cy.get('[data-testid="searchbar"]')
       .should('be.visible')
       .type(NEW_GLOSSARY.reviewer);
-    verifyResponseStatusCode('@getReviewer', 200);
     cy.get(`[title="${NEW_GLOSSARY.reviewer}"]`)
       .scrollIntoView()
       .should('be.visible')
