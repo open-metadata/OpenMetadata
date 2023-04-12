@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Card, Space, Typography } from 'antd';
+import { Button, Card, Col, Row, Space, Typography } from 'antd';
 import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
 import { ReactComponent as PlusIcon } from 'assets/svg/plus-primary.svg';
 import ProfilePicture from 'components/common/ProfilePicture/ProfilePicture';
@@ -86,11 +86,11 @@ const GlossaryDetailsRightPanel = ({
 
   return (
     <Card>
-      <Space direction="vertical" size={40}>
-        <Space className="d-flex" direction="vertical">
-          <Space size={0}>
+      <Row gutter={[0, 40]}>
+        <Col span="24">
+          <div className="d-flex items-center m-b-xs">
             <Typography.Text
-              className="m-b-xs tw-text-base font-medium"
+              className=" tw-text-base font-medium"
               data-testid="glossary-owner-name">
               {t('label.owner')}
             </Typography.Text>
@@ -108,35 +108,34 @@ const GlossaryDetailsRightPanel = ({
                 />
               </UserTeamSelectableList>
             )}
-          </Space>
-          <Space>
-            {selectedData.owner && getEntityName(selectedData.owner) ? (
-              <Space className="m-r-xss" size={4}>
-                <ProfilePicture
-                  displayName={getEntityName(selectedData.owner)}
-                  id={selectedData.owner?.id || ''}
-                  name={selectedData.owner?.name || ''}
-                  textClass="text-xs"
-                  width="20"
-                />
-                <Link to={getUserPath(selectedData.owner.name ?? '')}>
-                  {getEntityName(selectedData.owner)}
-                </Link>
-              </Space>
-            ) : (
-              <span className="text-grey-muted">
-                {t('label.no-entity', {
-                  entity: t('label.owner-lowercase'),
-                })}
-              </span>
-            )}
-          </Space>
-        </Space>
-        <Space className="d-flex" direction="vertical">
-          <Space size={0}>
+          </div>
+
+          {selectedData.owner && getEntityName(selectedData.owner) ? (
+            <Space className="m-r-xss" size={4}>
+              <ProfilePicture
+                displayName={getEntityName(selectedData.owner)}
+                id={selectedData.owner?.id || ''}
+                name={selectedData.owner?.name || ''}
+                textClass="text-xs"
+                width="20"
+              />
+              <Link to={getUserPath(selectedData.owner.name ?? '')}>
+                {getEntityName(selectedData.owner)}
+              </Link>
+            </Space>
+          ) : (
+            <span className="text-grey-muted">
+              {t('label.no-entity', {
+                entity: t('label.owner-lowercase'),
+              })}
+            </span>
+          )}
+        </Col>
+        <Col span="24">
+          <div className="d-flex items-center m-b-xs">
             <Typography.Text
-              className="m-b-xs tw-text-base font-medium"
-              data-testid="glossary-display-name">
+              className="tw-text-base font-medium"
+              data-testid="glossary-reviewer-heading-name">
               {t('label.reviewer-plural')}
             </Typography.Text>
             {hasEditReviewerAccess &&
@@ -151,14 +150,15 @@ const GlossaryDetailsRightPanel = ({
                     className="cursor-pointer flex-center"
                     data-testid="edit-reviewer-button"
                     icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
+                    size="small"
                     type="text"
                   />
                 </UserSelectableList>
               )}
-          </Space>
-          <Space>
+          </div>
+          <div>
             {selectedData.reviewers && selectedData.reviewers.length > 0 && (
-              <Space wrap size={6}>
+              <Space wrap data-testid="glossary-reviewer-name" size={6}>
                 {selectedData.reviewers.map((reviewer) => (
                   <Space className="m-r-xss" key={reviewer.id} size={4}>
                     <ProfilePicture
@@ -191,21 +191,20 @@ const GlossaryDetailsRightPanel = ({
                   />
                 </UserSelectableList>
               )}
-          </Space>
-        </Space>
-
-        {isGlossary && (
-          <Space className="d-flex" direction="vertical">
-            <Space data-testid="glossary-tags-name">
+          </div>
+        </Col>
+        <Col span="24">
+          <div data-testid="glossary-tags-name">
+            {isGlossary && (
               <TagsInput
                 editable={permissions.EditAll || permissions.EditTags}
                 tags={selectedData.tags}
                 onTagsUpdate={handleTagsUpdate}
               />
-            </Space>
-          </Space>
-        )}
-      </Space>
+            )}
+          </div>
+        </Col>
+      </Row>
     </Card>
   );
 };

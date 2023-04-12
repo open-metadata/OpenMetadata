@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Space, Typography } from 'antd';
+import { Col, Row, Typography } from 'antd';
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { EntityHeaderTitleProps } from './EntityHeaderTitle.interface';
@@ -22,32 +22,35 @@ const EntityHeaderTitle = ({
   link,
 }: EntityHeaderTitleProps) => {
   return (
-    <Space direction="vertical" size={0}>
-      <Space align="center" size={8}>
-        {icon}
-        <div className="d-flex flex-col">
+    <Row align="middle" gutter={8} wrap={false}>
+      <Col>{icon}</Col>
+      <Col>
+        <div>
           <Typography.Text
-            className="m-b-0 tw-text-xs tw-text-grey-muted"
+            className="m-b-0 d-block tw-text-xs tw-text-grey-muted"
             data-testid="entity-header-name">
             {name}
           </Typography.Text>
           {link ? (
             <Link
-              className="m-b-0 entity-header-display-name"
+              className="m-b-0 d-block entity-header-display-name text-lg font-bold"
               data-testid="entity-header-display-name"
               to={link}>
-              <Typography.Text>{displayName ?? name}</Typography.Text>
+              <Typography.Text ellipsis={{ tooltip: true }}>
+                {displayName ?? name}
+              </Typography.Text>
             </Link>
           ) : (
             <Typography.Text
-              className="m-b-0 entity-header-display-name"
-              data-testid="entity-header-display-name">
+              className="m-b-0 d-block entity-header-display-name text-lg font-bold"
+              data-testid="entity-header-display-name"
+              ellipsis={{ tooltip: true }}>
               {displayName ?? name}
             </Typography.Text>
           )}
         </div>
-      </Space>
-    </Space>
+      </Col>
+    </Row>
   );
 };
 

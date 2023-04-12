@@ -2,10 +2,49 @@
   "$id": "https://open-metadata.org/schema/entity/services/storageService.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Storage Service",
-  "description": "This schema defines the Storage Service entity, such as S3, GCS, HDFS.",
+  "description": "This schema defines the Storage Service entity, such as S3, GCS or AZURE.",
   "type": "object",
   "javaType": "org.openmetadata.schema.entity.services.StorageService",
-  "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
+  "javaInterfaces": [
+    "org.openmetadata.schema.EntityInterface",
+    "org.openmetadata.schema.ServiceEntityInterface"
+  ],
+  "definitions": {
+    "storageServiceType": {
+      "description": "Type of storage service such as S3, GFS, AZURE...",
+      "javaInterfaces": [
+        "org.openmetadata.schema.EnumInterface"
+      ],
+      "type": "string",
+      "enum": [
+        "S3"
+      ],
+      "javaEnums": [
+        {
+          "name": "S3"
+        }
+      ]
+    },
+    "storageConnection": {
+      "type": "object",
+      "javaType": "org.openmetadata.schema.type.StorageConnection",
+      "description": "storage Connection.",
+      "javaInterfaces": [
+        "org.openmetadata.schema.ServiceConnectionEntityInterface"
+      ],
+      "properties": {
+        "config": {
+          "mask": true,
+          "oneOf": [
+            {
+              "$ref": "connections/storage/s3Connection.json"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false
+    }
+  },
   "properties": {
     "id": {
       "description": "Unique identifier of this storage service instance.",
@@ -24,12 +63,31 @@
       "type": "string"
     },
     "serviceType": {
-      "description": "Type of storage service such as S3, GCS, HDFS...",
-      "$ref": "../../type/storage.json#/definitions/storageServiceType"
+      "description": "Type of storage service such as S3, GCS, AZURE...",
+      "$ref": "#/definitions/storageServiceType"
     },
     "description": {
       "description": "Description of a storage service instance.",
       "$ref": "../../type/basic.json#/definitions/markdown"
+    },
+    "connection": {
+      "$ref": "#/definitions/storageConnection"
+    },
+    "pipelines": {
+      "description": "References to pipelines deployed for this storage service to extract metadata, usage, lineage etc..",
+      "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
+    },
+    "testConnectionResult": {
+      "description": "Last test connection results for this service",
+      "$ref": "connections/testConnectionResult.json"
+    },
+    "tags": {
+      "description": "Tags for this storage Service.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/tagLabel.json"
+      },
+      "default": null
     },
     "version": {
       "description": "Metadata version of the entity.",
@@ -61,6 +119,6 @@
       "default": false
     }
   },
-  "required": ["id", "name", "serviceType", "href"],
+  "required": ["id", "name", "serviceType"],
   "additionalProperties": false
 }

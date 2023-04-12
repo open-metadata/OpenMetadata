@@ -1,5 +1,0 @@
-{
-	"name": "glue_s3",
-	"serviceType": "S3",
-	"description": "S3 Object storage used for the Glue Catalog"
-}
