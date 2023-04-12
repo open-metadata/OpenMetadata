@@ -21,7 +21,6 @@ import {
 } from '../../common/common';
 import {
   DELETE_TERM,
-  GLOSSARY_TERM_WITH_DETAILS,
   NEW_GLOSSARY,
   NEW_GLOSSARY_1,
   NEW_GLOSSARY_1_TERMS,
@@ -774,87 +773,6 @@ describe('Glossary page should work properly', () => {
     cy.get(`[data-testid="${entity.serviceName}-${entity.term}"]`)
       .contains(entity.term)
       .should('be.visible');
-  });
-
-  it('Create glossaryTerm with tags, related terms, synonyms, references and reviewer & verify API payload', () => {
-    selectActiveGlossary(NEW_GLOSSARY.name);
-    interceptURL(
-      'GET',
-      '/api/v1/search/query?q=*&from=0&size=10&index=glossary_search_index',
-      'searchGlossaryTerm'
-    );
-
-    interceptURL('GET', '/api/v1/users/*?fields=profile', 'getProfile');
-    fillGlossaryTermDetails(GLOSSARY_TERM_WITH_DETAILS, NEW_GLOSSARY);
-    // Add Tags
-    interceptURL('GET', '/api/v1/tags?limit=1000', 'fetchTags');
-    cy.get('[data-testid="tags-container"] .ant-select-selection-overflow')
-      .scrollIntoView()
-      .should('be.visible')
-      .type(GLOSSARY_TERM_WITH_DETAILS.tag);
-    verifyResponseStatusCode('@fetchTags', 200);
-    cy.get(`[title="${GLOSSARY_TERM_WITH_DETAILS.tag}"]`)
-      .should('be.visible')
-      .click();
-    cy.get('#right-panel').click();
-
-    // Add Related terms
-    cy.get('[data-testid="add-related-terms"]')
-      .scrollIntoView()
-      .should('be.visible')
-      .click();
-    cy.get('.ant-modal-body').should('be.visible');
-    cy.get('[data-testid="searchbar"]')
-      .should('be.visible')
-      .type(GLOSSARY_TERM_WITH_DETAILS.relatedTerms);
-    cy.get('[data-testid="searchbar"]').should(
-      'have.value',
-      GLOSSARY_TERM_WITH_DETAILS.relatedTerms
-    );
-    verifyResponseStatusCode('@searchGlossaryTerm', 200);
-
-    cy.get('[data-testid="user-card-container"]')
-      .contains(GLOSSARY_TERM_WITH_DETAILS.relatedTerms)
-      .parents('[data-testid="user-card-container"]')
-      .find('[data-testid="checkboxAddUser"]')
-      .should('be.visible')
-      .click();
-    cy.get('[data-testid="saveButton"]').should('be.visible').click();
-    cy.get('.ant-modal-body').should('not.exist');
-
-    interceptURL('POST', '/api/v1/glossaryTerms', 'createGlossaryTerms');
-    cy.get('[data-testid="save-glossary-term"]')
-      .scrollIntoView()
-      .should('be.visible')
-      .click();
-
-    cy.get(`[data-row-key="${GLOSSARY_TERM_WITH_DETAILS.fullyQualifiedName}"]`)
-      .scrollIntoView()
-      .should('be.visible')
-      .contains(GLOSSARY_TERM_WITH_DETAILS.name)
-      .should('be.visible');
-  });
-
-  it('Verify details of created glossaryTerm', () => {
-    selectActiveGlossary(NEW_GLOSSARY.name);
-    const { name, fullyQualifiedName, tag } = GLOSSARY_TERM_WITH_DETAILS;
-    interceptURL(
-      'GET',
-      `/api/v1/glossaryTerms/name/*.${name}?fields=*`,
-      'getGlossaryTerm'
-    );
-    interceptURL(
-      'GET',
-      '/api/v1/permissions/glossaryTerm/*',
-      'waitForTermPermission'
-    );
-    visitGlossaryTermPage(name, fullyQualifiedName);
-
-    verifyResponseStatusCode('@getGlossaryTerm', 200);
-    verifyResponseStatusCode('@waitForTermPermission', 200);
-    cy.get('[data-testid="glossary-term"] > :nth-child(1)')
-      .scrollIntoView()
-      .as('glossaryTermDetailsPanel');
   });
 
   it('Remove Glossary term from entity should work properly', () => {

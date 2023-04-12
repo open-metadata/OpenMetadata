@@ -248,7 +248,7 @@ const GlossaryHeaderButtons = ({
                   setShowActions(false);
                 }}>
                 <Col className="self-center" span={3}>
-                  <EditIcon color={DE_ACTIVE_COLOR} width="20px" />
+                  <EditIcon color={DE_ACTIVE_COLOR} width="18px" />
                 </Col>
                 <Col
                   className="tw-text-left"
