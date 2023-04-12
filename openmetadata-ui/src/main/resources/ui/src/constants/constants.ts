@@ -82,6 +82,7 @@ export const imageTypes = {
 export const NO_DATA_PLACEHOLDER = '---';
 export const ELLIPSES = '...';
 export const SINGLE_DOT = '•';
+export const PIPE_SYMBOL = '|';
 
 export const TOUR_SEARCH_TERM = 'dim_a';
 export const ERROR404 = t('label.no-data-found');

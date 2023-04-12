@@ -19,6 +19,7 @@ import {
   OperationPermission,
   ResourceEntity,
 } from 'components/PermissionProvider/PermissionProvider.interface';
+import { SearchDropdownOption } from 'components/SearchDropdown/SearchDropdown.interface';
 import {
   INITIAL_PAGING_VALUE,
   PAGE_SIZE,
@@ -34,7 +35,7 @@ import { ERROR_PLACEHOLDER_TYPE, SORT_ORDER } from 'enums/common.enum';
 import { SearchIndex } from 'enums/search.enum';
 import { compare } from 'fast-json-patch';
 import { Query } from 'generated/entity/data/query';
-import { flatMap, isNumber, isUndefined } from 'lodash';
+import { isNumber, isUndefined } from 'lodash';
 import { PagingResponse } from 'Models';
 import Qs from 'qs';
 import React, { FC, useEffect, useMemo, useState } from 'react';
@@ -60,11 +61,7 @@ import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder'
 import Loader from '../Loader/Loader';
 import QueryCard from './QueryCard';
 import QueryFilters from './QueryFilters/QueryFilters.component';
-import {
-  QueryFiltersType,
-  QueryVote,
-  TableQueriesProp,
-} from './TableQueries.interface';
+import { QueryVote, TableQueriesProp } from './TableQueries.interface';
 import TableQueryRightPanel from './TableQueryRightPanel/TableQueryRightPanel.component';
 
 const TableQueries: FC<TableQueriesProp> = ({
@@ -79,17 +76,9 @@ const TableQueries: FC<TableQueriesProp> = ({
   const { searchParams, selectedFilters } = useMemo(() => {
     const searchData = parseSearchParams(location.search);
 
-    const selectedFilters =
-      searchData.user || searchData.team
-        ? {
-            user: searchData.user || [],
-            team: searchData.team || [],
-          }
-        : undefined;
-
     return {
       searchParams: searchData,
-      selectedFilters,
+      selectedFilters: searchData?.owner,
     };
   }, [location]);
 
@@ -107,13 +96,13 @@ const TableQueries: FC<TableQueriesProp> = ({
     Number(searchParams.queryFrom) || INITIAL_PAGING_VALUE
   );
   const [appliedFilter, setAppliedFilter] = useState<
-    QueryFiltersType | undefined
+    SearchDropdownOption[] | undefined
   >(selectedFilters);
 
   const { getEntityPermission, permissions } = usePermissionProvider();
 
   const isNumberBasedPaging = useMemo(
-    () => Boolean(appliedFilter?.team.length || appliedFilter?.user.length),
+    () => Boolean(appliedFilter?.length),
     [appliedFilter]
   );
 
@@ -198,7 +187,7 @@ const TableQueries: FC<TableQueriesProp> = ({
         ...params,
         limit: PAGE_SIZE,
         entityId: tableId,
-        fields: 'owner,votes,tags,queryUsedIn',
+        fields: 'owner,votes,tags,queryUsedIn,users',
       });
       if (queries.data.length === 0) {
         setIsError((pre) => ({ ...pre, page: true }));
@@ -227,11 +216,13 @@ const TableQueries: FC<TableQueriesProp> = ({
     }
   };
 
-  const fetchFilterData = async (value?: QueryFiltersType, page?: number) => {
+  const fetchFilterData = async (
+    value?: SearchDropdownOption[],
+    page?: number
+  ) => {
     setIsLoading((pre) => ({ ...pre, query: true }));
-    const allFilter = flatMap(value);
 
-    const queryFilter = createQueryFilter(allFilter, tableId);
+    const queryFilter = createQueryFilter(value ?? [], tableId);
 
     const pageNumber = page || currentPage;
 
@@ -258,11 +249,10 @@ const TableQueries: FC<TableQueriesProp> = ({
         : queries[0];
 
       setSelectedQuery(selectedQueryData);
-
       history.push({
         search: stringifySearchParams({
-          ...value,
           tableId,
+          owner: value,
           query: selectedQueryData.id,
           queryFrom: pageNumber,
         }),
@@ -315,12 +305,10 @@ const TableQueries: FC<TableQueriesProp> = ({
     }
   }, [tableId]);
 
-  const onOwnerFilterChange = (value: QueryFiltersType) => {
-    const { team, user } = value;
-
+  const onOwnerFilterChange = (value: SearchDropdownOption[]) => {
     setIsError((pre) => ({ ...pre, search: false }));
     setAppliedFilter(value);
-    if (team.length || user.length) {
+    if (value.length) {
       fetchFilterData(value, INITIAL_PAGING_VALUE);
     } else {
       fetchTableQuery();

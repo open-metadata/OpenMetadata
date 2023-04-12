@@ -13,7 +13,7 @@
 
 import { Button, Card, Col, Row, Space, Typography } from 'antd';
 import classNames from 'classnames';
-import { getTableTabPath, SINGLE_DOT } from 'constants/constants';
+import { getTableTabPath, PIPE_SYMBOL } from 'constants/constants';
 import { QUERY_DATE_FORMAT, QUERY_LINE_HEIGHT } from 'constants/Query.constant';
 import { split } from 'lodash';
 import Qs from 'qs';
@@ -34,7 +34,7 @@ import { ReactComponent as FullScreen } from '/assets/svg/full-screen.svg';
 // css import
 import './table-queries.style.less';
 
-const { Text } = Typography;
+const { Text, Paragraph } = Typography;
 
 const QueryCard: FC<QueryCardProp> = ({
   isExpanded = false,
@@ -128,7 +128,12 @@ const QueryCard: FC<QueryCardProp> = ({
           title={
             <Space className="font-normal p-y-xs" size={8}>
               <Text>{queryDate}</Text>
-              <Text>{SINGLE_DOT}</Text>
+              <Text>{PIPE_SYMBOL}</Text>
+              <Paragraph className="m-b-0">
+                <Text>{`${t('label.duration')} `}</Text>
+                <Text>{query.duration ?? '--'}</Text>
+              </Paragraph>
+              <Text>{PIPE_SYMBOL}</Text>
               <Text>{`${t('label.by-lowercase')} ${query.updatedBy}`}</Text>
             </Space>
           }

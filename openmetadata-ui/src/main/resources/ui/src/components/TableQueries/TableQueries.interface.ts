@@ -53,13 +53,8 @@ export interface QueryUsedByOtherTableProps {
   tableId?: string;
 }
 
-export type QueryFiltersType = {
-  user: SearchDropdownOption[];
-  team: SearchDropdownOption[];
-};
-
 export interface QueryFiltersProps {
-  onFilterChange: (value: QueryFiltersType) => void;
+  onFilterChange: (value: SearchDropdownOption[]) => void;
 }
 
 export type QuerySearchParams = {
@@ -67,8 +62,7 @@ export type QuerySearchParams = {
   after?: string;
   tableId?: string;
   query?: string;
-  user?: SearchDropdownOption[];
-  team?: SearchDropdownOption[];
+  owner?: SearchDropdownOption[];
 };
 
 export type QuerySearchShouldFilterType = {
