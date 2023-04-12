@@ -11,29 +11,23 @@
  *  limitations under the License.
  */
 
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import { Query } from 'generated/entity/data/query';
+import { MOCK_PERMISSIONS } from 'mocks/Glossary.mock';
 import { MOCK_QUERIES } from 'mocks/Queries.mock';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { DEFAULT_ENTITY_PERMISSION } from 'utils/PermissionsUtils';
-import { fetchTagsAndGlossaryTerms } from 'utils/TagsUtils';
 import TableQueryRightPanel from './TableQueryRightPanel.component';
 import { TableQueryRightPanelProps } from './TableQueryRightPanel.interface';
 
 const mockProps: TableQueryRightPanelProps = {
   query: MOCK_QUERIES[0] as Query,
   isLoading: false,
-  permission: DEFAULT_ENTITY_PERMISSION,
+  permission: MOCK_PERMISSIONS,
   onQueryUpdate: jest.fn(),
 };
 
-jest.mock('components/Tag/TagsViewer/tags-viewer', () => {
-  return jest.fn().mockImplementation(() => <div>TagsViewer.component</div>);
-});
-jest.mock('components/Tag/TagsContainer/tags-container', () => {
-  return jest.fn().mockImplementation(() => <div>TagsContainer.component</div>);
-});
 jest.mock(
   'components/common/UserTeamSelectableList/UserTeamSelectableList.component',
   () => ({
@@ -44,6 +38,9 @@ jest.mock(
 );
 jest.mock('components/common/description/Description', () => {
   return jest.fn().mockImplementation(() => <div>Description.component</div>);
+});
+jest.mock('components/TagsInput/TagsInput.component', () => {
+  return jest.fn().mockImplementation(() => <div>TagsInput.component</div>);
 });
 jest.mock('components/Loader/Loader', () => {
   return jest.fn().mockImplementation(() => <div>Loader</div>);
@@ -72,11 +69,26 @@ describe('TableQueryRightPanel component test', () => {
     expect(
       await screen.findByText('Description.component')
     ).toBeInTheDocument();
-    expect(await screen.findByTestId('tag-container')).toBeInTheDocument();
-    expect(await screen.findByText('TagsViewer.component')).toBeInTheDocument();
+    expect(await screen.findByText('TagsInput.component')).toBeInTheDocument();
   });
 
   it('If no permission is granted, editing of the Owner, Description, and tags should be disabled.', async () => {
+    render(
+      <TableQueryRightPanel
+        {...mockProps}
+        permission={DEFAULT_ENTITY_PERMISSION}
+      />,
+      {
+        wrapper: MemoryRouter,
+      }
+    );
+
+    const editDescriptionBtn = screen.queryByTestId('edit-description-btn');
+
+    expect(editDescriptionBtn).not.toBeInTheDocument();
+  });
+
+  it('If Edit All permission is granted, editing of the Owner, Description, and tags should not be disabled.', async () => {
     render(<TableQueryRightPanel {...mockProps} />, {
       wrapper: MemoryRouter,
     });
@@ -84,30 +96,8 @@ describe('TableQueryRightPanel component test', () => {
     const editDescriptionBtn = await screen.findByTestId(
       'edit-description-btn'
     );
-    const tagEditor = screen.queryByText('TagsContainer.component');
-
-    expect(editDescriptionBtn).toBeDisabled();
-    expect(tagEditor).not.toBeInTheDocument();
-  });
-
-  it('If Edit All permission is granted, editing of the Owner, Description, and tags should not be disabled.', async () => {
-    render(
-      <TableQueryRightPanel
-        {...mockProps}
-        permission={{ ...DEFAULT_ENTITY_PERMISSION, EditAll: true }}
-      />,
-      {
-        wrapper: MemoryRouter,
-      }
-    );
-
-    const editDescriptionBtn = await screen.findByTestId(
-      'edit-description-btn'
-    );
-    const tagEditor = await screen.findByText('TagsContainer.component');
 
     expect(editDescriptionBtn).not.toBeDisabled();
-    expect(tagEditor).toBeInTheDocument();
   });
 
   it('Loader should visible', async () => {
@@ -116,29 +106,5 @@ describe('TableQueryRightPanel component test', () => {
     });
 
     expect(await screen.findByText('Loader')).toBeInTheDocument();
-  });
-
-  it('onClick of tag container it should fetch call tag and glossaryTerm API', async () => {
-    const mockFetchTagsAndGlossaryTerms =
-      fetchTagsAndGlossaryTerms as jest.Mock;
-
-    render(
-      <TableQueryRightPanel
-        {...mockProps}
-        permission={{ ...DEFAULT_ENTITY_PERMISSION, EditTags: true }}
-      />,
-      {
-        wrapper: MemoryRouter,
-      }
-    );
-    const tagsContainer = await screen.findByTestId('tags-wrapper');
-
-    expect(tagsContainer).toBeInTheDocument();
-
-    await act(async () => {
-      fireEvent.click(tagsContainer);
-    });
-
-    expect(mockFetchTagsAndGlossaryTerms.mock.calls).toHaveLength(1);
   });
 });

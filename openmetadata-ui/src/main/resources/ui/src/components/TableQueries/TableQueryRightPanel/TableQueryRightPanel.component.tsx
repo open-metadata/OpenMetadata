@@ -101,7 +101,7 @@ const TableQueryRightPanel = ({
               </UserTeamSelectableList>
             )}
           </Space>
-          <Space className="w-full">
+          <div data-testid="owner-name-container">
             {query.owner && getEntityName(query.owner) ? (
               <Space className="m-r-xss" size={4}>
                 <ProfilePicture
@@ -123,7 +123,7 @@ const TableQueryRightPanel = ({
                 })}
               </span>
             )}
-          </Space>
+          </div>
         </Space>
       </Col>
       <Col span={24}>

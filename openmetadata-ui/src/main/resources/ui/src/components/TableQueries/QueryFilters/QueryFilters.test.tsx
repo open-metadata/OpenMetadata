@@ -32,6 +32,6 @@ describe('QueryFilters component test', () => {
   it('Component should render', async () => {
     render(<QueryFilters onFilterChange={mockOnFilterChange} />);
 
-    expect(await screen.findAllByText('SearchDropdown')).toHaveLength(2);
+    expect(await screen.findByText('SearchDropdown')).toBeInTheDocument();
   });
 });
