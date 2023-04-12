@@ -58,6 +58,7 @@ import {
 } from 'utils/CommonUtils';
 import { getEntityName } from 'utils/EntityUtils';
 import { serviceTypeLogo } from 'utils/ServiceUtils';
+import { getCurrentDateTimeStamp } from 'utils/TimeUtils';
 import { showErrorToast, showSuccessToast } from 'utils/ToastUtils';
 
 const AddQueryPage = () => {
@@ -192,6 +193,7 @@ const AddQueryPage = () => {
             type: EntityType.TABLE,
           }))
         : undefined,
+      queryDate: getCurrentDateTimeStamp(),
     };
 
     try {
