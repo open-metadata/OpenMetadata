@@ -19,7 +19,7 @@ import Users from 'components/Users/Users.component';
 import { compare, Operation } from 'fast-json-patch';
 import { isEmpty, isEqual } from 'lodash';
 import { observer } from 'mobx-react';
-import { AssetsDataType, FormattedTableData } from 'Models';
+import { AssetsDataType } from 'Models';
 import React, {
   Dispatch,
   SetStateAction,
@@ -48,7 +48,7 @@ import {
 import { User } from '../../generated/entity/teams/user';
 import { Paging } from '../../generated/type/paging';
 import { useAuth } from '../../hooks/authHooks';
-import { formatDataResponse, SearchEntityHits } from '../../utils/APIUtils';
+import { SearchEntityHits } from '../../utils/APIUtils';
 import { deletePost, updateThreadData } from '../../utils/FeedUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
@@ -138,18 +138,16 @@ const UserPage = () => {
         const hits = response.data.hits.hits as SearchEntityHits;
 
         if (hits?.length > 0) {
-          const data = formatDataResponse(hits);
           const total = response.data.hits.total.value;
           handleEntity({
-            data,
+            data: hits,
             total,
             currPage: entity.currPage,
           });
         } else {
-          const data = [] as FormattedTableData[];
           const total = 0;
           handleEntity({
-            data,
+            data: [],
             total,
             currPage: entity.currPage,
           });

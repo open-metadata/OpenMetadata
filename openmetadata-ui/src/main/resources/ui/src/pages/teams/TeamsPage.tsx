@@ -24,7 +24,7 @@ import {
 import TeamDetailsV1 from 'components/TeamDetails/TeamDetailsV1';
 import { compare, Operation } from 'fast-json-patch';
 import { cloneDeep, isEmpty, isUndefined } from 'lodash';
-import { AssetsDataType, FormattedTableData } from 'Models';
+import { AssetsDataType } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
@@ -53,11 +53,7 @@ import { User } from '../../generated/entity/teams/user';
 import { Paging } from '../../generated/type/paging';
 import { useAuth } from '../../hooks/authHooks';
 import { SearchResponse } from '../../interface/search.interface';
-import {
-  formatDataResponse,
-  formatUsersResponse,
-  SearchEntityHits,
-} from '../../utils/APIUtils';
+import { formatUsersResponse, SearchEntityHits } from '../../utils/APIUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { getSettingPath, getTeamsWithFqnPath } from '../../utils/RouterUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
@@ -510,18 +506,16 @@ const TeamsPage = () => {
       .then((res) => {
         const hits = res?.data?.hits?.hits as SearchEntityHits;
         if (hits?.length > 0) {
-          const data = formatDataResponse(hits);
           const total = res.data.hits.total.value;
           setAssets({
-            data,
+            data: hits,
             total,
             currPage: assets.currPage,
           });
         } else {
-          const data = [] as FormattedTableData[];
           const total = 0;
           setAssets({
-            data,
+            data: [],
             total,
             currPage: assets.currPage,
           });

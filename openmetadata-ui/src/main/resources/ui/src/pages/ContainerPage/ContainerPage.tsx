@@ -60,7 +60,7 @@ import {
   patchContainerDetails,
   removeContainerFollower,
   restoreContainer,
-} from 'rest/objectStoreAPI';
+} from 'rest/storageAPI';
 import {
   getCurrentUserId,
   getEntityMissingError,
@@ -299,10 +299,7 @@ const ContainerPage = () => {
       {
         name: serviceName || '',
         url: serviceName
-          ? getServiceDetailsPath(
-              serviceName,
-              ServiceCategory.OBJECT_STORE_SERVICES
-            )
+          ? getServiceDetailsPath(serviceName, ServiceCategory.STORAGE_SERVICES)
           : '',
         imgSrc: serviceType ? serviceTypeLogo(serviceType) : undefined,
       },

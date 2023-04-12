@@ -24,11 +24,6 @@
       "title": "AWS Credentials Configuration",
       "$ref": "../../../../security/credentials/awsCredentials.json"
     },
-    "storageServiceName": {
-      "title": "Storage Service Name",
-      "description": "AWS storageServiceName Name.",
-      "type": "string"
-    },
     "connectionOptions": {
       "title": "Connection Options",
       "$ref": "../connectionBasicType.json#/definitions/connectionOptions"
@@ -46,5 +41,5 @@
     }
   },
   "additionalProperties": false,
-  "required": ["awsConfig", "storageServiceName"]
+  "required": ["awsConfig"]
 }
