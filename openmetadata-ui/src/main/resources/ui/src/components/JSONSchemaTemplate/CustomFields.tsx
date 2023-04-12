@@ -10,23 +10,26 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { InfoCircleOutlined } from '@ant-design/icons';
-import { Popover, PopoverProps } from 'antd';
+import { FieldProps } from '@rjsf/core';
+import { Typography } from 'antd';
+import InfoPopover from 'components/common/InfoPopover/InfoPopover';
 import React from 'react';
+const CustomDescriptionField = (props: FieldProps) => {
+  const { description } = props;
 
-const InfoPopover = ({ content, className }: PopoverProps) => {
+  if (!description) {
+    return null;
+  }
+
   return (
-    <Popover
-      align={{ offset: [0, -10] }}
-      className={className}
-      content={content}
-      overlayStyle={{ maxWidth: 350 }}
-      placement="bottom"
-      showArrow={false}
-      trigger="hover">
-      <InfoCircleOutlined className="tw-mx-1" style={{ color: '#9c9c9e' }} />
-    </Popover>
+    <InfoPopover
+      content={
+        <Typography className="text-grey-muted">{description}</Typography>
+      }
+    />
   );
 };
 
-export default InfoPopover;
+export const customFields = {
+  DescriptionField: CustomDescriptionField,
+};

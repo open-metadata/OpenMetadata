@@ -384,6 +384,7 @@
 
   .rjsf .control-label {
     @apply tw-capitalize;
+    line-height: 2;
   }
   .rjsf .control-label .required {
     @apply tw-text-red-600 tw-ml-0.5;
