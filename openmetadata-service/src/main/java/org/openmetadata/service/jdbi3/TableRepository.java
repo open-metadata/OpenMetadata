@@ -252,6 +252,8 @@ public class TableRepository extends EntityRepository<Table> {
       }
     }
 
+    EntityUtil.validateProfileSample(tableProfilerConfig.getProfileSampleType() ,tableProfilerConfig.getProfileSample());
+
     daoCollection
         .entityExtensionDAO()
         .insert(
