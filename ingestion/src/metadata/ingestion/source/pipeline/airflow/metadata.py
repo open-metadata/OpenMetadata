@@ -48,8 +48,9 @@ from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
 from metadata.ingestion.source.pipeline.airflow.lineage_parser import get_xlets_from_dag
 from metadata.ingestion.source.pipeline.airflow.models import (
     AirflowDag,
-    AirflowDagDetials,
+    AirflowDagDetails,
 )
+from metadata.ingestion.source.pipeline.airflow.queries import BUILD_DAG_SQL_QUERY
 from metadata.ingestion.source.pipeline.pipeline_service import PipelineServiceSource
 from metadata.utils.helpers import clean_uri, datetime_to_ts
 from metadata.utils.logger import ingestion_logger
@@ -282,7 +283,7 @@ class AirflowSource(PipelineServiceSource):
         return pipeline_details.dag_id
 
     @staticmethod
-    def get_tasks_from_dag(dag: AirflowDagDetials, host_port: str) -> List[Task]:
+    def get_tasks_from_dag(dag: AirflowDagDetails, host_port: str) -> List[Task]:
         """
         Obtain the tasks from a SerializedDAG
         :param dag: SerializedDAG
@@ -326,9 +327,7 @@ class AirflowSource(PipelineServiceSource):
 
         try:
             dag_details = self.connection.execute(
-                "SELECT dag.dag_id , dag.fileloc ,serialized_dag.data , dag.max_active_runs , dag.description FROM "
-                "serialized_dag INNER JOIN dag ON serialized_dag.dag_id = dag.dag_id "
-                f"WHERE serialized_dag.dag_id='{pipeline_details.dag_id}'"
+                BUILD_DAG_SQL_QUERY.format(dag_id=pipeline_details.dag_id)
             ).all()[0]
 
             dag_data = (
@@ -337,7 +336,7 @@ class AirflowSource(PipelineServiceSource):
                 else dag_details.data
             )
 
-            dag = AirflowDagDetials(
+            dag = AirflowDagDetails(
                 dag_id=pipeline_details.dag_id,
                 fileloc=dag_details.fileloc,
                 data=AirflowDag(**dag_data),
@@ -429,16 +428,15 @@ class AirflowSource(PipelineServiceSource):
         :return: Lineage from inlets and outlets
         """
         dag_details = self.connection.execute(
-            "SELECT dag.dag_id , dag.fileloc ,serialized_dag.data , dag.max_active_runs , dag.description FROM "
-            "serialized_dag INNER JOIN dag ON serialized_dag.dag_id = dag.dag_id "
-            f"WHERE serialized_dag.dag_id='{pipeline_details.dag_id}'"
+            BUILD_DAG_SQL_QUERY.format(dag_id=pipeline_details.dag_id)
         ).all()[0]
+
         dag_data = (
             json.loads(dag_details.data)
             if isinstance(dag_details.data, str)
             else dag_details.data
         )
-        dag = AirflowDagDetials(
+        dag = AirflowDagDetails(
             dag_id=pipeline_details.dag_id,
             fileloc=dag_details.fileloc,
             data=AirflowDag(**dag_data),

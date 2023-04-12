@@ -141,19 +141,18 @@ def get_xlets_from_dag(dag: "DAG") -> List[XLets]:
     for task in dag.tasks:
         try:
             _inlets.update(
-                get_xlets_from_operator(operator=task, xlet_mode=INLETS_ATTR) or []
+                get_xlets_from_operator(
+                    operator=task,
+                    xlet_mode=INLETS_ATTR if hasattr(task, INLETS_ATTR) else "inlets",
+                )
+                or []
             )
             _outlets.update(
-                get_xlets_from_operator(operator=task, xlet_mode=OUTLETS_ATTR) or []
-            )
-        except AttributeError:
-            inlets = "inlets"
-            outlets = "outlets"
-            _inlets.update(
-                get_xlets_from_operator(operator=task, xlet_mode=inlets) or []
-            )
-            _outlets.update(
-                get_xlets_from_operator(operator=task, xlet_mode=outlets) or []
+                get_xlets_from_operator(
+                    operator=task,
+                    xlet_mode=INLETS_ATTR if hasattr(task, INLETS_ATTR) else "outlets",
+                )
+                or []
             )
 
         except Exception as exc:

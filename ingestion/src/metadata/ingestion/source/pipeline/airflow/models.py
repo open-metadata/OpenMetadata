@@ -52,14 +52,10 @@ class AirflowDag(BaseModel):
     dag: Optional[Dag]
 
 
-class AirflowDagDetials(AirflowBaseModel):
+class AirflowDagDetails(AirflowBaseModel):
     fileloc: str
     data: AirflowDag
     max_active_runs: int
     description: Optional[str]
     start_date: Optional[datetime] = None
     tasks: List[DagTask]
-
-
-class DagModel:
-    dag: Optional[List[AirflowDagDetials]] = []
