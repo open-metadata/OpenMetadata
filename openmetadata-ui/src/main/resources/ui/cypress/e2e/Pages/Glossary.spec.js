@@ -35,6 +35,8 @@ const visitGlossaryTermPage = (termName, fqn) => {
     .contains(termName)
     .should('be.visible')
     .click();
+
+  cy.wait(5000);
   cy.get('.ant-tabs .glossary-overview-tab').should('be.visible').click();
   verifyResponseStatusCode('@getGlossaryTerms', 200);
 };
@@ -448,7 +450,7 @@ describe('Glossary page should work properly', () => {
       .scrollIntoView()
       .should('be.visible');
 
-    cy.wait(200);
+    cy.wait(5000);
     cy.get('[data-testid="synonyms-container"]')
       .find('[data-testid="edit-button"]')
       .scrollIntoView()
@@ -501,7 +503,7 @@ describe('Glossary page should work properly', () => {
     verifyResponseStatusCode('@getGlossaryTerm', 200);
     verifyResponseStatusCode('@waitForTermPermission', 200);
     cy.get('[data-testid="section-References"]').should('be.visible');
-    cy.wait(200);
+    cy.wait(5000);
     // updating References
     cy.get('[data-testid="section-References"]')
       .find('[data-testid="edit-button"]')
