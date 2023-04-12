@@ -35,6 +35,7 @@ import TopViewEntities from 'components/DataInsightDetail/TopViewEntities';
 import TotalEntityInsight from 'components/DataInsightDetail/TotalEntityInsight';
 import SearchDropdown from 'components/SearchDropdown/SearchDropdown';
 import { SearchDropdownOption } from 'components/SearchDropdown/SearchDropdown.interface';
+import { EntityFields } from 'enums/AdvancedSearch.enum';
 import { t } from 'i18next';
 import { isEmpty } from 'lodash';
 import React, { useEffect, useLayoutEffect, useMemo, useState } from 'react';
@@ -73,7 +74,11 @@ import './DataInsight.less';
 import DataInsightLeftPanel from './DataInsightLeftPanel';
 import KPIList from './KPIList';
 
-const fetchTeamSuggestions = autocomplete({ searchIndex: SearchIndex.TEAM });
+const fetchTeamSuggestions = autocomplete({
+  searchIndex: SearchIndex.TEAM,
+  entitySearchIndex: SearchIndex.TEAM,
+  entityField: EntityFields.OWNER,
+});
 
 const DataInsightPage = () => {
   const { tab } = useParams<{ tab: DataInsightTabs }>();
