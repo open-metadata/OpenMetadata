@@ -14,8 +14,14 @@
       "description": "Name of a table. Expected to be unique within a database.",
       "type": "string",
       "minLength": 1,
-      "maxLength": 128,
+      "maxLength": 384,
       "pattern": "^((?!::).)*$"
+    },
+    "fullyQualifiedEntityName": {
+      "description": "A unique name that identifies an entity. Example for table 'DatabaseService:Database:Table'.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 768
     },
     "profileSampleType": {
       "description": "Type of Profile Sample (percentage or rows)",
@@ -859,7 +865,7 @@
     },
     "fullyQualifiedName": {
       "description": "Fully qualified name of a table in the form `serviceName.databaseName.tableName`.",
-      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+      "$ref": "#/definitions/fullyQualifiedEntityName"
     },
     "description": {
       "description": "Description of a table.",
