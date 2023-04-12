@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Modal, Space } from 'antd';
+import { Modal, Progress, Space } from 'antd';
 import { TestConnectionStepResult } from 'generated/entity/automations/workflow';
 import { TestConnectionStep } from 'generated/entity/services/connections/testConnectionDefinition';
 import React, { FC } from 'react';
@@ -22,12 +22,14 @@ interface TestConnectionModalProps {
   isTestingConnection: boolean;
   testConnectionStep: TestConnectionStep[];
   testConnectionStepResult: TestConnectionStepResult[];
+  progress: number;
   onCancel: () => void;
   onConfirm: () => void;
 }
 
 const TestConnectionModal: FC<TestConnectionModalProps> = ({
   isOpen,
+  progress,
   isTestingConnection,
   testConnectionStep,
   testConnectionStepResult,
@@ -55,6 +57,14 @@ const TestConnectionModal: FC<TestConnectionModalProps> = ({
       onCancel={onCancel}
       onOk={onConfirm}>
       <Space className="p-x-md" direction="vertical" size={16}>
+        <Progress
+          className="test-connection-progress-bar"
+          format={(per) => (
+            <span data-testid="progress-bar-value">{`${per}%`}</span>
+          )}
+          percent={progress}
+          strokeColor="#B3D4F4"
+        />
         {testConnectionStep.map((step) => {
           const currentStepResult = getConnectionStepResult(step);
 

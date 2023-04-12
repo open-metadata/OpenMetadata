@@ -36,6 +36,7 @@ describe('TestConnectionModal', () => {
       <TestConnectionModal
         isOpen
         isTestingConnection={false}
+        progress={10}
         testConnectionStep={testConnectionStep}
         testConnectionStepResult={testConnectionStepResult}
         onCancel={onCancelMock}
@@ -51,6 +52,7 @@ describe('TestConnectionModal', () => {
       <TestConnectionModal
         isOpen
         isTestingConnection={false}
+        progress={10}
         testConnectionStep={testConnectionStep}
         testConnectionStepResult={testConnectionStepResult}
         onCancel={onCancelMock}
@@ -61,7 +63,7 @@ describe('TestConnectionModal', () => {
     expect(screen.getByText('Step 1')).toBeInTheDocument();
     expect(screen.getByText('Step 2')).toBeInTheDocument();
     expect(screen.getByText('Description 1')).toBeInTheDocument();
-    expect(screen.getByText('Error message')).toBeInTheDocument();
+    expect(screen.getByText('Description 2')).toBeInTheDocument();
   });
 
   it('Should render the success icon for a passing step', () => {
@@ -69,6 +71,7 @@ describe('TestConnectionModal', () => {
       <TestConnectionModal
         isOpen
         isTestingConnection={false}
+        progress={10}
         testConnectionStep={testConnectionStep}
         testConnectionStepResult={testConnectionStepResult}
         onCancel={onCancelMock}
@@ -84,6 +87,7 @@ describe('TestConnectionModal', () => {
       <TestConnectionModal
         isOpen
         isTestingConnection={false}
+        progress={10}
         testConnectionStep={testConnectionStep}
         testConnectionStepResult={testConnectionStepResult}
         onCancel={onCancelMock}
@@ -94,11 +98,12 @@ describe('TestConnectionModal', () => {
     expect(screen.getByTestId('fail-badge')).toBeInTheDocument();
   });
 
-  it('Should render the loader for a step being tested', () => {
+  it('Should render the awaiting status for a step being tested', () => {
     render(
       <TestConnectionModal
         isOpen
         isTestingConnection
+        progress={10}
         testConnectionStep={testConnectionStep}
         testConnectionStepResult={testConnectionStepResult}
         onCancel={onCancelMock}
@@ -106,7 +111,7 @@ describe('TestConnectionModal', () => {
       />
     );
 
-    expect(screen.getByTestId('loader')).toBeInTheDocument();
+    expect(screen.getAllByText('label.awaiting-status...')).toHaveLength(2);
   });
 
   it('Should call onCancel when the cancel button is clicked', () => {
@@ -114,6 +119,7 @@ describe('TestConnectionModal', () => {
       <TestConnectionModal
         isOpen
         isTestingConnection={false}
+        progress={10}
         testConnectionStep={testConnectionStep}
         testConnectionStepResult={testConnectionStepResult}
         onCancel={onCancelMock}
@@ -132,6 +138,7 @@ describe('TestConnectionModal', () => {
       <TestConnectionModal
         isOpen
         isTestingConnection={false}
+        progress={10}
         testConnectionStep={testConnectionStep}
         testConnectionStepResult={testConnectionStepResult}
         onCancel={onCancelMock}
@@ -143,5 +150,24 @@ describe('TestConnectionModal', () => {
     fireEvent.click(okButton);
 
     expect(onConfirmMock).toHaveBeenCalled();
+  });
+
+  it('Should render the progress bar with proper value', () => {
+    render(
+      <TestConnectionModal
+        isOpen
+        isTestingConnection={false}
+        progress={90}
+        testConnectionStep={testConnectionStep}
+        testConnectionStepResult={testConnectionStepResult}
+        onCancel={onCancelMock}
+        onConfirm={onConfirmMock}
+      />
+    );
+    const progressBarValue = screen.getByTestId('progress-bar-value');
+
+    expect(progressBarValue).toBeInTheDocument();
+
+    expect(progressBarValue).toHaveTextContent('90%');
   });
 });

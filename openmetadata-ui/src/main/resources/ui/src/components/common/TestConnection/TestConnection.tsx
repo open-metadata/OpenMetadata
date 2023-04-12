@@ -98,6 +98,8 @@ const TestConnection: FC<TestConnectionProps> = ({
   const [currentWorkflow, setCurrentWorkflow] = useState<Workflow>();
   const [testStatus, setTestStatus] = useState<TestStatus>();
 
+  const [progress, setProgress] = useState<number>(0);
+
   /**
    * Current workflow reference
    */
@@ -190,11 +192,17 @@ const TestConnection: FC<TestConnectionProps> = ({
       // fetch the connection steps for current connectionType
       await fetchConnectionDefinition();
 
+      setProgress(10);
+
       // create the workflow
       const response = await addWorkflow(createWorkflowData);
 
+      setProgress(20);
+
       // trigger the workflow
       const status = await triggerWorkflowById(response.id);
+
+      setProgress(40);
 
       if (status !== 200) {
         setTestStatus(StatusType.Failed);
@@ -210,6 +218,7 @@ const TestConnection: FC<TestConnectionProps> = ({
        */
       intervalId = toNumber(
         setInterval(async () => {
+          setProgress((prev) => prev + 1);
           const workflowResponse = await getWorkflowData(response.id);
           const { response: testConnectionResponse } = workflowResponse;
           const { status: testConnectionStatus } = testConnectionResponse || {};
@@ -225,6 +234,7 @@ const TestConnection: FC<TestConnectionProps> = ({
             return;
           }
 
+          setProgress(90);
           if (isTestConnectionSuccess) {
             setTestStatus(StatusType.Successful);
             setMessage(successMessage);
@@ -241,6 +251,7 @@ const TestConnection: FC<TestConnectionProps> = ({
 
           // delete the workflow once it's finished
           await handleDeleteWorkflow(workflowResponse.id);
+          setProgress(100);
         }, FETCH_INTERVAL)
       );
 
@@ -264,6 +275,7 @@ const TestConnection: FC<TestConnectionProps> = ({
         setIsTestingConnection(false);
       }, FETCHING_EXPIRY_TIME);
     } catch (error) {
+      setProgress(100);
       clearInterval(intervalId);
       setIsTestingConnection(false);
       setMessage(failureMessage);
@@ -336,6 +348,7 @@ const TestConnection: FC<TestConnectionProps> = ({
       <TestConnectionModal
         isOpen={dialogOpen}
         isTestingConnection={isTestingConnection}
+        progress={progress}
         testConnectionStep={testConnectionStep}
         testConnectionStepResult={testConnectionStepResult}
         onCancel={() => setDialogOpen(false)}
