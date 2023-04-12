@@ -18,11 +18,15 @@
       "default": "DashboardMetadata"
     },
     "dashboardFilterPattern": {
-      "description": "Regex to only fetch tables or databases that matches the pattern.",
+      "description": "Regex to exclude or include dashboards that matches the pattern.",
       "$ref": "../type/filterPattern.json#/definitions/filterPattern"
     },
     "chartFilterPattern": {
-      "description": "Regex exclude tables or databases that matches the pattern.",
+      "description": "Regex exclude or include charts that matches the pattern.",
+      "$ref": "../type/filterPattern.json#/definitions/filterPattern"
+    },
+    "dataModelFilterPattern": {
+      "description": "Regex exclude or include data models that matches the pattern.",
       "$ref": "../type/filterPattern.json#/definitions/filterPattern"
     },
     "dbServiceNames": {
@@ -43,6 +47,11 @@
     },
     "includeTags": {
       "description": "Optional configuration to toggle the tags ingestion.",
+      "type": "boolean",
+      "default": true
+    },
+    "includeDataModels": {
+      "description": "Optional configuration to toggle the ingestion of data models.",
       "type": "boolean",
       "default": true
     }

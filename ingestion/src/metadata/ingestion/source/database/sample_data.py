@@ -30,7 +30,6 @@ from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequ
 from metadata.generated.schema.api.data.createDatabaseSchema import (
     CreateDatabaseSchemaRequest,
 )
-from metadata.generated.schema.api.data.createLocation import CreateLocationRequest
 from metadata.generated.schema.api.data.createMlModel import CreateMlModelRequest
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
 from metadata.generated.schema.api.data.createTable import CreateTableRequest
@@ -39,9 +38,6 @@ from metadata.generated.schema.api.data.createTableProfile import (
 )
 from metadata.generated.schema.api.data.createTopic import CreateTopicRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
-from metadata.generated.schema.api.services.createStorageService import (
-    CreateStorageServiceRequest,
-)
 from metadata.generated.schema.api.teams.createRole import CreateRoleRequest
 from metadata.generated.schema.api.teams.createTeam import CreateTeamRequest
 from metadata.generated.schema.api.teams.createUser import CreateUserRequest
@@ -52,7 +48,6 @@ from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.entity.data.dashboardDataModel import DashboardDataModel
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
-from metadata.generated.schema.entity.data.location import Location
 from metadata.generated.schema.entity.data.mlmodel import (
     FeatureSource,
     MlFeature,
@@ -77,9 +72,6 @@ from metadata.generated.schema.entity.services.dashboardService import Dashboard
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.entity.services.messagingService import MessagingService
 from metadata.generated.schema.entity.services.mlmodelService import MlModelService
-from metadata.generated.schema.entity.services.objectstoreService import (
-    ObjectStoreService,
-)
 from metadata.generated.schema.entity.services.pipelineService import PipelineService
 from metadata.generated.schema.entity.services.storageService import StorageService
 from metadata.generated.schema.entity.teams.team import Team
@@ -104,12 +96,12 @@ from metadata.ingestion.models.tests_data import (
 )
 from metadata.ingestion.models.user import OMetaUserProfile
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.database.database_service import TableLocationLink
 from metadata.parsers.schema_parsers import (
     InvalidSchemaTypeException,
     schema_parser_config_registry,
 )
 from metadata.utils import fqn
+from metadata.utils.constants import UTF_8
 from metadata.utils.helpers import get_standard_chart_type
 from metadata.utils.logger import ingestion_logger
 
@@ -120,25 +112,6 @@ KEY_TYPE = "Key type"
 DATA_TYPE = "Data type"
 COL_DESCRIPTION = "Description"
 TableKey = namedtuple("TableKey", ["schema", "table_name"])
-
-
-def get_storage_service_or_create(service_json, metadata_config) -> StorageService:
-    """
-    Get an existing storage service or create a new one based on the config provided
-
-    To be refactored after cleaning Storage Services
-    """
-
-    metadata = OpenMetadata(metadata_config)
-    service: StorageService = metadata.get_by_name(
-        entity=StorageService, fqn=service_json["name"]
-    )
-    if service is not None:
-        return service
-    created_service = metadata.create_or_update(
-        CreateStorageServiceRequest(**service_json)
-    )
-    return created_service
 
 
 class InvalidSampleDataException(Exception):
@@ -180,14 +153,13 @@ def get_table_key(row: Dict[str, Any]) -> Union[TableKey, None]:
 
 class SampleDataSource(
     Source[Entity]
-):  # pylint: disable=too-many-instance-attributes,too-many-public-methods,disable=too-many-lines,
+):  # pylint: disable=too-many-instance-attributes,too-many-public-methods
     """
     Loads JSON data and prepares the required
     python objects to be sent to the Sink.
     """
 
     def __init__(self, config: WorkflowSource, metadata_config: OpenMetadataConnection):
-        # pylint: disable=too-many-statements
         super().__init__()
         self.config = config
         self.service_connection = config.serviceConnection.__root__.config
@@ -202,101 +174,71 @@ class SampleDataSource(
             raise InvalidSampleDataException(
                 "Cannot get sampleDataFolder from connection options"
             )
-
-        self.storage_service_json = json.load(
-            open(  # pylint: disable=consider-using-with
-                sample_data_folder + "/locations/service.json",
-                "r",
-                encoding="utf-8",
-            )
-        )
-        self.locations = json.load(
-            open(  # pylint: disable=consider-using-with
-                sample_data_folder + "/locations/locations.json",
-                "r",
-                encoding="utf-8",
-            )
-        )
-        self.storage_service = get_storage_service_or_create(
-            service_json=self.storage_service_json,
-            metadata_config=metadata_config,
-        )
-        self.glue_storage_service_json = json.load(
-            open(  # pylint: disable=consider-using-with
-                sample_data_folder + "/glue/storage_service.json",
-                "r",
-                encoding="utf-8",
-            )
-        )
         self.glue_database_service_json = json.load(
             open(  # pylint: disable=consider-using-with
                 sample_data_folder + "/glue/database_service.json",
                 "r",
-                encoding="utf-8",
+                encoding=UTF_8,
             )
         )
         self.glue_database = json.load(
             open(  # pylint: disable=consider-using-with
                 sample_data_folder + "/glue/database.json",
                 "r",
-                encoding="utf-8",
+                encoding=UTF_8,
             )
         )
         self.glue_database_schema = json.load(
             open(  # pylint: disable=consider-using-with
                 sample_data_folder + "/glue/database_schema.json",
                 "r",
-                encoding="utf-8",
+                encoding=UTF_8,
             )
         )
         self.glue_tables = json.load(
             open(  # pylint: disable=consider-using-with
                 sample_data_folder + "/glue/tables.json",
                 "r",
-                encoding="utf-8",
+                encoding=UTF_8,
             )
         )
         self.glue_database_service = self.metadata.get_service_or_create(
             entity=DatabaseService,
             config=WorkflowSource(**self.glue_database_service_json),
         )
-        self.glue_storage_service = get_storage_service_or_create(
-            self.glue_storage_service_json,
-            metadata_config,
-        )
         self.database_service_json = json.load(
             open(  # pylint: disable=consider-using-with
                 sample_data_folder + "/datasets/service.json",
                 "r",
-                encoding="utf-8",
+                encoding=UTF_8,
             )
         )
         self.database = json.load(
             open(  # pylint: disable=consider-using-with
                 sample_data_folder + "/datasets/database.json",
                 "r",
-                encoding="utf-8",
+                encoding=UTF_8,
             )
         )
         self.database_schema = json.load(
             open(  # pylint: disable=consider-using-with
                 sample_data_folder + "/datasets/database_schema.json",
                 "r",
-                encoding="utf-8",
+                encoding=UTF_8,
             )
         )
         self.tables = json.load(
             open(  # pylint: disable=consider-using-with
                 sample_data_folder + "/datasets/tables.json",
                 "r",
-                encoding="utf-8",
+                encoding=UTF_8,
             )
         )
         self.database_service_json = json.load(
             open(  # pylint: disable=consider-using-with
                 sample_data_folder + "/datasets/service.json",
                 "r",
-                encoding="utf-8",
+                encoding=UTF_8,
             )
         )
         self.database_service = self.metadata.get_service_or_create(
@@ -307,14 +249,14 @@ class SampleDataSource(
             open(  # pylint: disable=consider-using-with
                 sample_data_folder + "/topics/service.json",
                 "r",
-                encoding="utf-8",
+                encoding=UTF_8,
             )
         )
         self.topics = json.load(
             open(  # pylint: disable=consider-using-with
                 sample_data_folder + "/topics/topics.json",
                 "r",
-                encoding="utf-8",
+                encoding=UTF_8,
             )
         )
 
@@ -326,28 +268,28 @@ class SampleDataSource(
             open(  # pylint: disable=consider-using-with
                 sample_data_folder + "/dashboards/service.json",
                 "r",
-                encoding="utf-8",
+                encoding=UTF_8,
             )
         )
         self.charts = json.load(
             open(  # pylint: disable=consider-using-with
                 sample_data_folder + "/dashboards/charts.json",
                 "r",
-                encoding="utf-8",
+                encoding=UTF_8,
             )
         )
         self.data_models = json.load(
             open(  # pylint: disable=consider-using-with
                 sample_data_folder + "/dashboards/dashboardDataModels.json",
                 "r",
-                encoding="utf-8",
+                encoding=UTF_8,
             )
         )
         self.dashboards = json.load(
             open(  # pylint: disable=consider-using-with
                 sample_data_folder + "/dashboards/dashboards.json",
                 "r",
-                encoding="utf-8",
+                encoding=UTF_8,
             )
         )
         self.dashboard_service = self.metadata.get_service_or_create(
@@ -359,14 +301,14 @@ class SampleDataSource(
             open(  # pylint: disable=consider-using-with
                 sample_data_folder + "/pipelines/service.json",
                 "r",
-                encoding="utf-8",
+                encoding=UTF_8,
             )
         )
         self.pipelines = json.load(
             open(  # pylint: disable=consider-using-with
                 sample_data_folder + "/pipelines/pipelines.json",
                 "r",
-                encoding="utf-8",
+                encoding=UTF_8,
             )
         )
         self.pipeline_service = self.metadata.get_service_or_create(
@@ -376,28 +318,28 @@ class SampleDataSource(
             open(  # pylint: disable=consider-using-with
                 sample_data_folder + "/lineage/lineage.json",
                 "r",
-                encoding="utf-8",
+                encoding=UTF_8,
             )
         )
         self.teams = json.load(
             open(  # pylint: disable=consider-using-with
                 sample_data_folder + "/teams/teams.json",
                 "r",
-                encoding="utf-8",
+                encoding=UTF_8,
             )
         )
         self.users = json.load(
             open(  # pylint: disable=consider-using-with
                 sample_data_folder + "/users/users.json",
                 "r",
-                encoding="utf-8",
+                encoding=UTF_8,
             )
         )
         self.model_service_json = json.load(
             open(  # pylint: disable=consider-using-with
                 sample_data_folder + "/models/service.json",
                 "r",
-                encoding="utf-8",
+                encoding=UTF_8,
             )
         )
         self.model_service = self.metadata.get_service_or_create(
@@ -405,32 +347,32 @@ class SampleDataSource(
             config=WorkflowSource(**self.model_service_json),
         )
 
-        self.object_service_json = json.load(
+        self.storage_service_json = json.load(
             open(  # pylint: disable=consider-using-with
-                sample_data_folder + "/objectcontainers/service.json",
+                sample_data_folder + "/storage/service.json",
                 "r",
-                encoding="utf-8",
+                encoding=UTF_8,
             )
         )
 
-        self.object_store_service = self.metadata.get_service_or_create(
-            entity=ObjectStoreService,
-            config=WorkflowSource(**self.object_service_json),
+        self.storage_service = self.metadata.get_service_or_create(
+            entity=StorageService,
+            config=WorkflowSource(**self.storage_service_json),
         )
 
         self.models = json.load(
             open(  # pylint: disable=consider-using-with
                 sample_data_folder + "/models/models.json",
                 "r",
-                encoding="utf-8",
+                encoding=UTF_8,
             )
         )
 
         self.containers = json.load(
             open(  # pylint: disable=consider-using-with
-                sample_data_folder + "/objectcontainers/containers.json",
+                sample_data_folder + "/storage/containers.json",
                 "r",
-                encoding="utf-8",
+                encoding=UTF_8,
             )
         )
 
@@ -439,35 +381,35 @@ class SampleDataSource(
             open(  # pylint: disable=consider-using-with
                 sample_data_folder + "/datasets/tableTests.json",
                 "r",
-                encoding="utf-8",
+                encoding=UTF_8,
             )
         )
         self.pipeline_status = json.load(
             open(  # pylint: disable=consider-using-with
                 sample_data_folder + "/pipelines/pipelineStatus.json",
                 "r",
-                encoding="utf-8",
+                encoding=UTF_8,
             )
         )
         self.profiles = json.load(
             open(  # pylint: disable=consider-using-with
                 sample_data_folder + "/profiler/tableProfile.json",
                 "r",
-                encoding="utf-8",
+                encoding=UTF_8,
             )
         )
         self.tests_suites = json.load(
             open(  # pylint: disable=consider-using-with
                 sample_data_folder + "/tests/testSuites.json",
                 "r",
-                encoding="utf-8",
+                encoding=UTF_8,
             )
         )
         self.tests_case_results = json.load(
             open(  # pylint: disable=consider-using-with
                 sample_data_folder + "/tests/testCaseResults.json",
                 "r",
-                encoding="utf-8",
+                encoding=UTF_8,
             )
         )
 
@@ -488,7 +430,6 @@ class SampleDataSource(
     def next_record(self) -> Iterable[Entity]:
         yield from self.ingest_teams()
         yield from self.ingest_users()
-        yield from self.ingest_locations()
         yield from self.ingest_glue()
         yield from self.ingest_tables()
         yield from self.ingest_topics()
@@ -510,7 +451,6 @@ class SampleDataSource(
         Ingest sample teams
         """
         for team in self.teams["teams"]:
-
             team_to_ingest = CreateTeamRequest(
                 name=team["name"], teamType=team["teamType"]
             )
@@ -533,20 +473,6 @@ class SampleDataSource(
                 team_to_ingest.parents = parent_list_id
 
             yield team_to_ingest
-
-    def ingest_locations(self) -> Iterable[Location]:
-        for location in self.locations["locations"]:
-            location_ev = CreateLocationRequest(
-                name=location["name"],
-                path=location["path"],
-                displayName=location["displayName"],
-                description=location["description"],
-                locationType=location["locationType"],
-                service=EntityReference(
-                    id=self.storage_service.id, type="storageService"
-                ),
-            )
-            yield location_ev
 
     def ingest_glue(self):
         """
@@ -600,34 +526,6 @@ class SampleDataSource(
             )
             self.status.scanned(f"Table Scanned: {table_request.name.__root__}")
             yield table_request
-
-            location = CreateLocationRequest(
-                name=table["name"],
-                service=EntityReference(
-                    id=self.glue_storage_service.id, type="storageService"
-                ),
-            )
-            self.status.scanned(f"Location Scanned: {location.name}")
-            yield location
-
-            table_fqn = fqn.build(
-                self.metadata,
-                entity_type=Table,
-                service_name=self.database_service.name.__root__,
-                database_name=db.name.__root__,
-                schema_name=schema.name.__root__,
-                table_name=table_request.name.__root__,
-                skip_es_search=True,
-            )
-
-            location_fqn = fqn.build(
-                self.metadata,
-                entity_type=Location,
-                service_name=self.glue_storage_service.name.__root__,
-                location_name=location.name.__root__,
-            )
-            if table_fqn and location_fqn:
-                yield TableLocationLink(table_fqn=table_fqn, location_fqn=location_fqn)
 
     def ingest_tables(self):
         """
@@ -929,7 +827,7 @@ class SampleDataSource(
                     numberOfObjects=container.get("numberOfObjects"),
                     size=container.get("size"),
                     fileFormats=container.get("fileFormats"),
-                    service=self.object_store_service.fullyQualifiedName,
+                    service=self.storage_service.fullyQualifiedName,
                 )
                 yield container_request
             except Exception as exc:

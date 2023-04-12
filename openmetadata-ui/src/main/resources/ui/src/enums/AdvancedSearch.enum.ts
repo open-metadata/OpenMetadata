@@ -31,16 +31,17 @@ export enum AdvancedFields {
   CHART = 'chart_suggest',
   DATA_MODEL = 'data_model_suggest',
   TASK = 'task_suggest',
+  FIELD = 'field_suggest',
 }
 
 export enum EntityFields {
-  OWNER = 'owner.displayName',
+  OWNER = 'displayName.keyword',
   TAG = 'tags.tagFQN',
   TIER = 'tier.tagFQN',
   SERVICE = 'service.name',
   DATABASE = 'database.name',
   DATABASE_SCHEMA = 'databaseSchema.name',
   COLUMN = 'columns.name',
-  CHART = 'charts.name',
-  TASK = 'tasks.name',
+  CHART = 'charts.displayName.keyword',
+  TASK = 'tasks.displayName.keyword',
 }

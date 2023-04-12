@@ -10,14 +10,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import classNames from 'classnames';
+import { Button, Typography } from 'antd';
+import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
 import { TagDetails } from 'components/TableQueries/TableQueryRightPanel/TableQueryRightPanel.interface';
 import TagsContainer from 'components/Tag/TagsContainer/tags-container';
-import TagsViewer from 'components/Tag/TagsViewer/tags-viewer';
+import { DE_ACTIVE_COLOR } from 'constants/constants';
 import { LabelType, State, TagLabel } from 'generated/type/tagLabel';
-import { isEmpty, isUndefined } from 'lodash';
+import { t } from 'i18next';
+import { isEmpty } from 'lodash';
 import { EntityTags } from 'Models';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { fetchTagsAndGlossaryTerms } from 'utils/TagsUtils';
 
 type Props = {
@@ -26,7 +28,7 @@ type Props = {
   onTagsUpdate: (updatedTags: TagLabel[]) => Promise<void>;
 };
 
-const TagsInput: React.FC<Props> = ({ tags, editable, onTagsUpdate }) => {
+const TagsInput: React.FC<Props> = ({ tags = [], editable, onTagsUpdate }) => {
   const [isEditTags, setIsEditTags] = useState(false);
   const [tagDetails, setTagDetails] = useState<TagDetails>({
     isLoading: false,
@@ -49,6 +51,19 @@ const TagsInput: React.FC<Props> = ({ tags, editable, onTagsUpdate }) => {
     setIsEditTags(false);
   };
 
+  const getSelectedTags = () => {
+    if (tags) {
+      return [
+        ...tags.map((tag) => ({
+          ...tag,
+          isRemovable: false,
+        })),
+      ];
+    } else {
+      return [];
+    }
+  };
+
   const fetchTags = async () => {
     setTagDetails((pre) => ({ ...pre, isLoading: true }));
 
@@ -62,39 +77,48 @@ const TagsInput: React.FC<Props> = ({ tags, editable, onTagsUpdate }) => {
     }
   };
 
+  const addButtonHandler = () => {
+    setIsEditTags(true);
+    if (isEmpty(tagDetails.options) || tagDetails.isError) {
+      fetchTags();
+    }
+  };
+
+  useEffect(() => {
+    fetchTags();
+  }, []);
+
   return (
-    <div className="tags-input-container">
-      {editable ? (
-        <div
-          className={classNames(
-            `tw-flex tw-justify-content`,
-            !isUndefined(tags)
-              ? 'tw-flex-col tw-items-start'
-              : 'tw-items-center'
-          )}
-          data-testid="tags-wrapper"
-          onClick={() => {
-            setIsEditTags(true);
-            if (isEmpty(tagDetails.options) || tagDetails.isError) {
-              fetchTags();
-            }
-          }}>
-          <TagsContainer
-            showAddTagButton
-            className="w-min-15 "
-            editable={isEditTags}
-            isLoading={tagDetails.isLoading}
-            selectedTags={tags || []}
+    <div className="tags-input-container" data-testid="tags-input-container">
+      <div className="d-flex items-center">
+        <Typography.Text className="glossary-subheading">
+          {t('label.tag-plural')}
+        </Typography.Text>
+        {editable && tags.length > 0 && (
+          <Button
+            className="cursor-pointer m-l-xs"
+            data-testid="edit-button"
+            disabled={!editable}
+            icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
             size="small"
-            tagList={tagDetails.options}
-            type="label"
-            onCancel={() => setIsEditTags(false)}
-            onSelectionChange={handleTagSelection}
+            type="text"
+            onClick={() => setIsEditTags(true)}
           />
-        </div>
-      ) : (
-        <TagsViewer sizeCap={-1} tags={tags || []} />
-      )}
+        )}
+      </div>
+      <TagsContainer
+        className="glossary-select"
+        editable={isEditTags}
+        isLoading={tagDetails.isLoading}
+        selectedTags={getSelectedTags()}
+        showAddTagButton={editable && tags.length === 0}
+        size="small"
+        tagList={tagDetails.options}
+        type="label"
+        onAddButtonClick={addButtonHandler}
+        onCancel={() => setIsEditTags(false)}
+        onSelectionChange={handleTagSelection}
+      />
     </div>
   );
 };

@@ -118,7 +118,11 @@ const DatasetDetailsProps = {
   setActiveTabHandler: jest.fn(),
   settingsUpdateHandler: jest.fn(),
   slashedTableName: [],
-  tableDetails: {} as Table,
+  tableDetails: {
+    columns: [],
+    id: '',
+    name: '',
+  } as Table,
   tableProfile: {} as Table['profile'],
   tableTags: [],
   tableType: TableType.Regular,

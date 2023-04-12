@@ -55,7 +55,7 @@ import IconControlPlus from '../assets/svg/control-plus.svg';
 import IconCreateIngestion from '../assets/svg/creating-ingestion.svg';
 import IconDashboardGrey from '../assets/svg/dashboard-grey.svg';
 import IconDashboard from '../assets/svg/dashboard.svg';
-import IconAsstest from '../assets/svg/data-assets.svg';
+import IconAssets from '../assets/svg/data-assets.svg';
 import IconDBTModelGrey from '../assets/svg/dbt-model-grey.svg';
 import IconDBTModelLightGrey from '../assets/svg/dbt-model-light-grey.svg';
 import IconDBTModelPrimeryColor from '../assets/svg/dbt-model-primery.svg';
@@ -114,7 +114,6 @@ import IconMentionsPrimary from '../assets/svg/ic-mentions-primary.svg';
 import IconMentions from '../assets/svg/ic-mentions.svg';
 import IconMenu from '../assets/svg/ic-menu.svg';
 import IconMyData from '../assets/svg/ic-mydata.svg';
-import IconContainer from '../assets/svg/ic-object-store.svg';
 import IconQuality from '../assets/svg/ic-quality.svg';
 import IconRemoveColored from '../assets/svg/ic-remove-colored.svg';
 import IconRemove from '../assets/svg/ic-remove.svg';
@@ -129,6 +128,7 @@ import IconSettings from '../assets/svg/ic-settings.svg';
 import IconSQLBuilder from '../assets/svg/ic-sql-builder.svg';
 import IconStarPrimary from '../assets/svg/ic-star-primary.svg';
 import IconStar from '../assets/svg/ic-star.svg';
+import IconContainer from '../assets/svg/ic-storage.svg';
 import IconStore from '../assets/svg/ic-store.svg';
 import IconSync from '../assets/svg/ic-sync.svg';
 import IconTaskPrimary from '../assets/svg/ic-task-primary.svg';
@@ -662,7 +662,7 @@ const SVGIcons: FunctionComponent<Props> = ({ icon, ...props }: Props) => {
 
       break;
     case Icons.ASSETS:
-      IconComponent = IconAsstest;
+      IconComponent = IconAssets;
 
       break;
     case Icons.TOAST_INFO:

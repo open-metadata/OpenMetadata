@@ -29,9 +29,9 @@ from metadata.generated.antlr.FqnParser import FqnParser
 from metadata.generated.schema.entity.classification.tag import Tag
 from metadata.generated.schema.entity.data.chart import Chart
 from metadata.generated.schema.entity.data.dashboard import Dashboard
+from metadata.generated.schema.entity.data.dashboardDataModel import DashboardDataModel
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
-from metadata.generated.schema.entity.data.location import Location
 from metadata.generated.schema.entity.data.mlmodel import MlModel
 from metadata.generated.schema.entity.data.pipeline import Pipeline
 from metadata.generated.schema.entity.data.table import Column, DataModel, Table
@@ -275,7 +275,6 @@ def _(
     schema_name: str,
     model_name: str,
 ) -> str:
-
     return _build(service_name, database_name, schema_name, model_name)
 
 
@@ -287,16 +286,6 @@ def _(
     pipeline_name: str,
 ) -> str:
     return _build(service_name, pipeline_name)
-
-
-@fqn_build_registry.add(Location)
-def _(
-    _: OpenMetadata,
-    *,
-    service_name: str,
-    location_name: str,
-) -> str:
-    return _build(service_name, location_name)
 
 
 @fqn_build_registry.add(Column)
@@ -399,6 +388,20 @@ def _(
         table_name,
         test_case_name,
     )
+
+
+@fqn_build_registry.add(DashboardDataModel)
+def _(
+    _: OpenMetadata,  # ES Index not necessary for dashboard FQN building
+    *,
+    service_name: str,
+    data_model_name: str,
+) -> str:
+    if not service_name or not data_model_name:
+        raise FQNBuildingException(
+            f"Args should be informed, but got service=`{service_name}`, chart=`{data_model_name}``"
+        )
+    return _build(service_name, "model", data_model_name)
 
 
 def split_table_name(table_name: str) -> Dict[str, Optional[str]]:

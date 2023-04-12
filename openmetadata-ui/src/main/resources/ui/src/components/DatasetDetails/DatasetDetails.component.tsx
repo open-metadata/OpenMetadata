@@ -37,12 +37,10 @@ import { OwnerType } from '../../enums/user.enum';
 import {
   JoinedWith,
   Table,
-  TableJoins,
   TableProfile,
   UsageDetails,
 } from '../../generated/entity/data/table';
 import { ThreadType } from '../../generated/entity/feed/thread';
-import { EntityReference } from '../../generated/type/entityReference';
 import { Paging } from '../../generated/type/paging';
 import { LabelType, State } from '../../generated/type/tagLabel';
 import { useInfiniteScroll } from '../../hooks/useInfiniteScroll';
@@ -56,7 +54,11 @@ import {
 } from '../../utils/CommonUtils';
 import { getEntityFieldThreadCounts } from '../../utils/FeedUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
-import { getTagsWithoutTier, getUsagePercentile } from '../../utils/TableUtils';
+import {
+  getTagsWithoutTier,
+  getTierTags,
+  getUsagePercentile,
+} from '../../utils/TableUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import ActivityFeedList from '../ActivityFeed/ActivityFeedList/ActivityFeedList';
 import ActivityThreadPanel from '../ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
@@ -84,31 +86,19 @@ import { DatasetDetailsProps } from './DatasetDetails.interface';
 import './datasetDetails.style.less';
 
 const DatasetDetails: React.FC<DatasetDetailsProps> = ({
-  entityName,
   datasetFQN,
   activeTab,
   setActiveTabHandler,
-  owner,
-  description,
   tableProfile,
-  columns,
-  tier,
   followTableHandler,
   unfollowTableHandler,
-  followers,
   slashedTableName,
-  tableTags,
   tableDetails,
   descriptionUpdateHandler,
   columnsUpdateHandler,
   settingsUpdateHandler,
-  usageSummary,
-  joins,
-  tableType,
-  version,
   versionHandler,
   dataModel,
-  deleted,
   tagUpdateHandler,
   entityThread,
   isEntityThreadLoading,
@@ -126,17 +116,9 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
 }: DatasetDetailsProps) => {
   const { t } = useTranslation();
   const [isEdit, setIsEdit] = useState(false);
-  const [followersCount, setFollowersCount] = useState(0);
-  const [isFollowing, setIsFollowing] = useState(false);
   const [usage, setUsage] = useState('');
   const [weeklyUsageCount, setWeeklyUsageCount] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [tableJoinData, setTableJoinData] = useState<TableJoins>({
-    startDate: new Date(),
-    dayCount: 0,
-    columnJoins: [],
-    directTableJoins: [],
-  });
 
   const [threadLink, setThreadLink] = useState<string>('');
   const [threadType, setThreadType] = useState<ThreadType>(
@@ -150,6 +132,29 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
   );
 
   const [activityFilter, setActivityFilter] = useState<ActivityFilters>();
+  const {
+    tier,
+    tableTags,
+    owner,
+    tableType,
+    version,
+    followers = [],
+    deleted,
+    columns,
+    description,
+    usageSummary,
+    joins,
+    entityName,
+  } = useMemo(() => {
+    const { tags } = tableDetails;
+
+    return {
+      ...tableDetails,
+      tier: getTierTags(tags ?? []),
+      tableTags: getTagsWithoutTier(tags || []),
+      entityName: getEntityName(tableDetails),
+    };
+  }, [tableDetails]);
 
   const { getEntityPermission } = usePermissionProvider();
 
@@ -194,12 +199,13 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
     );
   };
 
-  const setFollowersData = (followers: Array<EntityReference>) => {
-    setIsFollowing(
-      followers.some(({ id }: { id: string }) => id === getCurrentUserId())
-    );
-    setFollowersCount(followers?.length);
-  };
+  const { followersCount, isFollowing } = useMemo(() => {
+    return {
+      isFollowing: followers?.some(({ id }) => id === getCurrentUserId()),
+      followersCount: followers?.length ?? 0,
+    };
+  }, [followers]);
+
   const tabs = useMemo(
     () => [
       {
@@ -310,14 +316,14 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
     JoinedWith & { name: string }
   > => {
     const tableFQNGrouping = [
-      ...(tableJoinData.columnJoins?.flatMap(
+      ...(joins?.columnJoins?.flatMap(
         (cjs) =>
           cjs.joinedWith?.map<JoinedWith>((jw) => ({
             fullyQualifiedName: getTableFQNFromColumnFQN(jw.fullyQualifiedName),
             joinCount: jw.joinCount,
           })) ?? []
       ) ?? []),
-      ...(tableJoinData.directTableJoins ?? []),
+      ...(joins?.directTableJoins ?? []),
     ].reduce(
       (result, jw) => ({
         ...result,
@@ -534,15 +540,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
   };
 
   const followTable = () => {
-    if (isFollowing) {
-      setFollowersCount((preValu) => preValu - 1);
-      setIsFollowing(false);
-      unfollowTableHandler();
-    } else {
-      setFollowersCount((preValu) => preValu + 1);
-      setIsFollowing(true);
-      followTableHandler();
-    }
+    isFollowing ? unfollowTableHandler() : followTableHandler();
   };
 
   const handleRestoreTable = async () => {
@@ -595,15 +593,8 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
   };
 
   useEffect(() => {
-    setFollowersData(followers);
-  }, [followers]);
-  useEffect(() => {
-    setUsageDetails(usageSummary);
+    usageSummary && setUsageDetails(usageSummary);
   }, [usageSummary]);
-
-  useEffect(() => {
-    setTableJoinData(joins);
-  }, [joins]);
 
   useEffect(() => {
     fetchMoreThread(isInView as boolean, paging, isEntityThreadLoading);
@@ -737,7 +728,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
                         tablePermissions.EditAll || tablePermissions.EditTags
                       }
                       isReadOnly={deleted}
-                      joins={tableJoinData.columnJoins || []}
+                      joins={joins?.columnJoins || []}
                       tableConstraints={tableDetails.tableConstraints}
                       onThreadLinkSelect={onThreadLinkSelect}
                       onUpdate={onColumnsUpdate}

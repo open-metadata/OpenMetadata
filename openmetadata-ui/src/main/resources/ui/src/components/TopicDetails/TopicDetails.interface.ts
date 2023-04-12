@@ -11,19 +11,12 @@
  *  limitations under the License.
  */
 
-import { EntityTags } from 'Models';
 import { FeedFilter } from '../../enums/mydata.enum';
 import { CreateThread } from '../../generated/api/feed/createThread';
-import {
-  CleanupPolicy,
-  Topic,
-  TopicSampleData,
-} from '../../generated/entity/data/topic';
+import { CleanupPolicy, Topic } from '../../generated/entity/data/topic';
 import { Thread, ThreadType } from '../../generated/entity/feed/thread';
-import { EntityReference } from '../../generated/type/entityReference';
 import { Paging } from '../../generated/type/paging';
 import { SchemaType } from '../../generated/type/schema';
-import { TagLabel } from '../../generated/type/tagLabel';
 import {
   EntityFieldThreadCount,
   ThreadUpdatedFunc,
@@ -32,30 +25,16 @@ import { TitleBreadcrumbProps } from '../common/title-breadcrumb/title-breadcrum
 
 export interface TopicDetailsProps {
   topicFQN: string;
-  version?: string;
-  partitions: number;
-  cleanupPolicies: Array<string>;
-  maximumMessageSize: number;
-  replicationFactor: number;
-  retentionSize: number;
   topicDetails: Topic;
-  entityName: string;
   activeTab: number;
-  owner: EntityReference;
-  description: string;
-  tier: TagLabel;
-  followers: Array<EntityReference>;
-  topicTags: Array<EntityTags>;
   slashedTopicName: TitleBreadcrumbProps['titleLinks'];
-  deleted?: boolean;
   entityThread: Thread[];
   isEntityThreadLoading: boolean;
   feedCount: number;
   entityFieldThreadCount: EntityFieldThreadCount[];
   entityFieldTaskCount: EntityFieldThreadCount[];
   paging: Paging;
-  isSampleDataLoading?: boolean;
-  sampleData?: TopicSampleData;
+
   fetchFeedHandler: (
     after?: string,
     feedFilter?: FeedFilter,

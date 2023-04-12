@@ -16,20 +16,23 @@ import { Col, Drawer, Row, Typography } from 'antd';
 import classNames from 'classnames';
 import ContainerSummary from 'components/Explore/EntitySummaryPanel/ContainerSummary/ContainerSummary.component';
 import DashboardSummary from 'components/Explore/EntitySummaryPanel/DashboardSummary/DashboardSummary.component';
+import DataModelSummary from 'components/Explore/EntitySummaryPanel/DataModelSummary/DataModelSummary.component';
 import MlModelSummary from 'components/Explore/EntitySummaryPanel/MlModelSummary/MlModelSummary.component';
 import PipelineSummary from 'components/Explore/EntitySummaryPanel/PipelineSummary/PipelineSummary.component';
 import TableSummary from 'components/Explore/EntitySummaryPanel/TableSummary/TableSummary.component';
 import TopicSummary from 'components/Explore/EntitySummaryPanel/TopicSummary/TopicSummary.component';
 import { FQN_SEPARATOR_CHAR } from 'constants/char.constants';
 import { Container } from 'generated/entity/data/container';
+import { DashboardDataModel } from 'generated/entity/data/dashboardDataModel';
 import { Mlmodel } from 'generated/entity/data/mlmodel';
 import { EntityDetailUnion } from 'Models';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getDashboardByFqn } from 'rest/dashboardAPI';
+import { getDataModelsByName } from 'rest/dataModelsAPI';
 import { getMlModelByFQN } from 'rest/mlModelAPI';
-import { getContainerByName } from 'rest/objectStoreAPI';
 import { getPipelineByFqn } from 'rest/pipelineAPI';
+import { getContainerByName } from 'rest/storageAPI';
 import { getTableDetailsByFQN } from 'rest/tableAPI';
 import { getTopicByFqn } from 'rest/topicsAPI';
 import { EntityType } from '../../enums/entity.enum';
@@ -118,6 +121,15 @@ const EntityInfoDrawer = ({
 
           break;
         }
+
+        case EntityType.DASHBOARD_DATA_MODEL: {
+          response = await getDataModelsByName(
+            encodedFqn,
+            'owner,tags,followers'
+          );
+
+          break;
+        }
         default:
           break;
       }
@@ -194,6 +206,16 @@ const EntityInfoDrawer = ({
           <ContainerSummary
             componentType={DRAWER_NAVIGATION_OPTIONS.lineage}
             entityDetails={entityDetail as Container}
+            isLoading={isLoading}
+            tags={tags}
+          />
+        );
+
+      case EntityType.DASHBOARD_DATA_MODEL:
+        return (
+          <DataModelSummary
+            componentType={DRAWER_NAVIGATION_OPTIONS.lineage}
+            entityDetails={entityDetail as DashboardDataModel}
             isLoading={isLoading}
             tags={tags}
           />

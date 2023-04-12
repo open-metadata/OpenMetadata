@@ -18,7 +18,7 @@ import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import Tags from 'components/Tag/Tags/tags';
 import { t } from 'i18next';
-import { cloneDeep, isEmpty, isUndefined } from 'lodash';
+import { cloneDeep, isEmpty, isUndefined, toString } from 'lodash';
 import { EntityTags, ExtraInfo, TagOption } from 'Models';
 import React, { Fragment, useCallback, useEffect, useState } from 'react';
 import { useHistory } from 'react-router-dom';
@@ -74,7 +74,7 @@ interface Props {
   entityId?: string;
   entityType?: string;
   entityFqn?: string;
-  version?: string;
+  version?: number;
   canDelete?: boolean;
   isVersionSelected?: boolean;
   entityFieldThreads?: EntityFieldThreads[];
@@ -88,7 +88,6 @@ interface Props {
   currentOwner?: Dashboard['owner'];
   removeTier?: () => void;
   onRestoreEntity?: () => void;
-  allowSoftDelete?: boolean;
   isRecursiveDelete?: boolean;
   extraDropdownContent?: ItemType[];
 }
@@ -122,7 +121,6 @@ const EntityPageInfo = ({
   removeTier,
   onRestoreEntity,
   isRecursiveDelete = false,
-  allowSoftDelete,
   extraDropdownContent,
 }: Props) => {
   const history = useHistory();
@@ -418,10 +416,10 @@ const EntityPageInfo = ({
                     </p>
                   }
                   trigger="hover">
-                  {getVersionButton(version)}
+                  {getVersionButton(toString(version))}
                 </Tooltip>
               ) : (
-                <>{getVersionButton(version)}</>
+                <>{getVersionButton(toString(version))}</>
               )}
             </>
           ) : null}
@@ -456,11 +454,7 @@ const EntityPageInfo = ({
           ) : null}
           {!isVersionSelected && (
             <ManageButton
-              allowSoftDelete={
-                entityType === EntityType.DATABASE_SCHEMA
-                  ? allowSoftDelete
-                  : !deleted
-              }
+              allowSoftDelete={!deleted}
               canDelete={canDelete}
               deleted={deleted}
               entityFQN={entityFqn}

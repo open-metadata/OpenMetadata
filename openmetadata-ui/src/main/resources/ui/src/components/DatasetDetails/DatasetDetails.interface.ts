@@ -11,21 +11,11 @@
  *  limitations under the License.
  */
 
-import { EntityTags } from 'Models';
 import { FeedFilter } from '../../enums/mydata.enum';
 import { CreateThread } from '../../generated/api/feed/createThread';
-import {
-  Column,
-  Table,
-  TableData,
-  TableJoins,
-  TableType,
-  UsageDetails,
-} from '../../generated/entity/data/table';
+import { Table, TableData } from '../../generated/entity/data/table';
 import { Thread, ThreadType } from '../../generated/entity/feed/thread';
-import { EntityReference } from '../../generated/type/entityReference';
 import { Paging } from '../../generated/type/paging';
-import { TagLabel } from '../../generated/type/tagLabel';
 import {
   EntityFieldThreadCount,
   ThreadUpdatedFunc,
@@ -33,27 +23,15 @@ import {
 import { TitleBreadcrumbProps } from '../common/title-breadcrumb/title-breadcrumb.interface';
 
 export interface DatasetDetailsProps {
-  version?: string;
   entityId?: string;
-  joins: TableJoins;
-  tableType: TableType;
-  usageSummary: UsageDetails;
   tableDetails: Table;
-  entityName: string;
   datasetFQN: string;
   dataModel?: Table['dataModel'];
   activeTab: number;
-  owner: EntityReference;
-  description: string;
   tableProfile: Table['profile'];
-  columns: Column[];
-  tier: TagLabel;
   sampleData: TableData;
-  followers: Array<EntityReference>;
-  tableTags: Array<EntityTags>;
   slashedTableName: TitleBreadcrumbProps['titleLinks'];
   entityThread: Thread[];
-  deleted?: boolean;
   isTableProfileLoading?: boolean;
   isSampleDataLoading?: boolean;
   isEntityThreadLoading: boolean;

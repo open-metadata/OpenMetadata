@@ -26,21 +26,7 @@ SET json = JSONB_SET(
 WHERE de2.serviceType = 'Postgres' 
 AND json->>'{connection,config,database}' IS NULL;
 
--- new object store service and container entities
-CREATE TABLE IF NOT EXISTS objectstore_service_entity (
-    id VARCHAR(36) GENERATED ALWAYS AS (json ->> 'id') STORED NOT NULL,
-    name VARCHAR(256) GENERATED ALWAYS AS (json ->> 'name') STORED NOT NULL,
-    serviceType VARCHAR(256) GENERATED ALWAYS AS (json ->> 'serviceType') STORED NOT NULL,
-    json JSONB NOT NULL,
-    updatedAt BIGINT GENERATED ALWAYS AS ((json ->> 'updatedAt')::bigint) STORED NOT NULL,
-    updatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> 'updatedBy') STORED NOT NULL,
-    deleted BOOLEAN GENERATED ALWAYS AS ((json ->> 'deleted')::boolean) STORED,
-    PRIMARY KEY (id),
-    UNIQUE (name)
-);
-
-
-CREATE TABLE IF NOT EXISTS objectstore_container_entity (
+CREATE TABLE IF NOT EXISTS storage_container_entity (
     id VARCHAR(36) GENERATED ALWAYS AS (json ->> 'id') STORED NOT NULL,
     fullyQualifiedName VARCHAR(256) GENERATED ALWAYS AS (json ->> 'fullyQualifiedName') STORED NOT NULL,
     json JSONB NOT NULL,
@@ -138,3 +124,23 @@ CREATE TABLE IF NOT EXISTS dashboard_data_model_entity (
     PRIMARY KEY (id),
     UNIQUE (fullyQualifiedName)
 );
+
+UPDATE dbservice_entity
+SET json = jsonb_set(json::jsonb #- '{connection,config,database}', '{connection,config,databaseName}', json#> '{connection,config,database}', true)
+WHERE servicetype = 'Druid' and json #>'{connection,config,database}' is not null;
+
+-- We were using the same jsonSchema for Pipeline Services and Ingestion Pipeline status
+-- Also, we relied on the extension to store the run id
+UPDATE entity_extension_time_series
+SET jsonSchema = 'ingestionPipelineStatus', extension = 'ingestionPipeline.pipelineStatus'
+WHERE jsonSchema = 'pipelineStatus' AND extension <> 'pipeline.PipelineStatus';
+
+-- We are refactoring the storage service with containers. We'll remove the locations
+DROP TABLE location_entity;
+
+UPDATE dbservice_entity
+SET json = json::jsonb #- '{connection,config,storageServiceName}'
+WHERE servicetype = 'Glue';
+
+UPDATE chart_entity
+SET json = json::jsonb #- '{tables}';

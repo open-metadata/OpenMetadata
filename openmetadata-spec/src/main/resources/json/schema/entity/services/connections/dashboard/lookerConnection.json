@@ -38,6 +38,11 @@
       "type": "string",
       "format": "uri"
     },
+    "githubCredentials": {
+      "title": "GitHub Credentials",
+      "description": "Credentials to extract the .lkml files from a repository. This is required to get all the lineage and definitions.",
+      "$ref": "../../../../security/credentials/githubCredentials.json"
+    },
     "supportsMetadataExtraction": {
       "title": "Supports Metadata Extraction",
       "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"

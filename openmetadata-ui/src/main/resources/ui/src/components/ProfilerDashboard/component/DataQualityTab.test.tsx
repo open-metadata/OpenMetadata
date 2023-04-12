@@ -28,7 +28,14 @@ const mockProps: DataQualityTabProps = {
   testCases: MOCK_TEST_CASE,
   onTestUpdate: jest.fn(),
 };
-
+const mockPermissionsData = {
+  permissions: {
+    all: {
+      Delete: true,
+      EditAll: true,
+    },
+  },
+};
 const mockAuthData = {
   isAdminUser: true,
   isAuthDisabled: false,
@@ -46,6 +53,9 @@ jest.mock('../../../hooks/authHooks', () => ({
       isAdminUser: mockAuthData.isAdminUser,
     };
   },
+}));
+jest.mock('components/PermissionProvider/PermissionProvider', () => ({
+  usePermissionProvider: () => mockPermissionsData,
 }));
 jest.mock('../../authentication/auth-provider/AuthProvider', () => {
   return {
@@ -224,24 +234,29 @@ describe('DataQualityTab test', () => {
     expect(closeDeleteModel).not.toBeInTheDocument();
   });
 
-  it('If there is no permission, edit & delete button will be disabled', async () => {
-    mockAuthData.isAdminUser = false;
-    const firstRowData = MOCK_TEST_CASE[0];
+  it("Edit test case button should be disabled if user doesn't have edit permission", async () => {
+    mockPermissionsData.permissions.all.EditAll = false;
+
     await act(async () => {
       render(<DataQualityTab {...mockProps} />);
     });
-    const tableRows = await screen.findAllByRole('row');
-    const firstRow = tableRows[1];
-    const deleteButton = await findByTestId(
-      firstRow,
-      `delete-${firstRowData.name}`
-    );
-    const editButton = await findByTestId(
-      firstRow,
-      `edit-${firstRowData.name}`
+
+    const editButton = screen.getByTestId('edit-column_values_to_match_regex');
+
+    expect(editButton).toBeDisabled();
+  });
+
+  it("Delete test case button should be disabled if user doesn't have delete permission", async () => {
+    mockPermissionsData.permissions.all.Delete = false;
+
+    await act(async () => {
+      render(<DataQualityTab {...mockProps} />);
+    });
+
+    const deleteButton = screen.getByTestId(
+      'delete-column_values_to_match_regex'
     );
 
     expect(deleteButton).toBeDisabled();
-    expect(editButton).toBeDisabled();
   });
 });

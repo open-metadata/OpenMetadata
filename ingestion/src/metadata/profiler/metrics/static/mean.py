@@ -15,7 +15,7 @@ AVG Metric definition
 # pylint: disable=duplicate-code
 
 
-from typing import cast
+from typing import List, cast
 
 from sqlalchemy import column, func
 from sqlalchemy.ext.compiler import compiles
@@ -28,6 +28,7 @@ from metadata.utils.logger import profiler_logger
 
 logger = profiler_logger()
 
+
 # pylint: disable=invalid-name
 class avg(GenericFunction):
     name = "avg"
@@ -39,6 +40,16 @@ def _(element, compiler, **kw):
     """Handle case for empty table. If empty, clickhouse returns NaN"""
     proc = compiler.process(element.clauses, **kw)
     return f"if(isNaN(avg({proc})), null, avg({proc}))"
+
+
+@compiles(avg, Dialects.MSSQL)
+def _(element, compiler, **kw):
+    """
+    Cast to decimal to get around potential integer overflow error -
+    Error 8115: Arithmetic overflow error converting expression to data type int.
+    """
+    proc = compiler.process(element.clauses, **kw)
+    return f"avg(cast({proc} as decimal))"
 
 
 class Mean(StaticMetric):
@@ -74,21 +85,37 @@ class Mean(StaticMetric):
         return None
 
     # pylint: disable=import-outside-toplevel
-    def df_fn(self, df=None):
+    def df_fn(self, dfs=None):
         """dataframe function"""
-        from numpy import vectorize
-        from pandas import DataFrame
+        import pandas as pd
+        from numpy import average, vectorize
 
-        df = cast(DataFrame, df)  # satisfy mypy
+        dfs = cast(List[pd.DataFrame], dfs)
+
+        means = []
+        weights = []
 
         if is_quantifiable(self.col.type):
-            return df[self.col.name].mean()
+            for df in dfs:
+                mean = df[self.col.name].mean()
+                if not pd.isnull(mean):
+                    means.append(mean)
+                    weights.append(df[self.col.name].count())
 
         if is_concatenable(self.col.type):
-            length_vector_fn = vectorize(len)
-            return length_vector_fn(df[self.col.name]).mean()
+            length_vectorize_func = vectorize(len)
+            for df in dfs:
+                mean = length_vectorize_func(
+                    df[self.col.name].dropna().astype(str)
+                ).mean()
+                if not pd.isnull(mean):
+                    means.append(mean)
+                    weights.append(df[self.col.name].dropna().count())
+
+        if means:
+            return average(means, weights=weights)
 
         logger.warning(
             f"Don't know how to process type {self.col.type} when computing MEAN"
         )
-        return 0
+        return None

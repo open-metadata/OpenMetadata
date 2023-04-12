@@ -13,12 +13,12 @@
 
 package org.openmetadata.service.resources.events;
 
-import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import java.io.IOException;
 import java.util.List;
 import java.util.Objects;
@@ -42,7 +42,10 @@ import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.ResultList;
 
 @Path("/v1/events")
-@Api(value = "Events resource", tags = "events")
+@Tag(
+    name = "Events",
+    description =
+        "The `Events` are changes to metadata and are sent when entities are created, modified, or updated. External systems can subscribe to events using event subscription API over Webhooks, Slack, or Microsoft Teams.")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "events")
@@ -72,7 +75,6 @@ public class EventResource {
   @Operation(
       operationId = "listChangeEvents",
       summary = "Get change events",
-      tags = "events",
       description = "Get a list of change events matching event types, entity type, from a given date",
       responses = {
         @ApiResponse(

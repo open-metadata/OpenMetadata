@@ -22,12 +22,11 @@ from metadata.generated.schema.entity.services.connections.database.databricksCo
     DatabricksConnection,
 )
 from metadata.ingestion.ometa.client import APIError
+from metadata.utils.constants import QUERY_WITH_DBT, QUERY_WITH_OM_VERSION
 from metadata.utils.helpers import datetime_to_ts
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
-QUERY_WITH_OM_VERSION = '/* {"app": "OpenMetadata"'
-QUERY_WITH_DBT = '/* {"app": "dbt"'
 API_TIMEOUT = 10
 
 
@@ -104,7 +103,6 @@ class DatabricksClient:
                         next_page_token = response.get("next_page_token", None)
                         has_next_page = response.get("has_next_page", None)
                         if next_page_token:
-
                             data["page_token"] = next_page_token
 
                         if not has_next_page:
@@ -114,7 +112,6 @@ class DatabricksClient:
                         break
 
                     if result[-1]["execution_end_time_ms"] <= end_time:
-
                         response = self.client.get(
                             self.base_query_url,
                             data=json.dumps(data),
@@ -154,7 +151,6 @@ class DatabricksClient:
             job_list.extend(response.get("jobs") or [])
 
             while response["has_more"]:
-
                 data["offset"] = len(response.get("jobs") or [])
 
                 response = self.client.get(
@@ -196,7 +192,6 @@ class DatabricksClient:
             job_runs.extend(response.get("runs") or [])
 
             while response["has_more"]:
-
                 params.update({"start_time_to": response["runs"][-1]["start_time"]})
 
                 response = self.client.get(

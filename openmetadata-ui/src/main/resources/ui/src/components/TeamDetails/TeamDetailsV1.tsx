@@ -28,8 +28,10 @@ import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
+import TableDataCardV2 from 'components/common/table-data-card-v2/TableDataCardV2';
 import { DROPDOWN_ICON_SIZE_PROPS } from 'constants/ManageButton.constants';
 import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
+import { SearchIndex } from 'enums/search.enum';
 import { compare } from 'fast-json-patch';
 import { cloneDeep, isEmpty, isUndefined, orderBy, uniqueId } from 'lodash';
 import { ExtraInfo } from 'Models';
@@ -77,7 +79,7 @@ import {
   PlaceholderProps,
   TeamDetailsProp,
 } from '../../interface/teamsAndUsers.interface';
-import { getTierFromEntityInfo, hasEditAccess } from '../../utils/CommonUtils';
+import { hasEditAccess } from '../../utils/CommonUtils';
 import { filterEntityAssets, getEntityName } from '../../utils/EntityUtils';
 import {
   checkPermission,
@@ -95,7 +97,6 @@ import EntitySummaryDetails from '../common/EntitySummaryDetails/EntitySummaryDe
 import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder';
 import NextPrevious from '../common/next-previous/NextPrevious';
 import Searchbar from '../common/searchbar/Searchbar';
-import TableDataCard from '../common/table-data-card/TableDataCard';
 import TabsPane from '../common/TabsPane/TabsPane';
 import TitleBreadcrumb from '../common/title-breadcrumb/title-breadcrumb.component';
 import { TitleBreadcrumbProps } from '../common/title-breadcrumb/title-breadcrumb.interface';
@@ -876,25 +877,14 @@ const TeamDetailsV1 = ({
 
     return (
       <div data-testid="table-container">
-        {assets.data.map((entity, index) => (
-          <div className="m-b-sm" key={`${entity.name}${index}`}>
-            <TableDataCard
-              database={entity.database}
-              databaseSchema={entity.databaseSchema}
-              deleted={entity.deleted}
-              description={entity.description}
-              fullyQualifiedName={entity.fullyQualifiedName}
-              id={`tabledatacard${index}`}
-              indexType={entity.index}
-              name={entity.name}
-              owner={entity.owner}
-              service={entity.service}
-              serviceType={entity.serviceType || '--'}
-              tags={entity.tags}
-              tier={getTierFromEntityInfo(entity)}
-              usage={entity.weeklyPercentileRank}
-            />
-          </div>
+        {assets.data.map(({ _source, _index, _id = '' }, index) => (
+          <TableDataCardV2
+            className="m-b-sm cursor-pointer"
+            id={_id}
+            key={index}
+            searchIndex={_index as SearchIndex}
+            source={_source}
+          />
         ))}
         {assets.total > LIST_SIZE && assets.data.length > 0 && (
           <NextPrevious

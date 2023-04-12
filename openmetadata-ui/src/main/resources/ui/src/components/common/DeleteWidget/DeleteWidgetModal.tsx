@@ -103,7 +103,7 @@ const DeleteWidgetModal = ({
       EntityType.MESSAGING_SERVICE,
       EntityType.PIPELINE_SERVICE,
       EntityType.METADATA_SERVICE,
-      EntityType.OBJECT_STORE_SERVICE,
+      EntityType.STORAGE_SERVICE,
     ];
 
     if (services.includes((entityType || '') as EntityType)) {
@@ -112,11 +112,10 @@ const DeleteWidgetModal = ({
       return `glossaries`;
     } else if (entityType === EntityType.POLICY) {
       return 'policies';
-    } else if (
-      entityType === EntityType.TEST_SUITE ||
-      entityType === EntityType.KPI
-    ) {
+    } else if (entityType === EntityType.KPI) {
       return entityType;
+    } else if (entityType === EntityType.DASHBOARD_DATA_MODEL) {
+      return `dashboard/datamodels`;
     } else {
       return `${entityType}s`;
     }

@@ -16,8 +16,8 @@
     <sonar.coverage.jacoco.xmlReportPaths>${project.basedir}/target/site/jacoco-aggregate/jacoco.xml</sonar.coverage.jacoco.xmlReportPaths>
     <sonar.tests>${project.basedir}/src/test/java</sonar.tests>
     <sonar.tests>${project.basedir}/src/test/java</sonar.tests>
-    <org.testcontainers.version>1.17.6</org.testcontainers.version>
-    <awssdk.version>2.19.26</awssdk.version>
+    <org.testcontainers.version>1.18.0</org.testcontainers.version>
+    <awssdk.version>2.20.43</awssdk.version>
     <expiring.map.version>0.5.10</expiring.map.version>
     <java.saml>2.9.0</java.saml>
   </properties>
@@ -231,6 +231,11 @@
       <version>${awssdk.version}</version>
     </dependency>
 
+    <dependency>
+      <groupId>io.dropwizard.modules</groupId>
+      <artifactId>dropwizard-web</artifactId>
+    </dependency>
+
     <!-- Dependencies for cloudwatch monitoring -->
     <dependency>
       <groupId>software.amazon.awssdk</groupId>
@@ -315,7 +320,7 @@
     <dependency>
       <groupId>org.json</groupId>
       <artifactId>json</artifactId>
-      <version>20220924</version>
+      <version>20230227</version>
     </dependency>
 
     <dependency>
@@ -414,12 +419,7 @@
     <dependency>
       <groupId>org.apache.commons</groupId>
       <artifactId>commons-csv</artifactId>
-      <version>1.9.0</version>
-    </dependency>
-    <dependency>
-      <groupId>com.onelogin</groupId>
-      <artifactId>java-saml</artifactId>
-      <version>2.9.0</version>
+      <version>1.10.0</version>
     </dependency>
     <dependency>
       <groupId>com.onelogin</groupId>

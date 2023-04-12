@@ -36,7 +36,7 @@ import {
   ResourceEntity,
 } from 'components/PermissionProvider/PermissionProvider.interface';
 import { FQN_SEPARATOR_CHAR } from 'constants/char.constants';
-import { getServiceDetailsPath } from 'constants/constants';
+import { getServiceDetailsPath, getVersionPath } from 'constants/constants';
 import { NO_PERMISSION_TO_VIEW } from 'constants/HelperTextUtil';
 import { EntityInfo, EntityType } from 'enums/entity.enum';
 import { ServiceCategory } from 'enums/service.enum';
@@ -46,7 +46,7 @@ import { Container } from 'generated/entity/data/container';
 import { EntityLineage } from 'generated/type/entityLineage';
 import { EntityReference } from 'generated/type/entityReference';
 import { LabelType, State, TagSource } from 'generated/type/tagLabel';
-import { isUndefined, omitBy } from 'lodash';
+import { isUndefined, omitBy, toString } from 'lodash';
 import { observer } from 'mobx-react';
 import { EntityTags, ExtraInfo } from 'Models';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
@@ -60,7 +60,7 @@ import {
   patchContainerDetails,
   removeContainerFollower,
   restoreContainer,
-} from 'rest/objectStoreAPI';
+} from 'rest/storageAPI';
 import {
   getCurrentUserId,
   getEntityMissingError,
@@ -275,7 +275,7 @@ const ContainerPage = () => {
     },
     {
       key: EntityInfo.NUMBER_OF_OBJECTS,
-      value: numberOfObjects,
+      value: toString(numberOfObjects),
       showLabel: true,
     },
     {
@@ -299,10 +299,7 @@ const ContainerPage = () => {
       {
         name: serviceName || '',
         url: serviceName
-          ? getServiceDetailsPath(
-              serviceName,
-              ServiceCategory.OBJECT_STORE_SERVICES
-            )
+          ? getServiceDetailsPath(serviceName, ServiceCategory.STORAGE_SERVICES)
           : '',
         imgSrc: serviceType ? serviceTypeLogo(serviceType) : undefined,
       },
@@ -572,6 +569,12 @@ const ContainerPage = () => {
     }
   };
 
+  const versionHandler = () => {
+    history.push(
+      getVersionPath(EntityType.CONTAINER, containerName, toString(version))
+    );
+  };
+
   // Effects
   useEffect(() => {
     if (hasViewPermission) {
@@ -635,7 +638,8 @@ const ContainerPage = () => {
           titleLinks={breadcrumbTitles}
           updateOwner={hasEditOwnerPermission ? handleUpdateOwner : undefined}
           updateTier={hasEditTierPermission ? handleUpdateTier : undefined}
-          version={version + ''}
+          version={version}
+          versionHandler={versionHandler}
           onRestoreEntity={handleRestoreContainer}
         />
         <Tabs activeKey={tab} className="h-full" onChange={handleTabChange}>

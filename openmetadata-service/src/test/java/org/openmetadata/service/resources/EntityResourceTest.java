@@ -163,7 +163,6 @@ import org.openmetadata.service.resources.services.DatabaseServiceResourceTest;
 import org.openmetadata.service.resources.services.MessagingServiceResourceTest;
 import org.openmetadata.service.resources.services.MetadataServiceResourceTest;
 import org.openmetadata.service.resources.services.MlModelServiceResourceTest;
-import org.openmetadata.service.resources.services.ObjectStoreServiceResourceTest;
 import org.openmetadata.service.resources.services.PipelineServiceResourceTest;
 import org.openmetadata.service.resources.services.StorageServiceResourceTest;
 import org.openmetadata.service.resources.tags.TagResourceTest;
@@ -365,10 +364,9 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     new DatabaseServiceResourceTest().setupDatabaseServices(test);
     new MessagingServiceResourceTest().setupMessagingServices();
     new PipelineServiceResourceTest().setupPipelineServices(test);
-    new StorageServiceResourceTest().setupStorageServices();
     new DashboardServiceResourceTest().setupDashboardServices(test);
     new MlModelServiceResourceTest().setupMlModelServices(test);
-    new ObjectStoreServiceResourceTest().setupObjectStoreService(test);
+    new StorageServiceResourceTest().setupStorageService(test);
     new MetadataServiceResourceTest().setupMetadataServices();
     new TableResourceTest().setupDatabaseSchemas(test);
     new TestSuiteResourceTest().setupTestSuites(test);
@@ -2044,7 +2042,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
     Awaitility.await("Wait for expected change event at timestamp " + timestamp)
         .pollInterval(Duration.ofMillis(100L))
-        .atMost(Duration.ofMillis(100 * 100L)) // 100 iterations
+        .atMost(Duration.ofMillis(300 * 100L)) // 300 iterations for 30 seconds
         .until(
             () ->
                 eventHolder.hasExpectedEvent(

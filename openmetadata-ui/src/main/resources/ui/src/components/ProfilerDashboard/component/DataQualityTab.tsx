@@ -22,10 +22,13 @@ import { getEntityName } from 'utils/EntityUtils';
 import { ReactComponent as IconDelete } from '../../../assets/svg/ic-delete.svg';
 import { ReactComponent as IconEdit } from '../../../assets/svg/ic-edit.svg';
 
+import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
+import { ResourceEntity } from 'components/PermissionProvider/PermissionProvider.interface';
+import { Operation } from 'generated/entity/policies/policy';
+import { checkPermission } from 'utils/PermissionsUtils';
 import { getTableTabPath } from '../../../constants/constants';
 import { NO_PERMISSION_FOR_ACTION } from '../../../constants/HelperTextUtil';
 import { TestCase, TestCaseResult } from '../../../generated/tests/testCase';
-import { useAuth } from '../../../hooks/authHooks';
 import { getNameFromFQN } from '../../../utils/CommonUtils';
 import { getTestSuitePath } from '../../../utils/RouterUtils';
 import { getDecodedFqn } from '../../../utils/StringsUtils';
@@ -36,7 +39,6 @@ import {
 } from '../../../utils/TableUtils';
 import { getFormattedDateFromSeconds } from '../../../utils/TimeUtils';
 import EditTestCaseModal from '../../AddDataQualityTest/EditTestCaseModal';
-import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
 import DeleteWidgetModal from '../../common/DeleteWidget/DeleteWidgetModal';
 import Loader from '../../Loader/Loader';
 import { DataQualityTabProps } from '../profilerDashboard.interface';
@@ -49,12 +51,25 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
   onTestUpdate,
 }) => {
   const { t } = useTranslation();
+  const { permissions } = usePermissionProvider();
   const [selectedTestCase, setSelectedTestCase] = useState<TestCase>();
   const [editTestCase, setEditTestCase] = useState<TestCase>();
-  const { isAdminUser } = useAuth();
-  const { isAuthDisabled } = useAuthContext();
 
-  const hasAccess = isAdminUser || isAuthDisabled;
+  const testCaseEditPermission = useMemo(() => {
+    return checkPermission(
+      Operation.EditAll,
+      ResourceEntity.TEST_CASE,
+      permissions
+    );
+  }, [permissions]);
+
+  const testCaseDeletePermission = useMemo(() => {
+    return checkPermission(
+      Operation.Delete,
+      ResourceEntity.TEST_CASE,
+      permissions
+    );
+  }, [permissions]);
 
   const columns: ColumnsType<TestCase> = useMemo(
     () => [
@@ -173,12 +188,14 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
                 <Tooltip
                   placement="bottomRight"
                   title={
-                    hasAccess ? t('label.edit') : NO_PERMISSION_FOR_ACTION
+                    testCaseEditPermission
+                      ? t('label.edit')
+                      : NO_PERMISSION_FOR_ACTION
                   }>
                   <Button
                     className="flex-center"
                     data-testid={`edit-${record.name}`}
-                    disabled={!hasAccess}
+                    disabled={!testCaseEditPermission}
                     icon={<IconEdit width={16} />}
                     type="text"
                     onClick={(e) => {
@@ -192,12 +209,14 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
               <Tooltip
                 placement="bottomLeft"
                 title={
-                  hasAccess ? t('label.delete') : NO_PERMISSION_FOR_ACTION
+                  testCaseDeletePermission
+                    ? t('label.delete')
+                    : NO_PERMISSION_FOR_ACTION
                 }>
                 <Button
                   className="flex-center"
                   data-testid={`delete-${record.name}`}
-                  disabled={!hasAccess}
+                  disabled={!testCaseDeletePermission}
                   icon={<IconDelete width={16} />}
                   type="text"
                   onClick={(e) => {
@@ -212,7 +231,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
         },
       },
     ],
-    [hasAccess, deletedTable]
+    [testCaseEditPermission, testCaseDeletePermission, deletedTable]
   );
 
   return (
@@ -251,7 +270,6 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
         entityId={selectedTestCase?.id || ''}
         entityName={selectedTestCase?.name || ''}
         entityType="testCase"
-        prepareType={false}
         visible={!isUndefined(selectedTestCase)}
         onCancel={() => {
           setSelectedTestCase(undefined);

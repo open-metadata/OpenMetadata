@@ -16,7 +16,7 @@ or ping us on [Slack](https://slack.open-metadata.org/) If you would like to pri
 You can check the latest release [here](/overview/releases).
 
 
-## 1.0 Release - April 6th, 2023
+## 1.0 Release - April 17th, 2023
 
 <TileContainer>
    <Tile
@@ -142,15 +142,7 @@ You can check the latest release [here](/overview/releases).
     <li>Data SLAs</li>
     <li>Impact Analysis</li>
   </Tile>
-  <Tile
-    title="Data Insights"
-    text=""
-    background="pink-70"
-    bordercolor="pink-70"
-  >
-    <li>Cost analysis report</li>
-    <li>Data Deletion Report</li>
-  </Tile>
+
   <Tile
     title="Entities"
     text=""

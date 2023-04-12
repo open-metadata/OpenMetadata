@@ -73,14 +73,14 @@
 
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <mockito.version>4.11.0</mockito.version>
+    <mockito.version>5.2.0</mockito.version>
     <!-- Upgrading slf4j causes dropwizard issues -->
     <slf4j.version>1.7.36</slf4j.version>
-    <jackson.version>2.14.1</jackson.version>
-    <jackson-databind.version>2.14.1</jackson-databind.version>
-    <dropwizard.version>2.1.4</dropwizard.version>
+    <jackson.version>2.14.2</jackson.version>
+    <jackson-databind.version>2.14.2</jackson-databind.version>
+    <dropwizard.version>2.1.6</dropwizard.version>
     <diffMatch.version>1.0</diffMatch.version>
-    <jersey-bom.version>2.38</jersey-bom.version>
+    <jersey-bom.version>2.39.1</jersey-bom.version>
     <javax.ws.rs-api.version>2.1.1</javax.ws.rs-api.version>
     <!-- update from here -->
     <javax.servlet-api.version>3.1.0</javax.servlet-api.version>
@@ -93,35 +93,35 @@
     <jaxb.version>3.0.2</jaxb.version>
     <wiremock-standalone.version>2.15.0</wiremock-standalone.version>
     <jacoco-plugin.version>0.8.8</jacoco-plugin.version>
-    <jdbi3.version>3.36.0</jdbi3.version>
+    <jdbi3.version>3.37.1</jdbi3.version>
     <commons-cli.version>1.5.0</commons-cli.version>
     <commons-io.version>2.11.0</commons-io.version>
-    <flyway.version>9.10.2</flyway.version>
-    <redshift-jdbc.version>2.1.0.10</redshift-jdbc.version>
+    <flyway.version>9.16.3</flyway.version>
+    <redshift-jdbc.version>2.1.0.13</redshift-jdbc.version>
     <gson.version>2.10.1</gson.version>
     <mysql.connector.version>8.0.32</mysql.connector.version>
-    <postgres.connector.version>42.5.1</postgres.connector.version>
+    <postgres.connector.version>42.6.0</postgres.connector.version>
     <jsonschema2pojo.version>1.1.2</jsonschema2pojo.version>
     <commons-lang.version>2.6</commons-lang.version>
-    <lombok.version>1.18.24</lombok.version>
-    <tomcat-jdbc.version>10.1.4</tomcat-jdbc.version>
+    <lombok.version>1.18.26</lombok.version>
+    <tomcat-jdbc.version>10.1.7</tomcat-jdbc.version>
     <!--  We need ElasticSearch client to be compatible with both ElasticSearch and AWS OpenSearch
     This compatibility broken in 7.14, so lets keep this version pinned to 7.13.x
      -->
     <elasticsearch.version>7.13.4</elasticsearch.version>
     <httpasyncclient.version>4.1.5</httpasyncclient.version>
-    <openapiswagger.version>2.2.7</openapiswagger.version>
+    <openapiswagger.version>2.2.9</openapiswagger.version>
     <spring-security-kerberos-core.version>1.0.1.RELEASE</spring-security-kerberos-core.version>
     <httpclient.version>4.5.14</httpclient.version>
     <!-- Upgrading to spring version 6.x requires Java 17 -->
     <spring.version>5.3.26</spring.version>
-    <log4j.version>2.19.0</log4j.version>
+    <log4j.version>2.20.0</log4j.version>
     <org.junit.jupiter.version>5.9.2</org.junit.jupiter.version>
-    <dropwizard-health.version>1.7.2</dropwizard-health.version>
+    <dropwizard-health.version>1.7.3</dropwizard-health.version>
     <fernet.version>1.5.0</fernet.version>
     <!--  4.9.3 uses esnext instead of commonjs and it requires changes on how we run Jest tests  -->
     <!--  upgrade only when we find how to import esnext modules in nodejs  -->
-    <antlr.version>4.11.1</antlr.version>
+    <antlr.version>4.12.0</antlr.version>
 
     <!--   sonar   -Dsonar.login=XXX  -->
     <sonar.projectKey>open-metadata_OpenMetadata</sonar.projectKey>
@@ -136,18 +136,19 @@
     <testng.version>7.6.1</testng.version>
     <!-- Micrometer upgrade to 3.x requires Dropwizard > 3.x -->
     <dropwizard-micrometer.version>2.0.9</dropwizard-micrometer.version>
-    <json-schema-validator.version>1.0.76</json-schema-validator.version>
-    <java-jwt.version>3.19.4</java-jwt.version>
-    <jwks-rsa.version>0.21.3</jwks-rsa.version>
+    <json-schema-validator.version>1.0.79</json-schema-validator.version>
+    <java-jwt.version>4.4.0</java-jwt.version>
+    <jwks-rsa.version>0.22.0</jwks-rsa.version>
     <jjwt.version>0.9.1</jjwt.version>
     <rerunner-jupiter.version>2.1.6</rerunner-jupiter.version>
     <freemarker.version>2.3.32</freemarker.version>
-    <passay.version>1.6.2</passay.version>
-    <bcrypt.version>0.9.0</bcrypt.version>
-    <simplejavamail.version>7.8.0</simplejavamail.version>
+    <passay.version>1.6.3</passay.version>
+    <bcrypt.version>0.10.2</bcrypt.version>
+    <simplejavamail.version>8.0.1</simplejavamail.version>
     <dropwizardkafka.version>1.8.0</dropwizardkafka.version>
     <maven-release-plugin.version>2.5.3</maven-release-plugin.version>
-    <unboundsdk.version>6.0.7</unboundsdk.version>
+    <unboundsdk.version>6.0.8</unboundsdk.version>
+    <dropwizard-web.version>1.5.1</dropwizard-web.version>
   </properties>
   <dependencyManagement>
     <dependencies>
@@ -231,6 +232,11 @@
         <groupId>org.jdbi</groupId>
         <artifactId>jdbi3-core</artifactId>
         <version>${jdbi3.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>io.dropwizard.modules</groupId>
+        <artifactId>dropwizard-web</artifactId>
+        <version>${dropwizard-web.version}</version>
       </dependency>
       <dependency>
         <groupId>commons-cli</groupId>
@@ -508,7 +514,7 @@
       <dependency>
         <groupId>com.fasterxml.jackson.dataformat</groupId>
         <artifactId>jackson-dataformat-cbor</artifactId>
-        <version>2.14.1</version>
+        <version>2.14.2</version>
       </dependency>
 
       <!-- avoid security issue https://security.snyk.io/vuln/SNYK-JAVA-ORGYAML-2806360 -->
@@ -553,7 +559,9 @@
     <profile>	<!-- run SCA -->
       <id>static-code-analysis</id>
       <activation>
-        <activeByDefault>true</activeByDefault>
+        <property>
+          <name>!skipCodeAnalysis</name>
+        </property>
       </activation>
       <build>
         <plugins>

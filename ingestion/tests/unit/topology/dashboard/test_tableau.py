@@ -17,10 +17,13 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.generated.schema.type.basic import FullyQualifiedEntityName
 from metadata.ingestion.source.dashboard.tableau.metadata import (
-    TableauChart,
     TableauDashboard,
-    TableauOwner,
     TableauSource,
+)
+from metadata.ingestion.source.dashboard.tableau.models import (
+    TableauBaseModel,
+    TableauChart,
+    TableauOwner,
 )
 
 MOCK_DASHBOARD_SERVICE = DashboardService(
@@ -73,7 +76,7 @@ mock_tableau_config = {
 MOCK_DASHBOARD = TableauDashboard(
     id="42a5b706-739d-4d62-94a2-faedf33950a5",
     name="Regional",
-    webpage_url="https://prod-apnortheast-a.online.tableau.com/#/site/hidarsite/workbooks/897790",
+    webpageUrl="https://prod-apnortheast-a.online.tableau.com/#/site/hidarsite/workbooks/897790",
     description="tableau dashboard description",
     tags=[],
     owner=TableauOwner(
@@ -83,28 +86,28 @@ MOCK_DASHBOARD = TableauDashboard(
         TableauChart(
             id="b05695a2-d1ea-428e-96b2-858809809da4",
             name="Obesity",
-            workbook_id="42a5b706-739d-4d62-94a2-faedf33950a5",
-            sheet_type="dashboard",
-            view_url_name="Obesity",
-            content_url="Regional/sheets/Obesity",
+            workbook=TableauBaseModel(id="42a5b706-739d-4d62-94a2-faedf33950a5"),
+            sheetType="dashboard",
+            viewUrlName="Obesity",
+            contentUrl="Regional/sheets/Obesity",
             tags=[],
         ),
         TableauChart(
             id="106ff64d-537b-4534-8140-5d08c586e077",
             name="College",
-            workbook_id="42a5b706-739d-4d62-94a2-faedf33950a5",
-            sheet_type="view",
-            view_url_name="College",
-            content_url="Regional/sheets/College",
+            workbook=TableauBaseModel(id="42a5b706-739d-4d62-94a2-faedf33950a5"),
+            sheetType="view",
+            viewUrlName="College",
+            contentUrl="Regional/sheets/College",
             tags=[],
         ),
         TableauChart(
             id="c1493abc-9057-4bdf-9061-c6d2908e4eaa",
             name="Global Temperatures",
-            workbook_id="42a5b706-739d-4d62-94a2-faedf33950a5",
-            sheet_type="dashboard",
-            view_url_name="GlobalTemperatures",
-            content_url="Regional/sheets/GlobalTemperatures",
+            workbook=TableauBaseModel(id="42a5b706-739d-4d62-94a2-faedf33950a5"),
+            sheetType="dashboard",
+            viewUrlName="GlobalTemperatures",
+            contentUrl="Regional/sheets/GlobalTemperatures",
             tags=[],
         ),
     ],
@@ -131,7 +134,6 @@ EXPECTED_CHARTS = [
         description=None,
         chartType="Other",
         chartUrl="#site/tableauSiteUrl/views/Regional/Obesity",
-        tables=None,
         tags=None,
         owner=None,
         service=FullyQualifiedEntityName(__root__="tableau_source_test"),
@@ -142,7 +144,6 @@ EXPECTED_CHARTS = [
         description=None,
         chartType="Other",
         chartUrl="#site/tableauSiteUrl/views/Regional/College",
-        tables=None,
         tags=None,
         owner=None,
         service=FullyQualifiedEntityName(__root__="tableau_source_test"),
@@ -153,7 +154,6 @@ EXPECTED_CHARTS = [
         description=None,
         chartType="Other",
         chartUrl="#site/tableauSiteUrl/views/Regional/GlobalTemperatures",
-        tables=None,
         tags=None,
         owner=None,
         service=FullyQualifiedEntityName(__root__="tableau_source_test"),

@@ -13,7 +13,6 @@
 
 package org.openmetadata.service.resources.databases;
 
-import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -22,6 +21,7 @@ import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import java.io.IOException;
 import java.util.UUID;
 import javax.json.JsonPatch;
@@ -56,11 +56,12 @@ import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
-import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.ResultList;
 
 @Path("/v1/databases")
-@Api(value = "Databases collection", tags = "Databases collection")
+@Tag(
+    name = "Databases",
+    description = "A `Database` also referred to as `Database Catalog` is a collection of schemas.")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "databases")
@@ -91,7 +92,6 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
   @Operation(
       operationId = "listDatabases",
       summary = "List databases",
-      tags = "databases",
       description =
           "Get a list of databases, optionally filtered by `service` it belongs to. Use `fields` "
               + "parameter to get only necessary fields. Use cursor-based pagination to limit the number "
@@ -143,7 +143,6 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
   @Operation(
       operationId = "listAllDatabaseVersion",
       summary = "List database versions",
-      tags = "databases",
       description = "Get a list of all the versions of a database identified by `Id`",
       responses = {
         @ApiResponse(
@@ -164,7 +163,6 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
   @Operation(
       operationId = "getDatabaseByID",
       summary = "Get a database by Id",
-      tags = "databases",
       description = "Get a database by `Id`.",
       responses = {
         @ApiResponse(
@@ -197,7 +195,6 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
   @Operation(
       operationId = "getDatabaseByFQN",
       summary = "Get a database by fully qualified name",
-      tags = "databases",
       description = "Get a database by `fullyQualifiedName`.",
       responses = {
         @ApiResponse(
@@ -232,7 +229,6 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
   @Operation(
       operationId = "getSpecificDatabaseVersion",
       summary = "Get a version of the database",
-      tags = "databases",
       description = "Get a version of the database by given `Id`",
       responses = {
         @ApiResponse(
@@ -260,7 +256,6 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
   @Operation(
       operationId = "createDatabase",
       summary = "Create a database",
-      tags = "databases",
       description = "Create a database under an existing `service`.",
       responses = {
         @ApiResponse(
@@ -281,7 +276,6 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
   @Operation(
       operationId = "patchDatabase",
       summary = "Update a database",
-      tags = "databases",
       description = "Update an existing database using JsonPatch.",
       externalDocs = @ExternalDocumentation(description = "JsonPatch RFC", url = "https://tools.ietf.org/html/rfc6902"))
   @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
@@ -306,7 +300,6 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
   @Operation(
       operationId = "createOrUpdateDatabase",
       summary = "Create or update database",
-      tags = "databases",
       description = "Create a database, if it does not exist or update an existing database.",
       responses = {
         @ApiResponse(
@@ -322,28 +315,10 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
   }
 
   @DELETE
-  @Path("/{id}/location")
-  @Operation(
-      operationId = "deleteLocation",
-      summary = "Remove the location",
-      tags = "databases",
-      description = "Remove the location")
-  public Database deleteLocation(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the database", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
-      throws IOException {
-    dao.deleteLocation(id);
-    Database database = dao.get(uriInfo, id, Fields.EMPTY_FIELDS);
-    return addHref(uriInfo, database);
-  }
-
-  @DELETE
   @Path("/{id}")
   @Operation(
       operationId = "deleteDatabase",
       summary = "Delete a database by Id",
-      tags = "databases",
       description = "Delete a database by `Id`. Database can only be deleted if it has no tables.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
@@ -370,7 +345,6 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
   @Operation(
       operationId = "deleteDatabaseByFQN",
       summary = "Delete a database by fully qualified name",
-      tags = "databases",
       description = "Delete a database by `fullyQualifiedName`. Databases can only be deleted if it has no tables.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
@@ -395,7 +369,6 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
   @Operation(
       operationId = "restore",
       summary = "Restore a soft deleted Database.",
-      tags = "tables",
       description = "Restore a soft deleted Database.",
       responses = {
         @ApiResponse(

@@ -12,9 +12,11 @@
  */
 
 import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
-import { Button, Select, Space, Spin } from 'antd';
-import { ReactComponent as IconFolder } from 'assets/svg/folder.svg';
+import { Button, Select, Spin, Tooltip, Typography } from 'antd';
+import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
+import { ReactComponent as IconFlatDoc } from 'assets/svg/ic-flat-doc.svg';
 import TagButton from 'components/TagButton/TagButton.component';
+import { NO_PERMISSION_FOR_ACTION } from 'constants/HelperTextUtil';
 import { t } from 'i18next';
 import { cloneDeep, debounce, includes, toString } from 'lodash';
 import React, { useCallback, useEffect, useState } from 'react';
@@ -22,7 +24,7 @@ import { useHistory } from 'react-router-dom';
 import { searchData } from 'rest/miscAPI';
 import { getGlossaryPath } from 'utils/RouterUtils';
 import { ReactComponent as PlusIcon } from '../../../assets/svg/plus-primary.svg';
-import { PAGE_SIZE } from '../../../constants/constants';
+import { DE_ACTIVE_COLOR, PAGE_SIZE } from '../../../constants/constants';
 import { SearchIndex } from '../../../enums/search.enum';
 import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
 import { EntityReference } from '../../../generated/type/entityReference';
@@ -116,14 +118,6 @@ const RelatedTerms = ({
     }));
   };
 
-  const removeTerms = (removedTag: string) => {
-    const newOptions = selectedOption.filter(
-      (option) => option.displayName !== removedTag
-    );
-    setSelectedOption(newOptions);
-    handleRelatedTermsSave(newOptions);
-  };
-
   const handleCancel = () => {
     setSelectedOption(formatOptions(glossaryTerm.relatedTerms || []));
     setIsIconVisible(true);
@@ -137,14 +131,37 @@ const RelatedTerms = ({
   }, [glossaryTerm]);
 
   return (
-    <div className="flex" data-testid="related-term-container">
+    <div className="flex flex-col gap-3" data-testid="related-term-container">
+      <div className="d-flex items-center">
+        <Typography.Text className="glossary-subheading">
+          {t('label.related-term-plural')}
+        </Typography.Text>
+        {permissions.EditAll && selectedOption.length > 0 && (
+          <Tooltip
+            title={
+              permissions.EditAll ? t('label.edit') : NO_PERMISSION_FOR_ACTION
+            }>
+            <Button
+              className="cursor-pointer m--t-xss m-l-xss"
+              data-testid="edit-button"
+              disabled={!permissions.EditAll}
+              icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
+              size="small"
+              type="text"
+              onClick={() => setIsIconVisible(false)}
+            />
+          </Tooltip>
+        )}
+      </div>
+
       {isIconVisible ? (
         <div className="d-flex flex-wrap">
-          {permissions.EditAll && (
+          {permissions.EditAll && selectedOption.length === 0 && (
             <TagButton
               className="tw-text-primary"
+              dataTestId="related-term-add-button"
               icon={<PlusIcon height={16} name="plus" width={16} />}
-              label={t('label.term')}
+              label={t('label.add')}
               onClick={() => {
                 setIsIconVisible(false);
               }}
@@ -153,13 +170,9 @@ const RelatedTerms = ({
 
           {selectedOption.map((entity: EntityReference) => (
             <TagButton
-              icon={<IconFolder height={16} name="folder" width={16} />}
-              isRemovable={permissions.EditAll}
+              icon={<IconFlatDoc height={14} name="folder" width={14} />}
               key={entity.fullyQualifiedName}
               label={toString(entity.displayName)}
-              removeTag={(_e, removedTag: string) => {
-                removeTerms(removedTag);
-              }}
               onClick={() => {
                 handleRelatedTermClick(entity.fullyQualifiedName || '');
               }}
@@ -167,9 +180,9 @@ const RelatedTerms = ({
           ))}
         </div>
       ) : (
-        <Space align="center" className="w-full" size={8}>
+        <div className="d-flex items-center gap-2">
           <Select
-            className="w-min-15"
+            className="glossary-select"
             filterOption={false}
             mode="multiple"
             notFoundContent={isLoading ? <Spin size="small" /> : null}
@@ -177,7 +190,6 @@ const RelatedTerms = ({
             placeholder={t('label.add-entity', {
               entity: t('label.related-term-plural'),
             })}
-            style={{ width: '100%' }}
             value={selectedOption}
             onChange={(_, data) => {
               setSelectedOption(data as EntityReference[]);
@@ -188,21 +200,21 @@ const RelatedTerms = ({
           <>
             <Button
               className="w-6 p-x-05"
-              data-testid="cancelAssociatedTag"
+              data-testid="cancel-related-term-btn"
               icon={<CloseOutlined size={12} />}
               size="small"
               onClick={() => handleCancel()}
             />
             <Button
               className="w-6 p-x-05"
-              data-testid="saveAssociatedTag"
+              data-testid="save-related-term-btn"
               icon={<CheckOutlined size={12} />}
               size="small"
               type="primary"
               onClick={() => handleRelatedTermsSave(selectedOption)}
             />
           </>
-        </Space>
+        </div>
       )}
     </div>
   );

@@ -12,7 +12,11 @@
  */
 import { Button, Popover, Space, Tabs, Tooltip, Typography } from 'antd';
 import { WILD_CARD_CHAR } from 'constants/char.constants';
-import { PAGE_SIZE_MEDIUM, pagingObject } from 'constants/constants';
+import {
+  DE_ACTIVE_COLOR,
+  PAGE_SIZE_MEDIUM,
+  pagingObject,
+} from 'constants/constants';
 import { NO_PERMISSION_FOR_ACTION } from 'constants/HelperTextUtil';
 import { EntityType } from 'enums/entity.enum';
 import { SearchIndex } from 'enums/search.enum';
@@ -54,7 +58,7 @@ export const UserTeamSelectableList = ({
           searchText,
           1,
           PAGE_SIZE_MEDIUM,
-          '',
+          'isBot:false',
           '',
           '',
           SearchIndex.USER
@@ -79,7 +83,9 @@ export const UserTeamSelectableList = ({
             ? {
                 after,
               }
-            : undefined
+            : undefined,
+          undefined,
+          false
         );
         const filterData = getEntityReferenceListFromEntities(
           data,
@@ -144,7 +150,7 @@ export const UserTeamSelectableList = ({
           data: filterData,
           paging: {
             total: data.hits.total.value,
-            after: toString(currentTeamPage + 1),
+            after: toString(Number(currentTeamPage) + 1),
           },
         };
       } catch (error) {
@@ -181,8 +187,17 @@ export const UserTeamSelectableList = ({
     }
   }, [popupVisible]);
 
+  useEffect(() => {
+    if (owner?.type === EntityType.USER) {
+      setActiveTab('users');
+    } else {
+      setActiveTab('teams');
+    }
+  }, [owner]);
+
   return (
     <Popover
+      destroyTooltipOnHide
       content={
         <Tabs
           centered
@@ -255,9 +270,10 @@ export const UserTeamSelectableList = ({
             icon={
               <SVGIcons
                 alt="edit"
+                color={DE_ACTIVE_COLOR}
+                height="14px"
                 icon={Icons.EDIT}
                 title="Edit"
-                width="16px"
               />
             }
             size="small"
