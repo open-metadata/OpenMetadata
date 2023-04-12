@@ -51,13 +51,13 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
   }
 
   @Override
-  public EventSubscription setFields(EventSubscription entity, Fields fields) throws IOException {
+  public EventSubscription setFields(EventSubscription entity, Fields fields) {
     entity.setStatusDetails(fields.contains("statusDetails") ? getStatusForEventSubscription(entity.getId()) : null);
     return entity; // No fields to set
   }
 
   @Override
-  public void prepare(EventSubscription entity) throws IOException {
+  public void prepare(EventSubscription entity) {
     //    validateAlertActions(entity.getAlertActions());
     validateFilterRules(entity);
   }

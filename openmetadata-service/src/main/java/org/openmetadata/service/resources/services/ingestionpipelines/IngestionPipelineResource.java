@@ -82,7 +82,7 @@ import org.openmetadata.service.util.ResultList;
 
 // TODO merge with workflows
 @Slf4j
-@Path("/v1/services/ingestionPipelines/")
+@Path("/v1/services/ingestionPipelines")
 @Tag(
     name = "Ingestion Pipelines",
     description = "APIs related pipelines/workflows created by the system to ingest metadata.")

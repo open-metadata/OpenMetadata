@@ -1,6 +1,5 @@
 package org.openmetadata.service.resources.kpi;
 
-import com.google.inject.Inject;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Hidden;
 import io.swagger.v3.oas.annotations.Operation;
@@ -72,7 +71,6 @@ public class KpiResource extends EntityResource<Kpi, KpiRepository> {
     return kpi;
   }
 
-  @Inject
   public KpiResource(CollectionDAO dao, Authorizer authorizer) {
     super(Kpi.class, new KpiRepository(dao), authorizer);
   }

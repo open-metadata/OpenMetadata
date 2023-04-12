@@ -10,10 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-/**
- * This is OMMicrometerHttpFilter is similar to MicrometerHttpFilter with support to handle OM Servlets, and provide
- * metric information for them.
- */
 package org.openmetadata.service.security.saml;
 
 import static org.openmetadata.service.util.MicrometerBundleSingleton.prometheusMeterRegistry;
@@ -32,12 +28,16 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import org.openmetadata.common.utils.CommonUtil;
 
+/**
+ * This is OMMicrometerHttpFilter is similar to MicrometerHttpFilter with support to handle OM Servlets, and provide
+ * metric information for them.
+ */
 public class OMMicrometerHttpFilter implements Filter {
   protected FilterConfig filterConfig;
 
   public OMMicrometerHttpFilter() {}
 
-  public void init(FilterConfig filterConfig) throws ServletException {
+  public void init(FilterConfig filterConfig) {
     this.filterConfig = filterConfig;
   }
 
