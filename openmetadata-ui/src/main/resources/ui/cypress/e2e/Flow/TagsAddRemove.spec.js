@@ -28,7 +28,7 @@ const addTags = (tag) => {
 const checkTags = (tag, checkForParentEntity) => {
   if (checkForParentEntity) {
     cy.get(
-      '[data-testid="entity-tags"] [data-testid="tags-wrapper"] [data-testid="tag-container"] > :nth-child(1) > .ant-space > :nth-child(2)'
+      '[data-testid="entity-tags"] [data-testid="tags-wrapper"] [data-testid="tag-container"] > .ant-space > :nth-child(1)'
     )
       .scrollIntoView()
       .should('be.visible')
@@ -38,9 +38,9 @@ const checkTags = (tag, checkForParentEntity) => {
   }
 };
 
-const removeTags = (tag, checkForParentEntity) => {
+const removeTags = (tag, checkForParentEntity, isTable) => {
   if (checkForParentEntity) {
-    cy.get('[data-testid="entity-tags"] [data-testid="add-tag"] ')
+    cy.get('[data-testid="entity-tags"] [data-testid="edit-button"] ')
       .scrollIntoView()
       .should('be.visible')
       .click();
@@ -51,7 +51,27 @@ const removeTags = (tag, checkForParentEntity) => {
 
     cy.get('[data-testid="saveAssociatedTag"]').should('be.visible').click();
   } else {
-    cy.get(`[data-testid="remove-${tag}-tag"]`).should('be.visible').click();
+    if (isTable) {
+      cy.get(
+        '[data-testid="classification-tags-0"] [data-testid="edit-button"] '
+      )
+        .scrollIntoView()
+        .should('be.hidden')
+        .click();
+    } else {
+      cy.get(
+        `.ant-table-tbody [data-testid="tag-container"] [data-testid="add-tag"] span`
+      )
+        .eq(0)
+        .should('be.visible')
+        .click();
+    }
+
+    cy.get(`[title="${tag}"] .ant-select-selection-item-remove > .anticon`)
+      .should('be.visible')
+      .click();
+
+    cy.get('[data-testid="saveAssociatedTag"]').should('be.visible').click();
   }
   verifyResponseStatusCode('@tagsChange', 200);
 };
@@ -110,13 +130,18 @@ describe('Check if tags addition and removal flow working properly from tables',
         'tagsChange'
       );
 
-      cy.get('[data-testid="saveAssociatedTag"]').should('be.visible').click();
+      cy.get('[data-testid="saveAssociatedTag"]')
+        .scrollIntoView()
+        .should('be.visible')
+        .click();
 
       verifyResponseStatusCode('@tagsChange', 200);
 
       entityDetails.tags.map((tag) => checkTags(tag));
 
-      entityDetails.tags.map((tag) => removeTags(tag));
+      entityDetails.tags.map((tag) =>
+        removeTags(tag, false, entityDetails.isTable)
+      );
     })
   );
 });

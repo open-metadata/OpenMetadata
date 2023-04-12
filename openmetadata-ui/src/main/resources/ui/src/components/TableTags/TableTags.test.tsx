@@ -61,7 +61,7 @@ const classificationTags = [
 ];
 
 const mockProp = {
-  dataTestId: 'table-tag-container',
+  dataTestId: 'tag-container',
   tags: {
     Classification: [],
     Glossary: [],
@@ -111,7 +111,7 @@ describe('Test EntityTableTags Component', () => {
       wrapper: MemoryRouter,
     });
 
-    const tagContainer = await screen.findByTestId('table-tag-container');
+    const tagContainer = await screen.findByTestId('tag-container-0');
 
     expect(tagContainer).toBeInTheDocument();
   });
@@ -135,7 +135,7 @@ describe('Test EntityTableTags Component', () => {
       }
     );
 
-    const tagContainer = await screen.findByTestId('table-tag-container');
+    const tagContainer = await screen.findByTestId('tag-container-0');
     const tagViewer = await screen.findByTestId('tags-viewer');
 
     expect(tagContainer).toBeInTheDocument();
@@ -160,7 +160,7 @@ describe('Test EntityTableTags Component', () => {
       }
     );
 
-    const tagContainer = await screen.findByTestId('table-tag-container');
+    const tagContainer = await screen.findByTestId('tag-container-0');
     const tagComponent = await screen.findByTestId('tags-component');
 
     expect(tagContainer).toBeInTheDocument();
