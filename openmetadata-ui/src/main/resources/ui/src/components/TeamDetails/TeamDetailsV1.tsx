@@ -32,7 +32,6 @@ import { DROPDOWN_ICON_SIZE_PROPS } from 'constants/ManageButton.constants';
 import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { SearchIndex } from 'enums/search.enum';
 import { compare } from 'fast-json-patch';
-import { RawSuggestResponse } from 'interface/search.interface';
 import { cloneDeep, isEmpty, isUndefined, orderBy, uniqueId } from 'lodash';
 import { ExtraInfo } from 'Models';
 import AddAttributeModal from 'pages/RolesPage/AddAttributeModal/AddAttributeModal';
@@ -352,10 +351,13 @@ const TeamDetailsV1 = ({
 
   const searchTeams = async (text: string) => {
     try {
-      const res = await getSuggestions(text, SearchIndex.TEAM);
-      const data = (res.data as RawSuggestResponse<SearchIndex.TEAM>).suggest[
-        'metadata-suggest'
-      ][0].options.map((value) => value._source);
+      const res = await getSuggestions<SearchIndex.TEAM>(
+        text,
+        SearchIndex.TEAM
+      );
+      const data = res.data.suggest['metadata-suggest'][0].options.map(
+        (value) => value._source as Team
+      );
 
       setTable(data);
     } catch (error) {
