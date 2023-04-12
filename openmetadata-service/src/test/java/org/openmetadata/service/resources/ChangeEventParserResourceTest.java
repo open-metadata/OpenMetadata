@@ -44,6 +44,7 @@ import org.openmetadata.service.OpenMetadataApplicationTest;
 import org.openmetadata.service.resources.databases.TableResourceTest;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.util.ChangeEventParser;
+import org.openmetadata.service.util.ChangeEventParser.PublishTo;
 import org.openmetadata.service.util.JsonUtils;
 
 @Slf4j
@@ -69,8 +70,7 @@ class ChangeEventParserResourceTest extends OpenMetadataApplicationTest {
     deleteTag.withName("tags").withOldValue("tag1");
     changeDescription.withFieldsAdded(List.of(addTag)).withFieldsDeleted(List.of(deleteTag)).withPreviousVersion(1.0);
 
-    Map<EntityLink, String> messages =
-        ChangeEventParser.getFormattedMessages(ChangeEventParser.PUBLISH_TO.FEED, changeDescription, TABLE);
+    Map<EntityLink, String> messages = ChangeEventParser.getFormattedMessages(PublishTo.FEED, changeDescription, TABLE);
     assertEquals(1, messages.size());
 
     TagLabel tag1 = new TagLabel();
@@ -83,7 +83,7 @@ class ChangeEventParserResourceTest extends OpenMetadataApplicationTest {
     deleteTag.withOldValue(JsonUtils.pojoToJson(List.of(tag1)));
 
     Map<EntityLink, String> jsonMessages =
-        ChangeEventParser.getFormattedMessages(ChangeEventParser.PUBLISH_TO.FEED, changeDescription, TABLE);
+        ChangeEventParser.getFormattedMessages(PublishTo.FEED, changeDescription, TABLE);
     assertEquals(1, jsonMessages.size());
 
     // The entity links and values of both the messages should be the same
@@ -98,8 +98,7 @@ class ChangeEventParserResourceTest extends OpenMetadataApplicationTest {
     entityReference.withId(UUID.randomUUID()).withName("user1").withDisplayName("User One");
     fieldAdded(changeDescription, FIELD_OWNER, JsonUtils.pojoToJson(entityReference));
 
-    Map<EntityLink, String> messages =
-        ChangeEventParser.getFormattedMessages(ChangeEventParser.PUBLISH_TO.FEED, changeDescription, TABLE);
+    Map<EntityLink, String> messages = ChangeEventParser.getFormattedMessages(PublishTo.FEED, changeDescription, TABLE);
     assertEquals(1, messages.size());
 
     assertEquals("Added **owner**: **User One**", messages.values().iterator().next());
@@ -111,12 +110,11 @@ class ChangeEventParserResourceTest extends OpenMetadataApplicationTest {
     ChangeDescription changeDescription = new ChangeDescription();
     fieldUpdated(changeDescription, "description", "old description", "new description");
 
-    Map<EntityLink, String> messages =
-        ChangeEventParser.getFormattedMessages(ChangeEventParser.PUBLISH_TO.FEED, changeDescription, TABLE);
+    Map<EntityLink, String> messages = ChangeEventParser.getFormattedMessages(PublishTo.FEED, changeDescription, TABLE);
     assertEquals(1, messages.size());
 
     assertEquals(
-        "Updated **description** : <span class=\"diff-removed\">old</span> "
+        "Updated **description**: <span class=\"diff-removed\">old</span> "
             + "<span class=\"diff-added\">new</span> description",
         messages.values().iterator().next());
 
@@ -127,7 +125,7 @@ class ChangeEventParserResourceTest extends OpenMetadataApplicationTest {
 
     // now test if both the type of updates give the same message
     Map<EntityLink, String> updatedMessages =
-        ChangeEventParser.getFormattedMessages(ChangeEventParser.PUBLISH_TO.FEED, changeDescription, TABLE);
+        ChangeEventParser.getFormattedMessages(PublishTo.FEED, changeDescription, TABLE);
     assertEquals(1, updatedMessages.size());
 
     assertEquals(messages.keySet().iterator().next(), updatedMessages.keySet().iterator().next());
@@ -141,10 +139,10 @@ class ChangeEventParserResourceTest extends OpenMetadataApplicationTest {
     fieldUpdated(changeDescription, "description", "old description", "new description");
 
     Map<EntityLink, String> messages =
-        ChangeEventParser.getFormattedMessages(ChangeEventParser.PUBLISH_TO.SLACK, changeDescription, TABLE);
+        ChangeEventParser.getFormattedMessages(PublishTo.SLACK, changeDescription, TABLE);
     assertEquals(1, messages.size());
 
-    assertEquals("Updated *description* : ~old~ *new* description", messages.values().iterator().next());
+    assertEquals("Updated *description*: ~old~ *new* description", messages.values().iterator().next());
 
     // test if it updates correctly with one add and one delete change
     changeDescription = new ChangeDescription().withPreviousVersion(1.0);
@@ -153,7 +151,7 @@ class ChangeEventParserResourceTest extends OpenMetadataApplicationTest {
 
     // now test if both the type of updates give the same message
     Map<EntityLink, String> updatedMessages =
-        ChangeEventParser.getFormattedMessages(ChangeEventParser.PUBLISH_TO.SLACK, changeDescription, TABLE);
+        ChangeEventParser.getFormattedMessages(PublishTo.SLACK, changeDescription, TABLE);
     assertEquals(1, updatedMessages.size());
 
     assertEquals(messages.keySet().iterator().next(), updatedMessages.keySet().iterator().next());
@@ -174,8 +172,7 @@ class ChangeEventParserResourceTest extends OpenMetadataApplicationTest {
         "columns",
         "[{\"name\":\"lo_order\",\"displayName\":\"lo_order\",\"dataType\":\"INT\",\"dataLength\":1,\"dataTypeDisplay\":\"int\",\"fullyQualifiedName\":\"local_mysql.sample_db.lineorder.lo_order\",\"constraint\":\"NOT_NULL\"}]");
 
-    Map<EntityLink, String> messages =
-        ChangeEventParser.getFormattedMessages(ChangeEventParser.PUBLISH_TO.FEED, changeDescription, TABLE);
+    Map<EntityLink, String> messages = ChangeEventParser.getFormattedMessages(PublishTo.FEED, changeDescription, TABLE);
     assertEquals(1, messages.size());
 
     assertEquals(
@@ -193,7 +190,7 @@ class ChangeEventParserResourceTest extends OpenMetadataApplicationTest {
         "columns",
         "[{\"name\":\"lo_orderpriority\",\"displayName\":\"lo_orderpriority\",\"dataType\":\"BLOB\",\"dataLength\":1,\"dataTypeDisplay\":\"blob\",\"fullyQualifiedName\":\"local_mysql.sample_db.lineorder.lo_orderpriority\",\"tags\":[],\"constraint\":\"NOT_NULL\"}]");
 
-    messages = ChangeEventParser.getFormattedMessages(ChangeEventParser.PUBLISH_TO.FEED, changeDescription, TABLE);
+    messages = ChangeEventParser.getFormattedMessages(PublishTo.FEED, changeDescription, TABLE);
     assertEquals(1, messages.size());
 
     assertEquals(
@@ -211,11 +208,11 @@ class ChangeEventParserResourceTest extends OpenMetadataApplicationTest {
         "columns",
         "[{\"name\":\"lo_orderpriority\",\"displayName\":\"lo_orderpriority\",\"dataType\":\"BLOB\",\"dataLength\":1,\"dataTypeDisplay\":\"blob\",\"fullyQualifiedName\":\"local_mysql.sample_db.lineorder.lo_orderpriority\"}]");
 
-    messages = ChangeEventParser.getFormattedMessages(ChangeEventParser.PUBLISH_TO.FEED, changeDescription, TABLE);
+    messages = ChangeEventParser.getFormattedMessages(PublishTo.FEED, changeDescription, TABLE);
     assertEquals(1, messages.size());
 
     assertEquals(
-        "Updated **columns** : lo_orderpriority <span class=\"diff-added\">, newColumn</span>",
+        "Updated **columns**: lo_orderpriority <span class=\"diff-added\">, newColumn</span>",
         messages.values().iterator().next());
   }
 
@@ -234,7 +231,7 @@ class ChangeEventParserResourceTest extends OpenMetadataApplicationTest {
         "[{\"name\":\"lo_order\",\"displayName\":\"lo_order\",\"dataType\":\"INT\",\"dataLength\":1,\"dataTypeDisplay\":\"int\",\"fullyQualifiedName\":\"local_mysql.sample_db.lineorder.lo_order\",\"constraint\":\"NOT_NULL\"}]");
 
     Map<EntityLink, String> messages =
-        ChangeEventParser.getFormattedMessages(ChangeEventParser.PUBLISH_TO.SLACK, changeDescription, TABLE);
+        ChangeEventParser.getFormattedMessages(PublishTo.SLACK, changeDescription, TABLE);
     assertEquals(1, messages.size());
 
     assertEquals(
@@ -255,7 +252,7 @@ class ChangeEventParserResourceTest extends OpenMetadataApplicationTest {
         "columns",
         "[{\"name\":\"lo_orderpriority\",\"displayName\":\"lo_orderpriority\",\"dataType\":\"BLOB\",\"dataLength\":1,\"dataTypeDisplay\":\"blob\",\"fullyQualifiedName\":\"local_mysql.sample_db.lineorder.lo_orderpriority\",\"tags\":[],\"constraint\":\"NOT_NULL\"}]");
 
-    messages = ChangeEventParser.getFormattedMessages(ChangeEventParser.PUBLISH_TO.SLACK, changeDescription, TABLE);
+    messages = ChangeEventParser.getFormattedMessages(PublishTo.SLACK, changeDescription, TABLE);
     assertEquals(1, messages.size());
 
     assertEquals(
@@ -275,9 +272,9 @@ class ChangeEventParserResourceTest extends OpenMetadataApplicationTest {
         "columns",
         "[{\"name\":\"lo_orderpriority\",\"displayName\":\"lo_orderpriority\",\"dataType\":\"BLOB\",\"dataLength\":1,\"dataTypeDisplay\":\"blob\",\"fullyQualifiedName\":\"local_mysql.sample_db.lineorder.lo_orderpriority\"}]");
 
-    messages = ChangeEventParser.getFormattedMessages(ChangeEventParser.PUBLISH_TO.SLACK, changeDescription, TABLE);
+    messages = ChangeEventParser.getFormattedMessages(PublishTo.SLACK, changeDescription, TABLE);
     assertEquals(1, messages.size());
 
-    assertEquals("Updated *columns* : lo_orderpriority *, newColumn*", messages.values().iterator().next());
+    assertEquals("Updated *columns*: lo_orderpriority *, newColumn*", messages.values().iterator().next());
   }
 }

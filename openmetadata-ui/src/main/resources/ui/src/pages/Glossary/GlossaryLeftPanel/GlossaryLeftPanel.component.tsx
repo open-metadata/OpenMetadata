@@ -87,7 +87,7 @@ const GlossaryLeftPanel = ({ glossaries }: GlossaryLeftPanelProps) => {
                 onClick={handleAddGlossaryClick}>
                 <div className="flex-center">
                   <PlusIcon className="anticon m-r-xss" />
-                  {t('label.add-entity', { entity: t('label.glossary') })}
+                  {t('label.add')}
                 </div>
               </Button>
             </Col>

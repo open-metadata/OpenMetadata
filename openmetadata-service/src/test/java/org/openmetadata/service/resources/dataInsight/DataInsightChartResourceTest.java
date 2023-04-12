@@ -132,7 +132,6 @@ public class DataInsightChartResourceTest extends EntityResourceTest<DataInsight
           FORBIDDEN,
           permissionDenied(username, MetadataOperation.VIEW_ALL, roleName, policyName, ruleName));
     }
-    return;
   }
 
   @Override

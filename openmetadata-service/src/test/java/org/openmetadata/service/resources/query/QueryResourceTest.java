@@ -57,7 +57,7 @@ public class QueryResourceTest extends EntityResourceTest<Query, CreateQuery> {
     CreateTable create =
         tableResourceTest
             .createRequest(test)
-            .withName(String.format(getEntityName(test)))
+            .withName(getEntityName(test))
             .withColumns(columns)
             .withOwner(EntityResourceTest.USER1_REF);
     Table createdTable = tableResourceTest.createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
@@ -79,16 +79,14 @@ public class QueryResourceTest extends EntityResourceTest<Query, CreateQuery> {
   }
 
   @Override
-  public void validateCreatedEntity(Query createdEntity, CreateQuery request, Map<String, String> authHeaders)
-      throws HttpResponseException {
+  public void validateCreatedEntity(Query createdEntity, CreateQuery request, Map<String, String> authHeaders) {
     assertEquals(request.getQuery(), createdEntity.getQuery());
     assertEquals(request.getQueryDate(), createdEntity.getQueryDate());
     assertEntityReferences(request.getQueryUsedIn(), createdEntity.getQueryUsedIn());
   }
 
   @Override
-  public void compareEntities(Query expected, Query updated, Map<String, String> authHeaders)
-      throws HttpResponseException {}
+  public void compareEntities(Query expected, Query updated, Map<String, String> authHeaders) {}
 
   @Override
   public Query validateGetWithDifferentFields(Query entity, boolean byName) throws HttpResponseException {
@@ -108,7 +106,7 @@ public class QueryResourceTest extends EntityResourceTest<Query, CreateQuery> {
   }
 
   @Override
-  public void assertFieldChange(String fieldName, Object expected, Object actual) throws IOException {}
+  public void assertFieldChange(String fieldName, Object expected, Object actual) {}
 
   @Test
   public void post_valid_query_test_created(TestInfo test) throws IOException {
