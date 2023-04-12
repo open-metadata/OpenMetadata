@@ -29,6 +29,18 @@ import {
 } from '../../constants/constants';
 
 const visitGlossaryTermPage = (termName, fqn) => {
+  interceptURL(
+    'GET',
+    `/api/v1/glossaryTerms/name/*.${name}?fields=*`,
+    'getGlossaryTerm'
+  );
+  interceptURL(
+    'GET',
+    '/api/v1/permissions/glossaryTerm/*',
+    'waitForTermPermission'
+  );
+  interceptURL('GET', '/api/v1/tags*', 'getTagsList');
+
   cy.get(`[data-row-key="${fqn}"]`)
     .scrollIntoView()
     .should('be.visible')
@@ -36,9 +48,10 @@ const visitGlossaryTermPage = (termName, fqn) => {
     .should('be.visible')
     .click();
 
-  cy.wait(5000);
   cy.get('.ant-tabs .glossary-overview-tab').should('be.visible').click();
   verifyResponseStatusCode('@getGlossaryTerms', 200);
+  verifyResponseStatusCode('@getTagsList', 200);
+  verifyResponseStatusCode('@waitForTermPermission', 200);
 };
 
 const checkDisplayName = (displayName) => {
@@ -313,8 +326,6 @@ describe('Glossary page should work properly', () => {
       .contains('Personal')
       .should('be.visible');
 
-    cy.wait(5000);
-
     // Remove Tag
     cy.get('[data-testid="tags-input-container"] [data-testid="edit-button"]')
       .should('exist')
@@ -333,7 +344,6 @@ describe('Glossary page should work properly', () => {
       .contains(NEW_GLOSSARY.name)
       .should('be.visible');
     selectActiveGlossary(NEW_GLOSSARY.name);
-    cy.wait(2000);
     checkDisplayName(NEW_GLOSSARY.name);
 
     cy.get('[data-testid="viewer-container"]')
@@ -430,27 +440,14 @@ describe('Glossary page should work properly', () => {
     selectActiveGlossary(NEW_GLOSSARY.name);
     const uSynonyms = ['pick up', 'take', 'obtain'];
     const { name, fullyQualifiedName } = NEW_GLOSSARY_TERMS.term_1;
-    interceptURL(
-      'GET',
-      `/api/v1/glossaryTerms/name/*.${NEW_GLOSSARY_TERMS.term_1.name}?fields=*`,
-      'getGlossaryTerm'
-    );
-    interceptURL(
-      'GET',
-      '/api/v1/permissions/glossaryTerm/*',
-      'waitForTermPermission'
-    );
 
     visitGlossaryTermPage(name, fullyQualifiedName);
 
-    verifyResponseStatusCode('@getGlossaryTerm', 200);
-    verifyResponseStatusCode('@waitForTermPermission', 200);
     // updating synonyms
     cy.get('[data-testid="synonyms-container"]')
       .scrollIntoView()
       .should('be.visible');
 
-    cy.wait(5000);
     cy.get('[data-testid="synonyms-container"]')
       .find('[data-testid="edit-button"]')
       .scrollIntoView()
@@ -488,22 +485,9 @@ describe('Glossary page should work properly', () => {
     const newRef = { name: 'take', url: 'https://take.com' };
     const { name, fullyQualifiedName } = NEW_GLOSSARY_TERMS.term_1;
 
-    // Navigate to glossary term
-    interceptURL(
-      'GET',
-      `/api/v1/glossaryTerms/name/*.${name}?fields=*`,
-      'getGlossaryTerm'
-    );
-    interceptURL(
-      'GET',
-      '/api/v1/permissions/glossaryTerm/*',
-      'waitForTermPermission'
-    );
     visitGlossaryTermPage(name, fullyQualifiedName);
-    verifyResponseStatusCode('@getGlossaryTerm', 200);
-    verifyResponseStatusCode('@waitForTermPermission', 200);
     cy.get('[data-testid="section-References"]').should('be.visible');
-    cy.wait(5000);
+
     // updating References
     cy.get('[data-testid="section-References"]')
       .find('[data-testid="edit-button"]')
@@ -530,19 +514,8 @@ describe('Glossary page should work properly', () => {
     const { name, fullyQualifiedName } = NEW_GLOSSARY_TERMS.term_1;
     interceptURL('PATCH', '/api/v1/glossaryTerms/*', 'saveGlossaryTermData');
     // Navigate to glossary term
-    interceptURL(
-      'GET',
-      `/api/v1/glossaryTerms/name/*.${name}?fields=*`,
-      'getGlossaryTerm'
-    );
-    interceptURL(
-      'GET',
-      '/api/v1/permissions/glossaryTerm/*',
-      'waitForTermPermission'
-    );
+
     visitGlossaryTermPage(name, fullyQualifiedName);
-    verifyResponseStatusCode('@getGlossaryTerm', 200);
-    verifyResponseStatusCode('@waitForTermPermission', 200);
 
     // add related term
     cy.get('[data-testid="related-term-container"]')
@@ -806,7 +779,7 @@ describe('Glossary page should work properly', () => {
       .eq(0)
       .should('be.visible')
       .click();
-    cy.wait(200);
+
     cy.get('.ant-select-selection-item-remove')
       .eq(0)
       .should('be.visible')
@@ -839,8 +812,6 @@ describe('Glossary page should work properly', () => {
       .should('be.visible')
       .click();
 
-    cy.wait(500);
-
     selectActiveGlossary(NEW_GLOSSARY_1.name);
 
     goToAssetsTab(name, fullyQualifiedName);
@@ -864,7 +835,6 @@ describe('Glossary page should work properly', () => {
       verifyResponseStatusCode('@fetchGlossaries', 200);
       cy.get('.ant-menu-item').contains(glossary).should('be.visible').click();
 
-      cy.wait(200);
       cy.get('[data-testid="manage-button"]').should('be.visible').click();
       cy.get('[data-testid="delete-button"]')
         .scrollIntoView()
