@@ -80,6 +80,7 @@ describe.skip('pre-requests for test case', () => {
         .trigger('mouseover')
         .check();
       cy.get('[data-testid="filter-pattern-includes-schema"]')
+        .scrollIntoView()
         .should('be.visible')
         .type(Cypress.env('mysqlDatabaseSchema'));
     };

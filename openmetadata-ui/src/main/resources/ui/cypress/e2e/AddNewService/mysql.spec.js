@@ -46,6 +46,7 @@ describe('MySQL Ingestion', () => {
         .trigger('mouseover')
         .check();
       cy.get('[data-testid="filter-pattern-includes-schema"]')
+        .scrollIntoView()
         .should('be.visible')
         .type(Cypress.env('mysqlDatabaseSchema'));
     };

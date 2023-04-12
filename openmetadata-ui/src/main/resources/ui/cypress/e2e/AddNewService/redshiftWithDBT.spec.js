@@ -58,6 +58,7 @@ describe('RedShift Ingestion', () => {
         .trigger('mouseover')
         .check();
       cy.get('[data-testid="filter-pattern-includes-schema"]')
+        .scrollIntoView()
         .should('be.visible')
         .type('dbt_jaffle');
       cy.get('[data-testid="toggle-button-include-views"]')
