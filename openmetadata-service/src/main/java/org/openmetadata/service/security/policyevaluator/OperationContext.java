@@ -39,7 +39,7 @@ public class OperationContext {
     if (patch != null) { // Lazy initialize operations for PATCH
       operations = new ArrayList<>();
       operations.addAll(JsonPatchUtils.getMetadataOperations(patch));
-      LOG.debug("Lazy initializing operations to ", Arrays.toString(operations.toArray()));
+      LOG.debug("Lazy initializing operations to {}", Arrays.toString(operations.toArray()));
     }
     return operations;
   }
