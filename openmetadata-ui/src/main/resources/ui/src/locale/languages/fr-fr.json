@@ -965,6 +965,7 @@
     "connection-details-description": "Every service comes with its standard set of requirements and here are the basics of what you’d need to connect. The connection requirements are generated from the JSON schema for that service. The mandatory fields are marked with an asterisk.",
     "connection-test-failed": "Connection test was failed.",
     "connection-test-successful": "Connection test was successful",
+    "connection-test-warning": "Test connection partially successful: Some steps had failures, we will only ingest partial metadata.",
     "copied-to-clipboard": "Copied to the clipboard",
     "create-new-glossary-guide": "Un Glossaire est un receuil de termes et vocabulaire utulisé pour définir des concepts et terminologies. Glossaires peuvent êtres spécifique à certains domaine (e.g., Glossaire Business, Glossaire Technique, etc.). Dans le glossaire, les termes et concepts peuvent être definis tout en spécifiant des synonymes et des termes liés. Il est possible de contrôler qui peut ajouter des termes dans le dans le glossaire et comment ces terms peuvent eêtre ajouté.",
     "create-or-update-email-account-for-bot": "Changing l'email créera un nouveau ou mettra à jour l'agent numérique",

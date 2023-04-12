@@ -965,6 +965,7 @@
     "connection-details-description": "Cada servicio viene con su conjunto de requisitos y aquí están los conceptos básicos de lo que necesitaría para conectarse. Los requisitos de conexión se generan a partir del esquema JSON para ese servicio. Los campos obligatorios están marcados con un asterisco.",
     "connection-test-failed": "Falló la prueba de conexión.",
     "connection-test-successful": "La prueba de conexión fue un éxito.",
+    "connection-test-warning": "Test connection partially successful: Some steps had failures, we will only ingest partial metadata.",
     "copied-to-clipboard": "Copiado al portapapeles",
     "create-new-glossary-guide": "Un glosario es un vocabulario controlado utilizado para definir los conceptos y terminología en una organización. Los glosarios pueden ser específicos para un determinado dominio (por ejemplo, glosario de negocios o técnico). En el glosario, se pueden definir los términos y conceptos estándar junto con los sinónimos y términos relacionados. Se puede establecer control sobre cómo y quién puede agregar los términos en el glosario.",
     "create-or-update-email-account-for-bot": "Cambiar el correo electrónico de la cuenta actualizará o creará un nuevo bot.",
