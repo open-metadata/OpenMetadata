@@ -66,7 +66,7 @@ class SupersetAPISource(SupersetSourceMixin):
         """
         Method to Get Dashboard Entity
         """
-        yield CreateDashboardRequest(
+        dashboard_request = CreateDashboardRequest(
             name=dashboard_details["id"],
             displayName=dashboard_details["dashboard_title"],
             description="",
@@ -82,6 +82,8 @@ class SupersetAPISource(SupersetSourceMixin):
             ],
             service=self.context.dashboard_service.fullyQualifiedName.__root__,
         )
+        yield dashboard_request
+        self.register_record(dashboard_request=dashboard_request)
 
     def _get_datasource_fqn_for_lineage(self, chart_json, db_service_name):
         return (

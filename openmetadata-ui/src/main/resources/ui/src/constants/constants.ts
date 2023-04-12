@@ -85,7 +85,8 @@ export const SINGLE_DOT = '•';
 export const TOUR_SEARCH_TERM = 'dim_a';
 export const ERROR404 = t('label.no-data-found');
 export const ERROR500 = t('message.something-went-wrong');
-const PLACEHOLDER_ROUTE_TABLE_FQN = ':datasetFQN';
+export const PLACEHOLDER_ROUTE_TABLE_FQN = ':datasetFQN';
+
 const PLACEHOLDER_ROUTE_TOPIC_FQN = ':topicFQN';
 const PLACEHOLDER_ROUTE_PIPELINE_FQN = ':pipelineFQN';
 const PLACEHOLDER_ROUTE_DASHBOARD_FQN = ':dashboardFQN';
@@ -102,6 +103,7 @@ export const PLACEHOLDER_ROUTE_TEAM_AND_USER = ':teamAndUser';
 export const PLAEHOLDER_ROUTE_VERSION = ':version';
 export const PLACEHOLDER_ROUTE_ENTITY_TYPE = ':entityType';
 export const PLACEHOLDER_ROUTE_ENTITY_FQN = ':entityFQN';
+export const PLACEHOLDER_ROUTE_QUERY_ID = ':queryId';
 export const PLACEHOLDER_WEBHOOK_NAME = ':webhookName';
 export const PLACEHOLDER_GLOSSARY_NAME = ':glossaryName';
 export const PLACEHOLDER_GLOSSARY_TERMS_FQN = ':glossaryTermsFQN';
@@ -169,6 +171,7 @@ export const visibleFilters = [
 export const ROUTES = {
   HOME: '/',
   CALLBACK: '/callback',
+  SAML_CALLBACK: '/saml/callback',
   SILENT_CALLBACK: '/silent-callback',
   NOT_FOUND: '/404',
   MY_DATA: '/my-data',
@@ -240,6 +243,7 @@ export const ROUTES = {
   PROFILER_DASHBOARD_WITH_TAB: `/profiler-dashboard/${PLACEHOLDER_DASHBOARD_TYPE}/${PLACEHOLDER_ENTITY_TYPE_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
   ADD_DATA_QUALITY_TEST_CASE: `/data-quality-test/${PLACEHOLDER_DASHBOARD_TYPE}/${PLACEHOLDER_ENTITY_TYPE_FQN}`,
   LINEAGE_FULL_SCREEN_VIEW: `/lineage-view/${PLACEHOLDER_ROUTE_ENTITY_TYPE}/${PLACEHOLDER_ROUTE_ENTITY_FQN}`,
+  QUERY_FULL_SCREEN_VIEW: `/query-view/${PLACEHOLDER_ROUTE_TABLE_FQN}/${PLACEHOLDER_ROUTE_QUERY_ID}`,
 
   // Tasks Routes
   REQUEST_DESCRIPTION: `/request-description/${PLACEHOLDER_ROUTE_ENTITY_TYPE}/${PLACEHOLDER_ROUTE_ENTITY_FQN}`,

@@ -40,6 +40,8 @@ DML_OPERATION_MAP = {
     "DELETE": "DELETE",
 }
 
+SYSTEM_QUERY_RESULT_CACHE = {}
+
 
 @valuedispatch
 def get_system_metrics_for_dialect(
@@ -92,12 +94,6 @@ def _(
         "updated_row_count": "UPDATE",
     }
 
-    region = (
-        f"region-{conn_config.usageLocation}"
-        if conn_config.usageLocation in {"us", "eu"}
-        else conn_config.usageLocation
-    )
-
     jobs = dedent(
         f"""
         SELECT
@@ -106,7 +102,7 @@ def _(
             destination_table,
             dml_statistics
         FROM
-            `{region}`.INFORMATION_SCHEMA.JOBS
+            `region-{conn_config.usageLocation}`.INFORMATION_SCHEMA.JOBS
         WHERE
             DATE(creation_time) >= CURRENT_DATE() - 1 AND
             statement_type IN ('INSERT', 'UPDATE', 'INSERT', 'MERGE')
@@ -120,16 +116,21 @@ def _(
         "query_type,timestamp,destination_table,dml_statistics",
     )
 
-    cursor_jobs = session.execute(text(jobs))
-    rows_jobs = [
-        QueryResult(
-            row.statement_type,
-            row.start_time,
-            row.destination_table,
-            row.dml_statistics,
-        )
-        for row in cursor_jobs.fetchall()
-    ]
+    try:
+        # we'll try to get the cached data first
+        rows_jobs = kwargs["cache"][Dialects.BigQuery]["rows_jobs"]
+    except KeyError:
+        cursor_jobs = session.execute(text(jobs))
+        rows_jobs = [
+            QueryResult(
+                row.statement_type,
+                row.start_time,
+                row.destination_table,
+                row.dml_statistics,
+            )
+            for row in cursor_jobs.fetchall()
+        ]
+        SYSTEM_QUERY_RESULT_CACHE[Dialects.BigQuery] = {"rows_jobs": rows_jobs}
 
     for row_jobs in rows_jobs:
         if (
@@ -210,7 +211,7 @@ def _(
             sti."schema" = '{table.__table_args__["schema"]}' AND
             sti."table" = '{table.__tablename__}' AND
             "rows" != 0 AND
-            DATE(starttime) = CURRENT_DATE - 1
+            DATE(starttime) >= CURRENT_DATE - 1
         GROUP BY 2,3,4,5,6
         ORDER BY 6 desc
         """
@@ -234,7 +235,7 @@ def _(
             sti."schema" = '{table.__table_args__["schema"]}' AND
             sti."table" = '{table.__tablename__}' AND
             "rows" != 0 AND
-            DATE(starttime) = CURRENT_DATE - 1
+            DATE(starttime) >= CURRENT_DATE - 1
         GROUP BY 2,3,4,5,6
         ORDER BY 6 desc
         """
@@ -358,23 +359,27 @@ def _(
         "query_id,database_name,schema_name,query_text,query_type,timestamp",
     )
 
-    rows = []
-
-    # limit of results is 10K. We'll query range of 1 hours to make sure we
-    # get all the necessary data.
-    rows = session.execute(text(information_schema_query_history)).fetchall()
-
-    query_results = [
-        QueryResult(
-            row.query_id,
-            row.database_name.lower() if row.database_name else None,
-            row.schema_name.lower() if row.schema_name else None,
-            sqlparse.parse(row.query_text)[0],
-            row.query_type,
-            row.start_time,
-        )
-        for row in rows
-    ]
+    try:
+        # we'll try to get the cached data first
+        rows = kwargs["cache"][Dialects.Snowflake]["rows"]
+        query_results = kwargs["cache"][Dialects.Snowflake]["query_results"]
+    except KeyError:
+        rows = session.execute(text(information_schema_query_history)).fetchall()
+        query_results = [
+            QueryResult(
+                row.query_id,
+                row.database_name.lower() if row.database_name else None,
+                row.schema_name.lower() if row.schema_name else None,
+                sqlparse.parse(row.query_text)[0],
+                row.query_type,
+                row.start_time,
+            )
+            for row in rows
+        ]
+        SYSTEM_QUERY_RESULT_CACHE[Dialects.Snowflake] = {
+            "rows": rows,
+            "query_results": query_results,
+        }
 
     for query_result in query_results:
         query_text = query_result.query_text
@@ -465,6 +470,7 @@ class System(SystemMetric):
             session=session,
             table=self.table,
             conn_config=conn_config,
+            cache=SYSTEM_QUERY_RESULT_CACHE,
         )
 
         return system_metrics

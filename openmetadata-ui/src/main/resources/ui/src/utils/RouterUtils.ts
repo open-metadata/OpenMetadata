@@ -32,9 +32,11 @@ import {
   PLACEHOLDER_ROUTE_FQN,
   PLACEHOLDER_ROUTE_INGESTION_FQN,
   PLACEHOLDER_ROUTE_INGESTION_TYPE,
+  PLACEHOLDER_ROUTE_QUERY_ID,
   PLACEHOLDER_ROUTE_SERVICE_CAT,
   PLACEHOLDER_ROUTE_SERVICE_FQN,
   PLACEHOLDER_ROUTE_TAB,
+  PLACEHOLDER_ROUTE_TABLE_FQN,
   PLACEHOLDER_RULE_NAME,
   PLACEHOLDER_SETTING_CATEGORY,
   PLACEHOLDER_TAG_NAME,
@@ -446,6 +448,16 @@ export const getGlossaryPathWithAction = (
   path = path
     .replace(PLACEHOLDER_GLOSSARY_NAME, fqn)
     .replace(PLACEHOLDER_ACTION, action);
+
+  return path;
+};
+
+export const getQueryPath = (entityFqn: string, queryId: string) => {
+  let path = ROUTES.QUERY_FULL_SCREEN_VIEW;
+
+  path = path
+    .replace(PLACEHOLDER_ROUTE_TABLE_FQN, entityFqn)
+    .replace(PLACEHOLDER_ROUTE_QUERY_ID, queryId);
 
   return path;
 };

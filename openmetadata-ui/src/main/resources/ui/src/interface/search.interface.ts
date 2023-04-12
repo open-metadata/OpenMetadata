@@ -12,6 +12,7 @@
  */
 
 import { Container } from 'generated/entity/data/container';
+import { Query } from 'generated/entity/data/query';
 import { SearchIndex } from '../enums/search.enum';
 import { Tag } from '../generated/entity/classification/tag';
 import { Dashboard } from '../generated/entity/data/dashboard';
@@ -75,6 +76,7 @@ export interface TagClassSearchSource extends SearchSourceBase, Tag {
 } // extends EntityInterface
 
 export interface GlossarySearchSource extends SearchSourceBase, GlossaryTerm {} // extends EntityInterface
+export interface QuerySearchSource extends SearchSourceBase, Query {} // extends EntityInterface
 
 export type ExploreSearchSource =
   | TableSearchSource
@@ -84,6 +86,7 @@ export type ExploreSearchSource =
   | PipelineSearchSource
   | ContainerSearchSource
   | GlossarySearchSource
+  | QuerySearchSource
   | TagClassSearchSource;
 
 export type SearchIndexSearchSourceMapping = {
@@ -97,6 +100,7 @@ export type SearchIndexSearchSourceMapping = {
   [SearchIndex.TOPIC]: TopicSearchSource;
   [SearchIndex.TAG]: TagClassSearchSource;
   [SearchIndex.CONTAINER]: ContainerSearchSource;
+  [SearchIndex.QUERY]: QuerySearchSource;
 };
 
 export type SearchRequest<

@@ -2,7 +2,7 @@
   "$id": "https://open-metadata.org/schema/entity/services/objectstoreService.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Object Store Service",
-  "description": "This schema defines the Object Store Service entity, such as S3, GCS, AZURE.",
+  "description": "This schema defines the Object Store Service entity, such as S3, GCS or AZURE.",
   "type": "object",
   "javaType": "org.openmetadata.schema.entity.services.ObjectStoreService",
   "javaInterfaces": [
@@ -17,19 +17,11 @@
       ],
       "type": "string",
       "enum": [
-        "S3",
-        "GCS",
-        "AZURE"
+        "S3"
       ],
       "javaEnums": [
         {
           "name": "S3"
-        },
-        {
-          "name": "GCS"
-        },
-        {
-          "name": "AZURE"
         }
       ]
     },
@@ -46,12 +38,6 @@
           "oneOf": [
             {
               "$ref": "connections/objectstore/s3ObjectStoreConnection.json"
-            },
-            {
-              "$ref": "connections/objectstore/gcsObjectStoreConnection.json"
-            },
-            {
-              "$ref": "connections/objectstore/azureObjectStoreConnection.json"
             }
           ]
         }

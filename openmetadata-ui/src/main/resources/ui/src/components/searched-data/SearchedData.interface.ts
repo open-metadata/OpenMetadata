@@ -19,6 +19,7 @@ import {
   ExploreSearchSource,
   GlossarySearchSource,
   MlmodelSearchSource,
+  QuerySearchSource,
   SearchHitBody,
   TableSearchSource,
   TagClassSearchSource,
@@ -47,6 +48,7 @@ export type SourceType = (
         | MlmodelSearchSource
         | GlossarySearchSource
         | TagClassSearchSource
+        | QuerySearchSource
       >,
       Fields
     >

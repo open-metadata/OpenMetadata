@@ -54,7 +54,7 @@ from metadata.ingestion.lineage.sql_lineage import (
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.models.table_metadata import OMetaTableConstraints
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.connections import get_connection, get_test_connection_fn
+from metadata.ingestion.source.connections import get_connection
 from metadata.ingestion.source.database.database_service import DatabaseServiceSource
 from metadata.ingestion.source.database.sql_column_handler import SqlColumnHandlerMixin
 from metadata.ingestion.source.database.sqlalchemy_source import SqlAlchemySource
@@ -102,6 +102,9 @@ class CommonDbSourceService(
         self.service_connection = self.config.serviceConnection.__root__.config
 
         self.engine: Engine = get_connection(self.service_connection)
+
+        # Flag the connection for the test connection
+        self.connection_obj = self.engine
         self.test_connection()
 
         self._connection = None  # Lazy init as well
@@ -352,7 +355,6 @@ class CommonDbSourceService(
         """
         table_name, table_type = table_name_and_type
         schema_name = self.context.database_schema.name.__root__
-        db_name = self.context.database.name.__root__
         try:
 
             (
@@ -362,7 +364,7 @@ class CommonDbSourceService(
             ) = self.get_columns_and_constraints(
                 schema_name=schema_name,
                 table_name=table_name,
-                db_name=db_name,
+                db_name=self.context.database.name.__root__,
                 inspector=self.inspector,
             )
 
@@ -401,7 +403,7 @@ class CommonDbSourceService(
                     {
                         "table_name": table_name,
                         "schema_name": schema_name,
-                        "db_name": db_name,
+                        "db_name": self.context.database.name.__root__,
                         "view_definition": view_definition,
                     }
                 )
@@ -420,9 +422,10 @@ class CommonDbSourceService(
                 )
 
         except Exception as exc:
+            error = f"Unexpected exception to yield table [{table_name}]: {exc}"
             logger.debug(traceback.format_exc())
-            logger.warning(f"Unexpected exception to yield table [{table_name}]: {exc}")
-            self.status.failures.append(f"{self.config.serviceName}.{table_name}")
+            logger.warning(error)
+            self.status.failed(table_name, error, traceback.format_exc())
 
     def yield_view_lineage(self) -> Optional[Iterable[AddLineageRequest]]:
         logger.info("Processing Lineage for Views")
@@ -522,14 +525,6 @@ class CommonDbSourceService(
                 else:
                     table_constraints.constraints = foreign_constraints
             yield table_constraints
-
-    def test_connection(self) -> None:
-        """
-        Used a timed-bound function to test that the engine
-        can properly reach the source
-        """
-        test_connection_fn = get_test_connection_fn(self.service_connection)
-        test_connection_fn(self.engine, self.service_connection)
 
     @property
     def connection(self) -> Connection:

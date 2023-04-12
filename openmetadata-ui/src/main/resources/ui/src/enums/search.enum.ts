@@ -22,4 +22,5 @@ export enum SearchIndex {
   MLMODEL = 'mlmodel_search_index',
   TAG = 'tag_search_index',
   CONTAINER = 'container_search_index',
+  QUERY = 'query_search_index',
 }

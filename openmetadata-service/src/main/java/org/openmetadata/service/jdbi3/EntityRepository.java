@@ -34,6 +34,7 @@ import static org.openmetadata.service.util.EntityUtil.compareTagLabel;
 import static org.openmetadata.service.util.EntityUtil.entityReferenceMatch;
 import static org.openmetadata.service.util.EntityUtil.fieldAdded;
 import static org.openmetadata.service.util.EntityUtil.fieldDeleted;
+import static org.openmetadata.service.util.EntityUtil.fieldUpdated;
 import static org.openmetadata.service.util.EntityUtil.getColumnField;
 import static org.openmetadata.service.util.EntityUtil.getExtensionField;
 import static org.openmetadata.service.util.EntityUtil.nextMajorVersion;
@@ -511,7 +512,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
     setFieldsInternal(original, putFields);
 
     EntityReference updatedOwner = updated.getOwner();
-    if (updatedOwner != null && updatedOwner.getDescription().equals("inherited")) {
+    if (updatedOwner != null
+        && updatedOwner.getDescription() != null
+        && updatedOwner.getDescription().equals("inherited")) {
       // Don't let inherited ownership overwrite existing ownership
       updated.setOwner(original.getOwner() != null ? original.getOwner() : updatedOwner);
     }
@@ -595,11 +598,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
 
     ChangeDescription change = new ChangeDescription().withPreviousVersion(originalEntity.getVersion());
+    fieldUpdated(change, FIELD_VOTES, null, request.getUpdatedVoteType());
 
     // Add or Delete relationship
     if (request.getUpdatedVoteType() == VoteRequest.VoteType.UN_VOTED) {
       deleteRelationship(userId, Entity.USER, entityId, entityType, Relationship.VOTED);
-      fieldDeleted(change, FIELD_VOTES, request.getUpdatedVoteType());
     } else {
       addRelationship(
           userId,
@@ -609,7 +612,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
           Relationship.VOTED,
           JsonUtils.pojoToJson(request.getUpdatedVoteType()),
           false);
-      fieldAdded(change, FIELD_VOTES, request.getUpdatedVoteType());
     }
 
     setFieldsInternal(originalEntity, new EntityUtil.Fields(allowedFields, "votes"));

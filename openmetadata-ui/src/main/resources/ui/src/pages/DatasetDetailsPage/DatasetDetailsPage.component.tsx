@@ -25,7 +25,12 @@ import { compare, Operation } from 'fast-json-patch';
 import { isEmpty, isUndefined } from 'lodash';
 import { observer } from 'mobx-react';
 import { EntityTags } from 'Models';
-import React, { FunctionComponent, useEffect, useState } from 'react';
+import React, {
+  FunctionComponent,
+  useCallback,
+  useEffect,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import { getAllFeeds, postFeedById, postThread } from 'rest/feedsAPI';
@@ -427,11 +432,14 @@ const DatasetDetailsPage: FunctionComponent = () => {
     );
   };
 
-  const saveUpdatedTableData = (updatedData: Table) => {
-    const jsonPatch = compare(tableDetails, updatedData);
+  const saveUpdatedTableData = useCallback(
+    (updatedData: Table) => {
+      const jsonPatch = compare(tableDetails, updatedData);
 
-    return patchTableDetails(tableId, jsonPatch);
-  };
+      return patchTableDetails(tableId, jsonPatch);
+    },
+    [tableDetails, tableId]
+  );
 
   const descriptionUpdateHandler = async (updatedTable: Table) => {
     try {
@@ -494,15 +502,15 @@ const DatasetDetailsPage: FunctionComponent = () => {
       saveUpdatedTableData(updatedTable)
         .then((res) => {
           if (res) {
-            const { version, owner, tags = [] } = res;
+            const { version, owner: newOwner, tags = [] } = res;
             setCurrentVersion(version + '');
             setTableDetails((previous) => ({
               ...previous,
-              ...(owner ? { owner } : {}),
+              ...(newOwner ? { newOwner } : {}),
               version,
               tags,
             }));
-            setOwner(owner);
+            setOwner(newOwner);
             setTier(getTierTags(tags));
             getEntityFeedCount();
             resolve();

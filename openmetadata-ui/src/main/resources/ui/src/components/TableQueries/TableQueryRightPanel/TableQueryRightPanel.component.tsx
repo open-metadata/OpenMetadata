@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate.
+ *  Copyright 2023 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -14,8 +14,8 @@
 import { Button, Col, Divider, Row, Space, Tooltip, Typography } from 'antd';
 import classNames from 'classnames';
 import Description from 'components/common/description/Description';
-import OwnerWidgetWrapper from 'components/common/OwnerWidget/OwnerWidgetWrapper.component';
 import ProfilePicture from 'components/common/ProfilePicture/ProfilePicture';
+import { UserTeamSelectableList } from 'components/common/UserTeamSelectableList/UserTeamSelectableList.component';
 import Loader from 'components/Loader/Loader';
 import TagsContainer from 'components/Tag/TagsContainer/tags-container';
 import TagsViewer from 'components/Tag/TagsViewer/tags-viewer';
@@ -44,7 +44,7 @@ const TableQueryRightPanel = ({
 }: TableQueryRightPanelProps) => {
   const { t } = useTranslation();
   const { EditAll, EditDescription, EditOwner, EditTags } = permission;
-  const [isEditOwner, setIsEditOwner] = useState(false);
+
   const [isEditDescription, setIsEditDescription] = useState(false);
   const [isEditTags, setIsEditTags] = useState(false);
   const [tagDetails, setTagDetails] = useState<TagDetails>({
@@ -66,24 +66,14 @@ const TableQueryRightPanel = ({
     }
   };
 
-  const handleRemoveOwner = async () => {
+  const handleUpdateOwner = async (owner: Query['owner']) => {
     const updatedData = {
       ...query,
-      owner: undefined,
+      owner,
     };
     await onQueryUpdate(updatedData, 'owner');
-    setIsEditOwner(false);
   };
-  const handleUpdateOwner = async (owner: Query['owner']) => {
-    if (!isUndefined(owner)) {
-      const updatedData = {
-        ...query,
-        owner,
-      };
-      await onQueryUpdate(updatedData, 'owner');
-      setIsEditOwner(false);
-    }
-  };
+
   const onDescriptionUpdate = async (description: string) => {
     const updatedData = {
       ...query,
@@ -122,33 +112,16 @@ const TableQueryRightPanel = ({
           <Typography.Text className="text-grey-muted">
             {t('label.owner')}
           </Typography.Text>
-          <Tooltip
-            placement="left"
-            title={!(EditAll || EditOwner) && NO_PERMISSION_FOR_ACTION}>
-            <Button
-              className="flex-center p-0"
-              disabled={!(EditOwner || EditAll)}
-              icon={<EditIcon height={16} width={16} />}
-              size="small"
-              type="text"
-              onClick={() => setIsEditOwner(true)}
-            />
-          </Tooltip>
-          {isEditOwner && (
-            <OwnerWidgetWrapper
-              horzPosRight
-              className="top-6"
-              currentUser={query.owner}
-              hideWidget={() => setIsEditOwner(false)}
-              removeOwner={handleRemoveOwner}
-              updateUser={handleUpdateOwner}
-              visible={isEditOwner}
-            />
-          )}
+
+          <UserTeamSelectableList
+            hasPermission={EditAll || EditOwner}
+            owner={query.owner}
+            onUpdate={handleUpdateOwner}
+          />
         </div>
       </Col>
       <Col span={24}>
-        <div className="p-x-md">
+        <div className="p-x-md" data-testid="owner-name-container">
           {query.owner && getEntityName(query.owner) ? (
             <Space className="m-r-xss" size={4}>
               <ProfilePicture
@@ -157,7 +130,9 @@ const TableQueryRightPanel = ({
                 name={query.owner?.name || ''}
                 width="26"
               />
-              <Link to={getUserPath(query.owner.name ?? '')}>
+              <Link
+                data-testid="owner-name"
+                to={getUserPath(query.owner.name ?? '')}>
                 {getEntityName(query.owner)}
               </Link>
             </Space>
@@ -184,6 +159,7 @@ const TableQueryRightPanel = ({
               title={!(EditAll || EditDescription) && NO_PERMISSION_FOR_ACTION}>
               <Button
                 className="flex-center p-0"
+                data-testid="edit-description-btn"
                 disabled={!(EditDescription || EditAll)}
                 icon={<EditIcon height={16} width={16} />}
                 size="small"
@@ -213,7 +189,7 @@ const TableQueryRightPanel = ({
         </Typography.Text>
       </Col>
       <Col span={24}>
-        <div className="p-x-md">
+        <div className="p-x-md" data-testid="tag-container">
           {EditAll || EditTags ? (
             <div
               className={classNames(

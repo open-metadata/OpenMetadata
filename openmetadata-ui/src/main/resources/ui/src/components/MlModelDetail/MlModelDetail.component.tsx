@@ -315,8 +315,8 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
     }
   };
 
-  const onOwnerUpdate = (newOwner?: Mlmodel['owner']) => {
-    if (newOwner) {
+  const onOwnerUpdate = useCallback(
+    (newOwner?: Mlmodel['owner']) => {
       const updatedMlModelDetails = {
         ...mlModelDetail,
         owner: newOwner
@@ -324,21 +324,12 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
               ...mlModelDetail.owner,
               ...newOwner,
             }
-          : mlModelDetail.owner,
+          : undefined,
       };
       settingsUpdateHandler(updatedMlModelDetails);
-    }
-  };
-
-  const onOwnerRemove = () => {
-    if (mlModelDetail) {
-      const updatedMlModelDetails = {
-        ...mlModelDetail,
-        owner: undefined,
-      };
-      settingsUpdateHandler(updatedMlModelDetails);
-    }
-  };
+    },
+    [mlModelDetail, mlModelDetail.owner]
+  );
 
   const onTierRemove = () => {
     if (mlModelDetail) {
@@ -563,11 +554,6 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
           isFollowing={isFollowing}
           isTagEditable={
             mlModelPermissions.EditAll || mlModelPermissions.EditTags
-          }
-          removeOwner={
-            mlModelPermissions.EditAll || mlModelPermissions.EditOwner
-              ? onOwnerRemove
-              : undefined
           }
           removeTier={
             mlModelPermissions.EditAll || mlModelPermissions.EditTier

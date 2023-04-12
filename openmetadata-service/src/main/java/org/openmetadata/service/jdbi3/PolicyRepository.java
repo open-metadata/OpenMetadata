@@ -47,6 +47,7 @@ import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.service.resources.policies.PolicyResource;
 import org.openmetadata.service.security.policyevaluator.CompiledRule;
+import org.openmetadata.service.security.policyevaluator.PolicyCache;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 
@@ -118,6 +119,9 @@ public class PolicyRepository extends EntityRepository<Policy> {
     EntityReference location = policy.getLocation();
     policy.withLocation(null);
     store(policy, update);
+    if (update) {
+      PolicyCache.getInstance().invalidatePolicy(policy.getId());
+    }
     policy.withLocation(location);
   }
 
@@ -140,6 +144,12 @@ public class PolicyRepository extends EntityRepository<Policy> {
       throw new IllegalArgumentException(
           CatalogExceptionMessage.systemEntityDeleteNotAllowed(entity.getName(), Entity.POLICY));
     }
+  }
+
+  @Override
+  protected void cleanup(Policy policy) throws IOException {
+    super.cleanup(policy);
+    PolicyCache.getInstance().invalidatePolicy(policy.getId());
   }
 
   public void validateRules(Policy policy) {

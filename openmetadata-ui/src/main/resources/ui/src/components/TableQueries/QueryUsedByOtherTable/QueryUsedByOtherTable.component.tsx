@@ -52,7 +52,7 @@ const QueryUsedByOtherTable = ({
   }, [query]);
 
   return (
-    <Paragraph className="m-b-0">
+    <Paragraph className="m-b-0" data-testid="para-container">
       <Text>{`${t('message.query-used-by-other-tables')}: `} </Text>
       {topThreeTable.length
         ? topThreeTable.map((table, index) => (
@@ -72,7 +72,7 @@ const QueryUsedByOtherTable = ({
               <Space direction="vertical">
                 {remainingTable.map((table) => (
                   <Link
-                    key={table.name}
+                    key={table.id}
                     to={getTableDetailsPath(table.fullyQualifiedName || '')}>
                     {getEntityName(table)}
                   </Link>
@@ -81,7 +81,7 @@ const QueryUsedByOtherTable = ({
             }
             placement="bottom"
             trigger="click">
-            <Text className="show-more">
+            <Text className="show-more" data-testid="show-more">
               {`${remainingTable.length} ${t('label.more-lowercase')}`}
             </Text>
           </Popover>

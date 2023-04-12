@@ -273,27 +273,16 @@ const PipelineDetails = ({
     setEditTask(undefined);
   };
 
-  const onOwnerUpdate = (newOwner?: Pipeline['owner']) => {
-    if (newOwner) {
+  const onOwnerUpdate = useCallback(
+    (newOwner?: Pipeline['owner']) => {
       const updatedPipelineDetails = {
         ...pipelineDetails,
-        owner: newOwner
-          ? { ...pipelineDetails.owner, ...newOwner }
-          : pipelineDetails.owner,
+        owner: newOwner ? { ...owner, ...newOwner } : undefined,
       };
       settingsUpdateHandler(updatedPipelineDetails);
-    }
-  };
-
-  const onOwnerRemove = () => {
-    if (pipelineDetails) {
-      const updatedPipelineDetails = {
-        ...pipelineDetails,
-        owner: undefined,
-      };
-      settingsUpdateHandler(updatedPipelineDetails);
-    }
-  };
+    },
+    [owner]
+  );
 
   const onTierRemove = () => {
     if (pipelineDetails) {
@@ -780,11 +769,6 @@ const PipelineDetails = ({
           isFollowing={isFollowing}
           isTagEditable={
             pipelinePermissions.EditAll || pipelinePermissions.EditTags
-          }
-          removeOwner={
-            pipelinePermissions.EditAll || pipelinePermissions.EditOwner
-              ? onOwnerRemove
-              : undefined
           }
           removeTier={
             pipelinePermissions.EditAll || pipelinePermissions.EditTier

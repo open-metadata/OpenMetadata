@@ -5,6 +5,11 @@
   "description": "This Test Connection validates the access against the database and basic metadata extraction of schemas and tables.",
   "steps": [
     {
+      "name": "CheckAccess",
+      "description": "Validate that we can properly reach the database and authenticate with the given credentials.",
+      "mandatory": true
+    },
+    {
       "name": "GetSchemas",
       "description": "List all the schemas available to the user.",
       "mandatory": true

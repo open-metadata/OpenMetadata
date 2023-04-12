@@ -177,14 +177,14 @@ pre {
 .search-grey::placeholder {
   color: #6b7280;
 }
-.global-search-select {
-  width: 140px;
+.global-search-select-menu {
+  width: 110px !important;
 }
 .appbar-search .rc-virtual-list-holder {
   max-height: max-content;
 }
 .suggestions-menu {
-  margin-left: 140px;
+  margin-left: 60px;
 }
 
 /* Breadcrumb */
@@ -1068,48 +1068,6 @@ code {
   word-break: break-all;
 }
 
-/* Feed popover CSS start */
-
-.ant-popover-inner-content {
-  padding-top: 4px;
-  padding-bottom: 6px;
-  padding-left: 8px;
-  padding-right: 8px;
-}
-
-.ant-popover-feed > .ant-popover-content > .ant-popover-arrow,
-.ant-popover-card > .ant-popover-content > .ant-popover-arrow,
-.ant-popover-task-status > .ant-popover-content > .ant-popover-arrow,
-.ant-popover-feed-reactions > .ant-popover-content > .ant-popover-arrow {
-  display: none;
-}
-.ant-popover-feed > .ant-popover-content > .ant-popover-inner,
-.ant-popover-card > .ant-popover-content > .ant-popover-inner,
-.ant-popover-task-status > .ant-popover-content > .ant-popover-inner,
-.ant-popover-request-description > .ant-popover-content > .ant-popover-inner,
-.ant-popover-feed-reactions > .ant-popover-content > .ant-popover-inner {
-  border-radius: 6px;
-  border: 1px solid #dde3ea;
-}
-
-.ant-popover-card
-  > .ant-popover-content
-  > .ant-popover-inner
-  > .ant-popover-title {
-  padding: 4px 8px;
-}
-
-.ant-modal-content {
-  border-radius: 6px;
-}
-
-.ant-modal-header {
-  border-top-left-radius: 6px;
-  border-top-right-radius: 6px;
-}
-
-/* Feed popover CSS end */
-
 /* Antd custom button CSS */
 .ant-btn-link-custom,
 .ant-btn-link-custom:hover {
@@ -1339,4 +1297,11 @@ div.ant-typography-ellipsis-custom {
 */
 svg {
   vertical-align: baseline;
+}
+
+/**
+* Style for Antd Form Item Extra
+*/
+.help-text {
+  box-decoration-break: clone;
 }

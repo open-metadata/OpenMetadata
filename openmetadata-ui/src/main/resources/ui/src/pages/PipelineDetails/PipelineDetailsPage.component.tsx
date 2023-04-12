@@ -21,7 +21,7 @@ import PipelineDetails from 'components/PipelineDetails/PipelineDetails.componen
 import { compare, Operation } from 'fast-json-patch';
 import { isUndefined, omitBy } from 'lodash';
 import { observer } from 'mobx-react';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
 import {
   addFollower,
@@ -105,14 +105,17 @@ const PipelineDetailsPage = () => {
     };
   }, [pipelineDetails]);
 
-  const saveUpdatedPipelineData = (updatedData: Pipeline) => {
-    const jsonPatch = compare(
-      omitBy(pipelineDetails, isUndefined),
-      updatedData
-    );
+  const saveUpdatedPipelineData = useCallback(
+    (updatedData: Pipeline) => {
+      const jsonPatch = compare(
+        omitBy(pipelineDetails, isUndefined),
+        updatedData
+      );
 
-    return patchPipelineDetails(pipelineId, jsonPatch);
-  };
+      return patchPipelineDetails(pipelineId, jsonPatch);
+    },
+    [pipelineDetails]
+  );
 
   const fetchPipelineDetail = (pipelineFQN: string) => {
     setLoading(true);
