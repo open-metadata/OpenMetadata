@@ -88,7 +88,7 @@ export default function EntitySummaryPanel({
             entityDetails={entityDetails.details as Container}
           />
         );
-      case EntityType.GLOSSARY:
+      case EntityType.GLOSSARY_TERM:
         setCurrentSearchIndex(EntityType.GLOSSARY);
 
         return (
