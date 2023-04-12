@@ -26,12 +26,12 @@
   }
 
   &.failure {
-    border-color: #cb24314d;
+    border-color: #efbdc1;
   }
   .connection-step-card-header {
     background: @awaiting-bg;
     border-bottom: 1px solid @border-color;
-    padding: 10px 16px;
+    padding: 8px 16px;
     &.success {
       background: @success-bg;
       border-bottom-color: #28a7454d;
@@ -39,7 +39,7 @@
 
     &.failure {
       background: @failure-bg;
-      border-bottom-color: #cb24314d;
+      border-bottom-color: #efbdc1;
     }
     .awaiting-status {
       color: @text-color;
@@ -47,21 +47,25 @@
       opacity: 0.6;
     }
     .success-status {
-      color: #28a745;
+      color: @text-color;
     }
     .failure-status {
-      color: #cb2431;
+      color: @text-color;
     }
   }
   .connection-step-card-content {
     padding: 12px 16px;
     .connection-step-card-content-logs {
       .ant-collapse-header {
-        padding: 12px 0px;
-        padding-top: 0px;
+        padding: 0px;
         .ant-collapse-header-text {
           color: #7147e8;
         }
+      }
+      .ant-collapse-content-box {
+        padding-left: 24px;
+        padding-bottom: 0px;
+        padding-top: 4px;
       }
     }
     .connection-step-card-content-divider {

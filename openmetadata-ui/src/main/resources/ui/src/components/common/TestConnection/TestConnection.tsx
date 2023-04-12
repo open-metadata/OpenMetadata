@@ -293,7 +293,7 @@ const TestConnection: FC<TestConnectionProps> = ({
   return (
     <>
       {showDetails ? (
-        <div className="flex justify-between bg-white border border-main shadow-base rounded-4 p-sm mt-4">
+        <div className="flex justify-between bg-white border border-main rounded-4 p-sm mt-4">
           <Space data-testid="message-container" size={8}>
             {isTestingConnection && <Loader size="small" />}
             {testStatus === StatusType.Successful && (
