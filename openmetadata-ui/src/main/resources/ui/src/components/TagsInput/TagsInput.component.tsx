@@ -115,7 +115,7 @@ const TagsInput: React.FC<Props> = ({ tags = [], editable, onTagsUpdate }) => {
               }
             }}>
             <TagsContainer
-              className="w-min-15 "
+              className="w-min-10"
               editable={isEditTags}
               isLoading={tagDetails.isLoading}
               selectedTags={getSelectedTags()}

@@ -12,6 +12,7 @@
  */
 
 import { render } from '@testing-library/react';
+import { TAG_CONSTANT } from 'constants/Tag.constants';
 import React from 'react';
 import TableDataCardBody from './TableDataCardBody';
 
@@ -36,7 +37,12 @@ describe('Test TableDataCardBody Component', () => {
     { key: 'Schema', value: 'ecommerce_db' },
   ];
 
-  const tags = ['tag 1', 'tag 2', 'tag 3', 'tag 4'];
+  const tags = [
+    { ...TAG_CONSTANT, tagFQN: 'tag 1' },
+    { ...TAG_CONSTANT, tagFQN: 'tag 2' },
+    { ...TAG_CONSTANT, tagFQN: 'tag 3' },
+    { ...TAG_CONSTANT, tagFQN: 'tag 4' },
+  ];
 
   it('Component should render', () => {
     const { getByTestId } = render(

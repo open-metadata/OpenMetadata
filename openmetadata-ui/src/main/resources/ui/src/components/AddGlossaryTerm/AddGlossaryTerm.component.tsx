@@ -18,6 +18,7 @@ import { UserSelectableList } from 'components/common/UserSelectableList/UserSel
 import { UserTag } from 'components/common/UserTag/UserTag.component';
 import { UserTagSize } from 'components/common/UserTag/UserTag.interface';
 import Tags from 'components/Tag/Tags/tags';
+import { TAG_CONSTANT } from 'constants/Tag.constants';
 import { t } from 'i18next';
 import { cloneDeep, isEmpty, isUndefined } from 'lodash';
 import { EntityTags } from 'Models';
@@ -106,15 +107,6 @@ const AddGlossaryTerm = ({
 
   const handleReviewerRemove = (removedTag: string) => {
     setReviewer((pre) => pre.filter((option) => option.name !== removedTag));
-  };
-
-  const handleTermRemove = (
-    _event: React.MouseEvent<HTMLElement, MouseEvent>,
-    removedTag: string
-  ) => {
-    setRelatedTerms((pre) =>
-      pre.filter((option) => option.name !== removedTag)
-    );
   };
 
   const handleValidation = (
@@ -467,11 +459,12 @@ const AddGlossaryTerm = ({
                   return (
                     <Tags
                       editable
-                      isRemovable
                       className="tw-bg-gray-200"
                       key={index}
-                      removeTag={handleTermRemove}
-                      tag={d.name ?? ''}
+                      tag={{
+                        ...TAG_CONSTANT,
+                        tagFQN: d.name ?? '',
+                      }}
                       type="contained"
                     />
                   );

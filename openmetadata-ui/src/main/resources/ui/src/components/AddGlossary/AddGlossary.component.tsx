@@ -15,6 +15,7 @@ import { PlusOutlined } from '@ant-design/icons';
 import { Button, Space, Switch, Typography } from 'antd';
 import { UserSelectableList } from 'components/common/UserSelectableList/UserSelectableList.component';
 import Tags from 'components/Tag/Tags/tags';
+import { TAG_CONSTANT } from 'constants/Tag.constants';
 import { cloneDeep, toString } from 'lodash';
 import { EntityTags } from 'Models';
 import React, { useRef, useState } from 'react';
@@ -91,13 +92,6 @@ const AddGlossary = ({
     setShowErrorMsg((prev) => {
       return { ...prev, name, invalidName };
     });
-  };
-
-  const handleReviewerRemove = (
-    _event: React.MouseEvent<HTMLElement, MouseEvent>,
-    removedTag: string
-  ) => {
-    setReviewer((pre) => pre.filter((option) => option.name !== removedTag));
   };
 
   const validateForm = () => {
@@ -261,11 +255,12 @@ const AddGlossary = ({
                   return (
                     <Tags
                       editable
-                      isRemovable
                       className="tw-bg-gray-200"
                       key={index}
-                      removeTag={handleReviewerRemove}
-                      tag={d.name ?? ''}
+                      tag={{
+                        ...TAG_CONSTANT,
+                        tagFQN: d.name ?? '',
+                      }}
                       type="contained"
                     />
                   );

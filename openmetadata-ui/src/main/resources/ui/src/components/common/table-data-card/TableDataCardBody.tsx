@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { isNil } from 'lodash';
+import { isEmpty, isNil } from 'lodash';
 import { ExtraInfo } from 'Models';
 import React, { FunctionComponent } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -64,7 +64,7 @@ const TableDataCardBody: FunctionComponent<Props> = ({
           <span className="tw-no-description">{t('label.no-description')}</span>
         )}
       </div>
-      {Boolean(tags?.length) && (
+      {!isEmpty(tags) && (
         <div className="tw-mt-4" data-testid="tags-container">
           <hr className="tw--mx-3 tw-pt-2" />
 

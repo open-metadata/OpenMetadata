@@ -54,6 +54,7 @@ import {
   getCurrentUserId,
   getEntityMissingError,
   getFeedCounts,
+  sortTagsCaseInsensitive,
 } from '../../utils/CommonUtils';
 import { getEntityFeedLink, getEntityName } from '../../utils/EntityUtils';
 import { deletePost, updateThreadData } from '../../utils/FeedUtils';
@@ -341,7 +342,10 @@ const TopicDetailsPage: FunctionComponent = () => {
   const onTagUpdate = async (updatedTopic: Topic) => {
     try {
       const res = await saveUpdatedTopicData(updatedTopic);
-      setTopicDetails(res);
+      setTopicDetails({
+        ...res,
+        tags: sortTagsCaseInsensitive(res.tags || []),
+      });
       getEntityFeedCount();
     } catch (err) {
       showErrorToast(

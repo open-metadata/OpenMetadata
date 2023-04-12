@@ -22,6 +22,7 @@ import {
   Typography,
 } from 'antd';
 import Tags from 'components/Tag/Tags/tags';
+import { TAG_CONSTANT, TAG_START_WITH } from 'constants/Tag.constants';
 import { isEmpty } from 'lodash';
 import { EntityTags, TagOption } from 'Models';
 import React, { FC, Fragment, useState } from 'react';
@@ -289,10 +290,8 @@ const MlModelFeaturesList: FC<MlModelFeaturesListProp> = ({
                                   }
                                   type="text">
                                   <Tags
-                                    startWith="+ "
-                                    tag={t('label.add-entity', {
-                                      entity: t('label.tag-lowercase'),
-                                    })}
+                                    startWith={TAG_START_WITH.PLUS}
+                                    tag={TAG_CONSTANT}
                                     type="outlined"
                                   />
                                 </Button>

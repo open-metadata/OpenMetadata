@@ -11,14 +11,19 @@
  *  limitations under the License.
  */
 
-import { TAG_START_WITH } from 'constants/Tag.constants';
-import { TagLabel } from '../../../generated/type/tagLabel';
+import { TableTagsProps } from 'components/TableTags/TableTags.interface';
+import { TagLabel, TagSource } from 'generated/type/tagLabel';
+import { reduce } from 'lodash';
 
-export type TagProps = {
-  className?: string;
-  editable?: boolean;
-  type?: 'contained' | 'outlined' | 'label' | 'border';
-  startWith?: TAG_START_WITH;
-  tag: TagLabel;
-  showOnlyName?: boolean;
-};
+export const getFilterTags = (tags: TagLabel[]): TableTagsProps =>
+  reduce(
+    tags,
+    (acc, cv) => {
+      if (cv.source === TagSource.Classification) {
+        return { ...acc, Classification: [...acc.Classification, cv] };
+      } else {
+        return { ...acc, Glossary: [...acc.Glossary, cv] };
+      }
+    },
+    { Classification: [] as TagLabel[], Glossary: [] as TagLabel[] }
+  );

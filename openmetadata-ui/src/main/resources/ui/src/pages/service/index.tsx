@@ -604,12 +604,7 @@ const ServicePage: FunctionComponent = () => {
         const topic = data as Topic;
 
         return topic.tags && topic.tags?.length > 0 ? (
-          <TagsViewer
-            showStartWith={false}
-            sizeCap={-1}
-            tags={topic.tags}
-            type="border"
-          />
+          <TagsViewer sizeCap={-1} tags={topic.tags} type="border" />
         ) : (
           '--'
         );
@@ -618,12 +613,7 @@ const ServicePage: FunctionComponent = () => {
         const dashboard = data as Dashboard;
 
         return dashboard.tags && dashboard.tags?.length > 0 ? (
-          <TagsViewer
-            showStartWith={false}
-            sizeCap={-1}
-            tags={dashboard.tags}
-            type="border"
-          />
+          <TagsViewer sizeCap={-1} tags={dashboard.tags} type="border" />
         ) : (
           '--'
         );
@@ -632,12 +622,7 @@ const ServicePage: FunctionComponent = () => {
         const pipeline = data as Pipeline;
 
         return pipeline.tags && pipeline.tags?.length > 0 ? (
-          <TagsViewer
-            showStartWith={false}
-            sizeCap={-1}
-            tags={pipeline.tags}
-            type="border"
-          />
+          <TagsViewer sizeCap={-1} tags={pipeline.tags} type="border" />
         ) : (
           '--'
         );
@@ -646,12 +631,7 @@ const ServicePage: FunctionComponent = () => {
         const mlmodal = data as Mlmodel;
 
         return mlmodal.tags && mlmodal.tags?.length > 0 ? (
-          <TagsViewer
-            showStartWith={false}
-            sizeCap={-1}
-            tags={mlmodal.tags}
-            type="border"
-          />
+          <TagsViewer sizeCap={-1} tags={mlmodal.tags} type="border" />
         ) : (
           '--'
         );
@@ -660,12 +640,7 @@ const ServicePage: FunctionComponent = () => {
         const container = data as Container;
 
         return container.tags && container.tags.length > 0 ? (
-          <TagsViewer
-            showStartWith={false}
-            sizeCap={-1}
-            tags={container.tags}
-            type="border"
-          />
+          <TagsViewer sizeCap={-1} tags={container.tags} type="border" />
         ) : (
           '--'
         );

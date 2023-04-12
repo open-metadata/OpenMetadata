@@ -148,7 +148,7 @@ jest.mock('../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor', () => ({
 }));
 
 jest.mock('components/Tag/Tags/tags', () => {
-  return jest.fn().mockImplementation(({ tag }) => <span>{tag}</span>);
+  return jest.fn().mockImplementation(({ tag }) => <span>{tag.tagFQN}</span>);
 });
 
 const handleFeaturesUpdate = jest.fn();

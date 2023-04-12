@@ -49,9 +49,7 @@ describe('Test TagsViewer Component', () => {
   });
 
   it('Should render tags and glossary with their respective symbol', () => {
-    const { container } = render(
-      <TagsViewer showStartWith={false} sizeCap={-1} tags={tags} />
-    );
+    const { container } = render(<TagsViewer sizeCap={-1} tags={tags} />);
     const TagViewer = getAllByTestId(container, 'tags');
     const tagIcons = getAllByTestId(container, 'tags-icon');
     const glossaryIcons = getAllByTestId(container, 'glossary-icon');

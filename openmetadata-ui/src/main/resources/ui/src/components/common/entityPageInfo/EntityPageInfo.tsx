@@ -178,14 +178,12 @@ const EntityPageInfo = ({
           ? [
               ...tags.map((tag) => ({
                 ...tag,
-                isRemovable: true,
               })),
-              { tagFQN: tier.tagFQN, isRemovable: false },
+              { tagFQN: tier.tagFQN },
             ]
           : [
               ...tags.map((tag) => ({
                 ...tag,
-                isRemovable: true,
               })),
             ]
       ),
@@ -517,12 +515,13 @@ const EntityPageInfo = ({
                     setIsEditable(true);
                   }}>
                   <TagsContainer
-                    showAddTagButton
+                    showEditTagButton
                     className="w-min-20"
                     dropDownHorzPosRight={false}
                     editable={isEditable}
                     isLoading={isTagLoading}
                     selectedTags={getSelectedTags()}
+                    showAddTagButton={getSelectedTags().length === 0}
                     size="small"
                     tagList={tagList}
                     onCancel={() => {

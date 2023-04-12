@@ -16,6 +16,5 @@ import { EntityTags } from 'Models';
 export interface TagsViewerProps {
   tags: Array<EntityTags>;
   sizeCap?: number;
-  showStartWith?: boolean;
   type?: 'label' | 'contained' | 'outlined' | 'border';
 }
