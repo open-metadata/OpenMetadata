@@ -111,7 +111,7 @@ public final class TestUtils {
 
   public static URI PIPELINE_URL;
 
-  public static AWSCredentials AWS_CREDENTIALS;
+  public static final AWSCredentials AWS_CREDENTIALS;
 
   public static void assertCustomProperties(List<CustomProperty> expected, List<CustomProperty> actual) {
     if (expected == actual) { // Take care of both being null

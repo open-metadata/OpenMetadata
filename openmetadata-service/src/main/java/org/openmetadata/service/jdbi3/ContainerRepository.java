@@ -158,7 +158,7 @@ public class ContainerRepository extends EntityRepository<Container> {
   }
 
   @Override
-  public void storeRelationships(Container container) throws IOException {
+  public void storeRelationships(Container container) {
 
     // store each relationship separately in the entity_relationship table
     EntityReference service = container.getService();
