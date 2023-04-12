@@ -15,7 +15,6 @@ import {
   Card,
   Form,
   FormProps,
-  Input,
   Space,
   Tooltip,
   Typography,
@@ -230,36 +229,6 @@ const AddQueryPage = () => {
               }}
               layout="vertical"
               onFinish={handleSubmit}>
-              <Form.Item
-                label={`${t('label.name')}:`}
-                name="name"
-                rules={[
-                  {
-                    required: false,
-                    max: 128,
-                    min: 1,
-                    message: t('label.invalid-name'),
-                  },
-                ]}>
-                <Input
-                  data-testid="name"
-                  placeholder={t('label.enter-entity', {
-                    entity: t('label.name'),
-                  })}
-                  type="text"
-                />
-              </Form.Item>
-              <Form.Item
-                label={`${t('label.display-name')}:`}
-                name="displayName">
-                <Input
-                  data-testid="display-name"
-                  placeholder={t('label.enter-entity', {
-                    entity: t('label.display-name'),
-                  })}
-                  type="text"
-                />
-              </Form.Item>
               <Form.Item
                 data-testid="sql-editor-container"
                 label={t('label.sql-uppercase-query')}

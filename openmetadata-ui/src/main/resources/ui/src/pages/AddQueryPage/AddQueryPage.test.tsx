@@ -72,8 +72,6 @@ describe('AddQueryPage test', () => {
     expect(await screen.findByText('AsyncSelect')).toBeInTheDocument();
     expect(await screen.findByTestId('form-title')).toBeInTheDocument();
     expect(await screen.findByTestId('query-form')).toBeInTheDocument();
-    expect(await screen.findByTestId('name')).toBeInTheDocument();
-    expect(await screen.findByTestId('display-name')).toBeInTheDocument();
     expect(
       await screen.findByTestId('sql-editor-container')
     ).toBeInTheDocument();
