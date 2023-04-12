@@ -122,7 +122,7 @@ describe('Data Quality and Profiler should work properly', () => {
     cy.get('[data-testid="add-new-ingestion-button"]')
       .should('be.visible')
       .click();
-    cy.get('#menu-item-1')
+    cy.get('[data-menu-id*="profiler"')
       .scrollIntoView()
       .contains('Profiler Ingestion')
       .click();

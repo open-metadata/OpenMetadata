@@ -223,3 +223,18 @@ def filter_by_container(
     :return: True for filtering, False otherwise
     """
     return _filter(container_filter_pattern, container_name)
+
+
+def filter_by_datamodel(
+    datamodel_filter_pattern: Optional[FilterPattern], datamodel_name: str
+) -> bool:
+    """
+    Return True if the chart needs to be filtered, False otherwise
+
+    Include takes precedence over exclude
+
+    :param datamodel_filter_pattern: Model defining data model filtering logic
+    :param datamodel_name: data model name
+    :return: True for filtering, False otherwise
+    """
+    return _filter(datamodel_filter_pattern, datamodel_name)

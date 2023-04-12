@@ -23,7 +23,7 @@ import Loader from 'components/Loader/Loader';
 import ServiceConfig from 'components/ServiceConfig/ServiceConfig';
 import { startCase } from 'lodash';
 import { ServicesData, ServicesUpdateRequest, ServiceTypes } from 'Models';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router-dom';
 import { getServiceByFQN, updateService } from 'rest/serviceAPI';
@@ -47,8 +47,14 @@ function EditConnectionFormPage() {
     serviceFQN: string;
     serviceCategory: ServiceCategory;
   }>();
-  const [isLoading, setIsLoading] = useState(true);
-  const [isError, setIsError] = useState(false);
+
+  const isOpenMetadataService = useMemo(
+    () => serviceFQN === OPEN_METADATA,
+    [serviceFQN]
+  );
+
+  const [isLoading, setIsLoading] = useState(!isOpenMetadataService);
+  const [isError, setIsError] = useState(isOpenMetadataService);
   const [serviceDetails, setServiceDetails] = useState<ServicesType>();
   const [slashedBreadcrumb, setSlashedBreadcrumb] = useState<
     TitleBreadcrumbProps['titleLinks']

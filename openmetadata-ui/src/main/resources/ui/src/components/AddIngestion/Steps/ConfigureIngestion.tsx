@@ -47,6 +47,7 @@ const ConfigureIngestion = ({
   const markdownRef = useRef<EditorContentRef>();
 
   const {
+    dataModelFilterPattern,
     chartFilterPattern,
     dashboardFilterPattern,
     databaseFilterPattern,
@@ -58,6 +59,7 @@ const ConfigureIngestion = ({
     includeLineage,
     includeTags,
     includeView,
+    includeDataModels,
     ingestionName,
     ingestSampleData,
     markAllDeletedTables,
@@ -73,6 +75,7 @@ const ConfigureIngestion = ({
     queryLogDuration,
     resultLimit,
     schemaFilterPattern,
+    showDataModelFilter,
     showChartFilter,
     showDashboardFilter,
     showDatabaseFilter,
@@ -92,6 +95,7 @@ const ConfigureIngestion = ({
     overrideOwner,
   } = useMemo(
     () => ({
+      dataModelFilterPattern: data.dataModelFilterPattern,
       chartFilterPattern: data.chartFilterPattern,
       dashboardFilterPattern: data.dashboardFilterPattern,
       databaseFilterPattern: data.databaseFilterPattern,
@@ -103,6 +107,7 @@ const ConfigureIngestion = ({
       includeLineage: data.includeLineage,
       includeTags: data.includeTags,
       includeView: data.includeView,
+      includeDataModels: data.includeDataModels,
       ingestionName: data.ingestionName,
       ingestSampleData: data.ingestSampleData,
       markAllDeletedTables: data.markAllDeletedTables,
@@ -114,6 +119,7 @@ const ConfigureIngestion = ({
       queryLogDuration: data.queryLogDuration,
       resultLimit: data.resultLimit,
       schemaFilterPattern: data.schemaFilterPattern,
+      showDataModelFilter: data.showDataModelFilter,
       showChartFilter: data.showChartFilter,
       showDashboardFilter: data.showDashboardFilter,
       showDatabaseFilter: data.showDatabaseFilter,
@@ -189,6 +195,8 @@ const ConfigureIngestion = ({
   const handleIncludeLineage = () => toggleField('includeLineage');
 
   const handleIncludeTags = () => toggleField('includeTags');
+
+  const handleIncludeDataModels = () => toggleField('includeDataModels');
 
   const handleIncludeViewToggle = () => toggleField('includeView');
 
@@ -347,6 +355,24 @@ const ConfigureIngestion = ({
       helperText: t('message.include-assets-message'),
     },
     {
+      name: 'includeDataModels',
+      label: t('label.include-entity', {
+        entity: t('label.data-model-plural'),
+      }),
+      type: FieldTypes.SWITCH,
+      required: false,
+      props: {
+        checked: includeDataModels,
+        handleCheck: handleIncludeDataModels,
+        testId: 'include-data-models',
+      },
+      id: 'includeDataModels',
+      hasSeparator: true,
+      helperText: t('message.include-assets-message', {
+        assets: t('label.data-model-plural'),
+      }),
+    },
+    {
       name: 'loggerLevel',
       label: t('label.enable-debug-log'),
       type: FieldTypes.SWITCH,
@@ -431,6 +457,24 @@ const ConfigureIngestion = ({
       hasSeparator: true,
     },
     {
+      name: 'dataModelFilterPattern',
+      label: null,
+      type: FieldTypes.FILTER_PATTERN,
+      required: false,
+      props: {
+        checked: showDataModelFilter,
+        excludePattern: dataModelFilterPattern?.excludes ?? [],
+        getExcludeValue: getExcludeValue,
+        getIncludeValue: getIncludeValue,
+        handleChecked: (value: boolean) =>
+          handleShowFilter(value, ShowFilter.showDataModelFilter),
+        includePattern: dataModelFilterPattern?.includes ?? [],
+        type: FilterPatternEnum.DASHBOARD_DATAMODEL,
+      },
+      id: 'dataModelFilterPattern',
+      hasSeparator: true,
+    },
+    {
       name: 'dbServiceNames',
       label: t('label.database-service-name'),
       type: FieldTypes.SELECT,
@@ -490,6 +534,24 @@ const ConfigureIngestion = ({
       id: 'includeTags',
       hasSeparator: true,
       helperText: t('message.include-assets-message'),
+    },
+    {
+      name: 'includeDataModels',
+      label: t('label.include-entity', {
+        entity: t('label.data-model-plural'),
+      }),
+      type: FieldTypes.SWITCH,
+      required: false,
+      props: {
+        checked: includeDataModels,
+        handleCheck: handleIncludeDataModels,
+        testId: 'include-data-models',
+      },
+      id: 'includeDataModels',
+      hasSeparator: true,
+      helperText: t('message.include-assets-message', {
+        assets: t('label.data-model-plural'),
+      }),
     },
     {
       name: 'markDeletedDashboards',

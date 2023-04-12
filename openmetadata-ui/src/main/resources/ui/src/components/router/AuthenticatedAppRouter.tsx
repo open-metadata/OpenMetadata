@@ -12,7 +12,6 @@
  */
 
 import { isEmpty } from 'lodash';
-
 import LineagePage from 'pages/LineagePage/LineagePage';
 import React, { FunctionComponent, useMemo } from 'react';
 import { Redirect, Route, Switch } from 'react-router-dom';
@@ -194,6 +193,12 @@ const AddRolePage = withSuspenseFallback(
 );
 const AddPolicyPage = withSuspenseFallback(
   React.lazy(() => import('pages/PoliciesPage/AddPolicyPage/AddPolicyPage'))
+);
+
+const EditEmailConfigPage = withSuspenseFallback(
+  React.lazy(
+    () => import('pages/EditEmailConfigPage/EditEmailConfigPage.component')
+  )
 );
 
 const AddRulePage = withSuspenseFallback(
@@ -475,6 +480,12 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
       />
       <AdminProtectedRoute
         exact
+        component={GlossaryPage}
+        hasPermission={glossaryTermPermission}
+        path={ROUTES.GLOSSARY_TERMS}
+      />
+      <AdminProtectedRoute
+        exact
         component={CreateUserPage}
         hasPermission={checkPermission(
           Operation.Create,
@@ -537,6 +548,12 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         path={ROUTES.ADD_POLICY}
       />
       <Route exact component={AddRulePage} path={ROUTES.ADD_POLICY_RULE} />
+      <AdminProtectedRoute
+        exact
+        component={EditEmailConfigPage}
+        hasPermission={false}
+        path={ROUTES.SETTINGS_EDIT_EMAIL_CONFIG}
+      />
       <Route exact component={EditRulePage} path={ROUTES.EDIT_POLICY_RULE} />
 
       <Route exact component={GlobalSettingPage} path={ROUTES.SETTINGS} />
