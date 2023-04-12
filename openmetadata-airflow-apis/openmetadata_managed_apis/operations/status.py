@@ -29,7 +29,6 @@ def status(dag_id: str, only_queued: str = None) -> Response:
     """
 
     with settings.Session() as session:
-
         dag_model = session.query(DagModel).filter(DagModel.dag_id == dag_id).first()
 
         if not dag_model:

@@ -327,7 +327,7 @@ class REST:
         self.close()
 
     def _mask_authorization_headers(self, opts: Dict[str, Any]) -> Dict[str, Any]:
-        if opts and opts["headers"]:
+        if opts and opts.get("headers"):
             if self.config.auth_header and opts["headers"][self.config.auth_header]:
                 masked_opts = deepcopy(opts)
                 if self.config.auth_header and opts["headers"][self.config.auth_header]:

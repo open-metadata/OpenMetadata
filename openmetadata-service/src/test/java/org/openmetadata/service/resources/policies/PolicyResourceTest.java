@@ -90,8 +90,8 @@ import org.openmetadata.service.util.TestUtils;
 
 @Slf4j
 public class PolicyResourceTest extends EntityResourceTest<Policy, CreatePolicy> {
-  public static TableResourceTest tableTest = new TableResourceTest();
-  public static TeamResourceTest teamTest = new TeamResourceTest();
+  public static final TableResourceTest TABLE_TEST = new TableResourceTest();
+  public static final TeamResourceTest TEAM_TEST = new TeamResourceTest();
 
   public PolicyResourceTest() {
     super(
@@ -397,8 +397,8 @@ public class PolicyResourceTest extends EntityResourceTest<Policy, CreatePolicy>
     List<Team> teams = new ArrayList<>();
     for (int i = 0; i < 3; i++) {
       // Team X has Policy X
-      CreateTeam createTeam = teamTest.createRequest(test, i).withPolicies(List.of(policies.get(i).getId()));
-      teams.add(teamTest.createEntity(createTeam, ADMIN_AUTH_HEADERS));
+      CreateTeam createTeam = TEAM_TEST.createRequest(test, i).withPolicies(List.of(policies.get(i).getId()));
+      teams.add(TEAM_TEST.createEntity(createTeam, ADMIN_AUTH_HEADERS));
     }
 
     // Create a role with all the policies
@@ -431,22 +431,22 @@ public class PolicyResourceTest extends EntityResourceTest<Policy, CreatePolicy>
     // - Team2 has Team21 with user21 and Team22 with user22
     // - Team2 has DATA_STEWARD_ROLE which is inherited by user2, user21, and user22
     //
-    CreateTeam createTeam = teamTest.createRequest("rolesPoliciesTeam1").withTeamType(DEPARTMENT);
-    Team team1 = teamTest.createEntity(createTeam, ADMIN_AUTH_HEADERS);
+    CreateTeam createTeam = TEAM_TEST.createRequest("rolesPoliciesTeam1").withTeamType(DEPARTMENT);
+    Team team1 = TEAM_TEST.createEntity(createTeam, ADMIN_AUTH_HEADERS);
     createTeam =
-        teamTest
+        TEAM_TEST
             .createRequest("rolesPoliciesTeam2")
             .withTeamType(DEPARTMENT)
             .withDefaultRoles(listOf(DATA_STEWARD_ROLE.getId()));
-    Team team2 = teamTest.createEntity(createTeam, ADMIN_AUTH_HEADERS);
-    createTeam = teamTest.createRequest("rolesPoliciesTeam11").withParents(listOf(team1.getId()));
-    Team team11 = teamTest.createEntity(createTeam, ADMIN_AUTH_HEADERS);
-    createTeam = teamTest.createRequest("rolesPoliciesTeam12").withParents(listOf(team1.getId()));
-    Team team12 = teamTest.createEntity(createTeam, ADMIN_AUTH_HEADERS);
-    createTeam = teamTest.createRequest("rolesPoliciesTeam21").withParents(listOf(team2.getId()));
-    Team team21 = teamTest.createEntity(createTeam, ADMIN_AUTH_HEADERS);
-    createTeam = teamTest.createRequest("rolesPoliciesTeam22").withParents(listOf(team2.getId()));
-    Team team22 = teamTest.createEntity(createTeam, ADMIN_AUTH_HEADERS);
+    Team team2 = TEAM_TEST.createEntity(createTeam, ADMIN_AUTH_HEADERS);
+    createTeam = TEAM_TEST.createRequest("rolesPoliciesTeam11").withParents(listOf(team1.getId()));
+    Team team11 = TEAM_TEST.createEntity(createTeam, ADMIN_AUTH_HEADERS);
+    createTeam = TEAM_TEST.createRequest("rolesPoliciesTeam12").withParents(listOf(team1.getId()));
+    Team team12 = TEAM_TEST.createEntity(createTeam, ADMIN_AUTH_HEADERS);
+    createTeam = TEAM_TEST.createRequest("rolesPoliciesTeam21").withParents(listOf(team2.getId()));
+    Team team21 = TEAM_TEST.createEntity(createTeam, ADMIN_AUTH_HEADERS);
+    createTeam = TEAM_TEST.createRequest("rolesPoliciesTeam22").withParents(listOf(team2.getId()));
+    Team team22 = TEAM_TEST.createEntity(createTeam, ADMIN_AUTH_HEADERS);
 
     // Create users - Team2 has default role DataSteward
     UserResourceTest userTest = new UserResourceTest();
@@ -465,16 +465,16 @@ public class PolicyResourceTest extends EntityResourceTest<Policy, CreatePolicy>
 
     // Create resources - table11 has PII sensitive tags
     CreateTable createTable =
-        tableTest
+        TABLE_TEST
             .createRequest("rolesAndPoliciesTable11")
             .withOwner(team11.getEntityReference())
             .withTags(listOf(PII_SENSITIVE_TAG_LABEL));
-    Table table11 = tableTest.createEntity(createTable, ADMIN_AUTH_HEADERS);
+    Table table11 = TABLE_TEST.createEntity(createTable, ADMIN_AUTH_HEADERS);
 
     // table12 does not have PII
-    createTable = tableTest.createRequest("rolesAndPoliciesTable12").withOwner(team12.getEntityReference());
+    createTable = TABLE_TEST.createRequest("rolesAndPoliciesTable12").withOwner(team12.getEntityReference());
     createTable.getColumns().forEach(c -> c.withTags(null)); // Clear all the tag labels
-    Table table12 = tableTest.createEntity(createTable, ADMIN_AUTH_HEADERS);
+    Table table12 = TABLE_TEST.createEntity(createTable, ADMIN_AUTH_HEADERS);
 
     // Create policies
     Policy denyAllPIIAccess = createPolicy("disallowAllPIIAccess", "matchAnyTag('PII.Sensitive')");
@@ -607,24 +607,24 @@ public class PolicyResourceTest extends EntityResourceTest<Policy, CreatePolicy>
   private void addTeamPolicy(Team team, Policy policy) throws JsonProcessingException, HttpResponseException {
     String json = JsonUtils.pojoToJson(team);
     team.setPolicies(listOf(policy.getEntityReference()));
-    teamTest.patchEntity(team.getId(), json, team, ADMIN_AUTH_HEADERS);
+    TEAM_TEST.patchEntity(team.getId(), json, team, ADMIN_AUTH_HEADERS);
   }
 
   private void removeTeamPolicy(Team team) throws JsonProcessingException, HttpResponseException {
     String json = JsonUtils.pojoToJson(team);
     team.setPolicies(null);
-    teamTest.patchEntity(team.getId(), json, team, ADMIN_AUTH_HEADERS);
+    TEAM_TEST.patchEntity(team.getId(), json, team, ADMIN_AUTH_HEADERS);
   }
 
   private void checkAccess(List<User> allowedUsers, List<User> deniedUsers, Table table) throws HttpResponseException {
     for (User allowed : allowedUsers) {
       LOG.info("Expecting access allowed for user:{}", allowed.getName());
-      assertNotNull(tableTest.getEntity(table.getId(), "", authHeaders(allowed.getName())));
+      assertNotNull(TABLE_TEST.getEntity(table.getId(), "", authHeaders(allowed.getName())));
     }
     for (User deniedUser : deniedUsers) {
       LOG.info("Expecting access denied for user:{}", deniedUser.getName());
       assertResponseContains(
-          () -> tableTest.getEntity(table.getId(), "", authHeaders(deniedUser.getName())), FORBIDDEN, "denied");
+          () -> TABLE_TEST.getEntity(table.getId(), "", authHeaders(deniedUser.getName())), FORBIDDEN, "denied");
     }
   }
 }

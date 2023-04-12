@@ -25,6 +25,7 @@ from metadata.utils.importer import import_test_case_class
 
 EXECUTION_DATE = datetime.strptime("2021-07-03", "%Y-%m-%d")
 
+
 # pylint: disable=line-too-long
 @pytest.mark.parametrize(
     "test_case_name,test_case_type,test_type,expected",

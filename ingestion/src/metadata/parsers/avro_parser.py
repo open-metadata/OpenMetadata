@@ -30,7 +30,6 @@ logger = ingestion_logger()
 def _parse_array_children(
     arr_item: Schema, cls: ModelMetaclass = FieldModel
 ) -> Tuple[str, Optional[Union[FieldModel, Column]]]:
-
     if isinstance(arr_item, ArraySchema):
         display_type, children = _parse_array_children(arr_item.items, cls=cls)
         return f"ARRAY<{display_type}>", children
@@ -112,7 +111,6 @@ def _parse_union_children(
     ]
     sub_type = ",".join(str(schema.type) for schema in union_field.schemas)
     if len(union_field.schemas) == 2 and len(non_null_schema) == 1:
-
         field = non_null_schema[0][1]
 
         if isinstance(field, ArraySchema):

@@ -46,7 +46,6 @@ logger = ingestion_logger()
 
 
 class ObjectStoreServiceTopology(ServiceTopology):
-
     root = TopologyNode(
         producer="get_services",
         stages=[

@@ -105,7 +105,7 @@ public class ContainerResourceTest extends EntityResourceTest<Container, CreateC
   }
 
   @Test
-  void post_ContainerWithInvalidObjectStoreReference_404(TestInfo test) throws IOException {
+  void post_ContainerWithInvalidObjectStoreReference_404(TestInfo test) {
     String serviceFQN = UUID.randomUUID().toString();
     CreateContainer create = createRequest(test).withService(serviceFQN);
     assertResponse(

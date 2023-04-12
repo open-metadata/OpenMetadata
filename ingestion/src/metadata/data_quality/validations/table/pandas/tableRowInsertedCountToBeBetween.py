@@ -23,6 +23,9 @@ from metadata.data_quality.validations.mixins.pandas_validator_mixin import (
 from metadata.data_quality.validations.table.base.tableRowInsertedCountToBeBetween import (
     BaseTableRowInsertedCountToBeBetweenValidator,
 )
+from metadata.utils.logger import test_suite_logger
+
+logger = test_suite_logger()
 
 
 class TableRowInsertedCountToBeBetweenValidator(
@@ -71,5 +74,7 @@ class TableRowInsertedCountToBeBetweenValidator(
             range_interval (int): range interval
         """
         threshold_date = self._get_threshold_date(range_type, range_interval)
-
-        return len(self.runner.query(f"{column_name} >= {threshold_date}"))
+        return sum(
+            len(runner.query(f"{column_name} >= {threshold_date}"))
+            for runner in self.runner
+        )

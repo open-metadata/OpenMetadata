@@ -50,7 +50,7 @@ public class ReportDataResourceTest extends OpenMetadataApplicationTest {
 
   @Test
   @Execution(ExecutionMode.CONCURRENT)
-  void report_data_non_auth_user_403() throws HttpResponseException, ParseException {
+  void report_data_non_auth_user_403() throws ParseException {
     EntityReportData entityReportData =
         new EntityReportData()
             .withEntityType("table")

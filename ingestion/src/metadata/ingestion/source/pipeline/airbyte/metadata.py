@@ -140,7 +140,6 @@ class AirbyteSource(PipelineServiceSource):
             if not job or not job.get("attempts"):
                 continue
             for attempt in job["attempts"]:
-
                 task_status = [
                     TaskStatus(
                         name=str(pipeline_details.connection.get("connectionId")),

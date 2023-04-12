@@ -13,6 +13,7 @@
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { Container } from 'generated/entity/data/container';
+import { EntityHistory } from 'generated/type/entityHistory';
 import { EntityReference } from 'generated/type/entityReference';
 import { Paging } from 'generated/type/paging';
 import { PagingWithoutTotal, RestoreRequestType } from 'Models';
@@ -96,6 +97,22 @@ export const removeContainerFollower = async (id: string, userId: string) => {
       changeDescription: { fieldsDeleted: { oldValue: EntityReference[] }[] };
     }>
   >(`/containers/${id}/followers/${userId}`, configOptions);
+
+  return response.data;
+};
+
+export const getContainerVersions = async (id: string) => {
+  const url = `/containers/${id}/versions`;
+
+  const response = await APIClient.get<EntityHistory>(url);
+
+  return response.data;
+};
+
+export const getContainerVersion = async (id: string, version: string) => {
+  const url = `/containers/${id}/versions/${version}`;
+
+  const response = await APIClient.get<Container>(url);
 
   return response.data;
 };

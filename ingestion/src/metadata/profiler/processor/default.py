@@ -67,7 +67,6 @@ class DefaultProfiler(Profiler):
         include_columns: Optional[List[ColumnProfilerConfig]] = None,
         exclude_columns: Optional[List[str]] = None,
     ):
-
         _metrics = get_default_metrics(profiler_interface.table)
 
         super().__init__(

@@ -71,7 +71,7 @@ public class QueryRepository extends EntityRepository<Query> {
 
   @Override
   @SneakyThrows
-  public void prepare(Query entity) throws IOException {
+  public void prepare(Query entity) {
     if (CommonUtil.nullOrEmpty(entity.getName())) {
       String checkSum = QueryUtil.getCheckSum(entity.getQuery());
       entity.setChecksum(checkSum);
@@ -93,7 +93,7 @@ public class QueryRepository extends EntityRepository<Query> {
   }
 
   @Override
-  public void storeRelationships(Query queryEntity) throws IOException {
+  public void storeRelationships(Query queryEntity) {
     // Store Query Users Relation
     if (queryEntity.getUsers() != null) {
       for (EntityReference entityRef : queryEntity.getUsers()) {
