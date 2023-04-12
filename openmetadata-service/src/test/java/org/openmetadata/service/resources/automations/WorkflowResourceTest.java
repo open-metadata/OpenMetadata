@@ -51,8 +51,7 @@ public class WorkflowResourceTest extends EntityResourceTest<Workflow, CreateWor
   }
 
   @Override
-  public void validateCreatedEntity(Workflow createdEntity, CreateWorkflow request, Map<String, String> authHeaders)
-      throws HttpResponseException {
+  public void validateCreatedEntity(Workflow createdEntity, CreateWorkflow request, Map<String, String> authHeaders) {
     assertEquals(request.getName(), createdEntity.getName());
     assertEquals(request.getWorkflowType(), createdEntity.getWorkflowType());
     assertNotNull(createdEntity.getRequest());
@@ -60,8 +59,7 @@ public class WorkflowResourceTest extends EntityResourceTest<Workflow, CreateWor
   }
 
   @Override
-  public void compareEntities(Workflow expected, Workflow updated, Map<String, String> authHeaders)
-      throws HttpResponseException {
+  public void compareEntities(Workflow expected, Workflow updated, Map<String, String> authHeaders) {
     assertEquals(expected.getName(), updated.getName());
     assertEquals(expected.getWorkflowType(), updated.getWorkflowType());
     assertEquals(expected.getStatus(), updated.getStatus());

@@ -1,6 +1,5 @@
 package org.openmetadata.service.resources.dqtests;
 
-import com.google.inject.Inject;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -83,7 +82,6 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     return test;
   }
 
-  @Inject
   public TestCaseResource(CollectionDAO dao, Authorizer authorizer) {
     super(TestCase.class, new TestCaseRepository(dao), authorizer);
   }
