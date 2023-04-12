@@ -309,6 +309,104 @@ const ConfigureIngestion = ({
     },
   ];
 
+  const includeTagsField: FieldProp = {
+    name: 'includeTags',
+    label: t('label.include-entity', { entity: t('label.tag-plural') }),
+    type: FieldTypes.SWITCH,
+    required: false,
+    props: {
+      checked: includeTags,
+      handleCheck: handleIncludeTags,
+      testId: 'include-tags',
+    },
+    id: 'includeTags',
+    hasSeparator: true,
+    helperText: t('message.include-assets-message'),
+  };
+
+  const loggerLevelField: FieldProp = {
+    name: 'loggerLevel',
+    label: t('label.enable-debug-log'),
+    type: FieldTypes.SWITCH,
+    required: false,
+    props: {
+      checked: enableDebugLog,
+      handleCheck: handleEnableDebugLogCheck,
+      testId: 'enable-debug-log',
+    },
+    id: 'loggerLevel',
+    hasSeparator: true,
+    helperText: t('message.enable-debug-logging'),
+  };
+
+  const includeDataModelsField: FieldProp = {
+    name: 'includeDataModels',
+    label: t('label.include-entity', {
+      entity: t('label.data-model-plural'),
+    }),
+    type: FieldTypes.SWITCH,
+    required: false,
+    props: {
+      checked: includeDataModels,
+      handleCheck: handleIncludeDataModels,
+      testId: 'include-data-models',
+    },
+    id: 'includeDataModels',
+    hasSeparator: true,
+    helperText: t('message.include-assets-message', {
+      assets: t('label.data-model-plural'),
+    }),
+  };
+
+  const generateSampleDataField: FieldProp = {
+    name: 'generateSampleData',
+    label: t('label.ingest-sample-data'),
+    type: FieldTypes.SWITCH,
+    required: false,
+    props: {
+      checked: ingestSampleData,
+      handleCheck: handleIngestSampleToggle,
+      testId: 'ingest-sample-data',
+    },
+    id: 'generateSampleData',
+    hasSeparator: true,
+    helperText: t('message.ingest-sample-data-for-entity', {
+      entity: t('label.topic-lowercase'),
+    }),
+  };
+
+  const queryLogDurationField: FieldProp = {
+    name: 'queryLogDuration',
+    label: t('label.query-log-duration'),
+    type: FieldTypes.NUMBER,
+    helperText: t('message.query-log-duration-message'),
+    hasSeparator: true,
+    props: {
+      className: 'tw-form-inputs tw-form-inputs-padding',
+      'data-testid': 'query-log-duration',
+      value: queryLogDuration,
+      onChange: handleQueryLogDuration,
+    },
+    id: 'queryLogDuration',
+    required: false,
+  };
+
+  const rateLimitField: FieldProp = {
+    name: 'resultLimit',
+    label: t('label.result-limit'),
+    type: FieldTypes.NUMBER,
+    helperText: t('message.result-limit-message'),
+    hasSeparator: true,
+    props: {
+      className: 'tw-form-inputs tw-form-inputs-padding',
+      'data-testid': 'result-limit',
+      value: resultLimit,
+      onChange: handleResultLimit,
+    },
+    id: 'resultLimit',
+    required: false,
+  };
+
   const databaseMetadataFields: FieldProp[] = [
     ...databaseServiceFilterPatternFields,
     {
@@ -340,52 +438,9 @@ const ConfigureIngestion = ({
         assets: t('label.view-plural'),
       }),
     },
-    {
-      name: 'includeTags',
-      label: t('label.include-entity', { entity: t('label.tag-plural') }),
-      type: FieldTypes.SWITCH,
-      required: false,
-      props: {
-        checked: includeTags,
-        handleCheck: handleIncludeTags,
-        testId: 'include-tags',
-      },
-      id: 'includeTags',
-      hasSeparator: true,
-      helperText: t('message.include-assets-message'),
-    },
-    {
-      name: 'includeDataModels',
-      label: t('label.include-entity', {
-        entity: t('label.data-model-plural'),
-      }),
-      type: FieldTypes.SWITCH,
-      required: false,
-      props: {
-        checked: includeDataModels,
-        handleCheck: handleIncludeDataModels,
-        testId: 'include-data-models',
-      },
-      id: 'includeDataModels',
-      hasSeparator: true,
-      helperText: t('message.include-assets-message', {
-        assets: t('label.data-model-plural'),
-      }),
-    },
-    {
-      name: 'loggerLevel',
-      label: t('label.enable-debug-log'),
-      type: FieldTypes.SWITCH,
-      required: false,
-      props: {
-        checked: enableDebugLog,
-        handleCheck: handleEnableDebugLogCheck,
-        testId: 'enable-debug-log',
-      },
-      id: 'loggerLevel',
-      hasSeparator: true,
-      helperText: t('message.enable-debug-logging'),
-    },
+    includeTagsField,
+    includeDataModelsField,
+    loggerLevelField,
     {
       name: 'markDeletedTables',
       label: t('label.mark-deleted-table-plural'),
@@ -493,20 +548,7 @@ const ConfigureIngestion = ({
         onChange: handleDashBoardServiceNames,
       },
     },
-    {
-      name: 'loggerLevel',
-      label: t('label.enable-debug-log'),
-      type: FieldTypes.SWITCH,
-      required: false,
-      props: {
-        checked: enableDebugLog,
-        handleCheck: handleEnableDebugLogCheck,
-        testId: 'enable-debug-log',
-      },
-      id: 'loggerLevel',
-      hasSeparator: true,
-      helperText: t('message.enable-debug-logging'),
-    },
+    loggerLevelField,
     {
       name: 'overrideOwner',
       label: t('label.override-current-owner'),
@@ -521,38 +563,8 @@ const ConfigureIngestion = ({
       hasSeparator: true,
       helperText: t('message.enable-override-owner'),
     },
-    {
-      name: 'includeTags',
-      label: t('label.include-entity', { entity: t('label.tag-plural') }),
-      type: FieldTypes.SWITCH,
-      required: false,
-      props: {
-        checked: includeTags,
-        handleCheck: handleIncludeTags,
-        testId: 'include-tags',
-      },
-      id: 'includeTags',
-      hasSeparator: true,
-      helperText: t('message.include-assets-message'),
-    },
-    {
-      name: 'includeDataModels',
-      label: t('label.include-entity', {
-        entity: t('label.data-model-plural'),
-      }),
-      type: FieldTypes.SWITCH,
-      required: false,
-      props: {
-        checked: includeDataModels,
-        handleCheck: handleIncludeDataModels,
-        testId: 'include-data-models',
-      },
-      id: 'includeDataModels',
-      hasSeparator: true,
-      helperText: t('message.include-assets-message', {
-        assets: t('label.data-model-plural'),
-      }),
-    },
+    includeTagsField,
+    includeDataModelsField,
     {
       name: 'markDeletedDashboards',
       label: t('label.mark-deleted-entity', {
@@ -593,36 +605,8 @@ const ConfigureIngestion = ({
       id: 'topicFilterPattern',
       hasSeparator: true,
     },
-    {
-      name: 'generateSampleData',
-      label: t('label.ingest-sample-data'),
-      type: FieldTypes.SWITCH,
-      required: false,
-      props: {
-        checked: ingestSampleData,
-        handleCheck: handleIngestSampleToggle,
-        testId: 'ingest-sample-data',
-      },
-      id: 'generateSampleData',
-      hasSeparator: true,
-      helperText: t('message.ingest-sample-data-for-entity', {
-        entity: t('label.topic-lowercase'),
-      }),
-    },
-    {
-      name: 'loggerLevel',
-      label: t('label.enable-debug-log'),
-      type: FieldTypes.SWITCH,
-      required: false,
-      props: {
-        checked: enableDebugLog,
-        handleCheck: handleEnableDebugLogCheck,
-        testId: 'enable-debug-log',
-      },
-      id: 'loggerLevel',
-      hasSeparator: true,
-      helperText: t('message.enable-debug-logging'),
-    },
+    generateSampleDataField,
+    loggerLevelField,
     {
       name: 'markDeletedTopics',
       label: t('label.mark-deleted-entity', {
@@ -679,34 +663,8 @@ const ConfigureIngestion = ({
       hasSeparator: true,
       helperText: t('message.include-lineage-message'),
     },
-    {
-      name: 'loggerLevel',
-      label: t('label.enable-debug-log'),
-      type: FieldTypes.SWITCH,
-      required: false,
-      props: {
-        checked: enableDebugLog,
-        handleCheck: handleEnableDebugLogCheck,
-        testId: 'enable-debug-log',
-      },
-      id: 'loggerLevel',
-      hasSeparator: true,
-      helperText: t('message.enable-debug-logging'),
-    },
-    {
-      name: 'includeTags',
-      label: t('label.include-entity', { entity: t('label.tag-plural') }),
-      type: FieldTypes.SWITCH,
-      required: false,
-      props: {
-        checked: includeTags,
-        handleCheck: handleIncludeTags,
-        testId: 'include-tags',
-      },
-      id: 'includeTags',
-      hasSeparator: true,
-      helperText: t('message.include-assets-message'),
-    },
+    loggerLevelField,
+    includeTagsField,
     {
       name: 'markDeletedPipelines',
       label: t('label.mark-deleted-entity', {
@@ -827,21 +785,7 @@ const ConfigureIngestion = ({
 
   const getUsageFields = () => {
     const fields: FieldProp[] = [
-      {
-        name: 'queryLogDuration',
-        label: t('label.query-log-duration'),
-        type: FieldTypes.NUMBER,
-        helperText: t('message.query-log-duration-message'),
-        hasSeparator: true,
-        props: {
-          className: 'tw-form-inputs tw-form-inputs-padding',
-          'data-testid': 'query-log-duration',
-          value: queryLogDuration,
-          onChange: handleQueryLogDuration,
-        },
-        id: 'queryLogDuration',
-        required: false,
-      },
+      queryLogDurationField,
       {
         name: 'stageFileLocation',
         label: t('label.stage-file-location'),
@@ -857,35 +801,8 @@ const ConfigureIngestion = ({
         id: 'stageFileLocation',
         required: false,
       },
-      {
-        name: 'resultLimit',
-        label: t('label.result-limit'),
-        type: FieldTypes.NUMBER,
-        helperText: t('message.result-limit-message'),
-        hasSeparator: true,
-        props: {
-          className: 'tw-form-inputs tw-form-inputs-padding',
-          'data-testid': 'result-limit',
-          value: resultLimit,
-          onChange: handleResultLimit,
-        },
-        id: 'resultLimit',
-        required: false,
-      },
-      {
-        name: 'loggerLevel',
-        label: t('label.enable-debug-log'),
-        type: FieldTypes.SWITCH,
-        required: false,
-        props: {
-          checked: enableDebugLog,
-          handleCheck: handleEnableDebugLogCheck,
-          testId: 'enable-debug-log',
-        },
-        id: 'loggerLevel',
-        hasSeparator: true,
-        helperText: t('message.enable-debug-logging'),
-      },
+      rateLimitField,
+      loggerLevelField,
     ];
 
     return generateFormFields(fields);
@@ -893,50 +810,9 @@ const ConfigureIngestion = ({
 
   const getLineageFields = () => {
     const fields: FieldProp[] = [
-      {
-        name: 'queryLogDuration',
-        label: t('label.query-log-duration'),
-        type: FieldTypes.NUMBER,
-        helperText: t('message.query-log-duration-message'),
-        hasSeparator: true,
-        props: {
-          className: 'tw-form-inputs tw-form-inputs-padding',
-          'data-testid': 'query-log-duration',
-          value: queryLogDuration,
-          onChange: handleQueryLogDuration,
-        },
-        id: 'queryLogDuration',
-        required: false,
-      },
-      {
-        name: 'resultLimit',
-        label: t('label.result-limit'),
-        type: FieldTypes.NUMBER,
-        helperText: t('message.result-limit-message'),
-        hasSeparator: true,
-        props: {
-          className: 'tw-form-inputs tw-form-inputs-padding',
-          'data-testid': 'result-limit',
-          value: resultLimit,
-          onChange: handleResultLimit,
-        },
-        id: 'resultLimit',
-        required: false,
-      },
-      {
-        name: 'loggerLevel',
-        label: t('label.enable-debug-log'),
-        type: FieldTypes.SWITCH,
-        required: false,
-        props: {
-          checked: enableDebugLog,
-          handleCheck: handleEnableDebugLogCheck,
-          testId: 'enable-debug-log',
-        },
-        id: 'loggerLevel',
-        hasSeparator: true,
-        helperText: t('message.enable-debug-logging'),
-      },
+      queryLogDurationField,
+      rateLimitField,
+      loggerLevelField,
     ];
 
     return generateFormFields(fields);
@@ -944,21 +820,7 @@ const ConfigureIngestion = ({
 
   const getProfilerFields = () => {
     const fields: FieldProp[] = [
-      {
-        name: 'name',
-        label: t('label.name'),
-        type: FieldTypes.TEXT,
-        required: true,
-        props: {
-          disabled: formType === FormSubmitType.EDIT,
-          value: ingestionName,
-          onChange: handleIngestionName,
-          'data-testid': 'name',
-        },
-        id: 'name',
-        helperText: t('message.ingestion-pipeline-name-message'),
-        hasSeparator: true,
-      },
+      ...commonMetadataFields,
       ...databaseServiceFilterPatternFields,
       {
         name: 'profileSampleType',
@@ -1045,36 +907,8 @@ const ConfigureIngestion = ({
           onChange: handleTimeoutSeconds,
         },
       },
-      {
-        name: 'generateSampleData',
-        label: t('label.ingest-sample-data'),
-        type: FieldTypes.SWITCH,
-        required: false,
-        props: {
-          checked: ingestSampleData,
-          handleCheck: handleIngestSampleToggle,
-          testId: 'ingest-sample-data',
-        },
-        id: 'generateSampleData',
-        hasSeparator: true,
-        helperText: t('message.ingest-sample-data-for-entity', {
-          entity: t('label.profile-lowercase'),
-        }),
-      },
-      {
-        name: 'loggerLevel',
-        label: t('label.enable-debug-log'),
-        type: FieldTypes.SWITCH,
-        required: false,
-        props: {
-          checked: enableDebugLog,
-          handleCheck: handleEnableDebugLogCheck,
-          testId: 'enable-debug-log',
-        },
-        id: 'loggerLevel',
-        hasSeparator: true,
-        helperText: t('message.enable-debug-logging'),
-      },
+      generateSampleDataField,
+      loggerLevelField,
       {
         name: 'processPiiSensitive',
         label: t('label.auto-tag-pii-uppercase'),
