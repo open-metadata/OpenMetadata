@@ -22,9 +22,6 @@ public class DatasourceConfig {
   }
 
   public Boolean isMySQL() {
-    if (dataSourceFactory.getDriverClass().equals(ConnectionType.MYSQL.label)) {
-      return true;
-    }
-    return false;
+    return ConnectionType.MYSQL.label.equals(dataSourceFactory.getDriverClass());
   }
 }
