@@ -56,7 +56,6 @@ import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
-import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.ResultList;
 
 @Path("/v1/databases")
@@ -313,19 +312,6 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
       throws IOException {
     Database database = getDatabase(create, securityContext.getUserPrincipal().getName());
     return createOrUpdate(uriInfo, securityContext, database);
-  }
-
-  @DELETE
-  @Path("/{id}/location")
-  @Operation(operationId = "deleteLocation", summary = "Remove the location", description = "Remove the location")
-  public Database deleteLocation(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the database", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
-      throws IOException {
-    dao.deleteLocation(id);
-    Database database = dao.get(uriInfo, id, Fields.EMPTY_FIELDS);
-    return addHref(uriInfo, database);
   }
 
   @DELETE

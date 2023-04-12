@@ -5,7 +5,7 @@ import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.service.Entity.CONTAINER;
 import static org.openmetadata.service.Entity.FIELD_FOLLOWERS;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
-import static org.openmetadata.service.Entity.OBJECT_STORE_SERVICE;
+import static org.openmetadata.service.Entity.STORAGE_SERVICE;
 
 import com.google.common.collect.Lists;
 import java.io.IOException;
@@ -14,14 +14,14 @@ import java.util.Collections;
 import java.util.List;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.data.Container;
-import org.openmetadata.schema.entity.services.ObjectStoreService;
+import org.openmetadata.schema.entity.services.StorageService;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.resources.objectstores.ContainerResource;
+import org.openmetadata.service.resources.storages.ContainerResource;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
 
@@ -67,9 +67,9 @@ public class ContainerRepository extends EntityRepository<Container> {
   }
 
   private void setDefaultFields(Container container) throws IOException {
-    EntityReference parentObjectStoreServiceRef =
-        getFromEntityRef(container.getId(), Relationship.CONTAINS, OBJECT_STORE_SERVICE, true);
-    container.withService(parentObjectStoreServiceRef);
+    EntityReference parentServiceRef =
+        getFromEntityRef(container.getId(), Relationship.CONTAINS, STORAGE_SERVICE, true);
+    container.withService(parentServiceRef);
   }
 
   private List<EntityReference> getChildrenContainers(Container container) throws IOException {
@@ -108,10 +108,10 @@ public class ContainerRepository extends EntityRepository<Container> {
 
   @Override
   public void prepare(Container container) throws IOException {
-    // the objectStoreService is not fully filled in terms of props - go to the db and get it in full and re-set it
-    ObjectStoreService objectStoreService = Entity.getEntity(container.getService(), "", Include.NON_DELETED);
-    container.setService(objectStoreService.getEntityReference());
-    container.setServiceType(objectStoreService.getServiceType());
+    // the storage service is not fully filled in terms of props - go to the db and get it in full and re-set it
+    StorageService storageService = Entity.getEntity(container.getService(), "", Include.NON_DELETED);
+    container.setService(storageService.getEntityReference());
+    container.setServiceType(storageService.getServiceType());
 
     if (container.getParent() != null) {
       Container parent = Entity.getEntity(container.getParent(), "owner", ALL);
@@ -121,7 +121,7 @@ public class ContainerRepository extends EntityRepository<Container> {
 
   @Override
   public void storeEntity(Container container, boolean update) throws IOException {
-    EntityReference objectStoreService = container.getService();
+    EntityReference storageService = container.getService();
     EntityReference parent = container.getParent();
     List<EntityReference> children = container.getChildren();
     EntityReference owner = container.getOwner();
@@ -140,7 +140,7 @@ public class ContainerRepository extends EntityRepository<Container> {
     store(container, update);
 
     // Restore the relationships
-    container.withService(objectStoreService).withParent(parent).withChildren(children).withOwner(owner).withTags(tags);
+    container.withService(storageService).withParent(parent).withChildren(children).withOwner(owner).withTags(tags);
     if (container.getDataModel() != null) {
       container.getDataModel().setColumns(columnWithTags);
     }
@@ -158,7 +158,7 @@ public class ContainerRepository extends EntityRepository<Container> {
   }
 
   @Override
-  public void storeRelationships(Container container) throws IOException {
+  public void storeRelationships(Container container) {
 
     // store each relationship separately in the entity_relationship table
     EntityReference service = container.getService();

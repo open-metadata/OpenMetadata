@@ -130,7 +130,7 @@ DATALAKE_DATA_FRAME = lambda times_increase_sample_data: DataFrame(
             "test_case_column_value_stddev_to_be_between",
             "columnValueStdDevToBeBetween",
             "COLUMN",
-            (TestCaseResult, "0.5000000125000005", None, TestCaseStatus.Failed),
+            (TestCaseResult, "0.500062511721192", None, TestCaseStatus.Failed),
         ),
         (
             "test_case_column_value_stddev_to_be_between_no_min",
@@ -142,31 +142,31 @@ DATALAKE_DATA_FRAME = lambda times_increase_sample_data: DataFrame(
             "test_case_column_value_in_set",
             "columnValuesToBeInSet",
             "COLUMN",
-            (TestCaseResult, "20000000", None, TestCaseStatus.Success),
+            (TestCaseResult, "4000", None, TestCaseStatus.Success),
         ),
         (
             "test_case_column_values_missing_count_to_be_equal",
             "columnValuesMissingCount",
             "COLUMN",
-            (TestCaseResult, "10000000", None, TestCaseStatus.Success),
+            (TestCaseResult, "2000", None, TestCaseStatus.Success),
         ),
         (
             "test_case_column_values_missing_count_to_be_equal_missing_values",
             "columnValuesMissingCount",
             "COLUMN",
-            (TestCaseResult, "20000000", None, TestCaseStatus.Failed),
+            (TestCaseResult, "4000", None, TestCaseStatus.Failed),
         ),
         (
             "test_case_column_values_not_in_set",
             "columnValuesToBeNotInSet",
             "COLUMN",
-            (TestCaseResult, "20000000", None, TestCaseStatus.Failed),
+            (TestCaseResult, "4000", None, TestCaseStatus.Failed),
         ),
         (
             "test_case_column_sum_to_be_between",
             "columnValuesSumToBeBetween",
             "COLUMN",
-            (TestCaseResult, "610000000.0", None, TestCaseStatus.Failed),
+            (TestCaseResult, "122000.0", None, TestCaseStatus.Failed),
         ),
         (
             "test_case_column_values_to_be_between",
@@ -178,19 +178,19 @@ DATALAKE_DATA_FRAME = lambda times_increase_sample_data: DataFrame(
             "test_case_column_values_to_be_not_null",
             "columnValuesToBeNotNull",
             "COLUMN",
-            (TestCaseResult, "10000000", None, TestCaseStatus.Failed),
+            (TestCaseResult, "2000", None, TestCaseStatus.Failed),
         ),
         (
             "test_case_column_values_to_be_unique",
             "columnValuesToBeUnique",
             "COLUMN",
-            (TestCaseResult, "20000000", "0", TestCaseStatus.Failed),
+            (TestCaseResult, "4000", "0", TestCaseStatus.Failed),
         ),
         (
             "test_case_column_values_to_match_regex",
             "columnValuesToMatchRegex",
             "COLUMN",
-            (TestCaseResult, "30000000", None, TestCaseStatus.Success),
+            (TestCaseResult, "6000", None, TestCaseStatus.Success),
         ),
         (
             "test_case_column_values_to_not_match_regex",
@@ -249,19 +249,19 @@ DATALAKE_DATA_FRAME = lambda times_increase_sample_data: DataFrame(
             "test_case_table_row_count_to_be_between",
             "tableRowCountToBeBetween",
             "TABLE",
-            (TestCaseResult, "30000000", None, TestCaseStatus.Success),
+            (TestCaseResult, "6000", None, TestCaseStatus.Success),
         ),
         (
             "test_case_table_row_count_to_be_equal",
             "tableRowCountToEqual",
             "TABLE",
-            (TestCaseResult, "30000000", None, TestCaseStatus.Failed),
+            (TestCaseResult, "6000", None, TestCaseStatus.Failed),
         ),
         (
             "test_case_table_row_inserted_count_to_be_between",
             "tableRowInsertedCountToBeBetween",
             "TABLE",
-            (TestCaseResult, "10000000", None, TestCaseStatus.Success),
+            (TestCaseResult, "2000", None, TestCaseStatus.Success),
         ),
     ],
 )
@@ -285,7 +285,7 @@ def test_suite_validation_datalake(
     )
 
     test_handler = test_handler_obj(
-        [DATALAKE_DATA_FRAME(5000000), DATALAKE_DATA_FRAME(5000000)],
+        [DATALAKE_DATA_FRAME(1_000), DATALAKE_DATA_FRAME(1_000)],
         test_case=test_case,
         execution_date=EXECUTION_DATE.timestamp(),
     )

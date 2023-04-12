@@ -129,7 +129,7 @@ describe('Test ConfigureIngestion component', () => {
       container,
       'FilterPattern.component'
     );
-    const toggleSwitchs = await findAllByText(
+    const toggleSwitch = await findAllByText(
       container,
       'ToggleSwitchV1.component'
     );
@@ -138,6 +138,6 @@ describe('Test ConfigureIngestion component', () => {
     expect(backButton).toBeInTheDocument();
     expect(nextButton).toBeInTheDocument();
     expect(filterPatternComponents).toHaveLength(3);
-    expect(toggleSwitchs).toHaveLength(5);
+    expect(toggleSwitch).toHaveLength(6);
   });
 });

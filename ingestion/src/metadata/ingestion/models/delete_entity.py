@@ -11,12 +11,16 @@
 """
 Pydantic definition for deleting entites
 """
+import traceback
 from typing import Dict, Iterable, Optional
 
 from pydantic import BaseModel
 
 from metadata.ingestion.api.common import Entity
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.utils.logger import ingestion_logger
+
+logger = ingestion_logger()
 
 
 class DeleteEntity(BaseModel):
@@ -43,10 +47,14 @@ def delete_entity_from_source(
     :param mark_deleted_entity: Option to mark the entity as deleted or not
     :param params: param to fetch the entity state
     """
-    entity_state = metadata.list_all_entities(entity=entity_type, params=params)
-    for entity in entity_state:
-        if str(entity.fullyQualifiedName.__root__) not in entity_source_state:
-            yield DeleteEntity(
-                entity=entity,
-                mark_deleted_entities=mark_deleted_entity,
-            )
+    try:
+        entity_state = metadata.list_all_entities(entity=entity_type, params=params)
+        for entity in entity_state:
+            if str(entity.fullyQualifiedName.__root__) not in entity_source_state:
+                yield DeleteEntity(
+                    entity=entity,
+                    mark_deleted_entities=mark_deleted_entity,
+                )
+    except Exception as exc:
+        logger.debug(traceback.format_exc())
+        logger.warning(f"Error deleting {entity_type.__class__}: {exc}")

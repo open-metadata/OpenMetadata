@@ -191,6 +191,7 @@ the changes.
 - **Username (Optional)**: Specify the User to connect to BigQuery. It should have enough privileges to read all the metadata.
 - **Project ID(Optional)**: The BigQuery Project ID is required only if the credentials path is being used instead of values. 
 To add multiple Project ID, select `Multiple Project ID` under `Project ID` option.
+- **taxonomyProjectID**: (Optional) List of project ids where taxonomy project ids exist.
 - **GCS Credentials**: We support two ways of authenticating to BigQuery:
     1. Passing the raw credential values provided by BigQuery. This requires us to provide the following information, all provided by BigQuery:
        - Credentials type, e.g., `service_account`
