@@ -160,6 +160,7 @@ const AddIngestion = ({
       showSchemaFilter: !isUndefined(sourceConfig?.schemaFilterPattern),
       showTableFilter: !isUndefined(sourceConfig?.tableFilterPattern),
       showTopicFilter: !isUndefined(sourceConfig?.topicFilterPattern),
+      showDataModelFilter: !isUndefined(sourceConfig?.dataModelFilterPattern),
       showChartFilter: !isUndefined(sourceConfig?.chartFilterPattern),
       showPipelineFilter: !isUndefined(sourceConfig?.pipelineFilterPattern),
       showMlModelFilter: !isUndefined(sourceConfig?.mlModelFilterPattern),
@@ -172,6 +173,8 @@ const AddIngestion = ({
       markDeletedTables: isDatabaseService
         ? Boolean(sourceConfig?.markDeletedTables ?? true)
         : undefined,
+      dataModelFilterPattern:
+        sourceConfig?.dataModelFilterPattern ?? INITIAL_FILTER_PATTERN,
       dashboardFilterPattern:
         sourceConfig?.dashboardFilterPattern ?? INITIAL_FILTER_PATTERN,
       containerFilterPattern:
@@ -191,6 +194,7 @@ const AddIngestion = ({
       markDeletedPipelines: sourceConfig?.markDeletedDashboards ?? true,
       includeView: Boolean(sourceConfig?.includeViews),
       includeTags: sourceConfig?.includeTags ?? true,
+      includeDataModels: sourceConfig?.includeDataModels ?? true,
       overrideOwner: Boolean(sourceConfig?.overrideOwner),
       includeLineage: Boolean(sourceConfig?.includeLineage ?? true),
       enableDebugLog: data?.loggerLevel === LogLevels.Debug,
@@ -328,12 +332,14 @@ const AddIngestion = ({
   const getMetadataIngestionFields = () => {
     const {
       chartFilterPattern,
+      dataModelFilterPattern,
       dashboardFilterPattern,
       databaseFilterPattern,
       databaseServiceNames,
       includeLineage,
       includeTags,
       includeView,
+      includeDataModels,
       showContainerFilter,
       ingestSampleData,
       markAllDeletedTables,
@@ -348,6 +354,7 @@ const AddIngestion = ({
       schemaFilterPattern,
       showChartFilter,
       showDashboardFilter,
+      showDataModelFilter,
       showDatabaseFilter,
       showMlModelFilter,
       showPipelineFilter,
@@ -404,11 +411,16 @@ const AddIngestion = ({
             dashboardFilterPattern,
             showDashboardFilter
           ),
+          dataModelFilterPattern: getFilterPatternData(
+            dataModelFilterPattern,
+            showDataModelFilter
+          ),
           dbServiceNames: databaseServiceNames,
           overrideOwner,
           type: ConfigType.DashboardMetadata,
           markDeletedDashboards,
           includeTags,
+          includeDataModels,
         };
       }
       case ServiceCategory.PIPELINE_SERVICES: {

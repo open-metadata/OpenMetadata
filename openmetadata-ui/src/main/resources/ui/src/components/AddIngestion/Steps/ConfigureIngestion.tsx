@@ -50,6 +50,7 @@ const ConfigureIngestion = ({
   const markdownRef = useRef<EditorContentRef>();
 
   const {
+    dataModelFilterPattern,
     chartFilterPattern,
     dashboardFilterPattern,
     databaseFilterPattern,
@@ -61,6 +62,7 @@ const ConfigureIngestion = ({
     includeLineage,
     includeTags,
     includeView,
+    includeDataModels,
     ingestionName,
     ingestSampleData,
     markAllDeletedTables,
@@ -76,6 +78,7 @@ const ConfigureIngestion = ({
     queryLogDuration,
     resultLimit,
     schemaFilterPattern,
+    showDataModelFilter,
     showChartFilter,
     showDashboardFilter,
     showDatabaseFilter,
@@ -95,6 +98,7 @@ const ConfigureIngestion = ({
     overrideOwner,
   } = useMemo(
     () => ({
+      dataModelFilterPattern: data.dataModelFilterPattern,
       chartFilterPattern: data.chartFilterPattern,
       dashboardFilterPattern: data.dashboardFilterPattern,
       databaseFilterPattern: data.databaseFilterPattern,
@@ -106,6 +110,7 @@ const ConfigureIngestion = ({
       includeLineage: data.includeLineage,
       includeTags: data.includeTags,
       includeView: data.includeView,
+      includeDataModels: data.includeDataModels,
       ingestionName: data.ingestionName,
       ingestSampleData: data.ingestSampleData,
       markAllDeletedTables: data.markAllDeletedTables,
@@ -117,6 +122,7 @@ const ConfigureIngestion = ({
       queryLogDuration: data.queryLogDuration,
       resultLimit: data.resultLimit,
       schemaFilterPattern: data.schemaFilterPattern,
+      showDataModelFilter: data.showDataModelFilter,
       showChartFilter: data.showChartFilter,
       showDashboardFilter: data.showDashboardFilter,
       showDatabaseFilter: data.showDatabaseFilter,
@@ -192,6 +198,8 @@ const ConfigureIngestion = ({
   const handleIncludeLineage = () => toggleField('includeLineage');
 
   const handleIncludeTags = () => toggleField('includeTags');
+
+  const handleIncludeDataModels = () => toggleField('includeDataModels');
 
   const handleIncludeViewToggle = () => toggleField('includeView');
 
@@ -297,7 +305,34 @@ const ConfigureIngestion = ({
           />
         </div>
         <p className="tw-text-grey-muted tw-mt-3">
-          {t('message.include-assets-message')}
+          {t('message.include-assets-message', {
+            assets: t('label.tag-plural'),
+          })}
+        </p>
+        {getSeparator('')}
+      </Field>
+    );
+  };
+
+  const getIncludesDataModelsToggle = () => {
+    return (
+      <Field>
+        <div className="tw-flex tw-gap-1">
+          <label>
+            {t('label.include-entity', {
+              entity: t('label.data-model-plural'),
+            })}
+          </label>
+          <ToggleSwitchV1
+            checked={includeDataModels}
+            handleCheck={handleIncludeDataModels}
+            testId="include-data-models"
+          />
+        </div>
+        <p className="tw-text-grey-muted tw-mt-3">
+          {t('message.include-assets-message', {
+            assets: t('label.data-model-plural'),
+          })}
         </p>
         {getSeparator('')}
       </Field>
@@ -453,6 +488,7 @@ const ConfigureIngestion = ({
             {getSeparator('')}
           </Field>
           {getIncludesTagToggle()}
+          {getIncludesDataModelsToggle()}
           {getDebugLogToggle()}
           {getMarkDeletedEntitiesToggle(
             t('label.mark-deleted-table-plural'),
@@ -668,11 +704,24 @@ const ConfigureIngestion = ({
               showSeparator={false}
               type={FilterPatternEnum.CHART}
             />
+            <FilterPattern
+              checked={showDataModelFilter}
+              excludePattern={dataModelFilterPattern.excludes ?? []}
+              getExcludeValue={getExcludeValue}
+              getIncludeValue={getIncludeValue}
+              handleChecked={(value) =>
+                handleShowFilter(value, ShowFilter.showDataModelFilter)
+              }
+              includePattern={dataModelFilterPattern.includes ?? []}
+              showSeparator={false}
+              type={FilterPatternEnum.DASHBOARD_DATAMODEL}
+            />
             {getSeparator('')}
             {getDashboardDBServiceName()}
             {getDebugLogToggle()}
             {getOverrideOwnerToggle()}
             {getIncludesTagToggle()}
+            {getIncludesDataModelsToggle()}
             {getMarkDeletedEntitiesToggle(
               t('label.mark-deleted-entity', {
                 entity: t('label.dashboard-plural'),
