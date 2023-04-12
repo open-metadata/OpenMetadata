@@ -12,6 +12,7 @@
  */
 
 declare module 'Models' {
+  import { SearchEntityHits } from 'utils/APIUtils';
   import { CreateDashboardService } from '../generated/api/services/createDashboardService';
   import { CreateDatabaseService } from '../generated/api/services/createDatabaseService';
   import { CreateMessagingService } from '../generated/api/services/createMessagingService';
@@ -105,7 +106,7 @@ declare module 'Models' {
 
   export interface AssetsDataType {
     isLoading?: boolean;
-    data: FormattedTableData[];
+    data: SearchEntityHits;
     total: number;
     currPage: number;
   }
@@ -140,7 +141,7 @@ declare module 'Models' {
     | 'pipelineServices'
     | 'mlmodelServices'
     | 'metadataServices'
-    | 'objectStoreServices';
+    | 'storageServices';
 
   export type SearchDataFunctionType = {
     queryString: string;

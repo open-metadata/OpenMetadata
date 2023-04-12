@@ -56,3 +56,9 @@ export const LOCAL_DEPLOYMENT =
 
 export const OMD_SLACK_LINK =
   'https://join.slack.com/t/openmetadata/shared_invite/zt-1r1kv175f-9qM5eTB39MF6U2DBhZhWow';
+
+export const DATA_INSIGHTS_PIPELINE_DOCS =
+  'https://docs.open-metadata.org/openmetadata/data-insight#data-insights';
+
+export const ELASTIC_SEARCH_RE_INDEX_PIPELINE_DOCS =
+  'https://docs.open-metadata.org/overview/features#elasticsearch-integration';

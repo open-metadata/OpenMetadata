@@ -55,8 +55,12 @@
     },
     "sslMode": {
       "title": "SSL Mode",
-      "description": "SSL Mode to connect to postgres database. E.g, prefer, verify-ca etc.",
-      "type": "string"
+      "description": "SSL Mode to connect to postgres database.",
+      "enum": ["disable", "allow", "prefer", "require", "verify-ca", "verify-full"],
+      "default": "disable"
+    },
+    "sslConfig": {
+      "$ref": "../../../../security/ssl/verifySSLConfig.json#/definitions/sslConfig"
     },
     "classificationName": {
       "title": "Classification Name",
