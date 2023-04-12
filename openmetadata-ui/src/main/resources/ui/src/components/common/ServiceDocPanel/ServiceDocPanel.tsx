@@ -14,6 +14,7 @@ import { Col, Row } from 'antd';
 import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
 import Loader from 'components/Loader/Loader';
 import { oneofOrEndsWithNumberRegex } from 'constants/regex.constants';
+import { PipelineType } from 'generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { first, last } from 'lodash';
 import React, { FC, useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -24,14 +25,17 @@ import './ServiceDocPanel.less';
 interface ServiceDocPanelProp {
   serviceName: string;
   serviceType: string;
-  isPipelineDeployed?: boolean;
   activeField?: string;
+  isWorkflow?: boolean;
+  workflowType?: PipelineType;
 }
 
 const ServiceDocPanel: FC<ServiceDocPanelProp> = ({
   serviceType,
   serviceName,
   activeField,
+  isWorkflow,
+  workflowType,
 }) => {
   const { i18n } = useTranslation();
 
@@ -68,8 +72,13 @@ const ServiceDocPanel: FC<ServiceDocPanelProp> = ({
     try {
       let response = '';
       const isEnglishLanguage = i18n.language === SupportedLocales.English;
-      const filePath = `${i18n.language}/${serviceType}/${serviceName}.md`;
-      const fallbackFilePath = `${SupportedLocales.English}/${serviceType}/${serviceName}.md`;
+      let filePath = `${i18n.language}/${serviceType}/${serviceName}.md`;
+      let fallbackFilePath = `${SupportedLocales.English}/${serviceType}/${serviceName}.md`;
+
+      if (isWorkflow && workflowType) {
+        filePath = `${i18n.language}/${serviceType}/workflows/${workflowType}.md`;
+        fallbackFilePath = `${SupportedLocales.English}/${serviceType}/workflows/${workflowType}.md`;
+      }
 
       const [translation, fallbackTranslation] = await Promise.allSettled([
         fetchMarkdownFile(filePath),

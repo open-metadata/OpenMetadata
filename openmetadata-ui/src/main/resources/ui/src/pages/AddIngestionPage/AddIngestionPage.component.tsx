@@ -244,8 +244,10 @@ const AddIngestionPage = () => {
 
   const secondPanelChildren = (
     <ServiceDocPanel
+      isWorkflow
       serviceName={serviceData?.serviceType ?? ''}
       serviceType={getServiceType(serviceCategory as ServiceCategory)}
+      workflowType={ingestionType as PipelineType}
     />
   );
 

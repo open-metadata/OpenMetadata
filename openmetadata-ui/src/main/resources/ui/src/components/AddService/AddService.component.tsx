@@ -21,7 +21,7 @@ import { useAirflowStatus } from 'hooks/useAirflowStatus';
 import { t } from 'i18next';
 import { capitalize, isUndefined } from 'lodash';
 import { LoadingState } from 'Models';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useHistory } from 'react-router-dom';
 import { getServiceDetailsPath } from '../../constants/constants';
 import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
@@ -208,12 +208,6 @@ const AddService = ({
   // Service focused field
   const handleFieldFocus = (fieldName: string) => setActiveField(fieldName);
 
-  // Flag to check if pipeline is deployed or not
-  const isDeployed = useMemo(
-    () => activeIngestionStep >= 3 && !showDeployButton,
-    [activeIngestionStep, showDeployButton]
-  );
-
   // rendering
 
   const addNewServiceElement = (
@@ -342,7 +336,6 @@ const AddService = ({
         children: (
           <ServiceDocPanel
             activeField={activeField}
-            isPipelineDeployed={isDeployed}
             serviceName={selectServiceType}
             serviceType={getServiceType(serviceCategory)}
           />
