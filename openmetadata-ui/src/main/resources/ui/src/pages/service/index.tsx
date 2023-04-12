@@ -59,13 +59,13 @@ import {
 } from 'rest/ingestionPipelineAPI';
 import { fetchAirflowConfig } from 'rest/miscAPI';
 import { getMlModels } from 'rest/mlModelAPI';
-import { getContainers } from 'rest/objectStoreAPI';
 import { getPipelines } from 'rest/pipelineAPI';
 import {
   getServiceByFQN,
   updateOwnerService,
   updateService,
 } from 'rest/serviceAPI';
+import { getContainers } from 'rest/storageAPI';
 import { getTopics } from 'rest/topicsAPI';
 import { getEntityName } from 'utils/EntityUtils';
 import {
@@ -195,7 +195,7 @@ const ServicePage: FunctionComponent = () => {
         servicePermission,
         dataModelPaging.total
       ),
-    [serviceName, paging, ingestions, servicePermission]
+    [serviceName, paging, ingestions, servicePermission, dataModelPaging]
   );
 
   const extraInfo: Array<ExtraInfo> = [
@@ -554,7 +554,7 @@ const ServicePage: FunctionComponent = () => {
 
         break;
       }
-      case ServiceCategory.OBJECT_STORE_SERVICES: {
+      case ServiceCategory.STORAGE_SERVICES: {
         fetchContainers(paging);
 
         break;
@@ -578,7 +578,7 @@ const ServicePage: FunctionComponent = () => {
       case ServiceCategory.ML_MODEL_SERVICES:
         return getEntityLink(SearchIndex.MLMODEL, fqn);
 
-      case ServiceCategory.OBJECT_STORE_SERVICES:
+      case ServiceCategory.STORAGE_SERVICES:
         return getEntityLink(EntityType.CONTAINER, fqn);
 
       case ServiceCategory.DATABASE_SERVICES:
@@ -656,7 +656,7 @@ const ServicePage: FunctionComponent = () => {
           '--'
         );
       }
-      case ServiceCategory.OBJECT_STORE_SERVICES: {
+      case ServiceCategory.STORAGE_SERVICES: {
         const container = data as Container;
 
         return container.tags && container.tags.length > 0 ? (

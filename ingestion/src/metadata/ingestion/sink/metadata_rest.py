@@ -25,7 +25,6 @@ from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.api.teams.createRole import CreateRoleRequest
 from metadata.generated.schema.api.teams.createTeam import CreateTeamRequest
 from metadata.generated.schema.api.teams.createUser import CreateUserRequest
-from metadata.generated.schema.entity.data.location import Location
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
@@ -49,10 +48,7 @@ from metadata.ingestion.models.user import OMetaUserProfile
 from metadata.ingestion.ometa.client import APIError
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardUsage
-from metadata.ingestion.source.database.database_service import (
-    DataModelLink,
-    TableLocationLink,
-)
+from metadata.ingestion.source.database.database_service import DataModelLink
 from metadata.utils.helpers import calculate_execution_time
 from metadata.utils.logger import get_add_lineage_log_str, ingestion_logger
 
@@ -97,7 +93,6 @@ class MetadataRestSink(Sink[Entity]):
         self.write_record.register(DeleteEntity, self.delete_entity)
         self.write_record.register(OMetaPipelineStatus, self.write_pipeline_status)
         self.write_record.register(DataModelLink, self.write_datamodel)
-        self.write_record.register(TableLocationLink, self.write_table_location_link)
         self.write_record.register(DashboardUsage, self.write_dashboard_usage)
         self.write_record.register(OMetaTableConstraints, self.write_table_constraints)
         self.write_record.register(
@@ -173,35 +168,12 @@ class MetadataRestSink(Sink[Entity]):
         else:
             logger.warning("Unable to ingest datamodel")
 
-    def write_table_location_link(self, table_location_link: TableLocationLink) -> None:
-        """
-        Send to OM the Table and Location Link based on FQNs
-        :param table_location_link: Table FQN + Location FQN
-        """
-        try:
-            table = self.metadata.get_by_name(
-                entity=Table, fqn=table_location_link.table_fqn
-            )
-            location = self.metadata.get_by_name(
-                entity=Location, fqn=table_location_link.location_fqn
-            )
-            self.metadata.add_location(table=table, location=location)
-        except Exception as exc:
-            name = f"{table_location_link.table_fqn} <-> {table_location_link.location_fqn}"
-            error = (
-                f"Failed to write table location link [{table_location_link}]: {exc}"
-            )
-            logger.debug(traceback.format_exc())
-            logger.warning(error)
-            self.status.failed(name, error, traceback.format_exc())
-
     def write_dashboard_usage(self, dashboard_usage: DashboardUsage) -> None:
         """
         Send a UsageRequest update to a dashboard entity
         :param dashboard_usage: dashboard entity and usage request
         """
         try:
-
             self.metadata.publish_dashboard_usage(
                 dashboard=dashboard_usage.dashboard,
                 dashboard_usage_request=dashboard_usage.usage,
@@ -345,7 +317,6 @@ class MetadataRestSink(Sink[Entity]):
 
     def delete_entity(self, record: DeleteEntity):
         try:
-
             self.metadata.delete(
                 entity=type(record.entity),
                 entity_id=record.entity.id,

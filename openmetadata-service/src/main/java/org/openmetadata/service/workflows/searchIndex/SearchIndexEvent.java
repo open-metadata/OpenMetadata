@@ -15,7 +15,6 @@ package org.openmetadata.service.workflows.searchIndex;
 
 import static org.openmetadata.schema.api.CreateEventPublisherJob.PublisherType.ELASTIC_SEARCH;
 
-import java.io.IOException;
 import java.lang.annotation.Annotation;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -34,8 +33,8 @@ import org.openmetadata.service.util.ReIndexingHandler;
 @Slf4j
 public class SearchIndexEvent implements ContainerResponseFilter {
   @Override
-  public void filter(ContainerRequestContext containerRequestContext, ContainerResponseContext containerResponseContext)
-      throws IOException {
+  public void filter(
+      ContainerRequestContext containerRequestContext, ContainerResponseContext containerResponseContext) {
     if (ReIndexingHandler.getInstance() != null) {
       Reindex annotationFromResource = null;
       Annotation[] annotations = containerResponseContext.getEntityAnnotations();

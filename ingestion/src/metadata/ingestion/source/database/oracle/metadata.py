@@ -89,7 +89,6 @@ def get_view_definition(
     dblink="",
     **kw,
 ):  # pylint: disable=unused-argument
-
     return get_view_definition_wrapper(
         self,
         connection,

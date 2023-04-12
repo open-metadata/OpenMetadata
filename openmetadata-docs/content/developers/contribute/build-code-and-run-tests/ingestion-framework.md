@@ -77,6 +77,26 @@ To run the tests, you'll to install some packages via `make install_test`.
 You can validate the environment by running `make coverage` from the root directory. Note that from some tests, having 
 the OpenMetadata server instance up is required as they interact with the API.
 
+## Debugging locally
+
+Running the ingestion workflows from PyCharm and debugging them is quite useful. In order to do so, follow these steps:
+
+First, make sure that your Python environment is pointing to the local env you are using to develop.
+
+<Image src="/images/developers/contribute/build-code-and-run-tests/pycharm-python-interpreter.png" alt="PyCharm env" caption=" "/>
+
+Then, you can prepare `Run Configurations` to execute the ingestion as you would run the CLI:
+
+<Image src="/images/developers/contribute/build-code-and-run-tests/pycharm-run-config.png" alt="PyCharm run config" caption=" "/>
+
+Note that in the example we are preparing a configuration to run and test Superset. In order to understand how to run
+ingestions via the CLI, you can refer to each connector's [docs](https://docs.open-metadata.org/connectors/dashboard/superset/cli).
+
+The important part is that we are not running a script, but rather a `module`: `metadata`. Based on this, we can work as
+we would usually do with the CLI for any ingestion, profiler, or test workflow.
+
+With these settings, you can start adding breakpoints in PyCharm and debug the workflows!
+
 ## Troubleshooting
 
 If you try to install the `kafka` plugin `pip install "./ingestion[kafka]"` on mac you might see the following error:
