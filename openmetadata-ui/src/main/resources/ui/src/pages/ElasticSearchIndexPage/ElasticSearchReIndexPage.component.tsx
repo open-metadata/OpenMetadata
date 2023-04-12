@@ -21,7 +21,7 @@ import {
 } from 'constants/GlobalSettings.constants';
 import { ELASTIC_SEARCH_RE_INDEX_PAGE_TABS } from 'enums/ElasticSearch.enum';
 import { PipelineType } from 'generated/api/services/ingestionPipelines/createIngestionPipeline';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import { getSettingsPathWithFqn } from 'utils/RouterUtils';
@@ -31,22 +31,21 @@ const ElasticSearchIndexPage = () => {
   const { t } = useTranslation();
   const history = useHistory();
   const { fqn } = useParams<{ fqn: string }>();
-  const [activeTabKey, setActiveTabKey] = useState<string>('1');
 
   const tabItems: TabsProps['items'] = useMemo(
     () => [
       {
-        key: '1',
+        key: ELASTIC_SEARCH_RE_INDEX_PAGE_TABS.ON_DEMAND,
         label: t('label.on-demand'),
         children: <TriggerReIndexing />,
       },
       {
-        key: '2',
+        key: ELASTIC_SEARCH_RE_INDEX_PAGE_TABS.LIVE,
         label: t('label.live'),
         children: <TriggerReIndexing />,
       },
       {
-        key: '3',
+        key: ELASTIC_SEARCH_RE_INDEX_PAGE_TABS.SCHEDULE,
         label: t('label.schedule'),
         children: (
           <SettingsIngestion
@@ -60,53 +59,14 @@ const ElasticSearchIndexPage = () => {
   );
 
   const handleTabClick = useCallback((activeKey: string) => {
-    let tabName: string;
-    switch (activeKey) {
-      case '2':
-        tabName = ELASTIC_SEARCH_RE_INDEX_PAGE_TABS.LIVE;
-
-        break;
-      case '3':
-        tabName = ELASTIC_SEARCH_RE_INDEX_PAGE_TABS.SCHEDULE;
-
-        break;
-      case '1':
-      default:
-        tabName = ELASTIC_SEARCH_RE_INDEX_PAGE_TABS.ON_DEMAND;
-
-        break;
-    }
-
     history.replace(
       getSettingsPathWithFqn(
         GlobalSettingsMenuCategory.OPEN_METADATA,
         GlobalSettingOptions.SEARCH,
-        tabName
+        activeKey
       )
     );
   }, []);
-
-  useEffect(() => {
-    if (fqn) {
-      let tabNumber: string;
-      switch (fqn) {
-        case ELASTIC_SEARCH_RE_INDEX_PAGE_TABS.LIVE:
-          tabNumber = '2';
-
-          break;
-        case ELASTIC_SEARCH_RE_INDEX_PAGE_TABS.SCHEDULE:
-          tabNumber = '3';
-
-          break;
-        case ELASTIC_SEARCH_RE_INDEX_PAGE_TABS.ON_DEMAND:
-        default:
-          tabNumber = '1';
-
-          break;
-      }
-      setActiveTabKey(tabNumber);
-    }
-  }, [fqn]);
 
   return (
     <Row align="middle" gutter={[16, 16]}>
@@ -119,11 +79,7 @@ const ElasticSearchIndexPage = () => {
         />
       </Col>
       <Col span={24}>
-        <Tabs
-          activeKey={activeTabKey}
-          items={tabItems}
-          onTabClick={handleTabClick}
-        />
+        <Tabs activeKey={fqn} items={tabItems} onTabClick={handleTabClick} />
       </Col>
     </Row>
   );
