@@ -95,6 +95,7 @@ const GlossaryVersion = ({ isGlossary = false }: GlossaryVersionProps) => {
           isVersionsView
           deleteStatus={LOADING_STATE.INITIAL}
           isGlossaryActive={isGlossary}
+          isSummaryPanelOpen={false}
           selectedData={selectedData as Glossary}
           updateGlossary={mockFnGlossary}
           onGlossaryDelete={mockFn}

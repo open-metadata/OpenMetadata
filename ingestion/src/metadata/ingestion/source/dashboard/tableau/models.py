@@ -122,7 +122,7 @@ class DatabaseTable(TableauBaseModel):
     """
 
     schema_: str = Field(..., alias="schema")
-    upstreamDatabases: Optional[List[TableauBaseModel]]
+    database: TableauBaseModel
     referencedByQueries: Optional[List[CustomSQLTable]]
 
 

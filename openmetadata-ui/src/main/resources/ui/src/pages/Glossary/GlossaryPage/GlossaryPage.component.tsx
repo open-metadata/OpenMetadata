@@ -16,7 +16,11 @@ import { AxiosError } from 'axios';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import PageContainerV1 from 'components/containers/PageContainerV1';
 import PageLayoutV1 from 'components/containers/PageLayoutV1';
-import { ExploreSearchIndex } from 'components/Explore/explore.interface';
+import EntitySummaryPanel from 'components/Explore/EntitySummaryPanel/EntitySummaryPanel.component';
+import {
+  EntityDetailsObjectInterface,
+  ExploreSearchIndex,
+} from 'components/Explore/explore.interface';
 import { useGlobalSearchProvider } from 'components/GlobalSearchProvider/GlobalSearchProvider';
 import GlossaryV1 from 'components/Glossary/GlossaryV1.component';
 import Loader from 'components/Loader/Loader';
@@ -63,6 +67,8 @@ const GlossaryPage = () => {
   const [selectedData, setSelectedData] = useState<Glossary | GlossaryTerm>();
   const [isRightPanelLoading, setIsRightPanelLoading] = useState(true);
   const { updateSearchCriteria } = useGlobalSearchProvider();
+  const [previewAsset, setPreviewAsset] =
+    useState<EntityDetailsObjectInterface>();
 
   const isGlossaryActive = useMemo(() => {
     setIsRightPanelLoading(true);
@@ -264,11 +270,24 @@ const GlossaryPage = () => {
     );
   }
 
+  const handleAssetClick = (asset?: EntityDetailsObjectInterface) => {
+    setPreviewAsset(asset);
+  };
+
   return (
     <PageContainerV1>
       <PageLayoutV1
         leftPanel={<GlossaryLeftPanel glossaries={glossaries} />}
-        pageTitle={t('label.glossary')}>
+        pageTitle={t('label.glossary')}
+        rightPanel={
+          previewAsset && (
+            <EntitySummaryPanel
+              entityDetails={previewAsset}
+              handleClosePanel={() => setPreviewAsset(undefined)}
+            />
+          )
+        }
+        rightPanelWidth={400}>
         {isRightPanelLoading ? (
           // Loader for right panel data
           <Loader />
@@ -278,9 +297,11 @@ const GlossaryPage = () => {
               <GlossaryV1
                 deleteStatus={deleteStatus}
                 isGlossaryActive={isGlossaryActive}
+                isSummaryPanelOpen={Boolean(previewAsset)}
                 isVersionsView={false}
                 selectedData={selectedData as Glossary}
                 updateGlossary={updateGlossary}
+                onAssetClick={handleAssetClick}
                 onGlossaryDelete={handleGlossaryDelete}
                 onGlossaryTermDelete={handleGlossaryTermDelete}
                 onGlossaryTermUpdate={handleGlossaryTermUpdate}

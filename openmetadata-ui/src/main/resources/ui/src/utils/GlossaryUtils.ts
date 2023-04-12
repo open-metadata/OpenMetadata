@@ -122,7 +122,7 @@ export const buildTree = (data: GlossaryTerm[]): GlossaryTerm[] => {
     if (obj.fullyQualifiedName) {
       nodes[obj.fullyQualifiedName] = {
         ...obj,
-        children: [],
+        children: obj.children?.length ? [] : undefined,
       };
       const parentNode =
         obj.parent &&
