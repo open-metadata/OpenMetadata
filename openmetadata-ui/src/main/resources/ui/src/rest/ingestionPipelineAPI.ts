@@ -15,6 +15,7 @@ import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { PagingResponse } from 'Models';
 import { IngestionPipelineLogByIdInterface } from 'pages/LogsViewer/LogsViewer.interfaces';
+import QueryString from 'qs';
 import {
   CreateIngestionPipeline,
   PipelineType,
@@ -82,13 +83,10 @@ export const getIngestionPipelines = async (
   paging?: string,
   pipelineType?: PipelineType
 ) => {
-  let queryParamString = serviceFilter ? `service=${serviceFilter}` : '';
-
-  if (pipelineType) {
-    queryParamString += `${
-      serviceFilter ? '&' : ''
-    }pipelineType=${pipelineType}`;
-  }
+  const queryParamString = QueryString.stringify({
+    service: serviceFilter,
+    pipelineType,
+  });
 
   const url = `${getURLWithQueryFields(
     '/services/ingestionPipelines',
