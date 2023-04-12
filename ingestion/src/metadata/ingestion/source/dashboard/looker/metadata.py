@@ -61,6 +61,9 @@ from metadata.generated.schema.entity.services.dashboardService import (
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
+from metadata.generated.schema.security.credentials.githubCredentials import (
+    GitHubCredentials,
+)
 from metadata.generated.schema.type.entityLineage import EntitiesEdge
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.usageRequest import UsageRequest
@@ -151,12 +154,23 @@ class LookerSource(DashboardServiceSource):
 
     @property
     def parser(self) -> Optional[LkmlParser]:
-        if not self._parser and self.service_connection.githubCredentials:
-            self._parser = LkmlParser(
-                reader=GitHubReader(self.service_connection.githubCredentials)
-            )
+        if not self._parser and self.github_credentials:
+            self._parser = LkmlParser(reader=GitHubReader(self.github_credentials))
 
         return self._parser
+
+    @property
+    def github_credentials(self) -> Optional[GitHubCredentials]:
+        """
+        Check if the credentials are informed and return them.
+
+        We either get GitHubCredentials or `NoGitHubCredentials`
+        """
+        if self.service_connection.githubCredentials and isinstance(
+            self.service_connection.githubCredentials, GitHubCredentials
+        ):
+            return self.service_connection.githubCredentials
+        return None
 
     def list_datamodels(self) -> Iterable[LookmlModelExplore]:
         """
@@ -205,7 +219,7 @@ class LookerSource(DashboardServiceSource):
 
             # We can get VIEWs from the JOINs to know the dependencies
             # We will only try and fetch if we have the credentials
-            if self.service_connection.githubCredentials:
+            if self.github_credentials:
                 for view in model.joins:
                     yield from self._process_view(
                         view_name=ViewName(view.name), explore=model
@@ -232,7 +246,7 @@ class LookerSource(DashboardServiceSource):
         file definition and add it here
         """
         # Only look to parse if creds are in
-        if self.service_connection.githubCredentials:
+        if self.github_credentials:
             try:
                 # This will only parse if the file has not been parsed yet
                 self.parser.parse_file(Includes(explore.source_file))
