@@ -137,6 +137,8 @@ WHERE jsonSchema = 'pipelineStatus' AND extension <> 'pipeline.PipelineStatus';
 
 -- We are refactoring the storage service with containers. We'll remove the locations
 DROP TABLE location_entity;
+DELETE FROM entity_relationship WHERE fromEntity='location' OR toEntity='location';
+TRUNCATE TABLE storage_service_entity;
 
 UPDATE dbservice_entity
 SET json = json::jsonb #- '{connection,config,storageServiceName}'
