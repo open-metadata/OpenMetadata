@@ -60,10 +60,9 @@ RUN chown pgspider /home/pgspider/postgresql-15.0
 
 RUN git config --global http.sslVerify false
 WORKDIR /home/pgspider
-### this is temporary link, need to update it to clone PGSpider
 RUN git clone -b master https://github.com/pgspider/pgspider
 
-WORKDIR /home/pgspider/PGSpider
+WORKDIR /home/pgspider/pgspider
 RUN ./configure --prefix=$(pwd)/install
 RUN make clean && make && make install
 

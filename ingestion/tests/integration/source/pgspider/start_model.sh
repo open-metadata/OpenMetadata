@@ -39,7 +39,7 @@ rm -rf ../databases || true
 ./psql -d pgtest1 -c "CREATE TABLE test1_2 (i int);"
 ./psql -d pgtest2 -c "CREATE TABLE test2 (a int, b text, c int);"
 
-cd /home/pgspider/PGSpider/install/bin
+cd /home/pgspider/pgspider/install/bin
 pkill -9 pgspider || true
 sleep 2
 rm -rf ../databases || true

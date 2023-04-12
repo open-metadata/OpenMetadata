@@ -1,4 +1,0 @@
-docker build -t pgspider_server .
-docker-compose up -d
-docker exec pgspider_server_for_openmetadata /bin/bash -c 'su -c "/home/test/start_model.sh" pgspider'
-docker exec -it pgspider_server_for_openmetadata /bin/bash
