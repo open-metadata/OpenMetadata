@@ -433,13 +433,13 @@ const AddIngestion = ({
           markDeletedMlModels,
         };
       }
-      case ServiceCategory.OBJECT_STORE_SERVICES: {
+      case ServiceCategory.STORAGE_SERVICES: {
         return {
           containerFilterPattern: getFilterPatternData(
             containerFilterPattern,
             showContainerFilter
           ),
-          type: ConfigType.ObjectStoreMetadata,
+          type: ConfigType.StorageMetadata,
         };
       }
 

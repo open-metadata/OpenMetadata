@@ -7,7 +7,7 @@
   "javaType": "org.openmetadata.schema.security.ssl.ValidateSSLClientConfig",
   "properties": {
     "certificatePath": {
-      "description": "CA certificate path. E.g., /path/to/public.cert. Will be used if Verify SSL is set to `validate`.",
+      "description": "CA certificate path. E.g., /path/to/public.cert. Will be used if Verify SSL is set to `validate` or `verify`.",
       "type": "string"
     }
   },
