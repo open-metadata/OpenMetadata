@@ -51,7 +51,7 @@ const FilterPattern = ({
   };
 
   return (
-    <div className="m-t-md" data-testid="filter-pattern-container">
+    <div data-testid="filter-pattern-container">
       <Row>
         <Col>
           <Checkbox

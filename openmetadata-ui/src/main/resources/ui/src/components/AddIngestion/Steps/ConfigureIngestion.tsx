@@ -29,6 +29,7 @@ import {
   ConfigureIngestionProps,
   ShowFilter,
 } from '../addIngestion.interface';
+import './ConfigureIngestion.less';
 
 const ConfigureIngestion = ({
   data,
@@ -293,6 +294,7 @@ const ConfigureIngestion = ({
           handleShowFilter(value, ShowFilter.showTableFilter),
         includePattern: tableFilterPattern?.includes ?? [],
         type: FilterPatternEnum.TABLE,
+        showSeparator: false,
       },
       id: 'tableFilterPattern',
       hasSeparator: true,
@@ -1087,7 +1089,7 @@ const ConfigureIngestion = ({
 
   return (
     <Form
-      className="p-x-xs"
+      className="p-x-xs configure-ingestion-form"
       data-testid="configure-ingestion-container"
       layout="vertical">
       {getIngestionPipelineFields()}

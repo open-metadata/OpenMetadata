@@ -10,7 +10,15 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Form, FormRule, Input, InputNumber, Select, Space } from 'antd';
+import {
+  Divider,
+  Form,
+  FormRule,
+  Input,
+  InputNumber,
+  Select,
+  Space,
+} from 'antd';
 import Typography from 'antd/lib/typography/Typography';
 import FilterPattern from 'components/common/FilterPattern/FilterPattern';
 import { FilterPatternProps } from 'components/common/FilterPattern/filterPattern.interface';
@@ -24,7 +32,6 @@ import SliderWithInput from 'components/SliderWithInput/SliderWithInput';
 import { SliderWithInputProps } from 'components/SliderWithInput/SliderWithInput.interface';
 import { uniqueId } from 'lodash';
 import React, { ReactNode } from 'react';
-import { getSeparator } from './CommonUtils';
 import i18n from './i18next/LocalUtil';
 
 export enum FieldTypes {
@@ -144,7 +151,7 @@ export const getField = (field: FieldProp) => {
       rules={fieldRules}>
       <>
         {fieldElement}
-        {hasSeparator && getSeparator('')}
+        {hasSeparator && <Divider />}
       </>
     </Form.Item>
   );
