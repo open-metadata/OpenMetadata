@@ -116,9 +116,17 @@ WHERE name = 'OpenMetadata'
 
 ALTER TABLE user_tokens ALTER COLUMN expiryDate DROP NOT NULL;
 
-ALTER TABLE alert_entity RENAME TO event_subscription_entity;
+CREATE TABLE IF NOT EXISTS event_subscription_entity (
+    id VARCHAR(36) GENERATED ALWAYS AS (json ->> 'id') STORED NOT NULL,
+    name VARCHAR(256) GENERATED ALWAYS AS (json ->> 'name') STORED NOT NULL,
+    deleted BOOLEAN GENERATED ALWAYS AS ((json ->> 'deleted')::boolean) STORED,
+    json JSONB NOT NULL,
+    PRIMARY KEY (id),
+    UNIQUE (name)
+);
+
 drop table if exists alert_action_def;
-DELETE FROM event_subscription_entity;
+drop table if exists alert_entity;
 
 -- create data model table
 CREATE TABLE IF NOT EXISTS dashboard_data_model_entity (
