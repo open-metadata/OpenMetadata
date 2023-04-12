@@ -127,6 +127,7 @@ CREATE TABLE IF NOT EXISTS event_subscription_entity (
 
 drop table if exists alert_action_def;
 drop table if exists alert_entity;
+DELETE from entity_relationship where  fromEntity = 'alert' and toEntity = 'alertAction';
 
 -- create data model table
 CREATE TABLE IF NOT EXISTS dashboard_data_model_entity (
