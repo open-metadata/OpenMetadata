@@ -148,3 +148,6 @@ where serviceType = 'Druid'
 UPDATE entity_extension_time_series
 SET jsonSchema = 'ingestionPipelineStatus', extension = 'ingestionPipeline.pipelineStatus'
 WHERE jsonSchema = 'pipelineStatus' AND extension <> 'pipeline.PipelineStatus';
+
+UPDATE chart_entity
+SET json = JSON_REMOVE(json, '$.tables');

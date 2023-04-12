@@ -148,3 +148,6 @@ WHERE servicetype = 'Druid' and json #>'{connection,config,database}' is not nul
 UPDATE entity_extension_time_series
 SET jsonSchema = 'ingestionPipelineStatus', extension = 'ingestionPipeline.pipelineStatus'
 WHERE jsonSchema = 'pipelineStatus' AND extension <> 'pipeline.PipelineStatus';
+
+UPDATE chart_entity
+SET json = json::jsonb #- '{tables}';

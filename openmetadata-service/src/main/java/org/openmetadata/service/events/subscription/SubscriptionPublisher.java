@@ -18,7 +18,6 @@ import static org.openmetadata.schema.entity.events.SubscriptionStatus.Status.AW
 import static org.openmetadata.schema.entity.events.SubscriptionStatus.Status.FAILED;
 
 import com.lmax.disruptor.BatchEventProcessor;
-import java.io.IOException;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import lombok.Getter;
@@ -124,7 +123,7 @@ public class SubscriptionPublisher extends AbstractAlertPublisher {
     this.processor = processor;
   }
 
-  protected void sendAlert(EventResource.EventList list) throws IOException, InterruptedException {}
+  protected void sendAlert(EventResource.EventList list) throws InterruptedException {}
 
   protected void onStartDelegate() {}
 

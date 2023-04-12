@@ -26,7 +26,6 @@ from metadata.ingestion.api.status import Status
 
 
 class SinkStatus(Status):
-
     records: List[str] = Field(default_factory=list)
 
     def records_written(self, record: str) -> None:

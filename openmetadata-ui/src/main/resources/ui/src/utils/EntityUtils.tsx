@@ -26,6 +26,7 @@ import { SearchedDataProps } from 'components/searched-data/SearchedData.interfa
 import { ExplorePageTabs } from 'enums/Explore.enum';
 import { Tag } from 'generated/entity/classification/tag';
 import { Container } from 'generated/entity/data/container';
+import { DashboardDataModel } from 'generated/entity/data/dashboardDataModel';
 import { GlossaryTerm } from 'generated/entity/data/glossaryTerm';
 import { Mlmodel } from 'generated/entity/data/mlmodel';
 import { Topic } from 'generated/entity/data/topic';
@@ -107,7 +108,8 @@ export const getEntityTags = (
     case EntityType.PIPELINE:
     case EntityType.DASHBOARD:
     case EntityType.TOPIC:
-    case EntityType.MLMODEL: {
+    case EntityType.MLMODEL:
+    case EntityType.DASHBOARD_DATA_MODEL: {
       return entityDetail.tags || [];
     }
 
@@ -466,6 +468,67 @@ export const getEntityOverview = (
             dataModel && dataModel.columns ? dataModel.columns.length : NO_DATA,
           isLink: false,
           visible,
+        },
+      ];
+
+      return overview;
+    }
+
+    case ExplorePageTabs.DASHBOARD_DATA_MODEL: {
+      const { owner, tags, href, service, displayName, dataModelType } =
+        entityDetail as DashboardDataModel;
+      const tier = getTierFromTableTags(tags || []);
+
+      const overview = [
+        {
+          name: i18next.t('label.owner'),
+          value:
+            getOwnerNameWithProfilePic(owner) ||
+            i18next.t('label.no-entity', {
+              entity: i18next.t('label.owner'),
+            }),
+          url: getOwnerValue(owner as EntityReference),
+          isLink: owner?.name ? true : false,
+          visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
+        },
+        {
+          name: `${i18next.t('label.data-model')} ${i18next.t(
+            'label.url-uppercase'
+          )}`,
+          value: displayName || NO_DATA,
+          url: href,
+          isLink: true,
+          isExternal: true,
+          visible: [
+            DRAWER_NAVIGATION_OPTIONS.lineage,
+            DRAWER_NAVIGATION_OPTIONS.explore,
+          ],
+        },
+        {
+          name: i18next.t('label.service'),
+          value: (service?.fullyQualifiedName as string) || NO_DATA,
+          url: getServiceDetailsPath(
+            service?.name as string,
+            ServiceCategory.DASHBOARD_SERVICES
+          ),
+          isExternal: false,
+          isLink: true,
+          visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
+        },
+
+        {
+          name: i18next.t('label.tier'),
+          value: tier ? tier.split(FQN_SEPARATOR_CHAR)[1] : NO_DATA,
+          isLink: false,
+          isExternal: false,
+          visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
+        },
+        {
+          name: i18next.t('label.data-model-type'),
+          value: dataModelType,
+          isLink: false,
+          isExternal: false,
+          visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
         },
       ];
 

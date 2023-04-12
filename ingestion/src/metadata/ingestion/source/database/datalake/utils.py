@@ -44,8 +44,6 @@ PD_AVRO_FIELD_MAP = {
 }
 
 AVRO_SCHEMA = "avro.schema"
-
-
 COMPLEX_COLUMN_SEPARATOR = "_##"
 
 

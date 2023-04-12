@@ -418,7 +418,6 @@ public class ChartResource extends EntityResource<Chart, ChartRepository> {
         .withService(EntityUtil.getEntityReference(Entity.DASHBOARD_SERVICE, create.getService()))
         .withChartType(create.getChartType())
         .withChartUrl(create.getChartUrl())
-        .withTables(getEntityReferences(Entity.TABLE, create.getTables()))
         .withTags(create.getTags());
   }
 }

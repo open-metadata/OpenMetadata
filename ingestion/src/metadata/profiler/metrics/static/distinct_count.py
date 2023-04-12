@@ -14,7 +14,6 @@ Distinct Count Metric definition
 """
 # pylint: disable=duplicate-code
 
-from typing import cast
 
 from sqlalchemy import column, distinct, func
 
@@ -43,16 +42,17 @@ class DistinctCount(StaticMetric):
     def fn(self):
         return func.count(distinct(column(self.col.name)))
 
-    def df_fn(self, df=None):
-        from pandas import DataFrame  # pylint: disable=import-outside-toplevel
-
-        df = cast(DataFrame, df)
+    def df_fn(self, dfs=None):
+        from collections import Counter  # pylint: disable=import-outside-toplevel
 
         try:
-            return len(set(df[self.col.name].values.tolist()))
+            counter = Counter()
+            for df in dfs:
+                counter.update(df[self.col.name].dropna().to_list())
+            return len(counter.keys())
         except Exception as err:
             logger.debug(
-                f"Don't know how to process type {self.col.type} "
+                f"Don't know how to process type {self.col.type}"
                 f"when computing Distinct Count.\n Error: {err}"
             )
             return 0

@@ -338,7 +338,6 @@ def build_dag(
     """
 
     with DAG(**build_dag_configs(ingestion_pipeline)) as dag:
-
         # Initialize with random UUID4. Will be used by the callback instead of
         # generating it inside the Workflow itself.
         workflow_config.pipelineRunId = str(uuid.uuid4())
