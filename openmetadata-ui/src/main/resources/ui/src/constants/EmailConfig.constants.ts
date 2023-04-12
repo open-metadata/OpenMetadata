@@ -13,17 +13,9 @@
 
 import { TransportationStrategy } from 'generated/email/smtpSettings';
 
-export const TRANSPORTATION_STRATEGY_OPTIONS = [
-  {
-    label: TransportationStrategy.SMTP,
-    value: TransportationStrategy.SMTP,
-  },
-  {
-    label: TransportationStrategy.SMTPTLS,
-    value: TransportationStrategy.SMTPTLS,
-  },
-  {
-    label: TransportationStrategy.Smpts,
-    value: TransportationStrategy.Smpts,
-  },
-];
+export const TRANSPORTATION_STRATEGY_OPTIONS = Object.values(
+  TransportationStrategy
+).map((strategy) => ({
+  label: strategy,
+  value: strategy,
+}));
