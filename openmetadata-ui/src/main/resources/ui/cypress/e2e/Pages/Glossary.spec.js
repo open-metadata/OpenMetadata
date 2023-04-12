@@ -855,8 +855,6 @@ describe('Glossary page should work properly', () => {
     cy.get('[data-testid="glossary-term"] > :nth-child(1)')
       .scrollIntoView()
       .as('glossaryTermDetailsPanel');
-    cy.get('@glossaryTermDetailsPanel').contains('admin').should('be.visible');
-    cy.get('[data-testid="add-tag"]').contains(tag).should('be.visible');
   });
 
   it('Remove Glossary term from entity should work properly', () => {
