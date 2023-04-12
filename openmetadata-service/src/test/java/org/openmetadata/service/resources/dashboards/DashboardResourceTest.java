@@ -53,7 +53,7 @@ import org.openmetadata.service.util.TestUtils;
 
 @Slf4j
 public class DashboardResourceTest extends EntityResourceTest<Dashboard, CreateDashboard> {
-  public static String SUPERSET_INVALID_SERVICE = "invalid_superset_service";
+  public static final String SUPERSET_INVALID_SERVICE = "invalid_superset_service";
 
   public DashboardResourceTest() {
     super(Entity.DASHBOARD, Dashboard.class, DashboardList.class, "dashboards", DashboardResource.FIELDS);

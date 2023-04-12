@@ -20,6 +20,7 @@ import { Column } from 'generated/entity/data/dashboardDataModel';
 import { LabelType, State, TagLabel } from 'generated/type/tagLabel';
 import { isEmpty } from 'lodash';
 import { EntityTags, TagOption } from 'Models';
+import { sortTagsCaseInsensitive } from './CommonUtils';
 
 export const getDataModelsDetailPath = (dataModelFQN: string, tab?: string) => {
   let path = tab
@@ -116,3 +117,9 @@ export const updateDataModelColumnTags = (
 
 export const defaultFields = `${TabSpecificField.TAGS}, ${TabSpecificField.OWNER},
 ${TabSpecificField.FOLLOWERS}`;
+
+export const getSortedDataModelColumnTags = (column: Column[]): Column[] =>
+  column.map((item) => ({
+    ...item,
+    tags: sortTagsCaseInsensitive(item.tags ?? []),
+  }));
