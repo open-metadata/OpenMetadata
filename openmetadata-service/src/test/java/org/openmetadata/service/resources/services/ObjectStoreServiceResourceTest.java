@@ -150,8 +150,7 @@ public class ObjectStoreServiceResourceTest extends EntityResourceTest<ObjectSto
 
   @Override
   public void validateCreatedEntity(
-      ObjectStoreService service, CreateObjectStoreService createRequest, Map<String, String> authHeaders)
-      throws HttpResponseException {
+      ObjectStoreService service, CreateObjectStoreService createRequest, Map<String, String> authHeaders) {
     assertEquals(service.getName(), service.getName());
     ObjectStoreConnection expectedConnection = createRequest.getConnection();
     ObjectStoreConnection actualConnection = service.getConnection();
@@ -159,10 +158,9 @@ public class ObjectStoreServiceResourceTest extends EntityResourceTest<ObjectSto
   }
 
   @Override
-  public void compareEntities(ObjectStoreService expected, ObjectStoreService updated, Map<String, String> authHeaders)
-      throws HttpResponseException {
+  public void compareEntities(
+      ObjectStoreService expected, ObjectStoreService updated, Map<String, String> authHeaders) {
     // PATCH operation is not supported by this entity
-
   }
 
   @Override
