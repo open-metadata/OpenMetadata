@@ -309,7 +309,9 @@ const AddQueryPage = () => {
               entity: t('label.query'),
             })}
           </Typography.Paragraph>
-          <Typography.Text>{t('message.add-role-message')}</Typography.Text>
+          <Typography.Text>
+            {t('message.add-query-helper-message')}
+          </Typography.Text>
         </div>
       </PageLayoutV1>
     </PageContainerV1>
