@@ -142,7 +142,7 @@ public class ListFilter {
     }
     return tableName == null
         ? String.format("json->>'pipelineType' = '%s'", pipelineType)
-        : String.format("json->>'pipelineType' = '%s%%'", tableName, pipelineType);
+        : String.format("%s.json->>'pipelineType' = '%s%%'", tableName, pipelineType);
   }
 
   private String getCategoryPrefixCondition(String tableName, String category) {
