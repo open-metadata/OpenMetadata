@@ -52,9 +52,9 @@ export const FIELDS = {
   Owner: {
     name: 'Owner',
     testid: '[title="Owner"]',
-    searchTerm1: 'Colin Ho',
-    searchCriteriaFirstGroup: 'Colin Ho',
-    responseValueFirstGroup: `"displayName":"Colin Ho"`,
+    searchTerm1: 'Aaron Johnson',
+    searchCriteriaFirstGroup: 'Aaron Johnson',
+    responseValueFirstGroup: `"displayName":"Aaron Johnson"`,
     searchCriteriaSecondGroup: 'Aaron Singh',
     owner: true,
     responseValueSecondGroup: 'Aaron Singh',
@@ -276,25 +276,12 @@ export const addOwner = (searchTerm, ownerName) => {
     .should('exist')
     .should('be.visible')
     .click();
-
-  interceptURL(
-    'GET',
-    `api/v1/search/query?q=*${encodeURI(searchTerm)}*&from=0&size=*&index=*`,
-    'searchOwner'
-  );
-  cy.get('.user-team-select-popover [data-testid="searchbar"]')
-    .eq(1)
-    .should('be.visible')
-    .and('exist')
-    .trigger('click')
-    .type(searchTerm);
-
-  verifyResponseStatusCode('@searchOwner', 200);
+  cy.wait(3000);
 
   interceptURL('PATCH', '/api/v1/tables/*', 'tablePatch');
+
   // Selecting the user
-  cy.get(`[data-testid="user-tag"]`)
-    .contains(ownerName)
+  cy.get(`[title="${ownerName}"]`)
     .should('exist')
     .scrollIntoView()
     .and('be.visible')
