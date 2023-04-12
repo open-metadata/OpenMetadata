@@ -93,6 +93,22 @@ const ElasticSearchIndexPage = withSuspenseFallback(
   )
 );
 
+const DataInsightsSettingsPage = withSuspenseFallback(
+  React.lazy(
+    () =>
+      import(
+        'pages/DataInsightsSettingsPage/DataInsightsSettingsPage.component'
+      )
+  )
+);
+
+const EmailConfigSettingsPage = withSuspenseFallback(
+  React.lazy(
+    () =>
+      import('pages/EmailConfigSettingsPage/EmailConfigSettingsPage.component')
+  )
+);
+
 const GlobalSettingRouter = () => {
   const { permissions } = usePermissionProvider();
 
@@ -195,8 +211,29 @@ const GlobalSettingRouter = () => {
         component={ElasticSearchIndexPage}
         hasPermission={false}
         path={getSettingPath(
-          GlobalSettingsMenuCategory.EVENT_PUBLISHERS,
-          GlobalSettingOptions.ELASTIC_SEARCH
+          GlobalSettingsMenuCategory.OPEN_METADATA,
+          GlobalSettingOptions.SEARCH,
+          true
+        )}
+      />
+
+      <AdminProtectedRoute
+        exact
+        component={DataInsightsSettingsPage}
+        hasPermission={false}
+        path={getSettingPath(
+          GlobalSettingsMenuCategory.OPEN_METADATA,
+          GlobalSettingOptions.DATA_INSIGHT
+        )}
+      />
+
+      <AdminProtectedRoute
+        exact
+        component={EmailConfigSettingsPage}
+        hasPermission={false}
+        path={getSettingPath(
+          GlobalSettingsMenuCategory.OPEN_METADATA,
+          GlobalSettingOptions.EMAIL
         )}
       />
 
