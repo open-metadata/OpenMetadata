@@ -93,6 +93,7 @@ export type ModifiedDbtConfig = DbtConfig &
   >;
 
 export interface AddIngestionState {
+  dataModelFilterPattern: FilterPattern;
   chartFilterPattern: FilterPattern;
   database?: string;
   dashboardFilterPattern: FilterPattern;
@@ -110,6 +111,7 @@ export interface AddIngestionState {
   includeLineage: boolean;
   includeTags: boolean;
   includeView: boolean;
+  includeDataModels: boolean;
   ingestionName: string;
   ingestSampleData: boolean;
   markAllDeletedTables: boolean | undefined;
@@ -128,6 +130,7 @@ export interface AddIngestionState {
   resultLimit: number;
   saveState: LoadingState;
   schemaFilterPattern: FilterPattern;
+  showDataModelFilter: boolean;
   showChartFilter: boolean;
   showDashboardFilter: boolean;
   showDatabaseFilter: boolean;
@@ -159,4 +162,5 @@ export enum ShowFilter {
   showTableFilter = 'showTableFilter',
   showTopicFilter = 'showTopicFilter',
   showContainerFilter = 'showContainerFilter',
+  showDataModelFilter = 'showDataModelFilter',
 }

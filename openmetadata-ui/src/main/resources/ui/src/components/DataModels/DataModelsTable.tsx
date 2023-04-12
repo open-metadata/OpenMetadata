@@ -36,6 +36,7 @@ const DataModelTable = ({ data, isLoading }: DataModelTableProps) => {
         title: t('label.name'),
         dataIndex: 'displayName',
         key: 'displayName',
+        width: 350,
         render: (_, record: ServicePageData) => {
           return (
             <Link to={getDataModelDetailsPath(record.fullyQualifiedName || '')}>

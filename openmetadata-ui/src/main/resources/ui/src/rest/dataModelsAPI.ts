@@ -13,6 +13,7 @@
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { DashboardDataModel } from 'generated/entity/data/dashboardDataModel';
+import { EntityHistory } from 'generated/type/entityHistory';
 import { EntityReference } from 'generated/type/entityReference';
 import { getURLWithQueryFields } from 'utils/APIUtils';
 import APIClient from './index';
@@ -25,6 +26,17 @@ const configOptionsForPatch = {
 
 const configOptions = {
   headers: { 'Content-type': 'application/json' },
+};
+
+export const getDataModelDetails = async (
+  id: string,
+  arrQueryFields: string | string[]
+) => {
+  const url = getURLWithQueryFields(`${URL}/${id}`, arrQueryFields);
+
+  const response = await APIClient.get<DashboardDataModel>(url);
+
+  return response.data;
 };
 
 export const getDataModelsByName = async (
@@ -79,6 +91,22 @@ export const removeDataModelFollower = async (id: string, userId: string) => {
       changeDescription: { fieldsDeleted: { oldValue: EntityReference[] }[] };
     }>
   >(`${URL}/${id}/followers/${userId}`, configOptions);
+
+  return response.data;
+};
+
+export const getDataModelVersionsList = async (id: string) => {
+  const url = `${URL}/${id}/versions`;
+
+  const response = await APIClient.get<EntityHistory>(url);
+
+  return response.data;
+};
+
+export const getDataModelVersion = async (id: string, version: string) => {
+  const url = `${URL}/${id}/versions/${version}`;
+
+  const response = await APIClient.get<DashboardDataModel>(url);
 
   return response.data;
 };

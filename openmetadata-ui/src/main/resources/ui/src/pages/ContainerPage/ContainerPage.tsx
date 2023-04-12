@@ -36,7 +36,7 @@ import {
   ResourceEntity,
 } from 'components/PermissionProvider/PermissionProvider.interface';
 import { FQN_SEPARATOR_CHAR } from 'constants/char.constants';
-import { getServiceDetailsPath } from 'constants/constants';
+import { getServiceDetailsPath, getVersionPath } from 'constants/constants';
 import { NO_PERMISSION_TO_VIEW } from 'constants/HelperTextUtil';
 import { EntityInfo, EntityType } from 'enums/entity.enum';
 import { ServiceCategory } from 'enums/service.enum';
@@ -60,7 +60,7 @@ import {
   patchContainerDetails,
   removeContainerFollower,
   restoreContainer,
-} from 'rest/objectStoreAPI';
+} from 'rest/storageAPI';
 import {
   getCurrentUserId,
   getEntityMissingError,
@@ -303,10 +303,7 @@ const ContainerPage = () => {
       {
         name: serviceName || '',
         url: serviceName
-          ? getServiceDetailsPath(
-              serviceName,
-              ServiceCategory.OBJECT_STORE_SERVICES
-            )
+          ? getServiceDetailsPath(serviceName, ServiceCategory.STORAGE_SERVICES)
           : '',
         imgSrc: serviceType ? serviceTypeLogo(serviceType) : undefined,
       },
@@ -576,6 +573,12 @@ const ContainerPage = () => {
     }
   };
 
+  const versionHandler = () => {
+    history.push(
+      getVersionPath(EntityType.CONTAINER, containerName, toString(version))
+    );
+  };
+
   // Effects
   useEffect(() => {
     if (hasViewPermission) {
@@ -640,6 +643,7 @@ const ContainerPage = () => {
           updateOwner={hasEditOwnerPermission ? handleUpdateOwner : undefined}
           updateTier={hasEditTierPermission ? handleUpdateTier : undefined}
           version={version}
+          versionHandler={versionHandler}
           onRestoreEntity={handleRestoreContainer}
         />
         <Tabs activeKey={tab} className="h-full" onChange={handleTabChange}>

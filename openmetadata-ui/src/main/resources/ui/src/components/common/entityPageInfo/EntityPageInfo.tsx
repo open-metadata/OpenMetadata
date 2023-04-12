@@ -84,7 +84,6 @@ interface Props {
   currentOwner?: Dashboard['owner'];
   removeTier?: () => void;
   onRestoreEntity?: () => void;
-  allowSoftDelete?: boolean;
   isRecursiveDelete?: boolean;
   extraDropdownContent?: ItemType[];
 }
@@ -118,7 +117,6 @@ const EntityPageInfo = ({
   removeTier,
   onRestoreEntity,
   isRecursiveDelete = false,
-  allowSoftDelete,
   extraDropdownContent,
 }: Props) => {
   const history = useHistory();
@@ -454,11 +452,7 @@ const EntityPageInfo = ({
           ) : null}
           {!isVersionSelected && (
             <ManageButton
-              allowSoftDelete={
-                entityType === EntityType.DATABASE_SCHEMA
-                  ? allowSoftDelete
-                  : !deleted
-              }
+              allowSoftDelete={!deleted}
               canDelete={canDelete}
               deleted={deleted}
               entityFQN={entityFqn}

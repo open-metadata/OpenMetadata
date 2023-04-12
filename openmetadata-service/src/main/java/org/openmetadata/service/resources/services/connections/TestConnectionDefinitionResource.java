@@ -1,6 +1,5 @@
 package org.openmetadata.service.resources.services.connections;
 
-import com.google.inject.Inject;
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.Hidden;
 import io.swagger.v3.oas.annotations.Operation;
@@ -59,7 +58,6 @@ public class TestConnectionDefinitionResource
     return testConnectionDefinition;
   }
 
-  @Inject
   public TestConnectionDefinitionResource(CollectionDAO dao, Authorizer authorizer) {
     super(TestConnectionDefinition.class, new TestConnectionDefinitionRepository(dao), authorizer);
   }

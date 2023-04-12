@@ -40,6 +40,7 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
   tagList,
   onCancel,
   onSelectionChange,
+  onAddButtonClick,
   className,
   containerClass,
   showTags = true,
@@ -133,20 +134,20 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
   );
 
   return (
-    <Space
-      align="center"
-      className={classNames('w-full', containerClass)}
-      data-testid="tag-container"
-      size={8}>
+    <div
+      className={classNames('w-full d-flex items-center gap-2', containerClass)}
+      data-testid="tag-container">
       {showTags && !editable && (
         <Space wrap align="center" size={4}>
           {showAddTagButton && (
-            <Tags
-              className="tw-font-semibold"
-              startWith={TAG_START_WITH.PLUS}
-              tag={TAG_CONSTANT}
-              type="border"
-            />
+            <span className="tw-text-primary" onClick={onAddButtonClick}>
+              <Tags
+                className="tw-font-semibold"
+                startWith={TAG_START_WITH.PLUS}
+                tag={TAG_CONSTANT}
+                type="border"
+              />
+            </span>
           )}
           {tags.map(getTagsElement)}
 
@@ -170,7 +171,7 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
         <>
           <Select
             autoFocus
-            className={classNames('w-min-10', className)}
+            className={classNames('flex-grow', className)}
             data-testid="tag-selector"
             defaultValue={selectedTagsInternal}
             mode="multiple"
@@ -193,14 +194,14 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
           </Select>
           <>
             <Button
-              className="w-6 p-x-05"
+              className="p-x-05"
               data-testid="cancelAssociatedTag"
               icon={<CloseOutlined size={12} />}
               size="small"
               onClick={handleCancel}
             />
             <Button
-              className="w-6 p-x-05"
+              className="p-x-05"
               data-testid="saveAssociatedTag"
               icon={<CheckOutlined size={12} />}
               size="small"
@@ -212,7 +213,7 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
       ) : (
         children
       )}
-    </Space>
+    </div>
   );
 };
 

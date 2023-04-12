@@ -121,7 +121,6 @@ import org.openmetadata.service.jdbi3.UserRepository.UserCsv;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.bots.BotResourceTest;
 import org.openmetadata.service.resources.databases.TableResourceTest;
-import org.openmetadata.service.resources.locations.LocationResourceTest;
 import org.openmetadata.service.resources.teams.UserResource.UserList;
 import org.openmetadata.service.security.AuthenticationException;
 import org.openmetadata.service.util.EntityUtil;
@@ -1112,17 +1111,6 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     String emailUser = nullOrEmpty(name) ? UUID.randomUUID().toString() : name;
     emailUser = emailUser.length() > 64 ? emailUser.substring(0, 64) : emailUser;
     return new CreateUser().withName(name).withEmail(emailUser + "@open-metadata.org").withProfile(PROFILE);
-  }
-
-  @Override
-  public User beforeDeletion(TestInfo test, User user) throws HttpResponseException {
-    LocationResourceTest locationResourceTest = new LocationResourceTest();
-    EntityReference userRef = reduceEntityReference(user);
-    locationResourceTest.createEntity(
-        locationResourceTest.createRequest(getEntityName(test, 0), null, null, userRef), ADMIN_AUTH_HEADERS);
-    locationResourceTest.createEntity(
-        locationResourceTest.createRequest(getEntityName(test, 1), null, null, TEAM11_REF), ADMIN_AUTH_HEADERS);
-    return user;
   }
 
   @Override

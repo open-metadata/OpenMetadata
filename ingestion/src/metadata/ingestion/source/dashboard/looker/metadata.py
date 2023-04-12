@@ -78,7 +78,7 @@ from metadata.ingestion.source.dashboard.looker.models import (
 from metadata.ingestion.source.dashboard.looker.parser import LkmlParser
 from metadata.readers.github import GitHubReader
 from metadata.utils import fqn
-from metadata.utils.filters import filter_by_chart
+from metadata.utils.filters import filter_by_chart, filter_by_datamodel
 from metadata.utils.helpers import clean_uri, get_standard_chart_type
 from metadata.utils.logger import ingestion_logger
 
@@ -183,48 +183,55 @@ class LookerSource(DashboardServiceSource):
         Get the Explore and View information and prepare
         the model creation request
         """
-        try:
-            explore_datamodel = CreateDashboardDataModelRequest(
-                name=build_datamodel_name(model.model_name, model.name),
-                displayName=model.name,
-                description=model.description,
-                service=self.context.dashboard_service.fullyQualifiedName.__root__,
-                dataModelType=DataModelType.LookMlExplore.value,
-                serviceType=DashboardServiceType.Looker.value,
-                columns=get_columns_from_model(model),
-                sql=self._get_explore_sql(model),
-            )
-            yield explore_datamodel
-            self.status.scanned(f"Data Model Scanned: {model.name}")
-
-            # Maybe use the project_name as key too?
-            # Save the explores for when we create the lineage with the dashboards and views
-            self._explores_cache[
-                explore_datamodel.name.__root__
-            ] = self.context.dataModel  # This is the newly created explore
-
-            # We can get VIEWs from the JOINs to know the dependencies
-            # We will only try and fetch if we have the credentials
-            if self.service_connection.githubCredentials:
-                for view in model.joins:
-                    yield from self._process_view(
-                        view_name=ViewName(view.name), explore=model
+        if self.source_config.includeDataModels:
+            try:
+                datamodel_name = build_datamodel_name(model.model_name, model.name)
+                if filter_by_datamodel(
+                    self.source_config.dataModelFilterPattern, datamodel_name
+                ):
+                    self.status.filter(datamodel_name, "Data model filtered out.")
+                else:
+                    explore_datamodel = CreateDashboardDataModelRequest(
+                        name=datamodel_name,
+                        displayName=model.name,
+                        description=model.description,
+                        service=self.context.dashboard_service.fullyQualifiedName.__root__,
+                        dataModelType=DataModelType.LookMlExplore.value,
+                        serviceType=DashboardServiceType.Looker.value,
+                        columns=get_columns_from_model(model),
+                        sql=self._get_explore_sql(model),
                     )
+                    yield explore_datamodel
+                    self.status.scanned(f"Data Model Scanned: {model.name}")
 
-        except ValidationError as err:
-            error = f"Validation error yielding Data Model [{model.name}]: {err}"
-            logger.debug(traceback.format_exc())
-            logger.error(error)
-            self.status.failed(
-                name=model.name, error=error, stack_trace=traceback.format_exc()
-            )
-        except Exception as err:
-            error = f"Wild error yielding Data Model [{model.name}]: {err}"
-            logger.debug(traceback.format_exc())
-            logger.error(error)
-            self.status.failed(
-                name=model.name, error=error, stack_trace=traceback.format_exc()
-            )
+                    # Maybe use the project_name as key too?
+                    # Save the explores for when we create the lineage with the dashboards and views
+                    self._explores_cache[
+                        explore_datamodel.name.__root__
+                    ] = self.context.dataModel  # This is the newly created explore
+
+                    # We can get VIEWs from the JOINs to know the dependencies
+                    # We will only try and fetch if we have the credentials
+                    if self.service_connection.githubCredentials:
+                        for view in model.joins:
+                            yield from self._process_view(
+                                view_name=ViewName(view.name), explore=model
+                            )
+
+            except ValidationError as err:
+                error = f"Validation error yielding Data Model [{model.name}]: {err}"
+                logger.debug(traceback.format_exc())
+                logger.error(error)
+                self.status.failed(
+                    name=model.name, error=error, stack_trace=traceback.format_exc()
+                )
+            except Exception as err:
+                error = f"Wild error yielding Data Model [{model.name}]: {err}"
+                logger.debug(traceback.format_exc())
+                logger.error(error)
+                self.status.failed(
+                    name=model.name, error=error, stack_trace=traceback.format_exc()
+                )
 
     def _get_explore_sql(self, explore: LookmlModelExplore) -> Optional[str]:
         """
@@ -507,7 +514,6 @@ class LookerSource(DashboardServiceSource):
         source_elements = fqn.split_table_name(table_name=source)
 
         for database_name in [source_elements["database"], None]:
-
             from_fqn = fqn.build(
                 self.metadata,
                 entity_type=Table,
@@ -639,7 +645,6 @@ class LookerSource(DashboardServiceSource):
                 str(dashboard.usageSummary.date.__root__) != self.today
                 or not dashboard.usageSummary.dailyStats.count
             ):
-
                 latest_usage = dashboard.usageSummary.dailyStats.count
 
                 new_usage = current_views - latest_usage

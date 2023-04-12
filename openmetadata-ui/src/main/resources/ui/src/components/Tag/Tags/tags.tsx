@@ -81,7 +81,7 @@ const Tags: FunctionComponent<TagProps> = ({
 
     return (
       <div
-        className={classNames(baseStyle, layoutStyles, className)}
+        className={classNames(baseStyle, layoutStyles, className, 'tags-item')}
         data-testid="tags"
         onClick={() => {
           if (tag.source && startWith !== TAG_START_WITH.PLUS) {
