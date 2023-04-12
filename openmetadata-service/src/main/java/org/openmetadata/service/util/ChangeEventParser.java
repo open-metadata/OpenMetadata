@@ -219,7 +219,7 @@ public final class ChangeEventParser {
     slackMessage.setUsername(event.getUserName());
     if (event.getEntity() != null) {
       String eventType;
-      if ((EntityInterface) event.getEntity() instanceof TestCase) {
+      if (event.getEntity() instanceof TestCase) {
         eventType = "testSuite";
       } else {
         eventType = event.getEntityType();
@@ -440,8 +440,7 @@ public final class ChangeEventParser {
     String fieldName = "queryUsage";
     String newVal = getFieldValueForQuery(newValue, entity, publishTo);
     String oldVal = getFieldValueForQuery(oldValue, entity, publishTo);
-    String message = createMessageForField(publishTo, link, changeType, fieldName, oldVal, newVal);
-    return message;
+    return createMessageForField(publishTo, link, changeType, fieldName, oldVal, newVal);
   }
 
   private static String getFieldValueForQuery(Object fieldValue, EntityInterface entity, PUBLISH_TO publishTo) {

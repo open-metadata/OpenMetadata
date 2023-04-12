@@ -34,7 +34,7 @@ public class WorkflowRepository extends EntityRepository<Workflow> {
   }
 
   @Override
-  public void prepare(Workflow entity) throws IOException {
+  public void prepare(Workflow entity) {
     // validate request and status
     if (entity.getRequest() == null) {
       throw new IllegalArgumentException("Request must not be empty");
@@ -60,7 +60,7 @@ public class WorkflowRepository extends EntityRepository<Workflow> {
   }
 
   @Override
-  public void storeRelationships(Workflow entity) throws IOException {
+  public void storeRelationships(Workflow entity) {
     storeOwner(entity, entity.getOwner());
   }
 
