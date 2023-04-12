@@ -261,7 +261,7 @@ const GlossaryPage = () => {
     );
   }
 
-  const handleAssetClick = (asset: EntityDetailsObjectInterface) => {
+  const handleAssetClick = (asset?: EntityDetailsObjectInterface) => {
     setPreviewAsset(asset);
   };
 
@@ -288,6 +288,7 @@ const GlossaryPage = () => {
               <GlossaryV1
                 deleteStatus={deleteStatus}
                 isGlossaryActive={isGlossaryActive}
+                isSummaryPanelOpen={Boolean(previewAsset)}
                 isVersionsView={false}
                 selectedData={selectedData as Glossary}
                 updateGlossary={updateGlossary}

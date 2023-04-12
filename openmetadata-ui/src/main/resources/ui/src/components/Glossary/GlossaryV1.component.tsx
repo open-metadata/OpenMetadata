@@ -49,6 +49,7 @@ const GlossaryV1 = ({
   onGlossaryTermDelete,
   isVersionsView,
   onAssetClick,
+  isSummaryPanelOpen,
 }: GlossaryV1Props) => {
   const { action } =
     useParams<{ action: GlossaryAction; glossaryName: string }>();
@@ -174,6 +175,7 @@ const GlossaryV1 = ({
             glossaryTerm={selectedData as GlossaryTerm}
             handleGlossaryTermDelete={onGlossaryTermDelete}
             handleGlossaryTermUpdate={onGlossaryTermUpdate}
+            isSummaryPanelOpen={isSummaryPanelOpen}
             permissions={glossaryTermPermission}
             refreshGlossaryTerms={loadGlossaryTerms}
             onAssetClick={onAssetClick}

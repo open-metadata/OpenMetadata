@@ -25,7 +25,8 @@ export type GlossaryV1Props = {
   onGlossaryDelete: (id: string) => void;
   onGlossaryTermDelete: (id: string) => void;
   isVersionsView: boolean;
-  onAssetClick?: (asset: EntityDetailsObjectInterface) => void;
+  onAssetClick?: (asset?: EntityDetailsObjectInterface) => void;
+  isSummaryPanelOpen: boolean;
 };
 
 export enum GlossaryAction {
