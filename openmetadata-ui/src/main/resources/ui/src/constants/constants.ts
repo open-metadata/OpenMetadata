@@ -598,8 +598,8 @@ export const ENTITY_PATH: Record<string, string> = {
   pipelines: 'pipeline',
   mlmodels: 'mlmodel',
   containers: 'container',
-  tag: 'tag',
-  glossary: 'glossary',
+  tags: 'tag',
+  glossaries: 'glossary',
 };
 
 export const VALIDATE_MESSAGES = {

@@ -16,21 +16,28 @@ import {
   SortDescendingOutlined,
 } from '@ant-design/icons';
 import { Button, Card, Col, Row, Space, Tabs } from 'antd';
+import ErrorPlaceHolderES from 'components/common/error-with-placeholder/ErrorPlaceHolderES';
 import FacetFilter from 'components/common/facetfilter/FacetFilter';
+import { useGlobalSearchProvider } from 'components/GlobalSearchProvider/GlobalSearchProvider';
 import SearchedData from 'components/searched-data/SearchedData';
-import { SORT_ORDER } from 'enums/common.enum';
+import {
+  ELASTICSEARCH_ERROR_PLACEHOLDER_TYPE,
+  SORT_ORDER,
+} from 'enums/common.enum';
 import { EntityType } from 'enums/entity.enum';
 import unique from 'fork-ts-checker-webpack-plugin/lib/utils/array/unique';
 import {
   isEmpty,
   isNil,
   isNumber,
+  isString,
   isUndefined,
   lowerCase,
   noop,
   omit,
   toUpper,
 } from 'lodash';
+import Qs from 'qs';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router-dom';
@@ -93,6 +100,23 @@ const Explore: React.FC<ExploreProps> = ({
   const [entityDetails, setEntityDetails] =
     useState<{ details: EntityUnion; entityType: string }>();
 
+  const { searchCriteria } = useGlobalSearchProvider();
+
+  const parsedSearch = useMemo(
+    () =>
+      Qs.parse(
+        location.search.startsWith('?')
+          ? location.search.substr(1)
+          : location.search
+      ),
+    [location.search]
+  );
+
+  const searchQueryParam = useMemo(
+    () => (isString(parsedSearch.search) ? parsedSearch.search : ''),
+    [location.search]
+  );
+
   const { toggleModal, sqlQuery } = useAdvanceSearch();
 
   const handleClosePanel = () => {
@@ -113,32 +137,56 @@ const Explore: React.FC<ExploreProps> = ({
 
   const tabItems = useMemo(
     () =>
-      Object.entries(tabsInfo).map(([tabSearchIndex, tabDetail]) => ({
-        key: tabSearchIndex,
-        label: (
-          <div data-testid={`${lowerCase(tabDetail.label)}-tab`}>
-            {tabDetail.label}
-            <span className="p-l-xs ">
-              {!isNil(tabCounts)
-                ? getCountBadge(
-                    tabCounts[tabSearchIndex as ExploreSearchIndex],
-                    '',
-                    tabSearchIndex === searchIndex
-                  )
-                : getCountBadge()}
-            </span>
-          </div>
-        ),
-      })),
-    [tabsInfo, tabCounts]
+      Object.entries(tabsInfo)
+        .map(([tabSearchIndex, tabDetail]) => ({
+          key: tabSearchIndex,
+          label: (
+            <div data-testid={`${lowerCase(tabDetail.label)}-tab`}>
+              {tabDetail.label}
+              <span className="p-l-xs ">
+                {!isNil(tabCounts)
+                  ? getCountBadge(
+                      tabCounts[tabSearchIndex as ExploreSearchIndex],
+                      '',
+                      tabSearchIndex === searchIndex
+                    )
+                  : getCountBadge()}
+              </span>
+            </div>
+          ),
+          count: tabCounts
+            ? tabCounts[tabSearchIndex as ExploreSearchIndex]
+            : 0,
+        }))
+        .filter((tabItem) => {
+          return tabItem.count > 0 || tabItem.key === searchCriteria;
+        }),
+
+    [tab, tabsInfo, tabCounts]
   );
+
+  const activeTabKey = useMemo(() => {
+    if (tab) {
+      return searchIndex;
+    } else if (tabItems.length > 0) {
+      return tabItems[0].key as ExploreSearchIndex;
+    }
+
+    return searchIndex;
+  }, [tab, searchIndex, tabItems]);
 
   // get entity active tab by URL params
   const defaultActiveTab = useMemo(() => {
-    const entityName = toUpper(ENTITY_PATH[tab] ?? 'table');
+    if (tab) {
+      const entityName = toUpper(ENTITY_PATH[tab]);
 
-    return SearchIndex[entityName as ExploreSearchIndexKey];
-  }, [tab]);
+      return SearchIndex[entityName as ExploreSearchIndexKey];
+    } else if (tabItems.length > 0) {
+      return tabItems[0].key;
+    }
+
+    return SearchIndex.TABLE;
+  }, [tab, tabItems]);
 
   const handleFacetFilterChange: FacetFilterProps['onSelectHandler'] = (
     checked,
@@ -240,7 +288,7 @@ const Explore: React.FC<ExploreProps> = ({
   }, []);
 
   useEffect(() => {
-    const dropdownItems = getDropDownItems(searchIndex);
+    const dropdownItems = getDropDownItems(activeTabKey);
 
     setSelectedQuickFilters(
       dropdownItems.map((item) => ({
@@ -252,7 +300,7 @@ const Explore: React.FC<ExploreProps> = ({
         ),
       }))
     );
-  }, [searchIndex, quickFilters]);
+  }, [activeTabKey, quickFilters]);
 
   useEffect(() => {
     if (
@@ -260,9 +308,14 @@ const Explore: React.FC<ExploreProps> = ({
       searchResults?.hits?.hits[0] &&
       searchResults?.hits?.hits[0]._index === searchIndex
     ) {
+      const entityType =
+        tab ||
+        (searchCriteria !== ''
+          ? tabsInfo[searchCriteria as ExploreSearchIndex].path
+          : 'tables');
       handleSummaryPanelDisplay(
         searchResults?.hits?.hits[0]._source as EntityUnion,
-        tab
+        entityType
       );
     } else {
       setShowSummaryPanel(false);
@@ -274,116 +327,127 @@ const Explore: React.FC<ExploreProps> = ({
     <PageLayoutV1
       className="explore-page-container"
       leftPanel={
-        <Card
-          className="page-layout-v1-left-panel page-layout-v1-vertical-scroll"
-          data-testid="data-summary-container">
-          <ExploreSkeleton loading={Boolean(loading)}>
-            <FacetFilter
-              aggregations={omit(aggregations, 'entityType')}
-              filters={facetFilters}
-              showDeleted={showDeleted}
-              onChangeShowDeleted={onChangeShowDeleted}
-              onClearFilter={onChangeFacetFilters}
-              onSelectHandler={handleFacetFilterChange}
-            />
-          </ExploreSkeleton>
-        </Card>
+        tabItems.length > 0 && (
+          <Card
+            className="page-layout-v1-left-panel page-layout-v1-vertical-scroll"
+            data-testid="data-summary-container">
+            <ExploreSkeleton loading={Boolean(loading)}>
+              <FacetFilter
+                aggregations={omit(aggregations, 'entityType')}
+                filters={facetFilters}
+                showDeleted={showDeleted}
+                onChangeShowDeleted={onChangeShowDeleted}
+                onClearFilter={onChangeFacetFilters}
+                onSelectHandler={handleFacetFilterChange}
+              />
+            </ExploreSkeleton>
+          </Card>
+        )
       }
       pageTitle={t('label.explore')}>
-      <Tabs
-        activeKey={searchIndex}
-        defaultActiveKey={defaultActiveTab}
-        items={tabItems}
-        size="small"
-        tabBarExtraContent={
-          <Space align="center" size={4}>
-            <SortingDropDown
-              fieldList={tabsInfo[searchIndex].sortingFields}
-              handleFieldDropDown={onChangeSortValue}
-              sortField={sortValue}
-            />
-            <Button
-              className="p-0"
-              size="small"
-              type="text"
-              onClick={() =>
-                onChangeSortOder(
-                  isAscSortOrder ? SORT_ORDER.DESC : SORT_ORDER.ASC
-                )
-              }>
-              {isAscSortOrder ? (
-                <SortAscendingOutlined {...sortProps} />
-              ) : (
-                <SortDescendingOutlined {...sortProps} />
-              )}
-            </Button>
-          </Space>
-        }
-        onChange={(tab) => {
-          tab && onChangeSearchIndex(tab as ExploreSearchIndex);
-          setShowSummaryPanel(false);
-        }}
-      />
-
-      <Row gutter={[8, 0]} wrap={false}>
-        <Col className="searched-data-container" flex="auto">
-          <Row gutter={[16, 16]}>
-            {showFilters && (
-              <Col span={24}>
-                <ExploreQuickFilters
-                  fields={selectedQuickFilters}
-                  index={searchIndex}
-                  onAdvanceSearch={() => toggleModal(true)}
-                  onFieldValueSelect={handleQuickFiltersValueSelect}
+      {tabItems.length > 0 && (
+        <>
+          <Tabs
+            activeKey={activeTabKey}
+            defaultActiveKey={defaultActiveTab}
+            items={tabItems}
+            size="small"
+            tabBarExtraContent={
+              <Space align="center" size={4}>
+                <SortingDropDown
+                  fieldList={tabsInfo[searchIndex].sortingFields}
+                  handleFieldDropDown={onChangeSortValue}
+                  sortField={sortValue}
                 />
-              </Col>
-            )}
+                <Button
+                  className="p-0"
+                  size="small"
+                  type="text"
+                  onClick={() =>
+                    onChangeSortOder(
+                      isAscSortOrder ? SORT_ORDER.DESC : SORT_ORDER.ASC
+                    )
+                  }>
+                  {isAscSortOrder ? (
+                    <SortAscendingOutlined {...sortProps} />
+                  ) : (
+                    <SortDescendingOutlined {...sortProps} />
+                  )}
+                </Button>
+              </Space>
+            }
+            onChange={(tab) => {
+              tab && onChangeSearchIndex(tab as ExploreSearchIndex);
+              setShowSummaryPanel(false);
+            }}
+          />
+          <Row gutter={[8, 0]} wrap={false}>
+            <Col className="searched-data-container" flex="auto">
+              <Row gutter={[16, 16]}>
+                {showFilters && (
+                  <Col span={24}>
+                    <ExploreQuickFilters
+                      fields={selectedQuickFilters}
+                      index={activeTabKey}
+                      onAdvanceSearch={() => toggleModal(true)}
+                      onFieldValueSelect={handleQuickFiltersValueSelect}
+                    />
+                  </Col>
+                )}
 
-            {sqlQuery && (
-              <Col span={24}>
-                <AppliedFilterText
-                  filterText={sqlQuery}
-                  onEdit={() => toggleModal(true)}
-                />
-              </Col>
-            )}
+                {sqlQuery && (
+                  <Col span={24}>
+                    <AppliedFilterText
+                      filterText={sqlQuery}
+                      onEdit={() => toggleModal(true)}
+                    />
+                  </Col>
+                )}
 
-            <Col span={24}>
-              {!loading ? (
-                <SearchedData
-                  isFilterSelected
-                  showResultCount
-                  currentPage={page}
-                  data={searchResults?.hits.hits ?? []}
-                  handleSummaryPanelDisplay={handleSummaryPanelDisplay}
-                  isSummaryPanelVisible={showSummaryPanel}
-                  paginate={(value) => {
-                    if (isNumber(value)) {
-                      onChangePage(value);
-                    } else if (!isNaN(Number.parseInt(value))) {
-                      onChangePage(Number.parseInt(value));
-                    }
-                  }}
-                  selectedEntityId={entityDetails?.details.id || ''}
-                  totalValue={searchResults?.hits.total.value ?? 0}
-                />
-              ) : (
-                <Loader />
-              )}
+                <Col span={24}>
+                  {!loading ? (
+                    <SearchedData
+                      isFilterSelected
+                      showResultCount
+                      currentPage={page}
+                      data={searchResults?.hits.hits ?? []}
+                      handleSummaryPanelDisplay={handleSummaryPanelDisplay}
+                      isSummaryPanelVisible={showSummaryPanel}
+                      paginate={(value) => {
+                        if (isNumber(value)) {
+                          onChangePage(value);
+                        } else if (!isNaN(Number.parseInt(value))) {
+                          onChangePage(Number.parseInt(value));
+                        }
+                      }}
+                      selectedEntityId={entityDetails?.details.id || ''}
+                      totalValue={searchResults?.hits.total.value ?? 0}
+                    />
+                  ) : (
+                    <Loader />
+                  )}
+                </Col>
+              </Row>
             </Col>
+            {showSummaryPanel && (
+              <Col flex="400px">
+                <EntitySummaryPanel
+                  entityDetails={
+                    entityDetails || ({} as EntityDetailsObjectInterface)
+                  }
+                  handleClosePanel={handleClosePanel}
+                />
+              </Col>
+            )}
           </Row>
-        </Col>
-        {showSummaryPanel && (
-          <Col flex="400px">
-            <EntitySummaryPanel
-              entityDetails={
-                entityDetails || ({} as EntityDetailsObjectInterface)
-              }
-              handleClosePanel={handleClosePanel}
-            />
-          </Col>
-        )}
-      </Row>
+        </>
+      )}
+      {tabItems.length === 0 && (
+        <ErrorPlaceHolderES
+          query={searchQueryParam}
+          type={ELASTICSEARCH_ERROR_PLACEHOLDER_TYPE.NO_DATA}
+        />
+      )}
     </PageLayoutV1>
   );
 };

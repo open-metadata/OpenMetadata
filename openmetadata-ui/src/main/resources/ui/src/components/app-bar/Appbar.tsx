@@ -13,7 +13,7 @@
 
 import { Button, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import { ExploreSearchIndex } from 'components/Explore/explore.interface';
+import { useGlobalSearchProvider } from 'components/GlobalSearchProvider/GlobalSearchProvider';
 import { tabsInfo } from 'constants/explore.constants';
 import { CookieStorage } from 'cookie-storage';
 import { isEmpty, isString } from 'lodash';
@@ -71,6 +71,8 @@ const Appbar: React.FC = (): JSX.Element => {
     onLogoutHandler,
   } = useAuthContext();
 
+  const { searchCriteria } = useGlobalSearchProvider();
+
   const parsedQueryString = Qs.parse(
     location.search.startsWith('?')
       ? location.search.substr(1)
@@ -82,9 +84,6 @@ const Appbar: React.FC = (): JSX.Element => {
     : '';
 
   const [searchValue, setSearchValue] = useState(searchQuery);
-  const [searchCriteria, setSearchCriteria] = useState<ExploreSearchIndex | ''>(
-    ''
-  );
 
   const [isOpen, setIsOpen] = useState<boolean>(false);
   const [isFeatureModalOpen, setIsFeatureModalOpen] = useState<boolean>(false);
@@ -99,10 +98,6 @@ const Appbar: React.FC = (): JSX.Element => {
 
     setSearchValue(value);
     value ? setIsOpen(true) : setIsOpen(false);
-  };
-
-  const handleSearchCriteriaChange = (value: ExploreSearchIndex | '') => {
-    setSearchCriteria(value);
   };
 
   const supportLinks = [
@@ -309,7 +304,7 @@ const Appbar: React.FC = (): JSX.Element => {
     addToRecentSearched(value);
 
     const defaultTab: string =
-      searchCriteria !== '' ? tabsInfo[searchCriteria].path : 'tables';
+      searchCriteria !== '' ? tabsInfo[searchCriteria].path : '';
 
     history.push(getExplorePath({ tab: defaultTab, search: value }));
   };
@@ -398,12 +393,10 @@ const Appbar: React.FC = (): JSX.Element => {
           handleOnClick={handleOnclick}
           handleSearchBoxOpen={setIsOpen}
           handleSearchChange={handleSearchChange}
-          handleSearchCriteriaChange={handleSearchCriteriaChange}
           isFeatureModalOpen={isFeatureModalOpen}
           isSearchBoxOpen={isOpen}
           pathname={location.pathname}
           profileDropdown={profileDropdown}
-          searchCriteria={searchCriteria}
           searchValue={searchValue || ''}
           supportDropdown={supportLinks}
           username={getUserName()}

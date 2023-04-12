@@ -18,7 +18,11 @@ import {
   QueryFieldValueInterface,
   QueryFilterInterface,
 } from 'pages/explore/ExplorePage.interface';
-import { ExploreQuickFilterField } from './explore.interface';
+import {
+  ExploreQuickFilterField,
+  ExploreSearchIndex,
+  SearchHitCounts,
+} from './explore.interface';
 
 /**
  * It takes an array of filters and a data lookup and returns a new object with the filters grouped by
@@ -89,4 +93,13 @@ export const getSelectedValuesFromQuickFilter = (
   }
 
   return EMPTY_DATA;
+};
+
+export const findActiveSearchIndex = (
+  obj: SearchHitCounts
+): ExploreSearchIndex | null => {
+  const keys = Object.keys(obj) as ExploreSearchIndex[];
+  const filteredKeys = keys.filter((key) => obj[key] > 0);
+
+  return filteredKeys.length > 0 ? filteredKeys[0] : null;
 };

@@ -16,6 +16,8 @@ import { AxiosError } from 'axios';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import PageContainerV1 from 'components/containers/PageContainerV1';
 import PageLayoutV1 from 'components/containers/PageLayoutV1';
+import { ExploreSearchIndex } from 'components/Explore/explore.interface';
+import { useGlobalSearchProvider } from 'components/GlobalSearchProvider/GlobalSearchProvider';
 import GlossaryV1 from 'components/Glossary/GlossaryV1.component';
 import Loader from 'components/Loader/Loader';
 import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
@@ -24,6 +26,7 @@ import { FQN_SEPARATOR_CHAR } from 'constants/char.constants';
 import { PAGE_SIZE_LARGE, ROUTES } from 'constants/constants';
 import { GLOSSARIES_DOCS } from 'constants/docs.constants';
 import { ERROR_PLACEHOLDER_TYPE, LOADING_STATE } from 'enums/common.enum';
+import { SearchIndex } from 'enums/search.enum';
 import { compare } from 'fast-json-patch';
 import { Glossary } from 'generated/entity/data/glossary';
 import { GlossaryTerm } from 'generated/entity/data/glossaryTerm';
@@ -59,6 +62,7 @@ const GlossaryPage = () => {
   );
   const [selectedData, setSelectedData] = useState<Glossary | GlossaryTerm>();
   const [isRightPanelLoading, setIsRightPanelLoading] = useState(true);
+  const { updateSearchCriteria } = useGlobalSearchProvider();
 
   const isGlossaryActive = useMemo(() => {
     setIsRightPanelLoading(true);
@@ -96,8 +100,10 @@ const GlossaryPage = () => {
       setIsRightPanelLoading(false);
     }
   };
+
   useEffect(() => {
     fetchGlossaryList();
+    updateSearchCriteria(SearchIndex.GLOSSARY as ExploreSearchIndex);
   }, []);
 
   const fetchGlossaryTermDetails = async () => {

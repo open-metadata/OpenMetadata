@@ -11,115 +11,38 @@
  *  limitations under the License.
  */
 
-import { Modal } from 'antd';
-import { debounce } from 'lodash';
-import Qs from 'qs';
-import { BaseSelectRef } from 'rc-select';
-import React, { FC, ReactNode, useCallback, useRef, useState } from 'react';
-import { useHistory } from 'react-router-dom';
-import { getExplorePath, ROUTES } from '../../constants/constants';
-import { addToRecentSearched } from '../../utils/CommonUtils';
-import { Keys } from '../../utils/KeyboardUtil';
-import GlobalSearchSuggestions from './GlobalSearchSuggestions/GlobalSearchSuggestions';
+import { ExploreSearchIndex } from 'components/Explore/explore.interface';
+import React, { FC, ReactNode, useContext, useState } from 'react';
+import { GlobalSearchContextType } from './GlobalSearchProvider.interface';
 
-export const GlobalSearchContext = React.createContext(null);
+export const GlobalSearchContext = React.createContext(
+  {} as GlobalSearchContextType
+);
 
 interface Props {
   children: ReactNode;
 }
 
 const GlobalSearchProvider: FC<Props> = ({ children }: Props) => {
-  const history = useHistory();
-  const selectRef = useRef<BaseSelectRef>(null);
-  const [visible, setVisible] = useState<boolean>(false);
-  const [searchValue, setSearchValue] = useState<string>();
-  const [suggestionSearch, setSuggestionSearch] = useState<string>('');
-  const [isSuggestionsLoading, setIsSuggestionsLoading] =
-    useState<boolean>(false);
-
-  const handleCancel = () => {
-    setSearchValue('');
-    setSuggestionSearch('');
-    setVisible(false);
-  };
-
-  const debouncedOnChange = useCallback(
-    (text: string): void => {
-      setSuggestionSearch(text);
-    },
-    [setSuggestionSearch]
+  const [searchCriteria, setSearchCriteria] = useState<ExploreSearchIndex | ''>(
+    ''
   );
 
-  const debounceOnSearch = useCallback(debounce(debouncedOnChange, 400), [
-    debouncedOnChange,
-  ]);
-
-  const handleIsSuggestionsLoading = (value: boolean) => {
-    setIsSuggestionsLoading(value);
-  };
-
-  const searchHandler = (value: string) => {
-    addToRecentSearched(value);
-    if (location.pathname.startsWith(ROUTES.EXPLORE)) {
-      // Already on explore page, only push search change
-      const paramsObject: Record<string, unknown> = Qs.parse(
-        location.search.startsWith('?')
-          ? location.search.substr(1)
-          : location.search
-      );
-      history.push({
-        search: Qs.stringify({ ...paramsObject, search: value }),
-      });
-    } else {
-      // Outside Explore page
-      history.push(getExplorePath({ search: value }));
-    }
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    const target = e.target as HTMLInputElement;
-    if (e.key === 'Enter') {
-      handleCancel();
-      searchHandler(target.value);
-    } else if (e.key === Keys.ESC) {
-      handleCancel();
-    }
+  const updateSearchCriteria = (criteria: ExploreSearchIndex | '') => {
+    setSearchCriteria(criteria);
   };
 
   return (
-    <GlobalSearchContext.Provider value={null}>
+    <GlobalSearchContext.Provider
+      value={{
+        searchCriteria,
+        updateSearchCriteria,
+      }}>
       {children}
-      <Modal
-        closable
-        destroyOnClose
-        bodyStyle={{
-          padding: '20px',
-          height: searchValue ? '314px' : '85px',
-        }}
-        closeIcon={<></>}
-        footer={null}
-        maskClosable={false}
-        open={visible}
-        transitionName=""
-        width={650}
-        onCancel={handleCancel}>
-        <GlobalSearchSuggestions
-          handleIsSuggestionsLoading={handleIsSuggestionsLoading}
-          isSuggestionsLoading={isSuggestionsLoading}
-          searchText={suggestionSearch}
-          selectRef={selectRef}
-          value={searchValue || ''}
-          onInputKeyDown={handleKeyDown}
-          onOptionSelection={handleCancel}
-          onSearch={(newValue) => {
-            debounceOnSearch(newValue);
-            setSearchValue(newValue);
-            setIsSuggestionsLoading(true);
-          }}
-        />
-      </Modal>
     </GlobalSearchContext.Provider>
   );
 };
+
+export const useGlobalSearchProvider = () => useContext(GlobalSearchContext);
 
 export default GlobalSearchProvider;

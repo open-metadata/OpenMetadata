@@ -11,14 +11,12 @@
  *  limitations under the License.
  */
 
-import { ExploreSearchIndex } from 'components/Explore/explore.interface';
 import { DropDownListItem } from '../dropdown/types';
 
 export interface NavBarProps {
   supportDropdown: DropDownListItem[];
   profileDropdown: DropDownListItem[];
   searchValue: string;
-  searchCriteria: ExploreSearchIndex | '';
   isTourRoute?: boolean;
   isFeatureModalOpen: boolean;
   pathname: string;
@@ -27,7 +25,6 @@ export interface NavBarProps {
   handleSearchBoxOpen: (value: boolean) => void;
   handleFeatureModal: (value: boolean) => void;
   handleSearchChange: (value: string) => void;
-  handleSearchCriteriaChange: (value: ExploreSearchIndex | '') => void;
   handleOnClick: () => void;
   handleClear: () => void;
   handleKeyDown: (e: React.KeyboardEvent<HTMLInputElement>) => void;

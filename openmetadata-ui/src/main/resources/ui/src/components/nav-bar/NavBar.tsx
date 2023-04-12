@@ -22,6 +22,7 @@ import {
   Tooltip,
 } from 'antd';
 import { useApplicationConfigProvider } from 'components/ApplicationConfigProvider/ApplicationConfigProvider';
+import { useGlobalSearchProvider } from 'components/GlobalSearchProvider/GlobalSearchProvider';
 import { CookieStorage } from 'cookie-storage';
 import i18next from 'i18next';
 import { debounce, toString } from 'lodash';
@@ -81,7 +82,6 @@ const NavBar = ({
   supportDropdown,
   profileDropdown,
   searchValue,
-  searchCriteria,
   isFeatureModalOpen,
   isTourRoute = false,
   pathname,
@@ -90,12 +90,12 @@ const NavBar = ({
   handleSearchBoxOpen,
   handleFeatureModal,
   handleSearchChange,
-  handleSearchCriteriaChange,
   handleKeyDown,
   handleOnClick,
   handleClear,
 }: NavBarProps) => {
   const { logoConfig } = useApplicationConfigProvider();
+  const { searchCriteria, updateSearchCriteria } = useGlobalSearchProvider();
 
   // get current user details
   const currentUser = useMemo(
@@ -126,7 +126,7 @@ const NavBar = ({
         listHeight={300}
         popupClassName="global-search-select-menu"
         value={searchCriteria}
-        onChange={handleSearchCriteriaChange}>
+        onChange={updateSearchCriteria}>
         {globalSearchOptions.map(({ value, label }) => (
           <Option key={value} value={value}>
             {label}
