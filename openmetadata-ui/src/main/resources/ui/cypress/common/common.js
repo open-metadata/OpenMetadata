@@ -76,10 +76,6 @@ export const handleIngestionRetry = (
   const testIngestionsTab = () => {
     // click on the tab only for the first time
     if (retryCount === 0) {
-      // Wait for pipeline status to be loaded
-      if (ingestionType === 'metadata') {
-        verifyResponseStatusCode('@ingestionPipelines', 200);
-      }
       cy.get('[data-testid="Ingestions"]').should('exist').and('be.visible');
       cy.get(
         '[data-testid="Ingestions"] >> [data-testid="filter-count"]'
@@ -282,9 +278,17 @@ export const testServiceCreationAndIngestion = (
   cy.clock();
   cy.wait(10000);
 
-  cy.get('[data-testid="view-service-button"]').should('be.visible');
-  cy.get('[data-testid="view-service-button"]').click();
+  interceptURL(
+    'GET',
+    '/api/v1/services/ingestionPipelines?*',
+    'ingestionPipelines'
+  );
+  interceptURL('GET', '/api/v1/services/*/name/*', 'serviceDetails');
+
+  cy.get('[data-testid="view-service-button"]').should('be.visible').click();
   verifyResponseStatusCode('@getIngestionPipelineStatus', 200);
+  verifyResponseStatusCode('@ingestionPipelines', 200);
+  verifyResponseStatusCode('@serviceDetails', 200);
   handleIngestionRetry(type, testIngestionButton);
 };
 
