@@ -90,6 +90,7 @@ import org.openmetadata.service.resources.feeds.FeedUtil;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.util.*;
+import org.openmetadata.service.util.ChangeEventParser.PublishTo;
 import org.openmetadata.service.util.RestUtil.DeleteResponse;
 import org.openmetadata.service.util.RestUtil.PatchResponse;
 
@@ -458,7 +459,7 @@ public class FeedRepository {
         message =
             String.format(
                 "Resolved the Task with Description - %s",
-                getPlaintextDiff(ChangeEventParser.PUBLISH_TO.FEED, oldValue, task.getNewValue()));
+                getPlaintextDiff(PublishTo.FEED, oldValue, task.getNewValue()));
       } else if (List.of(TaskType.RequestTag, TaskType.UpdateTag).contains(type)) {
         List<TagLabel> tags;
         if (task.getOldValue() != null) {
@@ -468,9 +469,7 @@ public class FeedRepository {
         tags = JsonUtils.readObjects(task.getNewValue(), TagLabel.class);
         String newValue = getTagFQNs(tags);
         message =
-            String.format(
-                "Resolved the Task with Tag(s) - %s",
-                getPlaintextDiff(ChangeEventParser.PUBLISH_TO.FEED, oldValue, newValue));
+            String.format("Resolved the Task with Tag(s) - %s", getPlaintextDiff(PublishTo.FEED, oldValue, newValue));
       } else {
         message = "Resolved the Task.";
       }

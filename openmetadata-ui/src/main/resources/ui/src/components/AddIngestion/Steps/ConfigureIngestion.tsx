@@ -751,7 +751,7 @@ const ConfigureIngestion = ({
         fields = [...fields, ...mlModelMetadataFields];
 
         break;
-      case ServiceCategory.OBJECT_STORE_SERVICES:
+      case ServiceCategory.STORAGE_SERVICES:
         fields = [...fields, ...objectStoreMetadataFields];
 
         break;
