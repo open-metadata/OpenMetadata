@@ -13,6 +13,7 @@
 
 import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { EntityType } from 'enums/entity.enum';
 import React from 'react';
 import EntitySummaryPanel from './EntitySummaryPanel.component';
 import { mockDashboardEntityDetails } from './mocks/DashboardSummary.mock';
@@ -108,6 +109,7 @@ describe('EntitySummaryPanel component tests', () => {
       <EntitySummaryPanel
         entityDetails={{
           details: mockTopicEntityDetails,
+          entityType: EntityType.TOPIC,
         }}
         handleClosePanel={mockHandleClosePanel}
       />
@@ -130,7 +132,10 @@ describe('EntitySummaryPanel component tests', () => {
     render(
       <EntitySummaryPanel
         entityDetails={{
-          details: mockDashboardEntityDetails,
+          details: {
+            ...mockDashboardEntityDetails,
+            entityType: EntityType.DASHBOARD,
+          },
         }}
         handleClosePanel={mockHandleClosePanel}
       />
@@ -153,7 +158,10 @@ describe('EntitySummaryPanel component tests', () => {
     render(
       <EntitySummaryPanel
         entityDetails={{
-          details: mockPipelineEntityDetails,
+          details: {
+            ...mockPipelineEntityDetails,
+            entityType: EntityType.PIPELINE,
+          },
         }}
         handleClosePanel={mockHandleClosePanel}
       />
@@ -176,7 +184,10 @@ describe('EntitySummaryPanel component tests', () => {
     render(
       <EntitySummaryPanel
         entityDetails={{
-          details: { ...mockMlModelEntityDetails, entityType: 'mlmodel' },
+          details: {
+            ...mockMlModelEntityDetails,
+            entityType: EntityType.MLMODEL,
+          },
         }}
         handleClosePanel={mockHandleClosePanel}
       />
