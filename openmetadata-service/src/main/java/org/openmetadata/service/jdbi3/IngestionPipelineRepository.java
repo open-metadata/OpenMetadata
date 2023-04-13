@@ -39,6 +39,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.services.ingestionpipelines.IngestionPipelineResource;
 import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
+import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
@@ -298,5 +299,14 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
     IngestionPipeline decrypted = JsonUtils.convertValue(JsonUtils.getMap(original), IngestionPipeline.class);
     SecretsManagerFactory.getSecretsManager().encryptOrDecryptIngestionPipeline(decrypted, false);
     return decrypted;
+  }
+
+  public static void validateProfileSample(IngestionPipeline ingestionPipeline) throws JsonProcessingException {
+
+    JSONObject sourceConfigJson = new JSONObject(JsonUtils.pojoToJson(ingestionPipeline.getSourceConfig().getConfig()));
+    String profileSampleType = sourceConfigJson.optString("profileSampleType");
+    double profileSample = sourceConfigJson.optDouble("profileSample");
+
+    EntityUtil.validateProfileSample(profileSampleType, profileSample);
   }
 }
