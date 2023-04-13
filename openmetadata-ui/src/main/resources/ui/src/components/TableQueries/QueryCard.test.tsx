@@ -11,10 +11,17 @@
  *  limitations under the License.
  */
 
-import { findByTestId, findByText, render } from '@testing-library/react';
+import {
+  findByTestId,
+  findByText,
+  fireEvent,
+  render,
+  screen,
+} from '@testing-library/react';
 import { Query } from 'generated/entity/data/query';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
+import { act } from 'react-test-renderer';
 import { DEFAULT_ENTITY_PERMISSION } from 'utils/PermissionsUtils';
 import QueryCard from './QueryCard';
 import { QueryCardProp } from './TableQueries.interface';
@@ -65,6 +72,13 @@ jest.mock('./QueryCardExtraOption/QueryCardExtraOption.component', () => {
 jest.mock('./QueryUsedByOtherTable/QueryUsedByOtherTable.component', () => {
   return jest.fn().mockReturnValue(<>QueryUsedByOtherTable</>);
 });
+const mockOnCopyToClipBoard = jest.fn();
+jest.mock('hooks/useClipBoard', () => ({
+  ...jest.requireActual('hooks/useClipBoard'),
+  useClipboard: jest
+    .fn()
+    .mockImplementation(() => ({ onCopyToClipBoard: mockOnCopyToClipBoard })),
+}));
 
 const mockProps: QueryCardProp = {
   query: mockQueryData,
@@ -74,6 +88,7 @@ const mockProps: QueryCardProp = {
   onQueryUpdate: jest.fn(),
   onUpdateVote: jest.fn(),
   isExpanded: false,
+  afterDeleteAction: jest.fn(),
 };
 
 describe('Test QueryCard Component', () => {
@@ -101,5 +116,19 @@ describe('Test QueryCard Component', () => {
     expect(query).toBeInTheDocument();
     expect(queryCardExtraOption).toBeInTheDocument();
     expect(expandButton).toBeInTheDocument();
+  });
+
+  it('Copy button should work', async () => {
+    render(<QueryCard {...mockProps} />, {
+      wrapper: MemoryRouter,
+    });
+
+    const copyBtn = await screen.findByTestId('query-entity-copy-button');
+
+    await act(async () => {
+      fireEvent.click(copyBtn);
+    });
+
+    expect(mockOnCopyToClipBoard).toHaveBeenCalled();
   });
 });

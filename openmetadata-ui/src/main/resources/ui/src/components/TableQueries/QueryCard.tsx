@@ -30,8 +30,10 @@ import QueryUsedByOtherTable from './QueryUsedByOtherTable/QueryUsedByOtherTable
 import { QueryCardProp } from './TableQueries.interface';
 import { ReactComponent as ExitFullScreen } from '/assets/svg/exit-full-screen.svg';
 import { ReactComponent as FullScreen } from '/assets/svg/full-screen.svg';
+import { ReactComponent as CopyIcon } from '/assets/svg/icon-copy.svg';
 
 // css import
+import { useClipboard } from 'hooks/useClipBoard';
 import './table-queries.style.less';
 
 const { Text, Paragraph } = Typography;
@@ -52,6 +54,7 @@ const QueryCard: FC<QueryCardProp> = ({
   const { datasetFQN } = useParams<{ datasetFQN: string }>();
   const location = useLocation();
   const history = useHistory();
+  const { onCopyToClipBoard } = useClipboard(query.query);
   const searchFilter = useMemo(
     () => parseSearchParams(location.search),
     [location.search]
@@ -140,18 +143,26 @@ const QueryCard: FC<QueryCardProp> = ({
             </Space>
           }
           onClick={handleCardClick}>
-          <Button
-            className="query-entity-expand-button bg-white"
-            data-testid="query-entity-expand-button"
-            icon={
-              isExpanded ? (
-                <ExitFullScreen height={16} width={16} />
-              ) : (
-                <FullScreen height={16} width={16} />
-              )
-            }
-            onClick={handleExpandClick}
-          />
+          <Space className="query-entity-button" size={8}>
+            <Button
+              className="flex-center bg-white"
+              data-testid="query-entity-expand-button"
+              icon={
+                isExpanded ? (
+                  <ExitFullScreen height={16} width={16} />
+                ) : (
+                  <FullScreen height={16} width={16} />
+                )
+              }
+              onClick={handleExpandClick}
+            />
+            <Button
+              className="flex-center bg-white"
+              data-testid="query-entity-copy-button"
+              icon={<CopyIcon height={16} width={16} />}
+              onClick={onCopyToClipBoard}
+            />
+          </Space>
 
           <div
             className={classNames(

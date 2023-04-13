@@ -13,7 +13,6 @@
 import { Button, Dropdown, MenuProps, Space, Tag } from 'antd';
 import { ReactComponent as IconDropdown } from 'assets/svg/menu.svg';
 import { NO_PERMISSION_FOR_ACTION } from 'constants/HelperTextUtil';
-import { useClipboard } from 'hooks/useClipBoard';
 import { isUndefined, split } from 'lodash';
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -22,7 +21,6 @@ import { QueryVoteType } from '../TableQueries.interface';
 import { QueryCardExtraOptionProps } from './QueryCardExtraOption.interface';
 import { ReactComponent as DeleteIcon } from '/assets/svg/ic-delete.svg';
 import { ReactComponent as EditIcon } from '/assets/svg/ic-edit.svg';
-import { ReactComponent as CopyIcon } from '/assets/svg/icon-copy.svg';
 import { ReactComponent as ThumbsUpFilled } from '/assets/svg/thumbs-up-filled.svg';
 import { ReactComponent as ThumbsUpOutline } from '/assets/svg/thumbs-up-outline.svg';
 
@@ -41,7 +39,6 @@ const QueryCardExtraOption = ({
 }: QueryCardExtraOptionProps) => {
   const { EditAll, EditQueries, Delete } = permission;
   const { t } = useTranslation();
-  const { onCopyToClipBoard } = useClipboard(query.query);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
 
   const onDeleteClick = async () => {
@@ -76,12 +73,6 @@ const QueryCardExtraOption = ({
         disabled: !Delete,
         onClick: () => setShowDeleteModal(true),
         title: Delete ? undefined : NO_PERMISSION_FOR_ACTION,
-      },
-      {
-        key: 'copy-query',
-        label: t('label.copy'),
-        icon: <CopyIcon height={16} width={16} />,
-        onClick: onCopyToClipBoard,
       },
     ];
 
