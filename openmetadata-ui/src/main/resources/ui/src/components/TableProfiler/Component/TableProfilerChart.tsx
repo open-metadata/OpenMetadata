@@ -81,7 +81,10 @@ const TableProfilerChart = ({ dateRangeObject }: TableProfilerChartProps) => {
   ) => {
     setIsLoading(true);
     await fetchTableProfiler(fqn, dateRangeObj);
-    await fetchSystemProfiler(fqn, dateRangeObj);
+    await fetchSystemProfiler(fqn, {
+      startTs: dateRangeObj.startTs * 1000,
+      endTs: dateRangeObj.endTs * 1000,
+    });
     setIsLoading(false);
   };
 
