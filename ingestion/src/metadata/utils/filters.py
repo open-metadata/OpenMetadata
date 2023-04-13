@@ -229,7 +229,7 @@ def filter_by_datamodel(
     datamodel_filter_pattern: Optional[FilterPattern], datamodel_name: str
 ) -> bool:
     """
-    Return True if the chart needs to be filtered, False otherwise
+    Return True if the models needs to be filtered, False otherwise
 
     Include takes precedence over exclude
 
