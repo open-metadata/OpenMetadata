@@ -200,3 +200,8 @@ When deploying openmetadata dependencies helm chart, use the below command -
 ```commandline
 helm install openmetadata-dependencies open-metadata/openmetadata-dependencies --values values-dependencies.yaml
 ```
+When deploying openmetadata server helm chart, use the below command - 
+  
+```commandline
+helm install openmetadata open-metadata/openmetadata
+```
