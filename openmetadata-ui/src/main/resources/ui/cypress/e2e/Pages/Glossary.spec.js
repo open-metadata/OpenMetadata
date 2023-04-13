@@ -49,6 +49,7 @@ const visitGlossaryTermPage = (termName, fqn, fetchPermission) => {
     .click();
 
   cy.get('.ant-tabs .glossary-overview-tab').should('be.visible').click();
+  cy.wait(200);
   verifyResponseStatusCode('@getGlossaryTerms', 200);
   verifyResponseStatusCode('@getTagsList', 200);
   if (fetchPermission) {
