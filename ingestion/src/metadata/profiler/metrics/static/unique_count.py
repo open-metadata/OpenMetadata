@@ -20,6 +20,7 @@ from sqlalchemy.orm import DeclarativeMeta, Session
 from metadata.profiler.metrics.core import QueryMetric
 from metadata.profiler.orm.registry import NOT_COMPUTE
 from metadata.utils.logger import profiler_logger
+from metadata.utils.sqa_utils import handle_array
 
 logger = profiler_logger()
 
@@ -56,11 +57,10 @@ class UniqueCount(QueryMetric):
         # Run all queries on top of the sampled data
         col = column(self.col.name)
         only_once = (
-            session.query(func.count(col))
-            .select_from(sample)
+            handle_array(session.query(func.count(col)), self.col, sample)
             .group_by(col)
-            .having(func.count(col) == 1)  # Values that appear only once
-        )
+            .having(func.count(col) == 1)
+        )  # Values that appear only once
 
         only_once_cte = only_once.cte("only_once")
         return session.query(func.count().label(self.name())).select_from(only_once_cte)

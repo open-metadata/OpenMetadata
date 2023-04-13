@@ -25,12 +25,14 @@ from metadata.generated.schema.entity.data.table import (
 from metadata.profiler.orm.functions.modulo import ModuloFn
 from metadata.profiler.orm.functions.random_num import RandomNumFn
 from metadata.utils.logger import profiler_logger
+from metadata.utils.profiler_utils import ColumnLike
 from metadata.utils.sqa_utils import (
     build_query_filter,
     dispatch_to_date_or_datetime,
     get_integer_range_filter,
     get_partition_col_type,
     get_value_filter,
+    handle_array,
 )
 
 RANDOM_LABEL = "random"
@@ -113,14 +115,21 @@ class partition_filter_handler:
                 if self.build_sample:
                     return (
                         _self.session.query(
-                            _self.table,
+                            *[Column(col_name) for col_name in _self.sample_columns],
                             (ModuloFn(RandomNumFn(), 100)).label(RANDOM_LABEL),
                         )
+                        .select_from(_self.table)
                         .filter(partition_filter)
                         .cte(f"{_self.table.__tablename__}_rnd")
                     )
-                query_results = _self._build_query(*args, **kwargs).select_from(
-                    _self._sample if self.sampled else _self.table
+                # this needs to be set before we call
+                # _self._build_query(*args, **kwarsg)
+                # as we pop some args.
+                column_like = ColumnLike.create(kwargs)
+                query_results = handle_array(
+                    _self._build_query(*args, **kwargs),
+                    column_like,  # type: ignore
+                    _self._sample if self.sampled else _self.table,
                 )
                 return query_results.first() if self.first else query_results.all()
             return func(_self, *args, **kwargs)

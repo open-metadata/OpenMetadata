@@ -24,7 +24,8 @@ from sqlalchemy.orm.util import AliasedClass
 
 from metadata.profiler.processor.handle_partition import partition_filter_handler
 from metadata.utils.logger import query_runner_logger
-from metadata.utils.sqa_utils import get_query_filter_for_runner
+from metadata.utils.profiler_utils import ColumnLike
+from metadata.utils.sqa_utils import get_query_filter_for_runner, handle_array
 
 logger = query_runner_logger()
 
@@ -62,7 +63,15 @@ class QueryRunner:
         """Run select statement against sample data"""
         filter_ = get_query_filter_for_runner(kwargs)
 
-        query = self._build_query(*entities, **kwargs).select_from(self._sample)
+        # this needs to be set before we call
+        # _self._build_query(*args, **kwarsg)
+        # as we pop some args.
+        column_like = ColumnLike.create(kwargs)
+        query = handle_array(
+            self._build_query(*entities, **kwargs),
+            column_like,  # type: ignore
+            self._sample,
+        )
 
         if filter_ is not None:
             return query.filter(filter_)
@@ -92,7 +101,15 @@ class QueryRunner:
         if self._profile_sample_query:
             return self._select_from_user_query(*entities, **kwargs).first()
 
-        query = self._build_query(*entities, **kwargs).select_from(self.table)
+        # this needs to be set before we call
+        # _self._build_query(*args, **kwarsg)
+        # as we pop some args.
+        column_like = ColumnLike.create(kwargs)
+        query = handle_array(
+            self._build_query(*entities, **kwargs),
+            column_like,  # type: ignore
+            self.table,
+        )
 
         if filter_ is not None:
             return query.filter(filter_).first()
@@ -107,7 +124,15 @@ class QueryRunner:
         if self._profile_sample_query:
             return self._select_from_user_query(*entities, **kwargs).all()
 
-        query = self._build_query(*entities, **kwargs).select_from(self.table)
+        # this needs to be set before we call
+        # _self._build_query(*args, **kwarsg)
+        # as we pop some args.
+        column_like = ColumnLike.create(kwargs)
+        query = handle_array(
+            self._build_query(*entities, **kwargs),
+            column_like,  # type: ignore
+            self.table,
+        )
 
         if filter_ is not None:
             return query.filter(filter_).all()

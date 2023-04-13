@@ -121,7 +121,11 @@ def check_if_should_quote_column_name(table_service_type) -> Optional[bool]:
 
 
 def build_orm_col(
-    idx: int, col: Column, table_service_type, parent: Optional[str] = None
+    idx: int,
+    col: Column,
+    table_service_type,
+    parent: Optional[str] = None,
+    is_array: bool = False,
 ) -> sqlalchemy.Column:
     """
     Cook the ORM column from our metadata instance
@@ -139,16 +143,31 @@ def build_orm_col(
     else:
         name = col.name.__root__
 
-    return sqlalchemy.Column(
-        name=str(name),
-        type_=map_types(col, table_service_type),
-        primary_key=not bool(idx),  # The first col seen is used as PK
-        quote=check_if_should_quote_column_name(table_service_type)
+    kwargs = {
+        "name": str(name),
+        "type_": map_types(col, table_service_type),
+        "primary_key": not bool(idx),  # The first col seen is used as PK
+        "quote": check_if_should_quote_column_name(table_service_type)
         or check_snowflake_case_sensitive(table_service_type, col.name.__root__),
-        key=str(
+        "key": str(
             col.name.__root__
         ).lower(),  # Add lowercase column name as key for snowflake case sensitive columns
+    }
+
+    sqa_column = sqlalchemy.Column(
+        **kwargs,
     )
+
+    # pylint: disable=protected-access
+    if table_service_type == databaseService.DatabaseServiceType.BigQuery and is_array:
+        sqa_column._is_array = is_array
+        sqa_column._array_col = name.split(".")[0]
+    else:
+        sqa_column._is_array = False
+        sqa_column._array_col = None
+    # pylint: enable=protected-access
+
+    return sqa_column
 
 
 def get_columns(
@@ -156,6 +175,7 @@ def get_columns(
     service_type: databaseService.DatabaseServiceType,
     start: int = 0,
     parent: Optional[str] = None,
+    is_array: bool = False,
 ) -> dict:
     """Build dictionnary of ORM columns
 
@@ -163,7 +183,8 @@ def get_columns(
         column_list (List[Column]): list of columns
         service_type (DatabaseServiceType): database service type
         start (int): index of the column used to define the primary key
-        parent (str): parent column name
+        parent_name (str): parent column name
+        parent_col (Column): parent column object
     """
     cols = {}
 
@@ -175,11 +196,24 @@ def get_columns(
         if name in SQA_RESERVED_ATTRIBUTES:
             name = f"{name}_"
 
-        cols[name] = build_orm_col(idx, col, service_type, parent)
+        if col.dataType == DataType.ARRAY:
+            is_array = True
+        cols[name] = build_orm_col(idx, col, service_type, parent, is_array)
+
         if col.children:
+            # if parent is an array we'll need to process the children as array
+            # by unnesting them
+            if is_array or col.dataType == DataType.ARRAY:
+                is_array = True
             cols = {
                 **cols,
-                **get_columns(col.children, service_type, start=idx, parent=name),
+                **get_columns(
+                    col.children,
+                    service_type,
+                    start=idx,
+                    parent=name,
+                    is_array=is_array,
+                ),
             }
 
     return cols
