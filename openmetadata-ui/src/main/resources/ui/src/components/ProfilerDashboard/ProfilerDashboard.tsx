@@ -519,7 +519,10 @@ const ProfilerDashboard: React.FC<ProfilerDashboardProps> = ({
                 </>
               )}
               {activeTab === ProfilerDashboardTab.PROFILER && (
-                <DatePickerMenu handleDateRangeChange={handleDateRangeChange} />
+                <DatePickerMenu
+                  showSelectedCustomRange
+                  handleDateRangeChange={handleDateRangeChange}
+                />
               )}
               <Tooltip
                 title={

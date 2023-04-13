@@ -23,6 +23,7 @@ import {
 import { DateRangeObject } from 'components/ProfilerDashboard/component/TestSummary';
 import ProfilerDashboard from 'components/ProfilerDashboard/ProfilerDashboard';
 import { ProfilerDashboardTab } from 'components/ProfilerDashboard/profilerDashboard.interface';
+import { DEFAULT_RANGE_DATA } from 'constants/profiler.constant';
 import { compare } from 'fast-json-patch';
 import { isEmpty } from 'lodash';
 import React, { useEffect, useState } from 'react';
@@ -91,7 +92,10 @@ const ProfilerDashboardPage = () => {
     dateRangeObject?: DateRangeObject
   ) => {
     try {
-      const { data } = await getColumnProfilerList(fqn, dateRangeObject);
+      const { data } = await getColumnProfilerList(
+        fqn,
+        dateRangeObject ?? DEFAULT_RANGE_DATA
+      );
       setProfilerData(data);
     } catch (error) {
       showErrorToast(error as AxiosError);
