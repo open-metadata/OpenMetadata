@@ -52,7 +52,7 @@
       "title": "Authentication Mode",
       "description": "Authentication mode to connect to hive.",
       "type": "string",
-      "enum": ["NONE", "LDAP", "KERBEROS", "CUSTOM", "NOSASL", "BASIC", "GSSAPI"],
+      "enum": ["NONE", "LDAP", "KERBEROS", "CUSTOM", "NOSASL", "BASIC", "GSSAPI", "JWT", "PLAIN"],
       "default": "NONE"
     },
     "kerberosServiceName": {
