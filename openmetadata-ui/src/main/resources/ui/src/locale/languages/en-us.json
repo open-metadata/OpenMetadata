@@ -505,6 +505,7 @@
     "new-test-suite": "New Test Suite",
     "next": "Next",
     "no": "No",
+    "no-data-asset-found-for": "No data assets found for",
     "no-data-found": "No data found",
     "no-description": "No description",
     "no-diff-available": "No diff available",

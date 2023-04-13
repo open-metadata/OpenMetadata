@@ -21,6 +21,7 @@ import {
   SearchHitCounts,
   UrlParams,
 } from 'components/Explore/explore.interface';
+import { findActiveSearchIndex } from 'components/Explore/Explore.utils';
 import { withAdvanceSearch } from 'components/router/withAdvanceSearch';
 import { SORT_ORDER } from 'enums/common.enum';
 import { get, isEmpty, isNil, isString, isUndefined } from 'lodash';
@@ -208,15 +209,21 @@ const ExplorePage: FunctionComponent = () => {
   };
 
   const searchIndex = useMemo(() => {
-    const tabInfo = Object.entries(tabsInfo).find(
-      ([, tabInfo]) => tabInfo.path === tab
-    );
-    if (isNil(tabInfo)) {
-      return SearchIndex.TABLE;
+    if (searchHitCounts) {
+      const tabInfo = Object.entries(tabsInfo).find(
+        ([, tabInfo]) => tabInfo.path === tab
+      );
+      if (isNil(tabInfo)) {
+        const activeKey = findActiveSearchIndex(searchHitCounts);
+
+        return activeKey ? activeKey : SearchIndex.TABLE;
+      }
+
+      return tabInfo[0] as ExploreSearchIndex;
     }
 
-    return tabInfo[0] as ExploreSearchIndex;
-  }, [tab]);
+    return SearchIndex.TABLE;
+  }, [tab, searchHitCounts]);
 
   const page = useMemo(() => {
     const pageParam = parsedSearch.page;
