@@ -27,9 +27,7 @@ const addTags = (tag) => {
 
 const checkTags = (tag, checkForParentEntity) => {
   if (checkForParentEntity) {
-    cy.get(
-      '[data-testid="entity-tags"] [data-testid="tags-wrapper"] [data-testid="tag-container"] > .ant-space > :nth-child(1)'
-    )
+    cy.get('[data-testid="entity-tags"]  [data-testid="tag-container"]')
       .scrollIntoView()
       .should('be.visible')
       .contains(tag);
@@ -53,21 +51,21 @@ const removeTags = (tag, checkForParentEntity, isTable) => {
   } else {
     if (isTable) {
       cy.get(
-        '[data-testid="classification-tags-0"] [data-testid="edit-button"] '
+        '[data-testid="classification-tags-0"] [data-testid="edit-button"]'
       )
         .scrollIntoView()
-        .should('be.hidden')
+        .trigger('mouseover')
         .click();
     } else {
       cy.get(
-        `.ant-table-tbody [data-testid="tag-container"] [data-testid="add-tag"] span`
+        `.ant-table-tbody [data-testid="tag-container"] [data-testid="add-tag"]`
       )
         .eq(0)
         .should('be.visible')
         .click();
     }
 
-    cy.get(`[title="${tag}"] .ant-select-selection-item-remove > .anticon`)
+    cy.get(`[title="${tag}"] [data-testid="remove-tags"`)
       .should('be.visible')
       .click();
 

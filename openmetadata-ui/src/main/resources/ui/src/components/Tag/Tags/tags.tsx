@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { CloseOutlined } from '@ant-design/icons';
 import { Space, Tooltip } from 'antd';
 import classNames from 'classnames';
 import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
@@ -37,6 +38,8 @@ const Tags: FunctionComponent<TagProps> = ({
   startWith,
   type = 'contained',
   showOnlyName = false,
+  removeTag,
+  isRemovable,
 }: TagProps) => {
   const { t } = useTranslation();
   const history = useHistory();
@@ -46,16 +49,20 @@ const Tags: FunctionComponent<TagProps> = ({
   const textLayoutStyles = tagStyles.text[type] || tagStyles.text.default;
   const textEditStyles = editable ? tagStyles.text.editable : '';
 
+  const getTagString = (tag: string) => {
+    return tag.startsWith('#') ? tag.slice(1) : tag;
+  };
+
   const isGlossaryTag = useMemo(
     () => tag.source === TagSource.Glossary,
     [tag.source]
   );
 
-  const getStartIcon = useMemo(() => {
+  const startIcon = useMemo(() => {
     switch (startWith) {
       case TAG_START_WITH.PLUS:
         return <PlusIcon height={16} name="plus" width={16} />;
-      default:
+      case TAG_START_WITH.SOURCE_ICON:
         return isGlossaryTag ? (
           <IconPage
             data-testid="glossary-icon"
@@ -71,10 +78,12 @@ const Tags: FunctionComponent<TagProps> = ({
             width={12}
           />
         );
+      default:
+        return startWith;
     }
   }, [startWith, isGlossaryTag]);
 
-  const getTag = () => {
+  const tagChip = useMemo(() => {
     const tagName = showOnlyName
       ? tag.tagFQN.split(FQN_SEPARATOR_CHAR).slice(-2).join(FQN_SEPARATOR_CHAR)
       : tag.tagFQN;
@@ -98,25 +107,40 @@ const Tags: FunctionComponent<TagProps> = ({
             textEditStyles,
             'd-flex items-center cursor-pointer'
           )}
-          data-testid={editable ? `tag-${tag.tagFQN}` : `add-tag`}
+          data-testid={
+            editable && isRemovable ? `tag-${tag.tagFQN}` : `add-tag`
+          }
           size={4}>
-          {getStartIcon}
+          {startIcon}
           <span
             className={classNames(
               'text-xs font-medium',
               startWith === '+' && 'text-primary'
             )}>
             {getTagDisplay(tagName)}
+
+            {editable && isRemovable && (
+              <span
+                className="tw-py-0.5 tw-px-2 tw-rounded tw-cursor-pointer"
+                data-testid={`remove-${tag}-tag`}
+                onClick={(e: React.MouseEvent<HTMLElement, MouseEvent>) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  removeTag && removeTag(e, getTagString(tag.tagFQN));
+                }}>
+                <CloseOutlined className="tw-text-primary" />
+              </span>
+            )}
           </span>
         </Space>
       </div>
     );
-  };
+  }, [startIcon, tag, editable]);
 
   return (
     <>
       {startWith === TAG_START_WITH.PLUS ? (
-        getTag()
+        tagChip
       ) : (
         <Tooltip
           className="cursor-pointer"
@@ -139,7 +163,7 @@ const Tags: FunctionComponent<TagProps> = ({
             </div>
           }
           trigger="hover">
-          {getTag()}
+          {tagChip}
         </Tooltip>
       )}
     </>

@@ -94,6 +94,13 @@ const AddGlossary = ({
     });
   };
 
+  const handleReviewerRemove = (
+    _event: React.MouseEvent<HTMLElement, MouseEvent>,
+    removedTag: string
+  ) => {
+    setReviewer((pre) => pre.filter((option) => option.name !== removedTag));
+  };
+
   const validateForm = () => {
     const errMsg = {
       name: !name.trim(),
@@ -255,8 +262,10 @@ const AddGlossary = ({
                   return (
                     <Tags
                       editable
+                      isRemovable
                       className="tw-bg-gray-200"
                       key={index}
+                      removeTag={handleReviewerRemove}
                       tag={{
                         ...TAG_CONSTANT,
                         tagFQN: d.name ?? '',

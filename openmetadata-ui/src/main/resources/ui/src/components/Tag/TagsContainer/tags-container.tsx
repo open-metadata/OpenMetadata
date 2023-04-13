@@ -118,6 +118,7 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
         editable
         key={index}
         showOnlyName={tag.source === TagSource.Glossary}
+        startWith={TAG_START_WITH.SOURCE_ICON}
         tag={tag}
         type="border"
       />
@@ -179,6 +180,9 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
             placeholder={t('label.select-field', {
               field: t('label.tag-plural'),
             })}
+            removeIcon={
+              <CloseOutlined data-testid="remove-tags" height={8} width={8} />
+            }
             onChange={handleTagSelection}>
             {tagOptions.map(({ label, value, displayName }) => (
               <Select.Option key={label} value={value}>

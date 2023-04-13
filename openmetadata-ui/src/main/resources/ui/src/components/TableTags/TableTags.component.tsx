@@ -22,7 +22,7 @@ import { ThreadType } from 'generated/entity/feed/thread';
 import { TagSource } from 'generated/type/schema';
 import { EntityFieldThreads } from 'interface/feed.interface';
 import { isEmpty } from 'lodash';
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ENTITY_LINK_SEPARATOR } from 'utils/EntityUtils';
 import { getFieldThreadElement } from 'utils/FeedElementUtils';
@@ -52,22 +52,33 @@ const TableTags = ({
   dataTestId,
 }: TableTagsComponentProps) => {
   const { t } = useTranslation();
-  const otherTags =
-    type === TagSource.Glossary
-      ? tags[TagSource.Classification]
-      : tags[TagSource.Glossary];
-
   const [editColumnTag, setEditColumnTag] = useState<{
     column: Column;
     index: number;
   }>();
 
+  const columnFieldFQN = useMemo(
+    () =>
+      `${EntityField.COLUMNS}${ENTITY_LINK_SEPARATOR}${getColumnName(
+        record
+      )}${ENTITY_LINK_SEPARATOR}${EntityField.TAGS}`,
+    [record]
+  );
+
+  const otherTags = useMemo(
+    () =>
+      type === TagSource.Glossary
+        ? tags[TagSource.Classification]
+        : tags[TagSource.Glossary],
+    [type, tags]
+  );
+
   const handleEditColumnTag = (column: Column, index: number): void => {
     setEditColumnTag({ column, index });
   };
 
-  const getRequestTagsElement = (cell: Column) => {
-    const hasTags = !isEmpty(cell?.tags || []);
+  const getRequestTagsElement = useMemo(() => {
+    const hasTags = !isEmpty(record.tags || []);
     const text = hasTags
       ? t('label.update-request-tag-plural')
       : t('label.request-tag-plural');
@@ -78,7 +89,7 @@ const TableTags = ({
         data-testid="request-tags"
         type="text"
         onClick={() =>
-          hasTags ? onUpdateTagsHandler(cell) : onRequestTagsHandler(cell)
+          hasTags ? onUpdateTagsHandler(record) : onRequestTagsHandler(record)
         }>
         <Popover
           destroyTooltipOnHide
@@ -94,7 +105,7 @@ const TableTags = ({
         </Popover>
       </Button>
     );
-  };
+  }, [record]);
 
   return (
     <div className="hover-icon-group" data-testid={`${dataTestId}-${index}`}>
@@ -152,19 +163,22 @@ const TableTags = ({
                 <IconEdit height={16} name={t('label.edit')} width={16} />
               </Button>
             ) : null}
-            {getRequestTagsElement(record)}
+            {/*  Request and Update tags */}
+            {getRequestTagsElement}
+
+            {/*  List Conversation */}
             {getFieldThreadElement(
               getColumnName(record),
-              'tags',
+              EntityField.TAGS,
               entityFieldThreads as EntityFieldThreads[],
               onThreadLinkSelect,
               EntityType.TABLE,
               entityFqn,
-              `columns${ENTITY_LINK_SEPARATOR}${getColumnName(
-                record
-              )}${ENTITY_LINK_SEPARATOR}tags`,
+              columnFieldFQN,
               Boolean(record?.name?.length)
             )}
+
+            {/*  List Task */}
             {getFieldThreadElement(
               getColumnName(record),
               EntityField.TAGS,
@@ -172,9 +186,7 @@ const TableTags = ({
               onThreadLinkSelect,
               EntityType.TABLE,
               entityFqn,
-              `${EntityField.COLUMNS}${ENTITY_LINK_SEPARATOR}${getColumnName(
-                record
-              )}${ENTITY_LINK_SEPARATOR}${EntityField.TAGS}`,
+              columnFieldFQN,
               Boolean(record?.name),
               ThreadType.Task
             )}

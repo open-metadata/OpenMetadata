@@ -171,21 +171,12 @@ const EntityPageInfo = ({
 
   const getSelectedTags = useCallback(
     () =>
-      sortTagsCaseInsensitive(
-        tier?.tagFQN
-          ? [
-              ...tags.map((tag) => ({
-                ...tag,
-              })),
-              { tagFQN: tier.tagFQN },
-            ]
-          : [
-              ...tags.map((tag) => ({
-                ...tag,
-              })),
-            ]
-      ),
-    [tier, tags]
+      sortTagsCaseInsensitive([
+        ...tags.map((tag) => ({
+          ...tag,
+        })),
+      ]),
+    [tags]
   );
 
   const getFollowers = () => {

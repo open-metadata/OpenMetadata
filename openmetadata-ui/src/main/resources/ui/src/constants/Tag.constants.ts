@@ -23,4 +23,5 @@ export const TAG_CONSTANT = {
 
 export enum TAG_START_WITH {
   PLUS = '+',
+  SOURCE_ICON = 'source_icon',
 }
