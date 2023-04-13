@@ -94,6 +94,7 @@ export interface DataQualityTabProps {
 
 export interface TestSummaryProps {
   data: TestCase;
+  showExpandIcon?: boolean;
 }
 
 export interface ProfilerLatestValueProps {
