@@ -49,7 +49,7 @@ export enum GlobalSettingOptions {
   ALERT = 'alert',
   ADD_ALERTS = 'add-alerts',
   EDIT_ALERTS = 'edit-alert',
-  STORAGES = 'storage',
+  STORAGES = 'storages',
 }
 
 export const GLOBAL_SETTING_PERMISSION_RESOURCES = [

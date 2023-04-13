@@ -27,7 +27,11 @@ import { isUndefined, trim } from 'lodash';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { checkEmailInUse, generateRandomPwd } from 'rest/auth-API';
-import { getBotsPagePath, getUsersPagePath } from '../../constants/constants';
+import {
+  getBotsPagePath,
+  getUsersPagePath,
+  VALIDATE_MESSAGES,
+} from '../../constants/constants';
 import { passwordErrorMessage } from '../../constants/ErrorMessages.constant';
 import {
   passwordRegex,
@@ -710,7 +714,7 @@ const CreateUser = ({
           form={form}
           id="create-user-bot-form"
           layout="vertical"
-          validateMessages={{ required: '${label} is required' }}
+          validateMessages={VALIDATE_MESSAGES}
           onFinish={handleSave}>
           <Form.Item
             label={t('label.email')}
