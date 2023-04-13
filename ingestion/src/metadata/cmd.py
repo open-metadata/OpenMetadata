@@ -22,6 +22,7 @@ from metadata.cli.backup import UploadDestinationType, run_backup
 from metadata.cli.dataquality import run_test
 from metadata.cli.docker import BACKEND_DATABASES, DockerActions, run_docker
 from metadata.cli.ingest import run_ingest
+from metadata.cli.insight import run_insight
 from metadata.cli.openmetadata_dag_config_migration import (
     run_openmetadata_dag_config_migration,
 )
@@ -44,6 +45,7 @@ class MetadataCommands(Enum):
     BACKUP = "backup"
     RESTORE = "restore"
     WEBHOOK = "webhook"
+    INSIGHT = "insight"
     OPENMETADATA_IMPORTS_MIGRATION = "openmetadata_imports_migration"
     OPENMETADATA_DAG_CONFIG_MIGRATION = "openmetadata_dag_config_migration"
 
@@ -378,13 +380,18 @@ def get_parser(args=None):
             help="Simple Webserver to test webhook metadata events",
         )
     )
+    create_common_config_parser_args(
+        sub_parser.add_parser(
+            MetadataCommands.INSIGHT.value, help="Data Insigt Workflow"
+        )
+    )
 
     add_metadata_args(parser)
     parser.add_argument("--debug", help="Debug Mode", action="store_true")
     return parser.parse_args(args)
 
 
-def metadata(args=None):
+def metadata(args=None):  # pylint: disable=too-many-branches
     """
     This method implements parsing of the arguments passed from CLI
     """
@@ -400,6 +407,8 @@ def metadata(args=None):
 
     if metadata_workflow == MetadataCommands.INGEST.value:
         run_ingest(config_path=config_file)
+    if metadata_workflow == MetadataCommands.INSIGHT.value:
+        run_insight(config_path=config_file)
     if metadata_workflow == MetadataCommands.PROFILE.value:
         run_profiler(config_path=config_file)
     if metadata_workflow == MetadataCommands.TEST.value:

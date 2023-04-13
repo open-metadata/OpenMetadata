@@ -12,7 +12,6 @@
  */
 
 import { t } from 'i18next';
-import { isEmpty, isUndefined } from 'lodash';
 import { Team } from '../../generated/entity/teams/team';
 import { Paging } from '../../generated/type/paging';
 import { filterEntityAssets } from '../../utils/EntityUtils';
@@ -68,22 +67,4 @@ export const getTabs = (
   }
 
   return [tabs.teams, tabs.users, ...commonTabs];
-};
-
-export const searchTeam = (teams: Team[], value: string): Team[] => {
-  let results: Team[] = [];
-  for (const team of teams) {
-    const hasChildren = !isUndefined(team.children) && !isEmpty(team.children);
-    const matched =
-      team?.name?.toLowerCase().includes(value.toLowerCase()) ||
-      team?.displayName?.toLowerCase().includes(value.toLowerCase());
-    if (matched) {
-      results = [...results, { ...team, children: undefined }];
-    }
-    if (hasChildren) {
-      results = [...results, ...searchTeam(team.children as Team[], value)];
-    }
-  }
-
-  return results;
 };
