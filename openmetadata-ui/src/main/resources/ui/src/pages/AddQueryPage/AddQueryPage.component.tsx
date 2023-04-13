@@ -45,7 +45,7 @@ import { ServiceCategory } from 'enums/service.enum';
 import { OwnerType } from 'enums/user.enum';
 import { CreateQuery } from 'generated/api/data/createQuery';
 import { Table } from 'generated/entity/data/table';
-import { isEmpty, uniqBy } from 'lodash';
+import { filter, isEmpty } from 'lodash';
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router-dom';
@@ -143,10 +143,7 @@ const AddQueryPage = () => {
       }));
 
       return table
-        ? uniqBy(
-            [...options, { value: table.id, label: getEntityName(table) }],
-            'value'
-          )
+        ? filter(options, ({ value }) => value !== table.id)
         : options;
     } catch (error) {
       return [];
@@ -162,7 +159,6 @@ const AddQueryPage = () => {
   const getInitialOptions = async () => {
     try {
       const option = await fetchTableEntity();
-      form.setFieldValue('queryUsedIn', [table?.id]);
       setInitialOptions(option);
     } catch (error) {
       setInitialOptions([]);
@@ -187,12 +183,16 @@ const AddQueryPage = () => {
         id: getCurrentUserId(),
         type: OwnerType.USER,
       },
-      queryUsedIn: values.queryUsedIn
-        ? values.queryUsedIn.map((id: string) => ({
-            id,
-            type: EntityType.TABLE,
-          }))
-        : undefined,
+      queryUsedIn: [
+        {
+          id: table?.id ?? '',
+          type: EntityType.TABLE,
+        },
+        ...(values.queryUsedIn || []).map((id: string) => ({
+          id,
+          type: EntityType.TABLE,
+        })),
+      ],
       queryDate: getCurrentDateTimeStamp(),
     };
 
