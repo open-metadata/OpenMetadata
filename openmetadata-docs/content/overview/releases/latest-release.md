@@ -3,36 +3,42 @@ title: Latest Release
 slug: /overview/latest-release
 ---
 
-# [0.13.2 Release](https://github.com/open-metadata/OpenMetadata/releases/tag/0.13.2-release) - Jan 30th 2023 🎉
-
-## Improved SQL Lineage
-- We have collaborated with the [sqllineage](https://github.com/reata/sqllineage) and [sqlfluff](https://www.sqlfluff.com/) communities
-    to improve the parsing capabilities of `sqllineage`. We'll continue to collaborate to ship further improvements in new releases.
-
-## New Glossary UI
-- Moved from a tree view in the left panel to an easy to navigate list of the terms sorted alphabetically.
-- The term list shows the tags and descriptions in the cards.
-
-## Glossary Import & Export
-- You can now export your Glossary data as a CSV file.
-- In the same way, you can now bulk upload terms to a Glossary by adding their details in a CSV file.
-- The import utility will validate the file and show you a preview of the elements that are going to be imported to OpenMetadata.
-
-## Unified Tag Category API
-- Renamed Tag Categories to Classification, a more widely used term.
-- Updated the API to conform with the rest of the specification. More info [here](https://github.com/open-metadata/OpenMetadata/issues/9259).
-
-## Mutually Exclusive Tags
-- When creating a Classification or a Glossary term, you can now make the tags to be mutually exclusive.
-- If tags are set to be mutually exclusive, you won't be able to set multiple tags from the same category in the same asset.
-
-## EntityName
-- Special characters
+# [0.13.3 Release](https://github.com/open-metadata/OpenMetadata/releases/tag/0.13.3-release) - March 30th 2023 🎉
 
 ## Ingestion Framework
-- Performance Improvements: We are now getting descriptions in batch, making connectors such as Redshift or Snowflake way faster!
-- The Oracle connector now ships with the Thick mode enabled.
-- AWS QuickSight fixes
-- DB2 constraints and profiler improvements
-- Added support for Postgres Foreign Tables
-- Added support for Datalake profiler row-based sampling
+- Datalake Avro & Json, JsonZip support
+- BigQuery Profiler Ingestion for all regions
+- Support for Snowflake Geometry Type
+- Add support Nifi client certificate Auth 
+- Update sqllineage-openmetadata + add timeout for parsing queries
+- Fixes issue in Snowflake Join Table query parsing
+- Optimize Memory Usage for Usage data ingestion
+- Fetch vertica schema comments as description 
+- Improve snowflake system metrics 
+- Add Database & Schema descsription from Snowflake
+- Add support XLets in Airflow Lineage Runner
+- Add support for AssumeRole in AWS
+- Add support for pyimpala
+- Fixed issues in DBT oracle
+- Support for Tableau Owner
+- Support for DBT manifest V8
+
+## Roles & Policies 
+- A Non-Privileged user can add new 'Roles' to Teams
+- Fix Permissions API to consider the leaf nodes tags as well, example: table's column tags
+
+## Search
+- Improve Search Relevancy, by adding functional scoring and add ngram analyzer; 
+- Enable search for entities using both name and displayName
+
+## Security
+- Enable LDAP configuration to be configured via environment variable 
+- LDAP-s support connection without MTLS 
+
+## EntityName
+- Relax data asset name restrictions to allow the special characters except "::" 
+- Allow unicode character and digits in Entity
+
+## Data Quality
+- Fix column values between test
+
