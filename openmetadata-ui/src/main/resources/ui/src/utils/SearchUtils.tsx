@@ -205,8 +205,10 @@ export const getSuggestionElement = (
 
 export const filterOptionsByIndex = (
   options: Array<Option>,
-  searchIndex: SearchIndex
+  searchIndex: SearchIndex,
+  maxItemsPerType = 3
 ) =>
   options
     .filter((option) => option._index === searchIndex)
-    .map((option) => option._source);
+    .map((option) => option._source)
+    .slice(0, maxItemsPerType);

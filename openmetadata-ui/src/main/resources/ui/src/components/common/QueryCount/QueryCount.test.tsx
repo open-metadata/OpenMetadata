@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate.
+ *  Copyright 2023 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,20 +10,24 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { render, screen } from '@testing-library/react';
+import React from 'react';
+import QueryCount from './QueryCount.component';
 
-export enum QueryFilterFieldsEnum {
-  MUST = 'must',
-  SHOULD = 'should',
-}
+jest.mock('rest/searchAPI', () => ({
+  searchQuery: jest
+    .fn()
+    .mockImplementation(() =>
+      Promise.resolve({ hits: { total: { value: 10 } } })
+    ),
+}));
 
-export enum ExplorePageTabs {
-  TABLES = 'tables',
-  TOPICS = 'topics',
-  DASHBOARDS = 'dashboards',
-  PIPELINES = 'pipelines',
-  MLMODELS = 'mlmodels',
-  CONTAINERS = 'containers',
-  GLOSSARY = 'glossaries',
-  TAG = 'tags',
-  DASHBOARD_DATA_MODEL = 'dashboardDataModel',
-}
+describe('QueryCount test', () => {
+  it('component should render', async () => {
+    render(<QueryCount tableId="testID" />);
+
+    expect(
+      await screen.findByText('10 label.query-plural')
+    ).toBeInTheDocument();
+  });
+});

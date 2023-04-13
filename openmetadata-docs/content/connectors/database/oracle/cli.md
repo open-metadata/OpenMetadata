@@ -39,7 +39,8 @@ custom Airflow plugins to handle the workflow deployment.
 
 Note: To fetch metadata from oracle db we use python-oracledb and this support 12c, 18c, 19c and 21c versions! 
 
-To ingest metadata from oracle user must have `CREATE SESSION` privilege for the user.
+To ingest metadata from oracle user must have following permissions:
+1. `CREATE SESSION` privilege for the user.
 
 ```sql
 
@@ -57,6 +58,12 @@ GRANT CREATE SESSION TO new_role;
 
 ```
 
+2. `GRANT SELECT` on the relevant tables which are to be ingested into OpenMetadata to the user
+```sql
+
+GRANT SELECT ON table_name TO {user | role};
+
+```
 
 ### Python Requirements
 
