@@ -25,6 +25,7 @@ import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.services.ingestionPipelines.AirflowConfig;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
+import org.openmetadata.schema.metadataIngestion.DatabaseServiceProfilerPipeline;
 import org.openmetadata.schema.metadataIngestion.LogLevels;
 import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
 import org.openmetadata.schema.type.ChangeDescription;
@@ -44,6 +45,7 @@ import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
+import org.openmetadata.service.util.EntityUtil;
 
 public class IngestionPipelineRepository extends EntityRepository<IngestionPipeline> {
   private static final String UPDATE_FIELDS = "owner,sourceConfig,airflowConfig,loggerLevel,enabled,deployed";
@@ -298,5 +300,13 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
     IngestionPipeline decrypted = JsonUtils.convertValue(JsonUtils.getMap(original), IngestionPipeline.class);
     SecretsManagerFactory.getSecretsManager().encryptOrDecryptIngestionPipeline(decrypted, false);
     return decrypted;
+  }
+
+  public static void validateProfileSample(IngestionPipeline ingestionPipeline) {
+    DatabaseServiceProfilerPipeline databaseServiceProfilerPipeline =
+        JsonUtils.convertValue(ingestionPipeline.getSourceConfig().getConfig(), DatabaseServiceProfilerPipeline.class);
+    EntityUtil.validateProfileSample(
+        databaseServiceProfilerPipeline.getProfileSampleType().toString(),
+        databaseServiceProfilerPipeline.getProfileSample());
   }
 }
