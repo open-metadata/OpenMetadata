@@ -31,7 +31,7 @@ import {
 const visitGlossaryTermPage = (termName, fqn, fetchPermission) => {
   interceptURL(
     'GET',
-    `/api/v1/glossaryTerms/name/*.${name}?fields=*`,
+    `/api/v1/glossaryTerms/name/*.${termName}?fields=*`,
     'getGlossaryTerm'
   );
   interceptURL(
