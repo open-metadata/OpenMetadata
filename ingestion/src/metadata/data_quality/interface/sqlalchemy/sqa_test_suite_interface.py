@@ -124,16 +124,10 @@ class SQATestSuiteInterface(SQAInterfaceMixin, TestSuiteProtocol):
 
     def _create_sampler(self) -> Sampler:
         """Create sampler instance"""
-        sample_columns = [
-            column.name
-            for column in self.table.__table__.columns
-            if column.name in {col.name.__root__ for col in self.table_entity.columns}
-        ]
-
         return Sampler(
             session=self.session,
             table=self.table,
-            sample_columns=sample_columns,
+            sample_columns=self._get_sample_columns(),
             profile_sample_config=self.profile_sample_config,
             partition_details=self.table_partition_config,
             profile_sample_query=self.table_sample_query,
