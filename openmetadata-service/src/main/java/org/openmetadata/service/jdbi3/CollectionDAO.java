@@ -2104,11 +2104,11 @@ public interface CollectionDAO {
       String condition = "INNER JOIN entity_relationship ON query_entity.id = entity_relationship.toId";
       Map<String, Object> bindMap = new HashMap<>();
       if (!CommonUtil.nullOrEmpty(entityId)) {
-       String  mySqlcondition =
+        String mySqlcondition =
             String.format(
                 "%s WHERE entity_relationship.fromId = :entityId and entity_relationship.relation = :relation and entity_relationship.toEntity = :toEntity and JSON_EXTRACT(query_entity.json, '$.name') < :before order by JSON_EXTRACT(query_entity.json, '$.name') DESC LIMIT :limit",
                 condition);
-        String  postgresCondition =
+        String postgresCondition =
             String.format(
                 "%s WHERE entity_relationship.fromId = :entityId and entity_relationship.relation = :relation and entity_relationship.toEntity = :toEntity and query_entity.json ->> 'name' < :before order by query_entity.json ->> 'name' DESC LIMIT :limit",
                 condition);
@@ -2148,14 +2148,22 @@ public interface CollectionDAO {
     }
 
     @ConnectionAwareSqlQuery(value = "SELECT query_entity.json FROM query_entity <mySqlCond>", connectionType = MYSQL)
-    @ConnectionAwareSqlQuery(value = "SELECT query_entity.json FROM query_entity <postgresCond>", connectionType = POSTGRES)
-    List<String> listAfterQueriesByEntityId(@Define("mySqlCond") String mySqlCond, @Define("postgresCond") String postgresCond,
-                                            @BindMap Map<String, Object> bindings);
+    @ConnectionAwareSqlQuery(
+        value = "SELECT query_entity.json FROM query_entity <postgresCond>",
+        connectionType = POSTGRES)
+    List<String> listAfterQueriesByEntityId(
+        @Define("mySqlCond") String mySqlCond,
+        @Define("postgresCond") String postgresCond,
+        @BindMap Map<String, Object> bindings);
 
     @ConnectionAwareSqlQuery(value = "SELECT query_entity.json FROM query_entity <mySqlCond>", connectionType = MYSQL)
-    @ConnectionAwareSqlQuery(value = "SELECT query_entity.json FROM query_entity <postgresCond>", connectionType = POSTGRES)
-    List<String> listBeforeQueriesByEntityId(@Define("mySqlCond") String mySqlCond, @Define("postgresCond") String postgresCond,
-                                             @BindMap Map<String, Object> bindings);
+    @ConnectionAwareSqlQuery(
+        value = "SELECT query_entity.json FROM query_entity <postgresCond>",
+        connectionType = POSTGRES)
+    List<String> listBeforeQueriesByEntityId(
+        @Define("mySqlCond") String mySqlCond,
+        @Define("postgresCond") String postgresCond,
+        @BindMap Map<String, Object> bindings);
 
     @SqlQuery("SELECT count(*) FROM query_entity <cond> ")
     int listQueryCount(@Define("cond") String cond, @BindMap Map<String, Object> bindings);
