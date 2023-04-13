@@ -116,7 +116,6 @@ class ProfilerProtocol(ABC):
         source_config: DatabaseServiceProfilerPipeline,
     ) -> Optional[ProfileSampleConfig]:
         """_summary_
-
         Args:
             entity (Table): table entity object
             entity_config (Optional[TableConfig]): table config object from yaml/json file

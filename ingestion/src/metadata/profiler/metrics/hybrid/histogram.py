@@ -212,10 +212,10 @@ class Histogram(HybridMetric):
 
         bins.append(np.inf)  # add the last bin
 
-        frequencies = None
+        frequencies = np.zeros(num_bins)
 
         for df in dfs:
-            if not frequencies:
+            if not frequencies.any():
                 frequencies = (
                     pd.cut(df[self.col.name], bins, right=False).value_counts().values
                 )  # right boundary is exclusive

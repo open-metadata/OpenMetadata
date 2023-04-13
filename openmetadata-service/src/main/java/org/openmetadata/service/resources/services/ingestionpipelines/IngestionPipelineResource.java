@@ -82,7 +82,7 @@ import org.openmetadata.service.util.ResultList;
 
 // TODO merge with workflows
 @Slf4j
-@Path("/v1/services/ingestionPipelines/")
+@Path("/v1/services/ingestionPipelines")
 @Tag(
     name = "Ingestion Pipelines",
     description = "APIs related pipelines/workflows created by the system to ingest metadata.")
@@ -341,6 +341,7 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
       throws IOException {
     IngestionPipeline ingestionPipeline = getIngestionPipeline(create, securityContext.getUserPrincipal().getName());
     Response response = create(uriInfo, securityContext, ingestionPipeline);
+    dao.validateProfileSample(ingestionPipeline);
     decryptOrNullify(securityContext, (IngestionPipeline) response.getEntity(), false);
     return response;
   }
@@ -392,6 +393,7 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
     IngestionPipeline ingestionPipeline = getIngestionPipeline(update, securityContext.getUserPrincipal().getName());
     unmask(ingestionPipeline);
     Response response = createOrUpdate(uriInfo, securityContext, ingestionPipeline);
+    dao.validateProfileSample(ingestionPipeline);
     decryptOrNullify(securityContext, (IngestionPipeline) response.getEntity(), false);
     return response;
   }

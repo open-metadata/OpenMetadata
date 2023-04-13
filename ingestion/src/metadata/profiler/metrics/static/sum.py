@@ -42,12 +42,8 @@ class Sum(StaticMetric):
 
         return None
 
-    def df_fn(self, df):
+    def df_fn(self, dfs=None):
         """pandas function"""
         if is_quantifiable(self.col.type):
-            return (
-                df[self.col.name].sum()
-                if not isinstance(df[self.col.name].sum(), list)
-                else df[self.col.name].apply(sum).sum()
-            )
+            return sum(df[self.col.name].sum() for df in dfs)
         return None

@@ -42,7 +42,6 @@ def test_connection(
     service_connection: MlflowConnection,
     automation_workflow: Optional[AutomationWorkflow] = None,
 ) -> None:
-
     """
     Test connection. This can be executed either as part
     of a metadata workflow or during an Automation Workflow

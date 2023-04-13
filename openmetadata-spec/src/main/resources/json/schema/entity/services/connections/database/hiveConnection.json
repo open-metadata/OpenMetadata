@@ -50,8 +50,10 @@
     },
     "auth": {
       "title": "Authentication Mode",
-      "description": "Authentication mode to connect to hive, E.g, LDAP, CUSTOM etc",
-      "type": "string"
+      "description": "Authentication mode to connect to hive.",
+      "type": "string",
+      "enum": ["NONE", "LDAP", "KERBEROS", "CUSTOM", "NOSASL", "BASIC"],
+      "default": "NONE"
     },
     "kerberosServiceName": {
       "title": "Kerberos Service Name",

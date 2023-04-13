@@ -521,4 +521,12 @@ public final class EntityUtil {
     }
     return refs;
   }
+
+  public static void validateProfileSample(String profileSampleType, double profileSampleValue) {
+    if (profileSampleType.equals("PERCENTAGE")) {
+      if (profileSampleValue < 0 || profileSampleValue > 100.0) {
+        throw new IllegalArgumentException("Profile sample value must be between 0 and 100");
+      }
+    }
+  }
 }

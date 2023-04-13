@@ -78,7 +78,7 @@ const GlossaryTermReferences = ({
 
   return (
     <div data-testid="references-container">
-      <Space className="w-full" direction="vertical">
+      <Space className="w-full" direction="vertical" size={4}>
         <Space
           className="w-full"
           data-testid={`section-${t('label.reference-plural')}`}>
@@ -109,18 +109,25 @@ const GlossaryTermReferences = ({
         <>
           <div className="d-flex flex-wrap">
             {references.map((ref) => (
-              <Tag className="term-reference-tag tw-bg-white" key={ref.name}>
-                <a
-                  className=""
-                  data-testid="owner-link"
-                  href={ref?.endpoint}
-                  rel="noopener noreferrer"
-                  target="_blank">
-                  <Space align="center" size={4}>
-                    <ExternalLinkIcon color={TEXT_BODY_COLOR} width="12px" />
-                    <Typography.Text>{ref?.name}</Typography.Text>
-                  </Space>
-                </a>
+              <Tag
+                className="tw-mr-2 tw-mt-1 d-flex items-center term-reference-tag tw-bg-white"
+                key={ref.name}>
+                <Tooltip title={ref.name}>
+                  <a
+                    data-testid="owner-link"
+                    href={ref?.endpoint}
+                    rel="noopener noreferrer"
+                    target="_blank">
+                    <div className="d-flex items-center">
+                      <ExternalLinkIcon
+                        className="m-r-xss"
+                        color={TEXT_BODY_COLOR}
+                        width="12px"
+                      />
+                      <span className="text-body">{ref?.name}</span>
+                    </div>
+                  </a>
+                </Tooltip>
               </Tag>
             ))}
             {permissions.EditAll && references.length === 0 && (

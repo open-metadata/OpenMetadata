@@ -26,21 +26,7 @@ SET json = JSONB_SET(
 WHERE de2.serviceType = 'Postgres' 
 AND json->>'{connection,config,database}' IS NULL;
 
--- new object store service and container entities
-CREATE TABLE IF NOT EXISTS objectstore_service_entity (
-    id VARCHAR(36) GENERATED ALWAYS AS (json ->> 'id') STORED NOT NULL,
-    name VARCHAR(256) GENERATED ALWAYS AS (json ->> 'name') STORED NOT NULL,
-    serviceType VARCHAR(256) GENERATED ALWAYS AS (json ->> 'serviceType') STORED NOT NULL,
-    json JSONB NOT NULL,
-    updatedAt BIGINT GENERATED ALWAYS AS ((json ->> 'updatedAt')::bigint) STORED NOT NULL,
-    updatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> 'updatedBy') STORED NOT NULL,
-    deleted BOOLEAN GENERATED ALWAYS AS ((json ->> 'deleted')::boolean) STORED,
-    PRIMARY KEY (id),
-    UNIQUE (name)
-);
-
-
-CREATE TABLE IF NOT EXISTS objectstore_container_entity (
+CREATE TABLE IF NOT EXISTS storage_container_entity (
     id VARCHAR(36) GENERATED ALWAYS AS (json ->> 'id') STORED NOT NULL,
     fullyQualifiedName VARCHAR(256) GENERATED ALWAYS AS (json ->> 'fullyQualifiedName') STORED NOT NULL,
     json JSONB NOT NULL,
@@ -85,28 +71,36 @@ CREATE TABLE IF NOT EXISTS query_entity (
     updatedAt BIGINT GENERATED ALWAYS AS ((json ->> 'updatedAt')::bigint) STORED NOT NULL,
     updatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> 'updatedBy') STORED NOT NULL,
     deleted BOOLEAN GENERATED ALWAYS AS ((json ->> 'deleted')::boolean) STORED,
-    UNIQUE (name)
+    PRIMARY KEY (id),
+    UNIQUE (name)  
 );
 
 CREATE TABLE IF NOT EXISTS temp_query_migration (
     tableId VARCHAR(36) NOT NULL,
     queryId VARCHAR(36) GENERATED ALWAYS AS (json ->> 'id') STORED NOT NULL,
+    queryName VARCHAR(255) GENERATED ALWAYS AS (json ->> 'name') STORED NOT NULL,
     json JSONB NOT NULL
 );
 
-CREATE EXTENSION pgcrypto;
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
 INSERT INTO temp_query_migration(tableId,json)
-SELECT id,json_build_object('id',gen_random_uuid(),'vote',vote,'query',query,'users',users,'checksum',checksum,'duration',duration,'name','table','name',checksum,'updatedAt',
+SELECT id,json_build_object('id',gen_random_uuid(),'vote',vote,'query',query,'users',users,'checksum',checksum,'duration',duration,'name',checksum,'updatedAt',
 floor(EXTRACT(EPOCH FROM NOW())),'updatedBy','admin','deleted',false) AS json FROM entity_extension AS ee , jsonb_to_recordset(ee.json) AS x (vote decimal,query varchar,users json,
-checksum varchar,duration decimal,queryDate varchar)
+checksum varchar,name varchar, duration decimal,queryDate varchar)
 WHERE ee.extension = 'table.tableQueries';
 
-INSERT INTO query_entity(json)
-SELECT json FROM temp_query_migration;
+INSERT INTO query_entity (json)
+SELECT value
+FROM (
+  SELECT jsonb_object_agg(queryName, json) AS json_data FROM ( SELECT DISTINCT queryName, json FROM temp_query_migration) subquery
+) cte, jsonb_each(cte.json_data)
+ON CONFLICT (name) DO UPDATE SET json = EXCLUDED.json;
 
-INSERT INTO entity_relationship(fromId,toId,fromEntity,toEntity,relation)
-SELECT tableId,queryId,'table','query',10 FROM temp_query_migration;
+INSERT INTO entity_relationship(fromId, toId, fromEntity, toEntity, relation)
+SELECT tmq.tableId, qe.id, 'table', 'query', 5
+FROM temp_query_migration tmq
+JOIN query_entity qe ON qe.name = tmq.queryName;
 
 DELETE FROM entity_extension WHERE id in
 (SELECT DISTINCT tableId FROM temp_query_migration) AND extension = 'table.tableQueries';
@@ -122,10 +116,18 @@ WHERE name = 'OpenMetadata'
 
 ALTER TABLE user_tokens ALTER COLUMN expiryDate DROP NOT NULL;
 
-DELETE FROM alert_entity;
-drop table alert_action_def;
+CREATE TABLE IF NOT EXISTS event_subscription_entity (
+    id VARCHAR(36) GENERATED ALWAYS AS (json ->> 'id') STORED NOT NULL,
+    name VARCHAR(256) GENERATED ALWAYS AS (json ->> 'name') STORED NOT NULL,
+    deleted BOOLEAN GENERATED ALWAYS AS ((json ->> 'deleted')::boolean) STORED,
+    json JSONB NOT NULL,
+    PRIMARY KEY (id),
+    UNIQUE (name)
+);
 
-ALTER TABLE alert_entity RENAME TO event_subscription_entity;
+drop table if exists alert_action_def;
+drop table if exists alert_entity;
+DELETE from entity_relationship where  fromEntity = 'alert' and toEntity = 'alertAction';
 
 -- create data model table
 CREATE TABLE IF NOT EXISTS dashboard_data_model_entity (
@@ -148,3 +150,13 @@ WHERE servicetype = 'Druid' and json #>'{connection,config,database}' is not nul
 UPDATE entity_extension_time_series
 SET jsonSchema = 'ingestionPipelineStatus', extension = 'ingestionPipeline.pipelineStatus'
 WHERE jsonSchema = 'pipelineStatus' AND extension <> 'pipeline.PipelineStatus';
+
+-- We are refactoring the storage service with containers. We'll remove the locations
+DROP TABLE location_entity;
+
+UPDATE dbservice_entity
+SET json = json::jsonb #- '{connection,config,storageServiceName}'
+WHERE servicetype = 'Glue';
+
+UPDATE chart_entity
+SET json = json::jsonb #- '{tables}';

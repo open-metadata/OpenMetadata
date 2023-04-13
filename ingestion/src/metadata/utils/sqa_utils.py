@@ -33,6 +33,7 @@ from metadata.utils.logger import query_runner_logger
 
 logger = query_runner_logger()
 
+
 # pylint: disable=cell-var-from-loop
 def build_query_filter(
     filters: List[Tuple[Column, str, Any]], or_filter: bool = False

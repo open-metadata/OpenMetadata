@@ -398,7 +398,6 @@ class BigquerySource(CommonDbSourceService):
         database = self.context.database.name.__root__
         table = self.client.get_table(f"{database}.{schema_name}.{table_name}")
         if table.time_partitioning is not None:
-
             if table.time_partitioning.field:
                 table_partition = TablePartition(
                     interval=str(table.time_partitioning.type_),

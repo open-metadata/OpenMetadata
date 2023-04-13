@@ -17,8 +17,8 @@ import org.openmetadata.schema.services.connections.database.BigQueryConnection;
 import org.openmetadata.schema.services.connections.database.DatalakeConnection;
 import org.openmetadata.schema.services.connections.database.datalake.GCSConfig;
 import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
-import org.openmetadata.schema.services.connections.objectstore.GcsConnection;
 import org.openmetadata.schema.services.connections.pipeline.AirflowConnection;
+import org.openmetadata.schema.services.connections.storage.GcsConnection;
 
 public class ClassConverterFactoryTest {
 

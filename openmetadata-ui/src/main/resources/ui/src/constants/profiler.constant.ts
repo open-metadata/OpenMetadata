@@ -325,7 +325,7 @@ export const SUPPORTED_COLUMN_DATA_TYPE_FOR_INTERVAL = {
   [PartitionIntervalType.IngestionTime]: SUPPORTED_PARTITION_TYPE_FOR_DATE_TIME,
   [PartitionIntervalType.TimeUnit]: SUPPORTED_PARTITION_TYPE_FOR_DATE_TIME,
   [PartitionIntervalType.IntegerRange]: [DataType.Int, DataType.Bigint],
-  [PartitionIntervalType.ColumnValue]: [DataType.Varchar],
+  [PartitionIntervalType.ColumnValue]: [DataType.Varchar, DataType.String],
 };
 
 export const INTERVAL_TYPE_OPTIONS = Object.values(PartitionIntervalType).map(

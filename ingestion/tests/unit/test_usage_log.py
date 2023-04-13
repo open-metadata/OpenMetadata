@@ -39,7 +39,6 @@ mock_query_log_config = {
                     "awsRegion": "us-east-2",
                     "endPointURL": "https://endpoint.com/",
                 },
-                "storageServiceName": "storage_name",
             }
         },
         "sourceConfig": {

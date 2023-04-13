@@ -74,6 +74,7 @@ class WorkflowType(Enum):
     TEST = "test"
     LINEAGE = "lineage"
     USAGE = "usage"
+    INSIGHT = "insight"
 
 
 EXAMPLES_WORKFLOW_PATH: Path = Path(__file__).parent / "../examples" / "workflows"

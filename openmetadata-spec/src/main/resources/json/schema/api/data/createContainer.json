@@ -10,7 +10,7 @@
   "properties": {
     "name": {
       "description": "Name that identifies this Container model.",
-      "$ref": "../../type/basic.json#/definitions/entityName"
+      "$ref": "../../entity/data/container.json#/definitions/entityName"
     },
     "displayName": {
       "description": "Display Name that identifies this Container model.",
@@ -21,7 +21,7 @@
       "$ref": "../../type/basic.json#/definitions/markdown"
     },
     "service": {
-      "description": "Link to the object store service where this container is hosted in.",
+      "description": "Link to the storage service where this container is hosted in.",
       "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
     },
     "parent": {
