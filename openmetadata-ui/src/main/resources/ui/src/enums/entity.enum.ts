@@ -124,4 +124,5 @@ export enum EntityInfo {
   SIZE = 'size',
   NUMBER_OF_OBJECTS = 'number-of-object-plural',
   DATA_MODEL_TYPE = 'data-model-type',
+  QUERIES = 'queries',
 }

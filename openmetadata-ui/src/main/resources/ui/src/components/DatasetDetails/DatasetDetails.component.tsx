@@ -26,7 +26,10 @@ import React, {
 import { useTranslation } from 'react-i18next';
 import { restoreTable } from 'rest/tableAPI';
 import { getEntityId, getEntityName } from 'utils/EntityUtils';
-import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
+import {
+  FQN_SEPARATOR_CHAR,
+  WILD_CARD_CHAR,
+} from '../../constants/char.constants';
 import { ROUTES } from '../../constants/constants';
 import { EntityField } from '../../constants/Feeds.constants';
 import { observerOptions } from '../../constants/Mydata.constants';
@@ -83,6 +86,9 @@ import TableProfilerV1 from '../TableProfiler/TableProfilerV1';
 import TableQueries from '../TableQueries/TableQueries';
 import { DatasetDetailsProps } from './DatasetDetails.interface';
 // css
+import { SearchIndex } from 'enums/search.enum';
+import { searchQuery } from 'rest/searchAPI';
+import { createQueryFilter } from 'utils/Query/QueryUtils';
 import './datasetDetails.style.less';
 
 const DatasetDetails: React.FC<DatasetDetailsProps> = ({
@@ -117,13 +123,16 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
   const { t } = useTranslation();
   const [isEdit, setIsEdit] = useState(false);
   const [usage, setUsage] = useState('');
-  const [weeklyUsageCount, setWeeklyUsageCount] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
   const [threadLink, setThreadLink] = useState<string>('');
   const [threadType, setThreadType] = useState<ThreadType>(
     ThreadType.Conversation
   );
+  const [queryCount, setQueryCount] = useState({
+    isLoading: true,
+    count: 0,
+  });
 
   const [elementRef, isInView] = useInfiniteScroll(observerOptions);
 
@@ -176,10 +185,28 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
       setIsLoading(false);
     }
   }, [tableDetails.id, getEntityPermission, setTablePermissions]);
-
+  const fetchQueryCount = async () => {
+    setQueryCount((pre) => ({ ...pre, isLoading: true }));
+    try {
+      const response = await searchQuery({
+        query: WILD_CARD_CHAR,
+        pageNumber: 0,
+        pageSize: 0,
+        queryFilter: createQueryFilter([], tableDetails.id),
+        searchIndex: SearchIndex.QUERY,
+        includeDeleted: false,
+        trackTotalHits: true,
+        fetchSource: false,
+      });
+      setQueryCount({ isLoading: false, count: response.hits.total.value });
+    } catch (error) {
+      setQueryCount({ isLoading: false, count: 0 });
+    }
+  };
   useEffect(() => {
     if (tableDetails.id) {
       fetchResourcePermission();
+      fetchQueryCount();
     }
   }, [tableDetails.id]);
 
@@ -193,9 +220,6 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
     } else {
       setUsage('--');
     }
-    setWeeklyUsageCount(
-      usageSummary?.weeklyStats?.count.toLocaleString() || '--'
-    );
   };
 
   const { followersCount, isFollowing } = useMemo(() => {
@@ -350,9 +374,16 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
   const prepareExtraInfoValues = (
     key: EntityInfo,
     isTableProfileLoading?: boolean,
-    tableProfile?: TableProfile,
-    numberOfColumns?: number
+    data?: {
+      tableProfile?: TableProfile;
+      numberOfColumns?: number;
+      queriesCount?: number;
+    }
   ) => {
+    if (isUndefined(data)) {
+      return null;
+    }
+    const { tableProfile, numberOfColumns, queriesCount } = data;
     if (isTableProfileLoading) {
       return (
         <Skeleton active paragraph={{ rows: 1, width: 50 }} title={false} />
@@ -401,6 +432,16 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
           </Space>
         );
       }
+      case EntityInfo.QUERIES: {
+        if (queriesCount === 0) {
+          return t('label.no-entity', { entity: t('label.query-plural') });
+        } else {
+          return `${queriesCount} ${t(
+            queriesCount === 1 ? 'label.query' : 'label.query-plural'
+          )}`;
+        }
+      }
+
       default:
         return null;
     }
@@ -426,24 +467,25 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
     },
     { key: EntityInfo.TYPE, value: `${tableType}`, showLabel: true },
     { value: usage },
-    { value: `${weeklyUsageCount} ${t('label.query-plural')}` },
+    {
+      key: EntityInfo.QUERIES,
+      value: prepareExtraInfoValues(EntityInfo.QUERIES, queryCount.isLoading, {
+        queriesCount: queryCount.count,
+      }),
+    },
     {
       key: EntityInfo.COLUMNS,
       localizationKey: 'column-plural',
-      value: prepareExtraInfoValues(
-        EntityInfo.COLUMNS,
-        isTableProfileLoading,
+      value: prepareExtraInfoValues(EntityInfo.COLUMNS, isTableProfileLoading, {
         tableProfile,
-        columns.length
-      ),
+        numberOfColumns: columns.length,
+      }),
     },
     {
       key: EntityInfo.ROWS,
-      value: prepareExtraInfoValues(
-        EntityInfo.ROWS,
-        isTableProfileLoading,
-        tableProfile
-      ),
+      value: prepareExtraInfoValues(EntityInfo.ROWS, isTableProfileLoading, {
+        tableProfile,
+      }),
     },
   ];
 
