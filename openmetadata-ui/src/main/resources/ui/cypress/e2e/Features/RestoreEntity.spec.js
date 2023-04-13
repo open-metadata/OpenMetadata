@@ -83,7 +83,7 @@ describe('Restore entity functionality should work properly', () => {
       .should('exist')
       .click();
 
-    cy.get('[data-testid="inactive-link"]')
+    cy.get('[data-testid="entity-header-display-name"]')
       .should('be.visible')
       .contains(ENTITY_TABLE.displayName);
 
@@ -100,7 +100,7 @@ describe('Restore entity functionality should work properly', () => {
       .should('exist')
       .click();
 
-    cy.get('[data-testid="inactive-link"]')
+    cy.get('[data-testid="entity-header-display-name"]')
       .should('be.visible')
       .contains(ENTITY_TABLE.displayName)
       .click();
@@ -146,7 +146,7 @@ describe('Restore entity functionality should work properly', () => {
       .should('exist')
       .click();
 
-    cy.get('[data-testid="inactive-link"]')
+    cy.get('[data-testid="entity-header-display-name"]')
       .should('be.visible')
       .contains(ENTITY_TABLE.displayName);
 
