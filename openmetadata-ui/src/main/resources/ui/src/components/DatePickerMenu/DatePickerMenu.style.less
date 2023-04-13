@@ -10,14 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { OperationPermission } from 'components/PermissionProvider/PermissionProvider.interface';
-import { Query } from 'generated/entity/data/query';
-import { QueryVote } from '../TableQueries.interface';
-
-export interface QueryCardExtraOptionProps {
-  permission: OperationPermission;
-  query: Query;
-  onUpdateVote: (data: QueryVote, id?: string) => Promise<void>;
-  onEditClick: (value: boolean) => void;
-  afterDeleteAction: () => void;
+.date-picker-sub-menu-popup {
+  visibility: hidden;
+  height: 0px;
+  ul {
+    height: 0px;
+    li {
+      height: 0px;
+    }
+  }
 }

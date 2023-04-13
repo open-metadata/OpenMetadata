@@ -41,6 +41,7 @@ export interface QueryCardProp extends HTMLAttributes<HTMLDivElement> {
   onQuerySelection?: (query: Query) => void;
   onQueryUpdate: (updatedQuery: Query, key: keyof Query) => Promise<void>;
   onUpdateVote: (data: QueryVote, id?: string) => Promise<void>;
+  afterDeleteAction: () => void;
 }
 
 export type QueryUsedByTable = {
@@ -53,13 +54,8 @@ export interface QueryUsedByOtherTableProps {
   tableId?: string;
 }
 
-export type QueryFiltersType = {
-  user: SearchDropdownOption[];
-  team: SearchDropdownOption[];
-};
-
 export interface QueryFiltersProps {
-  onFilterChange: (value: QueryFiltersType) => void;
+  onFilterChange: (value: SearchDropdownOption[]) => void;
 }
 
 export type QuerySearchParams = {
@@ -67,8 +63,6 @@ export type QuerySearchParams = {
   after?: string;
   tableId?: string;
   query?: string;
-  user?: SearchDropdownOption[];
-  team?: SearchDropdownOption[];
 };
 
 export type QuerySearchShouldFilterType = {

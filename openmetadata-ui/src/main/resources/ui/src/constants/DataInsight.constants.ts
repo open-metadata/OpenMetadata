@@ -52,7 +52,7 @@ export const DATA_INSIGHT_GRAPH_COLORS = [
 ];
 
 export const BAR_SIZE = 15;
-export const DEFAULT_DAYS = 30;
+export const DEFAULT_DAYS = 1;
 
 export const ENTITIES_BAR_COLO_MAP: Record<string, string> = {
   Chart: '#E7B85D',
