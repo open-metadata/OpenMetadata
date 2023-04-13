@@ -298,7 +298,9 @@ class ColumnTypeParser:
                 "dataTypeDisplay": data_type,
             }
             if arr_data_type == "STRUCT":
-                children = ColumnTypeParser._parse_struct_fields_string(data_type[6:-1][7:-1])["children"]
+                children = ColumnTypeParser._parse_struct_fields_string(
+                    data_type[6:-1][7:-1]
+                )["children"]
                 data_type_string["children"] = children
             return data_type_string
         if data_type.startswith("map<"):

@@ -91,7 +91,7 @@ class Sampler:
             return (
                 self.session.query(
                     *[Column(col_name) for col_name in self.sample_columns],
-                    (ModuloFn(RandomNumFn(), 100)).label(RANDOM_LABEL)
+                    (ModuloFn(RandomNumFn(), 100)).label(RANDOM_LABEL),
                 )
                 .select_from(self.table)
                 .suffix_with(
@@ -100,7 +100,9 @@ class Sampler:
                 )
                 .cte(f"{self.table.__tablename__}_rnd")
             )
-        table_query = self.session.query(*[Column(col_name) for col_name in self.sample_columns]).select_from(self.table)
+        table_query = self.session.query(
+            *[Column(col_name) for col_name in self.sample_columns]
+        ).select_from(self.table)
         return (
             self.session.query(
                 *[Column(col_name) for col_name in self.sample_columns],
@@ -137,7 +139,7 @@ class Sampler:
         # Assign as an alias
         return aliased(self.table, sampled)
 
-    def fetch_sqa_sample_data(self, sample_columns: Optional[list] = None) -> TableData:
+    def fetch_sqa_sample_data(self) -> TableData:
         """
         Use the sampler to retrieve sample data rows as per limit given by user
         :return: TableData to be added to the Table Entity
@@ -201,7 +203,9 @@ class Sampler:
             return aliased(
                 self.table,
                 (
-                    self.session.query(*[Column(col_name) for col_name in self.sample_columns])
+                    self.session.query(
+                        *[Column(col_name) for col_name in self.sample_columns]
+                    )
                     .select_from(self.table)
                     .filter(
                         get_value_filter(
@@ -220,7 +224,9 @@ class Sampler:
             return aliased(
                 self.table,
                 (
-                    self.session.query(*[Column(col_name) for col_name in self.sample_columns])
+                    self.session.query(
+                        *[Column(col_name) for col_name in self.sample_columns]
+                    )
                     .select_from(self.table)
                     .filter(
                         get_integer_range_filter(
@@ -236,7 +242,9 @@ class Sampler:
         return aliased(
             self.table,
             (
-                self.session.query(*[Column(col_name) for col_name in self.sample_columns])
+                self.session.query(
+                    *[Column(col_name) for col_name in self.sample_columns]
+                )
                 .select_from(self.table)
                 .filter(
                     build_query_filter(

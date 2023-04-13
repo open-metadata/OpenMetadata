@@ -15,7 +15,7 @@ supporting sqlalchemy abstraction layer
 """
 
 
-from typing import Optional, List
+from typing import List, Optional
 
 from sqlalchemy import Column, MetaData, inspect
 from sqlalchemy.orm import DeclarativeMeta
@@ -101,7 +101,7 @@ class SQAInterfaceMixin:
         self.session.close()
 
     def _get_sample_columns(self) -> List[str]:
-        """Get the list of columns to use for the sampler"""   
+        """Get the list of columns to use for the sampler"""
         return [
             column.name
             for column in self.table.__table__.columns

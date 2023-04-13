@@ -90,6 +90,7 @@ _types._type_map.update(
     }
 )
 
+
 def _array_sys_data_type_repr(col_type):
     """clean up the repr of the array data type
 
@@ -104,6 +105,7 @@ def _array_sys_data_type_repr(col_type):
         .replace("<>", "")
         .lower()
     )
+
 
 def get_columns(bq_schema):
     """
@@ -121,7 +123,9 @@ def get_columns(bq_schema):
             "precision": field.precision,
             "scale": field.scale,
             "max_length": field.max_length,
-            "system_data_type": _array_sys_data_type_repr(col_type) if  str(col_type) == "ARRAY" else str(col_type),
+            "system_data_type": _array_sys_data_type_repr(col_type)
+            if str(col_type) == "ARRAY"
+            else str(col_type),
             "is_complex": is_complex_type(str(col_type)),
             "policy_tags": None,
         }

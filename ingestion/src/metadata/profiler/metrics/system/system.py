@@ -13,10 +13,10 @@
 System Metric
 """
 
+import traceback
 from collections import namedtuple
 from textwrap import dedent
 from typing import Dict, List, Optional
-import traceback
 
 import sqlparse
 from sqlalchemy import text
