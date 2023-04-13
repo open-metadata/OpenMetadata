@@ -381,7 +381,9 @@ def get_parser(args=None):
         )
     )
     create_common_config_parser_args(
-        sub_parser.add_parser(MetadataCommands.INSIGHT.value, help="Data Insigt Workflow")
+        sub_parser.add_parser(
+            MetadataCommands.INSIGHT.value, help="Data Insigt Workflow"
+        )
     )
 
     add_metadata_args(parser)
