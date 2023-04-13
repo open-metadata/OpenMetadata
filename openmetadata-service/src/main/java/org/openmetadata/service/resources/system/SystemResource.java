@@ -32,6 +32,7 @@ import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.settings.Settings;
+import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.util.EntitiesCount;
 import org.openmetadata.schema.util.ServicesCount;
@@ -56,6 +57,7 @@ public class SystemResource {
   public static final String COLLECTION_PATH = "/v1/util";
   private final SystemRepository systemRepository;
   private final Authorizer authorizer;
+  private OpenMetadataApplicationConfig applicationConfig;
 
   public SystemResource(CollectionDAO dao, Authorizer authorizer) {
     Objects.requireNonNull(dao, "SystemRepository must not be null");
@@ -65,10 +67,11 @@ public class SystemResource {
 
   @SuppressWarnings("unused") // Method used for reflection
   public void initialize(OpenMetadataApplicationConfig config) throws IOException {
-    initSettings(config);
+    this.applicationConfig = config;
+    initSettings();
   }
 
-  private void initSettings(OpenMetadataApplicationConfig applicationConfig) throws IOException {
+  private void initSettings() throws IOException {
     List<String> jsonDataFiles = EntityUtil.getJsonDataResources(".*json/data/settings/settingsData.json$");
     if (jsonDataFiles.size() != 1) {
       LOG.warn("Invalid number of jsonDataFiles {}. Only one expected.", jsonDataFiles.size());
@@ -182,6 +185,30 @@ public class SystemResource {
           JsonPatch patch) {
     authorizer.authorizeAdmin(securityContext);
     return systemRepository.patchSetting(settingName, patch);
+  }
+
+  @PUT
+  @Path("/restore/default/email")
+  @Operation(
+      operationId = "restoreEmailSettingToDefault",
+      summary = "Restore Email to Default setting",
+      description = "Restore Email to Default settings",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Settings",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Settings.class)))
+      })
+  public Response restoreDefaultEmailSetting(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Name of the setting", schema = @Schema(type = "string")) @PathParam("settingName")
+          String name) {
+    authorizer.authorizeAdmin(securityContext);
+    return systemRepository.createOrUpdate(
+        new Settings()
+            .withConfigType(SettingsType.EMAIL_CONFIGURATION)
+            .withConfigValue(applicationConfig.getSmtpSettings()));
   }
 
   @GET
