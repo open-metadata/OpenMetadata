@@ -341,6 +341,7 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
       throws IOException {
     IngestionPipeline ingestionPipeline = getIngestionPipeline(create, securityContext.getUserPrincipal().getName());
     Response response = create(uriInfo, securityContext, ingestionPipeline);
+    dao.validateProfileSample(ingestionPipeline);
     decryptOrNullify(securityContext, (IngestionPipeline) response.getEntity(), false);
     return response;
   }

@@ -25,7 +25,6 @@ import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.services.ingestionPipelines.AirflowConfig;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
-import org.openmetadata.schema.metadataIngestion.DatabaseServiceProfilerPipeline;
 import org.openmetadata.schema.metadataIngestion.LogLevels;
 import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
 import org.openmetadata.schema.type.ChangeDescription;
@@ -302,11 +301,12 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
     return decrypted;
   }
 
-  public static void validateProfileSample(IngestionPipeline ingestionPipeline) {
-    DatabaseServiceProfilerPipeline databaseServiceProfilerPipeline =
-        JsonUtils.convertValue(ingestionPipeline.getSourceConfig().getConfig(), DatabaseServiceProfilerPipeline.class);
-    EntityUtil.validateProfileSample(
-        databaseServiceProfilerPipeline.getProfileSampleType().toString(),
-        databaseServiceProfilerPipeline.getProfileSample());
+  public static void validateProfileSample(IngestionPipeline ingestionPipeline) throws JsonProcessingException {
+
+    JSONObject sourceConfigJson = new JSONObject(JsonUtils.pojoToJson(ingestionPipeline.getSourceConfig().getConfig()));
+    String profileSampleType = sourceConfigJson.optString("profileSampleType");
+    double profileSample = sourceConfigJson.optDouble("profileSample");
+
+    EntityUtil.validateProfileSample(profileSampleType, profileSample);
   }
 }
