@@ -269,26 +269,25 @@ class AirflowSource(PipelineServiceSource):
             SerializedDagModel.fileloc,
         ).all():
             try:
+                data = serialized_dag[1]["dag"]
                 dag = AirflowDagDetails(
                     dag_id=serialized_dag[0],
                     fileloc=serialized_dag[2],
                     data=AirflowDag(**serialized_dag[1]),
-                    max_active_runs=serialized_dag[1]["dag"].get(
-                        "max_active_runs", None
-                    ),
-                    description=serialized_dag[1]["dag"].get("_description", None),
-                    start_date=serialized_dag[1]["dag"].get("start_date", None),
-                    tasks=serialized_dag[1]["dag"].get("tasks", []),
-                    owners=serialized_dag[1]["dag"]
-                    .get("default_args", [])["__var"]
-                    .get("email", [])
-                    if serialized_dag[1]["dag"].get("default_args")
+                    max_active_runs=data.get("max_active_runs", None),
+                    description=data.get("_description", None),
+                    start_date=data.get("start_date", None),
+                    tasks=data.get("tasks", []),
+                    owners=data.get("default_args", [])["__var"].get("email", [])
+                    if data.get("default_args")
                     else None,
                 )
                 yield dag
             except ValidationError as err:
                 logger.debug(traceback.format_exc())
-                logger.warning(f"Error building pydantic model for {serialized_dag} - {err}")
+                logger.warning(
+                    f"Error building pydantic model for {serialized_dag} - {err}"
+                )
             except Exception as err:
                 logger.debug(traceback.format_exc())
                 logger.warning(f"Wild error yielding dag {serialized_dag} - {err}")
@@ -333,16 +332,18 @@ class AirflowSource(PipelineServiceSource):
 
         return SerializedDAG.from_json(data)
 
+    def get_user_details(self, email) -> Optional[EntityReference]:
+        user = self.metadata.get_user_by_email(email=email)
+        return user
+
     def get_owners(self, owners) -> Optional[EntityReference]:
         try:
             if isinstance(owners, str) and owners:
-                user = self.metadata.get_user_by_email(email=owners)
-                if user:
-                    return EntityReference(id=user.id.__root__, type="user")
+                return self.get_user_details(email=owners)
 
             if isinstance(owners, List) and owners:
                 for owner in owners or []:
-                    user = self.metadata.get_user_by_email(email=owner)
+                    user = self.get_user_details(email=owner)
                     if user:
                         return EntityReference(id=user.id.__root__, type="user")
 
