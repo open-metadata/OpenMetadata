@@ -66,6 +66,7 @@ import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.sdk.PipelineServiceClient;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
@@ -149,7 +150,8 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
               .withAirflowConfig(IngestionPipelineUtils.getDefaultAirflowConfig())
               .withService(metadataService);
       // Get Pipeline
-      IngestionPipeline dataInsightPipeline = getIngestionPipeline(createPipelineRequest, "system");
+      IngestionPipeline dataInsightPipeline =
+          getIngestionPipeline(createPipelineRequest, "system").withProvider(ProviderType.SYSTEM);
       dao.setFullyQualifiedName(dataInsightPipeline);
       dao.initializeEntity(dataInsightPipeline);
 
@@ -160,7 +162,8 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
           .withDescription("Elastic Search Reindexing Pipeline")
           .withPipelineType(PipelineType.ELASTIC_SEARCH_REINDEX);
       // Get Pipeline
-      IngestionPipeline elasticSearchPipeline = getIngestionPipeline(createPipelineRequest, "system");
+      IngestionPipeline elasticSearchPipeline =
+          getIngestionPipeline(createPipelineRequest, "system").withProvider(ProviderType.SYSTEM);
       dao.setFullyQualifiedName(elasticSearchPipeline);
       dao.initializeEntity(elasticSearchPipeline);
     } catch (Exception ex) {
@@ -474,6 +477,8 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
         new OpenMetadataConnectionBuilder(openMetadataApplicationConfig).build());
     decryptOrNullify(securityContext, ingestionPipeline, true);
     ServiceEntityInterface service = Entity.getEntity(ingestionPipeline.getService(), "", Include.NON_DELETED);
+    // TODO:
+    //    ingestionPipeline.getOpenMetadataServerConnection().setHostPort("http://host.docker.internal:8585/api");
     pipelineServiceClient.deployPipeline(ingestionPipeline, service);
     createOrUpdate(uriInfo, securityContext, ingestionPipeline);
     decryptOrNullify(securityContext, ingestionPipeline, false);

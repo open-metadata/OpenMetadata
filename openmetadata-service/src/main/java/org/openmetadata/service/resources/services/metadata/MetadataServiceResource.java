@@ -96,9 +96,8 @@ public class MetadataServiceResource
         List<MetadataService> servicesList = dao.getEntitiesFromSeedData(".*json/data/metadataService/.*\\.json$");
         if (servicesList.size() == 1) {
           MetadataService service = servicesList.get(0);
-          service.setFullyQualifiedName(service.getName());
           service.setConnection(metadataConnection);
-          service.setAllowServiceCreation(false);
+          dao.setFullyQualifiedName(service);
           dao.initializeEntity(service);
         } else {
           throw new RuntimeException("Only one Openmetadata Service can be initialized from the Data.");
