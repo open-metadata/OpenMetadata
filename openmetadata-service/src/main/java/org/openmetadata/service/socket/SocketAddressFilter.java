@@ -34,7 +34,6 @@ import org.openmetadata.service.security.JwtFilter;
 @Slf4j
 public class SocketAddressFilter implements Filter {
   private JwtFilter jwtFilter;
-
   private final boolean enableSecureSocketConnection;
 
   public SocketAddressFilter(

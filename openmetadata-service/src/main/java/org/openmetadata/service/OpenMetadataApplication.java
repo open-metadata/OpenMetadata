@@ -58,6 +58,7 @@ import org.eclipse.jetty.http.pathmap.ServletPathSpec;
 import org.eclipse.jetty.servlet.ErrorPageErrorHandler;
 import org.eclipse.jetty.servlet.FilterHolder;
 import org.eclipse.jetty.servlet.ServletHolder;
+import org.eclipse.jetty.websocket.server.NativeWebSocketServletContainerInitializer;
 import org.eclipse.jetty.websocket.server.WebSocketUpgradeFilter;
 import org.glassfish.jersey.media.multipart.MultiPartFeature;
 import org.glassfish.jersey.server.ServerProperties;
@@ -418,12 +419,15 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     environment.getApplicationContext().addServlet(new ServletHolder(new FeedServlet()), pathSpec);
     // Upgrade connection to websocket from Http
     try {
-      WebSocketUpgradeFilter webSocketUpgradeFilter =
-          WebSocketUpgradeFilter.configureContext(environment.getApplicationContext());
-      webSocketUpgradeFilter.addMapping(
-          new ServletPathSpec(pathSpec),
-          (servletUpgradeRequest, servletUpgradeResponse) ->
-              new JettyWebSocketHandler(WebSocketManager.getInstance().getEngineIoServer()));
+      WebSocketUpgradeFilter.configure(environment.getApplicationContext());
+      NativeWebSocketServletContainerInitializer.configure(
+          environment.getApplicationContext(),
+          (context, container) -> {
+            container.addMapping(
+                new ServletPathSpec(pathSpec),
+                (servletUpgradeRequest, servletUpgradeResponse) ->
+                    new JettyWebSocketHandler(WebSocketManager.getInstance().getEngineIoServer()));
+          });
     } catch (ServletException ex) {
       LOG.error("Websocket Upgrade Filter error : " + ex.getMessage());
     }
