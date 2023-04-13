@@ -16,6 +16,7 @@ System Metric
 from collections import namedtuple
 from textwrap import dedent
 from typing import Dict, List, Optional
+import traceback
 
 import sqlparse
 from sqlalchemy import text
@@ -140,12 +141,17 @@ def _(
             and row_jobs.destination_table.get("table_id") == table.__tablename__
         ):
             rows_affected = None
-            if row_jobs.query_type == "INSERT":
-                rows_affected = row_jobs.dml_statistics.get("inserted_row_count")
-            if row_jobs.query_type == "DELETE":
-                rows_affected = row_jobs.dml_statistics.get("deleted_row_count")
-            if row_jobs.query_type == "UPDATE":
-                rows_affected = row_jobs.dml_statistics.get("updated_row_count")
+            try:
+                if row_jobs.query_type == "INSERT":
+                    rows_affected = row_jobs.dml_statistics.get("inserted_row_count")
+                if row_jobs.query_type == "DELETE":
+                    rows_affected = row_jobs.dml_statistics.get("deleted_row_count")
+                if row_jobs.query_type == "UPDATE":
+                    rows_affected = row_jobs.dml_statistics.get("updated_row_count")
+            except AttributeError:
+                logger.debug(traceback.format_exc())
+                rows_affected = None
+
             if row_jobs.query_type == "MERGE":
                 for i, key in enumerate(row_jobs.dml_statistics):
                     if row_jobs.dml_statistics[key] != 0:
