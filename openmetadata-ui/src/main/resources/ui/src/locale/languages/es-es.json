@@ -153,6 +153,7 @@
     "custom-oidc": "OIDC personalizado",
     "custom-property": "Propiedad personalizada",
     "custom-property-plural": "Propiedades personalizadas",
+    "custom-range": "Custom Range",
     "dag": "DAG",
     "dag-view": "Vista DAG",
     "daily-active-users-on-the-platform": "Usuarios activos diarios en la plataforma",
@@ -905,6 +906,7 @@
     "weekly-usage": "Uso semanal",
     "whats-new": "Novedades",
     "yes": "Sí",
+    "yesterday": "Yesterday",
     "your-entity": "Tu {{entity}}"
   },
   "message": {

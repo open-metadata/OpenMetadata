@@ -153,6 +153,7 @@
     "custom-oidc": "CustomOidc",
     "custom-property": "カスタムプロパティ",
     "custom-property-plural": "カスタムプロパティ",
+    "custom-range": "Custom Range",
     "dag": "Dag",
     "dag-view": "DAGビュー",
     "daily-active-users-on-the-platform": "このプラットフォームのアクティブなユーザー",
@@ -905,6 +906,7 @@
     "weekly-usage": "Weekly Usage",
     "whats-new": "最新情報",
     "yes": "はい",
+    "yesterday": "Yesterday",
     "your-entity": "あなたの{{entity}}"
   },
   "message": {
