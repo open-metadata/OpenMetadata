@@ -1,0 +1,30 @@
+[
+		{
+			"name": "chart_1",
+			"displayName": "Chart 1",
+      		"description": "This is a sample Chart for Looker",
+			"chartType": "Text",
+			"chartUrl": "http://localhost:8088/looker/explore/?form_data=%7B%22slice_id%22%3A%20114%7D"
+		},
+		{
+			"name":"chart_2",
+			"displayName": "Chart 2",
+      		"description": "This is a sample Chart for Looker",
+			"chartType": "Bar",
+			"chartUrl": "http://localhost:8088/looker/explore/?form_data=%7B%22slice_id%22%3A%20166%7D"
+		},
+		{
+			"name": "chart_3",
+			"displayName": "✈️ Chart 3",
+      		"description": "This is a sample Chart for Looker",
+			"chartType": "Other",
+			"chartUrl": "http://localhost:8088/looker/explore/?form_data=%7B%22slice_id%22%3A%2092%7D"
+		},
+		{
+			"name": "chart_4",
+			"displayName": "Chart 4",
+      		"description": "This is a sample Chart for Looker",
+			"chartType": "Histogram",
+			"chartUrl": "http://localhost:8088/looker/explore/?form_data=%7B%22slice_id%22%3A%20117%7D"
+		}
+	]
