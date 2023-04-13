@@ -41,6 +41,7 @@ export interface QueryCardProp extends HTMLAttributes<HTMLDivElement> {
   onQuerySelection?: (query: Query) => void;
   onQueryUpdate: (updatedQuery: Query, key: keyof Query) => Promise<void>;
   onUpdateVote: (data: QueryVote, id?: string) => Promise<void>;
+  afterDeleteAction: () => void;
 }
 
 export type QueryUsedByTable = {

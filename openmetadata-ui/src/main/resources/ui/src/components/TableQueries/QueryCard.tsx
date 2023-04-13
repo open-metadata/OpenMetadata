@@ -46,6 +46,7 @@ const QueryCard: FC<QueryCardProp> = ({
   onQueryUpdate,
   permission,
   onUpdateVote,
+  afterDeleteAction,
 }: QueryCardProp) => {
   const { t } = useTranslation();
   const { datasetFQN } = useParams<{ datasetFQN: string }>();
@@ -119,6 +120,7 @@ const QueryCard: FC<QueryCardProp> = ({
           )}
           extra={
             <QueryCardExtraOption
+              afterDeleteAction={afterDeleteAction}
               permission={permission}
               query={query}
               onEditClick={setIsEditMode}

@@ -19,4 +19,5 @@ export interface QueryCardExtraOptionProps {
   query: Query;
   onUpdateVote: (data: QueryVote, id?: string) => Promise<void>;
   onEditClick: (value: boolean) => void;
+  afterDeleteAction: () => void;
 }
