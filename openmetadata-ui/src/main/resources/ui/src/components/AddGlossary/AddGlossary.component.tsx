@@ -100,10 +100,6 @@ const AddGlossary = ({
     });
   };
 
-  const handleReviewerRemove = (removedTag: string) => {
-    setReviewer((pre) => pre.filter((option) => option.name !== removedTag));
-  };
-
   const validateForm = () => {
     const errMsg = {
       name: !name.trim(),
@@ -230,9 +226,9 @@ const AddGlossary = ({
           </Field>
 
           <Field>
-            <Space align="end">
+            <Space align="end" size={12}>
               <label
-                className="tw-form-label m-b-0 tw-mb-1"
+                className="glossary-form-label tw-form-label m-b-0 tw-mb-1"
                 data-testid="mutually-exclusive-label"
                 htmlFor="mutuallyExclusive">
                 {t('label.mutually-exclusive')}
@@ -248,55 +244,67 @@ const AddGlossary = ({
 
           <div>
             <div className="tw-flex tw-items-center tw-mt-4">
-              <span className="w-form-label tw-mr-3">
+              <span className="glossary-form-label w-form-label tw-mr-3">
                 {`${t('label.owner')}:`}
               </span>
               <UserTeamSelectableList
                 hasPermission
                 owner={owner}
                 onUpdate={handleUpdatedOwner}>
-                <Button data-testid="add-owner" size="small" type="primary">
-                  <PlusOutlined style={{ color: 'white' }} />
-                </Button>
+                <Button
+                  data-testid="add-owner"
+                  icon={
+                    <PlusOutlined
+                      style={{ color: 'white', fontSize: '12px' }}
+                    />
+                  }
+                  size="small"
+                  type="primary"
+                />
               </UserTeamSelectableList>
             </div>
-            <div className="tw-my-4" data-testid="owner-container">
+            <div className="tw-my-2" data-testid="owner-container">
               {owner && (
                 <UserTag
-                  bordered
-                  closable
                   id={owner.id}
                   name={getEntityName(owner)}
                   size={UserTagSize.small}
-                  onRemove={() => setOwner(undefined)}
                 />
               )}
             </div>
             <div className="tw-flex tw-items-center tw-mt-4">
-              <span className="w-form-label tw-mr-3">
+              <span className="glossary-form-label w-form-label tw-mr-3">
                 {`${t('label.reviewer-plural')}:`}
               </span>
               <UserSelectableList
                 hasPermission
                 selectedUsers={reviewer ?? []}
                 onUpdate={handleReviewerSave}>
-                <Button data-testid="add-reviewers" size="small" type="primary">
-                  <PlusOutlined style={{ color: 'white' }} />
-                </Button>
+                <Button
+                  data-testid="add-reviewers"
+                  icon={
+                    <PlusOutlined
+                      style={{ color: 'white', fontSize: '12px' }}
+                    />
+                  }
+                  size="small"
+                  type="primary"
+                />
               </UserSelectableList>
             </div>
-            <Space wrap className="tw-my-4" size={[8, 8]}>
+            <Space
+              wrap
+              className="tw-my-2"
+              data-testid="reviewers-container"
+              size={[8, 8]}>
               {Boolean(reviewer.length) &&
                 reviewer.map((d, index) => {
                   return (
                     <UserTag
-                      bordered
-                      closable
                       id={d.id}
                       key={index}
                       name={getEntityName(d)}
                       size={UserTagSize.small}
-                      onRemove={() => d.name && handleReviewerRemove(d.name)}
                     />
                   );
                 })}
