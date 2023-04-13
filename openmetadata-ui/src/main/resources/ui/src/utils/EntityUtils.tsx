@@ -942,17 +942,16 @@ export const getBreadcrumbForEntitiesWithServiceOnly = (
   includeCurrent = false
 ) => {
   const { service } = entity;
+  const serviceType =
+    service.type === 'objectStoreService'
+      ? ServiceCategory.STORAGE_SERVICES
+      : service.type;
 
   return [
     {
       name: getEntityName(service),
       url: service?.name
-        ? getServiceDetailsPath(
-            service?.name,
-            service.type === 'objectStoreService'
-              ? ServiceCategory.STORAGE_SERVICES
-              : service.type
-          )
+        ? getServiceDetailsPath(service?.name, serviceType)
         : '',
     },
     ...(includeCurrent
