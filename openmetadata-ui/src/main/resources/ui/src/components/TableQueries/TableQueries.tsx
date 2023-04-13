@@ -295,10 +295,10 @@ const TableQueries: FC<TableQueriesProp> = ({
   );
 
   return (
-    <Row className="h-full" id="tablequeries">
-      <Col span={18}>
+    <Row gutter={8} id="tablequeries" wrap={false}>
+      <Col flex="auto">
         <Row
-          className="p-r-lg m-t-md"
+          className="p-r-md m-t-md"
           data-testid="queries-container"
           gutter={[8, 16]}>
           <Col span={24}>
@@ -320,16 +320,14 @@ const TableQueries: FC<TableQueriesProp> = ({
           </Col>
         </Row>
       </Col>
-      <Col className="bg-white border-main border-1 border-t-0" span={6}>
+      <Col flex="400px">
         {selectedQuery && (
-          <div className="sticky top-0">
-            <TableQueryRightPanel
-              isLoading={isLoading.rightPanel}
-              permission={queryPermissions}
-              query={selectedQuery}
-              onQueryUpdate={handleQueryUpdate}
-            />
-          </div>
+          <TableQueryRightPanel
+            isLoading={isLoading.rightPanel}
+            permission={queryPermissions}
+            query={selectedQuery}
+            onQueryUpdate={handleQueryUpdate}
+          />
         )}
       </Col>
     </Row>

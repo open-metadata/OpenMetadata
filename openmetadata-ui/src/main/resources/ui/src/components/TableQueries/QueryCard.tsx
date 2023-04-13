@@ -13,13 +13,13 @@
 
 import { Button, Card, Col, Row, Space, Typography } from 'antd';
 import classNames from 'classnames';
-import { getTableTabPath, PIPE_SYMBOL } from 'constants/constants';
+import { getTableTabPath, getUserPath, PIPE_SYMBOL } from 'constants/constants';
 import { QUERY_DATE_FORMAT, QUERY_LINE_HEIGHT } from 'constants/Query.constant';
-import { split } from 'lodash';
+import { isUndefined, split } from 'lodash';
 import Qs from 'qs';
 import React, { FC, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useLocation, useParams } from 'react-router-dom';
+import { Link, useHistory, useLocation, useParams } from 'react-router-dom';
 import { parseSearchParams } from 'utils/Query/QueryUtils';
 import { getQueryPath } from 'utils/RouterUtils';
 import { getFormattedDateFromSeconds } from 'utils/TimeUtils';
@@ -34,9 +34,10 @@ import { ReactComponent as CopyIcon } from '/assets/svg/icon-copy.svg';
 
 // css import
 import { useClipboard } from 'hooks/useClipBoard';
+import { Duration } from 'luxon';
 import './table-queries.style.less';
 
-const { Text, Paragraph } = Typography;
+const { Text } = Typography;
 
 const QueryCard: FC<QueryCardProp> = ({
   isExpanded = false,
@@ -74,6 +75,28 @@ const QueryCard: FC<QueryCardProp> = ({
     );
 
     return { isAllowExpand: queryArr.length > QUERY_LINE_HEIGHT, queryDate };
+  }, [query]);
+
+  const duration = useMemo(() => {
+    const durationInSeconds = query.duration;
+
+    if (isUndefined(durationInSeconds)) {
+      return undefined;
+    }
+
+    const duration = Duration.fromObject({ seconds: durationInSeconds });
+
+    let formatString;
+    if (durationInSeconds < 1) {
+      formatString = "SSS 'milisec'";
+    } else if (durationInSeconds < 5) {
+      formatString = "s 'sec'";
+    } else {
+      formatString = "m 'min'";
+    }
+
+    // Format the duration as a string using the chosen format string
+    return duration.toFormat(`'${t('label.runs-for')}' ${formatString}`);
   }, [query]);
 
   const updateSqlQuery = async () => {
@@ -134,12 +157,20 @@ const QueryCard: FC<QueryCardProp> = ({
             <Space className="font-normal p-y-xs" size={8}>
               <Text>{queryDate}</Text>
               <Text className="text-gray-400">{PIPE_SYMBOL}</Text>
-              <Paragraph className="m-b-0">
-                <Text>{`${t('label.duration')} `}</Text>
-                <Text>{query.duration ?? '--'}</Text>
-              </Paragraph>
-              <Text className="text-gray-400">{PIPE_SYMBOL}</Text>
-              <Text>{`${t('label.by-lowercase')} ${query.updatedBy}`}</Text>
+              {duration && (
+                <>
+                  <Text>{duration}</Text>
+                  <Text className="text-gray-400">{PIPE_SYMBOL}</Text>
+                </>
+              )}
+              {query.updatedBy && (
+                <Text>
+                  {`${t('label.by-lowercase')} `}
+                  <Link to={getUserPath(query.updatedBy)}>
+                    {query.updatedBy}
+                  </Link>
+                </Text>
+              )}
             </Space>
           }
           onClick={handleCardClick}>
