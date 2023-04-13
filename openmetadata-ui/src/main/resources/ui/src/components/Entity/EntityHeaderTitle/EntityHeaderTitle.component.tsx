@@ -37,9 +37,17 @@ const EntityHeaderTitle = ({
             <Link
               className="m-b-0 d-block entity-header-display-name text-lg font-bold"
               data-testid="entity-header-display-name"
+              target={openEntityInNewPage ? '_blank' : '_self'}
               to={link}>
               <Typography.Text ellipsis={{ tooltip: true }}>
                 {displayName ?? name}
+                {openEntityInNewPage && (
+                  <IconExternalLink
+                    className="anticon vertical-baseline m-l-xss"
+                    height={14}
+                    width={14}
+                  />
+                )}
               </Typography.Text>
             </Link>
           ) : (
@@ -47,10 +55,7 @@ const EntityHeaderTitle = ({
               className="m-b-0 d-block entity-header-display-name text-lg font-bold"
               data-testid="entity-header-display-name"
               ellipsis={{ tooltip: true }}>
-              {displayName ?? name}{' '}
-              {openEntityInNewPage && (
-                <IconExternalLink className="anticon" height={14} />
-              )}
+              {displayName ?? name}
             </Typography.Text>
           )}
         </div>
