@@ -27,9 +27,6 @@ jest.mock('rest/tableAPI', () => ({
   getLatestTableProfileByFqn: jest
     .fn()
     .mockImplementation(() => mockTableEntityDetails),
-  getTableQueryByTableId: jest
-    .fn()
-    .mockImplementation(() => mockTableEntityDetails),
 }));
 
 jest.mock('../SummaryList/SummaryList.component', () =>
@@ -50,7 +47,6 @@ describe('TableSummary component tests', () => {
     const queriesLabel = screen.getByTestId('label.query-plural-label');
     const columnsLabel = screen.getByTestId('label.column-plural-label');
     const typeValue = screen.getByTestId('label.type-value');
-    const queriesValue = screen.getByTestId('label.query-plural-value');
     const columnsValue = screen.getByTestId('label.column-plural-value');
     const noProfilerPlaceholder = screen.getByTestId(
       'no-profiler-enabled-message'
@@ -63,7 +59,6 @@ describe('TableSummary component tests', () => {
     expect(queriesLabel).toBeInTheDocument();
     expect(columnsLabel).toBeInTheDocument();
     expect(typeValue).toContainHTML('Regular');
-    expect(queriesValue.textContent).toBe('2 past week');
     expect(columnsValue).toContainHTML('2');
     expect(noProfilerPlaceholder).toContainHTML(
       'message.no-profiler-enabled-summary-message'
@@ -102,7 +97,6 @@ describe('TableSummary component tests', () => {
     const queriesLabel = screen.getByTestId('label.query-plural-label');
     const columnsLabel = screen.getByTestId('label.column-plural-label');
     const typeValue = screen.getByTestId('label.type-value');
-    const queriesValue = screen.getByTestId('label.query-plural-value');
     const columnsValue = screen.getByTestId('label.column-plural-value');
     const noProfilerPlaceholder = screen.getByTestId(
       'no-profiler-enabled-message'
@@ -125,7 +119,6 @@ describe('TableSummary component tests', () => {
     expect(queriesLabel).toBeInTheDocument();
     expect(columnsLabel).toBeInTheDocument();
     expect(typeValue).toContainHTML('Regular');
-    expect(queriesValue.textContent).toBe('2 past week');
     expect(columnsValue).toContainHTML('2');
     expect(noProfilerPlaceholder).toContainHTML(
       'message.no-profiler-enabled-summary-message'
