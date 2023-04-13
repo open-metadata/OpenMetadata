@@ -85,7 +85,7 @@ const TeamHierarchy: FC<TeamHierarchyProps> = ({
         }),
         dataIndex: 'owns',
         key: 'owns',
-        render: (owns) => owns.length,
+        render: (owns) => owns?.length || 0,
       },
       {
         title: t('label.description'),
