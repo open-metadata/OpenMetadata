@@ -16,4 +16,5 @@ export interface EntityHeaderTitleProps {
   displayName: string;
   link?: string;
   openEntityInNewPage?: boolean;
+  deleted?: boolean;
 }

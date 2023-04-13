@@ -10,14 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { ExclamationCircleOutlined } from '@ant-design/icons';
+
 import { Col, Row } from 'antd';
 import classNames from 'classnames';
 import TitleBreadcrumb from 'components/common/title-breadcrumb/title-breadcrumb.component';
 import { TitleBreadcrumbProps } from 'components/common/title-breadcrumb/title-breadcrumb.interface';
 import { EntityType } from 'enums/entity.enum';
 import React, { ReactNode } from 'react';
-import { useTranslation } from 'react-i18next';
 import { getEntityLinkFromType, getEntityName } from 'utils/EntityUtils';
 import EntityHeaderTitle from '../EntityHeaderTitle/EntityHeaderTitle.component';
 
@@ -47,8 +46,6 @@ export const EntityHeader = ({
   openEntityInNewPage,
   gutter = 'default',
 }: Props) => {
-  const { t } = useTranslation();
-
   return (
     <Row className="w-full" gutter={0} justify="space-between">
       <Col>
@@ -62,6 +59,7 @@ export const EntityHeader = ({
         </div>
 
         <EntityHeaderTitle
+          deleted={entityData.deleted}
           displayName={getEntityName(entityData)}
           icon={icon}
           link={
@@ -72,12 +70,6 @@ export const EntityHeader = ({
           name={entityData.name}
           openEntityInNewPage={openEntityInNewPage}
         />
-        {entityData.deleted && (
-          <div className="deleted-badge-button" data-testid="deleted-badge">
-            <ExclamationCircleOutlined className="m-r-sm" />
-            {t('label.deleted')}
-          </div>
-        )}
       </Col>
       <Col>{extra}</Col>
     </Row>

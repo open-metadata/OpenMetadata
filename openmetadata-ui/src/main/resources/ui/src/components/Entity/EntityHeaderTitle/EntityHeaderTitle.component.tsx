@@ -10,9 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { ExclamationCircleFilled } from '@ant-design/icons';
 import { Col, Row, Typography } from 'antd';
 import { ReactComponent as IconExternalLink } from 'assets/svg/external-link-grey.svg';
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { EntityHeaderTitleProps } from './EntityHeaderTitle.interface';
 
@@ -22,7 +24,10 @@ const EntityHeaderTitle = ({
   displayName,
   link,
   openEntityInNewPage,
+  deleted = false,
 }: EntityHeaderTitleProps) => {
+  const { t } = useTranslation();
+
   return (
     <Row align="middle" gutter={8} wrap={false}>
       <Col>{icon}</Col>
@@ -60,6 +65,14 @@ const EntityHeaderTitle = ({
           )}
         </div>
       </Col>
+      {deleted && (
+        <Col className="self-end text-xs">
+          <div className="deleted-badge-button" data-testid="deleted-badge">
+            <ExclamationCircleFilled className="m-r-xss font-medium text-xs" />
+            {t('label.deleted')}
+          </div>
+        </Col>
+      )}
     </Row>
   );
 };

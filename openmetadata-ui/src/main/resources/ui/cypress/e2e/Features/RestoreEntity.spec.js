@@ -79,7 +79,8 @@ describe('Restore entity functionality should work properly', () => {
     cy.get('[data-testid="show-deleted"]').should('exist').click();
     verifyResponseStatusCode('@showDeletedTables', 200);
 
-    cy.get('[data-testid="sample_data-raw_product_catalog"]')
+    cy.get('[data-testid="entity-header-display-name"]')
+      .contains('raw_product_catalog')
       .should('exist')
       .click();
 
@@ -96,7 +97,8 @@ describe('Restore entity functionality should work properly', () => {
     cy.get('[data-testid="show-deleted"]').should('exist').click();
     verifyResponseStatusCode('@showDeletedTables', 200);
 
-    cy.get('[data-testid="sample_data-raw_product_catalog"]')
+    cy.get('[data-testid="entity-header-display-name"]')
+      .contains('raw_product_catalog')
       .should('exist')
       .click();
 
@@ -142,7 +144,8 @@ describe('Restore entity functionality should work properly', () => {
     cy.get('[data-testid="show-deleted"]').should('exist').click();
     verifyResponseStatusCode('@showDeletedTables', 200);
 
-    cy.get('[data-testid="sample_data-raw_product_catalog"]')
+    cy.get('[data-testid="entity-header-display-name"]')
+      .contains('raw_product_catalog')
       .should('exist')
       .click();
 

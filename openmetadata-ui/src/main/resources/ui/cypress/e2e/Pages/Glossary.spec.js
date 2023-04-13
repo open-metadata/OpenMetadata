@@ -770,7 +770,7 @@ describe('Glossary page should work properly', () => {
       NEW_GLOSSARY_1_TERMS.term_1.fullyQualifiedName
     );
 
-    cy.get(`[data-testid="${entity.serviceName}-${entity.term}"]`)
+    cy.get('[data-testid="entity-header-display-name"]')
       .contains(entity.term)
       .should('be.visible');
   });
@@ -788,7 +788,8 @@ describe('Glossary page should work properly', () => {
     verifyResponseStatusCode('@assetTab', 200);
 
     interceptURL('GET', '/api/v1/feed*', 'entityDetails');
-    cy.get(`[data-testid="${entity.serviceName}-${entity.term}"]`)
+
+    cy.get('[data-testid="entity-header-display-name"]')
       .contains(entity.term)
       .should('be.visible')
       .click();

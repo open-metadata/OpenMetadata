@@ -14,6 +14,8 @@
 import { Card, Col, Row, Skeleton, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
+// css
+import QueryCount from 'components/common/QueryCount/QueryCount.component';
 import PageLayoutV1 from 'components/containers/PageLayoutV1';
 import { isEqual, isNil, isUndefined } from 'lodash';
 import { EntityTags, ExtraInfo } from 'Models';
@@ -83,8 +85,6 @@ import TableProfilerGraph from '../TableProfiler/TableProfilerGraph.component';
 import TableProfilerV1 from '../TableProfiler/TableProfilerV1';
 import TableQueries from '../TableQueries/TableQueries';
 import { DatasetDetailsProps } from './DatasetDetails.interface';
-// css
-import QueryCount from 'components/common/QueryCount/QueryCount.component';
 import './datasetDetails.style.less';
 
 const DatasetDetails: React.FC<DatasetDetailsProps> = ({
@@ -659,7 +659,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
           onThreadLinkSelect={onThreadLinkSelect}
         />
 
-        <div className="tw-mt-4 tw-flex tw-flex-col tw-flex-grow">
+        <div className="m-t-md h-inherit">
           <TabsPane
             activeTab={activeTab}
             className="tw-flex-initial"

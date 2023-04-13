@@ -16,7 +16,7 @@ import { Tooltip } from 'antd';
 import { ExpandableConfig } from 'antd/lib/table/interface';
 import { ReactComponent as IconFlatFolder } from 'assets/svg/folder.svg';
 import { ReactComponent as ContainerIcon } from 'assets/svg/ic-storage.svg';
-import { ReactComponent as IconTag } from 'assets/svg/tag.svg';
+import { ReactComponent as IconTag } from 'assets/svg/tag-grey.svg';
 import classNames from 'classnames';
 import { SourceType } from 'components/searched-data/SearchedData.interface';
 import { t } from 'i18next';
