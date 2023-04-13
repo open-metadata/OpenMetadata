@@ -55,6 +55,7 @@ export const AssetSelectionModal = ({
     SearchIndex.TABLE
   );
   const [pageNumber, setPageNumber] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
 
   const fetchEntities = useCallback(
     async ({ searchText = '', page = 1, index = activeFilter }) => {
@@ -68,7 +69,7 @@ export const AssetSelectionModal = ({
           queryFilter: getQueryFilterToExcludeTerm(glossaryFQN),
         });
         const hits = res.hits.hits as SearchedDataProps['data'];
-
+        setTotalCount(res.hits.total.value ?? 0);
         setItems(page === 1 ? hits : (prevItems) => [...prevItems, ...hits]);
         setPageNumber(page);
       } catch (error) {
@@ -174,7 +175,10 @@ export const AssetSelectionModal = ({
 
   const onScroll: UIEventHandler<HTMLElement> = useCallback(
     (e) => {
-      if (e.currentTarget.scrollHeight - e.currentTarget.scrollTop === 500) {
+      if (
+        e.currentTarget.scrollHeight - e.currentTarget.scrollTop === 500 &&
+        items.length < totalCount
+      ) {
         !isLoading &&
           fetchEntities({
             searchText: search,
@@ -183,7 +187,7 @@ export const AssetSelectionModal = ({
           });
       }
     },
-    [activeFilter, search]
+    [activeFilter, search, totalCount, items]
   );
 
   return (
@@ -202,7 +206,8 @@ export const AssetSelectionModal = ({
       open={open}
       style={{ top: 40 }}
       title={t('label.add-entity', { entity: t('label.asset-plural') })}
-      width={750}>
+      width={750}
+      onCancel={onCancel}>
       <Space className="w-full h-full" direction="vertical" size={16}>
         <Searchbar
           removeMargin
@@ -243,7 +248,7 @@ export const AssetSelectionModal = ({
                 handleSummaryPanelDisplay={handleCardClick}
                 id={`tabledatacard-${item.id}`}
                 key={item.id}
-                source={item}
+                source={{ ...item, tags: [] }}
               />
             )}
           </VirtualList>

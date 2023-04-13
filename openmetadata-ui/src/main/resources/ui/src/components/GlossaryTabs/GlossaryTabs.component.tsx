@@ -19,12 +19,10 @@ import AssetsTabs, {
 import GlossaryOverviewTab from 'components/GlossaryTerms/tabs/GlossaryOverviewTab.component';
 import { OperationPermission } from 'components/PermissionProvider/PermissionProvider.interface';
 import { getGlossaryTermDetailsPath } from 'constants/constants';
-import { myDataSearchIndex } from 'constants/Mydata.constants';
 import { Glossary } from 'generated/entity/data/glossary';
 import { t } from 'i18next';
-import React, { RefObject, useEffect, useMemo, useState } from 'react';
+import React, { RefObject, useMemo } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
-import { searchData } from 'rest/miscAPI';
 import { getGlossaryTermsVersionsPath } from 'utils/RouterUtils';
 import { GlossaryTerm } from '../../generated/entity/data/glossaryTerm';
 import { getCountBadge } from '../../utils/CommonUtils';
@@ -40,6 +38,7 @@ type Props = {
   onAssetClick?: (asset?: EntityDetailsObjectInterface) => void;
   assetsRef: RefObject<AssetsTabRef>;
   isSummaryPanelOpen: boolean;
+  assetCount?: number;
 };
 
 const GlossaryTabs = ({
@@ -52,6 +51,7 @@ const GlossaryTabs = ({
   refreshGlossaryTerms,
   onAssetClick,
   assetsRef,
+  assetCount,
   isSummaryPanelOpen,
 }: Props) => {
   const {
@@ -60,7 +60,6 @@ const GlossaryTabs = ({
     version,
   } = useParams<{ glossaryName: string; tab: string; version: string }>();
   const history = useHistory();
-  const [assetCount, setAssetCount] = useState<number>(0);
 
   const activeTabHandler = (tab: string) => {
     history.push({
@@ -69,30 +68,6 @@ const GlossaryTabs = ({
         : getGlossaryTermDetailsPath(glossaryFqn, tab),
     });
   };
-
-  const fetchGlossaryTermAssets = async () => {
-    if (glossaryFqn) {
-      try {
-        const res = await searchData(
-          '',
-          1,
-          0,
-          `(tags.tagFQN:"${glossaryFqn}")`,
-          '',
-          '',
-          myDataSearchIndex
-        );
-
-        setAssetCount(res.data.hits.total.value ?? 0);
-      } catch (error) {
-        setAssetCount(0);
-      }
-    }
-  };
-
-  useEffect(() => {
-    fetchGlossaryTermAssets();
-  }, [glossaryFqn]);
 
   const activeTab = useMemo(() => {
     return tab ?? 'overview';
@@ -145,7 +120,7 @@ const GlossaryTabs = ({
           <div data-testid="assets">
             {t('label.asset-plural')}
             <span className="p-l-xs ">
-              {getCountBadge(assetCount, '', activeTab === 'assets')}
+              {getCountBadge(assetCount ?? 0, '', activeTab === 'assets')}
             </span>
           </div>
         ),
