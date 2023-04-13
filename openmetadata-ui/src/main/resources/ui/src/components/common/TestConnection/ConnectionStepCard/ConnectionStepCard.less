@@ -15,6 +15,7 @@
 @success-bg: #28a7450f;
 @failure-bg: #cb24310f;
 @text-color: #37352f;
+@warning-bg: #fff3dc;
 
 .connection-step-card {
   color: @text-color;
@@ -28,27 +29,32 @@
   &.failure {
     border-color: #efbdc1;
   }
+  &.warning {
+    border-color: #ffe1a6;
+  }
   .connection-step-card-header {
     background: @awaiting-bg;
-    border-bottom: 1px solid @border-color;
     padding: 8px 16px;
     &.success {
       background: @success-bg;
-      border-bottom-color: #28a7454d;
     }
 
     &.failure {
       background: @failure-bg;
       border-bottom-color: #efbdc1;
     }
-    .awaiting-status {
+    &.warning {
+      background: @warning-bg;
+      border-bottom-color: #ffe1a6;
+    }
+    .awaiting-status,
+    .skipped-status {
       color: @text-color;
       font-size: 12px;
       opacity: 0.6;
     }
-    .success-status {
-      color: @text-color;
-    }
+    .success-status,
+    .warning-status,
     .failure-status {
       color: @text-color;
     }

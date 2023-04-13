@@ -309,7 +309,7 @@ const TestConnection: FC<TestConnectionProps> = ({
           <Space
             align={testStatus ? 'start' : 'center'}
             data-testid="message-container"
-            size={4}>
+            size={8}>
             {isTestingConnection && <Loader size="small" />}
             {testStatus === StatusType.Successful && (
               <SuccessIcon
