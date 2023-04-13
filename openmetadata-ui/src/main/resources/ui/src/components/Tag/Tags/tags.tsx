@@ -107,9 +107,7 @@ const Tags: FunctionComponent<TagProps> = ({
             textEditStyles,
             'd-flex items-center cursor-pointer'
           )}
-          data-testid={
-            editable && isRemovable ? `tag-${tag.tagFQN}` : `add-tag`
-          }
+          data-testid={editable ? `tag-${tag.tagFQN}` : 'add-tag'}
           size={4}>
           {startIcon}
           <span
