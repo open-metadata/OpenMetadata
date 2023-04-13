@@ -13,6 +13,7 @@
 
 import { Popover } from 'antd';
 import ProfilePicture from 'components/common/ProfilePicture/ProfilePicture';
+import QueryCount from 'components/common/QueryCount/QueryCount.component';
 import {
   LeafNodes,
   LineagePos,
@@ -163,8 +164,6 @@ export const getEntityOverview = (
         ? getUsagePercentile(usageSummary?.weeklyStats?.percentileRank || 0)
         : '-';
 
-      const queries = usageSummary?.weeklyStats?.count.toLocaleString() || '0';
-
       const overview = [
         {
           name: i18next.t('label.owner'),
@@ -236,7 +235,7 @@ export const getEntityOverview = (
         },
         {
           name: i18next.t('label.query-plural'),
-          value: `${queries} past week`,
+          value: <QueryCount tableId={entityDetail.id || ''} />,
           isLink: false,
           visible: [
             DRAWER_NAVIGATION_OPTIONS.lineage,
