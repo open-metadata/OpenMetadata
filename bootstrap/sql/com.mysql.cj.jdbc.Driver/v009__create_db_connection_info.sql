@@ -156,3 +156,30 @@ WHERE serviceType = 'Glue';
 
 UPDATE chart_entity
 SET json = JSON_REMOVE(json, '$.tables');
+
+-- Updating the tableau authentication fields
+UPDATE dashboard_service_entity  
+SET json = JSON_INSERT(
+JSON_REMOVE(json,'$.connection.config.username','$.connection.config.password'),
+'$.connection.config.authType',
+JSON_OBJECT(
+	'username',JSON_EXTRACT(json,'$.connection.config.username'),
+	'password',JSON_EXTRACT(json,'$.connection.config.password')
+	)
+)
+WHERE serviceType = 'Tableau'
+AND JSON_EXTRACT(json, '$.connection.config.username') is not null
+AND JSON_EXTRACT(json, '$.connection.config.password') is not null;
+
+UPDATE dashboard_service_entity  
+SET json = JSON_INSERT(
+JSON_REMOVE(json,'$.connection.config.personalAccessTokenName','$.connection.config.personalAccessTokenSecret'),
+'$.connection.config.authType',
+JSON_OBJECT(
+	'personalAccessTokenName',JSON_EXTRACT(json,'$.connection.config.personalAccessTokenName'),
+	'personalAccessTokenSecret',JSON_EXTRACT(json,'$.connection.config.personalAccessTokenSecret')
+	)
+)
+WHERE serviceType = 'Tableau'
+AND JSON_EXTRACT(json, '$.connection.config.personalAccessTokenName') is not null
+AND JSON_EXTRACT(json, '$.connection.config.personalAccessTokenSecret') is not null;

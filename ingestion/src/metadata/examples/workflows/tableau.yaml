@@ -4,15 +4,20 @@ source:
   serviceConnection:
     config:
       type: Tableau
-      username: username
-      password: password
+      # For Tableau, choose one of basic or access token authentication
+      # # For basic authentication
+      # authType:
+      #   username: username
+      #   password: password
+      # # For access token authentication
+      # authType:
+      #   personalAccessTokenName: personal_access_token_name
+      #   personalAccessTokenSecret: personal_access_token_secret
       env: tableau_prod
       hostPort: http://localhost
       siteName: site_name
       siteUrl: site_url
       apiVersion: api_version
-      personalAccessTokenName: personal_access_token_name
-      personalAccessTokenSecret: personal_access_token_secret
   sourceConfig:
     config:
       type: DashboardMetadata

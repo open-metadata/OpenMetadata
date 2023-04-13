@@ -11,6 +11,44 @@
       "type": "string",
       "enum": ["Tableau"],
       "default": "Tableau"
+    },
+    "basicAuth": {
+      "title": "Tableau Basic Authentication type",
+      "description": "Tableau Basic Authentication type for username/password",
+      "type": "object",
+      "properties": {
+        "username": {
+          "title": "Username",
+          "description": "Username for Tableau.",
+          "type": "string"
+        },
+        "password": {
+          "title": "Password",
+          "description": "Password for Tableau.",
+          "type": "string",
+          "format": "password"
+        }
+      },
+      "required": ["username", "password"]
+    },
+    "accessTokenAuth": {
+      "title": "Tableau Access Token Authentication type",
+      "description": "Tableau Access Token Authentication type for authentication using access token",
+      "type": "object",
+      "properties": {
+        "personalAccessTokenName": {
+          "title": "Personal Access Token",
+          "description": "Personal Access Token Name.",
+          "type": "string"
+        },
+        "personalAccessTokenSecret": {
+          "title": "Personal Access Token Secret",
+          "description": "Personal Access Token Secret.",
+          "type": "string",
+          "format": "password"
+        }
+      },
+      "required": ["personalAccessTokenName", "personalAccessTokenSecret"]
     }
   },
   "properties": {
@@ -27,16 +65,18 @@
       "type": "string",
       "format": "uri"
     },
-    "username": {
-      "title": "Username",
-      "description": "Username for Tableau.",
-      "type": "string"
-    },
-    "password": {
-      "title": "Password",
-      "description": "Password for Tableau.",
-      "type": "string",
-      "format": "password"
+    "authType": {
+      "mask": true,
+      "title": "Authentication type for Tableau",
+      "description": "Types of methods used to authenticate to the tableau instance",
+      "oneOf": [
+        {
+          "$ref": "#/definitions/basicAuth"
+        },
+        {
+          "$ref": "#/definitions/accessTokenAuth"
+        }
+      ]
     },
     "apiVersion": {
       "title": "API Version",
@@ -52,17 +92,6 @@
       "title": "Site Url",
       "description": "Tableau Site Url.",
       "type": "string"
-    },
-    "personalAccessTokenName": {
-      "title": "Personal Access Token",
-      "description": "Personal Access Token Name.",
-      "type": "string"
-    },
-    "personalAccessTokenSecret": {
-      "title": "Personal Access Token Secret",
-      "description": "Personal Access Token Secret.",
-      "type": "string",
-      "format": "password"
     },
     "env": {
       "title": "Tableau Environment",
@@ -83,5 +112,5 @@
     }
   },
   "additionalProperties": false,
-  "required": ["apiVersion", "env"]
+  "required": ["apiVersion", "env", "hostPort"]
 }
