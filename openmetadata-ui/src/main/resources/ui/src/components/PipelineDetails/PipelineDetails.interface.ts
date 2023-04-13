@@ -23,11 +23,11 @@ export interface PipeLineDetailsProp {
   followers: Array<EntityReference>;
   slashedPipelineName: TitleBreadcrumbProps['titleLinks'];
   paging: Paging;
-  followPipelineHandler: () => void;
-  unfollowPipelineHandler: () => void;
+  followPipelineHandler: (fetchCount: () => void) => void;
+  unfollowPipelineHandler: (fetchCount: () => void) => void;
   settingsUpdateHandler: (updatedPipeline: Pipeline) => Promise<void>;
   descriptionUpdateHandler: (updatedPipeline: Pipeline) => Promise<void>;
-  tagUpdateHandler: (updatedPipeline: Pipeline) => void;
+  tagUpdateHandler: (updatedPipeline: Pipeline, fetchCount: () => void) => void;
   taskUpdateHandler: (patch: Array<Operation>) => Promise<void>;
   versionHandler: () => void;
   onExtensionUpdate: (updatedPipeline: Pipeline) => Promise<void>;

@@ -386,9 +386,10 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
     setThreadLink('');
   };
 
-  const getLoader = () => {
-    return isEntityThreadLoading ? <Loader /> : null;
-  };
+  const loader = useMemo(
+    () => (isEntityThreadLoading ? <Loader /> : null),
+    [isEntityThreadLoading]
+  );
 
   const fetchMoreThread = (
     isElementInView: boolean,
@@ -549,6 +550,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
                 />
                 <div />
               </div>
+              {loader}
             </Card>
           )}
           {activeTab === 3 && (
@@ -592,9 +594,8 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
           <div
             data-testid="observer-element"
             id="observer-element"
-            ref={elementRef as RefObject<HTMLDivElement>}>
-            {getLoader()}
-          </div>
+            ref={elementRef as RefObject<HTMLDivElement>}
+          />
           {threadLink ? (
             <ActivityThreadPanel
               createThread={createThread}

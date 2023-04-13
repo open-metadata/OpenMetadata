@@ -21,6 +21,7 @@ import { ResourceEntity } from 'components/PermissionProvider/PermissionProvider
 import { compare, Operation } from 'fast-json-patch';
 import { isUndefined, omitBy, toString } from 'lodash';
 import React, { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import { updateChart } from 'rest/chartAPI';
 import {
@@ -48,7 +49,6 @@ import { Post, Thread, ThreadType } from '../../generated/entity/feed/thread';
 import { Connection } from '../../generated/entity/services/dashboardService';
 import { Paging } from '../../generated/type/paging';
 import { EntityFieldThreadCount } from '../../interface/feed.interface';
-import jsonData from '../../jsons/en';
 import {
   addToRecentViewed,
   getCurrentUserId,
@@ -73,6 +73,7 @@ export type ChartType = {
 } & Chart;
 
 const DashboardDetailsPage = () => {
+  const { t } = useTranslation();
   const USERId = getCurrentUserId();
   const history = useHistory();
   const { getEntityPermissionByFqn } = usePermissionProvider();
@@ -121,7 +122,9 @@ const DashboardDetailsPage = () => {
       setDashboardPermissions(entityPermission);
     } catch (error) {
       showErrorToast(
-        jsonData['api-error-messages']['fetch-entity-permissions-error']
+        t('server.fetch-entity-permissions-error', {
+          entity: entityFqn,
+        })
       );
     } finally {
       setLoading(false);
@@ -153,39 +156,35 @@ const DashboardDetailsPage = () => {
     );
   };
 
-  const getFeedData = (
+  const getFeedData = async (
     after?: string,
     feedFilter?: FeedFilter,
     threadType?: ThreadType
   ) => {
     setIsEntityThreadLoading(true);
     !after && setEntityThread([]);
-    getAllFeeds(
-      getEntityFeedLink(EntityType.DASHBOARD, dashboardFQN),
-      after,
-      threadType,
-      feedFilter,
-      undefined,
-      USERId
-    )
-      .then((res) => {
-        const { data, paging: pagingObj } = res;
-        if (data) {
-          setPaging(pagingObj);
-          setEntityThread((prevData) => [...prevData, ...data]);
-        } else {
-          showErrorToast(
-            jsonData['api-error-messages']['fetch-entity-feed-error']
-          );
-        }
-      })
-      .catch((err: AxiosError) => {
-        showErrorToast(
-          err,
-          jsonData['api-error-messages']['fetch-entity-feed-error']
-        );
-      })
-      .finally(() => setIsEntityThreadLoading(false));
+
+    try {
+      const { data, paging: pagingObj } = await getAllFeeds(
+        getEntityFeedLink(EntityType.DASHBOARD, dashboardFQN),
+        after,
+        threadType,
+        feedFilter,
+        undefined,
+        USERId
+      );
+      setPaging(pagingObj);
+      setEntityThread((prevData) => [...prevData, ...data]);
+    } catch (error) {
+      showErrorToast(
+        error as AxiosError,
+        t('server.entity-fetch-error', {
+          entity: t('label.entity-feed-plural'),
+        })
+      );
+    } finally {
+      setIsEntityThreadLoading(false);
+    }
   };
 
   const saveUpdatedDashboardData = (updatedData: Dashboard) => {
@@ -197,7 +196,7 @@ const DashboardDetailsPage = () => {
     return patchDashboardDetails(dashboardId, jsonPatch);
   };
 
-  const fetchServiceDetails = (type: string, fqn: string) => {
+  const fetchServiceDetails = async (type: string, fqn: string) => {
     return new Promise<string>((resolve, reject) => {
       getServiceByFQN(type + 's', fqn, ['owner'])
         .then((resService) => {
@@ -212,216 +211,182 @@ const DashboardDetailsPage = () => {
         .catch((err: AxiosError) => {
           showErrorToast(
             err,
-            jsonData['api-error-messages']['fetch-dashboard-details-error']
+            t('server.entity-details-fetch-error', {
+              entityType: t('label.dashboard'),
+              entityName: fqn,
+            })
           );
           reject(err);
         });
     });
   };
 
-  const fetchDashboardDetail = (dashboardFQN: string) => {
+  const fetchDashboardDetail = async (dashboardFQN: string) => {
     setLoading(true);
-    getDashboardByFqn(dashboardFQN, defaultFields)
-      .then((res) => {
-        if (res) {
-          const {
-            id,
-            fullyQualifiedName,
-            service,
-            charts: ChartIds,
-            dashboardUrl,
-            serviceType,
-          } = res;
-          setDashboardDetails(res);
-          setSlashedDashboardName([
-            {
-              name: service.name ?? '',
-              url: service.name
-                ? getServiceDetailsPath(
-                    service.name,
-                    ServiceCategory.DASHBOARD_SERVICES
-                  )
-                : '',
-              imgSrc: serviceType ? serviceTypeLogo(serviceType) : undefined,
-            },
-            {
-              name: getEntityName(res),
-              url: '',
-              activeTitle: true,
-            },
-          ]);
 
-          addToRecentViewed({
-            displayName: getEntityName(res),
-            entityType: EntityType.DASHBOARD,
-            fqn: fullyQualifiedName ?? '',
-            serviceType: serviceType,
-            timestamp: 0,
-            id: id,
-          });
+    try {
+      const res = await getDashboardByFqn(dashboardFQN, defaultFields);
 
-          fetchServiceDetails(service.type, service.name ?? '')
-            .then((hostPort: string) => {
-              setDashboardUrl(hostPort + dashboardUrl);
-              fetchCharts(ChartIds)
-                .then((chart) => {
-                  const updatedCharts = (chart as ChartType[]).map(
-                    (chartItem) => ({
-                      ...chartItem,
-                      chartUrl: hostPort + chartItem.chartUrl,
-                    })
-                  );
-                  setCharts(updatedCharts);
-                })
-                .catch((error: AxiosError) => {
-                  showErrorToast(
-                    error,
-                    jsonData['api-error-messages']['fetch-chart-error']
-                  );
-                });
+      const {
+        id,
+        fullyQualifiedName,
+        service,
+        charts: ChartIds,
+        dashboardUrl,
+        serviceType,
+      } = res;
+      setDashboardDetails(res);
+      setSlashedDashboardName([
+        {
+          name: service.name ?? '',
+          url: service.name
+            ? getServiceDetailsPath(
+                service.name,
+                ServiceCategory.DASHBOARD_SERVICES
+              )
+            : '',
+          imgSrc: serviceType ? serviceTypeLogo(serviceType) : undefined,
+        },
+        {
+          name: getEntityName(res),
+          url: '',
+          activeTitle: true,
+        },
+      ]);
 
-              setLoading(false);
-            })
-            .catch((err: AxiosError) => {
-              throw err;
-            });
-        } else {
-          setIsError(true);
-
-          throw jsonData['api-error-messages']['unexpected-server-response'];
-        }
-      })
-      .catch((err: AxiosError) => {
-        if (err.response?.status === 404) {
-          setIsError(true);
-        } else {
-          showErrorToast(
-            err,
-            jsonData['api-error-messages']['fetch-dashboard-details-error']
-          );
-        }
-        setLoading(false);
+      addToRecentViewed({
+        displayName: getEntityName(res),
+        entityType: EntityType.DASHBOARD,
+        fqn: fullyQualifiedName ?? '',
+        serviceType: serviceType,
+        timestamp: 0,
+        id: id,
       });
-  };
 
-  const fetchTabSpecificData = (tabField = '') => {
-    switch (tabField) {
-      case TabSpecificField.LINEAGE: {
-        break;
+      fetchServiceDetails(service.type, service.name ?? '')
+        .then((hostPort: string) => {
+          setDashboardUrl(hostPort + dashboardUrl);
+          fetchCharts(ChartIds)
+            .then((chart) => {
+              const updatedCharts = (chart as ChartType[]).map((chartItem) => ({
+                ...chartItem,
+                chartUrl: hostPort + chartItem.chartUrl,
+              }));
+              setCharts(updatedCharts);
+            })
+            .catch((error: AxiosError) => {
+              showErrorToast(
+                error,
+                t('server.entity-fetch-error', {
+                  entity: t('label.chart-plural'),
+                })
+              );
+            });
+
+          setLoading(false);
+        })
+        .catch((err: AxiosError) => {
+          throw err;
+        });
+    } catch (error) {
+      if ((error as AxiosError).response?.status === 404) {
+        setIsError(true);
+      } else {
+        showErrorToast(
+          error as AxiosError,
+          t('server.entity-details-fetch-error', {
+            entityType: t('label.dashboard'),
+            entityName: dashboardFQN,
+          })
+        );
       }
-      case TabSpecificField.ACTIVITY_FEED: {
-        getFeedData();
-
-        break;
-      }
-
-      default:
-        break;
     }
+
+    setLoading(false);
   };
 
   const descriptionUpdateHandler = async (updatedDashboard: Dashboard) => {
     try {
       const response = await saveUpdatedDashboardData(updatedDashboard);
-      if (response) {
-        setDashboardDetails(response);
-
-        getEntityFeedCount();
-      } else {
-        throw jsonData['api-error-messages']['unexpected-server-response'];
-      }
+      setDashboardDetails(response);
+      getEntityFeedCount();
     } catch (error) {
       showErrorToast(error as AxiosError);
     }
   };
 
-  const followDashboard = () => {
-    addFollower(dashboardId, USERId)
-      .then((res) => {
-        if (res) {
-          const { newValue } = res.changeDescription.fieldsAdded[0];
-
-          setDashboardDetails((prev) => ({
-            ...prev,
-            followers: [...(prev.followers ?? []), ...newValue],
-          }));
-        } else {
-          throw jsonData['api-error-messages']['unexpected-server-response'];
-        }
-      })
-      .catch((err: AxiosError) => {
-        showErrorToast(
-          err,
-          jsonData['api-error-messages']['update-entity-follow-error']
-        );
-      });
+  const followDashboard = async () => {
+    try {
+      const res = await addFollower(dashboardId, USERId);
+      const { newValue } = res.changeDescription.fieldsAdded[0];
+      setDashboardDetails((prev) => ({
+        ...prev,
+        followers: [...(prev?.followers ?? []), ...newValue],
+      }));
+      getEntityFeedCount();
+    } catch (error) {
+      showErrorToast(
+        error as AxiosError,
+        t('server.entity-follow-error', {
+          entity: getEntityName(dashboardDetails),
+        })
+      );
+    }
   };
 
-  const unfollowDashboard = () => {
-    removeFollower(dashboardId, USERId)
-      .then((res) => {
-        if (res) {
-          const { oldValue } = res.changeDescription.fieldsDeleted[0];
+  const unFollowDashboard = async () => {
+    try {
+      const res = await removeFollower(dashboardId, USERId);
+      const { oldValue } = res.changeDescription.fieldsDeleted[0];
 
-          setDashboardDetails((prev) => ({
-            ...prev,
-            followers:
-              prev.followers?.filter(
-                (follower) => follower.id !== oldValue[0].id
-              ) ?? [],
-          }));
-        } else {
-          throw jsonData['api-error-messages']['unexpected-server-response'];
-        }
-      })
-      .catch((err: AxiosError) => {
-        showErrorToast(
-          err,
-          jsonData['api-error-messages']['update-entity-unfollow-error']
-        );
-      });
+      setDashboardDetails((prev) => ({
+        ...prev,
+        followers:
+          prev.followers?.filter(
+            (follower) => follower.id !== oldValue[0].id
+          ) ?? [],
+      }));
+
+      getEntityFeedCount();
+    } catch (error) {
+      showErrorToast(
+        error as AxiosError,
+        t('server.entity-unfollow-error', {
+          entity: getEntityName(dashboardDetails),
+        })
+      );
+    }
   };
 
-  const onTagUpdate = (updatedDashboard: Dashboard) => {
-    saveUpdatedDashboardData(updatedDashboard)
-      .then((res) => {
-        if (res) {
-          setDashboardDetails(res);
-          getEntityFeedCount();
-        } else {
-          throw jsonData['api-error-messages']['unexpected-server-response'];
-        }
-      })
-      .catch((err: AxiosError) => {
-        showErrorToast(
-          err,
-          jsonData['api-error-messages']['update-tags-error']
-        );
-      });
+  const onTagUpdate = async (updatedDashboard: Dashboard) => {
+    try {
+      const res = await saveUpdatedDashboardData(updatedDashboard);
+      setDashboardDetails(res);
+      getEntityFeedCount();
+    } catch (error) {
+      showErrorToast(
+        error as AxiosError,
+        t('server.entity-updating-error', {
+          entity: t('label.tag-plural'),
+        })
+      );
+    }
   };
 
-  const settingsUpdateHandler = (
+  const settingsUpdateHandler = async (
     updatedDashboard: Dashboard
   ): Promise<void> => {
-    return new Promise<void>((resolve, reject) => {
-      saveUpdatedDashboardData(updatedDashboard)
-        .then((res) => {
-          if (res) {
-            setDashboardDetails({ ...res, tags: res.tags ?? [] });
-            getEntityFeedCount();
-            resolve();
-          } else {
-            throw jsonData['api-error-messages']['unexpected-server-response'];
-          }
+    try {
+      const res = await saveUpdatedDashboardData(updatedDashboard);
+      setDashboardDetails(res);
+      getEntityFeedCount();
+    } catch (error) {
+      showErrorToast(
+        t('server.entity-updating-error', {
+          entity: getEntityName(updatedDashboard),
         })
-        .catch((err: AxiosError) => {
-          showErrorToast(
-            err,
-            jsonData['api-error-messages']['update-entity-error']
-          );
-          reject();
-        });
-    });
+      );
+    }
   };
 
   const onChartUpdate = async (
@@ -431,48 +396,42 @@ const DashboardDetailsPage = () => {
   ) => {
     try {
       const response = await updateChart(chartId, patch);
-      if (response) {
-        setCharts((prevCharts) => {
-          const charts = [...prevCharts];
-          charts[index] = response;
+      setCharts((prevCharts) => {
+        const charts = [...prevCharts];
+        charts[index] = response;
 
-          return charts;
-        });
-      } else {
-        throw jsonData['api-error-messages']['unexpected-server-response'];
-      }
+        return charts;
+      });
     } catch (error) {
       showErrorToast(error as AxiosError);
     }
   };
-
-  const handleChartTagSelection = (
+  const handleChartTagSelection = async (
     index: number,
     chartId: string,
     patch: Array<Operation>
   ) => {
-    updateChart(chartId, patch)
-      .then((res) => {
-        if (res) {
-          setCharts((prevCharts) => {
-            const charts = [...prevCharts];
-            charts[index] = res;
+    try {
+      const res = await updateChart(chartId, patch);
 
-            // Sorting tags as the response of PATCH request does not return the sorted order
-            // of tags, but is stored in sorted manner in the database
-            // which leads to wrong PATCH payload sent after further tags removal
-            return sortTagsForCharts(charts);
-          });
-        } else {
-          throw jsonData['api-error-messages']['unexpected-server-response'];
-        }
-      })
-      .catch((err: AxiosError) => {
-        showErrorToast(
-          err,
-          jsonData['api-error-messages']['update-chart-error']
-        );
+      setCharts((prevCharts) => {
+        const charts = [...prevCharts];
+        charts[index] = res;
+
+        // Sorting tags as the response of PATCH request does not return the sorted order
+        // of tags, but is stored in sorted manner in the database
+        // which leads to wrong PATCH payload sent after further tags removal
+        return sortTagsForCharts(charts);
       });
+      getEntityFeedCount();
+    } catch (error) {
+      showErrorToast(
+        error as AxiosError,
+        t('server.entity-updating-error', {
+          entity: t('label.chart-plural'),
+        })
+      );
+    }
   };
 
   const versionHandler = () => {
@@ -482,54 +441,50 @@ const DashboardDetailsPage = () => {
       );
   };
 
-  const postFeedHandler = (value: string, id: string) => {
+  const postFeedHandler = async (value: string, id: string) => {
     const currentUser = AppState.userDetails?.name ?? AppState.users[0]?.name;
 
     const data = {
       message: value,
       from: currentUser,
     } as Post;
-    postFeedById(id, data)
-      .then((res) => {
-        if (res) {
-          const { id, posts } = res;
-          setEntityThread((pre) => {
-            return pre.map((thread) => {
-              if (thread.id === id) {
-                return { ...res, posts: posts?.slice(-3) };
-              } else {
-                return thread;
-              }
-            });
-          });
-          getEntityFeedCount();
-        } else {
-          throw jsonData['api-error-messages']['unexpected-server-response'];
-        }
-      })
-      .catch((err: AxiosError) => {
-        showErrorToast(err, jsonData['api-error-messages']['add-feed-error']);
+
+    try {
+      const res = await postFeedById(id, data);
+      const { id: responseId, posts } = res;
+      setEntityThread((pre) => {
+        return pre.map((thread) => {
+          if (thread.id === responseId) {
+            return { ...res, posts: posts?.slice(-3) };
+          } else {
+            return thread;
+          }
+        });
       });
+      getEntityFeedCount();
+    } catch (error) {
+      showErrorToast(
+        error as AxiosError,
+        t('server.add-entity-error', {
+          entity: t('label.feed-plural'),
+        })
+      );
+    }
   };
 
-  const createThread = (data: CreateThread) => {
-    postThread(data)
-      .then((res) => {
-        if (res) {
-          setEntityThread((pre) => [...pre, res]);
-          getEntityFeedCount();
-        } else {
-          showErrorToast(
-            jsonData['api-error-messages']['unexpected-server-response']
-          );
-        }
-      })
-      .catch((err: AxiosError) => {
-        showErrorToast(
-          err,
-          jsonData['api-error-messages']['create-conversation-error']
-        );
-      });
+  const createThread = async (data: CreateThread) => {
+    try {
+      const res = await postThread(data);
+      setEntityThread((pre) => [...pre, res]);
+      getEntityFeedCount();
+    } catch (error) {
+      showErrorToast(
+        error as AxiosError,
+        t('server.create-entity-error', {
+          entity: t('label.conversation'),
+        })
+      );
+    }
   };
 
   const deletePostHandler = (
@@ -549,26 +504,29 @@ const DashboardDetailsPage = () => {
     updateThreadData(threadId, postId, isThread, data, setEntityThread);
   };
 
-  const handleExtentionUpdate = async (updatedDashboard: Dashboard) => {
+  const handleExtensionUpdate = async (updatedDashboard: Dashboard) => {
     try {
       const data = await saveUpdatedDashboardData(updatedDashboard);
-
-      if (data) {
-        setDashboardDetails(data);
-      } else {
-        throw jsonData['api-error-messages']['update-entity-error'];
-      }
+      setDashboardDetails(data);
+      getEntityFeedCount();
     } catch (error) {
       showErrorToast(
         error as AxiosError,
-        jsonData['api-error-messages']['update-entity-error']
+        t('server.entity-updating-error', {
+          entity: dashboardDetails.name,
+        })
       );
     }
   };
 
   useEffect(() => {
-    fetchTabSpecificData(dashboardDetailsTabs[activeTab - 1].field);
-  }, [activeTab]);
+    if (
+      dashboardDetailsTabs[activeTab - 1].field ===
+      TabSpecificField.ACTIVITY_FEED
+    ) {
+      getFeedData();
+    }
+  }, [activeTab, feedCount]);
 
   useEffect(() => {
     if (dashboardPermissions.ViewAll || dashboardPermissions.ViewBasic) {
@@ -623,10 +581,10 @@ const DashboardDetailsPage = () => {
               settingsUpdateHandler={settingsUpdateHandler}
               slashedDashboardName={slashedDashboardName}
               tagUpdateHandler={onTagUpdate}
-              unfollowDashboardHandler={unfollowDashboard}
+              unfollowDashboardHandler={unFollowDashboard}
               updateThreadHandler={updateThreadHandler}
               versionHandler={versionHandler}
-              onExtensionUpdate={handleExtentionUpdate}
+              onExtensionUpdate={handleExtensionUpdate}
             />
           ) : (
             <ErrorPlaceHolder>{NO_PERMISSION_TO_VIEW}</ErrorPlaceHolder>

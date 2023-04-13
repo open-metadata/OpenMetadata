@@ -471,9 +471,10 @@ const DashboardDetails = ({
     setThreadLink('');
   };
 
-  const getLoader = () => {
-    return isEntityThreadLoading ? <Loader /> : null;
-  };
+  const loader = useMemo(
+    () => (isEntityThreadLoading ? <Loader /> : null),
+    [isEntityThreadLoading]
+  );
 
   const fetchMoreThread = (
     isElementInView: boolean,
@@ -756,6 +757,7 @@ const DashboardDetails = ({
                 />
                 <div />
               </div>
+              {loader}
             </Card>
           )}
           {activeTab === 3 && (
@@ -787,9 +789,8 @@ const DashboardDetails = ({
           <div
             data-testid="observer-element"
             id="observer-element"
-            ref={elementRef as RefObject<HTMLDivElement>}>
-            {getLoader()}
-          </div>
+            ref={elementRef as RefObject<HTMLDivElement>}
+          />
         </div>
       </div>
       {editChart && (

@@ -118,6 +118,11 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
 
   const { getEntityPermission } = usePermissionProvider();
 
+  const loader = useMemo(
+    () => (isEntityThreadLoading ? <Loader /> : null),
+    [isEntityThreadLoading]
+  );
+
   const fetchResourcePermission = useCallback(async () => {
     try {
       const entityPermission = await getEntityPermission(
@@ -638,6 +643,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
                   />
                 </Col>
               </Row>
+              {loader}
             </Card>
           )}
           {activeTab === 3 && (
@@ -678,9 +684,8 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
           <div
             data-testid="observer-element"
             id="observer-element"
-            ref={elementRef as RefObject<HTMLDivElement>}>
-            {isEntityThreadLoading ? <Loader /> : null}
-          </div>
+            ref={elementRef as RefObject<HTMLDivElement>}
+          />
         </div>
       </div>
       {threadLink ? (
