@@ -988,9 +988,13 @@ export const getEntityBreadcrumbs = (
           name: glossary.fullyQualifiedName,
           url: getGlossaryPath(glossary.fullyQualifiedName),
         },
-        ...tree.map((fqn) => ({
+        ...tree.map((fqn, index, source) => ({
           name: fqn,
-          url: getGlossaryPath(fqn),
+          url: getGlossaryPath(
+            `${glossary.fullyQualifiedName}.${source
+              .slice(0, index + 1)
+              .join('.')}`
+          ),
         })),
       ];
     case EntityType.TAG:
