@@ -45,6 +45,7 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
+import { getSuggestions } from 'rest/miscAPI';
 import { restoreTeam } from 'rest/teamsAPI';
 import AppState from '../../AppState';
 import { ReactComponent as IconEdit } from '../../assets/svg/ic-edit.svg';
@@ -109,7 +110,7 @@ import {
 } from '../PermissionProvider/PermissionProvider.interface';
 import { commonUserDetailColumns } from '../Users/Users.util';
 import ListEntities from './RolesAndPoliciesList';
-import { getTabs, searchTeam } from './TeamDetailsV1.utils';
+import { getTabs } from './TeamDetailsV1.utils';
 import TeamHierarchy from './TeamHierarchy';
 import './teams.less';
 
@@ -348,6 +349,22 @@ const TeamDetailsV1 = ({
         ]),
   ];
 
+  const searchTeams = async (text: string) => {
+    try {
+      const res = await getSuggestions<SearchIndex.TEAM>(
+        text,
+        SearchIndex.TEAM
+      );
+      const data = res.data.suggest['metadata-suggest'][0].options.map(
+        (value) => value._source as Team
+      );
+
+      setTable(data);
+    } catch (error) {
+      setTable([]);
+    }
+  };
+
   const isActionAllowed = (operation = false) => {
     return hasAccess || isOwner() || operation;
   };
@@ -464,9 +481,7 @@ const TeamDetailsV1 = ({
   const handleTeamSearch = (value: string) => {
     setSearchTerm(value);
     if (value) {
-      setTable(
-        filterChildTeams(searchTeam(childTeams, value), showDeletedTeam)
-      );
+      searchTeams(value);
     } else {
       setTable(filterChildTeams(childTeams ?? [], showDeletedTeam));
     }
@@ -789,9 +804,9 @@ const TeamDetailsV1 = ({
               <div className="tw-w-4/12">
                 <Searchbar
                   removeMargin
-                  placeholder={`${t('label.search-for-type', {
+                  placeholder={t('label.search-for-type', {
                     type: t('label.user-lowercase'),
-                  })}...`}
+                  })}
                   searchValue={teamUsersSearchText}
                   typingInterval={500}
                   onSearch={handleTeamUsersSearchAction}
@@ -1135,9 +1150,9 @@ const TeamDetailsV1 = ({
                     <Col span={8}>
                       <Searchbar
                         removeMargin
-                        placeholder={`${t('label.search-entity', {
+                        placeholder={t('label.search-entity', {
                           entity: t('label.team'),
-                        })}...`}
+                        })}
                         searchValue={searchTerm}
                         typingInterval={500}
                         onSearch={handleTeamSearch}
