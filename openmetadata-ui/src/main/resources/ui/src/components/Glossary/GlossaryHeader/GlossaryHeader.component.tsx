@@ -98,7 +98,7 @@ const GlossaryHeader = ({
                   isGlossary={isGlossary}
                   permission={permissions}
                   selectedData={selectedData}
-                  onAssetAdd={onAssetAdd && onAssetAdd}
+                  onAssetAdd={onAssetAdd}
                   onEntityDelete={onDelete}
                   onUpdate={onUpdate}
                 />
