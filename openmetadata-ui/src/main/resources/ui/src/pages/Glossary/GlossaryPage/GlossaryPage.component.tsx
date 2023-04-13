@@ -100,7 +100,6 @@ const GlossaryPage = () => {
       setIsRightPanelLoading(false);
     }
   };
-
   useEffect(() => {
     fetchGlossaryList();
   }, []);

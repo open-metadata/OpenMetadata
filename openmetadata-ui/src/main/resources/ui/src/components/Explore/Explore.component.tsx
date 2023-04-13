@@ -307,12 +307,6 @@ const Explore: React.FC<ExploreProps> = ({
       searchResults?.hits?.hits[0] &&
       searchResults?.hits?.hits[0]._index === searchIndex
     ) {
-      // const entityType =
-      //   tab ||
-      //   (searchCriteria !== ''
-      //     ? tabsInfo[searchCriteria as ExploreSearchIndex].path
-      //     : 'tables');
-
       handleSummaryPanelDisplay(searchResults?.hits?.hits[0]._source);
     } else {
       setShowSummaryPanel(false);
