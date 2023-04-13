@@ -166,7 +166,7 @@ const ServiceConnectionDetails = ({
               <Tooltip position="bottom" title={description} trigger="hover">
                 <InfoCircleOutlined
                   className="tw-mx-1"
-                  style={{ color: 'C4C4C4' }}
+                  style={{ color: '#C4C4C4' }}
                 />
               </Tooltip>
             </div>

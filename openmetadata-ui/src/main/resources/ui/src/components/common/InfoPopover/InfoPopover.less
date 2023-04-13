@@ -10,24 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { InfoCircleOutlined } from '@ant-design/icons';
-import { Popover, PopoverProps } from 'antd';
-import React from 'react';
-import './InfoPopover.less';
-
-const InfoPopover = ({ content, className }: PopoverProps) => {
-  return (
-    <Popover
-      align={{ offset: [0, -10] }}
-      className={className}
-      content={content}
-      overlayStyle={{ maxWidth: 350 }}
-      placement="bottom"
-      showArrow={false}
-      trigger="hover">
-      <InfoCircleOutlined className="tw-mx-1 info-popover-icon" />
-    </Popover>
-  );
-};
-
-export default InfoPopover;
+.info-popover-icon {
+  color: #c4c4c4;
+  svg {
+    height: 14px;
+    width: 14px;
+  }
+}
