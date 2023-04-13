@@ -134,35 +134,35 @@ const Explore: React.FC<ExploreProps> = ({
     []
   );
 
-  const tabItems = useMemo(
-    () =>
-      Object.entries(tabsInfo)
-        .map(([tabSearchIndex, tabDetail]) => ({
-          key: tabSearchIndex,
-          label: (
-            <div data-testid={`${lowerCase(tabDetail.label)}-tab`}>
-              {tabDetail.label}
-              <span className="p-l-xs ">
-                {!isNil(tabCounts)
-                  ? getCountBadge(
-                      tabCounts[tabSearchIndex as ExploreSearchIndex],
-                      '',
-                      tabSearchIndex === searchIndex
-                    )
-                  : getCountBadge()}
-              </span>
-            </div>
-          ),
-          count: tabCounts
-            ? tabCounts[tabSearchIndex as ExploreSearchIndex]
-            : 0,
-        }))
-        .filter((tabItem) => {
-          return tabItem.count > 0 || tabItem.key === searchCriteria;
-        }),
+  console.log(searchCriteria);
+  const tabItems = useMemo(() => {
+    const items = Object.entries(tabsInfo).map(
+      ([tabSearchIndex, tabDetail]) => ({
+        key: tabSearchIndex,
+        label: (
+          <div data-testid={`${lowerCase(tabDetail.label)}-tab`}>
+            {tabDetail.label}
+            <span className="p-l-xs ">
+              {!isNil(tabCounts)
+                ? getCountBadge(
+                    tabCounts[tabSearchIndex as ExploreSearchIndex],
+                    '',
+                    tabSearchIndex === searchIndex
+                  )
+                : getCountBadge()}
+            </span>
+          </div>
+        ),
+        count: tabCounts ? tabCounts[tabSearchIndex as ExploreSearchIndex] : 0,
+      })
+    );
 
-    [tab, tabsInfo, tabCounts]
-  );
+    return searchQueryParam
+      ? items.filter((tabItem) => {
+          return tabItem.count > 0 || tabItem.key === searchCriteria;
+        })
+      : items;
+  }, [tab, tabsInfo, tabCounts]);
 
   const activeTabKey = useMemo(() => {
     if (tab) {
@@ -314,6 +314,10 @@ const Explore: React.FC<ExploreProps> = ({
     }
   }, [tab, searchResults]);
 
+  if (tabItems.length === 0 && !searchQueryParam) {
+    return <Loader />;
+  }
+
   return (
     <PageLayoutV1
       className="explore-page-container"
@@ -431,7 +435,7 @@ const Explore: React.FC<ExploreProps> = ({
           </Row>
         </>
       )}
-      {tabItems.length === 0 && (
+      {searchQueryParam && tabItems.length === 0 && (
         <ErrorPlaceHolderES
           query={searchQueryParam}
           type={ELASTICSEARCH_ERROR_PLACEHOLDER_TYPE.NO_DATA}
