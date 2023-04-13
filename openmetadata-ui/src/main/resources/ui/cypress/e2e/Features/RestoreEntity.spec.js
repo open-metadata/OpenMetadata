@@ -110,6 +110,7 @@ describe('Restore entity functionality should work properly', () => {
     cy.get('[data-testid="deleted-badge"]').should('exist');
 
     cy.get('[data-testid="breadcrumb-link"]')
+      .scrollIntoView()
       .should('be.visible')
       .contains(ENTITY_TABLE.schemaName)
       .click();
