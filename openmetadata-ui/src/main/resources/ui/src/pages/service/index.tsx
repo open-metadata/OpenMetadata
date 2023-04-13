@@ -783,6 +783,30 @@ const ServicePage: FunctionComponent = () => {
     }
   };
 
+  const handleRemoveOwner = async () => {
+    const updatedData = {
+      ...serviceDetails,
+      owner: undefined,
+    } as ServicesUpdateRequest;
+
+    const jsonPatch = compare(serviceDetails || {}, updatedData);
+    try {
+      const res = await updateOwnerService(
+        serviceName,
+        serviceDetails?.id ?? '',
+        jsonPatch
+      );
+      setServiceDetails(res);
+    } catch (error) {
+      showErrorToast(
+        error as AxiosError,
+        t('server.entity-updating-error', {
+          entity: t('label.owner-lowercase'),
+        })
+      );
+    }
+  };
+
   const handleUpdateOwner = (owner: ServicesType['owner']) => {
     if (isUndefined(owner)) {
       handleRemoveOwner();
@@ -825,30 +849,6 @@ const ServicePage: FunctionComponent = () => {
           return reject();
         });
     });
-  };
-
-  const handleRemoveOwner = async () => {
-    const updatedData = {
-      ...serviceDetails,
-      owner: undefined,
-    } as ServicesUpdateRequest;
-
-    const jsonPatch = compare(serviceDetails || {}, updatedData);
-    try {
-      const res = await updateOwnerService(
-        serviceName,
-        serviceDetails?.id ?? '',
-        jsonPatch
-      );
-      setServiceDetails(res);
-    } catch (error) {
-      showErrorToast(
-        error as AxiosError,
-        t('server.entity-updating-error', {
-          entity: t('label.owner-lowercase'),
-        })
-      );
-    }
   };
 
   const onDescriptionEdit = (): void => {

@@ -671,6 +671,7 @@ const DatabaseDetails: FunctionComponent = () => {
                       <EntityHeader
                         breadcrumb={slashedDatabaseName}
                         entityData={database}
+                        entityType={EntityType.DATABASE}
                         extra={
                           <ManageButton
                             isRecursiveDelete

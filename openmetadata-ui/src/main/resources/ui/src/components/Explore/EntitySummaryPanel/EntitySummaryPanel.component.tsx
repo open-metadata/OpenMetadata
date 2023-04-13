@@ -24,7 +24,7 @@ import { get } from 'lodash';
 import React, { useMemo } from 'react';
 import { useParams } from 'react-router-dom';
 import { getEntityBreadcrumbs } from 'utils/EntityUtils';
-import { serviceTypeLogo } from 'utils/ServiceUtils';
+import { getServiceIcon } from 'utils/TableUtils';
 import { Mlmodel } from '../../../generated/entity/data/mlmodel';
 import { Pipeline } from '../../../generated/entity/data/pipeline';
 import { Topic } from '../../../generated/entity/data/topic';
@@ -79,16 +79,7 @@ export default function EntitySummaryPanel({
   }, [tab, entityDetails]);
 
   const icon = useMemo(() => {
-    if ('serviceType' in entityDetails.details) {
-      return (
-        <img
-          className="h-8"
-          src={serviceTypeLogo(entityDetails.details.serviceType ?? '')}
-        />
-      );
-    }
-
-    return null;
+    return getServiceIcon(entityDetails.details);
   }, [entityDetails]);
 
   return (
@@ -108,11 +99,13 @@ export default function EntitySummaryPanel({
       mask={false}
       title={
         <EntityHeader
+          titleIsLink
           breadcrumb={getEntityBreadcrumbs(
             entityDetails.details,
             entityDetails.details.entityType as EntityType
           )}
           entityData={entityDetails.details}
+          entityType={entityDetails.details.entityType as EntityType}
           icon={icon}
         />
       }

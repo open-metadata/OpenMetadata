@@ -18,6 +18,7 @@ import { EntityHeader } from 'components/Entity/EntityHeader/EntityHeader.compon
 import { OperationPermission } from 'components/PermissionProvider/PermissionProvider.interface';
 import { FQN_SEPARATOR_CHAR } from 'constants/char.constants';
 import { DE_ACTIVE_COLOR } from 'constants/constants';
+import { EntityType } from 'enums/entity.enum';
 import { Glossary } from 'generated/entity/data/glossary';
 import { GlossaryTerm } from 'generated/entity/data/glossaryTerm';
 import React, { useEffect, useState } from 'react';
@@ -89,6 +90,7 @@ const GlossaryHeader = ({
           <EntityHeader
             breadcrumb={breadcrumb}
             entityData={selectedData}
+            entityType={EntityType.GLOSSARY_TERM}
             extra={
               <div style={{ textAlign: 'right' }}>
                 <GlossaryHeaderButtons

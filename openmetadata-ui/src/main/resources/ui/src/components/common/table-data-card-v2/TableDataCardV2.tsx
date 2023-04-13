@@ -154,6 +154,7 @@ const TableDataCardV2: React.FC<TableDataCardPropsV2> = forwardRef<
           titleIsLink
           breadcrumb={breadcrumbs}
           entityData={source}
+          entityType={source.entityType as EntityType}
           extra={
             showCheckboxes && (
               <Checkbox checked={checked} className="m-l-auto" />

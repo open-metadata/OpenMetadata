@@ -40,9 +40,13 @@ import {
   getDashboardDetailsPath,
   getDatabaseDetailsPath,
   getDatabaseSchemaDetailsPath,
+  getGlossaryTermDetailsPath,
+  getMlModelDetailsPath,
+  getPipelineDetailsPath,
   getServiceDetailsPath,
   getTableDetailsPath,
   getTagsDetailsPath,
+  getTopicDetailsPath,
 } from '../constants/constants';
 import { AssetsType, EntityType, FqnPart } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
@@ -65,6 +69,7 @@ import {
   getPartialNameFromTableFQN,
   getTableFQNFromColumnFQN,
 } from './CommonUtils';
+import { getContainerDetailPath } from './ContainerDetailUtils';
 import { getGlossaryPath } from './RouterUtils';
 import {
   getDataTypeString,
@@ -998,5 +1003,34 @@ export const getEntityBreadcrumbs = (
         entity as Topic,
         includeCurrent
       );
+  }
+};
+
+export const getEntityLinkFromType = (
+  fullyQualifiedName: string,
+  entityType: EntityType
+) => {
+  switch (entityType) {
+    case EntityType.TABLE:
+      return getTableDetailsPath(fullyQualifiedName);
+    case EntityType.GLOSSARY:
+    case EntityType.GLOSSARY_TERM:
+      return getGlossaryTermDetailsPath(fullyQualifiedName);
+    case EntityType.TAG:
+      return getTagsDetailsPath(fullyQualifiedName);
+    case EntityType.TOPIC:
+      return getTopicDetailsPath(fullyQualifiedName);
+    case EntityType.DASHBOARD:
+      return getDashboardDetailsPath(fullyQualifiedName);
+    case EntityType.PIPELINE:
+      return getPipelineDetailsPath(fullyQualifiedName);
+    case EntityType.MLMODEL:
+      return getMlModelDetailsPath(fullyQualifiedName);
+    case EntityType.CONTAINER:
+      return getContainerDetailPath(fullyQualifiedName);
+    case EntityType.DATABASE:
+      return getDatabaseDetailsPath(fullyQualifiedName);
+    default:
+      return '';
   }
 };

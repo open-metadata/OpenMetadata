@@ -385,8 +385,7 @@ const EntityPageInfo = ({
     <Space
       className="w-full"
       data-testid="entity-page-info"
-      direction="vertical"
-      size={16}>
+      direction="vertical">
       <EntityHeader
         breadcrumb={titleLinks}
         entityData={{
@@ -394,6 +393,7 @@ const EntityPageInfo = ({
           name: entityName,
           deleted,
         }}
+        entityType={(entityType as EntityType) ?? EntityType.TABLE}
         extra={
           <Space align="center" id="version-and-follow-section">
             {!isUndefined(version) ? (
@@ -468,7 +468,7 @@ const EntityPageInfo = ({
       />
 
       <Space wrap className="justify-between w-full" size={16}>
-        <Space direction="vertical" size={16}>
+        <Space direction="vertical">
           <Space wrap align="center" data-testid="extrainfo" size={4}>
             {extraInfo.map((info, index) => (
               <span

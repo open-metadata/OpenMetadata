@@ -15,10 +15,10 @@ import { Col, Row } from 'antd';
 import classNames from 'classnames';
 import TitleBreadcrumb from 'components/common/title-breadcrumb/title-breadcrumb.component';
 import { TitleBreadcrumbProps } from 'components/common/title-breadcrumb/title-breadcrumb.interface';
-import { getTableDetailsPath } from 'constants/constants';
+import { EntityType } from 'enums/entity.enum';
 import React, { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { getEntityName } from 'utils/EntityUtils';
+import { getEntityLinkFromType, getEntityName } from 'utils/EntityUtils';
 import EntityHeaderTitle from '../EntityHeaderTitle/EntityHeaderTitle.component';
 
 interface Props {
@@ -30,6 +30,7 @@ interface Props {
     fullyQualifiedName?: string;
     deleted?: boolean;
   };
+  entityType?: EntityType;
   icon: ReactNode;
   titleIsLink?: boolean;
   openEntityInNewPage?: boolean;
@@ -42,6 +43,7 @@ export const EntityHeader = ({
   extra,
   icon,
   titleIsLink = false,
+  entityType,
   openEntityInNewPage,
   gutter = 'default',
 }: Props) => {
@@ -63,8 +65,8 @@ export const EntityHeader = ({
           displayName={getEntityName(entityData)}
           icon={icon}
           link={
-            titleIsLink && entityData.fullyQualifiedName
-              ? getTableDetailsPath(entityData.fullyQualifiedName)
+            titleIsLink && entityData.fullyQualifiedName && entityType
+              ? getEntityLinkFromType(entityData.fullyQualifiedName, entityType)
               : undefined
           }
           name={entityData.name}
