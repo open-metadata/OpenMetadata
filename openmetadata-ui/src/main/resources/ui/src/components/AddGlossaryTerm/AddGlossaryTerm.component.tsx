@@ -373,7 +373,7 @@ const AddGlossaryTerm = ({
 
           <div className="m-t-lg">
             <Field>
-              <Space align="end">
+              <Space align="end" size={12}>
                 <label
                   className="glossary-form-label tw-form-label m-b-0"
                   data-testid="mutually-exclusive-label"
