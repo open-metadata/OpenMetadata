@@ -251,6 +251,10 @@ public class TableRepository extends EntityRepository<Table> {
         validateColumn(table, columnProfilerConfig.getColumnName());
       }
     }
+    if (tableProfilerConfig.getProfileSampleType() != null && tableProfilerConfig.getProfileSample() != null) {
+      EntityUtil.validateProfileSample(
+          tableProfilerConfig.getProfileSampleType().toString(), tableProfilerConfig.getProfileSample());
+    }
 
     daoCollection
         .entityExtensionDAO()
