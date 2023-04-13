@@ -1,0 +1,1 @@
+Username to connect to Impala. This user should have privileges to read all the metadata in Impala.

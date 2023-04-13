@@ -1,0 +1,19 @@
+source:
+  type: impala
+  serviceName: local_impala
+  serviceConnection:
+    config:
+      type: Impala      
+      hostPort: localhost:21050
+      databaseSchema: default     
+      auth_mechanism: NOSASL      
+  sourceConfig:
+    config:
+      type: DatabaseMetadata
+sink:
+  type: metadata-rest
+  config: {}
+workflowConfig:
+  openMetadataServerConfig:
+    hostPort: http://localhost:8585/api
+    authProvider: no-auth      

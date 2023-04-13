@@ -1,0 +1,1 @@
+Authentication options to pass to Impala connector. These options are based on SQLAlchemy.

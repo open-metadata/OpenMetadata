@@ -35,6 +35,10 @@ from metadata.generated.schema.entity.services.connections.database.hiveConnecti
     HiveConnection,
     HiveScheme,
 )
+from metadata.generated.schema.entity.services.connections.database.impalaConnection import (
+    ImpalaConnection,
+    ImpalaScheme,
+)
 from metadata.generated.schema.entity.services.connections.database.mariaDBConnection import (
     MariaDBConnection,
     MariaDBScheme,
@@ -273,6 +277,143 @@ class SourceConnectionTest(TestCase):
             hostPort="localhost:10000",
         )
         assert expected_result == get_connection_url(hive_conn_obj)
+
+    def test_impala_url(self):
+        from metadata.ingestion.source.database.impala.connection import (
+            get_connection_url,
+        )
+
+        expected_result = "impala://localhost:21050"
+        impala_conn_obj = ImpalaConnection(
+            scheme=ImpalaScheme.impala, hostPort="localhost:21050"
+        )
+        assert expected_result == get_connection_url(impala_conn_obj)
+
+    def test_impala_url_custom_auth(self):
+        from metadata.ingestion.source.database.impala.connection import (
+            get_connection_url,
+        )
+
+        expected_result = "impala://username:password@localhost:21050"
+        impala_conn_obj = ImpalaConnection(
+            scheme=ImpalaScheme.impala.value,
+            username="username",
+            password="password",
+            hostPort="localhost:21050",
+            connectionArguments={"auth": "CUSTOM"},
+        )
+        assert expected_result == get_connection_url(impala_conn_obj)
+
+        # Passing @ in username and password
+        expected_result = "impala://username%40444:password%40333@localhost:21050"
+        impala_conn_obj = ImpalaConnection(
+            scheme=ImpalaScheme.impala.value,
+            username="username@444",
+            password="password@333",
+            hostPort="localhost:21050",
+            connectionArguments={"auth": "CUSTOM"},
+        )
+
+        assert expected_result == get_connection_url(impala_conn_obj)
+
+    def test_impala_url_conn_options_with_db(self):
+        from metadata.ingestion.source.database.impala.connection import (
+            get_connection_url,
+        )
+
+        expected_result = "impala://localhost:21050/test_db?Key=Value"
+        impala_conn_obj = ImpalaConnection(
+            hostPort="localhost:21050",
+            databaseSchema="test_db",
+            connectionOptions={"Key": "Value"},
+        )
+        assert expected_result == get_connection_url(impala_conn_obj)
+
+    def test_impala_url_conn_options_without_db(self):
+        from metadata.ingestion.source.database.impala.connection import (
+            get_connection_url,
+        )
+
+        expected_result = "impala://localhost:21050?Key=Value"
+        impala_conn_obj = ImpalaConnection(
+            hostPort="localhost:21050",
+            connectionOptions={"Key": "Value"},
+        )
+        assert expected_result == get_connection_url(impala_conn_obj)
+
+    def test_impala_url_with_kerberos_auth(self):
+        from metadata.ingestion.source.database.impala.connection import (
+            get_connection_url,
+        )
+
+        expected_result = "impala://localhost:21050?auth_mechanism=GSSAPI&kerberos_service_name=impala"
+        impala_conn_obj = ImpalaConnection(
+            scheme=ImpalaScheme.impala.value,
+            hostPort="localhost:21050",
+            connectionArguments={
+                "auth_mechanism": "GSSAPI",
+                "kerberos_service_name": "impala",
+            },
+        )
+
+        assert expected_result == get_connection_url(impala_conn_obj)
+
+    def test_impala_url_with_ldap_auth(self):
+        from metadata.ingestion.source.database.impala.connection import (
+            get_connection_url,
+        )
+
+        expected_result = "impala://username:password@localhost:21050"
+        impala_conn_obj = ImpalaConnection(
+            scheme=ImpalaScheme.impala.value,
+            username="username",
+            password="password",
+            hostPort="localhost:21050",
+            connectionArguments={"auth_mechanism": "LDAP"},
+        )
+        assert expected_result == get_connection_url(impala_conn_obj)
+
+    def test_impala_url_without_auth(self):
+        from metadata.ingestion.source.database.impala.connection import (
+            get_connection_url,
+        )
+
+        expected_result = "impala://username:password@localhost:21050?customKey=value"
+        impala_conn_obj = ImpalaConnection(
+            scheme=ImpalaScheme.impala.value,
+            username="username",
+            password="password",
+            hostPort="localhost:21050",
+            connectionArguments={"customKey": "value"},
+        )
+        assert expected_result == get_connection_url(impala_conn_obj)
+
+    def test_impala_url_without_connection_arguments(self):
+        from metadata.ingestion.source.database.impala.connection import (
+            get_connection_url,
+        )
+
+        expected_result = "impala://username:password@localhost:21050"
+        impala_conn_obj = ImpalaConnection(
+            scheme=ImpalaScheme.impala.value,
+            username="username",
+            password="password",
+            hostPort="localhost:21050",
+        )
+        assert expected_result == get_connection_url(impala_conn_obj)
+
+    def test_impala_url_without_connection_arguments_pass(self):
+        from metadata.ingestion.source.database.impala.connection import (
+            get_connection_url,
+        )
+
+        expected_result = "impala://username@localhost:21050"
+        impala_conn_obj = ImpalaConnection(
+            scheme=ImpalaScheme.impala.value,
+            username="username",
+            hostPort="localhost:21050",
+        )
+        assert expected_result == get_connection_url(impala_conn_obj)        
 
     def test_trino_url_without_params(self):
         from metadata.ingestion.source.database.trino.connection import (

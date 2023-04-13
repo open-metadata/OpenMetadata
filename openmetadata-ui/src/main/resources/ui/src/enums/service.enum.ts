@@ -29,6 +29,7 @@ export enum IngestionType {
   SNOWFLAKE = 'snowflake',
   SNOWFLAKE_USAGE = 'snowflake-usage',
   HIVE = 'hive',
+  IMPALA = 'impala',
   MSSQL = 'mssql',
   MYSQL = 'mysql',
   POSTGRES = 'postgres',

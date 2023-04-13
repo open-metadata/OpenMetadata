@@ -1,0 +1,1 @@
+ The auth parameter specifies the authentication method to use when connecting to the Impala server. Possible values are 'LDAP', 'NONE', 'CUSTOM', or 'KERBEROS'. If you are using Kerberos authentication, you should set auth to 'KERBEROS'. If you are using custom authentication, you should set auth to 'CUSTOM' and provide additional options in the authOptions parameter.

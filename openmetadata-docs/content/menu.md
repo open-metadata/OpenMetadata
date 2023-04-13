@@ -829,7 +829,9 @@ site_menu:
   - category: Main Concepts / Metadata Standard / Schemas / Entity / Services / Connections / Database / GlueConnection
     url: /main-concepts/metadata-standard/schemas/entity/services/connections/database/glueconnection
   - category: Main Concepts / Metadata Standard / Schemas / Entity / Services / Connections / Database / HiveConnection
-    url: /main-concepts/metadata-standard/schemas/entity/services/connections/database/hiveconnection
+    url: /main-concepts/metadata-standard/schemas/entity/services/connections/database/hiveconnection  
+  - category: Main Concepts / Metadata Standard / Schemas / Entity / Services / Connections / Database / ImpalaConnection
+    url: /main-concepts/metadata-standard/schemas/entity/services/connections/database/impalaconnection
   - category: Main Concepts / Metadata Standard / Schemas / Entity / Services / Connections / Database
     url: /main-concepts/metadata-standard/schemas/entity/services/connections/database
   - category: Main Concepts / Metadata Standard / Schemas / Entity / Services / Connections / Database / MariaDBConnection

@@ -33,6 +33,7 @@ OpenMetadata can extract metadata from the following list of 55 connectors:
   - Glue Metadata
   - Glue Catalog
 - [Hive](/connectors/database/hive)
+- [Impala](/connectors/database/impala)
 - [MariaDB](/connectors/database/mariadb)
 - [MSSQL](/connectors/database/mssql)
   - MSSQL Metadata

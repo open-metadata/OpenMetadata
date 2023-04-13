@@ -1,0 +1,1 @@
+The hostPort parameter specifies the host and port of the Impala server. This should be specified as a string in the format 'hostname:port'. For example, you might set the hostPort parameter to `myImpalahost:10000`.

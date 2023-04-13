@@ -56,6 +56,9 @@ from metadata.generated.schema.entity.services.connections.database.glueConnecti
 from metadata.generated.schema.entity.services.connections.database.hiveConnection import (
     HiveConnection,
 )
+from metadata.generated.schema.entity.services.connections.database.impalaConnection import (
+    ImpalaConnection,
+)
 from metadata.generated.schema.entity.services.connections.database.mariaDBConnection import (
     MariaDBConnection,
 )
@@ -384,6 +387,19 @@ def test_hive():
 
     config: WorkflowSource = WorkflowSource.parse_obj(source)
     assert isinstance(config.serviceConnection.__root__.config, HiveConnection)
+
+def test_impala():
+    source = {
+        "type": "impala",
+        "serviceName": "local_impala",
+        "serviceConnection": {
+            "config": {"type": "Impala", "hostPort": "localhost:21050"}
+        },
+        "sourceConfig": {"config": {"type": "DatabaseMetadata"}},
+    }
+
+    config: WorkflowSource = WorkflowSource.parse_obj(source)
+    assert isinstance(config.serviceConnection.__root__.config, ImpalaConnection)
 
 
 def test_kafka():
