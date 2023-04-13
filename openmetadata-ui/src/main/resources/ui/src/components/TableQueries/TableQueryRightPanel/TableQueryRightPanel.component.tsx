@@ -175,7 +175,7 @@ const TableQueryRightPanel = ({
               <Typography.Text
                 className="m-b-xs tw-text-base font-medium"
                 data-testid="users">
-                {t('label.user-plural')}
+                {t('label.used-by')}
               </Typography.Text>
               {query.users && query.users.length ? (
                 <Space wrap size={6}>
