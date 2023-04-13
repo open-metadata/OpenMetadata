@@ -28,7 +28,7 @@ import {
   SEARCH_ENTITY_TABLE,
 } from '../../constants/constants';
 
-const visitGlossaryTermPage = (termName, fqn) => {
+const visitGlossaryTermPage = (termName, fqn, fetchPermission) => {
   interceptURL(
     'GET',
     `/api/v1/glossaryTerms/name/*.${name}?fields=*`,
@@ -51,7 +51,9 @@ const visitGlossaryTermPage = (termName, fqn) => {
   cy.get('.ant-tabs .glossary-overview-tab').should('be.visible').click();
   verifyResponseStatusCode('@getGlossaryTerms', 200);
   verifyResponseStatusCode('@getTagsList', 200);
-  verifyResponseStatusCode('@waitForTermPermission', 200);
+  if (fetchPermission) {
+    verifyResponseStatusCode('@waitForTermPermission', 200);
+  }
 };
 
 const checkDisplayName = (displayName) => {
@@ -152,15 +154,19 @@ const deleteGlossaryTerm = ({ name, fullyQualifiedName }) => {
     .should('not.contain', name);
 };
 
-const goToAssetsTab = (name, fqn) => {
-  visitGlossaryTermPage(name, fqn);
+const goToAssetsTab = (name, fqn, fetchPermission) => {
+  visitGlossaryTermPage(name, fqn, fetchPermission);
 
   cy.get('[data-testid="assets"]').should('be.visible').click();
   cy.get('.ant-tabs-tab-active').contains('Assets').should('be.visible');
 };
 
 const selectActiveGlossary = (glossaryName) => {
+  interceptURL('GET', '/api/v1/search/query?*', 'glossaryAPI');
+  interceptURL('GET', '/api/v1/glossaryTerms*', 'getGlossaryTerms');
   cy.get('.ant-menu-item').contains(glossaryName).should('be.visible').click();
+  verifyResponseStatusCode('@glossaryAPI', 200);
+  verifyResponseStatusCode('@getGlossaryTerms', 200);
 };
 
 describe('Glossary page should work properly', () => {
@@ -549,14 +555,9 @@ describe('Glossary page should work properly', () => {
 
   it('Updating description and tags of glossary term should work properly', () => {
     selectActiveGlossary(NEW_GLOSSARY.name);
-    interceptURL('GET', '/api/v1/permissions/*/*', 'permissionApi');
-    interceptURL('GET', '/api/v1/search/query?*', 'glossaryAPI');
-
     const newDescription = 'Updated description';
     const { name, fullyQualifiedName } = NEW_GLOSSARY_TERMS.term_1;
     visitGlossaryTermPage(name, fullyQualifiedName);
-    verifyResponseStatusCode('@permissionApi', 200);
-    verifyResponseStatusCode('@glossaryAPI', 200);
 
     // updating tags
     cy.get('[data-testid="tag-container"] [data-testid="add-tag"]')
@@ -616,7 +617,8 @@ describe('Glossary page should work properly', () => {
 
     goToAssetsTab(
       NEW_GLOSSARY_1_TERMS.term_1.name,
-      NEW_GLOSSARY_1_TERMS.term_1.fullyQualifiedName
+      NEW_GLOSSARY_1_TERMS.term_1.fullyQualifiedName,
+      true
     );
     cy.contains('Adding a new Asset is easy, just give it a spin!').should(
       'be.visible'
@@ -740,9 +742,11 @@ describe('Glossary page should work properly', () => {
       .contains(NEW_GLOSSARY_1.name)
       .should('be.visible')
       .click();
+
     goToAssetsTab(
       NEW_GLOSSARY_1_TERMS.term_1.name,
-      NEW_GLOSSARY_1_TERMS.term_1.fullyQualifiedName
+      NEW_GLOSSARY_1_TERMS.term_1.fullyQualifiedName,
+      false
     );
 
     cy.get(`[data-testid="${entity.serviceName}-${entity.term}"]`)
