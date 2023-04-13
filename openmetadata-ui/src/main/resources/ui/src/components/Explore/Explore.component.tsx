@@ -153,12 +153,12 @@ const Explore: React.FC<ExploreProps> = ({
       })
     );
 
-    return searchQueryParam
+    return !loading && searchQueryParam
       ? items.filter((tabItem) => {
           return tabItem.count > 0 || tabItem.key === searchCriteria;
         })
       : items;
-  }, [tab, tabsInfo, tabCounts]);
+  }, [tab, loading, tabsInfo, tabCounts]);
 
   const activeTabKey = useMemo(() => {
     if (tab) {
