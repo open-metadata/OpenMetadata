@@ -65,7 +65,7 @@ const SchemaEditor = ({
     foldGutter: true,
     gutters: ['CodeMirror-linenumbers', 'CodeMirror-foldgutter'],
     mode,
-    readOnly: true,
+    readOnly: false,
     ...options,
   };
   const [internalValue, setInternalValue] = useState<string>(

@@ -24,8 +24,12 @@ import {
 import { compare, Operation } from 'fast-json-patch';
 import { isEmpty, isUndefined } from 'lodash';
 import { observer } from 'mobx-react';
-import { EntityTags } from 'Models';
-import React, { FunctionComponent, useEffect, useState } from 'react';
+import React, {
+  FunctionComponent,
+  useCallback,
+  useEffect,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import { getAllFeeds, postFeedById, postThread } from 'rest/feedsAPI';
@@ -44,24 +48,16 @@ import {
   getServiceDetailsPath,
   getTableTabPath,
   getVersionPath,
+  pagingObject,
 } from '../../constants/constants';
 import { NO_PERMISSION_TO_VIEW } from '../../constants/HelperTextUtil';
 import { EntityType, FqnPart, TabSpecificField } from '../../enums/entity.enum';
 import { FeedFilter } from '../../enums/mydata.enum';
 import { ServiceCategory } from '../../enums/service.enum';
 import { CreateThread } from '../../generated/api/feed/createThread';
-import {
-  Column,
-  Table,
-  TableData,
-  TableJoins,
-  TableType,
-  UsageDetails,
-} from '../../generated/entity/data/table';
+import { Table, TableData } from '../../generated/entity/data/table';
 import { Post, Thread, ThreadType } from '../../generated/entity/feed/thread';
-import { EntityReference } from '../../generated/type/entityReference';
 import { Paging } from '../../generated/type/paging';
-import { TagLabel } from '../../generated/type/tagLabel';
 import { EntityFieldThreadCount } from '../../interface/feed.interface';
 import jsonData from '../../jsons/en';
 import {
@@ -81,7 +77,6 @@ import { getEntityFeedLink, getEntityName } from '../../utils/EntityUtils';
 import { deletePost, updateThreadData } from '../../utils/FeedUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { serviceTypeLogo } from '../../utils/ServiceUtils';
-import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
 const DatasetDetailsPage: FunctionComponent = () => {
@@ -91,43 +86,22 @@ const DatasetDetailsPage: FunctionComponent = () => {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isSampleDataLoading, setIsSampleDataLoading] =
     useState<boolean>(false);
-  const [isTableQueriesLoading, setIsTableQueriesLoading] =
-    useState<boolean>(false);
   const [isentityThreadLoading, setIsentityThreadLoading] =
     useState<boolean>(false);
   const [isTableProfileLoading, setIsTableProfileLoading] =
     useState<boolean>(false);
   const USERId = getCurrentUserId();
-  const [tableId, setTableId] = useState('');
-  const [tier, setTier] = useState<TagLabel>();
-  const [name, setName] = useState('');
-  const [followers, setFollowers] = useState<Array<EntityReference>>([]);
   const [slashedTableName, setSlashedTableName] = useState<
     TitleBreadcrumbProps['titleLinks']
   >([]);
-  const [description, setDescription] = useState('');
-  const [columns, setColumns] = useState<Column[]>([]);
   const [sampleData, setSampleData] = useState<TableData>({
     columns: [],
     rows: [],
   });
-  const [tableTags, setTableTags] = useState<Array<EntityTags>>([]);
-  const [owner, setOwner] = useState<EntityReference>();
-  const [joins, setJoins] = useState<TableJoins>({
-    startDate: new Date(),
-    dayCount: 0,
-    columnJoins: [],
-    directTableJoins: [],
-  });
-  const [tableType, setTableType] = useState<TableType>(TableType.Regular);
   const [tableProfile, setTableProfile] = useState<Table['profile']>();
   const [tableDetails, setTableDetails] = useState<Table>({} as Table);
   const { datasetFQN, tab } = useParams() as Record<string, string>;
   const [activeTab, setActiveTab] = useState<number>(getCurrentDatasetTab(tab));
-  const [usageSummary, setUsageSummary] = useState<UsageDetails>(
-    {} as UsageDetails
-  );
-  const [currentVersion, setCurrentVersion] = useState<string>();
   const [tableFQN, setTableFQN] = useState<string>(
     getPartialNameFromTableFQN(
       datasetFQN,
@@ -135,9 +109,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
       FQN_SEPARATOR_CHAR
     )
   );
-  const [deleted, setDeleted] = useState<boolean>(false);
   const [isError, setIsError] = useState(false);
-  const [tableQueries, setTableQueries] = useState<Table['tableQueries']>([]);
   const [entityThread, setEntityThread] = useState<Thread[]>([]);
 
   const [feedCount, setFeedCount] = useState<number>(0);
@@ -152,7 +124,9 @@ const DatasetDetailsPage: FunctionComponent = () => {
     DEFAULT_ENTITY_PERMISSION
   );
 
-  const [paging, setPaging] = useState<Paging>({} as Paging);
+  const [paging, setPaging] = useState<Paging>(pagingObject);
+
+  const { id: tableId, followers, version: currentVersion = '' } = tableDetails;
 
   const activeTabHandler = (tabValue: number) => {
     const currentTabIndex = tabValue - 1;
@@ -239,21 +213,9 @@ const DatasetDetailsPage: FunctionComponent = () => {
       .then((res) => {
         if (res) {
           const {
-            description,
             id,
-            name,
-            columns,
             database,
-            deleted,
-            owner,
-            usageSummary,
-            followers,
             fullyQualifiedName,
-            joins,
-            tags,
-            sampleData,
-            tableType,
-            version,
             service,
             serviceType,
             databaseSchema,
@@ -263,13 +225,6 @@ const DatasetDetailsPage: FunctionComponent = () => {
           const databaseSchemaFullyQualifiedName =
             databaseSchema?.fullyQualifiedName ?? '';
           setTableDetails(res);
-          setTableId(id);
-          setCurrentVersion(version + '');
-          setTier(getTierTags(tags ?? []));
-          setTableType(tableType as TableType);
-          setOwner(owner);
-          setFollowers(followers ?? []);
-          setDeleted(Boolean(deleted));
           setSlashedTableName([
             {
               name: serviceName,
@@ -311,14 +266,6 @@ const DatasetDetailsPage: FunctionComponent = () => {
             timestamp: 0,
             id: id,
           });
-          setName(name);
-
-          setDescription(description ?? '');
-          setColumns(columns || []);
-          setSampleData(sampleData as TableData);
-          setTableTags(getTagsWithoutTier(tags || []));
-          setUsageSummary(usageSummary as UsageDetails);
-          setJoins(joins as TableJoins);
         } else {
           showErrorToast(
             jsonData['api-error-messages']['fetch-table-details-error']
@@ -398,33 +345,6 @@ const DatasetDetailsPage: FunctionComponent = () => {
         break;
       }
 
-      case TabSpecificField.TABLE_QUERIES: {
-        if ((tableQueries?.length ?? 0) > 0) {
-          break;
-        } else {
-          setIsTableQueriesLoading(true);
-          getTableDetailsByFQN(tableFQN, tabField)
-            .then((res) => {
-              if (res) {
-                const { tableQueries } = res;
-                setTableQueries(tableQueries);
-              } else {
-                showErrorToast(
-                  jsonData['api-error-messages']['fetch-table-queries-error']
-                );
-              }
-            })
-            .catch((err: AxiosError) => {
-              showErrorToast(
-                err,
-                jsonData['api-error-messages']['fetch-table-queries-error']
-              );
-            })
-            .finally(() => setIsTableQueriesLoading(false));
-
-          break;
-        }
-      }
       case TabSpecificField.ACTIVITY_FEED: {
         getFeedData();
 
@@ -457,21 +377,21 @@ const DatasetDetailsPage: FunctionComponent = () => {
     );
   };
 
-  const saveUpdatedTableData = (updatedData: Table) => {
-    const jsonPatch = compare(tableDetails, updatedData);
+  const saveUpdatedTableData = useCallback(
+    (updatedData: Table) => {
+      const jsonPatch = compare(tableDetails, updatedData);
 
-    return patchTableDetails(tableId, jsonPatch);
-  };
+      return patchTableDetails(tableId, jsonPatch);
+    },
+    [tableDetails, tableId]
+  );
 
   const descriptionUpdateHandler = async (updatedTable: Table) => {
     try {
       const response = await saveUpdatedTableData(updatedTable);
       if (response) {
         const { description, version } = response;
-        setCurrentVersion(version + '');
         setTableDetails((previous) => ({ ...previous, description, version }));
-
-        setDescription(description ?? '');
         getEntityFeedCount();
       } else {
         throw jsonData['api-error-messages']['update-description-error'];
@@ -485,13 +405,14 @@ const DatasetDetailsPage: FunctionComponent = () => {
     try {
       const response = await saveUpdatedTableData(updatedTable);
       if (response) {
-        const { columns, version } = response;
-        setCurrentVersion(version + '');
         setTableDetails(response);
-        setColumns(columns);
         getEntityFeedCount();
       } else {
-        throw jsonData['api-error-messages']['update-entity-error'];
+        showErrorToast(
+          t('server.entity-updating-error', {
+            entity: getEntityName(updatedTable),
+          })
+        );
       }
     } catch (error) {
       showErrorToast(error as AxiosError);
@@ -503,9 +424,6 @@ const DatasetDetailsPage: FunctionComponent = () => {
       .then((res) => {
         if (res) {
           setTableDetails((previous) => ({ ...previous, tags: res.tags }));
-          setTier(getTierTags(res.tags ?? []));
-          setCurrentVersion(res.version + '');
-          setTableTags(getTagsWithoutTier(res.tags ?? []));
           getEntityFeedCount();
         } else {
           showErrorToast(jsonData['api-error-messages']['update-tags-error']);
@@ -519,37 +437,19 @@ const DatasetDetailsPage: FunctionComponent = () => {
       });
   };
 
-  const settingsUpdateHandler = (updatedTable: Table): Promise<void> => {
-    return new Promise<void>((resolve, reject) => {
-      saveUpdatedTableData(updatedTable)
-        .then((res) => {
-          if (res) {
-            const { version, owner, tags = [] } = res;
-            setCurrentVersion(version + '');
-            setTableDetails((previous) => ({
-              ...previous,
-              ...(owner ? { owner } : {}),
-              version,
-              tags,
-            }));
-            setOwner(owner);
-            setTier(getTierTags(tags));
-            getEntityFeedCount();
-            resolve();
-          } else {
-            showErrorToast(
-              jsonData['api-error-messages']['update-entity-error']
-            );
-          }
+  const settingsUpdateHandler = async (updatedTable: Table): Promise<void> => {
+    try {
+      const tableData = await saveUpdatedTableData(updatedTable);
+      setTableDetails(tableData);
+
+      getEntityFeedCount();
+    } catch (error) {
+      showErrorToast(
+        t('server.entity-updating-error', {
+          entity: getEntityName(updatedTable),
         })
-        .catch((err: AxiosError) => {
-          showErrorToast(
-            err,
-            jsonData['api-error-messages']['update-entity-error']
-          );
-          reject();
-        });
-    });
+      );
+    }
   };
 
   const followTable = () => {
@@ -557,8 +457,8 @@ const DatasetDetailsPage: FunctionComponent = () => {
       .then((res) => {
         if (res) {
           const { newValue } = res.changeDescription.fieldsAdded[0];
-
-          setFollowers([...followers, ...newValue]);
+          const newFollowers = [...(followers ?? []), ...newValue];
+          setTableDetails((prev) => ({ ...prev, followers: newFollowers }));
         } else {
           showErrorToast(
             jsonData['api-error-messages']['update-entity-follow-error']
@@ -572,25 +472,25 @@ const DatasetDetailsPage: FunctionComponent = () => {
         );
       });
   };
+
   const unfollowTable = () => {
     removeFollower(tableId, USERId)
       .then((res) => {
-        if (res) {
-          const { oldValue } = res.changeDescription.fieldsDeleted[0];
+        const { oldValue } = res.changeDescription.fieldsDeleted[0];
 
-          setFollowers(
-            followers.filter((follower) => follower.id !== oldValue[0].id)
-          );
-        } else {
-          showErrorToast(
-            jsonData['api-error-messages']['update-entity-unfollow-error']
-          );
-        }
+        setTableDetails((pre) => ({
+          ...pre,
+          followers: pre.followers?.filter(
+            (follower) => follower.id !== oldValue[0].id
+          ),
+        }));
       })
       .catch((err: AxiosError) => {
         showErrorToast(
           err,
-          jsonData['api-error-messages']['update-entity-unfollow-error']
+          t('server.entity-unfollow-error', {
+            entity: getEntityName(tableDetails),
+          })
         );
       });
   };
@@ -673,16 +573,13 @@ const DatasetDetailsPage: FunctionComponent = () => {
       const response = await saveUpdatedTableData(updatedTable);
       if (response) {
         const { version, owner: ownerValue, tags, extension } = response;
-        setCurrentVersion(version?.toString());
         setTableDetails((previous) => ({
           ...previous,
           version,
-          owner,
+          owner: ownerValue,
           tags,
           extension,
         }));
-        setOwner(ownerValue);
-        setTier(getTierTags(tags ?? []));
       } else {
         throw jsonData['api-error-messages']['update-entity-error'];
       }
@@ -730,30 +627,22 @@ const DatasetDetailsPage: FunctionComponent = () => {
           {tablePermissions.ViewAll || tablePermissions.ViewBasic ? (
             <DatasetDetails
               activeTab={activeTab}
-              columns={columns}
               columnsUpdateHandler={columnsUpdateHandler}
               createThread={createThread}
               dataModel={tableDetails.dataModel}
               datasetFQN={tableFQN}
               deletePostHandler={deletePostHandler}
-              deleted={deleted}
-              description={description}
               descriptionUpdateHandler={descriptionUpdateHandler}
               entityFieldTaskCount={entityFieldTaskCount}
               entityFieldThreadCount={entityFieldThreadCount}
-              entityName={name}
               entityThread={entityThread}
               feedCount={feedCount}
               fetchFeedHandler={handleFeedFetchFromFeedList}
               followTableHandler={followTable}
-              followers={followers}
               handleExtensionUpdate={handleExtentionUpdate}
-              isQueriesLoading={isTableQueriesLoading}
               isSampleDataLoading={isSampleDataLoading}
               isTableProfileLoading={isTableProfileLoading}
               isentityThreadLoading={isentityThreadLoading}
-              joins={joins}
-              owner={owner as EntityReference}
               paging={paging}
               postFeedHandler={postFeedHandler}
               sampleData={sampleData}
@@ -762,15 +651,9 @@ const DatasetDetailsPage: FunctionComponent = () => {
               slashedTableName={slashedTableName}
               tableDetails={tableDetails}
               tableProfile={tableProfile}
-              tableQueries={tableQueries}
-              tableTags={tableTags}
-              tableType={tableType}
               tagUpdateHandler={onTagUpdate}
-              tier={tier as TagLabel}
               unfollowTableHandler={unfollowTable}
               updateThreadHandler={updateThreadHandler}
-              usageSummary={usageSummary}
-              version={currentVersion}
               versionHandler={versionHandler}
             />
           ) : (

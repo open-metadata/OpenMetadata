@@ -12,6 +12,7 @@
  */
 
 import { Button, Typography } from 'antd';
+import { ReactComponent as IconExternalLink } from 'assets/svg/external-link.svg';
 import classNames from 'classnames';
 import { toString } from 'lodash';
 import React, { useMemo } from 'react';
@@ -25,16 +26,21 @@ import {
 } from '../../../utils/CommonUtils';
 import { stringToHTML } from '../../../utils/StringsUtils';
 import { getEntityLink } from '../../../utils/TableUtils';
-import { SourceType } from '../../searched-data/SearchedData.interface';
 import './TableDataCardTitle.less';
 
 interface TableDataCardTitleProps {
   dataTestId?: string;
   id?: string;
   searchIndex: SearchIndex | EntityType;
-  source: SourceType;
+  source: {
+    fullyQualifiedName?: string;
+    displayName?: string;
+    name?: string;
+    type?: string;
+  };
   isPanel?: boolean;
   handleLinkClick?: (e: React.MouseEvent) => void;
+  openEntityInNewPage?: boolean;
 }
 
 const TableDataCardTitle = ({
@@ -44,6 +50,7 @@ const TableDataCardTitle = ({
   source,
   handleLinkClick,
   isPanel = false,
+  openEntityInNewPage = false,
 }: TableDataCardTitleProps) => {
   const isTourRoute = location.pathname.includes(ROUTES.TOUR);
 
@@ -53,11 +60,15 @@ const TableDataCardTitle = ({
         ? dataTestId
         : `${getPartialNameFromTableFQN(source.fullyQualifiedName ?? '', [
             FqnPart.Service,
-          ])}-${getNameFromFQN(source.fullyQualifiedName ?? '')}`,
-      displayName: toString(source.displayName),
+          ])}-${source.name}`,
+      displayName:
+        source.type === 'tag'
+          ? toString(getNameFromFQN(source.fullyQualifiedName ?? ''))
+          : toString(source.displayName),
     }),
     [dataTestId, source]
   );
+
   const title = (
     <Button
       data-testid={testId}
@@ -65,6 +76,9 @@ const TableDataCardTitle = ({
       type="link"
       onClick={isTourRoute ? handleLinkClick : undefined}>
       {stringToHTML(displayName)}
+      {openEntityInNewPage && (
+        <IconExternalLink className="anticon" height={14} />
+      )}
     </Button>
   );
 
@@ -85,6 +99,7 @@ const TableDataCardTitle = ({
             'button-hover': isPanel,
           }
         )}
+        target={openEntityInNewPage ? '_blank' : '_self'}
         to={getEntityLink(searchIndex, source.fullyQualifiedName ?? '')}>
         {title}
       </Link>

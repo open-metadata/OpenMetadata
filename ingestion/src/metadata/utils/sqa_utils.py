@@ -21,10 +21,15 @@ from sqlalchemy import Column, and_, or_
 from sqlalchemy.sql.elements import BinaryExpression
 from sqlalchemy.sql.expression import TextClause
 
-from metadata.profiler.orm.functions.datetime import DateAddFn, DatetimeAddFn
+from metadata.profiler.orm.functions.datetime import (
+    DateAddFn,
+    DatetimeAddFn,
+    TimestampAddFn,
+)
 from metadata.utils.logger import query_runner_logger
 
 logger = query_runner_logger()
+
 
 # pylint: disable=cell-var-from-loop
 def build_query_filter(
@@ -135,7 +140,9 @@ def dispatch_to_date_or_datetime(
     """
     if isinstance(type_, (sqlalchemy.DATE)):
         return DateAddFn(partition_interval, partition_interval_unit)
-    return DatetimeAddFn(partition_interval, partition_interval_unit)
+    if isinstance(type_, sqlalchemy.DATETIME):
+        return DatetimeAddFn(partition_interval, partition_interval_unit)
+    return TimestampAddFn(partition_interval, partition_interval_unit)
 
 
 def get_partition_col_type(partition_column_name: str, columns: List[Column]):

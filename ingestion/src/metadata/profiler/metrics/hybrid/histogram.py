@@ -24,6 +24,7 @@ from metadata.profiler.metrics.static.count import Count
 from metadata.profiler.metrics.static.max import Max
 from metadata.profiler.metrics.static.min import Min
 from metadata.profiler.orm.registry import is_quantifiable
+from metadata.utils.helpers import format_large_string_numbers
 from metadata.utils.logger import profiler_logger
 
 logger = profiler_logger()
@@ -74,6 +75,27 @@ class Histogram(HybridMetric):
             float(res_max),
         )  # Decimal to float
 
+    @staticmethod
+    def _format_bin_labels(
+        lower_bin: Union[float, int], upper_bin: Optional[Union[float, int]] = None
+    ) -> str:
+        """format bin labels
+
+        Args:
+            lower_bin: lower bin
+            upper_bin: upper bin. Defaults to None.
+
+        Returns:
+            str: formatted bin labels
+        """
+        if lower_bin is None:
+            formatted_lower_bin = "null"
+        else:
+            formatted_lower_bin = format_large_string_numbers(lower_bin)
+        if upper_bin is None:
+            return f"{formatted_lower_bin} and up"
+        return f"{formatted_lower_bin} to {format_large_string_numbers(upper_bin)}"
+
     def fn(
         self,
         sample: Optional[DeclarativeMeta],
@@ -120,14 +142,17 @@ class Histogram(HybridMetric):
                 condition = and_(col >= starting_bin_bound)
                 case_stmts.append(
                     func.count(case([(condition, col)])).label(
-                        f"{starting_bin_bound:.2f} and up"
+                        self._format_bin_labels(starting_bin_bound)
                     )
                 )
                 continue
 
             case_stmts.append(
                 func.count(case([(condition, col)])).label(
-                    f"{starting_bin_bound:.2f} to {ending_bin_bound:.2f}"
+                    self._format_bin_labels(
+                        starting_bin_bound,
+                        ending_bin_bound,
+                    )
                 )
             )
             starting_bin_bound = ending_bin_bound
@@ -176,18 +201,18 @@ class Histogram(HybridMetric):
 
         bins = list(np.arange(num_bins) * bind_width + res_min)
         bins_label = [
-            f"{bins[i]:.2f} to {bins[i+1]:.2f}"
+            self._format_bin_labels(bins[i], bins[i + 1])
             if i < len(bins) - 1
-            else f"{bins[i]:.2f} and up"
+            else self._format_bin_labels(bins[i])
             for i in range(len(bins))
         ]
 
         bins.append(np.inf)  # add the last bin
 
-        frequencies = None
+        frequencies = np.zeros(num_bins)
 
         for df in dfs:
-            if not frequencies:
+            if not frequencies.any():
                 frequencies = (
                     pd.cut(df[self.col.name], bins, right=False).value_counts().values
                 )  # right boundary is exclusive

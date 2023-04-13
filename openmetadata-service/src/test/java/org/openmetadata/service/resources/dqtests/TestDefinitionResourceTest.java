@@ -26,7 +26,7 @@ public class TestDefinitionResourceTest extends EntityResourceTest<TestDefinitio
         Entity.TEST_DEFINITION,
         TestDefinition.class,
         TestDefinitionResource.TestDefinitionList.class,
-        "testDefinition",
+        "testDefinitions",
         TestDefinitionResource.FIELDS);
     supportsEmptyDescription = false;
   }

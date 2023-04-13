@@ -39,14 +39,14 @@ describe('RedShift Ingestion', () => {
   it('add and ingest data', () => {
     goToAddNewServicePage(SERVICE_TYPE.Database);
     const connectionInput = () => {
-      cy.get('#root_username').type(Cypress.env('redshiftUsername'));
-      cy.get('#root_password')
+      cy.get('#root\\/username').type(Cypress.env('redshiftUsername'));
+      cy.get('#root\\/password')
         .scrollIntoView()
         .type(Cypress.env('redshiftPassword'));
-      cy.get('#root_hostPort')
+      cy.get('#root\\/hostPort')
         .scrollIntoView()
         .type(Cypress.env('redshiftHost'));
-      cy.get('#root_database')
+      cy.get('#root\\/database')
         .scrollIntoView()
         .type(Cypress.env('redshiftDatabase'));
     };
@@ -109,22 +109,37 @@ describe('RedShift Ingestion', () => {
       .click();
 
     verifyResponseStatusCode('@getServices', 200);
-    cy.intercept('/api/v1/services/ingestionPipelines?*').as('ingestionData');
+    interceptURL(
+      'GET',
+      '/api/v1/services/ingestionPipelines?*',
+      'ingestionData'
+    );
     interceptURL(
       'GET',
       '/api/v1/system/config/pipeline-service-client',
       'airflow'
     );
+    interceptURL(
+      'GET',
+      '/api/v1/permissions/ingestionPipeline/name/*',
+      'ingestionPermissions'
+    );
+    interceptURL('GET', '/api/v1/services/*/name/*', 'serviceDetails');
     cy.get(`[data-testid="service-name-${REDSHIFT.serviceName}"]`)
       .should('exist')
       .click();
-    cy.get('[data-testid="tabs"]').should('exist');
-    cy.wait('@ingestionData');
+
+    verifyResponseStatusCode('@ingestionData', 200, {
+      responseTimeout: 50000,
+    });
+    verifyResponseStatusCode('@serviceDetails', 200);
     verifyResponseStatusCode('@airflow', 200);
+    cy.get('[data-testid="tabs"]').should('exist');
     cy.get('[data-testid="Ingestions"]')
       .scrollIntoView()
       .should('be.visible')
       .click();
+    verifyResponseStatusCode('@ingestionPermissions', 200);
     cy.get('[data-testid="ingestion-details-container"]').should('exist');
     cy.get('[data-testid="add-new-ingestion-button"]')
       .should('be.visible')
@@ -206,7 +221,7 @@ describe('RedShift Ingestion', () => {
 
     cy.get('[data-testid="lineage-entity"]').should(
       'contain',
-      DBT.dbtLineageNode
+      DBT.dbtLineageNodeLabel
     );
 
     // Verify Data Quality

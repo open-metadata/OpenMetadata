@@ -17,10 +17,10 @@
 
 import { InfoCircleOutlined } from '@ant-design/icons';
 import { Card, Tooltip } from 'antd';
-import { ObjectStoreServiceType } from 'generated/entity/services/objectstoreService';
-import { isEmpty, isNull, isObject } from 'lodash';
+import { StorageServiceType } from 'generated/entity/services/storageService';
+import { get, isEmpty, isNull, isObject } from 'lodash';
 import React, { ReactNode, useEffect, useState } from 'react';
-import { getObjectStoreConfig } from 'utils/ObjectStoreServiceUtils';
+import { getStorageServiceConfig } from 'utils/StorageServiceUtils';
 import { DEF_UI_SCHEMA, JWT_CONFIG } from '../../constants/Services.constant';
 import { EntityType } from '../../enums/entity.enum';
 import { DashboardServiceType } from '../../generated/entity/services/dashboardService';
@@ -92,13 +92,13 @@ const ServiceConnectionDetails = ({
                   value.securityConfig?.awsAccessKeyId ||
                   value.securityConfig?.awsSecretAccessKey
                 ) {
-                  const newSchemaPropertyObject =
-                    schema.definitions.S3Config.properties.securityConfig
-                      .properties;
-
                   return getKeyValues(
                     value.securityConfig,
-                    newSchemaPropertyObject
+                    get(
+                      schema,
+                      'definitions.S3Config.properties.securityConfig.properties',
+                      {}
+                    )
                   );
                 }
               } else if (
@@ -115,21 +115,25 @@ const ServiceConnectionDetails = ({
             } else {
               if (isObject(value.securityConfig.gcsConfig)) {
                 // Condition for GCS Credentials value
-                const newGcsSchemaPropertyObject =
-                  schema.definitions.GCSConfig.properties.securityConfig
-                    .definitions.GCSValues.properties;
-
                 return getKeyValues(
                   value.securityConfig.gcsConfig,
-                  newGcsSchemaPropertyObject
+                  get(
+                    schema,
+                    'definitions.GCSConfig.properties.securityConfig.definitions.GCSValues.properties',
+                    {}
+                  )
                 );
               } else {
                 // Condition for GCS Credentials path
-                const newSchemaPropertyObject =
-                  schema.definitions.GCSConfig.properties.securityConfig
-                    .definitions.GCSCredentialsPath;
 
-                return getKeyValues(value, newSchemaPropertyObject);
+                return getKeyValues(
+                  value,
+                  get(
+                    schema,
+                    'definitions.GCSConfig.properties.securityConfig.definitions.GCSCredentialsPath',
+                    {}
+                  )
+                );
               }
             }
           }
@@ -212,9 +216,9 @@ const ServiceConnectionDetails = ({
         setSchema(getMetadataConfig(serviceFQN as MetadataServiceType).schema);
 
         break;
-      case EntityType.OBJECT_STORE_SERVICE:
+      case EntityType.STORAGE_SERVICE:
         setSchema(
-          getObjectStoreConfig(serviceFQN as ObjectStoreServiceType).schema
+          getStorageServiceConfig(serviceFQN as StorageServiceType).schema
         );
     }
   }, [serviceCategory, serviceFQN]);

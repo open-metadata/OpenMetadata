@@ -19,7 +19,7 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
     OpenMetadataConnection,
 )
 from metadata.ingestion.api.common import Entity
-from metadata.ingestion.api.sink import Sink, SinkStatus
+from metadata.ingestion.api.sink import Sink
 from metadata.utils.constants import UTF_8
 from metadata.utils.logger import ingestion_logger
 
@@ -36,18 +36,15 @@ class FileSink(Sink[Entity]):
     """
 
     config: FileSinkConfig
-    report: SinkStatus
 
     def __init__(
         self,
         config: FileSinkConfig,
         metadata_config: OpenMetadataConnection,
     ):
-
+        super().__init__()
         self.config = config
         self.metadata_config = metadata_config
-        self.report = SinkStatus()
-
         fpath = pathlib.Path(self.config.filename)
         # pylint: disable=consider-using-with
         self.file = fpath.open("w", encoding=UTF_8)
@@ -60,16 +57,12 @@ class FileSink(Sink[Entity]):
         return cls(config, metadata_config)
 
     def write_record(self, record: Entity) -> None:
-
         if self.wrote_something:
             self.file.write(",\n")
 
         self.file.write(record.json())
         self.wrote_something = True
-        self.report.records_written(record)
-
-    def get_status(self):
-        return self.report
+        self.status.records_written(record)
 
     def close(self):
         self.file.write("\n]")

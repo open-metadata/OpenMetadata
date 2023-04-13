@@ -191,14 +191,6 @@ export const MOCK_TABLE = {
     columnCount: 12,
     rowCount: 14567,
   },
-  tableQueries: [
-    {
-      query:
-        'create table shopify.dim_address_clean as select address_id, shop_id, first_name, last_name, address1 as address, company, city, region, zip, country, phone from shopify.dim_address',
-      vote: 1,
-      checksum: 'cd59a9d0d0b8a245f7382264afac8bdc',
-    },
-  ],
   sampleData: {
     columns: ['address_id', 'shop_id', 'first_name', 'last_name'],
     rows: [
@@ -227,7 +219,7 @@ export const TEST_CASE = {
           'This schema defines the test ColumnValueMaxToBeBetween. Test the maximum value in a col is within a range.',
         displayName: 'columnValueMaxToBeBetween',
         deleted: false,
-        href: 'http://localhost:8585/api/v1/testDefinition/16b32e12-21c5-491c-919e-88748d9d5d67',
+        href: 'http://localhost:8585/api/v1/testDefinitions/16b32e12-21c5-491c-919e-88748d9d5d67',
       },
       entityLink:
         '<#E::table::sample_data.ecommerce_db.shopify.dim_address::columns::shop_id>',
@@ -256,7 +248,7 @@ export const TEST_CASE = {
       version: 0.3,
       updatedAt: 1661425991294,
       updatedBy: 'anonymous',
-      href: 'http://localhost:8585/api/v1/testCase/b9d059d8-b968-42ad-9f89-2b40b92a6659',
+      href: 'http://localhost:8585/api/v1/testCases/b9d059d8-b968-42ad-9f89-2b40b92a6659',
       changeDescription: {
         fieldsAdded: [],
         fieldsUpdated: [
@@ -329,5 +321,14 @@ export const COLUMN_PROFILER_RESULT = [
     sum: 1367.0,
     stddev: 35.0,
     median: 7344.0,
+  },
+];
+
+export const MOCK_TABLE_QUERY = [
+  {
+    query:
+      'create table shopify.dim_address_clean as select address_id, shop_id, first_name, last_name, address1 as address, company, city, region, zip, country, phone from shopify.dim_address',
+    vote: 1,
+    checksum: 'cd59a9d0d0b8a245f7382264afac8bdc',
   },
 ];

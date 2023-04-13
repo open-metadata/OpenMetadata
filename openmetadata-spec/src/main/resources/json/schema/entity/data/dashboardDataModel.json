@@ -1,0 +1,140 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/data/dashboardDataModel.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "DashboardDataModel",
+  "$comment": "@om-entity-type",
+  "description": "Dashboard Data Model entity definition. Data models are the schemas used to build dashboards, charts, or other data assets.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.entity.data.DashboardDataModel",
+  "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
+  "definitions": {
+    "dataModelType": {
+      "javaType": "org.openmetadata.schema.type.DataModelType",
+      "description": "This schema defines the type used for describing different types of data models.",
+      "type": "string",
+      "$comment": "Data Model types supported.",
+      "enum": [
+        "TableauSheet",
+        "SupersetDataModel",
+        "MetabaseDataModel",
+        "LookMlView",
+        "LookMlExplore"
+      ],
+      "javaEnums": [
+        {
+          "name": "TableauSheet"
+        },
+        {
+          "name": "SupersetDataModel"
+        },
+        {
+          "name": "MetabaseDataModel"
+        },
+        {
+          "name": "LookMlView"
+        },
+        {
+          "name": "LookMlExplore"
+        }
+      ]
+    }
+  },
+  "properties": {
+    "id": {
+      "description": "Unique identifier of this data model instance.",
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "name": {
+      "description": "Name of a data model. Expected to be unique within a Dashboard.",
+      "$ref": "../../type/basic.json#/definitions/entityName"
+    },
+    "displayName": {
+      "description": "Display Name that identifies this data model. It could be title or label from the source.",
+      "type": "string"
+    },
+    "fullyQualifiedName": {
+      "description": "Fully qualified name of a data model in the form `serviceName.dashboardName.datamodel.datamodelName`.",
+      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+    },
+    "description": {
+      "description": "Description of a data model.",
+      "$ref": "../../type/basic.json#/definitions/markdown"
+    },
+    "version": {
+      "description": "Metadata version of the entity.",
+      "$ref": "../../type/entityHistory.json#/definitions/entityVersion"
+    },
+    "updatedAt": {
+      "description": "Last update time corresponding to the new version of the entity in Unix epoch time milliseconds.",
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "updatedBy": {
+      "description": "User who made the update.",
+      "type": "string"
+    },
+    "href": {
+      "description": "Link to this data model entity.",
+      "$ref": "../../type/basic.json#/definitions/href"
+    },
+    "owner": {
+      "description": "Owner of this data model.",
+      "$ref": "../../type/entityReference.json",
+      "default": null
+    },
+    "tags": {
+      "description": "Tags for this data model.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/tagLabel.json"
+      },
+      "default": null
+    },
+    "changeDescription": {
+      "description": "Change that lead to this version of the entity.",
+      "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
+    },
+    "deleted": {
+      "description": "When `true` indicates the entity has been soft deleted.",
+      "type": "boolean",
+      "default": false
+    },
+    "followers": {
+      "description": "Followers of this dashboard.",
+      "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
+    },
+    "service": {
+      "description": "Link to service where this data model is hosted in.",
+      "$ref": "../../type/entityReference.json"
+    },
+    "serviceType": {
+      "description": "Service type where this data model is hosted in.",
+      "$ref": "../services/dashboardService.json#/definitions/dashboardServiceType"
+    },
+    "dataModelType": {
+      "$ref": "#/definitions/dataModelType"
+    },
+    "sql": {
+      "description": "In case the Data Model is based on a SQL query.",
+      "$ref": "../../type/basic.json#/definitions/sqlQuery",
+      "default": null
+    },
+    "columns": {
+      "description": "Columns from the data model.",
+      "type": "array",
+      "items": {
+        "$ref": "table.json#/definitions/column"
+      },
+      "default": null
+    },
+    "dataModels": {
+      "description": "List of data models used by this data model.",
+      "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
+    }
+  },
+  "required": [
+    "name",
+    "dataModelType",
+    "columns"
+  ],
+  "additionalProperties": false
+}

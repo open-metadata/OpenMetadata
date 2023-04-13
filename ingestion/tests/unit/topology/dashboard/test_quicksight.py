@@ -92,7 +92,7 @@ EXPECTED_DASHBOARD = CreateDashboardRequest(
     name="552315335",
     displayName="New Dashboard",
     description="",
-    dashboardUrl="https://dashboards.example.com/embed/1234",
+    dashboardUrl="https://us-east-2.quicksight.aws.amazon.com/sn/dashboards/552315335",
     charts=[],
     tags=None,
     owner=None,
@@ -106,8 +106,7 @@ EXPECTED_DASHBOARDS = [
         displayName="Top Salespeople",
         description="",
         chartType="Other",
-        chartUrl="https://dashboards.example.com/embed/1234/sheets/1108771657",
-        tables=None,
+        chartUrl="https://us-east-2.quicksight.aws.amazon.com/sn/dashboards/552315335",
         tags=None,
         owner=None,
         service="quicksight_source_test",
@@ -117,8 +116,7 @@ EXPECTED_DASHBOARDS = [
         displayName="Milan Datasets",
         description="",
         chartType="Other",
-        chartUrl="https://dashboards.example.com/embed/1234/sheets/1985861713",
-        tables=None,
+        chartUrl="https://us-east-2.quicksight.aws.amazon.com/sn/dashboards/552315335",
         tags=None,
         owner=None,
         service="quicksight_source_test",
@@ -128,17 +126,12 @@ EXPECTED_DASHBOARDS = [
         displayName="Page Fans",
         description="",
         chartType="Other",
-        chartUrl="https://dashboards.example.com/embed/1234/sheets/2025899139",
-        tables=None,
+        chartUrl="https://us-east-2.quicksight.aws.amazon.com/sn/dashboards/552315335",
         tags=None,
         owner=None,
         service="quicksight_source_test",
     ),
 ]
-
-
-def mock_get_dashboard_embed_url(AwsAccountId, DashboardId, IdentityType, Namespace):
-    return {"EmbedUrl": "https://dashboards.example.com/embed/1234"}
 
 
 class QuickSightUnitTest(TestCase):
@@ -158,10 +151,11 @@ class QuickSightUnitTest(TestCase):
             mock_quicksight_config["source"],
             self.config.workflowConfig.openMetadataServerConfig,
         )
-        self.quicksight.dashboard_url = "https://dashboards.example.com/embed/1234"
+        self.quicksight.dashboard_url = (
+            "https://us-east-2.quicksight.aws.amazon.com/sn/dashboards/552315335"
+        )
         self.quicksight.context.__dict__["dashboard"] = MOCK_DASHBOARD
         self.quicksight.context.__dict__["dashboard_service"] = MOCK_DASHBOARD_SERVICE
-        self.quicksight.client.get_dashboard_embed_url = mock_get_dashboard_embed_url
 
     @pytest.mark.order(1)
     def test_dashboard(self):

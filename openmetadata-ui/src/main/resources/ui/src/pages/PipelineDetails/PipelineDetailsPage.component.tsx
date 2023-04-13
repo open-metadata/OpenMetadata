@@ -21,7 +21,7 @@ import PipelineDetails from 'components/PipelineDetails/PipelineDetails.componen
 import { compare, Operation } from 'fast-json-patch';
 import { isUndefined, omitBy } from 'lodash';
 import { observer } from 'mobx-react';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
 import {
   addFollower,
@@ -29,7 +29,6 @@ import {
   patchPipelineDetails,
   removeFollower,
 } from 'rest/pipelineAPI';
-import { getServiceByFQN } from 'rest/serviceAPI';
 import {
   getServiceDetailsPath,
   getVersionPath,
@@ -37,8 +36,7 @@ import {
 import { NO_PERMISSION_TO_VIEW } from '../../constants/HelperTextUtil';
 import { EntityType } from '../../enums/entity.enum';
 import { ServiceCategory } from '../../enums/service.enum';
-import { Pipeline, Task } from '../../generated/entity/data/pipeline';
-import { Connection } from '../../generated/entity/services/dashboardService';
+import { Pipeline } from '../../generated/entity/data/pipeline';
 import { EntityReference } from '../../generated/type/entityReference';
 import { Paging } from '../../generated/type/paging';
 import jsonData from '../../jsons/en';
@@ -49,7 +47,10 @@ import {
 } from '../../utils/CommonUtils';
 import { getEntityName } from '../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
-import { defaultFields } from '../../utils/PipelineDetailsUtils';
+import {
+  defaultFields,
+  getFormattedPipelineDetails,
+} from '../../utils/PipelineDetailsUtils';
 import { serviceTypeLogo } from '../../utils/ServiceUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
@@ -65,9 +66,6 @@ const PipelineDetailsPage = () => {
   const [isLoading, setLoading] = useState<boolean>(true);
   const [followers, setFollowers] = useState<Array<EntityReference>>([]);
 
-  const [tasks, setTasks] = useState<Task[]>([]);
-  const [pipelineUrl, setPipelineUrl] = useState<string>('');
-  const [displayName, setDisplayName] = useState<string>('');
   const [slashedPipelineName, setSlashedPipelineName] = useState<
     TitleBreadcrumbProps['titleLinks']
   >([]);
@@ -106,53 +104,25 @@ const PipelineDetailsPage = () => {
     };
   }, [pipelineDetails]);
 
-  const saveUpdatedPipelineData = (updatedData: Pipeline) => {
-    const jsonPatch = compare(
-      omitBy(pipelineDetails, isUndefined),
-      updatedData
-    );
+  const saveUpdatedPipelineData = useCallback(
+    (updatedData: Pipeline) => {
+      const jsonPatch = compare(
+        omitBy(pipelineDetails, isUndefined),
+        updatedData
+      );
 
-    return patchPipelineDetails(pipelineId, jsonPatch);
-  };
-
-  const fetchServiceDetails = (type: string, fqn: string) => {
-    return new Promise<string>((resolve, reject) => {
-      getServiceByFQN(type + 's', fqn, ['owner'])
-        .then((resService) => {
-          if (resService) {
-            const hostPort =
-              (resService.connection?.config as Connection)?.hostPort || '';
-            resolve(hostPort);
-          } else {
-            throw null;
-          }
-        })
-        .catch((err: AxiosError) => {
-          showErrorToast(
-            err,
-            jsonData['api-error-messages']['fetch-pipeline-details-error']
-          );
-          reject(err);
-        });
-    });
-  };
+      return patchPipelineDetails(pipelineId, jsonPatch);
+    },
+    [pipelineDetails]
+  );
 
   const fetchPipelineDetail = (pipelineFQN: string) => {
     setLoading(true);
     getPipelineByFqn(pipelineFQN, defaultFields)
       .then((res) => {
         if (res) {
-          const {
-            id,
-            fullyQualifiedName,
-            service,
-            serviceType,
-            displayName,
-            name,
-            tasks,
-            pipelineUrl = '',
-          } = res;
-          setDisplayName(displayName || name);
+          const { id, fullyQualifiedName, service, serviceType } = res;
+
           setPipelineDetails(res);
           const serviceName = service.name ?? '';
           setSlashedPipelineName([
@@ -181,20 +151,6 @@ const PipelineDetailsPage = () => {
             timestamp: 0,
             id: id,
           });
-
-          fetchServiceDetails(service.type, service.name ?? '')
-            .then((hostPort: string) => {
-              setPipelineUrl(hostPort + pipelineUrl);
-              const updatedTasks = ((tasks || []) as Task[]).map((task) => ({
-                ...task,
-                taskUrl: hostPort + task.taskUrl,
-              }));
-              setTasks(updatedTasks);
-              setLoading(false);
-            })
-            .catch((err: AxiosError) => {
-              throw err;
-            });
         } else {
           setIsError(true);
 
@@ -313,7 +269,8 @@ const PipelineDetailsPage = () => {
       const response = await patchPipelineDetails(pipelineId, jsonPatch);
 
       if (response) {
-        setTasks(response.tasks || []);
+        const formattedPipelineDetails = getFormattedPipelineDetails(response);
+        setPipelineDetails(formattedPipelineDetails);
       } else {
         throw jsonData['api-error-messages']['unexpected-server-response'];
       }
@@ -368,18 +325,15 @@ const PipelineDetailsPage = () => {
           {pipelinePermissions.ViewAll || pipelinePermissions.ViewBasic ? (
             <PipelineDetails
               descriptionUpdateHandler={descriptionUpdateHandler}
-              entityName={displayName}
               followPipelineHandler={followPipeline}
               followers={followers}
               paging={paging}
               pipelineDetails={pipelineDetails}
               pipelineFQN={pipelineFQN}
-              pipelineUrl={pipelineUrl}
               settingsUpdateHandler={settingsUpdateHandler}
               slashedPipelineName={slashedPipelineName}
               tagUpdateHandler={onTagUpdate}
               taskUpdateHandler={onTaskUpdate}
-              tasks={tasks}
               unfollowPipelineHandler={unfollowPipeline}
               versionHandler={versionHandler}
               onExtensionUpdate={handleExtensionUpdate}

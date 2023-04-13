@@ -27,6 +27,8 @@ const userEmail = `${userName}@gmail.com`;
 const adminName = `Admincttest${uuid()}`;
 const adminEmail = `${adminName}@gmail.com`;
 
+const searchBotText = 'bot';
+
 describe('Users flow should work properly', () => {
   beforeEach(() => {
     cy.login();
@@ -55,11 +57,17 @@ describe('Users flow should work properly', () => {
     verifyResponseStatusCode('@getUsers', 200);
 
     // Validate if user is added in the User tab
+    interceptURL(
+      'GET',
+      '/api/v1/search/query?q=**&from=0&size=*&index=*',
+      'searchUser'
+    );
 
     cy.get('[data-testid="searchbar"]')
       .should('exist')
       .should('be.visible')
       .type(userName);
+    verifyResponseStatusCode('@searchUser', 200);
     cy.get('.ant-table-tbody ').should('contain', userName);
   });
 
@@ -74,6 +82,25 @@ describe('Users flow should work properly', () => {
   it('Permanently Delete Soft Deleted User', () => {
     softDeleteUser(userName);
     deleteSoftDeletedUser(userName);
+  });
+
+  it('Search for bot user', () => {
+    interceptURL(
+      'GET',
+      `/api/v1/search/query?q=*${searchBotText}***isBot:false&from=0&size=15&index=user_search_index`,
+      'searchUser'
+    );
+    cy.get('[data-testid="searchbar"]')
+      .should('exist')
+      .should('be.visible')
+      .type(searchBotText);
+
+    verifyResponseStatusCode('@searchUser', 200);
+
+    cy.get('.ant-table-placeholder > .ant-table-cell').should(
+      'not.contain',
+      searchBotText
+    );
   });
 });
 
@@ -112,16 +139,21 @@ describe('Admin flow should work properly', () => {
     verifyResponseStatusCode('@getAdmins', 200);
 
     // Validate if user is added in the User tab
-
+    interceptURL(
+      'GET',
+      '/api/v1/search/query?q=**&from=0&size=*&index=*',
+      'searchUser'
+    );
     cy.get('[data-testid="searchbar"]')
       .should('exist')
       .should('be.visible')
       .type(adminName);
+    verifyResponseStatusCode('@searchUser', 200);
     cy.get('.ant-table-tbody ').should('contain', adminName);
   });
 
   it('Soft delete admin', () => {
-    softDeleteUser(adminName);
+    softDeleteUser(adminName, true);
   });
 
   it('Restore soft deleted admin', () => {
@@ -129,7 +161,7 @@ describe('Admin flow should work properly', () => {
   });
 
   it('Permanently Delete Soft Deleted admin', () => {
-    softDeleteUser(adminName);
+    softDeleteUser(adminName, true);
     deleteSoftDeletedUser(adminName);
   });
 });

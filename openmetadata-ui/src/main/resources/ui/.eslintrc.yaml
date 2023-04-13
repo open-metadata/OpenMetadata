@@ -178,6 +178,8 @@ rules:
   '@typescript-eslint/explicit-module-boundary-types':
     - off
 
+  '@typescript-eslint/no-use-before-define': warn
+
   # React rules
 
   react/display-name:
@@ -202,6 +204,9 @@ overrides:
   - files:
       - '*.json'
     parser: jsonc-eslint-parser
+    rules:
+      eol-last:
+        - off
 
   # disable rules on generated files
   - files:

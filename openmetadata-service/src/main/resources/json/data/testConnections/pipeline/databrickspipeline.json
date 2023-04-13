@@ -1,0 +1,15 @@
+{
+    "name": "DatabricksPipeline",
+    "fullyQualifiedName": "DatabricksPipeline",
+    "displayName": "DatabricksPipeline Test Connection",
+    "description": "This Test Connection validates the access against the server and basic metadata extraction of pipelines.",
+    "steps": [
+        {
+            "name": "GetPipelines",
+            "description":  "List all the pipelines available to the user",
+            "errorMessage": "Failed to fetch pipelines, please validate the credentials or validate if user has access to fetch pipelines",
+            "shortCircuit": true,
+            "mandatory": true
+        }
+    ]
+}

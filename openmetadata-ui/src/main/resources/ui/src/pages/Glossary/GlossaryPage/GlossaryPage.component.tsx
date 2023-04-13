@@ -11,11 +11,13 @@
  *  limitations under the License.
  */
 
-import { Button } from 'antd';
+import { Button, Col, Row } from 'antd';
 import { AxiosError } from 'axios';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import PageContainerV1 from 'components/containers/PageContainerV1';
 import PageLayoutV1 from 'components/containers/PageLayoutV1';
+import EntitySummaryPanel from 'components/Explore/EntitySummaryPanel/EntitySummaryPanel.component';
+import { EntityDetailsObjectInterface } from 'components/Explore/explore.interface';
 import GlossaryV1 from 'components/Glossary/GlossaryV1.component';
 import Loader from 'components/Loader/Loader';
 import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
@@ -41,8 +43,9 @@ import {
   patchGlossaryTerm,
 } from 'rest/glossaryAPI';
 import { checkPermission } from 'utils/PermissionsUtils';
-import { getGlossaryPath } from 'utils/RouterUtils';
+import { getGlossaryPath, getGlossaryTermsPath } from 'utils/RouterUtils';
 import { showErrorToast, showSuccessToast } from 'utils/ToastUtils';
+import Fqn from '../../../utils/Fqn';
 import GlossaryLeftPanel from '../GlossaryLeftPanel/GlossaryLeftPanel.component';
 
 const GlossaryPage = () => {
@@ -58,12 +61,14 @@ const GlossaryPage = () => {
   );
   const [selectedData, setSelectedData] = useState<Glossary | GlossaryTerm>();
   const [isRightPanelLoading, setIsRightPanelLoading] = useState(true);
+  const [previewAsset, setPreviewAsset] =
+    useState<EntityDetailsObjectInterface>();
 
   const isGlossaryActive = useMemo(() => {
     setIsRightPanelLoading(true);
     setSelectedData(undefined);
     if (glossaryFqn) {
-      return glossaryFqn.split(FQN_SEPARATOR_CHAR).length === 1;
+      return Fqn.split(glossaryFqn).length === 1;
     }
 
     return true;
@@ -123,6 +128,11 @@ const GlossaryPage = () => {
           glossaries.find((glossary) => glossary.name === glossaryFqn) ||
             glossaries[0]
         );
+        !glossaryFqn &&
+          glossaries[0].fullyQualifiedName &&
+          history.replace(
+            getGlossaryTermsPath(glossaries[0].fullyQualifiedName)
+          );
         setIsRightPanelLoading(false);
       }
     }
@@ -252,24 +262,44 @@ const GlossaryPage = () => {
     );
   }
 
+  const handleAssetClick = (asset?: EntityDetailsObjectInterface) => {
+    setPreviewAsset(asset);
+  };
+
   return (
     <PageContainerV1>
       <PageLayoutV1
         leftPanel={<GlossaryLeftPanel glossaries={glossaries} />}
-        pageTitle={t('label.glossary')}>
+        pageTitle={t('label.glossary')}
+        rightPanel={
+          previewAsset && (
+            <EntitySummaryPanel
+              entityDetails={previewAsset}
+              handleClosePanel={() => setPreviewAsset(undefined)}
+            />
+          )
+        }
+        rightPanelWidth={400}>
         {isRightPanelLoading ? (
           // Loader for right panel data
           <Loader />
         ) : (
-          <GlossaryV1
-            deleteStatus={deleteStatus}
-            handleGlossaryTermUpdate={handleGlossaryTermUpdate}
-            isGlossaryActive={isGlossaryActive}
-            selectedData={selectedData as Glossary}
-            updateGlossary={updateGlossary}
-            onGlossaryDelete={handleGlossaryDelete}
-            onGlossaryTermDelete={handleGlossaryTermDelete}
-          />
+          <Row gutter={[16, 0]} wrap={false}>
+            <Col flex="auto">
+              <GlossaryV1
+                deleteStatus={deleteStatus}
+                isGlossaryActive={isGlossaryActive}
+                isSummaryPanelOpen={Boolean(previewAsset)}
+                isVersionsView={false}
+                selectedData={selectedData as Glossary}
+                updateGlossary={updateGlossary}
+                onAssetClick={handleAssetClick}
+                onGlossaryDelete={handleGlossaryDelete}
+                onGlossaryTermDelete={handleGlossaryTermDelete}
+                onGlossaryTermUpdate={handleGlossaryTermUpdate}
+              />
+            </Col>
+          </Row>
         )}
       </PageLayoutV1>
     </PageContainerV1>

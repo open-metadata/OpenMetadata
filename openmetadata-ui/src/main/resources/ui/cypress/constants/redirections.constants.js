@@ -34,10 +34,6 @@ export const LEFT_PANEL_DETAILS = {
     testid: '[data-testid="mlmodels"]',
     url: `${BASE_URL}/explore/mlmodels`,
   },
-  testSuites: {
-    testid: '[data-testid="test-suite"]',
-    url: `${BASE_URL}/test-suites`,
-  },
   services: {
     testid: '[data-testid="service"]',
     url: `${BASE_URL}/settings/services/databases`,
@@ -47,8 +43,20 @@ export const LEFT_PANEL_DETAILS = {
     url: `${BASE_URL}/settings/members/users`,
   },
   teams: {
-    testid: '[data-testid="terms"]',
+    testid: '[data-testid="teams"]',
     url: `${BASE_URL}/settings/members/teams`,
+  },
+  testSuites: {
+    testid: '[data-testid="test-suite"]',
+    url: `${BASE_URL}/test-suites`,
+  },
+  containers: {
+    testid: '[data-testid="containers"]',
+    url: `${BASE_URL}/explore/containers`,
+  },
+  glossaryTerms: {
+    testid: '[data-testid="glossary-terms"]',
+    url: `${BASE_URL}/glossary`,
   },
 };
 
@@ -73,7 +81,7 @@ export const NAVBAR_DETAILS = {
   tags: {
     testid: `[data-testid="governance"]`,
     subMenu: '[data-testid="appbar-item-tags"]',
-    url: `${BASE_URL}/tags`,
+    url: `${BASE_URL}/tags/`,
   },
   settings: {
     testid: '[data-testid="appbar-item-settings"]',
@@ -155,9 +163,9 @@ export const SETTINGS_LEFT_PANEL = {
     testid: '[data-menu-id*="customAttributes.mlModels"]',
     url: `${BASE_URL}/settings/customAttributes/mlModels`,
   },
-  elasticsearch: {
-    testid: '[data-menu-id*="elasticsearch"]',
-    url: `${BASE_URL}/settings/eventPublishers/elasticsearch`,
+  search: {
+    testid: '[data-menu-id*="search"]',
+    url: `${BASE_URL}/settings/openMetadata/search`,
   },
   bots: {
     testid: '[data-menu-id*="bots"]',

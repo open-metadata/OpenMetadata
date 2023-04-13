@@ -67,6 +67,7 @@ import BasicAuthAuthenticator from '../authenticators/basic-auth.authenticator';
 import MsalAuthenticator from '../authenticators/MsalAuthenticator';
 import OidcAuthenticator from '../authenticators/OidcAuthenticator';
 import OktaAuthenticator from '../authenticators/OktaAuthenticator';
+import SamlAuthenticator from '../authenticators/SamlAuthenticator';
 import Auth0Callback from '../callbacks/Auth0Callback/Auth0Callback';
 import { AuthenticatorRef, OidcUser } from './AuthProvider.interface';
 import BasicAuthProvider from './basic-auth.provider';
@@ -253,14 +254,14 @@ export const AuthProvider = ({
    * This method will be called when the id token is about to expire.
    */
   const renewIdToken = async () => {
-    try {
-      const onRenewIdTokenHandlerPromise = onRenewIdTokenHandler();
-      onRenewIdTokenHandlerPromise && (await onRenewIdTokenHandlerPromise);
-    } catch (error) {
-      console.error((error as AxiosError).message);
-    }
+    const onRenewIdTokenHandlerPromise = onRenewIdTokenHandler();
+    if (onRenewIdTokenHandlerPromise) {
+      await onRenewIdTokenHandlerPromise;
 
-    return localState.getOidcToken();
+      return localState.getOidcToken();
+    } else {
+      throw new Error('No handler attached for Renew Token.');
+    }
   };
 
   /**
@@ -280,6 +281,13 @@ export const AuthProvider = ({
               startTokenExpiryTimer();
             })
             .catch((err) => {
+              if (err.message.includes('Frame window timed out')) {
+                silentSignInRetries = 0;
+                // eslint-disable-next-line @typescript-eslint/no-use-before-define
+                startTokenExpiryTimer();
+
+                return;
+              }
               // eslint-disable-next-line no-console
               console.error('Error while attempting for silent signIn. ', err);
               silentSignInRetries += 1;
@@ -527,6 +535,15 @@ export const AuthProvider = ({
           </Auth0Provider>
         );
       }
+      case AuthTypes.SAML: {
+        return (
+          <SamlAuthenticator
+            ref={authenticatorRef}
+            onLogoutSuccess={handleSuccessfulLogout}>
+            {children}
+          </SamlAuthenticator>
+        );
+      }
       case AuthTypes.OKTA: {
         return (
           <OktaAuthProvider onLoginSuccess={handleSuccessfulLogin}>
@@ -595,6 +612,7 @@ export const AuthProvider = ({
         if (
           (location.pathname === ROUTES.SIGNUP && isEmpty(appState.newUser)) ||
           (!location.pathname.includes(ROUTES.CALLBACK) &&
+            location.pathname !== ROUTES.SAML_CALLBACK &&
             location.pathname !== ROUTES.HOME &&
             location.pathname !== ROUTES.SIGNUP &&
             location.pathname !== ROUTES.REGISTER &&

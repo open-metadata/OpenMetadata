@@ -22,12 +22,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.regex.Pattern;
+import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.ServiceEntityInterface;
 import org.openmetadata.schema.api.configuration.pipelineServiceClient.PipelineServiceClientConfiguration;
-import org.openmetadata.schema.entity.automations.TestServiceConnectionRequest;
 import org.openmetadata.schema.entity.automations.Workflow;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
@@ -50,6 +50,8 @@ import org.openmetadata.sdk.exception.PipelineServiceVersionException;
 @Slf4j
 public abstract class PipelineServiceClient {
   protected final String hostIp;
+
+  protected final boolean ingestionIpInfoEnabled;
 
   protected static final String AUTH_HEADER = "Authorization";
   protected static final String CONTENT_HEADER = "Content-Type";
@@ -88,6 +90,7 @@ public abstract class PipelineServiceClient {
 
   public PipelineServiceClient(PipelineServiceClientConfiguration pipelineServiceClientConfiguration) {
     this.hostIp = pipelineServiceClientConfiguration.getHostIp();
+    this.ingestionIpInfoEnabled = pipelineServiceClientConfiguration.getIngestionIpInfoEnabled();
   }
 
   public final URL validateServiceURL(String serviceURL) {
@@ -129,23 +132,33 @@ public abstract class PipelineServiceClient {
     return getVersionFromString(clientVersion).equals(getVersionFromString(SERVER_VERSION));
   }
 
-  public final Map<String, String> getHostIp() {
+  public final Response getHostIp() {
+
+    if (this.ingestionIpInfoEnabled) {
+      return getHostIpInternal();
+    }
+    return Response.status(Response.Status.NO_CONTENT).build();
+  }
+
+  private Response getHostIpInternal() {
+    Map<String, String> body;
     try {
-      return CommonUtil.nullOrEmpty(this.hostIp) ? requestGetHostIp() : Map.of("ip", this.hostIp);
+      body = CommonUtil.nullOrEmpty(this.hostIp) ? requestGetHostIp() : Map.of("ip", this.hostIp);
+      return Response.ok(body, MediaType.APPLICATION_JSON_TYPE).build();
     } catch (Exception e) {
       LOG.error("Failed to get Pipeline Service host IP. {}", e.getMessage());
-      return Map.of(
-          "ip",
-          "Failed to find the IP of Airflow Container. Please make sure https://api.ipify.org, "
-              + "https://api.my-ip.io/ip reachable from your network or that the `hostIp` setting is configured.");
+      // We don't want the request to fail for an informative ping
+      body =
+          Map.of(
+              "ip",
+              "Failed to find the IP of Airflow Container. Please make sure https://api.ipify.org, "
+                  + "https://api.my-ip.io/ip reachable from your network or that the `hostIp` setting is configured.");
+      return Response.ok(body, MediaType.APPLICATION_JSON_TYPE).build();
     }
   }
 
   /* Check the status of pipeline service to ensure it is healthy */
   public abstract Response getServiceStatus();
-
-  /* Test the connection to the service such as database service a pipeline depends on. */
-  public abstract Response testConnection(TestServiceConnectionRequest testServiceConnection);
 
   /**
    * This workflow can be used to execute any necessary async automations from the pipeline service. This will be the

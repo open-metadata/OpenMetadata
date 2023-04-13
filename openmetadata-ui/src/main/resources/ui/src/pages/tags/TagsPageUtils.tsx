@@ -14,7 +14,7 @@
 import { CheckOutlined } from '@ant-design/icons';
 import Loader from 'components/Loader/Loader';
 import React from 'react';
-import SVGIcons from 'utils/SvgUtils';
+import { ReactComponent as DeleteIcon } from '../../assets/svg/ic-delete.svg';
 import { DeleteTagsType } from './TagsPage.interface';
 
 export const getDeleteIcon = (
@@ -29,7 +29,5 @@ export const getDeleteIcon = (
     return <Loader size="small" type="default" />;
   }
 
-  return (
-    <SVGIcons alt="delete" icon="icon-delete" title="Delete" width="16px" />
-  );
+  return <DeleteIcon name="Delete" width={16} />;
 };

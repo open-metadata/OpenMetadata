@@ -21,16 +21,11 @@ from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequ
 from metadata.generated.schema.api.data.createDatabaseSchema import (
     CreateDatabaseSchemaRequest,
 )
-from metadata.generated.schema.api.data.createLocation import CreateLocationRequest
 from metadata.generated.schema.api.data.createTable import CreateTableRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
-from metadata.generated.schema.api.services.createStorageService import (
-    CreateStorageServiceRequest,
-)
 from metadata.generated.schema.entity.classification.tag import Tag
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
-from metadata.generated.schema.entity.data.location import Location
 from metadata.generated.schema.entity.data.table import (
     Column,
     DataModel,
@@ -41,32 +36,30 @@ from metadata.generated.schema.entity.services.databaseService import (
     DatabaseConnection,
     DatabaseService,
 )
-from metadata.generated.schema.entity.services.storageService import StorageService
 from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline import (
     DatabaseServiceMetadataPipeline,
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.generated.schema.type.basic import FullyQualifiedEntityName
-from metadata.generated.schema.type.storage import StorageServiceType
 from metadata.generated.schema.type.tagLabel import (
     LabelType,
     State,
     TagLabel,
     TagSource,
 )
-from metadata.ingestion.api.source import Source, SourceStatus
+from metadata.ingestion.api.source import Source
 from metadata.ingestion.api.topology_runner import TopologyRunnerMixin
+from metadata.ingestion.models.delete_entity import delete_entity_from_source
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
-from metadata.ingestion.models.table_metadata import DeleteTable
+from metadata.ingestion.models.table_metadata import OMetaTableConstraints
 from metadata.ingestion.models.topology import (
     NodeStage,
     ServiceTopology,
     TopologyNode,
     create_source_context,
 )
-from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.source.connections import get_test_connection_fn
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_schema
 from metadata.utils.logger import ingestion_logger
@@ -81,15 +74,6 @@ class DataModelLink(BaseModel):
 
     table_entity: Table
     datamodel: DataModel
-
-
-class TableLocationLink(BaseModel):
-    """
-    Model to handle table and location link
-    """
-
-    table_fqn: FullyQualifiedEntityName
-    location_fqn: FullyQualifiedEntityName
 
 
 class DatabaseServiceTopology(ServiceTopology):
@@ -111,17 +95,9 @@ class DatabaseServiceTopology(ServiceTopology):
                 overwrite=False,
                 must_return=True,
             ),
-            NodeStage(
-                type_=StorageService,
-                context="storage_service",
-                processor="yield_storage_service",
-                nullable=True,
-            ),
         ],
         children=["database"],
-        post_process=[
-            "yield_view_lineage",
-        ],
+        post_process=["yield_view_lineage", "yield_table_constraints"],
     )
     database = TopologyNode(
         producer="get_database_names",
@@ -165,40 +141,8 @@ class DatabaseServiceTopology(ServiceTopology):
                 processor="yield_table",
                 consumer=["database_service", "database", "database_schema"],
             ),
-            NodeStage(
-                type_=Location,
-                context="location",
-                processor="yield_location",
-                consumer=["storage_service"],
-                nullable=True,
-            ),
-            NodeStage(
-                type_=TableLocationLink,
-                processor="yield_table_location_link",
-                ack_sink=False,
-                nullable=True,
-            ),
         ],
     )
-
-
-class SQLSourceStatus(SourceStatus):
-    """
-    Reports the source status after ingestion
-    """
-
-    success: List[str] = []
-    failures: List[str] = []
-    warnings: List[str] = []
-    filtered: List[str] = []
-
-    def scanned(self, record: str) -> None:
-        self.success.append(record)
-        logger.debug(f"Scanned [{record}]")
-
-    def filter(self, key: str, reason: str) -> None:
-        logger.debug(f"Filtered [{key}] due to {reason}")
-        self.filtered.append({key: reason})
 
 
 class DatabaseServiceSource(
@@ -209,10 +153,8 @@ class DatabaseServiceSource(
     It implements the topology and context.
     """
 
-    status: SQLSourceStatus
     source_config: DatabaseServiceMetadataPipeline
     config: WorkflowSource
-    metadata: OpenMetadata
     database_source_state: Set = set()
     # Big union of types we want to fetch dynamically
     service_connection: DatabaseConnection.__fields__["config"].type_
@@ -226,9 +168,6 @@ class DatabaseServiceSource(
     def prepare(self):
         pass
 
-    def get_status(self) -> SourceStatus:
-        return self.status
-
     def get_services(self) -> Iterable[WorkflowSource]:
         yield self.config
 
@@ -236,15 +175,6 @@ class DatabaseServiceSource(
         yield self.metadata.get_create_service_from_source(
             entity=DatabaseService, config=config
         )
-
-    def yield_storage_service(self, config: WorkflowSource):
-        if hasattr(self.service_connection, "storageServiceName"):
-            service_json = {
-                "name": self.service_connection.storageServiceName,
-                "serviceType": StorageServiceType.S3,
-            }
-            storage_service = CreateStorageServiceRequest(**service_json)
-            yield storage_service
 
     @abstractmethod
     def get_database_names(self) -> Iterable[str]:
@@ -309,6 +239,15 @@ class DatabaseServiceSource(
         Parses view definition to get lineage information
         """
 
+    def yield_table_constraints(self) -> Optional[Iterable[OMetaTableConstraints]]:
+        """
+        From topology.
+        process the table constraints of all tables
+        by default no need to process table constraints
+        specially for non SQA sources
+        """
+        yield from []
+
     @abstractmethod
     def yield_table(
         self, table_name_and_type: Tuple[str, TableType]
@@ -320,33 +259,11 @@ class DatabaseServiceSource(
         Also, update the self.inspector value to the current db.
         """
 
-    def yield_location(
-        self,
-        table_name_and_type: Tuple[str, TableType],  # pylint: disable=unused-argument
-    ) -> Iterable[CreateLocationRequest]:
-        """
-        From topology.
-        Prepare a location request and pass it to the sink.
-
-        Also, update the self.inspector value to the current db.
-        """
-        return
-
     def get_raw_database_schema_names(self) -> Iterable[str]:
         """
         fetch all schema names without any filtering.
         """
         yield from self.get_database_schema_names()
-
-    def yield_table_location_link(
-        self,
-        table_name_and_type: Tuple[str, TableType],  # pylint: disable=unused-argument
-    ) -> Iterable[TableLocationLink]:
-        """
-        Gets the current location being processed, fetches its data model
-        and sends it ot the sink
-        """
-        return
 
     def get_tag_by_fqn(self, entity_fqn: str) -> Optional[List[TagLabel]]:
         """
@@ -420,20 +337,6 @@ class DatabaseServiceSource(
         self.database_source_state.add(table_fqn)
         self.status.scanned(table_fqn)
 
-    def delete_schema_tables(self, schema_fqn: str) -> Iterable[DeleteTable]:
-        """
-        Returns Deleted tables
-        """
-        database_state = self.metadata.list_all_entities(
-            entity=Table, params={"database": schema_fqn}
-        )
-        for table in database_state:
-            if str(table.fullyQualifiedName.__root__) not in self.database_source_state:
-                yield DeleteTable(
-                    table=table,
-                    mark_deleted_tables=self.source_config.markDeletedTables,
-                )
-
     def fetch_all_schema_and_delete_tables(self):
         """
         Fetch all schemas and delete tables
@@ -448,9 +351,28 @@ class DatabaseServiceSource(
             entity=DatabaseSchema, params={"database": database_fqn}
         )
         for schema in schema_list:
-            yield from self.delete_schema_tables(schema.fullyQualifiedName.__root__)
+            yield from delete_entity_from_source(
+                metadata=self.metadata,
+                entity_type=Table,
+                entity_source_state=self.database_source_state,
+                mark_deleted_entity=self.source_config.markDeletedTables,
+                params={"database": schema.fullyQualifiedName.__root__},
+            )
 
-    def _get_filtered_schema_names(self, add_to_status: bool = True) -> Iterable[str]:
+        # Delete the schema
+        yield from delete_entity_from_source(
+            metadata=self.metadata,
+            entity_type=DatabaseSchema,
+            entity_source_state=list(
+                self._get_filtered_schema_names(return_fqn=True, add_to_status=False)
+            ),
+            mark_deleted_entity=self.source_config.markDeletedTables,
+            params={"database": database_fqn},
+        )
+
+    def _get_filtered_schema_names(
+        self, return_fqn: bool = False, add_to_status: bool = True
+    ) -> Iterable[str]:
         for schema_name in self.get_raw_database_schema_names():
             schema_fqn = fqn.build(
                 self.metadata,
@@ -466,7 +388,7 @@ class DatabaseServiceSource(
                 if add_to_status:
                     self.status.filter(schema_fqn, "Schema Filtered Out")
                 continue
-            yield schema_name
+            yield schema_fqn if return_fqn else schema_name
 
     def mark_tables_as_deleted(self):
         """
@@ -482,14 +404,19 @@ class DatabaseServiceSource(
 
             # If markAllDeletedTables is False (Default), Only delete tables which are deleted from the datasource
             else:
-                schema_names_list = self._get_filtered_schema_names(add_to_status=False)
-                for schema_name in schema_names_list:
-                    schema_fqn = fqn.build(
-                        self.metadata,
-                        entity_type=DatabaseSchema,
-                        service_name=self.config.serviceName,
-                        database_name=self.context.database.name.__root__,
-                        schema_name=schema_name,
+                schema_fqn_list = self._get_filtered_schema_names(
+                    return_fqn=True, add_to_status=False
+                )
+
+                for schema_fqn in schema_fqn_list:
+                    yield from delete_entity_from_source(
+                        metadata=self.metadata,
+                        entity_type=Table,
+                        entity_source_state=self.database_source_state,
+                        mark_deleted_entity=self.source_config.markDeletedTables,
+                        params={"database": schema_fqn},
                     )
 
-                    yield from self.delete_schema_tables(schema_fqn)
+    def test_connection(self) -> None:
+        test_connection_fn = get_test_connection_fn(self.service_connection)
+        test_connection_fn(self.metadata, self.connection_obj, self.service_connection)

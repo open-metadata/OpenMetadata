@@ -39,7 +39,7 @@ import org.openmetadata.schema.type.DataInsightChartDataType;
 import org.openmetadata.schema.type.DataReportIndex;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.EntityResourceTest;
-import org.openmetadata.service.resources.dataInsight.DataInsightResourceTest;
+import org.openmetadata.service.resources.dataInsight.DataInsightChartResourceTest;
 import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.TestUtils;
 
@@ -53,7 +53,7 @@ public class KpiResourceTest extends EntityResourceTest<Kpi, CreateKpiRequest> {
   }
 
   public void setupKpi() throws IOException {
-    DataInsightResourceTest dataInsightResourceTest = new DataInsightResourceTest();
+    DataInsightChartResourceTest dataInsightResourceTest = new DataInsightChartResourceTest();
     CreateDataInsightChart chartRequest =
         dataInsightResourceTest
             .createRequest(String.format("TestChart" + "%s", UUID.randomUUID()))

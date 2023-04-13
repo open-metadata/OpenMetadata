@@ -1,0 +1,15 @@
+{
+    "name": "Atlas",
+    "fullyQualifiedName": "Atlas",
+    "displayName": "Atlas Test Connection",
+    "description": "This Test Connection validates the access against the server and basic metadata extraction of topics, tables & dashboards.",
+    "steps": [
+        {
+            "name": "CheckAccess",
+            "description":  "Check if the atlas APIs are reachable with the given credentials.",
+            "errorMessage": "Failed to connect to atlas, please validate the credentials",
+            "shortCircuit": true,
+            "mandatory": true
+        }
+    ]
+}

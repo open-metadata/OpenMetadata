@@ -53,7 +53,7 @@ class ColumnTypeParser:
         types.ARRAY: "ARRAY",
         types.Boolean: "BOOLEAN",
         types.CHAR: "CHAR",
-        types.CLOB: "BINARY",
+        types.CLOB: "CLOB",
         types.Date: "DATE",
         types.DATE: "DATE",
         types.DateTime: "DATETIME",
@@ -109,6 +109,7 @@ class ColumnTypeParser:
         "ENUM": "ENUM",
         "FLOAT": "FLOAT",
         "FLOAT4": "FLOAT",
+        "FLOAT32": "FLOAT",
         "FLOAT64": "DOUBLE",
         "FLOAT8": "DOUBLE",
         "GEOGRAPHY": "GEOGRAPHY",
@@ -120,6 +121,8 @@ class ColumnTypeParser:
         "INT4": "INT",
         "INT8": "BIGINT",
         "INT16": "BIGINT",
+        "TUPLE": "TUPLE",
+        "SPATIAL": "SPATIAL",
         "INT32": "BIGINT",
         "INT64": "BIGINT",
         "INT128": "BIGINT",
@@ -187,20 +190,55 @@ class ColumnTypeParser:
         "VARIANT": "JSON",
         "JSON": "JSON",
         "JSONB": "JSON",
-        "XML": "BINARY",
-        "XMLTYPE": "BINARY",
         "UUID": "UUID",
-        "POINT": "POINT",
-        "POLYGON": "POLYGON",
+        "POINT": "GEOMETRY",
+        "POLYGON": "GEOMETRY",
         "AggregateFunction()": "AGGREGATEFUNCTION",
         "BYTEA": "BYTEA",
+        "UNKNOWN": "UNKNOWN",
+        # redshift
+        "HLLSKETCH": "HLLSKETCH",
+        "SUPER": "SUPER",
+        # postgres
+        "BOX": "GEOMETRY",
+        "CIRCLE": "GEOMETRY",
+        "LINE": "GEOMETRY",
+        "LSEG": "GEOMETRY",
+        "PATH": "GEOMETRY",
+        "PG_LSN": "PG_LSN",
+        "PG_SNAPSHOT": "PG_SNAPSHOT",
+        "TSQUERY": "TSQUERY",
+        "TXID_SNAPSHOT": "TXID_SNAPSHOT",
+        "XML": "XML",
+        "TSVECTOR": "TSVECTOR",
+        "MACADDR": "MACADDR",
+        "MACADDR8": "MACADDR",
+        "CIDR": "CIDR",
+        "INET": "INET",
+        # ORACLE
+        "BINARY_DOUBLE": "DOUBLE",
+        "BINARY_FLOAT": "FLOAT",
+        "XMLTYPE": "XML",
+        "BFILE": "BINARY",
+        "CLOB": "CLOB",
+        "NCLOB": "CLOB",
+        "LONG": "LONG",
+        # clickhouse
+        "LOWCARDINALITY": "LOWCARDINALITY",
+        "DATETIME64": "DATETIME",
+        "SimpleAggregateFunction()": "AGGREGATEFUNCTION",
+        # Databricks
+        "VOID": "NULL",
+        # mysql
+        "TINYBLOB": "BLOB",
+        "LONGTEXT": "TEXT",
+        "TINYTEXT": "TEXT",
+        "YEAR": "YEAR",
     }
 
     _COMPLEX_TYPE = re.compile("^(struct|map|array|uniontype)")
 
     _FIXED_DECIMAL = re.compile(r"(decimal|numeric)(\(\s*(\d+)\s*,\s*(\d+)\s*\))?")
-
-    _FIXED_STRING = re.compile(r"(var)?char\(\s*(\d+)\s*\)")
 
     try:
         # pylint: disable=import-outside-toplevel
@@ -225,7 +263,7 @@ class ColumnTypeParser:
         if column_type_result:
             return column_type_result
 
-        return ColumnTypeParser._SOURCE_TYPE_TO_OM_TYPE.get("VARCHAR")
+        return ColumnTypeParser._SOURCE_TYPE_TO_OM_TYPE.get("UNKNOWN")
 
     @staticmethod
     def get_column_type_mapping(column_type: Any) -> str:
@@ -245,7 +283,7 @@ class ColumnTypeParser:
     def _parse_datatype_string(
         data_type: str, **kwargs: Any  # pylint: disable=unused-argument
     ) -> Union[object, Dict[str, object]]:
-        data_type = data_type.strip()
+        data_type = data_type.lower().strip()
         data_type = data_type.replace(" ", "")
         if data_type.startswith("array<"):
             if data_type[-1] != ">":
@@ -319,8 +357,6 @@ class ColumnTypeParser:
                 "dataType": ColumnTypeParser._SOURCE_TYPE_TO_OM_TYPE[dtype.upper()],
                 "dataTypeDisplay": dtype,
             }
-        if ColumnTypeParser._FIXED_STRING.match(dtype):
-            return {"dataType": "STRING", "dataTypeDisplay": dtype}
         if ColumnTypeParser._FIXED_DECIMAL.match(dtype):
             match = ColumnTypeParser._FIXED_DECIMAL.match(dtype)
             if match.group(2) is not None:  # type: ignore

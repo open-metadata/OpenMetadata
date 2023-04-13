@@ -28,18 +28,32 @@ import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
+import TableDataCardV2 from 'components/common/table-data-card-v2/TableDataCardV2';
+import { DROPDOWN_ICON_SIZE_PROPS } from 'constants/ManageButton.constants';
 import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
+import { SearchIndex } from 'enums/search.enum';
 import { compare } from 'fast-json-patch';
 import { cloneDeep, isEmpty, isUndefined, orderBy, uniqueId } from 'lodash';
 import { ExtraInfo } from 'Models';
 import AddAttributeModal from 'pages/RolesPage/AddAttributeModal/AddAttributeModal';
-import React, { Fragment, useEffect, useMemo, useState } from 'react';
+import React, {
+  Fragment,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
+import { getSuggestions } from 'rest/miscAPI';
 import { restoreTeam } from 'rest/teamsAPI';
 import AppState from '../../AppState';
 import { ReactComponent as IconEdit } from '../../assets/svg/ic-edit.svg';
+import { ReactComponent as IconRemove } from '../../assets/svg/ic-remove.svg';
+import { ReactComponent as IconRestore } from '../../assets/svg/ic-restore.svg';
 import { ReactComponent as IconDropdown } from '../../assets/svg/menu.svg';
+import { ReactComponent as IconOpenLock } from '../../assets/svg/open-lock.svg';
+import { ReactComponent as IconShowPassword } from '../../assets/svg/show-password.svg';
 import {
   getTeamAndUserDetailsPath,
   getUserPath,
@@ -66,14 +80,13 @@ import {
   PlaceholderProps,
   TeamDetailsProp,
 } from '../../interface/teamsAndUsers.interface';
-import { getTierFromEntityInfo, hasEditAccess } from '../../utils/CommonUtils';
+import { hasEditAccess } from '../../utils/CommonUtils';
 import { filterEntityAssets, getEntityName } from '../../utils/EntityUtils';
 import {
   checkPermission,
   DEFAULT_ENTITY_PERMISSION,
 } from '../../utils/PermissionsUtils';
 import { getTeamsWithFqnPath } from '../../utils/RouterUtils';
-import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import {
   filterChildTeams,
   getDeleteMessagePostFix,
@@ -85,7 +98,6 @@ import EntitySummaryDetails from '../common/EntitySummaryDetails/EntitySummaryDe
 import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder';
 import NextPrevious from '../common/next-previous/NextPrevious';
 import Searchbar from '../common/searchbar/Searchbar';
-import TableDataCard from '../common/table-data-card/TableDataCard';
 import TabsPane from '../common/TabsPane/TabsPane';
 import TitleBreadcrumb from '../common/title-breadcrumb/title-breadcrumb.component';
 import { TitleBreadcrumbProps } from '../common/title-breadcrumb/title-breadcrumb.interface';
@@ -98,7 +110,7 @@ import {
 } from '../PermissionProvider/PermissionProvider.interface';
 import { commonUserDetailColumns } from '../Users/Users.util';
 import ListEntities from './RolesAndPoliciesList';
-import { getTabs, searchTeam } from './TeamDetailsV1.utils';
+import { getTabs } from './TeamDetailsV1.utils';
 import TeamHierarchy from './TeamHierarchy';
 import './teams.less';
 
@@ -291,11 +303,7 @@ const TeamDetailsV1 = ({
                 data-testid="remove-user-btn"
                 disabled={!entityPermissions.EditAll}
                 icon={
-                  <SVGIcons
-                    alt={t('label.remove')}
-                    className="tw-w-4 tw-mb-2.5"
-                    icon={Icons.ICON_REMOVE}
-                  />
+                  <IconRemove height={16} name={t('label.remove')} width={16} />
                 }
                 type="text"
                 onClick={() => deleteUserHandler(record.id)}
@@ -340,6 +348,22 @@ const TeamDetailsV1 = ({
           },
         ]),
   ];
+
+  const searchTeams = async (text: string) => {
+    try {
+      const res = await getSuggestions<SearchIndex.TEAM>(
+        text,
+        SearchIndex.TEAM
+      );
+      const data = res.data.suggest['metadata-suggest'][0].options.map(
+        (value) => value._source as Team
+      );
+
+      setTable(data);
+    } catch (error) {
+      setTable([]);
+    }
+  };
 
   const isActionAllowed = (operation = false) => {
     return hasAccess || isOwner() || operation;
@@ -425,29 +449,21 @@ const TeamDetailsV1 = ({
     }
   };
 
-  const updateOwner = (owner?: EntityReference) => {
-    if (currentTeam) {
-      const updatedData: Team = {
-        ...currentTeam,
-        owner: !isUndefined(owner) ? owner : currentTeam.owner,
-      };
+  const updateOwner = useCallback(
+    (owner?: EntityReference) => {
+      if (currentTeam) {
+        const updatedData: Team = {
+          ...currentTeam,
+          owner,
+        };
 
-      return updateTeamHandler(updatedData);
-    }
+        return updateTeamHandler(updatedData);
+      }
 
-    return Promise.reject();
-  };
-
-  const removeOwner = () => {
-    if (currentTeam) {
-      const updatedData: Team = {
-        ...currentTeam,
-        owner: undefined,
-      };
-
-      updateTeamHandler(updatedData);
-    }
-  };
+      return Promise.reject();
+    },
+    [currentTeam]
+  );
 
   const updateTeamType = (type: TeamType) => {
     if (currentTeam) {
@@ -465,9 +481,7 @@ const TeamDetailsV1 = ({
   const handleTeamSearch = (value: string) => {
     setSearchTerm(value);
     if (value) {
-      setTable(
-        filterChildTeams(searchTeam(childTeams, value), showDeletedTeam)
-      );
+      searchTeams(value);
     } else {
       setTable(filterChildTeams(childTeams ?? [], showDeletedTeam));
     }
@@ -624,29 +638,9 @@ const TeamDetailsV1 = ({
     return t('message.are-you-sure-want-to-text', { text });
   };
 
-  const deletedTeamIcon = useMemo(
-    () => (
-      <SVGIcons
-        alt={t('label.delete')}
-        icon={showDeletedTeam ? Icons.HIDE_PASSWORD : Icons.SHOW_PASSWORD}
-      />
-    ),
-    [showDeletedTeam]
-  );
-
-  const openGroupIcon = useMemo(
-    () => (
-      <SVGIcons
-        alt={t('label.delete')}
-        icon={currentTeam.isJoinable ? Icons.OPEN_LOCK : Icons.CLOSED_LOCK}
-      />
-    ),
-    [currentTeam.isJoinable]
-  );
-
   const restoreIcon = useMemo(
     () => (
-      <SVGIcons alt={t('label.restore')} icon={Icons.RESTORE} width="16px" />
+      <IconRestore {...DROPDOWN_ICON_SIZE_PROPS} name={t('label.restore')} />
     ),
     [currentTeam.isJoinable]
   );
@@ -654,18 +648,18 @@ const TeamDetailsV1 = ({
   const DELETED_TOGGLE_MENU_ITEM = {
     label: (
       <Row className="cursor-pointer" data-testid="deleted-team-menu-item">
-        <Col span={3}>{deletedTeamIcon}</Col>
+        <Col span={3}>
+          <IconShowPassword {...DROPDOWN_ICON_SIZE_PROPS} />
+        </Col>
         <Col span={21}>
           <Row>
             <Col span={21}>
               <Typography.Text
                 className="font-medium"
                 data-testid="deleted-menu-item-label">
-                {t(
-                  showDeletedTeam
-                    ? 'label.hide-deleted-team'
-                    : 'label.show-deleted-team'
-                )}
+                {t('label.show-deleted-entity', {
+                  entity: t('label.team'),
+                })}
               </Typography.Text>
             </Col>
 
@@ -680,7 +674,10 @@ const TeamDetailsV1 = ({
 
             <Col className="p-t-xss">
               <Typography.Paragraph className="text-grey-muted text-xs m-b-0 line-height-16">
-                {t('message.view-deleted-teams')}
+                {t('message.view-deleted-entity', {
+                  entity: t('label.team-plural'),
+                  parent: t('label.team'),
+                })}
               </Typography.Paragraph>
             </Col>
           </Row>
@@ -728,18 +725,16 @@ const TeamDetailsV1 = ({
             className="cursor-pointer"
             data-testid="deleted-team-menu-item"
             onClick={handleOpenToJoinToggle}>
-            <Col span={3}>{openGroupIcon}</Col>
+            <Col span={3}>
+              <IconOpenLock {...DROPDOWN_ICON_SIZE_PROPS} />
+            </Col>
             <Col data-testid="open-group" span={21}>
               <Row>
                 <Col span={21}>
                   <Typography.Text
                     className="font-medium"
                     data-testid="open-group-label">
-                    {`${
-                      currentTeam.isJoinable
-                        ? t('label.close')
-                        : t('label.open')
-                    } ${t('label.group')}`}
+                    {t('label.public-team')}
                   </Typography.Text>
                 </Col>
 
@@ -809,9 +804,9 @@ const TeamDetailsV1 = ({
               <div className="tw-w-4/12">
                 <Searchbar
                   removeMargin
-                  placeholder={`${t('label.search-for-type', {
+                  placeholder={t('label.search-for-type', {
                     type: t('label.user-lowercase'),
-                  })}...`}
+                  })}
                   searchValue={teamUsersSearchText}
                   typingInterval={500}
                   onSearch={handleTeamUsersSearchAction}
@@ -897,25 +892,14 @@ const TeamDetailsV1 = ({
 
     return (
       <div data-testid="table-container">
-        {assets.data.map((entity, index) => (
-          <div className="m-b-sm" key={`${entity.name}${index}`}>
-            <TableDataCard
-              database={entity.database}
-              databaseSchema={entity.databaseSchema}
-              deleted={entity.deleted}
-              description={entity.description}
-              fullyQualifiedName={entity.fullyQualifiedName}
-              id={`tabledatacard${index}`}
-              indexType={entity.index}
-              name={entity.name}
-              owner={entity.owner}
-              service={entity.service}
-              serviceType={entity.serviceType || '--'}
-              tags={entity.tags}
-              tier={getTierFromEntityInfo(entity)}
-              usage={entity.weeklyPercentileRank}
-            />
-          </div>
+        {assets.data.map(({ _source, _index, _id = '' }, index) => (
+          <TableDataCardV2
+            className="m-b-sm cursor-pointer"
+            id={_id}
+            key={index}
+            searchIndex={_index as SearchIndex}
+            source={_source}
+          />
         ))}
         {assets.total > LIST_SIZE && assets.data.length > 0 && (
           <NextPrevious
@@ -1105,11 +1089,6 @@ const TeamDetailsV1 = ({
                   currentOwner={currentTeam.owner}
                   data={info}
                   isGroupType={isGroupType}
-                  removeOwner={
-                    entityPermissions.EditAll || entityPermissions.EditOwner
-                      ? removeOwner
-                      : undefined
-                  }
                   showGroupOption={!childTeams.length}
                   teamType={currentTeam.teamType}
                   updateOwner={
@@ -1171,9 +1150,9 @@ const TeamDetailsV1 = ({
                     <Col span={8}>
                       <Searchbar
                         removeMargin
-                        placeholder={`${t('label.search-entity', {
+                        placeholder={t('label.search-entity', {
                           entity: t('label.team'),
-                        })}...`}
+                        })}
                         searchValue={searchTerm}
                         typingInterval={500}
                         onSearch={handleTeamSearch}
@@ -1361,6 +1340,7 @@ const TeamDetailsV1 = ({
           centered
           closable={false}
           confirmLoading={isModalLoading}
+          maskClosable={false}
           okText={t('label.confirm')}
           open={!isUndefined(selectedEntity.record)}
           title={`${t('label.remove-entity', {

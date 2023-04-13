@@ -11,17 +11,22 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Form, Input, Row, Typography } from 'antd';
+import { Button, Space, Tag, Tooltip, Typography } from 'antd';
+import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
+import { ReactComponent as ExternalLinkIcon } from 'assets/svg/external-links.svg';
+import { ReactComponent as PlusIcon } from 'assets/svg/plus-primary.svg';
+import TagButton from 'components/TagButton/TagButton.component';
+import { DE_ACTIVE_COLOR, TEXT_BODY_COLOR } from 'constants/constants';
+import { NO_PERMISSION_FOR_ACTION } from 'constants/HelperTextUtil';
 import { t } from 'i18next';
 import { cloneDeep, isEqual } from 'lodash';
-import React, { Fragment, useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   GlossaryTerm,
   TermReference,
 } from '../../../generated/entity/data/glossaryTerm';
-import SVGIcons, { Icons } from '../../../utils/SvgUtils';
 import { OperationPermission } from '../../PermissionProvider/PermissionProvider.interface';
-import SummaryDetail from '../SummaryDetail';
+import GlossaryTermReferencesModal from '../GlossaryTermReferencesModal.component';
 
 interface GlossaryTermReferences {
   glossaryTerm: GlossaryTerm;
@@ -34,17 +39,17 @@ const GlossaryTermReferences = ({
   permissions,
   onGlossaryTermUpdate,
 }: GlossaryTermReferences) => {
-  const [form] = Form.useForm();
   const [references, setReferences] = useState<TermReference[]>([]);
   const [isViewMode, setIsViewMode] = useState<boolean>(true);
 
-  const handleReferencesSave = async () => {
+  const handleReferencesSave = async (
+    newReferences: TermReference[],
+    updateState?: boolean
+  ) => {
     try {
-      const updatedRef = references.filter((ref) => ref.endpoint && ref.name);
-
-      setReferences(updatedRef);
-      await form.validateFields();
-      form.resetFields(['references']);
+      const updatedRef = newReferences.filter(
+        (ref) => ref.endpoint && ref.name
+      );
       if (!isEqual(updatedRef, glossaryTerm.references)) {
         let updatedGlossaryTerm = cloneDeep(glossaryTerm);
         updatedGlossaryTerm = {
@@ -53,6 +58,9 @@ const GlossaryTermReferences = ({
         };
 
         onGlossaryTermUpdate(updatedGlossaryTerm);
+        if (updateState) {
+          setReferences(updatedRef);
+        }
       }
       setIsViewMode(true);
     } catch (error) {
@@ -60,122 +68,92 @@ const GlossaryTermReferences = ({
     }
   };
 
+  const onReferenceModalSave = (values: TermReference[]) => {
+    handleReferencesSave(values);
+  };
+
   useEffect(() => {
-    if (glossaryTerm.references?.length) {
-      setReferences(glossaryTerm.references);
-    }
-  }, [glossaryTerm]);
+    setReferences(glossaryTerm.references ? glossaryTerm.references : []);
+  }, [glossaryTerm.references]);
 
   return (
     <div data-testid="references-container">
-      {isViewMode ? (
-        <SummaryDetail
-          hasAccess={permissions.EditAll}
-          key="references"
-          setShow={() => setIsViewMode(false)}
-          showIcon={isViewMode}
-          title={t('label.reference-plural')}>
-          <div className="flex">
-            {references.length > 0 ? (
-              references.map((ref, i) => (
-                <Fragment key={i}>
-                  {i > 0 && <span className="m-r-xs">,</span>}
+      <Space className="w-full" direction="vertical" size={4}>
+        <Space
+          className="w-full"
+          data-testid={`section-${t('label.reference-plural')}`}>
+          <div className="flex-center">
+            <Typography.Text className="glossary-subheading">
+              {t('label.reference-plural')}
+            </Typography.Text>
+            {references.length > 0 && permissions.EditAll && (
+              <Tooltip
+                title={
+                  permissions.EditAll
+                    ? t('label.edit')
+                    : NO_PERMISSION_FOR_ACTION
+                }>
+                <Button
+                  className="cursor-pointer m--t-xss m-l-xss"
+                  data-testid="edit-button"
+                  disabled={!permissions.EditAll}
+                  icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
+                  size="small"
+                  type="text"
+                  onClick={() => setIsViewMode(false)}
+                />
+              </Tooltip>
+            )}
+          </div>
+        </Space>
+        <>
+          <div className="d-flex flex-wrap">
+            {references.map((ref) => (
+              <Tag
+                className="tw-mr-2 tw-mt-1 d-flex items-center term-reference-tag tw-bg-white"
+                key={ref.name}>
+                <Tooltip title={ref.name}>
                   <a
-                    className="flex"
                     data-testid="owner-link"
                     href={ref?.endpoint}
                     rel="noopener noreferrer"
                     target="_blank">
-                    <Typography.Text
-                      className="link-text-info"
-                      ellipsis={{ tooltip: ref?.name }}
-                      style={{ maxWidth: 200 }}>
-                      {ref?.name}
-                    </Typography.Text>
+                    <div className="d-flex items-center">
+                      <ExternalLinkIcon
+                        className="m-r-xss"
+                        color={TEXT_BODY_COLOR}
+                        width="12px"
+                      />
+                      <span className="text-body">{ref?.name}</span>
+                    </div>
                   </a>
-                </Fragment>
-              ))
-            ) : (
-              <Typography.Text type="secondary">
-                {t('message.no-reference-available')}
-              </Typography.Text>
+                </Tooltip>
+              </Tag>
+            ))}
+            {permissions.EditAll && references.length === 0 && (
+              <TagButton
+                className="tw-text-primary"
+                icon={<PlusIcon height={16} name="plus" width={16} />}
+                label={t('label.add')}
+                onClick={() => {
+                  setIsViewMode(false);
+                }}
+              />
             )}
           </div>
-        </SummaryDetail>
-      ) : (
-        <Form
-          className="reference-edit-form"
-          form={form}
-          onValuesChange={(_, values) => setReferences(values.references)}>
-          <Form.List
-            initialValue={
-              references.length
-                ? references
-                : [
-                    {
-                      name: '',
-                      endpoint: '',
-                    },
-                  ]
-            }
-            name="references">
-            {(fields, { add, remove }) => (
-              <SummaryDetail
-                showAddIcon
-                hasAccess={permissions.EditAll}
-                key="references"
-                setShow={() => setIsViewMode(false)}
-                showIcon={isViewMode}
-                title={t('label.reference-plural')}
-                onAddClick={() => add()}
-                onSave={handleReferencesSave}>
-                <>
-                  {fields.map(({ key, name, ...restField }) => (
-                    <Row gutter={8} key={key}>
-                      <Col span={12}>
-                        <Form.Item
-                          className="w-full"
-                          {...restField}
-                          name={[name, 'name']}>
-                          <Input placeholder={t('label.name')} />
-                        </Form.Item>
-                      </Col>
-                      <Col span={11}>
-                        <Form.Item
-                          className="w-full"
-                          {...restField}
-                          name={[name, 'endpoint']}
-                          rules={[
-                            {
-                              type: 'url',
-                              message: t('message.endpoint-should-be-valid'),
-                            },
-                          ]}>
-                          <Input placeholder={t('label.endpoint')} />
-                        </Form.Item>
-                      </Col>
-                      <Col span={1}>
-                        <Button
-                          icon={
-                            <SVGIcons
-                              alt="delete"
-                              icon={Icons.DELETE}
-                              width="16px"
-                            />
-                          }
-                          size="small"
-                          type="text"
-                          onClick={() => remove(name)}
-                        />
-                      </Col>
-                    </Row>
-                  ))}
-                </>
-              </SummaryDetail>
-            )}
-          </Form.List>
-        </Form>
-      )}
+        </>
+      </Space>
+
+      <GlossaryTermReferencesModal
+        isVisible={!isViewMode}
+        references={references || []}
+        onClose={() => {
+          setIsViewMode(true);
+        }}
+        onSave={(values: TermReference[]) => {
+          onReferenceModalSave(values);
+        }}
+      />
     </div>
   );
 };

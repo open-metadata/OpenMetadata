@@ -136,6 +136,14 @@ the changes.
 - **Authority URI**: Authority URI for the service.
 - **Scope**: Service scope. By default `["https://analysis.windows.net/powerbi/api/.default"]`.
 - **Pagination Entity Per Page**: Entity Limit set here will be used to paginate the PowerBi APIs. PowerBi API do not allow more than 100 workspaces to be inputed at a time. This field sets the limit of entities used for paginating the powerbi APIs. By default 100
+- **Use PowerBI Admin APIs**:
+Option for using the PowerBI admin APIs:
+1. Enabled (Use PowerBI Admin APIs):
+Using the admin APIs will fetch the dashboard and chart metadata from all the workspaces available in the powerbi instance
+
+2. Disabled (Use Non-Admin PowerBI APIs):
+Using the non-admin APIs will only fetch the dashboard and chart metadata from the workspaces that have the security group of the service principal assigned to them.
+
 
 ### 6. Configure Metadata Ingestion
 
@@ -159,6 +167,8 @@ caption="Configure Metadata Ingestion Page"
     - **Exclude**: Explicitly exclude charts by adding a list of comma-separated regular expressions to the Exclude field. OpenMetadata will exclude all charts with names matching one or more of the supplied regular expressions. All other charts will be included.
 - **Database Service Name (Optional)**: Enter the name of Database Service which is already ingested in OpenMetadata to create lineage between dashboards and database tables.
 - **Enable Debug Log (toggle)**: Set the Enable Debug Log toggle to set the default log level to debug, these logs can be viewed later in Airflow.
+- **Include tags (toggle)**: Set the Include tags toggle to control whether or not to include tags as part of metadata ingestion.
+- **Mark Deleted Dashboards (toggle)**: Set the Mark Deleted Dashboards toggle to flag dashboards as soft-deleted if they are not present anymore in the source system.
 
 ### 7. Schedule the Ingestion and Deploy
 

@@ -46,6 +46,7 @@ const mockConfigureIngestion: ConfigureIngestionProps = {
   serviceCategory: ServiceCategory.DATABASE_SERVICES,
   onChange: jest.fn(),
   data: {
+    showDatabaseFilterField: true,
     ingestionName: '',
     databaseFilterPattern: {
       includes: [],
@@ -87,6 +88,10 @@ const mockConfigureIngestion: ConfigureIngestionProps = {
     resultLimit: 100,
     stageFileLocation: '',
     markDeletedTables: false,
+    markDeletedDashboards: true,
+    markDeletedTopics: true,
+    markDeletedMlModels: true,
+    markDeletedPipelines: true,
     showDashboardFilter: false,
     showDatabaseFilter: false,
     showSchemaFilter: false,
@@ -103,6 +108,7 @@ const mockConfigureIngestion: ConfigureIngestionProps = {
     threadCount: 5,
     timeoutSeconds: 43200,
     useFqnFilter: false,
+    confidence: 80,
   } as unknown as AddIngestionState,
 };
 
@@ -123,7 +129,7 @@ describe('Test ConfigureIngestion component', () => {
       container,
       'FilterPattern.component'
     );
-    const toggleSwitchs = await findAllByText(
+    const toggleSwitch = await findAllByText(
       container,
       'ToggleSwitchV1.component'
     );
@@ -132,6 +138,6 @@ describe('Test ConfigureIngestion component', () => {
     expect(backButton).toBeInTheDocument();
     expect(nextButton).toBeInTheDocument();
     expect(filterPatternComponents).toHaveLength(3);
-    expect(toggleSwitchs).toHaveLength(5);
+    expect(toggleSwitch).toHaveLength(6);
   });
 });

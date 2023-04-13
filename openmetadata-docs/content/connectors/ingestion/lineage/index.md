@@ -79,6 +79,7 @@ From 0.12 onwards, there is a separated Lineage Workflow that will take care of 
 The main difference here is between those sources that provide internal access to query logs and those that do not. For
 services such as:
 
+- [Athena](/connectors/database/athena) (supported with 1.0 release onwards)
 - [BigQuery](/connectors/database/bigquery)
 - [Snowflake](/connectors/database/snowflake)
 - [MSSQL](/connectors/database/mssql)

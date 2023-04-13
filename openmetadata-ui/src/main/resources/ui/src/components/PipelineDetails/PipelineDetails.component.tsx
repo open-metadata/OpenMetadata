@@ -15,7 +15,7 @@ import { Card, Col, Radio, Row, Space, Table, Tabs, Tooltip } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { compare, Operation } from 'fast-json-patch';
-import { isEmpty } from 'lodash';
+import { isEmpty, isUndefined } from 'lodash';
 import { EntityTags, ExtraInfo, TagOption } from 'Models';
 import React, {
   RefObject,
@@ -29,6 +29,7 @@ import { Link, Redirect, useHistory, useParams } from 'react-router-dom';
 import { getAllFeeds, postFeedById, postThread } from 'rest/feedsAPI';
 import { restorePipeline } from 'rest/pipelineAPI';
 import AppState from '../../AppState';
+import { ReactComponent as ExternalLinkIcon } from '../../assets/svg/external-link.svg';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { getPipelineDetailsPath, ROUTES } from '../../constants/constants';
 import { EntityField } from '../../constants/Feeds.constants';
@@ -92,9 +93,7 @@ import TasksDAGView from '../TasksDAGView/TasksDAGView';
 import { PipeLineDetailsProp } from './PipelineDetails.interface';
 
 const PipelineDetails = ({
-  entityName,
   slashedPipelineName,
-  pipelineUrl,
   pipelineDetails,
   descriptionUpdateHandler,
   followers,
@@ -102,7 +101,6 @@ const PipelineDetails = ({
   unfollowPipelineHandler,
   tagUpdateHandler,
   settingsUpdateHandler,
-  tasks,
   taskUpdateHandler,
   versionHandler,
   pipelineFQN,
@@ -120,6 +118,7 @@ const PipelineDetails = ({
     version,
     pipelineStatus,
     tags,
+    entityName,
   } = useMemo(() => {
     return {
       deleted: pipelineDetails.deleted,
@@ -130,6 +129,7 @@ const PipelineDetails = ({
       pipelineStatus: pipelineDetails.pipelineStatus,
       tier: getTierTags(pipelineDetails.tags ?? []),
       tags: getTagsWithoutTier(pipelineDetails.tags ?? []),
+      entityName: getEntityName(pipelineDetails),
     };
   }, [pipelineDetails]);
 
@@ -183,8 +183,11 @@ const PipelineDetails = ({
   const { getEntityPermission } = usePermissionProvider();
 
   const tasksInternal = useMemo(
-    () => tasks.map((t) => ({ ...t, tags: t.tags ?? [] })),
-    [tasks]
+    () =>
+      pipelineDetails.tasks
+        ? pipelineDetails.tasks.map((t) => ({ ...t, tags: t.tags ?? [] }))
+        : [],
+    [pipelineDetails.tasks]
   );
 
   const fetchResourcePermission = useCallback(async () => {
@@ -232,13 +235,17 @@ const PipelineDetails = ({
       key: EntityInfo.TIER,
       value: tier?.tagFQN ? tier.tagFQN.split(FQN_SEPARATOR_CHAR)[1] : '',
     },
-    {
-      key: `${serviceType} ${EntityInfo.URL}`,
-      value: pipelineUrl,
-      placeholderText: entityName,
-      isLink: true,
-      openInNewTab: true,
-    },
+    ...(pipelineDetails.pipelineUrl
+      ? [
+          {
+            key: `${serviceType} ${EntityInfo.URL}`,
+            value: pipelineDetails.pipelineUrl,
+            placeholderText: entityName,
+            isLink: true,
+            openInNewTab: true,
+          },
+        ]
+      : []),
   ];
 
   const onTaskUpdate = async (taskDescription: string) => {
@@ -264,27 +271,16 @@ const PipelineDetails = ({
     setEditTask(undefined);
   };
 
-  const onOwnerUpdate = (newOwner?: Pipeline['owner']) => {
-    if (newOwner) {
+  const onOwnerUpdate = useCallback(
+    (newOwner?: Pipeline['owner']) => {
       const updatedPipelineDetails = {
         ...pipelineDetails,
-        owner: newOwner
-          ? { ...pipelineDetails.owner, ...newOwner }
-          : pipelineDetails.owner,
+        owner: newOwner ? { ...owner, ...newOwner } : undefined,
       };
       settingsUpdateHandler(updatedPipelineDetails);
-    }
-  };
-
-  const onOwnerRemove = () => {
-    if (pipelineDetails) {
-      const updatedPipelineDetails = {
-        ...pipelineDetails,
-        owner: undefined,
-      };
-      settingsUpdateHandler(updatedPipelineDetails);
-    }
-  };
+    },
+    [owner]
+  );
 
   const onTierRemove = () => {
     if (pipelineDetails) {
@@ -463,40 +459,45 @@ const PipelineDetails = ({
     setEditTaskTags({ task: { ...task, tags: [] }, index });
   };
 
-  const handleTableTagSelection = (selectedTags?: Array<EntityTags>) => {
-    if (selectedTags && editTask) {
-      const prevTags = editTask.task.tags?.filter((tag) =>
-        selectedTags.some((selectedTag) => selectedTag.tagFQN === tag.tagFQN)
-      );
-
-      const newTags = selectedTags
-        .filter(
-          (selectedTag) =>
-            !editTask.task.tags?.some(
-              (tag) => tag.tagFQN === selectedTag.tagFQN
-            )
-        )
-        .map((tag) => ({
-          labelType: 'Manual',
-          state: 'Confirmed',
-          source: tag.source,
-          tagFQN: tag.tagFQN,
-        }));
-
-      const updatedTasks: Task[] = [...(pipelineDetails.tasks || [])];
-
-      const updatedTask = {
-        ...editTask.task,
-        tags: [...(prevTags as TagLabel[]), ...newTags],
-      } as Task;
-
-      updatedTasks[editTask.index] = updatedTask;
-
-      const updatedPipeline = { ...pipelineDetails, tasks: updatedTasks };
-      const jsonPatch = compare(pipelineDetails, updatedPipeline);
-
-      taskUpdateHandler(jsonPatch);
+  const handleTableTagSelection = (
+    selectedTags: Array<EntityTags> = [],
+    task: {
+      task: Task;
+      index: number;
     }
+  ) => {
+    const selectedTask = isUndefined(editTask) ? task : editTask;
+    const prevTags = selectedTask.task.tags?.filter((tag) =>
+      selectedTags.some((selectedTag) => selectedTag.tagFQN === tag.tagFQN)
+    );
+
+    const newTags = selectedTags
+      .filter(
+        (selectedTag) =>
+          !selectedTask.task.tags?.some(
+            (tag) => tag.tagFQN === selectedTag.tagFQN
+          )
+      )
+      .map((tag) => ({
+        labelType: 'Manual',
+        state: 'Confirmed',
+        source: tag.source,
+        tagFQN: tag.tagFQN,
+      }));
+
+    const updatedTasks: Task[] = [...(pipelineDetails.tasks || [])];
+
+    const updatedTask = {
+      ...selectedTask.task,
+      tags: [...(prevTags as TagLabel[]), ...newTags],
+    } as Task;
+
+    updatedTasks[selectedTask.index] = updatedTask;
+
+    const updatedPipeline = { ...pipelineDetails, tasks: updatedTasks };
+    const jsonPatch = compare(pipelineDetails, updatedPipeline);
+
+    taskUpdateHandler(jsonPatch);
     setEditTaskTags(undefined);
   };
 
@@ -525,10 +526,13 @@ const PipelineDetails = ({
             tagList={tagList ?? []}
             type="label"
             onCancel={() => {
-              handleTableTagSelection();
+              setEditTask(undefined);
             }}
             onSelectionChange={(tags) => {
-              handleTableTagSelection(tags);
+              handleTableTagSelection(tags, {
+                task: record,
+                index: index,
+              });
             }}
           />
         )}
@@ -549,17 +553,18 @@ const PipelineDetails = ({
         key: t('label.name'),
         dataIndex: 'name',
         title: t('label.name'),
-        render: (_, record) => (
-          <Link target="_blank" to={{ pathname: record.taskUrl }}>
+        render: (_, record) =>
+          isEmpty(record.taskUrl) ? (
             <span>{getEntityName(record)}</span>
-            <SVGIcons
-              alt="external-link"
-              className="align-middle m-l-xs"
-              icon="external-link"
-              width="16px"
-            />
-          </Link>
-        ),
+          ) : (
+            <Link
+              className="flex items-center gap-2"
+              target="_blank"
+              to={{ pathname: record.taskUrl }}>
+              <span>{getEntityName(record)}</span>
+              <ExternalLinkIcon height={14} width={14} />
+            </Link>
+          ),
       },
       {
         key: t('label.type'),
@@ -724,7 +729,7 @@ const PipelineDetails = ({
 
   useEffect(() => {
     getEntityFeedCount();
-  }, [pipelineFQN, description, pipelineDetails, tasks]);
+  }, [pipelineFQN, description, pipelineDetails]);
 
   return (
     <PageContainerV1>
@@ -753,11 +758,6 @@ const PipelineDetails = ({
           isTagEditable={
             pipelinePermissions.EditAll || pipelinePermissions.EditTags
           }
-          removeOwner={
-            pipelinePermissions.EditAll || pipelinePermissions.EditOwner
-              ? onOwnerRemove
-              : undefined
-          }
           removeTier={
             pipelinePermissions.EditAll || pipelinePermissions.EditTier
               ? onTierRemove
@@ -777,7 +777,7 @@ const PipelineDetails = ({
               ? onTierUpdate
               : undefined
           }
-          version={version + ''}
+          version={version}
           versionHandler={versionHandler}
           onRestoreEntity={handleRestorePipeline}
           onThreadLinkSelect={onThreadLinkSelect}
@@ -842,14 +842,15 @@ const PipelineDetails = ({
                       rowKey="name"
                       size="small"
                     />
-                  ) : !isEmpty(tasks) ? (
+                  ) : !isEmpty(pipelineDetails.tasks) &&
+                    !isUndefined(pipelineDetails.tasks) ? (
                     <Card
                       headStyle={{ background: '#fafafa' }}
                       title={t('label.dag-view')}>
                       <div className="h-100">
                         <TasksDAGView
                           selectedExec={selectedExecution}
-                          tasks={tasks}
+                          tasks={pipelineDetails.tasks}
                         />
                       </div>
                     </Card>
@@ -911,7 +912,10 @@ const PipelineDetails = ({
                 {t('label.execution-plural')}
               </span>
             }>
-            <ExecutionsTab pipelineFQN={pipelineFQN} tasks={tasks} />
+            <ExecutionsTab
+              pipelineFQN={pipelineFQN}
+              tasks={pipelineDetails.tasks ?? []}
+            />
           </Tabs.TabPane>
 
           <Tabs.TabPane

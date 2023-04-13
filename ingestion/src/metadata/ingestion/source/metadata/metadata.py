@@ -10,24 +10,32 @@
 #  limitations under the License.
 """Metadata source module"""
 import traceback
-from typing import Iterable, List
+from typing import Iterable
 
 from metadata.generated.schema.entity.classification.classification import (
     Classification,
 )
+from metadata.generated.schema.entity.data.container import Container
 from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.entity.data.glossary import Glossary
 from metadata.generated.schema.entity.data.glossaryTerm import GlossaryTerm
 from metadata.generated.schema.entity.data.mlmodel import MlModel
 from metadata.generated.schema.entity.data.pipeline import Pipeline
+from metadata.generated.schema.entity.data.query import Query
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.data.topic import Topic
 from metadata.generated.schema.entity.policies.policy import Policy
+from metadata.generated.schema.entity.services.connections.metadata.metadataESConnection import (
+    MetadataESConnection,
+)
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.entity.services.messagingService import MessagingService
+from metadata.generated.schema.entity.services.objectstoreService import (
+    ObjectStoreService,
+)
 from metadata.generated.schema.entity.services.pipelineService import PipelineService
 from metadata.generated.schema.entity.teams.team import Team
 from metadata.generated.schema.entity.teams.user import User
@@ -35,29 +43,11 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.ingestion.api.common import Entity
-from metadata.ingestion.api.source import Source, SourceStatus
+from metadata.ingestion.api.source import Source
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
-
-
-class MetadataSourceStatus(SourceStatus):
-
-    success: List[str] = []
-    failures: List[str] = []
-    warnings: List[str] = []
-
-    def scanned_entity(self, entity_class_name: str, entity_name: str) -> None:
-        self.success.append(entity_name)
-        logger.info("%s Scanned: %s", entity_class_name, entity_name)
-
-    # pylint: disable=unused-argument
-    def filtered(
-        self, table_name: str, err: str, dataset_name: str = None, col_type: str = None
-    ) -> None:
-        self.warnings.append(table_name)
-        logger.warning("Dropped Entity %s due to %s", table_name, err)
 
 
 class MetadataSource(Source[Entity]):
@@ -66,7 +56,6 @@ class MetadataSource(Source[Entity]):
     """
 
     config: WorkflowSource
-    report: SourceStatus
 
     def __init__(
         self,
@@ -77,8 +66,9 @@ class MetadataSource(Source[Entity]):
         self.config = config
         self.metadata_config = metadata_config
         self.metadata = OpenMetadata(metadata_config)
-        self.service_connection = config.serviceConnection.__root__.config
-        self.status = MetadataSourceStatus()
+        self.service_connection: MetadataESConnection = (
+            config.serviceConnection.__root__.config
+        )
         self.wrote_something = False
         self.tables = None
         self.topics = None
@@ -181,7 +171,33 @@ class MetadataSource(Source[Entity]):
                 fields=["owner"],
             )
 
+        if self.service_connection.includeContainers:
+            yield from self.fetch_entities(
+                entity_class=Container,
+                fields=["owner"],
+            )
+
+        if self.service_connection.includeStorageServices:
+            yield from self.fetch_entities(
+                entity_class=ObjectStoreService,
+                fields=["owner"],
+            )
+
+        if self.service_connection.includeQueries:
+            yield from self.fetch_entities(
+                entity_class=Query,
+                fields=["owner"],
+            )
+
     def fetch_entities(self, entity_class, fields):
+        """
+        Args:
+            entity_class: class of the entities to be fetched
+            fields: fields that must be additionally fetched
+
+        Returns:
+            A list of entities with the requested fields
+        """
         try:
             after = None
             while True:
@@ -192,7 +208,9 @@ class MetadataSource(Source[Entity]):
                     limit=self.service_connection.limitRecords,
                 )
                 for entity in entities_list.entities:
-                    self.status.scanned_entity(entity_class.__name__, entity.name)
+                    self.status.scanned(
+                        f"{entity_class.__name__} Scanned {entity.name}"
+                    )
                     yield entity
                 if entities_list.after is None:
                     break
@@ -203,9 +221,6 @@ class MetadataSource(Source[Entity]):
             logger.error(
                 f"Fetching entities failed for [{entity_class.__name__}]: {exc}"
             )
-
-    def get_status(self) -> SourceStatus:
-        return self.status
 
     def close(self):
         pass

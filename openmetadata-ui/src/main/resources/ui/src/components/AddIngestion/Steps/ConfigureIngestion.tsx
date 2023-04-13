@@ -50,19 +50,27 @@ const ConfigureIngestion = ({
   const markdownRef = useRef<EditorContentRef>();
 
   const {
+    dataModelFilterPattern,
     chartFilterPattern,
     dashboardFilterPattern,
     databaseFilterPattern,
+    containerFilterPattern,
+    showContainerFilter,
     databaseServiceNames,
     description,
     enableDebugLog,
     includeLineage,
     includeTags,
     includeView,
+    includeDataModels,
     ingestionName,
     ingestSampleData,
     markAllDeletedTables,
     markDeletedTables,
+    markDeletedDashboards,
+    markDeletedTopics,
+    markDeletedMlModels,
+    markDeletedPipelines,
     mlModelFilterPattern,
     pipelineFilterPattern,
     profileSample,
@@ -70,6 +78,7 @@ const ConfigureIngestion = ({
     queryLogDuration,
     resultLimit,
     schemaFilterPattern,
+    showDataModelFilter,
     showChartFilter,
     showDashboardFilter,
     showDatabaseFilter,
@@ -85,18 +94,23 @@ const ConfigureIngestion = ({
     topicFilterPattern,
     useFqnFilter,
     processPii,
+    confidence,
     overrideOwner,
   } = useMemo(
     () => ({
+      dataModelFilterPattern: data.dataModelFilterPattern,
       chartFilterPattern: data.chartFilterPattern,
       dashboardFilterPattern: data.dashboardFilterPattern,
       databaseFilterPattern: data.databaseFilterPattern,
+      containerFilterPattern: data.containerFilterPattern,
+      showContainerFilter: data.showContainerFilter,
       databaseServiceNames: data.databaseServiceNames,
       description: data.description,
       enableDebugLog: data.enableDebugLog,
       includeLineage: data.includeLineage,
       includeTags: data.includeTags,
       includeView: data.includeView,
+      includeDataModels: data.includeDataModels,
       ingestionName: data.ingestionName,
       ingestSampleData: data.ingestSampleData,
       markAllDeletedTables: data.markAllDeletedTables,
@@ -108,6 +122,7 @@ const ConfigureIngestion = ({
       queryLogDuration: data.queryLogDuration,
       resultLimit: data.resultLimit,
       schemaFilterPattern: data.schemaFilterPattern,
+      showDataModelFilter: data.showDataModelFilter,
       showChartFilter: data.showChartFilter,
       showDashboardFilter: data.showDashboardFilter,
       showDatabaseFilter: data.showDatabaseFilter,
@@ -124,6 +139,11 @@ const ConfigureIngestion = ({
       useFqnFilter: data.useFqnFilter,
       processPii: data.processPii,
       overrideOwner: data.overrideOwner,
+      markDeletedDashboards: data.markDeletedDashboards,
+      markDeletedTopics: data.markDeletedTopics,
+      markDeletedMlModels: data.markDeletedMlModels,
+      markDeletedPipelines: data.markDeletedPipelines,
+      confidence: data.confidence,
     }),
     [data]
   );
@@ -150,6 +170,11 @@ const ConfigureIngestion = ({
       profileSample: profileSample ?? undefined,
     });
 
+  const handleConfidenceScore = (confidence: number | undefined | null) =>
+    onChange({
+      confidence: confidence ?? undefined,
+    });
+
   const handleProfileSampleTypeChange = (value: ProfileSampleType) => {
     onChange({
       profileSampleType: value,
@@ -174,6 +199,8 @@ const ConfigureIngestion = ({
 
   const handleIncludeTags = () => toggleField('includeTags');
 
+  const handleIncludeDataModels = () => toggleField('includeDataModels');
+
   const handleIncludeViewToggle = () => toggleField('includeView');
 
   const handleIngestSampleToggle = () => toggleField('ingestSampleData');
@@ -181,6 +208,15 @@ const ConfigureIngestion = ({
   const handleMarkAllDeletedTables = () => toggleField('markAllDeletedTables');
 
   const handleMarkDeletedTables = () => toggleField('markDeletedTables');
+
+  const handleMarkDeletedDashboards = () =>
+    toggleField('markDeletedDashboards');
+
+  const handleMarkDeletedTopics = () => toggleField('markDeletedTopics');
+
+  const handleMarkDeletedMlModels = () => toggleField('markDeletedMlModels');
+
+  const handleMarkDeletedPipelines = () => toggleField('markDeletedPipelines');
 
   const handleFqnFilter = () => toggleField('useFqnFilter');
 
@@ -249,6 +285,54 @@ const ConfigureIngestion = ({
         </div>
         <p className="tw-text-grey-muted tw-mt-3">
           {t('message.enable-override-owner')}
+        </p>
+        {getSeparator('')}
+      </Field>
+    );
+  };
+
+  const getIncludesTagToggle = () => {
+    return (
+      <Field>
+        <div className="tw-flex tw-gap-1">
+          <label>
+            {t('label.include-entity', { entity: t('label.tag-plural') })}
+          </label>
+          <ToggleSwitchV1
+            checked={includeTags}
+            handleCheck={handleIncludeTags}
+            testId="include-tags"
+          />
+        </div>
+        <p className="tw-text-grey-muted tw-mt-3">
+          {t('message.include-assets-message', {
+            assets: t('label.tag-plural'),
+          })}
+        </p>
+        {getSeparator('')}
+      </Field>
+    );
+  };
+
+  const getIncludesDataModelsToggle = () => {
+    return (
+      <Field>
+        <div className="tw-flex tw-gap-1">
+          <label>
+            {t('label.include-entity', {
+              entity: t('label.data-model-plural'),
+            })}
+          </label>
+          <ToggleSwitchV1
+            checked={includeDataModels}
+            handleCheck={handleIncludeDataModels}
+            testId="include-data-models"
+          />
+        </div>
+        <p className="tw-text-grey-muted tw-mt-3">
+          {t('message.include-assets-message', {
+            assets: t('label.data-model-plural'),
+          })}
         </p>
         {getSeparator('')}
       </Field>
@@ -357,6 +441,30 @@ const ConfigureIngestion = ({
     );
   };
 
+  const getMarkDeletedEntitiesToggle = (
+    label: string,
+    description: string,
+    handleMarkDeletedEntities: () => void,
+    markDeletedEntities?: boolean
+  ) => {
+    return (
+      !isNil(markDeletedEntities) && (
+        <Field>
+          <div className="tw-flex tw-gap-1">
+            <label>{label}</label>
+            <ToggleSwitchV1
+              checked={markDeletedEntities}
+              handleCheck={handleMarkDeletedEntities}
+              testId="mark-deleted"
+            />
+          </div>
+          <p className="tw-text-grey-muted tw-mt-3">{description}</p>
+          {getSeparator('')}
+        </Field>
+      )
+    );
+  };
+
   const getDatabaseFieldToggles = () => {
     return (
       <>
@@ -379,40 +487,14 @@ const ConfigureIngestion = ({
             </p>
             {getSeparator('')}
           </Field>
-          <Field>
-            <div className="tw-flex tw-gap-1">
-              <label>
-                {t('label.include-entity', { entity: t('label.tag-plural') })}
-              </label>
-              <ToggleSwitchV1
-                checked={includeTags}
-                handleCheck={handleIncludeTags}
-                testId="include-tags"
-              />
-            </div>
-            <p className="tw-text-grey-muted tw-mt-3">
-              {t('message.include-assets-message', {
-                assets: t('label.tag-plural'),
-              })}
-            </p>
-            {getSeparator('')}
-          </Field>
+          {getIncludesTagToggle()}
+          {getIncludesDataModelsToggle()}
           {getDebugLogToggle()}
-          {!isNil(markDeletedTables) && (
-            <Field>
-              <div className="tw-flex tw-gap-1">
-                <label>{t('label.mark-deleted-table-plural')}</label>
-                <ToggleSwitchV1
-                  checked={markDeletedTables}
-                  handleCheck={handleMarkDeletedTables}
-                  testId="mark-deleted"
-                />
-              </div>
-              <p className="tw-text-grey-muted tw-mt-3">
-                {t('message.mark-deleted-table-message')}
-              </p>
-              {getSeparator('')}
-            </Field>
+          {getMarkDeletedEntitiesToggle(
+            t('label.mark-deleted-table-plural'),
+            t('message.mark-deleted-table-message'),
+            handleMarkDeletedTables,
+            markDeletedTables
           )}
           {!isNil(markAllDeletedTables) && (
             <Field>
@@ -481,20 +563,33 @@ const ConfigureIngestion = ({
 
   const getProcessPiiTogglesForProfiler = () => {
     return (
-      <Field>
-        <div className="tw-flex tw-gap-1">
-          <label>{t('label.auto-tag-pii-uppercase')}</label>
-          <ToggleSwitchV1
-            checked={processPii}
-            handleCheck={handleProcessPii}
-            testId="include-lineage"
-          />
-        </div>
-        <p className="tw-text-grey-muted tw-mt-3">
-          {t('message.process-pii-sensitive-column-message-profiler')}
-        </p>
-        {getSeparator('')}
-      </Field>
+      <Fragment>
+        <Field>
+          <div className="tw-flex tw-gap-1">
+            <label>{t('label.auto-tag-pii-uppercase')}</label>
+            <ToggleSwitchV1
+              checked={processPii}
+              handleCheck={handleProcessPii}
+              testId="include-lineage"
+            />
+          </div>
+          <p className="tw-text-grey-muted tw-mt-3">
+            {t('message.process-pii-sensitive-column-message-profiler')}
+          </p>
+          {processPii && (
+            <>
+              {getSeparator('')}
+              <Typography.Paragraph className="text-grey-muted m-t-0 m-b-xs text-sm">
+                {t('message.confidence-percentage-message')}
+              </Typography.Paragraph>
+              <SliderWithInput
+                value={confidence || 80}
+                onChange={handleConfidenceScore}
+              />
+            </>
+          )}
+        </Field>
+      </Fragment>
     );
   };
 
@@ -536,8 +631,15 @@ const ConfigureIngestion = ({
             handleShowFilter(value, ShowFilter.showDatabaseFilter)
           }
           includePattern={databaseFilterPattern?.includes ?? []}
+          includePatternExtraInfo={
+            data.database
+              ? t('message.include-database-filter-extra-information')
+              : undefined
+          }
+          isDisabled={data.isDatabaseFilterDisabled}
           type={FilterPatternEnum.DATABASE}
         />
+
         <FilterPattern
           checked={showSchemaFilter}
           excludePattern={schemaFilterPattern?.excludes ?? []}
@@ -602,10 +704,35 @@ const ConfigureIngestion = ({
               showSeparator={false}
               type={FilterPatternEnum.CHART}
             />
+            <FilterPattern
+              checked={showDataModelFilter}
+              excludePattern={dataModelFilterPattern.excludes ?? []}
+              getExcludeValue={getExcludeValue}
+              getIncludeValue={getIncludeValue}
+              handleChecked={(value) =>
+                handleShowFilter(value, ShowFilter.showDataModelFilter)
+              }
+              includePattern={dataModelFilterPattern.includes ?? []}
+              showSeparator={false}
+              type={FilterPatternEnum.DASHBOARD_DATAMODEL}
+            />
             {getSeparator('')}
             {getDashboardDBServiceName()}
             {getDebugLogToggle()}
             {getOverrideOwnerToggle()}
+            {getIncludesTagToggle()}
+            {getIncludesDataModelsToggle()}
+            {getMarkDeletedEntitiesToggle(
+              t('label.mark-deleted-entity', {
+                entity: t('label.dashboard-plural'),
+              }),
+              t('message.mark-deleted-entity-message', {
+                entity: t('label.dashboard-lowercase'),
+                entityPlural: t('label.dashboard-lowercase-plural'),
+              }),
+              handleMarkDeletedDashboards,
+              markDeletedDashboards
+            )}
           </Fragment>
         );
 
@@ -632,6 +759,17 @@ const ConfigureIngestion = ({
               })
             )}
             {getDebugLogToggle()}
+            {getMarkDeletedEntitiesToggle(
+              t('label.mark-deleted-entity', {
+                entity: t('label.topic-plural'),
+              }),
+              t('message.mark-deleted-entity-message', {
+                entity: t('label.topic-lowercase'),
+                entityPlural: t('label.topic-lowercase-plural'),
+              }),
+              handleMarkDeletedTopics,
+              markDeletedTopics
+            )}
           </Fragment>
         );
       case ServiceCategory.PIPELINE_SERVICES:
@@ -651,6 +789,18 @@ const ConfigureIngestion = ({
             />
             {getSeparator('')}
             {getPipelineFieldToggles()}
+            {getIncludesTagToggle()}
+            {getMarkDeletedEntitiesToggle(
+              t('label.mark-deleted-entity', {
+                entity: t('label.pipeline-plural'),
+              }),
+              t('message.mark-deleted-entity-message', {
+                entity: t('label.pipeline-lowercase'),
+                entityPlural: t('label.pipeline-lowercase-plural'),
+              }),
+              handleMarkDeletedPipelines,
+              markDeletedPipelines
+            )}
           </Fragment>
         );
 
@@ -670,7 +820,33 @@ const ConfigureIngestion = ({
               type={FilterPatternEnum.MLMODEL}
             />
             {getSeparator('')}
+            {getMarkDeletedEntitiesToggle(
+              t('label.mark-deleted-entity', {
+                entity: t('label.ml-model-plural'),
+              }),
+              t('message.mark-deleted-entity-message', {
+                entity: t('label.ml-model-lowercase'),
+                entityPlural: t('label.ml-model-lowercase-plural'),
+              }),
+              handleMarkDeletedMlModels,
+              markDeletedMlModels
+            )}
           </Fragment>
+        );
+
+      case ServiceCategory.STORAGE_SERVICES:
+        return (
+          <FilterPattern
+            checked={showContainerFilter}
+            excludePattern={containerFilterPattern?.excludes ?? []}
+            getExcludeValue={getExcludeValue}
+            getIncludeValue={getIncludeValue}
+            handleChecked={(value) =>
+              handleShowFilter(value, ShowFilter.showContainerFilter)
+            }
+            includePattern={containerFilterPattern?.includes ?? []}
+            type={FilterPatternEnum.CONTAINER}
+          />
         );
       default:
         return <></>;

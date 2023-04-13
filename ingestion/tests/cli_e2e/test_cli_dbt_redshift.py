@@ -25,7 +25,6 @@ from .test_cli_dbt_base import PATH_TO_RESOURCES, CliDBTBase
 
 
 class DbtCliTest(CliDBTBase.TestSuite):
-
     engine: Engine
 
     @classmethod
@@ -67,7 +66,7 @@ class DbtCliTest(CliDBTBase.TestSuite):
         self.assertTrue(len(source_status.failures) == 0)
         self.assertTrue(len(source_status.warnings) == 0)
         self.assertTrue(len(source_status.filtered) == 8)
-        self.assertTrue(len(source_status.success) >= self.expected_tables())
+        self.assertTrue(len(source_status.records) >= self.expected_tables())
         self.assertTrue(len(sink_status.failures) == 0)
         self.assertTrue(len(sink_status.warnings) == 0)
         self.assertTrue(len(sink_status.records) > self.expected_tables())
@@ -78,7 +77,7 @@ class DbtCliTest(CliDBTBase.TestSuite):
         self.assertTrue(len(source_status.failures) == 0)
         self.assertTrue(len(source_status.warnings) == 0)
         self.assertTrue(len(source_status.filtered) == 0)
-        self.assertTrue(len(source_status.success) >= 0)
+        self.assertTrue(len(source_status.records) >= 0)
         self.assertTrue(len(sink_status.failures) == 0)
         self.assertTrue(len(sink_status.warnings) == 0)
         self.assertTrue(len(sink_status.records) >= self.expected_records())

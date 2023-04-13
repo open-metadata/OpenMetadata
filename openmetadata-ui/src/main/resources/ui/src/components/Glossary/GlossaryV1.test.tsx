@@ -17,9 +17,7 @@ import {
   getByTestId,
   queryByText,
   render,
-  screen,
 } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
 import { LoadingState } from 'Models';
 import React from 'react';
 import {
@@ -135,23 +133,15 @@ const mockProps: GlossaryV1Props = {
   deleteStatus: 'initial' as LoadingState,
   selectedData: mockedGlossaries[0],
   isGlossaryActive: true,
-  handleGlossaryTermUpdate: jest.fn(),
+  onGlossaryTermUpdate: jest.fn(),
   updateGlossary: jest.fn(),
   onGlossaryDelete: jest.fn(),
   onGlossaryTermDelete: jest.fn(),
+  isVersionsView: false,
+  isSummaryPanelOpen: false,
 };
 
 describe('Test Glossary component', () => {
-  it('Should render Glossary header', async () => {
-    await act(async () => {
-      const { container } = render(<GlossaryV1 {...mockProps} />);
-
-      const header = getByTestId(container, 'header');
-
-      expect(header).toBeInTheDocument();
-    });
-  });
-
   it('Should render Glossary-details', async () => {
     const { container } = render(<GlossaryV1 {...mockProps} />);
 
@@ -212,33 +202,6 @@ describe('Test Glossary component', () => {
       const exportGlossary = getByTestId(container, 'export-glossary');
 
       expect(exportGlossary).toBeInTheDocument();
-    });
-  });
-
-  it('Should render export and import option', async () => {
-    await act(async () => {
-      const { container } = render(<GlossaryV1 {...mockProps} />);
-
-      const manageButton = getByTestId(container, 'manage-button');
-
-      expect(manageButton).toBeInTheDocument();
-
-      await act(async () => {
-        userEvent.click(manageButton);
-      });
-
-      const exportOption = await screen.getByTestId('export-button');
-
-      const importOption = await screen.getByTestId('import-button');
-
-      expect(exportOption).toBeInTheDocument();
-      expect(importOption).toBeInTheDocument();
-
-      await act(async () => {
-        userEvent.click(importOption);
-      });
-
-      expect(mockPush).toHaveBeenCalled();
     });
   });
 });

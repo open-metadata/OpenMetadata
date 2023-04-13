@@ -74,7 +74,7 @@ describe('Teams flow should work properly', () => {
     cy.get(`[data-row-key="${TEAM_DETAILS.name}"]`)
       .contains(TEAM_DETAILS.name)
       .click();
-    updateOwner(true);
+    updateOwner();
   });
 
   // Todo:- Enable this once the issue is fixed -> https://github.com/open-metadata/OpenMetadata/issues/9801

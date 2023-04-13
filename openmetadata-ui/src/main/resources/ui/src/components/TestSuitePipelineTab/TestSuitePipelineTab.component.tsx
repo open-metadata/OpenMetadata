@@ -312,12 +312,12 @@ const TestSuitePipelineTab = () => {
         dataIndex: 'name',
         key: 'name',
         render: (_, record) => {
-          const FieldName = getEntityName(record);
+          const name = getEntityName(record);
 
           return (
             <Tooltip
               title={
-                viewPermission ? FieldName : t('message.no-permission-to-view')
+                viewPermission ? name : t('message.no-permission-to-view')
               }>
               <Button type="link">
                 <a
@@ -326,7 +326,7 @@ const TestSuitePipelineTab = () => {
                   href={`${airFlowEndPoint}`}
                   rel="noopener noreferrer"
                   target="_blank">
-                  {FieldName}
+                  {name}
                   <SVGIcons
                     alt="external-link"
                     className="tw-align-middle tw-ml-1"

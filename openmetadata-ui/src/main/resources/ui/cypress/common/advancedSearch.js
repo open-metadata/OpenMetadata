@@ -52,9 +52,9 @@ export const FIELDS = {
   Owner: {
     name: 'Owner',
     testid: '[title="Owner"]',
-    searchTerm1: 'Colin Ho',
-    searchCriteriaFirstGroup: 'Colin Ho',
-    responseValueFirstGroup: `"displayName":"Colin Ho"`,
+    searchTerm1: 'Aaron Johnson',
+    searchCriteriaFirstGroup: 'Aaron Johnson',
+    responseValueFirstGroup: `"displayName":"Aaron Johnson"`,
     searchCriteriaSecondGroup: 'Aaron Singh',
     owner: true,
     responseValueSecondGroup: 'Aaron Singh',
@@ -62,6 +62,7 @@ export const FIELDS = {
   Tags: {
     name: 'Tags',
     testid: '[title="Tags"]',
+    createTagName: 'Personal',
     searchCriteriaFirstGroup: 'PersonalData.Personal',
     responseValueFirstGroup: '"tagFQN":"PersonalData.Personal"',
     searchCriteriaSecondGroup: 'PersonalData.SpecialCategory',
@@ -262,38 +263,25 @@ export const addOwner = (searchTerm, ownerName) => {
 
   interceptURL(
     'GET',
-    '/api/v1/search/query?q=*%20AND%20teamType:Group&from=0&size=10&index=team_search_index',
+    '/api/v1/search/query?q=*%20AND%20teamType:Group&from=0&size=15&index=team_search_index',
     'waitForTeams'
   );
 
-  cy.get('[data-testid="edit-Owner-icon"]').should('be.visible').click();
+  cy.get('[data-testid="edit-owner"]').should('be.visible').click();
 
   verifyResponseStatusCode('@waitForTeams', 200);
   // Clicking on users tab
-  cy.get('[data-testid="dropdown-tab"]')
+  cy.get('.user-team-select-popover')
     .contains('Users')
     .should('exist')
     .should('be.visible')
     .click();
-
-  interceptURL(
-    'GET',
-    `api/v1/search/query?q=*${encodeURI(searchTerm)}*&from=0&size=*&index=*`,
-    'searchOwner'
-  );
-  cy.get('[data-testid="searchInputText"]')
-    .scrollIntoView()
-    .should('be.visible')
-    .and('exist')
-    .trigger('click')
-    .type(searchTerm);
-
-  verifyResponseStatusCode('@searchOwner', 200);
+  cy.wait(3000);
 
   interceptURL('PATCH', '/api/v1/tables/*', 'tablePatch');
+
   // Selecting the user
-  cy.get(`[data-testid="user-tag"]`)
-    .contains(ownerName)
+  cy.get(`[title="${ownerName}"]`)
     .should('exist')
     .scrollIntoView()
     .and('be.visible')
@@ -349,10 +337,13 @@ export const addTag = (tag) => {
 
   cy.get('[data-testid="tag-selector"]').should('be.visible').click().type(tag);
 
-  cy.get('.ant-select-item-option-content').should('be.visible').click();
-  cy.get(
-    '[data-testid="tags-wrapper"] > [data-testid="tag-container"]'
-  ).contains(tag);
+  cy.get('.ant-select-item-option-content')
+    .contains(tag)
+    .should('be.visible')
+    .click();
+
+  cy.get('[data-testid="tag-selector"] > .ant-select-selector').contains(tag);
+
   cy.get('[data-testid="saveAssociatedTag"]').should('be.visible').click();
   cy.get('[data-testid="entity-tags"]')
     .scrollIntoView()

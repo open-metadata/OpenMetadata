@@ -13,10 +13,14 @@
 Source connection handler
 """
 from functools import partial
+from typing import Optional
 
 from sqlalchemy.engine import Engine
 from sqlalchemy.inspection import inspect
 
+from metadata.generated.schema.entity.automations.workflow import (
+    Workflow as AutomationWorkflow,
+)
 from metadata.generated.schema.entity.services.connections.database.databricksConnection import (
     DatabricksConnection,
 )
@@ -26,9 +30,14 @@ from metadata.ingestion.connections.builders import (
     init_empty_connection_arguments,
 )
 from metadata.ingestion.connections.test_connections import (
-    TestConnectionResult,
-    TestConnectionStep,
-    test_connection_db_common,
+    test_connection_engine_step,
+    test_connection_steps,
+    test_query,
+)
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.source.database.databricks.client import DatabricksClient
+from metadata.ingestion.source.database.databricks.queries import (
+    DATABRICKS_GET_CATALOGS,
 )
 
 
@@ -53,42 +62,37 @@ def get_connection(connection: DatabricksConnection) -> Engine:
     )
 
 
-def test_connection(engine: Engine, _) -> TestConnectionResult:
+def test_connection(
+    metadata: OpenMetadata,
+    engine: Engine,
+    service_connection: DatabricksConnection,
+    automation_workflow: Optional[AutomationWorkflow] = None,
+) -> None:
     """
-    Test connection
+    Test connection. This can be executed either as part
+    of a metadata workflow or during an Automation Workflow
     """
-
-    def custom_executor(engine, statement):
-        cursor = engine.execute(statement)
-        return [item[0] for item in list(cursor.all())]
 
     inspector = inspect(engine)
-    steps = [
-        TestConnectionStep(
-            function=partial(
-                custom_executor,
-                statement="SHOW CATALOGS",
-                engine=engine,
-            ),
-            name="Get Catalogs",
-        ),
-        TestConnectionStep(
-            function=partial(
-                custom_executor,
-                statement="SHOW SCHEMAS",
-                engine=engine,
-            ),
-            name="Get Schemas",
-        ),
-        TestConnectionStep(
-            function=inspector.get_table_names,
-            name="Get Tables",
-        ),
-        TestConnectionStep(
-            function=inspector.get_view_names,
-            name="Get Views",
-            mandatory=False,
-        ),
-    ]
+    client = DatabricksClient(service_connection)
 
-    return test_connection_db_common(engine, steps)
+    test_fn = {
+        "CheckAccess": partial(test_connection_engine_step, engine),
+        "GetSchemas": inspector.get_schema_names,
+        "GetTables": inspector.get_table_names,
+        "GetViews": inspector.get_view_names,
+        "GetDatabases": partial(
+            test_query,
+            engine=engine,
+            statement=DATABRICKS_GET_CATALOGS,
+        ),
+        "GetQueries": client.test_query_api_access,
+    }
+
+    test_connection_steps(
+        metadata=metadata,
+        test_fn=test_fn,
+        service_fqn=service_connection.type.value,
+        automation_workflow=automation_workflow,
+        timeout_seconds=service_connection.connectionTimeout,
+    )

@@ -13,7 +13,7 @@
 
 import { Menu, MenuProps } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
-import { camelCase } from 'lodash';
+import { ELASTIC_SEARCH_RE_INDEX_PAGE_TABS } from 'enums/ElasticSearch.enum';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
@@ -25,7 +25,11 @@ import {
   getGlobalSettingsMenuWithPermission,
   MenuList,
 } from '../../utils/GlobalSettingsUtils';
-import { getSettingPath, getTeamsWithFqnPath } from '../../utils/RouterUtils';
+import {
+  getSettingPath,
+  getSettingsPathWithFqn,
+  getTeamsWithFqnPath,
+} from '../../utils/RouterUtils';
 import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder';
 import LeftPanelCard from '../common/LeftPanelCard/LeftPanelCard';
 import { usePermissionProvider } from '../PermissionProvider/PermissionProvider';
@@ -45,7 +49,8 @@ const GlobalSettingLeftPanel = () => {
         (acc: ItemType[], curr: MenuList) => {
           const menuItem = getGlobalSettingMenuItem({
             label: curr.category,
-            key: camelCase(curr.category),
+            key: curr.key,
+            category: curr.category,
             children: curr.items,
             type: 'group',
             isBeta: curr.isBeta,
@@ -64,10 +69,26 @@ const GlobalSettingLeftPanel = () => {
   const onClick: MenuProps['onClick'] = (e) => {
     // As we are setting key as "category.option" and extracting here category and option
     const [category, option] = e.key.split('.');
-    if (option === GlobalSettingOptions.TEAMS) {
-      history.push(getTeamsWithFqnPath(TeamType.Organization));
-    } else {
-      history.push(getSettingPath(category, option));
+
+    switch (option) {
+      case GlobalSettingOptions.TEAMS:
+        history.push(getTeamsWithFqnPath(TeamType.Organization));
+
+        break;
+      case GlobalSettingOptions.SEARCH:
+        history.push(
+          getSettingsPathWithFqn(
+            category,
+            option,
+            ELASTIC_SEARCH_RE_INDEX_PAGE_TABS.ON_DEMAND
+          )
+        );
+
+        break;
+      default:
+        history.push(getSettingPath(category, option));
+
+        break;
     }
   };
 

@@ -12,7 +12,9 @@
  */
 
 import { Modal, Space } from 'antd';
+import AppState from 'AppState';
 import { AxiosError } from 'axios';
+import { mockDatasetData } from 'constants/mockTourData.constants';
 import jsonData from 'jsons/en';
 import {
   debounce,
@@ -49,6 +51,7 @@ import ReactFlow, {
   useEdgesState,
   useNodesState,
 } from 'reactflow';
+import { getDataModelDetails } from 'rest/dataModelsAPI';
 import { getLineageByFQN } from 'rest/lineageAPI';
 import { searchData } from 'rest/miscAPI';
 import { getTableDetails } from 'rest/tableAPI';
@@ -134,6 +137,7 @@ import {
   EntityLineageProp,
   EntityReferenceChild,
   LeafNodes,
+  LineageConfig,
   LineagePos,
   LoadingNodeState,
   ModifiedColumn,
@@ -150,6 +154,7 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
   deleted,
   hasEditAccess,
   entityType,
+  isFullScreen = false,
 }: EntityLineageProp) => {
   const { t } = useTranslation();
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
@@ -203,6 +208,11 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
     state: false,
   });
   const [leafNodes, setLeafNodes] = useState<LeafNodes>({} as LeafNodes);
+  const [lineageConfig, setLineageConfig] = useState<LineageConfig>({
+    upstreamDepth: 3,
+    downstreamDepth: 3,
+    nodesPerLayer: 50,
+  });
 
   const params = useParams<Record<string, string>>();
   const entityFQN =
@@ -213,21 +223,42 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
     history.push(getLineageViewPath(entityType, entityFQN));
   }, [entityType, entityFQN]);
 
-  const fetchLineageData = useCallback(async () => {
-    setIsLineageLoading(true);
-    try {
-      const res = await getLineageByFQN(entityFQN, entityType);
-      setEntityLineage(res);
-      setUpdatedLineageData(res);
-    } catch (err) {
-      showErrorToast(
-        err as AxiosError,
-        jsonData['api-error-messages']['fetch-lineage-error']
-      );
-    } finally {
-      setIsLineageLoading(false);
-    }
-  }, [entityFQN, entityType]);
+  const fetchLineageData = useCallback(
+    async (config: LineageConfig) => {
+      if (AppState.isTourOpen) {
+        setPaginationData({});
+        setEntityLineage(mockDatasetData.entityLineage);
+        setUpdatedLineageData(mockDatasetData.entityLineage);
+      } else {
+        setIsLineageLoading(true);
+        try {
+          const res = await getLineageByFQN(
+            entityFQN,
+            entityType,
+            config.upstreamDepth,
+            config.downstreamDepth
+          );
+          if (res) {
+            setPaginationData({});
+            setEntityLineage(res);
+            setUpdatedLineageData(res);
+          } else {
+            showErrorToast(
+              jsonData['api-error-messages']['fetch-lineage-error']
+            );
+          }
+        } catch (err) {
+          showErrorToast(
+            err as AxiosError,
+            jsonData['api-error-messages']['fetch-lineage-error']
+          );
+        } finally {
+          setIsLineageLoading(false);
+        }
+      }
+    },
+    [entityFQN, entityType]
+  );
 
   const loadNodeHandler = useCallback(
     async (node: EntityReference, pos: LineagePos) => {
@@ -599,6 +630,16 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
     [nodes, updatedLineageData]
   );
 
+  const getColumnsForNode = async (type: string, id: string) => {
+    const fields = ['columns'];
+
+    if (type === EntityType.DASHBOARD_DATA_MODEL) {
+      return await getDataModelDetails(id, fields);
+    }
+
+    return await getTableDetails(id, fields);
+  };
+
   /**
    * take node and get the columns for that node
    * @param expandNode
@@ -606,11 +647,11 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
   const getTableColumns = async (expandNode?: EntityReference) => {
     if (expandNode) {
       try {
-        const res = await getTableDetails(expandNode.id, ['columns']);
-        const tableId = expandNode.id;
+        const res = await getColumnsForNode(expandNode.type, expandNode.id);
+        const nodeId = expandNode.id;
         const { columns } = res;
-        tableColumnsRef.current[tableId] = columns;
-        updateColumnsToNode(columns, tableId);
+        tableColumnsRef.current[nodeId] = columns;
+        updateColumnsToNode(columns, nodeId);
       } catch (error) {
         showErrorToast(
           error as AxiosError,
@@ -1174,10 +1215,10 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
    * handle node drag event
    * @param event
    */
-  const onDragOver = (event: DragEvent) => {
+  const onDragOver = useCallback((event: DragEvent) => {
     event.preventDefault();
     event.dataTransfer.dropEffect = 'move';
-  };
+  }, []);
 
   /**
    * handle node drop event
@@ -1299,7 +1340,7 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
   /**
    * This method will handle the delete edge modal confirmation
    */
-  const onRemove = () => {
+  const onRemove = useCallback(() => {
     setDeletionState({ ...ELEMENT_DELETE_STATE, loading: true });
     setTimeout(() => {
       setDeletionState({ ...ELEMENT_DELETE_STATE, status: 'success' });
@@ -1309,21 +1350,21 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
         setDeletionState((pre) => ({ ...pre, status: 'initial' }));
       }, 500);
     }, 500);
-  };
+  }, []);
 
-  const handleEditLineageClick = () => {
+  const handleEditLineageClick = useCallback(() => {
     setEditMode((pre) => !pre && !deleted);
     resetSelectedData();
     setIsDrawerOpen(false);
-  };
+  }, [deleted]);
 
-  const handleEdgeClick = (
-    _e: React.MouseEvent<Element, MouseEvent>,
-    edge: Edge
-  ) => {
-    setSelectedEdgeInfo(edge);
-    setIsDrawerOpen(true);
-  };
+  const handleEdgeClick = useCallback(
+    (_e: React.MouseEvent<Element, MouseEvent>, edge: Edge) => {
+      setSelectedEdgeInfo(edge);
+      setIsDrawerOpen(true);
+    },
+    []
+  );
 
   const toggleColumnView = (value: boolean) => {
     setExpandAllColumns(value);
@@ -1368,10 +1409,13 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
     if (expandAllColumns) {
       toggleColumnView(false);
     } else {
-      const allTableNodes = [
-        updatedLineageData.entity,
-        ...(updatedLineageData.nodes || []),
-      ].filter(
+      const { nodes } = getPaginatedChildMap(
+        updatedLineageData,
+        childMap,
+        paginationData,
+        lineageConfig.nodesPerLayer
+      );
+      const allTableNodes = nodes.filter(
         (node) =>
           node.type === EntityType.TABLE &&
           isUndefined(tableColumnsRef.current[node.id])
@@ -1409,6 +1453,10 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
     }
   };
 
+  const handleLineageConfigUpdate = useCallback((config: LineageConfig) => {
+    setLineageConfig(config);
+    fetchLineageData(config);
+  }, []);
   const selectNode = (node: Node) => {
     const { position } = node;
     onNodeClick(node);
@@ -1433,7 +1481,8 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
           const { nodes, edges } = getPaginatedChildMap(
             updatedLineageData,
             childMap,
-            paginationData
+            paginationData,
+            lineageConfig.nodesPerLayer
           );
           const newNodes = union(nodes, path);
           setElementsHandle(
@@ -1498,7 +1547,8 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
       const { nodes: newNodes, edges } = getPaginatedChildMap(
         lineageData,
         childMapObj,
-        paginationObj
+        paginationObj,
+        lineageConfig.nodesPerLayer
       );
       setElementsHandle({
         ...lineageData,
@@ -1509,7 +1559,7 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
   };
 
   useEffect(() => {
-    fetchLineageData();
+    fetchLineageData(lineageConfig);
   }, []);
 
   useEffect(() => {
@@ -1614,17 +1664,23 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
                   minZoom: MIN_ZOOM_VALUE,
                   maxZoom: MAX_ZOOM_VALUE,
                 }}
-                handleFullScreenViewClick={onFullScreenClick}
+                handleFullScreenViewClick={
+                  !isFullScreen ? onFullScreenClick : undefined
+                }
                 hasEditAccess={hasEditAccess}
                 isColumnsExpanded={expandAllColumns}
                 isEditMode={isEditMode}
+                lineageConfig={lineageConfig}
                 lineageData={updatedLineageData}
                 loading={loading}
                 status={status}
                 zoomValue={zoomValue}
                 onEditLinageClick={handleEditLineageClick}
-                onExitFullScreenViewClick={onExitFullScreenViewClick}
+                onExitFullScreenViewClick={
+                  isFullScreen ? onExitFullScreenViewClick : undefined
+                }
                 onExpandColumnClick={handleExpandColumnClick}
+                onLineageConfigUpdate={handleLineageConfigUpdate}
                 onOptionSelect={handleOptionSelect}
               />
             )}
@@ -1657,6 +1713,7 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
       <EntityLineageSidebar newAddedNode={newAddedNode} show={isEditMode} />
       {showDeleteModal && (
         <Modal
+          maskClosable={false}
           okText={getLoadingStatusValue(
             t('label.confirm'),
             deletionState.loading,

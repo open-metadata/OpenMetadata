@@ -25,10 +25,6 @@
         tr {
           td {
             .drag-icon {
-              width: 12px;
-              height: 12px;
-              margin-right: 2px;
-              display: inline-flex;
               visibility: hidden;
             }
 
@@ -90,5 +86,13 @@
 .vertical-top-align-td {
   .ant-table-cell {
     vertical-align: top;
+  }
+}
+
+.drop-over-background {
+  .drop-over-upward {
+    td {
+      background: @active-color;
+    }
   }
 }

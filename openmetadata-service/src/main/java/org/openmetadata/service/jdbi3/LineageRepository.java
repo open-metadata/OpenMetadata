@@ -100,13 +100,13 @@ public class LineageRepository {
         for (String fromColumn : columnLineage.getFromColumns()) {
           // From column belongs to the fromNode
           if (fromColumn.startsWith(fromTable.getFullyQualifiedName())) {
-            TableRepository.validateColumnFQN(fromTable, fromColumn);
+            ColumnUtil.validateColumnFQN(fromTable.getColumns(), fromColumn);
           } else {
             Table otherTable = dao.tableDAO().findEntityByName(FullyQualifiedName.getTableFQN(fromColumn));
-            TableRepository.validateColumnFQN(otherTable, fromColumn);
+            ColumnUtil.validateColumnFQN(otherTable.getColumns(), fromColumn);
           }
         }
-        TableRepository.validateColumnFQN(toTable, columnLineage.getToColumn());
+        ColumnUtil.validateColumnFQN(toTable.getColumns(), columnLineage.getToColumn());
       }
     }
     return JsonUtils.pojoToJson(details);
@@ -152,9 +152,9 @@ public class LineageRepository {
     if (upstreamDepth == 0) {
       return;
     }
-    List<EntityRelationshipRecord> records = new ArrayList<>();
+    List<EntityRelationshipRecord> records;
     // pipeline information is not maintained
-    if (entityType == Entity.PIPELINE) {
+    if (entityType.equals(Entity.PIPELINE)) {
       records = dao.relationshipDAO().findFromPipleine(id.toString(), Relationship.UPSTREAM.ordinal());
     } else {
       records = dao.relationshipDAO().findFrom(id.toString(), entityType, Relationship.UPSTREAM.ordinal());
@@ -185,8 +185,8 @@ public class LineageRepository {
     if (downstreamDepth == 0) {
       return;
     }
-    List<EntityRelationshipRecord> records = new ArrayList<>();
-    if (entityType == Entity.PIPELINE) {
+    List<EntityRelationshipRecord> records;
+    if (entityType.equals(Entity.PIPELINE)) {
       records = dao.relationshipDAO().findToPipeline(id.toString(), Relationship.UPSTREAM.ordinal());
     } else {
       records = dao.relationshipDAO().findTo(id.toString(), entityType, Relationship.UPSTREAM.ordinal());

@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { RightOutlined } from '@ant-design/icons';
 import { Tooltip } from 'antd';
 import classNames from 'classnames';
 import React, {
@@ -90,9 +89,7 @@ const TitleBreadcrumb: FunctionComponent<TitleBreadcrumbProps> = ({
                       to={link.url}>
                       {link.name}
                     </Link>
-                    <span className="tw-px-2">
-                      <RightOutlined className="tw-text-xs tw-cursor-default tw-text-gray-400 tw-align-middle" />
-                    </span>
+                    <span className="tw-px-2 tw-text-grey-muted">/</span>
                   </>
                 ) : link.url ? (
                   <Link
@@ -109,7 +106,7 @@ const TitleBreadcrumb: FunctionComponent<TitleBreadcrumbProps> = ({
                       <span
                         className={classNames(
                           classes,
-                          'tw-cursor-text hover:tw-text-primary hover:tw-no-underline'
+                          'inactive-link tw-cursor-text hover:tw-text-primary hover:tw-no-underline'
                         )}
                         data-testid="inactive-link"
                         style={{
@@ -119,9 +116,7 @@ const TitleBreadcrumb: FunctionComponent<TitleBreadcrumbProps> = ({
                       </span>
                     </Tooltip>
                     {noLink && index < titleLinks.length - 1 && (
-                      <span className="tw-px-2">
-                        <RightOutlined className="tw-text-xs tw-cursor-default tw-text-gray-400 tw-align-middle" />
-                      </span>
+                      <span className="tw-px-2 tw-text-grey-muted">/</span>
                     )}
                   </>
                 )}

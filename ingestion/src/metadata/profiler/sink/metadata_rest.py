@@ -20,7 +20,7 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
     OpenMetadataConnection,
 )
 from metadata.ingestion.api.common import Entity
-from metadata.ingestion.api.sink import Sink, SinkStatus
+from metadata.ingestion.api.sink import Sink
 from metadata.ingestion.ometa.client import APIError
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.profiler.api.models import ProfilerResponse
@@ -40,7 +40,6 @@ class MetadataRestSink(Sink[Entity]):
     """
 
     config: MetadataRestSinkConfig
-    status: SinkStatus
 
     def __init__(
         self,
@@ -50,7 +49,6 @@ class MetadataRestSink(Sink[Entity]):
         super().__init__()
         self.config = config
         self.metadata_config = metadata_config
-        self.status = SinkStatus()
         self.wrote_something = False
         self.metadata = OpenMetadata(self.metadata_config)
 
@@ -58,9 +56,6 @@ class MetadataRestSink(Sink[Entity]):
     def create(cls, config_dict: dict, metadata_config: OpenMetadataConnection):
         config = MetadataRestSinkConfig.parse_obj(config_dict)
         return cls(config, metadata_config)
-
-    def get_status(self) -> SinkStatus:
-        return self.status
 
     def close(self) -> None:
         self.metadata.close()
@@ -86,8 +81,8 @@ class MetadataRestSink(Sink[Entity]):
             )
 
         except APIError as err:
+            name = record.table.fullyQualifiedName.__root__
+            error = f"Failed to sink profiler & test data for {name}: {err}"
             logger.debug(traceback.format_exc())
-            logger.warning(
-                f"Failed to sink profiler & test data for {record.table.fullyQualifiedName.__root__}: {err}"
-            )
-            self.status.failure(f"Table: {record.table.fullyQualifiedName.__root__}")
+            logger.warning(error)
+            self.status.failed(name, error, traceback.format_exc())

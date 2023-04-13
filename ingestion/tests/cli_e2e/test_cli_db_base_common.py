@@ -26,7 +26,6 @@ from .test_cli_db_base import PATH_TO_RESOURCES, CliDBBase
 
 class CliCommonDB:
     class TestSuite(CliDBBase.TestSuite, ABC):
-
         engine: Engine
 
         @classmethod
@@ -51,7 +50,7 @@ class CliCommonDB:
             self.assertTrue(len(source_status.failures) == 0)
             self.assertTrue(len(source_status.warnings) == 0)
             self.assertTrue(len(source_status.filtered) == 0)
-            self.assertTrue(len(source_status.success) >= self.expected_tables())
+            self.assertTrue(len(source_status.records) >= self.expected_tables())
             self.assertTrue(len(sink_status.failures) == 0)
             self.assertTrue(len(sink_status.warnings) == 0)
             self.assertTrue(len(sink_status.records) > self.expected_tables())
@@ -60,7 +59,7 @@ class CliCommonDB:
             self, source_status: SourceStatus, sink_status: SinkStatus
         ):
             self.assertTrue(len(source_status.failures) == 0)
-            self.assertTrue(len(source_status.success) > self.expected_tables())
+            self.assertTrue(len(source_status.records) > self.expected_tables())
             self.assertTrue(len(sink_status.failures) == 0)
             self.assertTrue(len(sink_status.records) > self.expected_tables())
             sample_data = self.retrieve_sample_data(self.fqn_created_table()).sampleData

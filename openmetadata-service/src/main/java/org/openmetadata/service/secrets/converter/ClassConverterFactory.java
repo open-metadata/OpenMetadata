@@ -28,8 +28,8 @@ import org.openmetadata.schema.services.connections.database.BigQueryConnection;
 import org.openmetadata.schema.services.connections.database.DatalakeConnection;
 import org.openmetadata.schema.services.connections.database.datalake.GCSConfig;
 import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
-import org.openmetadata.schema.services.connections.objectstore.GcsConnection;
 import org.openmetadata.schema.services.connections.pipeline.AirflowConnection;
+import org.openmetadata.schema.services.connections.storage.GcsConnection;
 
 /** Factory class to get a `ClassConverter` based on the service class. */
 public class ClassConverterFactory {
@@ -42,16 +42,16 @@ public class ClassConverterFactory {
             new HashMap<>() {
               {
                 put(AirflowConnection.class, new AirflowConnectionClassConverter());
+                put(BigQueryConnection.class, new BigQueryConnectionClassConverter());
                 put(DatalakeConnection.class, new DatalakeConnectionClassConverter());
+                put(DbtGCSConfig.class, new DbtGCSConfigClassConverter());
                 put(DbtPipeline.class, new DbtPipelineClassConverter());
+                put(GCSConfig.class, new GCSConfigClassConverter());
+                put(GCSCredentials.class, new GcsCredentialsClassConverter());
+                put(GcsConnection.class, new GcsConnectionClassConverter());
+                put(OpenMetadataConnection.class, new OpenMetadataConnectionClassConverter());
                 put(SSOAuthMechanism.class, new SSOAuthMechanismClassConverter());
                 put(SupersetConnection.class, new SupersetConnectionClassConverter());
-                put(GCSCredentials.class, new GcsCredentialsClassConverter());
-                put(OpenMetadataConnection.class, new OpenMetadataConnectionClassConverter());
-                put(GcsConnection.class, new GcsConnectionClassConverter());
-                put(GCSConfig.class, new GCSConfigClassConverter());
-                put(BigQueryConnection.class, new BigQueryConnectionClassConverter());
-                put(DbtGCSConfig.class, new DbtGCSConfigClassConverter());
                 put(TestServiceConnectionRequest.class, new TestServiceConnectionRequestClassConverter());
                 put(Workflow.class, new WorkflowClassConverter());
               }

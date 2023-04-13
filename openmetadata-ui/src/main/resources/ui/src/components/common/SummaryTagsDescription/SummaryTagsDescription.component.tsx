@@ -11,12 +11,12 @@
  *  limitations under the License.
  */
 import { Col, Divider, Row, Typography } from 'antd';
+import { EntityUnion } from 'components/Explore/explore.interface';
 import TagsViewer from 'components/Tag/TagsViewer/tags-viewer';
 import { TagLabel } from 'generated/type/tagLabel';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as TagIcon } from '../../../assets/svg/tag-grey.svg';
-import { EntityData } from '../PopOverCard/EntityPopOverCard';
 import RichTextEditorPreviewer from '../rich-text-editor/RichTextEditorPreviewer';
 
 const SummaryTagsDescription = ({
@@ -24,7 +24,7 @@ const SummaryTagsDescription = ({
   entityDetail,
 }: {
   tags: TagLabel[];
-  entityDetail: EntityData;
+  entityDetail: EntityUnion;
 }) => {
   const { t } = useTranslation();
 
@@ -37,18 +37,25 @@ const SummaryTagsDescription = ({
           </Typography.Text>
         </Col>
         <Col span={24}>
-          <div className="flex flex-wrap items-center">
-            {tags.length > 0 ? (
-              <>
-                <TagIcon className="m-r-xs" data-testid="tag-grey-icon" />
+          {tags.length > 0 ? (
+            <Row>
+              <Col span={1}>
+                <TagIcon
+                  className="m-t-xs"
+                  data-testid="tag-grey-icon"
+                  height={14}
+                  width={14}
+                />
+              </Col>
+              <Col span={23}>
                 <TagsViewer sizeCap={-1} tags={tags} />
-              </>
-            ) : (
-              <Typography.Text className="text-grey-body">
-                {t('label.no-tags-added')}
-              </Typography.Text>
-            )}
-          </div>
+              </Col>
+            </Row>
+          ) : (
+            <Typography.Text className="text-grey-body">
+              {t('label.no-tags-added')}
+            </Typography.Text>
+          )}
         </Col>
       </Row>
 

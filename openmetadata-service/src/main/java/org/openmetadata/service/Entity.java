@@ -33,6 +33,7 @@ import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.EntityDAO;
@@ -58,6 +59,7 @@ public final class Entity {
   public static final String FIELD_NAME = "name";
   public static final String FIELD_DESCRIPTION = "description";
   public static final String FIELD_FOLLOWERS = "followers";
+  public static final String FIELD_VOTES = "votes";
   public static final String FIELD_TAGS = "tags";
   public static final String FIELD_DELETED = "deleted";
   public static final String FIELD_PIPELINE_STATUS = "pipelineStatus";
@@ -75,8 +77,6 @@ public final class Entity {
   public static final String STORAGE_SERVICE = "storageService";
   public static final String MLMODEL_SERVICE = "mlmodelService";
   public static final String METADATA_SERVICE = "metadataService";
-  public static final String OBJECT_STORE_SERVICE = "objectStoreService";
-
   //
   // Data asset entities
   //
@@ -92,9 +92,10 @@ public final class Entity {
   public static final String MLMODEL = "mlmodel";
   public static final String CONTAINER = "container";
   public static final String BOT = "bot";
-  public static final String ALERT = "alert";
+  public static final String EVENT_SUBSCRIPTION = "eventsubscription";
   public static final String THREAD = "THREAD";
-  public static final String LOCATION = "location";
+  public static final String QUERY = "query";
+
   public static final String GLOSSARY = "glossary";
   public static final String GLOSSARY_TERM = "glossaryTerm";
   public static final String TAG = "tag";
@@ -103,12 +104,13 @@ public final class Entity {
   public static final String TEST_DEFINITION = "testDefinition";
   public static final String TEST_CONNECTION_DEFINITION = "testConnectionDefinition";
   public static final String WORKFLOW = "workflow";
-  public static final String ALERT_ACTION = "alertAction";
   public static final String TEST_SUITE = "testSuite";
   public static final String KPI = "kpi";
   public static final String TEST_CASE = "testCase";
   public static final String WEB_ANALYTIC_EVENT = "webAnalyticEvent";
   public static final String DATA_INSIGHT_CHART = "dataInsightChart";
+
+  public static final String DASHBOARD_DATA_MODEL = "dashboardDataModel";
 
   //
   // Policy entity
@@ -127,7 +129,6 @@ public final class Entity {
   // Operation related entities
   //
   public static final String INGESTION_PIPELINE = "ingestionPipeline";
-  public static final String WEBHOOK = "webhook";
 
   //
   // Reserved names in OpenMetadata
@@ -153,7 +154,7 @@ public final class Entity {
           put(ServiceType.PIPELINE, PIPELINE_SERVICE);
           put(ServiceType.ML_MODEL, MLMODEL_SERVICE);
           put(ServiceType.METADATA, METADATA_SERVICE);
-          put(ServiceType.OBJECT_STORE, OBJECT_STORE_SERVICE);
+          put(ServiceType.STORAGE, STORAGE_SERVICE);
         }
       };
 
@@ -171,7 +172,6 @@ public final class Entity {
           DATABASE_SERVICE,
           PIPELINE_SERVICE,
           DASHBOARD_SERVICE,
-          STORAGE_SERVICE,
           MESSAGING_SERVICE);
 
   private Entity() {}
@@ -251,6 +251,11 @@ public final class Entity {
     return entityRepository.getFields(fields);
   }
 
+  public static Fields getFields(String entityType, List<String> fields) {
+    EntityRepository<?> entityRepository = Entity.getEntityRepository(entityType);
+    return entityRepository.getFields(String.join(",", fields));
+  }
+
   public static <T> T getEntity(EntityReference ref, String fields, Include include) throws IOException {
     return ref.getId() != null
         ? getEntity(ref.getType(), ref.getId(), fields, include)
@@ -284,7 +289,6 @@ public final class Entity {
 
   /** Retrieve the corresponding entity repository for a given entity name. */
   public static EntityRepository<? extends EntityInterface> getEntityRepository(@NonNull String entityType) {
-    @SuppressWarnings("unchecked")
     EntityRepository<? extends EntityInterface> entityRepository = ENTITY_REPOSITORY_MAP.get(entityType);
     if (entityRepository == null) {
       throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityTypeNotFound(entityType));
@@ -295,13 +299,17 @@ public final class Entity {
   /** Retrieve the corresponding entity repository for a given entity name. */
   public static EntityRepository<? extends EntityInterface> getServiceEntityRepository(
       @NonNull ServiceType serviceType) {
-    @SuppressWarnings("unchecked")
     EntityRepository<? extends EntityInterface> entityRepository =
         ENTITY_REPOSITORY_MAP.get(SERVICE_TYPE_ENTITY_MAP.get(serviceType));
     if (entityRepository == null) {
       throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityTypeNotFound(serviceType.value()));
     }
     return entityRepository;
+  }
+
+  public static <T extends EntityInterface> List<TagLabel> getEntityTags(String entityType, EntityInterface entity) {
+    EntityRepository<T> entityRepository = (EntityRepository<T>) getEntityRepository(entityType);
+    return listOrEmpty(entityRepository.getAllTags(entity));
   }
 
   public static void deleteEntity(

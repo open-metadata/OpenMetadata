@@ -11,12 +11,22 @@
  *  limitations under the License.
  */
 
+import { OperationPermission } from 'components/PermissionProvider/PermissionProvider.interface';
+import { Glossary } from 'generated/entity/data/glossary';
 import { Status } from '../generated/entity/data/glossaryTerm';
 
 export const mockedAssetData = {
   currPage: 1,
   data: [],
   total: 0,
+};
+
+export const mockFnGlossary = async (value: Glossary) => {
+  console.debug('On back', value);
+};
+
+export const mockFn = () => {
+  console.debug('mock fn');
 };
 
 export const mockedGlossaryTerms = [
@@ -41,22 +51,34 @@ export const mockedGlossaryTerms = [
     version: 1.3,
     updatedAt: 1647931273177,
     updatedBy: 'anonymous',
-    reviewers: [
-      {
-        deleted: false,
-        displayName: 'Mocked User',
-        id: 'mocked-user-id',
-        name: 'mocked_user',
-        type: 'user',
-      },
-    ],
+    reviewers: [],
     tags: [],
-    changeDescription: {
-      fieldsAdded: [],
-      fieldsUpdated: [],
-      fieldsDeleted: [],
-      previousVersion: 1,
+    status: 'Draft' as Status,
+    deleted: false,
+  },
+  {
+    id: '937b87df-0b20-4464-bb12-8a2a268d1f1d',
+    name: 'Sales',
+    displayName: 'Sales',
+    description: 'description of Business Glossary.Sales',
+    fullyQualifiedName: 'Business Glossary.Sales',
+    synonyms: [],
+    glossary: {
+      id: 'mocked-glossary-id',
+      type: 'glossary',
+      name: 'Mock Glossary',
+      description: '',
+      displayName: 'Mock Glossary',
+      deleted: false,
     },
+    children: [],
+    relatedTerms: [],
+    references: [],
+    version: 1.3,
+    updatedAt: 1647931273177,
+    updatedBy: 'anonymous',
+    reviewers: [],
+    tags: [],
     status: 'Draft' as Status,
     deleted: false,
   },
@@ -370,3 +392,49 @@ export const MOCK_ASSETS_DATA = {
     },
   },
 };
+
+export const VERSION_VIEW_GLOSSARY_PERMISSION = {
+  Create: false,
+  Delete: false,
+  EditAll: false,
+  EditCustomFields: false,
+  EditDataProfile: false,
+  EditDescription: false,
+  EditDisplayName: false,
+  EditLineage: false,
+  EditOwner: false,
+  EditQueries: false,
+  EditSampleData: false,
+  EditTags: false,
+  EditTests: false,
+  EditTier: false,
+  ViewAll: true,
+  ViewDataProfile: false,
+  ViewQueries: false,
+  ViewSampleData: false,
+  ViewTests: false,
+  ViewUsage: false,
+} as OperationPermission;
+
+export const MOCK_PERMISSIONS = {
+  Create: true,
+  Delete: true,
+  EditAll: true,
+  EditCustomFields: true,
+  EditDataProfile: true,
+  EditDescription: true,
+  EditDisplayName: true,
+  EditLineage: true,
+  EditOwner: true,
+  EditQueries: true,
+  EditSampleData: true,
+  EditTags: true,
+  EditTests: true,
+  EditTier: true,
+  ViewAll: true,
+  ViewDataProfile: true,
+  ViewQueries: true,
+  ViewSampleData: true,
+  ViewTests: true,
+  ViewUsage: true,
+} as OperationPermission;

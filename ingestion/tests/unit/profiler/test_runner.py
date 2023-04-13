@@ -22,8 +22,8 @@ from sqlalchemy.orm import declarative_base
 
 from metadata.ingestion.connections.session import create_and_bind_session
 from metadata.profiler.api.models import ProfileSampleConfig
-from metadata.profiler.profiler.runner import QueryRunner
-from metadata.profiler.profiler.sampler import Sampler
+from metadata.profiler.processor.runner import QueryRunner
+from metadata.profiler.processor.sampler import Sampler
 from metadata.utils.timeout import cls_timeout
 
 Base = declarative_base()

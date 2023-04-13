@@ -29,9 +29,9 @@ from metadata.generated.antlr.FqnParser import FqnParser
 from metadata.generated.schema.entity.classification.tag import Tag
 from metadata.generated.schema.entity.data.chart import Chart
 from metadata.generated.schema.entity.data.dashboard import Dashboard
+from metadata.generated.schema.entity.data.dashboardDataModel import DashboardDataModel
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
-from metadata.generated.schema.entity.data.location import Location
 from metadata.generated.schema.entity.data.mlmodel import MlModel
 from metadata.generated.schema.entity.data.pipeline import Pipeline
 from metadata.generated.schema.entity.data.table import Column, DataModel, Table
@@ -143,22 +143,19 @@ def _(
     :param table_name: Table name
     :return:
     """
-    fqn_search_string = build_es_fqn_search_string(
-        database_name, schema_name, service_name, table_name
-    )
 
-    es_result = (
-        metadata.es_search_from_fqn(
-            entity_type=Table,
-            fqn_search_string=fqn_search_string,
+    entity: Optional[Union[Table, List[Table]]] = None
+
+    if not skip_es_search:
+        entity = search_table_from_es(
+            metadata=metadata,
+            database_name=database_name,
+            schema_name=schema_name,
+            table_name=table_name,
+            fetch_multiple_entities=fetch_multiple_entities,
+            service_name=service_name,
         )
-        if not skip_es_search
-        else None
-    )
 
-    entity: Optional[Union[Table, List[Table]]] = get_entity_from_es_result(
-        entity_list=es_result, fetch_multiple_entities=fetch_multiple_entities
-    )
     # if entity not found in ES proceed to build FQN with database_name and schema_name
     if not entity and database_name and schema_name:
         fqn = _build(service_name, database_name, schema_name, table_name)
@@ -278,7 +275,6 @@ def _(
     schema_name: str,
     model_name: str,
 ) -> str:
-
     return _build(service_name, database_name, schema_name, model_name)
 
 
@@ -290,16 +286,6 @@ def _(
     pipeline_name: str,
 ) -> str:
     return _build(service_name, pipeline_name)
-
-
-@fqn_build_registry.add(Location)
-def _(
-    _: OpenMetadata,
-    *,
-    service_name: str,
-    location_name: str,
-) -> str:
-    return _build(service_name, location_name)
 
 
 @fqn_build_registry.add(Column)
@@ -404,6 +390,20 @@ def _(
     )
 
 
+@fqn_build_registry.add(DashboardDataModel)
+def _(
+    _: OpenMetadata,  # ES Index not necessary for dashboard FQN building
+    *,
+    service_name: str,
+    data_model_name: str,
+) -> str:
+    if not service_name or not data_model_name:
+        raise FQNBuildingException(
+            f"Args should be informed, but got service=`{service_name}`, chart=`{data_model_name}``"
+        )
+    return _build(service_name, "model", data_model_name)
+
+
 def split_table_name(table_name: str) -> Dict[str, Optional[str]]:
     """
     Given a table name, try to extract database, schema and
@@ -476,3 +476,25 @@ def build_es_fqn_search_string(
         service_name, database_name or "*", schema_name or "*", table_name
     )
     return fqn_search_string
+
+
+def search_table_from_es(
+    metadata: OpenMetadata,
+    database_name: str,
+    schema_name: str,
+    service_name: str,
+    table_name: str,
+    fetch_multiple_entities: bool = False,
+):
+    fqn_search_string = build_es_fqn_search_string(
+        database_name, schema_name, service_name, table_name
+    )
+
+    es_result = metadata.es_search_from_fqn(
+        entity_type=Table,
+        fqn_search_string=fqn_search_string,
+    )
+
+    return get_entity_from_es_result(
+        entity_list=es_result, fetch_multiple_entities=fetch_multiple_entities
+    )

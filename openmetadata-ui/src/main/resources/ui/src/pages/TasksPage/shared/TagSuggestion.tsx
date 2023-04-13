@@ -14,7 +14,7 @@
 import { Select } from 'antd';
 import { AxiosError } from 'axios';
 import { t } from 'i18next';
-import { isEmpty, isEqual } from 'lodash';
+import { debounce, isEmpty, isEqual } from 'lodash';
 import React, { useEffect, useState } from 'react';
 import { getTagSuggestions } from 'rest/miscAPI';
 import {
@@ -94,9 +94,12 @@ const TagSuggestion: React.FC<Props> = ({ onChange, selectedTags }) => {
     setOptions(selectedOptions());
   }, [selectedTags]);
 
+  const loadOptions = debounce(handleSearch, 500);
+
   return (
     <Select
       showSearch
+      autoClearSearchValue={false}
       className="ant-select-custom"
       data-testid="select-tags"
       defaultActiveFirstOption={false}
@@ -107,7 +110,7 @@ const TagSuggestion: React.FC<Props> = ({ onChange, selectedTags }) => {
       showArrow={false}
       value={!isEmpty(selectedOptions()) ? selectedOptions() : undefined}
       onChange={handleOnChange}
-      onSearch={handleSearch}>
+      onSearch={loadOptions}>
       {options.map((d) => (
         <Option
           data-sourcetype={d['data-sourcetype']}

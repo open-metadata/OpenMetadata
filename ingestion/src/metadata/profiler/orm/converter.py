@@ -14,7 +14,7 @@ Converter logic to transform an OpenMetadata Table Entity
 to an SQLAlchemy ORM class.
 """
 
-from typing import Optional
+from typing import List, Optional, cast
 
 import sqlalchemy
 from sqlalchemy import MetaData
@@ -30,7 +30,7 @@ from metadata.profiler.orm.registry import CustomTypes
 Base = declarative_base()
 
 _TYPE_MAP = {
-    DataType.NUMBER: sqlalchemy.INTEGER,
+    DataType.NUMBER: sqlalchemy.NUMERIC,
     DataType.TINYINT: sqlalchemy.SMALLINT,
     DataType.SMALLINT: sqlalchemy.SMALLINT,
     DataType.INT: sqlalchemy.INT,
@@ -105,7 +105,24 @@ def check_snowflake_case_sensitive(table_service_type, table_or_col) -> Optional
     return None
 
 
-def build_orm_col(idx: int, col: Column, table_service_type) -> sqlalchemy.Column:
+def check_if_should_quote_column_name(table_service_type) -> Optional[bool]:
+    """Check whether column name should be quoted when passed into the sql command build up.
+    This is important when a column name is the same as a reserve word and causes a sql error.
+
+    Args:
+        table_service_type: the main sql engine to determine if we should always quote.
+    Return: True or False
+    """
+
+    if table_service_type == databaseService.DatabaseServiceType.Hive:
+        return True
+
+    return None
+
+
+def build_orm_col(
+    idx: int, col: Column, table_service_type, parent: Optional[str] = None
+) -> sqlalchemy.Column:
     """
     Cook the ORM column from our metadata instance
     information.
@@ -117,16 +134,55 @@ def build_orm_col(idx: int, col: Column, table_service_type) -> sqlalchemy.Colum
     As this is only used for INSERT/UPDATE/DELETE,
     there is no impact for our read-only purposes.
     """
+    if parent:
+        name = f"{parent}.{col.name.__root__}"
+    else:
+        name = col.name.__root__
 
     return sqlalchemy.Column(
-        name=str(col.name.__root__),
+        name=str(name),
         type_=map_types(col, table_service_type),
         primary_key=not bool(idx),  # The first col seen is used as PK
-        quote=check_snowflake_case_sensitive(table_service_type, col.name.__root__),
+        quote=check_if_should_quote_column_name(table_service_type)
+        or check_snowflake_case_sensitive(table_service_type, col.name.__root__),
         key=str(
             col.name.__root__
         ).lower(),  # Add lowercase column name as key for snowflake case sensitive columns
     )
+
+
+def get_columns(
+    column_list: List[Column],
+    service_type: databaseService.DatabaseServiceType,
+    start: int = 0,
+    parent: Optional[str] = None,
+) -> dict:
+    """Build dictionnary of ORM columns
+
+    Args:
+        column_list (List[Column]): list of columns
+        service_type (DatabaseServiceType): database service type
+        start (int): index of the column used to define the primary key
+        parent (str): parent column name
+    """
+    cols = {}
+
+    for idx, col in enumerate(column_list, start=start):
+        if parent:
+            name = f"{parent}.{col.name.__root__}"
+        else:
+            name = col.name.__root__
+        if name in SQA_RESERVED_ATTRIBUTES:
+            name = f"{name}_"
+
+        cols[name] = build_orm_col(idx, col, service_type, parent)
+        if col.children:
+            cols = {
+                **cols,
+                **get_columns(col.children, service_type, start=idx, parent=name),
+            }
+
+    return cols
 
 
 def ometa_to_sqa_orm(
@@ -142,14 +198,10 @@ def ometa_to_sqa_orm(
     as the bases tuple for inheritance.
     """
 
-    cols = {
-        (
-            col.name.__root__ + "_"
-            if col.name.__root__ in SQA_RESERVED_ATTRIBUTES
-            else col.name.__root__
-        ): build_orm_col(idx, col, table.serviceType)
-        for idx, col in enumerate(table.columns)
-    }
+    table.serviceType = cast(
+        databaseService.DatabaseServiceType, table.serviceType
+    )  # satisfy mypy
+    cols = get_columns(table.columns, table.serviceType)
 
     orm_database_name = get_orm_database(table, metadata)
     orm_schema_name = get_orm_schema(table, metadata)

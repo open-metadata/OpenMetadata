@@ -11,6 +11,12 @@
  *  limitations under the License.
  */
 
+@text-color: #37352f;
+@gray-color: #dde3ea;
+@border-color: #dce3ec;
+@primary-color: #7147e8;
+@text-grey-muted: #6b7280d9;
+
 .glossary-card {
   .ant-card-body {
     padding: 8px 14px;
@@ -65,5 +71,57 @@
 .reference-edit-form {
   .ant-form-item {
     margin-bottom: 8px;
+  }
+}
+
+.glossary-synonym-tag {
+  border: 1px solid @border-color !important;
+}
+
+.term-reference-tag {
+  height: 24px;
+  .ant-tag-close-icon {
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
+    color: @primary-color;
+  }
+  span {
+    white-space: nowrap;
+    max-width: 150px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+}
+
+.glossary-tabs {
+  .description-heading {
+    font-size: 16px;
+    font-weight: 500;
+  }
+}
+
+.tag-button-container {
+  height: 24px;
+  span {
+    white-space: nowrap;
+    max-width: 150px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+}
+
+.glossary-subheading {
+  font-size: 16px;
+  font-weight: 500;
+}
+
+.glossary-select {
+  width: calc(100% - 64px);
+}
+
+.tags-input-container {
+  .tags-item {
+    margin-top: 8px;
+    margin-right: 8px;
   }
 }

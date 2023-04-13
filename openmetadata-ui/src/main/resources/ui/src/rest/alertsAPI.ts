@@ -12,22 +12,21 @@
  *  limitations under the License.
  */
 
+import {
+  EventSubscription,
+  Status,
+  SubscriptionType,
+} from 'generated/events/eventSubscription';
+import { SubscriptionResourceDescriptor } from 'generated/events/subscriptionResourceDescriptor';
 import { PagingResponse } from 'Models';
 import axiosClient from '.';
-import {
-  AlertAction,
-  AlertActionType,
-  Status,
-} from '../generated/alerts/alertAction';
-import { Alerts, TriggerConfig } from '../generated/alerts/alerts';
-import { EntitySpelFilters } from '../generated/alerts/entitySpelFilters';
 import { Function } from '../generated/type/function';
 
-const BASE_URL = '/alerts';
+const BASE_URL = '/events/subscriptions';
 
 interface ListAlertsRequestParams {
   status?: Status;
-  alertType?: AlertActionType;
+  alertType?: SubscriptionType;
   before?: string;
   after?: string;
   include?: string;
@@ -37,12 +36,15 @@ export const getAlertsFromId = async (
   id: string,
   params?: Pick<ListAlertsRequestParams, 'include'>
 ) => {
-  const response = await axiosClient.get<Alerts>(`${BASE_URL}/${id}`, {
-    params: {
-      ...params,
-      include: 'all',
-    },
-  });
+  const response = await axiosClient.get<EventSubscription>(
+    `${BASE_URL}/${id}`,
+    {
+      params: {
+        ...params,
+        include: 'all',
+      },
+    }
+  );
 
   return response.data;
 };
@@ -51,34 +53,40 @@ export const getAlertsFromName = async (
   name: string,
   params?: Pick<ListAlertsRequestParams, 'include'>
 ) => {
-  const response = await axiosClient.get<Alerts>(`${BASE_URL}/name/${name}`, {
-    params: {
-      ...params,
-      include: 'all',
-    },
-  });
+  const response = await axiosClient.get<EventSubscription>(
+    `${BASE_URL}/name/${name}`,
+    {
+      params: {
+        ...params,
+        include: 'all',
+      },
+    }
+  );
 
   return response.data;
 };
 
 export const getAllAlerts = async (params: ListAlertsRequestParams) => {
-  const response = await axiosClient.get<PagingResponse<Alerts[]>>(BASE_URL, {
-    params: {
-      ...params,
-    },
-  });
+  const response = await axiosClient.get<PagingResponse<EventSubscription[]>>(
+    BASE_URL,
+    {
+      params: {
+        ...params,
+      },
+    }
+  );
 
   return response.data;
 };
 
-export const createAlert = async (alert: Alerts) => {
-  const response = await axiosClient.post<Alerts>(BASE_URL, alert);
+export const createAlert = async (alert: EventSubscription) => {
+  const response = await axiosClient.post<EventSubscription>(BASE_URL, alert);
 
   return response.data;
 };
 
-export const updateAlert = async (alert: Alerts) => {
-  const response = await axiosClient.put<Alerts>(BASE_URL, alert);
+export const updateAlert = async (alert: EventSubscription) => {
+  const response = await axiosClient.put<EventSubscription>(BASE_URL, alert);
 
   return response.data;
 };
@@ -95,31 +103,10 @@ export const getFilterFunctions = async () => {
   return response.data;
 };
 
-export const getEntityFilterFunctions = async () => {
-  const response = await axiosClient.get<Record<string, EntitySpelFilters>>(
-    `${BASE_URL}/entityFunctions`
-  );
-
-  return response.data;
-};
-
-export const getDefaultTriggerConfigs = async (after?: string) => {
-  const response = await axiosClient.get<TriggerConfig[]>(
-    `${BASE_URL}/defaultTriggers`,
-    {
-      params: {
-        after,
-      },
-    }
-  );
-
-  return response.data;
-};
-
-export const getAlertActionForAlerts = async (id: string) => {
-  const response = await axiosClient.get<AlertAction[]>(
-    `${BASE_URL}/allAlertAction/${id}`
-  );
+export const getResourceFunctions = async () => {
+  const response = await axiosClient.get<
+    PagingResponse<SubscriptionResourceDescriptor[]>
+  >(`${BASE_URL}/resources`);
 
   return response.data;
 };

@@ -99,6 +99,7 @@ MOCK_COLUMN_VALUE = [
         "nullable": True,
         "default": None,
         "autoincrement": False,
+        "system_data_type": "varchar(50)",
         "comment": None,
     },
     {
@@ -107,6 +108,7 @@ MOCK_COLUMN_VALUE = [
         "nullable": True,
         "default": None,
         "autoincrement": False,
+        "system_data_type": "geometry",
         "comment": None,
     },
     {
@@ -115,6 +117,7 @@ MOCK_COLUMN_VALUE = [
         "nullable": True,
         "default": None,
         "autoincrement": False,
+        "system_data_type": "point",
         "comment": None,
     },
     {
@@ -124,6 +127,7 @@ MOCK_COLUMN_VALUE = [
         "default": None,
         "autoincrement": False,
         "comment": None,
+        "system_data_type": "polygon",
     },
 ]
 
@@ -137,7 +141,7 @@ EXPECTED_COLUMN_VALUE = [
         dataLength=1,
         precision=None,
         scale=None,
-        dataTypeDisplay="VARCHAR(1)",
+        dataTypeDisplay="varchar(50)",
         description=None,
         fullyQualifiedName=None,
         tags=None,
@@ -156,7 +160,7 @@ EXPECTED_COLUMN_VALUE = [
         dataLength=1,
         precision=None,
         scale=None,
-        dataTypeDisplay="GEOMETRY",
+        dataTypeDisplay="geometry",
         description=None,
         fullyQualifiedName=None,
         tags=None,
@@ -170,12 +174,12 @@ EXPECTED_COLUMN_VALUE = [
     Column(
         name="point_c",
         displayName=None,
-        dataType=DataType.POINT,
+        dataType=DataType.GEOMETRY,
         arrayDataType=None,
         dataLength=1,
         precision=None,
         scale=None,
-        dataTypeDisplay="POINT",
+        dataTypeDisplay="point",
         description=None,
         fullyQualifiedName=None,
         tags=None,
@@ -189,12 +193,12 @@ EXPECTED_COLUMN_VALUE = [
     Column(
         name="polygon_c",
         displayName=None,
-        dataType=DataType.POLYGON,
+        dataType=DataType.GEOMETRY,
         arrayDataType=None,
         dataLength=1,
         precision=None,
         scale=None,
-        dataTypeDisplay="POLYGON",
+        dataTypeDisplay="polygon",
         description=None,
         fullyQualifiedName=None,
         tags=None,
@@ -235,7 +239,7 @@ class PostgresUnitTest(TestCase):
         inspector.get_pk_constraint = lambda table_name, schema_name: []
         inspector.get_unique_constraints = lambda table_name, schema_name: []
         inspector.get_foreign_keys = lambda table_name, schema_name: []
-        result, _ = self.postgres_source.get_columns_and_constraints(
+        result, _, _ = self.postgres_source.get_columns_and_constraints(
             "public", "user", "postgres", inspector
         )
         for i in range(len(EXPECTED_COLUMN_VALUE)):

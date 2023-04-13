@@ -49,7 +49,9 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
   private static final String UPDATE_FIELDS = "owner,sourceConfig,airflowConfig,loggerLevel,enabled,deployed";
   private static final String PATCH_FIELDS = "owner,sourceConfig,airflowConfig,loggerLevel,enabled,deployed";
 
-  private static final String PIPELINE_STATUS_JSON_SCHEMA = "pipelineStatus";
+  private static final String PIPELINE_STATUS_JSON_SCHEMA = "ingestionPipelineStatus";
+  private static final String PIPELINE_STATUS_EXTENSION = "ingestionPipeline.pipelineStatus";
+  private static final String RUN_ID_EXTENSION_KEY = "runId";
   private static PipelineServiceClient pipelineServiceClient;
 
   public IngestionPipelineRepository(CollectionDAO dao) {
@@ -80,10 +82,21 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
     ingestionPipeline.setService(entityReference);
   }
 
+  @Transaction
+  public IngestionPipeline deletePipelineStatus(UUID ingestionPipelineId) throws IOException {
+    // Validate the request content
+    IngestionPipeline ingestionPipeline = dao.findEntityById(ingestionPipelineId);
+
+    daoCollection
+        .entityExtensionTimeSeriesDao()
+        .delete(ingestionPipeline.getFullyQualifiedName(), PIPELINE_STATUS_EXTENSION);
+    setFieldsInternal(ingestionPipeline, Fields.EMPTY_FIELDS);
+    return ingestionPipeline;
+  }
+
   @Override
   public void storeEntity(IngestionPipeline ingestionPipeline, boolean update) throws IOException {
-    // Relationships and fields such as href are derived and not stored as part of json
-    EntityReference owner = ingestionPipeline.getOwner();
+    // Relationships and fields such as service are derived and not stored as part of json
     EntityReference service = ingestionPipeline.getService();
     OpenMetadataConnection openmetadataConnection = ingestionPipeline.getOpenMetadataServerConnection();
 
@@ -96,14 +109,9 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
           secretsManager.encryptOrDecryptOpenMetadataConnection(openmetadataConnection, true, true);
     }
 
-    // Don't store owner. Build it on the fly based on relationships
-    // We don't want to store the OM connection.
-    ingestionPipeline.withOwner(null).withService(null).withHref(null).withOpenMetadataServerConnection(null);
-
+    ingestionPipeline.withService(null).withOpenMetadataServerConnection(null);
     store(ingestionPipeline, update);
-
-    // Restore the relationships
-    ingestionPipeline.withOwner(owner).withService(service).withOpenMetadataServerConnection(openmetadataConnection);
+    ingestionPipeline.withService(service).withOpenMetadataServerConnection(openmetadataConnection);
   }
 
   @Override
@@ -166,23 +174,28 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
         JsonUtils.readValue(
             daoCollection
                 .entityExtensionTimeSeriesDao()
-                .getLatestExtension(ingestionPipeline.getFullyQualifiedName(), pipelineStatus.getRunId()),
+                .getLatestExtensionByKey(
+                    RUN_ID_EXTENSION_KEY,
+                    pipelineStatus.getRunId(),
+                    ingestionPipeline.getFullyQualifiedName(),
+                    PIPELINE_STATUS_EXTENSION),
             PipelineStatus.class);
     if (storedPipelineStatus != null) {
       daoCollection
           .entityExtensionTimeSeriesDao()
-          .update(
-              ingestionPipeline.getFullyQualifiedName(),
+          .updateExtensionByKey(
+              RUN_ID_EXTENSION_KEY,
               pipelineStatus.getRunId(),
-              JsonUtils.pojoToJson(pipelineStatus),
-              pipelineStatus.getTimestamp());
+              ingestionPipeline.getFullyQualifiedName(),
+              PIPELINE_STATUS_EXTENSION,
+              JsonUtils.pojoToJson(pipelineStatus));
     } else {
       daoCollection
           .entityExtensionTimeSeriesDao()
           .insert(
               ingestionPipeline.getFullyQualifiedName(),
-              pipelineStatus.getRunId(),
-              "pipelineStatus",
+              PIPELINE_STATUS_EXTENSION,
+              PIPELINE_STATUS_JSON_SCHEMA,
               JsonUtils.pojoToJson(pipelineStatus));
     }
     ChangeDescription change =
@@ -222,7 +235,11 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
     return JsonUtils.readValue(
         daoCollection
             .entityExtensionTimeSeriesDao()
-            .getExtension(ingestionPipeline.getFullyQualifiedName(), pipelineStatusRunId.toString()),
+            .getExtensionByKey(
+                RUN_ID_EXTENSION_KEY,
+                pipelineStatusRunId.toString(),
+                ingestionPipeline.getFullyQualifiedName(),
+                PIPELINE_STATUS_EXTENSION),
         PipelineStatus.class);
   }
 

@@ -13,7 +13,10 @@ import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.TestMethodOrder;
+import org.openmetadata.schema.api.data.CreateContainer;
 import org.openmetadata.schema.api.data.CreateDashboard;
+import org.openmetadata.schema.api.data.CreateGlossary;
+import org.openmetadata.schema.api.data.CreateGlossaryTerm;
 import org.openmetadata.schema.api.data.CreatePipeline;
 import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.data.CreateTopic;
@@ -22,6 +25,7 @@ import org.openmetadata.schema.api.services.CreateDatabaseService;
 import org.openmetadata.schema.api.services.CreateMessagingService;
 import org.openmetadata.schema.api.services.CreateMlModelService;
 import org.openmetadata.schema.api.services.CreatePipelineService;
+import org.openmetadata.schema.api.services.CreateStorageService;
 import org.openmetadata.schema.api.teams.CreateTeam;
 import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.api.tests.CreateTestSuite;
@@ -36,12 +40,16 @@ import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.dashboards.DashboardResourceTest;
 import org.openmetadata.service.resources.databases.TableResourceTest;
 import org.openmetadata.service.resources.dqtests.TestSuiteResourceTest;
+import org.openmetadata.service.resources.glossary.GlossaryResourceTest;
+import org.openmetadata.service.resources.glossary.GlossaryTermResourceTest;
 import org.openmetadata.service.resources.pipelines.PipelineResourceTest;
 import org.openmetadata.service.resources.services.DashboardServiceResourceTest;
 import org.openmetadata.service.resources.services.DatabaseServiceResourceTest;
 import org.openmetadata.service.resources.services.MessagingServiceResourceTest;
 import org.openmetadata.service.resources.services.MlModelServiceResourceTest;
 import org.openmetadata.service.resources.services.PipelineServiceResourceTest;
+import org.openmetadata.service.resources.services.StorageServiceResourceTest;
+import org.openmetadata.service.resources.storages.ContainerResourceTest;
 import org.openmetadata.service.resources.teams.TeamResourceTest;
 import org.openmetadata.service.resources.teams.UserResourceTest;
 import org.openmetadata.service.resources.topics.TopicResourceTest;
@@ -102,6 +110,19 @@ public class SystemResourceTest extends OpenMetadataApplicationTest {
     CreateTestSuite createTestSuite = testSuiteResourceTest.createRequest(test);
     testSuiteResourceTest.createEntity(createTestSuite, ADMIN_AUTH_HEADERS);
 
+    // Create Storage Container
+    ContainerResourceTest containerResourceTest = new ContainerResourceTest();
+    CreateContainer createContainer = containerResourceTest.createRequest(test);
+    containerResourceTest.createEntity(createContainer, ADMIN_AUTH_HEADERS);
+
+    GlossaryResourceTest glossaryResourceTest = new GlossaryResourceTest();
+    CreateGlossary createGlossary = glossaryResourceTest.createRequest(test);
+    glossaryResourceTest.createEntity(createGlossary, ADMIN_AUTH_HEADERS);
+
+    GlossaryTermResourceTest glossaryTermResourceTest = new GlossaryTermResourceTest();
+    CreateGlossaryTerm createGlossaryTerm = glossaryTermResourceTest.createRequest(test);
+    glossaryTermResourceTest.createEntity(createGlossaryTerm, ADMIN_AUTH_HEADERS);
+
     // Ensure counts of entities is increased by 1
     EntitiesCount afterCount = getEntitiesCount();
     Assertions.assertEquals(beforeCount.getDashboardCount() + 1, afterCount.getDashboardCount());
@@ -112,6 +133,9 @@ public class SystemResourceTest extends OpenMetadataApplicationTest {
     Assertions.assertEquals(beforeCount.getTeamCount() + 1, afterCount.getTeamCount());
     Assertions.assertEquals(beforeCount.getTopicCount() + 1, afterCount.getTopicCount());
     Assertions.assertEquals(beforeCount.getTestSuiteCount() + 1, afterCount.getTestSuiteCount());
+    Assertions.assertEquals(beforeCount.getStorageContainerCount() + 1, afterCount.getStorageContainerCount());
+    Assertions.assertEquals(beforeCount.getGlossaryCount() + 1, afterCount.getGlossaryCount());
+    Assertions.assertEquals(beforeCount.getGlossaryTermCount() + 1, afterCount.getGlossaryTermCount());
   }
 
   @Test
@@ -144,12 +168,18 @@ public class SystemResourceTest extends OpenMetadataApplicationTest {
     CreateMlModelService createMlModelService = mlModelServiceResourceTest.createRequest(test);
     mlModelServiceResourceTest.createEntity(createMlModelService, ADMIN_AUTH_HEADERS);
 
+    // Create Storage Service
+    StorageServiceResourceTest storageServiceResourceTest = new StorageServiceResourceTest();
+    CreateStorageService createStorageService = storageServiceResourceTest.createRequest(test);
+    storageServiceResourceTest.createEntity(createStorageService, ADMIN_AUTH_HEADERS);
+
     // Get count after creating services and ensure it increased by 1
     ServicesCount afterCount = getServicesCount();
     Assertions.assertEquals(beforeCount.getMessagingServiceCount() + 1, afterCount.getMessagingServiceCount());
     Assertions.assertEquals(beforeCount.getDashboardServiceCount() + 1, afterCount.getDashboardServiceCount());
     Assertions.assertEquals(beforeCount.getPipelineServiceCount() + 1, afterCount.getPipelineServiceCount());
     Assertions.assertEquals(beforeCount.getMlModelServiceCount() + 1, afterCount.getMlModelServiceCount());
+    Assertions.assertEquals(beforeCount.getStorageServiceCount() + 1, afterCount.getStorageServiceCount());
   }
 
   @Test

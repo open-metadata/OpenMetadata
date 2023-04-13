@@ -36,6 +36,7 @@ import static org.openmetadata.csv.EntityCsvTest.assertRows;
 import static org.openmetadata.csv.EntityCsvTest.assertSummary;
 import static org.openmetadata.csv.EntityCsvTest.createCsv;
 import static org.openmetadata.csv.EntityCsvTest.getFailedRecord;
+import static org.openmetadata.service.Entity.USER;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.PASSWORD_INVALID_FORMAT;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.entityNotFound;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.notAdmin;
@@ -89,11 +90,14 @@ import org.openmetadata.csv.EntityCsv;
 import org.openmetadata.csv.EntityCsvTest;
 import org.openmetadata.schema.api.CreateBot;
 import org.openmetadata.schema.api.teams.CreateUser;
+import org.openmetadata.schema.auth.CreatePersonalToken;
 import org.openmetadata.schema.auth.GenerateTokenRequest;
 import org.openmetadata.schema.auth.JWTAuthMechanism;
 import org.openmetadata.schema.auth.JWTTokenExpiry;
 import org.openmetadata.schema.auth.LoginRequest;
+import org.openmetadata.schema.auth.PersonalAccessToken;
 import org.openmetadata.schema.auth.RegistrationRequest;
+import org.openmetadata.schema.auth.RevokePersonalTokenRequest;
 import org.openmetadata.schema.auth.RevokeTokenRequest;
 import org.openmetadata.schema.auth.SSOAuthMechanism;
 import org.openmetadata.schema.entity.data.Table;
@@ -117,7 +121,6 @@ import org.openmetadata.service.jdbi3.UserRepository.UserCsv;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.bots.BotResourceTest;
 import org.openmetadata.service.resources.databases.TableResourceTest;
-import org.openmetadata.service.resources.locations.LocationResourceTest;
 import org.openmetadata.service.resources.teams.UserResource.UserList;
 import org.openmetadata.service.security.AuthenticationException;
 import org.openmetadata.service.util.EntityUtil;
@@ -133,7 +136,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
   final Profile PROFILE = new Profile().withImages(new ImageList().withImage(URI.create("http://image.com")));
 
   public UserResourceTest() {
-    super(Entity.USER, User.class, UserList.class, "users", UserResource.FIELDS);
+    super(USER, User.class, UserList.class, "users", UserResource.FIELDS);
     supportedNameCharacters = "_-.";
   }
 
@@ -907,6 +910,34 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
   }
 
   @Test
+  void post_createGetRevokePersonalAccessToken() throws HttpResponseException {
+    // Create a Personal Access Token Request
+    CreatePersonalToken request =
+        new CreatePersonalToken().withTokenName("Token1").withJWTTokenExpiry(JWTTokenExpiry.Seven);
+
+    // Create
+    WebTarget createTokenTarget = getResource("users/security/token");
+    PersonalAccessToken tokens =
+        TestUtils.put(createTokenTarget, request, PersonalAccessToken.class, OK, ADMIN_AUTH_HEADERS);
+
+    // Get
+    WebTarget getTokenTarget = getResource("users/security/token");
+    UserResource.PersonalAccessTokenList getToken =
+        TestUtils.get(getTokenTarget, UserResource.PersonalAccessTokenList.class, ADMIN_AUTH_HEADERS);
+
+    // Revoke
+    RevokePersonalTokenRequest revokeRequest =
+        new RevokePersonalTokenRequest().withTokenIds(List.of(tokens.getToken()));
+    WebTarget revokeTokenTarget = getResource("users/security/token/revoke");
+    UserResource.PersonalAccessTokenList getTokenAfterRevoke =
+        TestUtils.put(
+            revokeTokenTarget, revokeRequest, UserResource.PersonalAccessTokenList.class, OK, ADMIN_AUTH_HEADERS);
+
+    assertEquals(tokens, getToken.getData().get(0));
+    assertEquals(0, getTokenAfterRevoke.getData().size());
+  }
+
+  @Test
   void testCsvDocumentation() throws HttpResponseException {
     assertEquals(UserCsv.DOCUMENTATION, getCsvDocumentation());
   }
@@ -1080,17 +1111,6 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     String emailUser = nullOrEmpty(name) ? UUID.randomUUID().toString() : name;
     emailUser = emailUser.length() > 64 ? emailUser.substring(0, 64) : emailUser;
     return new CreateUser().withName(name).withEmail(emailUser + "@open-metadata.org").withProfile(PROFILE);
-  }
-
-  @Override
-  public User beforeDeletion(TestInfo test, User user) throws HttpResponseException {
-    LocationResourceTest locationResourceTest = new LocationResourceTest();
-    EntityReference userRef = reduceEntityReference(user);
-    locationResourceTest.createEntity(
-        locationResourceTest.createRequest(getEntityName(test, 0), null, null, userRef), ADMIN_AUTH_HEADERS);
-    locationResourceTest.createEntity(
-        locationResourceTest.createRequest(getEntityName(test, 1), null, null, TEAM11_REF), ADMIN_AUTH_HEADERS);
-    return user;
   }
 
   @Override

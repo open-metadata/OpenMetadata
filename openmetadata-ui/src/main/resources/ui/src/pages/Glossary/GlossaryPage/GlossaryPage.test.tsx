@@ -21,8 +21,6 @@ import {
 } from 'rest/glossaryAPI';
 import GlossaryPage from './GlossaryPage.component';
 
-jest.useRealTimers();
-
 jest.mock('react-router-dom', () => ({
   useHistory: () => ({
     push: jest.fn(),
@@ -32,13 +30,21 @@ jest.mock('react-router-dom', () => ({
   }),
 }));
 
+jest.mock('components/PermissionProvider/PermissionProvider', () => {
+  return {
+    usePermissionProvider: jest.fn(() => ({
+      permissions: {},
+    })),
+  };
+});
+
 jest.mock('components/Glossary/GlossaryV1.component', () => {
   return jest.fn().mockImplementation((props) => (
     <div>
       <p> Glossary.component</p>
       <button
         data-testid="handleGlossaryTermUpdate"
-        onClick={() => props.handleGlossaryTermUpdate(MOCK_GLOSSARY)}>
+        onClick={() => props.onGlossaryTermUpdate(MOCK_GLOSSARY)}>
         handleGlossaryTermUpdate
       </button>
       <button
@@ -60,6 +66,13 @@ jest.mock('components/Glossary/GlossaryV1.component', () => {
   ));
 });
 
+jest.mock('../GlossaryLeftPanel/GlossaryLeftPanel.component', () => {
+  return jest
+    .fn()
+    .mockImplementation(() => (
+      <div data-testid="glossary-left-panel-container">Left Panel</div>
+    ));
+});
 jest.mock('rest/glossaryAPI', () => ({
   deleteGlossary: jest.fn().mockImplementation(() => Promise.resolve()),
   deleteGlossaryTerm: jest.fn().mockImplementation(() => Promise.resolve()),
@@ -94,37 +107,33 @@ describe('Test GlossaryComponent page', () => {
   });
 
   it('All Function call should work properly - part 1', async () => {
-    await act(async () => {
-      render(<GlossaryPage />);
+    render(<GlossaryPage />);
 
-      const glossaryComponent = await screen.findByText(/Glossary.component/i);
+    const glossaryComponent = await screen.findByText(/Glossary.component/i);
 
-      const updateGlossary = await screen.findByTestId('updateGlossary');
+    const updateGlossary = await screen.findByTestId('updateGlossary');
 
-      expect(glossaryComponent).toBeInTheDocument();
+    expect(glossaryComponent).toBeInTheDocument();
 
-      fireEvent.click(updateGlossary);
-    });
+    fireEvent.click(updateGlossary);
   });
 
   it('All Function call should work properly - part 2', async () => {
-    await act(async () => {
-      render(<GlossaryPage />);
+    render(<GlossaryPage />);
 
-      const glossaryComponent = await screen.findByText(/Glossary.component/i);
+    const glossaryComponent = await screen.findByText(/Glossary.component/i);
 
-      const handleGlossaryTermUpdate = await screen.findByTestId(
-        'handleGlossaryTermUpdate'
-      );
-      const handleGlossaryTermDelete = await screen.findByTestId(
-        'handleGlossaryTermDelete'
-      );
+    const handleGlossaryTermUpdate = await screen.findByTestId(
+      'handleGlossaryTermUpdate'
+    );
+    const handleGlossaryTermDelete = await screen.findByTestId(
+      'handleGlossaryTermDelete'
+    );
 
-      expect(glossaryComponent).toBeInTheDocument();
+    expect(glossaryComponent).toBeInTheDocument();
 
-      fireEvent.click(handleGlossaryTermUpdate);
-      fireEvent.click(handleGlossaryTermDelete);
-    });
+    fireEvent.click(handleGlossaryTermUpdate);
+    fireEvent.click(handleGlossaryTermDelete);
   });
 
   describe('Render Sad Paths', () => {

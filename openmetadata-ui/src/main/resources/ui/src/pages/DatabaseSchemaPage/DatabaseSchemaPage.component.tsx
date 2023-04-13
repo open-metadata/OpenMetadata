@@ -11,7 +11,16 @@
  *  limitations under the License.
  */
 
-import { Card, Col, Row, Skeleton, Table as TableAntd } from 'antd';
+import {
+  Card,
+  Col,
+  Row,
+  Skeleton,
+  Switch,
+  Table as TableAntd,
+  Typography,
+} from 'antd';
+import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import ActivityFeedList from 'components/ActivityFeed/ActivityFeedList/ActivityFeedList';
@@ -30,6 +39,7 @@ import {
   OperationPermission,
   ResourceEntity,
 } from 'components/PermissionProvider/PermissionProvider.interface';
+import { DROPDOWN_ICON_SIZE_PROPS } from 'constants/ManageButton.constants';
 import { compare, Operation } from 'fast-json-patch';
 import { TagLabel } from 'generated/type/tagLabel';
 import { isUndefined, startCase, toNumber } from 'lodash';
@@ -39,6 +49,7 @@ import React, {
   Fragment,
   FunctionComponent,
   RefObject,
+  useCallback,
   useEffect,
   useMemo,
   useRef,
@@ -49,6 +60,7 @@ import { Link, useHistory, useParams } from 'react-router-dom';
 import {
   getDatabaseSchemaDetailsByFQN,
   patchDatabaseSchemaDetails,
+  restoreDatabaseSchema,
 } from 'rest/databaseAPI';
 import {
   getAllFeeds,
@@ -58,6 +70,7 @@ import {
 } from 'rest/feedsAPI';
 import { searchQuery } from 'rest/searchAPI';
 import { default as AppState, default as appState } from '../../AppState';
+import { ReactComponent as IconShowPassword } from '../../assets/svg/show-password.svg';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import {
   getDatabaseDetailsPath,
@@ -107,7 +120,7 @@ import {
   getTagsWithoutTier,
   getTierTags,
 } from '../../utils/TableUtils';
-import { showErrorToast } from '../../utils/ToastUtils';
+import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 
 const DatabaseSchemaPage: FunctionComponent = () => {
   const [slashedTableName, setSlashedTableName] = useState<
@@ -159,6 +172,8 @@ const DatabaseSchemaPage: FunctionComponent = () => {
 
   const [tags, setTags] = useState<Array<EntityTags>>([]);
   const [tier, setTier] = useState<TagLabel>();
+
+  const [showDeletedTables, setShowDeletedTables] = useState<boolean>(false);
 
   const fetchDatabaseSchemaPermission = async () => {
     setIsLoading(true);
@@ -256,11 +271,11 @@ const DatabaseSchemaPage: FunctionComponent = () => {
 
   const getDetailsByFQN = () => {
     setIsSchemaDetailsLoading(true);
-    getDatabaseSchemaDetailsByFQN(databaseSchemaFQN, [
-      'owner',
-      'usageSummary',
-      'tags',
-    ])
+    getDatabaseSchemaDetailsByFQN(
+      databaseSchemaFQN,
+      ['owner', 'usageSummary', 'tags'],
+      'include=all'
+    )
       .then((res) => {
         if (res) {
           const {
@@ -278,6 +293,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
           setDatabaseSchemaName(name);
           setTags(getTagsWithoutTier(tags || []));
           setTier(getTierTags(tags ?? []));
+          setShowDeletedTables(res.deleted ?? false);
           setSlashedTableName([
             {
               name: startCase(ServiceCategory.DATABASE_SERVICES),
@@ -347,7 +363,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
         sortOrder: 'asc',
         pageSize: PAGE_SIZE,
         searchIndex: SearchIndex.TABLE,
-        includeDeleted: false,
+        includeDeleted: showDeletedTables,
       });
       setTableData(getTablesFromSearchResponse(res));
       setTableInstanceCount(res.hits.total.value);
@@ -424,61 +440,38 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     }
   };
 
-  const handleUpdateOwner = (owner: DatabaseSchema['owner']) => {
-    const updatedData = {
-      ...databaseSchema,
-      owner: { ...databaseSchema?.owner, ...owner },
-    };
+  const handleUpdateOwner = useCallback(
+    (owner: DatabaseSchema['owner']) => {
+      const updatedData = {
+        ...databaseSchema,
+        owner: owner ? { ...databaseSchema?.owner, ...owner } : undefined,
+      };
 
-    return new Promise<void>((_, reject) => {
-      saveUpdatedDatabaseSchemaData(updatedData as DatabaseSchema)
-        .then((res) => {
-          if (res) {
-            setDatabaseSchema(res);
+      return new Promise<void>((_, reject) => {
+        saveUpdatedDatabaseSchemaData(updatedData as DatabaseSchema)
+          .then((res) => {
+            if (res) {
+              setDatabaseSchema(res);
+              reject();
+            } else {
+              reject();
+
+              throw jsonData['api-error-messages'][
+                'unexpected-server-response'
+              ];
+            }
+          })
+          .catch((err: AxiosError) => {
+            showErrorToast(
+              err,
+              jsonData['api-error-messages']['update-databaseSchema-error']
+            );
             reject();
-          } else {
-            reject();
-
-            throw jsonData['api-error-messages']['unexpected-server-response'];
-          }
-        })
-        .catch((err: AxiosError) => {
-          showErrorToast(
-            err,
-            jsonData['api-error-messages']['update-databaseSchema-error']
-          );
-          reject();
-        });
-    });
-  };
-
-  const handleRemoveOwner = () => {
-    const updatedData = {
-      ...databaseSchema,
-      owner: undefined,
-    };
-
-    return new Promise<void>((resolve, reject) => {
-      saveUpdatedDatabaseSchemaData(updatedData as DatabaseSchema)
-        .then((res) => {
-          if (res) {
-            setDatabaseSchema(res);
-            resolve();
-          } else {
-            reject();
-
-            throw jsonData['api-error-messages']['unexpected-server-response'];
-          }
-        })
-        .catch((err: AxiosError) => {
-          showErrorToast(
-            err,
-            jsonData['api-error-messages']['update-databaseSchema-error']
-          );
-          reject();
-        });
-    });
-  };
+          });
+      });
+    },
+    [databaseSchema, databaseSchema?.owner]
+  );
 
   const onTagUpdate = async (selectedTags?: Array<EntityTags>) => {
     if (selectedTags) {
@@ -670,6 +663,73 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     );
   };
 
+  const extraDropdownContent: ItemType[] = useMemo(
+    () => [
+      {
+        label: (
+          <Row className="cursor-pointer" data-testid="deleted-table-menu-item">
+            <Col span={3}>
+              <IconShowPassword {...DROPDOWN_ICON_SIZE_PROPS} />
+            </Col>
+            <Col span={21}>
+              <Row>
+                <Col span={21}>
+                  <Typography.Text
+                    className="font-medium"
+                    data-testid="deleted-table-menu-item-label">
+                    {t('label.show-deleted-entity', {
+                      entity: t('label.table'),
+                    })}
+                  </Typography.Text>
+                </Col>
+
+                <Col span={3}>
+                  <Switch
+                    checked={showDeletedTables}
+                    data-testid="deleted-table-menu-item-switch"
+                    size="small"
+                    onChange={setShowDeletedTables}
+                  />
+                </Col>
+
+                <Col className="p-t-xss">
+                  <Typography.Paragraph className="text-grey-muted text-xs m-b-0 line-height-16">
+                    {t('message.view-deleted-entity', {
+                      entity: t('label.table-plural'),
+                      parent: t('label.schema'),
+                    })}
+                  </Typography.Paragraph>
+                </Col>
+              </Row>
+            </Col>
+          </Row>
+        ),
+        key: 'deleted-team-dropdown',
+      },
+    ],
+    [showDeletedTables]
+  );
+
+  const handleRestoreDatabaseSchema = useCallback(async () => {
+    try {
+      await restoreDatabaseSchema(databaseSchemaId);
+      showSuccessToast(
+        t('message.restore-entities-success', {
+          entity: t('label.database-schema'),
+        }),
+        2000
+      );
+      getDetailsByFQN();
+    } catch (error) {
+      showErrorToast(
+        error as AxiosError,
+        t('message.restore-entities-error', {
+          entity: t('label.database-schema'),
+        })
+      );
+    }
+  }, [databaseSchemaId]);
+
   useEffect(() => {
     if (TabSpecificField.ACTIVITY_FEED === tab) {
       fetchActivityFeed();
@@ -700,13 +760,13 @@ const DatabaseSchemaPage: FunctionComponent = () => {
 
   useEffect(() => {
     tablePaginationHandler(INITIAL_PAGING_VALUE);
-  }, [databaseSchema]);
+  }, [showDeletedTables, databaseSchema]);
 
   useEffect(() => {
     fetchDatabaseSchemaPermission();
   }, [databaseSchemaFQN]);
 
-  // alwyas Keep this useEffect at the end...
+  // always Keep this useEffect at the end...
   useEffect(() => {
     isMounting.current = false;
     appState.inPageSearchText = '';
@@ -742,9 +802,9 @@ const DatabaseSchemaPage: FunctionComponent = () => {
                     <Col span={24}>
                       <EntityPageInfo
                         isRecursiveDelete
-                        allowSoftDelete={false}
                         canDelete={databaseSchemaPermission.Delete}
                         currentOwner={databaseSchema?.owner}
+                        deleted={databaseSchema?.deleted}
                         entityFieldThreads={getEntityFieldThreadCounts(
                           EntityField.TAGS,
                           entityFieldThreadCount
@@ -753,17 +813,12 @@ const DatabaseSchemaPage: FunctionComponent = () => {
                         entityId={databaseSchemaId}
                         entityName={databaseSchemaName}
                         entityType={EntityType.DATABASE_SCHEMA}
+                        extraDropdownContent={extraDropdownContent}
                         extraInfo={extraInfo}
                         followersList={[]}
                         isTagEditable={
                           databaseSchemaPermission.EditAll ||
                           databaseSchemaPermission.EditTags
-                        }
-                        removeOwner={
-                          databaseSchemaPermission.EditOwner ||
-                          databaseSchemaPermission.EditAll
-                            ? handleRemoveOwner
-                            : undefined
                         }
                         tags={tags}
                         tagsHandler={onTagUpdate}
@@ -775,6 +830,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
                             ? handleUpdateOwner
                             : undefined
                         }
+                        onRestoreEntity={handleRestoreDatabaseSchema}
                         onThreadLinkSelect={onThreadLinkSelect}
                       />
                     </Col>

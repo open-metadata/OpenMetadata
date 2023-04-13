@@ -57,23 +57,32 @@ pip3 install "openmetadata-ingestion[bigquery-usage]"
 <h4>GCP Permissions</h4>
 
 <p> To execute metadata extraction and usage workflow successfully the user or the service account should have enough access to fetch required data. Following table describes the minimum required permissions </p>
+
 <Table>
 
-| # | GCP Permission | GCP Role | Required For |
-| :---------- | :---------- | :---------- | :---------- |
-| 1 | bigquery.datasets.get | BigQuery Data Viewer | Metadata Ingestion |
-| 2 | bigquery.tables.get | BigQuery Data Viewer | Metadata Ingestion |
-| 3 | bigquery.tables.getData | BigQuery Data Viewer | Metadata Ingestion |
-| 4 | bigquery.tables.list | BigQuery Data Viewer | Metadata Ingestion |
-| 5 | resourcemanager.projects.get | BigQuery Data Viewer | Metadata Ingestion |
-| 6 | bigquery.jobs.create | BigQuery Job User | Metadata Ingestion |
-| 7 | bigquery.jobs.listAll | BigQuery Job User | Metadata Ingestion |
-| 8 | datacatalog.taxonomies.get | BigQuery Policy Admin | Fetch Policy Tags |
-| 9 | datacatalog.taxonomies.list | BigQuery Policy Admin | Fetch Policy Tags |
-| 10 | bigquery.readsessions.create | BigQuery Admin | Bigquery Usage Workflow |
-| 11 | bigquery.readsessions.getData | BigQuery Admin | Bigquery Usage Workflow |
+| #    | GCP Permission                | Required For            |
+| :--- | :---------------------------- | :---------------------- |
+| 1    | bigquery.datasets.get         | Metadata Ingestion      |
+| 2    | bigquery.tables.get           | Metadata Ingestion      |
+| 3    | bigquery.tables.getData       | Metadata Ingestion      |
+| 4    | bigquery.tables.list          | Metadata Ingestion      |
+| 5    | resourcemanager.projects.get  | Metadata Ingestion      |
+| 6    | bigquery.jobs.create          | Metadata Ingestion      |
+| 7    | bigquery.jobs.listAll         | Metadata Ingestion      |
+| 8    | datacatalog.taxonomies.get    | Fetch Policy Tags       |
+| 9    | datacatalog.taxonomies.list   | Fetch Policy Tags       |
+| 10   | bigquery.readsessions.create  | Bigquery Usage & Lineage Workflow |
+| 11   | bigquery.readsessions.getData | Bigquery Usage & Lineage Workflow |
 
 </Table>
+
+
+<Tile
+icon="manage_accounts"
+title="Create Custom GCP Role"
+text="Checkout this documentation on how to create a custom role and assign it to the service account."
+link="/connectors/database/bigquery/roles"
+/>
 
 
 ## Metadata Ingestion
@@ -100,6 +109,7 @@ source:
   serviceConnection:
     config:
       type: BigQuery
+      taxonomyProjectID: [ project-id-where-policy-tags-exist ]
       credentials:
         gcsConfig:
           type: My Type
@@ -159,6 +169,7 @@ workflowConfig:
 - **hostPort**: This is the BigQuery APIs URL.
 - **username**: (Optional) Specify the User to connect to BigQuery. It should have enough privileges to read all the metadata.
 - **projectID**: (Optional) The BigQuery Project ID is required only if the credentials path is being used instead of values.
+- **taxonomyProjectID**: (Optional) List of project ids where taxonomy project ids exist.
 - **credentials**: We support two ways of authenticating to BigQuery inside **gcsConfig**
     1. Passing the raw credential values provided by BigQuery. This requires us to provide the following information, all provided by BigQuery:
         - **type**, e.g., `service_account`
@@ -195,6 +206,7 @@ the GCS credentials empty. This is why they are not marked as required.
 ...
   config:
     type: BigQuery
+    taxonomyProjectID: [ project-id-where-policy-tags-exist ]
     credentials:
       gcsConfig: {}
 ...
@@ -440,6 +452,7 @@ source:
   serviceConnection:
     config:
       type: BigQuery
+      taxonomyProjectID: [ project-id-where-policy-tags-exist ]
       credentials:
         gcsConfig:
           type: My Type
@@ -531,6 +544,7 @@ source:
   serviceConnection:
     config:
       type: BigQuery
+      taxonomyProjectID: [ project-id-where-policy-tags-exist ]
       credentials:
         gcsConfig:
           type: My Type

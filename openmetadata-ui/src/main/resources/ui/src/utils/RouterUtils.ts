@@ -32,9 +32,12 @@ import {
   PLACEHOLDER_ROUTE_FQN,
   PLACEHOLDER_ROUTE_INGESTION_FQN,
   PLACEHOLDER_ROUTE_INGESTION_TYPE,
+  PLACEHOLDER_ROUTE_QUERY_ID,
   PLACEHOLDER_ROUTE_SERVICE_CAT,
   PLACEHOLDER_ROUTE_SERVICE_FQN,
   PLACEHOLDER_ROUTE_TAB,
+  PLACEHOLDER_ROUTE_TABLE_FQN,
+  PLACEHOLDER_ROUTE_VERSION,
   PLACEHOLDER_RULE_NAME,
   PLACEHOLDER_SETTING_CATEGORY,
   PLACEHOLDER_TAG_NAME,
@@ -206,6 +209,19 @@ export const getSettingPath = (
     path = path.replace(PLACEHOLDER_ROUTE_TAB, tab);
     path = path.replace(PLACEHOLDER_SETTING_CATEGORY, category);
   }
+
+  return path;
+};
+
+export const getSettingsPathWithFqn = (
+  category: string,
+  tab: string,
+  fqn: string
+) => {
+  let path = ROUTES.SETTINGS_WITH_TAB_FQN;
+  path = path.replace(PLACEHOLDER_ROUTE_TAB, tab);
+  path = path.replace(PLACEHOLDER_SETTING_CATEGORY, category);
+  path = path.replace(PLACEHOLDER_ROUTE_FQN, fqn);
 
   return path;
 };
@@ -446,6 +462,47 @@ export const getGlossaryPathWithAction = (
   path = path
     .replace(PLACEHOLDER_GLOSSARY_NAME, fqn)
     .replace(PLACEHOLDER_ACTION, action);
+
+  return path;
+};
+
+export const getQueryPath = (entityFqn: string, queryId: string) => {
+  let path = ROUTES.QUERY_FULL_SCREEN_VIEW;
+
+  path = path
+    .replace(PLACEHOLDER_ROUTE_TABLE_FQN, entityFqn)
+    .replace(PLACEHOLDER_ROUTE_QUERY_ID, queryId);
+
+  return path;
+};
+
+export const getGlossaryVersionsPath = (
+  glossaryName: string,
+  version: string
+) => {
+  let path = ROUTES.GLOSSARY_VERSION;
+  path = path
+    .replace(PLACEHOLDER_GLOSSARY_NAME, glossaryName)
+    .replace(PLACEHOLDER_ROUTE_VERSION, version);
+
+  return path;
+};
+
+export const getGlossaryTermsVersionsPath = (
+  glossaryTermsFQN: string,
+  version: string,
+  tab?: string
+) => {
+  let path = tab
+    ? ROUTES.GLOSSARY_TERMS_VERSION_TAB
+    : ROUTES.GLOSSARY_TERMS_VERSION;
+  path = path
+    .replace(PLACEHOLDER_GLOSSARY_NAME, glossaryTermsFQN)
+    .replace(PLACEHOLDER_ROUTE_VERSION, version);
+
+  if (tab) {
+    path = path.replace(PLACEHOLDER_ROUTE_TAB, tab);
+  }
 
   return path;
 };

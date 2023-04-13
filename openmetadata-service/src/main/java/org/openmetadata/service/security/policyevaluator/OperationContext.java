@@ -1,6 +1,7 @@
 package org.openmetadata.service.security.policyevaluator;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 import javax.json.JsonPatch;
@@ -38,6 +39,7 @@ public class OperationContext {
     if (patch != null) { // Lazy initialize operations for PATCH
       operations = new ArrayList<>();
       operations.addAll(JsonPatchUtils.getMetadataOperations(patch));
+      LOG.debug("Lazy initializing operations to {}", Arrays.toString(operations.toArray()));
     }
     return operations;
   }

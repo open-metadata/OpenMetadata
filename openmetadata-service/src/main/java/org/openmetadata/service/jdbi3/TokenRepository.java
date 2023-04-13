@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.TokenInterface;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.util.JsonUtils;
 
 @Slf4j
@@ -15,7 +16,11 @@ public class TokenRepository {
   }
 
   public TokenInterface findByToken(String token) {
-    return dao.getTokenDAO().findByToken(token);
+    TokenInterface result = dao.getTokenDAO().findByToken(token);
+    if (result == null) {
+      throw new EntityNotFoundException("Invalid Request Token. Please check your Token");
+    }
+    return result;
   }
 
   public List<TokenInterface> findByUserIdAndType(String userId, String type) {
@@ -33,6 +38,14 @@ public class TokenRepository {
   public void deleteToken(String token) {
     try {
       dao.getTokenDAO().delete(token);
+    } catch (Exception ex) {
+      LOG.info("Token not present for the user");
+    }
+  }
+
+  public void deleteAllToken(List<String> tokens) {
+    try {
+      dao.getTokenDAO().deleteAll(tokens);
     } catch (Exception ex) {
       LOG.info("Token not present for the user");
     }

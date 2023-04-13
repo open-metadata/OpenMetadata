@@ -20,6 +20,7 @@ import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.service.Entity.GLOSSARY;
 import static org.openmetadata.service.Entity.GLOSSARY_TERM;
+import static org.openmetadata.service.exception.CatalogExceptionMessage.invalidGlossaryTermMove;
 import static org.openmetadata.service.util.EntityUtil.entityReferenceMatch;
 import static org.openmetadata.service.util.EntityUtil.getId;
 import static org.openmetadata.service.util.EntityUtil.stringMatch;
@@ -137,34 +138,17 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
 
   @Override
   public void storeEntity(GlossaryTerm entity, boolean update) throws IOException {
-    // Relationships and fields such as href are derived and not stored as part of json
-    List<TagLabel> tags = entity.getTags();
+    // Relationships and fields such as parentTerm are derived and not stored as part of json
     EntityReference glossary = entity.getGlossary();
     EntityReference parentTerm = entity.getParent();
     List<EntityReference> relatedTerms = entity.getRelatedTerms();
     List<EntityReference> reviewers = entity.getReviewers();
-    EntityReference owner = entity.getOwner();
 
-    // Don't store owner, dashboard, href and tags as JSON. Build it on the fly based on relationships
-    entity
-        .withGlossary(null)
-        .withParent(null)
-        .withRelatedTerms(relatedTerms)
-        .withReviewers(null)
-        .withOwner(null)
-        .withHref(null)
-        .withTags(null);
-
+    entity.withGlossary(null).withParent(null).withRelatedTerms(relatedTerms).withReviewers(null);
     store(entity, update);
 
     // Restore the relationships
-    entity
-        .withGlossary(glossary)
-        .withParent(parentTerm)
-        .withRelatedTerms(relatedTerms)
-        .withReviewers(reviewers)
-        .withOwner(owner)
-        .withTags(tags);
+    entity.withGlossary(glossary).withParent(parentTerm).withRelatedTerms(relatedTerms).withReviewers(reviewers);
   }
 
   @Override
@@ -271,6 +255,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
 
     @Override
     public void entitySpecificUpdate() throws IOException {
+      validateParent();
       updateStatus(original, updated);
       updateSynonyms(original, updated);
       updateReferences(original, updated);
@@ -377,6 +362,15 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       if (parentChanged) {
         updateParentRelationship(original, updated);
         recordChange("parent", original.getParent(), updated.getParent(), true, entityReferenceMatch);
+      }
+    }
+
+    private void validateParent() {
+      String fqn = original.getFullyQualifiedName();
+      String newParentFqn = updated.getParent() == null ? null : updated.getParent().getFullyQualifiedName();
+      // A glossary term can't be moved under its child
+      if (newParentFqn != null && FullyQualifiedName.isParent(newParentFqn, fqn)) {
+        throw new IllegalArgumentException(invalidGlossaryTermMove(fqn, newParentFqn));
       }
     }
   }

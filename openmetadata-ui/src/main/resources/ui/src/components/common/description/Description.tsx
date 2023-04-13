@@ -40,6 +40,7 @@ import { DescriptionProps } from './Description.interface';
 
 const Description: FC<DescriptionProps> = ({
   className,
+  header,
   hasEditAccess,
   onDescriptionEdit,
   description = '',
@@ -221,7 +222,7 @@ const Description: FC<DescriptionProps> = ({
             )}
           </div>
           <ModalWithMarkdownEditor
-            header={t('label.edit-description-for', { entityName })}
+            header={header || t('label.edit-description-for', { entityName })}
             placeholder={t('label.enter-entity', {
               entity: t('label.description'),
             })}

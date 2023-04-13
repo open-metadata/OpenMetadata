@@ -11,14 +11,28 @@
  *  limitations under the License.
  */
 
+import { OperationPermission } from 'components/PermissionProvider/PermissionProvider.interface';
 import { GlossaryTerm } from 'generated/entity/data/glossaryTerm';
 
 export interface GlossaryTermTabProps {
-  glossaryId?: string;
-  glossaryTermId?: string;
   selectedGlossaryFqn?: string;
+  childGlossaryTerms: GlossaryTerm[];
+  refreshGlossaryTerms: () => void;
+  permissions: OperationPermission;
 }
 
 export type ModifiedGlossaryTerm = Omit<GlossaryTerm, 'children'> & {
   children?: GlossaryTerm[];
 };
+
+export type MoveGlossaryTermType = {
+  from: GlossaryTerm;
+  to: GlossaryTerm;
+};
+
+export interface DraggableBodyRowProps
+  extends React.HTMLAttributes<HTMLTableRowElement> {
+  index: number;
+  handleMoveRow: (dragRecord: GlossaryTerm, dropRecord: GlossaryTerm) => void;
+  record: GlossaryTerm;
+}

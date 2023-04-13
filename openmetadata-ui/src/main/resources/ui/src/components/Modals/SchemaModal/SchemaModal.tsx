@@ -14,8 +14,8 @@
 import { Modal, Typography } from 'antd';
 import classNames from 'classnames';
 import { t } from 'i18next';
-import React, { FC } from 'react';
-import ReactDOM from 'react-dom';
+import { clone } from 'lodash';
+import React, { FC, useEffect, useState } from 'react';
 import SchemaEditor from '../../schema-editor/SchemaEditor';
 import CloseIcon from '../CloseIcon.component';
 import { SchemaModalProp } from './SchemaModal.interface';
@@ -27,11 +27,16 @@ const SchemaModal: FC<SchemaModalProp> = ({
   data,
   visible,
 }) => {
-  return ReactDOM.createPortal(
+  const [schemaText, setSchemaText] = useState(data);
+
+  useEffect(() => {
+    setSchemaText(clone(data));
+  }, [data, visible]);
+
+  return (
     <Modal
       centered
       destroyOnClose
-      maskClosable
       className={classNames('schema-modal', className)}
       closeIcon={
         <CloseIcon
@@ -41,22 +46,23 @@ const SchemaModal: FC<SchemaModalProp> = ({
       }
       data-testid="schema-modal"
       footer={null}
+      maskClosable={false}
       open={visible}
       title={
         <Typography.Text strong data-testid="schema-modal-header">
           {t('label.json-data')}
         </Typography.Text>
       }
-      width={800}>
+      width={800}
+      onCancel={onClose}>
       <div data-testid="schema-modal-body">
         <SchemaEditor
           className="schema-editor"
           editorClass="custom-entity-schema"
-          value={data}
+          value={schemaText}
         />
       </div>
-    </Modal>,
-    document.body
+    </Modal>
   );
 };
 

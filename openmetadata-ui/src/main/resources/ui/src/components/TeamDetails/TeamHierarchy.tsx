@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Modal, Table } from 'antd';
+import { Modal, Table, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { ExpandableConfig } from 'antd/lib/table/interface';
 import { AxiosError } from 'axios';
@@ -85,13 +85,23 @@ const TeamHierarchy: FC<TeamHierarchyProps> = ({
         }),
         dataIndex: 'owns',
         key: 'owns',
-        render: (owns) => owns.length,
+        render: (owns) => owns?.length || 0,
       },
       {
         title: t('label.description'),
         dataIndex: 'description',
+        width: 450,
         key: 'description',
-        render: (description: string) => description || '--',
+        render: (description: string) => (
+          <Typography.Paragraph
+            className="m-b-0"
+            ellipsis={{
+              rows: 2,
+            }}
+            title={description}>
+            {isEmpty(description) ? '--' : description}
+          </Typography.Paragraph>
+        ),
       },
     ];
   }, [data, onTeamExpand]);
@@ -182,17 +192,19 @@ const TeamHierarchy: FC<TeamHierarchyProps> = ({
         closable={false}
         confirmLoading={isTableLoading}
         data-testid="confirmation-modal"
+        maskClosable={false}
         okText={t('label.confirm')}
         open={isModalOpen}
-        title={t('label.move-the-team')}
+        title={t('label.move-the-entity', { entity: t('label.team') })}
         onCancel={() => setIsModalOpen(false)}
         onOk={handleChangeTeam}>
         <Transi18next
-          i18nKey="message.team-transfer-message"
+          i18nKey="message.entity-transfer-message"
           renderElement={<strong />}
           values={{
             from: movedTeam?.from?.name,
             to: movedTeam?.to?.name,
+            entity: t('label.team-lowercase'),
           }}
         />
       </Modal>

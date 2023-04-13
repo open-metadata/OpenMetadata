@@ -21,6 +21,7 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.csv.CsvUtil.addEntityReference;
 import static org.openmetadata.csv.CsvUtil.addEntityReferences;
 import static org.openmetadata.csv.CsvUtil.addField;
+import static org.openmetadata.csv.CsvUtil.addOwner;
 import static org.openmetadata.csv.CsvUtil.addTagLabels;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -39,11 +40,11 @@ import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.data.TermReference;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
+import org.openmetadata.schema.entity.data.GlossaryTerm.Status;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.Relationship;
-import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TagLabel.TagSource;
 import org.openmetadata.schema.type.csv.CsvDocumentation;
 import org.openmetadata.schema.type.csv.CsvHeader;
@@ -86,18 +87,11 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
 
   @Override
   public void storeEntity(Glossary glossary, boolean update) throws IOException {
-    // Relationships and fields such as href are derived and not stored as part of json
-    EntityReference owner = glossary.getOwner();
-    List<TagLabel> tags = glossary.getTags();
+    // Relationships and fields such as reviewers are derived and not stored as part of json
     List<EntityReference> reviewers = glossary.getReviewers();
-
-    // Don't store owner, href and tags as JSON. Build it on the fly based on relationships
-    glossary.withOwner(null).withHref(null).withTags(null);
-
+    glossary.withReviewers(null);
     store(glossary, update);
-
-    // Restore the relationships
-    glossary.withOwner(owner).withTags(tags).withReviewers(reviewers);
+    glossary.withReviewers(reviewers);
   }
 
   @Override
@@ -130,7 +124,7 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
     Glossary glossary = getByName(null, name, Fields.EMPTY_FIELDS); // Validate glossary name
     GlossaryTermRepository repository = (GlossaryTermRepository) Entity.getEntityRepository(Entity.GLOSSARY_TERM);
     ListFilter filter = new ListFilter(Include.NON_DELETED).addQueryParam("parent", name);
-    List<GlossaryTerm> terms = repository.listAll(repository.getFields("reviewers,tags,relatedTerms"), filter);
+    List<GlossaryTerm> terms = repository.listAll(repository.getFields("owner,reviewers,tags,relatedTerms"), filter);
     terms.sort(Comparator.comparing(EntityInterface::getFullyQualifiedName));
     return new GlossaryCsv(glossary, user).exportCsv(terms);
   }
@@ -191,6 +185,17 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
       if (!processRecord) {
         return null;
       }
+
+      // Field 9 - reviewers
+      glossaryTerm.withReviewers(getEntityReferences(printer, record, 8, Entity.USER));
+      if (!processRecord) {
+        return null;
+      }
+      // Field 10 - owner
+      glossaryTerm.withOwner(getOwner(printer, record, 9));
+
+      // Field 11 - status
+      glossaryTerm.withStatus(getTermStatus(printer, record));
       return glossaryTerm;
     }
 
@@ -213,6 +218,19 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
       return list;
     }
 
+    private Status getTermStatus(CSVPrinter printer, CSVRecord record) throws IOException {
+      String termStatus = record.get(10);
+      try {
+        return nullOrEmpty(termStatus) ? Status.DRAFT : Status.fromValue(termStatus);
+      } catch (Exception ex) {
+        // List should have even numbered terms - termName and endPoint
+        importFailure(
+            printer, invalidField(10, String.format("Glossary term status %s is invalid", termStatus)), record);
+        processRecord = false;
+        return null;
+      }
+    }
+
     @Override
     protected List<String> toRecord(GlossaryTerm entity) {
       List<String> record = new ArrayList<>();
@@ -224,6 +242,9 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
       addEntityReferences(record, entity.getRelatedTerms());
       addField(record, termReferencesToRecord(entity.getReferences()));
       addTagLabels(record, entity.getTags());
+      addEntityReferences(record, entity.getReviewers());
+      addOwner(record, entity.getOwner());
+      addField(record, entity.getStatus().value());
       return record;
     }
 
