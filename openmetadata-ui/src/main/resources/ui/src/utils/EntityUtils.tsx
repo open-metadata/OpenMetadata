@@ -943,9 +943,9 @@ export const getBreadcrumbForEntitiesWithServiceOnly = (
 ) => {
   const { service } = entity;
   const serviceType =
-    service.type === 'objectStoreService'
+    service?.type === 'objectStoreService'
       ? ServiceCategory.STORAGE_SERVICES
-      : service.type;
+      : service?.type;
 
   return [
     {
