@@ -14,6 +14,7 @@ Unit tests for Object store source
 import datetime
 import io
 import json
+import uuid
 from typing import List
 from unittest import TestCase
 from unittest.mock import patch
@@ -33,6 +34,7 @@ from metadata.generated.schema.metadataIngestion.storage.containerMetadataConfig
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
+from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.source.database.datalake.metadata import DatalakeSource
 from metadata.ingestion.source.storage.s3.metadata import (
@@ -218,15 +220,19 @@ class StorageUnitTest(TestCase):
         self.object_store_source.extract_column_definitions = (
             lambda bucket_name, sample_key: columns
         )
+
+        entity_ref = EntityReference(id=uuid.uuid4(), type="container")
+
         self.assertEquals(
             S3ContainerDetails(
-                name="test_bucket.transactions",
+                name="transactions",
                 prefix="/transactions",
                 number_of_objects=100,
                 size=100,
                 file_formats=[FileFormat.csv],
                 data_model=ContainerDataModel(isPartitioned=False, columns=columns),
                 creation_date=datetime.datetime(2000, 1, 1).isoformat(),
+                parent=entity_ref,
             ),
             self.object_store_source._generate_container_details(
                 S3BucketResponse(
@@ -237,6 +243,7 @@ class StorageUnitTest(TestCase):
                     structureFormat="csv",
                     isPartitioned=False,
                 ),
+                parent=entity_ref,
             ),
         )
 

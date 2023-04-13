@@ -66,12 +66,13 @@ UPDATE ingestion_pipeline_entity
 SET json = JSON_REMOVE(json, '$.openMetadataServerConnection');
 
 CREATE TABLE IF NOT EXISTS query_entity (
-    id VARCHAR(36) GENERATED ALWAYS AS (json ->> '$.id') NOT NULL,
+    id VARCHAR(36) GENERATED ALWAYS AS (json ->> '$.id') STORED NOT NULL,
     name VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.name') NOT NULL,
     json JSON NOT NULL,
     updatedAt BIGINT UNSIGNED GENERATED ALWAYS AS (json ->> '$.updatedAt') NOT NULL,
     updatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.updatedBy') NOT NULL,
     deleted BOOLEAN GENERATED ALWAYS AS (json -> '$.deleted'),
+    PRIMARY KEY (id),
     UNIQUE(name),
     INDEX name_index (name)
 );
@@ -79,20 +80,20 @@ CREATE TABLE IF NOT EXISTS query_entity (
 CREATE TABLE IF NOT EXISTS temp_query_migration (
     tableId VARCHAR(36)NOT NULL,
     queryId VARCHAR(36) GENERATED ALWAYS AS (json ->> '$.id') NOT NULL,
+    queryName VARCHAR(255) GENERATED ALWAYS AS (json ->> '$.name') NOT NULL,
     json JSON NOT NULL
 );
 
 
 INSERT INTO temp_query_migration(tableId,json)
-SELECT id,JSON_OBJECT('id',UUID(),'vote',vote,'query',query,'users',users,'checksum',checksum,'duration',duration,'name','table','name',checksum,
-'updatedAt',UNIX_TIMESTAMP(NOW()),'updatedBy','admin','deleted',false) as json from entity_extension d, json_table(d.json, '$[*]' columns (vote double path '$.vote', query varchar(200) path '$.query',users json path '$.users',checksum varchar(200) path '$.checksum',duration double path '$.duration',
-queryDate varchar(200) path '$.queryDate')) AS j WHERE extension = "table.tableQueries";
+SELECT id,JSON_OBJECT('id',UUID(),'vote',vote,'query',query,'users',users,'checksum',checksum,'duration',duration,'name',checksum,'updatedAt',UNIX_TIMESTAMP(NOW()),'updatedBy','admin','deleted',false) as json from entity_extension d, json_table(d.json, '$[*]' columns (vote double path '$.vote', query varchar(200) path '$.query',users json path '$.users',checksum varchar(200) path '$.checksum',name varchar(255) path '$.checksum', duration double path '$.duration',queryDate varchar(200) path '$.queryDate')) AS j WHERE extension = "table.tableQueries";
 
-INSERT INTO query_entity(json)
-SELECT json FROM temp_query_migration;
+INSERT INTO query_entity (json)
+SELECT t.json from temp_query_migration t
+ON DUPLICATE KEY UPDATE json = VALUES(json);
 
 INSERT INTO entity_relationship(fromId,toId,fromEntity,toEntity,relation)
-SELECT tableId,queryId,"table","query",5 FROM temp_query_migration;
+SELECT tmq.tableId, (select qe.id from query_entity qe where qe.name = tmq.queryName) ,"table","query",5 FROM temp_query_migration tmq;
 
 DELETE FROM entity_extension WHERE id IN
  (SELECT DISTINCT tableId FROM temp_query_migration) AND extension = "table.tableQueries";
@@ -106,10 +107,20 @@ WHERE name = 'OpenMetadata' AND JSON_EXTRACT(json, '$.connection.config.authProv
 
 ALTER TABLE user_tokens MODIFY COLUMN expiryDate BIGINT UNSIGNED GENERATED ALWAYS AS (json ->> '$.expiryDate');
 
-DELETE FROM alert_entity;
-drop table alert_action_def;
+CREATE TABLE IF NOT EXISTS event_subscription_entity (
+    id VARCHAR(36) GENERATED ALWAYS AS (json ->> '$.id') STORED NOT NULL,
+    name VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.name') NOT NULL,
+    deleted BOOLEAN GENERATED ALWAYS AS (json -> '$.deleted'),
+    json JSON NOT NULL,
+    PRIMARY KEY (id),
+    UNIQUE (name)
+    -- No versioning, updatedAt, updatedBy, or changeDescription fields for webhook
+);
 
-ALTER TABLE alert_entity RENAME TO event_subscription_entity;
+drop table if exists alert_action_def;
+drop table if exists alert_entity;
+DELETE from entity_relationship where  fromEntity = 'alert' and toEntity = 'alertAction';
+
 -- create data model table
 CREATE TABLE IF NOT EXISTS dashboard_data_model_entity (
     id VARCHAR(36) GENERATED ALWAYS AS (json ->> '$.id') STORED NOT NULL,
