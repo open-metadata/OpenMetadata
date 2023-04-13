@@ -479,8 +479,6 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
         new OpenMetadataConnectionBuilder(openMetadataApplicationConfig).build());
     decryptOrNullify(securityContext, ingestionPipeline, true);
     ServiceEntityInterface service = Entity.getEntity(ingestionPipeline.getService(), "", Include.NON_DELETED);
-    // TODO:
-    //    ingestionPipeline.getOpenMetadataServerConnection().setHostPort("http://host.docker.internal:8585/api");
     pipelineServiceClient.deployPipeline(ingestionPipeline, service);
     createOrUpdate(uriInfo, securityContext, ingestionPipeline);
     decryptOrNullify(securityContext, ingestionPipeline, false);
