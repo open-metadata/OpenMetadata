@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { Col, Row, Typography } from 'antd';
+import { ReactComponent as IconExternalLink } from 'assets/svg/external-link-grey.svg';
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { EntityHeaderTitleProps } from './EntityHeaderTitle.interface';
@@ -20,6 +21,7 @@ const EntityHeaderTitle = ({
   name,
   displayName,
   link,
+  openEntityInNewPage,
 }: EntityHeaderTitleProps) => {
   return (
     <Row align="middle" gutter={8} wrap={false}>
@@ -45,7 +47,10 @@ const EntityHeaderTitle = ({
               className="m-b-0 d-block entity-header-display-name text-lg font-bold"
               data-testid="entity-header-display-name"
               ellipsis={{ tooltip: true }}>
-              {displayName ?? name}
+              {displayName ?? name}{' '}
+              {openEntityInNewPage && (
+                <IconExternalLink className="anticon" height={14} />
+              )}
             </Typography.Text>
           )}
         </div>

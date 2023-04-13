@@ -46,6 +46,7 @@ import { getCountBadge } from '../../../utils/CommonUtils';
 import ErrorPlaceHolder from '../../common/error-with-placeholder/ErrorPlaceHolder';
 
 interface Props {
+  onAddAsset: () => void;
   permissions: OperationPermission;
   onAssetClick?: (asset?: EntityDetailsObjectInterface) => void;
   isSummaryPanelOpen: boolean;
@@ -57,7 +58,10 @@ export interface AssetsTabRef {
 }
 
 const AssetsTabs = forwardRef(
-  ({ permissions, onAssetClick, isSummaryPanelOpen }: Props, ref) => {
+  (
+    { permissions, onAssetClick, isSummaryPanelOpen, onAddAsset }: Props,
+    ref
+  ) => {
     const [itemCount, setItemCount] = useState<Record<AssetsUnion, number>>({
       table: 0,
       pipeline: 0,
@@ -270,7 +274,8 @@ const AssetsTabs = forwardRef(
                     <Button
                       ghost
                       data-testid="add-new-asset-button"
-                      type="primary">
+                      type="primary"
+                      onClick={onAddAsset}>
                       {t('label.add-entity', {
                         entity: t('label.asset'),
                       })}

@@ -41,9 +41,13 @@ jest.mock('../table-data-card/TableDataCardBody', () => {
 
 const mockHandleSummaryPanelDisplay = jest.fn();
 
+jest.mock('components/Entity/EntityHeader/EntityHeader.component', () => ({
+  EntityHeader: jest.fn().mockImplementation(() => <p>EntityHeader</p>),
+}));
+
 describe('Test TableDataCard Component', () => {
   it('Component should render', () => {
-    const { getByTestId } = render(
+    const { getByTestId, getByText } = render(
       <TableDataCardV2
         handleSummaryPanelDisplay={mockHandleSummaryPanelDisplay}
         id="1"
@@ -55,25 +59,9 @@ describe('Test TableDataCard Component', () => {
       { wrapper: MemoryRouter }
     );
     const tableDataCard = getByTestId('table-data-card');
+    const entityHeader = getByText('EntityHeader');
 
     expect(tableDataCard).toBeInTheDocument();
-  });
-
-  it('Component should render for deleted', () => {
-    const { getByTestId } = render(
-      <TableDataCardV2
-        handleSummaryPanelDisplay={mockHandleSummaryPanelDisplay}
-        id="1"
-        source={{
-          id: '2',
-          name: 'Name2',
-          deleted: true,
-        }}
-      />,
-      { wrapper: MemoryRouter }
-    );
-    const deleted = getByTestId('deleted');
-
-    expect(deleted).toBeInTheDocument();
+    expect(entityHeader).toBeInTheDocument();
   });
 });

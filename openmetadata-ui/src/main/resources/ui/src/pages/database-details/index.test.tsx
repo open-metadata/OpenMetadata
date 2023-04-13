@@ -333,12 +333,13 @@ jest.mock('components/common/DeleteWidget/DeleteWidgetModal', () => {
       <p data-testid="delete-entity">DeleteWidgetModal component</p>
     );
 });
-const mockObserve = jest.fn();
-const mockunObserve = jest.fn();
 
-window.IntersectionObserver = jest.fn().mockImplementation(() => ({
-  observe: mockObserve,
-  unobserve: mockunObserve,
+jest.mock('components/containers/PageLayoutV1', () => {
+  return jest.fn().mockImplementation(({ children }) => children);
+});
+
+jest.mock('components/Entity/EntityHeader/EntityHeader.component', () => ({
+  EntityHeader: jest.fn().mockImplementation(() => <p>EntityHeader</p>),
 }));
 
 describe('Test DatabaseDetails page', () => {
@@ -347,8 +348,7 @@ describe('Test DatabaseDetails page', () => {
       wrapper: MemoryRouter,
     });
 
-    const pageContainer = await findByTestId(container, 'page-container');
-    const titleBreadcrumb = await findByText(container, /TitleBreadcrumb/i);
+    const entityHeader = await findByText(container, 'EntityHeader');
     const descriptionContainer = await findByTestId(
       container,
       'description-container'
@@ -358,8 +358,7 @@ describe('Test DatabaseDetails page', () => {
       'database-databaseSchemas'
     );
 
-    expect(pageContainer).toBeInTheDocument();
-    expect(titleBreadcrumb).toBeInTheDocument();
+    expect(entityHeader).toBeInTheDocument();
     expect(descriptionContainer).toBeInTheDocument();
     expect(databaseTable).toBeInTheDocument();
   });
@@ -420,8 +419,7 @@ describe('Test DatabaseDetails page', () => {
       wrapper: MemoryRouter,
     });
 
-    const pageContainer = await findByTestId(container, 'page-container');
-    const titleBreadcrumb = await findByText(container, /TitleBreadcrumb/i);
+    const entityHeader = await findByText(container, 'EntityHeader');
     const descriptionContainer = await findByTestId(
       container,
       'description-container'
@@ -431,8 +429,7 @@ describe('Test DatabaseDetails page', () => {
       'database-databaseSchemas'
     );
 
-    expect(pageContainer).toBeInTheDocument();
-    expect(titleBreadcrumb).toBeInTheDocument();
+    expect(entityHeader).toBeInTheDocument();
     expect(descriptionContainer).toBeInTheDocument();
     expect(databaseTable).toBeInTheDocument();
   });

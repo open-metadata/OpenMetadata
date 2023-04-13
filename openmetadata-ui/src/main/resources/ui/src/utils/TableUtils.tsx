@@ -274,15 +274,15 @@ export const getEntityLink = (
 
 export const getServiceIcon = (source: SourceType) => {
   if (source.entityType === EntityType.GLOSSARY_TERM) {
-    return <IconFlatFolder className="h-8" />;
+    return <IconFlatFolder className="h-9" />;
   } else if (source.entityType === EntityType.TAG) {
-    return <IconTag className="h-8" />;
+    return <IconTag className="h-9" />;
   } else {
     return (
       <img
         alt="service-icon"
-        className="inline h-8 p-r-xs"
-        src={serviceTypeLogo((source.serviceType || source.entityType) ?? '')}
+        className="inline h-9"
+        src={serviceTypeLogo(source.serviceType || '')}
       />
     );
   }

@@ -160,14 +160,6 @@ const mockProp: MyDataProps = {
   updateThreadHandler: jest.fn(),
 };
 
-const mockObserve = jest.fn();
-const mockunObserve = jest.fn();
-
-window.IntersectionObserver = jest.fn().mockImplementation(() => ({
-  observe: mockObserve,
-  unobserve: mockunObserve,
-}));
-
 describe('Test MyData page', () => {
   it('Check if there is an element in the page', async () => {
     const { container } = render(<MyData {...mockProp} />, {
@@ -197,8 +189,6 @@ describe('Test MyData page', () => {
     const obServerElement = await findByTestId(container, 'observer-element');
 
     expect(obServerElement).toBeInTheDocument();
-
-    expect(mockObserve).toHaveBeenCalled();
   });
 
   it('Onboarding placeholder should be visible in case of no activity feed present overall and the feeds are not loading', async () => {

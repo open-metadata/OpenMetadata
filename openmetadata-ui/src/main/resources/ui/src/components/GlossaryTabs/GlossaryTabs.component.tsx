@@ -34,7 +34,7 @@ type Props = {
   childGlossaryTerms: GlossaryTerm[];
   permissions: OperationPermission;
   isGlossary: boolean;
-
+  onAddAsset: () => void;
   onUpdate: (data: GlossaryTerm | Glossary) => void;
   refreshGlossaryTerms: () => void;
   onAssetClick?: (asset?: EntityDetailsObjectInterface) => void;
@@ -47,6 +47,7 @@ const GlossaryTabs = ({
   childGlossaryTerms,
   isGlossary,
   onUpdate,
+  onAddAsset,
   permissions,
   refreshGlossaryTerms,
   onAssetClick,
@@ -154,6 +155,7 @@ const GlossaryTabs = ({
             isSummaryPanelOpen={isSummaryPanelOpen}
             permissions={permissions}
             ref={assetsRef}
+            onAddAsset={onAddAsset}
             onAssetClick={onAssetClick}
           />
         ),

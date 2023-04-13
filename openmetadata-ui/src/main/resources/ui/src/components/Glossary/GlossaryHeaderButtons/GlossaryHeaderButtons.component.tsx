@@ -16,7 +16,6 @@ import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
 import { ReactComponent as ExportIcon } from 'assets/svg/ic-export.svg';
 import { ReactComponent as ImportIcon } from 'assets/svg/ic-import.svg';
 import { ReactComponent as IconDropdown } from 'assets/svg/menu.svg';
-import { AssetSelectionModal } from 'components/Assets/AssetsSelectionModal/AssetSelectionModal';
 import EntityDeleteModal from 'components/Modals/EntityDeleteModal/EntityDeleteModal';
 import EntityNameModal from 'components/Modals/EntityNameModal/EntityNameModal.component';
 import { OperationPermission } from 'components/PermissionProvider/PermissionProvider.interface';
@@ -48,7 +47,7 @@ interface GlossaryHeaderButtonsProps {
   selectedData: Glossary | GlossaryTerm;
   permission: OperationPermission;
   onEntityDelete: (id: string) => void;
-  onAssetsUpdate?: () => void;
+  onAssetAdd?: () => void;
   onUpdate: (data: GlossaryTerm | Glossary) => void;
 }
 
@@ -58,7 +57,7 @@ const GlossaryHeaderButtons = ({
   selectedData,
   permission,
   onEntityDelete,
-  onAssetsUpdate,
+  onAssetAdd,
   onUpdate,
 }: GlossaryHeaderButtonsProps) => {
   const { t } = useTranslation();
@@ -75,7 +74,7 @@ const GlossaryHeaderButtons = ({
   const history = useHistory();
   const [showActions, setShowActions] = useState(false);
   const [isDelete, setIsDelete] = useState<boolean>(false);
-  const [showAddAssets, setShowAddAssets] = useState(false);
+
   const [isNameEditing, setIsNameEditing] = useState<boolean>(false);
 
   const editDisplayNamePermission = useMemo(() => {
@@ -133,10 +132,6 @@ const GlossaryHeaderButtons = ({
     setIsDelete(false);
   };
 
-  const handleAddAssetsClick = () => {
-    setShowAddAssets(true);
-  };
-
   const onNameSave = (obj: { name: string; displayName: string }) => {
     const { name, displayName } = obj;
     let updatedDetails = cloneDeep(selectedData);
@@ -161,7 +156,7 @@ const GlossaryHeaderButtons = ({
     {
       label: t('label.asset-plural'),
       key: '2',
-      onClick: () => handleAddAssetsClick(),
+      onClick: onAssetAdd,
     },
   ];
 
@@ -388,14 +383,7 @@ const GlossaryHeaderButtons = ({
           onOk={handleCancelGlossaryExport}
         />
       )}
-      {selectedData.fullyQualifiedName && !isGlossary && (
-        <AssetSelectionModal
-          glossaryFQN={selectedData.fullyQualifiedName}
-          open={showAddAssets}
-          onCancel={() => setShowAddAssets(false)}
-          onSave={onAssetsUpdate}
-        />
-      )}
+
       <EntityNameModal
         entity={selectedData as EntityReference}
         visible={isNameEditing}

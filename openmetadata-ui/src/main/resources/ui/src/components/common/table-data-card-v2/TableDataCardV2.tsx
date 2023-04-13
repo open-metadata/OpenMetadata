@@ -150,22 +150,18 @@ const TableDataCardV2: React.FC<TableDataCardPropsV2> = forwardRef<
         onClick={() => {
           handleSummaryPanelDisplay && handleSummaryPanelDisplay(source, tab);
         }}>
-        <div>
-          {showCheckboxes && (
-            <Checkbox checked={checked} className="float-right" />
-          )}
-          <EntityHeader
-            titleIsLink
-            breadcrumb={breadcrumbs}
-            entityData={source}
-            extra={
-              showCheckboxes && (
-                <Checkbox checked={checked} className="m-l-auto" />
-              )
-            }
-            icon={serviceIcon}
-          />
-        </div>
+        <EntityHeader
+          titleIsLink
+          breadcrumb={breadcrumbs}
+          entityData={source}
+          extra={
+            showCheckboxes && (
+              <Checkbox checked={checked} className="m-l-auto" />
+            )
+          }
+          icon={serviceIcon}
+        />
+
         <div className="tw-pt-3">
           <TableDataCardBody
             description={source.description || ''}

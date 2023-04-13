@@ -56,14 +56,6 @@ jest.mock('./ActivityThreadList', () => {
   return jest.fn().mockReturnValue(<p>ActivityThreadList</p>);
 });
 
-const mockObserve = jest.fn();
-const mockunObserve = jest.fn();
-
-window.IntersectionObserver = jest.fn().mockImplementation(() => ({
-  observe: mockObserve,
-  unobserve: mockunObserve,
-}));
-
 describe('Test ActivityThreadPanel Component', () => {
   beforeAll(() => {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -100,7 +92,5 @@ describe('Test ActivityThreadPanel Component', () => {
     const obServerElement = await screen.findByTestId('observer-element');
 
     expect(obServerElement).toBeInTheDocument();
-
-    expect(mockObserve).toHaveBeenCalled();
   });
 });

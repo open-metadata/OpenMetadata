@@ -118,6 +118,7 @@ const mockEntityInfoProp = {
 };
 
 jest.mock('../../../utils/EntityUtils', () => ({
+  ...jest.requireActual('../../../utils/EntityUtils'),
   getEntityFeedLink: jest.fn(),
 }));
 

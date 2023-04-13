@@ -385,7 +385,8 @@ const EntityPageInfo = ({
     <Space
       className="w-full"
       data-testid="entity-page-info"
-      direction="vertical">
+      direction="vertical"
+      size={16}>
       <EntityHeader
         breadcrumb={titleLinks}
         entityData={{
@@ -466,8 +467,8 @@ const EntityPageInfo = ({
         }
       />
 
-      <Space wrap className="justify-between w-full">
-        <Space direction="vertical">
+      <Space wrap className="justify-between w-full" size={16}>
+        <Space direction="vertical" size={16}>
           <Space wrap align="center" data-testid="extrainfo" size={4}>
             {extraInfo.map((info, index) => (
               <span
@@ -495,9 +496,7 @@ const EntityPageInfo = ({
             {(!isEditable || !isTagEditable || deleted) && (
               <>
                 {(tags.length > 0 || !isEmpty(tier)) && (
-                  <span className="d-flex align-center h-4">
-                    <IconTagGrey height={18} name="icon-tag" width={18} />
-                  </span>
+                  <IconTagGrey height={14} name="icon-tag" />
                 )}
                 {tier?.tagFQN && (
                   <Tags

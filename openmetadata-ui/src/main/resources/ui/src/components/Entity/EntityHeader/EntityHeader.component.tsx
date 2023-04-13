@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 import { ExclamationCircleOutlined } from '@ant-design/icons';
-import { Row } from 'antd';
-import Col from 'antd/es/grid/col';
+import { Col, Row } from 'antd';
+import classNames from 'classnames';
 import TitleBreadcrumb from 'components/common/title-breadcrumb/title-breadcrumb.component';
 import { TitleBreadcrumbProps } from 'components/common/title-breadcrumb/title-breadcrumb.interface';
 import { getTableDetailsPath } from 'constants/constants';
@@ -33,6 +33,7 @@ interface Props {
   icon: ReactNode;
   titleIsLink?: boolean;
   openEntityInNewPage?: boolean;
+  gutter?: 'default' | 'large';
 }
 
 export const EntityHeader = ({
@@ -42,14 +43,18 @@ export const EntityHeader = ({
   icon,
   titleIsLink = false,
   openEntityInNewPage,
+  gutter = 'default',
 }: Props) => {
   const { t } = useTranslation();
 
   return (
-    <Row className="w-full" gutter={12} justify="space-between">
+    <Row className="w-full" gutter={0} justify="space-between">
       <Col>
         <div
-          className="tw-text-link tw-text-base glossary-breadcrumb m-b-xss"
+          className={classNames(
+            'tw-text-link tw-text-base glossary-breadcrumb',
+            gutter === 'large' ? 'm-b-sm' : 'm-b-xss'
+          )}
           data-testid="category-name">
           <TitleBreadcrumb titleLinks={breadcrumb} />
         </div>

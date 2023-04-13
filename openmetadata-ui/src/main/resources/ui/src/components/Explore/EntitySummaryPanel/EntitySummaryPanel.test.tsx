@@ -68,6 +68,10 @@ jest.mock('react-router-dom', () => ({
   useParams: jest.fn().mockImplementation(() => ({ tab: 'table' })),
 }));
 
+jest.mock('components/Entity/EntityHeader/EntityHeader.component', () => ({
+  EntityHeader: jest.fn().mockImplementation(() => <p>EntityHeader</p>),
+}));
+
 describe('EntitySummaryPanel component tests', () => {
   it('TableSummary should render for table data', async () => {
     render(
@@ -79,11 +83,11 @@ describe('EntitySummaryPanel component tests', () => {
       />
     );
 
-    const tableDataCardTitle = screen.getByText('TableDataCardTitle');
+    const entityHeader = screen.getByText('EntityHeader');
     const tableSummary = screen.getByTestId('TableSummary');
     const closeIcon = screen.getByTestId('summary-panel-close-icon');
 
-    expect(tableDataCardTitle).toBeInTheDocument();
+    expect(entityHeader).toBeInTheDocument();
     expect(tableSummary).toBeInTheDocument();
     expect(closeIcon).toBeInTheDocument();
 

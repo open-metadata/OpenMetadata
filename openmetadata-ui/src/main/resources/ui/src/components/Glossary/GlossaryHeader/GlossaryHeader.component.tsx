@@ -31,7 +31,7 @@ export interface GlossaryHeaderProps {
   isGlossary: boolean;
   onUpdate: (data: GlossaryTerm | Glossary) => void;
   onDelete: (id: string) => void;
-  onAssetsUpdate?: () => void;
+  onAssetAdd?: () => void;
 }
 
 const GlossaryHeader = ({
@@ -40,7 +40,7 @@ const GlossaryHeader = ({
   onUpdate,
   onDelete,
   isGlossary,
-  onAssetsUpdate,
+  onAssetAdd,
 }: GlossaryHeaderProps) => {
   const [breadcrumb, setBreadcrumb] = useState<
     TitleBreadcrumbProps['titleLinks']
@@ -96,12 +96,13 @@ const GlossaryHeader = ({
                   isGlossary={isGlossary}
                   permission={permissions}
                   selectedData={selectedData}
-                  onAssetsUpdate={onAssetsUpdate}
+                  onAssetAdd={onAssetAdd && onAssetAdd}
                   onEntityDelete={onDelete}
                   onUpdate={onUpdate}
                 />
               </div>
             }
+            gutter="large"
             icon={
               isGlossary ? (
                 <IconFolder
