@@ -328,7 +328,7 @@ const TableQueries: FC<TableQueriesProp> = ({
         disabled={!permissions?.query.Create}
         type="primary"
         onClick={handleAddQueryClick}>
-        {t('label.add-entity', { entity: t('label.query') })}
+        {t('label.add')}
       </Button>
     </Tooltip>
   );

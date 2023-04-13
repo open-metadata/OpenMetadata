@@ -128,12 +128,12 @@ const QueryCard: FC<QueryCardProp> = ({
           title={
             <Space className="font-normal p-y-xs" size={8}>
               <Text>{queryDate}</Text>
-              <Text>{PIPE_SYMBOL}</Text>
+              <Text className="text-gray-400">{PIPE_SYMBOL}</Text>
               <Paragraph className="m-b-0">
                 <Text>{`${t('label.duration')} `}</Text>
                 <Text>{query.duration ?? '--'}</Text>
               </Paragraph>
-              <Text>{PIPE_SYMBOL}</Text>
+              <Text className="text-gray-400">{PIPE_SYMBOL}</Text>
               <Text>{`${t('label.by-lowercase')} ${query.updatedBy}`}</Text>
             </Space>
           }
