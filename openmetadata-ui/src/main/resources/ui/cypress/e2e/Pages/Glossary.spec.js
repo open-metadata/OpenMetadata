@@ -49,7 +49,6 @@ const visitGlossaryTermPage = (termName, fqn, fetchPermission) => {
     .click();
 
   cy.get('.ant-tabs .glossary-overview-tab').should('be.visible').click();
-  cy.wait(200);
   verifyResponseStatusCode('@getGlossaryTerms', 200);
   verifyResponseStatusCode('@getTagsList', 200);
   if (fetchPermission) {
@@ -536,7 +535,7 @@ describe('Glossary page should work properly', () => {
     const term2 = NEW_GLOSSARY_TERMS.term_2.name;
     const { name, fullyQualifiedName } = NEW_GLOSSARY_1_TERMS.term_1;
 
-    visitGlossaryTermPage(name, fullyQualifiedName);
+    visitGlossaryTermPage(name, fullyQualifiedName, true);
 
     // Updating synonyms
     updateSynonyms(uSynonyms);
