@@ -67,7 +67,7 @@ export default function EntitySummaryPanel({
       case EntityType.CONTAINER:
         return <ContainerSummary entityDetails={entity as Container} />;
 
-      case EntityType.GLOSSARY:
+      case EntityType.GLOSSARY_TERM:
         return <GlossaryTermSummary entityDetails={entity as GlossaryTerm} />;
 
       case EntityType.TAG:
