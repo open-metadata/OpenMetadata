@@ -188,6 +188,7 @@ const TopicDetailsPage: FunctionComponent = () => {
   };
 
   const fetchTopicDetail = async (topicFQN: string) => {
+    setLoading(true);
     try {
       const res = await getTopicByFqn(topicFQN, [
         TabSpecificField.OWNER,
