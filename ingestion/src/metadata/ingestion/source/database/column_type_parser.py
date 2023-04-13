@@ -291,11 +291,16 @@ class ColumnTypeParser:
             arr_data_type = ColumnTypeParser._parse_primitive_datatype_string(
                 data_type[6:-1]
             )["dataType"]
-            return {
+
+            data_type_string = {
                 "dataType": "ARRAY",
                 "arrayDataType": arr_data_type,
                 "dataTypeDisplay": data_type,
             }
+            if arr_data_type == "STRUCT":
+                children = ColumnTypeParser._parse_struct_fields_string(data_type[6:-1][7:-1])["children"]
+                data_type_string["children"] = children
+            return data_type_string
         if data_type.startswith("map<"):
             if data_type[-1] != ">":
                 raise ValueError(f"expected '>' found: {data_type}")
