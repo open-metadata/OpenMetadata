@@ -14,6 +14,7 @@
 import { Popover, Space } from 'antd';
 import classNames from 'classnames';
 import Tags from 'components/Tag/Tags/tags';
+import { TAG_START_WITH } from 'constants/Tag.constants';
 import { sortBy, uniqBy } from 'lodash';
 import { EntityTags } from 'Models';
 import React, { FunctionComponent, useCallback, useMemo } from 'react';
@@ -35,6 +36,7 @@ const TagsViewer: FunctionComponent<TagsViewerProps> = ({
         )}
         key={index}
         showOnlyName={tag.source === TagSource.Glossary}
+        startWith={TAG_START_WITH.SOURCE_ICON}
         tag={tag}
         type={type}
       />
