@@ -625,7 +625,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
 
   const getSchemaTableList = () => {
     return (
-      <>
+      <Col span={24}>
         <TableAntd
           bordered
           className="table-shadow"
@@ -650,7 +650,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
             totalCount={tableInstanceCount}
           />
         )}
-      </>
+      </Col>
     );
   };
 
@@ -826,27 +826,6 @@ const DatabaseSchemaPage: FunctionComponent = () => {
                         onThreadLinkSelect={onThreadLinkSelect}
                       />
                     </Col>
-                    <Col data-testid="description-container" span={24}>
-                      <Description
-                        description={description}
-                        entityFieldThreads={getEntityFieldThreadCounts(
-                          EntityField.DESCRIPTION,
-                          entityFieldThreadCount
-                        )}
-                        entityFqn={databaseSchemaFQN}
-                        entityName={databaseSchemaName}
-                        entityType={EntityType.DATABASE_SCHEMA}
-                        hasEditAccess={
-                          databaseSchemaPermission.EditDescription ||
-                          databaseSchemaPermission.EditAll
-                        }
-                        isEdit={isEdit}
-                        onCancel={onCancel}
-                        onDescriptionEdit={onDescriptionEdit}
-                        onDescriptionUpdate={onDescriptionUpdate}
-                        onThreadLinkSelect={onThreadLinkSelect}
-                      />
-                    </Col>
                   </>
                 )}
                 <Col span={24}>
@@ -861,7 +840,32 @@ const DatabaseSchemaPage: FunctionComponent = () => {
                     </Col>
                     <Col className="p-y-md" span={24}>
                       {activeTab === 1 && (
-                        <Fragment>{getSchemaTableList()}</Fragment>
+                        <Card className="h-full">
+                          <Row gutter={[16, 16]}>
+                            <Col data-testid="description-container" span={24}>
+                              <Description
+                                description={description}
+                                entityFieldThreads={getEntityFieldThreadCounts(
+                                  EntityField.DESCRIPTION,
+                                  entityFieldThreadCount
+                                )}
+                                entityFqn={databaseSchemaFQN}
+                                entityName={databaseSchemaName}
+                                entityType={EntityType.DATABASE_SCHEMA}
+                                hasEditAccess={
+                                  databaseSchemaPermission.EditDescription ||
+                                  databaseSchemaPermission.EditAll
+                                }
+                                isEdit={isEdit}
+                                onCancel={onCancel}
+                                onDescriptionEdit={onDescriptionEdit}
+                                onDescriptionUpdate={onDescriptionUpdate}
+                                onThreadLinkSelect={onThreadLinkSelect}
+                              />
+                            </Col>
+                            {getSchemaTableList()}
+                          </Row>
+                        </Card>
                       )}
                       {activeTab === 2 && (
                         <Card className="p-t-xss p-b-md">
