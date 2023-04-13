@@ -14,11 +14,14 @@
 import { PlusOutlined } from '@ant-design/icons';
 import { Button, Space, Switch, Typography } from 'antd';
 import { UserSelectableList } from 'components/common/UserSelectableList/UserSelectableList.component';
-import Tags from 'components/Tag/Tags/tags';
+import { UserTag } from 'components/common/UserTag/UserTag.component';
+import { UserTagSize } from 'components/common/UserTag/UserTag.interface';
+import { UserTeamSelectableList } from 'components/common/UserTeamSelectableList/UserTeamSelectableList.component';
 import { cloneDeep, toString } from 'lodash';
 import { EntityTags } from 'Models';
 import React, { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { getEntityName } from 'utils/EntityUtils';
 import { ADD_GLOSSARY_ERROR } from '../../constants/Glossary.constant';
 import { allowedNameRegEx } from '../../constants/regex.constants';
 import { PageLayoutType } from '../../enums/layout.enum';
@@ -60,6 +63,7 @@ const AddGlossary = ({
   const [tags, setTags] = useState<EntityTags[]>([]);
   const [mutuallyExclusive, setMutuallyExclusive] = useState(false);
   const [reviewer, setReviewer] = useState<Array<EntityReference>>([]);
+  const [owner, setOwner] = useState<EntityReference | undefined>();
 
   const getDescription = () => {
     return markdownRef.current?.getEditorContent() || '';
@@ -67,6 +71,9 @@ const AddGlossary = ({
 
   const handleReviewerSave = (reviewer: EntityReference[]) => {
     setReviewer(reviewer);
+  };
+  const handleUpdatedOwner = async (owner: EntityReference | undefined) => {
+    setOwner(owner);
   };
 
   const handleValidation = (
@@ -93,10 +100,7 @@ const AddGlossary = ({
     });
   };
 
-  const handleReviewerRemove = (
-    _event: React.MouseEvent<HTMLElement, MouseEvent>,
-    removedTag: string
-  ) => {
+  const handleReviewerRemove = (removedTag: string) => {
     setReviewer((pre) => pre.filter((option) => option.name !== removedTag));
   };
 
@@ -113,6 +117,10 @@ const AddGlossary = ({
 
   const handleSave = () => {
     if (validateForm()) {
+      const selectedOwner = owner || {
+        id: getCurrentUserId(),
+        type: 'user',
+      };
       const data: CreateGlossary = {
         name: name.trim(),
         displayName: (displayName || name).trim(),
@@ -120,10 +128,7 @@ const AddGlossary = ({
         reviewers:
           reviewer.map((d) => toString(d.fullyQualifiedName)).filter(Boolean) ??
           [],
-        owner: {
-          id: getCurrentUserId(),
-          type: 'user',
-        },
+        owner: selectedOwner,
         tags: tags,
         mutuallyExclusive,
       };
@@ -244,6 +249,31 @@ const AddGlossary = ({
           <div>
             <div className="tw-flex tw-items-center tw-mt-4">
               <span className="w-form-label tw-mr-3">
+                {`${t('label.owner')}:`}
+              </span>
+              <UserTeamSelectableList
+                hasPermission
+                owner={owner}
+                onUpdate={handleUpdatedOwner}>
+                <Button data-testid="add-owner" size="small" type="primary">
+                  <PlusOutlined style={{ color: 'white' }} />
+                </Button>
+              </UserTeamSelectableList>
+            </div>
+            <div className="tw-my-4" data-testid="owner-container">
+              {owner && (
+                <UserTag
+                  bordered
+                  closable
+                  id={owner.id}
+                  name={getEntityName(owner)}
+                  size={UserTagSize.small}
+                  onRemove={() => setOwner(undefined)}
+                />
+              )}
+            </div>
+            <div className="tw-flex tw-items-center tw-mt-4">
+              <span className="w-form-label tw-mr-3">
                 {`${t('label.reviewer-plural')}:`}
               </span>
               <UserSelectableList
@@ -255,22 +285,22 @@ const AddGlossary = ({
                 </Button>
               </UserSelectableList>
             </div>
-            <div className="tw-my-4" data-testid="reviewers-container">
+            <Space wrap className="tw-my-4" size={[8, 8]}>
               {Boolean(reviewer.length) &&
                 reviewer.map((d, index) => {
                   return (
-                    <Tags
-                      editable
-                      isRemovable
-                      className="tw-bg-gray-200"
+                    <UserTag
+                      bordered
+                      closable
+                      id={d.id}
                       key={index}
-                      removeTag={handleReviewerRemove}
-                      tag={d.name ?? ''}
-                      type="contained"
+                      name={getEntityName(d)}
+                      size={UserTagSize.small}
+                      onRemove={() => d.name && handleReviewerRemove(d.name)}
                     />
                   );
                 })}
-            </div>
+            </Space>
           </div>
 
           <div className="flex justify-end">

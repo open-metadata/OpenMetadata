@@ -47,6 +47,7 @@ const EntityNameModal: React.FC<Props> = ({
   return (
     <Modal
       destroyOnClose
+      closable={false}
       footer={[
         <Button key="cancel-btn" type="link" onClick={onCancel}>
           {t('label.cancel')}

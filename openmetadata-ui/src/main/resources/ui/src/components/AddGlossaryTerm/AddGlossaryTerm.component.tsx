@@ -17,6 +17,7 @@ import classNames from 'classnames';
 import { UserSelectableList } from 'components/common/UserSelectableList/UserSelectableList.component';
 import { UserTag } from 'components/common/UserTag/UserTag.component';
 import { UserTagSize } from 'components/common/UserTag/UserTag.interface';
+import { UserTeamSelectableList } from 'components/common/UserTeamSelectableList/UserTeamSelectableList.component';
 import Tags from 'components/Tag/Tags/tags';
 import { t } from 'i18next';
 import { cloneDeep, isEmpty, isUndefined } from 'lodash';
@@ -31,7 +32,12 @@ import {
   TermReference,
 } from '../../generated/entity/data/glossaryTerm';
 import { EntityReference } from '../../generated/type/entityReference';
-import { errorMsg, isValidUrl, requiredField } from '../../utils/CommonUtils';
+import {
+  errorMsg,
+  getCurrentUserId,
+  isValidUrl,
+  requiredField,
+} from '../../utils/CommonUtils';
 import SVGIcons from '../../utils/SvgUtils';
 import { AddTags } from '../AddTags/add-tags.component';
 import RichTextEditor from '../common/rich-text-editor/RichTextEditor';
@@ -80,6 +86,7 @@ const AddGlossaryTerm = ({
   const [synonyms, setSynonyms] = useState('');
   const [mutuallyExclusive, setMutuallyExclusive] = useState(false);
   const [references, setReferences] = useState<TermReference[]>([]);
+  const [owner, setOwner] = useState<EntityReference | undefined>();
 
   useEffect(() => {
     if (glossaryData?.reviewers && glossaryData?.reviewers.length) {
@@ -106,6 +113,10 @@ const AddGlossaryTerm = ({
 
   const handleReviewerRemove = (removedTag: string) => {
     setReviewer((pre) => pre.filter((option) => option.name !== removedTag));
+  };
+
+  const handleUpdatedOwner = async (owner: EntityReference | undefined) => {
+    setOwner(owner);
   };
 
   const handleTermRemove = (
@@ -212,6 +223,10 @@ const AddGlossaryTerm = ({
 
     if (validateForm(updatedReference)) {
       const updatedName = name.trim();
+      const selectedOwner = owner || {
+        id: getCurrentUserId(),
+        type: 'user',
+      };
       const data: CreateGlossaryTerm = {
         name: updatedName,
         displayName: (displayName || updatedName).trim(),
@@ -226,6 +241,7 @@ const AddGlossaryTerm = ({
         mutuallyExclusive,
         glossary: glossaryData.name,
         tags: tags,
+        owner: selectedOwner,
       };
 
       onSave(data);
@@ -476,6 +492,36 @@ const AddGlossaryTerm = ({
                     />
                   );
                 })}
+            </div>
+          </Field>
+
+          <Field>
+            <div className="tw-flex tw-items-center tw-mt-4">
+              <p className="w-form-label tw-mr-3">{`${t('label.owner')}`}</p>
+              <UserTeamSelectableList
+                hasPermission
+                owner={owner}
+                onUpdate={handleUpdatedOwner}>
+                <Button
+                  className="tw-h-5 tw-px-2"
+                  data-testid="add-owner"
+                  icon={<PlusOutlined />}
+                  size="small"
+                  type="primary"
+                />
+              </UserTeamSelectableList>
+            </div>
+            <div className="tw-my-4" data-testid="owner-container">
+              {owner && (
+                <UserTag
+                  bordered
+                  closable
+                  id={owner.id}
+                  name={getEntityName(owner)}
+                  size={UserTagSize.small}
+                  onRemove={() => setOwner(undefined)}
+                />
+              )}
             </div>
           </Field>
           <Field>
