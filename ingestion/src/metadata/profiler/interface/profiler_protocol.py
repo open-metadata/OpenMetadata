@@ -222,7 +222,7 @@ class ProfilerProtocol(ABC):
 
     @abstractmethod
     def get_hybrid_metrics(
-        self, column: Column, metric: Metrics, column_results: Dict
+        self, column: Column, metric: Metrics, column_results: Dict, **kwargs
     ) -> dict:
         """run profiler metrics"""
         raise NotImplementedError
