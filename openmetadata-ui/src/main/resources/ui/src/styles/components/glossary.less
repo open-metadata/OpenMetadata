@@ -79,10 +79,17 @@
 }
 
 .term-reference-tag {
+  height: 24px;
   .ant-tag-close-icon {
     padding-left: 0.5rem;
     padding-right: 0.5rem;
     color: @primary-color;
+  }
+  span {
+    white-space: nowrap;
+    max-width: 150px;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 }
 
@@ -95,13 +102,26 @@
 
 .tag-button-container {
   height: 24px;
-}
-
-.glossary-overview-tab {
-  margin-right: 8px !important;
+  span {
+    white-space: nowrap;
+    max-width: 150px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
 }
 
 .glossary-subheading {
   font-size: 16px;
   font-weight: 500;
+}
+
+.glossary-select {
+  width: calc(100% - 64px);
+}
+
+.tags-input-container {
+  .tags-item {
+    margin-top: 8px;
+    margin-right: 8px;
+  }
 }

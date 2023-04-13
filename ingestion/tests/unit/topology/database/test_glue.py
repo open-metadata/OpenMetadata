@@ -36,8 +36,7 @@ mock_glue_config = {
                     "awsRegion": "us-east-2",
                     "endPointURL": "https://endpoint.com/",
                 },
-                "storageServiceName": "storage_name",
-            }
+            },
         },
         "sourceConfig": {"config": {"type": "DatabaseMetadata"}},
     },

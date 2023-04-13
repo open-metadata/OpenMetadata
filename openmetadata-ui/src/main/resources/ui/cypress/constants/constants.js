@@ -244,11 +244,13 @@ export const NEW_GLOSSARY_TERMS = {
     name: 'Purchase',
     description: 'This is the Purchase',
     synonyms: 'buy,collect,acquire',
+    fullyQualifiedName: 'Business Glossary.Purchase',
   },
   term_2: {
     name: 'Sales',
     description: 'This is the Sales',
     synonyms: 'give,disposal,deal',
+    fullyQualifiedName: 'Business Glossary.Sales',
   },
 };
 export const GLOSSARY_TERM_WITH_DETAILS = {
@@ -259,6 +261,7 @@ export const GLOSSARY_TERM_WITH_DETAILS = {
   relatedTerms: 'Sales',
   reviewer: 'Colin Ho',
   inheritedReviewer: 'Aaron Johnson',
+  fullyQualifiedName: 'Business Glossary.Accounts',
 };
 
 export const NEW_GLOSSARY_1_TERMS = {
@@ -266,11 +269,13 @@ export const NEW_GLOSSARY_1_TERMS = {
     name: 'Features',
     description: 'This is the Features',
     synonyms: 'data,collect,time',
+    fullyQualifiedName: 'Product Glossary.Features',
   },
   term_2: {
     name: 'Uses',
     description: 'This is the Uses',
     synonyms: 'home,business,adventure',
+    fullyQualifiedName: 'Product Glossary.Uses',
   },
 };
 

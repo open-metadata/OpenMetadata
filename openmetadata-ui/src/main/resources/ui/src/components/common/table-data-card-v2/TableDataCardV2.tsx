@@ -14,7 +14,6 @@
 import { ExclamationCircleOutlined } from '@ant-design/icons';
 import { Checkbox } from 'antd';
 import classNames from 'classnames';
-import { EntityUnion } from 'components/Explore/explore.interface';
 import { isString, startCase, uniqueId } from 'lodash';
 import { ExtraInfo } from 'Models';
 import React, { forwardRef, useMemo } from 'react';
@@ -54,11 +53,12 @@ export interface TableDataCardPropsV2 {
   }[];
   searchIndex: SearchIndex | EntityType;
   handleSummaryPanelDisplay?: (
-    details: EntityUnion,
+    details: SearchedDataProps['data'][number]['_source'],
     entityType: string
   ) => void;
   checked?: boolean;
   showCheckboxes?: boolean;
+  openEntityInNewPage?: boolean;
 }
 
 const TableDataCardV2: React.FC<TableDataCardPropsV2> = forwardRef<
@@ -75,6 +75,7 @@ const TableDataCardV2: React.FC<TableDataCardPropsV2> = forwardRef<
       handleSummaryPanelDisplay,
       showCheckboxes,
       checked,
+      openEntityInNewPage = false,
     },
     ref
   ) => {
@@ -156,22 +157,25 @@ const TableDataCardV2: React.FC<TableDataCardPropsV2> = forwardRef<
         className={classNames(
           'data-asset-info-card-container',
           'table-data-card-container',
-          className ? className : ''
+          className
         )}
         data-testid="table-data-card"
         id={id}
         ref={ref}
         onClick={() => {
-          handleSummaryPanelDisplay &&
-            handleSummaryPanelDisplay(source as EntityUnion, tab);
+          handleSummaryPanelDisplay && handleSummaryPanelDisplay(source, tab);
         }}>
         <div>
+          {showCheckboxes && (
+            <Checkbox checked={checked} className="float-right" />
+          )}
           {headerLabel}
           <div className="tw-flex tw-items-center">
             {serviceIcon}
             <TableDataCardTitle
               handleLinkClick={handleLinkClick}
               id={id}
+              openEntityInNewPage={openEntityInNewPage}
               searchIndex={searchIndex}
               source={source}
             />
@@ -185,9 +189,6 @@ const TableDataCardV2: React.FC<TableDataCardPropsV2> = forwardRef<
                   {t('label.deleted')}
                 </div>
               </>
-            )}
-            {showCheckboxes && (
-              <Checkbox checked={checked} className="m-l-auto" />
             )}
           </div>
         </div>

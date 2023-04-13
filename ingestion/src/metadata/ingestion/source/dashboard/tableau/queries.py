@@ -27,6 +27,20 @@ query SheetQuery {{
       __typename
       name
       id
+      description
+      datasource {{
+        id
+        name
+      }}
+      ... on ColumnField {{
+	      dataType
+      }}
+      ... on CalculatedField {{
+      	dataType
+      }}
+      ... on GroupField {{
+      	dataType
+      }}
       ... on DatasourceField {{
         upstreamTables {{  
           upstreamDatabases {{ 
@@ -41,9 +55,15 @@ query SheetQuery {{
           id
           name
           schema
+          database {{
+            id
+            name
+          }}
         }}
         remoteField {{
           id
+          name
+          description
           __typename
           ... on ColumnField {{
             dataType

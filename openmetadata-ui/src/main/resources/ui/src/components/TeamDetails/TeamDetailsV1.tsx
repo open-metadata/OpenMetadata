@@ -28,8 +28,10 @@ import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
+import TableDataCardV2 from 'components/common/table-data-card-v2/TableDataCardV2';
 import { DROPDOWN_ICON_SIZE_PROPS } from 'constants/ManageButton.constants';
 import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
+import { SearchIndex } from 'enums/search.enum';
 import { compare } from 'fast-json-patch';
 import { cloneDeep, isEmpty, isUndefined, orderBy, uniqueId } from 'lodash';
 import { ExtraInfo } from 'Models';
@@ -43,6 +45,7 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
+import { getSuggestions } from 'rest/miscAPI';
 import { restoreTeam } from 'rest/teamsAPI';
 import AppState from '../../AppState';
 import { ReactComponent as IconEdit } from '../../assets/svg/ic-edit.svg';
@@ -77,7 +80,7 @@ import {
   PlaceholderProps,
   TeamDetailsProp,
 } from '../../interface/teamsAndUsers.interface';
-import { getTierFromEntityInfo, hasEditAccess } from '../../utils/CommonUtils';
+import { hasEditAccess } from '../../utils/CommonUtils';
 import { filterEntityAssets, getEntityName } from '../../utils/EntityUtils';
 import {
   checkPermission,
@@ -95,7 +98,6 @@ import EntitySummaryDetails from '../common/EntitySummaryDetails/EntitySummaryDe
 import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder';
 import NextPrevious from '../common/next-previous/NextPrevious';
 import Searchbar from '../common/searchbar/Searchbar';
-import TableDataCard from '../common/table-data-card/TableDataCard';
 import TabsPane from '../common/TabsPane/TabsPane';
 import TitleBreadcrumb from '../common/title-breadcrumb/title-breadcrumb.component';
 import { TitleBreadcrumbProps } from '../common/title-breadcrumb/title-breadcrumb.interface';
@@ -108,7 +110,7 @@ import {
 } from '../PermissionProvider/PermissionProvider.interface';
 import { commonUserDetailColumns } from '../Users/Users.util';
 import ListEntities from './RolesAndPoliciesList';
-import { getTabs, searchTeam } from './TeamDetailsV1.utils';
+import { getTabs } from './TeamDetailsV1.utils';
 import TeamHierarchy from './TeamHierarchy';
 import './teams.less';
 
@@ -347,6 +349,22 @@ const TeamDetailsV1 = ({
         ]),
   ];
 
+  const searchTeams = async (text: string) => {
+    try {
+      const res = await getSuggestions<SearchIndex.TEAM>(
+        text,
+        SearchIndex.TEAM
+      );
+      const data = res.data.suggest['metadata-suggest'][0].options.map(
+        (value) => value._source as Team
+      );
+
+      setTable(data);
+    } catch (error) {
+      setTable([]);
+    }
+  };
+
   const isActionAllowed = (operation = false) => {
     return hasAccess || isOwner() || operation;
   };
@@ -463,9 +481,7 @@ const TeamDetailsV1 = ({
   const handleTeamSearch = (value: string) => {
     setSearchTerm(value);
     if (value) {
-      setTable(
-        filterChildTeams(searchTeam(childTeams, value), showDeletedTeam)
-      );
+      searchTeams(value);
     } else {
       setTable(filterChildTeams(childTeams ?? [], showDeletedTeam));
     }
@@ -788,9 +804,9 @@ const TeamDetailsV1 = ({
               <div className="tw-w-4/12">
                 <Searchbar
                   removeMargin
-                  placeholder={`${t('label.search-for-type', {
+                  placeholder={t('label.search-for-type', {
                     type: t('label.user-lowercase'),
-                  })}...`}
+                  })}
                   searchValue={teamUsersSearchText}
                   typingInterval={500}
                   onSearch={handleTeamUsersSearchAction}
@@ -876,25 +892,14 @@ const TeamDetailsV1 = ({
 
     return (
       <div data-testid="table-container">
-        {assets.data.map((entity, index) => (
-          <div className="m-b-sm" key={`${entity.name}${index}`}>
-            <TableDataCard
-              database={entity.database}
-              databaseSchema={entity.databaseSchema}
-              deleted={entity.deleted}
-              description={entity.description}
-              fullyQualifiedName={entity.fullyQualifiedName}
-              id={`tabledatacard${index}`}
-              indexType={entity.index}
-              name={entity.name}
-              owner={entity.owner}
-              service={entity.service}
-              serviceType={entity.serviceType || '--'}
-              tags={entity.tags}
-              tier={getTierFromEntityInfo(entity)}
-              usage={entity.weeklyPercentileRank}
-            />
-          </div>
+        {assets.data.map(({ _source, _index, _id = '' }, index) => (
+          <TableDataCardV2
+            className="m-b-sm cursor-pointer"
+            id={_id}
+            key={index}
+            searchIndex={_index as SearchIndex}
+            source={_source}
+          />
         ))}
         {assets.total > LIST_SIZE && assets.data.length > 0 && (
           <NextPrevious
@@ -1145,9 +1150,9 @@ const TeamDetailsV1 = ({
                     <Col span={8}>
                       <Searchbar
                         removeMargin
-                        placeholder={`${t('label.search-entity', {
+                        placeholder={t('label.search-entity', {
                           entity: t('label.team'),
-                        })}...`}
+                        })}
                         searchValue={searchTerm}
                         typingInterval={500}
                         onSearch={handleTeamSearch}

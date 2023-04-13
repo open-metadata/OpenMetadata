@@ -12,6 +12,7 @@
  */
 import { DownOutlined } from '@ant-design/icons';
 import { Button, Col, Dropdown, Row, Space, Tooltip, Typography } from 'antd';
+import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
 import { ReactComponent as ExportIcon } from 'assets/svg/ic-export.svg';
 import { ReactComponent as ImportIcon } from 'assets/svg/ic-import.svg';
 import { ReactComponent as IconDropdown } from 'assets/svg/menu.svg';
@@ -21,6 +22,7 @@ import EntityNameModal from 'components/Modals/EntityNameModal/EntityNameModal.c
 import { OperationPermission } from 'components/PermissionProvider/PermissionProvider.interface';
 import VersionButton from 'components/VersionButton/VersionButton.component';
 import { FQN_SEPARATOR_CHAR } from 'constants/char.constants';
+import { DE_ACTIVE_COLOR } from 'constants/constants';
 import { EntityReference, Glossary } from 'generated/entity/data/glossary';
 import { GlossaryTerm } from 'generated/entity/data/glossaryTerm';
 import { cloneDeep, toString } from 'lodash';
@@ -177,7 +179,7 @@ const GlossaryHeaderButtons = ({
                   setShowActions(false);
                 }}>
                 <Col className="self-center" span={3}>
-                  <ExportIcon width="20px" />
+                  <ExportIcon width="18px" />
                 </Col>
                 <Col span={21}>
                   <Row>
@@ -245,8 +247,8 @@ const GlossaryHeaderButtons = ({
                   setIsNameEditing(true);
                   setShowActions(false);
                 }}>
-                <Col span={3}>
-                  <SVGIcons alt="Edit" icon={Icons.EDIT} />
+                <Col className="self-center" span={3}>
+                  <EditIcon color={DE_ACTIVE_COLOR} width="18px" />
                 </Col>
                 <Col
                   className="tw-text-left"
@@ -278,7 +280,7 @@ const GlossaryHeaderButtons = ({
             setIsDelete(true);
             setShowActions(false);
           }}>
-          <Col span={3}>
+          <Col className="self-center" span={3}>
             <SVGIcons alt="Delete" icon={Icons.DELETE} />
           </Col>
           <Col className="tw-text-left" data-testid="delete-button" span={21}>
@@ -303,7 +305,7 @@ const GlossaryHeaderButtons = ({
     if (permission.Create) {
       return isGlossary ? (
         <Button
-          className="m-r-xs"
+          className="m-l-xs"
           data-testid="add-new-tag-button-header"
           size="middle"
           type="primary"
@@ -312,7 +314,7 @@ const GlossaryHeaderButtons = ({
         </Button>
       ) : (
         <Dropdown
-          className="m-r-xs"
+          className="m-l-xs"
           menu={{
             items: addButtonContent,
           }}
@@ -337,7 +339,7 @@ const GlossaryHeaderButtons = ({
         {createButtons}
         {selectedData && selectedData.version && (
           <VersionButton
-            className="m-r-xs tw-px-1.5"
+            className="m-l-xs tw-px-1.5"
             selected={Boolean(version)}
             version={toString(selectedData.version)}
             onClick={handleVersionClick}
@@ -347,6 +349,7 @@ const GlossaryHeaderButtons = ({
         {permission.Delete && (
           <Dropdown
             align={{ targetOffset: [-12, 0] }}
+            className="m-l-xs"
             menu={{
               items: manageButtonContent,
             }}

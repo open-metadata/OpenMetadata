@@ -98,7 +98,6 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.jdbi3.TeamRepository.TeamCsv;
 import org.openmetadata.service.resources.EntityResourceTest;
-import org.openmetadata.service.resources.locations.LocationResourceTest;
 import org.openmetadata.service.resources.policies.PolicyResourceTest;
 import org.openmetadata.service.resources.teams.TeamResource.TeamHierarchyList;
 import org.openmetadata.service.resources.teams.TeamResource.TeamList;
@@ -815,14 +814,6 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
   @Override
   public CreateTeam createRequest(String name) {
     return new CreateTeam().withName(name).withProfile(PROFILE).withTeamType(GROUP);
-  }
-
-  @Override
-  public Team beforeDeletion(TestInfo test, Team team) throws HttpResponseException {
-    LocationResourceTest locationResourceTest = new LocationResourceTest();
-    locationResourceTest.createEntity(
-        locationResourceTest.createRequest(test).withOwner(team.getEntityReference()), ADMIN_AUTH_HEADERS);
-    return team;
   }
 
   @Override

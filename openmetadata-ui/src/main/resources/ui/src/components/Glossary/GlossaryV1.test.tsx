@@ -138,6 +138,7 @@ const mockProps: GlossaryV1Props = {
   onGlossaryDelete: jest.fn(),
   onGlossaryTermDelete: jest.fn(),
   isVersionsView: false,
+  isSummaryPanelOpen: false,
 };
 
 describe('Test Glossary component', () => {

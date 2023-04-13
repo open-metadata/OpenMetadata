@@ -1,0 +1,20 @@
+source:
+  type: dataInsight
+  serviceName: OpenMetadata
+  sourceConfig:
+    config:
+      type: MetadataToElasticSearch
+processor:
+  type: data-insight-processor
+  config: {}
+sink:
+  type: elasticsearch
+  config:
+    es_host: localhost
+    es_port: 9200
+    recreate_indexes: false
+workflowConfig:
+  loggerLevel: DEBUG
+  openMetadataServerConfig:
+    hostPort: http://localhost:8585/api
+    authProvider: no-auth

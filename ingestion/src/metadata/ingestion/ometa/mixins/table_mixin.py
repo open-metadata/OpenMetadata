@@ -13,7 +13,6 @@ Mixin class containing Table specific methods
 
 To be used by OpenMetadata class
 """
-import json
 import traceback
 from typing import List, Optional, Type, TypeVar
 
@@ -23,7 +22,6 @@ from requests.utils import quote
 from metadata.generated.schema.api.data.createTableProfile import (
     CreateTableProfileRequest,
 )
-from metadata.generated.schema.entity.data.location import Location
 from metadata.generated.schema.entity.data.table import (
     ColumnProfile,
     DataModel,
@@ -39,7 +37,6 @@ from metadata.ingestion.ometa.client import REST
 from metadata.ingestion.ometa.models import EntityList
 from metadata.ingestion.ometa.utils import model_str
 from metadata.utils.logger import ometa_logger
-from metadata.utils.uuid_encoder import UUIDEncoder
 
 logger = ometa_logger()
 
@@ -55,18 +52,6 @@ class OMetaTableMixin:
     """
 
     client: REST
-
-    def add_location(self, table: Table, location: Location) -> None:
-        """
-        PUT location for a table
-
-        :param table: Table Entity to update
-        :param location: Location Entity to add
-        """
-        self.client.put(
-            f"{self.get_suffix(Table)}/{table.id.__root__}/location",
-            data=json.dumps(location.id.__root__, cls=UUIDEncoder),
-        )
 
     def ingest_table_sample_data(
         self, table: Table, sample_data: TableData

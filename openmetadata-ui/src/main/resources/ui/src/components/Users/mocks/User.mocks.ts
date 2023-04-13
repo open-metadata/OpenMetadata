@@ -11,7 +11,15 @@
  *  limitations under the License.
  */
 
-import { AssetsDataType } from 'Models';
+import { SearchedDataProps } from 'components/searched-data/SearchedData.interface';
+import { SearchIndex } from 'enums/search.enum';
+import { DashboardServiceType } from 'generated/entity/data/dashboard';
+import {
+  DashboardSearchSource,
+  PipelineSearchSource,
+  TableSearchSource,
+  TopicSearchSource,
+} from 'interface/search.interface';
 
 export const mockUserData = {
   id: 'd6764107-e8b4-4748-b256-c86fecc66064',
@@ -222,173 +230,801 @@ export const mockUserRole = {
   },
 };
 
-export const mockEntityData: AssetsDataType = {
+export const mockEntityData: {
+  data: SearchedDataProps['data'];
+  total: number;
+  currPage: number;
+} = {
   data: [
     {
-      index: 'table_search_index',
-      id: 'ff274334-84cf-4cb5-9450-acd0ae00e8fd',
-      name: 'dim_customer',
-      displayName: 'dim_customer',
-      description: 'The dimension table contains data about your customers.',
-      fullyQualifiedName: 'sample_data.ecommerce_db.shopify.dim_customer',
-      tableType: 'Regular',
-      tags: [],
-      dailyStats: 0,
-      dailyPercentileRank: 0,
-      weeklyStats: 0,
-      weeklyPercentileRank: 0,
-      service: 'sample_data',
-      serviceType: 'BigQuery',
-      tier: null,
-      owner: {
+      _index: SearchIndex.TABLE,
+      _type: '_doc',
+      _id: 'e81d60d1-d75f-4e4a-834c-8a25900299de',
+      _score: 1.980943,
+      _source: {
+        entityType: 'table',
+        id: 'e81d60d1-d75f-4e4a-834c-8a25900299de',
+        name: 'raw_customer',
+        fullyQualifiedName: 'sample_data.ecommerce_db.shopify.raw_customer',
+        description:
+          // eslint-disable-next-line max-len
+          'This is a raw customers table as represented in our online DB. This contains personal, shipping and billing addresses and details of the customer store and customer profile. This table is used to build our dimensional and fact tables',
+        displayName: 'raw_customer',
+        version: 0.7,
+        updatedAt: 1681241380852,
+        updatedBy: 'admin',
+        href: 'http://localhost:8585/api/v1/tables/e81d60d1-d75f-4e4a-834c-8a25900299de',
+        columns: [
+          {
+            dataLength: 1,
+            dataType: 'STRING',
+            name: 'comments',
+            constraint: 'NULL',
+            fullyQualifiedName:
+              'sample_data.ecommerce_db.shopify.raw_customer.comments',
+            ordinalPosition: 1,
+            dataTypeDisplay: 'string',
+            tags: [],
+          },
+          {
+            dataLength: 1,
+            dataType: 'STRING',
+            name: 'creditcard',
+            constraint: 'NULL',
+            fullyQualifiedName:
+              'sample_data.ecommerce_db.shopify.raw_customer.creditcard',
+            ordinalPosition: 2,
+            dataTypeDisplay: 'string',
+            tags: [],
+          },
+          {
+            dataLength: 1,
+            dataType: 'STRING',
+            name: 'membership',
+            constraint: 'NULL',
+            fullyQualifiedName:
+              'sample_data.ecommerce_db.shopify.raw_customer.membership',
+            ordinalPosition: 4,
+            dataTypeDisplay: 'string',
+            tags: [],
+          },
+          {
+            dataLength: 1,
+            dataType: 'ARRAY',
+            name: 'orders',
+            constraint: 'NULL',
+            fullyQualifiedName:
+              'sample_data.ecommerce_db.shopify.raw_customer.orders',
+            ordinalPosition: 5,
+            dataTypeDisplay:
+              'array<struct<product_id:character varying(24),price:int,onsale:boolean,tax:int,weight:int,others:int,vendor:character varying(64)>>',
+            arrayDataType: 'STRUCT',
+            tags: [],
+          },
+          {
+            dataLength: 1,
+            dataType: 'STRING',
+            name: 'platform',
+            constraint: 'NULL',
+            fullyQualifiedName:
+              'sample_data.ecommerce_db.shopify.raw_customer.platform',
+            ordinalPosition: 6,
+            dataTypeDisplay: 'string',
+            tags: [],
+          },
+          {
+            dataLength: 1,
+            dataType: 'MAP',
+            name: 'preference',
+            constraint: 'NULL',
+            fullyQualifiedName:
+              'sample_data.ecommerce_db.shopify.raw_customer.preference',
+            ordinalPosition: 7,
+            dataTypeDisplay: 'map<character varying(32),boolean>',
+            tags: [],
+          },
+          {
+            dataLength: 1,
+            dataType: 'ARRAY',
+            name: 'shipping_address',
+            constraint: 'NULL',
+            fullyQualifiedName:
+              'sample_data.ecommerce_db.shopify.raw_customer.shipping_address',
+            ordinalPosition: 8,
+            dataTypeDisplay:
+              'array<struct<name:character varying(32),street_address:character varying(128),city:character varying(32),postcode:character varying(8)>>',
+            arrayDataType: 'STRUCT',
+            tags: [],
+          },
+          {
+            dataLength: 1,
+            dataType: 'STRING',
+            name: 'shipping_date',
+            constraint: 'NULL',
+            fullyQualifiedName:
+              'sample_data.ecommerce_db.shopify.raw_customer.shipping_date',
+            ordinalPosition: 9,
+            dataTypeDisplay: 'string',
+            tags: [],
+          },
+          {
+            dataLength: 1,
+            dataType: 'STRING',
+            name: 'transaction_date',
+            constraint: 'NULL',
+            fullyQualifiedName:
+              'sample_data.ecommerce_db.shopify.raw_customer.transaction_date',
+            ordinalPosition: 10,
+            dataTypeDisplay: 'string',
+            tags: [],
+          },
+          {
+            children: [
+              {
+                dataLength: 32,
+                dataType: 'VARCHAR',
+                name: 'username',
+                constraint: 'NULL',
+                fullyQualifiedName:
+                  'sample_data.ecommerce_db.shopify.raw_customer.customer.username',
+                dataTypeDisplay: 'character varying(32)',
+                tags: [],
+              },
+              {
+                dataLength: 32,
+                dataType: 'VARCHAR',
+                name: 'name',
+                constraint: 'NULL',
+                fullyQualifiedName:
+                  'sample_data.ecommerce_db.shopify.raw_customer.customer.name',
+                dataTypeDisplay: 'character varying(32)',
+                tags: [],
+              },
+              {
+                dataLength: 1,
+                dataType: 'CHAR',
+                name: 'sex',
+                constraint: 'NULL',
+                fullyQualifiedName:
+                  'sample_data.ecommerce_db.shopify.raw_customer.customer.sex',
+                dataTypeDisplay: 'char(1)',
+                tags: [],
+              },
+              {
+                dataLength: 128,
+                dataType: 'VARCHAR',
+                name: 'address',
+                constraint: 'NULL',
+                fullyQualifiedName:
+                  'sample_data.ecommerce_db.shopify.raw_customer.customer.address',
+                dataTypeDisplay: 'character varying(128)',
+                tags: [],
+              },
+              {
+                dataLength: 64,
+                dataType: 'VARCHAR',
+                name: 'mail',
+                constraint: 'NULL',
+                fullyQualifiedName:
+                  'sample_data.ecommerce_db.shopify.raw_customer.customer.mail',
+                dataTypeDisplay: 'character varying(64)',
+                tags: [],
+              },
+              {
+                dataLength: 16,
+                dataType: 'VARCHAR',
+                name: 'birthdate',
+                constraint: 'NULL',
+                fullyQualifiedName:
+                  'sample_data.ecommerce_db.shopify.raw_customer.customer.birthdate',
+                dataTypeDisplay: 'character varying(16)',
+                tags: [],
+              },
+            ],
+            dataLength: 1,
+            dataType: 'STRUCT',
+            name: 'customer',
+            constraint: 'NULL',
+            fullyQualifiedName:
+              'sample_data.ecommerce_db.shopify.raw_customer.customer',
+            ordinalPosition: 3,
+            dataTypeDisplay:
+              'struct<username:character varying(32),name:character varying(32),sex:char(1),address:character varying(128),mail:character varying(64),birthdate:character varying(16)>',
+            tags: [],
+          },
+        ],
+        databaseSchema: {
+          deleted: false,
+          name: 'shopify',
+          description:
+            'This **mock** database contains schema related to shopify sales and orders with related dimension tables.',
+          id: '101dab88-0c46-4f2a-aa20-6f161fafc8af',
+          href: 'http://localhost:8585/api/v1/databaseSchemas/101dab88-0c46-4f2a-aa20-6f161fafc8af',
+          type: 'databaseSchema',
+          fullyQualifiedName: 'sample_data.ecommerce_db.shopify',
+        },
+        database: {
+          deleted: false,
+          name: 'ecommerce_db',
+          description:
+            'This **mock** database contains schemas related to shopify sales and orders with related dimension tables.',
+          id: '72fb2566-045c-424c-a500-c7c3bd123470',
+          href: 'http://localhost:8585/api/v1/databases/72fb2566-045c-424c-a500-c7c3bd123470',
+          type: 'database',
+          fullyQualifiedName: 'sample_data.ecommerce_db',
+        },
+        service: {
+          deleted: false,
+          name: 'sample_data',
+          id: '68683e52-b326-48c6-ae42-9e3d36cb87f5',
+          href: 'http://localhost:8585/api/v1/services/databaseServices/68683e52-b326-48c6-ae42-9e3d36cb87f5',
+          type: 'databaseService',
+          fullyQualifiedName: 'sample_data',
+        },
+        owner: {
+          deleted: false,
+          name: 'admin',
+          id: '78cb13de-b6b6-46ad-9b69-3cf6bd637186',
+          href: 'http://localhost:8585/api/v1/users/78cb13de-b6b6-46ad-9b69-3cf6bd637186',
+          type: 'user',
+          fullyQualifiedName: 'admin',
+        },
+        location: null,
+        usageSummary: {
+          dailyStats: {
+            count: 10,
+            percentileRank: 86,
+          },
+          weeklyStats: {
+            count: 70,
+            percentileRank: 86,
+          },
+          monthlyStats: {
+            count: 90,
+            percentileRank: 86,
+          },
+          date: '2023-04-11',
+        },
         deleted: false,
-        name: 'admin',
-        id: '6efae30d-8284-4af4-b608-e3819172c0c5',
-        href: 'http://localhost:8585/api/v1/users/6efae30d-8284-4af4-b608-e3819172c0c5',
-        type: 'user',
-        fullyQualifiedName: 'admin',
-      },
-      database: 'ecommerce_db',
-      databaseSchema: 'shopify',
-      entityType: 'table',
-      deleted: false,
+        serviceType: 'BigQuery',
+        tags: [
+          {
+            tagFQN: 'test 1.term 1',
+            labelType: 'Manual',
+            description: 'asd',
+            source: 'Glossary',
+            state: 'Confirmed',
+          },
+        ],
+        tier: null,
+        followers: [],
+        suggest: [
+          {
+            input: 'sample_data.ecommerce_db.shopify.raw_customer',
+            weight: 5,
+          },
+          {
+            input: 'raw_customer',
+            weight: 10,
+          },
+          {
+            input: 'ecommerce_db.shopify.raw_customer',
+            weight: 5,
+          },
+          {
+            input: 'shopify.raw_customer',
+            weight: 5,
+          },
+        ],
+        column_suggest: [
+          {
+            input: 'comments',
+            weight: 5,
+          },
+          {
+            input: 'creditcard',
+            weight: 5,
+          },
+          {
+            input: 'membership',
+            weight: 5,
+          },
+          {
+            input: 'orders',
+            weight: 5,
+          },
+          {
+            input: 'platform',
+            weight: 5,
+          },
+          {
+            input: 'preference',
+            weight: 5,
+          },
+          {
+            input: 'shipping_address',
+            weight: 5,
+          },
+          {
+            input: 'shipping_date',
+            weight: 5,
+          },
+          {
+            input: 'transaction_date',
+            weight: 5,
+          },
+          {
+            input: 'customer',
+            weight: 5,
+          },
+          {
+            input: 'customer.username',
+            weight: 5,
+          },
+          {
+            input: 'customer.name',
+            weight: 5,
+          },
+          {
+            input: 'customer.sex',
+            weight: 5,
+          },
+          {
+            input: 'customer.address',
+            weight: 5,
+          },
+          {
+            input: 'customer.mail',
+            weight: 5,
+          },
+          {
+            input: 'customer.birthdate',
+            weight: 5,
+          },
+        ],
+        database_suggest: [
+          {
+            input: 'ecommerce_db',
+            weight: 5,
+          },
+        ],
+        schema_suggest: [
+          {
+            input: 'shopify',
+            weight: 5,
+          },
+        ],
+        service_suggest: [
+          {
+            input: 'sample_data',
+            weight: 5,
+          },
+        ],
+        doc_as_upsert: true,
+        tableType: 'Regular',
+      } as unknown as TableSearchSource,
     },
     {
-      index: 'mlmodel_search_index',
-      id: 'd9957030-4986-4241-82c2-83d0d19c8b35',
-      name: 'forecast_sales',
-      displayName: 'Sales Forecast Predictions',
-      description: 'Sales Forecast Predictions Model',
-      fullyQualifiedName: 'mlflow_svc.forecast_sales',
-      tags: [],
-      service: 'mlflow_svc',
-      serviceType: 'Mlflow',
-      tier: null,
-      owner: {
+      _index: SearchIndex.TOPIC,
+      _type: '_doc',
+      _id: '912fc547-3e86-4189-9e10-d63b175065d6',
+      _score: 1.7323679,
+      _source: {
+        entityType: 'topic',
+        id: '912fc547-3e86-4189-9e10-d63b175065d6',
+        name: 'avro_record',
+        displayName: 'avro_record',
+        fullyQualifiedName: 'sample_kafka.avro_record',
+        description:
+          'All Avro record related events gets captured in this topic',
+        version: 0.3,
+        updatedAt: 1681241392829,
+        updatedBy: 'admin',
+        href: 'http://localhost:8585/api/v1/topics/912fc547-3e86-4189-9e10-d63b175065d6',
         deleted: false,
-        name: 'admin',
-        id: '6efae30d-8284-4af4-b608-e3819172c0c5',
-        href: 'http://localhost:8585/api/v1/users/6efae30d-8284-4af4-b608-e3819172c0c5',
-        type: 'user',
-        fullyQualifiedName: 'admin',
-      },
-      entityType: 'mlmodel',
-      deleted: false,
+        service: {
+          deleted: false,
+          name: 'sample_kafka',
+          id: 'd22e3c89-c4e6-46f0-a816-3bdac2530777',
+          href: 'http://localhost:8585/api/v1/services/messagingServices/d22e3c89-c4e6-46f0-a816-3bdac2530777',
+          type: 'messagingService',
+          fullyQualifiedName: 'sample_kafka',
+        },
+        serviceType: 'Kafka',
+        schemaText: '{}',
+        schemaType: 'Avro',
+        cleanupPolicies: ['compact', 'delete'],
+        replicationFactor: 4,
+        maximumMessageSize: 249,
+        retentionSize: 1931232624,
+        suggest: [
+          {
+            input: 'sample_kafka.avro_record',
+            weight: 5,
+          },
+          {
+            input: 'avro_record',
+            weight: 10,
+          },
+        ],
+        service_suggest: [
+          {
+            input: 'sample_kafka',
+            weight: 5,
+          },
+        ],
+        tags: [
+          {
+            tagFQN: 'test 1.term 1',
+            labelType: 'Manual',
+            description: 'asd',
+            source: 'Glossary',
+            state: 'Confirmed',
+          },
+        ],
+        tier: null,
+        owner: {
+          deleted: false,
+          name: 'admin',
+          id: '78cb13de-b6b6-46ad-9b69-3cf6bd637186',
+          href: 'http://localhost:8585/api/v1/users/78cb13de-b6b6-46ad-9b69-3cf6bd637186',
+          type: 'user',
+          fullyQualifiedName: 'admin',
+        },
+        followers: [],
+        doc_as_upsert: true,
+        partitions: 128,
+        messageSchema: {
+          schemaFields: [
+            {
+              children: [
+                {
+                  dataType: 'INT',
+                  name: 'uid',
+                  description: 'The field represents unique id',
+                  fullyQualifiedName: 'sample_kafka.avro_record.level.uid',
+                  dataTypeDisplay: 'int',
+                  tags: [],
+                },
+                {
+                  dataType: 'STRING',
+                  name: 'somefield',
+                  fullyQualifiedName:
+                    'sample_kafka.avro_record.level.somefield',
+                  dataTypeDisplay: 'string',
+                  tags: [],
+                },
+                {
+                  children: [
+                    {
+                      children: [
+                        {
+                          dataType: 'STRING',
+                          name: 'item1_lvl2',
+                          fullyQualifiedName:
+                            'sample_kafka.avro_record.level.options.lvl2_record.item1_lvl2',
+                          dataTypeDisplay: 'string',
+                          tags: [],
+                        },
+                        {
+                          children: [
+                            {
+                              children: [
+                                {
+                                  dataType: 'STRING',
+                                  name: 'item1_lvl3',
+                                  description:
+                                    'The field represents level3 item',
+                                  fullyQualifiedName:
+                                    'sample_kafka.avro_record.level.options.lvl2_record.item2_lvl2.lvl3_record.item1_lvl3',
+                                  dataTypeDisplay: 'string',
+                                  tags: [],
+                                },
+                                {
+                                  dataType: 'STRING',
+                                  name: 'item2_lvl3',
+                                  fullyQualifiedName:
+                                    'sample_kafka.avro_record.level.options.lvl2_record.item2_lvl2.lvl3_record.item2_lvl3',
+                                  dataTypeDisplay: 'string',
+                                  tags: [],
+                                },
+                              ],
+                              dataType: 'RECORD',
+                              name: 'lvl3_record',
+                              fullyQualifiedName:
+                                'sample_kafka.avro_record.level.options.lvl2_record.item2_lvl2.lvl3_record',
+                              tags: [],
+                            },
+                          ],
+                          dataType: 'ARRAY',
+                          name: 'item2_lvl2',
+                          fullyQualifiedName:
+                            'sample_kafka.avro_record.level.options.lvl2_record.item2_lvl2',
+                          dataTypeDisplay: 'ARRAY<record>',
+                          tags: [],
+                        },
+                      ],
+                      dataType: 'RECORD',
+                      name: 'lvl2_record',
+                      description: 'The field represents a level 2 record',
+                      fullyQualifiedName:
+                        'sample_kafka.avro_record.level.options.lvl2_record',
+                      tags: [],
+                    },
+                  ],
+                  dataType: 'ARRAY',
+                  name: 'options',
+                  description: 'The field represents options array',
+                  fullyQualifiedName: 'sample_kafka.avro_record.level.options',
+                  dataTypeDisplay: 'ARRAY<record>',
+                  tags: [],
+                },
+              ],
+              dataType: 'RECORD',
+              name: 'level',
+              description: 'This is a first level record',
+              fullyQualifiedName: 'sample_kafka.avro_record.level',
+              tags: [],
+            },
+          ],
+          schemaType: 'Avro',
+          schemaText: '{}',
+        },
+        field_suggest: [
+          {
+            input: 'level',
+            weight: 5,
+          },
+          {
+            input: 'level.uid',
+            weight: 5,
+          },
+          {
+            input: 'level.somefield',
+            weight: 5,
+          },
+          {
+            input: 'level.options',
+            weight: 5,
+          },
+          {
+            input: 'options.lvl2_record',
+            weight: 5,
+          },
+          {
+            input: 'lvl2_record.item1_lvl2',
+            weight: 5,
+          },
+          {
+            input: 'lvl2_record.item2_lvl2',
+            weight: 5,
+          },
+          {
+            input: 'item2_lvl2.lvl3_record',
+            weight: 5,
+          },
+          {
+            input: 'lvl3_record.item1_lvl3',
+            weight: 5,
+          },
+          {
+            input: 'lvl3_record.item2_lvl3',
+            weight: 5,
+          },
+        ],
+      } as unknown as TopicSearchSource,
     },
     {
-      index: 'dashboard_search_index',
-      id: '1a5d1bdb-63db-4536-851e-e3886498ccbc',
-      name: 'FCC New Coder Survey 2018',
-      displayName: 'FCC New Coder Survey 2018',
-      description: '',
-      fullyQualifiedName: 'sample_superset.11',
-      tags: [],
-      dailyStats: 0,
-      dailyPercentileRank: 0,
-      weeklyStats: 0,
-      weeklyPercentileRank: 0,
-      service: 'sample_superset',
-      serviceType: 'Superset',
-      tier: null,
-      owner: {
+      _index: SearchIndex.PIPELINE,
+      _type: '_doc',
+      _id: '90c4ac9d-969b-4b6c-921f-0cf2700fdfa3',
+      _score: 1.3302417,
+      _source: {
+        entityType: 'pipeline',
+        id: '90c4ac9d-969b-4b6c-921f-0cf2700fdfa3',
+        name: 'dim_address_etl',
+        displayName: 'dim_address etl',
+        fullyQualifiedName: 'sample_airflow.dim_address_etl',
+        description: 'dim_address ETL pipeline',
+        version: 0.2,
+        updatedAt: 1681241412012,
+        updatedBy: 'admin',
+        pipelineUrl: 'http://localhost:8080/tree?dag_id=dim_address_etl',
+        tasks: [
+          {
+            taskType: 'PrestoOperator',
+            taskUrl:
+              'http://localhost:8080/taskinstance/list/?flt1_dag_id_equals=dim_address_task',
+            displayName: 'dim_address Task',
+            downstreamTasks: ['assert_table_exists'],
+            name: 'dim_address_task',
+            description:
+              'Airflow operator to perform ETL and generate dim_address table',
+            fullyQualifiedName:
+              'sample_airflow.dim_address_etl.dim_address_task',
+          },
+          {
+            taskType: 'HiveOperator',
+            taskUrl:
+              'http://localhost:8080/taskinstance/list/?flt1_dag_id_equals=assert_table_exists',
+            displayName: 'Assert Table Exists',
+            downstreamTasks: [],
+            name: 'assert_table_exists',
+            description: 'Assert if a table exists',
+            fullyQualifiedName:
+              'sample_airflow.dim_address_etl.assert_table_exists',
+          },
+        ],
         deleted: false,
-        name: 'admin',
-        id: '6efae30d-8284-4af4-b608-e3819172c0c5',
-        href: 'http://localhost:8585/api/v1/users/6efae30d-8284-4af4-b608-e3819172c0c5',
-        type: 'user',
-        fullyQualifiedName: 'admin',
-      },
-      entityType: 'dashboard',
-      deleted: false,
+        href: 'http://localhost:8585/api/v1/pipelines/90c4ac9d-969b-4b6c-921f-0cf2700fdfa3',
+        owner: {
+          deleted: false,
+          name: 'admin',
+          id: '78cb13de-b6b6-46ad-9b69-3cf6bd637186',
+          href: 'http://localhost:8585/api/v1/users/78cb13de-b6b6-46ad-9b69-3cf6bd637186',
+          type: 'user',
+          fullyQualifiedName: 'admin',
+        },
+        followers: [],
+        tags: [],
+        tier: null,
+        service: {
+          deleted: false,
+          name: 'sample_airflow',
+          id: '0725e637-0b0d-4c9c-9d98-cadbde36e8e8',
+          href: 'http://localhost:8585/api/v1/services/pipelineServices/0725e637-0b0d-4c9c-9d98-cadbde36e8e8',
+          type: 'pipelineService',
+          fullyQualifiedName: 'sample_airflow',
+        },
+        serviceType: 'Airflow',
+        suggest: [
+          {
+            input: 'sample_airflow.dim_address_etl',
+            weight: 5,
+          },
+          {
+            input: 'dim_address etl',
+            weight: 10,
+          },
+        ],
+        task_suggest: [
+          {
+            input: 'dim_address_task',
+            weight: 5,
+          },
+          {
+            input: 'assert_table_exists',
+            weight: 5,
+          },
+        ],
+        service_suggest: [
+          {
+            input: 'sample_airflow',
+            weight: 5,
+          },
+        ],
+        doc_as_upsert: true,
+      } as unknown as PipelineSearchSource,
     },
     {
-      index: 'table_search_index',
-      id: '7f2eaa16-beae-4c25-89ca-b337bd3b0ab9',
-      name: 'dim.shop',
-      displayName: 'dim.shop',
-      description:
-        'This dimension table contains online shop information. This table contains one shop per row.',
-      fullyQualifiedName: 'sample_data.ecommerce_db.shopify."dim.shop"',
-      tableType: 'Regular',
-      tags: [],
-      dailyStats: 0,
-      dailyPercentileRank: 0,
-      weeklyStats: 0,
-      weeklyPercentileRank: 0,
-      service: 'sample_data',
-      serviceType: 'BigQuery',
-      tier: null,
-      owner: {
+      _index: SearchIndex.DASHBOARD,
+      _type: '_doc',
+      _id: 'd2197a56-301a-408e-ae68-e6400302d784',
+      _score: 1.3240497,
+      _source: {
+        entityType: 'dashboard',
+        id: 'd2197a56-301a-408e-ae68-e6400302d784',
+        name: 'deck.gl Demo',
+        displayName: 'deck.gl Demo',
+        fullyQualifiedName: 'sample_superset.10',
+        description: '',
+        version: 0.2,
+        updatedAt: 1681241402148,
+        updatedBy: 'admin',
+        dashboardUrl: 'http://localhost:808/superset/dashboard/deck/',
+        charts: [
+          {
+            deleted: false,
+            displayName: '# of Games That Hit 100k in Sales By Release Year',
+            name: '114',
+            description: '',
+            id: 'b8420780-1775-45d5-95f2-235ed6c1841f',
+            href: 'http://localhost:8585/api/v1/charts/b8420780-1775-45d5-95f2-235ed6c1841f',
+            type: 'chart',
+            fullyQualifiedName: 'sample_superset.114',
+          },
+          {
+            deleted: false,
+            displayName: 'Are you an ethnic minority in your city?',
+            name: '127',
+            description: '',
+            id: 'd7ffca13-538b-46af-b5bd-d2f08406d86e',
+            href: 'http://localhost:8585/api/v1/charts/d7ffca13-538b-46af-b5bd-d2f08406d86e',
+            type: 'chart',
+            fullyQualifiedName: 'sample_superset.127',
+          },
+          {
+            deleted: false,
+            displayName: '% Rural',
+            name: '166',
+            description: '',
+            id: 'a3e79ca0-1a9a-4182-9b3e-3c6d27ca1886',
+            href: 'http://localhost:8585/api/v1/charts/a3e79ca0-1a9a-4182-9b3e-3c6d27ca1886',
+            type: 'chart',
+            fullyQualifiedName: 'sample_superset.166',
+          },
+        ],
+        href: 'http://localhost:8585/api/v1/dashboards/d2197a56-301a-408e-ae68-e6400302d784',
+        owner: {
+          deleted: false,
+          name: 'admin',
+          id: '78cb13de-b6b6-46ad-9b69-3cf6bd637186',
+          //   href: 'http://localhost:8585/api/v1/users/78cb13de-b6b6-46ad-9b69-3cf6bd637186',
+          type: 'user',
+          fullyQualifiedName: 'admin',
+        },
+        followers: [],
+        service: {
+          deleted: false,
+          name: 'sample_superset',
+          id: 'af8e05a5-7eea-495f-9a6b-99371e08bee0',
+          href: 'http://localhost:8585/api/v1/services/dashboardServices/af8e05a5-7eea-495f-9a6b-99371e08bee0',
+          type: 'dashboardService',
+          fullyQualifiedName: 'sample_superset',
+        },
+        serviceType: DashboardServiceType.Superset,
+        usageSummary: {
+          dailyStats: {
+            count: 0,
+            percentileRank: 0,
+          },
+          weeklyStats: {
+            count: 0,
+            percentileRank: 0,
+          },
+          monthlyStats: {
+            count: 0,
+            percentileRank: 0,
+          },
+          date: new Date(),
+        },
         deleted: false,
-        name: 'admin',
-        id: '6efae30d-8284-4af4-b608-e3819172c0c5',
-        href: 'http://localhost:8585/api/v1/users/6efae30d-8284-4af4-b608-e3819172c0c5',
-        type: 'user',
-        fullyQualifiedName: 'admin',
-      },
-      database: 'ecommerce_db',
-      databaseSchema: 'shopify',
-      entityType: 'table',
-      deleted: false,
-    },
-    {
-      index: 'table_search_index',
-      id: '7e9e51d6-8646-4b86-84df-ee1c95b992bc',
-      name: 'dim.api/client',
-      displayName: 'dim.api/client',
-      description:
-        'This dimension table contains a row for each channel or app that your customers use to create orders.',
-      fullyQualifiedName: 'sample_data.ecommerce_db.shopify."dim.api/client"',
-      tableType: 'Regular',
-      tags: [],
-      dailyStats: 0,
-      dailyPercentileRank: 0,
-      weeklyStats: 0,
-      weeklyPercentileRank: 0,
-      service: 'sample_data',
-      serviceType: 'BigQuery',
-      tier: null,
-      owner: {
-        deleted: false,
-        name: 'admin',
-        id: '6efae30d-8284-4af4-b608-e3819172c0c5',
-        href: 'http://localhost:8585/api/v1/users/6efae30d-8284-4af4-b608-e3819172c0c5',
-        type: 'user',
-        fullyQualifiedName: 'admin',
-      },
-      database: 'ecommerce_db',
-      databaseSchema: 'shopify',
-      entityType: 'table',
-      deleted: false,
-    },
-    {
-      index: 'table_search_index',
-      id: 'ff274334-84cf-4cb5-9450-acd0ae00e8fd',
-      name: 'dim_customer',
-      displayName: 'dim_customer',
-      description: 'The dimension table contains data about your customers.',
-      fullyQualifiedName: 'sample_data.ecommerce_db.shopify.dim_customer',
-      tableType: 'Regular',
-      tags: [],
-      dailyStats: 0,
-      dailyPercentileRank: 0,
-      weeklyStats: 0,
-      weeklyPercentileRank: 0,
-      service: 'sample_data',
-      serviceType: 'BigQuery',
-      tier: null,
-      owner: {
-        deleted: false,
-        name: 'admin',
-        id: '6efae30d-8284-4af4-b608-e3819172c0c5',
-        href: 'http://localhost:8585/api/v1/users/6efae30d-8284-4af4-b608-e3819172c0c5',
-        type: 'user',
-        fullyQualifiedName: 'admin',
-      },
-      database: 'ecommerce_db',
-      databaseSchema: 'shopify',
-      entityType: 'table',
-      deleted: false,
+        tags: [],
+        tier: 'Tier.Tier1',
+        suggest: [
+          {
+            input: 'sample_superset.10',
+            weight: 5,
+          },
+          {
+            input: 'deck.gl Demo',
+            weight: 10,
+          },
+        ],
+        chart_suggest: [
+          {
+            input: '# of Games That Hit 100k in Sales By Release Year',
+            weight: 5,
+          },
+          {
+            input: 'Are you an ethnic minority in your city?',
+            weight: 5,
+          },
+          {
+            input: '% Rural',
+            weight: 5,
+          },
+        ],
+        data_model_suggest: [],
+        service_suggest: [
+          {
+            input: 'sample_superset',
+            weight: 5,
+          },
+        ],
+        doc_as_upsert: true,
+        dataModels: [],
+      } as unknown as DashboardSearchSource,
     },
   ],
   total: 6,

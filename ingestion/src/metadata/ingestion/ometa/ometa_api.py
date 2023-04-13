@@ -44,7 +44,6 @@ from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.glossary import Glossary
 from metadata.generated.schema.entity.data.glossaryTerm import GlossaryTerm
-from metadata.generated.schema.entity.data.location import Location
 from metadata.generated.schema.entity.data.metrics import Metrics
 from metadata.generated.schema.entity.data.mlmodel import MlModel
 from metadata.generated.schema.entity.data.pipeline import Pipeline
@@ -67,9 +66,6 @@ from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipel
 from metadata.generated.schema.entity.services.messagingService import MessagingService
 from metadata.generated.schema.entity.services.metadataService import MetadataService
 from metadata.generated.schema.entity.services.mlmodelService import MlModelService
-from metadata.generated.schema.entity.services.objectstoreService import (
-    ObjectStoreService,
-)
 from metadata.generated.schema.entity.services.pipelineService import PipelineService
 from metadata.generated.schema.entity.services.storageService import StorageService
 from metadata.generated.schema.entity.teams.role import Role
@@ -284,11 +280,6 @@ class OpenMetadata(
             return "/pipelines"
 
         if issubclass(
-            entity, get_args(Union[Location, self.get_create_entity_type(Location)])
-        ):
-            return "/locations"
-
-        if issubclass(
             entity, get_args(Union[Policy, self.get_create_entity_type(Policy)])
         ):
             return "/policies"
@@ -432,12 +423,10 @@ class OpenMetadata(
         if issubclass(
             entity,
             get_args(
-                Union[
-                    ObjectStoreService, self.get_create_entity_type(ObjectStoreService)
-                ]
+                Union[StorageService, self.get_create_entity_type(StorageService)]
             ),
         ):
-            return "/services/objectStoreServices"
+            return "/services/storageServices"
 
         if issubclass(
             entity,

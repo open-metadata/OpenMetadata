@@ -16,21 +16,21 @@ import uuid
 from unittest import TestCase
 
 from metadata.generated.schema.api.data.createContainer import CreateContainerRequest
-from metadata.generated.schema.api.services.createObjectStoreService import (
-    CreateObjectStoreServiceRequest,
+from metadata.generated.schema.api.services.createStorageService import (
+    CreateStorageServiceRequest,
 )
 from metadata.generated.schema.api.teams.createUser import CreateUserRequest
 from metadata.generated.schema.entity.data.container import Container
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
-from metadata.generated.schema.entity.services.connections.objectstore.s3ObjectStoreConnection import (
-    S3StoreConnection,
+from metadata.generated.schema.entity.services.connections.storage.s3Connection import (
+    S3Connection,
 )
-from metadata.generated.schema.entity.services.objectstoreService import (
-    ObjectStoreConnection,
-    ObjectStoreService,
-    ObjectStoreServiceType,
+from metadata.generated.schema.entity.services.storageService import (
+    StorageConnection,
+    StorageService,
+    StorageServiceType,
 )
 from metadata.generated.schema.security.client.openMetadataJWTClientConfig import (
     OpenMetadataJWTClientConfig,
@@ -64,11 +64,11 @@ class OMetaObjectStoreTest(TestCase):
     )
     owner = EntityReference(id=user.id, type="user")
 
-    service = CreateObjectStoreServiceRequest(
+    service = CreateStorageServiceRequest(
         name="test-service-object",
-        serviceType=ObjectStoreServiceType.S3,
-        connection=ObjectStoreConnection(
-            config=S3StoreConnection(awsConfig=AWSCredentials(awsRegion="us-east-2"))
+        serviceType=StorageServiceType.S3,
+        connection=StorageConnection(
+            config=S3Connection(awsConfig=AWSCredentials(awsRegion="us-east-2"))
         ),
     )
     service_type = "objectstoreService"
@@ -100,12 +100,12 @@ class OMetaObjectStoreTest(TestCase):
 
         service_id = str(
             cls.metadata.get_by_name(
-                entity=ObjectStoreService, fqn="test-service-object"
+                entity=StorageService, fqn="test-service-object"
             ).id.__root__
         )
 
         cls.metadata.delete(
-            entity=ObjectStoreService,
+            entity=StorageService,
             entity_id=service_id,
             recursive=True,
             hard_delete=True,

@@ -23,8 +23,10 @@ import {
 } from 'antd';
 import { ColumnsType, ExpandableConfig } from 'antd/lib/table/interface';
 import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
+import { ReactComponent as DownUpArrowIcon } from 'assets/svg/ic-down-up-arrow.svg';
 import { ReactComponent as UpDownArrowIcon } from 'assets/svg/ic-up-down-arrow.svg';
 import { ReactComponent as PlusOutlinedIcon } from 'assets/svg/plus-outlined.svg';
+import { ReactComponent as PlusIcon } from 'assets/svg/plus-primary.svg';
 import { AxiosError } from 'axios';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
@@ -32,7 +34,6 @@ import Loader from 'components/Loader/Loader';
 import { FQN_SEPARATOR_CHAR } from 'constants/char.constants';
 import { DE_ACTIVE_COLOR } from 'constants/constants';
 import { GLOSSARIES_DOCS } from 'constants/docs.constants';
-import { NO_PERMISSION_FOR_ACTION } from 'constants/HelperTextUtil';
 import { TABLE_CONSTANTS } from 'constants/Teams.constants';
 import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { compare } from 'fast-json-patch';
@@ -261,24 +262,18 @@ const GlossaryTermTab = ({
         <ErrorPlaceHolder
           buttons={
             <div className="tw-text-lg tw-text-center">
-              <Tooltip
-                title={
-                  permissions.Create
-                    ? t('label.add-entity', {
-                        entity: t('label.term-lowercase'),
-                      })
-                    : NO_PERMISSION_FOR_ACTION
-                }>
+              {permissions.Create && (
                 <Button
                   ghost
                   data-testid="add-new-tag-button"
                   type="primary"
                   onClick={() => handleAddGlossaryTermClick(glossaryName)}>
-                  {t('label.add-entity', {
-                    entity: t('label.glossary-term'),
-                  })}
+                  <div className="d-flex items-center">
+                    <PlusIcon className="anticon" />
+                    <span className="m-l-0">{t('label.add')}</span>
+                  </div>
                 </Button>
-              </Tooltip>
+              )}
             </div>
           }
           doc={GLOSSARIES_DOCS}
@@ -299,7 +294,12 @@ const GlossaryTermTab = ({
             type="text"
             onClick={toggleExpandAll}>
             <Space align="center" size={4}>
-              <UpDownArrowIcon color={DE_ACTIVE_COLOR} height="14px" />
+              {expandedRowKeys.length === childGlossaryTerms.length ? (
+                <DownUpArrowIcon color={DE_ACTIVE_COLOR} height="14px" />
+              ) : (
+                <UpDownArrowIcon color={DE_ACTIVE_COLOR} height="14px" />
+              )}
+
               {expandedRowKeys.length === childGlossaryTerms.length
                 ? t('label.collapse-all')
                 : t('label.expand-all')}
@@ -319,6 +319,7 @@ const GlossaryTermTab = ({
               loading={isTableLoading}
               pagination={false}
               rowKey="fullyQualifiedName"
+              scroll={{ x: true }}
               size="small"
               tableLayout="auto"
               onRow={onTableRow}

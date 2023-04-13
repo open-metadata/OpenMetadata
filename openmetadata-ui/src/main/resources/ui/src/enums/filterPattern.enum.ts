@@ -22,4 +22,5 @@ export enum FilterPatternEnum {
   PIPELINE = 'pipeline',
   MLMODEL = 'mlModel',
   CONTAINER = 'container',
+  DASHBOARD_DATAMODEL = 'dataModel',
 }

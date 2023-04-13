@@ -19,12 +19,9 @@ import static org.openmetadata.schema.type.MetadataOperation.EDIT_ALL;
 import static org.openmetadata.schema.type.MetadataOperation.VIEW_ALL;
 import static org.openmetadata.service.Entity.ALL_RESOURCES;
 import static org.openmetadata.service.Entity.FIELD_DESCRIPTION;
-import static org.openmetadata.service.Entity.LOCATION;
 import static org.openmetadata.service.Entity.POLICY;
 import static org.openmetadata.service.security.policyevaluator.OperationContext.isEditOperation;
 import static org.openmetadata.service.security.policyevaluator.OperationContext.isViewOperation;
-import static org.openmetadata.service.util.EntityUtil.entityReferenceMatch;
-import static org.openmetadata.service.util.EntityUtil.getId;
 import static org.openmetadata.service.util.EntityUtil.getRuleField;
 import static org.openmetadata.service.util.EntityUtil.ruleMatch;
 
@@ -35,8 +32,6 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
-import org.jdbi.v3.sqlobject.transaction.Transaction;
-import org.openmetadata.schema.entity.data.Location;
 import org.openmetadata.schema.entity.policies.Policy;
 import org.openmetadata.schema.entity.policies.accessControl.Rule;
 import org.openmetadata.schema.type.EntityReference;
@@ -53,8 +48,8 @@ import org.openmetadata.service.util.EntityUtil.Fields;
 
 @Slf4j
 public class PolicyRepository extends EntityRepository<Policy> {
-  private static final String POLICY_UPDATE_FIELDS = "owner,location";
-  private static final String POLICY_PATCH_FIELDS = "owner,location";
+  private static final String POLICY_UPDATE_FIELDS = "owner";
+  private static final String POLICY_PATCH_FIELDS = "owner";
   public static final String ENABLED = "enabled";
 
   public PolicyRepository(CollectionDAO dao) {
@@ -68,15 +63,8 @@ public class PolicyRepository extends EntityRepository<Policy> {
         POLICY_UPDATE_FIELDS);
   }
 
-  /** Find the location to which this policy applies to. * */
-  @Transaction
-  private EntityReference getLocationForPolicy(Policy policy) throws IOException {
-    return getToEntityRef(policy.getId(), Relationship.APPLIED_TO, LOCATION, false);
-  }
-
   @Override
   public Policy setFields(Policy policy, Fields fields) throws IOException {
-    policy.setLocation(fields.contains("location") ? getLocationForPolicy(policy) : null);
     policy.setTeams(fields.contains("teams") ? getTeams(policy) : null);
     return policy.withRoles(fields.contains("roles") ? getRoles(policy) : null);
   }
@@ -93,44 +81,23 @@ public class PolicyRepository extends EntityRepository<Policy> {
     return EntityUtil.populateEntityReferences(records, Entity.ROLE);
   }
 
-  /** Generate EntityReference for a given Policy's Location. * */
-  @Transaction
-  private EntityReference getLocationReference(Policy policy) throws IOException {
-    if (policy == null || getId(policy.getLocation()) == null) {
-      return null;
-    }
-
-    Location location = daoCollection.locationDAO().findEntityById(policy.getLocation().getId());
-    if (location == null) {
-      return null;
-    }
-    return location.getEntityReference();
-  }
-
   @Override
   public void prepare(Policy policy) throws IOException {
     validateRules(policy);
-    policy.setLocation(getLocationReference(policy));
   }
 
   @Override
   public void storeEntity(Policy policy, boolean update) throws IOException {
-    // Relationships and fields such as location are derived and not stored as part of json
-    EntityReference location = policy.getLocation();
-    policy.withLocation(null);
     store(policy, update);
     if (update) {
       PolicyCache.getInstance().invalidatePolicy(policy.getId());
     }
-    policy.withLocation(location);
   }
 
   @Override
   public void storeRelationships(Policy policy) {
     // Add policy owner relationship.
     storeOwner(policy, policy.getOwner());
-    // Add location to which policy is assigned to.
-    setLocation(policy, policy.getLocation());
   }
 
   @Override
@@ -174,13 +141,6 @@ public class PolicyRepository extends EntityRepository<Policy> {
     rules.sort(Comparator.comparing(Rule::getName));
   }
 
-  private void setLocation(Policy policy, EntityReference location) {
-    if (getId(location) == null) {
-      return;
-    }
-    addRelationship(policy.getId(), policy.getLocation().getId(), POLICY, Entity.LOCATION, Relationship.APPLIED_TO);
-  }
-
   public static List<String> filterRedundantResources(List<String> resources) {
     // If ALL_RESOURCES are in the resource list, remove redundant resources specifically mentioned
     boolean containsAllResources = resources.stream().anyMatch(ALL_RESOURCES::equalsIgnoreCase);
@@ -213,26 +173,7 @@ public class PolicyRepository extends EntityRepository<Policy> {
     @Override
     public void entitySpecificUpdate() throws IOException {
       recordChange(ENABLED, original.getEnabled(), updated.getEnabled());
-      updateLocation(original, updated);
       updateRules(original.getRules(), updated.getRules());
-    }
-
-    private void updateLocation(Policy origPolicy, Policy updatedPolicy) throws IOException {
-      // remove original Policy --> Location relationship if exists.
-      if (getId(origPolicy.getLocation()) != null) {
-        deleteRelationship(
-            origPolicy.getId(), POLICY, origPolicy.getLocation().getId(), Entity.LOCATION, Relationship.APPLIED_TO);
-      }
-      // insert updated Policy --> Location relationship.
-      if (getId(updatedPolicy.getLocation()) != null) {
-        addRelationship(
-            updatedPolicy.getId(),
-            updatedPolicy.getLocation().getId(),
-            POLICY,
-            Entity.LOCATION,
-            Relationship.APPLIED_TO);
-      }
-      recordChange("location", origPolicy.getLocation(), updatedPolicy.getLocation(), true, entityReferenceMatch);
     }
 
     private void updateRules(List<Rule> origRules, List<Rule> updatedRules) throws IOException {

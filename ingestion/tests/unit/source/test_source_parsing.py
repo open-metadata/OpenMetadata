@@ -363,8 +363,6 @@ def test_glue():
                     "awsRegion": "aws region",
                     "endPointURL": "https://glue.<region_name>.amazonaws.com/",
                 },
-                "storageServiceName": "storage_name",
-                "pipelineServiceName": "pipeline_name",
             }
         },
         "sourceConfig": {"config": {"type": "DatabaseMetadata"}},

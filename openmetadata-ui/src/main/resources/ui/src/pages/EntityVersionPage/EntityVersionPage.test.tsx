@@ -77,7 +77,7 @@ jest.mock('rest/mlModelAPI', () => ({
   getMlModelVersions: jest.fn().mockImplementation(() => Promise.resolve()),
 }));
 
-jest.mock('rest/objectStoreAPI', () => ({
+jest.mock('rest/storageAPI', () => ({
   getContainerByName: jest.fn().mockImplementation(() => Promise.resolve()),
   getContainerVersion: jest.fn().mockImplementation(() => Promise.resolve()),
   getContainerVersions: jest.fn().mockImplementation(() => Promise.resolve()),
@@ -195,7 +195,7 @@ describe('Test EntityVersionPage component', () => {
     mockParams = {
       entityType: 'container',
       version: '0.1',
-      entityFQN: 's3_object_store_sample.transactions',
+      entityFQN: 's3_storage_sample.transactions',
     };
 
     await act(async () => {

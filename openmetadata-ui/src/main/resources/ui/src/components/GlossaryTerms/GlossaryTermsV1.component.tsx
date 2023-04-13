@@ -12,19 +12,13 @@
  */
 
 import { Col, Row } from 'antd';
-import { AxiosError } from 'axios';
+import { EntityDetailsObjectInterface } from 'components/Explore/explore.interface';
 import GlossaryHeader from 'components/Glossary/GlossaryHeader/GlossaryHeader.component';
 import GlossaryTabs from 'components/GlossaryTabs/GlossaryTabs.component';
-import { PAGE_SIZE } from 'constants/constants';
-import { myDataSearchIndex } from 'constants/Mydata.constants';
-import { AssetsDataType } from 'Models';
-import React, { useEffect, useState } from 'react';
-import { searchData } from 'rest/miscAPI';
-import { formatDataResponse, SearchEntityHits } from 'utils/APIUtils';
+import React, { useRef } from 'react';
 import { GlossaryTerm } from '../../generated/entity/data/glossaryTerm';
-import jsonData from '../../jsons/en';
-import { showErrorToast } from '../../utils/ToastUtils';
 import { OperationPermission } from '../PermissionProvider/PermissionProvider.interface';
+import { AssetsTabRef } from './tabs/AssetsTabs.component';
 
 type Props = {
   permissions: OperationPermission;
@@ -33,6 +27,8 @@ type Props = {
   handleGlossaryTermUpdate: (data: GlossaryTerm) => Promise<void>;
   handleGlossaryTermDelete: (id: string) => void;
   refreshGlossaryTerms: () => void;
+  onAssetClick?: (asset?: EntityDetailsObjectInterface) => void;
+  isSummaryPanelOpen: boolean;
 };
 
 const GlossaryTermsV1 = ({
@@ -42,60 +38,10 @@ const GlossaryTermsV1 = ({
   handleGlossaryTermDelete,
   permissions,
   refreshGlossaryTerms,
+  onAssetClick,
+  isSummaryPanelOpen,
 }: Props) => {
-  const [assetData, setAssetData] = useState<AssetsDataType>({
-    isLoading: true,
-    data: [],
-    total: 0,
-    currPage: 1,
-  });
-
-  const fetchGlossaryTermAssets = async (fqn: string, currentPage = 1) => {
-    setAssetData((pre) => ({
-      ...pre,
-      isLoading: true,
-    }));
-    if (fqn) {
-      try {
-        const res = await searchData(
-          '',
-          currentPage,
-          PAGE_SIZE,
-          `(tags.tagFQN:"${fqn}")`,
-          '',
-          '',
-          myDataSearchIndex
-        );
-
-        const hits = res?.data?.hits?.hits as SearchEntityHits;
-        const isData = hits?.length > 0;
-        setAssetData(() => {
-          const data = isData ? formatDataResponse(hits) : [];
-          const total = isData ? res.data.hits.total.value : 0;
-
-          return {
-            isLoading: false,
-            data,
-            total,
-            currPage: currentPage,
-          };
-        });
-      } catch (error) {
-        showErrorToast(
-          error as AxiosError,
-          jsonData['api-error-messages']['elastic-search-error']
-        );
-      }
-    } else {
-      setAssetData({ data: [], total: 0, currPage: 1, isLoading: false });
-    }
-  };
-
-  useEffect(() => {
-    fetchGlossaryTermAssets(
-      glossaryTerm.fullyQualifiedName || glossaryTerm.name
-    );
-  }, [glossaryTerm.fullyQualifiedName]);
+  const assetTabRef = useRef<AssetsTabRef>(null);
 
   return (
     <Row data-testid="glossary-term" gutter={[0, 8]}>
@@ -104,10 +50,11 @@ const GlossaryTermsV1 = ({
           isGlossary={false}
           permissions={permissions}
           selectedData={glossaryTerm}
-          onAssetsUpdate={() =>
-            glossaryTerm.fullyQualifiedName &&
-            fetchGlossaryTermAssets(glossaryTerm.fullyQualifiedName)
-          }
+          onAssetsUpdate={() => {
+            if (glossaryTerm.fullyQualifiedName) {
+              assetTabRef.current?.refreshAssets();
+            }
+          }}
           onDelete={handleGlossaryTermDelete}
           onUpdate={(data) => handleGlossaryTermUpdate(data as GlossaryTerm)}
         />
@@ -115,12 +62,14 @@ const GlossaryTermsV1 = ({
 
       <Col span={24}>
         <GlossaryTabs
-          assetData={assetData}
+          assetsRef={assetTabRef}
           childGlossaryTerms={childGlossaryTerms}
           isGlossary={false}
+          isSummaryPanelOpen={isSummaryPanelOpen}
           permissions={permissions}
           refreshGlossaryTerms={refreshGlossaryTerms}
           selectedData={glossaryTerm}
+          onAssetClick={onAssetClick}
           onUpdate={(data) => handleGlossaryTermUpdate(data as GlossaryTerm)}
         />
       </Col>

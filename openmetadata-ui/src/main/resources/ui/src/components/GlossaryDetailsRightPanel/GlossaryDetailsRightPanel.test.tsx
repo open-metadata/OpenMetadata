@@ -54,7 +54,7 @@ describe('GlossaryDetailsRightPanel', () => {
     );
 
     expect(getByTestId('glossary-owner-name')).toHaveTextContent('label.owner');
-    expect(getByTestId('glossary-display-name')).toHaveTextContent(
+    expect(getByTestId('glossary-reviewer-heading-name')).toHaveTextContent(
       'label.reviewer-plural'
     );
     expect(getByTestId('glossary-tags-name')).toHaveTextContent(

@@ -44,7 +44,7 @@ def get_connection_url(connection: HiveConnection) -> str:
     if (
         connection.username
         and connection.auth
-        and connection.auth in ("LDAP", "CUSTOM")
+        and connection.auth.value in ("LDAP", "CUSTOM")
     ):
         url += quote_plus(connection.username)
         if not connection.password:
@@ -80,7 +80,7 @@ def get_connection(connection: HiveConnection) -> Engine:
     if connection.auth:
         if not connection.connectionArguments:
             connection.connectionArguments = init_empty_connection_arguments()
-        connection.connectionArguments.__root__["auth"] = connection.auth
+        connection.connectionArguments.__root__["auth"] = connection.auth.value
 
     if connection.kerberosServiceName:
         if not connection.connectionArguments:

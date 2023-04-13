@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { AssetsDataType } from 'Models';
+import { SearchedDataProps } from 'components/searched-data/SearchedData.interface';
 import { FeedFilter } from '../../enums/mydata.enum';
 import { Thread, ThreadType } from '../../generated/entity/feed/thread';
 import { User } from '../../generated/entity/teams/user';
@@ -20,8 +20,16 @@ import { ThreadUpdatedFunc } from '../../interface/feed.interface';
 
 export interface Props {
   userData: User;
-  followingEntities: AssetsDataType;
-  ownedEntities: AssetsDataType;
+  followingEntities: {
+    data: SearchedDataProps['data'];
+    total: number;
+    currPage: number;
+  };
+  ownedEntities: {
+    data: SearchedDataProps['data'];
+    total: number;
+    currPage: number;
+  };
   username: string;
   tab: string;
   feedData: Thread[];

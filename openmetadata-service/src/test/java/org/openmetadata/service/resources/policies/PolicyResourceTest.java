@@ -52,13 +52,11 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
-import org.openmetadata.schema.api.data.CreateLocation;
 import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.policies.CreatePolicy;
 import org.openmetadata.schema.api.teams.CreateRole;
 import org.openmetadata.schema.api.teams.CreateTeam;
 import org.openmetadata.schema.api.teams.CreateUser;
-import org.openmetadata.schema.entity.data.Location;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.policies.Policy;
 import org.openmetadata.schema.entity.policies.accessControl.Rule;
@@ -77,7 +75,6 @@ import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.resources.CollectionRegistry;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.databases.TableResourceTest;
-import org.openmetadata.service.resources.locations.LocationResourceTest;
 import org.openmetadata.service.resources.policies.PolicyResource.PolicyList;
 import org.openmetadata.service.resources.policies.PolicyResource.ResourceDescriptorList;
 import org.openmetadata.service.resources.teams.RoleResourceTest;
@@ -292,27 +289,6 @@ public class PolicyResourceTest extends EntityResourceTest<Policy, CreatePolicy>
     CreatePolicy create = createAccessControlPolicyWithRules(policyName, List.of(rule));
     assertResponseContains(() -> createEntity(create, ADMIN_AUTH_HEADERS), BAD_REQUEST, expectedReason);
     assertResponseContains(() -> validateCondition(condition), BAD_REQUEST, expectedReason);
-  }
-
-  @Test
-  void patch_PolicyAttributes_200_ok(TestInfo test) throws IOException {
-    Policy policy = createAndCheckEntity(createRequest(test), ADMIN_AUTH_HEADERS).withLocation(null);
-
-    // Set enabled to false
-    String origJson = JsonUtils.pojoToJson(policy);
-    policy.setEnabled(false);
-    ChangeDescription change = getChangeDescription(policy.getVersion());
-    fieldUpdated(change, "enabled", true, false);
-    policy = patchEntityAndCheck(policy, origJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
-    Location location = createLocation();
-    EntityReference locationReference = location.getEntityReference();
-
-    // Add new field location
-    origJson = JsonUtils.pojoToJson(policy);
-    policy.setLocation(locationReference);
-    change = getChangeDescription(policy.getVersion());
-    fieldAdded(change, "location", locationReference);
-    patchEntityAndCheck(policy, origJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
   }
 
   @Test
@@ -576,12 +552,6 @@ public class PolicyResourceTest extends EntityResourceTest<Policy, CreatePolicy>
   private void validateCondition(String expression) throws HttpResponseException {
     WebTarget target = getResource(collectionName + "/validation/condition/" + expression);
     TestUtils.get(target, ADMIN_AUTH_HEADERS);
-  }
-
-  private Location createLocation() throws HttpResponseException {
-    LocationResourceTest locationResourceTest = new LocationResourceTest();
-    CreateLocation createLocation = locationResourceTest.createRequest("aws-s3", "", "", null);
-    return TestUtils.post(getResource("locations"), createLocation, Location.class, ADMIN_AUTH_HEADERS);
   }
 
   public final ResourceDescriptorList getPolicyResources(Map<String, String> authHeaders) throws HttpResponseException {

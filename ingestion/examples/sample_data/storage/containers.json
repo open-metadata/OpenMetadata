@@ -1,0 +1,198 @@
+[
+  {
+    "name": "transactions",
+    "displayName": "Company Transactions",
+    "description": "Bucket containing all the company's transactions",
+    "parent": null,
+    "prefix": "/transactions/",
+    "dataModel": {
+      "isPartitioned": true,
+      "columns": [
+        {
+          "name": "transaction_id",
+          "dataType": "NUMERIC",
+          "dataTypeDisplay": "numeric",
+          "description": "The ID of the executed transaction. This column is the primary key for this table.",
+          "tags": [],
+          "constraint": "PRIMARY_KEY",
+          "ordinalPosition": 1
+        },
+        {
+          "name": "merchant",
+          "dataType": "VARCHAR",
+          "dataLength": 100,
+          "dataTypeDisplay": "varchar",
+          "description": "The merchant for this transaction.",
+          "tags": [],
+          "ordinalPosition": 2
+        },
+        {
+          "name": "transaction_time",
+          "dataType": "TIMESTAMP",
+          "dataTypeDisplay": "timestamp",
+          "description": "The time the transaction took place.",
+          "tags": [],
+          "ordinalPosition": 3
+        }
+      ]
+    },
+    "numberOfObjects": "50",
+    "size": "102400",
+    "fileFormats": [
+      "parquet"
+    ]
+  },
+  {
+    "name": "departments",
+    "displayName": "Company departments",
+    "description": "Bucket containing company department information",
+    "parent": null,
+    "prefix": "/departments/",
+    "dataModel": null,
+    "numberOfObjects": "2",
+    "size": "2048",
+    "fileFormats": [
+      "csv"
+    ]
+  },
+  {
+    "name": "engineering",
+    "displayName": "Engineering department",
+    "description": "Bucket containing engineering department information",
+    "parent": "s3_storage_sample.departments",
+    "prefix": "/departments/engineering/",
+    "dataModel": null,
+    "numberOfObjects": "5",
+    "size": "14336",
+    "fileFormats": [
+      "zip"
+    ]
+  },
+  {
+    "name": "finance",
+    "displayName": "Finance department",
+    "description": "Bucket containing finance department information",
+    "parent": "s3_storage_sample.departments",
+    "prefix": "/departments/finance/",
+    "dataModel": {
+      "isPartitioned": false,
+      "columns": [
+        {
+          "name": "department_id",
+          "dataType": "NUMERIC",
+          "dataTypeDisplay": "numeric",
+          "description": "The ID of the department. This column is the primary key for this table.",
+          "tags": [],
+          "constraint": "PRIMARY_KEY",
+          "ordinalPosition": 1
+        },
+        {
+          "name": "budget_total_value",
+          "dataType": "NUMERIC",
+          "dataTypeDisplay": "numeric",
+          "description": "The department's budget for the current year.",
+          "tags": [],
+          "ordinalPosition": 2
+        },
+        {
+          "name": "notes",
+          "dataType": "VARCHAR",
+          "dataLength": 100,
+          "dataTypeDisplay": "varchar",
+          "description": "Notes concerning sustainability for the budget.",
+          "tags": [],
+          "ordinalPosition": 3
+        },
+        {
+          "name": "budget_executor",
+          "dataType": "VARCHAR",
+          "dataTypeDisplay": "varchar",
+          "description": "The responsible finance lead for the budget execution",
+          "tags": [],
+          "ordinalPosition": 4
+        }
+      ]
+    },
+    "numberOfObjects": "75",
+    "size": "286720",
+    "fileFormats": [
+      "zip",
+      "csv"
+    ]
+  },
+  {
+    "name": "media",
+    "displayName": "Media department",
+    "description": "Bucket containing media department information",
+    "parent": "s3_storage_sample.departments",
+    "prefix": "/departments/media/",
+    "dataModel": null,
+    "numberOfObjects": "123",
+    "size": "243712",
+    "fileFormats": null
+  },
+  {
+    "name": "movies",
+    "displayName": "Company official footage",
+    "description": "Bucket containing movies about the company",
+    "parent": "s3_storage_sample.departments.media",
+    "prefix": "/departments/media/media2020/",
+    "dataModel": null,
+    "numberOfObjects": "500",
+    "size": "15360000",
+    "fileFormats": [
+      "gz"
+    ]
+  },
+  {
+    "name": "expenditures",
+    "displayName": "Expenditures for the current year",
+    "description": "Bucket containing finance expenditures information",
+    "parent": "s3_storage_sample.departments.finance",
+    "prefix": "/departments/finance/expenditures-2023",
+    "dataModel": {
+      "isPartitioned": false,
+      "columns": [
+        {
+          "name": "department_id",
+          "dataType": "NUMERIC",
+          "dataTypeDisplay": "numeric",
+          "description": "The ID of the department. This column is the primary key for this table.",
+          "tags": [],
+          "constraint": "PRIMARY_KEY",
+          "ordinalPosition": 1
+        },
+        {
+          "name": "approved",
+          "dataType": "BOOLEAN",
+          "dataTypeDisplay": "boolean",
+          "description": "Whether this was already approved by upper management",
+          "tags": [],
+          "ordinalPosition": 2
+        },
+        {
+          "name": "fraudulent_claims",
+          "dataType": "BOOLEAN",
+          "dataTypeDisplay": "boolean",
+          "description": "Whether any claims were made for the expenditure at any point",
+          "tags": [],
+          "ordinalPosition": 3
+        },
+        {
+          "name": "total_value_for_current_month",
+          "dataType": "NUMERIC",
+          "dataTypeDisplay": "numeric",
+          "description": "The current total value spent for the expenditure as of beginning of the current month",
+          "tags": [],
+          "ordinalPosition": 4
+        }
+      ]
+    },
+    "numberOfObjects": "10",
+    "size": "65536",
+    "fileFormats": [
+      "zstd",
+      "tsv"
+    ]
+  }
+]

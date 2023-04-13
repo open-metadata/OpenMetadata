@@ -18,6 +18,7 @@ import {
 import { Button, Card, Col, Row, Space, Tabs } from 'antd';
 import FacetFilter from 'components/common/facetfilter/FacetFilter';
 import SearchedData from 'components/searched-data/SearchedData';
+import { SearchedDataProps } from 'components/searched-data/SearchedData.interface';
 import { SORT_ORDER } from 'enums/common.enum';
 import { EntityType } from 'enums/entity.enum';
 import unique from 'fork-ts-checker-webpack-plugin/lib/utils/array/unique';
@@ -51,8 +52,6 @@ import { useAdvanceSearch } from './AdvanceSearchProvider/AdvanceSearchProvider.
 import AppliedFilterText from './AppliedFilterText/AppliedFilterText';
 import EntitySummaryPanel from './EntitySummaryPanel/EntitySummaryPanel.component';
 import {
-  EntityDetailsObjectInterface,
-  EntityUnion,
   ExploreProps,
   ExploreQuickFilterField,
   ExploreSearchIndex,
@@ -91,7 +90,7 @@ const Explore: React.FC<ExploreProps> = ({
   >([] as ExploreQuickFilterField[]);
   const [showSummaryPanel, setShowSummaryPanel] = useState(false);
   const [entityDetails, setEntityDetails] =
-    useState<{ details: EntityUnion; entityType: string }>();
+    useState<SearchedDataProps['data'][number]['_source']>();
 
   const { toggleModal, sqlQuery } = useAdvanceSearch();
 
@@ -168,9 +167,9 @@ const Explore: React.FC<ExploreProps> = ({
   };
 
   const handleSummaryPanelDisplay = useCallback(
-    (details: EntityUnion, entityType: string) => {
+    (details: SearchedDataProps['data'][number]['_source']) => {
       setShowSummaryPanel(true);
-      setEntityDetails({ details, entityType });
+      setEntityDetails(details);
     },
     []
   );
@@ -260,10 +259,7 @@ const Explore: React.FC<ExploreProps> = ({
       searchResults?.hits?.hits[0] &&
       searchResults?.hits?.hits[0]._index === searchIndex
     ) {
-      handleSummaryPanelDisplay(
-        searchResults?.hits?.hits[0]._source as EntityUnion,
-        tab
-      );
+      handleSummaryPanelDisplay(searchResults?.hits?.hits[0]._source);
     } else {
       setShowSummaryPanel(false);
       setEntityDetails(undefined);
@@ -364,7 +360,7 @@ const Explore: React.FC<ExploreProps> = ({
                       onChangePage(Number.parseInt(value));
                     }
                   }}
-                  selectedEntityId={entityDetails?.details.id || ''}
+                  selectedEntityId={entityDetails?.id || ''}
                   totalValue={searchResults?.hits.total.value ?? 0}
                 />
               ) : (
@@ -373,12 +369,10 @@ const Explore: React.FC<ExploreProps> = ({
             </Col>
           </Row>
         </Col>
-        {showSummaryPanel && (
+        {showSummaryPanel && entityDetails && (
           <Col flex="400px">
             <EntitySummaryPanel
-              entityDetails={
-                entityDetails || ({} as EntityDetailsObjectInterface)
-              }
+              entityDetails={{ details: entityDetails }}
               handleClosePanel={handleClosePanel}
             />
           </Col>
