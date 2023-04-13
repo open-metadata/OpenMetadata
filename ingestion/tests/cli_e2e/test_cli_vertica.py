@@ -18,11 +18,8 @@ regenerated via: `./opt/vertica/examples/VMart_Schema/vmart_gen`
 """
 from typing import List
 
-import pytest
-
+from .common.test_cli_db import CliCommonDB
 from .common_e2e_sqa_mixins import SQACommonMethods
-from .test_cli_db_base import E2EType
-from .test_cli_db_base_common import CliCommonDB
 
 
 class VerticaCliTest(CliCommonDB.TestSuite, SQACommonMethods):

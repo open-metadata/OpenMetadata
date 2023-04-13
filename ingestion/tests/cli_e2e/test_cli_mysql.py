@@ -14,8 +14,8 @@ Test MySql connector with CLI
 """
 from typing import List
 
+from .common.test_cli_db import CliCommonDB
 from .common_e2e_sqa_mixins import SQACommonMethods
-from .test_cli_db_base_common import CliCommonDB
 
 
 class MysqlCliTest(CliCommonDB.TestSuite, SQACommonMethods):
