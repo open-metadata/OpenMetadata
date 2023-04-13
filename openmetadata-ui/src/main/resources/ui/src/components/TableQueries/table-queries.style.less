@@ -11,11 +11,9 @@
  *  limitations under the License.
  */
 @import url('../../styles/variables.less');
+@summary-panel-offset: 220px;
 
-.query-entity-expand-button {
-  display: flex;
-  justify-content: center;
-  align-items: center;
+.query-entity-button {
   position: absolute;
   z-index: 10;
   top: 63px;
@@ -39,4 +37,23 @@
 }
 .query-card-container.selected {
   border: 1px solid @info-color;
+}
+
+.query-right-panel {
+  position: sticky;
+  height: calc(100vh - @summary-panel-offset);
+  box-shadow: @panels-shadow-color;
+  border: @global-border;
+  border-top: unset;
+  font-size: 14px;
+  overflow-y: scroll;
+  overflow-x: hidden;
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+  .ant-drawer-content-wrapper {
+    box-shadow: -2px 2px 4px rgba(0, 0, 0, 0.12);
+  }
+  .ant-drawer-body {
+    padding: unset;
+  }
 }
