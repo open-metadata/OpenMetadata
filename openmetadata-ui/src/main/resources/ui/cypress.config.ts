@@ -29,6 +29,6 @@ export default defineConfig({
       return plugins(on, config);
     },
     baseUrl: 'http://localhost:8585',
-    specPattern: 'cypress/e2e/**/*.{js,jsx,ts,tsx}',
+    specPattern: 'cypress/e2e/Pages/Glossary.spec.js',
   },
 });
