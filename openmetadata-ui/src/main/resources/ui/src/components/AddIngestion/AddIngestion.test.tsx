@@ -38,6 +38,7 @@ const mockAddIngestionProps: AddIngestionProps = {
   pipelineType: PipelineType.Metadata,
   heading: 'add ingestion',
   status: FormSubmitType.ADD,
+  onFocus: jest.fn(),
 };
 
 jest.mock('./Steps/ConfigureIngestion', () => {

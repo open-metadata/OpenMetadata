@@ -45,6 +45,7 @@ const mockConfigureIngestion: ConfigureIngestionProps = {
   onNext: jest.fn(),
   serviceCategory: ServiceCategory.DATABASE_SERVICES,
   onChange: jest.fn(),
+  onFocus: jest.fn(),
   data: {
     showDatabaseFilterField: true,
     ingestionName: '',
