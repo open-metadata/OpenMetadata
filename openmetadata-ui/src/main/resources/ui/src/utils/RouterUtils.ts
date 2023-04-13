@@ -213,6 +213,19 @@ export const getSettingPath = (
   return path;
 };
 
+export const getSettingsPathWithFqn = (
+  category: string,
+  tab: string,
+  fqn: string
+) => {
+  let path = ROUTES.SETTINGS_WITH_TAB_FQN;
+  path = path.replace(PLACEHOLDER_ROUTE_TAB, tab);
+  path = path.replace(PLACEHOLDER_SETTING_CATEGORY, category);
+  path = path.replace(PLACEHOLDER_ROUTE_FQN, fqn);
+
+  return path;
+};
+
 export const getSettingCategoryPath = (category: string) => {
   let path = ROUTES.SETTINGS_WITH_TAB;
 

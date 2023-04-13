@@ -120,9 +120,7 @@ public class SystemRepository {
     try {
       if (setting.getConfigType() == SettingsType.EMAIL_CONFIGURATION) {
         SmtpSettings emailConfig = JsonUtils.convertValue(setting.getConfigValue(), SmtpSettings.class);
-        if (!Fernet.isTokenized(emailConfig.getPassword())) {
-          setting.setConfigValue(encryptSetting(emailConfig));
-        }
+        setting.setConfigValue(encryptSetting(emailConfig));
         // Invalidate Setting
         SettingsCache.getInstance().invalidateSettings(SettingsType.EMAIL_CONFIGURATION.value());
       }
@@ -133,7 +131,7 @@ public class SystemRepository {
   }
 
   public static SmtpSettings encryptSetting(SmtpSettings decryptedSetting) {
-    if (Fernet.getInstance().isKeyDefined()) {
+    if (Fernet.getInstance().isKeyDefined() && !Fernet.isTokenized(decryptedSetting.getPassword())) {
       String encryptedPwd = Fernet.getInstance().encrypt(decryptedSetting.getPassword());
       return decryptedSetting.withPassword(encryptedPwd);
     }
@@ -141,7 +139,7 @@ public class SystemRepository {
   }
 
   public static SmtpSettings decryptSetting(SmtpSettings encryptedSetting) {
-    if (Fernet.getInstance().isKeyDefined()) {
+    if (Fernet.getInstance().isKeyDefined() && Fernet.isTokenized(encryptedSetting.getPassword())) {
       String decryptedPassword = Fernet.getInstance().decrypt(encryptedSetting.getPassword());
       return encryptedSetting.withPassword(decryptedPassword);
     }

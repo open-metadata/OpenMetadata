@@ -65,13 +65,15 @@ const ErrorPlaceHolder = ({
                   entity: heading,
                 })}
               </Paragraph>
-              <Paragraph>
-                {t('label.refer-to-our')}{' '}
-                <Link href={doc} target="_blank">
-                  {t('label.doc-plural')}
-                </Link>{' '}
-                {t('label.for-more-info')}
-              </Paragraph>
+              {doc ? (
+                <Paragraph>
+                  {t('label.refer-to-our')}{' '}
+                  <Link href={doc} target="_blank">
+                    {t('label.doc-plural')}
+                  </Link>{' '}
+                  {t('label.for-more-info')}
+                </Paragraph>
+              ) : null}
             </>
           )}
 

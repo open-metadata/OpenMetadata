@@ -149,7 +149,10 @@ describe('Postgres Ingestion', () => {
     cy.get('[data-testid="add-new-ingestion-button"]')
       .should('be.visible')
       .click();
-    cy.get('#menu-item-1').scrollIntoView().contains('Usage Ingestion').click();
+    cy.get('[data-menu-id*="usage"')
+      .scrollIntoView()
+      .contains('Usage Ingestion')
+      .click();
     cy.get('[data-testid="next-button"]')
       .scrollIntoView()
       .should('be.visible')

@@ -195,6 +195,12 @@ const AddPolicyPage = withSuspenseFallback(
   React.lazy(() => import('pages/PoliciesPage/AddPolicyPage/AddPolicyPage'))
 );
 
+const EditEmailConfigPage = withSuspenseFallback(
+  React.lazy(
+    () => import('pages/EditEmailConfigPage/EditEmailConfigPage.component')
+  )
+);
+
 const AddRulePage = withSuspenseFallback(
   React.lazy(() => import('pages/PoliciesPage/PoliciesDetailPage/AddRulePage'))
 );
@@ -542,6 +548,12 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         path={ROUTES.ADD_POLICY}
       />
       <Route exact component={AddRulePage} path={ROUTES.ADD_POLICY_RULE} />
+      <AdminProtectedRoute
+        exact
+        component={EditEmailConfigPage}
+        hasPermission={false}
+        path={ROUTES.SETTINGS_EDIT_EMAIL_CONFIG}
+      />
       <Route exact component={EditRulePage} path={ROUTES.EDIT_POLICY_RULE} />
 
       <Route exact component={GlobalSettingPage} path={ROUTES.SETTINGS} />

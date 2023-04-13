@@ -186,6 +186,7 @@ export const ROUTES = {
   SETTINGS: `/settings`,
   SETTINGS_WITH_TAB: `/settings/${PLACEHOLDER_SETTING_CATEGORY}/${PLACEHOLDER_ROUTE_TAB}`,
   SETTINGS_WITH_TAB_FQN: `/settings/${PLACEHOLDER_SETTING_CATEGORY}/${PLACEHOLDER_ROUTE_TAB}/${PLACEHOLDER_ROUTE_FQN}`,
+  SETTINGS_EDIT_EMAIL_CONFIG: `/settings/OpenMetadata/email/edit-email-configuration`,
   STORE: '/store',
   FEEDS: '/feeds',
   DUMMY: '/dummy',

@@ -125,6 +125,9 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     ChangeEventConfig.initialize(catalogConfig);
     final Jdbi jdbi = createAndSetupJDBI(environment, catalogConfig.getDataSourceFactory());
 
+    // Configure the Fernet instance
+    Fernet.getInstance().setFernetKey(catalogConfig);
+
     // Init Settings Cache
     SettingsCache.initialize(jdbi.onDemand(CollectionDAO.class), catalogConfig);
 
@@ -135,8 +138,6 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
 
     // init Entity Masker
     EntityMaskerFactory.createEntityMasker(catalogConfig.getSecurityConfiguration());
-    // Configure the Fernet instance
-    Fernet.getInstance().setFernetKey(catalogConfig);
 
     // Instantiate JWT Token Generator
     JWTTokenGenerator.getInstance().init(catalogConfig.getJwtTokenConfiguration());

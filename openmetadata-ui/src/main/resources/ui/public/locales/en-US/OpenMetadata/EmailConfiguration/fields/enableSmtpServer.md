@@ -1,0 +1,1 @@
+If this is enabled, password with details will be shared on mail.

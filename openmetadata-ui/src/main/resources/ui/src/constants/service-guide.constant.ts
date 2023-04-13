@@ -183,3 +183,6 @@ export const addDBTIngestionGuide = [
     ),
   },
 ];
+
+export const EMAIL_CONFIG_SERVICE_CATEGORY = 'EmailConfiguration';
+export const OPEN_METADATA = 'OpenMetadata';

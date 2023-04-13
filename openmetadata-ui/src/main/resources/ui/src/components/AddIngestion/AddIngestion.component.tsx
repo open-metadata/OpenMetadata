@@ -101,6 +101,24 @@ const AddIngestion = ({
     []
   );
 
+  const isSettingsPipeline = useMemo(
+    () =>
+      pipelineType === PipelineType.DataInsight ||
+      pipelineType === PipelineType.ElasticSearchReindex,
+    [pipelineType]
+  );
+
+  const viewServiceText = useMemo(
+    () =>
+      isSettingsPipeline
+        ? t('label.view-entity', {
+            entity: t('label.pipeline-detail-plural'),
+          })
+        : undefined,
+
+    [isSettingsPipeline]
+  );
+
   const {
     configData,
     usageIngestionType,
@@ -776,6 +794,7 @@ const AddIngestion = ({
             showIngestionButton={false}
             state={status}
             successMessage={getSuccessMessage()}
+            viewServiceText={viewServiceText}
           />
         )}
 
