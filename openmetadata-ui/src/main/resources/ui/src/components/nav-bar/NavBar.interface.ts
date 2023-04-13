@@ -26,5 +26,6 @@ export interface NavBarProps {
   handleFeatureModal: (value: boolean) => void;
   handleSearchChange: (value: string) => void;
   handleOnClick: () => void;
+  handleClear: () => void;
   handleKeyDown: (e: React.KeyboardEvent<HTMLInputElement>) => void;
 }
