@@ -350,7 +350,7 @@ const Explore: React.FC<ExploreProps> = ({
                   data={searchResults?.hits.hits ?? []}
                   handleSummaryPanelDisplay={handleSummaryPanelDisplay}
                   isSummaryPanelVisible={showSummaryPanel}
-                  selectedEntityId={entityDetails?.details.id || ''}
+                  selectedEntityId={entityDetails?.id || ''}
                   totalValue={searchResults?.hits.total.value ?? 0}
                   onPaginationChange={onChangePage}
                 />
