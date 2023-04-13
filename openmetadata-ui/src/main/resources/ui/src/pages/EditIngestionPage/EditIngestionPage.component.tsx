@@ -81,6 +81,7 @@ const EditIngestionPage = () => {
   const [slashedBreadcrumb, setSlashedBreadcrumb] = useState<
     TitleBreadcrumbProps['titleLinks']
   >([]);
+  const [activeField, setActiveField] = useState<string>('');
 
   const isSettingsPipeline = useMemo(
     () =>
@@ -229,6 +230,8 @@ const EditIngestionPage = () => {
 
   const handleCancelClick = isSettingsPipeline ? goToSettingsPage : goToService;
 
+  const handleFieldFocus = (fieldName: string) => setActiveField(fieldName);
+
   useEffect(() => {
     const breadCrumbsArray = getBreadCrumbsArray(
       isSettingsPipeline,
@@ -270,6 +273,7 @@ const EditIngestionPage = () => {
           setActiveIngestionStep={(step) => setActiveIngestionStep(step)}
           showDeployButton={showIngestionButton}
           status={FormSubmitType.EDIT}
+          onFocus={handleFieldFocus}
           onIngestionDeploy={onIngestionDeploy}
           onSuccessSave={goToService}
           onUpdateIngestion={onEditIngestionSave}
@@ -281,6 +285,7 @@ const EditIngestionPage = () => {
   const secondPanelChildren = (
     <ServiceDocPanel
       isWorkflow
+      activeField={activeField}
       serviceName={serviceData?.serviceType ?? ''}
       serviceType={getServiceType(serviceCategory as ServiceCategory)}
       workflowType={ingestionType as PipelineType}

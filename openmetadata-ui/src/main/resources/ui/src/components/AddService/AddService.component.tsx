@@ -316,6 +316,7 @@ const AddService = ({
             showDeployButton={showDeployButton}
             status={FormSubmitType.ADD}
             onAddIngestionSave={onAddIngestionSave}
+            onFocus={handleFieldFocus}
             onIngestionDeploy={onIngestionDeploy}
           />
         ) : (
@@ -336,8 +337,10 @@ const AddService = ({
         children: (
           <ServiceDocPanel
             activeField={activeField}
+            isWorkflow={addIngestion}
             serviceName={selectServiceType}
             serviceType={getServiceType(serviceCategory)}
+            workflowType={PipelineType.Metadata}
           />
         ),
         className: 'service-doc-panel',

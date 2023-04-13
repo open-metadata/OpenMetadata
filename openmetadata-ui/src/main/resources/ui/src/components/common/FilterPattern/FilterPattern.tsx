@@ -59,13 +59,13 @@ const FilterPattern = ({
             className="m-r-sm filter-pattern-checkbox"
             data-testid={`${type}-filter-pattern-checkbox`}
             disabled={isDisabled}
-            id={`${type}FilterPatternCheckbox`}
-            name={`${type}FilterPatternCheckbox`}
+            id={`root/${type}FilterPattern`}
+            name={`root/${type}FilterPattern`}
             onChange={(e) => handleChecked(e.target.checked)}
           />
         </Col>
         <Col className="d-flex">
-          <label htmlFor={`${type}FilterPatternCheckbox`}>{`${capitalize(
+          <label htmlFor={`root/${type}FilterPattern`}>{`${capitalize(
             type
           )} ${t('label.filter-pattern')}`}</label>
           <InfoPopover

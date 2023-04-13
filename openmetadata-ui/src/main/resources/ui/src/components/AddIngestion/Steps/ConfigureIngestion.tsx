@@ -42,6 +42,7 @@ const ConfigureIngestion = ({
   onNext,
   pipelineType,
   serviceCategory,
+  onFocus,
 }: ConfigureIngestionProps) => {
   const { t } = useTranslation();
   const markdownRef = useRef<EditorContentRef>();
@@ -243,7 +244,7 @@ const ConfigureIngestion = ({
         onChange: handleIngestionName,
         'data-testid': 'name',
       },
-      id: 'name',
+      id: 'root/name',
       helperText: t('message.ingestion-pipeline-name-message'),
       hasSeparator: true,
     },
@@ -269,7 +270,7 @@ const ConfigureIngestion = ({
         isDisabled: data.isDatabaseFilterDisabled,
         type: FilterPatternEnum.DATABASE,
       },
-      id: 'databaseFilterPattern',
+      id: 'root/databaseFilterPattern',
     },
     {
       name: 'schemaFilterPattern',
@@ -286,7 +287,7 @@ const ConfigureIngestion = ({
         includePattern: schemaFilterPattern?.includes ?? [],
         type: FilterPatternEnum.SCHEMA,
       },
-      id: 'schemaFilterPattern',
+      id: 'root/schemaFilterPattern',
     },
     {
       name: 'tableFilterPattern',
@@ -304,7 +305,7 @@ const ConfigureIngestion = ({
         type: FilterPatternEnum.TABLE,
         showSeparator: false,
       },
-      id: 'tableFilterPattern',
+      id: 'root/tableFilterPattern',
       hasSeparator: true,
     },
   ];
@@ -319,7 +320,7 @@ const ConfigureIngestion = ({
       handleCheck: handleIncludeTags,
       testId: 'include-tags',
     },
-    id: 'includeTags',
+    id: 'root/includeTags',
     hasSeparator: true,
     helperText: t('message.include-assets-message'),
   };
@@ -334,7 +335,7 @@ const ConfigureIngestion = ({
       handleCheck: handleEnableDebugLogCheck,
       testId: 'enable-debug-log',
     },
-    id: 'loggerLevel',
+    id: 'root/loggerLevel',
     hasSeparator: true,
     helperText: t('message.enable-debug-logging'),
   };
@@ -351,7 +352,7 @@ const ConfigureIngestion = ({
       handleCheck: handleIncludeDataModels,
       testId: 'include-data-models',
     },
-    id: 'includeDataModels',
+    id: 'root/includeDataModels',
     hasSeparator: true,
     helperText: t('message.include-assets-message', {
       assets: t('label.data-model-plural'),
@@ -368,7 +369,7 @@ const ConfigureIngestion = ({
       handleCheck: handleIngestSampleToggle,
       testId: 'ingest-sample-data',
     },
-    id: 'generateSampleData',
+    id: 'root/generateSampleData',
     hasSeparator: true,
     helperText: t('message.ingest-sample-data-for-entity', {
       entity: t('label.topic-lowercase'),
@@ -387,7 +388,7 @@ const ConfigureIngestion = ({
       value: queryLogDuration,
       onChange: handleQueryLogDuration,
     },
-    id: 'queryLogDuration',
+    id: 'root/queryLogDuration',
     required: false,
   };
 
@@ -403,7 +404,7 @@ const ConfigureIngestion = ({
       value: resultLimit,
       onChange: handleResultLimit,
     },
-    id: 'resultLimit',
+    id: 'root/resultLimit',
     required: false,
   };
 
@@ -418,7 +419,7 @@ const ConfigureIngestion = ({
         checked: useFqnFilter,
         handleCheck: handleFqnFilter,
       },
-      id: 'useFqnForFiltering',
+      id: 'root/useFqnForFiltering',
       hasSeparator: true,
       helperText: t('message.use-fqn-for-filtering-message'),
     },
@@ -432,7 +433,7 @@ const ConfigureIngestion = ({
         handleCheck: handleIncludeViewToggle,
         testId: 'include-views',
       },
-      id: 'includeViews',
+      id: 'root/includeViews',
       hasSeparator: true,
       helperText: t('message.include-assets-message', {
         assets: t('label.view-plural'),
@@ -451,7 +452,7 @@ const ConfigureIngestion = ({
         handleCheck: handleMarkDeletedTables,
         testId: 'mark-deleted',
       },
-      id: 'markDeletedTables',
+      id: 'root/markDeletedTables',
       hasSeparator: true,
       helperText: t('message.mark-deleted-table-message'),
     },
@@ -467,7 +468,7 @@ const ConfigureIngestion = ({
               handleCheck: handleMarkAllDeletedTables,
               testId: 'mark-deleted-filter-only',
             },
-            id: 'markAllDeletedTables',
+            id: 'root/markAllDeletedTables',
             hasSeparator: true,
             helperText: t('message.mark-all-deleted-table-message'),
           },
@@ -491,7 +492,7 @@ const ConfigureIngestion = ({
         includePattern: dashboardFilterPattern?.includes ?? [],
         type: FilterPatternEnum.DASHBOARD,
       },
-      id: 'dashboardFilterPattern',
+      id: 'root/dashboardFilterPattern',
     },
     {
       name: 'chartFilterPattern',
@@ -508,7 +509,7 @@ const ConfigureIngestion = ({
         includePattern: chartFilterPattern?.includes ?? [],
         type: FilterPatternEnum.CHART,
       },
-      id: 'chartFilterPattern',
+      id: 'root/chartFilterPattern',
       hasSeparator: true,
     },
     {
@@ -526,7 +527,7 @@ const ConfigureIngestion = ({
         includePattern: dataModelFilterPattern?.includes ?? [],
         type: FilterPatternEnum.DASHBOARD_DATAMODEL,
       },
-      id: 'dataModelFilterPattern',
+      id: 'root/dataModelFilterPattern',
       hasSeparator: true,
     },
     {
@@ -534,7 +535,7 @@ const ConfigureIngestion = ({
       label: t('label.database-service-name'),
       type: FieldTypes.SELECT,
       required: false,
-      id: 'dbServiceNames',
+      id: 'root/dbServiceNames',
       hasSeparator: true,
       props: {
         allowClear: true,
@@ -559,7 +560,7 @@ const ConfigureIngestion = ({
         handleCheck: handleOverrideOwner,
         testId: 'enabled-override-owner',
       },
-      id: 'overrideOwner',
+      id: 'root/overrideOwner',
       hasSeparator: true,
       helperText: t('message.enable-override-owner'),
     },
@@ -577,7 +578,7 @@ const ConfigureIngestion = ({
         handleCheck: handleMarkDeletedDashboards,
         testId: 'mark-deleted',
       },
-      id: 'markDeletedDashboards',
+      id: 'root/markDeletedDashboards',
       hasSeparator: true,
       helperText: t('message.mark-deleted-entity-message', {
         entity: t('label.dashboard-lowercase'),
@@ -602,7 +603,7 @@ const ConfigureIngestion = ({
         includePattern: topicFilterPattern?.includes ?? [],
         type: FilterPatternEnum.TOPIC,
       },
-      id: 'topicFilterPattern',
+      id: 'root/topicFilterPattern',
       hasSeparator: true,
     },
     generateSampleDataField,
@@ -619,7 +620,7 @@ const ConfigureIngestion = ({
         handleCheck: handleMarkDeletedTopics,
         testId: 'mark-deleted',
       },
-      id: 'markDeletedTopics',
+      id: 'root/markDeletedTopics',
       hasSeparator: true,
       helperText: t('message.mark-deleted-entity-message', {
         entity: t('label.topic-lowercase'),
@@ -644,7 +645,7 @@ const ConfigureIngestion = ({
         includePattern: pipelineFilterPattern?.includes ?? [],
         type: FilterPatternEnum.PIPELINE,
       },
-      id: 'pipelineFilterPattern',
+      id: 'root/pipelineFilterPattern',
       hasSeparator: true,
     },
     {
@@ -659,7 +660,7 @@ const ConfigureIngestion = ({
         handleCheck: handleIncludeLineage,
         testId: 'include-lineage',
       },
-      id: 'includeLineage',
+      id: 'root/includeLineage',
       hasSeparator: true,
       helperText: t('message.include-lineage-message'),
     },
@@ -677,7 +678,7 @@ const ConfigureIngestion = ({
         handleCheck: handleMarkDeletedPipelines,
         testId: 'mark-deleted',
       },
-      id: 'markDeletedPipelines',
+      id: 'root/markDeletedPipelines',
       hasSeparator: true,
       helperText: t('message.mark-deleted-entity-message', {
         entity: t('label.pipeline-lowercase'),
@@ -702,7 +703,7 @@ const ConfigureIngestion = ({
         includePattern: mlModelFilterPattern?.includes ?? [],
         type: FilterPatternEnum.MLMODEL,
       },
-      id: 'mlModelFilterPattern',
+      id: 'root/mlModelFilterPattern',
       hasSeparator: true,
     },
     {
@@ -717,7 +718,7 @@ const ConfigureIngestion = ({
         handleCheck: handleMarkDeletedMlModels,
         testId: 'mark-deleted',
       },
-      id: 'markDeletedMlModels',
+      id: 'root/markDeletedMlModels',
       hasSeparator: true,
       helperText: t('message.mark-deleted-entity-message', {
         entity: t('label.ml-model-lowercase'),
@@ -742,7 +743,7 @@ const ConfigureIngestion = ({
         includePattern: containerFilterPattern?.includes ?? [],
         type: FilterPatternEnum.CONTAINER,
       },
-      id: 'containerFilterPattern',
+      id: 'root/containerFilterPattern',
       hasSeparator: true,
     },
   ];
@@ -987,7 +988,12 @@ const ConfigureIngestion = ({
     <Form
       className="p-x-xs configure-ingestion-form"
       data-testid="configure-ingestion-container"
-      layout="vertical">
+      layout="vertical"
+      onFocus={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        onFocus(e.target.id);
+      }}>
       {getIngestionPipelineFields()}
 
       <Field className="d-flex justify-end">

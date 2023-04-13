@@ -91,6 +91,7 @@ const AddIngestion = ({
   showDeployButton,
   showSuccessScreen = true,
   status,
+  onFocus,
 }: AddIngestionProps) => {
   const { t } = useTranslation();
   const { sourceConfig, sourceConfigType } = useMemo(
@@ -740,6 +741,7 @@ const AddIngestion = ({
             serviceCategory={serviceCategory}
             onCancel={handleCancelClick}
             onChange={handleStateChange}
+            onFocus={onFocus}
             onNext={handleNext}
           />
         )}
