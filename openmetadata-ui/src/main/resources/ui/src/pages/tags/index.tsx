@@ -34,8 +34,6 @@ import NextPrevious from 'components/common/next-previous/NextPrevious';
 import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
 import PageContainerV1 from 'components/containers/PageContainerV1';
 import PageLayoutV1 from 'components/containers/PageLayoutV1';
-import { ExploreSearchIndex } from 'components/Explore/explore.interface';
-import { useGlobalSearchProvider } from 'components/GlobalSearchProvider/GlobalSearchProvider';
 import Loader from 'components/Loader/Loader';
 import EntityDeleteModal from 'components/Modals/EntityDeleteModal/EntityDeleteModal';
 import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
@@ -45,7 +43,6 @@ import {
 } from 'components/PermissionProvider/PermissionProvider.interface';
 import TagsLeftPanelSkeleton from 'components/Skeleton/Tags/TagsLeftPanelSkeleton.component';
 import { LOADING_STATE } from 'enums/common.enum';
-import { SearchIndex } from 'enums/search.enum';
 import { compare } from 'fast-json-patch';
 import { capitalize, isUndefined, trim } from 'lodash';
 import { FormErrorData } from 'Models';
@@ -129,7 +126,6 @@ const TagsPage = () => {
   const [currentPage, setCurrentPage] = useState<number>(INITIAL_PAGING_VALUE);
   const [isTagsLoading, setIsTagsLoading] = useState(false);
   const [isButtonLoading, setIsButtonLoading] = useState<boolean>(false);
-  const { updateSearchCriteria } = useGlobalSearchProvider();
 
   const { t } = useTranslation();
   const createClassificationPermission = useMemo(
@@ -535,7 +531,6 @@ const TagsPage = () => {
      * Fetch all classifications initially
      */
     fetchClassifications(true);
-    updateSearchCriteria(SearchIndex.TAG as ExploreSearchIndex);
   }, []);
 
   useEffect(() => {
