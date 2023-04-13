@@ -12,7 +12,8 @@
       "type": "string",
       "enum": [
         "EN",
-        "JP"
+        "JP",
+        "ZH"
       ],
       "default": "EN"
     }
