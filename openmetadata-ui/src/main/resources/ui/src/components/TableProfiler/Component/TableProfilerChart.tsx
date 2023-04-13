@@ -13,24 +13,18 @@
 
 import { Card, Col, Row } from 'antd';
 import { AxiosError } from 'axios';
+import { DateRangeObject } from 'components/ProfilerDashboard/component/TestSummary';
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { getSystemProfileList, getTableProfilesList } from 'rest/tableAPI';
 import {
   INITIAL_OPERATION_METRIC_VALUE,
   INITIAL_ROW_METRIC_VALUE,
-  PROFILER_FILTER_RANGE,
 } from '../../../constants/profiler.constant';
 import {
   calculateRowCountMetrics,
   calculateSystemMetrics,
 } from '../../../utils/TableProfilerUtils';
-import {
-  getCurrentDateTimeMillis,
-  getCurrentDateTimeStamp,
-  getPastDatesTimeStampFromCurrentDate,
-  getPastDaysDateTimeMillis,
-} from '../../../utils/TimeUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import CustomBarChart from '../../Chart/CustomBarChart';
 import OperationDateBarChart from '../../Chart/OperationDateBarChart';
@@ -40,7 +34,7 @@ import ProfilerLatestValue from '../../ProfilerDashboard/component/ProfilerLates
 import { MetricChartType } from '../../ProfilerDashboard/profilerDashboard.interface';
 import { TableProfilerChartProps } from '../TableProfiler.interface';
 
-const TableProfilerChart = ({ selectedTimeRange }: TableProfilerChartProps) => {
+const TableProfilerChart = ({ dateRangeObject }: TableProfilerChartProps) => {
   const { datasetFQN } = useParams<{ datasetFQN: string }>();
 
   const [rowCountMetrics, setRowCountMetrics] = useState<MetricChartType>(
@@ -53,28 +47,24 @@ const TableProfilerChart = ({ selectedTimeRange }: TableProfilerChartProps) => {
     useState<MetricChartType>(INITIAL_OPERATION_METRIC_VALUE);
   const [isLoading, setIsLoading] = useState(true);
 
-  const fetchTableProfiler = async (fqn: string, days = 3) => {
+  const fetchTableProfiler = async (
+    fqn: string,
+    dateRangeObj: DateRangeObject
+  ) => {
     try {
-      const startTs = getPastDatesTimeStampFromCurrentDate(days);
-      const endTs = getCurrentDateTimeStamp();
-      const { data } = await getTableProfilesList(fqn, {
-        startTs,
-        endTs,
-      });
+      const { data } = await getTableProfilesList(fqn, dateRangeObj);
       const rowMetricsData = calculateRowCountMetrics(data, rowCountMetrics);
       setRowCountMetrics(rowMetricsData);
     } catch (error) {
       showErrorToast(error as AxiosError);
     }
   };
-  const fetchSystemProfiler = async (fqn: string, days = 3) => {
+  const fetchSystemProfiler = async (
+    fqn: string,
+    dateRangeObj: DateRangeObject
+  ) => {
     try {
-      const startTs = getPastDaysDateTimeMillis(days);
-      const endTs = getCurrentDateTimeMillis();
-      const { data } = await getSystemProfileList(fqn, {
-        startTs,
-        endTs,
-      });
+      const { data } = await getSystemProfileList(fqn, dateRangeObj);
       const { operationMetrics: metricsData, operationDateMetrics } =
         calculateSystemMetrics(data, operationMetrics);
 
@@ -85,23 +75,23 @@ const TableProfilerChart = ({ selectedTimeRange }: TableProfilerChartProps) => {
     }
   };
 
-  const fetchProfilerData = async (fqn: string, days = 3) => {
+  const fetchProfilerData = async (
+    fqn: string,
+    dateRangeObj: DateRangeObject
+  ) => {
     setIsLoading(true);
-    await fetchTableProfiler(fqn, days);
-    await fetchSystemProfiler(fqn, days);
+    await fetchTableProfiler(fqn, dateRangeObj);
+    await fetchSystemProfiler(fqn, dateRangeObj);
     setIsLoading(false);
   };
 
   useEffect(() => {
     if (datasetFQN) {
-      fetchProfilerData(
-        datasetFQN,
-        PROFILER_FILTER_RANGE[selectedTimeRange].days
-      );
+      fetchProfilerData(datasetFQN, dateRangeObject);
     } else {
       setIsLoading(false);
     }
-  }, [datasetFQN, selectedTimeRange]);
+  }, [datasetFQN, dateRangeObject]);
 
   if (isLoading) {
     return <Loader />;

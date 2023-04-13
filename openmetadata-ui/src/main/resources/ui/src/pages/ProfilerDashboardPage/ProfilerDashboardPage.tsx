@@ -20,6 +20,7 @@ import {
   OperationPermission,
   ResourceEntity,
 } from 'components/PermissionProvider/PermissionProvider.interface';
+import { DateRangeObject } from 'components/ProfilerDashboard/component/TestSummary';
 import ProfilerDashboard from 'components/ProfilerDashboard/ProfilerDashboard';
 import { ProfilerDashboardTab } from 'components/ProfilerDashboard/profilerDashboard.interface';
 import { compare } from 'fast-json-patch';
@@ -46,10 +47,6 @@ import {
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { getDecodedFqn } from '../../utils/StringsUtils';
 import { generateEntityLink } from '../../utils/TableUtils';
-import {
-  getCurrentDateTimeStamp,
-  getPastDatesTimeStampFromCurrentDate,
-} from '../../utils/TimeUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
 const ProfilerDashboardPage = () => {
@@ -89,16 +86,12 @@ const ProfilerDashboardPage = () => {
     }
   };
 
-  const fetchProfilerData = async (fqn: string, days = 3) => {
+  const fetchProfilerData = async (
+    fqn: string,
+    dateRangeObject?: DateRangeObject
+  ) => {
     try {
-      const startTs = getPastDatesTimeStampFromCurrentDate(days);
-
-      const endTs = getCurrentDateTimeStamp();
-
-      const { data } = await getColumnProfilerList(fqn, {
-        startTs,
-        endTs,
-      });
+      const { data } = await getColumnProfilerList(fqn, dateRangeObject);
       setProfilerData(data);
     } catch (error) {
       showErrorToast(error as AxiosError);

@@ -28,7 +28,9 @@ import { DefaultOptionType } from 'antd/lib/select';
 import { SwitchChangeEventHandler } from 'antd/lib/switch';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { isUndefined, map } from 'lodash';
+import DatePickerMenu from 'components/DatePickerMenu/DatePickerMenu.component';
+import { DateRangeObject } from 'components/ProfilerDashboard/component/TestSummary';
+import { isEqual, isUndefined, map } from 'lodash';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useParams } from 'react-router-dom';
@@ -42,8 +44,8 @@ import { ReactComponent as TableProfileIcon } from '../../assets/svg/table-profi
 import { API_RES_MAX_SIZE } from '../../constants/constants';
 import { PAGE_HEADERS } from '../../constants/PageHeaders.constant';
 import {
+  DEFAULT_RANGE_DATA,
   INITIAL_TEST_RESULT_SUMMARY,
-  PROFILER_FILTER_RANGE,
 } from '../../constants/profiler.constant';
 import { ProfilerDashboardType } from '../../enums/table.enum';
 import { ProfileSampleType, Table } from '../../generated/entity/data/table';
@@ -95,8 +97,8 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
   const [selectedTestType, setSelectedTestType] = useState('');
   const [deleted, setDeleted] = useState<boolean>(false);
   const [isTestCaseLoading, setIsTestCaseLoading] = useState(false);
-  const [selectedTimeRange, setSelectedTimeRange] =
-    useState<keyof typeof PROFILER_FILTER_RANGE>('last3days');
+  const [dateRangeObject, setDateRangeObject] =
+    useState<DateRangeObject>(DEFAULT_RANGE_DATA);
   const isSummary = activeTab === ProfilerDashboardTab.SUMMARY;
   const isDataQuality = activeTab === ProfilerDashboardTab.DATA_QUALITY;
   const isProfiler = activeTab === ProfilerDashboardTab.PROFILER;
@@ -229,20 +231,13 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
     },
   ];
 
-  const timeRangeOption = useMemo(() => {
-    return Object.entries(PROFILER_FILTER_RANGE).map(([key, value]) => ({
-      label: value.title,
-      value: key,
-    }));
-  }, []);
-
   const handleTabChange: MenuProps['onClick'] = (value) => {
     setActiveTab(value.key as ProfilerDashboardTab);
   };
 
-  const handleTimeRangeChange = (value: keyof typeof PROFILER_FILTER_RANGE) => {
-    if (value !== selectedTimeRange) {
-      setSelectedTimeRange(value);
+  const handleDateRangeChange = (value: DateRangeObject) => {
+    if (!isEqual(value, dateRangeObject)) {
+      setDateRangeObject(value);
     }
   };
 
@@ -400,11 +395,9 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
                   )}
 
                   {isProfiler && (
-                    <Select
-                      className="tw-w-32"
-                      options={timeRangeOption}
-                      value={selectedTimeRange}
-                      onChange={handleTimeRangeChange}
+                    <DatePickerMenu
+                      showSelectedCustomRange
+                      handleDateRangeChange={handleDateRangeChange}
                     />
                   )}
 
@@ -515,7 +508,7 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
             )}
 
             {isProfiler && (
-              <TableProfilerChart selectedTimeRange={selectedTimeRange} />
+              <TableProfilerChart dateRangeObject={dateRangeObject} />
             )}
 
             {settingModalVisible && (

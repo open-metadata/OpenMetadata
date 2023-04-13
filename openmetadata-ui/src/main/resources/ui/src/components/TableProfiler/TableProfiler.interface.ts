@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { PROFILER_FILTER_RANGE } from '../../constants/profiler.constant';
+import { DateRangeObject } from 'components/ProfilerDashboard/component/TestSummary';
 import { SystemProfile } from '../../generated/api/data/createTableProfile';
 import {
   Column,
@@ -82,7 +82,7 @@ export type TableProfilerData = {
 };
 
 export type TableProfilerChartProps = {
-  selectedTimeRange: keyof typeof PROFILER_FILTER_RANGE;
+  dateRangeObject: DateRangeObject;
 };
 
 export interface ProfilerSettingModalState {

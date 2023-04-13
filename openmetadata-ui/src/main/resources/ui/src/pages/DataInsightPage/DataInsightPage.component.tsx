@@ -11,16 +11,7 @@
  *  limitations under the License.
  */
 
-import {
-  Button,
-  Card,
-  Col,
-  Row,
-  Select,
-  Space,
-  Tooltip,
-  Typography,
-} from 'antd';
+import { Button, Card, Col, Row, Space, Tooltip, Typography } from 'antd';
 import PageContainerV1 from 'components/containers/PageContainerV1';
 import PageLayoutV1 from 'components/containers/PageLayoutV1';
 import DailyActiveUsersChart from 'components/DataInsightDetail/DailyActiveUsersChart';
@@ -33,11 +24,14 @@ import TierInsight from 'components/DataInsightDetail/TierInsight';
 import TopActiveUsers from 'components/DataInsightDetail/TopActiveUsers';
 import TopViewEntities from 'components/DataInsightDetail/TopViewEntities';
 import TotalEntityInsight from 'components/DataInsightDetail/TotalEntityInsight';
+import DatePickerMenu from 'components/DatePickerMenu/DatePickerMenu.component';
+import { DateRangeObject } from 'components/ProfilerDashboard/component/TestSummary';
 import SearchDropdown from 'components/SearchDropdown/SearchDropdown';
 import { SearchDropdownOption } from 'components/SearchDropdown/SearchDropdown.interface';
+import { DEFAULT_RANGE_DATA } from 'constants/profiler.constant';
 import { EntityFields } from 'enums/AdvancedSearch.enum';
 import { t } from 'i18next';
-import { isEmpty } from 'lodash';
+import { isEmpty, isEqual } from 'lodash';
 import React, { useEffect, useLayoutEffect, useMemo, useState } from 'react';
 import { ListItem } from 'react-awesome-query-builder';
 import { useHistory, useParams } from 'react-router-dom';
@@ -46,7 +40,6 @@ import { searchQuery } from 'rest/searchAPI';
 import { autocomplete } from '../../constants/AdvancedSearch.constants';
 import { PAGE_SIZE, ROUTES } from '../../constants/constants';
 import {
-  DAY_FILTER,
   DEFAULT_DAYS,
   ENTITIES_CHARTS,
   INITIAL_CHART_FILTER,
@@ -64,11 +57,7 @@ import {
   getDataInsightPathWithFqn,
   getTeamFilter,
 } from '../../utils/DataInsightUtils';
-import {
-  getCurrentDateTimeMillis,
-  getFormattedDateFromMilliSeconds,
-  getPastDaysDateTimeMillis,
-} from '../../utils/TimeUtils';
+import { getFormattedDateFromMilliSeconds } from '../../utils/TimeUtils';
 import { TeamStateType, TierStateType } from './DataInsight.interface';
 import './DataInsight.less';
 import DataInsightLeftPanel from './DataInsightLeftPanel';
@@ -101,6 +90,8 @@ const DataInsightPage = () => {
     useState<ChartFilter>(INITIAL_CHART_FILTER);
   const [kpiList, setKpiList] = useState<Array<Kpi>>([]);
   const [selectedDaysFilter, setSelectedDaysFilter] = useState(DEFAULT_DAYS);
+  const [dateRangeObject, setDateRangeObject] =
+    useState<DateRangeObject>(DEFAULT_RANGE_DATA);
 
   const [selectedChart, setSelectedChart] = useState<DataInsightChartType>();
 
@@ -133,13 +124,20 @@ const DataInsightPage = () => {
     }));
   };
 
-  const handleDaysChange = (days: number) => {
-    setSelectedDaysFilter(days);
-    setChartFilter((previous) => ({
-      ...previous,
-      startTs: getPastDaysDateTimeMillis(days),
-      endTs: getCurrentDateTimeMillis(),
-    }));
+  const handleDateRangeChange = (
+    value: DateRangeObject,
+    daysValue?: number
+  ) => {
+    if (!isEqual(value, dateRangeObject)) {
+      setDateRangeObject(value);
+      setSelectedDaysFilter(daysValue ?? 0);
+      setChartFilter((previous) => ({
+        ...previous,
+        // Converting coming data to milliseconds
+        startTs: value.startTs * 1000,
+        endTs: value.endTs * 1000,
+      }));
+    }
   };
 
   const handleTeamChange = (teams: SearchDropdownOption[] = []) => {
@@ -341,11 +339,9 @@ const DataInsightPage = () => {
                       'dd MMM yyyy'
                     )}`}
                   </Typography>
-                  <Select
-                    className="data-insight-select-dropdown"
-                    defaultValue={DEFAULT_DAYS}
-                    options={DAY_FILTER}
-                    onChange={handleDaysChange}
+                  <DatePickerMenu
+                    handleDateRangeChange={handleDateRangeChange}
+                    showSelectedCustomRange={false}
                   />
                 </Space>
               </Space>
