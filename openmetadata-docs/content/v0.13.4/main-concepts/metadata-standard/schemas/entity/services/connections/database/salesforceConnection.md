@@ -15,13 +15,15 @@ slug: /main-concepts/metadata-standard/schemas/entity/services/connections/datab
 - **`securityToken`** *(string)*: Salesforce Security Token.
 - **`hostPort`** *(string)*: Host and port of the Salesforce service.
 - **`sobjectName`** *(string)*: Salesforce Object Name.
+- **`databaseName`** *(string)*: Optional name to give to the database in OpenMetadata. If left blank, we will use default as the database name.
 - **`connectionOptions`**: Refer to *../connectionBasicType.json#/definitions/connectionOptions*.
 - **`connectionArguments`**: Refer to *../connectionBasicType.json#/definitions/connectionArguments*.
 - **`supportsMetadataExtraction`**: Refer to *../connectionBasicType.json#/definitions/supportsMetadataExtraction*.
 - **`supportsProfiler`**: Refer to *../connectionBasicType.json#/definitions/supportsProfiler*.
+- **`supportsQueryComment`**: Refer to *../connectionBasicType.json#/definitions/supportsQueryComment*.
 ## Definitions
 
 - **`salesforceType`** *(string)*: Service type. Must be one of: `['Salesforce']`. Default: `Salesforce`.
 
 
-Documentation file automatically generated at 2022-07-14 10:51:34.749986.
+Documentation file automatically generated at 2023-04-13 23:17:03.893190.

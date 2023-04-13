@@ -10,14 +10,13 @@ slug: /main-concepts/metadata-standard/schemas/entity/services/connections/dashb
 ## Properties
 
 - **`type`**: Service Type. Refer to *#/definitions/lookerType*. Default: `Looker`.
-- **`username`** *(string)*: Username to connect to Looker. This user should have privileges to read all the metadata in Looker.
-- **`password`** *(string)*: Password to connect to Looker.
+- **`clientId`** *(string)*: User's Client ID. This user should have privileges to read all the metadata in Looker.
+- **`clientSecret`** *(string)*: User's Client Secret.
 - **`hostPort`** *(string)*: URL to the Looker instance.
-- **`env`** *(string)*: Looker Environment.
 - **`supportsMetadataExtraction`**: Refer to *../connectionBasicType.json#/definitions/supportsMetadataExtraction*.
 ## Definitions
 
 - **`lookerType`** *(string)*: Looker service type. Must be one of: `['Looker']`. Default: `Looker`.
 
 
-Documentation file automatically generated at 2022-07-14 10:51:34.749986.
+Documentation file automatically generated at 2023-04-13 23:17:03.893190.

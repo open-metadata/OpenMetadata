@@ -13,10 +13,11 @@ slug: /main-concepts/metadata-standard/schemas/entity/services/connections/dashb
 - **`username`** *(string)*: Username for Redash.
 - **`hostPort`** *(string)*: URL for the Redash instance. Default: `http://localhost:5000`.
 - **`apiKey`** *(string)*: API key of the redash instance to access.
+- **`redashVersion`** *(string)*: Version of the Redash instance. Default: `10.0.0`.
 - **`supportsMetadataExtraction`**: Refer to *../connectionBasicType.json#/definitions/supportsMetadataExtraction*.
 ## Definitions
 
 - **`redashType`** *(string)*: Redash service type. Must be one of: `['Redash']`. Default: `Redash`.
 
 
-Documentation file automatically generated at 2022-07-14 10:51:34.749986.
+Documentation file automatically generated at 2023-04-13 23:17:03.893190.

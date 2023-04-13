@@ -32,6 +32,8 @@ from pathlib import Path
 from typing import List
 
 import jsonschema2md
+from metadata.utils.ansi import print_ansi_encoded_string
+
 
 SOURCES_ROOT = "openmetadata-spec/src/main/resources/json/schema"
 SINK_ROOT = "openmetadata-docs/content/v1.1.0"

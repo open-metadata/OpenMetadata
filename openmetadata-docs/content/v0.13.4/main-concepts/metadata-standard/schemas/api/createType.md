@@ -9,7 +9,7 @@ slug: /main-concepts/metadata-standard/schemas/api/createtype
 
 ## Properties
 
-- **`name`**: Unique name that identifies a Type. Refer to *../entity/type.json#/definitions/typeName*.
+- **`name`**: Unique name that identifies a Type. Refer to *../entity/type.json#/definitions/entityName*.
 - **`displayName`** *(string)*: Display Name that identifies this Type.
 - **`description`**: Optional description of the type. Refer to *../type/basic.json#/definitions/markdown*.
 - **`nameSpace`** *(string)*: Namespace or group to which this type belongs to. Default: `custom`.
@@ -17,4 +17,4 @@ slug: /main-concepts/metadata-standard/schemas/api/createtype
 - **`schema`**: JSON schema encoded as string. This will be used to validate the type values. Refer to *../type/basic.json#/definitions/jsonSchema*.
 
 
-Documentation file automatically generated at 2022-07-14 10:51:34.749986.
+Documentation file automatically generated at 2023-04-13 23:17:03.893190.

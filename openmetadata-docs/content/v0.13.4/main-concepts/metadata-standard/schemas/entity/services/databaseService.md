@@ -5,7 +5,7 @@ slug: /main-concepts/metadata-standard/schemas/entity/services/databaseservice
 
 # Database Service
 
-*This schema defines the Database Service entity, such as MySQL, BigQuery, Redshift, Postgres, or Snowflake. Alternative terms such as Database Cluster, Database Server instance are also used for database service.*
+*This schema defines the `Database Service` is a service such as MySQL, BigQuery, Redshift, Postgres, or Snowflake. Alternative terms such as Database Cluster, Database Server instance are also used for database service.*
 
 ## Properties
 
@@ -17,6 +17,9 @@ slug: /main-concepts/metadata-standard/schemas/entity/services/databaseservice
 - **`description`**: Description of a database service instance. Refer to *../../type/basic.json#/definitions/markdown*.
 - **`connection`**: Refer to *#/definitions/databaseConnection*.
 - **`pipelines`**: References to pipelines deployed for this database service to extract metadata, usage, lineage etc.. Refer to *../../type/entityReference.json#/definitions/entityReferenceList*.
+- **`testConnectionResult`**: Last test connection results for this service. Refer to *connections/testConnectionResult.json*.
+- **`tags`** *(array)*: Tags for this Database Service. Default: `None`.
+  - **Items**: Refer to *../../type/tagLabel.json*.
 - **`version`**: Metadata version of the entity. Refer to *../../type/entityHistory.json#/definitions/entityVersion*.
 - **`updatedAt`**: Last update time corresponding to the new version of the entity in Unix epoch time milliseconds. Refer to *../../type/basic.json#/definitions/timestamp*.
 - **`updatedBy`** *(string)*: User who made the update.
@@ -26,9 +29,9 @@ slug: /main-concepts/metadata-standard/schemas/entity/services/databaseservice
 - **`deleted`** *(boolean)*: When `true` indicates the entity has been soft deleted. Default: `False`.
 ## Definitions
 
-- **`databaseServiceType`** *(string)*: Type of database service such as MySQL, BigQuery, Snowflake, Redshift, Postgres... Must be one of: `['BigQuery', 'Mysql', 'Redshift', 'Snowflake', 'Postgres', 'Mssql', 'Hive', 'Oracle', 'Athena', 'Presto', 'Trino', 'Vertica', 'Glue', 'MariaDB', 'Druid', 'Db2', 'Clickhouse', 'Databricks', 'DynamoDB', 'AzureSQL', 'SingleStore', 'SQLite', 'DeltaLake', 'Salesforce', 'SampleData', 'PinotDB', 'Datalake']`.
+- **`databaseServiceType`** *(string)*: Type of database service such as MySQL, BigQuery, Snowflake, Redshift, Postgres... Must be one of: `['BigQuery', 'Mysql', 'Redshift', 'Snowflake', 'Postgres', 'Mssql', 'Oracle', 'Athena', 'Hive', 'Presto', 'Trino', 'Vertica', 'Glue', 'MariaDB', 'Druid', 'Db2', 'Clickhouse', 'Databricks', 'AzureSQL', 'DynamoDB', 'SingleStore', 'SQLite', 'DeltaLake', 'Salesforce', 'PinotDB', 'Datalake', 'DomoDatabase', 'QueryLog', 'CustomDatabase', 'Dbt']`.
 - **`databaseConnection`** *(object)*: Database Connection. Cannot contain additional properties.
   - **`config`**
 
 
-Documentation file automatically generated at 2022-07-14 10:51:34.749986.
+Documentation file automatically generated at 2023-04-13 23:17:03.893190.

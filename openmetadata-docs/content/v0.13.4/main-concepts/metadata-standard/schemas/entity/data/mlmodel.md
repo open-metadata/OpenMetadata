@@ -5,7 +5,7 @@ slug: /main-concepts/metadata-standard/schemas/entity/data/mlmodel
 
 # MlModel
 
-*This schema defines the Model entity. Models are algorithms trained on data to find patterns or make predictions.*
+*This schema defines the Model entity. `Machine Learning Models` are algorithms trained on data to find patterns or make predictions.*
 
 ## Properties
 
@@ -36,6 +36,7 @@ slug: /main-concepts/metadata-standard/schemas/entity/data/mlmodel
 - **`serviceType`**: Service type where this pipeline is hosted in. Refer to *../services/mlmodelService.json#/definitions/mlModelServiceType*.
 - **`changeDescription`**: Change that lead to this version of the entity. Refer to *../../type/entityHistory.json#/definitions/changeDescription*.
 - **`deleted`** *(boolean)*: When `true` indicates the entity has been soft deleted. Default: `False`.
+- **`extension`**: Entity extension data with custom attributes added to the entity. Refer to *../../type/basic.json#/definitions/entityExtension*.
 ## Definitions
 
 - **`featureType`** *(string)*: This enum defines the type of data stored in a ML Feature. Must be one of: `['numerical', 'categorical']`.
@@ -67,4 +68,4 @@ slug: /main-concepts/metadata-standard/schemas/entity/data/mlmodel
   - **`imageRepository`**: Container Repository with the ML Model image. Refer to *../../type/basic.json#/definitions/href*.
 
 
-Documentation file automatically generated at 2022-07-14 10:51:34.749986.
+Documentation file automatically generated at 2023-04-13 23:17:03.893190.

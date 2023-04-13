@@ -5,7 +5,7 @@ slug: /main-concepts/metadata-standard/schemas/type/entitylineage
 
 # Entity Lineage
 
-*This schema defines the type used for lineage of an entity.*
+*The `Lineage` for a given data asset, has information of the input datasets used and the ETL pipeline that created it.*
 
 ## Properties
 
@@ -40,4 +40,4 @@ slug: /main-concepts/metadata-standard/schemas/type/entitylineage
   - **`lineageDetails`**: Optional lineageDetails provided only for table to table lineage edge. Refer to *#/definitions/lineageDetails*.
 
 
-Documentation file automatically generated at 2022-07-14 10:51:34.749986.
+Documentation file automatically generated at 2023-04-13 23:17:03.893190.

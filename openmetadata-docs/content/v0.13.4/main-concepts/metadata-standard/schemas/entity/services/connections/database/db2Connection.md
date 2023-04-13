@@ -14,15 +14,18 @@ slug: /main-concepts/metadata-standard/schemas/entity/services/connections/datab
 - **`username`** *(string)*: Username to connect to DB2. This user should have privileges to read all the metadata in DB2.
 - **`password`** *(string)*: Password to connect to DB2.
 - **`hostPort`** *(string)*: Host and port of the DB2 service.
-- **`databaseSchema`** *(string)*: databaseSchema of the data source. This is optional parameter, if you would like to restrict the metadata reading to a single databaseSchema. When left blank, OpenMetadata Ingestion attempts to scan all the databaseSchema.
+- **`database`** *(string)*: Database of the data source.
 - **`connectionOptions`**: Refer to *../connectionBasicType.json#/definitions/connectionOptions*.
 - **`connectionArguments`**: Refer to *../connectionBasicType.json#/definitions/connectionArguments*.
 - **`supportsMetadataExtraction`**: Refer to *../connectionBasicType.json#/definitions/supportsMetadataExtraction*.
+- **`supportsDBTExtraction`**: Refer to *../connectionBasicType.json#/definitions/supportsDBTExtraction*.
 - **`supportsProfiler`**: Refer to *../connectionBasicType.json#/definitions/supportsProfiler*.
+- **`supportsDatabase`**: Refer to *../connectionBasicType.json#/definitions/supportsDatabase*.
+- **`supportsQueryComment`**: Refer to *../connectionBasicType.json#/definitions/supportsQueryComment*.
 ## Definitions
 
 - **`db2Type`** *(string)*: Service type. Must be one of: `['Db2']`. Default: `Db2`.
 - **`db2Scheme`** *(string)*: SQLAlchemy driver scheme options. Must be one of: `['db2+ibm_db']`. Default: `db2+ibm_db`.
 
 
-Documentation file automatically generated at 2022-07-14 10:51:34.749986.
+Documentation file automatically generated at 2023-04-13 23:17:03.893190.

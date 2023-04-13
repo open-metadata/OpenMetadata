@@ -14,16 +14,20 @@ slug: /main-concepts/metadata-standard/schemas/entity/services/connections/datab
 - **`username`** *(string)*: Username to connect to Hive. This user should have privileges to read all the metadata in Hive.
 - **`password`** *(string)*: Password to connect to Hive.
 - **`hostPort`** *(string)*: Host and port of the Hive service.
+- **`auth`** *(string)*: Authentication mode to connect to hive, E.g, LDAP, CUSTOM etc.
+- **`kerberosServiceName`** *(string)*: If authenticating with Kerberos specify the Kerberos service name.
 - **`databaseSchema`** *(string)*: databaseSchema of the data source. This is optional parameter, if you would like to restrict the metadata reading to a single databaseSchema. When left blank, OpenMetadata Ingestion attempts to scan all the databaseSchema.
+- **`databaseName`** *(string)*: Optional name to give to the database in OpenMetadata. If left blank, we will use default as the database name.
 - **`authOptions`** *(string)*: Authentication options to pass to Hive connector. These options are based on SQLAlchemy.
 - **`connectionOptions`**: Refer to *../connectionBasicType.json#/definitions/connectionOptions*.
 - **`connectionArguments`**: Refer to *../connectionBasicType.json#/definitions/connectionArguments*.
 - **`supportsMetadataExtraction`**: Refer to *../connectionBasicType.json#/definitions/supportsMetadataExtraction*.
+- **`supportsDBTExtraction`**: Refer to *../connectionBasicType.json#/definitions/supportsDBTExtraction*.
 - **`supportsProfiler`**: Refer to *../connectionBasicType.json#/definitions/supportsProfiler*.
 ## Definitions
 
 - **`hiveType`** *(string)*: Service type. Must be one of: `['Hive']`. Default: `Hive`.
-- **`hiveScheme`** *(string)*: SQLAlchemy driver scheme options. Must be one of: `['hive']`. Default: `hive`.
+- **`hiveScheme`** *(string)*: SQLAlchemy driver scheme options. Must be one of: `['hive', 'hive+http', 'hive+https', 'impala', 'impala4']`. Default: `hive`.
 
 
-Documentation file automatically generated at 2022-07-14 10:51:34.749986.
+Documentation file automatically generated at 2023-04-13 23:17:03.893190.

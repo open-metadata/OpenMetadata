@@ -10,7 +10,7 @@ slug: /main-concepts/metadata-standard/schemas/entity/policies/filters
 - **`prefix`** *(string)*: Prefix path of the entity.
 - **`regex`** *(string)*: Regex that matches the entity.
 - **`tags`** *(array)*: Set of tags to match on (OR among all tags).
-  - **Items**: Refer to *../classification/tags.json#/definitions/tagName*.
+  - **Items**: Refer to *../classification/tag.json#/definitions/tagName*.
 
 
-Documentation file automatically generated at 2022-07-14 10:51:34.749986.
+Documentation file automatically generated at 2023-04-13 23:17:03.893190.

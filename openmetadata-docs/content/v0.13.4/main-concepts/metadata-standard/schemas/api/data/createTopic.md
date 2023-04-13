@@ -12,9 +12,8 @@ slug: /main-concepts/metadata-standard/schemas/api/data/createtopic
 - **`name`**: Name that identifies this topic instance uniquely. Refer to *../../type/basic.json#/definitions/entityName*.
 - **`displayName`** *(string)*: Display Name that identifies this topic.
 - **`description`**: Description of the topic instance. What it has and how to use it. Refer to *../../type/basic.json#/definitions/markdown*.
-- **`service`**: Link to the messaging service where this topic is hosted in. Refer to *../../type/entityReference.json*.
-- **`schemaText`** *(string)*: Schema used for message serialization. Optional as some topics may not have associated schemas.
-- **`schemaType`**: Schema used for message serialization. Refer to *../../entity/data/topic.json#/definitions/schemaType*.
+- **`service`**: Fully qualified name of the messaging service where this topic is hosted in. Refer to *../../type/basic.json#/definitions/fullyQualifiedEntityName*.
+- **`messageSchema`**: Refer to *../../type/schema.json*.
 - **`partitions`** *(integer)*: Number of partitions into which the topic is divided. Minimum: `1`.
 - **`cleanupPolicies`** *(array)*: Topic clean up policy. For Kafka - `cleanup.policy` configuration.
   - **Items**: Refer to *../../entity/data/topic.json#/definitions/cleanupPolicy*.
@@ -27,6 +26,7 @@ slug: /main-concepts/metadata-standard/schemas/api/data/createtopic
 - **`owner`**: Owner of this topic. Refer to *../../type/entityReference.json*.
 - **`tags`** *(array)*: Tags for this topic. Default: `None`.
   - **Items**: Refer to *../../type/tagLabel.json*.
+- **`extension`**: Entity extension data with custom attributes added to the entity. Refer to *../../type/basic.json#/definitions/entityExtension*.
 
 
-Documentation file automatically generated at 2022-07-14 10:51:34.749986.
+Documentation file automatically generated at 2023-04-13 23:17:03.893190.

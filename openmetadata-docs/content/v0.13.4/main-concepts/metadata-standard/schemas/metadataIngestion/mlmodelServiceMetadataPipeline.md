@@ -10,9 +10,11 @@ slug: /main-concepts/metadata-standard/schemas/metadataingestion/mlmodelservicem
 ## Properties
 
 - **`type`**: Pipeline type. Refer to *#/definitions/mlModelMetadataConfigType*. Default: `MlModelMetadata`.
+- **`mlModelFilterPattern`**: Regex to only fetch MlModels with names matching the pattern. Refer to *../type/filterPattern.json#/definitions/filterPattern*.
+- **`markDeletedMlModels`** *(boolean)*: Optional configuration to soft delete MlModels in OpenMetadata if the source MlModels are deleted. Also, if the MlModel is deleted, all the associated entities like lineage, etc., with that MlModels will be deleted. Default: `True`.
 ## Definitions
 
 - **`mlModelMetadataConfigType`** *(string)*: MlModel Source Config Metadata Pipeline type. Must be one of: `['MlModelMetadata']`. Default: `MlModelMetadata`.
 
 
-Documentation file automatically generated at 2022-07-14 10:51:34.749986.
+Documentation file automatically generated at 2023-04-13 23:17:03.893190.

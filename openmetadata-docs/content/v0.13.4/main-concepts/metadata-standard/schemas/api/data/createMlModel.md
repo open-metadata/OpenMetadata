@@ -18,13 +18,14 @@ slug: /main-concepts/metadata-standard/schemas/api/data/createmlmodel
 - **`target`**: For supervised ML Models, the value to estimate. Refer to *../../type/basic.json#/definitions/entityName*.
 - **`mlHyperParameters`** *(array)*: Hyper Parameters used to train the ML Model. Default: `None`.
   - **Items**: Refer to *../../entity/data/mlmodel.json#/definitions/mlHyperParameter*.
-- **`dashboard`**: Performance Dashboard URL to track metric evolution. Refer to *../../type/entityReference.json*.
+- **`dashboard`**: Performance Dashboard fqn to track metric evolution. Refer to *../../type/basic.json#/definitions/fullyQualifiedEntityName*.
 - **`mlStore`**: Location containing the ML Model. It can be a storage layer and/or a container repository. Refer to *../../entity/data/mlmodel.json#/definitions/mlStore*.
 - **`server`**: Endpoint that makes the ML Model available, e.g,. a REST API serving the data or computing predictions. Refer to *../../type/basic.json#/definitions/href*.
 - **`tags`** *(array)*: Tags for this ML Model. Default: `None`.
   - **Items**: Refer to *../../type/tagLabel.json*.
 - **`owner`**: Owner of this database. Refer to *../../type/entityReference.json*.
-- **`service`**: Link to the pipeline service where this pipeline is hosted in. Refer to *../../type/entityReference.json*.
+- **`service`**: Link to the MLModel service fqn where this pipeline is hosted in. Refer to *../../type/basic.json#/definitions/fullyQualifiedEntityName*.
+- **`extension`**: Entity extension data with custom attributes added to the entity. Refer to *../../type/basic.json#/definitions/entityExtension*.
 
 
-Documentation file automatically generated at 2022-07-14 10:51:34.749986.
+Documentation file automatically generated at 2023-04-13 23:17:03.893190.

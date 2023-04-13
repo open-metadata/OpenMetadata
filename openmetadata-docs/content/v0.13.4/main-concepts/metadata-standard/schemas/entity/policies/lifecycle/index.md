@@ -3,6 +3,6 @@ title: index
 slug: /main-concepts/metadata-standard/schemas/entity/policies/lifecycle
 ---
 
-# lifecycle
+# Lifecycle
 
-Documentation file automatically generated at 2022-07-14 10:51:34.749986.
+Documentation file automatically generated at 2023-04-13 23:17:03.893190.

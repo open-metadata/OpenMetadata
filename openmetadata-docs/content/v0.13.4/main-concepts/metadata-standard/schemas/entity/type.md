@@ -10,7 +10,7 @@ slug: /main-concepts/metadata-standard/schemas/entity/type
 ## Properties
 
 - **`id`**: Unique identifier of the type instance. Refer to *../type/basic.json#/definitions/uuid*.
-- **`name`**: Unique name that identifies the type. Refer to *#/definitions/typeName*.
+- **`name`**: Unique name that identifies the type. Refer to *#/definitions/entityName*.
 - **`fullyQualifiedName`**: FullyQualifiedName same as `name`. Refer to *../type/basic.json#/definitions/fullyQualifiedEntityName*.
 - **`displayName`** *(string)*: Display Name that identifies this type.
 - **`description`**: Optional description of entity. Refer to *../type/basic.json#/definitions/markdown*.
@@ -26,13 +26,12 @@ slug: /main-concepts/metadata-standard/schemas/entity/type
 - **`changeDescription`**: Change that lead to this version of the entity. Refer to *../type/entityHistory.json#/definitions/changeDescription*.
 ## Definitions
 
+- **`entityName`** *(string)*: Name of the property or entity types. Note a property name must be unique for an entity. Property name must follow camelCase naming adopted by openMetadata - must start with lower case with no space, underscore, or dots.
 - **`category`** *(string)*: Metadata category to which a type belongs to. Must be one of: `['field', 'entity']`.
-- **`propertyName`** *(string)*: Name of the entity property. Note a property name must be unique for an entity. Property name must follow camelCase naming adopted by openMetadata - must start with lower case with no space, underscore, or dots.
-- **`typeName`** *(string)*: Name of the property or entity types. Note a property name must be unique for an entity. Property name must follow camelCase naming adopted by openMetadata - must start with lower case with no space, underscore, or dots.
 - **`customProperty`** *(object)*: Type used for adding custom property to an entity to extend it. Cannot contain additional properties.
-  - **`name`**: Name of the entity property. Note a property name must be unique for an entity. Property name must follow camelCase naming adopted by openMetadata - must start with lower case with no space, underscore, or dots. Refer to *#/definitions/propertyName*.
+  - **`name`**: Name of the entity property. Note a property name must be unique for an entity. Property name must follow camelCase naming adopted by openMetadata - must start with lower case with no space, underscore, or dots. Refer to *#/definitions/entityName*.
   - **`description`**: Refer to *../type/basic.json#/definitions/markdown*.
   - **`propertyType`**: Reference to a property type. Only property types are allowed and entity types are not allowed as custom properties to extend an existing entity. Refer to *../type/entityReference.json*.
 
 
-Documentation file automatically generated at 2022-07-14 10:51:34.749986.
+Documentation file automatically generated at 2023-04-13 23:17:03.893190.

@@ -14,7 +14,9 @@ slug: /main-concepts/metadata-standard/schemas/api/services/createmlmodelservice
 - **`description`**: Description of mlModel service entity. Refer to *../../type/basic.json#/definitions/markdown*.
 - **`serviceType`**: Refer to *../../entity/services/mlmodelService.json#/definitions/mlModelServiceType*.
 - **`connection`**: Refer to *../../entity/services/mlmodelService.json#/definitions/mlModelConnection*.
+- **`tags`** *(array)*: Tags for this MlModel Service. Default: `None`.
+  - **Items**: Refer to *../../type/tagLabel.json*.
 - **`owner`**: Owner of this mlModel service. Refer to *../../type/entityReference.json*.
 
 
-Documentation file automatically generated at 2022-07-14 10:51:34.749986.
+Documentation file automatically generated at 2023-04-13 23:17:03.893190.

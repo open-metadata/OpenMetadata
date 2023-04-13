@@ -23,6 +23,9 @@ slug: /main-concepts/metadata-standard/schemas/entity/services/connections/metad
 - **`includeDatabaseServices`** *(boolean)*: Include Database Services for Indexing. Default: `True`.
 - **`includePipelineServices`** *(boolean)*: Include Pipeline Services for Indexing. Default: `True`.
 - **`includeTags`** *(boolean)*: Include Tags for Indexing. Default: `True`.
+- **`includeContainers`** *(boolean)*: Include Containers for Indexing. Default: `True`.
+- **`includeStorageServices`** *(boolean)*: Include Storage Services for Indexing. Default: `True`.
+- **`includeQueries`** *(boolean)*: Include Queries for Indexing. Default: `True`.
 - **`limitRecords`** *(integer)*: Limit the number of records for Indexing. Default: `1000`.
 - **`supportsMetadataExtraction`**: Refer to *../connectionBasicType.json#/definitions/supportsMetadataExtraction*.
 ## Definitions
@@ -30,4 +33,4 @@ slug: /main-concepts/metadata-standard/schemas/entity/services/connections/metad
 - **`metadataESType`** *(string)*: Metadata to Elastic Search type. Must be one of: `['MetadataES']`. Default: `MetadataES`.
 
 
-Documentation file automatically generated at 2022-07-14 10:51:34.749986.
+Documentation file automatically generated at 2023-04-13 23:17:03.893190.

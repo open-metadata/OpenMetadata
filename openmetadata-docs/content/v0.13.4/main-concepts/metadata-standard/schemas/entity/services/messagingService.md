@@ -17,6 +17,9 @@ slug: /main-concepts/metadata-standard/schemas/entity/services/messagingservice
 - **`displayName`** *(string)*: Display Name that identifies this messaging service. It could be title or label from the source services.
 - **`connection`**: Refer to *#/definitions/messagingConnection*.
 - **`pipelines`**: References to pipelines deployed for this messaging service to extract topic configs and schemas. Refer to *../../type/entityReference.json#/definitions/entityReferenceList*.
+- **`testConnectionResult`**: Last test connection results for this service. Refer to *connections/testConnectionResult.json*.
+- **`tags`** *(array)*: Tags for this Message Service. Default: `None`.
+  - **Items**: Refer to *../../type/tagLabel.json*.
 - **`version`**: Metadata version of the entity. Refer to *../../type/entityHistory.json#/definitions/entityVersion*.
 - **`updatedAt`**: Last update time corresponding to the new version of the entity in Unix epoch time milliseconds. Refer to *../../type/basic.json#/definitions/timestamp*.
 - **`updatedBy`** *(string)*: User who made the update.
@@ -26,11 +29,11 @@ slug: /main-concepts/metadata-standard/schemas/entity/services/messagingservice
 - **`deleted`** *(boolean)*: When `true` indicates the entity has been soft deleted. Default: `False`.
 ## Definitions
 
-- **`messagingServiceType`** *(string)*: Type of messaging service - Kafka or Pulsar. Must be one of: `['Kafka', 'Pulsar']`.
+- **`messagingServiceType`** *(string)*: Type of messaging service - Kafka or Pulsar. Must be one of: `['Kafka', 'Pulsar', 'Redpanda', 'Kinesis', 'CustomMessaging']`.
 - **`brokers`** *(array)*: Multiple bootstrap addresses for Kafka. Single proxy address for Pulsar. Default: `None`.
   - **Items** *(string)*
 - **`messagingConnection`** *(object)*: Dashboard Connection. Cannot contain additional properties.
   - **`config`**
 
 
-Documentation file automatically generated at 2022-07-14 10:51:34.749986.
+Documentation file automatically generated at 2023-04-13 23:17:03.893190.

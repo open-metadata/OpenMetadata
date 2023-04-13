@@ -19,7 +19,9 @@ slug: /main-concepts/metadata-standard/schemas/entity/services/connections/datab
 - **`connectionOptions`**: Refer to *../connectionBasicType.json#/definitions/connectionOptions*.
 - **`connectionArguments`**: Refer to *../connectionBasicType.json#/definitions/connectionArguments*.
 - **`supportsMetadataExtraction`**: Refer to *../connectionBasicType.json#/definitions/supportsMetadataExtraction*.
+- **`supportsDBTExtraction`**: Refer to *../connectionBasicType.json#/definitions/supportsDBTExtraction*.
 - **`supportsProfiler`**: Refer to *../connectionBasicType.json#/definitions/supportsProfiler*.
+- **`supportsDatabase`**: Refer to *../connectionBasicType.json#/definitions/supportsDatabase*.
 - **`supportsUsageExtraction`**: Refer to *../connectionBasicType.json#/definitions/supportsUsageExtraction*.
 ## Definitions
 
@@ -27,4 +29,4 @@ slug: /main-concepts/metadata-standard/schemas/entity/services/connections/datab
 - **`mssqlScheme`** *(string)*: SQLAlchemy driver scheme options. Must be one of: `['mssql+pyodbc', 'mssql+pytds', 'mssql+pymssql']`. Default: `mssql+pytds`.
 
 
-Documentation file automatically generated at 2022-07-14 10:51:34.749986.
+Documentation file automatically generated at 2023-04-13 23:17:03.893190.

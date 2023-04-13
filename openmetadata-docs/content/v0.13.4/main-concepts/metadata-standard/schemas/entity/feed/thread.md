@@ -26,6 +26,7 @@ slug: /main-concepts/metadata-standard/schemas/entity/feed/thread
   - **Items**: Refer to *#/definitions/post*.
 - **`reactions`**: Reactions for the thread. Refer to *../../type/reaction.json#/definitions/reactionList*.
 - **`task`**: Details about the task. This is only applicable if thread is of type task. Refer to *#/definitions/taskDetails*.
+- **`announcement`**: Details about the announcement. This is only applicable if thread is of type announcement. Refer to *#/definitions/announcementDetails*.
 ## Definitions
 
 - **`taskType`** *(string)*: Type of a task. Must be one of: `['RequestDescription', 'UpdateDescription', 'RequestTag', 'UpdateTag', 'Generic']`.
@@ -41,6 +42,10 @@ slug: /main-concepts/metadata-standard/schemas/entity/feed/thread
   - **`newValue`** *(string)*: The new value object that was accepted to complete the task.
 - **`threadTaskStatus`** *(string)*: Status of a task. Must be one of: `['Open', 'Closed']`. Default: `Open`.
 - **`threadType`** *(string)*: Type of thread. Must be one of: `['Conversation', 'Task', 'Announcement']`. Default: `Conversation`.
+- **`announcementDetails`** *(object)*: Details about the announcement. This is only applicable if thread is of type announcement. Cannot contain additional properties.
+  - **`description`** *(string)*: Announcement description in markdown format. See markdown support for more details.
+  - **`startTime`**: Timestamp of the start time from when the announcement should be shown. Refer to *../../type/basic.json#/definitions/timestamp*.
+  - **`endTime`**: Timestamp of when the announcement should end. Refer to *../../type/basic.json#/definitions/timestamp*.
 - **`post`** *(object)*: Post within a feed. Cannot contain additional properties.
   - **`id`**: Unique identifier that identifies the post. Refer to *../../type/basic.json#/definitions/uuid*.
   - **`message`** *(string)*: Message in markdown format. See markdown support for more details.
@@ -49,4 +54,4 @@ slug: /main-concepts/metadata-standard/schemas/entity/feed/thread
   - **`reactions`**: Reactions for the post. Refer to *../../type/reaction.json#/definitions/reactionList*.
 
 
-Documentation file automatically generated at 2022-07-14 10:51:34.749986.
+Documentation file automatically generated at 2023-04-13 23:17:03.893190.

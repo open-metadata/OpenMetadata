@@ -20,15 +20,19 @@ slug: /main-concepts/metadata-standard/schemas/entity/services/metadataservice
 - **`version`**: Metadata version of the entity. Refer to *../../type/entityHistory.json#/definitions/entityVersion*.
 - **`updatedAt`**: Last update time corresponding to the new version of the entity in Unix epoch time milliseconds. Refer to *../../type/basic.json#/definitions/timestamp*.
 - **`updatedBy`** *(string)*: User who made the update.
+- **`testConnectionResult`**: Last test connection results for this service. Refer to *connections/testConnectionResult.json*.
+- **`tags`** *(array)*: Tags for this Metadata Service. Default: `None`.
+  - **Items**: Refer to *../../type/tagLabel.json*.
 - **`owner`**: Owner of this database service. Refer to *../../type/entityReference.json*.
 - **`href`**: Link to the resource corresponding to this database service. Refer to *../../type/basic.json#/definitions/href*.
 - **`changeDescription`**: Change that lead to this version of the entity. Refer to *../../type/entityHistory.json#/definitions/changeDescription*.
 - **`deleted`** *(boolean)*: When `true` indicates the entity has been soft deleted. Default: `False`.
+- **`allowServiceCreation`** *(boolean)*: When `true` indicates the metadata service can be created. Default: `True`.
 ## Definitions
 
-- **`metadataServiceType`** *(string)*: Type of database service such as Amundsen, Atlas... Must be one of: `['Amundsen', 'MetadataES', 'OpenMetadata']`.
+- **`metadataServiceType`** *(string)*: Type of database service such as Amundsen, Atlas... Must be one of: `['Amundsen', 'MetadataES', 'OpenMetadata', 'Atlas']`.
 - **`metadataConnection`** *(object)*: Metadata Service Connection. Cannot contain additional properties.
   - **`config`**
 
 
-Documentation file automatically generated at 2022-07-14 10:51:34.749986.
+Documentation file automatically generated at 2023-04-13 23:17:03.893190.

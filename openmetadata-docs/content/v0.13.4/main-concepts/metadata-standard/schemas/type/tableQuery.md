@@ -23,6 +23,7 @@ slug: /main-concepts/metadata-standard/schemas/type/tablequery
   - **`serviceName`** *(string)*: Name that identifies this database service.
   - **`databaseName`** *(string)*: Database associated with the table in the query.
   - **`databaseSchema`** *(string)*: Database schema of the associated with query.
+  - **`duration`** *(number)*: How long did the query took to run in seconds.
 
 
-Documentation file automatically generated at 2022-07-14 10:51:34.749986.
+Documentation file automatically generated at 2023-04-13 23:17:03.893190.

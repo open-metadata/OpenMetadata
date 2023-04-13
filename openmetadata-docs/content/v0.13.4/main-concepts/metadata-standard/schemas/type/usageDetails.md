@@ -3,7 +3,7 @@ title: usageDetails
 slug: /main-concepts/metadata-standard/schemas/type/usagedetails
 ---
 
-# Type used to return usage details of an entity
+# UsageDetails
 
 *This schema defines the type for usage details. Daily, weekly, and monthly aggregation of usage is computed along with the percentile rank based on the usage for a given day.*
 
@@ -20,4 +20,4 @@ slug: /main-concepts/metadata-standard/schemas/type/usagedetails
   - **`percentileRank`** *(number)*: Optional daily percentile rank data asset use when relevant. Minimum: `0`. Maximum: `100`.
 
 
-Documentation file automatically generated at 2022-07-14 10:51:34.749986.
+Documentation file automatically generated at 2023-04-13 23:17:03.893190.

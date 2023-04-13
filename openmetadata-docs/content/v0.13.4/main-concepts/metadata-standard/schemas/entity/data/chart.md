@@ -5,7 +5,7 @@ slug: /main-concepts/metadata-standard/schemas/entity/data/chart
 
 # Chart
 
-*This schema defines the Chart entity. Charts are built using tables or sql queries by analyzing the data. Charts can be part of Dashboard.*
+*A `Chart` presents data visually. Charts can be part of `Dashboards`.*
 
 ## Properties
 
@@ -35,4 +35,4 @@ slug: /main-concepts/metadata-standard/schemas/entity/data/chart
 - **`chartType`** *(string)*: This schema defines the type used for describing different types of charts. Must be one of: `['Line', 'Table', 'Bar', 'Area', 'Pie', 'Histogram', 'Scatter', 'Text', 'BoxPlot', 'Other']`.
 
 
-Documentation file automatically generated at 2022-07-14 10:51:34.749986.
+Documentation file automatically generated at 2023-04-13 23:17:03.893190.

@@ -17,19 +17,23 @@ slug: /main-concepts/metadata-standard/schemas/entity/services/connections/datab
 - **`role`** *(string)*: Snowflake Role.
 - **`database`** *(string)*: Database of the data source. This is optional parameter, if you would like to restrict the metadata reading to a single database. When left blank, OpenMetadata Ingestion attempts to scan all the databases.
 - **`warehouse`** *(string)*: Snowflake warehouse.
-- **`queryTag`** *(string)*: Session query tag used to monitor usage on snoflake. Default: `OpenMetadata`.
+- **`queryTag`** *(string)*: Session query tag used to monitor usage on snowflake. To use a query tag snowflake user should have enough privileges to alter the session.
 - **`privateKey`** *(string)*: Connection to Snowflake instance via Private Key.
 - **`snowflakePrivatekeyPassphrase`** *(string)*: Snowflake Passphrase Key used with Private Key.
+- **`includeTempTables`** *(boolean)*: Optional configuration for ingestion of TRANSIENT and TEMPORARY tables, By default, it will skip the TRANSIENT and TEMPORARY tables. Default: `False`.
 - **`connectionOptions`**: Refer to *../connectionBasicType.json#/definitions/connectionOptions*.
 - **`connectionArguments`**: Refer to *../connectionBasicType.json#/definitions/connectionArguments*.
 - **`supportsMetadataExtraction`**: Refer to *../connectionBasicType.json#/definitions/supportsMetadataExtraction*.
 - **`supportsUsageExtraction`**: Refer to *../connectionBasicType.json#/definitions/supportsUsageExtraction*.
+- **`supportsLineageExtraction`**: Refer to *../connectionBasicType.json#/definitions/supportsLineageExtraction*.
+- **`supportsDBTExtraction`**: Refer to *../connectionBasicType.json#/definitions/supportsDBTExtraction*.
 - **`supportsProfiler`**: Refer to *../connectionBasicType.json#/definitions/supportsProfiler*.
 - **`supportsDatabase`**: Refer to *../connectionBasicType.json#/definitions/supportsDatabase*.
+- **`supportsQueryComment`**: Refer to *../connectionBasicType.json#/definitions/supportsQueryComment*.
 ## Definitions
 
 - **`snowflakeType`** *(string)*: Service type. Must be one of: `['Snowflake']`. Default: `Snowflake`.
 - **`snowflakeScheme`** *(string)*: SQLAlchemy driver scheme options. Must be one of: `['snowflake']`. Default: `snowflake`.
 
 
-Documentation file automatically generated at 2022-07-14 10:51:34.749986.
+Documentation file automatically generated at 2023-04-13 23:17:03.893190.

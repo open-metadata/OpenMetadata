@@ -5,7 +5,7 @@ slug: /main-concepts/metadata-standard/schemas/entity/policies/policy
 
 # Policy
 
-*This schema defines the Policy entity. A Policy defines lifecycle or access control that needs to be applied across different Data Entities.*
+*A `Policy` defines control that needs to be applied across different Data Entities.*
 
 ## Properties
 
@@ -22,12 +22,18 @@ slug: /main-concepts/metadata-standard/schemas/entity/policies/policy
 - **`updatedBy`** *(string)*: User who made the update.
 - **`changeDescription`**: Change that led to this version of the Policy. Refer to *../../type/entityHistory.json#/definitions/changeDescription*.
 - **`rules`**: Set of rules that the policy contains. Refer to *#/definitions/rules*.
+- **`teams`**: Teams that use this policy directly and not through roles. Refer to *../../type/entityReference.json#/definitions/entityReferenceList*.
+- **`roles`**: Roles that use this policy. Refer to *../../type/entityReference.json#/definitions/entityReferenceList*.
 - **`location`**: Location to which a policy is applied. This field is relevant only for `lifeCycle` policies. Refer to *../../type/entityReference.json*. Default: `None`.
+- **`allowDelete`** *(boolean)*: Some system policies can't be deleted.
+- **`allowEdit`** *(boolean)*: Some system roles can't be edited.
 - **`deleted`** *(boolean)*: When `true` indicates the entity has been soft deleted. Default: `False`.
+- **`provider`**: Refer to *../../type/basic.json#/definitions/providerType*.
+- **`disabled`** *(boolean)*: System policy can't be deleted. Use this flag to disable them.
 ## Definitions
 
 - **`rules`** *(array)*: A set of rules associated with the Policy.
-  - **Items**
+  - **Items**: Refer to *accessControl/rule.json*.
 
 
-Documentation file automatically generated at 2022-07-14 10:51:34.749986.
+Documentation file automatically generated at 2023-04-13 23:17:03.893190.

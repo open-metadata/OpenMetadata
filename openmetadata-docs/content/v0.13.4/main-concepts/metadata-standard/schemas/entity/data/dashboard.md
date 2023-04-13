@@ -5,7 +5,7 @@ slug: /main-concepts/metadata-standard/schemas/entity/data/dashboard
 
 # Dashboard
 
-*This schema defines the Dashboard entity. Dashboards are computed from data and visually present data, metrics, and KPIs. They are updated in real-time and allow interactive data exploration.*
+*This schema defines the Dashboard entity. Dashboards are computed from data and visually present data, metrics, and KPIs. They are typically updated in real-time and allow interactive data exploration.*
 
 ## Properties
 
@@ -18,8 +18,8 @@ slug: /main-concepts/metadata-standard/schemas/entity/data/dashboard
 - **`updatedAt`**: Last update time corresponding to the new version of the entity in Unix epoch time milliseconds. Refer to *../../type/basic.json#/definitions/timestamp*.
 - **`updatedBy`** *(string)*: User who made the update.
 - **`dashboardUrl`** *(string)*: Dashboard URL suffix from its service.
-- **`charts`** *(array)*: All the charts included in this Dashboard. Default: `None`.
-  - **Items**: Refer to *../../type/entityReference.json*.
+- **`charts`**: All the charts included in this Dashboard. Refer to *../../type/entityReference.json#/definitions/entityReferenceList*. Default: `None`.
+- **`dataModels`**: List of data models used by this dashboard or the charts contained on it. Refer to *../../type/entityReference.json#/definitions/entityReferenceList*. Default: `None`.
 - **`href`**: Link to the resource corresponding to this entity. Refer to *../../type/basic.json#/definitions/href*.
 - **`owner`**: Owner of this dashboard. Refer to *../../type/entityReference.json*.
 - **`followers`**: Followers of this dashboard. Refer to *../../type/entityReference.json#/definitions/entityReferenceList*.
@@ -30,6 +30,7 @@ slug: /main-concepts/metadata-standard/schemas/entity/data/dashboard
 - **`usageSummary`**: Latest usage information for this database. Refer to *../../type/usageDetails.json*. Default: `None`.
 - **`changeDescription`**: Change that lead to this version of the entity. Refer to *../../type/entityHistory.json#/definitions/changeDescription*.
 - **`deleted`** *(boolean)*: When `true` indicates the entity has been soft deleted. Default: `False`.
+- **`extension`**: Entity extension data with custom attributes added to the entity. Refer to *../../type/basic.json#/definitions/entityExtension*.
 
 
-Documentation file automatically generated at 2022-07-14 10:51:34.749986.
+Documentation file automatically generated at 2023-04-13 23:17:03.893190.

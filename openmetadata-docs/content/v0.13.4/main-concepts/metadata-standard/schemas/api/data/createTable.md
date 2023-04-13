@@ -9,7 +9,7 @@ slug: /main-concepts/metadata-standard/schemas/api/data/createtable
 
 ## Properties
 
-- **`name`**: Name that identifies the this entity instance uniquely. Same as id if when name is not unique. Refer to *../../type/basic.json#/definitions/entityName*.
+- **`name`**: Name that identifies the this entity instance uniquely. Same as id if when name is not unique. Refer to *../../entity/data/table.json#/definitions/entityName*.
 - **`displayName`** *(string)*: Display Name that identifies this table.
 - **`description`**: Description of entity instance. Refer to *../../type/basic.json#/definitions/markdown*.
 - **`tableType`**: Refer to *../../entity/data/table.json#/definitions/tableType*.
@@ -18,14 +18,13 @@ slug: /main-concepts/metadata-standard/schemas/api/data/createtable
 - **`tableConstraints`** *(array)*: Default: `None`.
   - **Items**: Refer to *../../entity/data/table.json#/definitions/tableConstraint*.
 - **`tablePartition`**: Refer to *../../entity/data/table.json#/definitions/tablePartition*.
-- **`profileSample`** *(number)*: Percentage of data we want to execute the profiler and tests on. Represented in the range (0, 100]. Maximum: `100`. Default: `None`.
-- **`profileQuery`** *(string)*: Users' raw SQL query to fetch sample data and profile the table. Default: `None`.
+- **`tableProfilerConfig`**: Refer to *../../entity/data/table.json#/definitions/tableProfilerConfig*.
 - **`owner`**: Owner of this entity. Refer to *../../type/entityReference.json*. Default: `None`.
-- **`databaseSchema`**: Schema corresponding to this table. Refer to *../../type/entityReference.json*. Default: `None`.
+- **`databaseSchema`**: FullyQualified name of the Schema corresponding to this table. Refer to *../../type/basic.json#/definitions/fullyQualifiedEntityName*.
 - **`tags`** *(array)*: Tags for this table. Default: `None`.
   - **Items**: Refer to *../../type/tagLabel.json*.
 - **`viewDefinition`**: View Definition in SQL. Applies to TableType.View only. Refer to *../../type/basic.json#/definitions/sqlQuery*. Default: `None`.
 - **`extension`**: Entity extension data with custom attributes added to the entity. Refer to *../../type/basic.json#/definitions/entityExtension*.
 
 
-Documentation file automatically generated at 2022-07-14 10:51:34.749986.
+Documentation file automatically generated at 2023-04-13 23:17:03.893190.

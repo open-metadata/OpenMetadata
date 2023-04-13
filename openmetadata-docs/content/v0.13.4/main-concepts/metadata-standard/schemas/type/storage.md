@@ -16,4 +16,4 @@ slug: /main-concepts/metadata-standard/schemas/type/storage
 - **`abfsStorageClass`** *(string)*: Type of storage class offered by ABFS. Must be one of: `['ARCHIVE', 'HOT', 'COOL']`.
 
 
-Documentation file automatically generated at 2022-07-14 10:51:34.749986.
+Documentation file automatically generated at 2023-04-13 23:17:03.893190.

@@ -10,7 +10,7 @@ slug: /main-concepts/metadata-standard/schemas/entity/data/pipeline
 ## Properties
 
 - **`id`**: Unique identifier that identifies a pipeline instance. Refer to *../../type/basic.json#/definitions/uuid*.
-- **`name`**: Name that identifies this pipeline instance uniquely. Refer to *../../type/basic.json#/definitions/entityName*.
+- **`name`**: Name that identifies this pipeline instance uniquely. Refer to *#/definitions/entityName*.
 - **`displayName`** *(string)*: Display Name that identifies this Pipeline. It could be title or label from the source services.
 - **`fullyQualifiedName`**: A unique name that identifies a pipeline in the format 'ServiceName.PipelineName'. Refer to *../../type/basic.json#/definitions/fullyQualifiedEntityName*.
 - **`description`**: Description of this Pipeline. Refer to *../../type/basic.json#/definitions/markdown*.
@@ -23,8 +23,7 @@ slug: /main-concepts/metadata-standard/schemas/entity/data/pipeline
 - **`startDate`**: Start date of the workflow. Refer to *../../type/basic.json#/definitions/dateTime*.
 - **`tasks`** *(array)*: All the tasks that are part of pipeline. Default: `None`.
   - **Items**: Refer to *#/definitions/task*.
-- **`pipelineStatus`** *(array)*: Series of pipeline executions and its status. Default: `None`.
-  - **Items**: Refer to *#/definitions/pipelineStatus*.
+- **`pipelineStatus`**: Latest Pipeline Status. Refer to *#/definitions/pipelineStatus*. Default: `None`.
 - **`followers`**: Followers of this Pipeline. Refer to *../../type/entityReference.json#/definitions/entityReferenceList*.
 - **`tags`** *(array)*: Tags for this Pipeline. Default: `None`.
   - **Items**: Refer to *../../type/tagLabel.json*.
@@ -34,8 +33,10 @@ slug: /main-concepts/metadata-standard/schemas/entity/data/pipeline
 - **`serviceType`**: Service type where this pipeline is hosted in. Refer to *../services/pipelineService.json#/definitions/pipelineServiceType*.
 - **`changeDescription`**: Change that lead to this version of the entity. Refer to *../../type/entityHistory.json#/definitions/changeDescription*.
 - **`deleted`** *(boolean)*: When `true` indicates the entity has been soft deleted. Default: `False`.
+- **`extension`**: Entity extension data with custom attributes added to the entity. Refer to *../../type/basic.json#/definitions/entityExtension*.
 ## Definitions
 
+- **`entityName`** *(string)*: Name of a table. Expected to be unique within a database.
 - **`statusType`** *(string)*: Enum defining the possible Status. Must be one of: `['Successful', 'Failed', 'Pending']`.
 - **`taskStatus`** *(object)*: This schema defines a time series of the status of a Pipeline or Task. Cannot contain additional properties.
   - **`name`** *(string)*: Name of the Task.
@@ -58,10 +59,10 @@ slug: /main-concepts/metadata-standard/schemas/entity/data/pipeline
   - **`tags`** *(array)*: Tags for this task. Default: `None`.
     - **Items**: Refer to *../../type/tagLabel.json*.
 - **`pipelineStatus`** *(object)*: Series of pipeline executions, its status and task status. Cannot contain additional properties.
-  - **`executionDate`**: Date where the job was executed. Refer to *../../type/basic.json#/definitions/timestamp*.
+  - **`timestamp`**: Timestamp where the job was executed. Refer to *../../type/basic.json#/definitions/timestamp*.
   - **`executionStatus`**: Status at a specific execution date. Refer to *#/definitions/statusType*.
   - **`taskStatus`** *(array)*: Series of task executions and its status. Default: `None`.
     - **Items**: Refer to *#/definitions/taskStatus*.
 
 
-Documentation file automatically generated at 2022-07-14 10:51:34.749986.
+Documentation file automatically generated at 2023-04-13 23:17:03.893190.

@@ -14,7 +14,9 @@ slug: /main-concepts/metadata-standard/schemas/api/services/createmessagingservi
 - **`description`**: Description of messaging service entity. Refer to *../../type/basic.json#/definitions/markdown*.
 - **`serviceType`**: Refer to *../../entity/services/messagingService.json#/definitions/messagingServiceType*.
 - **`connection`**: Refer to *../../entity/services/messagingService.json#/definitions/messagingConnection*.
+- **`tags`** *(array)*: Tags for this Messaging Service. Default: `None`.
+  - **Items**: Refer to *../../type/tagLabel.json*.
 - **`owner`**: Owner of this messaging service. Refer to *../../type/entityReference.json*.
 
 
-Documentation file automatically generated at 2022-07-14 10:51:34.749986.
+Documentation file automatically generated at 2023-04-13 23:17:03.893190.

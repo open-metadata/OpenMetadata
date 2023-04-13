@@ -5,12 +5,12 @@ slug: /main-concepts/metadata-standard/schemas/entity/teams/user
 
 # User
 
-*This schema defines the User entity. A user can be part of 0 or more teams. A special type of user called Bot is used for automation. A user can be an owner of zero or more data assets. A user can also follow zero or more data assets.*
+*A `User` represents a user of OpenMetadata. A user can be part of 0 or more teams. A special type of user called Bot is used for automation. A user can be an owner of zero or more data assets. A user can also follow zero or more data assets.*
 
 ## Properties
 
 - **`id`**: Unique identifier that identifies a user entity instance. Refer to *../../type/basic.json#/definitions/uuid*.
-- **`name`**: A unique name of the user, typically the user ID from an identity provider. Example - uid from LDAP. Refer to *../../type/basic.json#/definitions/entityName*.
+- **`name`**: A unique name of the user, typically the user ID from an identity provider. Example - uid from LDAP. Refer to *#/definitions/entityName*.
 - **`fullyQualifiedName`**: FullyQualifiedName same as `name`. Refer to *../../type/basic.json#/definitions/fullyQualifiedEntityName*.
 - **`description`**: Used for user biography. Refer to *../../type/basic.json#/definitions/markdown*.
 - **`displayName`** *(string)*: Name used for display purposes. Example 'FirstName LastName'.
@@ -30,12 +30,14 @@ slug: /main-concepts/metadata-standard/schemas/entity/teams/user
 - **`changeDescription`**: Change that lead to this version of the entity. Refer to *../../type/entityHistory.json#/definitions/changeDescription*.
 - **`deleted`** *(boolean)*: When `true` indicates the entity has been soft deleted. Default: `False`.
 - **`roles`**: Roles that the user has been assigned. Refer to *../../type/entityReference.json#/definitions/entityReferenceList*.
-- **`inheritedRoles`**: Roles that a user is inheriting either as part of system default role or through membership in teams that have set team default roles. Refer to *../../type/entityReference.json#/definitions/entityReferenceList*.
+- **`inheritedRoles`**: Roles that a user is inheriting through membership in teams that have set team default roles. Refer to *../../type/entityReference.json#/definitions/entityReferenceList*.
+- **`isEmailVerified`** *(boolean)*: If the User has verified the mail.
 ## Definitions
 
+- **`entityName`** *(string)*: Login name of the user, typically the user ID from an identity provider. Example - uid from LDAP.
 - **`authenticationMechanism`** *(object)*: User/Bot Authentication Mechanism. Cannot contain additional properties.
   - **`config`**
-  - **`authType`**: Must be one of: `['JWT', 'SSO']`.
+  - **`authType`**: Must be one of: `['JWT', 'SSO', 'BASIC']`.
 
 
-Documentation file automatically generated at 2022-07-14 10:51:34.749986.
+Documentation file automatically generated at 2023-04-13 23:17:03.893190.

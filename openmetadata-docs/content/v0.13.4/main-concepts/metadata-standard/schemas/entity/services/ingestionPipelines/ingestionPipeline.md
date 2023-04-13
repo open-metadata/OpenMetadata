@@ -20,10 +20,9 @@ slug: /main-concepts/metadata-standard/schemas/entity/services/ingestionpipeline
 - **`openMetadataServerConnection`**: Refer to *../connections/metadata/openMetadataConnection.json*.
 - **`airflowConfig`**: Refer to *#/definitions/airflowConfig*.
 - **`service`**: Link to the database service where this database is hosted in. Refer to *../../../type/entityReference.json*.
-- **`pipelineStatuses`** *(array)*: List of executions and status for the Pipeline. Default: `None`.
-  - **Items**: Refer to *#/definitions/pipelineStatus*.
+- **`pipelineStatuses`**: Last of executions and status for the Pipeline. Refer to *#/definitions/pipelineStatus*.
 - **`loggerLevel`**: Set the logging level for the workflow. Refer to *../../../metadataIngestion/workflow.json#/definitions/logLevels*.
-- **`deployed`** *(boolean)*: Indicates if the workflow has been successfully deployed to Airflow.
+- **`deployed`** *(boolean)*: Indicates if the workflow has been successfully deployed to Airflow. Default: `False`.
 - **`enabled`** *(boolean)*: True if the pipeline is ready to be run in the next schedule. False if it is paused. Default: `True`.
 - **`href`**: Link to this ingestion pipeline resource. Refer to *../../../type/basic.json#/definitions/href*.
 - **`version`**: Metadata version of the entity. Refer to *../../../type/entityHistory.json#/definitions/entityVersion*.
@@ -33,12 +32,13 @@ slug: /main-concepts/metadata-standard/schemas/entity/services/ingestionpipeline
 - **`deleted`** *(boolean)*: When `true` indicates the entity has been soft deleted. Default: `False`.
 ## Definitions
 
-- **`pipelineType`** *(string)*: Type of Pipeline - metadata, usage. Must be one of: `['metadata', 'usage', 'profiler']`.
+- **`pipelineType`** *(string)*: Type of Pipeline - metadata, usage. Must be one of: `['metadata', 'usage', 'lineage', 'profiler', 'TestSuite', 'dataInsight', 'elasticSearchReindex', 'dbt']`.
 - **`pipelineStatus`** *(object)*: This defines runtime status of Pipeline. Cannot contain additional properties.
   - **`runId`** *(string)*: Pipeline unique run ID.
-  - **`state`** *(string)*: Pipeline status denotes if its failed or succeeded.
-  - **`startDate`** *(string)*: startDate of the pipeline run for this particular execution.
-  - **`endDate`** *(string)*: endDate of the pipeline run for this particular execution.
+  - **`pipelineState`** *(string)*: Pipeline status denotes if its failed or succeeded. Must be one of: `['queued', 'success', 'failed', 'running', 'partialSuccess']`.
+  - **`startDate`**: startDate of the pipeline run for this particular execution. Refer to *../../../type/basic.json#/definitions/timestamp*.
+  - **`timestamp`**: executionDate of the pipeline run for this particular execution. Refer to *../../../type/basic.json#/definitions/timestamp*.
+  - **`endDate`**: endDate of the pipeline run for this particular execution. Refer to *../../../type/basic.json#/definitions/timestamp*.
 - **`airflowConfig`** *(object)*: Properties to configure the Airflow pipeline that will run the workflow. Cannot contain additional properties.
   - **`pausePipeline`** *(boolean)*: pause the pipeline from running once the deploy is finished successfully. Default: `False`.
   - **`concurrency`** *(integer)*: Concurrency of the Pipeline. Default: `1`.
@@ -56,4 +56,4 @@ slug: /main-concepts/metadata-standard/schemas/entity/services/ingestionpipeline
   - **`email`**: Email to notify workflow status. Refer to *../../../type/basic.json#/definitions/email*.
 
 
-Documentation file automatically generated at 2022-07-14 10:51:34.749986.
+Documentation file automatically generated at 2023-04-13 23:17:03.893190.
