@@ -71,6 +71,7 @@ import {
   getTableFQNFromColumnFQN,
 } from './CommonUtils';
 import { getContainerDetailPath } from './ContainerDetailUtils';
+import Fqn from './Fqn';
 import { getGlossaryPath } from './RouterUtils';
 import {
   getDataTypeString,
@@ -974,13 +975,23 @@ export const getEntityBreadcrumbs = (
     case EntityType.TABLE:
       return getBreadcrumbForTable(entity as Table, includeCurrent);
     case EntityType.GLOSSARY:
+    case EntityType.GLOSSARY_TERM:
+      // eslint-disable-next-line no-case-declarations
+      const glossary = (entity as GlossaryTerm).glossary;
+      // eslint-disable-next-line no-case-declarations
+      const fqnList = Fqn.split((entity as GlossaryTerm).fullyQualifiedName);
+      // eslint-disable-next-line no-case-declarations
+      const tree = fqnList.slice(1, fqnList.length - 1);
+
       return [
         {
-          name: getEntityName((entity as GlossaryTerm).glossary),
-          url: getGlossaryPath(
-            (entity as GlossaryTerm).glossary.fullyQualifiedName
-          ),
+          name: glossary.fullyQualifiedName,
+          url: getGlossaryPath(glossary.fullyQualifiedName),
         },
+        ...tree.map((fqn) => ({
+          name: fqn,
+          url: getGlossaryPath(fqn),
+        })),
       ];
     case EntityType.TAG:
       return [
