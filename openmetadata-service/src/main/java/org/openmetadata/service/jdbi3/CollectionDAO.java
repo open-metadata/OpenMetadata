@@ -1655,7 +1655,7 @@ public interface CollectionDAO {
     @ConnectionAwareSqlUpdate(
         value =
             "INSERT INTO field_relationship(fromFQNHash, toFQNHash, fromFQN, toFQN, fromType, toType, relation, jsonSchema, json) "
-                + "VALUES (:fromFQNHash, :toFQNHash, :fromFQN, :toFQN :fromType, :toType, :relation, :jsonSchema, (:json :: jsonb)) "
+                + "VALUES (:fromFQNHash, :toFQNHash, :fromFQN, :toFQN, :fromType, :toType, :relation, :jsonSchema, (:json :: jsonb)) "
                 + "ON CONFLICT (fromFQNHash, toFQNHash, relation) DO UPDATE SET json = EXCLUDED.json",
         connectionType = POSTGRES)
     void upsert(
@@ -2104,16 +2104,20 @@ public interface CollectionDAO {
       String condition = "INNER JOIN entity_relationship ON query_entity.id = entity_relationship.toId";
       Map<String, Object> bindMap = new HashMap<>();
       if (!CommonUtil.nullOrEmpty(entityId)) {
-        condition =
+       String  mySqlcondition =
             String.format(
                 "%s WHERE entity_relationship.fromId = :entityId and entity_relationship.relation = :relation and entity_relationship.toEntity = :toEntity and JSON_EXTRACT(query_entity.json, '$.name') < :before order by JSON_EXTRACT(query_entity.json, '$.name') DESC LIMIT :limit",
+                condition);
+        String  postgresCondition =
+            String.format(
+                "%s WHERE entity_relationship.fromId = :entityId and entity_relationship.relation = :relation and entity_relationship.toEntity = :toEntity and query_entity.json ->> 'name' < :before order by query_entity.json ->> 'name' DESC LIMIT :limit",
                 condition);
         bindMap.put("entityId", entityId);
         bindMap.put("relation", MENTIONED_IN.ordinal());
         bindMap.put("toEntity", QUERY);
         bindMap.put("before", before);
         bindMap.put("limit", limit);
-        return listBeforeQueriesByEntityId(condition, bindMap);
+        return listBeforeQueriesByEntityId(mySqlcondition, postgresCondition, bindMap);
       }
       return EntityDAO.super.listBefore(filter, limit, before);
     }
@@ -2124,25 +2128,34 @@ public interface CollectionDAO {
       String condition = "INNER JOIN entity_relationship ON query_entity.id = entity_relationship.toId";
       Map<String, Object> bindMap = new HashMap<>();
       if (!CommonUtil.nullOrEmpty(entityId)) {
-        condition =
+        String mySqlcondition =
             String.format(
                 "%s WHERE entity_relationship.fromId = :entityId and entity_relationship.relation = :relation and entity_relationship.toEntity = :toEntity and JSON_EXTRACT(query_entity.json, '$.name') > :after order by JSON_EXTRACT(query_entity.json, '$.name') LIMIT :limit",
                 condition);
+        String postgresCondition =
+            String.format(
+                "%s WHERE entity_relationship.fromId = :entityId and entity_relationship.relation = :relation and entity_relationship.toEntity = :toEntity and query_entity.json ->> 'name' > :after order by query_entity.json ->> 'name' LIMIT :limit",
+                condition);
+
         bindMap.put("entityId", entityId);
         bindMap.put("relation", MENTIONED_IN.ordinal());
         bindMap.put("toEntity", QUERY);
         bindMap.put("after", after);
         bindMap.put("limit", limit);
-        return listAfterQueriesByEntityId(condition, bindMap);
+        return listAfterQueriesByEntityId(mySqlcondition, postgresCondition, bindMap);
       }
       return EntityDAO.super.listAfter(filter, limit, after);
     }
 
-    @SqlQuery("SELECT query_entity.json FROM query_entity <cond>")
-    List<String> listAfterQueriesByEntityId(@Define("cond") String cond, @BindMap Map<String, Object> bindings);
+    @ConnectionAwareSqlQuery(value = "SELECT query_entity.json FROM query_entity <mySqlCond>", connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(value = "SELECT query_entity.json FROM query_entity <postgresCond>", connectionType = POSTGRES)
+    List<String> listAfterQueriesByEntityId(@Define("mySqlCond") String mySqlCond, @Define("postgresCond") String postgresCond,
+                                            @BindMap Map<String, Object> bindings);
 
-    @SqlQuery("SELECT query_entity.json FROM query_entity <cond>")
-    List<String> listBeforeQueriesByEntityId(@Define("cond") String cond, @BindMap Map<String, Object> bindings);
+    @ConnectionAwareSqlQuery(value = "SELECT query_entity.json FROM query_entity <mySqlCond>", connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(value = "SELECT query_entity.json FROM query_entity <postgresCond>", connectionType = POSTGRES)
+    List<String> listBeforeQueriesByEntityId(@Define("mySqlCond") String mySqlCond, @Define("postgresCond") String postgresCond,
+                                             @BindMap Map<String, Object> bindings);
 
     @SqlQuery("SELECT count(*) FROM query_entity <cond> ")
     int listQueryCount(@Define("cond") String cond, @BindMap Map<String, Object> bindings);

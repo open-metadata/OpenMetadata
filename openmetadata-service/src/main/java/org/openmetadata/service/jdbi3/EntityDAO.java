@@ -105,7 +105,7 @@ public interface EntityDAO<T extends EntityInterface> {
             "UPDATE %s SET json = "
                 + "REPLACE(json::text, '\"fullyQualifiedName\": \"%s.', "
                 + "'\"fullyQualifiedName\": \"%s.')::jsonb "
-                + ", fqnHash = REPLACE(fqnHash, \"%s.', \"%s.'"
+                + ", fqnHash = REPLACE(fqnHash, '%s.', '%s.') "
                 + "WHERE fqnHash LIKE '%s.%%'",
             getTableName(),
             escapeApostrophe(oldPrefix),
