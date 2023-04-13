@@ -39,16 +39,6 @@ jest.mock('./TableQueryRightPanel/TableQueryRightPanel.component', () => {
     .fn()
     .mockImplementation(() => <div>TableQueryRightPanel.component</div>);
 });
-jest.mock('./QueryFilters/QueryFilters.component', () => {
-  return jest.fn().mockImplementation(() => <div>QueryFilters.component</div>);
-});
-jest.mock('rest/searchAPI', () => ({
-  searchQuery: jest.fn().mockImplementation(() =>
-    Promise.resolve({
-      hits: { hits: MOCK_QUERIES_ES_DATA, total: { value: 2 } },
-    })
-  ),
-}));
 jest.mock('rest/queryAPI', () => ({
   ...jest.requireActual('rest/queryAPI'),
   getQueriesList: jest
@@ -82,12 +72,10 @@ describe('Test TableQueries Component', () => {
     const rightPanel = await screen.findByText(
       'TableQueryRightPanel.component'
     );
-    const queryFilters = await screen.findByText('QueryFilters.component');
     const addQueryBtn = await screen.findByTestId('add-query-btn');
 
     expect(queriesContainer).toBeInTheDocument();
     expect(rightPanel).toBeInTheDocument();
-    expect(queryFilters).toBeInTheDocument();
     expect(addQueryBtn).toBeInTheDocument();
   });
 

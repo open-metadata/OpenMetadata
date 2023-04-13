@@ -62,7 +62,6 @@ export type QuerySearchParams = {
   after?: string;
   tableId?: string;
   query?: string;
-  owner?: SearchDropdownOption[];
 };
 
 export type QuerySearchShouldFilterType = {
