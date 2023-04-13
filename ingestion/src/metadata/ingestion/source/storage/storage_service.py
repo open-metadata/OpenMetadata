@@ -66,7 +66,7 @@ class StorageServiceTopology(ServiceTopology):
         stages=[
             NodeStage(
                 type_=Container,
-                context="containers",
+                context="container",
                 processor="yield_create_container_requests",
                 consumer=["objectstore_service"],
                 nullable=True,
