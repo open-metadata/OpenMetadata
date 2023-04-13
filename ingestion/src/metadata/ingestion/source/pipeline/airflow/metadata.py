@@ -11,7 +11,6 @@
 """
 Airflow source to extract metadata from OM UI
 """
-import json
 import traceback
 from datetime import datetime
 from typing import Any, Iterable, List, Optional, cast
@@ -50,7 +49,6 @@ from metadata.ingestion.source.pipeline.airflow.models import (
     AirflowDag,
     AirflowDagDetails,
 )
-from metadata.ingestion.source.pipeline.airflow.queries import BUILD_DAG_SQL_QUERY
 from metadata.ingestion.source.pipeline.pipeline_service import PipelineServiceSource
 from metadata.utils.helpers import clean_uri, datetime_to_ts
 from metadata.utils.logger import ingestion_logger
@@ -270,11 +268,30 @@ class AirflowSource(PipelineServiceSource):
             json_data_column,
             SerializedDagModel.fileloc,
         ).all():
-            yield OMSerializedDagDetails(
-                dag_id=serialized_dag[0],
-                data=serialized_dag[1],
-                fileloc=serialized_dag[2],
-            )
+            try:
+                dag = AirflowDagDetails(
+                    dag_id=serialized_dag[0],
+                    fileloc=serialized_dag[2],
+                    data=AirflowDag(**serialized_dag[1]),
+                    max_active_runs=serialized_dag[1]["dag"].get(
+                        "max_active_runs", None
+                    ),
+                    description=serialized_dag[1]["dag"].get("_description", None),
+                    start_date=serialized_dag[1]["dag"].get("start_date", None),
+                    tasks=serialized_dag[1]["dag"].get("tasks", []),
+                    owners=serialized_dag[1]["dag"]
+                    .get("default_args", [])["__var"]
+                    .get("email", [])
+                    if serialized_dag[1]["dag"].get("default_args")
+                    else None,
+                )
+                yield dag
+            except ValidationError as err:
+                logger.debug(traceback.format_exc())
+                logger.warning(f"Error building pydantic model for {serialized_dag} - {err}")
+            except Exception as err:
+                logger.debug(traceback.format_exc())
+                logger.warning(f"Wild error yielding dag {serialized_dag} - {err}")
 
     def get_pipeline_name(self, pipeline_details: SerializedDAG) -> str:
         """
@@ -316,8 +333,26 @@ class AirflowSource(PipelineServiceSource):
 
         return SerializedDAG.from_json(data)
 
+    def get_owners(self, owners) -> Optional[EntityReference]:
+        try:
+            if isinstance(owners, str) and owners:
+                user = self.metadata.get_user_by_email(email=owners)
+                if user:
+                    return EntityReference(id=user.id.__root__, type="user")
+
+            if isinstance(owners, List) and owners:
+                for owner in owners or []:
+                    user = self.metadata.get_user_by_email(email=owner)
+                    if user:
+                        return EntityReference(id=user.id.__root__, type="user")
+
+            logger.debug(f"No user for found for email {owners} in OMD")
+        except Exception as exc:
+            logger.warning(f"Error while getting details of user {owners} - {exc}")
+        return None
+
     def yield_pipeline(
-        self, pipeline_details: OMSerializedDagDetails
+        self, pipeline_details: AirflowDagDetails
     ) -> Iterable[CreatePipelineRequest]:
         """
         Convert a DAG into a Pipeline Entity
@@ -326,35 +361,21 @@ class AirflowSource(PipelineServiceSource):
         """
 
         try:
-            dag_details = self.connection.execute(
-                BUILD_DAG_SQL_QUERY.format(dag_id=pipeline_details.dag_id)
-            ).all()[0]
-
-            dag_data = (
-                json.loads(dag_details.data)
-                if isinstance(dag_details.data, str)
-                else dag_details.data
-            )
-
-            dag = AirflowDagDetails(
-                dag_id=pipeline_details.dag_id,
-                fileloc=dag_details.fileloc,
-                data=AirflowDag(**dag_data),
-                max_active_runs=dag_details.max_active_runs,
-                description=dag_details.description,
-                start_date=dag_data["dag"]["start_date"],
-                tasks=dag_data["dag"]["tasks"],
-            )
 
             pipeline_request = CreatePipelineRequest(
                 name=pipeline_details.dag_id,
-                description=dag.description,
-                pipelineUrl=f"{clean_uri(self.service_connection.hostPort)}/tree?dag_id={dag.dag_id}",
-                concurrency=dag.max_active_runs,
+                description=pipeline_details.description,
+                pipelineUrl=f"{clean_uri(self.service_connection.hostPort)}/tree?dag_id={pipeline_details.dag_id}",
+                concurrency=pipeline_details.max_active_runs,
                 pipelineLocation=pipeline_details.fileloc,
-                startDate=dag.start_date.isoformat() if dag.start_date else None,
-                tasks=self.get_tasks_from_dag(dag, self.service_connection.hostPort),
+                startDate=pipeline_details.start_date.isoformat()
+                if pipeline_details.start_date
+                else None,
+                tasks=self.get_tasks_from_dag(
+                    pipeline_details, self.service_connection.hostPort
+                ),
                 service=self.context.pipeline_service.fullyQualifiedName.__root__,
+                owner=self.get_owners(pipeline_details.owners),
             )
             yield pipeline_request
             self.register_record(pipeline_request=pipeline_request)
@@ -420,38 +441,21 @@ class AirflowSource(PipelineServiceSource):
             return None
 
     def yield_pipeline_lineage_details(
-        self, pipeline_details: OMSerializedDagDetails
+        self, pipeline_details: AirflowDagDetails
     ) -> Optional[Iterable[AddLineageRequest]]:
         """
         Parse xlets and add lineage between Pipelines and Tables
         :param pipeline_details: SerializedDAG from airflow metadata DB
         :return: Lineage from inlets and outlets
         """
-        dag_details = self.connection.execute(
-            BUILD_DAG_SQL_QUERY.format(dag_id=pipeline_details.dag_id)
-        ).all()[0]
 
-        dag_data = (
-            json.loads(dag_details.data)
-            if isinstance(dag_details.data, str)
-            else dag_details.data
-        )
-        dag = AirflowDagDetails(
-            dag_id=pipeline_details.dag_id,
-            fileloc=dag_details.fileloc,
-            data=AirflowDag(**dag_data),
-            max_active_runs=dag_details.max_active_runs,
-            description=dag_details.description,
-            start_date=dag_data["dag"]["start_date"],
-            tasks=dag_data["dag"]["tasks"],
-        )
         lineage_details = LineageDetails(
             pipeline=EntityReference(
                 id=self.context.pipeline.id.__root__, type="pipeline"
             )
         )
 
-        xlets = get_xlets_from_dag(dag=dag) if dag else []
+        xlets = get_xlets_from_dag(dag=pipeline_details) if pipeline_details else []
         for xlet in xlets:
             for from_fqn in xlet.inlets or []:
                 from_entity = self.metadata.get_by_name(entity=Table, fqn=from_fqn)

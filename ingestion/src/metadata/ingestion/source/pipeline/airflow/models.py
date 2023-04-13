@@ -14,9 +14,9 @@ Tableau Source Model module
 """
 
 from datetime import datetime
-from typing import List, Optional
+from typing import Any, List, Optional
 
-from pydantic import BaseModel, Extra
+from pydantic import BaseModel, Extra, Field
 
 
 class AirflowBaseModel(BaseModel):
@@ -31,13 +31,20 @@ class AirflowBaseModel(BaseModel):
     dag_id: str
 
 
-class DagTask(BaseModel):
+class Task(BaseModel):
+    pool: Optional[str]
     doc_md: Optional[str]
-    downstream_task_ids: List[str]
+    inlets: Optional[List[Any]] = Field(alias="_inlets")
     task_id: str
-    _task_type: str
-    start_date: Optional[datetime] = None
-    end_date: Optional[datetime] = None
+    outlets: Optional[List[Any]] = Field(alias="_outlets")
+    task_type: Optional[Any] = Field(alias="_task_type")
+    downstream_task_ids: List[str]
+    start_date: Optional[datetime]
+    end_date: Optional[datetime]
+
+
+class TaskList(BaseModel):
+    __root__: List[Task]
 
 
 class Dag(BaseModel):
@@ -45,7 +52,6 @@ class Dag(BaseModel):
     tags: Optional[List[str]]
     start_date: float
     _processor_dags_folder: str
-    tasks: List[DagTask]
 
 
 class AirflowDag(BaseModel):
@@ -55,7 +61,8 @@ class AirflowDag(BaseModel):
 class AirflowDagDetails(AirflowBaseModel):
     fileloc: str
     data: AirflowDag
-    max_active_runs: int
+    max_active_runs: Optional[int]
     description: Optional[str]
     start_date: Optional[datetime] = None
-    tasks: List[DagTask]
+    tasks: List[Task]
+    owners: Any
