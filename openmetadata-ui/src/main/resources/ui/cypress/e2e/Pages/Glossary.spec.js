@@ -528,10 +528,12 @@ describe('Glossary page should work properly', () => {
   });
 
   it('Update glossary term', () => {
+    selectActiveGlossary(NEW_GLOSSARY_1.name);
+
     const uSynonyms = ['pick up', 'take', 'obtain'];
     const newRef = { name: 'take', url: 'https://take.com' };
     const term2 = NEW_GLOSSARY_TERMS.term_2.name;
-    const { name, fullyQualifiedName } = NEW_GLOSSARY_TERMS.term_1;
+    const { name, fullyQualifiedName } = NEW_GLOSSARY_1_TERMS.term_1;
 
     visitGlossaryTermPage(name, fullyQualifiedName);
 
