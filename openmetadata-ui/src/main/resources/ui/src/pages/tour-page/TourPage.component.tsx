@@ -82,6 +82,10 @@ const TourPage = () => {
     }
   };
 
+  const handleClear = () => {
+    setSearchValue('');
+  };
+
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
       handleSearch();
@@ -204,6 +208,7 @@ const TourPage = () => {
     <div>
       <NavBar
         isTourRoute
+        handleClear={handleClear}
         handleFeatureModal={handleCountChange}
         handleKeyDown={handleKeyDown}
         handleOnClick={handleOnClick}

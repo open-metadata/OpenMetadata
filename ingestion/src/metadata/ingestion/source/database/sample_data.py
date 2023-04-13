@@ -11,6 +11,7 @@
 """
 Sample Data source ingestion
 """
+# pylint: disable=too-many-lines,too-many-statements
 import json
 import random
 import traceback
@@ -264,6 +265,37 @@ class SampleDataSource(
             entity=MessagingService, config=WorkflowSource(**self.kafka_service_json)
         )
 
+        with open(
+            sample_data_folder + "/looker/service.json",
+            "r",
+            encoding=UTF_8,
+        ) as file:
+            self.looker_service = self.metadata.get_service_or_create(
+                entity=DashboardService,
+                config=WorkflowSource(**json.load(file)),
+            )
+
+        with open(
+            sample_data_folder + "/looker/charts.json",
+            "r",
+            encoding=UTF_8,
+        ) as file:
+            self.looker_charts = json.load(file)
+
+        with open(
+            sample_data_folder + "/looker/dashboards.json",
+            "r",
+            encoding=UTF_8,
+        ) as file:
+            self.looker_dashboards = json.load(file)
+
+        with open(
+            sample_data_folder + "/looker/dashboardDataModels.json",
+            "r",
+            encoding=UTF_8,
+        ) as file:
+            self.looker_models = json.load(file)
+
         self.dashboard_service_json = json.load(
             open(  # pylint: disable=consider-using-with
                 sample_data_folder + "/dashboards/service.json",
@@ -436,6 +468,7 @@ class SampleDataSource(
         yield from self.ingest_charts()
         yield from self.ingest_data_models()
         yield from self.ingest_dashboards()
+        yield from self.ingest_looker()
         yield from self.ingest_pipelines()
         yield from self.ingest_lineage()
         yield from self.ingest_pipeline_status()
@@ -622,6 +655,113 @@ class SampleDataSource(
 
             self.status.scanned(f"Topic Scanned: {create_topic.name.__root__}")
             yield create_topic
+
+    def ingest_looker(self) -> Iterable[Entity]:
+        """
+        Looker sample data
+        """
+        for data_model in self.looker_models:
+            try:
+                data_model_ev = CreateDashboardDataModelRequest(
+                    name=data_model["name"],
+                    displayName=data_model["displayName"],
+                    description=data_model["description"],
+                    columns=data_model["columns"],
+                    dataModelType=data_model["dataModelType"],
+                    sql=data_model["sql"],
+                    serviceType=data_model["serviceType"],
+                    service=self.looker_service.fullyQualifiedName,
+                )
+                self.status.scanned(
+                    f"Data Model Scanned: {data_model_ev.name.__root__}"
+                )
+                yield data_model_ev
+            except ValidationError as err:
+                logger.debug(traceback.format_exc())
+                logger.warning(
+                    f"Unexpected exception ingesting chart [{data_model}]: {err}"
+                )
+
+        for chart in self.looker_charts:
+            try:
+                chart_ev = CreateChartRequest(
+                    name=chart["name"],
+                    displayName=chart["displayName"],
+                    description=chart["description"],
+                    chartType=get_standard_chart_type(chart["chartType"]),
+                    chartUrl=chart["chartUrl"],
+                    service=self.looker_service.fullyQualifiedName,
+                )
+                self.status.scanned(f"Chart Scanned: {chart_ev.name.__root__}")
+                yield chart_ev
+            except ValidationError as err:
+                logger.debug(traceback.format_exc())
+                logger.warning(f"Unexpected exception ingesting chart [{chart}]: {err}")
+
+        for dashboard in self.looker_dashboards:
+            try:
+                dashboard_ev = CreateDashboardRequest(
+                    name=dashboard["name"],
+                    displayName=dashboard["displayName"],
+                    description=dashboard["description"],
+                    dashboardUrl=dashboard["dashboardUrl"],
+                    charts=dashboard["charts"],
+                    dataModels=dashboard.get("dataModels", None),
+                    service=self.looker_service.fullyQualifiedName,
+                )
+                self.status.scanned(f"Dashboard Scanned: {dashboard_ev.name.__root__}")
+                yield dashboard_ev
+            except ValidationError as err:
+                logger.debug(traceback.format_exc())
+                logger.warning(
+                    f"Unexpected exception ingesting dashboard [{dashboard}]: {err}"
+                )
+
+        orders_view = self.metadata.get_by_name(
+            entity=DashboardDataModel, fqn="sample_looker.model.orders_view"
+        )
+        operations_view = self.metadata.get_by_name(
+            entity=DashboardDataModel, fqn="sample_looker.model.operations_view"
+        )
+        orders_explore = self.metadata.get_by_name(
+            entity=DashboardDataModel, fqn="sample_looker.model.orders"
+        )
+        orders_dashboard = self.metadata.get_by_name(
+            entity=Dashboard, fqn="sample_looker.orders"
+        )
+
+        yield AddLineageRequest(
+            edge=EntitiesEdge(
+                fromEntity=EntityReference(
+                    id=orders_view.id.__root__, type="dashboardDataModel"
+                ),
+                toEntity=EntityReference(
+                    id=orders_explore.id.__root__, type="dashboardDataModel"
+                ),
+            )
+        )
+
+        yield AddLineageRequest(
+            edge=EntitiesEdge(
+                fromEntity=EntityReference(
+                    id=operations_view.id.__root__, type="dashboardDataModel"
+                ),
+                toEntity=EntityReference(
+                    id=orders_explore.id.__root__, type="dashboardDataModel"
+                ),
+            )
+        )
+
+        yield AddLineageRequest(
+            edge=EntitiesEdge(
+                fromEntity=EntityReference(
+                    id=orders_explore.id.__root__, type="dashboardDataModel"
+                ),
+                toEntity=EntityReference(
+                    id=orders_dashboard.id.__root__, type="dashboard"
+                ),
+            )
+        )
 
     def ingest_charts(self) -> Iterable[CreateChartRequest]:
         for chart in self.charts["charts"]:
