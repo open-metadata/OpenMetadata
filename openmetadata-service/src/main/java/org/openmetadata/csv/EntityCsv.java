@@ -242,8 +242,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
 
   // Create a CSVPrinter to capture the import results
   private CSVPrinter getResultsCsv(List<CsvHeader> csvHeaders, StringWriter writer) {
-    CSVFormat csvFileFormat = CSVFormat.DEFAULT.withQuote(null);
-    CSVFormat format = Builder.create(csvFileFormat).setHeader(getResultHeaders(csvHeaders)).build();
+    CSVFormat format = Builder.create(CSVFormat.DEFAULT).setHeader(getResultHeaders(csvHeaders)).build();
     try {
       return new CSVPrinter(writer, format);
     } catch (IOException e) {

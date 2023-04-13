@@ -1245,7 +1245,7 @@ public interface CollectionDAO {
             "SELECT json FROM thread_entity WHERE updatedAt > :before "
                 + "AND (:type IS NULL OR type = :type) AND <mysqlCond> "
                 + "AND id in (SELECT fromFQNHash FROM field_relationship WHERE "
-                + "(:fqnPrefixHash IS NULL OR toFQN LIKE CONCAT(:fqnPrefixHash, '.%') OR toFQNHash=:fqnPrefixHash) AND fromType='THREAD' AND "
+                + "(:fqnPrefixHash IS NULL OR toFQNHash LIKE CONCAT(:fqnPrefixHash, '.%') OR toFQNHash=:fqnPrefixHash) AND fromType='THREAD' AND "
                 + "(:toType IS NULL OR toType LIKE CONCAT(:toType, '.%') OR toType=:toType) AND relation= :relation) "
                 + "ORDER BY createdAt DESC "
                 + "LIMIT :limit",
@@ -1275,9 +1275,9 @@ public interface CollectionDAO {
             + "AND (:status IS NULL OR taskStatus = :status) "
             + "AND (:type IS NULL OR type = :type) "
             + "AND MD5(id) in (SELECT fromFQNHash FROM field_relationship WHERE "
-            + "(:fqnPrefixHash IS NULL OR toFQN LIKE CONCAT(:fqnPrefixHash, '.%') OR toFQN=:fqnPrefixHash) AND fromType='THREAD' AND "
+            + "(:fqnPrefixHash IS NULL OR toFQNHash LIKE CONCAT(:fqnPrefixHash, '.%') OR toFQNHash=:fqnPrefixHash) AND fromType='THREAD' AND "
             + "(:toType IS NULL OR toType LIKE CONCAT(:toType, '.%') OR toType=:toType) AND relation= :relation) "
-            + "AND (:userName IS NULL OR id in (SELECT toFQN FROM field_relationship WHERE "
+            + "AND (:userName IS NULL OR MD5(id) in (SELECT toFQNHash FROM field_relationship WHERE "
             + " ((fromType='user' AND fromFQNHash= :userName) OR"
             + " (fromType='team' AND fromFQNHash IN (<teamNames>))) AND toType='THREAD' AND relation= :filterRelation) )"
             + "ORDER BY createdAt DESC "
@@ -1351,7 +1351,7 @@ public interface CollectionDAO {
             "SELECT json FROM thread_entity WHERE updatedAt < :after "
                 + "AND (:type IS NULL OR type = :type) AND <mysqlCond> "
                 + "AND MD5(id) in (SELECT fromFQNHash FROM field_relationship WHERE "
-                + "(:fqnPrefixHash IS NULL OR toFQN LIKE CONCAT(:fqnPrefixHash, '.%') OR toFQNHash=:fqnPrefixHash) AND fromType='THREAD' AND "
+                + "(:fqnPrefixHash IS NULL OR toFQNHash LIKE CONCAT(:fqnPrefixHash, '.%') OR toFQNHash=:fqnPrefixHash) AND fromType='THREAD' AND "
                 + "(:toType IS NULL OR toType LIKE CONCAT(:toType, '.%') OR toType=:toType) AND relation= :relation) "
                 + "ORDER BY createdAt DESC "
                 + "LIMIT :limit",
@@ -1590,7 +1590,7 @@ public interface CollectionDAO {
     @SqlQuery(
         "SELECT json FROM thread_entity WHERE updatedAt < :after AND resolved = :resolved AND "
             + "(:type IS NULL OR type = :type) AND MD5(id) in ("
-            + "SELECT toFQN FROM field_relationship WHERE "
+            + "SELECT toFQNHash FROM field_relationship WHERE "
             + "((fromType='user' AND fromFQNHash= :userName) OR "
             + "(fromType='team' AND fromFQNHash IN (<teamNames>)))  AND toType='THREAD' AND relation= :relation) "
             + "ORDER BY createdAt DESC "
@@ -1900,7 +1900,6 @@ public interface CollectionDAO {
     default String getNameHashColumn() {
       return "fqnHash";
     }
-
   }
 
   interface PipelineServiceDAO extends EntityDAO<PipelineService> {

@@ -61,7 +61,8 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
 
   @Override
   public void setFullyQualifiedName(Pipeline pipeline) {
-    pipeline.setFullyQualifiedName(FullyQualifiedName.add(pipeline.getService().getFullyQualifiedName(), pipeline.getName()));
+    pipeline.setFullyQualifiedName(
+        FullyQualifiedName.add(pipeline.getService().getFullyQualifiedName(), pipeline.getName()));
     setTaskFQN(pipeline.getFullyQualifiedName(), pipeline.getTasks());
   }
 

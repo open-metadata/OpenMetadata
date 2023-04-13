@@ -212,7 +212,10 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
             request.withPipelineUrl(pipelineURL).withConcurrency(pipelineConcurrency).withStartDate(startDate),
             OK,
             ADMIN_AUTH_HEADERS);
-    String expectedFQN = FullyQualifiedName.add(EntityInterfaceUtil.quoteName(AIRFLOW_REFERENCE.getName()), EntityInterfaceUtil.quoteName(pipeline.getName()));
+    String expectedFQN =
+        FullyQualifiedName.add(
+            EntityInterfaceUtil.quoteName(AIRFLOW_REFERENCE.getName()),
+            EntityInterfaceUtil.quoteName(pipeline.getName()));
     assertEquals(pipelineURL, pipeline.getPipelineUrl());
     assertEquals(startDate, pipeline.getStartDate());
     assertEquals(pipelineConcurrency, pipeline.getConcurrency());
@@ -222,7 +225,10 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
   @Test
   void put_PipelineTasksUpdate_200(TestInfo test) throws IOException {
     CreatePipeline request =
-        createRequest(test).withService(AIRFLOW_REFERENCE.getFullyQualifiedName()).withDescription(null).withTasks(null);
+        createRequest(test)
+            .withService(AIRFLOW_REFERENCE.getFullyQualifiedName())
+            .withDescription(null)
+            .withTasks(null);
     Pipeline pipeline = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
 
     // Add description and tasks

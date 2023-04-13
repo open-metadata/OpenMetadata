@@ -68,7 +68,6 @@ import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TagLabel.TagSource;
 import org.openmetadata.schema.type.csv.CsvImportResult;
-import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.jdbi3.GlossaryRepository.GlossaryCsv;
@@ -370,7 +369,9 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
                 user1, user2, user1, "Approved"),
             String.format(
                 ",g2,dsp2,dsc3,h1;h3;h3,,term2;https://term2,Tier.Tier2,\"%s\",user;\"%s\",%s", user1, user2, "Draft"),
-            String.format("\"importExportTest.g1\",g11,dsp2,dsc11,h1;h3;h3,,,,\"%s\" ,team;\"%s\",%s", user1, team1, "Deprecated"));
+            String.format(
+                "\"importExportTest.g1\",g11,dsp2,dsc11,h1;h3;h3,,,,\"%s\" ,team;\"%s\",%s",
+                user1, team1, "Deprecated"));
 
     // Update terms with change in description
     List<String> updateRecords =
@@ -379,9 +380,11 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
                 ",g1,dsp1,new-dsc1,h1;h2;h3,,term1;http://term1,Tier.Tier1,\"%s\";\"%s\",user;\"%s\",%s",
                 user1, user2, user1, "Approved"),
             String.format(
-                ",g2,dsp2,new-dsc3,h1;h3;h3,,term2;https://term2,Tier.Tier2,\"%s\",user;\"%s\",%s", user1, user2, "Draft"),
+                ",g2,dsp2,new-dsc3,h1;h3;h3,,term2;https://term2,Tier.Tier2,\"%s\",user;\"%s\",%s",
+                user1, user2, "Draft"),
             String.format(
-                "\"importExportTest.g1\",g11,dsp2,new-dsc11,h1;h3;h3,,,,\"%s\",team;\"%s\",%s", user1, team1, "Deprecated"));
+                "\"importExportTest.g1\",g11,dsp2,new-dsc11,h1;h3;h3,,,,\"%s\",team;\"%s\",%s",
+                user1, team1, "Deprecated"));
 
     // Add new row to existing rows
     List<String> newRecords = listOf(",g3,dsp0,dsc0,h1;h2;h3,,term0;http://term0,Tier.Tier3,,,Draft");
