@@ -23,6 +23,8 @@ import {
   SearchHitBody,
   TableSearchSource,
   TagClassSearchSource,
+  TeamSearchSource,
+  UserSearchSource,
 } from '../../interface/search.interface';
 import { ExploreSearchIndex } from '../Explore/explore.interface';
 
@@ -49,6 +51,8 @@ export type SourceType = (
         | GlossarySearchSource
         | TagClassSearchSource
         | QuerySearchSource
+        | UserSearchSource
+        | TeamSearchSource
       >,
       Fields
     >

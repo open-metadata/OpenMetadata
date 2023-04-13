@@ -84,6 +84,7 @@ import TableProfilerV1 from '../TableProfiler/TableProfilerV1';
 import TableQueries from '../TableQueries/TableQueries';
 import { DatasetDetailsProps } from './DatasetDetails.interface';
 // css
+import QueryCount from 'components/common/QueryCount/QueryCount.component';
 import './datasetDetails.style.less';
 
 const DatasetDetails: React.FC<DatasetDetailsProps> = ({
@@ -118,7 +119,6 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
   const { t } = useTranslation();
   const [isEdit, setIsEdit] = useState(false);
   const [usage, setUsage] = useState('');
-  const [weeklyUsageCount, setWeeklyUsageCount] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
   const [threadLink, setThreadLink] = useState<string>('');
@@ -194,9 +194,6 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
     } else {
       setUsage('--');
     }
-    setWeeklyUsageCount(
-      usageSummary?.weeklyStats?.count.toLocaleString() || '--'
-    );
   };
 
   const { followersCount, isFollowing } = useMemo(() => {
@@ -427,7 +424,10 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
     },
     { key: EntityInfo.TYPE, value: `${tableType}`, showLabel: true },
     { value: usage },
-    { value: `${weeklyUsageCount} ${t('label.query-plural')}` },
+    {
+      key: EntityInfo.QUERIES,
+      value: <QueryCount tableId={tableDetails.id} />,
+    },
     {
       key: EntityInfo.COLUMNS,
       localizationKey: 'column-plural',

@@ -68,7 +68,7 @@
     <dependency>
       <groupId>io.dropwizard</groupId>
       <artifactId>dropwizard-jersey</artifactId>
-      <version>2.1.4</version>
+      <version>2.1.6</version>
       <scope>compile</scope>
     </dependency>
 
