@@ -169,6 +169,126 @@ const selectActiveGlossary = (glossaryName) => {
   verifyResponseStatusCode('@getGlossaryTerms', 200);
 };
 
+const updateSynonyms = (uSynonyms) => {
+  cy.get('[data-testid="synonyms-container"]')
+    .scrollIntoView()
+    .should('be.visible');
+  cy.get('[data-testid="synonyms-container"]')
+    .find('[data-testid="edit-button"]')
+    .scrollIntoView()
+    .should('be.visible')
+    .click();
+  cy.get('[data-testid="synonyms-container"] .ant-select-selector')
+    .should('be.visible')
+    .find('.ant-select-selection-item-remove')
+    .should('exist')
+    .click({ force: true, multiple: true });
+  cy.get('.ant-select-selection-overflow')
+    .should('exist')
+    .type(uSynonyms.join('{enter}'));
+  interceptURL('PATCH', '/api/v1/glossaryTerms/*', 'saveSynonyms');
+  cy.get('[data-testid="save-synonym-btn"]').should('be.visible').click();
+  verifyResponseStatusCode('@saveSynonyms', 200);
+  cy.get('[data-testid="synonyms-container"]')
+    .as('synonyms-container')
+    .should('be.visible');
+  uSynonyms.forEach((synonym) => {
+    cy.get('@synonyms-container').contains(synonym).should('be.visible');
+  });
+};
+
+const updateTags = (inTerm) => {
+  cy.get('[data-testid="tags-input-container"] [data-testid="add-tag"]')
+    .should('exist')
+    .and('be.visible')
+    .click();
+
+  cy.get('[data-testid="tag-selector"]')
+    .scrollIntoView()
+    .should('be.visible')
+    .type('personal');
+  cy.get('.ant-select-item-option-content')
+    .contains('Personal')
+    .should('be.visible')
+    .click();
+
+  cy.get('[data-testid="saveAssociatedTag"]').scrollIntoView().click();
+  const container = inTerm
+    ? '[data-testid="tags-input-container"]'
+    : '[data-testid="glossary-details"]';
+  cy.get(container).scrollIntoView().contains('Personal').should('be.visible');
+};
+
+const updateTerms = (newTerm) => {
+  cy.get('[data-testid="related-term-container"]')
+    .scrollIntoView()
+    .should('be.visible');
+  cy.get('[data-testid="related-term-add-button"]')
+    .scrollIntoView()
+    .should('be.visible')
+    .click({ force: true });
+  interceptURL(
+    'GET',
+    '/api/v1/search/query?q=*&from=0&size=10&index=glossary_search_index',
+    'getGlossaryTerm'
+  );
+  cy.get('.ant-select-selection-overflow').should('be.visible').click();
+  verifyResponseStatusCode('@getGlossaryTerm', 200);
+  cy.get('.ant-select-item-option-content')
+    .contains(newTerm)
+    .should('be.visible')
+    .click();
+  cy.get('[data-testid="save-related-term-btn"]').should('be.visible').click();
+  verifyResponseStatusCode('@saveGlossaryTermData', 200);
+
+  cy.get('[data-testid="related-term-container"]')
+    .contains(newTerm)
+    .should('be.visible');
+};
+
+const updateReferences = (newRef) => {
+  cy.get('[data-testid="section-References"]')
+    .find('[data-testid="edit-button"]')
+    .should('exist')
+    .click();
+  cy.get('[data-testid="add-references-button"]').should('be.visible').click();
+  cy.get('#references_1_name').should('be.visible').type(newRef.name);
+  cy.get('#references_1_endpoint').should('be.visible').type(newRef.url);
+  interceptURL('PATCH', '/api/v1/glossaryTerms/*', 'saveGlossaryTermData');
+  cy.get('[data-testid="save-btn"]').should('be.visible').click();
+  verifyResponseStatusCode('@saveGlossaryTermData', 200);
+  cy.get('[data-testid="references-container"]')
+    .contains(newRef.name)
+    .should('be.visible')
+    .invoke('attr', 'href')
+    .should('eq', newRef.url);
+};
+
+const updateDescription = (newDescription, isGlossary) => {
+  if (isGlossary) {
+    interceptURL('PATCH', '/api/v1/glossaries/*', 'saveGlossary');
+  } else {
+    interceptURL('PATCH', '/api/v1/glossaryTerms/*', 'saveData');
+  }
+
+  cy.get('[data-testid="edit-description"]').should('be.visible').click();
+  cy.get('.ant-modal-wrap').should('be.visible');
+  cy.get(descriptionBox).should('be.visible').as('description');
+  cy.get('@description').clear();
+  cy.get('@description').type(newDescription);
+  cy.get('[data-testid="save"]').click();
+  if (isGlossary) {
+    verifyResponseStatusCode('@saveGlossary', 200);
+  } else {
+    verifyResponseStatusCode('@saveData', 200);
+  }
+  cy.get('.ant-modal-wrap').should('not.exist');
+
+  cy.get('[data-testid="viewer-container"]')
+    .contains(newDescription)
+    .should('be.visible');
+};
+
 describe('Glossary page should work properly', () => {
   beforeEach(() => {
     cy.login();
@@ -375,7 +495,6 @@ describe('Glossary page should work properly', () => {
       .should('be.visible');
 
     selectActiveGlossary(NEW_GLOSSARY_1.name);
-    cy.wait(2000);
 
     checkDisplayName(NEW_GLOSSARY_1.name);
     cy.get('[data-testid="viewer-container"]')
@@ -400,202 +519,36 @@ describe('Glossary page should work properly', () => {
 
   it('Updating data of glossary should work properly', () => {
     selectActiveGlossary(NEW_GLOSSARY.name);
-    const newDescription = 'Updated description';
+
     // updating tags
-    cy.get('[data-testid="tags-input-container"] [data-testid="add-tag"]')
-      .should('exist')
-      .and('be.visible')
-      .click();
-
-    cy.get('[data-testid="tag-selector"]')
-      .scrollIntoView()
-      .should('be.visible')
-      .type('personal');
-    cy.get('.ant-select-item-option-content')
-      .contains('Personal')
-      .should('be.visible')
-      .click();
-
-    cy.get('[data-testid="saveAssociatedTag"]').scrollIntoView().click();
-    cy.get('[data-testid="glossary-details"]')
-      .scrollIntoView()
-      .contains('Personal')
-      .should('be.visible');
+    updateTags(false);
 
     // updating description
-    cy.get('[data-testid="edit-description"]').should('be.visible').click();
-    cy.get('.ant-modal-wrap').should('be.visible');
-    cy.get(descriptionBox).should('be.visible').as('description');
-
-    cy.get('@description').clear();
-    cy.get('@description').type(newDescription);
-
-    interceptURL('PATCH', '/api/v1/glossaries/*', 'saveGlossary');
-    cy.get('[data-testid="save"]').click();
-
-    cy.get('.ant-modal-wrap').should('not.exist');
-
-    verifyResponseStatusCode('@saveGlossary', 200);
-
-    cy.get('[data-testid="viewer-container"]')
-      .contains(newDescription)
-      .should('be.visible');
+    updateDescription('Updated description', true);
   });
 
-  it('Update glossary term synonyms', () => {
-    selectActiveGlossary(NEW_GLOSSARY.name);
+  it('Update glossary term', () => {
     const uSynonyms = ['pick up', 'take', 'obtain'];
-    const { name, fullyQualifiedName } = NEW_GLOSSARY_TERMS.term_1;
-
-    visitGlossaryTermPage(name, fullyQualifiedName);
-
-    // updating synonyms
-    cy.get('[data-testid="synonyms-container"]')
-      .scrollIntoView()
-      .should('be.visible');
-
-    cy.get('[data-testid="synonyms-container"]')
-      .find('[data-testid="edit-button"]')
-      .scrollIntoView()
-      .should('be.visible')
-      .click();
-
-    cy.get('[data-testid="synonyms-container"] .ant-select-selector').should(
-      'be.visible'
-    );
-    cy.get(
-      '[data-testid="synonyms-container"] .ant-select-selection-item-remove'
-    )
-      .should('exist')
-      .click({ force: true, multiple: true });
-
-    cy.get('.ant-select-selection-overflow')
-      .should('exist')
-      .type(uSynonyms.join('{enter}'));
-
-    interceptURL('PATCH', '/api/v1/glossaryTerms/*', 'saveSynonyms');
-    cy.get('[data-testid="save-synonym-btn"]').should('be.visible').click();
-    verifyResponseStatusCode('@saveSynonyms', 200);
-
-    cy.get('[data-testid="synonyms-container"]')
-      .as('synonyms-container')
-      .should('be.visible');
-
-    uSynonyms.forEach((synonym) => {
-      cy.get('@synonyms-container').contains(synonym).should('be.visible');
-    });
-  });
-
-  it('Update glossary term reference', () => {
-    selectActiveGlossary(NEW_GLOSSARY.name);
     const newRef = { name: 'take', url: 'https://take.com' };
-    const { name, fullyQualifiedName } = NEW_GLOSSARY_TERMS.term_1;
-
-    visitGlossaryTermPage(name, fullyQualifiedName);
-    cy.get('[data-testid="section-References"]').should('be.visible');
-
-    // updating References
-    cy.get('[data-testid="section-References"]')
-      .find('[data-testid="edit-button"]')
-      .should('exist')
-      .click();
-    cy.get('[data-testid="add-references-button"]')
-      .should('be.visible')
-      .click();
-    cy.get('#references_1_name').should('be.visible').type(newRef.name);
-    cy.get('#references_1_endpoint').should('be.visible').type(newRef.url);
-    interceptURL('PATCH', '/api/v1/glossaryTerms/*', 'saveGlossaryTermData');
-    cy.get('[data-testid="save-btn"]').should('be.visible').click();
-    verifyResponseStatusCode('@saveGlossaryTermData', 200);
-    cy.get('[data-testid="references-container"]')
-      .contains(newRef.name)
-      .should('be.visible')
-      .invoke('attr', 'href')
-      .should('eq', newRef.url);
-  });
-
-  it('Update glossary related terms', () => {
-    selectActiveGlossary(NEW_GLOSSARY.name);
     const term2 = NEW_GLOSSARY_TERMS.term_2.name;
     const { name, fullyQualifiedName } = NEW_GLOSSARY_TERMS.term_1;
-    interceptURL('PATCH', '/api/v1/glossaryTerms/*', 'saveGlossaryTermData');
-    // Navigate to glossary term
 
     visitGlossaryTermPage(name, fullyQualifiedName);
 
-    // add related term
-    cy.get('[data-testid="related-term-container"]')
-      .scrollIntoView()
-      .should('be.visible');
-    cy.get('[data-testid="related-term-add-button"]')
-      .scrollIntoView()
-      .should('be.visible')
-      .click({ force: true });
-    interceptURL(
-      'GET',
-      '/api/v1/search/query?q=*&from=0&size=10&index=glossary_search_index',
-      'getGlossaryTerm'
-    );
-    cy.get('.ant-select-selection-overflow').should('be.visible').click();
-    verifyResponseStatusCode('@getGlossaryTerm', 200);
-    cy.get('.ant-select-item-option-content')
-      .contains(term2)
-      .should('be.visible')
-      .click();
+    // Updating synonyms
+    updateSynonyms(uSynonyms);
 
-    cy.get('[data-testid="save-related-term-btn"]')
-      .should('be.visible')
-      .click();
-    verifyResponseStatusCode('@saveGlossaryTermData', 200);
+    // Updating References
+    updateReferences(newRef);
 
-    cy.get('[data-testid="related-term-container"]')
-      .contains(term2)
-      .should('be.visible');
-  });
-
-  it('Updating description and tags of glossary term should work properly', () => {
-    selectActiveGlossary(NEW_GLOSSARY.name);
-    const newDescription = 'Updated description';
-    const { name, fullyQualifiedName } = NEW_GLOSSARY_TERMS.term_1;
-    visitGlossaryTermPage(name, fullyQualifiedName);
+    // Updating Related terms
+    updateTerms(term2);
 
     // updating tags
-    cy.get('[data-testid="tag-container"] [data-testid="add-tag"]')
-      .scrollIntoView()
-      .should('be.visible')
-      .click();
-    cy.get('[data-testid="tag-selector"]')
-      .scrollIntoView()
-      .should('be.visible')
-      .type('personal');
-    cy.get('.ant-select-item-option-content')
-      .contains('Personal')
-      .should('be.visible')
-      .click();
-
-    interceptURL('PATCH', '/api/v1/glossaryTerms/*', 'saveData');
-    cy.get('[data-testid="saveAssociatedTag"]').scrollIntoView().click();
-    verifyResponseStatusCode('@saveData', 200);
-    cy.get('[data-testid="glossary-term"]')
-      .scrollIntoView()
-      .contains('Personal')
-      .should('be.visible');
+    updateTags(true);
 
     // updating description
-    cy.get('[data-testid="edit-description"]').should('be.visible').click();
-    cy.get('.ant-modal-wrap').should('be.visible');
-    cy.get('.toastui-editor-md-container > .toastui-editor > .ProseMirror')
-      .should('be.visible')
-      .as('description');
-    cy.get('@description').clear();
-    cy.get('@description').type(newDescription);
-    cy.get('[data-testid="save"]').click();
-    verifyResponseStatusCode('@saveData', 200);
-    cy.get('.ant-modal-wrap').should('not.exist');
-
-    cy.get('[data-testid="viewer-container"]')
-      .contains(newDescription)
-      .should('be.visible');
+    updateDescription('Updated description', false);
   });
 
   it('Assets Tab should work properly', () => {
