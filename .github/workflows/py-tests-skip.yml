@@ -9,7 +9,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-name: py-tests
+name: py-tests-skip
 on:
   pull_request_target:
     types: [labeled, opened, synchronize, reopened]

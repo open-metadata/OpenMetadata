@@ -12,7 +12,7 @@
 # Avoid running Maven CI on each PR opened which does not modify Java or UI code
 # https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/defining-the-mergeability-
 # of-pull-requests/troubleshooting-required-status-checks#handling-skipped-but-required-checks
-name: Maven CI
+name: Maven CI Build Skip
 
 on:
   pull_request_target:
