@@ -21,6 +21,7 @@ import TitleBreadcrumb from 'components/common/title-breadcrumb/title-breadcrumb
 import { TitleBreadcrumbProps } from 'components/common/title-breadcrumb/title-breadcrumb.interface';
 import PageContainerV1 from 'components/containers/PageContainerV1';
 import Loader from 'components/Loader/Loader';
+import { isEmpty } from 'lodash';
 import { ServicesUpdateRequest } from 'Models';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -230,7 +231,14 @@ const EditIngestionPage = () => {
 
   const handleCancelClick = isSettingsPipeline ? goToSettingsPage : goToService;
 
-  const handleFieldFocus = (fieldName: string) => setActiveField(fieldName);
+  const handleFieldFocus = (fieldName: string) => {
+    if (isEmpty(fieldName)) {
+      return;
+    }
+    setTimeout(() => {
+      setActiveField(fieldName);
+    }, 50);
+  };
 
   useEffect(() => {
     const breadCrumbsArray = getBreadCrumbsArray(

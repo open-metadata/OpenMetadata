@@ -21,7 +21,7 @@ import { TitleBreadcrumbProps } from 'components/common/title-breadcrumb/title-b
 import PageContainerV1 from 'components/containers/PageContainerV1';
 import Loader from 'components/Loader/Loader';
 import ServiceConfig from 'components/ServiceConfig/ServiceConfig';
-import { startCase } from 'lodash';
+import { isEmpty, startCase } from 'lodash';
 import { ServicesData, ServicesUpdateRequest, ServiceTypes } from 'Models';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -125,7 +125,14 @@ function EditConnectionFormPage() {
     }
   };
 
-  const handleFieldFocus = (fieldName: string) => setActiveField(fieldName);
+  const handleFieldFocus = (fieldName: string) => {
+    if (isEmpty(fieldName)) {
+      return;
+    }
+    setTimeout(() => {
+      setActiveField(fieldName);
+    }, 50);
+  };
 
   useEffect(() => {
     fetchServiceDetail();

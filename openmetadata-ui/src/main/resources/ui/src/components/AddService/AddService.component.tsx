@@ -19,7 +19,7 @@ import {
 } from 'constants/Services.constant';
 import { useAirflowStatus } from 'hooks/useAirflowStatus';
 import { t } from 'i18next';
-import { capitalize, isUndefined } from 'lodash';
+import { capitalize, isEmpty, isUndefined } from 'lodash';
 import { LoadingState } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { useHistory } from 'react-router-dom';
@@ -206,7 +206,14 @@ const AddService = ({
   };
 
   // Service focused field
-  const handleFieldFocus = (fieldName: string) => setActiveField(fieldName);
+  const handleFieldFocus = (fieldName: string) => {
+    if (isEmpty(fieldName)) {
+      return;
+    }
+    setTimeout(() => {
+      setActiveField(fieldName);
+    }, 50);
+  };
 
   // rendering
 
