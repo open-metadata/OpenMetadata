@@ -90,7 +90,7 @@ class Sampler:
         if self.profile_sample_type == ProfileSampleType.PERCENTAGE:
             return (
                 self.session.query(
-                    *[Column(col_name) for col_name in self.sample_columns],
+                    *[self.table.__table__.c.get(col_name) for col_name in self.sample_columns],
                     (ModuloFn(RandomNumFn(), 100)).label(RANDOM_LABEL),
                 )
                 .select_from(self.table)
@@ -101,11 +101,11 @@ class Sampler:
                 .cte(f"{self.table.__tablename__}_rnd")
             )
         table_query = self.session.query(
-            *[Column(col_name) for col_name in self.sample_columns]
+            *[self.table.__table__.c.get(col_name) for col_name in self.sample_columns]
         ).select_from(self.table)
         return (
             self.session.query(
-                *[Column(col_name) for col_name in self.sample_columns],
+                *[self.table.__table__.c.get(col_name) for col_name in self.sample_columns],
                 (ModuloFn(RandomNumFn(), table_query.count())).label(RANDOM_LABEL),
             )
             .select_from(self.table)
@@ -204,7 +204,7 @@ class Sampler:
                 self.table,
                 (
                     self.session.query(
-                        *[Column(col_name) for col_name in self.sample_columns]
+                        *[self.table.__table__.c.get(col_name) for col_name in self.sample_columns]
                     )
                     .select_from(self.table)
                     .filter(
@@ -225,7 +225,7 @@ class Sampler:
                 self.table,
                 (
                     self.session.query(
-                        *[Column(col_name) for col_name in self.sample_columns]
+                        *[self.table.__table__.c.get(col_name) for col_name in self.sample_columns]
                     )
                     .select_from(self.table)
                     .filter(
@@ -243,7 +243,7 @@ class Sampler:
             self.table,
             (
                 self.session.query(
-                    *[Column(col_name) for col_name in self.sample_columns]
+                    *[self.table.__table__.c.get(col_name) for col_name in self.sample_columns]
                 )
                 .select_from(self.table)
                 .filter(

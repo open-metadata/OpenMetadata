@@ -19,7 +19,7 @@ import threading
 import traceback
 from collections import defaultdict
 from datetime import datetime, timezone
-from typing import Dict, List
+from typing import Dict, List, Optional, Union
 
 from sqlalchemy import Column
 from sqlalchemy.exc import ProgrammingError
@@ -113,6 +113,28 @@ class SQAProfilerInterface(ProfilerProtocol, SQAInterfaceMixin):
     @property
     def table(self):
         return self._table
+
+    @staticmethod
+    def _is_array_column(column) -> Dict[str, Union[Optional[str], bool]]:
+        """check if column is an array column
+        
+        Args:
+            column: column to check
+        Returns:
+            True if column is an array column else False
+        """
+        kwargs = {}
+        try:
+            kwargs["is_array"] = column._is_array # pylint: disable=protected-access
+        except AttributeError:
+            kwargs["is_array"] = False
+
+        try:
+            kwargs["array_col"] = column._arr_col # pylint: disable=protected-access
+        except AttributeError:
+            kwargs["array_col"] = None
+
+        return kwargs
 
     @staticmethod
     def _session_factory(service_connection_config) -> scoped_session:
@@ -220,8 +242,7 @@ class SQAProfilerInterface(ProfilerProtocol, SQAInterfaceMixin):
                     for metric in metrics
                     if not metric.is_window_metric()
                 ],
-                is_array=column._is_array,  # pylint: disable=protected-access
-                array_col=column._array_col,  # pylint: disable=protected-access
+                **self._is_array_column(column),
             )
             return dict(row)
         except Exception as exc:
@@ -303,8 +324,7 @@ class SQAProfilerInterface(ProfilerProtocol, SQAInterfaceMixin):
         try:
             row = runner.select_first_from_sample(
                 *[metric(column).fn() for metric in metrics],
-                is_array=column._is_array,  # pylint: disable=protected-access
-                array_col=column._array_col,  # pylint: disable=protected-access
+                **self._is_array_column(column),
             )
         except Exception as exc:
             if (

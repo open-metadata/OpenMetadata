@@ -205,6 +205,8 @@ def handle_array(
         Query: query object with the FROM clause set
     """
     # pylint: disable=protected-access
+    if not hasattr(column, "_is_array"):
+        return query.select_from(table)
     if column._is_array:
         return query.select_from(
             table,
