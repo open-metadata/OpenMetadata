@@ -413,7 +413,7 @@ class SourceConnectionTest(TestCase):
             username="username",
             hostPort="localhost:21050",
         )
-        assert expected_result == get_connection_url(impala_conn_obj)        
+        assert expected_result == get_connection_url(impala_conn_obj)
 
     def test_trino_url_without_params(self):
         from metadata.ingestion.source.database.trino.connection import (

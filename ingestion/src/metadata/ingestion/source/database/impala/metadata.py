@@ -13,11 +13,8 @@ Impala source methods.
 """
 
 import re
-from typing import Tuple
 
 from impala.sqlalchemy import ImpalaDialect, _impala_type_to_sqlalchemy_type
-from impala.sqlalchemy import _impala_type_to_sqlalchemy_type
-
 from sqlalchemy import types, util
 from sqlalchemy.engine import reflection
 
@@ -36,6 +33,7 @@ from metadata.ingestion.source.database.impala.queries import IMPALA_GET_COMMENT
 from metadata.profiler.orm.registry import Dialects
 
 complex_data_types = ["struct", "map", "array", "union"]
+
 
 def get_impala_table_or_view_names(connection, schema=None, target_type="table"):
     """
@@ -77,6 +75,7 @@ def get_table_names(
 ):  # pylint: disable=unused-argument
     results = get_impala_table_or_view_names(connection, schema, "table")
     return results
+
 
 @reflection.cache
 def get_table_comment(
@@ -176,4 +175,3 @@ class ImpalaSource(CommonDbSourceService):
         ImpalaDialect.get_view_names = get_view_names
         ImpalaDialect.get_table_comment = get_table_comment
         ImpalaDialect.get_columns = get_columns
-        

@@ -185,7 +185,7 @@ plugins: Dict[str, Set[str]] = {
         *COMMONS["impala"],
         "thrift>=0.13,<1",
         "sasl~=0.3",
-        "thrift-sasl~=0.4",        
+        "thrift-sasl~=0.4",
     },
     "kafka": {*COMMONS["kafka"]},
     "kinesis": {VERSIONS["boto3"]},

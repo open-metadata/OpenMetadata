@@ -388,6 +388,7 @@ def test_hive():
     config: WorkflowSource = WorkflowSource.parse_obj(source)
     assert isinstance(config.serviceConnection.__root__.config, HiveConnection)
 
+
 def test_impala():
     source = {
         "type": "impala",
