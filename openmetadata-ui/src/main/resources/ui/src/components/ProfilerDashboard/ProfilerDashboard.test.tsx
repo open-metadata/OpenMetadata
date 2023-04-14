@@ -102,6 +102,14 @@ jest.mock('../containers/PageLayoutV1', () =>
   jest.fn().mockImplementation(({ children }) => <div>{children}</div>)
 );
 
+jest.mock('components/DatePickerMenu/DatePickerMenu.component', () =>
+  jest
+    .fn()
+    .mockImplementation(() => (
+      <div data-testid="DatePickerMenu">DatePickerMenu</div>
+    ))
+);
+
 describe('Test ProfilerDashboardPage component', () => {
   beforeEach(() => cleanup());
 
@@ -115,15 +123,13 @@ describe('Test ProfilerDashboardPage component', () => {
     const profilerSwitch = await screen.findByTestId('profiler-switch');
     const EntityPageInfo = await screen.findByText('EntityPageInfo component');
     const ProfilerTab = await screen.findByText('ProfilerTab component');
-    const selectedTimeFrame = await screen.findByText(
-      'label.last-number-of-days'
-    );
+    const DatePickerMenu = await screen.findByTestId('DatePickerMenu');
     const DataQualityTab = screen.queryByText('DataQualityTab component');
 
     expect(profilerSwitch).toBeInTheDocument();
     expect(EntityPageInfo).toBeInTheDocument();
     expect(ProfilerTab).toBeInTheDocument();
-    expect(selectedTimeFrame).toBeInTheDocument();
+    expect(DatePickerMenu).toBeInTheDocument();
     expect(DataQualityTab).not.toBeInTheDocument();
   });
 
@@ -167,15 +173,13 @@ describe('Test ProfilerDashboardPage component', () => {
     const profilerSwitch = await screen.findByTestId('profiler-switch');
     const EntityPageInfo = await screen.findByText('EntityPageInfo component');
     const ProfilerTab = await screen.findByText('ProfilerTab component');
-    const selectedTimeFrame = await screen.findByText(
-      'label.last-number-of-days'
-    );
+    const DatePickerMenu = await screen.findByTestId('DatePickerMenu');
     const DataQualityTab = screen.queryByText('DataQualityTab component');
 
     expect(profilerSwitch).toBeInTheDocument();
     expect(EntityPageInfo).toBeInTheDocument();
     expect(ProfilerTab).toBeInTheDocument();
-    expect(selectedTimeFrame).toBeInTheDocument();
+    expect(DatePickerMenu).toBeInTheDocument();
     expect(DataQualityTab).not.toBeInTheDocument();
   });
 

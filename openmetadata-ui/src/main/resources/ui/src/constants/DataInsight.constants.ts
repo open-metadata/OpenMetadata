@@ -52,7 +52,7 @@ export const DATA_INSIGHT_GRAPH_COLORS = [
 ];
 
 export const BAR_SIZE = 15;
-export const DEFAULT_DAYS = 30;
+export const DEFAULT_DAYS = 1;
 
 export const ENTITIES_BAR_COLO_MAP: Record<string, string> = {
   Chart: '#E7B85D',
@@ -193,13 +193,6 @@ export const ENTITIES_SUMMARY_LIST = [
     id: DataInsightChartType.TotalEntitiesByTier,
   },
 ];
-
-export const VALIDATE_MESSAGES = {
-  required: '${fieldName} is required!',
-  string: {
-    range: '${fieldName} must be between ${min} and ${max} character.',
-  },
-};
 
 export const SUPPORTED_CHARTS_FOR_KPI = [
   DataInsightChartType.PercentageOfEntitiesWithDescriptionByType,

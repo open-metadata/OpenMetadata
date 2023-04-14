@@ -14,7 +14,7 @@
 @import url('../../../styles/variables.less');
 
 @active-border-color: #1890ff;
-@active-box-shadow: 4px 6px 8px rgba(0, 0, 0, 0.14);
+@hover-box-shadow: 2px 3px 5px rgba(0, 0, 0, 0.13);
 
 .data-asset-info-card-container {
   border: 1px solid @border-color;
@@ -24,14 +24,14 @@
   transition: 0.3s ease-in-out;
   box-shadow: @card-shadow;
   &:hover {
-    box-shadow: 2px 3px 5px rgba(0, 0, 0, 0.13);
+    box-shadow: @hover-box-shadow;
   }
 }
 
 .highlight-card {
   border-left: 3px solid @active-border-color;
-  box-shadow: @active-box-shadow;
+  box-shadow: @hover-box-shadow;
   &:hover {
-    box-shadow: @active-box-shadow;
+    box-shadow: @hover-box-shadow;
   }
 }

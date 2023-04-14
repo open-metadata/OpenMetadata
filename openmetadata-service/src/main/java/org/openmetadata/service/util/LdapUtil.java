@@ -34,7 +34,6 @@ public class LdapUtil {
       LdapConfiguration ldapConfiguration, LDAPConnectionOptions connectionOptions) {
     X509TrustManager x509TrustManager;
     SSLSocketVerifier sslSocketVerifier;
-    connectionOptions = new LDAPConnectionOptions();
     LdapConfiguration.TruststoreConfigType configType = ldapConfiguration.getTruststoreConfigType();
     switch (configType) {
       case CUSTOM_TRUST_STORE:
