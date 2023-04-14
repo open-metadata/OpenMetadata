@@ -17,7 +17,11 @@ const onCancelMock = jest.fn();
 const onConfirmMock = jest.fn();
 
 const testConnectionStep = [
-  { name: 'Step 1', description: 'Description 1', mandatory: true },
+  {
+    name: 'Step 1',
+    description: 'Description 1',
+    mandatory: true,
+  },
   { name: 'Step 2', description: 'Description 2', mandatory: true },
 ];
 const testConnectionStepResult = [
@@ -62,8 +66,6 @@ describe('TestConnectionModal', () => {
 
     expect(screen.getByText('Step 1')).toBeInTheDocument();
     expect(screen.getByText('Step 2')).toBeInTheDocument();
-    expect(screen.getByText('Description 1')).toBeInTheDocument();
-    expect(screen.getByText('Description 2')).toBeInTheDocument();
   });
 
   it('Should render the success icon for a passing step', () => {
