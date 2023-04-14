@@ -56,6 +56,10 @@ COMMONS = {
         "presto-types-parser>=0.0.2",
         "pyhive~=0.6",
     },
+    "impala": {
+        "presto-types-parser>=0.0.2",
+        "impyla~=0.18.0",
+    },
     "kafka": {
         VERSIONS["avro"],
         "confluent_kafka==1.8.2",
@@ -176,6 +180,12 @@ plugins: Dict[str, Set[str]] = {
         "sasl~=0.3",
         "thrift-sasl~=0.4",
         "impyla~=0.18.0",
+    },
+    "impala": {
+        *COMMONS["impala"],
+        "thrift>=0.13,<1",
+        "sasl~=0.3",
+        "thrift-sasl~=0.4",        
     },
     "kafka": {*COMMONS["kafka"]},
     "kinesis": {VERSIONS["boto3"]},

@@ -70,6 +70,11 @@
         "description": "Optional name to give to the database in OpenMetadata. If left blank, we will use default as the database name.",
         "type": "string"
       },
+      "use_ssl": {
+        "title": "Use SSL",
+        "description": "Establish secure connection with Impala",
+        "type": "boolean"
+      },
       "authOptions": {
         "title": "URL Authentication Options",
         "description": "Authentication options to pass to Impala connector. These options are based on SQLAlchemy.",

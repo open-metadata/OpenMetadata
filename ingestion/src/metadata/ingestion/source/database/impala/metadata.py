@@ -16,7 +16,7 @@ import re
 from typing import Tuple
 
 from impala.sqlalchemy import ImpalaDialect, _impala_type_to_sqlalchemy_type
-from pyhive.sqlalchemy_hive import _type_map
+from impala.sqlalchemy import _impala_type_to_sqlalchemy_type
 
 from sqlalchemy import types, util
 from sqlalchemy.engine import reflection
@@ -32,19 +32,10 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
-from metadata.ingestion.source.database.hive.queries import HIVE_GET_COMMENTS
+from metadata.ingestion.source.database.impala.queries import IMPALA_GET_COMMENTS
 from metadata.profiler.orm.registry import Dialects
 
 complex_data_types = ["struct", "map", "array", "union"]
-
-_type_map.update(
-    {
-        "binary": types.BINARY,
-        "char": types.CHAR,
-        "varchar": types.VARCHAR,
-    }
-)
-
 
 def get_impala_table_or_view_names(connection, schema=None, target_type="table"):
     """
@@ -139,7 +130,7 @@ def get_columns(
         attype = re.sub(r"\(.*\)", "", col[1])
         col_type = re.search(r"^\w+", col[1]).group(0)
         try:
-            coltype = _type_map[col_type]
+            coltype = _impala_type_to_sqlalchemy_type[col_type.upper()]
         except KeyError:
             util.warn(f"Did not recognize type '{col_raw}' of column '{col[0]}'")
             coltype = types.NullType
@@ -167,7 +158,7 @@ def get_columns(
 class ImpalaSource(CommonDbSourceService):
     """
     Implements the necessary methods to extract
-    Database metadata from Hive Source
+    Database metadata from Impala Source
     """
 
     @classmethod
