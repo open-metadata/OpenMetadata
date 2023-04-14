@@ -763,6 +763,7 @@ const PipelineDetails = ({
               ? onTierRemove
               : undefined
           }
+          serviceType={pipelineDetails.serviceType ?? ''}
           tags={tags}
           tagsHandler={onTagUpdate}
           tier={tier}

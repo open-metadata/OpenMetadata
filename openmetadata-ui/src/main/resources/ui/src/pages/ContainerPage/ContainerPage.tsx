@@ -72,7 +72,6 @@ import { getContainerDetailPath } from 'utils/ContainerDetailUtils';
 import { getEntityLineage, getEntityName } from 'utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from 'utils/PermissionsUtils';
 import { getLineageViewPath } from 'utils/RouterUtils';
-import { serviceTypeLogo } from 'utils/ServiceUtils';
 import { bytesToSize } from 'utils/StringsUtils';
 import { getTagsWithoutTier, getTierTags } from 'utils/TableUtils';
 import { showErrorToast, showSuccessToast } from 'utils/ToastUtils';
@@ -286,7 +285,6 @@ const ContainerPage = () => {
   ];
 
   const breadcrumbTitles = useMemo(() => {
-    const serviceType = containerData?.serviceType;
     const service = containerData?.service;
     const serviceName = service?.name;
 
@@ -301,14 +299,8 @@ const ContainerPage = () => {
         url: serviceName
           ? getServiceDetailsPath(serviceName, ServiceCategory.STORAGE_SERVICES)
           : '',
-        imgSrc: serviceType ? serviceTypeLogo(serviceType) : undefined,
       },
       ...parentContainerItems,
-      {
-        name: entityName,
-        url: '',
-        activeTitle: true,
-      },
     ];
   }, [containerData, containerName, entityName, parentContainers]);
 
@@ -632,6 +624,7 @@ const ContainerPage = () => {
           isFollowing={isUserFollowing}
           isTagEditable={hasEditTagsPermission}
           removeTier={hasEditTierPermission ? handleRemoveTier : undefined}
+          serviceType={containerData?.serviceType ?? ''}
           tags={tags}
           tagsHandler={handleUpdateTags}
           tier={tier}

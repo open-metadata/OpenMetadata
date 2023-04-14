@@ -181,6 +181,10 @@ jest.mock('react-router-dom', () => ({
   })),
 }));
 
+jest.mock('components/containers/PageLayoutV1', () => {
+  return jest.fn().mockImplementation(({ children }) => children);
+});
+
 describe('Tests for DatabaseSchemaPage', () => {
   it('Page should render properly for "Tables" tab', async () => {
     act(() => {
