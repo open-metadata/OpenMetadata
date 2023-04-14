@@ -40,6 +40,7 @@ import {
   patchTableDetails,
   removeFollower,
 } from 'rest/tableAPI';
+import { serviceTypeLogo } from 'utils/ServiceUtils';
 import AppState from '../../AppState';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import {
@@ -59,7 +60,6 @@ import { Table, TableData } from '../../generated/entity/data/table';
 import { Post, Thread, ThreadType } from '../../generated/entity/feed/thread';
 import { Paging } from '../../generated/type/paging';
 import { EntityFieldThreadCount } from '../../interface/feed.interface';
-import jsonData from '../../jsons/en';
 import {
   addToRecentViewed,
   getCurrentUserId,
@@ -86,7 +86,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isSampleDataLoading, setIsSampleDataLoading] =
     useState<boolean>(false);
-  const [isentityThreadLoading, setIsentityThreadLoading] =
+  const [isEntityThreadLoading, setIsEntityThreadLoading] =
     useState<boolean>(false);
   const [isTableProfileLoading, setIsTableProfileLoading] =
     useState<boolean>(false);
@@ -143,38 +143,33 @@ const DatasetDetailsPage: FunctionComponent = () => {
     }
   };
 
-  const getFeedData = (
+  const getFeedData = async (
     after?: string,
     feedType?: FeedFilter,
     threadType?: ThreadType
   ) => {
-    setIsentityThreadLoading(true);
-    getAllFeeds(
-      getEntityFeedLink(EntityType.TABLE, tableFQN),
-      after,
-      threadType,
-      feedType,
-      undefined,
-      USERId
-    )
-      .then((res) => {
-        const { data, paging: pagingObj } = res;
-        if (data) {
-          setPaging(pagingObj);
-          setEntityThread((prevData) => [...prevData, ...data]);
-        } else {
-          showErrorToast(
-            jsonData['api-error-messages']['fetch-entity-feed-error']
-          );
-        }
-      })
-      .catch((err: AxiosError) => {
-        showErrorToast(
-          err,
-          jsonData['api-error-messages']['fetch-entity-feed-error']
-        );
-      })
-      .finally(() => setIsentityThreadLoading(false));
+    setIsEntityThreadLoading(true);
+    try {
+      const { data, paging: pagingObj } = await getAllFeeds(
+        getEntityFeedLink(EntityType.TABLE, tableFQN),
+        after,
+        threadType,
+        feedType,
+        undefined,
+        USERId
+      );
+      setPaging(pagingObj);
+      setEntityThread((prevData) => [...(after ? prevData : []), ...data]);
+    } catch (error) {
+      showErrorToast(
+        error as AxiosError,
+        t('server.entity-fetch-error', {
+          entity: t('label.entity-feed-plural'),
+        })
+      );
+    } finally {
+      setIsEntityThreadLoading(false);
+    }
   };
 
   const handleFeedFetchFromFeedList = (
@@ -196,90 +191,89 @@ const DatasetDetailsPage: FunctionComponent = () => {
 
       setTablePermissions(tablePermission);
     } catch (error) {
-      showErrorToast(
-        jsonData['api-error-messages']['fetch-entity-permissions-error']
-      );
+      t('server.fetch-entity-permissions-error', {
+        entity: entityFqn,
+      });
     } finally {
       setIsLoading(false);
     }
   };
 
-  const fetchTableDetail = () => {
+  const fetchTableDetail = async () => {
     setIsLoading(true);
-    getTableDetailsByFQN(
-      tableFQN,
-      getFields(defaultFields, datasetTableTabs[activeTab - 1].field ?? '')
-    )
-      .then((res) => {
-        if (res) {
-          const {
-            id,
-            database,
-            fullyQualifiedName,
-            service,
-            serviceType,
-            databaseSchema,
-          } = res;
-          const serviceName = service?.name ?? '';
-          const databaseFullyQualifiedName = database?.fullyQualifiedName ?? '';
-          const databaseSchemaFullyQualifiedName =
-            databaseSchema?.fullyQualifiedName ?? '';
-          setTableDetails(res);
-          setSlashedTableName([
-            {
-              name: serviceName,
-              url: serviceName
-                ? getServiceDetailsPath(
-                    serviceName,
-                    ServiceCategory.DATABASE_SERVICES
-                  )
-                : '',
-            },
-            {
-              name: getPartialNameFromTableFQN(databaseFullyQualifiedName, [
-                FqnPart.Database,
-              ]),
-              url: getDatabaseDetailsPath(databaseFullyQualifiedName),
-            },
-            {
-              name: getPartialNameFromTableFQN(
-                databaseSchemaFullyQualifiedName,
-                [FqnPart.Schema]
-              ),
-              url: getDatabaseSchemaDetailsPath(
-                databaseSchemaFullyQualifiedName
-              ),
-            },
-          ]);
 
-          addToRecentViewed({
-            displayName: getEntityName(res),
-            entityType: EntityType.TABLE,
-            fqn: fullyQualifiedName ?? '',
-            serviceType: serviceType,
-            timestamp: 0,
-            id: id,
-          });
-        } else {
-          showErrorToast(
-            jsonData['api-error-messages']['fetch-table-details-error']
-          );
-          setIsError(true);
-        }
-      })
-      .catch((err: AxiosError) => {
-        if (err.response?.status === 404) {
-          setIsError(true);
-        } else {
-          showErrorToast(
-            err,
-            jsonData['api-error-messages']['fetch-table-details-error']
-          );
-        }
-      })
-      .finally(() => {
-        setIsLoading(false);
+    try {
+      const res = await getTableDetailsByFQN(
+        tableFQN,
+        getFields(defaultFields, datasetTableTabs[activeTab - 1].field ?? '')
+      );
+
+      const {
+        id,
+        database,
+        fullyQualifiedName,
+        service,
+        serviceType,
+        databaseSchema,
+      } = res;
+      const serviceName = service?.name ?? '';
+      const databaseFullyQualifiedName = database?.fullyQualifiedName ?? '';
+      const databaseSchemaFullyQualifiedName =
+        databaseSchema?.fullyQualifiedName ?? '';
+      setTableDetails(res);
+      setSlashedTableName([
+        {
+          name: serviceName,
+          url: serviceName
+            ? getServiceDetailsPath(
+                serviceName,
+                ServiceCategory.DATABASE_SERVICES
+              )
+            : '',
+          imgSrc: serviceType ? serviceTypeLogo(serviceType) : undefined,
+        },
+        {
+          name: getPartialNameFromTableFQN(databaseFullyQualifiedName, [
+            FqnPart.Database,
+          ]),
+          url: getDatabaseDetailsPath(databaseFullyQualifiedName),
+        },
+        {
+          name: getPartialNameFromTableFQN(databaseSchemaFullyQualifiedName, [
+            FqnPart.Schema,
+          ]),
+          url: getDatabaseSchemaDetailsPath(databaseSchemaFullyQualifiedName),
+        },
+        {
+          name: getEntityName(res),
+          url: '',
+          activeTitle: true,
+        },
+      ]);
+
+      addToRecentViewed({
+        displayName: getEntityName(res),
+        entityType: EntityType.TABLE,
+        fqn: fullyQualifiedName ?? '',
+        serviceType: serviceType,
+        timestamp: 0,
+        id: id,
       });
+    } catch (error) {
+      if ((error as AxiosError).response?.status === 404) {
+        setIsError(true);
+      } else {
+        showErrorToast(
+          error as AxiosError,
+          t('server.entity-details-fetch-error', {
+            entityType: t('label.pipeline'),
+            entityName: tableFQN,
+          })
+        );
+      }
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const fetchTableProfileDetails = async () => {
@@ -305,38 +299,32 @@ const DatasetDetailsPage: FunctionComponent = () => {
     }
   };
 
-  const fetchTabSpecificData = (tabField = '') => {
+  const fetchTabSpecificData = async (tabField = '') => {
     switch (tabField) {
       case TabSpecificField.SAMPLE_DATA: {
         if (!isUndefined(sampleData)) {
           break;
         } else {
           setIsSampleDataLoading(true);
-          getTableDetailsByFQN(tableFQN, tabField)
-            .then((res) => {
-              if (res) {
-                const { sampleData } = res;
-                setSampleData(sampleData as TableData);
-              } else {
-                showErrorToast(
-                  jsonData['api-error-messages']['fetch-sample-data-error']
-                );
-              }
-            })
-            .catch((err: AxiosError) => {
-              showErrorToast(
-                err,
-                jsonData['api-error-messages']['fetch-sample-data-error']
-              );
-            })
-            .finally(() => setIsSampleDataLoading(false));
+
+          try {
+            const res = await getTableDetailsByFQN(tableFQN, tabField);
+            const { sampleData } = res;
+            setSampleData(sampleData as TableData);
+          } catch (error) {
+            showErrorToast(
+              error as AxiosError,
+              t('server.entity-details-fetch-error', {
+                entityType: t('label.table'),
+                entityName: datasetFQN,
+              })
+            );
+          } finally {
+            setIsSampleDataLoading(false);
+          }
 
           break;
         }
-      }
-
-      case TabSpecificField.LINEAGE: {
-        break;
       }
 
       case TabSpecificField.ACTIVITY_FEED: {
@@ -359,7 +347,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
 
   useEffect(() => {
     fetchTabSpecificData(datasetTableTabs[activeTab - 1].field);
-  }, [activeTab]);
+  }, [activeTab, feedCount]);
 
   const getEntityFeedCount = () => {
     getFeedCounts(
@@ -383,13 +371,9 @@ const DatasetDetailsPage: FunctionComponent = () => {
   const descriptionUpdateHandler = async (updatedTable: Table) => {
     try {
       const response = await saveUpdatedTableData(updatedTable);
-      if (response) {
-        const { description, version } = response;
-        setTableDetails((previous) => ({ ...previous, description, version }));
-        getEntityFeedCount();
-      } else {
-        throw jsonData['api-error-messages']['update-description-error'];
-      }
+      const { description, version } = response;
+      setTableDetails((previous) => ({ ...previous, description, version }));
+      getEntityFeedCount();
     } catch (error) {
       showErrorToast(error as AxiosError);
     }
@@ -421,10 +405,12 @@ const DatasetDetailsPage: FunctionComponent = () => {
         tags: sortTagsCaseInsensitive(res.tags || []),
       }));
       getEntityFeedCount();
-    } catch (err) {
+    } catch (error) {
       showErrorToast(
-        err as AxiosError,
-        jsonData['api-error-messages']['update-tags-error']
+        error as AxiosError,
+        t('server.entity-updating-error', {
+          entity: t('label.tag-plural'),
+        })
       );
     }
   };
@@ -444,47 +430,42 @@ const DatasetDetailsPage: FunctionComponent = () => {
     }
   };
 
-  const followTable = () => {
-    addFollower(tableId, USERId)
-      .then((res) => {
-        if (res) {
-          const { newValue } = res.changeDescription.fieldsAdded[0];
-          const newFollowers = [...(followers ?? []), ...newValue];
-          setTableDetails((prev) => ({ ...prev, followers: newFollowers }));
-        } else {
-          showErrorToast(
-            jsonData['api-error-messages']['update-entity-follow-error']
-          );
-        }
-      })
-      .catch((err: AxiosError) => {
-        showErrorToast(
-          err,
-          jsonData['api-error-messages']['update-entity-follow-error']
-        );
-      });
+  const followTable = async () => {
+    try {
+      const res = await addFollower(tableId, USERId);
+      const { newValue } = res.changeDescription.fieldsAdded[0];
+      const newFollowers = [...(followers ?? []), ...newValue];
+      setTableDetails((prev) => ({ ...prev, followers: newFollowers }));
+      getEntityFeedCount();
+    } catch (error) {
+      showErrorToast(
+        error as AxiosError,
+        t('server.entity-follow-error', {
+          entity: getEntityName(tableDetails),
+        })
+      );
+    }
   };
 
-  const unfollowTable = () => {
-    removeFollower(tableId, USERId)
-      .then((res) => {
-        const { oldValue } = res.changeDescription.fieldsDeleted[0];
-
-        setTableDetails((pre) => ({
-          ...pre,
-          followers: pre.followers?.filter(
-            (follower) => follower.id !== oldValue[0].id
-          ),
-        }));
-      })
-      .catch((err: AxiosError) => {
-        showErrorToast(
-          err,
-          t('server.entity-unfollow-error', {
-            entity: getEntityName(tableDetails),
-          })
-        );
-      });
+  const unFollowTable = async () => {
+    try {
+      const res = await removeFollower(tableId, USERId);
+      const { oldValue } = res.changeDescription.fieldsDeleted[0];
+      setTableDetails((pre) => ({
+        ...pre,
+        followers: pre.followers?.filter(
+          (follower) => follower.id !== oldValue[0].id
+        ),
+      }));
+      getEntityFeedCount();
+    } catch (error) {
+      showErrorToast(
+        error as AxiosError,
+        t('server.entity-unfollow-error', {
+          entity: getEntityName(tableDetails),
+        })
+      );
+    }
   };
 
   const versionHandler = () => {
@@ -493,54 +474,50 @@ const DatasetDetailsPage: FunctionComponent = () => {
     );
   };
 
-  const postFeedHandler = (value: string, id: string) => {
+  const postFeedHandler = async (value: string, id: string) => {
     const currentUser = AppState.userDetails?.name ?? AppState.users[0]?.name;
 
     const data = {
       message: value,
       from: currentUser,
     } as Post;
-    postFeedById(id, data)
-      .then((res) => {
-        if (res) {
-          const { id, posts } = res;
-          setEntityThread((pre) => {
-            return pre.map((thread) => {
-              if (thread.id === id) {
-                return { ...res, posts: posts?.slice(-3) };
-              } else {
-                return thread;
-              }
-            });
-          });
-          getEntityFeedCount();
-        } else {
-          showErrorToast(jsonData['api-error-messages']['add-feed-error']);
-        }
-      })
-      .catch((err: AxiosError) => {
-        showErrorToast(err, jsonData['api-error-messages']['add-feed-error']);
+
+    try {
+      const res = await postFeedById(id, data);
+      const { id: responseId, posts } = res;
+      setEntityThread((pre) => {
+        return pre.map((thread) => {
+          if (thread.id === responseId) {
+            return { ...res, posts: posts?.slice(-3) };
+          } else {
+            return thread;
+          }
+        });
       });
+      getEntityFeedCount();
+    } catch (error) {
+      showErrorToast(
+        error as AxiosError,
+        t('server.add-entity-error', {
+          entity: t('label.feed-plural'),
+        })
+      );
+    }
   };
 
-  const createThread = (data: CreateThread) => {
-    postThread(data)
-      .then((res) => {
-        if (res) {
-          setEntityThread((pre) => [...pre, res]);
-          getEntityFeedCount();
-        } else {
-          showErrorToast(
-            jsonData['api-error-messages']['create-conversation-error']
-          );
-        }
-      })
-      .catch((err: AxiosError) => {
-        showErrorToast(
-          err,
-          jsonData['api-error-messages']['create-conversation-error']
-        );
-      });
+  const createThread = async (data: CreateThread) => {
+    try {
+      const res = await postThread(data);
+      setEntityThread((pre) => [...pre, res]);
+      getEntityFeedCount();
+    } catch (error) {
+      showErrorToast(
+        error as AxiosError,
+        t('server.create-entity-error', {
+          entity: t('label.conversation'),
+        })
+      );
+    }
   };
 
   const deletePostHandler = (
@@ -560,21 +537,22 @@ const DatasetDetailsPage: FunctionComponent = () => {
     updateThreadData(threadId, postId, isThread, data, setEntityThread);
   };
 
-  const handleExtentionUpdate = async (updatedTable: Table) => {
+  const handleExtensionUpdate = async (updatedTable: Table) => {
     try {
-      const response = await saveUpdatedTableData(updatedTable);
-      if (response) {
-        const { version, owner: ownerValue, tags, extension } = response;
-        setTableDetails((previous) => ({
-          ...previous,
-          version,
-          owner: ownerValue,
-          tags,
-          extension,
-        }));
-      } else {
-        throw jsonData['api-error-messages']['update-entity-error'];
-      }
+      const {
+        version,
+        owner: ownerValue,
+        tags,
+        extension,
+      } = await saveUpdatedTableData(updatedTable);
+      setTableDetails((previous) => ({
+        ...previous,
+        version,
+        owner: ownerValue,
+        tags,
+        extension,
+      }));
+      getEntityFeedCount();
     } catch (error) {
       showErrorToast(error as AxiosError);
     }
@@ -631,10 +609,10 @@ const DatasetDetailsPage: FunctionComponent = () => {
               feedCount={feedCount}
               fetchFeedHandler={handleFeedFetchFromFeedList}
               followTableHandler={followTable}
-              handleExtensionUpdate={handleExtentionUpdate}
+              handleExtensionUpdate={handleExtensionUpdate}
+              isEntityThreadLoading={isEntityThreadLoading}
               isSampleDataLoading={isSampleDataLoading}
               isTableProfileLoading={isTableProfileLoading}
-              isentityThreadLoading={isentityThreadLoading}
               paging={paging}
               postFeedHandler={postFeedHandler}
               sampleData={sampleData}
@@ -644,7 +622,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
               tableDetails={tableDetails}
               tableProfile={tableProfile}
               tagUpdateHandler={onTagUpdate}
-              unfollowTableHandler={unfollowTable}
+              unfollowTableHandler={unFollowTable}
               updateThreadHandler={updateThreadHandler}
               versionHandler={versionHandler}
             />

@@ -139,7 +139,7 @@ const DatasetDetailsProps = {
   entityLineageHandler: jest.fn(),
   tableQueries: [],
   entityThread: mockThreads,
-  isentityThreadLoading: false,
+  isEntityThreadLoading: false,
   postFeedHandler: jest.fn(),
   feedCount: 0,
   entityFieldThreadCount: [],
