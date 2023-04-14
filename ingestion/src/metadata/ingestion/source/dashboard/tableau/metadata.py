@@ -58,7 +58,7 @@ from metadata.ingestion.source.dashboard.tableau.models import (
 from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
 from metadata.utils import fqn, tag_utils
 from metadata.utils.filters import filter_by_chart, filter_by_datamodel
-from metadata.utils.helpers import get_standard_chart_type
+from metadata.utils.helpers import clean_uri, get_standard_chart_type
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -379,10 +379,10 @@ class TableauSource(DashboardServiceSource):
                 workbook_chart_name = ChartUrl(chart.contentUrl)
 
                 chart_url = (
-                    f"{str(self.service_connection.hostPort)}/"
+                    f"{clean_uri(self.service_connection.hostPort)}/"
                     f"#{site_url}"
-                    f"views/{workbook_chart_name.workbook_name}/"
-                    f"{workbook_chart_name.chart_url_name}"
+                    f"views/{workbook_chart_name.workbook_name}"
+                    f"/{workbook_chart_name.chart_url_name}"
                 )
 
                 yield CreateChartRequest(
