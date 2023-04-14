@@ -383,7 +383,7 @@ class MetadataRestSink(Sink[Entity]):
 
     def write_test_case_sample(self, record: OMetaTestCaseSample):
         """
-        Use the /testCases endpoint to ingest sample test suite
+        Use the /dataQuality/testCases endpoint to ingest sample test suite
         """
         try:
             self.metadata.create_or_update(record.test_case)
@@ -397,7 +397,7 @@ class MetadataRestSink(Sink[Entity]):
 
     def write_test_case_results_sample(self, record: OMetaTestCaseResultsSample):
         """
-        Use the /testCases endpoint to ingest sample test suite
+        Use the /dataQuality/testCases endpoint to ingest sample test suite
         """
         try:
             self.metadata.add_test_case_results(
@@ -418,7 +418,7 @@ class MetadataRestSink(Sink[Entity]):
 
     def write_topic_sample_data(self, record: OMetaTopicSampleData):
         """
-        Use the /testCases endpoint to ingest sample test suite
+        Use the /dataQuality/testCases endpoint to ingest sample test suite
         """
         try:
             if record.sample_data.messages:

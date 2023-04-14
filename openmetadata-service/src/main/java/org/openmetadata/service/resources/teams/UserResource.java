@@ -51,7 +51,6 @@ import javax.json.JsonValue;
 import javax.validation.Valid;
 import javax.validation.constraints.Max;
 import javax.validation.constraints.Min;
-import javax.ws.rs.BadRequestException;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.DELETE;
 import javax.ws.rs.DefaultValue;
@@ -897,8 +896,10 @@ public class UserResource extends EntityResource<User, UserRepository> {
     try {
       registeredUser =
           dao.getByName(uriInfo, userName, new Fields(List.of(USER_PROTECTED_FIELDS), USER_PROTECTED_FIELDS));
-    } catch (IOException ex) {
-      throw new BadRequestException("Email is not valid.");
+    } catch (IOException | EntityNotFoundException ex) {
+      LOG.error(
+          "[GeneratePasswordReset] Got Error while fetching user : {},  error message {}", userName, ex.getMessage());
+      return Response.status(Response.Status.OK).entity("Please check your mail to for Reset Password Link.").build();
     }
     try {
       // send a mail to the User with the Update

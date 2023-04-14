@@ -41,15 +41,12 @@ mock_tableau_config = {
         "serviceConnection": {
             "config": {
                 "type": "Tableau",
-                "username": "username",
-                "password": "abcdefg",
+                "authType": {"username": "username", "password": "abcdefg"},
                 "env": "tableau_env",
                 "hostPort": "http://tableauHost.com",
                 "siteName": "tableauSiteName",
                 "siteUrl": "tableauSiteUrl",
                 "apiVersion": "3.19",
-                "personalAccessTokenName": "tableau",
-                "personalAccessTokenSecret": "tableauPersonalAccessToken",
             }
         },
         "sourceConfig": {

@@ -67,6 +67,7 @@ import {
   getFeedCounts,
   getFields,
   getPartialNameFromTableFQN,
+  sortTagsCaseInsensitive,
 } from '../../utils/CommonUtils';
 import {
   datasetTableTabs,
@@ -76,7 +77,6 @@ import {
 import { getEntityFeedLink, getEntityName } from '../../utils/EntityUtils';
 import { deletePost, updateThreadData } from '../../utils/FeedUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
-import { serviceTypeLogo } from '../../utils/ServiceUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
 const DatasetDetailsPage: FunctionComponent = () => {
@@ -234,7 +234,6 @@ const DatasetDetailsPage: FunctionComponent = () => {
                     ServiceCategory.DATABASE_SERVICES
                   )
                 : '',
-              imgSrc: serviceType ? serviceTypeLogo(serviceType) : undefined,
             },
             {
               name: getPartialNameFromTableFQN(databaseFullyQualifiedName, [
@@ -250,11 +249,6 @@ const DatasetDetailsPage: FunctionComponent = () => {
               url: getDatabaseSchemaDetailsPath(
                 databaseSchemaFullyQualifiedName
               ),
-            },
-            {
-              name: getEntityName(res),
-              url: '',
-              activeTitle: true,
             },
           ]);
 
@@ -419,22 +413,20 @@ const DatasetDetailsPage: FunctionComponent = () => {
     }
   };
 
-  const onTagUpdate = (updatedTable: Table) => {
-    saveUpdatedTableData(updatedTable)
-      .then((res) => {
-        if (res) {
-          setTableDetails((previous) => ({ ...previous, tags: res.tags }));
-          getEntityFeedCount();
-        } else {
-          showErrorToast(jsonData['api-error-messages']['update-tags-error']);
-        }
-      })
-      .catch((err: AxiosError) => {
-        showErrorToast(
-          err,
-          jsonData['api-error-messages']['update-tags-error']
-        );
-      });
+  const onTagUpdate = async (updatedTable: Table) => {
+    try {
+      const res = await saveUpdatedTableData(updatedTable);
+      setTableDetails((previous) => ({
+        ...previous,
+        tags: sortTagsCaseInsensitive(res.tags || []),
+      }));
+      getEntityFeedCount();
+    } catch (err) {
+      showErrorToast(
+        err as AxiosError,
+        jsonData['api-error-messages']['update-tags-error']
+      );
+    }
   };
 
   const settingsUpdateHandler = async (updatedTable: Table): Promise<void> => {

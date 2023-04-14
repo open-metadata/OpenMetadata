@@ -45,7 +45,7 @@ function SummaryListItem({
           {entityDetails.title}
         </Col>
         <Col span={24}>
-          <Row className="text-xs font-300" gutter={[4, 4]}>
+          <Row className="text-xs font-thin" gutter={[4, 4]}>
             <Col>
               {entityDetails.type && (
                 <Space size={4}>

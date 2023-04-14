@@ -43,7 +43,18 @@ const GlossaryTermReferencesModal = ({
   };
 
   useEffect(() => {
-    isVisible ? form.setFieldValue('references', references) : null;
+    if (isVisible) {
+      const newRefs =
+        references.length > 0
+          ? references
+          : [
+              {
+                name: '',
+                endpoint: '',
+              },
+            ];
+      form.setFieldValue('references', newRefs);
+    }
   }, [isVisible]);
 
   return (

@@ -121,7 +121,7 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
             name={name}
             tooltip={t('message.queries-result-test')}>
             <SchemaEditor
-              className="profiler-setting-sql-editor"
+              className="custom-query-editor query-editor-h-200"
               mode={{ name: CSMode.SQL }}
               options={{
                 readOnly: false,

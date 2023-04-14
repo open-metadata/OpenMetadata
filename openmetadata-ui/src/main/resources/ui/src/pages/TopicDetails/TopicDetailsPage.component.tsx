@@ -54,11 +54,11 @@ import {
   getCurrentUserId,
   getEntityMissingError,
   getFeedCounts,
+  sortTagsCaseInsensitive,
 } from '../../utils/CommonUtils';
 import { getEntityFeedLink, getEntityName } from '../../utils/EntityUtils';
 import { deletePost, updateThreadData } from '../../utils/FeedUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
-import { serviceTypeLogo } from '../../utils/ServiceUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import {
   getCurrentTopicTab,
@@ -210,12 +210,6 @@ const TopicDetailsPage: FunctionComponent = () => {
                     ServiceCategory.MESSAGING_SERVICES
                   )
                 : '',
-              imgSrc: serviceType ? serviceTypeLogo(serviceType) : undefined,
-            },
-            {
-              name: getEntityName(res),
-              url: '',
-              activeTitle: true,
             },
           ]);
 
@@ -338,22 +332,20 @@ const TopicDetailsPage: FunctionComponent = () => {
     });
   };
 
-  const onTagUpdate = (updatedTopic: Topic) => {
-    saveUpdatedTopicData(updatedTopic)
-      .then((res) => {
-        if (res) {
-          setTopicDetails(res);
-          getEntityFeedCount();
-        } else {
-          showErrorToast(jsonData['api-error-messages']['update-tags-error']);
-        }
-      })
-      .catch((err: AxiosError) => {
-        showErrorToast(
-          err,
-          jsonData['api-error-messages']['update-tags-error']
-        );
+  const onTagUpdate = async (updatedTopic: Topic) => {
+    try {
+      const res = await saveUpdatedTopicData(updatedTopic);
+      setTopicDetails({
+        ...res,
+        tags: sortTagsCaseInsensitive(res.tags || []),
       });
+      getEntityFeedCount();
+    } catch (err) {
+      showErrorToast(
+        err as AxiosError,
+        jsonData['api-error-messages']['update-tags-error']
+      );
+    }
   };
 
   const versionHandler = () => {
