@@ -334,18 +334,18 @@ class AirflowSource(PipelineServiceSource):
 
     def get_user_details(self, email) -> Optional[EntityReference]:
         user = self.metadata.get_user_by_email(email=email)
-        return user
+        if user:
+            return EntityReference(id=user.id.__root__, type="user")
+        return None
 
-    def get_owners(self, owners) -> Optional[EntityReference]:
+    def get_owner(self, owners) -> Optional[EntityReference]:
         try:
             if isinstance(owners, str) and owners:
                 return self.get_user_details(email=owners)
 
             if isinstance(owners, List) and owners:
                 for owner in owners or []:
-                    user = self.get_user_details(email=owner)
-                    if user:
-                        return EntityReference(id=user.id.__root__, type="user")
+                    return self.get_user_details(email=owner)
 
             logger.debug(f"No user for found for email {owners} in OMD")
         except Exception as exc:
@@ -376,7 +376,7 @@ class AirflowSource(PipelineServiceSource):
                     pipeline_details, self.service_connection.hostPort
                 ),
                 service=self.context.pipeline_service.fullyQualifiedName.__root__,
-                owner=self.get_owners(pipeline_details.owners),
+                owner=self.get_owner(pipeline_details.owners),
             )
             yield pipeline_request
             self.register_record(pipeline_request=pipeline_request)
@@ -396,7 +396,7 @@ class AirflowSource(PipelineServiceSource):
             logger.warning(f"Wild error ingesting pipeline {pipeline_details} - {err}")
 
     @staticmethod
-    def parse_xlets(xlet: List[Any]) -> Optional[List[str]]:
+    def parse_xlets(xlet: Optional[List[Any]]) -> Optional[List[str]]:
         """
         Parse airflow xlets for 2.1.4. E.g.,
 
@@ -406,7 +406,7 @@ class AirflowSource(PipelineServiceSource):
         :param xlet: airflow v2 xlet dict
         :return: table FQN list or None
         """
-        if len(xlet) and isinstance(xlet[0], dict):
+        if xlet and len(xlet) and isinstance(xlet[0], dict):
             tables = xlet[0].get("__var").get("tables")
             if tables and isinstance(tables, list):
                 return tables
