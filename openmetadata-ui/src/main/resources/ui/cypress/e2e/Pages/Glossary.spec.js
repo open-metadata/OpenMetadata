@@ -48,12 +48,13 @@ const visitGlossaryTermPage = (termName, fqn, fetchPermission) => {
     .should('be.visible')
     .click();
 
-  cy.get('.ant-tabs .glossary-overview-tab').should('be.visible').click();
   verifyResponseStatusCode('@getGlossaryTerms', 200);
   verifyResponseStatusCode('@getTagsList', 200);
+  verifyResponseStatusCode('@glossaryAPI', 200);
   if (fetchPermission) {
     verifyResponseStatusCode('@waitForTermPermission', 200);
   }
+  cy.get('.ant-tabs .glossary-overview-tab').should('be.visible').click();
 };
 
 const checkDisplayName = (displayName) => {
