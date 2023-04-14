@@ -98,7 +98,7 @@ const DashboardDetailsProps = {
   removeLineageHandler: jest.fn(),
   entityLineageHandler: jest.fn(),
   entityThread: [],
-  isentityThreadLoading: false,
+  isEntityThreadLoading: false,
   postFeedHandler: jest.fn(),
   feedCount: 0,
   entityFieldThreadCount: [],

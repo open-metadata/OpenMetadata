@@ -14,8 +14,9 @@
 import { Card, Col, Row, Skeleton, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-// css
+import { ActivityFilters } from 'components/ActivityFeed/ActivityFeedList/ActivityFeedList.interface';
 import QueryCount from 'components/common/QueryCount/QueryCount.component';
+// css
 import PageLayoutV1 from 'components/containers/PageLayoutV1';
 import { isEqual, isNil, isUndefined } from 'lodash';
 import { EntityTags, ExtraInfo } from 'Models';
@@ -103,7 +104,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
   dataModel,
   tagUpdateHandler,
   entityThread,
-  isentityThreadLoading,
+  isEntityThreadLoading,
   postFeedHandler,
   feedCount,
   entityFieldThreadCount,
@@ -119,8 +120,6 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
   const { t } = useTranslation();
   const [isEdit, setIsEdit] = useState(false);
   const [usage, setUsage] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-
   const [threadLink, setThreadLink] = useState<string>('');
   const [threadType, setThreadType] = useState<ThreadType>(
     ThreadType.Conversation
@@ -132,6 +131,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
     DEFAULT_ENTITY_PERMISSION
   );
 
+  const [activityFilter, setActivityFilter] = useState<ActivityFilters>();
   const {
     tier,
     tableTags,
@@ -159,7 +159,6 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
   const { getEntityPermission } = usePermissionProvider();
 
   const fetchResourcePermission = useCallback(async () => {
-    setIsLoading(true);
     try {
       const tablePermission = await getEntityPermission(
         ResourceEntity.TABLE,
@@ -173,8 +172,6 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
           entity: t('label.resource-permission-lowercase'),
         })
       );
-    } finally {
-      setIsLoading(false);
     }
   }, [tableDetails.id, getEntityPermission, setTablePermissions]);
 
@@ -574,17 +571,22 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
     setThreadLink('');
   };
 
-  const getLoader = () => {
-    return isentityThreadLoading ? <Loader /> : null;
-  };
+  const loader = useMemo(
+    () => (isEntityThreadLoading ? <Loader /> : null),
+    [isEntityThreadLoading]
+  );
 
   const fetchMoreThread = (
     isElementInView: boolean,
     pagingObj: Paging,
     isLoading: boolean
   ) => {
-    if (isElementInView && pagingObj?.after && !isLoading) {
-      fetchFeedHandler(pagingObj.after);
+    if (isElementInView && pagingObj?.after && !isLoading && activeTab === 2) {
+      fetchFeedHandler(
+        pagingObj.after,
+        activityFilter?.feedFilter,
+        activityFilter?.threadType
+      );
     }
   };
 
@@ -593,19 +595,15 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
   }, [usageSummary]);
 
   useEffect(() => {
-    fetchMoreThread(isInView as boolean, paging, isentityThreadLoading);
-  }, [paging, isentityThreadLoading, isInView]);
+    fetchMoreThread(isInView as boolean, paging, isEntityThreadLoading);
+  }, [paging, isEntityThreadLoading, isInView]);
 
-  const handleFeedFilterChange = useCallback(
-    (feedType, threadType) => {
-      fetchFeedHandler(paging.after, feedType, threadType);
-    },
-    [paging]
-  );
+  const handleFeedFilterChange = useCallback((feedType, threadType) => {
+    setActivityFilter({ feedFilter: feedType, threadType });
+    fetchFeedHandler(undefined, feedType, threadType);
+  }, []);
 
-  return isLoading ? (
-    <Loader />
-  ) : (
+  return (
     <PageContainerV1>
       <PageLayoutV1
         pageTitle={t('label.entity-detail-plural', {
@@ -740,31 +738,25 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
               </Card>
             )}
             {activeTab === 2 && (
-              <Card className="m-y-md h-full">
-                <div
-                  className="tw-py-4 tw-px-7 tw-grid tw-grid-cols-3 entity-feed-list tw--mx-7 tw--my-4"
-                  id="activityfeed">
-                  <div />
-                  <ActivityFeedList
-                    isEntityFeed
-                    withSidePanel
-                    className=""
-                    deletePostHandler={deletePostHandler}
-                    entityName={entityName}
-                    feedList={entityThread}
-                    isFeedLoading={isentityThreadLoading}
-                    postFeedHandler={postFeedHandler}
-                    updateThreadHandler={updateThreadHandler}
-                    onFeedFiltersUpdate={handleFeedFilterChange}
-                  />
-                  <div />
-                </div>
-                <div
-                  data-testid="observer-element"
-                  id="observer-element"
-                  ref={elementRef as RefObject<HTMLDivElement>}>
-                  {getLoader()}
-                </div>
+              <Card className="m-y-md h-min-full">
+                <Row>
+                  <Col data-testid="activityfeed" offset={3} span={18}>
+                    <ActivityFeedList
+                      isEntityFeed
+                      withSidePanel
+                      className=""
+                      deletePostHandler={deletePostHandler}
+                      entityName={entityName}
+                      feedList={entityThread}
+                      isFeedLoading={isEntityThreadLoading}
+                      postFeedHandler={postFeedHandler}
+                      updateThreadHandler={updateThreadHandler}
+                      onFeedFiltersUpdate={handleFeedFilterChange}
+                    />
+                  </Col>
+                </Row>
+
+                {loader}
               </Card>
             )}
             {activeTab === 3 && (
@@ -830,6 +822,12 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
               </Card>
             )}
           </div>
+
+          <div
+            data-testid="observer-element"
+            id="observer-element"
+            ref={elementRef as RefObject<HTMLDivElement>}
+          />
           {threadLink ? (
             <ActivityThreadPanel
               createThread={createThread}

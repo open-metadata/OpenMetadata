@@ -64,6 +64,7 @@ class RunnerTest(TestCase):
         session=session,
         table=User,
         profile_sample_config=ProfileSampleConfig(profile_sample=50.0),
+        sample_columns=[col.name for col in User.__table__.columns],
     )
     sample = sampler.random_sample()
 
