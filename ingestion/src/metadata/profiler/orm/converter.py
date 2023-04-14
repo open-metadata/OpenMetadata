@@ -126,6 +126,7 @@ def build_orm_col(
     table_service_type,
     parent: Optional[str] = None,
     is_array: bool = False,
+    array_col: Optional[str] = None,
 ) -> sqlalchemy.Column:
     """
     Cook the ORM column from our metadata instance
@@ -150,19 +151,30 @@ def build_orm_col(
         "quote": check_if_should_quote_column_name(table_service_type)
         or check_snowflake_case_sensitive(table_service_type, col.name.__root__),
         "key": str(
-            col.name.__root__
+            name
         ).lower(),  # Add lowercase column name as key for snowflake case sensitive columns
     }
 
-    sqa_column = sqlalchemy.Column(
-        **kwargs,
-    )
-
     # pylint: disable=protected-access
     if table_service_type == databaseService.DatabaseServiceType.BigQuery and is_array:
+        if array_col:
+            # If array_col is set, then we are in a nested structure processing
+            # children. We'll need to force the name to be formatted this way 
+            # `<unnest_alias>`.`<column_name>`
+            kwargs.update({
+                "name": f"`{array_col if array_col else name}`.{col.name.__root__}",
+                "quote": False,
+            })
+        sqa_column = sqlalchemy.Column(
+            **kwargs,
+        )
         sqa_column._is_array = is_array
-        sqa_column._array_col = name.split(".")[0]
+        sqa_column._array_col = array_col if array_col else name
+
     else:
+        sqa_column = sqlalchemy.Column(
+            **kwargs,
+        )
         sqa_column._is_array = False
         sqa_column._array_col = None
     # pylint: enable=protected-access
@@ -176,6 +188,7 @@ def get_columns(
     start: int = 0,
     parent: Optional[str] = None,
     is_array: bool = False,
+    array_col: Optional[str] = None,
 ) -> dict:
     """Build dictionnary of ORM columns
 
@@ -196,15 +209,14 @@ def get_columns(
         if name in SQA_RESERVED_ATTRIBUTES:
             name = f"{name}_"
 
-        if col.dataType == DataType.ARRAY:
-            is_array = True
-        cols[name] = build_orm_col(idx, col, service_type, parent, is_array)
+        if col.dataType == DataType.ARRAY or is_array:
+            cols[name] = build_orm_col(idx, col, service_type, parent, True, array_col)
+        else:
+            cols[name] = build_orm_col(idx, col, service_type, parent, False)
 
         if col.children:
             # if parent is an array we'll need to process the children as array
             # by unnesting them
-            if is_array or col.dataType == DataType.ARRAY:
-                is_array = True
             cols = {
                 **cols,
                 **get_columns(
@@ -212,7 +224,8 @@ def get_columns(
                     service_type,
                     start=idx,
                     parent=name,
-                    is_array=is_array,
+                    is_array=True if is_array or col.dataType == DataType.ARRAY else False,
+                    array_col=name if is_array or col.dataType == DataType.ARRAY else None,
                 ),
             }
 

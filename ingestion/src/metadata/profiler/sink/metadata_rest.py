@@ -16,6 +16,7 @@ import traceback
 from typing import Optional
 
 from metadata.config.common import ConfigModel
+from metadata.generated.schema.api.data.createTableProfile import CreateTableProfileRequest
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
@@ -56,6 +57,23 @@ class MetadataRestSink(Sink[Entity]):
     def create(cls, config_dict: dict, metadata_config: OpenMetadataConnection):
         config = MetadataRestSinkConfig.parse_obj(config_dict)
         return cls(config, metadata_config)
+    
+    @staticmethod
+    def clean_up_profile_columns(profile: CreateTableProfileRequest) -> CreateTableProfileRequest:
+        """clean up "`" character used for BQ array
+
+        Args:
+            profile (CreateTableProfileRequest): profiler request
+
+        Returns:
+            CreateTableProfileRequest: profiler request modified
+        """
+        column_profile = profile.columnProfile
+        for column in column_profile:
+            column.name = column.name.replace("`", "")
+
+        profile.columnProfile = column_profile
+        return profile
 
     def close(self) -> None:
         self.metadata.close()
@@ -63,7 +81,7 @@ class MetadataRestSink(Sink[Entity]):
     def write_record(self, record: ProfilerResponse) -> None:
         try:
             self.metadata.ingest_profile_data(
-                table=record.table, profile_request=record.profile
+                table=record.table, profile_request=self.clean_up_profile_columns(record.profile)
             )
             logger.info(
                 f"Successfully ingested profile metrics for {record.table.fullyQualifiedName.__root__}"
