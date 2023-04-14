@@ -49,7 +49,7 @@ const SearchedData: React.FC<SearchedDataProps> = ({
   selectedEntityId,
   handleSummaryPanelDisplay,
 }) => {
-  const highlightSearchResult = () => {
+  const searchResultCards = useMemo(() => {
     return data.map(({ _source: table, highlight }, index) => {
       let tDesc = table.description ?? '';
       const highLightedTexts = highlight?.description || [];
@@ -106,7 +106,12 @@ const SearchedData: React.FC<SearchedDataProps> = ({
         </div>
       );
     });
-  };
+  }, [
+    data,
+    isSummaryPanelVisible,
+    handleSummaryPanelDisplay,
+    selectedEntityId,
+  ]);
 
   const ResultCount = () => {
     if (showResultCount && (isFilterSelected || searchText)) {
@@ -146,13 +151,15 @@ const SearchedData: React.FC<SearchedDataProps> = ({
                     <div
                       className="tw-grid tw-grid-rows-1 tw-grid-cols-1"
                       data-testid="search-results">
-                      {highlightSearchResult()}
+                      {searchResultCards}
                       <Pagination
                         hideOnSinglePage
                         className="text-center"
                         current={isNumber(Number(page)) ? Number(page) : 1}
                         pageSize={
-                          isNumber(Number(size)) ? Number(size) : PAGE_SIZE
+                          size && isNumber(Number(size))
+                            ? Number(size)
+                            : PAGE_SIZE
                         }
                         pageSizeOptions={[10, 25, 50]}
                         total={totalValue}

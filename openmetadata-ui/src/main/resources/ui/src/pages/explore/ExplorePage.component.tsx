@@ -239,7 +239,7 @@ const ExplorePage: FunctionComponent = () => {
   const size = useMemo(() => {
     const sizeParam = parsedSearch.size;
     if (!isString(sizeParam) || isNaN(Number.parseInt(sizeParam))) {
-      return 1;
+      return PAGE_SIZE;
     }
 
     return Number.parseInt(sizeParam);
