@@ -62,9 +62,13 @@ we'll join the keys and get [
 ]
 and we'll treat this as independent sets of lineage
 """
+import logging
+import traceback
 from typing import Dict, List, Optional, Set
 
 from pydantic import BaseModel
+
+logger = logging.getLogger("airflow.task")
 
 INLETS_ATTR = "_inlets"
 OUTLETS_ATTR = "_outlets"
@@ -112,14 +116,14 @@ def get_xlets_from_operator(
     :param xlet_mode: get inlet or outlet
     :return: list of tables FQN
     """
-    xlet = getattr(operator, xlet_mode)
+    xlet = getattr(operator, xlet_mode) if hasattr(operator, xlet_mode) else []
     xlet_data = parse_xlets(xlet)
 
     if not xlet_data:
-        operator.log.debug(f"Not finding proper {xlet_mode} in task {operator.task_id}")
+        logger.debug(f"Not finding proper {xlet_mode} in task {operator.task_id}")
 
     else:
-        operator.log.info(f"Found {xlet_mode} {xlet_data} in task {operator.task_id}")
+        logger.info(f"Found {xlet_mode} {xlet_data} in task {operator.task_id}")
 
     return xlet_data
 
@@ -134,12 +138,28 @@ def get_xlets_from_dag(dag: "DAG") -> List[XLets]:
 
     # First, grab all the inlets and outlets from all tasks grouped by keys
     for task in dag.tasks:
-        _inlets.update(
-            get_xlets_from_operator(operator=task, xlet_mode=INLETS_ATTR) or []
-        )
-        _outlets.update(
-            get_xlets_from_operator(operator=task, xlet_mode=OUTLETS_ATTR) or []
-        )
+        try:
+            _inlets.update(
+                get_xlets_from_operator(
+                    operator=task,
+                    xlet_mode=INLETS_ATTR if hasattr(task, INLETS_ATTR) else "inlets",
+                )
+                or []
+            )
+            _outlets.update(
+                get_xlets_from_operator(
+                    operator=task,
+                    xlet_mode=OUTLETS_ATTR if hasattr(task, INLETS_ATTR) else "outlets",
+                )
+                or []
+            )
+
+        except Exception as exc:
+            error_msg = (
+                f"Error while getting inlets and outlets for task - {task} - {exc}"
+            )
+            logger.error(error_msg)
+            logger.error(traceback.format_exc())
 
     # We expect to have the same keys in both inlets and outlets dicts
     # We will then iterate over the inlet keys to build the list of XLets

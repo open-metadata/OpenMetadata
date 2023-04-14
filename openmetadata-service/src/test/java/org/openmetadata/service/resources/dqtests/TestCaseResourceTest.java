@@ -65,7 +65,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
         Entity.TEST_CASE,
         org.openmetadata.schema.tests.TestCase.class,
         TestCaseResource.TestCaseList.class,
-        "testCases",
+        "dataQuality/testCases",
         TestCaseResource.FIELDS);
   }
 

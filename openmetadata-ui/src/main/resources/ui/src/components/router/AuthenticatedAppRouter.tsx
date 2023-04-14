@@ -212,6 +212,12 @@ const TestSuitePage = withSuspenseFallback(
   React.lazy(() => import('pages/TestSuitePage/TestSuitePage'))
 );
 
+const TestCaseDetailsPage = withSuspenseFallback(
+  React.lazy(
+    () => import('pages/TestCaseDetailsPage/TestCaseDetailsPage.component')
+  )
+);
+
 const LogsViewer = withSuspenseFallback(
   React.lazy(() => import('pages/LogsViewer/LogsViewer.component'))
 );
@@ -238,6 +244,9 @@ const ContainerPage = withSuspenseFallback(
 
 const QueryPage = withSuspenseFallback(
   React.lazy(() => import('pages/QueryPage/QueryPage.component'))
+);
+const AddQueryPage = withSuspenseFallback(
+  React.lazy(() => import('pages/AddQueryPage/AddQueryPage.component'))
 );
 
 const AuthenticatedAppRouter: FunctionComponent = () => {
@@ -291,6 +300,7 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
       <Route exact component={ServicePage} path={ROUTES.SERVICE_WITH_TAB} />
       <Route exact component={AddServicePage} path={ROUTES.ADD_SERVICE} />
       <Route exact component={QueryPage} path={ROUTES.QUERY_FULL_SCREEN_VIEW} />
+      <Route exact component={AddQueryPage} path={ROUTES.ADD_QUERY} />
       <AdminProtectedRoute
         exact
         component={AddIngestionPage}
@@ -591,6 +601,15 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
           permissions
         )}
         path={ROUTES.TEST_SUITES}
+      />
+      <AdminProtectedRoute
+        exact
+        component={TestCaseDetailsPage}
+        hasPermission={userPermissions.hasViewPermissions(
+          ResourceEntity.TEST_CASE,
+          permissions
+        )}
+        path={ROUTES.TEST_CASE_DETAILS}
       />
       <Route exact component={DataInsightPage} path={ROUTES.DATA_INSIGHT} />
       <Route

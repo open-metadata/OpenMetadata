@@ -198,9 +198,14 @@ const ModelTab = ({
       },
       {
         title: t('label.type'),
-        dataIndex: 'dataTypeDisplay',
-        key: 'dataTypeDisplay',
+        dataIndex: 'dataType',
+        key: 'dataType',
         width: 100,
+        render: (dataType, record) => (
+          <Typography.Text>
+            {record.dataTypeDisplay || dataType}
+          </Typography.Text>
+        ),
       },
       {
         title: t('label.description'),

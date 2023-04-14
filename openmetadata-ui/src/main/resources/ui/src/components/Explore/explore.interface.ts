@@ -82,8 +82,7 @@ export interface ExploreProps {
   showDeleted: boolean;
   onChangeShowDeleted: (showDeleted: boolean) => void;
 
-  page?: number;
-  onChangePage?: (page: number) => void;
+  onChangePage?: (page: number, size?: number) => void;
 
   loading?: boolean;
 
@@ -126,6 +125,13 @@ export type EntityUnion =
   | Glossary
   | Tag
   | DashboardDataModel;
+
+export type EntityWithServices =
+  | Topic
+  | Dashboard
+  | Pipeline
+  | Mlmodel
+  | Container;
 
 export interface EntityDetailsObjectInterface {
   details: SearchedDataProps['data'][number]['_source'];

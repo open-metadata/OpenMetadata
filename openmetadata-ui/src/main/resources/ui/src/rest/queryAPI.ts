@@ -86,3 +86,10 @@ export const updateQueryVote = async (id: string, data: QueryVote) => {
 
   return response.data;
 };
+export const deleteQuery = async (id: string) => {
+  const response = await APIClient.delete<AxiosResponse<Query>>(
+    `${BASE_URL}/${id}`
+  );
+
+  return response.data;
+};

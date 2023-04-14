@@ -292,6 +292,7 @@ const ColumnProfileTable: FC<ColumnProfileTableProps> = ({
         columns={tableColumn}
         dataSource={data}
         pagination={false}
+        rowKey="name"
         scroll={{ x: 1500 }}
         size="small"
       />

@@ -37,6 +37,7 @@ export enum EntityType {
   ROLE = 'role',
   POLICY = 'policy',
   TEST_SUITE = 'testSuite',
+  TEST_CASE = 'testCase',
   DATA_INSIGHT_CHART = 'dataInsightChart',
   KPI = 'kpi',
   ALERT = 'alert',
@@ -124,4 +125,5 @@ export enum EntityInfo {
   SIZE = 'size',
   NUMBER_OF_OBJECTS = 'number-of-object-plural',
   DATA_MODEL_TYPE = 'data-model-type',
+  QUERIES = 'queries',
 }
