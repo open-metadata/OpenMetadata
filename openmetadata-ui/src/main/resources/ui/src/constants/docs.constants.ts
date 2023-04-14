@@ -48,6 +48,9 @@ export const DATA_INSIGHT_DOCS =
 export const INGESTION_DOCS =
   'https://docs.open-metadata.org/connectors/ingestion/workflows';
 
+export const USAGE_DOCS =
+  'https://docs.open-metadata.org/connectors/ingestion/workflows/usage';
+
 export const LOCAL_DEPLOYMENT =
   'https://docs.open-metadata.org/quick-start/local-deployment';
 

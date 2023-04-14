@@ -12,19 +12,21 @@
  */
 
 import { CloseOutlined } from '@ant-design/icons';
-import { Col, Drawer, Row } from 'antd';
-import TableDataCardTitle from 'components/common/table-data-card-v2/TableDataCardTitle.component';
+import { Drawer } from 'antd';
+import { EntityHeader } from 'components/Entity/EntityHeader/EntityHeader.component';
 import { EntityType } from 'enums/entity.enum';
 import { Tag } from 'generated/entity/classification/tag';
 import { Container } from 'generated/entity/data/container';
+import { Dashboard } from 'generated/entity/data/dashboard';
 import { GlossaryTerm } from 'generated/entity/data/glossaryTerm';
+import { Table } from 'generated/entity/data/table';
 import { get } from 'lodash';
-import React, { useMemo, useState } from 'react';
+import React, { useMemo } from 'react';
 import { useParams } from 'react-router-dom';
-import { Dashboard } from '../../../generated/entity/data/dashboard';
+import { getEntityBreadcrumbs } from 'utils/EntityUtils';
+import { getServiceIcon } from 'utils/TableUtils';
 import { Mlmodel } from '../../../generated/entity/data/mlmodel';
 import { Pipeline } from '../../../generated/entity/data/pipeline';
-import { Table } from '../../../generated/entity/data/table';
 import { Topic } from '../../../generated/entity/data/topic';
 import ContainerSummary from './ContainerSummary/ContainerSummary.component';
 import DashboardSummary from './DashboardSummary/DashboardSummary.component';
@@ -42,69 +44,43 @@ export default function EntitySummaryPanel({
   handleClosePanel,
 }: EntitySummaryPanelProps) {
   const { tab } = useParams<{ tab: string }>();
-  const [currentSearchIndex, setCurrentSearchIndex] = useState<EntityType>();
 
   const summaryComponent = useMemo(() => {
     const type = get(entityDetails, 'details.entityType') ?? EntityType.TABLE;
+    const entity = entityDetails.details;
     switch (type) {
       case EntityType.TABLE:
-        setCurrentSearchIndex(EntityType.TABLE);
-
-        return <TableSummary entityDetails={entityDetails.details as Table} />;
+        return <TableSummary entityDetails={entity as Table} />;
 
       case EntityType.TOPIC:
-        setCurrentSearchIndex(EntityType.TOPIC);
-
-        return <TopicSummary entityDetails={entityDetails.details as Topic} />;
+        return <TopicSummary entityDetails={entity as Topic} />;
 
       case EntityType.DASHBOARD:
-        setCurrentSearchIndex(EntityType.DASHBOARD);
-
-        return (
-          <DashboardSummary
-            entityDetails={entityDetails.details as Dashboard}
-          />
-        );
+        return <DashboardSummary entityDetails={entity as Dashboard} />;
 
       case EntityType.PIPELINE:
-        setCurrentSearchIndex(EntityType.PIPELINE);
-
-        return (
-          <PipelineSummary entityDetails={entityDetails.details as Pipeline} />
-        );
+        return <PipelineSummary entityDetails={entity as Pipeline} />;
 
       case EntityType.MLMODEL:
-        setCurrentSearchIndex(EntityType.MLMODEL);
-
-        return (
-          <MlModelSummary entityDetails={entityDetails.details as Mlmodel} />
-        );
+        return <MlModelSummary entityDetails={entity as Mlmodel} />;
 
       case EntityType.CONTAINER:
-        setCurrentSearchIndex(EntityType.CONTAINER);
+        return <ContainerSummary entityDetails={entity as Container} />;
 
-        return (
-          <ContainerSummary
-            entityDetails={entityDetails.details as Container}
-          />
-        );
       case EntityType.GLOSSARY_TERM:
-        setCurrentSearchIndex(EntityType.GLOSSARY);
+        return <GlossaryTermSummary entityDetails={entity as GlossaryTerm} />;
 
-        return (
-          <GlossaryTermSummary
-            entityDetails={entityDetails.details as GlossaryTerm}
-          />
-        );
       case EntityType.TAG:
-        setCurrentSearchIndex(EntityType.TAG);
-
-        return <TagsSummary entityDetails={entityDetails.details as Tag} />;
+        return <TagsSummary entityDetails={entity as Tag} />;
 
       default:
         return null;
     }
   }, [tab, entityDetails]);
+
+  const icon = useMemo(() => {
+    return getServiceIcon(entityDetails.details);
+  }, [entityDetails]);
 
   return (
     <Drawer
@@ -122,16 +98,16 @@ export default function EntitySummaryPanel({
       headerStyle={{ padding: 16 }}
       mask={false}
       title={
-        <Row gutter={[0, 6]}>
-          <Col span={24}>
-            <TableDataCardTitle
-              isPanel
-              dataTestId="summary-panel-title"
-              searchIndex={currentSearchIndex as EntityType}
-              source={entityDetails.details}
-            />
-          </Col>
-        </Row>
+        <EntityHeader
+          titleIsLink
+          breadcrumb={getEntityBreadcrumbs(
+            entityDetails.details,
+            entityDetails.details.entityType as EntityType
+          )}
+          entityData={entityDetails.details}
+          entityType={entityDetails.details.entityType as EntityType}
+          icon={icon}
+        />
       }
       width="100%">
       {summaryComponent}

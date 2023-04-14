@@ -283,6 +283,7 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
               }
               extraInfo={getExtraInfo()}
               followersList={[]}
+              serviceType={currentVersionData.serviceType ?? ''}
               tags={getTags()}
               tier={{} as TagLabel}
               titleLinks={slashedDashboardName}

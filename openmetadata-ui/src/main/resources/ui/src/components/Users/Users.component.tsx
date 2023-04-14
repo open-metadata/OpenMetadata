@@ -25,7 +25,6 @@ import { ReactComponent as IconTeamsGrey } from 'assets/svg/teams-grey.svg';
 import { AxiosError } from 'axios';
 import TableDataCardV2 from 'components/common/table-data-card-v2/TableDataCardV2';
 import TeamsSelectable from 'components/TeamsSelectable/TeamsSelectable';
-import { SearchIndex } from 'enums/search.enum';
 import { capitalize, isEmpty, isEqual, toLower } from 'lodash';
 import { observer } from 'mobx-react';
 import React, {
@@ -848,12 +847,11 @@ const Users = ({
         <div data-testid="table-container">
           {entityData.data.length ? (
             <>
-              {entityData.data.map(({ _source, _index, _id = '' }, index) => (
+              {entityData.data.map(({ _source, _id = '' }, index) => (
                 <TableDataCardV2
                   className="m-b-sm cursor-pointer"
                   id={_id}
                   key={index}
-                  searchIndex={_index as SearchIndex}
                   source={_source}
                 />
               ))}

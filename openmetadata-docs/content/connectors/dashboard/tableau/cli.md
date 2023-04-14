@@ -57,16 +57,20 @@ source:
   serviceConnection:
     config:
       type: Tableau
-      username: username
-      password: password
+      # For Tableau, choose one of basic or access token authentication
+      # # For basic authentication
+      # authType:
+      #   username: username
+      #   password: password
+      # # For access token authentication
+      # authType:
+      #   personalAccessTokenName: personal_access_token_name
+      #   personalAccessTokenSecret: personal_access_token_secret
       env: tableau_prod
       hostPort: http://localhost
       siteName: site_name
       siteUrl: site_url
       apiVersion: api_version
-      # If not setting user and password
-      # personalAccessTokenName: personal_access_token_name
-      # personalAccessTokenSecret: personal_access_token_secret
   sourceConfig:
     config:
       type: DashboardMetadata
@@ -113,16 +117,20 @@ source:
   serviceConnection:
     config:
       type: Tableau
-      username: username
-      password: password
+      # For Tableau, choose one of basic or access token authentication
+      # # For basic authentication
+      # authType:
+      #   username: username
+      #   password: password
+      # # For access token authentication
+      # authType:
+      #   personalAccessTokenName: personal_access_token_name
+      #   personalAccessTokenSecret: personal_access_token_secret
       env: tableau_prod
       hostPort: http://localhost
       siteName: ""
       siteUrl: ""
       apiVersion: api_version
-      # If not setting user and password
-      # personalAccessTokenName: personal_access_token_name
-      # personalAccessTokenSecret: personal_access_token_secret
   sourceConfig:
     config:
       overrideOwner: True
@@ -173,16 +181,20 @@ source:
   serviceConnection:
     config:
       type: Tableau
-      username: username
-      password: password
+      # For Tableau, choose one of basic or access token authentication
+      # # For basic authentication
+      # authType:
+      #   username: username
+      #   password: password
+      # # For access token authentication
+      # authType:
+      #   personalAccessTokenName: personal_access_token_name
+      #   personalAccessTokenSecret: personal_access_token_secret
       env: tableau_prod
       hostPort: http://localhost
       siteName: openmetadata
       siteUrl: openmetadata
       apiVersion: api_version
-      # If not setting user and password
-      # personalAccessTokenName: personal_access_token_name
-      # personalAccessTokenSecret: personal_access_token_secret
   sourceConfig:
     config:
       type: DashboardMetadata
@@ -218,15 +230,18 @@ workflowConfig:
 
 #### Source Configuration - Service Connection
 
-- **hostPort**: URL to the Tableau instance.
-- **username**: Specify the User to connect to Tableau. It should have enough privileges to read all the metadata.
-- **password**: Password for Tableau.
-- **apiVersion**: Tableau API version.
-- **siteName**: Tableau Site Name. To be kept empty if you are using the default Tableau site
-- **siteUrl**: Tableau Site Url. To be kept empty if you are using the default Tableau site
-- **personalAccessTokenName**: Access token. To be used if not logging in with user/password.
-- **personalAccessTokenSecret**: Access token Secret. To be used if not logging in with user/password.
-- **env**: Tableau Environment.
+- **Host and Port**: URL to the Tableau instance.
+- **Authentication Types**:
+  1. Basic Authenticaton
+    - Username: Specify the User to connect to Tableau. It should have enough privileges to read all the metadata.
+    - Password: Password for Tableau.
+  2. Access Token Authentication
+    - Personal Access Token: Access token. To be used if not logging in with user/password.
+    - Personal Access Token Secret: Access token Secret. To be used if not logging in with user/password.
+- **API Version**: Tableau API version. 
+- **Site Name**: Tableau Site Name. To be kept empty if you are using the default Tableau site
+- **Site Url**: Tableau Site Url. To be kept empty if you are using the default Tableau site
+- **Environment**: Tableau Environment.
 
 #### Source Configuration - Source Config
 

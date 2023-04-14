@@ -55,9 +55,9 @@ export type ListTestCaseResultsParams = Omit<
   endTs?: number;
 };
 
-const testCaseUrl = '/testCases';
-const testSuiteUrl = '/testSuites';
-const testDefinitionUrl = '/testDefinitions';
+const testCaseUrl = '/dataQuality/testCases';
+const testSuiteUrl = '/dataQuality/testSuites';
+const testDefinitionUrl = '/dataQuality/testDefinitions';
 
 // testCase section
 export const getListTestCase = async (params?: ListTestCaseParams) => {
@@ -84,6 +84,17 @@ export const getListTestCaseResults = async (
   });
 
   return response.data;
+};
+
+export const getTestCaseByFqn = async (
+  fqn: string,
+  params?: { fields?: string[] }
+) => {
+  const response = await APIClient.get<TestCase>(`/testCases/name/${fqn}`, {
+    params,
+  });
+
+  return response;
 };
 
 export const createTestCase = async (data: CreateTestCase) => {
@@ -184,7 +195,7 @@ export const restoreTestSuite = async (id: string) => {
   const response = await APIClient.put<
     RestoreRequestType,
     AxiosResponse<TestSuite>
-  >('/testSuites/restore', { id });
+  >('/dataQuality/testSuites/restore', { id });
 
   return response.data;
 };

@@ -13,9 +13,10 @@
 
 import classNames from 'classnames';
 import { ELASTICSEARCH_ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
-import { isUndefined, toString } from 'lodash';
+import { isUndefined } from 'lodash';
 import PropTypes from 'prop-types';
 import React from 'react';
+import { getEntityName } from 'utils/EntityUtils';
 import { PAGE_SIZE } from '../../constants/constants';
 import { MAX_RESULT_HITS } from '../../constants/explore.constants';
 import { Paging } from '../../generated/type/paging';
@@ -51,7 +52,7 @@ const SearchedData: React.FC<SearchedDataProps> = ({
   handleSummaryPanelDisplay,
 }) => {
   const highlightSearchResult = () => {
-    return data.map(({ _source: table, highlight, _index }, index) => {
+    return data.map(({ _source: table, highlight }, index) => {
       let tDesc = table.description ?? '';
       const highLightedTexts = highlight?.description || [];
 
@@ -65,7 +66,7 @@ const SearchedData: React.FC<SearchedDataProps> = ({
         });
       }
 
-      let name = toString(table.displayName);
+      let name = getEntityName(table);
       if (!isUndefined(highlight)) {
         name = highlight?.name?.join(' ') || name;
       }
@@ -102,7 +103,6 @@ const SearchedData: React.FC<SearchedDataProps> = ({
             handleSummaryPanelDisplay={handleSummaryPanelDisplay}
             id={`tabledatacard${index}`}
             matches={matches}
-            searchIndex={_index}
             source={{ ...table, name, description: tDesc }}
           />
         </div>

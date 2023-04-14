@@ -373,7 +373,7 @@
     <dependency>
       <groupId>org.eclipse.jetty.websocket</groupId>
       <artifactId>websocket-server</artifactId>
-      <version>9.4.50.v20221201</version>
+      <version>9.4.51.v20230217</version>
     </dependency>
     <dependency>
       <groupId>org.springframework</groupId>
