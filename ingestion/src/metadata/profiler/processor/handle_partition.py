@@ -115,7 +115,10 @@ class partition_filter_handler:
                 if self.build_sample:
                     return (
                         _self.session.query(
-                            *[Column(col_name) for col_name in _self.sample_columns],
+                            *[
+                                _self.table.__table__.c.get(col_name)
+                                for col_name in _self.sample_columns
+                            ],
                             (ModuloFn(RandomNumFn(), 100)).label(RANDOM_LABEL),
                         )
                         .select_from(_self.table)
