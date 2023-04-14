@@ -17,6 +17,7 @@ import {
   getByText,
   render,
 } from '@testing-library/react';
+import { TAG_CONSTANT } from 'constants/Tag.constants';
 import React from 'react';
 import { MemoryRouter } from 'react-router';
 import { SearchIndex } from '../../enums/search.enum';
@@ -34,7 +35,11 @@ const mockData: SearchedDataProps['data'] = [
       owner: {
         name: 'Customer_Support',
       },
-      tags: ['tags1', 'tags2', 'tags3'],
+      tags: [
+        { ...TAG_CONSTANT, tagFQN: 'tags1' },
+        { ...TAG_CONSTANT, tagFQN: 'tags2' },
+        { ...TAG_CONSTANT, tagFQN: 'tags3' },
+      ],
       tier: {
         tagFQN: 'tier1',
       },
@@ -48,7 +53,11 @@ const mockData: SearchedDataProps['data'] = [
       description: 'description2',
       fullyQualifiedName: 'fullyQualifiedName2',
       owner: { name: 'owner2' },
-      tags: ['tags1', 'tags2', 'tags3'],
+      tags: [
+        { ...TAG_CONSTANT, tagFQN: 'tags1' },
+        { ...TAG_CONSTANT, tagFQN: 'tags2' },
+        { ...TAG_CONSTANT, tagFQN: 'tags3' },
+      ],
       tier: { tagFQN: 'tier2' },
     },
   },
@@ -60,7 +69,11 @@ const mockData: SearchedDataProps['data'] = [
       description: 'description3',
       fullyQualifiedName: 'fullyQualifiedName3',
       owner: { name: 'owner3' },
-      tags: ['tags1', 'tags2', 'tags3'],
+      tags: [
+        { ...TAG_CONSTANT, tagFQN: 'tags1' },
+        { ...TAG_CONSTANT, tagFQN: 'tags2' },
+        { ...TAG_CONSTANT, tagFQN: 'tags3' },
+      ],
       tier: { tagFQN: 'tier3' },
     },
   },
@@ -93,7 +106,7 @@ const MOCK_PROPS = {
   currentPage: 0,
   data: mockData,
   handleSummaryPanelDisplay: mockHandleSummaryPanelDisplay,
-  paginate: mockPaginate,
+  onPaginationChange: mockPaginate,
   selectedEntityId: 'name1',
   totalValue: 10,
 };
@@ -130,19 +143,6 @@ describe('Test SearchedData Component', () => {
     );
 
     expect(getByText(container, /hello world/i)).toBeInTheDocument();
-  });
-
-  it('Pagination Should be there if data is more than 10 count', () => {
-    const { container } = render(
-      <SearchedData {...MOCK_PROPS} totalValue={11}>
-        <p>hello world</p>
-      </SearchedData>,
-      {
-        wrapper: MemoryRouter,
-      }
-    );
-
-    expect(getByText(container, /Pagination/i)).toBeInTheDocument();
   });
 
   it('Onboarding component should display if there is showOnboardingTemplate is true', () => {

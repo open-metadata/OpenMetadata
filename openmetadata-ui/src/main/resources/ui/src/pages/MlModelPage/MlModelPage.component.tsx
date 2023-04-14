@@ -45,6 +45,7 @@ import {
   getCurrentUserId,
   getEntityMissingError,
   getFeedCounts,
+  sortTagsCaseInsensitive,
 } from '../../utils/CommonUtils';
 import { getEntityFeedLink, getEntityName } from '../../utils/EntityUtils';
 import { deletePost, updateThreadData } from '../../utils/FeedUtils';
@@ -250,7 +251,7 @@ const MlModelPage = () => {
       const res = await saveUpdatedMlModelData(updatedMlModel);
       setMlModelDetail((preVDetail) => ({
         ...preVDetail,
-        tags: res.tags,
+        tags: sortTagsCaseInsensitive(res.tags || []),
       }));
       setCurrentVersion(res.version?.toString());
       fetchEntityFeedCount();

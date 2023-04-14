@@ -67,6 +67,7 @@ import {
   getFeedCounts,
   getFields,
   getPartialNameFromTableFQN,
+  sortTagsCaseInsensitive,
 } from '../../utils/CommonUtils';
 import {
   datasetTableTabs,
@@ -400,7 +401,10 @@ const DatasetDetailsPage: FunctionComponent = () => {
   const onTagUpdate = async (updatedTable: Table) => {
     try {
       const res = await saveUpdatedTableData(updatedTable);
-      setTableDetails((previous) => ({ ...previous, tags: res.tags }));
+      setTableDetails((previous) => ({
+        ...previous,
+        tags: sortTagsCaseInsensitive(res.tags || []),
+      }));
       getEntityFeedCount();
     } catch (error) {
       showErrorToast(

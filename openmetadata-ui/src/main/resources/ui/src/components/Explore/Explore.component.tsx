@@ -27,7 +27,6 @@ import unique from 'fork-ts-checker-webpack-plugin/lib/utils/array/unique';
 import {
   isEmpty,
   isNil,
-  isNumber,
   isString,
   isUndefined,
   lowerCase,
@@ -81,7 +80,6 @@ const Explore: React.FC<ExploreProps> = ({
   onChangeSortValue,
   onChangeShowDeleted,
   showDeleted,
-  page = 1,
   onChangePage = noop,
   loading,
   quickFilters,
@@ -400,19 +398,12 @@ const Explore: React.FC<ExploreProps> = ({
                     <SearchedData
                       isFilterSelected
                       showResultCount
-                      currentPage={page}
                       data={searchResults?.hits.hits ?? []}
                       handleSummaryPanelDisplay={handleSummaryPanelDisplay}
                       isSummaryPanelVisible={showSummaryPanel}
-                      paginate={(value) => {
-                        if (isNumber(value)) {
-                          onChangePage(value);
-                        } else if (!isNaN(Number.parseInt(value))) {
-                          onChangePage(Number.parseInt(value));
-                        }
-                      }}
                       selectedEntityId={entityDetails?.id || ''}
                       totalValue={searchResults?.hits.total.value ?? 0}
+                      onPaginationChange={onChangePage}
                     />
                   ) : (
                     <Loader />

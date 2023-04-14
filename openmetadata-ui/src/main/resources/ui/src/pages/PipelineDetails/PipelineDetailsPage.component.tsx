@@ -45,6 +45,7 @@ import {
   addToRecentViewed,
   getCurrentUserId,
   getEntityMissingError,
+  sortTagsCaseInsensitive,
 } from '../../utils/CommonUtils';
 import { getEntityName } from '../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
@@ -234,7 +235,10 @@ const PipelineDetailsPage = () => {
   ) => {
     try {
       const res = await saveUpdatedPipelineData(updatedPipeline);
-      setPipelineDetails(res);
+      setPipelineDetails({
+        ...res,
+        tags: sortTagsCaseInsensitive(res.tags || []),
+      });
       fetchCount();
     } catch (error) {
       showErrorToast(

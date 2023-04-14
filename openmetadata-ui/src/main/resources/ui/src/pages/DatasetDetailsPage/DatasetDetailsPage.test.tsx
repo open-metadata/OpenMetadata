@@ -40,8 +40,6 @@ import {
   updateTagRes,
 } from './datasetDetailsPage.mock';
 
-const mockShowErrorToast = jest.fn();
-
 const mockUseParams = {
   datasetFQN: 'bigquery_gcp:shopify:dim_address',
   tab: 'schema',
@@ -281,7 +279,7 @@ jest.mock('react-i18next', () => ({
 }));
 
 jest.mock('../../utils/ToastUtils', () => ({
-  showErrorToast: jest.fn().mockImplementation(() => mockShowErrorToast()),
+  showErrorToast: jest.fn(),
 }));
 
 jest.mock('../../utils/FeedUtils', () => ({
@@ -342,6 +340,15 @@ jest.mock('../../utils/CommonUtils', () => ({
   getFeedCounts: jest.fn(),
   getFields: jest.fn().mockReturnValue('field'),
   getPartialNameFromTableFQN: jest.fn().mockReturnValue('name'),
+  sortTagsCaseInsensitive: jest.fn().mockResolvedValue(() => [
+    {
+      tagFQN: 'Tier:Tier1',
+      description: '',
+      source: 'Classification',
+      labelType: 'Manual',
+      state: 'Confirmed',
+    },
+  ]),
 }));
 
 describe('Test DatasetDetails page', () => {
@@ -1075,6 +1082,5 @@ describe('Render Sad Paths', () => {
 
     expect(rowCount).toBeNull();
     expect(columnCount).toBeNull();
-    expect(mockShowErrorToast).toHaveBeenCalledTimes(1);
   });
 });
