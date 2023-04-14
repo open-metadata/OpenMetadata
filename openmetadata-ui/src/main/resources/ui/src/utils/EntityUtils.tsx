@@ -41,6 +41,7 @@ import {
   getDashboardDetailsPath,
   getDatabaseDetailsPath,
   getDatabaseSchemaDetailsPath,
+  getDataModelDetailsPath,
   getGlossaryTermDetailsPath,
   getMlModelDetailsPath,
   getPipelineDetailsPath,
@@ -480,8 +481,14 @@ export const getEntityOverview = (
     }
 
     case ExplorePageTabs.DASHBOARD_DATA_MODEL: {
-      const { owner, tags, href, service, displayName, dataModelType } =
-        entityDetail as DashboardDataModel;
+      const {
+        owner,
+        tags,
+        service,
+        displayName,
+        dataModelType,
+        fullyQualifiedName,
+      } = entityDetail as DashboardDataModel;
       const tier = getTierFromTableTags(tags || []);
 
       const overview = [
@@ -501,9 +508,8 @@ export const getEntityOverview = (
             'label.url-uppercase'
           )}`,
           value: displayName || NO_DATA,
-          url: href,
+          url: getDataModelDetailsPath(fullyQualifiedName ?? ''),
           isLink: true,
-          isExternal: true,
           visible: [
             DRAWER_NAVIGATION_OPTIONS.lineage,
             DRAWER_NAVIGATION_OPTIONS.explore,
