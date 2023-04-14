@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Card, Space, Table, Tooltip } from 'antd';
+import { Card, Space, Table, Tooltip, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { ENTITY_CARD_CLASS } from 'constants/entity.constants';
@@ -26,9 +26,9 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
 import { restoreDashboard } from 'rest/dashboardAPI';
 import { getEntityName } from 'utils/EntityUtils';
+import { ReactComponent as ExternalLinkIcon } from '../../assets/svg/external-link.svg';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { EntityField } from '../../constants/Feeds.constants';
 import { observerOptions } from '../../constants/Mydata.constants';
@@ -37,7 +37,6 @@ import { EntityInfo, EntityType } from '../../enums/entity.enum';
 import { OwnerType } from '../../enums/user.enum';
 import { Dashboard } from '../../generated/entity/data/dashboard';
 import { ThreadType } from '../../generated/entity/feed/thread';
-import { EntityReference } from '../../generated/type/entityReference';
 import { Paging } from '../../generated/type/paging';
 import { LabelType, State, TagLabel } from '../../generated/type/tagLabel';
 import { useInfiniteScroll } from '../../hooks/useInfiniteScroll';
@@ -81,7 +80,6 @@ const DashboardDetails = ({
   slashedDashboardName,
   activeTab,
   setActiveTabHandler,
-  dashboardUrl,
   dashboardDetails,
   descriptionUpdateHandler,
   settingsUpdateHandler,
@@ -237,13 +235,17 @@ const DashboardDetails = ({
       key: EntityInfo.TIER,
       value: tier?.tagFQN ? tier.tagFQN.split(FQN_SEPARATOR_CHAR)[1] : '',
     },
-    {
-      key: `${serviceType} ${EntityInfo.URL}`,
-      value: dashboardUrl,
-      placeholderText: entityName,
-      isLink: true,
-      openInNewTab: true,
-    },
+    ...(dashboardDetails.dashboardUrl
+      ? [
+          {
+            key: `${serviceType} ${EntityInfo.URL}`,
+            value: dashboardDetails.dashboardUrl,
+            placeholderText: entityName,
+            isLink: true,
+            openInNewTab: true,
+          },
+        ]
+      : []),
   ];
 
   const onDescriptionEdit = (): void => {
@@ -513,19 +515,20 @@ const DashboardDetails = ({
         dataIndex: 'chartName',
         key: 'chartName',
         width: 200,
-        render: (_, record) => (
-          <Link target="_blank" to={{ pathname: record.chartUrl }}>
-            <Space>
-              <span>{getEntityName(record as unknown as EntityReference)}</span>
-              <SVGIcons
-                alt="external-link"
-                className="tw-align-middle"
-                icon="external-link"
-                width="16px"
-              />
-            </Space>
-          </Link>
-        ),
+        render: (_, record) => {
+          const chartName = getEntityName(record);
+
+          return record.chartUrl ? (
+            <Typography.Link href={record.chartUrl} target="_blank">
+              <Space>
+                {chartName}
+                <ExternalLinkIcon height={14} width={14} />
+              </Space>
+            </Typography.Link>
+          ) : (
+            <Typography.Text>{chartName}</Typography.Text>
+          );
+        },
       },
       {
         title: t('label.chart-entity', {
