@@ -77,6 +77,7 @@ source:
       overrideOwner: True
       markDeletedDashboards: True
       includeTags: True
+      includeDataModels: True
       # dbServiceNames:
       #   - service1
       #   - service2
@@ -94,6 +95,13 @@ source:
       #   excludes:
       #     - chart3
       #     - chart4
+      # dataModelFilterPattern:
+      #   includes:
+      #     - datamodel1
+      #     - datamodel2
+      #   excludes:
+      #     - datamodel3
+      #     - datamodel4
 sink:
   type: metadata-rest
   config: {}
@@ -137,6 +145,7 @@ source:
       overrideOwner: True
       markDeletedDashboards: True
       includeTags: True
+      includeDataModels: True
       # dbServiceNames:
       #   - service1
       #   - service2
@@ -154,6 +163,13 @@ source:
       #   excludes:
       #     - chart3
       #     - chart4
+      # dataModelFilterPattern:
+      #   includes:
+      #     - datamodel1
+      #     - datamodel2
+      #   excludes:
+      #     - datamodel3
+      #     - datamodel4
 sink:
   type: metadata-rest
   config: {}
@@ -201,6 +217,7 @@ source:
       overrideOwner: True
       markDeletedDashboards: True
       includeTags: True
+      includeDataModels: True
       # dbServiceNames:
       #   - service1
       #   - service2
@@ -218,6 +235,13 @@ source:
       #   excludes:
       #     - chart3
       #     - chart4
+      # dataModelFilterPattern:
+      #   includes:
+      #     - datamodel1
+      #     - datamodel2
+      #   excludes:
+      #     - datamodel3
+      #     - datamodel4
 sink:
   type: metadata-rest
   config: {}
@@ -249,9 +273,10 @@ workflowConfig:
 The `sourceConfig` is defined [here](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-spec/src/main/resources/json/schema/metadataIngestion/dashboardServiceMetadataPipeline.json):
 
 - `dbServiceNames`: Database Service Name for the creation of lineage, if the source supports it.
-- `dashboardFilterPattern` and `chartFilterPattern`: Note that the `dashboardFilterPattern` and `chartFilterPattern` both support regex as include or exclude. E.g.,
-- `overrideOwner`: Flag to override current owner by new owner from source, if found during metadata ingestion
-- `includeTags`: Set the Include tags toggle to control whether or not to include tags as part of metadata ingestion.
+- `dashboardFilterPattern` / `chartFilterPattern` / `dataModelFilterPattern`: Note that all of them support regex as include or exclude. E.g., "My dashboard, My dash.*, .*Dashboard".
+- `overrideOwner`: Flag to override current owner by new owner from source, if found during metadata ingestion.
+- `includeTags`: Set the 'Include Tags' toggle to control whether to include tags as part of metadata ingestion.
+- `includeDataModels`: Set the 'Include Data Models' toggle to control whether to include tags as part of metadata ingestion.
 - `markDeletedDashboards`: Set the Mark Deleted Dashboards toggle to flag dashboards as soft-deleted if they are not present anymore in the source system.
 
 ```yaml

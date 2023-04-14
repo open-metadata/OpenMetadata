@@ -115,6 +115,7 @@ const ListEntities = ({
       columns={columns}
       dataSource={list}
       pagination={false}
+      rowKey="id"
       size="small"
     />
   );

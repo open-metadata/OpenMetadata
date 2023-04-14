@@ -290,7 +290,7 @@ class Profiler(Generic[TMetric]):
 
         current_col_results: Dict[str, Any] = self._column_results.get(col.name)
         if not current_col_results:
-            logger.error(
+            logger.debug(
                 "We do not have any results to base our Composed Metrics. Stopping!"
             )
             return
@@ -316,8 +316,8 @@ class Profiler(Generic[TMetric]):
         logger.debug("Running distribution metrics...")
         current_col_results: Dict[str, Any] = self._column_results.get(col.name)
         if not current_col_results:
-            logger.error(
-                "We do not have any results to base our Composed Metrics. Stopping!"
+            logger.debug(
+                "We do not have any results to base our Hybrid Metrics. Stopping!"
             )
             return
         for metric in self.get_col_metrics(self.hybrid_metric):
