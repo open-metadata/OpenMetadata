@@ -24,6 +24,10 @@ from metadata.generated.schema.entity.automations.workflow import (
 from metadata.generated.schema.entity.services.connections.dashboard.tableauConnection import (
     TableauConnection,
 )
+from metadata.generated.schema.security.credentials.accessTokenAuth import (
+    AccessTokenAuth,
+)
+from metadata.generated.schema.security.credentials.basicAuth import BasicAuth
 from metadata.ingestion.connections.test_connections import (
     SourceConnectionException,
     test_connection_steps,
@@ -109,19 +113,16 @@ def build_server_config(connection: TableauConnection) -> Dict[str, Dict[str, An
             "site_url": connection.siteUrl if connection.siteUrl else "",
         }
     }
-    if connection.username and connection.password:
-        tableau_server_config[connection.env]["username"] = connection.username
+    if isinstance(connection.authType, BasicAuth):
+        tableau_server_config[connection.env]["username"] = connection.authType.username
         tableau_server_config[connection.env][
             "password"
-        ] = connection.password.get_secret_value()
-    elif (
-        connection.personalAccessTokenName
-        and connection.personalAccessTokenSecret.get_secret_value()
-    ):
+        ] = connection.authType.password.get_secret_value()
+    elif isinstance(connection.authType, AccessTokenAuth):
         tableau_server_config[connection.env][
             "personal_access_token_name"
-        ] = connection.personalAccessTokenName
+        ] = connection.authType.personalAccessTokenName
         tableau_server_config[connection.env][
             "personal_access_token_secret"
-        ] = connection.personalAccessTokenSecret.get_secret_value()
+        ] = connection.authType.personalAccessTokenSecret.get_secret_value()
     return tableau_server_config
