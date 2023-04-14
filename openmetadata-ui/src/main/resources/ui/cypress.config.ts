@@ -29,6 +29,9 @@ export default defineConfig({
       return plugins(on, config);
     },
     baseUrl: 'http://localhost:8585',
-    specPattern: 'cypress/e2e/Pages/Glossary.spec.js',
+    specPattern: [
+      'cypress/e2e/Pages/Glossary.spec.js',
+      'cypress/e2e/AddNewService/redshiftWithDBT.spec.js',
+    ],
   },
 });
