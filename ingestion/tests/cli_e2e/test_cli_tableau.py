@@ -10,7 +10,7 @@
 #  limitations under the License.
 
 """
-Test MySql connector with CLI
+Test Tableau connector with CLI
 """
 from pathlib import Path
 from typing import List
