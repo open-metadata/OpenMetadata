@@ -306,7 +306,11 @@ class SampleTest(TestCase):
         """
         We should be able to pick up sample data from the sampler
         """
-        sampler = Sampler(session=self.session, table=User, sample_columns=[col.name for col in User.__table__.columns],)
+        sampler = Sampler(
+            session=self.session,
+            table=User,
+            sample_columns=[col.name for col in User.__table__.columns],
+        )
         sample_data = sampler.fetch_sqa_sample_data()
 
         assert len(sample_data.columns) == 6
@@ -348,7 +352,11 @@ class SampleTest(TestCase):
             self.session.add_all(data)
             self.session.commit()
 
-        sampler = Sampler(session=self.session, table=UserBinary, sample_columns=[col.name for col in UserBinary.__table__.columns],)
+        sampler = Sampler(
+            session=self.session,
+            table=UserBinary,
+            sample_columns=[col.name for col in UserBinary.__table__.columns],
+        )
         sample_data = sampler.fetch_sqa_sample_data()
 
         assert len(sample_data.columns) == 7
@@ -374,7 +382,12 @@ class SampleTest(TestCase):
         Test sample data are returned based on user query
         """
         stmt = "SELECT id, name FROM users"
-        sampler = Sampler(session=self.session, table=User, profile_sample_query=stmt, sample_columns=[col.name for col in User.__table__.columns],)
+        sampler = Sampler(
+            session=self.session,
+            table=User,
+            profile_sample_query=stmt,
+            sample_columns=[col.name for col in User.__table__.columns],
+        )
         sample_data = sampler.fetch_sqa_sample_data()
 
         assert len(sample_data.columns) == 2

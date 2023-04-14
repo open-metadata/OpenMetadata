@@ -117,7 +117,7 @@ class SQAProfilerInterface(ProfilerProtocol, SQAInterfaceMixin):
     @staticmethod
     def _is_array_column(column) -> Dict[str, Union[Optional[str], bool]]:
         """check if column is an array column
-        
+
         Args:
             column: column to check
         Returns:
@@ -125,12 +125,12 @@ class SQAProfilerInterface(ProfilerProtocol, SQAInterfaceMixin):
         """
         kwargs = {}
         try:
-            kwargs["is_array"] = column._is_array # pylint: disable=protected-access
+            kwargs["is_array"] = column._is_array  # pylint: disable=protected-access
         except AttributeError:
             kwargs["is_array"] = False
 
         try:
-            kwargs["array_col"] = column._arr_col # pylint: disable=protected-access
+            kwargs["array_col"] = column._arr_col  # pylint: disable=protected-access
         except AttributeError:
             kwargs["array_col"] = None
 
