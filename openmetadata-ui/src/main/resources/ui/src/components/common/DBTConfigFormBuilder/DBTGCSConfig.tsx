@@ -187,6 +187,7 @@ export const DBTGCSConfig: FunctionComponent<Props> = ({
             {t('label.google-cloud-private-key-id')}
           </p>
           <Input.Password
+            autoComplete="off"
             className="tw-form-inputs tw-form-inputs-padding"
             data-testid="private-key-id"
             id="private-key-id"
@@ -208,6 +209,7 @@ export const DBTGCSConfig: FunctionComponent<Props> = ({
             {t('label.google-cloud-private-key')}
           </p>
           <Input.Password
+            autoComplete="off"
             className="tw-form-inputs tw-form-inputs-padding"
             data-testid="private-key"
             id="private-key"
