@@ -14,8 +14,6 @@ Tableau source module
 import traceback
 from typing import Iterable, List, Optional, Set
 
-from requests.utils import urlparse
-
 from metadata.generated.schema.api.classification.createClassification import (
     CreateClassificationRequest,
 )
@@ -261,7 +259,6 @@ class TableauSource(DashboardServiceSource):
         topology. And they are cleared after processing each Dashboard because of the 'clear_cache' option.
         """
         try:
-            workbook_url = urlparse(dashboard_details.webpageUrl).fragment
             dashboard_request = CreateDashboardRequest(
                 name=dashboard_details.id,
                 displayName=dashboard_details.name,
@@ -290,7 +287,7 @@ class TableauSource(DashboardServiceSource):
                     classification_name=TABLEAU_TAG_CATEGORY,
                     include_tags=self.source_config.includeTags,
                 ),
-                dashboardUrl=f"#{workbook_url}",
+                dashboardUrl=dashboard_details.webpageUrl,
                 service=self.context.dashboard_service.fullyQualifiedName.__root__,
             )
             yield dashboard_request
@@ -375,13 +372,14 @@ class TableauSource(DashboardServiceSource):
                     self.status.filter(chart.name, "Chart Pattern not allowed")
                     continue
                 site_url = (
-                    f"site/{self.service_connection.siteUrl}/"
+                    f"/site/{self.service_connection.siteUrl}/"
                     if self.service_connection.siteUrl
                     else ""
                 )
                 workbook_chart_name = ChartUrl(chart.contentUrl)
 
                 chart_url = (
+                    f"{str(self.service_connection.hostPort)}/"
                     f"#{site_url}"
                     f"views/{workbook_chart_name.workbook_name}/"
                     f"{workbook_chart_name.chart_url_name}"
