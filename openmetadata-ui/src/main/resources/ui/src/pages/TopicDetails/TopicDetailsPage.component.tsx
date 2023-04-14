@@ -34,6 +34,7 @@ import {
   patchTopicDetails,
   removeFollower,
 } from 'rest/topicsAPI';
+import { serviceTypeLogo } from 'utils/ServiceUtils';
 import AppState from '../../AppState';
 import {
   getServiceDetailsPath,
@@ -58,7 +59,6 @@ import {
 import { getEntityFeedLink, getEntityName } from '../../utils/EntityUtils';
 import { deletePost, updateThreadData } from '../../utils/FeedUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
-import { serviceTypeLogo } from '../../utils/ServiceUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import {
   getCurrentTopicTab,

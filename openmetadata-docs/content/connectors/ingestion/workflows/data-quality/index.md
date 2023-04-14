@@ -274,7 +274,7 @@ On the profiler page, click on a specific column name. This will bring you to a 
 While OpenMetadata provides out of the box tests, you may want to write your test results from your own custom quality test suite. This is very easy to do using the API.
 ### Creating a `TestDefinition`
 First, you'll need to create a Test Definition for your test. You can use the following endpoint 
-`/api/v1/testDefinitions` using a POST protocol to create your Test Definition. You will need to pass the following data in the body your request at minimum.
+`/api/v1/dataQuality/testDefinitions` using a POST protocol to create your Test Definition. You will need to pass the following data in the body your request at minimum.
 
 ```json
 {
@@ -296,7 +296,7 @@ First, you'll need to create a Test Definition for your test. You can use the fo
 Here is a complete CURL request
 
 ```bash
-curl --request POST 'http://localhost:8585/api/v1/testDefinitions' \
+curl --request POST 'http://localhost:8585/api/v1/dataQuality/testDefinitions' \
 --header 'Content-Type: application/json' \
 --data-raw '{
     "description": "A demo custom test",
@@ -312,7 +312,7 @@ curl --request POST 'http://localhost:8585/api/v1/testDefinitions' \
 Make sure to keep the `UUID` from the response as you will need it to create the Test Case.
 
 ### Creating a `TestSuite`
-You'll also need to create a Test Suite for your Test Case -- note that you can also use an existing one if you want to. You can use the following endpoint `/api/v1/testSuites` using a POST protocol to create your Test Definition. You will need to pass the following data in the body your request at minimum.
+You'll also need to create a Test Suite for your Test Case -- note that you can also use an existing one if you want to. You can use the following endpoint `/api/v1/dataQuality/testSuites` using a POST protocol to create your Test Definition. You will need to pass the following data in the body your request at minimum.
 
 ```json
 {
@@ -324,7 +324,7 @@ You'll also need to create a Test Suite for your Test Case -- note that you can 
 Here is a complete CURL request
 
 ```bash
-curl --request POST 'http://localhost:8585/api/v1/testSuites' \
+curl --request POST 'http://localhost:8585/api/v1/dataQuality/testSuites' \
 --header 'Content-Type: application/json' \
 --data-raw '{
   "name": "<test_suite_name>",
@@ -336,7 +336,7 @@ Make sure to keep the `UUID` from the response as you will need it to create the
 
 
 ### Creating a `TestCase`
-Once you have your Test Definition created you can create a Test Case -- which is a specification of your Test Definition. You can use the following endpoint `/api/v1/testCases` using a POST protocol to create your Test Case. You will need to pass the following data in the body your request at minimum.
+Once you have your Test Definition created you can create a Test Case -- which is a specification of your Test Definition. You can use the following endpoint `/api/v1/dataQuality/testCases` using a POST protocol to create your Test Case. You will need to pass the following data in the body your request at minimum.
 
 ```json
 {
@@ -357,7 +357,7 @@ Once you have your Test Definition created you can create a Test Case -- which i
 Here is a complete CURL request
 
 ```bash
-curl --request POST 'http://localhost:8585/api/v1/testCases' \
+curl --request POST 'http://localhost:8585/api/v1/dataQuality/testCases' \
 --header 'Content-Type: application/json' \
 --data-raw '{
     "entityLink": "<#E::table::local_redshift.dev.dbt_jaffle.customers>",
@@ -383,7 +383,7 @@ Make sure to keep the `UUID` from the response as you will need it to create the
 
 
 ### Writing `TestCaseResults`
-Once you have your Test Case created you can write your results to it. You can use the following endpoint `/api/v1/testCases/{test FQN}/testCaseResult` using a PUT protocol to add Test Case Results. You will need to pass the following data in the body your request at minimum.
+Once you have your Test Case created you can write your results to it. You can use the following endpoint `/api/v1/dataQuality/testCases/{test FQN}/testCaseResult` using a PUT protocol to add Test Case Results. You will need to pass the following data in the body your request at minimum.
 
 ```json
 {
@@ -401,7 +401,7 @@ Once you have your Test Case created you can write your results to it. You can u
 Here is a complete CURL request
 
 ```bash
-curl --location --request PUT 'http://localhost:8585/api/v1/testCases/local_redshift.dev.dbt_jaffle.customers.
+curl --location --request PUT 'http://localhost:8585/api/v1/dataQuality/testCases/local_redshift.dev.dbt_jaffle.customers.
 custom_test_Case/testCaseResult' \
 --header 'Content-Type: application/json' \
 --data-raw '{

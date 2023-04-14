@@ -57,7 +57,6 @@ import {
 } from '../../utils/CommonUtils';
 import { getEntityFieldThreadCounts } from '../../utils/FeedUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
-import { serviceTypeLogo } from '../../utils/ServiceUtils';
 import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import ActivityFeedList from '../ActivityFeed/ActivityFeedList/ActivityFeedList';
@@ -160,6 +159,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
   const mlModelTags = useMemo(() => {
     return getTagsWithoutTier(mlModelDetail.tags || []);
   }, [mlModelDetail.tags]);
+
   const slashedMlModelName: TitleBreadcrumbProps['titleLinks'] = [
     {
       name: mlModelDetail.service.name || '',
@@ -169,14 +169,6 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
             ServiceCategory.ML_MODEL_SERVICES
           )
         : '',
-      imgSrc: mlModelDetail.serviceType
-        ? serviceTypeLogo(mlModelDetail.serviceType || '')
-        : undefined,
-    },
-    {
-      name: getEntityName(mlModelDetail as unknown as EntityReference),
-      url: '',
-      activeTitle: true,
     },
   ];
 
@@ -565,6 +557,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
               ? onTierRemove
               : undefined
           }
+          serviceType={mlModelDetail.serviceType ?? ''}
           tags={mlModelTags}
           tagsHandler={onTagUpdate}
           tier={mlModelTier}

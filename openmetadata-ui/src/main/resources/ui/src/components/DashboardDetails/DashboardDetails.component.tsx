@@ -667,6 +667,7 @@ const DashboardDetails = ({
               ? onRemoveTier
               : undefined
           }
+          serviceType={dashboardDetails.serviceType ?? ''}
           tags={dashboardTags}
           tagsHandler={onTagUpdate}
           tier={tier}

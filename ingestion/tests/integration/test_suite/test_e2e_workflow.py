@@ -232,14 +232,14 @@ class TestE2EWorkflow(unittest.TestCase):
         assert test_case_2
 
         test_case_result_1 = self.metadata.client.get(
-            "/testCases/test_suite_service_test.test_suite_database.test_suite_database_schema.users.my_test_case/testCaseResult",
+            "/dataQuality/testCases/test_suite_service_test.test_suite_database.test_suite_database_schema.users.my_test_case/testCaseResult",
             data={
                 "startTs": int((datetime.now() - timedelta(days=3)).timestamp()),
                 "endTs": int((datetime.now() + timedelta(days=3)).timestamp()),
             },
         )
         test_case_result_2 = self.metadata.client.get(
-            "/testCases/test_suite_service_test.test_suite_database.test_suite_database_schema.users.table_column_name_to_exists/testCaseResult",
+            "/dataQuality/testCases/test_suite_service_test.test_suite_database.test_suite_database_schema.users.table_column_name_to_exists/testCaseResult",
             data={
                 "startTs": int((datetime.now() - timedelta(days=3)).timestamp()),
                 "endTs": int((datetime.now() + timedelta(days=3)).timestamp()),

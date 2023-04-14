@@ -16,6 +16,8 @@ import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { ActivityFilters } from 'components/ActivityFeed/ActivityFeedList/ActivityFeedList.interface';
 import QueryCount from 'components/common/QueryCount/QueryCount.component';
+// css
+import PageLayoutV1 from 'components/containers/PageLayoutV1';
 import { isEqual, isNil, isUndefined } from 'lodash';
 import { EntityTags, ExtraInfo } from 'Models';
 import React, {
@@ -603,7 +605,10 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
 
   return (
     <PageContainerV1>
-      <div className="entity-details-container">
+      <PageLayoutV1
+        pageTitle={t('label.entity-detail-plural', {
+          entity: getEntityName(tableDetails),
+        })}>
         <EntityPageInfo
           canDelete={tablePermissions.Delete}
           currentOwner={tableDetails.owner}
@@ -631,6 +636,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
               ? onRemoveTier
               : undefined
           }
+          serviceType={tableDetails.serviceType ?? ''}
           tags={tableTags}
           tagsHandler={onTagUpdate}
           tier={tier}
@@ -651,7 +657,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
           onThreadLinkSelect={onThreadLinkSelect}
         />
 
-        <div className="tw-mt-4 tw-flex tw-flex-col tw-flex-grow">
+        <div className="m-t-md h-inherit">
           <TabsPane
             activeTab={activeTab}
             className="tw-flex-initial"
@@ -835,7 +841,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
             />
           ) : null}
         </div>
-      </div>
+      </PageLayoutV1>
     </PageContainerV1>
   );
 };

@@ -127,6 +127,13 @@ export type EntityUnion =
   | Tag
   | DashboardDataModel;
 
+export type EntityWithServices =
+  | Topic
+  | Dashboard
+  | Pipeline
+  | Mlmodel
+  | Container;
+
 export interface EntityDetailsObjectInterface {
   details: SearchedDataProps['data'][number]['_source'];
 }

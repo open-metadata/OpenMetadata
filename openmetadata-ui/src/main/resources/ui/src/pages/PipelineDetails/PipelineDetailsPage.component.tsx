@@ -30,6 +30,7 @@ import {
   patchPipelineDetails,
   removeFollower,
 } from 'rest/pipelineAPI';
+import { serviceTypeLogo } from 'utils/ServiceUtils';
 import {
   getServiceDetailsPath,
   getVersionPath,
@@ -51,7 +52,6 @@ import {
   defaultFields,
   getFormattedPipelineDetails,
 } from '../../utils/PipelineDetailsUtils';
-import { serviceTypeLogo } from '../../utils/ServiceUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
 const PipelineDetailsPage = () => {

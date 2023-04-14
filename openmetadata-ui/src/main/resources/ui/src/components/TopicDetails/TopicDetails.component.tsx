@@ -460,6 +460,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
               ? onTierRemove
               : undefined
           }
+          serviceType={topicDetails.serviceType ?? ''}
           tags={topicTags}
           tagsHandler={onTagUpdate}
           tier={tier}
