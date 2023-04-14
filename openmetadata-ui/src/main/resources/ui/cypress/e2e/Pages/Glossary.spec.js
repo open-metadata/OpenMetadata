@@ -659,8 +659,9 @@ describe('Glossary page should work properly', () => {
 
     // Add tag to schema table
     cy.get(
-      '[data-row-key="comments"] [data-testid="tags-wrapper"] [data-testid="tag-container"]'
+      '[data-row-key="comments"] [data-testid="glossary-tags-0"] [data-testid="tags-wrapper"] [data-testid="tag-container"]'
     )
+      .scrollIntoView()
       .should('be.visible')
       .first()
       .click();
@@ -729,7 +730,7 @@ describe('Glossary page should work properly', () => {
     verifyResponseStatusCode('@entityDetails', 200);
     // redirect to entity detail page
     cy.get('[data-testid="entity-tags"]')
-      .find('[data-testid="add-tag"]')
+      .find('[data-testid="edit-button"]')
       .scrollIntoView()
       .should('be.visible')
       .click();
@@ -739,6 +740,10 @@ describe('Glossary page should work properly', () => {
       .should('be.visible')
       .click();
 
+    cy.get('.ant-select-selection-item-remove')
+      .eq(0)
+      .should('be.visible')
+      .click();
     cy.get('.ant-select-selection-item-remove')
       .eq(0)
       .should('be.visible')
@@ -753,12 +758,21 @@ describe('Glossary page should work properly', () => {
       .and('not.contain', 'Personal');
     // Remove the added column tag from entity
     interceptURL('PATCH', '/api/v1/tables/*', 'removeSchemaTags');
-    cy.get(`[data-testid="remove-${glossaryName}.${name}-tag"]`)
+
+    cy.get('[data-testid="glossary-tags-0"] [data-testid="edit-button"]')
+      .scrollIntoView()
+      .trigger('mouseover')
+      .click();
+
+    cy.get(`[title="${glossaryName}.${name}"] [data-testid="remove-tags"`)
       .should('be.visible')
       .click();
+
+    cy.get('[data-testid="saveAssociatedTag"]').should('be.visible').click();
     verifyResponseStatusCode('@removeSchemaTags', 200);
 
-    cy.get('[data-testid="tags"]')
+    cy.get('[data-testid="glossary-tags-0"]')
+      .scrollIntoView()
       .should('not.contain', name)
       .and('not.contain', 'Personal');
 

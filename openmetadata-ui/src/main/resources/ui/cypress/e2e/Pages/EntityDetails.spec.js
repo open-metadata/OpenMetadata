@@ -75,7 +75,7 @@ describe('Entity Details Page', () => {
     cy.get('@confirmBtn').click();
 
     // success modal should be visible
-    cy.contains('deleted successfully!').should('be.visible');
+    cy.contains('Table deleted successfully!').should('be.visible');
     cy.get('.Toastify__close-button > svg')
       .first()
       .should('be.visible')
@@ -162,8 +162,6 @@ describe('Entity Details Page', () => {
       .then((text) => {
         expect(text).equal('Tier1');
       });
-
-    cy.get('[data-testid="entity-tags"]').should('contain', 'Tier1');
 
     // add tag to the entity
     interceptURL('GET', '/api/v1/tags?limit=1000', 'tagsRequest');
