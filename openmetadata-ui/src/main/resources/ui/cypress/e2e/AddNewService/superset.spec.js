@@ -41,7 +41,9 @@ describe('Superset Ingestion', () => {
       .click();
 
     const connectionInput = () => {
-      cy.get('#root\\/username').type(Cypress.env('supersetUsername'));
+      cy.get('#root\\/username')
+        .scrollIntoView()
+        .type(Cypress.env('supersetUsername'));
       cy.get('#root\\/password')
         .scrollIntoView()
         .type(Cypress.env('supersetPassword'));
@@ -54,10 +56,12 @@ describe('Superset Ingestion', () => {
 
     const addIngestionInput = () => {
       cy.get('[data-testid="dashboard-filter-pattern-checkbox"]')
+        .scrollIntoView()
         .invoke('show')
         .trigger('mouseover')
         .check();
       cy.get('[data-testid="filter-pattern-includes-dashboard"]')
+        .scrollIntoView()
         .should('be.visible')
         .type(tableName);
     };
