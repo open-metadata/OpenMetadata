@@ -86,6 +86,17 @@ export const getListTestCaseResults = async (
   return response.data;
 };
 
+export const getTestCaseByFqn = async (
+  fqn: string,
+  params?: { fields?: string[] }
+) => {
+  const response = await APIClient.get<TestCase>(`/testCases/name/${fqn}`, {
+    params,
+  });
+
+  return response;
+};
+
 export const createTestCase = async (data: CreateTestCase) => {
   const response = await APIClient.post<
     CreateTestCase,
