@@ -18,7 +18,11 @@ import { UserSelectableList } from 'components/common/UserSelectableList/UserSel
 import { UserTeamSelectableList } from 'components/common/UserTeamSelectableList/UserTeamSelectableList.component';
 import TagButton from 'components/TagButton/TagButton.component';
 import TagsInput from 'components/TagsInput/TagsInput.component';
-import { DE_ACTIVE_COLOR, getUserPath } from 'constants/constants';
+import {
+  DE_ACTIVE_COLOR,
+  getTeamAndUserDetailsPath,
+  getUserPath,
+} from 'constants/constants';
 import { GlossaryTerm } from 'generated/entity/data/glossaryTerm';
 import { EntityReference } from 'generated/type/entityReference';
 import { t } from 'i18next';
@@ -119,7 +123,12 @@ const GlossaryDetailsRightPanel = ({
                 textClass="text-xs"
                 width="20"
               />
-              <Link to={getUserPath(selectedData.owner.name ?? '')}>
+              <Link
+                to={
+                  selectedData.owner.type === 'team'
+                    ? getTeamAndUserDetailsPath(selectedData.owner.name ?? '')
+                    : getUserPath(selectedData.owner.name ?? '')
+                }>
                 {getEntityName(selectedData.owner)}
               </Link>
             </Space>

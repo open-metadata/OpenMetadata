@@ -82,6 +82,7 @@ export const imageTypes = {
 export const NO_DATA_PLACEHOLDER = '---';
 export const ELLIPSES = '...';
 export const SINGLE_DOT = '•';
+export const PIPE_SYMBOL = '|';
 
 export const TOUR_SEARCH_TERM = 'dim_a';
 export const ERROR404 = t('label.no-data-found');
@@ -253,7 +254,10 @@ export const ROUTES = {
   PROFILER_DASHBOARD_WITH_TAB: `/profiler-dashboard/${PLACEHOLDER_DASHBOARD_TYPE}/${PLACEHOLDER_ENTITY_TYPE_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
   ADD_DATA_QUALITY_TEST_CASE: `/data-quality-test/${PLACEHOLDER_DASHBOARD_TYPE}/${PLACEHOLDER_ENTITY_TYPE_FQN}`,
   LINEAGE_FULL_SCREEN_VIEW: `/lineage-view/${PLACEHOLDER_ROUTE_ENTITY_TYPE}/${PLACEHOLDER_ROUTE_ENTITY_FQN}`,
+
+  // Query Routes
   QUERY_FULL_SCREEN_VIEW: `/query-view/${PLACEHOLDER_ROUTE_TABLE_FQN}/${PLACEHOLDER_ROUTE_QUERY_ID}`,
+  ADD_QUERY: `/query/${PLACEHOLDER_ROUTE_TABLE_FQN}/add-query`,
 
   // Tasks Routes
   REQUEST_DESCRIPTION: `/request-description/${PLACEHOLDER_ROUTE_ENTITY_TYPE}/${PLACEHOLDER_ROUTE_ENTITY_FQN}`,
