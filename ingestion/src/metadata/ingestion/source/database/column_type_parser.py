@@ -19,8 +19,8 @@ from sqlalchemy.dialects.postgresql import BYTEA
 from sqlalchemy.sql import sqltypes as types
 from sqlalchemy.types import TypeEngine
 
-from metadata.ingestion.source import sqa_types
 from metadata.generated.schema.entity.data.table import DataType
+from metadata.ingestion.source import sqa_types
 
 
 def create_sqlalchemy_type(name: str):

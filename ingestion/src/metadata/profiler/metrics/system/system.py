@@ -13,9 +13,9 @@
 System Metric
 """
 
-from enum import Enum
 import traceback
 from collections import namedtuple
+from enum import Enum
 from textwrap import dedent
 from typing import Dict, List, Optional
 
@@ -35,12 +35,15 @@ from metadata.utils.logger import profiler_logger
 
 logger = profiler_logger()
 
+
 class DatabaseDMLOperations(Enum):
     """enum of supported DML operation on database engine side"""
+
     INSERT = "INSERT"
     UPDATE = "UPDATE"
     DELETE = "DELETE"
     MERGE = "MERGE"
+
 
 DML_OPERATION_MAP = {
     DatabaseDMLOperations.INSERT.value: DmlOperationType.INSERT.value,

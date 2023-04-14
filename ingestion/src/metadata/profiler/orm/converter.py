@@ -159,12 +159,14 @@ def build_orm_col(
     if table_service_type == databaseService.DatabaseServiceType.BigQuery and is_array:
         if array_col:
             # If array_col is set, then we are in a nested structure processing
-            # children. We'll need to force the name to be formatted this way 
+            # children. We'll need to force the name to be formatted this way
             # `<unnest_alias>`.`<column_name>`
-            kwargs.update({
-                "name": f"`{array_col if array_col else name}`.{col.name.__root__}",
-                "quote": False,
-            })
+            kwargs.update(
+                {
+                    "name": f"`{array_col if array_col else name}`.{col.name.__root__}",
+                    "quote": False,
+                }
+            )
         sqa_column = sqlalchemy.Column(
             **kwargs,
         )
@@ -224,8 +226,10 @@ def get_columns(
                     service_type,
                     start=idx,
                     parent=name,
-                    is_array=True if is_array or col.dataType == DataType.ARRAY else False,
-                    array_col=name if is_array or col.dataType == DataType.ARRAY else None,
+                    is_array=bool(is_array or col.dataType == DataType.ARRAY),
+                    array_col=name
+                    if is_array or col.dataType == DataType.ARRAY
+                    else None,
                 ),
             }
 
