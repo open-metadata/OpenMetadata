@@ -295,7 +295,7 @@ airflow:
 
 For more information on airflow helm chart values, please refer to [airflow-helm](https://artifacthub.io/packages/helm/airflow-helm/airflow/8.5.3).
 
-Follow [OpenMetadata Kubernetes Deployment](/deployment/kubernetes) to install and deploy helm charts with NFS volumes.
+Follow [OpenMetadata Kubernetes Deployment](/deployment/kubernetes) to install and deploy helm charts with nfs volumes.
 When deploying openmetadata dependencies helm chart, use the below command -
 
 ```commandline
