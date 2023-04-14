@@ -38,11 +38,10 @@ import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import { getListDataInsightCharts } from 'rest/DataInsightAPI';
 import { getListKPIs, postKPI } from 'rest/KpiAPI';
-import { ROUTES } from '../../constants/constants';
+import { ROUTES, VALIDATE_MESSAGES } from '../../constants/constants';
 import {
   KPI_DATE_PICKER_FORMAT,
   SUPPORTED_CHARTS_FOR_KPI,
-  VALIDATE_MESSAGES,
 } from '../../constants/DataInsight.constants';
 import {
   CreateKpiRequest,

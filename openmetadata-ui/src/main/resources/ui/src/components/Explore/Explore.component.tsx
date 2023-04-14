@@ -420,14 +420,14 @@ const Explore: React.FC<ExploreProps> = ({
                 </Col>
               </Row>
             </Col>
-            {showSummaryPanel && entityDetails && (
+            {showSummaryPanel && entityDetails ? (
               <Col flex="400px">
                 <EntitySummaryPanel
                   entityDetails={{ details: entityDetails }}
                   handleClosePanel={handleClosePanel}
                 />
               </Col>
-            )}
+            ) : null}
           </Row>
         </>
       )}
