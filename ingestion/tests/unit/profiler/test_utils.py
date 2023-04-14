@@ -129,7 +129,7 @@ def test_column_like_object():
     column_like = ColumnLike.create(kwargs)
     assert not kwargs
     assert column_like._is_array is True
-    assert column_like._array_col is "name"
+    assert column_like._array_col == "name"
 
     kwargs = {"is_array": False, "array_col": "name"}
     assert kwargs["is_array"] is False
