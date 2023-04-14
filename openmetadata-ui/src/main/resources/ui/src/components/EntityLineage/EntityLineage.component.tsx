@@ -1422,8 +1422,6 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
           ) && isUndefined(tableColumnsRef.current[node.id])
       );
 
-      console.log(allTableNodes);
-
       allTableNodes.length &&
         allTableNodes.map(async (node) => await getTableColumns(node));
       toggleColumnView(true);

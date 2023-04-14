@@ -127,7 +127,6 @@ const TopicDetailsPage: FunctionComponent = () => {
     threadType?: ThreadType
   ) => {
     setIsEntityThreadLoading(true);
-    !after && setEntityThread([]);
     try {
       const { data, paging: pagingObj } = await getAllFeeds(
         getEntityFeedLink(EntityType.TOPIC, topicFQN),
@@ -139,7 +138,7 @@ const TopicDetailsPage: FunctionComponent = () => {
       );
 
       setPaging(pagingObj);
-      setEntityThread((prevData) => [...prevData, ...data]);
+      setEntityThread((prevData) => [...(after ? prevData : []), ...data]);
     } catch (error) {
       showErrorToast(
         error as AxiosError,

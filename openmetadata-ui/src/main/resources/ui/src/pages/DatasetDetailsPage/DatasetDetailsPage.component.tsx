@@ -149,7 +149,6 @@ const DatasetDetailsPage: FunctionComponent = () => {
     threadType?: ThreadType
   ) => {
     setIsEntityThreadLoading(true);
-    !after && setEntityThread([]);
     try {
       const { data, paging: pagingObj } = await getAllFeeds(
         getEntityFeedLink(EntityType.TABLE, tableFQN),
@@ -160,7 +159,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
         USERId
       );
       setPaging(pagingObj);
-      setEntityThread((prevData) => [...prevData, ...data]);
+      setEntityThread((prevData) => [...(after ? prevData : []), ...data]);
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -437,6 +436,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
       const { newValue } = res.changeDescription.fieldsAdded[0];
       const newFollowers = [...(followers ?? []), ...newValue];
       setTableDetails((prev) => ({ ...prev, followers: newFollowers }));
+      getEntityFeedCount();
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -457,6 +457,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
           (follower) => follower.id !== oldValue[0].id
         ),
       }));
+      getEntityFeedCount();
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -551,6 +552,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
         tags,
         extension,
       }));
+      getEntityFeedCount();
     } catch (error) {
       showErrorToast(error as AxiosError);
     }

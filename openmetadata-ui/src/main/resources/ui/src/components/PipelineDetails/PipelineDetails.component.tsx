@@ -407,7 +407,6 @@ const PipelineDetails = ({
     threadType?: ThreadType
   ) => {
     setEntityThreadLoading(true);
-    !after && setEntityThreads([]);
     getAllFeeds(
       getEntityFeedLink(EntityType.PIPELINE, pipelineFQN),
       after,
@@ -420,7 +419,7 @@ const PipelineDetails = ({
         const { data, paging: pagingObj } = res;
         if (data) {
           setEntityThreadPaging(pagingObj);
-          setEntityThreads((prevData) => [...prevData, ...data]);
+          setEntityThreads((prevData) => [...(after ? prevData : []), ...data]);
         } else {
           showErrorToast(
             t('server.entity-fetch-error', {

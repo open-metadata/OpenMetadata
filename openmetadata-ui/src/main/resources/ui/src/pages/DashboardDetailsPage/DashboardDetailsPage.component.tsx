@@ -162,7 +162,6 @@ const DashboardDetailsPage = () => {
     threadType?: ThreadType
   ) => {
     setIsEntityThreadLoading(true);
-    !after && setEntityThread([]);
 
     try {
       const { data, paging: pagingObj } = await getAllFeeds(
@@ -174,7 +173,7 @@ const DashboardDetailsPage = () => {
         USERId
       );
       setPaging(pagingObj);
-      setEntityThread((prevData) => [...prevData, ...data]);
+      setEntityThread((prevData) => [...(after ? prevData : []), ...data]);
     } catch (error) {
       showErrorToast(
         error as AxiosError,

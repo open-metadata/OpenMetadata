@@ -138,7 +138,6 @@ const MlModelPage = () => {
     threadType?: ThreadType
   ) => {
     setIsEntityThreadLoading(true);
-    !after && setEntityThread([]);
     try {
       const response = await getAllFeeds(
         getEntityFeedLink(EntityType.MLMODEL, mlModelFqn),
@@ -150,7 +149,7 @@ const MlModelPage = () => {
       );
       const { data, paging: pagingObj } = response;
       setPaging(pagingObj);
-      setEntityThread((prevData) => [...prevData, ...data]);
+      setEntityThread((prevData) => [...(after ? prevData : []), ...data]);
     } catch (error) {
       showErrorToast(
         error as AxiosError,
