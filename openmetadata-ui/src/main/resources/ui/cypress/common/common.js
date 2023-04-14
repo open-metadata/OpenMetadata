@@ -45,6 +45,17 @@ export const verifyResponseStatusCode = (alias, responseCode, option) => {
   cy.wait(alias, option).its('response.statusCode').should('eq', responseCode);
 };
 
+// waiting for multiple response and validating the response status code
+export const verifyMultipleResponseStatusCode = (
+  alias = [],
+  responseCode = 200,
+  option
+) => {
+  cy.wait(alias, option).then((data) => {
+    data.map((value) => expect(value.response.statusCode).eq(responseCode));
+  });
+};
+
 export const handleIngestionRetry = (
   type,
   testIngestionButton,

@@ -16,6 +16,7 @@ import {
   descriptionBox,
   interceptURL,
   toastNotification,
+  verifyMultipleResponseStatusCode,
   verifyResponseStatusCode,
   visitEntityDetailsPage,
 } from '../../common/common';
@@ -529,14 +530,55 @@ describe('Glossary page should work properly', () => {
   });
 
   it('Update glossary term', () => {
-    selectActiveGlossary(NEW_GLOSSARY_1.name);
-
     const uSynonyms = ['pick up', 'take', 'obtain'];
     const newRef = { name: 'take', url: 'https://take.com' };
     const term2 = NEW_GLOSSARY_TERMS.term_2.name;
     const { name, fullyQualifiedName } = NEW_GLOSSARY_1_TERMS.term_1;
 
-    visitGlossaryTermPage(name, fullyQualifiedName, true);
+    // visit glossary page
+    interceptURL('GET', `/api/v1/glossaryTerms?glossary=*`, 'glossaryTerm');
+    interceptURL('GET', `/api/v1/permissions/glossary/*`, 'permissions');
+    interceptURL('GET', `/api/v1/tags?limit=*`, 'tags');
+    interceptURL(
+      'GET',
+      `/api/v1/search/query?q=*&index=glossary_search_index`,
+      'glossaryTags'
+    );
+    cy.get('.ant-menu-item')
+      .contains(NEW_GLOSSARY_1.name)
+      .should('be.visible')
+      .click();
+    verifyMultipleResponseStatusCode(
+      ['@glossaryTerm', '@permissions', '@tags', '@glossaryTags'],
+      200
+    );
+
+    // visit glossary term page
+    interceptURL(
+      'GET',
+      `/api/v1/glossaryTerms/name/*?fields=*`,
+      'glossaryTermDetails'
+    );
+    interceptURL('GET', `/api/v1/glossaryTerms?parent=*`, 'listGlossaryTerm');
+    interceptURL(
+      'GET',
+      `/api/v1/permissions/glossaryTerm/*`,
+      'glossaryTermPermission'
+    );
+    cy.get(`[data-row-key="${fullyQualifiedName}"]`)
+      .contains(name)
+      .should('be.visible')
+      .click();
+    verifyMultipleResponseStatusCode(
+      [
+        '@glossaryTermDetails',
+        '@listGlossaryTerm',
+        '@glossaryTermPermission',
+        '@tags',
+        '@glossaryTags',
+      ],
+      200
+    );
 
     // Updating synonyms
     updateSynonyms(uSynonyms);
