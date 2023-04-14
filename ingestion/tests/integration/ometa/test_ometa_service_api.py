@@ -235,8 +235,7 @@ class OMetaServiceTest(TestCase):
             "serviceConnection": {
                 "config": {
                     "type": "Tableau",
-                    "username": "tb_user",
-                    "password": "tb_pwd",
+                    "authType": {"username": "tb_user", "password": "tb_pwd"},
                     "hostPort": "http://random:1234",
                     "siteName": "openmetadata",
                     "apiVersion": "3.15",
@@ -254,7 +253,9 @@ class OMetaServiceTest(TestCase):
         )
         assert service
         assert service.serviceType == DashboardServiceType.Tableau
-        assert service.connection.config.password.get_secret_value() == "tb_pwd"
+        assert (
+            service.connection.config.authType.password.get_secret_value() == "tb_pwd"
+        )
 
         # Check get
         assert service == self.metadata.get_service_or_create(

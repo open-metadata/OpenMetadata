@@ -207,7 +207,7 @@ describe('Test Connection Component', () => {
     expect(screen.getByTestId('success-badge')).toBeInTheDocument();
   });
 
-  it('Should show fail message if test connection failed', async () => {
+  it('Should show warning message if test connection failed and mandatory steps passed', async () => {
     jest.useFakeTimers();
 
     (getWorkflowById as jest.Mock).mockImplementationOnce(() =>
@@ -231,10 +231,10 @@ describe('Test Connection Component', () => {
     await waitForElementToBeRemoved(() => screen.getByTestId('loader'));
 
     expect(
-      screen.getByText('message.connection-test-failed')
+      screen.getByText('message.connection-test-warning')
     ).toBeInTheDocument();
 
-    expect(screen.getByTestId('fail-badge')).toBeInTheDocument();
+    expect(screen.getByTestId('warning-badge')).toBeInTheDocument();
   });
 
   it('Should show fail message if create workflow API fails', async () => {
@@ -361,5 +361,63 @@ describe('Test Connection Component', () => {
     const testConnectionButton = screen.getByTestId('test-connection-button');
 
     expect(testConnectionButton).toBeDisabled();
+  });
+
+  it('Should render the failed badge and message if mandatory steps fails', async () => {
+    jest.useFakeTimers();
+    (getWorkflowById as jest.Mock).mockImplementationOnce(() =>
+      Promise.resolve({
+        ...WORKFLOW_DETAILS,
+        response: {
+          ...WORKFLOW_DETAILS.response,
+          steps: [
+            {
+              name: 'CheckAccess',
+              passed: false,
+              message: null,
+              mandatory: true,
+            },
+            {
+              name: 'GetSchemas',
+              passed: false,
+              message: null,
+              mandatory: true,
+            },
+            {
+              name: 'GetTables',
+              passed: false,
+              message: null,
+              mandatory: true,
+            },
+            {
+              name: 'GetViews',
+              passed: true,
+              message: null,
+              mandatory: false,
+            },
+          ],
+          status: StatusType.Failed,
+        },
+      })
+    );
+    await act(async () => {
+      render(<TestConnection {...mockProps} />);
+    });
+
+    const testConnectionButton = screen.getByTestId('test-connection-btn');
+
+    await act(async () => {
+      userEvent.click(testConnectionButton);
+    });
+
+    jest.advanceTimersByTime(2000);
+
+    await waitForElementToBeRemoved(() => screen.getByTestId('loader'));
+
+    expect(
+      screen.getByText('message.connection-test-failed')
+    ).toBeInTheDocument();
+
+    expect(screen.getByTestId('fail-badge')).toBeInTheDocument();
   });
 });

@@ -248,7 +248,7 @@ export const TEST_CASE = {
       version: 0.3,
       updatedAt: 1661425991294,
       updatedBy: 'anonymous',
-      href: 'http://localhost:8585/api/v1/testCases/b9d059d8-b968-42ad-9f89-2b40b92a6659',
+      href: 'http://localhost:8585/api/v1/dataQuality/testCases/b9d059d8-b968-42ad-9f89-2b40b92a6659',
       changeDescription: {
         fieldsAdded: [],
         fieldsUpdated: [

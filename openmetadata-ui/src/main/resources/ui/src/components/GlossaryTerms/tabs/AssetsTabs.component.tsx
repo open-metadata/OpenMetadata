@@ -31,7 +31,7 @@ import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { EntityType } from 'enums/entity.enum';
 import { SearchIndex } from 'enums/search.enum';
 import { t } from 'i18next';
-import { startCase } from 'lodash';
+import { find, startCase } from 'lodash';
 import React, {
   forwardRef,
   useCallback,
@@ -46,6 +46,7 @@ import { getCountBadge } from '../../../utils/CommonUtils';
 import ErrorPlaceHolder from '../../common/error-with-placeholder/ErrorPlaceHolder';
 
 interface Props {
+  onAddAsset: () => void;
   permissions: OperationPermission;
   onAssetClick?: (asset?: EntityDetailsObjectInterface) => void;
   isSummaryPanelOpen: boolean;
@@ -57,7 +58,10 @@ export interface AssetsTabRef {
 }
 
 const AssetsTabs = forwardRef(
-  ({ permissions, onAssetClick, isSummaryPanelOpen }: Props, ref) => {
+  (
+    { permissions, onAssetClick, isSummaryPanelOpen, onAddAsset }: Props,
+    ref
+  ) => {
     const [itemCount, setItemCount] = useState<Record<AssetsUnion, number>>({
       table: 0,
       pipeline: 0,
@@ -98,22 +102,32 @@ const AssetsTabs = forwardRef(
             mlmodelResponse,
             containerResponse,
           ]) => {
-            setItemCount({
+            const counts = {
               [EntityType.TOPIC]: topicResponse.data.hits.total.value,
               [EntityType.TABLE]: tableResponse.data.hits.total.value,
               [EntityType.DASHBOARD]: dashboardResponse.data.hits.total.value,
               [EntityType.PIPELINE]: pipelineResponse.data.hits.total.value,
               [EntityType.MLMODEL]: mlmodelResponse.data.hits.total.value,
               [EntityType.CONTAINER]: containerResponse.data.hits.total.value,
-            });
+            };
+            setItemCount(counts);
 
-            setActiveFilter(
-              tableResponse.data.hits.total.value
-                ? SearchIndex.TABLE
-                : topicResponse.data.hits.total.value
-                ? SearchIndex.TOPIC
-                : SearchIndex.DASHBOARD
-            );
+            find(counts, (count, key) => {
+              if (count > 0) {
+                key;
+
+                const option = AssetsFilterOptions.find(
+                  (el) => el.label === key
+                );
+                if (option) {
+                  setActiveFilter(option.value);
+                }
+
+                return true;
+              }
+
+              return false;
+            });
           }
         )
         .catch((err) => {
@@ -236,7 +250,7 @@ const AssetsTabs = forwardRef(
         })}
         {data.length ? (
           <>
-            {data.map(({ _source, _index, _id = '' }, index) => (
+            {data.map(({ _source, _id = '' }, index) => (
               <TableDataCardV2
                 className={classNames(
                   'm-b-sm cursor-pointer',
@@ -245,7 +259,6 @@ const AssetsTabs = forwardRef(
                 handleSummaryPanelDisplay={setSelectedCard}
                 id={_id}
                 key={index}
-                searchIndex={_index as SearchIndex}
                 source={_source}
               />
             ))}
@@ -271,7 +284,8 @@ const AssetsTabs = forwardRef(
                     <Button
                       ghost
                       data-testid="add-new-asset-button"
-                      type="primary">
+                      type="primary"
+                      onClick={onAddAsset}>
                       {t('label.add-entity', {
                         entity: t('label.asset'),
                       })}

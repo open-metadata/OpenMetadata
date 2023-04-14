@@ -40,11 +40,8 @@ import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import { getChartById } from 'rest/DataInsightAPI';
 import { getKPIByName, patchKPI } from 'rest/KpiAPI';
-import { ROUTES } from '../../constants/constants';
-import {
-  KPI_DATE_PICKER_FORMAT,
-  VALIDATE_MESSAGES,
-} from '../../constants/DataInsight.constants';
+import { ROUTES, VALIDATE_MESSAGES } from '../../constants/constants';
+import { KPI_DATE_PICKER_FORMAT } from '../../constants/DataInsight.constants';
 import { DataInsightChart } from '../../generated/dataInsight/dataInsightChart';
 import { Kpi, KpiTargetType } from '../../generated/dataInsight/kpi/kpi';
 import { useAuth } from '../../hooks/authHooks';
