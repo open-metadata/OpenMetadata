@@ -4,15 +4,14 @@ source:
   serviceConnection:
     config:
       type: Tableau
-      username: $E2E_TABLEAU_USERNAME
-      password: $E2E_TABLEAU_PASSWORD
+      authType:
+        username: $E2E_TABLEAU_USERNAME
+        password: $E2E_TABLEAU_PASSWORD
       env: tableau_prod
       hostPort: $E2E_TABLEAU_HOST_PORT
       siteName: $E2E_TABLEAU_SITE
       siteUrl: $E2E_TABLEAU_SITE
       apiVersion: 3.19
-      personalAccessTokenName: tableau
-      personalAccessTokenSecret: $E2E_TABLEAU_TOKEN
   sourceConfig:
     config:
       type: DashboardMetadata
