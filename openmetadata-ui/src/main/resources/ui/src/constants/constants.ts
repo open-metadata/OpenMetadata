@@ -95,6 +95,7 @@ const PLACEHOLDER_ROUTE_DASHBOARD_FQN = ':dashboardFQN';
 const PLACEHOLDER_ROUTE_DATABASE_FQN = ':databaseFQN';
 const PLACEHOLDER_ROUTE_DATABASE_SCHEMA_FQN = ':databaseSchemaFQN';
 
+export const PLACEHOLDER_ROUTE_TEST_CASE_FQN = ':testCaseFQN';
 export const PLACEHOLDER_ROUTE_SERVICE_FQN = ':serviceFQN';
 export const PLACEHOLDER_ROUTE_INGESTION_TYPE = ':ingestionType';
 export const PLACEHOLDER_ROUTE_INGESTION_FQN = ':ingestionFQN';
@@ -257,6 +258,7 @@ export const ROUTES = {
 
   // Query Routes
   QUERY_FULL_SCREEN_VIEW: `/query-view/${PLACEHOLDER_ROUTE_TABLE_FQN}/${PLACEHOLDER_ROUTE_QUERY_ID}`,
+  TEST_CASE_DETAILS: `/test-case/${PLACEHOLDER_ROUTE_TEST_CASE_FQN}`,
   ADD_QUERY: `/query/${PLACEHOLDER_ROUTE_TABLE_FQN}/add-query`,
 
   // Tasks Routes
