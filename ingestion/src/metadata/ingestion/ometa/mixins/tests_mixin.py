@@ -217,7 +217,7 @@ class OMetaTestsMixin:
         }
 
         resp = self.client.get(
-            f"/testCases/{test_case_fqn}/testCaseResult",
+            f"/dataQuality/testCases/{test_case_fqn}/testCaseResult",
             params,
         )
 
