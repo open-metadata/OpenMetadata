@@ -283,10 +283,10 @@ class StorageUnitTest(TestCase):
             dataPath="transactions",
             structureFormat="parquet",
             isPartitioned=True,
-            partitionColumn="date",
+            partitionColumns=[Column(name="date", dataType=DataType.DATE)],
         )
         self.assertEquals(
-            "transactions/date",
+            "transactions",
             self.object_store_source._get_sample_file_prefix(
                 metadata_entry=input_metadata
             ),

@@ -561,7 +561,8 @@ export const addNewTagToEntity = (entityObj, term) => {
     .should('be.visible')
     .contains(term);
 
-  cy.get('[data-testid="tag-container"]')
+  cy.get('[data-testid="classification-tags-0"] [data-testid="tag-container"]')
+    .scrollIntoView()
     .contains('Add')
     .should('be.visible')
     .click();
@@ -579,7 +580,9 @@ export const addNewTagToEntity = (entityObj, term) => {
     .scrollIntoView()
     .should('be.visible')
     .click();
-  cy.get('[data-testid="tag-container"]').contains(term).should('exist');
+  cy.get('[data-testid="classification-tags-0"] [data-testid="tag-container"]')
+    .contains(term)
+    .should('exist');
 };
 
 export const addUser = (username, email) => {

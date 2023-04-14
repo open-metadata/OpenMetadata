@@ -67,6 +67,7 @@ import {
   getEntityPlaceHolder,
   getOwnerValue,
   refreshPage,
+  sortTagsCaseInsensitive,
 } from 'utils/CommonUtils';
 import { getContainerDetailPath } from 'utils/ContainerDetailUtils';
 import { getEntityLineage, getEntityName } from 'utils/EntityUtils';
@@ -138,7 +139,10 @@ const ContainerPage = () => {
         containerFQN,
         'parent,dataModel,owner,tags,followers,extension'
       );
-      setContainerData(response);
+      setContainerData({
+        ...response,
+        tags: sortTagsCaseInsensitive(response.tags || []),
+      });
       if (response.parent && response.parent.fullyQualifiedName) {
         await fetchContainerParent(response.parent.fullyQualifiedName, true);
       }
@@ -443,7 +447,7 @@ const ContainerPage = () => {
 
       setContainerData((prev) => ({
         ...(prev as Container),
-        tags: newTags,
+        tags: sortTagsCaseInsensitive(newTags || []),
         version,
       }));
     } catch (error) {

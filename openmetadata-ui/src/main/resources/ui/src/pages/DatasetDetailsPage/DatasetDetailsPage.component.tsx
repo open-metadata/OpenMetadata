@@ -67,6 +67,7 @@ import {
   getFeedCounts,
   getFields,
   getPartialNameFromTableFQN,
+  sortTagsCaseInsensitive,
 } from '../../utils/CommonUtils';
 import {
   datasetTableTabs,
@@ -412,22 +413,20 @@ const DatasetDetailsPage: FunctionComponent = () => {
     }
   };
 
-  const onTagUpdate = (updatedTable: Table) => {
-    saveUpdatedTableData(updatedTable)
-      .then((res) => {
-        if (res) {
-          setTableDetails((previous) => ({ ...previous, tags: res.tags }));
-          getEntityFeedCount();
-        } else {
-          showErrorToast(jsonData['api-error-messages']['update-tags-error']);
-        }
-      })
-      .catch((err: AxiosError) => {
-        showErrorToast(
-          err,
-          jsonData['api-error-messages']['update-tags-error']
-        );
-      });
+  const onTagUpdate = async (updatedTable: Table) => {
+    try {
+      const res = await saveUpdatedTableData(updatedTable);
+      setTableDetails((previous) => ({
+        ...previous,
+        tags: sortTagsCaseInsensitive(res.tags || []),
+      }));
+      getEntityFeedCount();
+    } catch (err) {
+      showErrorToast(
+        err as AxiosError,
+        jsonData['api-error-messages']['update-tags-error']
+      );
+    }
   };
 
   const settingsUpdateHandler = async (updatedTable: Table): Promise<void> => {
