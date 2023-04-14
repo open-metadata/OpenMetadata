@@ -375,22 +375,17 @@ const DashboardDetailsPage = () => {
       });
   };
 
-  const onTagUpdate = (updatedDashboard: Dashboard) => {
-    saveUpdatedDashboardData(updatedDashboard)
-      .then((res) => {
-        if (res) {
-          setDashboardDetails(res);
-          getEntityFeedCount();
-        } else {
-          throw jsonData['api-error-messages']['unexpected-server-response'];
-        }
-      })
-      .catch((err: AxiosError) => {
-        showErrorToast(
-          err,
-          jsonData['api-error-messages']['update-tags-error']
-        );
-      });
+  const onTagUpdate = async (updatedDashboard: Dashboard) => {
+    try {
+      const res = await saveUpdatedDashboardData(updatedDashboard);
+      setDashboardDetails(res);
+      getEntityFeedCount();
+    } catch (err) {
+      showErrorToast(
+        err as AxiosError,
+        jsonData['api-error-messages']['update-tags-error']
+      );
+    }
   };
 
   const settingsUpdateHandler = (

@@ -44,6 +44,7 @@ import {
   addToRecentViewed,
   getCurrentUserId,
   getEntityMissingError,
+  sortTagsCaseInsensitive,
 } from '../../utils/CommonUtils';
 import { getEntityName } from '../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
@@ -240,21 +241,20 @@ const PipelineDetailsPage = () => {
     });
   };
 
-  const onTagUpdate = (updatedPipeline: Pipeline) => {
-    saveUpdatedPipelineData(updatedPipeline)
-      .then((res) => {
-        if (res) {
-          setPipelineDetails(res);
-        } else {
-          throw jsonData['api-error-messages']['unexpected-server-response'];
-        }
-      })
-      .catch((err: AxiosError) => {
-        showErrorToast(
-          err,
-          jsonData['api-error-messages']['update-tags-error']
-        );
+  const onTagUpdate = async (updatedPipeline: Pipeline) => {
+    try {
+      const res = await saveUpdatedPipelineData(updatedPipeline);
+
+      setPipelineDetails({
+        ...res,
+        tags: sortTagsCaseInsensitive(res.tags || []),
       });
+    } catch (err) {
+      showErrorToast(
+        err as AxiosError,
+        jsonData['api-error-messages']['update-tags-error']
+      );
+    }
   };
 
   const onTaskUpdate = async (jsonPatch: Array<Operation>) => {

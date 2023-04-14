@@ -314,7 +314,7 @@ describe('Tags page should work', () => {
       .should('be.visible')
       .contains(tag);
 
-    cy.get('[data-testid="edit-button"]').should('exist').click();
+    cy.get('[data-testid="add-tag"]').should('exist').click();
 
     // Remove all added tags
     cy.get('.ant-select-selection-item-remove')
@@ -361,7 +361,7 @@ describe('Tags page should work', () => {
 
     cy.get('[data-testid="table-data-card"]')
       .first()
-      .contains(`#${NEW_TAG_CATEGORY.name}.${NEW_TAG.name}`)
+      .contains(`${NEW_TAG_CATEGORY.name}.${NEW_TAG.name}`)
       .should('be.visible');
 
     cy.get(
