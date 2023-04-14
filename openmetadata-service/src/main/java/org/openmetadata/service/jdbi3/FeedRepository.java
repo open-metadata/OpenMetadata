@@ -51,6 +51,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import javax.json.JsonPatch;
 import javax.ws.rs.core.Response.Status;
+import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
@@ -89,6 +90,7 @@ import org.openmetadata.service.resources.feeds.FeedResource;
 import org.openmetadata.service.resources.feeds.FeedUtil;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
+import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.util.*;
 import org.openmetadata.service.util.ChangeEventParser.PublishTo;
 import org.openmetadata.service.util.RestUtil.DeleteResponse;
@@ -897,6 +899,43 @@ public class FeedRepository {
     sortPosts(updated);
     Thread updatedHref = FeedResource.addHref(uriInfo, updated);
     return new PatchResponse<>(Status.OK, updatedHref, change);
+  }
+
+  public void checkPermissionsForResolveTask(Thread thread, SecurityContext securityContext, Authorizer authorizer)
+      throws IOException {
+    if (thread.getType().equals(ThreadType.Task)) {
+      TaskDetails taskDetails = thread.getTask();
+      List<EntityReference> assignees = taskDetails.getAssignees();
+      String createdBy = thread.getCreatedBy();
+      // Validate about data entity is valid
+      EntityLink about = EntityLink.parse(thread.getAbout());
+      EntityReference aboutRef = EntityUtil.validateEntityLink(about);
+
+      // Get owner for the addressed to Entity
+      EntityReference owner = Entity.getOwner(aboutRef);
+
+      String userName = securityContext.getUserPrincipal().getName();
+      User loggedInUser = findUserByName(userName);
+      List<EntityReference> teams =
+          populateEntityReferences(
+              dao.relationshipDAO()
+                  .findFrom(loggedInUser.getId().toString(), Entity.USER, Relationship.HAS.ordinal(), Entity.TEAM),
+              Entity.TEAM);
+      List<String> teamNames = teams.stream().map(EntityReference::getName).collect(Collectors.toList());
+
+      // check if logged in user satisfies any of the following
+      // - Creator of the task
+      // - logged-in user or the teams they belong to were assigned the task
+      // - logged-in user or the teams they belong to, owns the entity that the task is about
+      if (!createdBy.equals(userName)
+          && assignees.stream().noneMatch(assignee -> assignee.getName().equals(userName))
+          && assignees.stream().noneMatch(assignee -> teamNames.contains(assignee.getName()))
+          && !owner.getName().equals(userName)
+          && !teamNames.contains(owner.getName())) {
+        // Only admins or bots can close or resolve task other than the above-mentioned users
+        authorizer.authorizeAdmin(securityContext);
+      }
+    }
   }
 
   private void validateAnnouncement(AnnouncementDetails announcementDetails) {
