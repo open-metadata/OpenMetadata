@@ -474,7 +474,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
           </p>
 
           <SchemaEditor
-            className="profiler-setting-sql-editor"
+            className="custom-query-editor query-editor-h-200"
             data-testid="profiler-setting-sql-editor"
             mode={{ name: CSMode.SQL }}
             options={{

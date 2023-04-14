@@ -13,18 +13,21 @@
 import { Button, Dropdown, MenuProps, Space, Tag } from 'antd';
 import { ReactComponent as IconDropdown } from 'assets/svg/menu.svg';
 import { NO_PERMISSION_FOR_ACTION } from 'constants/HelperTextUtil';
-import { useClipboard } from 'hooks/useClipBoard';
 import { isUndefined, split } from 'lodash';
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getCurrentUserId, pluralize } from 'utils/CommonUtils';
 import { QueryVoteType } from '../TableQueries.interface';
 import { QueryCardExtraOptionProps } from './QueryCardExtraOption.interface';
+import { ReactComponent as DeleteIcon } from '/assets/svg/ic-delete.svg';
 import { ReactComponent as EditIcon } from '/assets/svg/ic-edit.svg';
-import { ReactComponent as CopyIcon } from '/assets/svg/icon-copy.svg';
 import { ReactComponent as ThumbsUpFilled } from '/assets/svg/thumbs-up-filled.svg';
 import { ReactComponent as ThumbsUpOutline } from '/assets/svg/thumbs-up-outline.svg';
 
+import { AxiosError } from 'axios';
+import ConfirmationModal from 'components/Modals/ConfirmationModal/ConfirmationModal';
+import { deleteQuery } from 'rest/queryAPI';
+import { showErrorToast } from 'utils/ToastUtils';
 import './query-card-extra-option.style.less';
 
 const QueryCardExtraOption = ({
@@ -32,10 +35,21 @@ const QueryCardExtraOption = ({
   query,
   onUpdateVote,
   onEditClick,
+  afterDeleteAction,
 }: QueryCardExtraOptionProps) => {
-  const { EditAll, EditQueries } = permission;
+  const { EditAll, EditQueries, Delete } = permission;
   const { t } = useTranslation();
-  const { onCopyToClipBoard } = useClipboard(query.query);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+
+  const onDeleteClick = async () => {
+    try {
+      await deleteQuery(query.id || '');
+      afterDeleteAction();
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  };
+
   const dropdownItems = useMemo(() => {
     const items: MenuProps['items'] = [
       {
@@ -53,10 +67,12 @@ const QueryCardExtraOption = ({
         title: EditAll || EditQueries ? undefined : NO_PERMISSION_FOR_ACTION,
       },
       {
-        key: 'copy-query',
-        label: t('label.copy'),
-        icon: <CopyIcon height={16} width={16} />,
-        onClick: onCopyToClipBoard,
+        key: 'delete-query',
+        label: t('label.delete'),
+        icon: <DeleteIcon height={16} opacity={Delete ? 1 : 0.5} width={16} />,
+        disabled: !Delete,
+        onClick: () => setShowDeleteModal(true),
+        title: Delete ? undefined : NO_PERMISSION_FOR_ACTION,
       },
     ];
 
@@ -165,6 +181,17 @@ const QueryCardExtraOption = ({
           type="text"
         />
       </Dropdown>
+      <ConfirmationModal
+        bodyText={t('message.delete-entity-permanently', {
+          entityType: t('label.query'),
+        })}
+        cancelText={t('label.cancel')}
+        confirmText={t('label.delete')}
+        header={t('label.delete-entity', { entity: t('label.query') })}
+        visible={showDeleteModal}
+        onCancel={() => setShowDeleteModal(false)}
+        onConfirm={onDeleteClick}
+      />
     </Space>
   );
 };
