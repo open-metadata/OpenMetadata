@@ -88,12 +88,13 @@ def _get_json_text(key: str, text: bytes, decode: bool) -> str:
 def read_from_json(
     key: str, json_text: str, sample_size: int = 100, decode: bool = False
 ) -> List:
-    # pylint: disable=import-outside-toplevel
-    from pandas import json_normalize
-
     """
     Read the json file from the azure container and return a dataframe
     """
+
+    # pylint: disable=import-outside-toplevel
+    from pandas import json_normalize
+
     json_text = _get_json_text(key, json_text, decode)
     try:
         data = json.loads(json_text)
