@@ -20,9 +20,8 @@ import yaml
 
 from metadata.utils.constants import UTF_8
 
+from .common.test_cli_db import CliCommonDB
 from .common_e2e_sqa_mixins import SQACommonMethods
-from .test_cli_db_base import E2EType
-from .test_cli_db_base_common import CliCommonDB
 
 
 class MSSQLCliTest(CliCommonDB.TestSuite, SQACommonMethods):

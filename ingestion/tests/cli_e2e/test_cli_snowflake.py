@@ -19,8 +19,8 @@ import pytest
 from metadata.ingestion.api.sink import SinkStatus
 from metadata.ingestion.api.source import SourceStatus
 
-from .test_cli_db_base import E2EType
-from .test_cli_db_base_common import CliCommonDB
+from .base.test_cli_db import E2EType
+from .common.test_cli_db import CliCommonDB
 
 
 class SnowflakeCliTest(CliCommonDB.TestSuite):
