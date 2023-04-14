@@ -229,6 +229,16 @@ class REST:
                     raise APIError(error, http_error) from http_error
             else:
                 raise
+        except requests.ConnectionError as conn:
+            # Trying to solve https://github.com/psf/requests/issues/4664
+            try:
+                return self._session.request(method, url, **opts).json()
+            except Exception as exc:
+                logger.debug(traceback.format_exc())
+                logger.warning(
+                    f"Unexpected error while retrying after a connection error - {exc}"
+                )
+                raise conn
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning(
@@ -240,7 +250,7 @@ class REST:
             except Exception as exc:
                 logger.debug(traceback.format_exc())
                 logger.warning(
-                    f"Unexpected error while returing response {resp} in json format - {exc}"
+                    f"Unexpected error while returning response {resp} in json format - {exc}"
                 )
         return None
 
