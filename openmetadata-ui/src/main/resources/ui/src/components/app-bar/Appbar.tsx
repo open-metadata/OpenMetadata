@@ -13,6 +13,8 @@
 
 import { Button, Typography } from 'antd';
 import { AxiosError } from 'axios';
+import { useGlobalSearchProvider } from 'components/GlobalSearchProvider/GlobalSearchProvider';
+import { tabsInfo } from 'constants/explore.constants';
 import { CookieStorage } from 'cookie-storage';
 import { isEmpty, isString } from 'lodash';
 import { observer } from 'mobx-react';
@@ -68,6 +70,8 @@ const Appbar: React.FC = (): JSX.Element => {
     isTourRoute,
     onLogoutHandler,
   } = useAuthContext();
+
+  const { searchCriteria } = useGlobalSearchProvider();
 
   const parsedQueryString = Qs.parse(
     location.search.startsWith('?')
@@ -298,15 +302,11 @@ const Appbar: React.FC = (): JSX.Element => {
   const searchHandler = (value: string) => {
     setIsOpen(false);
     addToRecentSearched(value);
-    if (location.pathname.startsWith(ROUTES.EXPLORE)) {
-      // Already on explore page, only push search change
-      history.push({
-        search: Qs.stringify({ ...parsedQueryString, search: value }),
-      });
-    } else {
-      // Outside Explore page
-      history.push(getExplorePath({ tab: 'tables', search: value }));
-    }
+
+    const defaultTab: string =
+      searchCriteria !== '' ? tabsInfo[searchCriteria].path : '';
+
+    history.push(getExplorePath({ tab: defaultTab, search: value }));
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -318,6 +318,11 @@ const Appbar: React.FC = (): JSX.Element => {
 
   const handleOnclick = () => {
     searchHandler(searchValue);
+  };
+
+  const handleClear = () => {
+    setSearchValue('');
+    searchHandler('');
   };
 
   const fetchOMVersion = () => {
@@ -382,6 +387,7 @@ const Appbar: React.FC = (): JSX.Element => {
       (isAuthDisabled || isAuthenticated) &&
       !isTourRoute(location.pathname) ? (
         <NavBar
+          handleClear={handleClear}
           handleFeatureModal={handleFeatureModal}
           handleKeyDown={handleKeyDown}
           handleOnClick={handleOnclick}

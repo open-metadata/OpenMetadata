@@ -82,6 +82,7 @@ export const imageTypes = {
 export const NO_DATA_PLACEHOLDER = '---';
 export const ELLIPSES = '...';
 export const SINGLE_DOT = '•';
+export const PIPE_SYMBOL = '|';
 
 export const TOUR_SEARCH_TERM = 'dim_a';
 export const ERROR404 = t('label.no-data-found');
@@ -143,12 +144,13 @@ export const tiers = [
 ];
 
 export const globalSearchOptions = [
-  { value: undefined, label: t('label.all') },
+  { value: '', label: t('label.all') },
   { value: SearchIndex.TABLE, label: t('label.table') },
   { value: SearchIndex.TOPIC, label: t('label.topic') },
   { value: SearchIndex.DASHBOARD, label: t('label.dashboard') },
   { value: SearchIndex.PIPELINE, label: t('label.pipeline') },
   { value: SearchIndex.MLMODEL, label: t('label.ml-model') },
+  { value: SearchIndex.CONTAINER, label: t('label.container') },
   { value: SearchIndex.GLOSSARY, label: t('label.glossary') },
   { value: SearchIndex.TAG, label: t('label.tag') },
 ];
@@ -252,7 +254,10 @@ export const ROUTES = {
   PROFILER_DASHBOARD_WITH_TAB: `/profiler-dashboard/${PLACEHOLDER_DASHBOARD_TYPE}/${PLACEHOLDER_ENTITY_TYPE_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
   ADD_DATA_QUALITY_TEST_CASE: `/data-quality-test/${PLACEHOLDER_DASHBOARD_TYPE}/${PLACEHOLDER_ENTITY_TYPE_FQN}`,
   LINEAGE_FULL_SCREEN_VIEW: `/lineage-view/${PLACEHOLDER_ROUTE_ENTITY_TYPE}/${PLACEHOLDER_ROUTE_ENTITY_FQN}`,
+
+  // Query Routes
   QUERY_FULL_SCREEN_VIEW: `/query-view/${PLACEHOLDER_ROUTE_TABLE_FQN}/${PLACEHOLDER_ROUTE_QUERY_ID}`,
+  ADD_QUERY: `/query/${PLACEHOLDER_ROUTE_TABLE_FQN}/add-query`,
 
   // Tasks Routes
   REQUEST_DESCRIPTION: `/request-description/${PLACEHOLDER_ROUTE_ENTITY_TYPE}/${PLACEHOLDER_ROUTE_ENTITY_FQN}`,
@@ -598,8 +603,8 @@ export const ENTITY_PATH: Record<string, string> = {
   pipelines: 'pipeline',
   mlmodels: 'mlmodel',
   containers: 'container',
-  tag: 'tag',
-  glossary: 'glossary',
+  tags: 'tag',
+  glossaries: 'glossary',
 };
 
 export const VALIDATE_MESSAGES = {
