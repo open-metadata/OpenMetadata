@@ -20,6 +20,7 @@ from sqlalchemy.sql import sqltypes as types
 from sqlalchemy.types import TypeEngine
 
 from metadata.ingestion.source import sqa_types
+from metadata.generated.schema.entity.data.table import DataType
 
 
 def create_sqlalchemy_type(name: str):
@@ -297,7 +298,7 @@ class ColumnTypeParser:
                 "arrayDataType": arr_data_type,
                 "dataTypeDisplay": data_type,
             }
-            if arr_data_type == "STRUCT":
+            if arr_data_type == DataType.STRUCT.value:
                 children = ColumnTypeParser._parse_struct_fields_string(
                     data_type[6:-1][7:-1]
                 )["children"]
