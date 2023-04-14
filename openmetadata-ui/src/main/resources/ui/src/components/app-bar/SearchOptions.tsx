@@ -12,7 +12,9 @@
  */
 
 import Tags from 'components/Tag/Tags/tags';
+import { TAG_CONSTANT } from 'constants/Tag.constants';
 import React, { FunctionComponent, useEffect, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { getExplorePath } from '../../constants/constants';
 
@@ -31,6 +33,7 @@ const SearchOptions: FunctionComponent<SearchOptionsProp> = ({
   setIsOpen,
   selectOption,
 }: SearchOptionsProp) => {
+  const { t } = useTranslation();
   const isMounting = useRef(true);
   useEffect(() => {
     if (!isMounting.current) {
@@ -68,7 +71,10 @@ const SearchOptions: FunctionComponent<SearchOptionsProp> = ({
                 {searchText}
                 <Tags
                   className="tw-text-grey-body"
-                  tag="In OpenMetadata"
+                  tag={{
+                    ...TAG_CONSTANT,
+                    tagFQN: t('label.in-open-metadata'),
+                  }}
                   type="outlined"
                 />
               </Link>
@@ -85,7 +91,10 @@ const SearchOptions: FunctionComponent<SearchOptionsProp> = ({
                   {searchText}
                   <Tags
                     className="tw-text-grey-body"
-                    tag={option}
+                    tag={{
+                      ...TAG_CONSTANT,
+                      tagFQN: option,
+                    }}
                     type="outlined"
                   />
                 </span>

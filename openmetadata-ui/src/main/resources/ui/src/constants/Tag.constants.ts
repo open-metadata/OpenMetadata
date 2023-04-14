@@ -11,19 +11,17 @@
  *  limitations under the License.
  */
 
-import { TAG_START_WITH } from 'constants/Tag.constants';
-import { TagLabel } from '../../../generated/type/tagLabel';
+import { LabelType, State, TagSource } from 'generated/type/tagLabel';
+import { t } from 'i18next';
 
-export type TagProps = {
-  className?: string;
-  editable?: boolean;
-  type?: 'contained' | 'outlined' | 'label' | 'border';
-  startWith?: TAG_START_WITH;
-  tag: TagLabel;
-  showOnlyName?: boolean;
-  isRemovable?: boolean;
-  removeTag?: (
-    event: React.MouseEvent<HTMLElement, MouseEvent>,
-    removedTag: string
-  ) => void;
+export const TAG_CONSTANT = {
+  labelType: LabelType.Manual,
+  source: TagSource.Classification,
+  state: State.Confirmed,
+  tagFQN: t('label.add'),
 };
+
+export enum TAG_START_WITH {
+  PLUS = '+',
+  SOURCE_ICON = 'source_icon',
+}
