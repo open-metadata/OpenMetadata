@@ -628,6 +628,7 @@ const EntityTable = ({
           rowExpandable: (record) => !isEmpty(record.children),
         }}
         pagination={false}
+        rowKey="name"
         scroll={{ x: 1700 }}
         size="small"
       />
