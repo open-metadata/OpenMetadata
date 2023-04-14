@@ -37,6 +37,7 @@ import {
   PLACEHOLDER_ROUTE_SERVICE_FQN,
   PLACEHOLDER_ROUTE_TAB,
   PLACEHOLDER_ROUTE_TABLE_FQN,
+  PLACEHOLDER_ROUTE_TEST_CASE_FQN,
   PLACEHOLDER_ROUTE_VERSION,
   PLACEHOLDER_RULE_NAME,
   PLACEHOLDER_SETTING_CATEGORY,
@@ -510,6 +511,14 @@ export const getGlossaryTermsVersionsPath = (
   if (tab) {
     path = path.replace(PLACEHOLDER_ROUTE_TAB, tab);
   }
+
+  return path;
+};
+
+export const getTestCaseDetailsPath = (testCaseFQN: string) => {
+  let path = ROUTES.TEST_CASE_DETAILS;
+
+  path = path.replace(PLACEHOLDER_ROUTE_TEST_CASE_FQN, testCaseFQN);
 
   return path;
 };

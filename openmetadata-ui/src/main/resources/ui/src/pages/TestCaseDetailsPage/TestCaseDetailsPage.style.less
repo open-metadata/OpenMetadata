@@ -10,17 +10,19 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { ServiceCategory } from 'enums/service.enum';
-import { StatusType } from 'generated/entity/automations/workflow';
-import { ConfigData } from 'interface/service.interface';
 
-export interface TestConnectionProps {
-  isTestingDisabled: boolean;
-  connectionType: string;
-  serviceCategory: ServiceCategory;
-  formData: ConfigData;
-  showDetails?: boolean;
-  serviceName?: string;
+@import url('../../styles/variables.less');
+
+.test-case-details-page-container {
+  height: 100vh;
+  background-color: @body-bg-color;
+
+  .test-case-details-page-right-panel {
+    background: #ffffff;
+    border: 1px solid #dde3ea;
+    box-shadow: -2px 2px 4px rgba(0, 0, 0, 0.12);
+    padding: 0px;
+    overflow-y: auto;
+    width: 360px;
+  }
 }
-
-export type TestStatus = Exclude<StatusType, 'Running'> | 'Warning' | undefined;
