@@ -22,10 +22,12 @@ from metadata.generated.schema.entity.automations.workflow import (
     Workflow as AutomationWorkflow,
 )
 from metadata.generated.schema.entity.services.connections.dashboard.tableauConnection import (
-    AccessTokenAuth,
-    BasicAuth,
     TableauConnection,
 )
+from metadata.generated.schema.security.credentials.accessTokenAuth import (
+    AccessTokenAuth,
+)
+from metadata.generated.schema.security.credentials.basicAuth import BasicAuth
 from metadata.ingestion.connections.test_connections import (
     SourceConnectionException,
     test_connection_steps,
