@@ -11,10 +11,11 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Row, Select, Space, Typography } from 'antd';
+import { Button, Col, Row, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
+import DatePickerMenu from 'components/DatePickerMenu/DatePickerMenu.component';
 import { t } from 'i18next';
-import { isEmpty, isUndefined } from 'lodash';
+import { isEmpty, isEqual, isUndefined } from 'lodash';
 import Qs from 'qs';
 import React, { ReactElement, useEffect, useMemo, useState } from 'react';
 import { useHistory } from 'react-router-dom';
@@ -33,7 +34,7 @@ import { getListTestCaseResults } from 'rest/testAPI';
 import { getTestCaseDetailsPath } from 'utils/RouterUtils';
 import {
   COLORS,
-  PROFILER_FILTER_RANGE,
+  DEFAULT_RANGE_DATA,
 } from '../../../constants/profiler.constant';
 import { CSMode } from '../../../enums/codemirror.enum';
 import { SIZE } from '../../../enums/common.enum';
@@ -44,11 +45,7 @@ import {
 } from '../../../generated/tests/testCase';
 import { axisTickFormatter } from '../../../utils/ChartUtils';
 import { getEncodedFqn } from '../../../utils/StringsUtils';
-import {
-  getCurrentDateTimeStamp,
-  getFormattedDateFromSeconds,
-  getPastDatesTimeStampFromCurrentDate,
-} from '../../../utils/TimeUtils';
+import { getFormattedDateFromSeconds } from '../../../utils/TimeUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import ErrorPlaceHolder from '../../common/error-with-placeholder/ErrorPlaceHolder';
 import Loader from '../../Loader/Loader';
@@ -63,6 +60,11 @@ type ChartDataType = {
   data: { [key: string]: string }[];
 };
 
+export interface DateRangeObject {
+  startTs: number;
+  endTs: number;
+}
+
 const TestSummary: React.FC<TestSummaryProps> = ({
   data,
   showExpandIcon = true,
@@ -72,21 +74,14 @@ const TestSummary: React.FC<TestSummaryProps> = ({
     {} as ChartDataType
   );
   const [results, setResults] = useState<TestCaseResult[]>([]);
-  const [selectedTimeRange, setSelectedTimeRange] =
-    useState<keyof typeof PROFILER_FILTER_RANGE>('last3days');
+  const [dateRangeObject, setDateRangeObject] =
+    useState<DateRangeObject>(DEFAULT_RANGE_DATA);
   const [isLoading, setIsLoading] = useState(true);
   const [isGraphLoading, setIsGraphLoading] = useState(true);
 
-  const timeRangeOption = useMemo(() => {
-    return Object.entries(PROFILER_FILTER_RANGE).map(([key, value]) => ({
-      label: value.title,
-      value: key,
-    }));
-  }, []);
-
-  const handleTimeRangeChange = (value: keyof typeof PROFILER_FILTER_RANGE) => {
-    if (value !== selectedTimeRange) {
-      setSelectedTimeRange(value);
+  const handleDateRangeChange = (value: DateRangeObject) => {
+    if (!isEqual(value, dateRangeObject)) {
+      setDateRangeObject(value);
     }
   };
 
@@ -106,13 +101,14 @@ const TestSummary: React.FC<TestSummaryProps> = ({
         ...values,
       });
     });
+    chartData.reverse();
     setChartData({
       information:
         currentData[0]?.testResultValue?.map((info, i) => ({
           label: info.name || '',
           color: COLORS[i],
         })) || [],
-      data: chartData.reverse(),
+      data: chartData,
     });
   };
 
@@ -121,12 +117,12 @@ const TestSummary: React.FC<TestSummaryProps> = ({
     props: any
   ): ReactElement<SVGElement> => {
     const { cx = 0, cy = 0, payload } = props;
-    const fill =
-      payload.status === TestCaseStatus.Success
-        ? '#28A745'
-        : payload.status === TestCaseStatus.Failed
-        ? '#CB2431'
-        : '#EFAE2F';
+    let fill =
+      payload.status === TestCaseStatus.Success ? '#28A745' : undefined;
+
+    if (isUndefined(fill)) {
+      fill = payload.status === TestCaseStatus.Failed ? '#CB2431' : '#EFAE2F';
+    }
 
     return (
       <svg
@@ -141,24 +137,15 @@ const TestSummary: React.FC<TestSummaryProps> = ({
     );
   };
 
-  const fetchTestResults = async () => {
+  const fetchTestResults = async (dateRangeObj: DateRangeObject) => {
     if (isEmpty(data)) {
       return;
     }
     setIsGraphLoading(true);
     try {
-      const startTs = getPastDatesTimeStampFromCurrentDate(
-        PROFILER_FILTER_RANGE[selectedTimeRange].days
-      );
-
-      const endTs = getCurrentDateTimeStamp();
-
       const { data: chartData } = await getListTestCaseResults(
         getEncodedFqn(data.fullyQualifiedName || ''),
-        {
-          startTs,
-          endTs,
-        }
+        dateRangeObj
       );
       setResults(chartData);
       generateChartData(chartData);
@@ -170,9 +157,57 @@ const TestSummary: React.FC<TestSummaryProps> = ({
     }
   };
 
+  const getGraph = () => {
+    if (isGraphLoading) {
+      return <Loader />;
+    }
+
+    return results.length ? (
+      <ResponsiveContainer
+        className="tw-bg-white"
+        id={`${data.name}_graph`}
+        minHeight={400}>
+        <LineChart
+          data={chartData.data}
+          margin={{
+            top: 8,
+            bottom: 8,
+            right: 8,
+          }}>
+          <XAxis dataKey="name" padding={{ left: 8, right: 8 }} />
+          <YAxis
+            allowDataOverflow
+            padding={{ top: 8, bottom: 8 }}
+            tickFormatter={(value) => axisTickFormatter(value)}
+          />
+          <Tooltip />
+          <Legend />
+          {data.parameterValues?.length === 2 && referenceArea()}
+          {chartData?.information?.map((info, i) => (
+            <Line
+              dataKey={info.label}
+              dot={updatedDot}
+              key={i}
+              stroke={info.color}
+              type="monotone"
+            />
+          ))}
+        </LineChart>
+      </ResponsiveContainer>
+    ) : (
+      <ErrorPlaceHolder classes="tw-mt-0" size={SIZE.MEDIUM}>
+        <Typography.Paragraph className="m-b-md">
+          {t('message.try-different-time-period-filtering')}
+        </Typography.Paragraph>
+      </ErrorPlaceHolder>
+    );
+  };
+
   useEffect(() => {
-    fetchTestResults();
-  }, [selectedTimeRange]);
+    if (dateRangeObject) {
+      fetchTestResults(dateRangeObject);
+    }
+  }, [dateRangeObject]);
 
   const parameterValuesWithSqlExpression = useMemo(
     () =>
@@ -275,11 +310,9 @@ const TestSummary: React.FC<TestSummaryProps> = ({
           <div>
             <Row gutter={16} justify="end">
               <Col>
-                <Select
-                  className="tw-w-32 tw-mb-2"
-                  options={timeRangeOption}
-                  value={selectedTimeRange}
-                  onChange={handleTimeRangeChange}
+                <DatePickerMenu
+                  showSelectedCustomRange
+                  handleDateRangeChange={handleDateRangeChange}
                 />
               </Col>
               <Col>
@@ -298,47 +331,7 @@ const TestSummary: React.FC<TestSummaryProps> = ({
               </Col>
             </Row>
 
-            {isGraphLoading ? (
-              <Loader />
-            ) : results.length ? (
-              <ResponsiveContainer
-                className="tw-bg-white"
-                id={`${data.name}_graph`}
-                minHeight={400}>
-                <LineChart
-                  data={chartData.data}
-                  margin={{
-                    top: 8,
-                    bottom: 8,
-                    right: 8,
-                  }}>
-                  <XAxis dataKey="name" padding={{ left: 8, right: 8 }} />
-                  <YAxis
-                    allowDataOverflow
-                    padding={{ top: 8, bottom: 8 }}
-                    tickFormatter={(value) => axisTickFormatter(value)}
-                  />
-                  <Tooltip />
-                  <Legend />
-                  {data.parameterValues?.length === 2 && referenceArea()}
-                  {chartData?.information?.map((info, i) => (
-                    <Line
-                      dataKey={info.label}
-                      dot={updatedDot}
-                      key={i}
-                      stroke={info.color}
-                      type="monotone"
-                    />
-                  ))}
-                </LineChart>
-              </ResponsiveContainer>
-            ) : (
-              <ErrorPlaceHolder classes="tw-mt-0" size={SIZE.MEDIUM}>
-                <Typography.Paragraph className="m-b-md">
-                  {t('message.try-different-time-period-filtering')}
-                </Typography.Paragraph>
-              </ErrorPlaceHolder>
-            )}
+            {getGraph()}
           </div>
         )}
       </Col>

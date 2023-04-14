@@ -94,7 +94,7 @@ const TagsInput: React.FC<Props> = ({ tags = [], editable, onTagsUpdate }) => {
         <Typography.Text className="glossary-subheading">
           {t('label.tag-plural')}
         </Typography.Text>
-        {editable && tags.length > 0 && (
+        {editable && (
           <Button
             className="cursor-pointer m-l-xs"
             data-testid="edit-button"

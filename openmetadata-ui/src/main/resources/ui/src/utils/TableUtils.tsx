@@ -468,7 +468,7 @@ export function getTableExpandableConfig<T>(
           <>
             <SVGIcons
               alt="icon"
-              className="m-r-xs"
+              className="m-r-xs drag-icon"
               height={8}
               icon={Icons.DRAG}
               width={8}

@@ -19,6 +19,7 @@ import {
   Table,
 } from '../../generated/entity/data/table';
 import { TestCase } from '../../generated/tests/testCase';
+import { DateRangeObject } from './component/TestSummary';
 
 export interface ProfilerDashboardProps {
   onTableChange: (table: Table) => void;
@@ -26,7 +27,10 @@ export interface ProfilerDashboardProps {
   table: Table;
   testCases: TestCase[];
   profilerData: ColumnProfile[];
-  fetchProfilerData: (tableId: string, days?: number) => void;
+  fetchProfilerData: (
+    tableId: string,
+    dateRangeObject?: DateRangeObject
+  ) => void;
   fetchTestCases: (fqn: string, params?: ListTestCaseParams) => void;
   onTestCaseUpdate: (deleted?: boolean) => void;
 }
