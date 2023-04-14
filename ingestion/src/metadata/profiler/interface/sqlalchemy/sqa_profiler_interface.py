@@ -130,7 +130,7 @@ class SQAProfilerInterface(ProfilerProtocol, SQAInterfaceMixin):
             kwargs["is_array"] = False
 
         try:
-            kwargs["array_col"] = column._arr_col  # pylint: disable=protected-access
+            kwargs["array_col"] = column._array_col  # pylint: disable=protected-access
         except AttributeError:
             kwargs["array_col"] = None
 
@@ -526,7 +526,7 @@ class SQAProfilerInterface(ProfilerProtocol, SQAInterfaceMixin):
             if column.name in {col.name.__root__ for col in self.table_entity.columns}
         ]
 
-        return sampler.fetch_sqa_sample_data(sample_columns)
+        return sampler.fetch_sqa_sample_data()
 
     def get_composed_metrics(
         self, column: Column, metric: Metrics, column_results: Dict
