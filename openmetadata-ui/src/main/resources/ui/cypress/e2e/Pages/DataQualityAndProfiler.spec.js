@@ -582,7 +582,9 @@ describe('Data Quality and Profiler should work properly', () => {
     const { term, entity, serviceName, testCaseName } =
       DATA_QUALITY_SAMPLE_DATA_TABLE;
     visitEntityDetailsPage(term, serviceName, entity);
-    cy.get('[data-testid="inactive-link"]').should('be.visible').contains(term);
+    cy.get('[data-testid="entity-header-name"]')
+      .should('be.visible')
+      .contains(term);
     cy.get('[data-testid="Profiler & Data Quality"]')
       .should('be.visible')
       .click();
@@ -633,7 +635,9 @@ describe('Data Quality and Profiler should work properly', () => {
     );
     visitEntityDetailsPage(term, serviceName, entity);
     verifyResponseStatusCode('@waitForPageLoad', 200);
-    cy.get('[data-testid="inactive-link"]').should('be.visible').contains(term);
+    cy.get('[data-testid="entity-header-name"]')
+      .should('be.visible')
+      .contains(term);
     cy.get('[data-testid="Profiler & Data Quality"]')
       .should('be.visible')
       .click();

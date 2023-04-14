@@ -14,7 +14,9 @@
 import Icon from '@ant-design/icons';
 import { Tooltip } from 'antd';
 import { ExpandableConfig } from 'antd/lib/table/interface';
+import { ReactComponent as IconFlatFolder } from 'assets/svg/folder.svg';
 import { ReactComponent as ContainerIcon } from 'assets/svg/ic-storage.svg';
+import { ReactComponent as IconTag } from 'assets/svg/tag-grey.svg';
 import classNames from 'classnames';
 import { SourceType } from 'components/searched-data/SearchedData.interface';
 import { t } from 'i18next';
@@ -272,15 +274,15 @@ export const getEntityLink = (
 
 export const getServiceIcon = (source: SourceType) => {
   if (source.entityType === EntityType.GLOSSARY_TERM) {
-    return <SVGIcons alt="icon" className="m-r-xs" icon={Icons.FLAT_FOLDER} />;
+    return <IconFlatFolder className="h-9" />;
   } else if (source.entityType === EntityType.TAG) {
-    return <SVGIcons alt="icon" className="m-r-xs" icon={Icons.TAG} />;
+    return <IconTag className="h-9" />;
   } else {
     return (
       <img
         alt="service-icon"
-        className="inline h-8 p-r-xs"
-        src={serviceTypeLogo((source.serviceType || source.entityType) ?? '')}
+        className="inline h-9"
+        src={serviceTypeLogo(source.serviceType || '')}
       />
     );
   }

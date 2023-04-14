@@ -466,6 +466,7 @@ const ProfilerDashboard: React.FC<ProfilerDashboardProps> = ({
                 ? handleTierRemove
                 : undefined
             }
+            serviceType={table.serviceType ?? ''}
             tags={getTagsWithoutTier(table.tags || [])}
             tagsHandler={handleTagUpdate}
             tier={tier}

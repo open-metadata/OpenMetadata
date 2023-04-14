@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { ReactComponent as ContainerIcon } from 'assets/svg/ic-storage.svg';
 import { AxiosError } from 'axios';
 import {
   OperationPermission,
@@ -301,6 +302,8 @@ export const serviceTypeLogo = (type: string) => {
         logo = DATABASE_DEFAULT;
       } else if (serviceTypes.mlmodelServices.includes(type)) {
         logo = ML_MODEL_DEFAULT;
+      } else if (serviceTypes.storageServices.includes(type)) {
+        logo = ContainerIcon;
       } else {
         logo = DEFAULT_SERVICE;
       }
