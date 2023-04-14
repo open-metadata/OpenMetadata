@@ -401,9 +401,9 @@ const Explore: React.FC<ExploreProps> = ({
                       data={searchResults?.hits.hits ?? []}
                       handleSummaryPanelDisplay={handleSummaryPanelDisplay}
                       isSummaryPanelVisible={showSummaryPanel}
-                      onPaginationChange={onChangePage}
                       selectedEntityId={entityDetails?.id || ''}
                       totalValue={searchResults?.hits.total.value ?? 0}
+                      onPaginationChange={onChangePage}
                     />
                   ) : (
                     <Loader />
@@ -411,14 +411,14 @@ const Explore: React.FC<ExploreProps> = ({
                 </Col>
               </Row>
             </Col>
-            {showSummaryPanel && entityDetails && (
+            {showSummaryPanel && entityDetails ? (
               <Col flex="400px">
                 <EntitySummaryPanel
                   entityDetails={{ details: entityDetails }}
                   handleClosePanel={handleClosePanel}
                 />
               </Col>
-            )}
+            ) : null}
           </Row>
         </>
       )}

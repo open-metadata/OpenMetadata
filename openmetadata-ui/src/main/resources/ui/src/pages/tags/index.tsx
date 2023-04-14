@@ -529,8 +529,9 @@ const TagsPage = () => {
   useEffect(() => {
     /**
      * Fetch all classifications initially
+     * Do not set current if we already have currentClassification set
      */
-    fetchClassifications(true);
+    fetchClassifications(!tagCategoryName);
   }, []);
 
   useEffect(() => {

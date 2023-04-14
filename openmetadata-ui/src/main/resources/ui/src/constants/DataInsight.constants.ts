@@ -194,13 +194,6 @@ export const ENTITIES_SUMMARY_LIST = [
   },
 ];
 
-export const VALIDATE_MESSAGES = {
-  required: '${fieldName} is required!',
-  string: {
-    range: '${fieldName} must be between ${min} and ${max} character.',
-  },
-};
-
 export const SUPPORTED_CHARTS_FOR_KPI = [
   DataInsightChartType.PercentageOfEntitiesWithDescriptionByType,
   DataInsightChartType.PercentageOfEntitiesWithOwnerByType,

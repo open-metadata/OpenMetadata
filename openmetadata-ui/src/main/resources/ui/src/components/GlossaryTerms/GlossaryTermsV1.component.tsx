@@ -12,10 +12,14 @@
  */
 
 import { Col, Row } from 'antd';
+import { AssetSelectionModal } from 'components/Assets/AssetsSelectionModal/AssetSelectionModal';
 import { EntityDetailsObjectInterface } from 'components/Explore/explore.interface';
 import GlossaryHeader from 'components/Glossary/GlossaryHeader/GlossaryHeader.component';
 import GlossaryTabs from 'components/GlossaryTabs/GlossaryTabs.component';
-import React, { useRef } from 'react';
+import { myDataSearchIndex } from 'constants/Mydata.constants';
+import React, { useEffect, useRef, useState } from 'react';
+import { useParams } from 'react-router-dom';
+import { searchData } from 'rest/miscAPI';
 import { GlossaryTerm } from '../../generated/entity/data/glossaryTerm';
 import { OperationPermission } from '../PermissionProvider/PermissionProvider.interface';
 import { AssetsTabRef } from './tabs/AssetsTabs.component';
@@ -41,39 +45,80 @@ const GlossaryTermsV1 = ({
   onAssetClick,
   isSummaryPanelOpen,
 }: Props) => {
+  const { glossaryName: glossaryFqn } = useParams<{ glossaryName: string }>();
   const assetTabRef = useRef<AssetsTabRef>(null);
+  const [assetModalVisible, setAssetModelVisible] = useState(false);
+
+  const [assetCount, setAssetCount] = useState<number>(0);
+
+  const fetchGlossaryTermAssets = async () => {
+    if (glossaryFqn) {
+      try {
+        const res = await searchData(
+          '',
+          1,
+          0,
+          `(tags.tagFQN:"${glossaryFqn}")`,
+          '',
+          '',
+          myDataSearchIndex
+        );
+
+        setAssetCount(res.data.hits.total.value ?? 0);
+      } catch (error) {
+        setAssetCount(0);
+      }
+    }
+  };
+
+  useEffect(() => {
+    fetchGlossaryTermAssets();
+  }, [glossaryFqn]);
+
+  const handleAssetSave = () => {
+    fetchGlossaryTermAssets();
+    assetTabRef.current?.refreshAssets();
+  };
 
   return (
-    <Row data-testid="glossary-term" gutter={[0, 8]}>
-      <Col span={24}>
-        <GlossaryHeader
-          isGlossary={false}
-          permissions={permissions}
-          selectedData={glossaryTerm}
-          onAssetsUpdate={() => {
-            if (glossaryTerm.fullyQualifiedName) {
-              assetTabRef.current?.refreshAssets();
-            }
-          }}
-          onDelete={handleGlossaryTermDelete}
-          onUpdate={(data) => handleGlossaryTermUpdate(data as GlossaryTerm)}
-        />
-      </Col>
+    <>
+      <Row data-testid="glossary-term" gutter={[0, 8]}>
+        <Col span={24}>
+          <GlossaryHeader
+            isGlossary={false}
+            permissions={permissions}
+            selectedData={glossaryTerm}
+            onAssetAdd={() => setAssetModelVisible(true)}
+            onDelete={handleGlossaryTermDelete}
+            onUpdate={(data) => handleGlossaryTermUpdate(data as GlossaryTerm)}
+          />
+        </Col>
 
-      <Col span={24}>
-        <GlossaryTabs
-          assetsRef={assetTabRef}
-          childGlossaryTerms={childGlossaryTerms}
-          isGlossary={false}
-          isSummaryPanelOpen={isSummaryPanelOpen}
-          permissions={permissions}
-          refreshGlossaryTerms={refreshGlossaryTerms}
-          selectedData={glossaryTerm}
-          onAssetClick={onAssetClick}
-          onUpdate={(data) => handleGlossaryTermUpdate(data as GlossaryTerm)}
+        <Col span={24}>
+          <GlossaryTabs
+            assetCount={assetCount}
+            assetsRef={assetTabRef}
+            childGlossaryTerms={childGlossaryTerms}
+            isGlossary={false}
+            isSummaryPanelOpen={isSummaryPanelOpen}
+            permissions={permissions}
+            refreshGlossaryTerms={refreshGlossaryTerms}
+            selectedData={glossaryTerm}
+            onAddAsset={() => setAssetModelVisible(true)}
+            onAssetClick={onAssetClick}
+            onUpdate={(data) => handleGlossaryTermUpdate(data as GlossaryTerm)}
+          />
+        </Col>
+      </Row>
+      {glossaryTerm.fullyQualifiedName && (
+        <AssetSelectionModal
+          glossaryFQN={glossaryTerm.fullyQualifiedName}
+          open={assetModalVisible}
+          onCancel={() => setAssetModelVisible(false)}
+          onSave={handleAssetSave}
         />
-      </Col>
-    </Row>
+      )}
+    </>
   );
 };
 

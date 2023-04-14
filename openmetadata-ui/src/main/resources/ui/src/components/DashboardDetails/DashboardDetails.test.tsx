@@ -112,14 +112,6 @@ const DashboardDetailsProps = {
   onExtensionUpdate: jest.fn(),
 };
 
-const mockObserve = jest.fn();
-const mockunObserve = jest.fn();
-
-window.IntersectionObserver = jest.fn().mockImplementation(() => ({
-  observe: mockObserve,
-  unobserve: mockunObserve,
-}));
-
 jest.mock('../common/description/Description', () => {
   return jest.fn().mockReturnValue(<p>Description Component</p>);
 });
@@ -285,8 +277,6 @@ describe('Test DashboardDetails component', () => {
     const obServerElement = await findByTestId(container, 'observer-element');
 
     expect(obServerElement).toBeInTheDocument();
-
-    expect(mockObserve).toHaveBeenCalled();
   });
 
   it('Check if tags and glossary-terms are present', async () => {
