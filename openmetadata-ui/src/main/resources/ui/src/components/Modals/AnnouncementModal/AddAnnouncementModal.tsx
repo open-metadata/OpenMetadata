@@ -13,6 +13,7 @@
 
 import { Form, Input, Modal, Space } from 'antd';
 import { AxiosError } from 'axios';
+import { VALIDATE_MESSAGES } from 'constants/constants';
 import { observer } from 'mobx-react';
 import React, { FC, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -22,7 +23,6 @@ import {
   CreateThread,
   ThreadType,
 } from '../../../generated/api/feed/createThread';
-import { validateMessages } from '../../../utils/AnnouncementsUtils';
 import { getEntityFeedLink } from '../../../utils/EntityUtils';
 import { getTimeZone, getUTCDateTime } from '../../../utils/TimeUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
@@ -112,7 +112,7 @@ const AddAnnouncementModal: FC<Props> = ({
         data-testid="announcement-form"
         id="announcement-form"
         layout="vertical"
-        validateMessages={validateMessages}
+        validateMessages={VALIDATE_MESSAGES}
         onFinish={handleCreateAnnouncement}>
         <Form.Item
           label={`${t('label.title')}:`}

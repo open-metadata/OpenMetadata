@@ -17,6 +17,7 @@ import classNames from 'classnames';
 import { UserSelectableList } from 'components/common/UserSelectableList/UserSelectableList.component';
 import { UserTag } from 'components/common/UserTag/UserTag.component';
 import { UserTagSize } from 'components/common/UserTag/UserTag.interface';
+import { UserTeamSelectableList } from 'components/common/UserTeamSelectableList/UserTeamSelectableList.component';
 import Tags from 'components/Tag/Tags/tags';
 import { TAG_CONSTANT, TAG_START_WITH } from 'constants/Tag.constants';
 import { TagSource } from 'generated/type/tagLabel';
@@ -33,7 +34,12 @@ import {
   TermReference,
 } from '../../generated/entity/data/glossaryTerm';
 import { EntityReference } from '../../generated/type/entityReference';
-import { errorMsg, isValidUrl, requiredField } from '../../utils/CommonUtils';
+import {
+  errorMsg,
+  getCurrentUserId,
+  isValidUrl,
+  requiredField,
+} from '../../utils/CommonUtils';
 import SVGIcons from '../../utils/SvgUtils';
 import { AddTags } from '../AddTags/add-tags.component';
 import RichTextEditor from '../common/rich-text-editor/RichTextEditor';
@@ -82,6 +88,7 @@ const AddGlossaryTerm = ({
   const [synonyms, setSynonyms] = useState('');
   const [mutuallyExclusive, setMutuallyExclusive] = useState(false);
   const [references, setReferences] = useState<TermReference[]>([]);
+  const [owner, setOwner] = useState<EntityReference | undefined>();
 
   useEffect(() => {
     if (glossaryData?.reviewers && glossaryData?.reviewers.length) {
@@ -106,8 +113,8 @@ const AddGlossaryTerm = ({
     setReviewer(reviewer);
   };
 
-  const handleReviewerRemove = (removedTag: string) => {
-    setReviewer((pre) => pre.filter((option) => option.name !== removedTag));
+  const handleUpdatedOwner = async (owner: EntityReference | undefined) => {
+    setOwner(owner);
   };
 
   const handleTermRemove = (
@@ -214,6 +221,10 @@ const AddGlossaryTerm = ({
 
     if (validateForm(updatedReference)) {
       const updatedName = name.trim();
+      const selectedOwner = owner || {
+        id: getCurrentUserId(),
+        type: 'user',
+      };
       const data: CreateGlossaryTerm = {
         name: updatedName,
         displayName: (displayName || updatedName).trim(),
@@ -228,6 +239,7 @@ const AddGlossaryTerm = ({
         mutuallyExclusive,
         glossary: glossaryData.name,
         tags: tags,
+        owner: selectedOwner,
       };
 
       onSave(data);
@@ -363,9 +375,9 @@ const AddGlossaryTerm = ({
 
           <div className="m-t-lg">
             <Field>
-              <Space align="end">
+              <Space align="end" size={12}>
                 <label
-                  className="tw-form-label m-b-0"
+                  className="glossary-form-label tw-form-label m-b-0"
                   data-testid="mutually-exclusive-label"
                   htmlFor="mutuallyExclusive">
                   {t('label.mutually-exclusive')}
@@ -380,14 +392,18 @@ const AddGlossaryTerm = ({
             </Field>
 
             <Field>
-              <Space align="end" data-testid="references">
-                <label className="tw-form-label m-b-0">
+              <Space align="end" data-testid="references" size={12}>
+                <label className="glossary-form-label tw-form-label m-b-0">
                   {t('label.reference-plural')}
                 </label>
                 <Button
                   className="tw-h-5 tw-px-2"
                   data-testid="add-reference"
-                  icon={<PlusOutlined />}
+                  icon={
+                    <PlusOutlined
+                      style={{ color: 'white', fontSize: '12px' }}
+                    />
+                  }
                   size="small"
                   type="primary"
                   onClick={addReferenceFields}
@@ -451,13 +467,15 @@ const AddGlossaryTerm = ({
 
           <Field>
             <div className="tw-flex tw-items-center tw-mt-4">
-              <p className="w-form-label tw-mr-3">
+              <p className="glossary-form-label w-form-label tw-mr-3">
                 {t('label.related-term-plural')}
               </p>
               <Button
                 className="tw-h-5 tw-px-2"
                 data-testid="add-related-terms"
-                icon={<PlusOutlined />}
+                icon={
+                  <PlusOutlined style={{ color: 'white', fontSize: '12px' }} />
+                }
                 size="small"
                 type="primary"
                 onClick={() => setShowRelatedTermsModal(true)}
@@ -483,9 +501,42 @@ const AddGlossaryTerm = ({
                 ))}
             </div>
           </Field>
+
           <Field>
             <div className="tw-flex tw-items-center tw-mt-4">
-              <p className="w-form-label tw-mr-3">
+              <p className="glossary-form-label w-form-label tw-mr-3">{`${t(
+                'label.owner'
+              )}`}</p>
+              <UserTeamSelectableList
+                hasPermission
+                owner={owner}
+                onUpdate={handleUpdatedOwner}>
+                <Button
+                  className="tw-h-5 tw-px-2"
+                  data-testid="add-owner"
+                  icon={
+                    <PlusOutlined
+                      style={{ color: 'white', fontSize: '12px' }}
+                    />
+                  }
+                  size="small"
+                  type="primary"
+                />
+              </UserTeamSelectableList>
+            </div>
+            <div className="tw-my-2" data-testid="owner-container">
+              {owner && (
+                <UserTag
+                  id={owner.id}
+                  name={getEntityName(owner)}
+                  size={UserTagSize.small}
+                />
+              )}
+            </div>
+          </Field>
+          <Field>
+            <div className="tw-flex tw-items-center tw-mt-4">
+              <p className="glossary-form-label w-form-label tw-mr-3">
                 {t('label.reviewer-plural')}
               </p>
               <UserSelectableList
@@ -496,24 +547,25 @@ const AddGlossaryTerm = ({
                 <Button
                   className="tw-h-5 tw-px-2"
                   data-testid="add-reviewers"
-                  icon={<PlusOutlined />}
+                  icon={
+                    <PlusOutlined
+                      style={{ color: 'white', fontSize: '12px' }}
+                    />
+                  }
                   size="small"
                   type="primary"
                 />
               </UserSelectableList>
             </div>
-            <Space wrap className="tw-my-4" size={[8, 8]}>
+            <Space wrap className="tw-my-2" size={[8, 8]}>
               {Boolean(reviewer.length) &&
                 reviewer.map((d, index) => {
                   return (
                     <UserTag
-                      bordered
-                      closable
                       id={d.id}
                       key={index}
                       name={getEntityName(d)}
                       size={UserTagSize.small}
-                      onRemove={() => d.name && handleReviewerRemove(d.name)}
                     />
                   );
                 })}

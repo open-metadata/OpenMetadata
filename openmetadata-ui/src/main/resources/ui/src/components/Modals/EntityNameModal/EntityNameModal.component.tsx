@@ -47,6 +47,7 @@ const EntityNameModal: React.FC<Props> = ({
   return (
     <Modal
       destroyOnClose
+      closable={false}
       footer={[
         <Button key="cancel-btn" type="link" onClick={onCancel}>
           {t('label.cancel')}
@@ -59,13 +60,15 @@ const EntityNameModal: React.FC<Props> = ({
           {t('label.save')}
         </Button>,
       ]}
+      maskClosable={false}
       okText={t('label.save')}
       open={visible}
       title={
         <Typography.Text strong data-testid="header">
           {t('label.edit-glossary-name')}
         </Typography.Text>
-      }>
+      }
+      onCancel={onCancel}>
       <Form form={form} layout="vertical" onFinish={handleSave}>
         <Form.Item
           label={`${t('label.name')}:`}
