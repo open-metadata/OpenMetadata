@@ -25,7 +25,7 @@
       },
       {
         "name": "GetViews",
-        "description": "From a given schema, list the views belonging to that schema. If no schema is specified, we'll list the tables of a random schema.",
+        "description": "From a given schema, list the views belonging to that schema. If no schema is specified, we'll list the views of a random schema.",
         "errorMessage": "Failed to fetch views, please validate if the user has enough privilege to fetch views.",
         "mandatory": false
       }

@@ -53,7 +53,7 @@
         "description": "Authentication mode to connect to Impala.",
         "type": "string",
         "enum": ["NOSASL", "PLAIN", "GSSAPI", "LDAP", "JWT"],
-        "default": "NONE"
+        "default": "PLAIN"
       },
       "kerberos_service_name": {
         "title": "Kerberos Service Name",
