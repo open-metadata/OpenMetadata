@@ -57,7 +57,11 @@ def get_connection(connection: MysqlConnection) -> Engine:
     if connection.iamAuth:
         client = AWSClient(connection.awsConfig).get_rds_client()
         host, port = connection.hostPort.split(':')
-        token = client.generate_db_auth_token(host, port, connection.username)
+        token = client.generate_db_auth_token(
+            DBHostname=host,
+            Port=port,
+            DBUsername=connection.username
+        )
         connection.password=SecretStr(token)
 
     return create_generic_db_connection(
