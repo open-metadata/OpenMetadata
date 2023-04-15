@@ -151,7 +151,9 @@ the changes.
 
 - **Username**: Specify the User to connect to MySQL. It should have enough privileges to read all the metadata.
 - **Password**: Password to connect to MySQL.
+- **IAM Authentication (Optional)**: For cloud providers supporting IAM authentication, this feature will request a temporary set of credentials before connecting to the database. Enabling this field will override the `Password` authentication method.
 - **Host and Port**: Enter the fully qualified hostname and port number for your MySQL deployment in the Host and Port field.
+- **AWS Credentials**: Only needed for IAM Authentication to retrieve temporary credentials.
 - **Connection Options (Optional)**: Enter the details for any additional connection options that can be sent to MySQL during the connection. These details must be added as Key-Value pairs.
 - **Connection Arguments (Optional)**: Enter the details for any additional connection arguments such as security or protocol configs that can be sent to MySQL during the connection. These details must be added as Key-Value pairs. 
   - In case you are using Single-Sign-On (SSO) for authentication, add the `authenticator` details in the Connection Arguments as a Key-Value pair as follows: `"authenticator" : "sso_login_url"`
