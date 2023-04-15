@@ -34,6 +34,7 @@ class AWSServices(Enum):
     KINESIS = "kinesis"
     QUICKSIGHT = "quicksight"
     ATHENA = "athena"
+    RDS = "rds"
 
 
 class AWSAssumeRoleException(Exception):
@@ -181,3 +182,6 @@ class AWSClient:
 
     def get_athena_client(self):
         return self.get_client(AWSServices.ATHENA.value)
+
+    def get_rds_client(self):
+        return self.get_client(AWSServices.RDS.value)

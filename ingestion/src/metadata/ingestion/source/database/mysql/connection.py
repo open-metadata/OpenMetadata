@@ -16,12 +16,18 @@ from typing import Optional
 
 from sqlalchemy.engine import Engine
 
+from metadata.clients.aws_client import AWSClient
+
 from metadata.generated.schema.entity.automations.workflow import (
     Workflow as AutomationWorkflow,
 )
 from metadata.generated.schema.entity.services.connections.database.mysqlConnection import (
     MysqlConnection,
 )
+from metadata.generated.schema.security.credentials.awsCredentials import (
+    AWSCredentials,
+)
+from pydantic import SecretStr
 from metadata.ingestion.connections.builders import (
     create_generic_db_connection,
     get_connection_args_common,
@@ -47,6 +53,12 @@ def get_connection(connection: MysqlConnection) -> Engine:
             connection.connectionOptions.__root__["ssl_cert"] = connection.sslCert
         if connection.sslKey:
             connection.connectionOptions.__root__["ssl_key"] = connection.sslKey
+
+    if connection.iamAuth:
+        client = AWSClient(connection.awsConfig).get_rds_client()
+        host, port = connection.hostPort.split(':')
+        token = client.generate_db_auth_token(host, port, connection.username)
+        connection.password=SecretStr(token)
 
     return create_generic_db_connection(
         connection=connection,
