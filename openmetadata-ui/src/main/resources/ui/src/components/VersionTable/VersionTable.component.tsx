@@ -132,6 +132,7 @@ const VersionTable = ({ columnName, columns, joins }: VersionTableProps) => {
             defaultExpandedRowKeys: [],
           }}
           pagination={false}
+          rowKey="name"
           size="small"
         />
       </Col>

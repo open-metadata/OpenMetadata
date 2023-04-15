@@ -27,10 +27,13 @@
           "type": "boolean",
           "default": false
         },
-        "partitionColumn": {
-          "title": "Partition Column",
-          "description": "What is the partition column in case the container's data is partitioned",
-          "type": "string",
+        "partitionColumns": {
+          "title": "Partition Columns",
+          "description": "What are the partition columns in case the container's data is partitioned",
+          "type": "array",
+          "items": {
+            "$ref": "../../entity/data/table.json#/definitions/column"
+          },
           "default": null
         }
       },

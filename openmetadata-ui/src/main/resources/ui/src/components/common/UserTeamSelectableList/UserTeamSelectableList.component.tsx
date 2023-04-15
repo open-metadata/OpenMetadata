@@ -168,6 +168,8 @@ export const UserTeamSelectableList = ({
         : {
             id: updateItems[0].id,
             type: activeTab === 'teams' ? EntityType.TEAM : EntityType.USER,
+            name: updateItems[0].name,
+            displayName: updateItems[0].displayName,
           }
     );
     setPopupVisible(false);

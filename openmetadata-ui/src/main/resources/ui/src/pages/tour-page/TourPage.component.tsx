@@ -82,6 +82,10 @@ const TourPage = () => {
     }
   };
 
+  const handleClear = () => {
+    setSearchValue('');
+  };
+
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
       handleSearch();
@@ -177,7 +181,7 @@ const TourPage = () => {
             fetchFeedHandler={handleCountChange}
             followTableHandler={handleCountChange}
             handleExtensionUpdate={handleCountChange}
-            isentityThreadLoading={false}
+            isEntityThreadLoading={false}
             paging={{} as Paging}
             postFeedHandler={handleCountChange}
             sampleData={mockDatasetData.sampleData}
@@ -204,6 +208,7 @@ const TourPage = () => {
     <div>
       <NavBar
         isTourRoute
+        handleClear={handleClear}
         handleFeatureModal={handleCountChange}
         handleKeyDown={handleKeyDown}
         handleOnClick={handleOnClick}

@@ -10,25 +10,18 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-@import url('../../../styles/variables.less');
-@link-btn-color: #37352f;
 
-.table-data-card-title-container {
-  .ant-btn-link {
-    color: @link-btn-color;
-    font-weight: 600;
-    padding: 0px;
-    font-size: 16px;
-  }
-  .ant-btn-link > span {
-    color: @link-btn-color;
-  }
-}
+import { LabelType, State, TagSource } from 'generated/type/tagLabel';
+import { t } from 'i18next';
 
-.button-hover {
-  .ant-btn-link > span {
-    &:hover {
-      color: @primary-color;
-    }
-  }
+export const TAG_CONSTANT = {
+  labelType: LabelType.Manual,
+  source: TagSource.Classification,
+  state: State.Confirmed,
+  tagFQN: t('label.add'),
+};
+
+export enum TAG_START_WITH {
+  PLUS = '+',
+  SOURCE_ICON = 'source_icon',
 }

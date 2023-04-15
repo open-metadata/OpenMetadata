@@ -153,6 +153,8 @@ WHERE jsonSchema = 'pipelineStatus' AND extension <> 'pipeline.PipelineStatus';
 
 -- We are refactoring the storage service with containers. We'll remove the locations
 DROP TABLE location_entity;
+DELETE FROM entity_relationship WHERE fromEntity='location' OR toEntity='location';
+TRUNCATE TABLE storage_service_entity;
 
 UPDATE dbservice_entity
 SET json = json::jsonb #- '{connection,config,storageServiceName}'
@@ -160,3 +162,26 @@ WHERE servicetype = 'Glue';
 
 UPDATE chart_entity
 SET json = json::jsonb #- '{tables}';
+
+-- Updating the tableau authentication fields
+UPDATE dashboard_service_entity
+SET json = JSONB_SET(json::jsonb,
+'{connection,config}',json::jsonb #>'{connection,config}' #- '{password}' #- '{username}'|| 
+jsonb_build_object('authType',jsonb_build_object(
+'username',json #>'{connection,config,username}',
+'password',json #>'{connection,config,password}'
+)), true)
+where servicetype = 'Tableau'
+and json#>'{connection,config,password}' is not null
+and json#>'{connection,config,username}' is not null;
+
+UPDATE dashboard_service_entity
+SET json = JSONB_SET(json::jsonb,
+'{connection,config}',json::jsonb #>'{connection,config}' #- '{personalAccessTokenName}' #- '{personalAccessTokenSecret}'|| 
+jsonb_build_object('authType',jsonb_build_object(
+'personalAccessTokenName',json #>'{connection,config,personalAccessTokenName}',
+'personalAccessTokenSecret',json #>'{connection,config,personalAccessTokenSecret}'
+)), true)
+where servicetype = 'Tableau'
+and json#>'{connection,config,personalAccessTokenName}' is not null
+and json#>'{connection,config,personalAccessTokenSecret}' is not null;

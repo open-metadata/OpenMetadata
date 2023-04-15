@@ -15,20 +15,6 @@ import i18n from 'utils/i18next/LocalUtil';
 
 export const NO_AUTH = 'no-auth';
 
-export const VALIDATION_MESSAGES = {
-  required: i18n.t('message.field-text-is-required', {
-    fieldText: '${label}',
-  }),
-  types: {
-    email: i18n.t('message.entity-is-not-valid', {
-      entity: '${label}',
-    }),
-  },
-  whitespace: i18n.t('message.field-text-is-required', {
-    fieldText: '${label}',
-  }),
-};
-
 export const LOGIN_FAILED_ERROR = i18n.t('server.invalid-username-or-password');
 
 export const HTTP_STATUS_CODE = {

@@ -1,0 +1,17 @@
+[
+    {
+      "name": "customers",
+      "displayName": "Customers dashboard",
+      "description": "This is a sample Dashboard for Looker",
+      "dashboardUrl": "http://localhost:808/looker/dashboard/1/",
+      "charts": ["sample_looker.chart_1", "sample_looker.chart_2"]
+    },
+    {
+      "name": "orders",
+      "displayName": "Orders Dashboard",
+      "description": "This is a sample Dashboard for Looker",
+      "dashboardUrl": "http://localhost:808/looker/dashboard/8/",
+      "charts": ["sample_looker.chart_3", "sample_looker.chart_4"],
+      "dataModels": ["sample_looker.model.orders", "sample_looker.model.operations"]
+    }
+  ]

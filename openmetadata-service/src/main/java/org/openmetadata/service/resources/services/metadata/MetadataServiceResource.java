@@ -74,9 +74,10 @@ import org.openmetadata.service.util.ResultList;
             + "OpenMetadata integrates with such as `Apache Atlas`, `Amundsen`, etc.")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(name = "metadataServices")
+@Collection(name = "metadataServices", order = 8) // init before IngestionPipelineService
 public class MetadataServiceResource
     extends ServiceEntityResource<MetadataService, MetadataServiceRepository, MetadataConnection> {
+  public static final String OPENMETADATA_SERVICE = "OpenMetadata";
   public static final String COLLECTION_PATH = "v1/services/metadataServices/";
   public static final String FIELDS = "pipelines,owner,tags";
 
@@ -93,23 +94,19 @@ public class MetadataServiceResource
                 .withElasticsSearch(getElasticSearchConnectionSink(config.getElasticSearchConfiguration()));
         MetadataConnection metadataConnection = new MetadataConnection().withConfig(openMetadataServerConnection);
         List<MetadataService> servicesList = dao.getEntitiesFromSeedData(".*json/data/metadataService/.*\\.json$");
-        servicesList.forEach(
-            (service) -> {
-              try {
-                // populate values for the Metadata Service
-                service.setConnection(metadataConnection);
-                service.setAllowServiceCreation(false);
-                dao.initializeEntity(service);
-              } catch (IOException e) {
-                LOG.error(
-                    "[MetadataService] Failed to initialize a Metadata Service {}", service.getFullyQualifiedName(), e);
-              }
-            });
+        if (servicesList.size() == 1) {
+          MetadataService service = servicesList.get(0);
+          service.setConnection(metadataConnection);
+          dao.setFullyQualifiedName(service);
+          dao.initializeEntity(service);
+        } else {
+          throw new RuntimeException("Only one Openmetadata Service can be initialized from the Data.");
+        }
       } else {
-        LOG.error("[MetadataService] Missing Elastic Search Config");
+        LOG.error("[MetadataService] Missing Elastic Search Config.");
       }
     } catch (Exception ex) {
-      LOG.error("[MetadataService] Error in creating Metadata Services");
+      LOG.error("[MetadataService] Error in creating Metadata Services.", ex);
     }
   }
 

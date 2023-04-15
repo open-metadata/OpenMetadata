@@ -64,18 +64,12 @@ jest.mock('./MlModelSummary/MlModelSummary.component', () =>
     ))
 );
 
-jest.mock(
-  'components/common/table-data-card-v2/TableDataCardTitle.component',
-  () =>
-    jest
-      .fn()
-      .mockImplementation(() => (
-        <div data-testid="table-data-card-title">TableDataCardTitle</div>
-      ))
-);
-
 jest.mock('react-router-dom', () => ({
   useParams: jest.fn().mockImplementation(() => ({ tab: 'table' })),
+}));
+
+jest.mock('components/Entity/EntityHeader/EntityHeader.component', () => ({
+  EntityHeader: jest.fn().mockImplementation(() => <p>EntityHeader</p>),
 }));
 
 describe('EntitySummaryPanel component tests', () => {
@@ -83,17 +77,17 @@ describe('EntitySummaryPanel component tests', () => {
     render(
       <EntitySummaryPanel
         entityDetails={{
-          details: mockTableEntityDetails,
+          details: { ...mockTableEntityDetails, entityType: EntityType.TABLE },
         }}
         handleClosePanel={mockHandleClosePanel}
       />
     );
 
-    const tableDataCardTitle = screen.getByText('TableDataCardTitle');
+    const entityHeader = screen.getByText('EntityHeader');
     const tableSummary = screen.getByTestId('TableSummary');
     const closeIcon = screen.getByTestId('summary-panel-close-icon');
 
-    expect(tableDataCardTitle).toBeInTheDocument();
+    expect(entityHeader).toBeInTheDocument();
     expect(tableSummary).toBeInTheDocument();
     expect(closeIcon).toBeInTheDocument();
 

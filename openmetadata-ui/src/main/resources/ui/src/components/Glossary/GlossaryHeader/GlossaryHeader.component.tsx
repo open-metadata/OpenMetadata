@@ -13,16 +13,15 @@
 import { Col, Row } from 'antd';
 import { ReactComponent as IconFolder } from 'assets/svg/folder.svg';
 import { ReactComponent as IconFlatDoc } from 'assets/svg/ic-flat-doc.svg';
-import TitleBreadcrumb from 'components/common/title-breadcrumb/title-breadcrumb.component';
 import { TitleBreadcrumbProps } from 'components/common/title-breadcrumb/title-breadcrumb.interface';
-import EntityHeaderTitle from 'components/EntityHeaderTitle/EntityHeaderTitle.component';
+import { EntityHeader } from 'components/Entity/EntityHeader/EntityHeader.component';
 import { OperationPermission } from 'components/PermissionProvider/PermissionProvider.interface';
 import { FQN_SEPARATOR_CHAR } from 'constants/char.constants';
 import { DE_ACTIVE_COLOR } from 'constants/constants';
+import { EntityType } from 'enums/entity.enum';
 import { Glossary } from 'generated/entity/data/glossary';
 import { GlossaryTerm } from 'generated/entity/data/glossaryTerm';
 import React, { useEffect, useState } from 'react';
-import { getEntityName } from 'utils/EntityUtils';
 import { getGlossaryPath } from 'utils/RouterUtils';
 import GlossaryHeaderButtons from '../GlossaryHeaderButtons/GlossaryHeaderButtons.component';
 
@@ -33,7 +32,7 @@ export interface GlossaryHeaderProps {
   isGlossary: boolean;
   onUpdate: (data: GlossaryTerm | Glossary) => void;
   onDelete: (id: string) => void;
-  onAssetsUpdate?: () => void;
+  onAssetAdd?: () => void;
 }
 
 const GlossaryHeader = ({
@@ -42,7 +41,7 @@ const GlossaryHeader = ({
   onUpdate,
   onDelete,
   isGlossary,
-  onAssetsUpdate,
+  onAssetAdd,
 }: GlossaryHeaderProps) => {
   const [breadcrumb, setBreadcrumb] = useState<
     TitleBreadcrumbProps['titleLinks']
@@ -88,50 +87,42 @@ const GlossaryHeader = ({
     <>
       <Row gutter={[0, 16]}>
         <Col span={24}>
-          <Row justify="space-between">
-            <Col span={12}>
-              <div
-                className="tw-text-link tw-text-base glossary-breadcrumb m-b-sm"
-                data-testid="category-name">
-                <TitleBreadcrumb titleLinks={breadcrumb} />
-              </div>
-
-              <EntityHeaderTitle
-                displayName={getEntityName(selectedData)}
-                icon={
-                  isGlossary ? (
-                    <IconFolder
-                      color={DE_ACTIVE_COLOR}
-                      height={36}
-                      name="folder"
-                      width={32}
-                    />
-                  ) : (
-                    <IconFlatDoc
-                      color={DE_ACTIVE_COLOR}
-                      height={36}
-                      name="doc"
-                      width={32}
-                    />
-                  )
-                }
-                name={selectedData.name}
-              />
-            </Col>
-            <Col span={12}>
+          <EntityHeader
+            breadcrumb={breadcrumb}
+            entityData={selectedData}
+            entityType={EntityType.GLOSSARY_TERM}
+            extra={
               <div style={{ textAlign: 'right' }}>
                 <GlossaryHeaderButtons
                   deleteStatus="success"
                   isGlossary={isGlossary}
                   permission={permissions}
                   selectedData={selectedData}
-                  onAssetsUpdate={onAssetsUpdate}
+                  onAssetAdd={onAssetAdd}
                   onEntityDelete={onDelete}
                   onUpdate={onUpdate}
                 />
               </div>
-            </Col>
-          </Row>
+            }
+            gutter="large"
+            icon={
+              isGlossary ? (
+                <IconFolder
+                  color={DE_ACTIVE_COLOR}
+                  height={36}
+                  name="folder"
+                  width={32}
+                />
+              ) : (
+                <IconFlatDoc
+                  color={DE_ACTIVE_COLOR}
+                  height={36}
+                  name="doc"
+                  width={32}
+                />
+              )
+            }
+          />
         </Col>
       </Row>
     </>

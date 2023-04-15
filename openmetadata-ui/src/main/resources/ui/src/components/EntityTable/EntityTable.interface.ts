@@ -42,3 +42,8 @@ export type TableCellRendered<T, K extends keyof T> = (
 export interface DataTypeDisplayCellProps {
   dataTypeDisplay: Column['dataTypeDisplay'];
 }
+
+export interface EditColumnTag {
+  column: Column;
+  index: number;
+}

@@ -149,6 +149,8 @@ WHERE jsonSchema = 'pipelineStatus' AND extension <> 'pipeline.PipelineStatus';
 
 -- We are refactoring the storage service with containers. We'll remove the locations
 DROP TABLE location_entity;
+DELETE FROM entity_relationship WHERE fromEntity='location' OR toEntity='location';
+TRUNCATE TABLE storage_service_entity;
 
 UPDATE dbservice_entity
 SET json = JSON_REMOVE(json, '$.connection.config.storageServiceName')
@@ -156,3 +158,30 @@ WHERE serviceType = 'Glue';
 
 UPDATE chart_entity
 SET json = JSON_REMOVE(json, '$.tables');
+
+-- Updating the tableau authentication fields
+UPDATE dashboard_service_entity  
+SET json = JSON_INSERT(
+JSON_REMOVE(json,'$.connection.config.username','$.connection.config.password'),
+'$.connection.config.authType',
+JSON_OBJECT(
+	'username',JSON_EXTRACT(json,'$.connection.config.username'),
+	'password',JSON_EXTRACT(json,'$.connection.config.password')
+	)
+)
+WHERE serviceType = 'Tableau'
+AND JSON_EXTRACT(json, '$.connection.config.username') is not null
+AND JSON_EXTRACT(json, '$.connection.config.password') is not null;
+
+UPDATE dashboard_service_entity  
+SET json = JSON_INSERT(
+JSON_REMOVE(json,'$.connection.config.personalAccessTokenName','$.connection.config.personalAccessTokenSecret'),
+'$.connection.config.authType',
+JSON_OBJECT(
+	'personalAccessTokenName',JSON_EXTRACT(json,'$.connection.config.personalAccessTokenName'),
+	'personalAccessTokenSecret',JSON_EXTRACT(json,'$.connection.config.personalAccessTokenSecret')
+	)
+)
+WHERE serviceType = 'Tableau'
+AND JSON_EXTRACT(json, '$.connection.config.personalAccessTokenName') is not null
+AND JSON_EXTRACT(json, '$.connection.config.personalAccessTokenSecret') is not null;
