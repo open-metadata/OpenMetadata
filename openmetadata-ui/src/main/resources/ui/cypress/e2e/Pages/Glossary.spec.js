@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-// / <reference types="Cypress" />
+/// <reference types="Cypress" />
 import {
   descriptionBox,
   interceptURL,
@@ -579,7 +579,7 @@ describe('Glossary page should work properly', () => {
       ],
       200
     );
-
+    cy.wait(5000); // adding manual wait as edit icon takes time to appear on screen
     // Updating synonyms
     updateSynonyms(uSynonyms);
 
@@ -779,18 +779,8 @@ describe('Glossary page should work properly', () => {
       .click();
     // Remove all added tags from breadcrumb
     cy.get('.ant-select-selection-item-remove')
-      .eq(0)
       .should('be.visible')
-      .click();
-
-    cy.get('.ant-select-selection-item-remove')
-      .eq(0)
-      .should('be.visible')
-      .click();
-    cy.get('.ant-select-selection-item-remove')
-      .eq(0)
-      .should('be.visible')
-      .click();
+      .click({ multiple: true });
 
     interceptURL('PATCH', '/api/v1/tables/*', 'removeTags');
     cy.get('[data-testid="saveAssociatedTag"]').scrollIntoView().click();

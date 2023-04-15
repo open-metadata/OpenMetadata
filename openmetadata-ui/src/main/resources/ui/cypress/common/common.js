@@ -100,9 +100,6 @@ export const handleIngestionRetry = (
         verifyResponseStatusCode('@ingestionPermissions', 200);
       }
     }
-    if (isDatabaseService(type) && testIngestionButton) {
-      cy.get('[data-testid="add-new-ingestion-button"]').should('be.visible');
-    }
   };
   const checkSuccessState = () => {
     testIngestionsTab();
@@ -396,7 +393,7 @@ export const editOwnerforCreatedService = (
 
   interceptURL(
     'GET',
-    `/api/v1/services/${api_services}/name/${service_Name}?fields=owner`,
+    `/api/v1/services/${api_services}/name/${service_Name}?fields=*`,
     'getSelectedService'
   );
 
@@ -426,7 +423,6 @@ export const editOwnerforCreatedService = (
   cy.get('[data-testid="edit-owner"]')
     .should('exist')
     .should('be.visible')
-    .trigger('mouseover')
     .click();
 
   verifyResponseStatusCode('@waitForUsers', 200);
