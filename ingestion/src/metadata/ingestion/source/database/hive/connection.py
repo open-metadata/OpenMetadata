@@ -23,6 +23,7 @@ from metadata.generated.schema.entity.automations.workflow import (
 )
 from metadata.generated.schema.entity.services.connections.database.hiveConnection import (
     HiveConnection,
+    HiveScheme,
 )
 from metadata.ingestion.connections.builders import (
     create_generic_db_connection,
@@ -80,7 +81,13 @@ def get_connection(connection: HiveConnection) -> Engine:
     if connection.auth:
         if not connection.connectionArguments:
             connection.connectionArguments = init_empty_connection_arguments()
-        connection.connectionArguments.__root__["auth"] = connection.auth.value
+        auth_key = (
+            "auth"
+            if connection.scheme
+            in {HiveScheme.hive, HiveScheme.hive_http, HiveScheme.hive_https}
+            else "auth_mechanism"
+        )
+        connection.connectionArguments.__root__[auth_key] = connection.auth.value
 
     if connection.kerberosServiceName:
         if not connection.connectionArguments:

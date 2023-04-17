@@ -185,3 +185,18 @@ JSON_OBJECT(
 WHERE serviceType = 'Tableau'
 AND JSON_EXTRACT(json, '$.connection.config.personalAccessTokenName') is not null
 AND JSON_EXTRACT(json, '$.connection.config.personalAccessTokenSecret') is not null;
+
+-- Removed property from metadataService.json
+UPDATE metadata_service_entity
+SET json = JSON_REMOVE(json, '$.allowServiceCreation')
+WHERE serviceType in ('Amundsen', 'Atlas', 'MetadataES', 'OpenMetadata');
+
+UPDATE metadata_service_entity
+SET json = JSON_INSERT(json, '$.provider', 'system')
+WHERE name = 'OpenMetadata';
+
+-- Fix Glue sample data endpoint URL to be a correct URI
+UPDATE dbservice_entity
+SET json = JSON_REPLACE(json, '$.connection.config.awsConfig.endPointURL', 'https://glue.region_name.amazonaws.com/')
+WHERE serviceType = 'Glue'
+  AND JSON_EXTRACT(json, '$.connection.config.awsConfig.endPointURL') = 'https://glue.<region_name>.amazonaws.com/';

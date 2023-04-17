@@ -29,7 +29,7 @@ export interface TopicDetailsProps {
   activeTab: number;
   slashedTopicName: TitleBreadcrumbProps['titleLinks'];
   entityThread: Thread[];
-  isentityThreadLoading: boolean;
+  isEntityThreadLoading: boolean;
   feedCount: number;
   entityFieldThreadCount: EntityFieldThreadCount[];
   entityFieldTaskCount: EntityFieldThreadCount[];

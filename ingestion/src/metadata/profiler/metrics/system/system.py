@@ -13,7 +13,9 @@
 System Metric
 """
 
+import traceback
 from collections import namedtuple
+from enum import Enum
 from textwrap import dedent
 from typing import Dict, List, Optional
 
@@ -33,11 +35,21 @@ from metadata.utils.logger import profiler_logger
 
 logger = profiler_logger()
 
+
+class DatabaseDMLOperations(Enum):
+    """enum of supported DML operation on database engine side"""
+
+    INSERT = "INSERT"
+    UPDATE = "UPDATE"
+    DELETE = "DELETE"
+    MERGE = "MERGE"
+
+
 DML_OPERATION_MAP = {
-    "INSERT": "INSERT",
-    "MERGE": "UPDATE",
-    "UPDATE": "UPDATE",
-    "DELETE": "DELETE",
+    DatabaseDMLOperations.INSERT.value: DmlOperationType.INSERT.value,
+    DatabaseDMLOperations.MERGE.value: DmlOperationType.UPDATE.value,
+    DatabaseDMLOperations.UPDATE.value: DmlOperationType.UPDATE.value,
+    DatabaseDMLOperations.DELETE.value: DmlOperationType.DELETE.value,
 }
 
 SYSTEM_QUERY_RESULT_CACHE = {}
@@ -89,9 +101,9 @@ def _(
     """
     logger.info(f"Fetching system metrics for {dialect}")
     dml_stat_to_dml_statement_mapping = {
-        "inserted_row_count": "INSERT",
-        "deleted_row_count": "DELETE",
-        "updated_row_count": "UPDATE",
+        "inserted_row_count": DatabaseDMLOperations.INSERT.value,
+        "deleted_row_count": DatabaseDMLOperations.DELETE.value,
+        "updated_row_count": DatabaseDMLOperations.UPDATE.value,
     }
 
     jobs = dedent(
@@ -105,7 +117,12 @@ def _(
             `region-{conn_config.usageLocation}`.INFORMATION_SCHEMA.JOBS
         WHERE
             DATE(creation_time) >= CURRENT_DATE() - 1 AND
-            statement_type IN ('INSERT', 'UPDATE', 'INSERT', 'MERGE')
+            statement_type IN (
+                '{DatabaseDMLOperations.INSERT.value}',
+                '{DatabaseDMLOperations.DELETE.value}',
+                '{DatabaseDMLOperations.UPDATE.value}',
+                '{DatabaseDMLOperations.MERGE.value}'
+            )
         ORDER BY creation_time DESC;
         """
     )
@@ -140,13 +157,18 @@ def _(
             and row_jobs.destination_table.get("table_id") == table.__tablename__
         ):
             rows_affected = None
-            if row_jobs.query_type == "INSERT":
-                rows_affected = row_jobs.dml_statistics.get("inserted_row_count")
-            if row_jobs.query_type == "DELETE":
-                rows_affected = row_jobs.dml_statistics.get("deleted_row_count")
-            if row_jobs.query_type == "UPDATE":
-                rows_affected = row_jobs.dml_statistics.get("updated_row_count")
-            if row_jobs.query_type == "MERGE":
+            try:
+                if row_jobs.query_type == DatabaseDMLOperations.INSERT.value:
+                    rows_affected = row_jobs.dml_statistics.get("inserted_row_count")
+                if row_jobs.query_type == DatabaseDMLOperations.DELETE.value:
+                    rows_affected = row_jobs.dml_statistics.get("deleted_row_count")
+                if row_jobs.query_type == DatabaseDMLOperations.UPDATE.value:
+                    rows_affected = row_jobs.dml_statistics.get("updated_row_count")
+            except AttributeError:
+                logger.debug(traceback.format_exc())
+                rows_affected = None
+
+            if row_jobs.query_type == DatabaseDMLOperations.MERGE.value:
                 for i, key in enumerate(row_jobs.dml_statistics):
                     if row_jobs.dml_statistics[key] != 0:
                         metric_results.append(
@@ -342,11 +364,16 @@ def _(
 
     metric_results: List[Dict] = []
 
-    information_schema_query_history = """
+    information_schema_query_history = f"""
         SELECT * FROM "SNOWFLAKE"."ACCOUNT_USAGE"."QUERY_HISTORY"
         WHERE
         start_time>= DATEADD('DAY', -1, CURRENT_TIMESTAMP)
-        AND QUERY_TYPE IN ('INSERT', 'MERGE', 'DELETE', 'UPDATE')
+        AND QUERY_TYPE IN (
+            '{DatabaseDMLOperations.INSERT.value}',
+            '{DatabaseDMLOperations.UPDATE.value}',
+            '{DatabaseDMLOperations.DELETE.value}',
+            '{DatabaseDMLOperations.MERGE.value}'
+        )
         AND EXECUTION_STATUS = 'SUCCESS';
     """
     result_scan = """
