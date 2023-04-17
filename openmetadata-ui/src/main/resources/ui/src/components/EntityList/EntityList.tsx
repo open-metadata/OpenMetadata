@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button, Card, Space, Typography } from 'antd';
+import { Button, Card, Col, Row, Typography } from 'antd';
 import React, { Fragment, FunctionComponent } from 'react';
 import { Link } from 'react-router-dom';
 import { getEntityName } from 'utils/EntityUtils';
@@ -95,12 +95,16 @@ export const EntityListWithAntd: FunctionComponent<AntdEntityListProp> = ({
         dataLength={entityList.length !== 0 ? entityList.length : 5}
         loading={Boolean(loading)}>
         <>
-          <Space className="w-full justify-between p-b-sm">
-            <Typography.Text className="common-left-panel-card-heading">
-              {headerTextLabel}
-            </Typography.Text>
-            <Typography.Text>{headerText}</Typography.Text>
-          </Space>
+          <Row className="p-b-sm" justify="space-between">
+            <Col>
+              <Typography.Text className="common-left-panel-card-heading">
+                {headerTextLabel}
+              </Typography.Text>
+            </Col>
+            <Col>
+              <Typography.Text>{headerText}</Typography.Text>
+            </Col>
+          </Row>
           {entityList.length
             ? entityList.map((item, index) => {
                 return (
