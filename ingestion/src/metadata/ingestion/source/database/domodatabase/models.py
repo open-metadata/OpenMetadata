@@ -26,6 +26,11 @@ class DomoDatabaseBaseModel(BaseModel):
     name: str
 
 
+class User(DomoDatabaseBaseModel):
+    email: str
+    role: str
+
+
 class SchemaColumn(BaseModel):
     type: str
     name: str

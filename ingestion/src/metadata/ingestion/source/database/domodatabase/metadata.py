@@ -46,6 +46,7 @@ from metadata.ingestion.source.database.domodatabase.models import (
     OutputDataset,
     Owner,
     SchemaColumn,
+    User,
 )
 from metadata.utils import fqn
 from metadata.utils.constants import DEFAULT_DATABASE
@@ -143,9 +144,9 @@ class DomodatabaseSource(DatabaseServiceSource):
 
     def get_owners(self, owner: Owner) -> Optional[EntityReference]:
         try:
-            owner_details = self.domo_client.users_get(owner.id)
-            if owner_details.get("email"):
-                user = self.metadata.get_user_by_email(owner_details["email"])
+            owner_details = User(**self.domo_client.users_get(owner.id))
+            if owner_details.email:
+                user = self.metadata.get_user_by_email(owner_details.email)
                 if user:
                     return EntityReference(id=user.id.__root__, type="user")
         except Exception as exc:
