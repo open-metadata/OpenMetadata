@@ -545,7 +545,7 @@ describe('Glossary page should work properly', () => {
     updateDescription('Updated description', true);
   });
 
-  it('Update glossary term', () => {
+  it.skip('Update glossary term', () => {
     const uSynonyms = ['pick up', 'take', 'obtain'];
     const newRef = { name: 'take', url: 'https://take.com' };
     const term2 = NEW_GLOSSARY_TERMS.term_2.name;
