@@ -30,7 +30,6 @@ import ToggleSwitchV1, {
 } from 'components/common/toggle-switch/ToggleSwitchV1';
 import SliderWithInput from 'components/SliderWithInput/SliderWithInput';
 import { SliderWithInputProps } from 'components/SliderWithInput/SliderWithInput.interface';
-import { uniqueId } from 'lodash';
 import React, { ReactNode } from 'react';
 import i18n from './i18next/LocalUtil';
 
@@ -145,7 +144,7 @@ export const getField = (field: FieldProp) => {
   return (
     <Form.Item
       id={id}
-      key={uniqueId()}
+      key={id}
       label={!HIDE_LABEL.includes(type) ? fieldLabel : null}
       name={name}
       rules={fieldRules}>
