@@ -21,7 +21,8 @@ from metadata.ingestion.api.sink import SinkStatus
 from metadata.ingestion.api.source import SourceStatus
 from metadata.ingestion.api.workflow import Workflow
 
-from .test_cli_dbt_base import PATH_TO_RESOURCES, CliDBTBase
+from .base.test_cli import PATH_TO_RESOURCES
+from .base.test_cli_dbt import CliDBTBase
 
 
 class DbtCliTest(CliDBTBase.TestSuite):
@@ -30,7 +31,9 @@ class DbtCliTest(CliDBTBase.TestSuite):
     @classmethod
     def setUpClass(cls) -> None:
         connector = cls.get_connector_name()
-        workflow: Workflow = cls.get_workflow(connector)
+        workflow: Workflow = cls.get_workflow(
+            test_type=cls.get_test_type(), connector=connector
+        )
         cls.engine = workflow.source.engine
         cls.openmetadata = workflow.source.metadata
         cls.config_file_path = str(

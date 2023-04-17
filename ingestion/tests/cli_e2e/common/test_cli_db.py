@@ -21,7 +21,8 @@ from metadata.ingestion.api.sink import SinkStatus
 from metadata.ingestion.api.source import SourceStatus
 from metadata.ingestion.api.workflow import Workflow
 
-from .test_cli_db_base import PATH_TO_RESOURCES, CliDBBase
+from ..base.test_cli import PATH_TO_RESOURCES
+from ..base.test_cli_db import CliDBBase
 
 
 class CliCommonDB:
@@ -31,7 +32,7 @@ class CliCommonDB:
         @classmethod
         def setUpClass(cls) -> None:
             connector = cls.get_connector_name()
-            workflow: Workflow = cls.get_workflow(connector)
+            workflow: Workflow = cls.get_workflow(connector, cls.get_test_type())
             cls.engine = workflow.source.engine
             cls.openmetadata = workflow.source.metadata
             cls.config_file_path = str(

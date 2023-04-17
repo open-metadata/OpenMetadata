@@ -15,6 +15,7 @@ import { Card, Col, Row, Table } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
+import { ActivityFilters } from 'components/ActivityFeed/ActivityFeedList/ActivityFeedList.interface';
 import { ENTITY_CARD_CLASS } from 'constants/entity.constants';
 import { isEmpty, isUndefined, startCase, uniqueId } from 'lodash';
 import { observer } from 'mobx-react';
@@ -116,6 +117,11 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
 
   const { getEntityPermission } = usePermissionProvider();
 
+  const loader = useMemo(
+    () => (isEntityThreadLoading ? <Loader /> : null),
+    [isEntityThreadLoading]
+  );
+
   const fetchResourcePermission = useCallback(async () => {
     try {
       const entityPermission = await getEntityPermission(
@@ -144,6 +150,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
     () => AppState.getCurrentUserDetails(),
     [AppState.nonSecureUserDetails, AppState.userDetails]
   );
+  const [activityFilter, setActivityFilter] = useState<ActivityFilters>();
 
   const mlModelTier = useMemo(() => {
     return getTierTags(mlModelDetail.tags || []) as TagLabel;
@@ -489,17 +496,22 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
     pagingObj: Paging,
     isLoading: boolean
   ) => {
-    if (isElementInView && pagingObj?.after && !isLoading) {
-      fetchFeedHandler(pagingObj.after);
+    if (isElementInView && pagingObj?.after && !isLoading && activeTab === 2) {
+      fetchFeedHandler(
+        pagingObj.after,
+        activityFilter?.feedFilter,
+        activityFilter?.threadType
+      );
     }
   };
 
-  const handleFeedFilterChange = useCallback(
-    (feedType, threadType) => {
-      fetchFeedHandler(paging.after, feedType, threadType);
-    },
-    [paging]
-  );
+  const handleFeedFilterChange = useCallback((feedType, threadType) => {
+    setActivityFilter({
+      feedFilter: feedType,
+      threadType,
+    });
+    fetchFeedHandler(undefined, feedType, threadType);
+  }, []);
 
   useEffect(() => {
     fetchMoreThread(isInView as boolean, paging, isEntityThreadLoading);
@@ -624,6 +636,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
                   />
                 </Col>
               </Row>
+              {loader}
             </Card>
           )}
           {activeTab === 3 && (
@@ -664,9 +677,8 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
           <div
             data-testid="observer-element"
             id="observer-element"
-            ref={elementRef as RefObject<HTMLDivElement>}>
-            {isEntityThreadLoading ? <Loader /> : null}
-          </div>
+            ref={elementRef as RefObject<HTMLDivElement>}
+          />
         </div>
       </div>
       {threadLink ? (

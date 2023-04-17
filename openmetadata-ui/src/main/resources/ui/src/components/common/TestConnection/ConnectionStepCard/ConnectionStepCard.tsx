@@ -12,8 +12,8 @@
  */
 import { InfoCircleOutlined } from '@ant-design/icons';
 import { Collapse, Divider, Popover, Space, Typography } from 'antd';
+import { ReactComponent as AttentionIcon } from 'assets/svg/attention.svg';
 import { ReactComponent as FailIcon } from 'assets/svg/fail-badge.svg';
-import { ReactComponent as WarningIcon } from 'assets/svg/ic-warning.svg';
 import { ReactComponent as SuccessIcon } from 'assets/svg/success-badge.svg';
 import classNames from 'classnames';
 import { TestConnectionStepResult } from 'generated/entity/automations/workflow';
@@ -98,11 +98,15 @@ const ConnectionStepCard = ({
             </Space>
           )}
           {isNonMandatoryStepsFailing && (
-            <Space size={4}>
+            <Space align="center" size={4}>
               <Typography.Text className="warning-status">
-                {`${t('label.warning')}`}
+                {`${t('label.attention')}`}
               </Typography.Text>
-              <WarningIcon data-testid="warning-badge" height={20} width={20} />
+              <AttentionIcon
+                data-testid="warning-badge"
+                height={20}
+                width={20}
+              />
             </Space>
           )}
           {isSkipped && (

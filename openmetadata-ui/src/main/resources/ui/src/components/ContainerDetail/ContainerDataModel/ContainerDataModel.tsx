@@ -260,6 +260,7 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
           rowExpandable: (record) => !isEmpty(record.children),
         }}
         pagination={false}
+        rowKey="name"
         size="small"
       />
       {editContainerColumnDescription && (

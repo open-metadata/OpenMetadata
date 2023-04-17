@@ -576,6 +576,7 @@ const TestSuitePipelineTab = () => {
             key: test.name,
           }))}
           pagination={false}
+          rowKey="name"
           size="small"
         />
         <EntityDeleteModal

@@ -844,6 +844,7 @@ const TeamDetailsV1 = ({
                     columns={columns}
                     dataSource={sortedUser}
                     pagination={false}
+                    rowKey="name"
                     size="small"
                   />
                   {teamUserPagin.total > PAGE_SIZE_MEDIUM && (

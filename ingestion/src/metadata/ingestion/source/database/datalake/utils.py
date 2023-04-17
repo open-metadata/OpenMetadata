@@ -19,7 +19,6 @@ import json
 import zipfile
 from typing import List, Union
 
-import pandas as pd
 from avro.datafile import DataFileReader
 from avro.errors import InvalidAvroBinaryEncoding
 from avro.io import DatumReader
@@ -49,10 +48,13 @@ COMPLEX_COLUMN_SEPARATOR = "_##"
 
 def read_from_avro(
     avro_text: bytes,
-) -> Union[DatalakeColumnWrapper, List[pd.DataFrame]]:
+) -> Union[DatalakeColumnWrapper, List]:
     """
     Method to parse the avro data from storage sources
     """
+    # pylint: disable=import-outside-toplevel
+    from pandas import DataFrame, Series
+
     try:
         elements = DataFileReader(io.BytesIO(avro_text), DatumReader())
         if elements.meta.get(AVRO_SCHEMA):
@@ -60,20 +62,16 @@ def read_from_avro(
                 columns=parse_avro_schema(
                     schema=elements.meta.get(AVRO_SCHEMA).decode(UTF_8), cls=Column
                 ),
-                dataframes=[pd.DataFrame.from_records(elements)],
+                dataframes=[DataFrame.from_records(elements)],
             )
-        return [pd.DataFrame.from_records(elements)]
+        return [DataFrame.from_records(elements)]
     except (AssertionError, InvalidAvroBinaryEncoding):
         columns = parse_avro_schema(schema=avro_text, cls=Column)
         field_map = {
-            col.name.__root__: pd.Series(
-                PD_AVRO_FIELD_MAP.get(col.dataType.value, "str")
-            )
+            col.name.__root__: Series(PD_AVRO_FIELD_MAP.get(col.dataType.value, "str"))
             for col in columns
         }
-        return DatalakeColumnWrapper(
-            columns=columns, dataframes=[pd.DataFrame(field_map)]
-        )
+        return DatalakeColumnWrapper(columns=columns, dataframes=[DataFrame(field_map)])
 
 
 def _get_json_text(key: str, text: bytes, decode: bool) -> str:
@@ -89,10 +87,14 @@ def _get_json_text(key: str, text: bytes, decode: bool) -> str:
 
 def read_from_json(
     key: str, json_text: str, sample_size: int = 100, decode: bool = False
-) -> List[pd.DataFrame]:
+) -> List:
     """
     Read the json file from the azure container and return a dataframe
     """
+
+    # pylint: disable=import-outside-toplevel
+    from pandas import json_normalize
+
     json_text = _get_json_text(key, json_text, decode)
     try:
         data = json.loads(json_text)
@@ -104,5 +106,5 @@ def read_from_json(
         ]
 
     if isinstance(data, list):
-        return [pd.json_normalize(data[:sample_size], sep=COMPLEX_COLUMN_SEPARATOR)]
-    return [pd.json_normalize(data, sep=COMPLEX_COLUMN_SEPARATOR)]
+        return [json_normalize(data[:sample_size], sep=COMPLEX_COLUMN_SEPARATOR)]
+    return [json_normalize(data, sep=COMPLEX_COLUMN_SEPARATOR)]

@@ -197,6 +197,9 @@ class MetadataRestSink(Sink[Entity]):
         """
         try:
             self.metadata.create_or_update(record.classification_request)
+            self.status.records_written(
+                f"Classification: {record.classification_request.name.__root__}"
+            )
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning(
@@ -204,6 +207,7 @@ class MetadataRestSink(Sink[Entity]):
             )
         try:
             self.metadata.create_or_update(record.tag_request)
+            self.status.records_written(f"Tag: {record.tag_request.name.__root__}")
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning(

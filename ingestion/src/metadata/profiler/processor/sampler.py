@@ -12,7 +12,7 @@
 Helper module to handle data sampling
 for the profiler
 """
-from typing import Dict, Optional, Union, cast
+from typing import Dict, List, Optional, Union, cast
 
 from sqlalchemy import Column, inspect, text
 from sqlalchemy.orm import DeclarativeMeta, Query, Session, aliased
@@ -67,12 +67,14 @@ class Sampler:
         self,
         session: Optional[Session],
         table: DeclarativeMeta,
+        sample_columns: List[str],
         profile_sample_config: Optional[ProfileSampleConfig] = None,
         partition_details: Optional[Dict] = None,
         profile_sample_query: Optional[str] = None,
     ):
         self.profile_sample = None
         self.profile_sample_type = None
+        self.sample_columns = sample_columns
         if profile_sample_config:
             self.profile_sample = profile_sample_config.profile_sample
             self.profile_sample_type = profile_sample_config.profile_sample_type
@@ -85,23 +87,35 @@ class Sampler:
 
     @partition_filter_handler(build_sample=True)
     def get_sample_query(self) -> Query:
+        """get query for sample data"""
         if self.profile_sample_type == ProfileSampleType.PERCENTAGE:
             return (
                 self.session.query(
-                    self.table, (ModuloFn(RandomNumFn(), 100)).label(RANDOM_LABEL)
+                    *[
+                        self.table.__table__.c.get(col_name)
+                        for col_name in self.sample_columns
+                    ],
+                    (ModuloFn(RandomNumFn(), 100)).label(RANDOM_LABEL),
                 )
+                .select_from(self.table)
                 .suffix_with(
                     f"SAMPLE BERNOULLI ({self.profile_sample or 100})",
                     dialect=Dialects.Snowflake,
                 )
                 .cte(f"{self.table.__tablename__}_rnd")
             )
-        table_query = self.session.query(self.table)
+        table_query = self.session.query(
+            *[self.table.__table__.c.get(col_name) for col_name in self.sample_columns]
+        ).select_from(self.table)
         return (
             self.session.query(
-                self.table,
+                *[
+                    self.table.__table__.c.get(col_name)
+                    for col_name in self.sample_columns
+                ],
                 (ModuloFn(RandomNumFn(), table_query.count())).label(RANDOM_LABEL),
             )
+            .select_from(self.table)
             .order_by(RANDOM_LABEL)
             .limit(self.profile_sample)
             .cte(f"{self.table.__tablename__}_rnd")
@@ -132,7 +146,7 @@ class Sampler:
         # Assign as an alias
         return aliased(self.table, sampled)
 
-    def fetch_sqa_sample_data(self, sample_columns: Optional[list] = None) -> TableData:
+    def fetch_sqa_sample_data(self) -> TableData:
         """
         Use the sampler to retrieve sample data rows as per limit given by user
         :return: TableData to be added to the Table Entity
@@ -142,13 +156,10 @@ class Sampler:
 
         # Add new RandomNumFn column
         rnd = self.get_sample_query()
-        sample_columns = (
-            sample_columns if sample_columns else [col.name for col in inspect(rnd).c]
-        )
         sqa_columns = [
             col
             for col in inspect(rnd).c
-            if col.name != RANDOM_LABEL and col.name in sample_columns
+            if col.name != RANDOM_LABEL and col.name in self.sample_columns
         ]
 
         sqa_sample = (
@@ -199,7 +210,13 @@ class Sampler:
             return aliased(
                 self.table,
                 (
-                    self.session.query(self.table)
+                    self.session.query(
+                        *[
+                            self.table.__table__.c.get(col_name)
+                            for col_name in self.sample_columns
+                        ]
+                    )
+                    .select_from(self.table)
                     .filter(
                         get_value_filter(
                             Column(partition_field),
@@ -217,7 +234,13 @@ class Sampler:
             return aliased(
                 self.table,
                 (
-                    self.session.query(self.table)
+                    self.session.query(
+                        *[
+                            self.table.__table__.c.get(col_name)
+                            for col_name in self.sample_columns
+                        ]
+                    )
+                    .select_from(self.table)
                     .filter(
                         get_integer_range_filter(
                             Column(partition_field),
@@ -232,7 +255,13 @@ class Sampler:
         return aliased(
             self.table,
             (
-                self.session.query(self.table)
+                self.session.query(
+                    *[
+                        self.table.__table__.c.get(col_name)
+                        for col_name in self.sample_columns
+                    ]
+                )
+                .select_from(self.table)
                 .filter(
                     build_query_filter(
                         [
