@@ -146,8 +146,33 @@ const TagsPage = () => {
   );
 
   const createTagPermission = useMemo(
-    () => checkPermission(Operation.Create, ResourceEntity.TAG, permissions),
-    [permissions]
+    () =>
+      checkPermission(Operation.Create, ResourceEntity.TAG, permissions) ||
+      classificationPermissions.EditAll,
+    [permissions, classificationPermissions]
+  );
+
+  const editClassificationPermission = useMemo(
+    () =>
+      checkPermission(
+        Operation.EditAll,
+        ResourceEntity.CLASSIFICATION,
+        permissions
+      ),
+    [permissions, classificationPermissions]
+  );
+
+  const editTagsPermission = useMemo(
+    () => checkPermission(Operation.EditAll, ResourceEntity.TAG, permissions),
+    [permissions, classificationPermissions]
+  );
+
+  const DeleteClassificationPermission = useMemo(
+    () =>
+      !isUndefined(currentClassification) &&
+      currentClassification.provider !== ProviderType.System &&
+      classificationPermissions.Delete,
+    [permissions, classificationPermissions, currentClassification]
   );
 
   const fetchCurrentClassificationPermission = async () => {
@@ -175,7 +200,7 @@ const TagsPage = () => {
 
     try {
       const tagsResponse = await getTags({
-        arrQueryFields: 'usageCount',
+        arrQueryFields: ['usageCount', 'disabled'],
         parent: currentClassificationName,
         after: paging && paging.after,
         before: paging && paging.before,
@@ -200,7 +225,10 @@ const TagsPage = () => {
     setIsLoading(true);
 
     try {
-      const response = await getAllClassifications('termCount', 1000);
+      const response = await getAllClassifications(
+        ['termCount', 'disabled'],
+        1000
+      );
       setClassifications(response.data);
       if (setCurrent && response.data.length) {
         setCurrentClassification(response.data[0]);
@@ -291,22 +319,6 @@ const TagsPage = () => {
     setIsTagModal(false);
     setIsAddingClassification(false);
   };
-
-  /**
-   * It will set current tag category for delete
-   */
-  //   const deleteTagHandler = () => {
-  //     if (currentClassification) {
-  //       setDeleteTags({
-  //         data: {
-  //           id: currentClassification.id as string,
-  //           name: currentClassification.displayName || currentClassification.name,
-  //           isCategory: true,
-  //         },
-  //         state: true,
-  //       });
-  //     }
-  //   };
 
   /**
    * Take tag category id and delete.
@@ -630,6 +642,19 @@ const TagsPage = () => {
     );
   };
 
+  const getDisableTagTitle = useCallback(
+    (tag: Tag) => {
+      if (!editTagsPermission) {
+        return t('message.no-permission-for-action');
+      } else if (tag.disabled) {
+        return t('label.enable');
+      } else {
+        return t('label.disable');
+      }
+    },
+    [editTagsPermission]
+  );
+
   const tableColumn = useMemo(
     () =>
       [
@@ -738,6 +763,18 @@ const TagsPage = () => {
                   onClick={() => handleActionDeleteTag(record)}
                 />
               </Tooltip>
+
+              <Tooltip placement="topRight" title={getDisableTagTitle(record)}>
+                <Button
+                  className="p-0 flex-center"
+                  data-testid="disable-tag"
+                  disabled={!editTagsPermission}
+                  icon={<IconDisabled height={16} width={16} />}
+                  size="small"
+                  type="text"
+                  onClick={() => handleEnableDisableTagClick(record)}
+                />
+              </Tooltip>
             </Space>
           ),
         },
@@ -751,15 +788,273 @@ const TagsPage = () => {
     ]
   );
 
-  const handleDisabledClick = (classification: Classification) => {
-    if (!classification.id) {
-      return;
+  const handleEnableDisableClassificationClick = useCallback(
+    async (classification: Classification) => {
+      if (!classification.id) {
+        return;
+      }
+      const jsonData = compare(classification, {
+        ...cloneDeep(classification),
+        disabled: !classification.disabled,
+      });
+      const response = await patchClassification(classification.id, jsonData);
+
+      setCurrentClassification(response);
+    },
+    []
+  );
+
+  const handleEnableDisableTagClick = useCallback(
+    async (tag: Tag) => {
+      if (!tag.id || !currentClassification) {
+        return;
+      }
+      const jsonData = compare(tag, {
+        ...cloneDeep(tag),
+        disabled: !tag.disabled,
+      });
+      await patchTag(tag.id, jsonData);
+
+      fetchClassificationChildren(currentClassification.name);
+    },
+    [currentClassification, fetchClassificationChildren]
+  );
+
+  const extraDropdownContent = useMemo(() => {
+    if (isUndefined(currentClassification)) {
+      return [];
     }
-    const jsonData = compare(classification, {
-      ...cloneDeep(classification),
-      disabled: true,
-    });
-    patchClassification(classification.id, jsonData);
+
+    return [
+      {
+        label: (
+          <ManageButtonItem
+            description={
+              currentClassification.disabled
+                ? t('message.enable-classification-description')
+                : t('message.disable-classification-description')
+            }
+            disabled={!editClassificationPermission}
+            icon={<IconDisabled height={16} width={16} />}
+            label={
+              currentClassification.disabled
+                ? t('label.enable')
+                : t('label.disable')
+            }
+            onClick={() =>
+              handleEnableDisableClassificationClick(currentClassification)
+            }
+          />
+        ),
+        key: 'disabled',
+      },
+    ];
+  }, [currentClassification, handleEnableDisableClassificationClick]);
+
+  const getPageContent = () => {
+    if (isLoading) {
+      return <Loader />;
+    }
+
+    if (error) {
+      return (
+        <ErrorPlaceHolder>
+          <p className="tw-text-center tw-m-auto">{error}</p>
+        </ErrorPlaceHolder>
+      );
+    }
+
+    return (
+      <div className="full-height" data-testid="tags-container">
+        {currentClassification && (
+          <Space className="w-full justify-between" data-testid="header">
+            <Space className="items-center">
+              {isNameEditing ? (
+                <Row align="middle" gutter={8}>
+                  <Col>
+                    <Input
+                      className="input-width"
+                      data-testid="current-classification-name"
+                      name="ClassificationName"
+                      value={currentClassificationName}
+                      onChange={handleCategoryNameChange}
+                    />
+                  </Col>
+                  <Col>
+                    <Button
+                      className="icon-buttons"
+                      data-testid="cancelAssociatedTag"
+                      icon={<CloseOutlined />}
+                      size="small"
+                      type="primary"
+                      onMouseDown={handleEditNameCancel}
+                    />
+                    <Button
+                      className="icon-buttons m-l-xss"
+                      data-testid="saveAssociatedTag"
+                      icon={<CheckOutlined />}
+                      size="small"
+                      type="primary"
+                      onMouseDown={handleRenameSave}
+                    />
+                  </Col>
+                </Row>
+              ) : (
+                <Space>
+                  <Typography.Text
+                    className="m-b-0 font-bold text-lg"
+                    data-testid="classification-name">
+                    {getEntityName(currentClassification)}
+                  </Typography.Text>
+                  {currentClassification.provider === ProviderType.User ? (
+                    <Tooltip
+                      title={
+                        classificationPermissions.EditAll
+                          ? t('label.edit-entity', {
+                              entity: t('label.name'),
+                            })
+                          : t('message.no-permission-for-action')
+                      }>
+                      <Button
+                        className="p-0"
+                        data-testid="name-edit-icon"
+                        disabled={!classificationPermissions.EditAll}
+                        size="small"
+                        type="text"
+                        onClick={() => setIsNameEditing(true)}>
+                        <SVGIcons
+                          alt="icon-tag"
+                          className="tw-mx-1"
+                          icon={Icons.EDIT}
+                          width="16"
+                        />
+                      </Button>
+                    </Tooltip>
+                  ) : (
+                    <AppBadge
+                      className="m--t-xss"
+                      icon={<LockIcon height={12} />}
+                      label={capitalize(currentClassification.provider)}
+                    />
+                  )}
+                </Space>
+              )}
+            </Space>
+            <Space align="center">
+              <Tooltip
+                title={
+                  !createTagPermission && t('message.no-permission-for-action')
+                }>
+                <Button
+                  data-testid="add-new-tag-button"
+                  disabled={!createTagPermission}
+                  type="primary"
+                  onClick={() => {
+                    setIsTagModal((prevState) => !prevState);
+                  }}>
+                  {t('label.add-entity', {
+                    entity: t('label.tag'),
+                  })}
+                </Button>
+              </Tooltip>
+              <ManageButton
+                canDelete={DeleteClassificationPermission}
+                entityName={t('label.classification')}
+                extraDropdownContent={extraDropdownContent}
+              />
+            </Space>
+          </Space>
+        )}
+        <div className="m-b-sm m-t-xs" data-testid="description-container">
+          <Description
+            description={currentClassification?.description || ''}
+            entityName={
+              currentClassification?.displayName ?? currentClassification?.name
+            }
+            hasEditAccess={
+              classificationPermissions.EditDescription ||
+              classificationPermissions.EditAll
+            }
+            isEdit={isEditClassification}
+            onCancel={() => setIsEditClassification(false)}
+            onDescriptionEdit={() => setIsEditClassification(true)}
+            onDescriptionUpdate={handleUpdateDescription}
+          />
+        </div>
+        <Table
+          bordered
+          columns={tableColumn}
+          data-testid="table"
+          dataSource={tags}
+          loading={{
+            indicator: (
+              <Spin indicator={<Loader size="small" />} size="small" />
+            ),
+            spinning: isTagsLoading,
+          }}
+          pagination={false}
+          rowKey="id"
+          size="small"
+        />
+        {paging.total > PAGE_SIZE && (
+          <NextPrevious
+            currentPage={currentPage}
+            pageSize={PAGE_SIZE}
+            paging={paging}
+            pagingHandler={handlePageChange}
+            totalCount={paging.total}
+          />
+        )}
+
+        {/* Classification Form */}
+        <TagsForm
+          isClassification
+          showMutuallyExclusive
+          data={classifications}
+          header={t('label.adding-new-classification')}
+          isLoading={isButtonLoading}
+          visible={isAddingClassification}
+          onCancel={onCancel}
+          onSubmit={(data) => createCategory(data as Classification)}
+        />
+
+        {/* Tags Form */}
+        <TagsForm
+          header={
+            editTag
+              ? t('label.edit-entity', {
+                  entity: t('label.tag'),
+                })
+              : t('message.adding-new-tag', {
+                  categoryName:
+                    currentClassification?.displayName ??
+                    currentClassification?.name,
+                })
+          }
+          initialValues={editTag}
+          isLoading={isButtonLoading}
+          isSystemTag={editTag?.provider === ProviderType.System}
+          visible={isTagModal}
+          onCancel={onCancel}
+          onSubmit={(data) => {
+            if (editTag) {
+              updatePrimaryTag({ ...editTag, ...data } as Tag);
+            } else {
+              createPrimaryTag(data as Classification);
+            }
+          }}
+        />
+        <EntityDeleteModal
+          bodyText={getEntityDeleteMessage(deleteTags.data?.name ?? '', '')}
+          entityName={deleteTags.data?.name ?? ''}
+          entityType={t('label.classification')}
+          loadingState={deleteStatus}
+          visible={deleteTags.state}
+          onCancel={() => setDeleteTags({ data: undefined, state: false })}
+          onConfirm={handleConfirmClick}
+        />
+      </div>
+    );
   };
 
   return (
@@ -767,253 +1062,7 @@ const TagsPage = () => {
       <PageLayoutV1
         leftPanel={fetchLeftPanel()}
         pageTitle={t('label.tag-plural')}>
-        {isLoading ? (
-          <Loader />
-        ) : error ? (
-          <ErrorPlaceHolder>
-            <p className="tw-text-center tw-m-auto">{error}</p>
-          </ErrorPlaceHolder>
-        ) : (
-          <div className="full-height" data-testid="tags-container">
-            {currentClassification && (
-              <Space className="w-full justify-between" data-testid="header">
-                <Space className="items-center">
-                  {isNameEditing ? (
-                    <Row align="middle" gutter={8}>
-                      <Col>
-                        <Input
-                          className="input-width"
-                          data-testid="current-classification-name"
-                          name="ClassificationName"
-                          value={currentClassificationName}
-                          onChange={handleCategoryNameChange}
-                        />
-                      </Col>
-                      <Col>
-                        <Button
-                          className="icon-buttons"
-                          data-testid="cancelAssociatedTag"
-                          icon={<CloseOutlined />}
-                          size="small"
-                          type="primary"
-                          onMouseDown={handleEditNameCancel}
-                        />
-                        <Button
-                          className="icon-buttons m-l-xss"
-                          data-testid="saveAssociatedTag"
-                          icon={<CheckOutlined />}
-                          size="small"
-                          type="primary"
-                          onMouseDown={handleRenameSave}
-                        />
-                      </Col>
-                    </Row>
-                  ) : (
-                    <Space>
-                      <Typography.Text
-                        className="m-b-0 font-bold text-lg"
-                        data-testid="classification-name">
-                        {getEntityName(currentClassification)}
-                      </Typography.Text>
-                      {currentClassification.provider === ProviderType.User ? (
-                        <Tooltip
-                          title={
-                            classificationPermissions.EditAll
-                              ? t('label.edit-entity', {
-                                  entity: t('label.name'),
-                                })
-                              : t('message.no-permission-for-action')
-                          }>
-                          <Button
-                            className="p-0"
-                            data-testid="name-edit-icon"
-                            disabled={!classificationPermissions.EditAll}
-                            size="small"
-                            type="text"
-                            onClick={() => setIsNameEditing(true)}>
-                            <SVGIcons
-                              alt="icon-tag"
-                              className="tw-mx-1"
-                              icon={Icons.EDIT}
-                              width="16"
-                            />
-                          </Button>
-                        </Tooltip>
-                      ) : (
-                        <AppBadge
-                          className="m--t-xss"
-                          icon={<LockIcon height={12} />}
-                          label={capitalize(currentClassification.provider)}
-                        />
-                      )}
-                    </Space>
-                  )}
-                </Space>
-                <Space align="center">
-                  <Tooltip
-                    title={
-                      !(
-                        createTagPermission || classificationPermissions.EditAll
-                      ) && t('message.no-permission-for-action')
-                    }>
-                    <Button
-                      data-testid="add-new-tag-button"
-                      disabled={
-                        !(
-                          createTagPermission ||
-                          classificationPermissions.EditAll
-                        )
-                      }
-                      type="primary"
-                      onClick={() => {
-                        setIsTagModal((prevState) => !prevState);
-                      }}>
-                      {t('label.add-entity', {
-                        entity: t('label.tag'),
-                      })}
-                    </Button>
-                  </Tooltip>
-                  <ManageButton
-                    canDelete={
-                      !(
-                        currentClassification.provider ===
-                          ProviderType.System ||
-                        !classificationPermissions.Delete
-                      )
-                    }
-                    entityName={t('label.classification')}
-                    extraDropdownContent={[
-                      {
-                        label: (
-                          <ManageButtonItem
-                            description="Option to disabled tags, You won't be able to see it within application"
-                            disabled={false}
-                            icon={<IconDisabled height={16} />}
-                            label="Disabled"
-                            onClick={() =>
-                              handleDisabledClick(currentClassification)
-                            }
-                          />
-                        ),
-                        key: 'disabled',
-                      },
-                    ]}
-                  />
-                  {/* <Tooltip
-                    title={
-                      (currentClassification.provider === ProviderType.System ||
-                        !classificationPermissions.Delete) &&
-                      t('message.no-permission-for-action')
-                    }>
-                    <Button
-                      className="add-new-tag-btn tw-ml-2"
-                      data-testid="delete-classification-or-tag"
-                      disabled={
-                        currentClassification.provider ===
-                          ProviderType.System ||
-                        !classificationPermissions.Delete
-                      }
-                      size="small"
-                      onClick={() => deleteTagHandler()}>
-                      {t('label.delete-entity', {
-                        entity: t('label.classification'),
-                      })}
-                    </Button>
-                  </Tooltip> */}
-                </Space>
-              </Space>
-            )}
-            <div className="m-b-sm m-t-xs" data-testid="description-container">
-              <Description
-                description={currentClassification?.description || ''}
-                entityName={
-                  currentClassification?.displayName ??
-                  currentClassification?.name
-                }
-                hasEditAccess={
-                  classificationPermissions.EditDescription ||
-                  classificationPermissions.EditAll
-                }
-                isEdit={isEditClassification}
-                onCancel={() => setIsEditClassification(false)}
-                onDescriptionEdit={() => setIsEditClassification(true)}
-                onDescriptionUpdate={handleUpdateDescription}
-              />
-            </div>
-            <Table
-              bordered
-              columns={tableColumn}
-              data-testid="table"
-              dataSource={tags}
-              loading={{
-                indicator: (
-                  <Spin indicator={<Loader size="small" />} size="small" />
-                ),
-                spinning: isTagsLoading,
-              }}
-              pagination={false}
-              rowKey="id"
-              size="small"
-            />
-            {paging.total > PAGE_SIZE && (
-              <NextPrevious
-                currentPage={currentPage}
-                pageSize={PAGE_SIZE}
-                paging={paging}
-                pagingHandler={handlePageChange}
-                totalCount={paging.total}
-              />
-            )}
-
-            {/* Classification Form */}
-            <TagsForm
-              isClassification
-              showMutuallyExclusive
-              data={classifications}
-              header={t('label.adding-new-classification')}
-              isLoading={isButtonLoading}
-              visible={isAddingClassification}
-              onCancel={onCancel}
-              onSubmit={(data) => createCategory(data as Classification)}
-            />
-
-            {/* Tags Form */}
-            <TagsForm
-              header={
-                editTag
-                  ? t('label.edit-entity', {
-                      entity: t('label.tag'),
-                    })
-                  : t('message.adding-new-tag', {
-                      categoryName:
-                        currentClassification?.displayName ??
-                        currentClassification?.name,
-                    })
-              }
-              initialValues={editTag}
-              isLoading={isButtonLoading}
-              isSystemTag={editTag?.provider === ProviderType.System}
-              visible={isTagModal}
-              onCancel={onCancel}
-              onSubmit={(data) => {
-                if (editTag) {
-                  updatePrimaryTag({ ...editTag, ...data } as Tag);
-                } else {
-                  createPrimaryTag(data as Classification);
-                }
-              }}
-            />
-            <EntityDeleteModal
-              bodyText={getEntityDeleteMessage(deleteTags.data?.name ?? '', '')}
-              entityName={deleteTags.data?.name ?? ''}
-              entityType={t('label.classification')}
-              loadingState={deleteStatus}
-              visible={deleteTags.state}
-              onCancel={() => setDeleteTags({ data: undefined, state: false })}
-              onConfirm={handleConfirmClick}
-            />
-          </div>
-        )}
+        {getPageContent()}
       </PageLayoutV1>
     </PageContainerV1>
   );

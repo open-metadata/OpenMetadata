@@ -69,7 +69,7 @@ const ManageButton: FC<Props> = ({
   const [showReactiveModal, setShowReactiveModal] = useState(false);
 
   const handleRestore = async () => {
-    onRestoreEntity && (await onRestoreEntity());
+    onRestoreEntity && onRestoreEntity();
     setShowReactiveModal(false);
   };
 
