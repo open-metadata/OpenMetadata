@@ -23,12 +23,15 @@ import {
 } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { LOADING_STATE } from 'enums/common.enum';
 import { isUndefined, trim } from 'lodash';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { checkEmailInUse, generateRandomPwd } from 'rest/auth-API';
-import { getBotsPagePath, getUsersPagePath } from '../../constants/constants';
+import {
+  getBotsPagePath,
+  getUsersPagePath,
+  VALIDATE_MESSAGES,
+} from '../../constants/constants';
 import { passwordErrorMessage } from '../../constants/ErrorMessages.constant';
 import {
   passwordRegex,
@@ -69,7 +72,7 @@ const { Option } = Select;
 
 const CreateUser = ({
   roles,
-  saveState = 'initial',
+  isLoading,
   onCancel,
   onSave,
   forceBot,
@@ -711,7 +714,7 @@ const CreateUser = ({
           form={form}
           id="create-user-bot-form"
           layout="vertical"
-          validateMessages={{ required: '${label} is required' }}
+          validateMessages={VALIDATE_MESSAGES}
           onFinish={handleSave}>
           <Form.Item
             label={t('label.email')}
@@ -986,7 +989,7 @@ const CreateUser = ({
               data-testid="save-user"
               form="create-user-bot-form"
               htmlType="submit"
-              loading={saveState === LOADING_STATE.WAITING}
+              loading={isLoading}
               type="primary">
               {t('label.create')}
             </Button>

@@ -20,6 +20,7 @@ import React, {
   Fragment,
   HTMLAttributes,
   ReactNode,
+  useMemo,
 } from 'react';
 import './../../styles/layout/page-layout.less';
 
@@ -29,6 +30,8 @@ interface PageLayoutProp extends HTMLAttributes<HTMLDivElement> {
   rightPanel?: ReactNode;
   center?: boolean;
   pageTitle: string;
+  rightPanelWidth?: number;
+  leftPanelWidth?: number;
 }
 
 export const pageContainerStyles: CSSProperties = {
@@ -49,7 +52,21 @@ const PageLayoutV1: FC<PageLayoutProp> = ({
   pageTitle,
   header,
   center = false,
+  leftPanelWidth = 284,
+  rightPanelWidth = 284,
 }: PageLayoutProp) => {
+  const contentWidth = useMemo(() => {
+    if (leftPanel && rightPanel) {
+      return `calc(100% - ${leftPanelWidth + rightPanelWidth}px)`;
+    } else if (leftPanel) {
+      return `calc(100% - ${leftPanelWidth}px)`;
+    } else if (rightPanel) {
+      return `calc(100% - ${rightPanelWidth}px)`;
+    } else {
+      return '100%';
+    }
+  }, [leftPanel, rightPanel, leftPanelWidth, rightPanelWidth]);
+
   return (
     <Fragment>
       <DocumentTitle title={pageTitle} />
@@ -62,7 +79,7 @@ const PageLayoutV1: FC<PageLayoutProp> = ({
         {leftPanel && (
           <Col
             className="page-layout-v1-vertical-scroll"
-            flex="284px"
+            flex={leftPanelWidth + 'px'}
             id="left-panelV1">
             {leftPanel}
           </Col>
@@ -74,13 +91,7 @@ const PageLayoutV1: FC<PageLayoutProp> = ({
               'flex justify-center': center,
             }
           )}
-          flex={
-            leftPanel && rightPanel
-              ? 'calc(100% - 568px)'
-              : leftPanel || rightPanel
-              ? 'calc(100% - 284px)'
-              : '100%'
-          }
+          flex={contentWidth}
           offset={center ? 3 : 0}
           span={center ? 18 : 24}>
           {children}
@@ -88,7 +99,7 @@ const PageLayoutV1: FC<PageLayoutProp> = ({
         {rightPanel && (
           <Col
             className="page-layout-v1-vertical-scroll"
-            flex="284px"
+            flex={rightPanelWidth + 'px'}
             id="right-panelV1">
             {rightPanel}
           </Col>

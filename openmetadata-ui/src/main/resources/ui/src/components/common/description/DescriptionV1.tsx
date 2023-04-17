@@ -11,13 +11,14 @@
  *  limitations under the License.
  */
 
-import { Card, Space, Tooltip, Typography } from 'antd';
+import { Button, Card, Space, Tooltip, Typography } from 'antd';
+import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
 import classNames from 'classnames';
+import { DE_ACTIVE_COLOR } from 'constants/constants';
 import { t } from 'i18next';
 import { isUndefined } from 'lodash';
 import React, { Fragment } from 'react';
 import { EntityField } from '../../../constants/Feeds.constants';
-import { NO_PERMISSION_FOR_ACTION } from '../../../constants/HelperTextUtil';
 import { Table } from '../../../generated/entity/data/table';
 import { EntityFieldThreads } from '../../../interface/feed.interface';
 import { getEntityFeedLink } from '../../../utils/EntityUtils';
@@ -43,6 +44,7 @@ interface Props {
   onDescriptionUpdate?: (value: string) => Promise<void>;
   onSuggest?: (value: string) => void;
   onEntityFieldSelect?: (value: string) => void;
+  wrapInCard?: boolean;
 }
 const DescriptionV1 = ({
   hasEditAccess,
@@ -59,47 +61,34 @@ const DescriptionV1 = ({
   onEntityFieldSelect,
   entityType,
   entityFqn,
+  wrapInCard = false,
 }: Props) => {
   const descriptionThread = entityFieldThreads?.[0];
 
   const editButton = () => {
-    return !isReadOnly ? (
-      <Tooltip
-        title={
-          hasEditAccess
-            ? t('label.edit-entity', { entity: t('label.description') })
-            : NO_PERMISSION_FOR_ACTION
-        }>
-        <button
-          className="focus:tw-outline-none tw-text-primary"
-          data-testid="edit-description"
-          disabled={!hasEditAccess}
-          onClick={onDescriptionEdit}>
-          <SVGIcons
-            alt={t('label.edit')}
-            icon={Icons.EDIT}
-            title="Edit"
-            width="16px"
-          />
-        </button>
-      </Tooltip>
+    return !isReadOnly && hasEditAccess ? (
+      <Button
+        className="cursor-pointer d-inline-flex items-center justify-center"
+        data-testid="edit-description"
+        icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
+        size="small"
+        type="text"
+        onClick={onDescriptionEdit}
+      />
     ) : (
       <></>
     );
   };
 
-  return (
-    <Card>
+  const content = (
+    <>
       <Space className="schema-description tw-flex" direction="vertical">
-        <Space
-          style={{
-            display: 'flex',
-            width: '100%',
-            justifyContent: 'space-between',
-          }}>
-          <Text className="text-grey-muted">{t('label.description')}</Text>
-          <div>{editButton()}</div>
-        </Space>
+        <div className="d-flex">
+          <Text className="m-b-0 m-r-xss tw-text-base font-medium">
+            {t('label.description')}
+          </Text>
+          {editButton()}
+        </div>
         <div>
           {description?.trim() ? (
             <RichTextEditorPreviewer
@@ -189,8 +178,10 @@ const DescriptionV1 = ({
           </div>
         ) : null}
       </Space>
-    </Card>
+    </>
   );
+
+  return wrapInCard ? <Card>{content}</Card> : content;
 };
 
 export default DescriptionV1;

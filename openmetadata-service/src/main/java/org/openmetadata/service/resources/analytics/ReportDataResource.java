@@ -1,6 +1,5 @@
 package org.openmetadata.service.resources.analytics;
 
-import com.google.inject.Inject;
 import io.swagger.v3.oas.annotations.Hidden;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -49,7 +48,6 @@ public class ReportDataResource {
   @Getter protected final ReportDataRepository dao;
   protected final Authorizer authorizer;
 
-  @Inject
   public ReportDataResource(CollectionDAO dao, Authorizer authorizer) {
     this.authorizer = authorizer;
     this.dao = new ReportDataRepository(dao);

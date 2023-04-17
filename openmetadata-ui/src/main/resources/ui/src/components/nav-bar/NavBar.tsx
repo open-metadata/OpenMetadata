@@ -22,8 +22,8 @@ import {
   Tooltip,
 } from 'antd';
 import { useApplicationConfigProvider } from 'components/ApplicationConfigProvider/ApplicationConfigProvider';
+import { useGlobalSearchProvider } from 'components/GlobalSearchProvider/GlobalSearchProvider';
 import { CookieStorage } from 'cookie-storage';
-import { SearchIndex } from 'enums/search.enum';
 import i18next from 'i18next';
 import { debounce, toString } from 'lodash';
 import React, {
@@ -40,6 +40,7 @@ import { isCommandKeyPress, Keys } from 'utils/KeyboardUtil';
 import AppState from '../../AppState';
 import Logo from '../../assets/svg/logo-monogram.svg';
 import {
+  globalSearchOptions,
   NOTIFICATION_READ_TIMER,
   ROUTES,
   SOCKET_EVENTS,
@@ -91,8 +92,10 @@ const NavBar = ({
   handleSearchChange,
   handleKeyDown,
   handleOnClick,
+  handleClear,
 }: NavBarProps) => {
   const { logoConfig } = useApplicationConfigProvider();
+  const { searchCriteria, updateSearchCriteria } = useGlobalSearchProvider();
 
   // get current user details
   const currentUser = useMemo(
@@ -104,7 +107,9 @@ const NavBar = ({
   const { Option } = Select;
   const searchRef = useRef<InputRef>(null);
   const [searchIcon, setSearchIcon] = useState<string>('icon-searchv1');
-  const [cancelIcon, setCancelIcon] = useState<string>('close-circle-outlined');
+  const [cancelIcon, setCancelIcon] = useState<string>(
+    Icons.CLOSE_CIRCLE_OUTLINED
+  );
   const [suggestionSearch, setSuggestionSearch] = useState<string>('');
   const [hasTaskNotification, setHasTaskNotification] =
     useState<boolean>(false);
@@ -112,26 +117,6 @@ const NavBar = ({
     useState<boolean>(false);
   const [activeTab, setActiveTab] = useState<string>('Task');
   const [isImgUrlValid, setIsImgUrlValid] = useState<boolean>(true);
-  const [searchCriteria, setSearchCriteria] = useState<SearchIndex | ''>('');
-  const globalSearchOptions = useMemo(
-    () => [
-      { value: '', label: t('label.all') },
-      { value: SearchIndex.TABLE, label: t('label.table') },
-      { value: SearchIndex.TOPIC, label: t('label.topic') },
-      { value: SearchIndex.DASHBOARD, label: t('label.dashboard') },
-      { value: SearchIndex.PIPELINE, label: t('label.pipeline') },
-      { value: SearchIndex.MLMODEL, label: t('label.ml-model') },
-      { value: SearchIndex.CONTAINER, label: t('label.container') },
-      { value: SearchIndex.GLOSSARY, label: t('label.glossary') },
-      { value: SearchIndex.TAG, label: t('label.tag') },
-    ],
-    []
-  );
-
-  const updateSearchCriteria = (criteria: SearchIndex | '') => {
-    setSearchCriteria(criteria);
-    handleSearchChange(searchValue);
-  };
 
   const entitiesSelect = useMemo(
     () => (
@@ -149,7 +134,7 @@ const NavBar = ({
         ))}
       </Select>
     ),
-    [searchCriteria, globalSearchOptions, updateSearchCriteria]
+    [searchCriteria, globalSearchOptions]
   );
 
   const profilePicture = useMemo(
@@ -455,10 +440,7 @@ const NavBar = ({
                       <SVGIcons
                         alt="icon-cancel"
                         icon={cancelIcon}
-                        onClick={() => {
-                          debounceOnSearch('');
-                          handleSearchChange('');
-                        }}
+                        onClick={handleClear}
                       />
                     ) : (
                       <SVGIcons
@@ -478,7 +460,7 @@ const NavBar = ({
               value={searchValue}
               onBlur={() => {
                 setSearchIcon('icon-searchv1');
-                setCancelIcon('close-circle-outlined');
+                setCancelIcon(Icons.CLOSE_CIRCLE_OUTLINED);
               }}
               onChange={(e) => {
                 const { value } = e.target;
@@ -487,7 +469,7 @@ const NavBar = ({
               }}
               onFocus={() => {
                 setSearchIcon('icon-searchv1color');
-                setCancelIcon('close-circle-outlined-color');
+                setCancelIcon(Icons.CLOSE_CIRCLE_OUTLINED_COLOR);
               }}
               onKeyDown={handleKeyDown}
             />

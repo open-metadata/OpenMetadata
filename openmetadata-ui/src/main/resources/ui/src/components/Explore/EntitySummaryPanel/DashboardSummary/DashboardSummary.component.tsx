@@ -85,6 +85,15 @@ function DashboardSummary({
     [charts]
   );
 
+  const formattedDataModelData: BasicEntityInfo[] = useMemo(
+    () =>
+      getFormattedEntityData(
+        SummaryEntityType.COLUMN,
+        entityDetails.dataModels
+      ),
+    [charts]
+  );
+
   const isExplore = useMemo(
     () => componentType === DRAWER_NAVIGATION_OPTIONS.explore,
     [componentType]
@@ -171,6 +180,21 @@ function DashboardSummary({
           </Col>
           <Col span={24}>
             <SummaryList formattedEntityData={formattedChartsData} />
+          </Col>
+        </Row>
+
+        <Divider className="m-y-xs" />
+
+        <Row className="m-md" gutter={[0, 16]}>
+          <Col span={24}>
+            <Typography.Text
+              className="text-base text-grey-muted"
+              data-testid="data-model-header">
+              {t('label.data-model-plural')}
+            </Typography.Text>
+          </Col>
+          <Col span={24}>
+            <SummaryList formattedEntityData={formattedDataModelData} />
           </Col>
         </Row>
       </>

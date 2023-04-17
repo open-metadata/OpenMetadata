@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { LoadingState } from 'Models';
 import { CreateGlossaryTerm } from '../../generated/api/data/createGlossaryTerm';
 import { Glossary } from '../../generated/entity/data/glossary';
 import { GlossaryTerm } from '../../generated/entity/data/glossaryTerm';
@@ -20,7 +19,7 @@ import { TitleBreadcrumbProps } from '../common/title-breadcrumb/title-breadcrum
 export interface AddGlossaryTermProps {
   parentGlossaryData: GlossaryTerm | undefined;
   glossaryData: Glossary;
-  saveState: LoadingState;
+  isLoading: boolean;
   allowAccess: boolean;
   onSave: (value: CreateGlossaryTerm) => void;
   onCancel: () => void;

@@ -103,7 +103,7 @@ def _get_columns(
 ) -> List[Dict[str, Any]]:
     # pylint: disable=protected-access
     schema = schema or self._get_default_schema_name(connection)
-    query = f"SHOW COLUMNS FROM {schema}.{table_name}"
+    query = f'SHOW COLUMNS FROM {schema}."{table_name}"'
 
     res = connection.execute(sql.text(query), schema=schema, table=table_name)
     columns = []

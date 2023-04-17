@@ -25,12 +25,14 @@ import { FilterPatternProps } from './filterPattern.interface';
 
 const FilterPattern = ({
   showSeparator = true,
+  isDisabled = false,
   checked,
   includePattern,
   excludePattern,
   handleChecked,
   getIncludeValue,
   getExcludeValue,
+  includePatternExtraInfo,
   type,
 }: FilterPatternProps) => {
   const includeFilterChangeHandler = (
@@ -55,6 +57,7 @@ const FilterPattern = ({
             checked={checked}
             className="m-r-sm filter-pattern-checkbox"
             data-testid={`${type}-filter-pattern-checkbox`}
+            disabled={isDisabled}
             id={`${type}FilterPatternCheckbox`}
             name={`${type}FilterPatternCheckbox`}
             onChange={(e) => handleChecked(e.target.checked)}
@@ -101,11 +104,19 @@ const FilterPattern = ({
             <Input
               className="m-t-xss"
               data-testid={`filter-pattern-includes-${type}`}
+              disabled={isDisabled}
               placeholder={t('message.list-of-strings-regex-patterns-csv')}
               type="text"
               value={includePattern}
               onChange={includeFilterChangeHandler}
             />
+            {includePatternExtraInfo && (
+              <Typography.Text
+                className="text-grey-muted m-t-xss m-b-xss"
+                data-testid="filter-pattern-include-info">
+                {includePatternExtraInfo}
+              </Typography.Text>
+            )}
           </Field>
           <Field>
             <label className="d-flex flex-col">{t('label.exclude')}:</label>
@@ -120,6 +131,7 @@ const FilterPattern = ({
             <Input
               className="m-t-xss"
               data-testid={`filter-pattern-excludes-${type}`}
+              disabled={isDisabled}
               placeholder={t('message.list-of-strings-regex-patterns-csv')}
               type="text"
               value={excludePattern}

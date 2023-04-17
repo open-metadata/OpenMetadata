@@ -119,7 +119,7 @@ jest.mock('rest/dashboardAPI', () => ({
   ),
 }));
 
-jest.mock('rest/objectStoreAPI', () => ({
+jest.mock('rest/storageAPI', () => ({
   getContainers: jest.fn().mockImplementation(() =>
     Promise.resolve({
       data: CONTAINERS_DATA,
@@ -270,6 +270,10 @@ jest.mock('../../utils/TableUtils', () => ({
 jest.mock('../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
 }));
+
+jest.mock('components/containers/PageLayoutV1', () => {
+  return jest.fn().mockImplementation(({ children }) => children);
+});
 
 describe('Test ServicePage Component', () => {
   it('Component should render', async () => {
@@ -445,7 +449,7 @@ describe('Test ServicePage Component', () => {
     mockParams = {
       serviceFQN: 's3_object_store_sample',
       serviceType: 'S3',
-      serviceCategory: 'objectStoreServices',
+      serviceCategory: 'storageServices',
       tab: 'containers',
     };
 

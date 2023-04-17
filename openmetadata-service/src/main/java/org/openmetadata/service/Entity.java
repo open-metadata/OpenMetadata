@@ -77,8 +77,6 @@ public final class Entity {
   public static final String STORAGE_SERVICE = "storageService";
   public static final String MLMODEL_SERVICE = "mlmodelService";
   public static final String METADATA_SERVICE = "metadataService";
-  public static final String OBJECT_STORE_SERVICE = "objectStoreService";
-
   //
   // Data asset entities
   //
@@ -96,8 +94,6 @@ public final class Entity {
   public static final String BOT = "bot";
   public static final String EVENT_SUBSCRIPTION = "eventsubscription";
   public static final String THREAD = "THREAD";
-  public static final String LOCATION = "location";
-
   public static final String QUERY = "query";
 
   public static final String GLOSSARY = "glossary";
@@ -158,7 +154,7 @@ public final class Entity {
           put(ServiceType.PIPELINE, PIPELINE_SERVICE);
           put(ServiceType.ML_MODEL, MLMODEL_SERVICE);
           put(ServiceType.METADATA, METADATA_SERVICE);
-          put(ServiceType.OBJECT_STORE, OBJECT_STORE_SERVICE);
+          put(ServiceType.STORAGE, STORAGE_SERVICE);
         }
       };
 
@@ -176,7 +172,6 @@ public final class Entity {
           DATABASE_SERVICE,
           PIPELINE_SERVICE,
           DASHBOARD_SERVICE,
-          STORAGE_SERVICE,
           MESSAGING_SERVICE);
 
   private Entity() {}
@@ -254,6 +249,11 @@ public final class Entity {
   public static Fields getFields(String entityType, String fields) {
     EntityRepository<?> entityRepository = Entity.getEntityRepository(entityType);
     return entityRepository.getFields(fields);
+  }
+
+  public static Fields getFields(String entityType, List<String> fields) {
+    EntityRepository<?> entityRepository = Entity.getEntityRepository(entityType);
+    return entityRepository.getFields(String.join(",", fields));
   }
 
   public static <T> T getEntity(EntityReference ref, String fields, Include include) throws IOException {

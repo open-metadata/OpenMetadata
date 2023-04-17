@@ -46,7 +46,12 @@ VERSIONS = {
 }
 
 COMMONS = {
-    "datalake": {VERSIONS["boto3"], VERSIONS["pandas"], VERSIONS["pyarrow"]},
+    "datalake": {
+        VERSIONS["boto3"],
+        VERSIONS["pandas"],
+        VERSIONS["pyarrow"],
+        "python-snappy~=0.6.1",
+    },
     "hive": {
         "presto-types-parser>=0.0.2",
         "pyhive~=0.6",
@@ -175,7 +180,7 @@ plugins: Dict[str, Set[str]] = {
     "kafka": {*COMMONS["kafka"]},
     "kinesis": {VERSIONS["boto3"]},
     "ldap-users": {"ldap3==2.9.1"},
-    "looker": {"looker-sdk>=22.20.0"},
+    "looker": {"looker-sdk>=22.20.0", "lkml~=1.3"},
     "mlflow": {"mlflow-skinny~=1.30", "alembic~=1.10.2"},
     "mssql": {"sqlalchemy-pytds~=0.3"},
     "mssql-odbc": {VERSIONS["pyodbc"]},

@@ -15,7 +15,7 @@ import Loader from 'components/Loader/Loader';
 import { ADD_USER_CONTAINER_HEIGHT, pagingObject } from 'constants/constants';
 import { EntityReference } from 'generated/entity/data/table';
 import { Paging } from 'generated/type/paging';
-import { cloneDeep } from 'lodash';
+import { cloneDeep, isEmpty } from 'lodash';
 import VirtualList from 'rc-virtual-list';
 import React, { UIEventHandler, useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -63,19 +63,19 @@ export const SelectableList = ({
     });
   }, [setSelectedItemInternal, selectedItems]);
 
-  const sortUniqueListFromSelectedList = (
-    items: Map<string, EntityReference>,
-    listOptions: EntityReference[]
-  ) => {
-    if (!items.size) {
-      return listOptions;
-    }
+  const sortUniqueListFromSelectedList = useCallback(
+    (items: Map<string, EntityReference>, listOptions: EntityReference[]) => {
+      if (!items.size) {
+        return listOptions;
+      }
 
-    return [
-      ...items.values(),
-      ...listOptions.filter((option) => !items.has(option.id)),
-    ];
-  };
+      return [
+        ...items.values(),
+        ...listOptions.filter((option) => !items.has(option.id)),
+      ];
+    },
+    [selectedItemsInternal]
+  );
 
   const fetchListOptions = useCallback(async () => {
     setFetching(true);
@@ -92,25 +92,34 @@ export const SelectableList = ({
     } finally {
       setFetching(false);
     }
-  }, [selectedItemsInternal]);
+  }, [selectedItemsInternal, sortUniqueListFromSelectedList]);
 
   useEffect(() => {
     fetchListOptions();
   }, []);
 
-  const handleSearch = async (search: string) => {
-    const { data, paging } = await fetchOptions(search);
+  const handleSearch = useCallback(
+    async (search: string) => {
+      const { data, paging } = await fetchOptions(search);
 
-    setUniqueOptions(data);
-    setPagingInfo(paging);
-    setSearchText(search);
-  };
+      setUniqueOptions(
+        isEmpty(search)
+          ? sortUniqueListFromSelectedList(selectedItemsInternal, data)
+          : data
+      );
+
+      setPagingInfo(paging);
+      setSearchText(search);
+    },
+    [selectedItemsInternal]
+  );
 
   const onScroll: UIEventHandler<HTMLElement> = async (e) => {
     if (
       e.currentTarget.scrollHeight - e.currentTarget.scrollTop ===
         ADD_USER_CONTAINER_HEIGHT &&
-      pagingInfo.after
+      pagingInfo.after &&
+      uniqueOptions.length !== pagingInfo.total
     ) {
       const { data, paging } = await fetchOptions(searchText, pagingInfo.after);
 
@@ -149,6 +158,10 @@ export const SelectableList = ({
     onUpdate([]);
   };
 
+  const handleClearAllClick = () => {
+    setSelectedItemInternal(new Map());
+  };
+
   return (
     <List
       data-testid="selectable-list"
@@ -159,7 +172,7 @@ export const SelectableList = ({
               color="primary"
               size="small"
               type="text"
-              onClick={handleRemoveClick}>
+              onClick={handleClearAllClick}>
               {t('label.clear-entity', { entity: t('label.all-lowercase') })}
             </Button>
             <Space className="m-l-auto text-right">

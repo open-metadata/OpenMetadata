@@ -282,6 +282,7 @@ class SqlColumnHandlerMixin:
                         constraint=col_constraint,
                         children=children,
                         arrayDataType=arr_data_type,
+                        ordinalPosition=column.get("ordinalPosition"),
                     )
                     if precision:
                         om_column.precision = precision[0]

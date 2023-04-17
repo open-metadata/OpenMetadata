@@ -114,7 +114,6 @@ class DomopipelineSource(PipelineServiceSource):
         return
 
     def yield_pipeline_status(self, pipeline_details) -> OMetaPipelineStatus:
-
         pipeline_id = pipeline_details.get("id")
         if not pipeline_id:
             logger.debug(
@@ -124,9 +123,7 @@ class DomopipelineSource(PipelineServiceSource):
 
         runs = self.connection.get_runs(pipeline_id)
         try:
-
             for run in runs or []:
-
                 start_time = run["beginTime"] // 1000 if run.get("beginTime") else None
                 end_time = run["endTime"] // 1000 if run.get("endTime") else None
                 run_state = run.get("state", "Pending")

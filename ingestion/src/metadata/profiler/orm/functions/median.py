@@ -73,7 +73,6 @@ def _(elements, compiler, **kwargs):
 
 
 @compiles(MedianFn, Dialects.Hive)
-@compiles(MedianFn, Dialects.Impala)
 def _(elements, compiler, **kwargs):
     """Median computation for Hive"""
     col, _, percentile = [
@@ -82,12 +81,63 @@ def _(elements, compiler, **kwargs):
     return "percentile(cast(%s as BIGINT), %s)" % (col, percentile)
 
 
+@compiles(MedianFn, Dialects.Impala)
+def _(elements, compiler, **kwargs):
+    """Median computation for Impala
+    Median compution for Impala uses the appx_median function.
+    OM uses this median function to also compute first and third quartiles.
+    These calculations are not supported with a simple function inside Impala.
+    The if statement returns null when we are not looking for the .5 precentile
+    In Impala to get the first quartile a full SQL statement like this is necessary:
+        with ntiles as
+        (
+        select filesize, ntile(4) over (order by filesize) as quarter
+        from hdfs_files
+        )
+        , quarters as
+        (
+        select 1 as grp, max(filesize) as quartile_value, quarter
+            from ntiles
+        group by quarter
+        )
+        select max(case when quarter = 1 then quartile_value end) as first_q
+        , max(case when quarter = 2 then quartile_value end) as second_q
+        , max(case when quarter = 3 then quartile_value end) as third_q
+        , max(case when quarter = 4 then quartile_value end) as fourth_q
+        from quarters
+        group by grp
+        ;
+    """
+    col, _, percentile = [
+        compiler.process(element, **kwargs) for element in elements.clauses
+    ]
+    return "if(%s = .5, appx_median(%s), null)" % (percentile, col)
+
+
 @compiles(MedianFn, Dialects.MySQL)
 def _(elements, compiler, **kwargs):  # pylint: disable=unused-argument
-    """Median computation for MySQL currently not supported
-    Needs to be tackled in https://github.com/open-metadata/OpenMetadata/issues/6340
-    """
-    return "NULL"
+    """Median computation for MySQL"""
+    col = compiler.process(elements.clauses.clauses[0])
+    table = elements.clauses.clauses[1].value
+    percentile = elements.clauses.clauses[2].value
+
+    return """
+    (SELECT
+        {col}
+    FROM (
+        SELECT
+            t.{col}, 
+            ROW_NUMBER() OVER () AS row_num
+        FROM 
+            {table} t,
+            (SELECT @counter := COUNT(*) FROM {table}) t_count 
+        ORDER BY {col}
+        ) temp
+    WHERE temp.row_num = ROUND({percentile} * @counter)
+    )
+    """.format(
+        col=col, table=table, percentile=percentile
+    )
 
 
 @compiles(MedianFn, Dialects.SQLite)

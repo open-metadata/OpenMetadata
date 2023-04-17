@@ -33,6 +33,7 @@ import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichText
 import TabsPane from 'components/common/TabsPane/TabsPane';
 import { TitleBreadcrumbProps } from 'components/common/title-breadcrumb/title-breadcrumb.interface';
 import PageContainerV1 from 'components/containers/PageContainerV1';
+import PageLayoutV1 from 'components/containers/PageLayoutV1';
 import Loader from 'components/Loader/Loader';
 import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
 import {
@@ -60,6 +61,7 @@ import { Link, useHistory, useParams } from 'react-router-dom';
 import {
   getDatabaseSchemaDetailsByFQN,
   patchDatabaseSchemaDetails,
+  restoreDatabaseSchema,
 } from 'rest/databaseAPI';
 import {
   getAllFeeds,
@@ -109,17 +111,14 @@ import {
 } from '../../utils/FeedUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { getSettingPath } from '../../utils/RouterUtils';
-import {
-  getServiceRouteFromServiceType,
-  serviceTypeLogo,
-} from '../../utils/ServiceUtils';
+import { getServiceRouteFromServiceType } from '../../utils/ServiceUtils';
 import { getErrorText } from '../../utils/StringsUtils';
 import {
   getEntityLink,
   getTagsWithoutTier,
   getTierTags,
 } from '../../utils/TableUtils';
-import { showErrorToast } from '../../utils/ToastUtils';
+import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 
 const DatabaseSchemaPage: FunctionComponent = () => {
   const [slashedTableName, setSlashedTableName] = useState<
@@ -270,11 +269,11 @@ const DatabaseSchemaPage: FunctionComponent = () => {
 
   const getDetailsByFQN = () => {
     setIsSchemaDetailsLoading(true);
-    getDatabaseSchemaDetailsByFQN(databaseSchemaFQN, [
-      'owner',
-      'usageSummary',
-      'tags',
-    ])
+    getDatabaseSchemaDetailsByFQN(
+      databaseSchemaFQN,
+      ['owner', 'usageSummary', 'tags'],
+      'include=all'
+    )
       .then((res) => {
         if (res) {
           const {
@@ -282,7 +281,6 @@ const DatabaseSchemaPage: FunctionComponent = () => {
             id = '',
             name,
             service,
-            serviceType,
             database,
             tags,
           } = res;
@@ -292,6 +290,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
           setDatabaseSchemaName(name);
           setTags(getTagsWithoutTier(tags || []));
           setTier(getTierTags(tags ?? []));
+          setShowDeletedTables(res.deleted ?? false);
           setSlashedTableName([
             {
               name: startCase(ServiceCategory.DATABASE_SERVICES),
@@ -310,7 +309,6 @@ const DatabaseSchemaPage: FunctionComponent = () => {
                     ServiceCategory.DATABASE_SERVICES
                   )
                 : '',
-              imgSrc: serviceType ? serviceTypeLogo(serviceType) : undefined,
             },
             {
               name: getPartialNameFromTableFQN(
@@ -318,11 +316,6 @@ const DatabaseSchemaPage: FunctionComponent = () => {
                 [FqnPart.Database]
               ),
               url: getDatabaseDetailsPath(database.fullyQualifiedName ?? ''),
-            },
-            {
-              name: getEntityName(res),
-              url: '',
-              activeTitle: true,
             },
           ]);
         } else {
@@ -632,7 +625,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
 
   const getSchemaTableList = () => {
     return (
-      <>
+      <Col span={24}>
         <TableAntd
           bordered
           className="table-shadow"
@@ -657,7 +650,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
             totalCount={tableInstanceCount}
           />
         )}
-      </>
+      </Col>
     );
   };
 
@@ -707,6 +700,26 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     ],
     [showDeletedTables]
   );
+
+  const handleRestoreDatabaseSchema = useCallback(async () => {
+    try {
+      await restoreDatabaseSchema(databaseSchemaId);
+      showSuccessToast(
+        t('message.restore-entities-success', {
+          entity: t('label.database-schema'),
+        }),
+        2000
+      );
+      getDetailsByFQN();
+    } catch (error) {
+      showErrorToast(
+        error as AxiosError,
+        t('message.restore-entities-error', {
+          entity: t('label.database-schema'),
+        })
+      );
+    }
+  }, [databaseSchemaId]);
 
   useEffect(() => {
     if (TabSpecificField.ACTIVITY_FEED === tab) {
@@ -763,10 +776,10 @@ const DatabaseSchemaPage: FunctionComponent = () => {
           {databaseSchemaPermission.ViewAll ||
           databaseSchemaPermission.ViewBasic ? (
             <PageContainerV1>
-              <Row
-                className="p-x-md p-t-lg"
-                data-testid="page-container"
-                gutter={[0, 12]}>
+              <PageLayoutV1
+                pageTitle={t('label.entity-detail-plural', {
+                  entity: getEntityName(databaseSchema),
+                })}>
                 {IsSchemaDetailsLoading ? (
                   <Skeleton
                     active
@@ -780,9 +793,9 @@ const DatabaseSchemaPage: FunctionComponent = () => {
                     <Col span={24}>
                       <EntityPageInfo
                         isRecursiveDelete
-                        allowSoftDelete={false}
                         canDelete={databaseSchemaPermission.Delete}
                         currentOwner={databaseSchema?.owner}
+                        deleted={databaseSchema?.deleted}
                         entityFieldThreads={getEntityFieldThreadCounts(
                           EntityField.TAGS,
                           entityFieldThreadCount
@@ -798,6 +811,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
                           databaseSchemaPermission.EditAll ||
                           databaseSchemaPermission.EditTags
                         }
+                        serviceType={databaseSchema?.serviceType ?? ''}
                         tags={tags}
                         tagsHandler={onTagUpdate}
                         tier={tier}
@@ -808,27 +822,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
                             ? handleUpdateOwner
                             : undefined
                         }
-                        onThreadLinkSelect={onThreadLinkSelect}
-                      />
-                    </Col>
-                    <Col data-testid="description-container" span={24}>
-                      <Description
-                        description={description}
-                        entityFieldThreads={getEntityFieldThreadCounts(
-                          EntityField.DESCRIPTION,
-                          entityFieldThreadCount
-                        )}
-                        entityFqn={databaseSchemaFQN}
-                        entityName={databaseSchemaName}
-                        entityType={EntityType.DATABASE_SCHEMA}
-                        hasEditAccess={
-                          databaseSchemaPermission.EditDescription ||
-                          databaseSchemaPermission.EditAll
-                        }
-                        isEdit={isEdit}
-                        onCancel={onCancel}
-                        onDescriptionEdit={onDescriptionEdit}
-                        onDescriptionUpdate={onDescriptionUpdate}
+                        onRestoreEntity={handleRestoreDatabaseSchema}
                         onThreadLinkSelect={onThreadLinkSelect}
                       />
                     </Col>
@@ -846,7 +840,32 @@ const DatabaseSchemaPage: FunctionComponent = () => {
                     </Col>
                     <Col className="p-y-md" span={24}>
                       {activeTab === 1 && (
-                        <Fragment>{getSchemaTableList()}</Fragment>
+                        <Card className="h-full">
+                          <Row gutter={[16, 16]}>
+                            <Col data-testid="description-container" span={24}>
+                              <Description
+                                description={description}
+                                entityFieldThreads={getEntityFieldThreadCounts(
+                                  EntityField.DESCRIPTION,
+                                  entityFieldThreadCount
+                                )}
+                                entityFqn={databaseSchemaFQN}
+                                entityName={databaseSchemaName}
+                                entityType={EntityType.DATABASE_SCHEMA}
+                                hasEditAccess={
+                                  databaseSchemaPermission.EditDescription ||
+                                  databaseSchemaPermission.EditAll
+                                }
+                                isEdit={isEdit}
+                                onCancel={onCancel}
+                                onDescriptionEdit={onDescriptionEdit}
+                                onDescriptionUpdate={onDescriptionUpdate}
+                                onThreadLinkSelect={onThreadLinkSelect}
+                              />
+                            </Col>
+                            {getSchemaTableList()}
+                          </Row>
+                        </Card>
                       )}
                       {activeTab === 2 && (
                         <Card className="p-t-xss p-b-md">
@@ -891,7 +910,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
                     />
                   ) : null}
                 </Col>
-              </Row>
+              </PageLayoutV1>
             </PageContainerV1>
           ) : (
             <ErrorPlaceHolder>

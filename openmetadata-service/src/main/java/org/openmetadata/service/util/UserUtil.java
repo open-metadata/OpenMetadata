@@ -228,7 +228,7 @@ public final class UserUtil {
   }
 
   private static User retrieveWithAuthMechanism(User user) {
-    EntityRepository<User> userRepository = UserRepository.class.cast(Entity.getEntityRepository(Entity.USER));
+    EntityRepository<User> userRepository = (UserRepository) Entity.getEntityRepository(Entity.USER);
     try {
       return userRepository.getByName(null, user.getName(), new EntityUtil.Fields(List.of("authenticationMechanism")));
     } catch (IOException | EntityNotFoundException e) {

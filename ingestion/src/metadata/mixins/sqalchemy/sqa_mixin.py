@@ -15,11 +15,14 @@ supporting sqlalchemy abstraction layer
 """
 
 
-from typing import Optional
+from typing import List, Optional
 
 from sqlalchemy import Column, MetaData, inspect
 from sqlalchemy.orm import DeclarativeMeta
 
+from metadata.generated.schema.entity.services.connections.database.databricksConnection import (
+    DatabricksConnection,
+)
 from metadata.generated.schema.entity.services.connections.database.snowflakeConnection import (
     SnowflakeType,
 )
@@ -80,6 +83,27 @@ class SQAInterfaceMixin:
                 )
             )
 
+    def set_catalog(self, session) -> None:
+        """Set catalog for the session. Right now only databricks requires it
+
+        Args:
+            session (Session): sqa session object
+        """
+        if isinstance(self.service_connection_config, DatabricksConnection):
+            bind = session.get_bind()
+            bind.execute(
+                "USE CATALOG %(catalog)s;",
+                {"catalog": self.service_connection_config.catalog},
+            ).first()
+
     def close(self):
         """close session"""
         self.session.close()
+
+    def _get_sample_columns(self) -> List[str]:
+        """Get the list of columns to use for the sampler"""
+        return [
+            column.name
+            for column in self.table.__table__.columns
+            if column.name in {col.name.__root__ for col in self.table_entity.columns}
+        ]

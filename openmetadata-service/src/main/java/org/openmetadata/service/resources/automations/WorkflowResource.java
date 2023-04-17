@@ -3,7 +3,6 @@ package org.openmetadata.service.resources.automations;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.service.Entity.FIELD_OWNER;
 
-import com.google.inject.Inject;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Hidden;
 import io.swagger.v3.oas.annotations.Operation;
@@ -95,7 +94,6 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
     return workflow;
   }
 
-  @Inject
   public WorkflowResource(CollectionDAO dao, Authorizer authorizer) {
     super(Workflow.class, new WorkflowRepository(dao), authorizer);
   }

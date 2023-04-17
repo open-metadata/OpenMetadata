@@ -26,13 +26,6 @@
       "description": "Chart URL suffix from its service.",
       "type": "string"
     },
-    "tables": {
-      "description": "Link to list of table fully qualified names used in this chart.",
-      "type" : "array",
-      "items": {
-        "$ref" : "../../type/basic.json#/definitions/fullyQualifiedEntityName"
-      }
-    },
     "tags": {
       "description": "Tags for this chart",
       "type": "array",

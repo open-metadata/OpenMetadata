@@ -44,7 +44,7 @@ from metadata.ingestion.models.ometa_classification import OMetaTagAndClassifica
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
 from metadata.utils import fqn, tag_utils
 from metadata.utils.filters import filter_by_chart
-from metadata.utils.helpers import get_standard_chart_type
+from metadata.utils.helpers import clean_uri, get_standard_chart_type
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -155,9 +155,15 @@ class RedashSource(DashboardServiceSource):
         if version.parse(self.service_connection.redashVersion) > version.parse(
             INCOMPATIBLE_REDASH_VERSION
         ):
-            dashboard_url = f"/dashboards/{dashboard_details.get('id', '')}"
+            dashboard_url = (
+                f"{clean_uri(self.service_connection.hostPort)}/dashboards"
+                f"/{dashboard_details.get('id', '')}"
+            )
         else:
-            dashboard_url = f"/dashboards/{dashboard_details.get('slug', '')}"
+            dashboard_url = (
+                f"{clean_uri(self.service_connection.hostPort)}/dashboards"
+                f"/{dashboard_details.get('slug', '')}"
+            )
         return dashboard_url
 
     def yield_dashboard(

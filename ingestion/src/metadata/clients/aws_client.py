@@ -43,7 +43,6 @@ class AWSAssumeRoleException(Exception):
 
 
 class AWSAssumeRoleCredentialWrapper(BaseModel):
-
     accessKeyId: str
     secretAccessKey: CustomSecretStr
     sessionToken: Optional[str]
@@ -55,7 +54,6 @@ class AWSClient:
     """
 
     def __init__(self, config: "AWSCredentials"):
-
         self.config = (
             config
             if isinstance(config, AWSCredentials)

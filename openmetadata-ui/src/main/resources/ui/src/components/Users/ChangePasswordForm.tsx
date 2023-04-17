@@ -12,6 +12,7 @@
  */
 
 import { Form, Input, Modal } from 'antd';
+import { VALIDATE_MESSAGES } from 'constants/constants';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { passwordErrorMessage } from '../../constants/ErrorMessages.constant';
@@ -63,7 +64,7 @@ const ChangePasswordForm: React.FC<ChangePasswordForm> = ({
         id="change-password-form"
         layout="vertical"
         name="change-password-form"
-        validateMessages={{ required: '${label} is required' }}
+        validateMessages={VALIDATE_MESSAGES}
         onFinish={onSave}>
         {isLoggedinUser && (
           <Form.Item

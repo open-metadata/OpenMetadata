@@ -89,14 +89,12 @@ import org.junit.jupiter.api.TestMethodOrder;
 import org.openmetadata.schema.api.VoteRequest;
 import org.openmetadata.schema.api.data.CreateDatabase;
 import org.openmetadata.schema.api.data.CreateDatabaseSchema;
-import org.openmetadata.schema.api.data.CreateLocation;
 import org.openmetadata.schema.api.data.CreateQuery;
 import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.data.CreateTableProfile;
 import org.openmetadata.schema.api.tests.CreateCustomMetric;
 import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
-import org.openmetadata.schema.entity.data.Location;
 import org.openmetadata.schema.entity.data.Query;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.services.DatabaseService;
@@ -113,7 +111,6 @@ import org.openmetadata.schema.type.ColumnProfilerConfig;
 import org.openmetadata.schema.type.DataModel;
 import org.openmetadata.schema.type.DataModel.ModelType;
 import org.openmetadata.schema.type.EntityReference;
-import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.JoinedWith;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.TableConstraint;
@@ -132,7 +129,6 @@ import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.databases.TableResource.TableList;
 import org.openmetadata.service.resources.glossary.GlossaryResourceTest;
 import org.openmetadata.service.resources.glossary.GlossaryTermResourceTest;
-import org.openmetadata.service.resources.locations.LocationResourceTest;
 import org.openmetadata.service.resources.query.QueryResource;
 import org.openmetadata.service.resources.query.QueryResourceTest;
 import org.openmetadata.service.resources.services.DatabaseServiceResourceTest;
@@ -1426,21 +1422,6 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
   }
 
   @Test
-  void get_deletedTableWithDeleteLocation(TestInfo test) throws IOException {
-    CreateTable create = createRequest(getEntityName(test), "description", "displayName", USER1_REF);
-    // Create first time using POST
-    Table table = beforeDeletion(test, createEntity(create, ADMIN_AUTH_HEADERS));
-    Table tableBeforeDeletion = getEntity(table.getId(), TableResource.FIELDS, ADMIN_AUTH_HEADERS);
-    // delete both
-    deleteAndCheckEntity(table, ADMIN_AUTH_HEADERS);
-    new LocationResourceTest().deleteEntity(tableBeforeDeletion.getLocation().getId(), ADMIN_AUTH_HEADERS);
-    Map<String, String> queryParams = new HashMap<>();
-    queryParams.put("include", "deleted");
-    Table tableAfterDeletion = getEntity(table.getId(), queryParams, TableResource.FIELDS, ADMIN_AUTH_HEADERS);
-    validateDeletedEntity(create, tableBeforeDeletion, tableAfterDeletion, ADMIN_AUTH_HEADERS);
-  }
-
-  @Test
   @Order(1) // Run this test first as other tables created in other tests will interfere with listing
   void get_tableListWithDifferentFields_200_OK(TestInfo test) throws IOException {
     int initialTableCount = listEntities(null, ADMIN_AUTH_HEADERS).getPaging().getTotal();
@@ -1683,37 +1664,6 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
         updateTags.stream().filter(t -> tagLabelMatch.test(t, PII_SENSITIVE_TAG_LABEL)).findAny().orElse(null);
     assertNotNull(piiSensitive);
     assertEquals(LabelType.MANUAL, piiSensitive.getLabelType());
-  }
-
-  @Test
-  void put_addDeleteLocation_200(TestInfo test) throws IOException {
-    Table table = createAndCheckEntity(createRequest(test), ADMIN_AUTH_HEADERS);
-
-    // Add location to the table
-    LocationResourceTest locationResourceTest = new LocationResourceTest();
-    CreateLocation create = locationResourceTest.createRequest(test);
-    Location location = locationResourceTest.createEntity(create, ADMIN_AUTH_HEADERS);
-    addAndCheckLocation(table, location.getId(), OK, TEST_AUTH_HEADERS);
-    // Delete location and make sure it is deleted
-    deleteAndCheckLocation(table);
-  }
-
-  @Test
-  void put_addLocationAndDeleteTable_200(TestInfo test) throws IOException {
-    Table table = createAndCheckEntity(createRequest(test), ADMIN_AUTH_HEADERS);
-
-    // Add location to the table
-    LocationResourceTest locationResourceTest = new LocationResourceTest();
-    CreateLocation create = locationResourceTest.createRequest(test);
-    Location location = locationResourceTest.createEntity(create, ADMIN_AUTH_HEADERS);
-    addAndCheckLocation(table, location.getId(), OK, TEST_AUTH_HEADERS);
-    deleteAndCheckEntity(table, ADMIN_AUTH_HEADERS);
-    Map<String, String> queryParams = new HashMap<>();
-    queryParams.put("include", Include.ALL.value());
-
-    table = getEntity(table.getId(), queryParams, "location", ADMIN_AUTH_HEADERS);
-    assertNotNull(table.getLocation(), "The location is missing");
-    assertEquals(location.getId(), table.getLocation().getId(), "The locations are different");
   }
 
   @Test
@@ -2105,16 +2055,6 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
         .withDatabaseSchema(getContainer().getFullyQualifiedName())
         .withColumns(COLUMNS)
         .withTableConstraints(List.of(constraint));
-  }
-
-  @Override
-  public Table beforeDeletion(TestInfo test, Table table) throws HttpResponseException {
-    // Add location to the table
-    LocationResourceTest locationResourceTest = new LocationResourceTest();
-    CreateLocation create = locationResourceTest.createRequest(test);
-    Location location = locationResourceTest.createEntity(create, ADMIN_AUTH_HEADERS);
-    addAndCheckLocation(table, location.getId(), OK, TEST_AUTH_HEADERS);
-    return table;
   }
 
   @Override

@@ -188,6 +188,7 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
             direction={styleFlag ? 'vertical' : 'horizontal'}
             onClick={() => handleAddTagClick(record)}>
             <TagsContainer
+              className="w-min-10"
               editable={isSelectedField}
               isLoading={isTagLoading && isSelectedField}
               selectedTags={tags || []}

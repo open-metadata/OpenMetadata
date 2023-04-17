@@ -79,11 +79,12 @@ describe('Restore entity functionality should work properly', () => {
     cy.get('[data-testid="show-deleted"]').should('exist').click();
     verifyResponseStatusCode('@showDeletedTables', 200);
 
-    cy.get('[data-testid="sample_data-raw_product_catalog"]')
+    cy.get('[data-testid="entity-header-display-name"]')
+      .contains('raw_product_catalog')
       .should('exist')
       .click();
 
-    cy.get('[data-testid="inactive-link"]')
+    cy.get('[data-testid="entity-header-display-name"]')
       .should('be.visible')
       .contains(ENTITY_TABLE.displayName);
 
@@ -96,18 +97,20 @@ describe('Restore entity functionality should work properly', () => {
     cy.get('[data-testid="show-deleted"]').should('exist').click();
     verifyResponseStatusCode('@showDeletedTables', 200);
 
-    cy.get('[data-testid="sample_data-raw_product_catalog"]')
+    cy.get('[data-testid="entity-header-display-name"]')
+      .contains('raw_product_catalog')
       .should('exist')
       .click();
 
-    cy.get('[data-testid="inactive-link"]')
+    cy.get('[data-testid="entity-header-display-name"]')
       .should('be.visible')
       .contains(ENTITY_TABLE.displayName)
       .click();
 
     cy.get('[data-testid="deleted-badge"]').should('exist');
 
-    cy.get('[data-testid="breadcrumb-link"]')
+    cy.get('[data-testid="breadcrumb"]')
+      .scrollIntoView()
       .should('be.visible')
       .contains(ENTITY_TABLE.schemaName)
       .click();
@@ -118,10 +121,15 @@ describe('Restore entity functionality should work properly', () => {
       .should('exist')
       .contains('Show Deleted Table');
 
+    interceptURL(
+      'GET',
+      '/api/v1/search/query?q=*&index=table_search_index&from=0&size=10&deleted=true&sort_field=name.keyword&sort_order=asc',
+      'queryDeletedTables'
+    );
     cy.get('[data-testid="deleted-table-menu-item-switch')
       .should('exist')
       .click();
-
+    verifyResponseStatusCode('@queryDeletedTables', 200);
     cy.get('[data-testid="Tables"] [data-testid="filter-count"]')
       .should('exist')
       .contains('1');
@@ -137,11 +145,12 @@ describe('Restore entity functionality should work properly', () => {
     cy.get('[data-testid="show-deleted"]').should('exist').click();
     verifyResponseStatusCode('@showDeletedTables', 200);
 
-    cy.get('[data-testid="sample_data-raw_product_catalog"]')
+    cy.get('[data-testid="entity-header-display-name"]')
+      .contains('raw_product_catalog')
       .should('exist')
       .click();
 
-    cy.get('[data-testid="inactive-link"]')
+    cy.get('[data-testid="entity-header-display-name"]')
       .should('be.visible')
       .contains(ENTITY_TABLE.displayName);
 

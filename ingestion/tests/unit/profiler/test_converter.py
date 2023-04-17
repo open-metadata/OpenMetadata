@@ -186,3 +186,102 @@ def test_get_columns_struct():
     assert "col2.structCol1" in cols
     assert "col2.structCol2" in cols
     assert "col2.structCol2.nestedStructCol1" in cols
+
+
+def test_get_columns():
+    """Test get columns function reads columns correctly for struct"""
+    struct_columns = [
+        Column(
+            name="col1",
+            dataType=DataType.STRING,
+        ),
+        Column(
+            name="col2",
+            dataType=DataType.STRUCT,
+            children=[
+                Column(
+                    name="structCol1",
+                    dataType=DataType.STRING,
+                ),
+                Column(
+                    name="structCol2",
+                    dataType=DataType.STRUCT,
+                    children=[
+                        Column(
+                            name="nestedStructCol1",
+                            dataType=DataType.STRING,
+                        ),
+                    ],
+                ),
+            ],
+        ),
+    ]
+
+    cols = get_columns(struct_columns, DatabaseServiceType.BigQuery)
+    assert not any([v._is_array for k, v in cols.items()])
+    assert len(cols) == 5
+    assert "col2.structCol1" in cols
+    assert "col2.structCol2" in cols
+    assert "col2.structCol2.nestedStructCol1" in cols
+
+    struct_columns = [
+        Column(
+            name="col1",
+            dataType=DataType.STRING,
+        ),
+        Column(
+            name="col2",
+            dataType=DataType.STRUCT,
+            children=[
+                Column(
+                    name="structCol1",
+                    dataType=DataType.ARRAY,
+                    arrayDataType=DataType.STRUCT,
+                    children=[
+                        Column(
+                            name="arrayStructCol1",
+                            dataType=DataType.STRING,
+                        ),
+                        Column(
+                            name="arrayStructCol2",
+                            dataType=DataType.INT,
+                        ),
+                    ],
+                )
+            ],
+        ),
+    ]
+
+    cols = get_columns(struct_columns, DatabaseServiceType.BigQuery)
+    assert any([v._is_array for k, v in cols.items()])
+    assert len(cols) == 5
+    assert "col2.structCol1" in cols
+    assert "col2.structCol1.arrayStructCol1" in cols
+    assert "col2.structCol1.arrayStructCol1" in cols
+    assert cols["col2.structCol1.arrayStructCol1"]._array_col == "col2.structCol1"
+    assert (
+        str(cols["col2.structCol1.arrayStructCol1"].name)
+        == "`col2.structCol1`.arrayStructCol1"
+    )
+    assert not cols["col2.structCol1.arrayStructCol1"].name.quote
+    assert cols["col2.structCol1.arrayStructCol2"]._array_col == "col2.structCol1"
+    assert (
+        str(cols["col2.structCol1.arrayStructCol2"].name)
+        == "`col2.structCol1`.arrayStructCol2"
+    )
+    assert not cols["col2.structCol1.arrayStructCol2"].name.quote
+
+    cols = get_columns(struct_columns, DatabaseServiceType.Snowflake)
+    assert not any([v._is_array for k, v in cols.items()])
+    assert not cols["col2.structCol1.arrayStructCol1"]._array_col
+    assert cols["col2.structCol1.arrayStructCol1"].name.quote
+    assert (
+        str(cols["col2.structCol1.arrayStructCol1"].name)
+        == "col2.structCol1.arrayStructCol1"
+    )
+    assert not cols["col2.structCol1.arrayStructCol2"]._array_col
+    assert cols["col2.structCol1.arrayStructCol2"].name.quote
+    assert (
+        str(cols["col2.structCol1.arrayStructCol2"].name)
+        == "col2.structCol1.arrayStructCol2"
+    )

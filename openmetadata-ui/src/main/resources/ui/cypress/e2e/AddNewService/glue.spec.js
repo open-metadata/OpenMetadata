@@ -47,9 +47,6 @@ describe('Glue Ingestion', () => {
       cy.get('#root\\/awsConfig\\/endPointURL')
         .scrollIntoView()
         .type(Cypress.env('glueEndPointURL'));
-      cy.get('#root\\/storageServiceName')
-        .scrollIntoView()
-        .type(Cypress.env('glueStorageServiceName'));
     };
 
     const addIngestionInput = () => {

@@ -223,6 +223,7 @@ jest.mock('../../utils/TagsUtils', () => ({
     .mockImplementation(() => Promise.resolve({ data: MOCK_TAGS_CATEGORY })),
   getTaglist: jest.fn().mockReturnValue(['tag 1', 'tag 2']),
   getTagOptionsFromFQN: jest.fn().mockReturnValue([]),
+  tagsNameValidator: jest.fn().mockImplementation(() => Promise.resolve(true)),
 }));
 
 jest.mock(
@@ -276,7 +277,6 @@ describe('Test TagsPage page', () => {
     await act(async () => {
       render(<TagsPage />);
     });
-    // const { container } =
     const tagsComponent = await screen.findByTestId('tags-container');
     const pageContainerComponent = await screen.findByTestId('PageContainerV1');
     const leftPanelContent = await screen.findByTestId('left-panel-content');
@@ -542,6 +542,30 @@ describe('Test TagsPage page', () => {
     });
 
     expect(tagCategoryHeading).toHaveValue('newPII');
+  });
+
+  it('User tag should be load', async () => {
+    const { container } = render(<TagsPage />);
+
+    const tagsComponent = await screen.findByTestId('tags-container');
+    const classification = await screen.findAllByText('PersonalData');
+
+    act(() => {
+      fireEvent.click(classification[0]);
+    });
+
+    act(async () => {
+      const tagEditIcon = await findAllByTestId(container, 'tag-edit-icon');
+
+      expect(tagEditIcon[0]).toBeInTheDocument();
+
+      fireEvent.click(tagEditIcon[0]);
+    });
+
+    const tagName = await screen.findByText('test_tag');
+
+    expect(tagName).toBeInTheDocument();
+    expect(tagsComponent).toBeInTheDocument();
   });
 
   describe('Render Sad Paths', () => {

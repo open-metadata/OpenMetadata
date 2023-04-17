@@ -64,25 +64,19 @@ export const ELASTIC_SEARCH_INDEX_ENTITIES = [
     value: 'webAnalyticUserActivityReportData',
     label: t('label.user-analytics-report'),
   },
+  {
+    value: 'container',
+    label: t('label.container'),
+  },
+  {
+    value: 'query',
+    label: t('label.query'),
+  },
 ];
 
 export const ELASTIC_SEARCH_INITIAL_VALUES = {
-  entities: [
-    'table',
-    'topic',
-    'dashboard',
-    'pipeline',
-    'mlmodel',
-    'user',
-    'team',
-    'glossaryTerm',
-    'tag',
-    'entityReportData',
-    'webAnalyticEntityViewReportData',
-    'webAnalyticUserActivityReportData',
-  ],
+  entities: ['all'],
   batchSize: 100,
-  flushIntervalInSec: 30,
   recreateIndex: true,
   searchIndexMappingLanguage: SearchIndexMappingLanguage.En,
 };
@@ -105,9 +99,8 @@ export const ENTITY_TREE_OPTIONS = [
     key: 'all',
     children: [
       ...ELASTIC_SEARCH_INDEX_ENTITIES.map(({ value, label }) => ({
-        title: label,
+        label: label,
         value: value,
-        key: value,
       })),
     ],
   },

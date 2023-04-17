@@ -32,6 +32,12 @@
       "type": "string",
       "format": "password"
     },
+    "timeout": {
+      "title": "Time Out",
+      "description": "Connection Time Limit Between OM and Dagster Graphql API in second",
+      "type": "integer",
+      "default": "1000"
+    },
     "supportsMetadataExtraction": {
       "title": "Supports Metadata Extraction",
       "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"

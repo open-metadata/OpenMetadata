@@ -43,6 +43,7 @@ import static org.openmetadata.service.util.EntityUtil.objectMatch;
 import static org.openmetadata.service.util.EntityUtil.tagLabelMatch;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.networknt.schema.JsonSchema;
@@ -52,6 +53,7 @@ import java.net.URI;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -385,6 +387,40 @@ public abstract class EntityRepository<T extends EntityInterface> {
     } else {
       // limit == 0 , return total count of entity.
       return getResultList(entities, null, null, total);
+    }
+  }
+
+  @Transaction
+  public ResultList<T> listAfterWithSkipFailure(
+      UriInfo uriInfo, Fields fields, ListFilter filter, int limitParam, String after) throws IOException {
+    List<T> errors = new ArrayList<>();
+    int total = dao.listCount(filter);
+    List<T> entities = new ArrayList<>();
+    if (limitParam > 0) {
+      // forward scrolling, if after == null then first page is being asked
+      List<String> jsons = dao.listAfter(filter, limitParam + 1, after == null ? "" : RestUtil.decodeCursor(after));
+
+      for (String json : jsons) {
+        try {
+          T entity = withHref(uriInfo, setFieldsInternal(JsonUtils.readValue(json, entityClass), fields));
+          entities.add(entity);
+        } catch (Exception e) {
+          LOG.error("Failed in Set Fields for Entity with Json : {}", json);
+          errors.add(JsonUtils.readValue(json, new TypeReference<>() {}));
+        }
+      }
+
+      String beforeCursor;
+      String afterCursor = null;
+      beforeCursor = after == null ? null : entities.get(0).getFullyQualifiedName();
+      if (entities.size() > limitParam) { // If extra result exists, then next page exists - return after cursor
+        entities.remove(limitParam);
+        afterCursor = entities.get(limitParam - 1).getFullyQualifiedName();
+      }
+      return getResultList(entities, errors, beforeCursor, afterCursor, total);
+    } else {
+      // limit == 0 , return total count of entity.
+      return getResultList(entities, errors, null, null, total);
     }
   }
 
@@ -780,6 +816,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   public final ResultList<T> getResultList(List<T> entities, String beforeCursor, String afterCursor, int total) {
     return new ResultList<>(entities, beforeCursor, afterCursor, total);
+  }
+
+  public final ResultList<T> getResultList(
+      List<T> entities, List<T> errors, String beforeCursor, String afterCursor, int total) {
+    return new ResultList<>(entities, errors, beforeCursor, afterCursor, total);
   }
 
   private T createNewEntity(T entity) throws IOException {
@@ -1203,6 +1244,20 @@ public abstract class EntityRepository<T extends EntityInterface> {
       return new Fields(allowedFields, String.join(",", allowedFields));
     }
     return new Fields(allowedFields, fields);
+  }
+
+  public final Fields getFields(List<String> fields) {
+    return new Fields(allowedFields, fields);
+  }
+
+  public final Set<String> getCommonFields(Set<String> input) {
+    Set<String> result = new HashSet<>();
+    for (String field : input) {
+      if (allowedFields.contains(field)) {
+        result.add(field);
+      }
+    }
+    return result;
   }
 
   public final List<String> getAllowedFieldsCopy() {

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { Button, Popover, Tooltip } from 'antd';
-import { PAGE_SIZE_MEDIUM } from 'constants/constants';
+import { DE_ACTIVE_COLOR, PAGE_SIZE_MEDIUM } from 'constants/constants';
 import { NO_PERMISSION_FOR_ACTION } from 'constants/HelperTextUtil';
 import { EntityType } from 'enums/entity.enum';
 import { SearchIndex } from 'enums/search.enum';
@@ -46,7 +46,7 @@ export const UserSelectableList = ({
           searchText,
           1,
           PAGE_SIZE_MEDIUM,
-          '',
+          'isBot:false',
           '',
           '',
           SearchIndex.USER
@@ -70,7 +70,9 @@ export const UserSelectableList = ({
             ? {
                 after,
               }
-            : undefined
+            : undefined,
+          undefined,
+          false
         );
         const filterData = getEntityReferenceListFromEntities(
           data,
@@ -100,6 +102,7 @@ export const UserSelectableList = ({
 
   return (
     <Popover
+      destroyTooltipOnHide
       content={
         <SelectableList
           fetchOptions={fetchOptions}
@@ -132,9 +135,10 @@ export const UserSelectableList = ({
             icon={
               <SVGIcons
                 alt="edit"
+                color={DE_ACTIVE_COLOR}
+                height="14px"
                 icon={Icons.EDIT}
                 title="Edit"
-                width="16px"
               />
             }
             size="small"

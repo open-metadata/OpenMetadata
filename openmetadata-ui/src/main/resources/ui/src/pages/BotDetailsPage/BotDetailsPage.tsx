@@ -22,7 +22,6 @@ import {
   OperationPermission,
   ResourceEntity,
 } from 'components/PermissionProvider/PermissionProvider.interface';
-import { UserDetails } from 'components/Users/Users.interface';
 import { compare } from 'fast-json-patch';
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -86,7 +85,7 @@ const BotDetailsPage = () => {
     }
   };
 
-  const updateBotsDetails = async (data: UserDetails) => {
+  const updateBotsDetails = async (data: Partial<User>) => {
     const updatedDetails = { ...botData, ...data };
     const jsonPatch = compare(botData, updatedDetails);
 
@@ -105,7 +104,7 @@ const BotDetailsPage = () => {
     }
   };
 
-  const updateUserDetails = async (data: UserDetails) => {
+  const updateUserDetails = async (data: Partial<User>) => {
     const updatedDetails = { ...botUserData, ...data };
     const jsonPatch = compare(botUserData, updatedDetails);
 

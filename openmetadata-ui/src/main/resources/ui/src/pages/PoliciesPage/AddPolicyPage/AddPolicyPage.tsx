@@ -26,11 +26,13 @@ import { AxiosError } from 'axios';
 import RichTextEditor from 'components/common/rich-text-editor/RichTextEditor';
 import TitleBreadcrumb from 'components/common/title-breadcrumb/title-breadcrumb.component';
 import PageLayoutV1 from 'components/containers/PageLayoutV1';
+import { ERROR_MESSAGE } from 'constants/constants';
 import { t } from 'i18next';
 import { trim } from 'lodash';
 import React, { useState } from 'react';
 import { useHistory } from 'react-router-dom';
 import { addPolicy } from 'rest/rolesAPIV1';
+import { getIsErrorMatch } from 'utils/CommonUtils';
 import { GlobalSettingOptions } from '../../../constants/GlobalSettings.constants';
 import { allowedNameRegEx } from '../../../constants/regex.constants';
 import {
@@ -81,7 +83,7 @@ const AddPolicyPage = () => {
     history.push(policiesPath);
   };
 
-  const handleSumbit = async () => {
+  const handleSubmit = async () => {
     const { condition, ...rest } = { ...ruleData, name: trim(ruleData.name) };
     const data: CreatePolicy = {
       name: trim(name),
@@ -97,7 +99,14 @@ const AddPolicyPage = () => {
         );
       }
     } catch (error) {
-      showErrorToast(error as AxiosError);
+      showErrorToast(
+        getIsErrorMatch(error as AxiosError, ERROR_MESSAGE.alreadyExist)
+          ? t('server.entity-already-exist', {
+              entity: t('label.policy'),
+              name: data.name,
+            })
+          : (error as AxiosError)
+      );
     }
   };
 
@@ -123,7 +132,7 @@ const AddPolicyPage = () => {
                     ruleEffect: ruleData.effect,
                   }}
                   layout="vertical"
-                  onFinish={handleSumbit}>
+                  onFinish={handleSubmit}>
                   <Form.Item
                     label={`${t('label.name')}:`}
                     name="name"

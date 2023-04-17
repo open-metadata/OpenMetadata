@@ -33,7 +33,10 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.UUID;
 import java.util.function.Predicate;
+import javax.ws.rs.client.WebTarget;
+import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
@@ -49,6 +52,8 @@ import org.openmetadata.schema.api.services.ingestionPipelines.CreateIngestionPi
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.services.ingestionPipelines.AirflowConfig;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
+import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
+import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatusType;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType;
 import org.openmetadata.schema.metadataIngestion.DashboardServiceMetadataPipeline;
 import org.openmetadata.schema.metadataIngestion.DatabaseServiceMetadataPipeline;
@@ -68,6 +73,7 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.services.DatabaseServiceResourceTest;
+import org.openmetadata.service.security.SecurityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.TestUtils;
@@ -81,12 +87,14 @@ public class IngestionPipelineResourceTest extends EntityResourceTest<IngestionP
   public static DatabaseServiceResourceTest DATABASE_SERVICE_RESOURCE_TEST;
   public static Date START_DATE;
 
+  private static final String COLLECTION = "services/ingestionPipelines";
+
   public IngestionPipelineResourceTest() {
     super(
         Entity.INGESTION_PIPELINE,
         IngestionPipeline.class,
         IngestionPipelineResource.IngestionPipelineList.class,
-        "services/ingestionPipelines",
+        COLLECTION,
         IngestionPipelineResource.FIELDS);
   }
 
@@ -606,9 +614,71 @@ public class IngestionPipelineResourceTest extends EntityResourceTest<IngestionP
         actualDbtS3Config.getDbtSecurityConfig().getAwsSecretAccessKey());
   }
 
+  @Test
+  void put_pipelineStatus(TestInfo test) throws IOException {
+    CreateIngestionPipeline requestPipeline =
+        createRequest(test)
+            .withName("ingestion_testStatus")
+            .withPipelineType(PipelineType.METADATA)
+            .withService(BIGQUERY_REFERENCE)
+            .withAirflowConfig(new AirflowConfig().withScheduleInterval("5 * * * *").withStartDate(START_DATE));
+    IngestionPipeline ingestionPipeline = createAndCheckEntity(requestPipeline, ADMIN_AUTH_HEADERS);
+
+    String runId = UUID.randomUUID().toString();
+
+    // Create the first status
+    TestUtils.put(
+        getPipelineStatusTarget(ingestionPipeline.getFullyQualifiedName()),
+        new PipelineStatus().withPipelineState(PipelineStatusType.RUNNING).withRunId(runId).withTimestamp(3L),
+        Response.Status.CREATED,
+        ADMIN_AUTH_HEADERS);
+
+    PipelineStatus pipelineStatus =
+        TestUtils.get(
+            getPipelineStatusByRunId(ingestionPipeline.getFullyQualifiedName(), runId),
+            PipelineStatus.class,
+            ADMIN_AUTH_HEADERS);
+    assertEquals(pipelineStatus.getPipelineState(), PipelineStatusType.RUNNING);
+
+    // Update it
+    TestUtils.put(
+        getPipelineStatusTarget(ingestionPipeline.getFullyQualifiedName()),
+        new PipelineStatus().withPipelineState(PipelineStatusType.SUCCESS).withRunId(runId).withTimestamp(3L),
+        Response.Status.CREATED,
+        ADMIN_AUTH_HEADERS);
+
+    pipelineStatus =
+        TestUtils.get(
+            getPipelineStatusByRunId(ingestionPipeline.getFullyQualifiedName(), runId),
+            PipelineStatus.class,
+            ADMIN_AUTH_HEADERS);
+    assertEquals(pipelineStatus.getPipelineState(), PipelineStatusType.SUCCESS);
+
+    // DELETE all status from the pipeline
+    TestUtils.delete(getDeletePipelineStatus(ingestionPipeline.getId().toString()), ADMIN_AUTH_HEADERS);
+    // We get no content back
+    Response response =
+        SecurityUtil.addHeaders(
+                getPipelineStatusByRunId(ingestionPipeline.getFullyQualifiedName(), runId), ADMIN_AUTH_HEADERS)
+            .get();
+    TestUtils.readResponse(response, PipelineStatus.class, Status.NO_CONTENT.getStatusCode());
+  }
+
   private IngestionPipeline updateIngestionPipeline(CreateIngestionPipeline create, Map<String, String> authHeaders)
       throws HttpResponseException {
     return TestUtils.put(getCollection(), create, IngestionPipeline.class, Status.OK, authHeaders);
+  }
+
+  protected final WebTarget getPipelineStatusTarget(String fqn) {
+    return getCollection().path("/" + fqn + "/pipelineStatus");
+  }
+
+  protected final WebTarget getPipelineStatusByRunId(String fqn, String runId) {
+    return getCollection().path("/" + fqn + "/pipelineStatus/" + runId);
+  }
+
+  protected final WebTarget getDeletePipelineStatus(String id) {
+    return getCollection().path("/" + id + "/pipelineStatus");
   }
 
   @Override

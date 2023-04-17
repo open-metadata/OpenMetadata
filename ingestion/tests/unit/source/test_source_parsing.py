@@ -363,8 +363,6 @@ def test_glue():
                     "awsRegion": "aws region",
                     "endPointURL": "https://glue.<region_name>.amazonaws.com/",
                 },
-                "storageServiceName": "storage_name",
-                "pipelineServiceName": "pipeline_name",
             }
         },
         "sourceConfig": {"config": {"type": "DatabaseMetadata"}},
@@ -789,14 +787,11 @@ def test_tableau():
         "serviceConnection": {
             "config": {
                 "type": "Tableau",
-                "username": "username",
-                "password": "password",
+                "authType": {"username": "username", "password": "password"},
                 "env": "tableau_prod",
                 "hostPort": "http://localhost",
                 "siteName": "site_name",
                 "apiVersion": "api_version",
-                "personalAccessTokenName": "personal_access_token_name",
-                "personalAccessTokenSecret": "personal_access_token_secret",
             }
         },
         "sourceConfig": {

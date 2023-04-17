@@ -54,12 +54,7 @@ public final class CsvUtil {
     return writer.toString();
   }
 
-  /**
-   * Get headers from CsvHeaders
-   *
-   * @param csvHeaders list of csv Headers of type CsvHeader
-   * @return list of actual CsvHeader Type String
-   */
+  /** Get headers from CsvHeaders */
   public static List<String> getHeaders(List<CsvHeader> csvHeaders) {
     List<String> headers = new ArrayList<>();
     for (CsvHeader header : csvHeaders) {

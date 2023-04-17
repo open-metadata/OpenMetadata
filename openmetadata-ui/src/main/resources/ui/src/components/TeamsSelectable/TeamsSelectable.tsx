@@ -12,22 +12,15 @@
  */
 
 import { TreeSelect } from 'antd';
+import { BaseOptionType } from 'antd/lib/select';
 import { t } from 'i18next';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { getTeamsHierarchy } from 'rest/teamsAPI';
 import { getEntityName } from 'utils/EntityUtils';
 import { TeamHierarchy } from '../../generated/entity/teams/teamHierarchy';
 import SVGIcons from '../../utils/SvgUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
-
-interface Props {
-  showTeamsAlert?: boolean;
-  onSelectionChange: (teams: string[]) => void;
-  filterJoinable?: boolean;
-  placeholder?: string;
-}
-
-const { TreeNode } = TreeSelect;
+import { TeamsSelectableProps } from './TeamsSelectable.interface';
 
 const TeamsSelectable = ({
   showTeamsAlert,
@@ -36,7 +29,8 @@ const TeamsSelectable = ({
   placeholder = t('label.search-for-type', {
     type: t('label.team-plural-lowercase'),
   }),
-}: Props) => {
+  selectedTeams,
+}: TeamsSelectableProps) => {
   const [value, setValue] = useState<Array<string>>();
   const [noTeam, setNoTeam] = useState<boolean>(false);
   const [teams, setTeams] = useState<Array<TeamHierarchy>>([]);
@@ -45,6 +39,10 @@ const TeamsSelectable = ({
     onSelectionChange(newValue);
     setValue(newValue);
   };
+
+  useEffect(() => {
+    setValue(selectedTeams ?? []);
+  }, [selectedTeams]);
 
   const loadOptions = () => {
     getTeamsHierarchy(filterJoinable)
@@ -62,19 +60,29 @@ const TeamsSelectable = ({
     loadOptions();
   }, []);
 
-  const getTreeNodes = (team: TeamHierarchy) => {
+  const showLeafIcon = false;
+
+  const getTreeNodeData = (team: TeamHierarchy): BaseOptionType => {
     const teamName = getEntityName(team);
     const value = team.id;
     const disabled = filterJoinable ? !team.isJoinable : false;
 
-    return (
-      <TreeNode disabled={disabled} key={value} title={teamName} value={value}>
-        {team.children &&
-          team.children.map((n: TeamHierarchy) => getTreeNodes(n))}
-      </TreeNode>
-    );
+    return {
+      title: teamName,
+      value,
+      selectable: !team.children?.length,
+      disabled,
+      children:
+        team.children &&
+        team.children.map((n: TeamHierarchy) => getTreeNodeData(n)),
+    };
   };
-  const showLeafIcon = false;
+
+  const teamsTree = useMemo(() => {
+    return teams.map((team) => {
+      return getTreeNodeData(team);
+    });
+  }, [teams]);
 
   return (
     <>
@@ -85,16 +93,14 @@ const TeamsSelectable = ({
         treeDefaultExpandAll
         dropdownStyle={{ maxHeight: 300, overflow: 'auto' }}
         placeholder={placeholder}
-        showCheckedStrategy={TreeSelect.SHOW_ALL}
+        showCheckedStrategy={TreeSelect.SHOW_CHILD}
         style={{ width: '100%' }}
+        treeData={teamsTree}
         treeLine={{ showLeafIcon }}
         treeNodeFilterProp="title"
         value={value}
-        onChange={onChange}>
-        {teams.map((team) => {
-          return getTreeNodes(team);
-        })}
-      </TreeSelect>
+        onChange={onChange}
+      />
       {noTeam && (
         <div
           className="tw-notification tw-bg-info tw-mt-2 tw-justify-start tw-w-full tw-p-2"

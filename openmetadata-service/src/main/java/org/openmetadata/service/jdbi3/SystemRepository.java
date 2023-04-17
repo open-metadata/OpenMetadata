@@ -5,10 +5,14 @@ import javax.json.JsonPatch;
 import javax.json.JsonValue;
 import javax.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.email.SmtpSettings;
 import org.openmetadata.schema.settings.Settings;
+import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.util.EntitiesCount;
 import org.openmetadata.schema.util.ServicesCount;
+import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.jdbi3.CollectionDAO.SystemDAO;
+import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
@@ -47,9 +51,28 @@ public class SystemRepository {
 
   public Settings getConfigWithKey(String key) {
     try {
-      return dao.getConfigWithKey(key);
+      Settings fetchedSettings = dao.getConfigWithKey(key);
+      if (fetchedSettings.getConfigType() == SettingsType.EMAIL_CONFIGURATION) {
+        SmtpSettings emailConfig = (SmtpSettings) fetchedSettings.getConfigValue();
+        emailConfig.setPassword("***********");
+        fetchedSettings.setConfigValue(emailConfig);
+      }
+      return fetchedSettings;
+
     } catch (Exception ex) {
       LOG.error("Error while trying fetch Settings " + ex.getMessage());
+    }
+    return null;
+  }
+
+  public Settings getEmailConfigInternal() {
+    try {
+      Settings setting = dao.getConfigWithKey(SettingsType.EMAIL_CONFIGURATION.value());
+      SmtpSettings emailConfig = SystemRepository.decryptSetting((SmtpSettings) setting.getConfigValue());
+      setting.setConfigValue(emailConfig);
+      return setting;
+    } catch (Exception ex) {
+      LOG.error("Error while trying fetch EMAIL Settings " + ex.getMessage());
     }
     return null;
   }
@@ -95,9 +118,31 @@ public class SystemRepository {
 
   public void updateSetting(Settings setting) {
     try {
+      if (setting.getConfigType() == SettingsType.EMAIL_CONFIGURATION) {
+        SmtpSettings emailConfig = JsonUtils.convertValue(setting.getConfigValue(), SmtpSettings.class);
+        setting.setConfigValue(encryptSetting(emailConfig));
+        // Invalidate Setting
+        SettingsCache.getInstance().invalidateSettings(SettingsType.EMAIL_CONFIGURATION.value());
+      }
       dao.insertSettings(setting.getConfigType().toString(), JsonUtils.pojoToJson(setting.getConfigValue()));
     } catch (Exception ex) {
       throw new RuntimeException(ex);
     }
+  }
+
+  public static SmtpSettings encryptSetting(SmtpSettings decryptedSetting) {
+    if (Fernet.getInstance().isKeyDefined() && !Fernet.isTokenized(decryptedSetting.getPassword())) {
+      String encryptedPwd = Fernet.getInstance().encrypt(decryptedSetting.getPassword());
+      return decryptedSetting.withPassword(encryptedPwd);
+    }
+    return decryptedSetting;
+  }
+
+  public static SmtpSettings decryptSetting(SmtpSettings encryptedSetting) {
+    if (Fernet.getInstance().isKeyDefined() && Fernet.isTokenized(encryptedSetting.getPassword())) {
+      String decryptedPassword = Fernet.getInstance().decrypt(encryptedSetting.getPassword());
+      return encryptedSetting.withPassword(decryptedPassword);
+    }
+    return encryptedSetting;
   }
 }

@@ -103,8 +103,10 @@ const DeleteWidgetModal = ({
       EntityType.MESSAGING_SERVICE,
       EntityType.PIPELINE_SERVICE,
       EntityType.METADATA_SERVICE,
-      EntityType.OBJECT_STORE_SERVICE,
+      EntityType.STORAGE_SERVICE,
     ];
+
+    const dataQuality = [EntityType.TEST_SUITE, EntityType.TEST_CASE];
 
     if (services.includes((entityType || '') as EntityType)) {
       return `services/${entityType}s`;
@@ -114,6 +116,10 @@ const DeleteWidgetModal = ({
       return 'policies';
     } else if (entityType === EntityType.KPI) {
       return entityType;
+    } else if (entityType === EntityType.DASHBOARD_DATA_MODEL) {
+      return `dashboard/datamodels`;
+    } else if (dataQuality.includes(entityType as EntityType)) {
+      return `dataQuality/${entityType}s`;
     } else {
       return `${entityType}s`;
     }

@@ -14,6 +14,7 @@
 import { Card, Space, Table, Tooltip } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
+import { ActivityFilters } from 'components/ActivityFeed/ActivityFeedList/ActivityFeedList.interface';
 import { ENTITY_CARD_CLASS } from 'constants/entity.constants';
 import { compare } from 'fast-json-patch';
 import { isUndefined } from 'lodash';
@@ -54,7 +55,7 @@ import {
 } from '../../utils/GlossaryUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import SVGIcons from '../../utils/SvgUtils';
-import { getTagsWithoutTier } from '../../utils/TableUtils';
+import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
 import { getClassifications, getTaglist } from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import ActivityFeedList from '../ActivityFeed/ActivityFeedList/ActivityFeedList';
@@ -76,19 +77,12 @@ import TagsViewer from '../Tag/TagsViewer/tags-viewer';
 import { ChartType, DashboardDetailsProps } from './DashboardDetails.interface';
 
 const DashboardDetails = ({
-  entityName,
-  followers,
   followDashboardHandler,
   unfollowDashboardHandler,
-  owner,
-  tier,
   slashedDashboardName,
   activeTab,
   setActiveTabHandler,
-  description,
-  serviceType,
   dashboardUrl,
-  dashboardTags,
   dashboardDetails,
   descriptionUpdateHandler,
   settingsUpdateHandler,
@@ -97,10 +91,8 @@ const DashboardDetails = ({
   chartDescriptionUpdateHandler,
   chartTagUpdateHandler,
   versionHandler,
-  version,
-  deleted,
   entityThread,
-  isentityThreadLoading,
+  isEntityThreadLoading,
   postFeedHandler,
   feedCount,
   entityFieldThreadCount,
@@ -115,8 +107,6 @@ const DashboardDetails = ({
 }: DashboardDetailsProps) => {
   const { t } = useTranslation();
   const [isEdit, setIsEdit] = useState(false);
-  const [followersCount, setFollowersCount] = useState(0);
-  const [isFollowing, setIsFollowing] = useState(false);
   const [editChart, setEditChart] = useState<{
     chart: ChartType;
     index: number;
@@ -137,6 +127,35 @@ const DashboardDetails = ({
   const [dashboardPermissions, setDashboardPermissions] = useState(
     DEFAULT_ENTITY_PERMISSION
   );
+  const [activityFilter, setActivityFilter] = useState<ActivityFilters>();
+
+  const {
+    tier,
+    dashboardTags,
+    owner,
+    serviceType,
+    description,
+    entityName,
+    followers = [],
+    deleted,
+    version,
+  } = useMemo(() => {
+    const { tags = [] } = dashboardDetails;
+
+    return {
+      ...dashboardDetails,
+      tier: getTierTags(tags),
+      dashboardTags: getTagsWithoutTier(tags),
+      entityName: getEntityName(dashboardDetails),
+    };
+  }, [dashboardDetails]);
+
+  const { isFollowing, followersCount } = useMemo(() => {
+    return {
+      isFollowing: followers?.some(({ id }) => id === getCurrentUserId()),
+      followersCount: followers?.length ?? 0,
+    };
+  }, [followers]);
 
   const { getEntityPermission } = usePermissionProvider();
 
@@ -162,12 +181,6 @@ const DashboardDetails = ({
     }
   }, [dashboardDetails.id]);
 
-  const setFollowersData = (followers: Array<EntityReference>) => {
-    setIsFollowing(
-      followers.some(({ id }: { id: string }) => id === getCurrentUserId())
-    );
-    setFollowersCount(followers?.length);
-  };
   const tabs = [
     {
       name: t('label.detail-plural'),
@@ -330,15 +343,7 @@ const DashboardDetails = ({
   };
 
   const followDashboard = () => {
-    if (isFollowing) {
-      setFollowersCount((preValu) => preValu - 1);
-      setIsFollowing(false);
-      unfollowDashboardHandler();
-    } else {
-      setFollowersCount((preValu) => preValu + 1);
-      setIsFollowing(true);
-      followDashboardHandler();
-    }
+    isFollowing ? unfollowDashboardHandler() : followDashboardHandler();
   };
   const handleUpdateChart = (chart: ChartType, index: number) => {
     setEditChart({ chart, index });
@@ -466,17 +471,22 @@ const DashboardDetails = ({
     setThreadLink('');
   };
 
-  const getLoader = () => {
-    return isentityThreadLoading ? <Loader /> : null;
-  };
+  const loader = useMemo(
+    () => (isEntityThreadLoading ? <Loader /> : null),
+    [isEntityThreadLoading]
+  );
 
   const fetchMoreThread = (
     isElementInView: boolean,
     pagingObj: Paging,
     isLoading: boolean
   ) => {
-    if (isElementInView && pagingObj?.after && !isLoading) {
-      fetchFeedHandler(pagingObj.after);
+    if (isElementInView && pagingObj?.after && !isLoading && activeTab === 2) {
+      fetchFeedHandler(
+        pagingObj.after,
+        activityFilter?.feedFilter,
+        activityFilter?.threadType
+      );
     }
   };
 
@@ -491,19 +501,13 @@ const DashboardDetails = ({
   };
 
   useEffect(() => {
-    setFollowersData(followers);
-  }, [followers]);
+    fetchMoreThread(isInView as boolean, paging, isEntityThreadLoading);
+  }, [paging, isEntityThreadLoading, isInView]);
 
-  useEffect(() => {
-    fetchMoreThread(isInView as boolean, paging, isentityThreadLoading);
-  }, [paging, isentityThreadLoading, isInView]);
-
-  const handleFeedFilterChange = useCallback(
-    (feedType, threadType) => {
-      fetchFeedHandler(paging.after, feedType, threadType);
-    },
-    [paging]
-  );
+  const handleFeedFilterChange = useCallback((feedType, threadType) => {
+    setActivityFilter({ feedFilter: feedType, threadType });
+    fetchFeedHandler(undefined, feedType, threadType);
+  }, []);
 
   const tableColumn: ColumnsType<ChartType> = useMemo(
     () => [
@@ -663,9 +667,10 @@ const DashboardDetails = ({
               ? onRemoveTier
               : undefined
           }
+          serviceType={dashboardDetails.serviceType ?? ''}
           tags={dashboardTags}
           tagsHandler={onTagUpdate}
-          tier={tier || ''}
+          tier={tier}
           titleLinks={slashedDashboardName}
           updateOwner={
             dashboardPermissions.EditAll || dashboardPermissions.EditOwner
@@ -746,13 +751,14 @@ const DashboardDetails = ({
                   deletePostHandler={deletePostHandler}
                   entityName={entityName}
                   feedList={entityThread}
-                  isFeedLoading={isentityThreadLoading}
+                  isFeedLoading={isEntityThreadLoading}
                   postFeedHandler={postFeedHandler}
                   updateThreadHandler={updateThreadHandler}
                   onFeedFiltersUpdate={handleFeedFilterChange}
                 />
                 <div />
               </div>
+              {loader}
             </Card>
           )}
           {activeTab === 3 && (
@@ -784,9 +790,8 @@ const DashboardDetails = ({
           <div
             data-testid="observer-element"
             id="observer-element"
-            ref={elementRef as RefObject<HTMLDivElement>}>
-            {getLoader()}
-          </div>
+            ref={elementRef as RefObject<HTMLDivElement>}
+          />
         </div>
       </div>
       {editChart && (

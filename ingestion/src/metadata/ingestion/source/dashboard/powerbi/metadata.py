@@ -33,6 +33,7 @@ from metadata.ingestion.source.dashboard.dashboard_service import DashboardServi
 from metadata.ingestion.source.dashboard.powerbi.models import Dataset, PowerBIDashboard
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_chart, filter_by_dashboard
+from metadata.utils.helpers import clean_uri
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -198,6 +199,29 @@ class PowerbiSource(DashboardServiceSource):
         """
         return dashboard
 
+    def get_dashboard_url(self, workspace_id: str, dashboard_id: str) -> str:
+        """
+        Method to build the dashboard url
+        """
+        return (
+            f"{clean_uri(self.service_connection.hostPort)}/groups/"
+            f"{workspace_id}/dashboards/{dashboard_id}"
+        )
+
+    def get_chart_url(
+        self, report_id: Optional[str], workspace_id: str, dashboard_id: str
+    ) -> str:
+        """
+        Method to build the chart url
+        """
+        chart_url_postfix = (
+            f"reports/{report_id}" if report_id else f"dashboards/{dashboard_id}"
+        )
+        return (
+            f"{clean_uri(self.service_connection.hostPort)}/groups/"
+            f"{workspace_id}/{chart_url_postfix}"
+        )
+
     def yield_dashboard(
         self, dashboard_details: PowerBIDashboard
     ) -> Iterable[CreateDashboardRequest]:
@@ -206,8 +230,7 @@ class PowerbiSource(DashboardServiceSource):
         """
         dashboard_request = CreateDashboardRequest(
             name=dashboard_details.id,
-            # PBI has no hostPort property. Urls are built manually.
-            dashboardUrl=self.client.get_dashboard_url(
+            dashboardUrl=self.get_dashboard_url(
                 workspace_id=self.context.workspace.id,
                 dashboard_id=dashboard_details.id,
             ),
@@ -297,8 +320,7 @@ class PowerbiSource(DashboardServiceSource):
                     displayName=chart_display_name,
                     description="",
                     chartType=ChartType.Other.value,
-                    # PBI has no hostPort property. All URL details are present in the webUrl property.
-                    chartUrl=self.client.get_chart_url(
+                    chartUrl=self.get_chart_url(
                         report_id=chart.reportId,
                         workspace_id=self.context.workspace.id,
                         dashboard_id=dashboard_details.id,

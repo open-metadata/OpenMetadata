@@ -7,6 +7,8 @@
         {
             "name": "GetPipelines",
             "description":  "List all the groups available to the user",
+            "errorMessage": "Failed to fetch pipelines, please validate the credentials or validate if user has access to fetch pipelines",
+            "shortCircuit": true,
             "mandatory": true
         }
     ]

@@ -278,10 +278,11 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
               }
               extraInfo={getExtraInfo()}
               followersList={[]}
+              serviceType={currentVersionData.serviceType ?? ''}
               tags={getTags()}
               tier={{} as TagLabel}
               titleLinks={slashedPipelineName}
-              version={version}
+              version={Number(version)}
               versionHandler={backHandler}
             />
             <div className="tw-mt-1 tw-flex tw-flex-col tw-flex-grow ">

@@ -41,6 +41,7 @@ import {
 } from 'utils/ServiceUtils';
 
 import { ReactComponent as FailIcon } from 'assets/svg/fail-badge.svg';
+import { ReactComponent as WarningIcon } from 'assets/svg/ic-warning.svg';
 import { ReactComponent as SuccessIcon } from 'assets/svg/success-badge.svg';
 import { Transi18next } from 'utils/CommonUtils';
 import { TestConnectionProps, TestStatus } from './TestConnection.interface';
@@ -52,6 +53,7 @@ import {
   WORKFLOW_COMPLETE_STATUS,
 } from 'constants/Services.constant';
 import { useAirflowStatus } from 'hooks/useAirflowStatus';
+import { showErrorToast } from 'utils/ToastUtils';
 import './test-connection.style.less';
 
 const TestConnection: FC<TestConnectionProps> = ({
@@ -79,6 +81,8 @@ const TestConnection: FC<TestConnectionProps> = ({
 
   const infoMessage = t('message.test-connection-taking-too-long');
 
+  const warningMessage = t('message.connection-test-warning');
+
   // local state
   const [isTestingConnection, setIsTestingConnection] =
     useState<boolean>(false);
@@ -96,6 +100,8 @@ const TestConnection: FC<TestConnectionProps> = ({
 
   const [currentWorkflow, setCurrentWorkflow] = useState<Workflow>();
   const [testStatus, setTestStatus] = useState<TestStatus>();
+
+  const [progress, setProgress] = useState<number>(0);
 
   /**
    * Current workflow reference
@@ -128,8 +134,9 @@ const TestConnection: FC<TestConnectionProps> = ({
       const response = await getTestConnectionDefinitionByName(connectionType);
 
       setTestConnectionStep(response.steps);
+      setDialogOpen(true);
     } catch (error) {
-      // we will not throw error for this API
+      throw t('message.test-connection-cannot-be-triggered');
     }
   };
 
@@ -188,13 +195,17 @@ const TestConnection: FC<TestConnectionProps> = ({
       // fetch the connection steps for current connectionType
       await fetchConnectionDefinition();
 
-      setDialogOpen(true);
+      setProgress(10);
 
       // create the workflow
       const response = await addWorkflow(createWorkflowData);
 
+      setProgress(20);
+
       // trigger the workflow
       const status = await triggerWorkflowById(response.id);
+
+      setProgress(40);
 
       if (status !== 200) {
         setTestStatus(StatusType.Failed);
@@ -210,9 +221,11 @@ const TestConnection: FC<TestConnectionProps> = ({
        */
       intervalId = toNumber(
         setInterval(async () => {
+          setProgress((prev) => prev + 1);
           const workflowResponse = await getWorkflowData(response.id);
           const { response: testConnectionResponse } = workflowResponse;
-          const { status: testConnectionStatus } = testConnectionResponse || {};
+          const { status: testConnectionStatus, steps = [] } =
+            testConnectionResponse || {};
 
           const isWorkflowCompleted = WORKFLOW_COMPLETE_STATUS.includes(
             workflowResponse.status as WorkflowStatus
@@ -225,12 +238,20 @@ const TestConnection: FC<TestConnectionProps> = ({
             return;
           }
 
+          setProgress(90);
           if (isTestConnectionSuccess) {
             setTestStatus(StatusType.Successful);
             setMessage(successMessage);
           } else {
-            setTestStatus(StatusType.Failed);
-            setMessage(failureMessage);
+            const isMandatoryStepsFailing = steps.some(
+              (step) => step.mandatory && !step.passed
+            );
+            setTestStatus(
+              isMandatoryStepsFailing ? StatusType.Failed : 'Warning'
+            );
+            setMessage(
+              isMandatoryStepsFailing ? failureMessage : warningMessage
+            );
           }
 
           // clear the current interval
@@ -241,6 +262,7 @@ const TestConnection: FC<TestConnectionProps> = ({
 
           // delete the workflow once it's finished
           await handleDeleteWorkflow(workflowResponse.id);
+          setProgress(100);
         }, FETCH_INTERVAL)
       );
 
@@ -262,12 +284,15 @@ const TestConnection: FC<TestConnectionProps> = ({
         }
 
         setIsTestingConnection(false);
+        setProgress(100);
       }, FETCHING_EXPIRY_TIME);
     } catch (error) {
+      setProgress(100);
       clearInterval(intervalId);
       setIsTestingConnection(false);
       setMessage(failureMessage);
       setTestStatus(StatusType.Failed);
+      showErrorToast(error as AxiosError);
     }
   };
 
@@ -280,16 +305,28 @@ const TestConnection: FC<TestConnectionProps> = ({
   return (
     <>
       {showDetails ? (
-        <div className="flex justify-between bg-white border border-main shadow-base rounded-4 p-sm mt-4">
-          <Space data-testid="message-container" size={8}>
+        <Space className="w-full justify-between bg-white border border-main rounded-4 p-sm mt-4">
+          <Space
+            align={testStatus ? 'start' : 'center'}
+            data-testid="message-container"
+            size={8}>
             {isTestingConnection && <Loader size="small" />}
             {testStatus === StatusType.Successful && (
-              <SuccessIcon data-testid="success-badge" height={24} width={24} />
+              <SuccessIcon
+                className="status-icon"
+                data-testid="success-badge"
+              />
             )}
             {testStatus === StatusType.Failed && (
-              <FailIcon data-testid="fail-badge" height={24} width={24} />
+              <FailIcon className="status-icon" data-testid="fail-badge" />
             )}
-            <Space wrap data-testid="messag-text" size={2}>
+            {testStatus === 'Warning' && (
+              <WarningIcon
+                className="status-icon"
+                data-testid="warning-badge"
+              />
+            )}
+            <div data-testid="messag-text">
               {message}{' '}
               {(testStatus || isTestingConnection) && (
                 <Transi18next
@@ -307,7 +344,7 @@ const TestConnection: FC<TestConnectionProps> = ({
                   }}
                 />
               )}
-            </Space>
+            </div>
           </Space>
           <Button
             className="text-primary"
@@ -319,7 +356,7 @@ const TestConnection: FC<TestConnectionProps> = ({
             onClick={handleTestConnection}>
             {t('label.test-entity', { entity: t('label.connection') })}
           </Button>
-        </div>
+        </Space>
       ) : (
         <Button
           data-testid="test-connection-button"
@@ -335,6 +372,7 @@ const TestConnection: FC<TestConnectionProps> = ({
       <TestConnectionModal
         isOpen={dialogOpen}
         isTestingConnection={isTestingConnection}
+        progress={progress}
         testConnectionStep={testConnectionStep}
         testConnectionStepResult={testConnectionStepResult}
         onCancel={() => setDialogOpen(false)}
