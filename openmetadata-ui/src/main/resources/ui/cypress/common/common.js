@@ -45,6 +45,17 @@ export const verifyResponseStatusCode = (alias, responseCode, option) => {
   cy.wait(alias, option).its('response.statusCode').should('eq', responseCode);
 };
 
+// waiting for multiple response and validating the response status code
+export const verifyMultipleResponseStatusCode = (
+  alias = [],
+  responseCode = 200,
+  option
+) => {
+  cy.wait(alias, option).then((data) => {
+    data.map((value) => expect(value.response.statusCode).eq(responseCode));
+  });
+};
+
 export const handleIngestionRetry = (
   type,
   testIngestionButton,
@@ -88,9 +99,6 @@ export const handleIngestionRetry = (
         });
         verifyResponseStatusCode('@ingestionPermissions', 200);
       }
-    }
-    if (isDatabaseService(type) && testIngestionButton) {
-      cy.get('[data-testid="add-new-ingestion-button"]').should('be.visible');
     }
   };
   const checkSuccessState = () => {
@@ -385,7 +393,7 @@ export const editOwnerforCreatedService = (
 
   interceptURL(
     'GET',
-    `/api/v1/services/${api_services}/name/${service_Name}?fields=owner`,
+    `/api/v1/services/${api_services}/name/${service_Name}?fields=*`,
     'getSelectedService'
   );
 
@@ -415,7 +423,6 @@ export const editOwnerforCreatedService = (
   cy.get('[data-testid="edit-owner"]')
     .should('exist')
     .should('be.visible')
-    .trigger('mouseover')
     .click();
 
   verifyResponseStatusCode('@waitForUsers', 200);
