@@ -254,7 +254,6 @@ export const AuthProvider = ({
    * This method will be called when the id token is about to expire.
    */
   const renewIdToken = async () => {
-    console.log('Renew Id token');
     const onRenewIdTokenHandlerPromise = onRenewIdTokenHandler();
     if (onRenewIdTokenHandlerPromise) {
       await onRenewIdTokenHandlerPromise;
@@ -270,11 +269,9 @@ export const AuthProvider = ({
    * It will try for max 3 times if it's not succeed then it will proceed for logout
    */
   const trySilentSignIn = () => {
-    console.log('Try Silent Sign In');
     const pathName = location.pathname;
     // Do not try silent sign in for SignIn or SignUp route
     if ([ROUTES.SIGNIN, ROUTES.SIGNUP].indexOf(pathName) === -1) {
-      console.log('Silent Sign In retry number', silentSignInRetries);
       // Try to renew token
       silentSignInRetries < 3
         ? renewIdToken()
@@ -284,7 +281,6 @@ export const AuthProvider = ({
               startTokenExpiryTimer();
             })
             .catch((err) => {
-              console.log('Silent Sign In error', err);
               if (err.message.includes('Frame window timed out')) {
                 silentSignInRetries = 0;
                 // eslint-disable-next-line @typescript-eslint/no-use-before-define
@@ -310,8 +306,7 @@ export const AuthProvider = ({
   const startTokenExpiryTimer = () => {
     // Extract expiry
     const { isExpired, timeoutExpiry } = extractDetailsFromToken();
-    console.log('Start Token expiry timer');
-    console.log({ isExpired, timeoutExpiry });
+
     if (!isExpired && isNumber(timeoutExpiry)) {
       // Have 5m buffer before start trying for silent signIn
       // If token is about to expire then start silentSignIn
