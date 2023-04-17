@@ -114,7 +114,7 @@ const FacetFilter: React.FC<FacetFilterProps> = ({
 
   return (
     <div data-testid="face-filter">
-      <div className="sidebar-my-data-holder mt-2 mb-3">
+      <div className="sidebar-my-data-holder mt-2 mb-3 p-x-md">
         <Button
           className="text-primary cursor-pointer p-0"
           disabled={isEmpty(filters)}
@@ -127,7 +127,7 @@ const FacetFilter: React.FC<FacetFilterProps> = ({
       </div>
       <hr className="m-y-xs" />
       <div
-        className="sidebar-my-data-holder mt-2 mb-3"
+        className="sidebar-my-data-holder mt-2 mb-3 p-x-md"
         data-testid="show-deleted-cntnr">
         <div
           className="filter-group justify-between m-b-xs"
@@ -158,13 +158,13 @@ const FacetFilter: React.FC<FacetFilterProps> = ({
           { length: aggregationsLength }
         ) => (
           <div data-testid={`filter-heading-${aggregationKey}`} key={index}>
-            <div className="d-flex justify-between flex-col">
+            <div className="d-flex justify-between flex-col p-x-md">
               <Typography.Paragraph className="m-y-sm common-left-panel-card-heading">
                 {translateAggregationKeyToTitle(aggregationKey)}
               </Typography.Paragraph>
             </div>
             <div
-              className="sidebar-my-data-holder"
+              className="sidebar-my-data-holder p-x-md"
               data-testid="filter-container">
               {aggregation.buckets
                 .slice(0, aggregationsPageSize[aggregationKey])

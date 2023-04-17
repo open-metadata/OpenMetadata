@@ -54,7 +54,7 @@ const RecentlyViewed: FunctionComponent = () => {
       dataLength={data.length !== 0 ? data.length : 5}
       loading={Boolean(isLoading)}>
       <>
-        <Typography.Paragraph className="common-left-panel-card-heading m-y-sm">
+        <Typography.Paragraph className="common-left-panel-card-heading m-b-sm">
           {t('label.recent-views')}
         </Typography.Paragraph>
         {data.length

@@ -53,7 +53,7 @@ const RecentSearchedTermsAntd: FunctionComponent = () => {
       }
       loading={loading}>
       <>
-        <Typography.Paragraph className="common-left-panel-card-heading m-y-sm">
+        <Typography.Paragraph className="common-left-panel-card-heading m-b-sm">
           {t('label.recent-search-term-plural')}
         </Typography.Paragraph>
 
