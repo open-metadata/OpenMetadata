@@ -185,8 +185,9 @@ const UpdateTag = () => {
 
   useEffect(() => {
     const owner = entityData.owner;
+    let defaultAssignee: Option[] = [];
     if (owner) {
-      const defaultAssignee = [
+      defaultAssignee = [
         {
           label: getEntityName(owner),
           value: owner.id || '',
@@ -196,7 +197,11 @@ const UpdateTag = () => {
       setAssignees(defaultAssignee);
       setOptions(defaultAssignee);
     }
-    form.setFieldsValue({ title: message.trimEnd() });
+    form.setFieldsValue({
+      title: message.trimEnd(),
+      updateTags: getTags(),
+      assignees: defaultAssignee,
+    });
   }, [entityData]);
 
   useEffect(() => {
@@ -264,7 +269,7 @@ const UpdateTag = () => {
                 label={t('label.update-entity', {
                   entity: t('label.tag-plural'),
                 })}
-                name="UpdateTags"
+                name="updateTags"
                 rules={[
                   {
                     required: true,
