@@ -21,8 +21,8 @@ import pytest
 from metadata.ingestion.api.sink import SinkStatus
 from metadata.ingestion.api.source import SourceStatus
 
-from .test_cli import CliBase
 from .e2e_types import E2EType
+from .test_cli import CliBase
 
 
 class CliDashboardBase(TestCase):

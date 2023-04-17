@@ -15,15 +15,17 @@ Config builder classes
 
 
 from copy import deepcopy
+
 from ..e2e_types import E2EType
 
 
 class BaseBuilder:
     """Base builder class to inherit by all builder classes"""
+
     def __init__(self, config: dict, config_args: dict) -> None:
         """Base builder
 
-        Attributes:        
+        Attributes:
             config (dict): config dict from the yaml file
         """
         self.config = deepcopy(config)
@@ -33,16 +35,19 @@ class BaseBuilder:
         """build config"""
         return self.config
 
+
 class ProfilerConfigBuilder(BaseBuilder):
     """Builder class for the profiler config
-    
+
     Attributes:
         profilerSample (int): sample size for the profiler
     """
+
     # pylint: disable=invalid-name
     def __init__(self, config: dict, config_args: dict) -> None:
         super().__init__(config, config_args)
         self.profilerSample = self.config_args.get("profilerSample", 100)
+
     # pylint: enable=invalid-name
 
     def build(self) -> dict:
@@ -58,43 +63,53 @@ class ProfilerConfigBuilder(BaseBuilder):
         self.config["processor"] = {"type": "orm-profiler", "config": {}}
         return self.config
 
+
 class SchemaConfigBuilder(BaseBuilder):
     """Builder for schema filter config"""
+
     def build(self) -> dict:
         self.config["source"]["sourceConfig"]["config"][
             "schemaFilterPattern"
         ] = self.config_args
         return self.config
 
+
 class TableConfigBuilder(BaseBuilder):
     """Builder for table filter config"""
+
     def build(self) -> dict:
         self.config["source"]["sourceConfig"]["config"][
             "tableFilterPattern"
         ] = self.config_args
         return self.config
 
+
 class MixConfigBuilder(BaseBuilder):
     """Builder for mix filter config (table and schema)"""
+
     def build(self) -> dict:
         schema_builder = SchemaConfigBuilder(self.config, self.config_args["schema"])
         config = schema_builder.build()
         table_builder = TableConfigBuilder(config, self.config_args["table"])
         return table_builder.build()
 
+
 class DashboardConfigBuilder(BaseBuilder):
     """Builder for dashboard filter config"""
+
     def build(self) -> dict:
-        self.config["source"]["sourceConfig"]["config"]["includeTags"] = self.config_args[
+        self.config["source"]["sourceConfig"]["config"][
             "includeTags"
-        ]
+        ] = self.config_args["includeTags"]
         self.config["source"]["sourceConfig"]["config"][
             "includeDataModels"
         ] = self.config_args["includeDataModels"]
         return self.config
 
+
 class DashboardMixConfigBuilder(BaseBuilder):
     """Builder for dashboard mix filter config (table and schema)"""
+
     def build(self) -> dict:
         self.config["source"]["sourceConfig"]["config"][
             "dashboardFilterPattern"
@@ -107,17 +122,20 @@ class DashboardMixConfigBuilder(BaseBuilder):
         ] = self.config_args["dataModels"]
 
         return self.config
-    
+
+
 class ProfilerProcessorConfigBuilder(BaseBuilder):
     """Builder for profiler processor config"""
+
     def build(self) -> dict:
         profiler_builder = ProfilerConfigBuilder(self.config, self.config_args)
         config = profiler_builder.build()
         processor = self.config_args.get("processor")
         if processor:
             config.update(processor)
-        
+
         return config
+
 
 def builder_factory(builder, config: dict, config_args: dict):
     """Factory method to return the builder class"""

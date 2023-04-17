@@ -16,7 +16,6 @@ import os
 import re
 import subprocess
 from abc import ABC, abstractmethod
-from enum import Enum
 from pathlib import Path
 
 import yaml
@@ -27,6 +26,7 @@ from metadata.ingestion.api.source import SourceStatus
 from metadata.ingestion.api.workflow import Workflow
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.constants import UTF_8
+
 from .config_builders.builders import builder_factory
 from .e2e_types import E2EType
 

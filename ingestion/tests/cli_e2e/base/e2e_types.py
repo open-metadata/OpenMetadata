@@ -15,6 +15,7 @@ E2E test types
 
 from enum import Enum
 
+
 class E2EType(Enum):
     """
     E2E Type Enum Class
