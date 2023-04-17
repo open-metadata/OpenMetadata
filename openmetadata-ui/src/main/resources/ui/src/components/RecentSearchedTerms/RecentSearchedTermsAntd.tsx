@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button, Card, Popover } from 'antd';
+import { Button, Card, Popover, Typography } from 'antd';
 import { RecentlySearchedData } from 'Models';
 import React, { FunctionComponent, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -46,9 +46,7 @@ const RecentSearchedTermsAntd: FunctionComponent = () => {
 
   return (
     <>
-      <Card
-        className="panel-shadow-color"
-        title={t('label.recent-search-term-plural')}>
+      <Card className="panel-shadow-color">
         <EntityListSkeleton
           dataLength={
             recentlySearchedTerms.length !== 0
@@ -57,6 +55,10 @@ const RecentSearchedTermsAntd: FunctionComponent = () => {
           }
           loading={loading}>
           <>
+            <Typography.Paragraph className="common-left-panel-card-heading m-b-sm">
+              {t('label.recent-search-term-plural')}
+            </Typography.Paragraph>
+
             {recentlySearchedTerms.length ? (
               recentlySearchedTerms.map((item, index) => {
                 return (

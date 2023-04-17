@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button, Divider } from 'antd';
+import { Button, Divider, Typography } from 'antd';
 import classNames from 'classnames';
 import { AggregationEntry } from 'interface/search.interface';
 import { isEmpty, isNil } from 'lodash';
@@ -150,7 +150,7 @@ const FacetFilter: React.FC<FacetFilterProps> = ({
           </div>
         </div>
       </div>
-      <hr className="m-y-xs" />
+      <hr className="m-t-xs" />
       {aggregationEntries.map(
         (
           [aggregationKey, aggregation],
@@ -159,9 +159,9 @@ const FacetFilter: React.FC<FacetFilterProps> = ({
         ) => (
           <div data-testid={`filter-heading-${aggregationKey}`} key={index}>
             <div className="d-flex justify-between flex-col">
-              <h6 className="font-medium text-grey-body m-b-sm m-y-xs">
+              <Typography.Paragraph className="m-y-sm common-left-panel-card-heading">
                 {translateAggregationKeyToTitle(aggregationKey)}
-              </h6>
+              </Typography.Paragraph>
             </div>
             <div
               className="sidebar-my-data-holder"
