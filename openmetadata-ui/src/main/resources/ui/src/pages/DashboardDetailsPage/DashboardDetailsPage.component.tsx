@@ -32,7 +32,6 @@ import {
 } from 'rest/dashboardAPI';
 import { getAllFeeds, postFeedById, postThread } from 'rest/feedsAPI';
 import { getServiceByFQN } from 'rest/serviceAPI';
-import { serviceTypeLogo } from 'utils/ServiceUtils';
 import AppState from '../../AppState';
 import {
   getDashboardDetailsPath,
@@ -244,12 +243,6 @@ const DashboardDetailsPage = () => {
                 ServiceCategory.DASHBOARD_SERVICES
               )
             : '',
-          imgSrc: serviceType ? serviceTypeLogo(serviceType) : undefined,
-        },
-        {
-          name: getEntityName(res),
-          url: '',
-          activeTitle: true,
         },
       ]);
 
