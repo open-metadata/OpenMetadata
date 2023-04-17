@@ -141,7 +141,6 @@ export const handleIngestionRetry = (
 
 export const scheduleIngestion = () => {
   // Schedule & Deploy
-  cy.contains('Schedule for Ingestion').should('be.visible');
   cy.get('[data-testid="cron-type"]').should('be.visible').click();
   cy.get('.ant-select-item-option-content').contains('Hour').click();
   cy.get('[data-testid="deploy-button"]').should('be.visible').click();
@@ -170,12 +169,7 @@ export const testServiceCreationAndIngestion = (
   cy.get(`[data-testid="${serviceType}"]`).should('exist').click();
   cy.get('[data-testid="next-button"]').should('exist').click();
 
-  // Should show requirements in step 2
-
-  cy.get('[data-testid="service-requirements"]').should('exist');
-  cy.get('[data-testid="next-button"]').should('exist').click();
-
-  // Enter service name in step 3
+  // Enter service name in step 2
   cy.get('[data-testid="service-name"]').should('exist').type(serviceName);
   interceptURL('GET', '/api/v1/services/ingestionPipelines/ip', 'ipApi');
   interceptURL(
@@ -187,7 +181,7 @@ export const testServiceCreationAndIngestion = (
   verifyResponseStatusCode('@ingestionPipelineStatus', 200);
   verifyResponseStatusCode('@ipApi', 204);
 
-  // Connection Details in step 4
+  // Connection Details in step 3
   cy.get('[data-testid="add-new-service-container"]')
     .parent()
     .parent()
@@ -277,10 +271,6 @@ export const testServiceCreationAndIngestion = (
   verifyResponseStatusCode('@deployPipeline', 200);
 
   cy.contains(`${serviceName}_metadata`).should('be.visible');
-  // On the Right panel
-  cy.contains('Metadata Ingestion Added & Deployed Successfully').should(
-    'be.visible'
-  );
 
   // wait for ingestion to run
   cy.clock();
