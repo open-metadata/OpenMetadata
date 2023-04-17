@@ -51,6 +51,7 @@ import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import Assignees from '../shared/Assignees';
 import { TagsTabs } from '../shared/TagsTabs';
 import TaskPageLayout from '../shared/TaskPageLayout';
+import '../TaskPage.style.less';
 import { cardStyles } from '../TaskPage.styles';
 import { EntityData, Option } from '../TasksPage.interface';
 
@@ -225,7 +226,7 @@ const UpdateTag = () => {
           ]}
         />
         <Card
-          className="m-t-0"
+          className="m-t-0 request-tags"
           key="update-tags"
           style={{ ...cardStyles }}
           title={t('label.create-entity', {
@@ -240,10 +241,10 @@ const UpdateTag = () => {
                 placeholder={t('label.task-entity', {
                   entity: t('label.title'),
                 })}
-                style={{ margin: '4px 0px' }}
               />
             </Form.Item>
             <Form.Item
+              className="m-y-0"
               data-testid="assignees"
               label={`${t('label.assignee-plural')}:`}
               name="assignees"

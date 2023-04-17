@@ -49,6 +49,7 @@ import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import Assignees from '../shared/Assignees';
 import { DescriptionTabs } from '../shared/DescriptionTabs';
 import TaskPageLayout from '../shared/TaskPageLayout';
+import '../TaskPage.style.less';
 import { cardStyles } from '../TaskPage.styles';
 import { EntityData, Option } from '../TasksPage.interface';
 
@@ -213,7 +214,7 @@ const UpdateDescription = () => {
         />
 
         <Card
-          className="m-t-0"
+          className="m-t-0 request-description"
           key="update-description"
           style={{ ...cardStyles }}
           title={t('label.create-entity', {
@@ -228,7 +229,6 @@ const UpdateDescription = () => {
                 placeholder={t('label.task-entity', {
                   entity: t('label.title'),
                 })}
-                style={{ margin: '4px 0px' }}
               />
             </Form.Item>
             <Form.Item
