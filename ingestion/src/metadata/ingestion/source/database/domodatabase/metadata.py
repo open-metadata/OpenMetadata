@@ -14,7 +14,7 @@ Domo Database source to extract metadata
 """
 
 import traceback
-from typing import Iterable, Optional, Tuple
+from typing import Iterable, List, Optional, Tuple
 
 from metadata.clients.domo_client import DomoClient
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
@@ -36,11 +36,18 @@ from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
+from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.connections import get_connection
 from metadata.ingestion.source.database.database_service import DatabaseServiceSource
+from metadata.ingestion.source.database.domodatabase.models import (
+    OutputDataset,
+    Owner,
+    SchemaColumn,
+    User,
+)
 from metadata.utils import fqn
 from metadata.utils.constants import DEFAULT_DATABASE
 from metadata.utils.filters import filter_by_table
@@ -135,20 +142,36 @@ class DomodatabaseSource(DatabaseServiceSource):
             logger.warning(error)
             self.status.failed(schema_name, error, traceback.format_exc())
 
+    def get_owners(self, owner: Owner) -> Optional[EntityReference]:
+        try:
+            owner_details = User(**self.domo_client.users_get(owner.id))
+            if owner_details.email:
+                user = self.metadata.get_user_by_email(owner_details.email)
+                if user:
+                    return EntityReference(id=user.id.__root__, type="user")
+        except Exception as exc:
+            logger.warning(f"Error while getting details of user {owner.name} - {exc}")
+        return None
+
     def yield_table(
         self, table_name_and_type: Tuple[str, str]
     ) -> Iterable[Optional[CreateTableRequest]]:
         table_id, table_type = table_name_and_type
         try:
             table_constraints = None
-            table_object = self.domo_client.datasets.get(table_id)
-            columns = self.get_columns(table_object=table_object["schema"]["columns"])
+            table_object = OutputDataset(**self.domo_client.datasets.get(table_id))
+            columns = (
+                self.get_columns(table_object.schemas.columns)
+                if table_object.columns
+                else []
+            )
             table_request = CreateTableRequest(
-                name=table_object["name"],
-                displayName=table_object["name"],
+                name=table_object.name,
+                displayName=table_object.name,
                 tableType=table_type,
-                description=table_object.get("description"),
+                description=table_object.description,
                 columns=columns,
+                owner=self.get_owners(owner=table_object.owner),
                 tableConstraints=table_constraints,
                 databaseSchema=self.context.database_schema.fullyQualifiedName,
             )
@@ -160,15 +183,15 @@ class DomodatabaseSource(DatabaseServiceSource):
             logger.warning(error)
             self.status.failed(table_id, error, traceback.format_exc())
 
-    def get_columns(self, table_object):
+    def get_columns(self, table_object: List[SchemaColumn]):
         row_order = 1
         columns = []
         for column in table_object:
             columns.append(
                 Column(
-                    name=column["name"],
-                    description=column.get("description", ""),
-                    dataType=column["type"],
+                    name=column.name,
+                    description=column.description,
+                    dataType=column.type,
                     ordinalPosition=row_order,
                 )
             )

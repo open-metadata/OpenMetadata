@@ -11,28 +11,25 @@
  *  limitations under the License.
  */
 
-import { Button, Form, InputNumber, Select, Typography } from 'antd';
-import { isNil } from 'lodash';
-import React, { Fragment, useMemo, useRef } from 'react';
+import { Button, Form } from 'antd';
+import { capitalize, isNil } from 'lodash';
+import React, { useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
+import { FieldProp, FieldTypes, generateFormFields } from 'utils/formUtils';
 import { PROFILE_SAMPLE_OPTIONS } from '../../../constants/profiler.constant';
 import { FilterPatternEnum } from '../../../enums/filterPattern.enum';
 import { FormSubmitType } from '../../../enums/form.enum';
 import { ServiceCategory } from '../../../enums/service.enum';
 import { ProfileSampleType } from '../../../generated/entity/data/table';
 import { PipelineType } from '../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
-import { getSeparator } from '../../../utils/CommonUtils';
-import FilterPattern from '../../common/FilterPattern/FilterPattern';
-import RichTextEditor from '../../common/rich-text-editor/RichTextEditor';
 import { EditorContentRef } from '../../common/rich-text-editor/RichTextEditor.interface';
-import ToggleSwitchV1 from '../../common/toggle-switch/ToggleSwitchV1';
 import { Field } from '../../Field/Field';
-import SliderWithInput from '../../SliderWithInput/SliderWithInput';
 import {
   AddIngestionState,
   ConfigureIngestionProps,
   ShowFilter,
 } from '../addIngestion.interface';
+import './ConfigureIngestion.less';
 
 const ConfigureIngestion = ({
   data,
@@ -45,6 +42,7 @@ const ConfigureIngestion = ({
   onNext,
   pipelineType,
   serviceCategory,
+  onFocus,
 }: ConfigureIngestionProps) => {
   const { t } = useTranslation();
   const markdownRef = useRef<EditorContentRef>();
@@ -234,825 +232,731 @@ const ConfigureIngestion = ({
 
   const handleIngestionName = handleValueChange('ingestionName');
 
-  const getIngestSampleToggle = (label: string, desc: string) => {
-    return (
-      <>
-        <Field>
-          <div className="tw-flex tw-gap-1">
-            <label>{label}</label>
-            <ToggleSwitchV1
-              checked={ingestSampleData}
-              handleCheck={handleIngestSampleToggle}
-              testId="ingest-sample-data"
-            />
-          </div>
-          <p className="tw-text-grey-muted tw-mt-3">{desc}</p>
-        </Field>
-        {getSeparator('')}
-      </>
-    );
+  const commonMetadataFields: FieldProp[] = [
+    {
+      name: 'name',
+      label: t('label.name'),
+      type: FieldTypes.TEXT,
+      required: true,
+      props: {
+        disabled: formType === FormSubmitType.EDIT,
+        value: ingestionName,
+        onChange: handleIngestionName,
+        'data-testid': 'name',
+      },
+      id: 'root/name',
+      helperText: t('message.ingestion-pipeline-name-message'),
+      hasSeparator: true,
+    },
+  ];
+
+  const databaseServiceFilterPatternFields: FieldProp[] = [
+    {
+      name: 'databaseFilterPattern',
+      label: null,
+      type: FieldTypes.FILTER_PATTERN,
+      required: false,
+      props: {
+        checked: showDatabaseFilter,
+        excludePattern: databaseFilterPattern?.excludes ?? [],
+        getExcludeValue: getExcludeValue,
+        getIncludeValue: getIncludeValue,
+        handleChecked: (value: boolean) =>
+          handleShowFilter(value, ShowFilter.showDatabaseFilter),
+        includePattern: databaseFilterPattern?.includes ?? [],
+        includePatternExtraInfo: data.database
+          ? t('message.include-database-filter-extra-information')
+          : undefined,
+        isDisabled: data.isDatabaseFilterDisabled,
+        type: FilterPatternEnum.DATABASE,
+      },
+      id: 'root/databaseFilterPattern',
+    },
+    {
+      name: 'schemaFilterPattern',
+      label: null,
+      type: FieldTypes.FILTER_PATTERN,
+      required: false,
+      props: {
+        checked: showSchemaFilter,
+        excludePattern: schemaFilterPattern?.excludes ?? [],
+        getExcludeValue: getExcludeValue,
+        getIncludeValue: getIncludeValue,
+        handleChecked: (value: boolean) =>
+          handleShowFilter(value, ShowFilter.showSchemaFilter),
+        includePattern: schemaFilterPattern?.includes ?? [],
+        type: FilterPatternEnum.SCHEMA,
+      },
+      id: 'root/schemaFilterPattern',
+    },
+    {
+      name: 'tableFilterPattern',
+      label: null,
+      type: FieldTypes.FILTER_PATTERN,
+      required: false,
+      props: {
+        checked: showTableFilter,
+        excludePattern: tableFilterPattern?.excludes ?? [],
+        getExcludeValue: getExcludeValue,
+        getIncludeValue: getIncludeValue,
+        handleChecked: (value: boolean) =>
+          handleShowFilter(value, ShowFilter.showTableFilter),
+        includePattern: tableFilterPattern?.includes ?? [],
+        type: FilterPatternEnum.TABLE,
+        showSeparator: false,
+      },
+      id: 'root/tableFilterPattern',
+      hasSeparator: true,
+    },
+  ];
+
+  const includeTagsField: FieldProp = {
+    name: 'includeTags',
+    label: t('label.include-entity', { entity: t('label.tag-plural') }),
+    type: FieldTypes.SWITCH,
+    required: false,
+    props: {
+      checked: includeTags,
+      handleCheck: handleIncludeTags,
+      testId: 'include-tags',
+    },
+    id: 'root/includeTags',
+    hasSeparator: true,
+    helperText: t('message.include-assets-message'),
   };
 
-  const getDebugLogToggle = () => {
-    return (
-      <Field>
-        <div className="tw-flex tw-gap-1">
-          <label>{t('label.enable-debug-log')}</label>
-          <ToggleSwitchV1
-            checked={enableDebugLog}
-            handleCheck={handleEnableDebugLogCheck}
-            testId="enable-debug-log"
-          />
-        </div>
-        <p className="tw-text-grey-muted tw-mt-3">
-          {t('message.enable-debug-logging')}
-        </p>
-        {getSeparator('')}
-      </Field>
-    );
+  const loggerLevelField: FieldProp = {
+    name: 'loggerLevel',
+    label: t('label.enable-debug-log'),
+    type: FieldTypes.SWITCH,
+    required: false,
+    props: {
+      checked: enableDebugLog,
+      handleCheck: handleEnableDebugLogCheck,
+      testId: 'enable-debug-log',
+    },
+    id: 'root/loggerLevel',
+    hasSeparator: true,
+    helperText: t('message.enable-debug-logging'),
   };
 
-  const getOverrideOwnerToggle = () => {
-    return (
-      <Field>
-        <div className="tw-flex tw-gap-1">
-          <label>{t('label.override-current-owner')}</label>
-          <ToggleSwitchV1
-            checked={overrideOwner}
-            handleCheck={handleOverrideOwner}
-            testId="enabled-override-owner"
-          />
-        </div>
-        <p className="tw-text-grey-muted tw-mt-3">
-          {t('message.enable-override-owner')}
-        </p>
-        {getSeparator('')}
-      </Field>
-    );
+  const includeDataModelsField: FieldProp = {
+    name: 'includeDataModels',
+    label: t('label.include-entity', {
+      entity: t('label.data-model-plural'),
+    }),
+    type: FieldTypes.SWITCH,
+    required: false,
+    props: {
+      checked: includeDataModels,
+      handleCheck: handleIncludeDataModels,
+      testId: 'include-data-models',
+    },
+    id: 'root/includeDataModels',
+    hasSeparator: true,
+    helperText: t('message.include-assets-message', {
+      assets: t('label.data-model-plural'),
+    }),
   };
 
-  const getIncludesTagToggle = () => {
-    return (
-      <Field>
-        <div className="tw-flex tw-gap-1">
-          <label>
-            {t('label.include-entity', { entity: t('label.tag-plural') })}
-          </label>
-          <ToggleSwitchV1
-            checked={includeTags}
-            handleCheck={handleIncludeTags}
-            testId="include-tags"
-          />
-        </div>
-        <p className="tw-text-grey-muted tw-mt-3">
-          {t('message.include-assets-message', {
-            assets: t('label.tag-plural'),
-          })}
-        </p>
-        {getSeparator('')}
-      </Field>
-    );
+  const generateSampleDataField: FieldProp = {
+    name: 'generateSampleData',
+    label: t('label.ingest-sample-data'),
+    type: FieldTypes.SWITCH,
+    required: false,
+    props: {
+      checked: ingestSampleData,
+      handleCheck: handleIngestSampleToggle,
+      testId: 'ingest-sample-data',
+    },
+    id: 'root/generateSampleData',
+    hasSeparator: true,
+    helperText: t('message.ingest-sample-data-for-entity', {
+      entity: t('label.topic-lowercase'),
+    }),
   };
 
-  const getIncludesDataModelsToggle = () => {
-    return (
-      <Field>
-        <div className="tw-flex tw-gap-1">
-          <label>
-            {t('label.include-entity', {
-              entity: t('label.data-model-plural'),
-            })}
-          </label>
-          <ToggleSwitchV1
-            checked={includeDataModels}
-            handleCheck={handleIncludeDataModels}
-            testId="include-data-models"
-          />
-        </div>
-        <p className="tw-text-grey-muted tw-mt-3">
-          {t('message.include-assets-message', {
-            assets: t('label.data-model-plural'),
-          })}
-        </p>
-        {getSeparator('')}
-      </Field>
-    );
+  const queryLogDurationField: FieldProp = {
+    name: 'queryLogDuration',
+    label: t('label.query-log-duration'),
+    type: FieldTypes.NUMBER,
+    helperText: t('message.query-log-duration-message'),
+    hasSeparator: true,
+    props: {
+      className: 'tw-form-inputs tw-form-inputs-padding',
+      'data-testid': 'query-log-duration',
+      value: queryLogDuration,
+      onChange: handleQueryLogDuration,
+    },
+    id: 'root/queryLogDuration',
+    required: false,
   };
 
-  const getProfileSample = () => {
-    return (
-      <>
-        <Form.Item
-          className="m-t-sm"
-          initialValue={profileSampleType || ProfileSampleType.Percentage}
-          label={t('label.profile-sample-type', {
-            type: t('label.type'),
-          })}
-          name="profileSample">
-          <Select
-            data-testid="profile-sample"
-            options={PROFILE_SAMPLE_OPTIONS}
-            value={profileSampleType}
-            onChange={handleProfileSampleTypeChange}
-          />
-        </Form.Item>
-        <Form.Item
-          className="m-b-xs"
-          label={t('label.profile-sample-type', {
-            type: t('label.value'),
-          })}
-          name="profile-sample-value">
-          {profileSampleType === ProfileSampleType.Percentage && (
-            <>
-              <Typography.Paragraph className="text-grey-muted m-t-0 m-b-xs text-sm">
-                {t('message.profile-sample-percentage-message')}
-              </Typography.Paragraph>
-              <SliderWithInput
-                value={profileSample || 100}
-                onChange={handleProfileSample}
-              />
-            </>
-          )}
-          {profileSampleType === ProfileSampleType.Rows && (
-            <>
-              <Typography.Paragraph className="text-grey-muted m-t-0 m-b-xs text-sm">
-                {t('message.profile-sample-row-count-message')}
-              </Typography.Paragraph>
-              <InputNumber
-                className="w-full"
-                data-testid="metric-number-input"
-                min={0}
-                placeholder={t('label.please-enter-value', {
-                  name: t('label.row-count-lowercase'),
-                })}
-                value={profileSample}
-                onChange={handleProfileSample}
-              />
-            </>
-          )}
-        </Form.Item>
-      </>
-    );
+  const rateLimitField: FieldProp = {
+    name: 'resultLimit',
+    label: t('label.result-limit'),
+    type: FieldTypes.NUMBER,
+    helperText: t('message.result-limit-message'),
+    hasSeparator: true,
+    props: {
+      className: 'tw-form-inputs tw-form-inputs-padding',
+      'data-testid': 'result-limit',
+      value: resultLimit,
+      onChange: handleResultLimit,
+    },
+    id: 'root/resultLimit',
+    required: false,
   };
 
-  const getThreadCount = () => {
-    return (
-      <div>
-        <label>
-          {t('label.entity-count', {
-            entity: t('label.thread'),
-          })}
-        </label>
-        <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-sm">
-          {t('message.thread-count-message')}
-        </p>
-        <input
-          className="tw-form-inputs tw-form-inputs-padding tw-w-24"
-          data-testid="threadCount"
-          id="threadCount"
-          name="threadCount"
-          placeholder="5"
-          type="number"
-          value={threadCount}
-          onChange={handleThreadCount}
-        />
-      </div>
-    );
-  };
+  const databaseMetadataFields: FieldProp[] = [
+    ...databaseServiceFilterPatternFields,
+    {
+      name: 'useFqnForFiltering',
+      label: t('label.use-fqn-for-filtering'),
+      type: FieldTypes.SWITCH,
+      required: false,
+      props: {
+        checked: useFqnFilter,
+        handleCheck: handleFqnFilter,
+      },
+      id: 'root/useFqnForFiltering',
+      hasSeparator: true,
+      helperText: t('message.use-fqn-for-filtering-message'),
+    },
+    {
+      name: 'includeViews',
+      label: t('label.include-entity', { entity: t('label.view-plural') }),
+      type: FieldTypes.SWITCH,
+      required: false,
+      props: {
+        checked: includeView,
+        handleCheck: handleIncludeViewToggle,
+        testId: 'include-views',
+      },
+      id: 'root/includeViews',
+      hasSeparator: true,
+      helperText: t('message.include-assets-message', {
+        assets: t('label.view-plural'),
+      }),
+    },
+    includeTagsField,
+    includeDataModelsField,
+    loggerLevelField,
+    {
+      name: 'markDeletedTables',
+      label: t('label.mark-deleted-table-plural'),
+      type: FieldTypes.SWITCH,
+      required: false,
+      props: {
+        checked: markDeletedTables,
+        handleCheck: handleMarkDeletedTables,
+        testId: 'mark-deleted',
+      },
+      id: 'root/markDeletedTables',
+      hasSeparator: true,
+      helperText: t('message.mark-deleted-table-message'),
+    },
+    ...(!isNil(markAllDeletedTables)
+      ? [
+          {
+            name: 'markAllDeletedTables',
+            label: t('label.mark-all-deleted-table-plural'),
+            type: FieldTypes.SWITCH,
+            required: false,
+            props: {
+              checked: markAllDeletedTables,
+              handleCheck: handleMarkAllDeletedTables,
+              testId: 'mark-deleted-filter-only',
+            },
+            id: 'root/markAllDeletedTables',
+            hasSeparator: true,
+            helperText: t('message.mark-all-deleted-table-message'),
+          },
+        ]
+      : []),
+  ];
 
-  const getTimeoutSeconds = () => {
-    return (
-      <div>
-        <label>{t('label.profiler-timeout-second-plural-label')}</label>
-        <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-sm">
-          {t('message.profiler-timeout-seconds-message')}
-        </p>
-        <input
-          className="tw-form-inputs tw-form-inputs-padding tw-w-24"
-          data-testid="timeoutSeconds"
-          id="timeoutSeconds"
-          name="timeoutSeconds"
-          placeholder="43200"
-          type="number"
-          value={timeoutSeconds}
-          onChange={handleTimeoutSeconds}
-        />
-      </div>
-    );
-  };
+  const dashboardMetadataFields: FieldProp[] = [
+    {
+      name: 'dashboardFilterPattern',
+      label: null,
+      type: FieldTypes.FILTER_PATTERN,
+      required: false,
+      props: {
+        checked: showDashboardFilter,
+        excludePattern: dashboardFilterPattern?.excludes ?? [],
+        getExcludeValue: getExcludeValue,
+        getIncludeValue: getIncludeValue,
+        handleChecked: (value: boolean) =>
+          handleShowFilter(value, ShowFilter.showDashboardFilter),
+        includePattern: dashboardFilterPattern?.includes ?? [],
+        type: FilterPatternEnum.DASHBOARD,
+      },
+      id: 'root/dashboardFilterPattern',
+    },
+    {
+      name: 'chartFilterPattern',
+      label: null,
+      type: FieldTypes.FILTER_PATTERN,
+      required: false,
+      props: {
+        checked: showChartFilter,
+        excludePattern: chartFilterPattern?.excludes ?? [],
+        getExcludeValue: getExcludeValue,
+        getIncludeValue: getIncludeValue,
+        handleChecked: (value: boolean) =>
+          handleShowFilter(value, ShowFilter.showChartFilter),
+        includePattern: chartFilterPattern?.includes ?? [],
+        type: FilterPatternEnum.CHART,
+      },
+      id: 'root/chartFilterPattern',
+      hasSeparator: true,
+    },
+    {
+      name: 'dataModelFilterPattern',
+      label: null,
+      type: FieldTypes.FILTER_PATTERN,
+      required: false,
+      props: {
+        checked: showDataModelFilter,
+        excludePattern: dataModelFilterPattern?.excludes ?? [],
+        getExcludeValue: getExcludeValue,
+        getIncludeValue: getIncludeValue,
+        handleChecked: (value: boolean) =>
+          handleShowFilter(value, ShowFilter.showDataModelFilter),
+        includePattern: dataModelFilterPattern?.includes ?? [],
+        type: FilterPatternEnum.DASHBOARD_DATAMODEL,
+      },
+      id: 'root/dataModelFilterPattern',
+      hasSeparator: true,
+    },
+    {
+      name: 'dbServiceNames',
+      label: t('label.database-service-name'),
+      type: FieldTypes.SELECT,
+      required: false,
+      id: 'root/dbServiceNames',
+      hasSeparator: true,
+      props: {
+        allowClear: true,
+        'data-testid': 'name',
+        mode: 'tags',
+        placeholder: t('label.add-entity', {
+          entity: t('label.database-service-name'),
+        }),
+        style: { width: '100%' },
+        value: databaseServiceNames,
+        onChange: handleDashBoardServiceNames,
+      },
+    },
+    loggerLevelField,
+    {
+      name: 'overrideOwner',
+      label: t('label.override-current-owner'),
+      type: FieldTypes.SWITCH,
+      required: false,
+      props: {
+        checked: overrideOwner,
+        handleCheck: handleOverrideOwner,
+        testId: 'enabled-override-owner',
+      },
+      id: 'root/overrideOwner',
+      hasSeparator: true,
+      helperText: t('message.enable-override-owner'),
+    },
+    includeTagsField,
+    includeDataModelsField,
+    {
+      name: 'markDeletedDashboards',
+      label: t('label.mark-deleted-entity', {
+        entity: t('label.dashboard-plural'),
+      }),
+      type: FieldTypes.SWITCH,
+      required: false,
+      props: {
+        checked: markDeletedDashboards,
+        handleCheck: handleMarkDeletedDashboards,
+        testId: 'mark-deleted',
+      },
+      id: 'root/markDeletedDashboards',
+      hasSeparator: true,
+      helperText: t('message.mark-deleted-entity-message', {
+        entity: t('label.dashboard-lowercase'),
+        entityPlural: t('label.dashboard-lowercase-plural'),
+      }),
+    },
+  ];
 
-  const getMarkDeletedEntitiesToggle = (
-    label: string,
-    description: string,
-    handleMarkDeletedEntities: () => void,
-    markDeletedEntities?: boolean
-  ) => {
-    return (
-      !isNil(markDeletedEntities) && (
-        <Field>
-          <div className="tw-flex tw-gap-1">
-            <label>{label}</label>
-            <ToggleSwitchV1
-              checked={markDeletedEntities}
-              handleCheck={handleMarkDeletedEntities}
-              testId="mark-deleted"
-            />
-          </div>
-          <p className="tw-text-grey-muted tw-mt-3">{description}</p>
-          {getSeparator('')}
-        </Field>
-      )
-    );
-  };
+  const messagingMetadataFields: FieldProp[] = [
+    {
+      name: 'topicFilterPattern',
+      label: null,
+      type: FieldTypes.FILTER_PATTERN,
+      required: false,
+      props: {
+        checked: showTopicFilter,
+        excludePattern: topicFilterPattern?.excludes ?? [],
+        getExcludeValue: getExcludeValue,
+        getIncludeValue: getIncludeValue,
+        handleChecked: (value: boolean) =>
+          handleShowFilter(value, ShowFilter.showTopicFilter),
+        includePattern: topicFilterPattern?.includes ?? [],
+        type: FilterPatternEnum.TOPIC,
+      },
+      id: 'root/topicFilterPattern',
+      hasSeparator: true,
+    },
+    generateSampleDataField,
+    loggerLevelField,
+    {
+      name: 'markDeletedTopics',
+      label: t('label.mark-deleted-entity', {
+        entity: t('label.topic-plural'),
+      }),
+      type: FieldTypes.SWITCH,
+      required: false,
+      props: {
+        checked: markDeletedTopics,
+        handleCheck: handleMarkDeletedTopics,
+        testId: 'mark-deleted',
+      },
+      id: 'root/markDeletedTopics',
+      hasSeparator: true,
+      helperText: t('message.mark-deleted-entity-message', {
+        entity: t('label.topic-lowercase'),
+        entityPlural: t('label.topic-lowercase-plural'),
+      }),
+    },
+  ];
 
-  const getDatabaseFieldToggles = () => {
-    return (
-      <>
-        <div>
-          <Field>
-            <div className="tw-flex tw-gap-1">
-              <label>
-                {t('label.include-entity', { entity: t('label.view-plural') })}
-              </label>
-              <ToggleSwitchV1
-                checked={includeView}
-                handleCheck={handleIncludeViewToggle}
-                testId="include-views"
-              />
-            </div>
-            <p className="tw-text-grey-muted tw-mt-3">
-              {t('message.include-assets-message', {
-                assets: t('label.view-plural'),
-              })}
-            </p>
-            {getSeparator('')}
-          </Field>
-          {getIncludesTagToggle()}
-          {getIncludesDataModelsToggle()}
-          {getDebugLogToggle()}
-          {getMarkDeletedEntitiesToggle(
-            t('label.mark-deleted-table-plural'),
-            t('message.mark-deleted-table-message'),
-            handleMarkDeletedTables,
-            markDeletedTables
-          )}
-          {!isNil(markAllDeletedTables) && (
-            <Field>
-              <div className="tw-flex tw-gap-1">
-                <label>{t('label.mark-all-deleted-table-plural')}</label>
-                <ToggleSwitchV1
-                  checked={markAllDeletedTables}
-                  handleCheck={handleMarkAllDeletedTables}
-                  testId="mark-deleted-filter-only"
-                />
-              </div>
-              <p className="tw-text-grey-muted tw-mt-3">
-                {t('message.mark-all-deleted-table-message')}
-              </p>
-              {getSeparator('')}
-            </Field>
-          )}
-        </div>
-      </>
-    );
-  };
+  const pipelineMetadataFields: FieldProp[] = [
+    {
+      name: 'pipelineFilterPattern',
+      label: null,
+      type: FieldTypes.FILTER_PATTERN,
+      required: false,
+      props: {
+        checked: showPipelineFilter,
+        excludePattern: pipelineFilterPattern?.excludes ?? [],
+        getExcludeValue: getExcludeValue,
+        getIncludeValue: getIncludeValue,
+        handleChecked: (value: boolean) =>
+          handleShowFilter(value, ShowFilter.showPipelineFilter),
+        includePattern: pipelineFilterPattern?.includes ?? [],
+        type: FilterPatternEnum.PIPELINE,
+      },
+      id: 'root/pipelineFilterPattern',
+      hasSeparator: true,
+    },
+    {
+      name: 'includeLineage',
+      label: t('label.include-entity', {
+        entity: t('label.lineage-lowercase'),
+      }),
+      type: FieldTypes.SWITCH,
+      required: false,
+      props: {
+        checked: includeLineage,
+        handleCheck: handleIncludeLineage,
+        testId: 'include-lineage',
+      },
+      id: 'root/includeLineage',
+      hasSeparator: true,
+      helperText: t('message.include-lineage-message'),
+    },
+    loggerLevelField,
+    includeTagsField,
+    {
+      name: 'markDeletedPipelines',
+      label: t('label.mark-deleted-entity', {
+        entity: t('label.pipeline-plural'),
+      }),
+      type: FieldTypes.SWITCH,
+      required: false,
+      props: {
+        checked: markDeletedPipelines,
+        handleCheck: handleMarkDeletedPipelines,
+        testId: 'mark-deleted',
+      },
+      id: 'root/markDeletedPipelines',
+      hasSeparator: true,
+      helperText: t('message.mark-deleted-entity-message', {
+        entity: t('label.pipeline-lowercase'),
+        entityPlural: t('label.pipeline-lowercase-plural'),
+      }),
+    },
+  ];
 
-  const getPipelineFieldToggles = () => {
-    return (
-      <div>
-        <Field>
-          <div className="tw-flex tw-gap-1">
-            <label>
-              {t('label.include-entity', {
-                entity: t('label.lineage-lowercase'),
-              })}
-            </label>
-            <ToggleSwitchV1
-              checked={includeLineage}
-              handleCheck={handleIncludeLineage}
-              testId="include-lineage"
-            />
-          </div>
-          <p className="tw-text-grey-muted tw-mt-3">
-            {t('message.include-lineage-message')}
-          </p>
-          {getSeparator('')}
-        </Field>
-        {getDebugLogToggle()}
-      </div>
-    );
-  };
-  const getFqnForFilteringToggles = () => {
-    return (
-      <Field>
-        <div className="tw-flex tw-gap-1">
-          <label>{t('label.use-fqn-for-filtering')}</label>
-          <ToggleSwitchV1
-            checked={useFqnFilter}
-            handleCheck={handleFqnFilter}
-            testId="include-lineage"
-          />
-        </div>
-        <p className="tw-text-grey-muted tw-mt-3">
-          {t('message.use-fqn-for-filtering-message')}
-        </p>
-        {getSeparator('')}
-      </Field>
-    );
-  };
+  const mlModelMetadataFields: FieldProp[] = [
+    {
+      name: 'mlModelFilterPattern',
+      label: null,
+      type: FieldTypes.FILTER_PATTERN,
+      required: false,
+      props: {
+        checked: showMlModelFilter,
+        excludePattern: mlModelFilterPattern?.excludes ?? [],
+        getExcludeValue: getExcludeValue,
+        getIncludeValue: getIncludeValue,
+        handleChecked: (value: boolean) =>
+          handleShowFilter(value, ShowFilter.showMlModelFilter),
+        includePattern: mlModelFilterPattern?.includes ?? [],
+        type: FilterPatternEnum.MLMODEL,
+      },
+      id: 'root/mlModelFilterPattern',
+      hasSeparator: true,
+    },
+    {
+      name: 'markDeletedMlModels',
+      label: t('label.mark-deleted-entity', {
+        entity: t('label.ml-model-plural'),
+      }),
+      type: FieldTypes.SWITCH,
+      required: false,
+      props: {
+        checked: markDeletedMlModels,
+        handleCheck: handleMarkDeletedMlModels,
+        testId: 'mark-deleted',
+      },
+      id: 'root/markDeletedMlModels',
+      hasSeparator: true,
+      helperText: t('message.mark-deleted-entity-message', {
+        entity: t('label.ml-model-lowercase'),
+        entityPlural: t('label.ml-model-lowercase-plural'),
+      }),
+    },
+  ];
 
-  const getProcessPiiTogglesForProfiler = () => {
-    return (
-      <Fragment>
-        <Field>
-          <div className="tw-flex tw-gap-1">
-            <label>{t('label.auto-tag-pii-uppercase')}</label>
-            <ToggleSwitchV1
-              checked={processPii}
-              handleCheck={handleProcessPii}
-              testId="include-lineage"
-            />
-          </div>
-          <p className="tw-text-grey-muted tw-mt-3">
-            {t('message.process-pii-sensitive-column-message-profiler')}
-          </p>
-          {processPii && (
-            <>
-              {getSeparator('')}
-              <Typography.Paragraph className="text-grey-muted m-t-0 m-b-xs text-sm">
-                {t('message.confidence-percentage-message')}
-              </Typography.Paragraph>
-              <SliderWithInput
-                value={confidence || 80}
-                onChange={handleConfidenceScore}
-              />
-            </>
-          )}
-        </Field>
-      </Fragment>
-    );
-  };
-
-  const getDashboardDBServiceName = () => {
-    return (
-      <Field>
-        <label className="tw-block tw-form-label tw-mb-1" htmlFor="name">
-          {t('label.database-service-name')}
-        </label>
-        <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-sm">
-          {t('message.database-service-name-message')}
-        </p>
-        <Select
-          allowClear
-          data-testid="name"
-          id="name"
-          mode="tags"
-          placeholder={t('label.add-entity', {
-            entity: t('label.database-service-name'),
-          })}
-          style={{ width: '100%' }}
-          value={databaseServiceNames}
-          onChange={handleDashBoardServiceNames}
-        />
-        {getSeparator('')}
-      </Field>
-    );
-  };
-
-  const getFilterPatterns = () => {
-    return (
-      <div>
-        <FilterPattern
-          checked={showDatabaseFilter}
-          excludePattern={databaseFilterPattern?.excludes ?? []}
-          getExcludeValue={getExcludeValue}
-          getIncludeValue={getIncludeValue}
-          handleChecked={(value) =>
-            handleShowFilter(value, ShowFilter.showDatabaseFilter)
-          }
-          includePattern={databaseFilterPattern?.includes ?? []}
-          includePatternExtraInfo={
-            data.database
-              ? t('message.include-database-filter-extra-information')
-              : undefined
-          }
-          isDisabled={data.isDatabaseFilterDisabled}
-          type={FilterPatternEnum.DATABASE}
-        />
-
-        <FilterPattern
-          checked={showSchemaFilter}
-          excludePattern={schemaFilterPattern?.excludes ?? []}
-          getExcludeValue={getExcludeValue}
-          getIncludeValue={getIncludeValue}
-          handleChecked={(value) =>
-            handleShowFilter(value, ShowFilter.showSchemaFilter)
-          }
-          includePattern={schemaFilterPattern?.includes ?? []}
-          type={FilterPatternEnum.SCHEMA}
-        />
-        <FilterPattern
-          checked={showTableFilter}
-          excludePattern={tableFilterPattern?.excludes ?? []}
-          getExcludeValue={getExcludeValue}
-          getIncludeValue={getIncludeValue}
-          handleChecked={(value) =>
-            handleShowFilter(value, ShowFilter.showTableFilter)
-          }
-          includePattern={tableFilterPattern?.includes ?? []}
-          showSeparator={false}
-          type={FilterPatternEnum.TABLE}
-        />
-      </div>
-    );
-  };
-
-  const getMetadataFilterPatternField = () => {
-    switch (serviceCategory) {
-      case ServiceCategory.DATABASE_SERVICES:
-        return (
-          <Fragment>
-            {getFilterPatterns()}
-            {getSeparator('')}
-            {getFqnForFilteringToggles()}
-            {getDatabaseFieldToggles()}
-          </Fragment>
-        );
-      case ServiceCategory.DASHBOARD_SERVICES:
-        return (
-          <Fragment>
-            <FilterPattern
-              checked={showDashboardFilter}
-              excludePattern={dashboardFilterPattern.excludes ?? []}
-              getExcludeValue={getExcludeValue}
-              getIncludeValue={getIncludeValue}
-              handleChecked={(value) =>
-                handleShowFilter(value, ShowFilter.showDashboardFilter)
-              }
-              includePattern={dashboardFilterPattern.includes ?? []}
-              type={FilterPatternEnum.DASHBOARD}
-            />
-            <FilterPattern
-              checked={showChartFilter}
-              excludePattern={chartFilterPattern.excludes ?? []}
-              getExcludeValue={getExcludeValue}
-              getIncludeValue={getIncludeValue}
-              handleChecked={(value) =>
-                handleShowFilter(value, ShowFilter.showChartFilter)
-              }
-              includePattern={chartFilterPattern.includes ?? []}
-              showSeparator={false}
-              type={FilterPatternEnum.CHART}
-            />
-            <FilterPattern
-              checked={showDataModelFilter}
-              excludePattern={dataModelFilterPattern.excludes ?? []}
-              getExcludeValue={getExcludeValue}
-              getIncludeValue={getIncludeValue}
-              handleChecked={(value) =>
-                handleShowFilter(value, ShowFilter.showDataModelFilter)
-              }
-              includePattern={dataModelFilterPattern.includes ?? []}
-              showSeparator={false}
-              type={FilterPatternEnum.DASHBOARD_DATAMODEL}
-            />
-            {getSeparator('')}
-            {getDashboardDBServiceName()}
-            {getDebugLogToggle()}
-            {getOverrideOwnerToggle()}
-            {getIncludesTagToggle()}
-            {getIncludesDataModelsToggle()}
-            {getMarkDeletedEntitiesToggle(
-              t('label.mark-deleted-entity', {
-                entity: t('label.dashboard-plural'),
-              }),
-              t('message.mark-deleted-entity-message', {
-                entity: t('label.dashboard-lowercase'),
-                entityPlural: t('label.dashboard-lowercase-plural'),
-              }),
-              handleMarkDeletedDashboards,
-              markDeletedDashboards
-            )}
-          </Fragment>
-        );
-
-      case ServiceCategory.MESSAGING_SERVICES:
-        return (
-          <Fragment>
-            <FilterPattern
-              checked={showTopicFilter}
-              excludePattern={topicFilterPattern.excludes ?? []}
-              getExcludeValue={getExcludeValue}
-              getIncludeValue={getIncludeValue}
-              handleChecked={(value) =>
-                handleShowFilter(value, ShowFilter.showTopicFilter)
-              }
-              includePattern={topicFilterPattern.includes ?? []}
-              showSeparator={false}
-              type={FilterPatternEnum.TOPIC}
-            />
-            {getSeparator('')}
-            {getIngestSampleToggle(
-              t('label.ingest-sample-data'),
-              t('message.ingest-sample-data-for-entity', {
-                entity: t('label.topic-lowercase'),
-              })
-            )}
-            {getDebugLogToggle()}
-            {getMarkDeletedEntitiesToggle(
-              t('label.mark-deleted-entity', {
-                entity: t('label.topic-plural'),
-              }),
-              t('message.mark-deleted-entity-message', {
-                entity: t('label.topic-lowercase'),
-                entityPlural: t('label.topic-lowercase-plural'),
-              }),
-              handleMarkDeletedTopics,
-              markDeletedTopics
-            )}
-          </Fragment>
-        );
-      case ServiceCategory.PIPELINE_SERVICES:
-        return (
-          <Fragment>
-            <FilterPattern
-              checked={showPipelineFilter}
-              excludePattern={pipelineFilterPattern.excludes ?? []}
-              getExcludeValue={getExcludeValue}
-              getIncludeValue={getIncludeValue}
-              handleChecked={(value) =>
-                handleShowFilter(value, ShowFilter.showPipelineFilter)
-              }
-              includePattern={pipelineFilterPattern.includes ?? []}
-              showSeparator={false}
-              type={FilterPatternEnum.PIPELINE}
-            />
-            {getSeparator('')}
-            {getPipelineFieldToggles()}
-            {getIncludesTagToggle()}
-            {getMarkDeletedEntitiesToggle(
-              t('label.mark-deleted-entity', {
-                entity: t('label.pipeline-plural'),
-              }),
-              t('message.mark-deleted-entity-message', {
-                entity: t('label.pipeline-lowercase'),
-                entityPlural: t('label.pipeline-lowercase-plural'),
-              }),
-              handleMarkDeletedPipelines,
-              markDeletedPipelines
-            )}
-          </Fragment>
-        );
-
-      case ServiceCategory.ML_MODEL_SERVICES:
-        return (
-          <Fragment>
-            <FilterPattern
-              checked={showMlModelFilter}
-              excludePattern={mlModelFilterPattern.excludes ?? []}
-              getExcludeValue={getExcludeValue}
-              getIncludeValue={getIncludeValue}
-              handleChecked={(value) =>
-                handleShowFilter(value, ShowFilter.showMlModelFilter)
-              }
-              includePattern={mlModelFilterPattern.includes ?? []}
-              showSeparator={false}
-              type={FilterPatternEnum.MLMODEL}
-            />
-            {getSeparator('')}
-            {getMarkDeletedEntitiesToggle(
-              t('label.mark-deleted-entity', {
-                entity: t('label.ml-model-plural'),
-              }),
-              t('message.mark-deleted-entity-message', {
-                entity: t('label.ml-model-lowercase'),
-                entityPlural: t('label.ml-model-lowercase-plural'),
-              }),
-              handleMarkDeletedMlModels,
-              markDeletedMlModels
-            )}
-          </Fragment>
-        );
-
-      case ServiceCategory.STORAGE_SERVICES:
-        return (
-          <FilterPattern
-            checked={showContainerFilter}
-            excludePattern={containerFilterPattern?.excludes ?? []}
-            getExcludeValue={getExcludeValue}
-            getIncludeValue={getIncludeValue}
-            handleChecked={(value) =>
-              handleShowFilter(value, ShowFilter.showContainerFilter)
-            }
-            includePattern={containerFilterPattern?.includes ?? []}
-            type={FilterPatternEnum.CONTAINER}
-          />
-        );
-      default:
-        return <></>;
-    }
-  };
+  const objectStoreMetadataFields: FieldProp[] = [
+    {
+      name: 'containerFilterPattern',
+      label: null,
+      type: FieldTypes.FILTER_PATTERN,
+      required: false,
+      props: {
+        checked: showContainerFilter,
+        excludePattern: containerFilterPattern?.excludes ?? [],
+        getExcludeValue: getExcludeValue,
+        getIncludeValue: getIncludeValue,
+        handleChecked: (value: boolean) =>
+          handleShowFilter(value, ShowFilter.showContainerFilter),
+        includePattern: containerFilterPattern?.includes ?? [],
+        type: FilterPatternEnum.CONTAINER,
+      },
+      id: 'root/containerFilterPattern',
+      hasSeparator: true,
+    },
+  ];
 
   const getMetadataFields = () => {
-    return (
-      <>
-        <Field>
-          <label className="tw-block tw-form-label tw-mb-1" htmlFor="name">
-            {t('label.name')}
-          </label>
-          <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-sm">
-            {t('message.ingestion-pipeline-name-message')}
-          </p>
-          <input
-            className="tw-form-inputs tw-form-inputs-padding"
-            data-testid="name"
-            disabled={formType === FormSubmitType.EDIT}
-            id="name"
-            name="name"
-            type="text"
-            value={ingestionName}
-            onChange={handleIngestionName}
-          />
-          {getSeparator('')}
-        </Field>
-        <div>{getMetadataFilterPatternField()}</div>
-      </>
-    );
+    let fields = [...commonMetadataFields];
+
+    switch (serviceCategory) {
+      case ServiceCategory.DATABASE_SERVICES:
+        fields = [...fields, ...databaseMetadataFields];
+
+        break;
+      case ServiceCategory.DASHBOARD_SERVICES:
+        fields = [...fields, ...dashboardMetadataFields];
+
+        break;
+      case ServiceCategory.PIPELINE_SERVICES:
+        fields = [...fields, ...pipelineMetadataFields];
+
+        break;
+      case ServiceCategory.MESSAGING_SERVICES:
+        fields = [...fields, ...messagingMetadataFields];
+
+        break;
+      case ServiceCategory.ML_MODEL_SERVICES:
+        fields = [...fields, ...mlModelMetadataFields];
+
+        break;
+      case ServiceCategory.STORAGE_SERVICES:
+        fields = [...fields, ...objectStoreMetadataFields];
+
+        break;
+
+      default:
+        break;
+    }
+
+    return generateFormFields(fields);
   };
 
   const getUsageFields = () => {
-    return (
-      <>
-        <Field>
-          <label
-            className="tw-block tw-form-label tw-mb-1"
-            htmlFor="query-log-duration">
-            {t('label.query-log-duration')}
-          </label>
-          <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-sm">
-            {t('message.query-log-duration-message')}
-          </p>
-          <input
-            className="tw-form-inputs tw-form-inputs-padding"
-            data-testid="query-log-duration"
-            id="query-log-duration"
-            name="query-log-duration"
-            type="number"
-            value={queryLogDuration}
-            onChange={handleQueryLogDuration}
-          />
-          {getSeparator('')}
-        </Field>
-        <Field>
-          <label
-            className="tw-block tw-form-label tw-mb-1"
-            htmlFor="stage-file-location">
-            {t('label.stage-file-location')}
-          </label>
-          <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-sm">
-            {t('message.stage-file-location-message')}
-          </p>
-          <input
-            className="tw-form-inputs tw-form-inputs-padding"
-            data-testid="stage-file-location"
-            id="stage-file-location"
-            name="stage-file-location"
-            type="text"
-            value={stageFileLocation}
-            onChange={handleStageFileLocation}
-          />
-          {getSeparator('')}
-        </Field>
-        <Field>
-          <label
-            className="tw-block tw-form-label tw-mb-1"
-            htmlFor="result-limit">
-            {t('label.result-limit')}
-          </label>
-          <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-sm">
-            {t('message.result-limit-message')}
-          </p>
-          <input
-            className="tw-form-inputs tw-form-inputs-padding"
-            data-testid="result-limit"
-            id="result-limit"
-            name="result-limit"
-            type="number"
-            value={resultLimit}
-            onChange={handleResultLimit}
-          />
-          {getSeparator('')}
-        </Field>
-        {getDebugLogToggle()}
-      </>
-    );
+    const fields: FieldProp[] = [
+      queryLogDurationField,
+      {
+        name: 'stageFileLocation',
+        label: t('label.stage-file-location'),
+        type: FieldTypes.TEXT,
+        helperText: t('message.stage-file-location-message'),
+        hasSeparator: true,
+        props: {
+          className: 'tw-form-inputs tw-form-inputs-padding',
+          'data-testid': 'stage-file-location',
+          value: stageFileLocation,
+          onChange: handleStageFileLocation,
+        },
+        id: 'stageFileLocation',
+        required: false,
+      },
+      rateLimitField,
+      loggerLevelField,
+    ];
+
+    return generateFormFields(fields);
   };
 
   const getLineageFields = () => {
-    return (
-      <>
-        <Field>
-          <label
-            className="tw-block tw-form-label tw-mb-1"
-            htmlFor="query-log-duration">
-            {t('label.query-log-duration')}
-          </label>
-          <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-sm">
-            {t('message.query-log-duration-message')}
-          </p>
-          <input
-            className="tw-form-inputs tw-form-inputs-padding"
-            data-testid="query-log-duration"
-            id="query-log-duration"
-            name="query-log-duration"
-            type="number"
-            value={queryLogDuration}
-            onChange={handleQueryLogDuration}
-          />
-          {getSeparator('')}
-        </Field>
-        <Field>
-          <label
-            className="tw-block tw-form-label tw-mb-1"
-            htmlFor="result-limit">
-            {t('label.result-limit')}
-          </label>
-          <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-sm">
-            {t('message.result-limit-message')}
-          </p>
-          <input
-            className="tw-form-inputs tw-form-inputs-padding"
-            data-testid="result-limit"
-            id="result-limit"
-            name="result-limit"
-            type="number"
-            value={resultLimit}
-            onChange={handleResultLimit}
-          />
-          {getSeparator('')}
-        </Field>
-        {getDebugLogToggle()}
-      </>
-    );
+    const fields: FieldProp[] = [
+      queryLogDurationField,
+      rateLimitField,
+      loggerLevelField,
+    ];
+
+    return generateFormFields(fields);
   };
 
   const getProfilerFields = () => {
-    return (
-      <>
-        <div>
-          <Field>
-            <label className="tw-block tw-form-label tw-mb-1" htmlFor="name">
-              {t('label.name')}
-            </label>
-            <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-sm">
-              {t('message.ingestion-pipeline-name-message')}
-            </p>
-            <input
-              className="tw-form-inputs tw-form-inputs-padding"
-              data-testid="name"
-              id="name"
-              name="name"
-              type="text"
-              value={ingestionName}
-              onChange={handleIngestionName}
-            />
-            {getSeparator('')}
-          </Field>
-        </div>
-        {getFilterPatterns()}
-        {getSeparator('')}
-        {getProfileSample()}
-        {getSeparator('')}
-        {getThreadCount()}
-        {getSeparator('')}
-        {getTimeoutSeconds()}
-        {getSeparator('')}
-        {getIngestSampleToggle(
-          t('label.ingest-sample-data'),
-          t('message.ingest-sample-data-for-entity', {
-            entity: t('label.profile-lowercase'),
-          })
-        )}
-        {getDebugLogToggle()}
-        {getProcessPiiTogglesForProfiler()}
-        <div>
-          <Field>
-            <label className="tw-block tw-form-label tw-mb-1" htmlFor="name">
-              {t('label.description')}
-            </label>
-            <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-sm">
-              {t('message.pipeline-description-message')}
-            </p>
-            <RichTextEditor
-              data-testid="description"
-              initialValue={description}
-              ref={markdownRef}
-            />
-            {getSeparator('')}
-          </Field>
-        </div>
-      </>
-    );
+    const fields: FieldProp[] = [
+      ...commonMetadataFields,
+      ...databaseServiceFilterPatternFields,
+      {
+        name: 'profileSampleType',
+        id: 'profileSampleType',
+        label: t('label.profile-sample-type', {
+          type: t('label.type'),
+        }),
+        type: FieldTypes.SELECT,
+        props: {
+          'data-testid': 'profile-sample',
+          options: PROFILE_SAMPLE_OPTIONS,
+          value: profileSampleType,
+          onChange: handleProfileSampleTypeChange,
+        },
+        required: false,
+      },
+      ...(profileSampleType === ProfileSampleType.Percentage
+        ? [
+            {
+              name: 'profileSample',
+              id: 'profileSample',
+              label: capitalize(ProfileSampleType.Percentage),
+              helperText: t('message.profile-sample-percentage-message'),
+              required: false,
+              type: FieldTypes.SLIDER_INPUT,
+              props: {
+                value: profileSample || 100,
+                onChange: handleProfileSample,
+              },
+            },
+          ]
+        : []),
+      ...(profileSampleType === ProfileSampleType.Rows
+        ? [
+            {
+              name: 'profileSample',
+              id: 'profileSample',
+              label: capitalize(ProfileSampleType.Rows),
+              helperText: t('message.profile-sample-row-count-message'),
+              required: false,
+              type: FieldTypes.NUMBER,
+              props: {
+                className: 'w-full',
+                'data-testid': 'metric-number-input',
+                min: 0,
+                placeholder: t('label.please-enter-value', {
+                  name: t('label.row-count-lowercase'),
+                }),
+                value: profileSample,
+                onChange: handleProfileSample,
+              },
+            },
+          ]
+        : []),
+      {
+        name: 'threadCount',
+        id: 'threadCount',
+        helperText: t('message.thread-count-message'),
+        label: t('label.entity-count', {
+          entity: t('label.thread'),
+        }),
+        required: false,
+        type: FieldTypes.NUMBER,
+        props: {
+          className: 'tw-form-inputs tw-form-inputs-padding tw-w-24',
+          'data-testid': 'threadCount',
+          placeholder: '5',
+          value: threadCount,
+          onChange: handleThreadCount,
+        },
+      },
+      {
+        name: 'timeoutSeconds',
+        id: 'timeoutSeconds',
+        helperText: t('message.profiler-timeout-seconds-message'),
+        label: t('label.profiler-timeout-second-plural-label'),
+        required: false,
+        type: FieldTypes.NUMBER,
+        props: {
+          className: 'tw-form-inputs tw-form-inputs-padding tw-w-24',
+          'data-testid': 'timeoutSeconds',
+          placeholder: '43200',
+          value: timeoutSeconds,
+          onChange: handleTimeoutSeconds,
+        },
+      },
+      generateSampleDataField,
+      loggerLevelField,
+      {
+        name: 'processPiiSensitive',
+        label: t('label.auto-tag-pii-uppercase'),
+        type: FieldTypes.SWITCH,
+        required: false,
+        props: {
+          checked: processPii,
+          handleCheck: handleProcessPii,
+          testId: 'process-pii',
+        },
+        id: 'processPiiSensitive',
+        hasSeparator: processPii,
+        helperText: t('message.process-pii-sensitive-column-message-profiler'),
+      },
+      ...(processPii
+        ? [
+            {
+              name: 'confidence',
+              id: 'confidence',
+              label: null,
+              helperText: t('message.confidence-percentage-message'),
+              required: false,
+              type: FieldTypes.SLIDER_INPUT,
+              props: {
+                value: confidence || 80,
+                onChange: handleConfidenceScore,
+              },
+            },
+          ]
+        : []),
+      {
+        name: 'description',
+        id: 'description',
+        label: t('label.description'),
+        helperText: t('message.pipeline-description-message'),
+        required: false,
+        hasSeparator: true,
+        props: {
+          'data-testid': 'description',
+          initialValue: description,
+          ref: markdownRef,
+        },
+        type: FieldTypes.DESCRIPTION,
+      },
+    ];
+
+    return generateFormFields(fields);
   };
 
   const getIngestionPipelineFields = () => {
@@ -1082,9 +986,14 @@ const ConfigureIngestion = ({
 
   return (
     <Form
-      className="p-x-xs"
+      className="p-x-xs configure-ingestion-form"
       data-testid="configure-ingestion-container"
-      layout="vertical">
+      layout="vertical"
+      onFocus={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        onFocus(e.target.id);
+      }}>
       {getIngestionPipelineFields()}
 
       <Field className="d-flex justify-end">
