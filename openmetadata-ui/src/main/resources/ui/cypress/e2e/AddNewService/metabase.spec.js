@@ -41,7 +41,9 @@ describe('Metabase Ingestion', () => {
       .click();
 
     const connectionInput = () => {
-      cy.get('#root\\/username').type(Cypress.env('metabaseUsername'));
+      cy.get('#root\\/username')
+        .scrollIntoView()
+        .type(Cypress.env('metabaseUsername'));
       cy.get('#root\\/password')
         .scrollIntoView()
         .type(Cypress.env('metabasePassword'));
@@ -52,10 +54,12 @@ describe('Metabase Ingestion', () => {
 
     const addIngestionInput = () => {
       cy.get('[data-testid="dashboard-filter-pattern-checkbox"]')
+        .scrollIntoView()
         .invoke('show')
         .trigger('mouseover')
         .check();
       cy.get('[data-testid="filter-pattern-includes-dashboard"]')
+        .scrollIntoView()
         .should('be.visible')
         .type(tableName);
     };
