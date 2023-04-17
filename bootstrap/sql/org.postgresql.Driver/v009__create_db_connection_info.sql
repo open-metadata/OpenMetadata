@@ -188,7 +188,7 @@ and json#>'{connection,config,personalAccessTokenSecret}' is not null;
 
 -- Removed property from metadataService.json
 UPDATE metadata_service_entity
-SET json = json::jsonb #- '{,allowServiceCreation}'
+SET json = json::jsonb #- '{allowServiceCreation}'
 WHERE serviceType in ('Amundsen', 'Atlas', 'MetadataES', 'OpenMetadata');
 
 UPDATE metadata_service_entity
