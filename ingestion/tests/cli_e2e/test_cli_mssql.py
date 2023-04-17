@@ -132,6 +132,19 @@ class MSSQLCliTest(CliCommonDB.TestSuite, SQACommonMethods):
         return "mssql.e2e_cli_tests.dbo.persons"
 
     @staticmethod
+    def get_profiler_time_partition() -> dict:
+        return {
+            "fullyQualifiedName": "mssql.e2e_cli_tests.dbo.persons",
+            "partitionConfig": {
+                "enablePartitioning": True,
+                "partitionColumnName": "birthdate",
+                "partitionIntervalType": "TIME-UNIT",
+                "partitionInterval": 30,
+                "partitionIntervalUnit": "YEAR",
+            },
+        }
+
+    @staticmethod
     def get_includes_schemas() -> List[str]:
         return ["dbo"]
 
