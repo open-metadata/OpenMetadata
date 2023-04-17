@@ -51,7 +51,7 @@ const TagsTask: FC<TagsTaskProps> = ({
 
   const isTaskClosed = task?.status === ThreadTaskStatus.Closed;
 
-  const getDiffView = useMemo(() => {
+  const diffView = useMemo(() => {
     if (!oldValue && !newValue) {
       return (
         <div className="tw-border tw-border-main tw-p-2 tw-rounded tw-my-1 tw-mb-3">
@@ -76,7 +76,7 @@ const TagsTask: FC<TagsTaskProps> = ({
    *
    * @returns Suggested tags diff
    */
-  const getSuggestedTagDiff = useMemo(() => {
+  const suggestedTagsDiff = useMemo(() => {
     if (!suggestion && !oldValue) {
       return (
         <span className="tw-p-2 tw-text-grey-muted">
@@ -99,7 +99,7 @@ const TagsTask: FC<TagsTaskProps> = ({
     <div data-testid="task-tags-tabs">
       <Fragment>
         {isTaskClosed ? (
-          getDiffView
+          diffView
         ) : (
           <div data-testid="tags-task">
             {isRequestTag && (
@@ -107,7 +107,7 @@ const TagsTask: FC<TagsTaskProps> = ({
                 {isTaskActionEdit && hasEditAccess ? (
                   <TagSuggestion value={value} onChange={onChange} />
                 ) : (
-                  getSuggestedTagDiff
+                  suggestedTagsDiff
                 )}
               </div>
             )}
@@ -120,7 +120,7 @@ const TagsTask: FC<TagsTaskProps> = ({
                     onChange={onChange}
                   />
                 ) : (
-                  getSuggestedTagDiff
+                  suggestedTagsDiff
                 )}
               </div>
             )}
