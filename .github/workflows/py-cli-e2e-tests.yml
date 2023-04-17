@@ -21,7 +21,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        e2e-test: ['python', 'mysql', 'bigquery', 'snowflake', 'dbt_redshift', 'mssql', 'vertica', 'tableau']
+        e2e-test: ['bigquery', 'dbt_redshift', 'mssql', 'mysql', 'redash', 'snowflake', 'tableau', 'vertica', 'python']
     environment: test
 
     steps:
@@ -108,6 +108,9 @@ jobs:
         E2E_TABLEAU_PASSWORD: ${{ secrets.E2E_TABLEAU_PASSWORD }}
         E2E_TABLEAU_HOST_PORT: ${{ secrets.E2E_TABLEAU_HOST_PORT }}
         E2E_TABLEAU_SITE: ${{ secrets.E2E_TABLEAU_SITE }}
+        E2E_REDASH_HOST_PORT: ${{ secrets.E2E_REDASH_HOST_PORT }}
+        E2E_REDASH_USERNAME: ${{ secrets.E2E_REDASH_USERNAME }}
+        E2E_REDASH_API_KEY: ${{ secrets.E2E_REDASH_API_KEY }}
       run: |
         source env/bin/activate
         export SITE_CUSTOMIZE_PATH=$(python -c "import site; import os; from pathlib import Path; print(os.path.relpath(site.getsitepackages()[0], str(Path.cwd())))")/sitecustomize.py
