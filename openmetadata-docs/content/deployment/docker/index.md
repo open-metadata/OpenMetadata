@@ -238,6 +238,31 @@ Replace the environment variables values with the RDS and OpenSearch Service one
 docker compose --env-file ./config/.env.prod up -d openmetadata_server
 ```
 
+## Troubleshooting
+
+### Java Memory Heap Issue
+
+If your openmetadata Docker Compose logs speaks about the below issue -
+
+```
+Exception: java.lang.OutOfMemoryError thrown from the UncaughtExceptionHandler in thread "AsyncAppender-Worker-async-file-appender"
+Exception in thread "pool-5-thread-1" java.lang.OutOfMemoryError: Java heap space
+Exception in thread "AsyncAppender-Worker-async-file-appender" java.lang.OutOfMemoryError: Java heap space
+Exception in thread "dw-46" java.lang.OutOfMemoryError: Java heap space
+Exception in thread "AsyncAppender-Worker-async-console-appender" java.lang.OutOfMemoryError: Java heap space
+```
+
+This is due to the default JVM Heap Space configuration (1 GiB) being not enough for your workloads. In order to resolve this issue, head over to your custom openmetadata environment variable file and append the below environment variable
+
+```
+#environment variable file
+OPENMETADATA_HEAP_OPTS="-Xmx2G -Xms2G"
+```
+
+The flag `Xmx` specifies the maximum memory allocation pool for a Java virtual machine (JVM), while `Xms` specifies the initial memory allocation pool.
+
+Restart the OpenMetadata Docker Compose Application using `docker compose --env-file my-env-file -f docker-compose.yml up -d` which will recreate the containers with new environment variable values you have provided.
+
 # Production Deployment
 
 If you are planning on going to PROD, we also recommend taking a look at the following
