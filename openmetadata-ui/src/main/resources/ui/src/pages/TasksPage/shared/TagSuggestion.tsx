@@ -87,7 +87,7 @@ const TagSuggestion: React.FC<TagSuggestionProps> = ({ onChange, value }) => {
       newTags = selectedTag.map((t) => {
         return {
           tagFQN: t,
-          source: (tagList as TagOption[]).find((tag) => tag.fqn === t)?.source,
+          source: tagList.find((tag) => tag.fqn === t)?.source,
         } as EntityTags;
       });
     }

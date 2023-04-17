@@ -552,6 +552,38 @@ const TaskDetailPage = () => {
 
   const hasTaskUpdateAccess = () => hasEditAccess() || isPartOfAssigneeTeam;
 
+  const actionButtons = useMemo(() => {
+    return hasEditAccess() ? (
+      <Dropdown.Button
+        className="ant-btn-primary-dropdown"
+        data-testid="complete-task"
+        htmlType="submit"
+        icon={<DownOutlined />}
+        menu={{
+          items: TASK_ACTION_LIST,
+          selectable: true,
+          selectedKeys: [taskAction.key],
+          onClick: handleMenuItemClick,
+        }}
+        trigger={['click']}
+        type="primary">
+        {taskAction.label}
+      </Dropdown.Button>
+    ) : (
+      <Button
+        className="ant-btn-primary-custom"
+        type="primary"
+        onClick={(_) =>
+          onTaskResolve({
+            updateTags: tagsSuggestion,
+            description: suggestion,
+          })
+        }>
+        {t('label.accept-suggestion')}
+      </Button>
+    );
+  }, [hasEditAccess, taskAction, tagsSuggestion, suggestion]);
+
   return (
     <>
       {isTaskLoading ? (
@@ -750,34 +782,8 @@ const TaskDetailPage = () => {
 
                       {isTaskClosed ? (
                         <ClosedTask task={taskDetail.task} />
-                      ) : hasEditAccess() ? (
-                        <Dropdown.Button
-                          className="ant-btn-primary-dropdown"
-                          data-testid="complete-task"
-                          htmlType="submit"
-                          icon={<DownOutlined />}
-                          menu={{
-                            items: TASK_ACTION_LIST,
-                            selectable: true,
-                            selectedKeys: [taskAction.key],
-                            onClick: handleMenuItemClick,
-                          }}
-                          trigger={['click']}
-                          type="primary">
-                          {taskAction.label}
-                        </Dropdown.Button>
                       ) : (
-                        <Button
-                          className="ant-btn-primary-custom"
-                          type="primary"
-                          onClick={(_) =>
-                            onTaskResolve({
-                              updateTags: tagsSuggestion,
-                              description: suggestion,
-                            })
-                          }>
-                          {t('label.accept-suggestion')}
-                        </Button>
+                        actionButtons
                       )}
                     </Space>
                   </Form>
