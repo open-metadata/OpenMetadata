@@ -11,16 +11,11 @@
  *  limitations under the License.
  */
 
-@body-text-color: #37352f;
-@badge-color: #d5d8dc;
-@white-color: #ffffff;
+@import url('./../../../styles/variables.less');
 @border-radius: 6px;
-@primary-color: #7147e8;
-@grey-color: #6b7280;
-@code-block: #ebeff4;
-@table-bg: #fafafa;
-@table-header-color: #5e5c58;
-@table-border-color: #f0f0f0;
+@border-color: #e8e8ed;
+@markdown-bg-color: #f8f8fa;
+@admonition-border-color: #afafc1;
 
 .markdown-parser {
   .toastui-editor-contents {
@@ -32,66 +27,116 @@
     h5,
     h6 {
       margin: 0px !important;
-      padding-top: 24px !important;
       border: none;
-      padding: 0px;
+      padding: 24px 0px 0px 0px !important;
+      color: @text-color;
     }
 
-    blockquote {
-      padding: 0px 8px;
-      border-left: 4px solid @grey-color;
-      border-radius: 2px;
+    h1 {
+      font-size: 24px;
+      line-height: 48px;
+      font-weight: 600;
     }
 
-    code {
-      color: @body-text-color;
-      border: 1px solid @grey-color;
-      border-radius: 4px;
-      background-color: transparent;
+    h2 {
+      font-size: 20px;
+      line-height: 32px;
+      font-weight: 600;
     }
 
-    pre {
-      background-color: @code-block;
-      border-radius: @border-radius;
-      padding: 16px;
-      code {
-        background-color: transparent;
-        font-size: 14px;
-        border: none;
+    h3 {
+      font-size: 18px;
+      font-weight: 600;
+    }
+
+    h4 {
+      font-weight: 600;
+    }
+
+    h1[data-highlighted='true'],
+    h2[data-highlighted='true'],
+    h3[data-highlighted='true'],
+    h4[data-highlighted='true'],
+    h5[data-highlighted='true'],
+    h6[data-highlighted='true'] {
+      background: #eeeaf8;
+      padding: 24px 8px !important;
+      color: @primary-color;
+      transition: ease-in-out;
+      margin-top: 8px !important;
+    }
+
+    a {
+      color: @primary-color;
+      text-decoration: none;
+      line-height: 24px;
+
+      &:hover {
+        text-decoration: underline;
       }
     }
 
     table {
-      width: 100%;
-      overflow: auto;
-      text-align: left;
-      border-radius: 4px;
-      border-collapse: separate;
-      border-spacing: 0;
-      thead {
-        th {
-          background-color: @table-bg;
-          font-weight: 600;
-          color: @table-header-color;
-          border-right: 1px solid @table-border-color;
-          text-align: left;
-        }
-      }
+      border-collapse: collapse;
+    }
 
-      tr {
-        &:hover {
-          background-color: @table-bg;
-        }
-        td {
-          border-right: none;
-          border-bottom: 1px solid #f0f0f0;
-        }
+    th,
+    td {
+      border: 1px solid @border-color;
+      margin: 0;
+      padding: 8px 16px;
+    }
+
+    th {
+      background: @markdown-bg-color;
+      color: @text-color;
+      font-weight: 500;
+    }
+
+    blockquote {
+      border-left: 4px solid @border-color;
+      padding-left: 16px;
+      margin-left: 25px;
+    }
+
+    strong {
+      font-weight: bold;
+    }
+
+    code {
+      white-space: break-spaces;
+      background: @markdown-bg-color;
+      color: @text-color;
+    }
+
+    pre {
+      margin: 0px;
+      padding: 0px;
+      background: transparent;
+      margin-top: 16px;
+      code {
+        display: block;
+        padding: 15px;
+        overflow: auto;
+        border-radius: 8px;
+        border-bottom: 2px solid @border-color;
       }
     }
 
+    img {
+      border-radius: @border-radius;
+      margin-top: 10px;
+      max-width: 100%;
+    }
+
+    li:not(:last-child) {
+      margin-bottom: 5px;
+    }
+
     p {
-      margin: 0px;
-      color: @body-text-color;
+      margin-top: 10px;
+      margin-bottom: 0px;
+      color: @text-color;
       word-break: break-word;
       line-height: 20px;
       &:last-child {
@@ -99,14 +144,10 @@
       }
     }
 
-    img {
-      border-radius: @border-radius;
-      margin-top: 10px;
-    }
     .task-list-item {
       border-radius: 0.125rem;
       border-width: 1px;
-      border-color: @body-text-color;
+      border-color: @text-color;
     }
     .task-list-item.checked {
       background-size: 100% 100%;
@@ -117,16 +158,108 @@
         background-color: @primary-color;
       }
     }
+    .admonition {
+      border-radius: 8px;
+      border-left: 8px solid @admonition-border-color;
+      padding: 1px 16px 1px 48px;
+      margin: 15px 0 0px;
+      background-color: @markdown-bg-color;
+      position: relative;
+
+      &::before {
+        content: 'ℹ️';
+        position: absolute;
+        top: 16px;
+        left: 16px;
+      }
+      p {
+        margin-top: 16px;
+        margin-bottom: 16px;
+      }
+    }
+    .admonition_note {
+      &::before {
+        content: '📝';
+      }
+    }
+    .admonition_warning,
+    .admonition_caution {
+      background-color: #fff3dc;
+      border-left-color: @warning-color;
+      &::before {
+        content: '⚠️';
+      }
+    }
+    .admonition_tip,
+    .admonition_info {
+      background-color: #d1e9ff;
+      border-left-color: @info-color;
+    }
+    .admonition_tip {
+      &::before {
+        content: '💡';
+      }
+    }
+    .admonition_danger {
+      background-color: #ff4c3b33;
+      border-left-color: @error-color;
+
+      &::before {
+        content: '⚠️';
+      }
+    }
+    .code-copy-button {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      pointer-events: all;
+      cursor: pointer;
+      z-index: 1;
+      width: 16px;
+      opacity: 0;
+      padding: 8px;
+      background: @border-color;
+      border-radius: 4px;
+    }
+
+    .code-copy-message {
+      display: none;
+      position: absolute;
+      top: 16px;
+      right: 16px;
+      pointer-events: all;
+      cursor: pointer;
+      z-index: 2;
+      background: @border-color;
+      border-radius: 4px;
+      padding: 0px 4px;
+    }
+
+    .code-block {
+      &:hover .code-copy-button[data-copied='false'] {
+        opacity: 1;
+      }
+    }
+
+    .code-copy-message[data-copied='true'] {
+      display: inline-block;
+    }
+    .code-copy-message[data-copied='false'] {
+      display: none;
+    }
+    .code-copy-button[data-copied='true'] {
+      opacity: 0;
+    }
   }
 }
 
 .markdown-parser.white {
   .toastui-editor-contents {
     p {
-      color: @white-color;
+      color: @white;
     }
     ul li::before {
-      background-color: @white-color;
+      background-color: @white;
     }
   }
 }
