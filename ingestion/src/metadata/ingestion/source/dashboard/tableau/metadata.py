@@ -14,8 +14,6 @@ Tableau source module
 import traceback
 from typing import Iterable, List, Optional, Set
 
-from requests.utils import urlparse
-
 from metadata.generated.schema.api.classification.createClassification import (
     CreateClassificationRequest,
 )
@@ -60,7 +58,7 @@ from metadata.ingestion.source.dashboard.tableau.models import (
 from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
 from metadata.utils import fqn, tag_utils
 from metadata.utils.filters import filter_by_chart, filter_by_datamodel
-from metadata.utils.helpers import get_standard_chart_type
+from metadata.utils.helpers import clean_uri, get_standard_chart_type
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -261,7 +259,6 @@ class TableauSource(DashboardServiceSource):
         topology. And they are cleared after processing each Dashboard because of the 'clear_cache' option.
         """
         try:
-            workbook_url = urlparse(dashboard_details.webpageUrl).fragment
             dashboard_request = CreateDashboardRequest(
                 name=dashboard_details.id,
                 displayName=dashboard_details.name,
@@ -290,7 +287,7 @@ class TableauSource(DashboardServiceSource):
                     classification_name=TABLEAU_TAG_CATEGORY,
                     include_tags=self.source_config.includeTags,
                 ),
-                dashboardUrl=f"#{workbook_url}",
+                dashboardUrl=dashboard_details.webpageUrl,
                 service=self.context.dashboard_service.fullyQualifiedName.__root__,
             )
             yield dashboard_request
@@ -375,16 +372,17 @@ class TableauSource(DashboardServiceSource):
                     self.status.filter(chart.name, "Chart Pattern not allowed")
                     continue
                 site_url = (
-                    f"site/{self.service_connection.siteUrl}/"
+                    f"/site/{self.service_connection.siteUrl}/"
                     if self.service_connection.siteUrl
                     else ""
                 )
                 workbook_chart_name = ChartUrl(chart.contentUrl)
 
                 chart_url = (
+                    f"{clean_uri(self.service_connection.hostPort)}/"
                     f"#{site_url}"
-                    f"views/{workbook_chart_name.workbook_name}/"
-                    f"{workbook_chart_name.chart_url_name}"
+                    f"views/{workbook_chart_name.workbook_name}"
+                    f"/{workbook_chart_name.chart_url_name}"
                 )
 
                 yield CreateChartRequest(
