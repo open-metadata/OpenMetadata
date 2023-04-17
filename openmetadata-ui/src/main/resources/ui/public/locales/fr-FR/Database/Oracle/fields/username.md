@@ -1,1 +1,0 @@
-Nom d'utilisateur pour se connecter à Oracle. Cet utilisateur doit avoir la permission d'exécuter des requêtes `CREATE SESSION`.

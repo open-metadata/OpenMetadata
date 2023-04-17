@@ -1,1 +1,0 @@
-The password of the user.

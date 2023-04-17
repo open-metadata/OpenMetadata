@@ -16,24 +16,6 @@ import React from 'react';
 import { ServiceCategory } from '../../enums/service.enum';
 import AddService from './AddService.component';
 
-jest.mock(
-  'components/containers/PageLayoutV1',
-  () =>
-    ({
-      children,
-      rightPanel,
-    }: {
-      children: React.ReactNode;
-      rightPanel: React.ReactNode;
-    }) =>
-      (
-        <div data-testid="PageLayout">
-          <div data-testid="right-panel-content">{rightPanel}</div>
-          {children}
-        </div>
-      )
-);
-
 jest.mock('react-router-dom', () => ({
   useHistory: jest.fn(),
 }));
@@ -54,13 +36,22 @@ jest.mock('../IngestionStepper/IngestionStepper.component', () => {
   return jest.fn().mockImplementation(() => <div>IngestionStepper</div>);
 });
 
-jest.mock('./Steps/ServiceRequirements', () => {
-  return jest.fn().mockReturnValue(<div>Service Requirements</div>);
+jest.mock('../common/ServiceDocPanel/ServiceDocPanel', () => {
+  return jest.fn().mockReturnValue(<div>ServiceDocPanel</div>);
 });
 
 jest.mock('../common/ServiceRightPanel/ServiceRightPanel', () => {
   return jest.fn().mockReturnValue(<div>Right Panel</div>);
 });
+
+jest.mock('components/common/ResizablePanels/ResizablePanels', () =>
+  jest.fn().mockImplementation(({ firstPanel, secondPanel }) => (
+    <>
+      <div>{firstPanel.children}</div>
+      <div>{secondPanel.children}</div>
+    </>
+  ))
+);
 
 describe('Test AddService component', () => {
   it('AddService component should render', async () => {
@@ -85,8 +76,6 @@ describe('Test AddService component', () => {
       />
     );
 
-    const pageLayout = await findByTestId(container, 'PageLayout');
-    const rightPanel = await findByTestId(container, 'right-panel-content');
     const addNewServiceContainer = await findByTestId(
       container,
       'add-new-service-container'
@@ -94,8 +83,7 @@ describe('Test AddService component', () => {
     const header = await findByTestId(container, 'header');
 
     expect(addNewServiceContainer).toBeInTheDocument();
-    expect(pageLayout).toBeInTheDocument();
-    expect(rightPanel).toBeInTheDocument();
+
     expect(header).toBeInTheDocument();
   });
 });
