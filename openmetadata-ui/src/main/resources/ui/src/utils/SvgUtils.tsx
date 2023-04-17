@@ -96,7 +96,6 @@ import IconDelete from '../assets/svg/ic-delete.svg';
 import IconDownArrow from '../assets/svg/ic-down-arrow.svg';
 import IconEditLineageColor from '../assets/svg/ic-edit-lineage-colored.svg';
 import IconEditLineage from '../assets/svg/ic-edit-lineage.svg';
-import IconEdit from '../assets/svg/ic-edit.svg';
 import IconExclamationCircle from '../assets/svg/ic-exclamation-circle.svg';
 import IconExplore from '../assets/svg/ic-explore.svg';
 import IconFeed from '../assets/svg/ic-feed.svg';
@@ -429,10 +428,6 @@ const SVGIcons: FunctionComponent<Props> = ({ icon, ...props }: Props) => {
       break;
     case Icons.REPORTS:
       IconComponent = IconReports;
-
-      break;
-    case Icons.EDIT:
-      IconComponent = IconEdit;
 
       break;
     case Icons.EXPLORE:

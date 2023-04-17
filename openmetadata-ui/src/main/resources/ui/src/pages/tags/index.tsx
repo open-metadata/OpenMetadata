@@ -25,6 +25,7 @@ import {
 } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { ReactComponent as LockIcon } from 'assets/svg/closed-lock.svg';
+import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
 import { AxiosError } from 'axios';
 import AppBadge from 'components/common/Badge/Badge.component';
 import Description from 'components/common/description/Description';
@@ -61,7 +62,6 @@ import {
   patchTag,
 } from 'rest/tagAPI';
 import { getEntityName } from 'utils/EntityUtils';
-import { ReactComponent as EditIcon } from '../../assets/svg/ic-edit.svg';
 import { ReactComponent as PlusIcon } from '../../assets/svg/plus-primary.svg';
 import {
   getExplorePath,

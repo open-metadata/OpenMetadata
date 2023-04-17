@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { Button, Popover, Space, Tabs, Tooltip, Typography } from 'antd';
+import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
 import { WILD_CARD_CHAR } from 'constants/char.constants';
 import {
   DE_ACTIVE_COLOR,
@@ -269,15 +270,7 @@ export const UserTeamSelectableList = ({
             className="flex-center p-0"
             data-testid="edit-owner"
             disabled={!hasPermission}
-            icon={
-              <SVGIcons
-                alt="edit"
-                color={DE_ACTIVE_COLOR}
-                height="14px"
-                icon={Icons.EDIT}
-                title="Edit"
-              />
-            }
+            icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
             size="small"
             type="text"
             onClick={() => setPopupVisible(true)}
