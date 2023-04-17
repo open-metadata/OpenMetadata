@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-/// <reference types="Cypress" />
+// / <reference types="Cypress" />
 import {
   descriptionBox,
   interceptURL,
@@ -520,7 +520,23 @@ describe('Glossary page should work properly', () => {
   });
 
   it('Updating data of glossary should work properly', () => {
-    selectActiveGlossary(NEW_GLOSSARY.name);
+    // visit glossary page
+    interceptURL('GET', `/api/v1/glossaryTerms?glossary=*`, 'glossaryTerm');
+    interceptURL('GET', `/api/v1/permissions/glossary/*`, 'permissions');
+    interceptURL('GET', `/api/v1/tags?limit=*`, 'tags');
+    interceptURL(
+      'GET',
+      `/api/v1/search/query?q=*&index=glossary_search_index`,
+      'glossaryTags'
+    );
+    cy.get('.ant-menu-item')
+      .contains(NEW_GLOSSARY.name)
+      .should('be.visible')
+      .click();
+    verifyMultipleResponseStatusCode(
+      ['@glossaryTerm', '@permissions', '@tags', '@glossaryTags'],
+      200
+    );
 
     // updating tags
     updateTags(false);
