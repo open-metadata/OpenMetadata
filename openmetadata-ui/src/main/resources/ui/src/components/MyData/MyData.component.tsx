@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Card } from 'antd';
+import { Card, Divider } from 'antd';
 import { ELASTICSEARCH_ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { observer } from 'mobx-react';
 import React, {
@@ -70,13 +70,13 @@ const MyData: React.FC<MyDataProps> = ({
 
   const getLeftPanel = () => {
     return (
-      <>
+      <Card className="panel-shadow-color">
         <MyAssetStats entityState={data} />
-        <div className="tw-mb-5" />
+        <Divider className="m-y-sm" />
         <RecentlyViewed />
-        <div className="tw-mb-5" />
+        <Divider className="m-y-sm" />
         <RecentSearchedTermsAntd />
-      </>
+      </Card>
     );
   };
 
